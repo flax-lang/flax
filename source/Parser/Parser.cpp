@@ -38,6 +38,7 @@ namespace Parser
 	Var* parseVar(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
+	Import* parseImport(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
@@ -76,19 +77,21 @@ namespace Parser
 	}
 
 	// helpers
+
+	static void skipNewline(std::deque<Token*>& tokens)
+	{
+		while(tokens.front()->type == TType::NewLine)
+			tokens.pop_front();
+	}
+
 	static Token* eat(std::deque<Token*>& tokens)
 	{
 		// returns the current front, then pops front.
 		Token* t = tokens.front();
 		tokens.pop_front();
+		skipNewline(tokens);
 
 		return t;
-	}
-
-	static void skipNewline(std::deque<Token*>& tokens)
-	{
-		while(tokens.front()->type == TType::NewLine)
-			eat(tokens);
 	}
 
 	static int getOpPrec(Token* tok)
@@ -151,10 +154,6 @@ namespace Parser
 				case TType::Val:
 					return parseVar(tokens);
 
-				case TType::Func:
-					rootNode->functions.push_back(parseFuncDecl(tokens));
-					return parsePrimary(tokens);
-
 				case TType::LParen:
 					return parseParenthesised(tokens);
 
@@ -165,10 +164,37 @@ namespace Parser
 				case TType::Decimal:
 					return parseNumber(tokens);
 
+
+
+
+
+
+
+
+				// so-called 'top-level' things that need to manually recurse back into this function
+				// may be dangerous -- look into goto or smth instead of recursing
+				case TType::Func:
+					rootNode->functions.push_back(parseFuncDecl(tokens));
+					return parsePrimary(tokens);
+
+				case TType::Import:
+					rootNode->imports.push_back(parseImport(tokens));
+					return parsePrimary(tokens);
+
+
+
+
+
+				// shit you just skip
 				case TType::NewLine:
 				case TType::Comment:
 					tokens.pop_front();
 					return parsePrimary(tokens);
+
+
+
+
+
 
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Warning: unknown token type %d, not handled\n", tok->type);
@@ -425,6 +451,21 @@ namespace Parser
 		}
 
 		return new FuncCall(new Id(id), args);
+	}
+
+
+
+
+
+	Import* parseImport(std::deque<Token*>& tokens)
+	{
+		assert(eat(tokens)->type == TType::Import);
+
+		Token* tok_mod;
+		if((tok_mod = eat(tokens))->type != TType::Identifier)
+			error("Expected module name after 'import' statement.");
+
+		return new Import(tok_mod->text);
 	}
 }
 

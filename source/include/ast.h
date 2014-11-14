@@ -177,6 +177,18 @@ namespace Ast
 		std::deque<Expr*> params;
 	};
 
+	struct Import : Expr
+	{
+		~Import() { }
+		Import(std::string name) : module(name) { }
+
+		virtual void print() override
+		{
+			printf("import '%s'", this->module.c_str());
+		}
+
+		std::string module;
+	};
 
 	struct Root : Expr
 	{
@@ -194,6 +206,7 @@ namespace Ast
 
 		// todo: add stuff like imports, etc.
 		std::deque<FuncDecl*> functions;
+		std::deque<Import*> imports;
 	};
 }
 
