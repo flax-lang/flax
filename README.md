@@ -2,6 +2,10 @@ core
 ====
 
 Compiler/parser for simple language. For kicks.
+  
+  
+  
+  
 
 
 #### Current Features ####
@@ -10,6 +14,10 @@ Compiler/parser for simple language. For kicks.
 - Handwritten parser
 - Generates AST
 - That's it ):
+  
+  
+  
+  
 
 
 
