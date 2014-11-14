@@ -1,0 +1,11 @@
+import Foundation
+
+func main() -> void
+{
+	something(x)
+}
+
+// no ret type = void
+func something()
+{
+}
