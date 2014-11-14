@@ -31,7 +31,7 @@ namespace Parser
 		Token* ret = new Token();
 
 		Token& tok = *ret;			// because doing '->' gets old
-		tok.posinfo = &pos;
+		tok.posinfo = new PosInfo(pos);
 
 		// check compounds first.
 		if(stream.find("==") == 0)
@@ -69,10 +69,9 @@ namespace Parser
 			tok.text = "//";
 
 			std::stringstream ss;
-			ss << stream;
-			ss >> tok.text;
-
+			std::getline(ss, tok.text, '\n');
 			read = tok.text.length();
+			pos.line++;
 
 			tok.type = TType::Comment;
 		}
@@ -200,6 +199,9 @@ namespace Parser
 			else if(id == "return")	tok.type = TType::Return;
 			else if(id == "as")		tok.type = TType::As;
 			else if(id == "is")		tok.type = TType::Is;
+			else if(id == "switch")	tok.type = TType::Switch;
+			else if(id == "case")	tok.type = TType::Case;
+			else if(id == "enum")	tok.type = TType::Enum;
 
 			else					tok.type = TType::Identifier;
 		}

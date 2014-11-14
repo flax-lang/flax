@@ -1,12 +1,7 @@
 import Foundation
 
-func main() -> void
+func main()
 {
-	something(x)
-	var x: Int32 = 0414494
-}
-
-// no ret type = void
-func something()
-{
+	var x: Int32 = 40123
+	main()
 }

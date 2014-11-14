@@ -15,6 +15,7 @@ namespace Parser
 {
 	PosInfo pos;
 	Root* rootNode;
+	Token* curtok;
 
 	// why bother with allocating a std::string
 	static Expr* error(const char* msg, ...)
@@ -25,7 +26,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "Error (%s:%lld): %s\n\n", pos.file->c_str(), pos.line, alloc);
+		fprintf(stderr, "Error (%s:%lld): %s\n\n", curtok->posinfo->file->c_str(), curtok->posinfo->line, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -58,19 +59,15 @@ namespace Parser
 
 		Token* t = nullptr;
 		pos.file = new std::string(filename);
-		pos.line = 0;
+		pos.line = 1;
 
 		std::deque<Token*> tokens;
 
 		while((t = getNextToken(str, pos)) != nullptr)
-		{
-			// printf("TOKEN: TYPE(%02d), TEXT(%s)\n", t->type, t->text.c_str());
 			tokens.push_back(t);
-		}
 
 		rootNode = new Root();
 		parsePrimary(tokens);
-
 
 		printf("\n\n\n");
 		rootNode->print();
@@ -80,18 +77,30 @@ namespace Parser
 
 	static void skipNewline(std::deque<Token*>& tokens)
 	{
-		while(tokens.front()->type == TType::NewLine)
+		while(tokens.size() > 0 && tokens.front()->type == TType::NewLine)
 			tokens.pop_front();
 	}
 
 	static Token* eat(std::deque<Token*>& tokens)
 	{
 		// returns the current front, then pops front.
+		if(tokens.size() == 0)
+			error("Unexpected end of input");
+
 		Token* t = tokens.front();
 		tokens.pop_front();
 		skipNewline(tokens);
 
+		curtok = t;
 		return t;
+	}
+
+	static bool checkHasMore(std::deque<Token*>& tokens)
+	{
+		if(tokens.size() == 0)
+			error("Unexpected end of input");
+
+		return true;
 	}
 
 	static int getOpPrec(Token* tok)
@@ -144,7 +153,7 @@ namespace Parser
 			return nullptr;
 		}
 
-		printf("parsePrimary\n");
+		printf("parsePrimary - %s\n", tokens.front()->text.c_str());
 		while(Token* tok = tokens.front())
 		{
 			assert(tok != nullptr);
@@ -188,6 +197,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 				case TType::Comment:
+				case TType::Semicolon:
 					tokens.pop_front();
 					return parsePrimary(tokens);
 
@@ -209,7 +219,6 @@ namespace Parser
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens)
 	{
 		printf("parseFuncDecl\n");
-
 
 		assert(eat(tokens)->type == TType::Func);
 		if(tokens.front()->type != TType::Identifier)
@@ -251,7 +260,7 @@ namespace Parser
 
 		// get return type.
 		std::string ret;
-		if(tokens.front()->type != TType::LBrace && tokens.front()->type != TType::NewLine)
+		if(checkHasMore(tokens) && tokens.front()->type != TType::LBrace && tokens.front()->type != TType::NewLine)
 		{
 			if(eat(tokens)->type != TType::Arrow)
 				error("Expected '->' to indicate return type when not returning void.");

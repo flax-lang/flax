@@ -26,7 +26,10 @@ namespace Parser
 		Else,
 		Return,
 		As,
-		Is,					// 14
+		Is,
+		Switch,
+		Case,
+		Enum,				// 17
 
 
 		// symbols
@@ -51,14 +54,14 @@ namespace Parser
 		Question,
 		Exclamation,
 		Semicolon,
-		Ampersand,			// 36
+		Ampersand,			// 39
 
 		// compound symbols
 		Arrow,
 		EqualsTo,
 		NotEquals,
 		GreaterEquals,
-		LessThanEquals,		// 41
+		LessThanEquals,		// 44
 
 		// other stuff.
 		Identifier,
