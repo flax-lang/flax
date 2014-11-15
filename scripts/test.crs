@@ -3,15 +3,18 @@ import Foundation
 func main()
 {
 	var a: Int32 = 1
-	var b: Int32 = 2
 
-	if a != 4
+	if a == 1
 	{
-		printInt64(a)
+
+	}
+	else if a == 2
+	{
+
 	}
 	else
 	{
-		printInt64(b)
+
 	}
 }
 
