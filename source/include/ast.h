@@ -69,7 +69,7 @@ namespace Ast
 	{
 		virtual ~Expr() { }
 		virtual void print() { }
-		virtual llvm::Value* codeGen() { return nullptr; }
+		virtual llvm::Value* codeGen() = 0;
 		std::string type;
 		VarType varType;
 	};
@@ -90,15 +90,27 @@ namespace Ast
 		};
 	};
 
-	struct Var : Expr
+	struct VarRef : Expr
 	{
-		~Var() { }
-		Var(std::string& name, bool immut) : name(name), immutable(immut) { }
+		~VarRef() { }
+		VarRef(std::string& name) : name(name) { }
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
+
+		std::string name;
+		Expr* initVal;
+	};
+
+	struct VarDecl : Expr
+	{
+		~VarDecl() { }
+		VarDecl(std::string& name, bool immut) : name(name), immutable(immut) { }
 		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
 		bool immutable;
+		Expr* initVal;
 	};
 
 	struct BinOp : Expr
@@ -117,7 +129,7 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl() { }
-		FuncDecl(std::string id, std::deque<Var*> params, std::string& ret) : name(id), params(params)
+		FuncDecl(std::string id, std::deque<VarDecl*> params, std::string ret) : name(id), params(params)
 		{
 			this->type = ret;
 		}
@@ -125,7 +137,7 @@ namespace Ast
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
-		std::deque<Var*> params;
+		std::deque<VarDecl*> params;
 	};
 
 	struct Func : Expr
@@ -155,27 +167,19 @@ namespace Ast
 		~Return() { }
 		Return(Expr* e) : val(e) { }
 		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
 		Expr* val;
 	};
 
 
 
-
-	struct String : Expr
-	{
-		~String() { }
-		String(std::string& s) : val(s) { }
-		virtual void print() override;
-
-		std::string val;
-	};
-
 	struct Import : Expr
 	{
 		~Import() { }
 		Import(std::string name) : module(name) { }
 		virtual void print() override;
+		virtual llvm::Value* codeGen() override { return nullptr; }
 
 		std::string module;
 	};

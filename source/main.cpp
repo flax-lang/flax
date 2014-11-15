@@ -9,14 +9,33 @@
 #include "include/ast.h"
 using namespace Ast;
 
+
 int main(int argc, char* argv[])
 {
-	assert(argc > 1);
-	printf("Parsing file %s\n\n", argv[1]);
+	if(argc > 1)
+	{
+		printf("Parsing file %s\n\n", argv[1]);
 
-	// parse
-	Root* root = Parser::Parse(std::string(argv[1]));
+		// open the file.
+		std::ifstream file = std::ifstream(argv[1]);
+		std::stringstream stream;
 
-	printf("\n\nllvm ir:\n\n");
-	Codegen::doCodegen(root);
+		stream << file.rdbuf();
+		std::string str = stream.str();
+
+		// parse
+		Root* root = Parser::Parse(argv[1], str);
+
+		printf("\n\nllvm ir:\n\n");
+		Codegen::doCodegen(root);
+	}
+	else
+	{
+		fprintf(stderr, "Expected at least one argument\n");
+	}
 }
+
+
+
+
+

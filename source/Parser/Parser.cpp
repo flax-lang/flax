@@ -35,7 +35,7 @@ namespace Parser
 
 	// woah shit it's forward declarations
 	// note: all these are expected to pop at least one token from the front of the list.
-	Var* parseVar(std::deque<Token*>& tokens);
+	void parseAll(std::deque<Token*>& tokens);
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
@@ -43,20 +43,15 @@ namespace Parser
 	Import* parseImport(std::deque<Token*>& tokens);
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
+	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
+	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
-	Root* Parse(std::string filename)
+	Root* Parse(std::string filename, std::string str)
 	{
-		// open the file.
-		std::ifstream file = std::ifstream(filename);
-		std::stringstream stream;
-
-		stream << file.rdbuf();
-		std::string str = stream.str();
-
 		Token* t = nullptr;
 		pos.file = new std::string(filename);
 		pos.line = 1;
@@ -67,7 +62,7 @@ namespace Parser
 			tokens.push_back(t);
 
 		rootNode = new Root();
-		parsePrimary(tokens);
+		parseAll(tokens);
 
 		printf("\n\n\n");
 		rootNode->print();
@@ -173,6 +168,51 @@ namespace Parser
 
 
 
+	void parseAll(std::deque<Token*>& tokens)
+	{
+		if(tokens.size() == 0)
+			return;
+
+		while(Token* tok = tokens.front())
+		{
+			assert(tok != nullptr);
+			switch(tok->type)
+			{
+				// so-called 'top-level' things that need to manually recurse back into this function
+				// may be dangerous -- look into goto or smth instead of recursing
+				case TType::Func:
+					rootNode->functions.push_back(parseFunc(tokens));
+					break;
+
+				case TType::Import:
+					rootNode->imports.push_back(parseImport(tokens));
+					break;
+
+
+				// shit you just skip
+				case TType::NewLine:
+				case TType::Comment:
+				case TType::Semicolon:
+					tokens.pop_front();
+					break;
+
+
+				default:	// wip: skip shit we don't know/care about for now
+					parseTopLevelExpr(tokens);
+					break;
+			}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -193,7 +233,7 @@ namespace Parser
 			{
 				case TType::Var:
 				case TType::Val:
-					return parseVar(tokens);
+					return parseVarDecl(tokens);
 
 				case TType::LParen:
 					return parseParenthesised(tokens);
@@ -208,25 +248,6 @@ namespace Parser
 				case TType::Return:
 					return parseReturn(tokens);
 
-
-
-
-
-
-				// so-called 'top-level' things that need to manually recurse back into this function
-				// may be dangerous -- look into goto or smth instead of recursing
-				case TType::Func:
-					rootNode->functions.push_back(parseFunc(tokens));
-					return parsePrimary(tokens);
-
-				case TType::Import:
-					rootNode->imports.push_back(parseImport(tokens));
-					return parsePrimary(tokens);
-
-
-
-
-
 				// shit you just skip
 				case TType::NewLine:
 				case TType::Comment:
@@ -234,13 +255,8 @@ namespace Parser
 					tokens.pop_front();
 					return parsePrimary(tokens);
 
-
-
-
-
-
 				default:	// wip: skip shit we don't know/care about for now
-					fprintf(stderr, "Warning: unknown token type %d, not handled\n", tok->type);
+					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
 					tokens.pop_front();
 					break;
 			}
@@ -264,8 +280,8 @@ namespace Parser
 
 		// get the parameter list
 		// expect an identifer, colon, type
-		std::deque<Var*> params;
-		std::map<std::string, Var*> nameCheck;
+		std::deque<VarDecl*> params;
+		std::map<std::string, VarDecl*> nameCheck;
 		while(tokens.size() > 0 && tokens.front()->type != TType::RParen)
 		{
 			Token* tok_id;
@@ -273,7 +289,7 @@ namespace Parser
 				error("Expected identifier");
 
 			std::string id = tok_id->text;
-			Var* v = new Var(id, true);
+			VarDecl* v = new VarDecl(id, true);
 
 			// expect a colon
 			if(eat(tokens)->type != TType::Colon)
@@ -350,7 +366,7 @@ namespace Parser
 		return c;
 	}
 
-	Var* parseVar(std::deque<Token*>& tokens)
+	VarDecl* parseVarDecl(std::deque<Token*>& tokens)
 	{
 		assert(tokens.front()->type == TType::Var || tokens.front()->type == TType::Val);
 
@@ -363,7 +379,7 @@ namespace Parser
 			error("Expected identifier for variable declaration.");
 
 		std::string id = tok_id->text;
-		Var* v = new Var(id, immutable);
+		VarDecl* v = new VarDecl(id, immutable);
 
 		// check the type.
 		// todo: type inference
@@ -379,6 +395,16 @@ namespace Parser
 
 		// TODO:
 		// check if we have a default value
+		v->initVal = nullptr;
+		if(tokens.front()->type == TType::Equal)
+		{
+			// we do
+			eat(tokens);
+
+			v->initVal = parseExpr(tokens);
+			if(!v->initVal)
+				error("Invalid initialiser for variable '%s'", v->name.c_str());
+		}
 
 		return v;
 	}
@@ -455,7 +481,7 @@ namespace Parser
 		skipNewline(tokens);
 
 		if(tokens.front()->type != TType::LParen)
-			return new Var(id, false);
+			return new VarRef(id);
 		else
 			return parseFunctionCall(tokens, id);
 	}
@@ -532,6 +558,17 @@ namespace Parser
 		return new Return(parseExpr(tokens));
 	}
 
+	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
+	{
+		Expr* expr = parseExpr(tokens);
+		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel", std::deque<VarDecl*>(), "");
+		Func* fakefunc = new Func(fakedecl);
+
+		fakefunc->statements.push_back(expr);
+		rootNode->functions.push_back(fakefunc);
+
+		return fakefunc;
+	}
 
 
 	Import* parseImport(std::deque<Token*>& tokens)

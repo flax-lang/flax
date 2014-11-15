@@ -114,7 +114,7 @@ namespace Parser
 		TType type;
 	};
 
-	Ast::Root* Parse(std::string filename);
+	Ast::Root* Parse(std::string filename, std::string str);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
 }
 
