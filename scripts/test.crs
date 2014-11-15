@@ -2,14 +2,17 @@ import Foundation
 
 func main()
 {
-	if 1
+	var a: Int64 = 1
+	var b: Int64 = 2
+
+	if a != 4
 	{
-		printInt32(1)
+		printInt64(a)
 	}
 	else
 	{
-		printInt32(5)
+		printInt64(b)
 	}
 }
 
-ffi func printInt32(v: Int32)
+ffi func printInt64(v: Int64)
