@@ -168,10 +168,14 @@ namespace Codegen
 			// it's a decl. get the type, motherfucker.
 			return e->varType = Parser::determineVarType(decl->type);
 		}
-		else if((num = dynamic_cast<Number*>(e)) || (dynamic_cast<UnaryOp*>(e) && (num = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(e)->expr))))
+		else if((num = dynamic_cast<Number*>(e)))
 		{
 			// it's a decl. get the type, motherfucker.
 			return num->varType;
+		}
+		else if(dynamic_cast<UnaryOp*>(e))
+		{
+			return determineVarType(dynamic_cast<UnaryOp*>(e)->expr);
 		}
 		else if((bo = dynamic_cast<BinOp*>(e)))
 		{
@@ -417,7 +421,6 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 
 	// recursively call ourselves
 	pairs.pop_front();
-	printf("RECURSE\n");
 	codeGenRecursiveIf(func, pairs, merge, phi);
 
 	// once that's done, we can add the false-case block to the func
@@ -426,7 +429,6 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 
 llvm::Value* UnaryOp::codeGen()
 {
-	printf("urinary tract infection\n");
 	assert(this->expr);
 	assert(this->op == ArithmeticOp::LogicalNot || this->op == ArithmeticOp::Plus || this->op == ArithmeticOp::Minus);
 
