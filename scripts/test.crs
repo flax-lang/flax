@@ -1,13 +1,9 @@
 import Foundation
 
-func main(x: Int32)
+ffi func printInt32(v: Int32)
+
+func main()
 {
 	var a: Int32 = 5
-	a = 7
-	a = d(a)
-}
-
-func d(x: Int32) -> Int32
-{
-	return 5 + 1 / x
+	printInt32(a)
 }

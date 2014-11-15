@@ -47,6 +47,7 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
+	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
@@ -63,9 +64,6 @@ namespace Parser
 
 		rootNode = new Root();
 		parseAll(tokens);
-
-		printf("\n\n\n");
-		rootNode->print();
 
 		return rootNode;
 	}
@@ -94,10 +92,7 @@ namespace Parser
 
 	static bool checkHasMore(std::deque<Token*>& tokens)
 	{
-		if(tokens.size() == 0)
-			error("Unexpected end of input");
-
-		return true;
+		return tokens.size() > 0;
 	}
 
 	static int getOpPrec(Token* tok)
@@ -188,6 +183,9 @@ namespace Parser
 					rootNode->imports.push_back(parseImport(tokens));
 					break;
 
+				case TType::ForeignFunc:
+					rootNode->foreignfuncs.push_back(parseForeignFunc(tokens));
+					break;
 
 				// shit you just skip
 				case TType::NewLine:
@@ -319,11 +317,9 @@ namespace Parser
 		// get return type.
 		std::string ret;
 		Token* tok_type = nullptr;
-		if(checkHasMore(tokens) && tokens.front()->type != TType::LBrace && tokens.front()->type != TType::NewLine)
+		if(checkHasMore(tokens) && tokens.front()->type == TType::Arrow)
 		{
-			if(eat(tokens)->type != TType::Arrow)
-				error("Expected '->' to indicate return type when not returning void.");
-
+			eat(tokens);
 			if((tok_type = eat(tokens))->type != TType::Identifier)
 				error("Expected type after parameter");
 
@@ -339,6 +335,15 @@ namespace Parser
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type);
 
 		return f;
+	}
+
+	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens)
+	{
+		assert(tokens.front()->type == TType::ForeignFunc);
+		eat(tokens);
+
+		FuncDecl* decl = parseFuncDecl(tokens);
+		return new ForeignFuncDecl(decl);
 	}
 
 	Func* parseFunc(std::deque<Token*>& tokens)
@@ -538,8 +543,9 @@ namespace Parser
 					break;
 				}
 
-				if(eat(tokens)->type != TType::Comma)
-					error("Expected either ',' or ')' in parameter list.");
+				Token* t;
+				if((t = eat(tokens))->type != TType::Comma)
+					error("Expected either ',' or ')' in parameter list, got '%s'", t->text.c_str());
 			}
 		}
 		else
