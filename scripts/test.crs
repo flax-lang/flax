@@ -1,7 +1,11 @@
 import Foundation
 
-func main()
+func main(x: Int32)
 {
-	var x: Int32 = 40123
-	main()
+	d(x)
+}
+
+func d(x: Int32)
+{
+	5 + 1 / x
 }
