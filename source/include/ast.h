@@ -172,8 +172,6 @@ namespace Ast
 		Expr* val;
 	};
 
-
-
 	struct Import : Expr
 	{
 		~Import() { }
@@ -182,6 +180,15 @@ namespace Ast
 		virtual llvm::Value* codeGen() override { return nullptr; }
 
 		std::string module;
+	};
+
+	struct ForeignFuncDecl : Expr
+	{
+		~ForeignFuncDecl() { }
+		ForeignFuncDecl(FuncDecl* func) : decl(func) { }
+		virtual llvm::Value* codeGen() override;
+
+		FuncDecl* decl;
 	};
 
 	struct Root : Expr
@@ -193,6 +200,7 @@ namespace Ast
 		// todo: add stuff like imports, etc.
 		std::deque<Func*> functions;
 		std::deque<Import*> imports;
+		std::deque<ForeignFuncDecl*> foreignfuncs;
 	};
 }
 

@@ -258,6 +258,7 @@ namespace Parser
 			else if(id == "switch")	tok.type = TType::Switch;
 			else if(id == "case")	tok.type = TType::Case;
 			else if(id == "enum")	tok.type = TType::Enum;
+			else if(id == "ffi")	tok.type = TType::ForeignFunc;
 
 			else					tok.type = TType::Identifier;
 		}

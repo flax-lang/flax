@@ -4,7 +4,7 @@
 
 LLVM_CONFIG		= /usr/local/opt/llvm/bin/llvm-config
 CXX				= clang++
-CXXFLAGS		= -g -stdlib=libc++ -std=gnu++11 -frtti -fexceptions -I/usr/local/opt/llvm/include
+CXXFLAGS		= -g -stdlib=libc++ -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include
 
 CXXSRC			= $(shell find source -iname "*.cpp")
 CXXOBJ			= $(CXXSRC:.cpp=.o)

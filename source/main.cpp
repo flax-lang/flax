@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 {
 	if(argc > 1)
 	{
-		printf("Parsing file %s\n\n", argv[1]);
+		printf("Parsing file %s\n", argv[1]);
 
 		// open the file.
 		std::ifstream file = std::ifstream(argv[1]);
@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 		// parse
 		Root* root = Parser::Parse(argv[1], str);
 
-		printf("\n\nllvm ir:\n\n");
+		printf("llvm ir:\n\n");
 		Codegen::doCodegen(root);
 	}
 	else

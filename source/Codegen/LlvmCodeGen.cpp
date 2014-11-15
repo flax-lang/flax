@@ -4,10 +4,13 @@
 
 #include <map>
 #include <vector>
+#include <memory>
+#include <utility>
 #include <stdint.h>
 #include "../include/ast.h"
 
 #include "llvm/Analysis/Passes.h"
+#include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -23,7 +26,6 @@ using namespace Ast;
 using namespace Codegen;
 
 #define DEBUG 1
-
 
 static void error(const char* msg, ...)
 {
@@ -41,11 +43,72 @@ static void error(const char* msg, ...)
 
 namespace Codegen
 {
-	static llvm::Module* mainModule = new llvm::Module("mainModule", llvm::getGlobalContext());
-	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 	static llvm::FunctionPassManager* Fpm;
+	static llvm::ExecutionEngine* execEngine;
 	static std::map<std::string, llvm::AllocaInst*> symbolTable;
+	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
+	static llvm::Module* mainModule;
 
+	void doCodegen(Root* root)
+	{
+		llvm::InitializeNativeTarget();
+		mainModule = new llvm::Module("mainModule", llvm::getGlobalContext());
+
+		std::string err;
+		execEngine = llvm::EngineBuilder(mainModule).setErrorStr(&err).create();
+
+		if(!execEngine)
+		{
+			fprintf(stderr, "%s", err.c_str());
+			exit(1);
+		}
+		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(mainModule);
+
+		assert(execEngine);
+		mainModule->setDataLayout(execEngine->getDataLayout());
+		// OurFPM.add(new llvm::DataLayoutPass());
+
+		if(!DEBUG)
+		{
+			// Provide basic AliasAnalysis support for GVN.
+			OurFPM.add(llvm::createBasicAliasAnalysisPass());
+
+			// Do simple "peephole" optimisations and bit-twiddling optzns.
+			OurFPM.add(llvm::createInstructionCombiningPass());
+
+			// Reassociate expressions.
+			OurFPM.add(llvm::createReassociatePass());
+
+			// Eliminate Common SubExpressions.
+			OurFPM.add(llvm::createGVNPass());
+
+			// Simplify the control flow graph (deleting unreachable blocks, etc).
+			OurFPM.add(llvm::createCFGSimplificationPass());
+		}
+
+		OurFPM.doInitialization();
+
+		// Set the global so the code gen can use this.
+		Fpm = &OurFPM;
+		root->codeGen();
+
+		mainModule->dump();
+
+
+
+
+
+
+		// check for a main() function and execute it
+		llvm::Function* main;
+		if((main = mainModule->getFunction("main")))
+		{
+			auto func = execEngine->getPointerToFunction(main);
+
+			void (*ptr)() = (void(*)()) func;
+			ptr();
+		}
+	}
 
 
 	static bool isBuiltinType(Expr* e)
@@ -196,6 +259,11 @@ llvm::Value* FuncDecl::codeGen()
 		error("Redefinition of function '%s'", this->name.c_str());
 
 	return func;
+}
+
+llvm::Value* ForeignFuncDecl::codeGen()
+{
+	return this->decl->codeGen();
 }
 
 llvm::Value* Func::codeGen()
@@ -377,6 +445,9 @@ llvm::Value* BinOp::codeGen()
 llvm::Value* Root::codeGen()
 {
 	// two pass: first codegen all the declarations
+	for(ForeignFuncDecl* f : this->foreignfuncs)
+		f->codeGen();
+
 	for(Func* f : this->functions)
 		f->decl->codeGen();
 
@@ -384,42 +455,24 @@ llvm::Value* Root::codeGen()
 	for(Func* f : this->functions)
 		f->codeGen();
 
-	mainModule->dump();
 	return nullptr;
 }
 
 
-namespace Codegen
+
+
+
+
+
+
+#if DEBUG
+
+extern "C" void printInt32(uint32_t i)
 {
-	void doCodegen(Root* root)
-	{
-		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(mainModule);
-
-		if(!DEBUG)
-		{
-			// Provide basic AliasAnalysis support for GVN.
-			OurFPM.add(llvm::createBasicAliasAnalysisPass());
-
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			OurFPM.add(llvm::createInstructionCombiningPass());
-
-			// Reassociate expressions.
-			OurFPM.add(llvm::createReassociatePass());
-
-			// Eliminate Common SubExpressions.
-			OurFPM.add(llvm::createGVNPass());
-
-			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			OurFPM.add(llvm::createCFGSimplificationPass());
-
-			OurFPM.doInitialization();
-		}
-
-		// Set the global so the code gen can use this.
-		Fpm = &OurFPM;
-		root->codeGen();
-	}
+	printf("%d", i);
 }
+
+#endif
 
 
 
