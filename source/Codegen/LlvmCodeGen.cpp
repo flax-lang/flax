@@ -68,7 +68,6 @@ namespace Codegen
 
 		assert(execEngine);
 		mainModule->setDataLayout(execEngine->getDataLayout());
-		// OurFPM.add(new llvm::DataLayoutPass());
 
 		if(!DEBUG)
 		{
@@ -120,8 +119,7 @@ namespace Codegen
 		return e->varType <= VarType::Bool || e->varType == VarType::Float32 || e->varType == VarType::Float64 || e->varType == VarType::Void;
 	}
 
-	static bool isIntegerType(Expr* e)		{ return e->varType <= VarType::Uint64; }
-	static bool isSignedType(Expr* e)		{ return e->varType <= VarType::Int64; }
+
 	static llvm::Type* getLlvmType(VarType t)
 	{
 		switch(t)
@@ -153,6 +151,7 @@ namespace Codegen
 	static VarType determineVarType(Expr* e)
 	{
 		VarRef* ref;
+		BinOp* bo;
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
 			VarDecl* decl = symbolTable[ref->name].second;
@@ -164,12 +163,28 @@ namespace Codegen
 		{
 			return VarType::Int64;
 		}
+		else if((bo = dynamic_cast<BinOp*>(e)))
+		{
+			// check what kind of shit it is
+			if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
+				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
+			{
+				return VarType::Bool;
+			}
+			else
+			{
+				error("fuck off");
+				return VarType::Bool;
+			}
+		}
 		else
 		{
 			error("Unable to determine type of variable");
 			return VarType::Void;
 		}
 	}
+	static bool isIntegerType(Expr* e)		{ return determineVarType(e) <= VarType::Uint64; }
+	static bool isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
 	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var)
 	{
@@ -364,7 +379,9 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	llvm::Value* val = pairs.front().second->codeGen();
 	assert(val);
 
-	// phi->addIncoming(val, t);
+	if(phi)
+		phi->addIncoming(val, t);
+
 	mainBuilder.CreateBr(merge);
 
 
@@ -388,7 +405,11 @@ llvm::Value* If::codeGen()
 	llvm::Value* firstCond = this->cases[0].first->codeGen();
 	VarType apprType = determineVarType(this->cases[0].first);
 
-	firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+	if(apprType != VarType::Bool)
+		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+
+	else
+		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
 
 
 	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
@@ -420,11 +441,14 @@ llvm::Value* If::codeGen()
 	mainBuilder.SetInsertPoint(merge);
 
 	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(llvm::getGlobalContext()), this->cases.size() + (this->final ? 1 : 0));
-	// phi->addIncoming(truev, trueb);
+
+	llvm::PHINode* phi = nullptr;
+
+	if(phi)
+		phi->addIncoming(truev, trueb);
 
 	mainBuilder.SetInsertPoint(curblk);
-
-	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, nullptr);
+	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi);
 
 	func->getBasicBlockList().push_back(falseb);
 
@@ -434,13 +458,14 @@ llvm::Value* If::codeGen()
 		llvm::Value* v = this->final->codeGen();
 		mainBuilder.CreateBr(merge);
 
-		// phi->addIncoming(v, falseb);
+		if(phi)
+			phi->addIncoming(v, falseb);
 	}
 
 	func->getBasicBlockList().push_back(merge);
 	mainBuilder.SetInsertPoint(merge);
 
-	return 0;
+	return getDefaultValue(VarType::Bool);
 }
 
 
@@ -564,20 +589,20 @@ llvm::Value* BinOp::codeGen()
 				else 														return mainBuilder.CreateLShr(lhs, rhs);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:										return mainBuilder.CreateICmpEQ(lhs, rhs);
-			case ArithmeticOp::CmpNEq:										return mainBuilder.CreateICmpNE(lhs, rhs);
+			case ArithmeticOp::CmpEq:										return mainBuilder.CreateICmpEQ(lhs, rhs, "cmptmp");
+			case ArithmeticOp::CmpNEq:										return mainBuilder.CreateICmpNE(lhs, rhs, "cmptmp");
 			case ArithmeticOp::CmpLT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSLT(lhs, rhs);
-				else 														return mainBuilder.CreateICmpULT(lhs, rhs);
+				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSLT(lhs, rhs, "cmptmp");
+				else 														return mainBuilder.CreateICmpULT(lhs, rhs, "cmptmp");
 			case ArithmeticOp::CmpGT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSGT(lhs, rhs);
-				else 														return mainBuilder.CreateICmpUGT(lhs, rhs);
+				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSGT(lhs, rhs, "cmptmp");
+				else 														return mainBuilder.CreateICmpUGT(lhs, rhs, "cmptmp");
 			case ArithmeticOp::CmpLEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSLE(lhs, rhs);
-				else 														return mainBuilder.CreateICmpULE(lhs, rhs);
+				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSLE(lhs, rhs, "cmptmp");
+				else 														return mainBuilder.CreateICmpULE(lhs, rhs, "cmptmp");
 			case ArithmeticOp::CmpGEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSGE(lhs, rhs);
-				else 														return mainBuilder.CreateICmpUGE(lhs, rhs);
+				if(isSignedType(this->left) || isSignedType(this->right))	return mainBuilder.CreateICmpSGE(lhs, rhs, "cmptmp");
+				else 														return mainBuilder.CreateICmpUGE(lhs, rhs, "cmptmp");
 
 			default:
 				// should not be reached
@@ -637,9 +662,9 @@ llvm::Value* Root::codeGen()
 
 #if DEBUG
 
-extern "C" void printInt32(uint32_t i)
+extern "C" void printInt64(uint64_t i)
 {
-	printf("%d", i);
+	printf("%lld", i);
 }
 
 #endif
