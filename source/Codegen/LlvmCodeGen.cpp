@@ -48,6 +48,7 @@ namespace Codegen
 {
 	static llvm::FunctionPassManager* Fpm;
 	static llvm::ExecutionEngine* execEngine;
+	static std::map<std::string, FuncDecl*> funcTable;
 	static std::map<std::string, std::pair<llvm::AllocaInst*, VarDecl*>> symbolTable;
 	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 	static llvm::Module* mainModule;
@@ -154,21 +155,23 @@ namespace Codegen
 		VarRef* ref;
 		VarDecl* decl;
 		BinOp* bo;
+		Number* num;
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
 			VarDecl* decl = symbolTable[ref->name].second;
 
 			// it's a decl. get the type, motherfucker.
-			return Parser::determineVarType(decl->type);
+			return e->varType = Parser::determineVarType(decl->type);
 		}
 		else if((decl = dynamic_cast<VarDecl*>(e)))
 		{
 			// it's a decl. get the type, motherfucker.
-			return Parser::determineVarType(decl->type);
+			return e->varType = Parser::determineVarType(decl->type);
 		}
-		else if(dynamic_cast<Number*>(e))
+		else if((num = dynamic_cast<Number*>(e)))
 		{
-			return VarType::Int64;
+			// it's a decl. get the type, motherfucker.
+			return num->varType;
 		}
 		else if((bo = dynamic_cast<BinOp*>(e)))
 		{
@@ -186,8 +189,8 @@ namespace Codegen
 		}
 		else
 		{
-			error("Unable to determine type of variable");
-			return VarType::Void;
+			error("Unable to determine variable type");
+			return e->varType;
 		}
 	}
 	static bool isIntegerType(Expr* e)		{ return determineVarType(e) <= VarType::Uint64; }
@@ -236,25 +239,28 @@ namespace Codegen
 	static Expr* autoCastNumber(Expr* left, Expr* right)
 	{
 		// adjust the right hand int literal, if it is one
-		Number* n;
+		Number* n = nullptr;
 		if((n = dynamic_cast<Number*>(right)))
 		{
-			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			n->varType = VarType::Int8;
-			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	n->varType = VarType::Int16;
-			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	n->varType = VarType::Int32;
-			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	n->varType = VarType::Int64;
-			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	n->varType = VarType::Uint8;
-			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	n->varType = VarType::Uint16;
-			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	n->varType = VarType::Uint32;
-			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	n->varType = VarType::Uint64;
+			printf("autoCasting: [%s, %s(%lld) - ", getReadableType(getLlvmType(determineVarType(left))).c_str(), getReadableType(getLlvmType(determineVarType(right))).c_str(), n->ival);
 
-			else if(determineVarType(left) == VarType::Float32 && n->ival <= FLT_MAX)	n->varType = VarType::Float32;
-			else if(determineVarType(left) == VarType::Float64 && n->ival <= DBL_MAX)	n->varType = VarType::Float64;
+			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8, printf("i8");
+			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16, printf("i16");
+			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32, printf("i32");
+			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64, printf("i64");
+			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8, printf("u8");
+			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16, printf("u16");
+			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32, printf("u32");
+			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64, printf("u64");
+			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32, printf("f32");
+			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64, printf("f64");
 			else
 			{
 				error("Cannot assign to target, it is too small.");
 			}
 
+			printf("] - [%d, %d]\n", left->varType, right->varType);
+			assert(determineVarType(left) == determineVarType(right));
 			return n;
 		}
 
@@ -328,6 +334,14 @@ llvm::Value* FuncCall::codeGen()
 	std::vector<llvm::Value*> args;
 	llvm::Function::arg_iterator it = target->arg_begin();
 
+	// we need to get the function declaration
+	FuncDecl* decl = funcTable[this->name];
+	assert(decl);
+
+	for(int i = 0; i < this->params.size(); i++)
+		this->params[i] = autoCastNumber(decl->params[i], this->params[i]);
+
+
 	for(Expr* e : this->params)
 	{
 		args.push_back(e->codeGen());
@@ -337,7 +351,6 @@ llvm::Value* FuncCall::codeGen()
 		it++;
 	}
 
-	printf("fccg\n");
 	return mainBuilder.CreateCall(target, args);
 }
 
@@ -354,6 +367,7 @@ llvm::Value* FuncDecl::codeGen()
 	if(func->getName() != this->name)
 		error("Redefinition of function '%s'", this->name.c_str());
 
+	funcTable[this->name] = this;
 	return func;
 }
 
@@ -382,8 +396,11 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	llvm::Value* cond = pairs.front().first->codeGen();
 
 	VarType apprType = determineVarType(pairs.front().first);
-	cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(),
-		llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCondR");
+	if(apprType != VarType::Bool)
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+
+	else
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
 
 
 
@@ -391,7 +408,6 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	mainBuilder.SetInsertPoint(t);
 
 	llvm::Value* val = pairs.front().second->codeGen();
-	assert(val);
 
 	if(phi)
 		phi->addIncoming(val, t);
@@ -439,7 +455,7 @@ llvm::Value* If::codeGen()
 	// emit code for the first block
 	mainBuilder.SetInsertPoint(trueb);
 	llvm::Value* truev = this->cases[0].second->codeGen();
-	assert(truev);
+	// assert(truev);
 	mainBuilder.CreateBr(merge);
 
 	// now for the clusterfuck.
@@ -550,13 +566,16 @@ llvm::Value* Func::codeGen()
 
 llvm::Value* BinOp::codeGen()
 {
-	// neat
-	llvm::Value* lhs = this->left->codeGen();
-	this->right = autoCastNumber(this->left, this->right);
+	llvm::Value* lhs;
+	llvm::Value* rhs;
 
-	llvm::Value* rhs = this->right->codeGen();
+
+	this->right = autoCastNumber(this->left, this->right);
 	if(this->op == ArithmeticOp::Assign)
 	{
+		lhs = this->left->codeGen();
+		rhs = this->right->codeGen();
+
 		VarRef* v;
 		if(!(v = dynamic_cast<VarRef*>(this->left)))
 			error("Left-hand side of assignment must be assignable");
@@ -572,17 +591,8 @@ llvm::Value* BinOp::codeGen()
 		return rhs;
 	}
 
-
-
-
-
-
-
-
-
-
-
-
+	lhs = this->left->codeGen();
+	rhs = this->right->codeGen();
 
 	// if both ops are integer values
 	if(isIntegerType(this->left) && isIntegerType(this->right))
