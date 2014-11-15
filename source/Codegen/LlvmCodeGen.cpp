@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <cfloat>
 #include <stdint.h>
 #include "../include/ast.h"
 
@@ -151,11 +152,17 @@ namespace Codegen
 	static VarType determineVarType(Expr* e)
 	{
 		VarRef* ref;
+		VarDecl* decl;
 		BinOp* bo;
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
 			VarDecl* decl = symbolTable[ref->name].second;
 
+			// it's a decl. get the type, motherfucker.
+			return Parser::determineVarType(decl->type);
+		}
+		else if((decl = dynamic_cast<VarDecl*>(e)))
+		{
 			// it's a decl. get the type, motherfucker.
 			return Parser::determineVarType(decl->type);
 		}
@@ -193,9 +200,10 @@ namespace Codegen
 	}
 
 
-	static llvm::Value* getDefaultValue(VarType type)
+	static llvm::Value* getDefaultValue(Expr* e)
 	{
-		switch(type)
+		VarType tp = determineVarType(e);
+		switch(tp)
 		{
 			case VarType::Int8:		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(8, 0, false));
 			case VarType::Int16:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(16, 0, false));
@@ -225,27 +233,32 @@ namespace Codegen
 		return rso.str();
 	}
 
-	static llvm::Type* autoCastType(llvm::Type* target)
+	static Expr* autoCastNumber(Expr* left, Expr* right)
 	{
-		llvm::LLVMContext& c = llvm::getGlobalContext();
-		if(target == llvm::Type::getInt1Ty(c))
-			return llvm::Type::getInt1Ty(c);
+		// adjust the right hand int literal, if it is one
+		Number* n;
+		if((n = dynamic_cast<Number*>(right)))
+		{
+			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			n->varType = VarType::Int8;
+			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	n->varType = VarType::Int16;
+			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	n->varType = VarType::Int32;
+			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	n->varType = VarType::Int64;
+			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	n->varType = VarType::Uint8;
+			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	n->varType = VarType::Uint16;
+			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	n->varType = VarType::Uint32;
+			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	n->varType = VarType::Uint64;
 
-		else if(target == llvm::Type::getInt8Ty(c))
-			return llvm::Type::getInt8Ty(c);
+			else if(determineVarType(left) == VarType::Float32 && n->ival <= FLT_MAX)	n->varType = VarType::Float32;
+			else if(determineVarType(left) == VarType::Float64 && n->ival <= DBL_MAX)	n->varType = VarType::Float64;
+			else
+			{
+				error("Cannot assign to target, it is too small.");
+			}
 
-		else if(target == llvm::Type::getInt16Ty(c))
-			return llvm::Type::getInt16Ty(c);
+			return n;
+		}
 
-		else if(target == llvm::Type::getInt32Ty(c))
-			return llvm::Type::getInt32Ty(c);
-
-		else if(target == llvm::Type::getInt64Ty(c))
-			return llvm::Type::getInt64Ty(c);
-
-		else
-			error("Fuck you");
-
+		error("Couldn't not convert number.");
 		return nullptr;
 	}
 }
@@ -261,8 +274,9 @@ llvm::Value* Number::codeGen()
 	else if(this->type == "Float32" || this->type == "Float64")
 		return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(this->dval));
 
-	else
-		return nullptr;
+
+	error("WHAT");
+	return nullptr;
 }
 
 llvm::Value* VarRef::codeGen()
@@ -280,18 +294,20 @@ llvm::Value* VarDecl::codeGen()
 	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
 
-	if(this->initVal)
-		val = this->initVal->codeGen();
-
-	else
-		val = getDefaultValue(this->varType);
-
-
 	llvm::AllocaInst* ai = getAllocedInstanceInBlock(func, this);
-	mainBuilder.CreateStore(val, ai);
-
 	symbolTable[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
+	if(this->initVal)
+	{
+		this->initVal = autoCastNumber(this, this->initVal);
+		val = this->initVal->codeGen();
+	}
+	else
+	{
+		val = getDefaultValue(this);
+	}
+
+	mainBuilder.CreateStore(val, ai);
 	return val;
 }
 
@@ -318,8 +334,6 @@ llvm::Value* FuncCall::codeGen()
 		if(args.back() == nullptr)
 			return 0;
 
-		// if it's an integer type and can fit, then just fucking mutate it
-		args.back()->mutateType(autoCastType(it->getType()));
 		it++;
 	}
 
@@ -465,7 +479,8 @@ llvm::Value* If::codeGen()
 	func->getBasicBlockList().push_back(merge);
 	mainBuilder.SetInsertPoint(merge);
 
-	return getDefaultValue(VarType::Bool);
+	// return false
+	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, 0, true));
 }
 
 
@@ -537,9 +552,9 @@ llvm::Value* BinOp::codeGen()
 {
 	// neat
 	llvm::Value* lhs = this->left->codeGen();
+	this->right = autoCastNumber(this->left, this->right);
+
 	llvm::Value* rhs = this->right->codeGen();
-
-
 	if(this->op == ArithmeticOp::Assign)
 	{
 		VarRef* v;
@@ -661,6 +676,11 @@ llvm::Value* Root::codeGen()
 
 
 #if DEBUG
+
+extern "C" void printInt32(uint32_t i)
+{
+	printf("%d", i);
+}
 
 extern "C" void printInt64(uint64_t i)
 {
