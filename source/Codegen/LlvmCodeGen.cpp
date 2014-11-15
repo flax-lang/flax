@@ -19,6 +19,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/PassManager.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Transforms/Scalar.h"
 
@@ -26,6 +27,7 @@ using namespace Ast;
 using namespace Codegen;
 
 #define DEBUG 1
+#define RUN 1
 
 static void error(const char* msg, ...)
 {
@@ -45,7 +47,7 @@ namespace Codegen
 {
 	static llvm::FunctionPassManager* Fpm;
 	static llvm::ExecutionEngine* execEngine;
-	static std::map<std::string, llvm::AllocaInst*> symbolTable;
+	static std::map<std::string, std::pair<llvm::AllocaInst*, VarDecl*>> symbolTable;
 	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 	static llvm::Module* mainModule;
 
@@ -98,15 +100,17 @@ namespace Codegen
 
 
 
-
-		// check for a main() function and execute it
-		llvm::Function* main;
-		if((main = mainModule->getFunction("main")))
+		if(RUN)
 		{
-			auto func = execEngine->getPointerToFunction(main);
+			// check for a main() function and execute it
+			llvm::Function* main;
+			if((main = mainModule->getFunction("main")))
+			{
+				auto func = execEngine->getPointerToFunction(main);
 
-			void (*ptr)() = (void(*)()) func;
-			ptr();
+				void (*ptr)() = (void(*)()) func;
+				ptr();
+			}
 		}
 	}
 
@@ -146,11 +150,33 @@ namespace Codegen
 		return nullptr;
 	}
 
+	static VarType determineVarType(Expr* e)
+	{
+		VarRef* ref;
+		if((ref = dynamic_cast<VarRef*>(e)))
+		{
+			VarDecl* decl = symbolTable[ref->name].second;
+
+			// it's a decl. get the type, motherfucker.
+			return Parser::determineVarType(decl->type);
+		}
+		else if(dynamic_cast<Number*>(e))
+		{
+			return VarType::Int64;
+		}
+		else
+		{
+			error("Unable to determine type of variable");
+			return VarType::Void;
+		}
+	}
+
 	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var)
 	{
 		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
 		return tmpBuilder.CreateAlloca(getLlvmType(var->varType), 0, var->name);
 	}
+
 
 	static llvm::Value* getDefaultValue(VarType type)
 	{
@@ -173,6 +199,40 @@ namespace Codegen
 			default:				return llvm::Constant::getNullValue(llvm::Type::getVoidTy(llvm::getGlobalContext()));
 		}
 	}
+
+	static std::string getReadableType(llvm::Type* type)
+	{
+		std::string thing;
+		llvm::raw_string_ostream rso(thing);
+
+		type->print(rso);
+
+		return rso.str();
+	}
+
+	static llvm::Type* autoCastType(llvm::Type* target)
+	{
+		llvm::LLVMContext& c = llvm::getGlobalContext();
+		if(target == llvm::Type::getInt1Ty(c))
+			return llvm::Type::getInt1Ty(c);
+
+		else if(target == llvm::Type::getInt8Ty(c))
+			return llvm::Type::getInt8Ty(c);
+
+		else if(target == llvm::Type::getInt16Ty(c))
+			return llvm::Type::getInt16Ty(c);
+
+		else if(target == llvm::Type::getInt32Ty(c))
+			return llvm::Type::getInt32Ty(c);
+
+		else if(target == llvm::Type::getInt64Ty(c))
+			return llvm::Type::getInt64Ty(c);
+
+		else
+			error("Fuck you");
+
+		return nullptr;
+	}
 }
 
 
@@ -181,7 +241,7 @@ llvm::Value* Number::codeGen()
 {
 	// check builtin type
 	if(this->varType <= VarType::Uint64)
-		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(((int) this->varType % 4 + 1) * 8, this->ival, this->varType > VarType::Int64));
+		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64));
 
 	else if(this->type == "Float32" || this->type == "Float64")
 		return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(this->dval));
@@ -192,7 +252,7 @@ llvm::Value* Number::codeGen()
 
 llvm::Value* VarRef::codeGen()
 {
-	llvm::Value* val = Codegen::symbolTable[this->name];
+	llvm::Value* val = Codegen::symbolTable[this->name].first;
 
 	if(!val)
 		error("Unknown variable name '%s'", this->name.c_str());
@@ -215,7 +275,7 @@ llvm::Value* VarDecl::codeGen()
 	llvm::AllocaInst* ai = getAllocedInstanceInBlock(func, this);
 	mainBuilder.CreateStore(val, ai);
 
-	symbolTable[this->name] = ai;
+	symbolTable[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
 	return val;
 }
@@ -235,13 +295,20 @@ llvm::Value* FuncCall::codeGen()
 		error("Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
+	llvm::Function::arg_iterator it = target->arg_begin();
+
 	for(Expr* e : this->params)
 	{
 		args.push_back(e->codeGen());
 		if(args.back() == nullptr)
 			return 0;
+
+		// if it's an integer type and can fit, then just fucking mutate it
+		args.back()->mutateType(autoCastType(it->getType()));
+		it++;
 	}
 
+	printf("fccg\n");
 	return mainBuilder.CreateCall(target, args);
 }
 
@@ -265,6 +332,117 @@ llvm::Value* ForeignFuncDecl::codeGen()
 {
 	return this->decl->codeGen();
 }
+
+llvm::Value* Closure::codeGen()
+{
+	llvm::Value* lastVal = nullptr;
+	for(Expr* e : this->statements)
+		lastVal = e->codeGen();
+
+	return lastVal;
+}
+
+void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi)
+{
+	if(pairs.size() == 0)
+		return;
+
+	llvm::BasicBlock* t = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCaseR", func);
+	llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCaseR");
+
+	llvm::Value* cond = pairs.front().first->codeGen();
+
+	VarType apprType = determineVarType(pairs.front().first);
+	cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(),
+		llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCondR");
+
+
+
+	mainBuilder.CreateCondBr(cond, t, f);
+	mainBuilder.SetInsertPoint(t);
+
+	llvm::Value* val = pairs.front().second->codeGen();
+	assert(val);
+
+	// phi->addIncoming(val, t);
+	mainBuilder.CreateBr(merge);
+
+
+	// now the false case...
+	// set the insert point to the false case, then go again.
+	mainBuilder.SetInsertPoint(f);
+
+	// recursively call ourselves
+	pairs.pop_front();
+	printf("RECURSE\n");
+	codeGenRecursiveIf(func, pairs, merge, phi);
+
+	// once that's done, we can add the false-case block to the func
+	func->getBasicBlockList().push_back(f);
+}
+
+
+llvm::Value* If::codeGen()
+{
+	assert(this->cases.size() > 0);
+	llvm::Value* firstCond = this->cases[0].first->codeGen();
+	VarType apprType = determineVarType(this->cases[0].first);
+
+	firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+
+
+	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
+	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCase", func);
+	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCase");
+	llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge");
+
+
+	// create the first conditional
+	mainBuilder.CreateCondBr(firstCond, trueb, falseb);
+
+
+	// emit code for the first block
+	mainBuilder.SetInsertPoint(trueb);
+	llvm::Value* truev = this->cases[0].second->codeGen();
+	assert(truev);
+	mainBuilder.CreateBr(merge);
+
+	// now for the clusterfuck.
+	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
+	// of the if statement.
+
+	mainBuilder.SetInsertPoint(falseb);
+
+	auto c1 = this->cases.front();
+	this->cases.pop_front();
+
+	llvm::BasicBlock* curblk = mainBuilder.GetInsertBlock();
+	mainBuilder.SetInsertPoint(merge);
+
+	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(llvm::getGlobalContext()), this->cases.size() + (this->final ? 1 : 0));
+	// phi->addIncoming(truev, trueb);
+
+	mainBuilder.SetInsertPoint(curblk);
+
+	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, nullptr);
+
+	func->getBasicBlockList().push_back(falseb);
+
+	// if we have an 'else' case
+	if(this->final)
+	{
+		llvm::Value* v = this->final->codeGen();
+		mainBuilder.CreateBr(merge);
+
+		// phi->addIncoming(v, falseb);
+	}
+
+	func->getBasicBlockList().push_back(merge);
+	mainBuilder.SetInsertPoint(merge);
+
+	return 0;
+}
+
 
 llvm::Value* Func::codeGen()
 {
@@ -293,31 +471,23 @@ llvm::Value* Func::codeGen()
 		llvm::AllocaInst* ai = getAllocedInstanceInBlock(func, this->decl->params[i]);
 		mainBuilder.CreateStore(it, ai);
 
-		symbolTable[this->decl->params[i]->name] = ai;
+		symbolTable[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
 	}
 
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = nullptr;
-	for(Expr* e : this->statements)
-	{
-		printf("codegen - %s\n", func->getName().str().c_str());
-		lastVal = e->codeGen();
-	}
-
+	llvm::Value* lastVal = this->closure->codeGen();
 
 	// check if we're not returning void
 	if(this->decl->varType != VarType::Void)
 	{
-		if(this->statements.size() == 0)
-		{
+		if(this->closure->statements.size() == 0)
 			error("Return value required for function '%s'", this->decl->name.c_str());
-		}
 
 		// the last expr is the final return value.
 		// if we had an explicit return, then the dynamic cast will succeed and we don't need to do anything
-		if(!dynamic_cast<Return*>(this->statements.back()))
+		if(!dynamic_cast<Return*>(this->closure->statements.back()))
 		{
 			// else, if the cast failed it means we didn't explicitly return, so we take the
 			// value of the last expr as the return value.
@@ -354,7 +524,7 @@ llvm::Value* BinOp::codeGen()
 		if(!rhs)
 			error("What?");
 
-		llvm::Value* var = symbolTable[v->name];
+		llvm::Value* var = symbolTable[v->name].first;
 		if(!var)
 			error("Unknown identifier (var) '%s'", v->name.c_str());
 

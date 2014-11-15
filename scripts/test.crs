@@ -1,9 +1,15 @@
 import Foundation
 
-ffi func printInt32(v: Int32)
-
 func main()
 {
-	var a: Int32 = 5
-	printInt32(a)
+	if 1
+	{
+		printInt32(1)
+	}
+	else
+	{
+		printInt32(5)
+	}
 }
+
+ffi func printInt32(v: Int32)
