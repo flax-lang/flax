@@ -17,8 +17,10 @@ all: run
 clean:
 	@rm $(CXXOBJ)
 
+build: scripts/corec
+
 scripts/corec: $(CXXOBJ)
-	@$(CXX) `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core` $(CXXFLAGS) -o $@ $(CXXOBJ)
+	@$(CXX) `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core jit native` $(CXXFLAGS) -o $@ $(CXXOBJ)
 
 %.o: %.cpp
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<

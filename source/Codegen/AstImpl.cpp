@@ -16,12 +16,12 @@ namespace Ast
 			printf("%lld", this->ival);
 	}
 
-	void String::print()
+	void VarRef::print()
 	{
-		printf("string: %s", this->val.c_str());
+		printf("varref(%s, %s)", this->name.c_str(), this->type.c_str());
 	}
 
-	void Var::print()
+	void VarDecl::print()
 	{
 		printf("var(%s, %s)", this->name.c_str(), this->type.c_str());
 	}
