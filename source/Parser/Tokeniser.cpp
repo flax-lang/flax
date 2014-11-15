@@ -75,6 +75,61 @@ namespace Parser
 
 			tok.type = TType::Comment;
 		}
+		else if(stream.find("<<") == 0)
+		{
+			tok.text = "<<";
+			tok.type = TType::ShiftLeft;
+		}
+		else if(stream.find(">>") == 0)
+		{
+			tok.text = ">>";
+			tok.type = TType::ShiftRight;
+		}
+		else if(stream.find("++") == 0)
+		{
+			tok.text = "++";
+			tok.type = TType::DoublePlus;
+		}
+		else if(stream.find("--") == 0)
+		{
+			tok.text = "--";
+			tok.type = TType::DoubleMinus;
+		}
+		else if(stream.find("+=") == 0)
+		{
+			tok.text = "+=";
+			tok.type = TType::PlusEq;
+		}
+		else if(stream.find("-=") == 0)
+		{
+			tok.text = "+=";
+			tok.type = TType::MinusEq;
+		}
+		else if(stream.find("*=") == 0)
+		{
+			tok.text = "+=";
+			tok.type = TType::MultiplyEq;
+		}
+		else if(stream.find("/=") == 0)
+		{
+			tok.text = "+=";
+			tok.type = TType::DivideEq;
+		}
+		else if(stream.find("%=") == 0)
+		{
+			tok.text = "%=";
+			tok.type = TType::ModEq;
+		}
+		else if(stream.find("<<=") == 0)
+		{
+			tok.text = "<<=";
+			tok.type = TType::ShiftLeftEq;
+		}
+		else if(stream.find(">>=") == 0)
+		{
+			tok.text = ">>=";
+			tok.type = TType::ShiftRightEq;
+		}
 		else if(!isalnum(stream[0]))
 		{
 			// check the first char
@@ -104,6 +159,7 @@ namespace Parser
 				case '!':	tok.type = TType::Exclamation;			break;
 				case ';':	tok.type = TType::Semicolon;			break;
 				case '&':	tok.type = TType::Ampersand;			break;
+				case '%':	tok.type = TType::Percent;				break;
 			}
 
 			tok.text = stream[0];

@@ -4,9 +4,20 @@
 
 #pragma once
 
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS
+#endif
+
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif
+
+
 #include <string>
 #include <deque>
 #include "parser.h"
+
+#include "llvm/IR/Value.h"
 
 namespace Ast
 {
@@ -14,11 +25,53 @@ namespace Ast
 	// fuck this. c++ structs are exactly the same as classes, except with public visibility by default
 	// i'm lazy so this is the way it'll be.
 
+	enum class VarType
+	{
+		Int8,
+		Int16,
+		Int32,
+		Int64,
+
+		Uint8,
+		Uint16,
+		Uint32,
+		Uint64,
+
+		// we do it this way so we can do math tricks on these to get the number of bits
+		Bool,
+		UserDefined,
+		Float32,
+		Float64,
+
+		Void,
+	};
+
+	enum class ArithmeticOp
+	{
+		Add,
+		Subtract,
+		Multiply,
+		Divide,
+		Modulo,
+		ShiftLeft,
+		ShiftRight,
+		Assign,
+
+		CmpLT,
+		CmpGT,
+		CmpLEq,
+		CmpGEq,
+		CmpEq,
+		CmpNEq,
+	};
+
 	struct Expr
 	{
 		virtual ~Expr() { }
-		virtual void print() = 0;
+		virtual void print() { }
+		virtual llvm::Value* codeGen() { return nullptr; }
 		std::string type;
+		VarType varType;
 	};
 
 	struct Number : Expr
@@ -26,15 +79,8 @@ namespace Ast
 		~Number() { }
 		Number(double val) : dval(val) { this->decimal = true; }
 		Number(int64_t val) : ival(val) { this->decimal = false; }
-
-		virtual void print() override
-		{
-			if(this->decimal)
-				printf("%f", this->dval);
-
-			else
-				printf("%lld", this->ival);
-		}
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
 		bool decimal = false;
 		union
@@ -44,148 +90,92 @@ namespace Ast
 		};
 	};
 
-	struct String : Expr
-	{
-		~String() { }
-		String(std::string& s) : val(s) { }
-
-		virtual void print() override
-		{
-			printf("string: %s", this->val.c_str());
-		}
-
-		std::string val;
-	};
-
-	struct Id : Expr
-	{
-		~Id() { }
-		Id(std::string name) : name(name) { }
-
-		virtual void print() override
-		{
-			printf("%s", this->name.c_str());
-		}
-
-		std::string name;
-	};
-
 	struct Var : Expr
 	{
 		~Var() { }
 		Var(std::string& name, bool immut) : name(name), immutable(immut) { }
-
-		virtual void print() override
-		{
-			printf("var(%s, %s)", this->name.c_str(), this->type.c_str());
-		}
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
 		std::string name;
 		bool immutable;
-
-		Number* nval;
-		String* sval;
 	};
 
 	struct BinOp : Expr
 	{
 		~BinOp() { }
-		BinOp(Expr* lhs, char operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
-
-		virtual void print() override
-		{
-			printf("binop(");
-			left->print();
-			printf(" %c ", op);
-			right->print();
-			printf(")");
-		}
+		BinOp(Expr* lhs, ArithmeticOp operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
 		Expr* left;
 		Expr* right;
 
-		char op;
-	};
-
-	struct Closure : Expr
-	{
-		~Closure() { }
-
-		virtual void print() override
-		{
-			printf("{\n");
-			for(Expr* e : this->statements)
-			{
-				printf("\t");
-				e->print();
-				printf("\n");
-			}
-			printf("}");
-		}
-
-		std::deque<Expr*> statements;
+		ArithmeticOp op;
 	};
 
 	struct FuncDecl : Expr
 	{
 		~FuncDecl() { }
-		FuncDecl(Id* id, std::deque<Var*> params, Closure* body, std::string& ret) : name(id), params(params), body(body)
+		FuncDecl(std::string id, std::deque<Var*> params, std::string& ret) : name(id), params(params)
 		{
 			this->type = ret;
 		}
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
-		virtual void print() override
-		{
-			printf("func: ");
-			this->name->print();
-
-			printf("(");
-			for(Var* v : this->params)
-			{
-				v->print();
-				printf(", ");
-			}
-
-			printf(") -> %s\n", this->type.c_str());
-			this->body->print();
-		}
-
-		Id* name;
+		std::string name;
 		std::deque<Var*> params;
-		Closure* body;
 	};
 
+	struct Func : Expr
+	{
+		~Func() { }
+		Func(FuncDecl* funcdecl) : decl(funcdecl) { }
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
+
+		FuncDecl* decl;
+		std::deque<Expr*> statements;
+	};
 
 	struct FuncCall : Expr
 	{
 		~FuncCall() { }
-		FuncCall(Id* target, std::deque<Expr*> args) : name(target), params(args) { }
+		FuncCall(std::string target, std::deque<Expr*> args) : name(target), params(args) { }
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
-		virtual void print() override
-		{
-			printf("call %s(", this->name->name.c_str());
-			for(Expr* arg : this->params)
-			{
-				arg->print();
-				printf(", fin");
-			}
-
-			printf(")");
-		}
-
-		Id* name;
+		std::string name;
 		std::deque<Expr*> params;
+	};
+
+	struct Return : Expr
+	{
+		~Return() { }
+		Return(Expr* e) : val(e) { }
+		virtual void print() override;
+
+		Expr* val;
+	};
+
+
+
+
+	struct String : Expr
+	{
+		~String() { }
+		String(std::string& s) : val(s) { }
+		virtual void print() override;
+
+		std::string val;
 	};
 
 	struct Import : Expr
 	{
 		~Import() { }
 		Import(std::string name) : module(name) { }
-
-		virtual void print() override
-		{
-			printf("import '%s'", this->module.c_str());
-		}
+		virtual void print() override;
 
 		std::string module;
 	};
@@ -193,21 +183,18 @@ namespace Ast
 	struct Root : Expr
 	{
 		~Root() { }
-
-		virtual void print() override
-		{
-			printf("ast:\n");
-			for(FuncDecl* f : this->functions)
-			{
-				f->print();
-				printf("\n");
-			}
-		}
+		virtual void print() override;
+		virtual llvm::Value* codeGen() override;
 
 		// todo: add stuff like imports, etc.
-		std::deque<FuncDecl*> functions;
+		std::deque<Func*> functions;
 		std::deque<Import*> imports;
 	};
+}
+
+namespace Codegen
+{
+	void doCodegen(Ast::Root* root);
 }
 
 

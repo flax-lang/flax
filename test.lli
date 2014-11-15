@@ -1,0 +1,12 @@
+; ModuleID = 'mainModule'
+
+define void @main() {
+entry:
+  call void @d()
+  ret void
+}
+
+define void @d() {
+entry:
+  ret void
+}

@@ -4,6 +4,7 @@
 
 #include <map>
 #include <deque>
+#include <cfloat>
 #include <fstream>
 #include <cassert>
 #include "../include/ast.h"
@@ -17,8 +18,7 @@ namespace Parser
 	Root* rootNode;
 	Token* curtok;
 
-	// why bother with allocating a std::string
-	static Expr* error(const char* msg, ...)
+	void error(const char* msg, ...)
 	{
 		va_list ap;
 		va_start(ap, msg);
@@ -35,20 +35,20 @@ namespace Parser
 
 	// woah shit it's forward declarations
 	// note: all these are expected to pop at least one token from the front of the list.
-
 	Var* parseVar(std::deque<Token*>& tokens);
+	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
-	Import* parseImport(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
+	Import* parseImport(std::deque<Token*>& tokens);
+	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
-	Closure* parseClosure(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
-	void Parse(std::string filename)
+	Root* Parse(std::string filename)
 	{
 		// open the file.
 		std::ifstream file = std::ifstream(filename);
@@ -71,6 +71,8 @@ namespace Parser
 
 		printf("\n\n\n");
 		rootNode->print();
+
+		return rootNode;
 	}
 
 	// helpers
@@ -107,13 +109,32 @@ namespace Parser
 	{
 		switch(tok->type)
 		{
+			case TType::DoublePlus:
+			case TType::DoubleMinus:
+				return 50;
+
+			case TType::Asterisk:
+			case TType::Divide:
+			case TType::Percent:
+				return 40;
+
 			case TType::Plus:
 			case TType::Minus:
 				return 20;
 
-			case TType::Asterisk:
-			case TType::Divide:
-				return 40;
+			case TType::ShiftLeft:
+			case TType::ShiftRight:
+				return 10;
+
+			case TType::LAngle:
+			case TType::RAngle:
+			case TType::LessThanEquals:
+			case TType::GreaterEquals:
+				return 5;
+
+			case TType::EqualsTo:
+			case TType::NotEquals:
+				return 4;
 
 			case TType::Equal:
 				return 1;
@@ -123,7 +144,22 @@ namespace Parser
 		}
 	}
 
-
+	static VarType determineVarType(Token* tok)
+	{
+		// kinda hardcoded
+		if(tok->text == "Int8")			return VarType::Int8;
+		else if(tok->text == "Int16")	return VarType::Int16;
+		else if(tok->text == "Int32")	return VarType::Int32;
+		else if(tok->text == "Int64")	return VarType::Int64;
+		else if(tok->text == "Uint8")	return VarType::Uint8;
+		else if(tok->text == "Uint16")	return VarType::Uint16;
+		else if(tok->text == "Uint32")	return VarType::Uint32;
+		else if(tok->text == "Uint64")	return VarType::Uint64;
+		else if(tok->text == "Float32")	return VarType::Float32;
+		else if(tok->text == "Float64")	return VarType::Float64;
+		else if(tok->text == "Bool")	return VarType::Bool;
+		else							return VarType::UserDefined;
+	}
 
 
 
@@ -148,12 +184,8 @@ namespace Parser
 	Expr* parsePrimary(std::deque<Token*>& tokens)
 	{
 		if(tokens.size() == 0)
-		{
-			printf("Done parsing.\n\n");
 			return nullptr;
-		}
 
-		printf("parsePrimary - %s\n", tokens.front()->text.c_str());
 		while(Token* tok = tokens.front())
 		{
 			assert(tok != nullptr);
@@ -173,7 +205,8 @@ namespace Parser
 				case TType::Decimal:
 					return parseNumber(tokens);
 
-
+				case TType::Return:
+					return parseReturn(tokens);
 
 
 
@@ -183,7 +216,7 @@ namespace Parser
 				// so-called 'top-level' things that need to manually recurse back into this function
 				// may be dangerous -- look into goto or smth instead of recursing
 				case TType::Func:
-					rootNode->functions.push_back(parseFuncDecl(tokens));
+					rootNode->functions.push_back(parseFunc(tokens));
 					return parsePrimary(tokens);
 
 				case TType::Import:
@@ -218,8 +251,6 @@ namespace Parser
 
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens)
 	{
-		printf("parseFuncDecl\n");
-
 		assert(eat(tokens)->type == TType::Func);
 		if(tokens.front()->type != TType::Identifier)
 			error("Expected identifier, but got token of type %d", tokens.front()->type);
@@ -234,6 +265,7 @@ namespace Parser
 		// get the parameter list
 		// expect an identifer, colon, type
 		std::deque<Var*> params;
+		std::map<std::string, Var*> nameCheck;
 		while(tokens.size() > 0 && tokens.front()->type != TType::RParen)
 		{
 			Token* tok_id;
@@ -252,7 +284,17 @@ namespace Parser
 				error("Expected type after parameter");
 
 			v->type = tok_type->text;
-			params.push_back(v);
+			v->varType = determineVarType(tok_type);
+
+			if(!nameCheck[v->name])
+			{
+				params.push_back(v);
+				nameCheck[v->name] = v;
+			}
+			else
+			{
+				error("Redeclared variable '%s' in argument list", v->name.c_str());
+			}
 		}
 
 		// consume the closing paren
@@ -260,12 +302,12 @@ namespace Parser
 
 		// get return type.
 		std::string ret;
+		Token* tok_type = nullptr;
 		if(checkHasMore(tokens) && tokens.front()->type != TType::LBrace && tokens.front()->type != TType::NewLine)
 		{
 			if(eat(tokens)->type != TType::Arrow)
 				error("Expected '->' to indicate return type when not returning void.");
 
-			Token* tok_type;
 			if((tok_type = eat(tokens))->type != TType::Identifier)
 				error("Expected type after parameter");
 
@@ -277,14 +319,17 @@ namespace Parser
 		}
 
 		skipNewline(tokens);
-		return new FuncDecl(new Id(id), params, parseClosure(tokens), ret);
+		FuncDecl* f = new FuncDecl(id, params, ret);
+		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type);
+
+		return f;
 	}
 
-	Closure* parseClosure(std::deque<Token*>& tokens)
+	Func* parseFunc(std::deque<Token*>& tokens)
 	{
-		printf("parseClosure\n");
+		FuncDecl* decl = parseFuncDecl(tokens);
 
-		Closure* c = new Closure();
+		Func* c = new Func(decl);
 
 		// make sure the first token is a left brace.
 		if(eat(tokens)->type != TType::LBrace)
@@ -307,7 +352,6 @@ namespace Parser
 
 	Var* parseVar(std::deque<Token*>& tokens)
 	{
-		printf("parseVar\n");
 		assert(tokens.front()->type == TType::Var || tokens.front()->type == TType::Val);
 
 		bool immutable = tokens.front()->type == TType::Val;
@@ -331,6 +375,7 @@ namespace Parser
 			error("Expected type for variable declaration");
 
 		v->type = tok_type->text;
+		v->varType = determineVarType(tok_type);
 
 		// TODO:
 		// check if we have a default value
@@ -340,7 +385,6 @@ namespace Parser
 
 	Expr* parseParenthesised(std::deque<Token*>& tokens)
 	{
-		printf("parseParenthesised\n");
 		assert(tokens.front()->type == TType::LParen);
 		eat(tokens);
 
@@ -354,7 +398,6 @@ namespace Parser
 
 	Expr* parseExpr(std::deque<Token*>& tokens)
 	{
-		printf("parseExpr\n");
 		Expr* lhs = parsePrimary(tokens);
 		if(!lhs)
 			return nullptr;
@@ -364,7 +407,6 @@ namespace Parser
 
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* lhs, int prio)
 	{
-		printf("parseRhs\n");
 		while(true)
 		{
 			int prec = getOpPrec(tokens.front());
@@ -386,13 +428,26 @@ namespace Parser
 					return nullptr;
 			}
 
-			lhs = new BinOp(lhs, tok_op->text[0], rhs);
+			ArithmeticOp op;
+			switch(tok_op->type)
+			{
+				case TType::Plus:			op = ArithmeticOp::Add;			break;
+				case TType::Minus:			op = ArithmeticOp::Subtract;	break;
+				case TType::Asterisk:		op = ArithmeticOp::Multiply;	break;
+				case TType::Divide:			op = ArithmeticOp::Divide;		break;
+				case TType::Percent:		op = ArithmeticOp::Modulo;		break;
+				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;	break;
+				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;	break;
+				case TType::Equal:			op = ArithmeticOp::Assign;		break;
+				default:					error("Unknown operator '%s'", tok_op->text.c_str());
+			}
+
+			lhs = new BinOp(lhs, op, rhs);
 		}
 	}
 
 	Expr* parseIdExpr(std::deque<Token*>& tokens)
 	{
-		printf("parseIdExpr\n");
 		assert(tokens.front()->type == TType::Identifier);
 		std::string id = eat(tokens)->text;
 
@@ -407,15 +462,23 @@ namespace Parser
 
 	Number* parseNumber(std::deque<Token*>& tokens)
 	{
-		printf("parseNumber\n");
 		Number* n;
 		if(tokens.front()->type == TType::Integer)
 		{
-			n = new Number((int64_t) std::stoll(eat(tokens)->text));
+			Token* tok = eat(tokens);
+			n = new Number((int64_t) std::stoll(tok->text));
+
+			// set the type.
+			// always used signed
+			n->varType = VarType::Int64;
 		}
 		else if(tokens.front()->type == TType::Decimal)
 		{
-			n = new Number(std::stod(eat(tokens)->text));
+			Token* tok = eat(tokens);
+			n = new Number(std::stod(tok->text));
+
+			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
+			else					n->varType = VarType::Float64;
 		}
 		else
 		{
@@ -429,7 +492,6 @@ namespace Parser
 
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id)
 	{
-		printf("parseFunctionCall\n");
 		assert(eat(tokens)->type == TType::LParen);
 
 
@@ -459,10 +521,16 @@ namespace Parser
 			eat(tokens);
 		}
 
-		return new FuncCall(new Id(id), args);
+		return new FuncCall(id, args);
 	}
 
+	Return* parseReturn(std::deque<Token*>& tokens)
+	{
+		assert(tokens.front()->type == TType::Return);
+		eat(tokens);
 
+		return new Return(parseExpr(tokens));
+	}
 
 
 

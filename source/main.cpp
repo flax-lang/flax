@@ -6,12 +6,17 @@
 #include <fstream>
 #include <cassert>
 
-#include "include/parser.h"
+#include "include/ast.h"
+using namespace Ast;
 
 int main(int argc, char* argv[])
 {
 	assert(argc > 1);
 	printf("Parsing file %s\n\n", argv[1]);
 
-	Parser::Parse(std::string(argv[1]));
+	// parse
+	Root* root = Parser::Parse(std::string(argv[1]));
+
+	printf("\n\nllvm ir:\n\n");
+	Codegen::doCodegen(root);
 }

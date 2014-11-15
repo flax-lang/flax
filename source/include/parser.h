@@ -7,6 +7,13 @@
 
 #include <string>
 #include <sstream>
+
+namespace Ast
+{
+	class Root;
+}
+
+
 namespace Parser
 {
 	enum class TType
@@ -54,7 +61,8 @@ namespace Parser
 		Question,
 		Exclamation,
 		Semicolon,
-		Ampersand,			// 39
+		Ampersand,
+		Percent,			// 40
 
 		// compound symbols
 		Arrow,
@@ -62,6 +70,17 @@ namespace Parser
 		NotEquals,
 		GreaterEquals,
 		LessThanEquals,		// 44
+		ShiftLeft,
+		ShiftRight,
+		DoublePlus,			// doubleplusgood
+		DoubleMinus,
+		PlusEq,
+		MinusEq,
+		MultiplyEq,
+		DivideEq,
+		ModEq,
+		ShiftLeftEq,
+		ShiftRightEq,
 
 		// other stuff.
 		Identifier,
@@ -95,7 +114,7 @@ namespace Parser
 		TType type;
 	};
 
-	void Parse(std::string filename);
+	Ast::Root* Parse(std::string filename);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
 }
 
