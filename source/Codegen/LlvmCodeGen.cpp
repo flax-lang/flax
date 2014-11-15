@@ -168,7 +168,7 @@ namespace Codegen
 			// it's a decl. get the type, motherfucker.
 			return e->varType = Parser::determineVarType(decl->type);
 		}
-		else if((num = dynamic_cast<Number*>(e)))
+		else if((num = dynamic_cast<Number*>(e)) || (dynamic_cast<UnaryOp*>(e) && (num = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(e)->expr))))
 		{
 			// it's a decl. get the type, motherfucker.
 			return num->varType;
@@ -240,31 +240,28 @@ namespace Codegen
 	{
 		// adjust the right hand int literal, if it is one
 		Number* n = nullptr;
-		if((n = dynamic_cast<Number*>(right)))
+		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
-			printf("autoCasting: [%s, %s(%lld) - ", getReadableType(getLlvmType(determineVarType(left))).c_str(), getReadableType(getLlvmType(determineVarType(right))).c_str(), n->ival);
-
-			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8, printf("i8");
-			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16, printf("i16");
-			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32, printf("i32");
-			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64, printf("i64");
-			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8, printf("u8");
-			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16, printf("u16");
-			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32, printf("u32");
-			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64, printf("u64");
-			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32, printf("f32");
-			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64, printf("f64");
+			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8; //, printf("i8");
+			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16; //, printf("i16");
+			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32; //, printf("i32");
+			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64; //, printf("i64");
+			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8; //, printf("u8");
+			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16; //, printf("u16");
+			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32; //, printf("u32");
+			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64; //, printf("u64");
+			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32; //, printf("f32");
+			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64; //, printf("f64");
 			else
 			{
 				error("Cannot assign to target, it is too small.");
 			}
 
-			printf("] - [%d, %d]\n", left->varType, right->varType);
 			assert(determineVarType(left) == determineVarType(right));
-			return n;
+			return right;
 		}
 
-		error("Couldn't not convert number.");
+		error("Could not convert number");
 		return nullptr;
 	}
 }
@@ -340,7 +337,6 @@ llvm::Value* FuncCall::codeGen()
 
 	for(int i = 0; i < this->params.size(); i++)
 		this->params[i] = autoCastNumber(decl->params[i], this->params[i]);
-
 
 	for(Expr* e : this->params)
 	{
@@ -428,6 +424,28 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	func->getBasicBlockList().push_back(f);
 }
 
+llvm::Value* UnaryOp::codeGen()
+{
+	printf("urinary tract infection\n");
+	assert(this->expr);
+	assert(this->op == ArithmeticOp::LogicalNot || this->op == ArithmeticOp::Plus || this->op == ArithmeticOp::Minus);
+
+	switch(this->op)
+	{
+		case ArithmeticOp::LogicalNot:
+			return mainBuilder.CreateNot(this->expr->codeGen());
+
+		case ArithmeticOp::Minus:
+			return mainBuilder.CreateNeg(this->expr->codeGen());
+
+		case ArithmeticOp::Plus:
+			return this->expr->codeGen();
+
+		default:
+			assert(0);
+	}
+}
+
 
 llvm::Value* If::codeGen()
 {
@@ -486,11 +504,12 @@ llvm::Value* If::codeGen()
 	if(this->final)
 	{
 		llvm::Value* v = this->final->codeGen();
-		mainBuilder.CreateBr(merge);
 
 		if(phi)
 			phi->addIncoming(v, falseb);
 	}
+
+	mainBuilder.CreateBr(merge);
 
 	func->getBasicBlockList().push_back(merge);
 	mainBuilder.SetInsertPoint(merge);
@@ -571,11 +590,11 @@ llvm::Value* BinOp::codeGen()
 
 
 	this->right = autoCastNumber(this->left, this->right);
+	lhs = this->left->codeGen();
+	rhs = this->right->codeGen();
+
 	if(this->op == ArithmeticOp::Assign)
 	{
-		lhs = this->left->codeGen();
-		rhs = this->right->codeGen();
-
 		VarRef* v;
 		if(!(v = dynamic_cast<VarRef*>(this->left)))
 			error("Left-hand side of assignment must be assignable");
@@ -591,8 +610,6 @@ llvm::Value* BinOp::codeGen()
 		return rhs;
 	}
 
-	lhs = this->left->codeGen();
-	rhs = this->right->codeGen();
 
 	// if both ops are integer values
 	if(isIntegerType(this->left) && isIntegerType(this->right))
