@@ -2,8 +2,8 @@ import Foundation
 
 func main()
 {
-	var a: Int64 = 1
-	var b: Int64 = 2
+	var a: Int32 = 1
+	var b: Int32 = 2
 
 	if a != 4
 	{
@@ -16,3 +16,4 @@ func main()
 }
 
 ffi func printInt64(v: Int64)
+ffi func printInt32(v: Int32)
