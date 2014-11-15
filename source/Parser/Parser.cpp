@@ -35,6 +35,7 @@ namespace Parser
 
 	// woah shit it's forward declarations
 	// note: all these are expected to pop at least one token from the front of the list.
+	Expr* parseIf(std::deque<Token*>& tokens);
 	void parseAll(std::deque<Token*>& tokens);
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
@@ -44,6 +45,7 @@ namespace Parser
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
+	Closure* parseClosure(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
@@ -134,20 +136,20 @@ namespace Parser
 		}
 	}
 
-	static VarType determineVarType(Token* tok)
+	VarType determineVarType(std::string type_id)
 	{
 		// kinda hardcoded
-		if(tok->text == "Int8")			return VarType::Int8;
-		else if(tok->text == "Int16")	return VarType::Int16;
-		else if(tok->text == "Int32")	return VarType::Int32;
-		else if(tok->text == "Int64")	return VarType::Int64;
-		else if(tok->text == "Uint8")	return VarType::Uint8;
-		else if(tok->text == "Uint16")	return VarType::Uint16;
-		else if(tok->text == "Uint32")	return VarType::Uint32;
-		else if(tok->text == "Uint64")	return VarType::Uint64;
-		else if(tok->text == "Float32")	return VarType::Float32;
-		else if(tok->text == "Float64")	return VarType::Float64;
-		else if(tok->text == "Bool")	return VarType::Bool;
+		if(type_id == "Int8")			return VarType::Int8;
+		else if(type_id == "Int16")		return VarType::Int16;
+		else if(type_id == "Int32")		return VarType::Int32;
+		else if(type_id == "Int64")		return VarType::Int64;
+		else if(type_id == "Uint8")		return VarType::Uint8;
+		else if(type_id == "Uint16")	return VarType::Uint16;
+		else if(type_id == "Uint32")	return VarType::Uint32;
+		else if(type_id == "Uint64")	return VarType::Uint64;
+		else if(type_id == "Float32")	return VarType::Float32;
+		else if(type_id == "Float64")	return VarType::Float64;
+		else if(type_id == "Bool")		return VarType::Bool;
 		else							return VarType::UserDefined;
 	}
 
@@ -246,6 +248,9 @@ namespace Parser
 				case TType::Return:
 					return parseReturn(tokens);
 
+				case TType::If:
+					return parseIf(tokens);
+
 				// shit you just skip
 				case TType::NewLine:
 				case TType::Comment:
@@ -298,7 +303,7 @@ namespace Parser
 				error("Expected type after parameter");
 
 			v->type = tok_type->text;
-			v->varType = determineVarType(tok_type);
+			v->varType = determineVarType(tok_type->text);
 
 			if(!nameCheck[v->name])
 			{
@@ -309,6 +314,9 @@ namespace Parser
 			{
 				error("Redeclared variable '%s' in argument list", v->name.c_str());
 			}
+
+			if(tokens.front()->type == TType::Comma)
+				eat(tokens);
 		}
 
 		// consume the closing paren
@@ -332,7 +340,7 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = new FuncDecl(id, params, ret);
-		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type);
+		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
 
 		return f;
 	}
@@ -346,15 +354,13 @@ namespace Parser
 		return new ForeignFuncDecl(decl);
 	}
 
-	Func* parseFunc(std::deque<Token*>& tokens)
+	Closure* parseClosure(std::deque<Token*>& tokens)
 	{
-		FuncDecl* decl = parseFuncDecl(tokens);
-
-		Func* c = new Func(decl);
+		Closure* c = new Closure();
 
 		// make sure the first token is a left brace.
 		if(eat(tokens)->type != TType::LBrace)
-			error("Expected '{'");
+			error("Expected '{' to begin a block");
 
 		skipNewline(tokens);
 
@@ -369,6 +375,12 @@ namespace Parser
 			error("Expected '}'");
 
 		return c;
+	}
+
+	Func* parseFunc(std::deque<Token*>& tokens)
+	{
+		FuncDecl* decl = parseFuncDecl(tokens);
+		return new Func(decl, parseClosure(tokens));
 	}
 
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens)
@@ -396,7 +408,7 @@ namespace Parser
 			error("Expected type for variable declaration");
 
 		v->type = tok_type->text;
-		v->varType = determineVarType(tok_type);
+		v->varType = determineVarType(tok_type->text);
 
 		// TODO:
 		// check if we have a default value
@@ -470,6 +482,13 @@ namespace Parser
 				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;	break;
 				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;	break;
 				case TType::Equal:			op = ArithmeticOp::Assign;		break;
+
+				case TType::LAngle:			op = ArithmeticOp::CmpLT;		break;
+				case TType::RAngle:			op = ArithmeticOp::CmpGT;		break;
+				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;		break;
+				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;		break;
+				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;		break;
+				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;		break;
 				default:					error("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
@@ -568,14 +587,51 @@ namespace Parser
 	{
 		Expr* expr = parseExpr(tokens);
 		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel", std::deque<VarDecl*>(), "");
-		Func* fakefunc = new Func(fakedecl);
+		Closure* cl = new Closure();
+		cl->statements.push_back(expr);
 
-		fakefunc->statements.push_back(expr);
+		Func* fakefunc = new Func(fakedecl, cl);
 		rootNode->functions.push_back(fakefunc);
 
 		return fakefunc;
 	}
 
+	Expr* parseIf(std::deque<Token*>& tokens)
+	{
+		assert(tokens.front()->type == TType::If);
+		eat(tokens);
+
+		typedef std::pair<Expr*, Closure*> CCPair;
+		std::deque<CCPair> conds;
+
+		Expr* cond = parseExpr(tokens);
+		Closure* tcase = parseClosure(tokens);
+
+		conds.push_back(CCPair(cond, tcase));
+
+		// check for else and else if
+		Closure* ecase = nullptr;
+		while(tokens.front()->type == TType::Else)
+		{
+			eat(tokens);
+			if(tokens.front()->type == TType::If)
+			{
+				eat(tokens);
+
+				// parse an expr, then a closure
+				Expr* c = parseExpr(tokens);
+				Closure* cl = parseClosure(tokens);
+
+				conds.push_back(CCPair(c, cl));
+			}
+			else
+			{
+				ecase = parseClosure(tokens);
+			}
+		}
+
+		return new If(conds, ecase);
+	}
 
 	Import* parseImport(std::deque<Token*>& tokens)
 	{

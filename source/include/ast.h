@@ -68,7 +68,6 @@ namespace Ast
 	struct Expr
 	{
 		virtual ~Expr() { }
-		virtual void print() { }
 		virtual llvm::Value* codeGen() = 0;
 		std::string type;
 		VarType varType;
@@ -79,7 +78,6 @@ namespace Ast
 		~Number() { }
 		Number(double val) : dval(val) { this->decimal = true; }
 		Number(int64_t val) : ival(val) { this->decimal = false; }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		bool decimal = false;
@@ -94,7 +92,6 @@ namespace Ast
 	{
 		~VarRef() { }
 		VarRef(std::string& name) : name(name) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
@@ -105,7 +102,6 @@ namespace Ast
 	{
 		~VarDecl() { }
 		VarDecl(std::string& name, bool immut) : name(name), immutable(immut) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
@@ -117,7 +113,6 @@ namespace Ast
 	{
 		~BinOp() { }
 		BinOp(Expr* lhs, ArithmeticOp operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		Expr* left;
@@ -133,29 +128,34 @@ namespace Ast
 		{
 			this->type = ret;
 		}
-		virtual void print() override;
+
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
 		std::deque<VarDecl*> params;
 	};
 
+	struct Closure : Expr
+	{
+		~Closure() { }
+		virtual llvm::Value* codeGen() override;
+		std::deque<Expr*> statements;
+	};
+
 	struct Func : Expr
 	{
 		~Func() { }
-		Func(FuncDecl* funcdecl) : decl(funcdecl) { }
-		virtual void print() override;
+		Func(FuncDecl* funcdecl, Closure* block) : decl(funcdecl), closure(block) { }
 		virtual llvm::Value* codeGen() override;
 
 		FuncDecl* decl;
-		std::deque<Expr*> statements;
+		Closure* closure;
 	};
 
 	struct FuncCall : Expr
 	{
 		~FuncCall() { }
 		FuncCall(std::string target, std::deque<Expr*> args) : name(target), params(args) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		std::string name;
@@ -166,7 +166,6 @@ namespace Ast
 	{
 		~Return() { }
 		Return(Expr* e) : val(e) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		Expr* val;
@@ -176,7 +175,6 @@ namespace Ast
 	{
 		~Import() { }
 		Import(std::string name) : module(name) { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override { return nullptr; }
 
 		std::string module;
@@ -191,10 +189,20 @@ namespace Ast
 		FuncDecl* decl;
 	};
 
+	struct If : Expr
+	{
+		~If() { }
+		If(std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : cases(cases), final(ecase) { }
+		virtual llvm::Value* codeGen() override;
+
+
+		Closure* final;
+		std::deque<std::pair<Expr*, Closure*>> cases;
+	};
+
 	struct Root : Expr
 	{
 		~Root() { }
-		virtual void print() override;
 		virtual llvm::Value* codeGen() override;
 
 		// todo: add stuff like imports, etc.
