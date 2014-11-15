@@ -2,7 +2,8 @@ import Foundation
 
 func main()
 {
-	var a: Int32 = 1
+	var a: Int32 = 0
+	printInt64(-1)
 
 	if a == 1
 	{
@@ -10,11 +11,6 @@ func main()
 	}
 	else if a == 2
 	{
-
-	}
-	else
-	{
-
 	}
 }
 

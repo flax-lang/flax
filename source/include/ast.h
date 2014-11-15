@@ -63,6 +63,10 @@ namespace Ast
 		CmpGEq,
 		CmpEq,
 		CmpNEq,
+
+		LogicalNot,
+		Plus,
+		Minus,
 	};
 
 	struct Expr
@@ -198,6 +202,16 @@ namespace Ast
 
 		Closure* final;
 		std::deque<std::pair<Expr*, Closure*>> cases;
+	};
+
+	struct UnaryOp : Expr
+	{
+		~UnaryOp() { }
+		UnaryOp(ArithmeticOp op, Expr* expr) : op(op), expr(expr) { }
+		virtual llvm::Value* codeGen() override;
+
+		ArithmeticOp op;
+		Expr* expr;
 	};
 
 	struct Root : Expr

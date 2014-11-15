@@ -39,6 +39,7 @@ namespace Parser
 	void parseAll(std::deque<Token*>& tokens);
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
+	Expr* parseUnary(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
 	Import* parseImport(std::deque<Token*>& tokens);
@@ -218,8 +219,21 @@ namespace Parser
 
 
 
+	Expr* parseUnary(std::deque<Token*>& tokens)
+	{
+		// check for unary shit
+		if(tokens.front()->type == TType::Exclamation || tokens.front()->type == TType::Plus || tokens.front()->type == TType::Minus)
+		{
+			TType tp = eat(tokens)->type;
+			ArithmeticOp op = tp == TType::Exclamation ? ArithmeticOp::LogicalNot : (tp == TType::Plus ? ArithmeticOp::Plus : ArithmeticOp::Minus);
 
-
+			return new UnaryOp(op, parseUnary(tokens));
+		}
+		else
+		{
+			return parsePrimary(tokens);
+		}
+	}
 
 	Expr* parsePrimary(std::deque<Token*>& tokens)
 	{
@@ -256,7 +270,7 @@ namespace Parser
 				case TType::Comment:
 				case TType::Semicolon:
 					tokens.pop_front();
-					return parsePrimary(tokens);
+					break;
 
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
@@ -441,7 +455,7 @@ namespace Parser
 
 	Expr* parseExpr(std::deque<Token*>& tokens)
 	{
-		Expr* lhs = parsePrimary(tokens);
+		Expr* lhs = parseUnary(tokens);
 		if(!lhs)
 			return nullptr;
 
@@ -459,7 +473,7 @@ namespace Parser
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token* tok_op = eat(tokens);
 
-			Expr* rhs = parsePrimary(tokens);
+			Expr* rhs = parseUnary(tokens);
 			if(!rhs)
 				return nullptr;
 
