@@ -3,11 +3,10 @@ import Foundation
 func main()
 {
 	var a: Int32 = 0
-	printInt64(-1)
 
-	if a == 1
+	if !(a == 1)
 	{
-
+		printInt64(1000)
 	}
 	else if a == 2
 	{
