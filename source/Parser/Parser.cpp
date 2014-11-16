@@ -42,6 +42,7 @@ namespace Parser
 	Expr* parseUnary(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
+	Struct* parseStruct(std::deque<Token*>& tokens);
 	Import* parseImport(std::deque<Token*>& tokens);
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
@@ -151,6 +152,7 @@ namespace Parser
 		else if(type_id == "Float32")	return VarType::Float32;
 		else if(type_id == "Float64")	return VarType::Float64;
 		else if(type_id == "Bool")		return VarType::Bool;
+		else if(type_id == "Void")		return VarType::Void;
 		else							return VarType::UserDefined;
 	}
 
@@ -188,6 +190,10 @@ namespace Parser
 					rootNode->foreignfuncs.push_back(parseForeignFunc(tokens));
 					break;
 
+				case TType::Struct:
+					rootNode->structs.push_back(parseStruct(tokens));
+					break;
+
 				// shit you just skip
 				case TType::NewLine:
 				case TType::Comment:
@@ -202,19 +208,18 @@ namespace Parser
 		}
 	}
 
+	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
+	{
+		Expr* expr = parseExpr(tokens);
+		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
+		Closure* cl = new Closure();
+		cl->statements.push_back(expr);
 
+		Func* fakefunc = new Func(fakedecl, cl);
+		rootNode->functions.push_back(fakefunc);
 
-
-
-
-
-
-
-
-
-
-
-
+		return fakefunc;
+	}
 
 	Expr* parseUnary(std::deque<Token*>& tokens)
 	{
@@ -245,6 +250,9 @@ namespace Parser
 				case TType::Var:
 				case TType::Val:
 					return parseVarDecl(tokens);
+
+				case TType::Func:
+					return parseFunc(tokens);
 
 				case TType::LParen:
 					return parseParenthesised(tokens);
@@ -346,7 +354,7 @@ namespace Parser
 		}
 		else
 		{
-			ret = "void";
+			ret = "Void";
 		}
 
 		skipNewline(tokens);
@@ -362,6 +370,8 @@ namespace Parser
 		eat(tokens);
 
 		FuncDecl* decl = parseFuncDecl(tokens);
+		decl->isFFI = true;
+
 		return new ForeignFuncDecl(decl);
 	}
 
@@ -594,19 +604,6 @@ namespace Parser
 		return new Return(parseExpr(tokens));
 	}
 
-	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
-	{
-		Expr* expr = parseExpr(tokens);
-		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
-		Closure* cl = new Closure();
-		cl->statements.push_back(expr);
-
-		Func* fakefunc = new Func(fakedecl, cl);
-		rootNode->functions.push_back(fakefunc);
-
-		return fakefunc;
-	}
-
 	Expr* parseIf(std::deque<Token*>& tokens)
 	{
 		assert(tokens.front()->type == TType::If);
@@ -642,6 +639,39 @@ namespace Parser
 		}
 
 		return new If(conds, ecase);
+	}
+
+	Struct* parseStruct(std::deque<Token*>& tokens)
+	{
+		assert(eat(tokens)->type == TType::Struct);
+
+		// get the identifier (name)
+		std::string id;
+		if(tokens.front()->type != TType::Identifier)
+			error("Expected name after 'struct'");
+
+		id += eat(tokens)->text;
+		Struct* str = new Struct(id);
+
+		// parse a clousure.
+		Closure* body = parseClosure(tokens);
+		for(Expr* stmt : body->statements)
+		{
+			// check for top-level statements
+			VarDecl* var = nullptr;
+			Func* func = nullptr;
+
+			if(!(var = dynamic_cast<VarDecl*>(stmt)) && !(func = dynamic_cast<Func*>(stmt)))
+				error("Only variable and function declarations are allowed in structs");
+
+			if(var)
+				str->members.push_back(var);
+
+			else if(func)
+				str->funcs.push_back(func);
+		}
+
+		return str;
 	}
 
 	Import* parseImport(std::deque<Token*>& tokens)

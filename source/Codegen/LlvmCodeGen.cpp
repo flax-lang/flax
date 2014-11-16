@@ -45,17 +45,34 @@ static void error(const char* msg, ...)
 	exit(1);
 }
 
+enum class ExprType
+{
+	Struct,
+	Func
+};
+
 namespace Codegen
 {
 	typedef std::pair<llvm::AllocaInst*, VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
+	typedef std::pair<Expr*, ExprType> TypedExpr_t;
+	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
+	typedef std::map<std::string, TypePair_t> TypeMap_t;
+
 
 	static llvm::Module* mainModule;
 	static llvm::FunctionPassManager* Fpm;
 	static std::deque<SymTab_t*> symTabStack;
 	static llvm::ExecutionEngine* execEngine;
+	static std::deque<TypeMap_t*> visibleTypes;
 	static std::map<std::string, FuncDecl*> funcTable;
 	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
+
+	static void popScope();
+	static void pushScope();
+	static void pushScope(SymTab_t* tab, TypePair_t* tp);
+
+
 
 	void doCodegen(Root* root)
 	{
@@ -95,12 +112,15 @@ namespace Codegen
 
 		OurFPM.doInitialization();
 
+
 		// Set the global so the code gen can use this.
 		Fpm = &OurFPM;
+
+		pushScope();
 		root->codeGen();
+		popScope();
 
 		mainModule->dump();
-
 
 
 
@@ -125,7 +145,7 @@ namespace Codegen
 	static bool isBuiltinType(Expr* e);
 	static bool isIntegerType(Expr* e);
 	static VarType determineVarType(Expr* e);
-	static llvm::Type* getLlvmType(VarType t);
+	static llvm::Type* getLlvmType(Expr* expr);
 	static llvm::Value* getDefaultValue(Expr* e);
 	static std::string getReadableType(Expr* expr);
 	static Expr* autoCastType(Expr* left, Expr* right);
@@ -154,23 +174,32 @@ namespace Codegen
 
 
 
+	static llvm::LLVMContext& getContext()
+	{
+		return mainModule->getContext();
+	}
 
-	static void popSymbolTable()
+	static void popScope()
 	{
 		SymTab_t* tab = symTabStack.back();
+		TypeMap_t* types = visibleTypes.back();
+
+		delete types;
 		delete tab;
 
 		symTabStack.pop_back();
+		visibleTypes.pop_back();
 	}
 
-	static void pushSymbolTable(SymTab_t* tab)
+	static void pushScope(SymTab_t* tab, TypeMap_t* tp)
 	{
 		symTabStack.push_back(tab);
+		visibleTypes.push_back(tp);
 	}
 
-	static void pushSymbolTable()
+	static void pushScope()
 	{
-		symTabStack.push_back(new SymTab_t());
+		pushScope(new SymTab_t(), new TypeMap_t());
 	}
 
 	static SymTab_t& getSymTab()
@@ -215,35 +244,90 @@ namespace Codegen
 		return getSymTab().find(name) != getSymTab().end();
 	}
 
+
+
+	static TypeMap_t& getVisibleTypes()
+	{
+		return *visibleTypes.back();
+	}
+
+	static TypePair_t* getType(std::string name)
+	{
+		for(TypeMap_t* map : visibleTypes)
+		{
+			if(map->find(name) != map->end())
+				return &(*map)[name];
+		}
+
+		return nullptr;
+	}
+
+	static bool isDuplicateType(std::string name)
+	{
+		return getType(name) != nullptr;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	static bool isBuiltinType(Expr* e)
 	{
 		return e->varType <= VarType::Bool || e->varType == VarType::Float32 || e->varType == VarType::Float64 || e->varType == VarType::Void;
 	}
 
-
-	static llvm::Type* getLlvmType(VarType t)
+	static llvm::Type* getLlvmType(Expr* expr)
 	{
-		switch(t)
+		VarType t;
+
+		if((t = determineVarType(expr)) != VarType::UserDefined)
 		{
-			case VarType::Uint8:
-			case VarType::Int8:		return llvm::Type::getInt8Ty(llvm::getGlobalContext());
+			switch(t)
+			{
+				case VarType::Uint8:
+				case VarType::Int8:		return llvm::Type::getInt8Ty(getContext());
 
-			case VarType::Uint16:
-			case VarType::Int16:	return llvm::Type::getInt16Ty(llvm::getGlobalContext());
+				case VarType::Uint16:
+				case VarType::Int16:	return llvm::Type::getInt16Ty(getContext());
 
-			case VarType::Uint32:
-			case VarType::Int32:	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
+				case VarType::Uint32:
+				case VarType::Int32:	return llvm::Type::getInt32Ty(getContext());
 
-			case VarType::Uint64:
-			case VarType::Int64:	return llvm::Type::getInt64Ty(llvm::getGlobalContext());
+				case VarType::Uint64:
+				case VarType::Int64:	return llvm::Type::getInt64Ty(getContext());
 
-			case VarType::Float32:	return llvm::Type::getFloatTy(llvm::getGlobalContext());
-			case VarType::Float64:	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
+				case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
+				case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
 
-			case VarType::Void:		return llvm::Type::getVoidTy(llvm::getGlobalContext());
+				case VarType::Void:		return llvm::Type::getVoidTy(getContext());
 
-			default:
-				error("User-defined types not yet supported (found %d)", t);
+				default:
+					error("(%s:%s:%d) -> Internal check failed: invalid type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+					return nullptr;
+			}
+		}
+		else
+		{
+			TypePair_t* type = getType(expr->type);
+			if(!type)
+				error("Unknown type '%s'", expr->type.c_str());
+
+			return type->first;
 		}
 
 		return nullptr;
@@ -251,10 +335,11 @@ namespace Codegen
 
 	static VarType determineVarType(Expr* e)
 	{
-		VarRef* ref;
-		VarDecl* decl;
-		BinOp* bo;
-		Number* num;
+		VarRef* ref = nullptr;
+		VarDecl* decl = nullptr;
+		BinOp* bo = nullptr;
+		Number* num = nullptr;
+		FuncDecl* fd = nullptr;
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
 			VarDecl* decl = getSymTab()[ref->name].second;
@@ -277,6 +362,14 @@ namespace Codegen
 		else if(dynamic_cast<UnaryOp*>(e))
 		{
 			return determineVarType(dynamic_cast<UnaryOp*>(e)->expr);
+		}
+		else if(dynamic_cast<Func*>(e))
+		{
+			return determineVarType(dynamic_cast<Func*>(e)->decl);
+		}
+		else if((fd = dynamic_cast<FuncDecl*>(e)))
+		{
+			return Parser::determineVarType(fd->type);
 		}
 		else if((bo = dynamic_cast<BinOp*>(e)))
 		{
@@ -301,17 +394,18 @@ namespace Codegen
 		}
 		else
 		{
-			error("Unable to determine variable type");
-			return e->varType;
+			error("Unable to determine var type - '%s'", e->type.c_str());
+			return VarType::UserDefined;
 		}
 	}
+
 	static bool isIntegerType(Expr* e)		{ return determineVarType(e) <= VarType::Uint64; }
 	static bool isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
 	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var)
 	{
 		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
-		return tmpBuilder.CreateAlloca(getLlvmType(var->varType), 0, var->name);
+		return tmpBuilder.CreateAlloca(getLlvmType(var), 0, var->name);
 	}
 
 
@@ -320,21 +414,21 @@ namespace Codegen
 		VarType tp = determineVarType(e);
 		switch(tp)
 		{
-			case VarType::Int8:		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(8, 0, false));
-			case VarType::Int16:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(16, 0, false));
-			case VarType::Int32:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, false));
-			case VarType::Int64:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(64, 0, false));
+			case VarType::Int8:		return llvm::ConstantInt::get(getContext(), llvm::APInt(8, 0, false));
+			case VarType::Int16:	return llvm::ConstantInt::get(getContext(), llvm::APInt(16, 0, false));
+			case VarType::Int32:	return llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, false));
+			case VarType::Int64:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, false));
 
-			case VarType::Uint32:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(8, 0, true));
-			case VarType::Uint64:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(16, 0, true));
-			case VarType::Uint8:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true));
-			case VarType::Uint16:	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(64, 0, true));
+			case VarType::Uint32:	return llvm::ConstantInt::get(getContext(), llvm::APInt(8, 0, true));
+			case VarType::Uint64:	return llvm::ConstantInt::get(getContext(), llvm::APInt(16, 0, true));
+			case VarType::Uint8:	return llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true));
+			case VarType::Uint16:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, true));
 
-			case VarType::Float32:	return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0f));
-			case VarType::Float64:	return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
-			case VarType::Bool:		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, 0, true));
+			case VarType::Float32:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0f));
+			case VarType::Float64:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0));
+			case VarType::Bool:		return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
 
-			default:				return llvm::Constant::getNullValue(llvm::Type::getVoidTy(llvm::getGlobalContext()));
+			default:				return llvm::Constant::getNullValue(getLlvmType(e));
 		}
 	}
 
@@ -350,7 +444,7 @@ namespace Codegen
 
 	static std::string getReadableType(Expr* expr)
 	{
-		return getReadableType(getLlvmType(determineVarType(expr)));
+		return getReadableType(getLlvmType(expr));
 	}
 
 	static Expr* autoCastType(Expr* left, Expr* right)
@@ -401,18 +495,18 @@ namespace Codegen
 
 
 // begin codegen impl
-
+// todo: split up or organise
 
 llvm::Value* Number::codeGen()
 {
 	// check builtin type
 	if(this->varType <= VarType::Uint64)
-		return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64));
+		return llvm::ConstantInt::get(getContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64));
 
 	else if(this->type == "Float32" || this->type == "Float64")
-		return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(this->dval));
+		return llvm::ConstantFP::get(getContext(), llvm::APFloat(this->dval));
 
-	error("WHAT");
+	error("(%s:%s:%d) -> Internal check failed: invalid number", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	return nullptr;
 }
 
@@ -488,11 +582,20 @@ llvm::Value* FuncCall::codeGen()
 
 llvm::Value* FuncDecl::codeGen()
 {
+	std::string mangledname;
+
 	std::vector<llvm::Type*> argtypes;
 	for(VarDecl* v : this->params)
-		argtypes.push_back(getLlvmType(v->varType));
+	{
+		mangledname += "_" + getReadableType(v);
+		argtypes.push_back(getLlvmType(v));
+	}
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this->varType), argtypes, false);
+	// check if empty and if it's an extern. mangle the name to include type info if possible.
+	if(!mangledname.empty() && !this->isFFI)
+		this->name += "@" + mangledname;
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, false);
 	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, this->name, mainModule);
 
 	// check for redef
@@ -535,7 +638,8 @@ llvm::Value* UnaryOp::codeGen()
 			return this->expr->codeGen();
 
 		default:
-			assert(0);
+			error("(%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+			return nullptr;
 	}
 }
 
@@ -546,18 +650,18 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	if(pairs.size() == 0)
 		return;
 
-	llvm::BasicBlock* t = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCaseR", func);
-	llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCaseR");
+	llvm::BasicBlock* t = llvm::BasicBlock::Create(getContext(), "trueCaseR", func);
+	llvm::BasicBlock* f = llvm::BasicBlock::Create(getContext(), "falseCaseR");
 
 	llvm::Value* cond = pairs.front().first->codeGen();
 
 
 	VarType apprType = determineVarType(pairs.front().first);
 	if(apprType != VarType::Bool)
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
 
 	else
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(getContext(), llvm::APInt(1, false, true)));
 
 
 
@@ -566,9 +670,9 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 
 	llvm::Value* val = nullptr;
 	{
-		pushSymbolTable();
+		pushScope();
 		val = pairs.front().second->codeGen();
-		popSymbolTable();
+		popScope();
 	}
 
 	if(phi)
@@ -596,16 +700,16 @@ llvm::Value* If::codeGen()
 	VarType apprType = determineVarType(this->cases[0].first);
 
 	if(apprType != VarType::Bool)
-		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
 
 	else
-		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
+		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(getContext(), llvm::APInt(1, false, true)));
 
 
 	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
-	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCase", func);
-	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCase");
-	llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge");
+	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(getContext(), "trueCase", func);
+	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(getContext(), "falseCase");
+	llvm::BasicBlock* merge = llvm::BasicBlock::Create(getContext(), "merge");
 
 	// create the first conditional
 	mainBuilder.CreateCondBr(firstCond, trueb, falseb);
@@ -618,9 +722,9 @@ llvm::Value* If::codeGen()
 		mainBuilder.SetInsertPoint(trueb);
 
 		// push a new symtab
-		pushSymbolTable();
+		pushScope();
 		truev = this->cases[0].second->codeGen();
-		popSymbolTable();
+		popScope();
 
 		mainBuilder.CreateBr(merge);
 	}
@@ -639,7 +743,7 @@ llvm::Value* If::codeGen()
 	llvm::BasicBlock* curblk = mainBuilder.GetInsertBlock();
 	mainBuilder.SetInsertPoint(merge);
 
-	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(llvm::getGlobalContext()), this->cases.size() + (this->final ? 1 : 0));
+	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
 	llvm::PHINode* phi = nullptr;
 
@@ -654,9 +758,9 @@ llvm::Value* If::codeGen()
 	// if we have an 'else' case
 	if(this->final)
 	{
-		pushSymbolTable();
+		pushScope();
 		llvm::Value* v = this->final->codeGen();
-		popSymbolTable();
+		popScope();
 
 		if(phi)
 			phi->addIncoming(v, falseb);
@@ -668,7 +772,7 @@ llvm::Value* If::codeGen()
 	mainBuilder.SetInsertPoint(merge);
 
 	// return false
-	return llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, 0, true));
+	return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
 }
 
 
@@ -683,16 +787,16 @@ llvm::Value* Func::codeGen()
 	llvm::Function* func = mainModule->getFunction(this->decl->name);
 	if(!func)
 	{
-		error("Failed to get function declaration for func '%s'", this->decl->name.c_str());
+		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
 		return nullptr;
 	}
 
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
 	// create a new 'table' for our own usage
-	pushSymbolTable();
+	pushScope();
 
-	llvm::BasicBlock* block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+	llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "entry", func);
 	mainBuilder.SetInsertPoint(block);
 
 
@@ -739,7 +843,7 @@ llvm::Value* Func::codeGen()
 
 
 	// we've codegen'ed that stuff, pop the symbol table
-	popSymbolTable();
+	popScope();
 
 	return func;
 }
@@ -760,7 +864,7 @@ llvm::Value* BinOp::codeGen()
 			error("Left-hand side of assignment must be assignable");
 
 		if(!rhs)
-			error("What?");
+			error("(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
 		llvm::Value* var = getSymTab()[v->name].first;
 		if(!var)
@@ -839,6 +943,33 @@ llvm::Value* BinOp::codeGen()
 	}
 }
 
+
+llvm::Value* Struct::codeGen()
+{
+	std::vector<llvm::Type*> types;
+	if(isDuplicateType(this->name))
+		error("Duplicate type '%s'", this->name.c_str());
+
+	// create llvm types
+	for(VarDecl* var : this->members)
+		types.push_back(getLlvmType(var));
+
+	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(types), this->name);
+
+	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
 llvm::Value* Root::codeGen()
 {
 	// two pass: first codegen all the declarations
@@ -848,13 +979,17 @@ llvm::Value* Root::codeGen()
 	for(Func* f : this->functions)
 		f->decl->codeGen();
 
+	for(Struct* s : this->structs)
+		s->codeGen();
+
+
+
 	// then do the actual code
 	for(Func* f : this->functions)
 		f->codeGen();
 
 	return nullptr;
 }
-
 
 
 

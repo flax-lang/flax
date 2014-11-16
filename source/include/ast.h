@@ -135,6 +135,7 @@ namespace Ast
 
 		virtual llvm::Value* codeGen() override;
 
+		bool isFFI;
 		std::string name;
 		std::deque<VarDecl*> params;
 	};
@@ -214,6 +215,17 @@ namespace Ast
 		Expr* expr;
 	};
 
+	struct Struct : Expr
+	{
+		~Struct() { }
+		Struct(std::string name) : name(name) { }
+		virtual llvm::Value* codeGen() override;
+
+		std::string name;
+		std::deque<VarDecl*> members;
+		std::deque<Func*> funcs;
+	};
+
 	struct Root : Expr
 	{
 		~Root() { }
@@ -222,6 +234,7 @@ namespace Ast
 		// todo: add stuff like imports, etc.
 		std::deque<Func*> functions;
 		std::deque<Import*> imports;
+		std::deque<Struct*> structs;
 		std::deque<ForeignFuncDecl*> foreignfuncs;
 	};
 }
