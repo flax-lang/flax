@@ -8,6 +8,7 @@
 #include <utility>
 #include <cfloat>
 #include <stdint.h>
+#include <typeinfo>
 #include "../include/ast.h"
 
 #include "llvm/Analysis/Passes.h"
@@ -46,12 +47,15 @@ static void error(const char* msg, ...)
 
 namespace Codegen
 {
+	typedef std::pair<llvm::AllocaInst*, VarDecl*> SymbolPair_t;
+	typedef std::map<std::string, SymbolPair_t> SymTab_t;
+
+	static llvm::Module* mainModule;
 	static llvm::FunctionPassManager* Fpm;
+	static std::deque<SymTab_t*> symTabStack;
 	static llvm::ExecutionEngine* execEngine;
 	static std::map<std::string, FuncDecl*> funcTable;
-	static std::map<std::string, std::pair<llvm::AllocaInst*, VarDecl*>> symbolTable;
 	static llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
-	static llvm::Module* mainModule;
 
 	void doCodegen(Root* root)
 	{
@@ -112,9 +116,104 @@ namespace Codegen
 				void (*ptr)() = (void(*)()) func;
 				ptr();
 			}
+
+			printf("\n\n");
 		}
 	}
 
+	static bool isSignedType(Expr* e);
+	static bool isBuiltinType(Expr* e);
+	static bool isIntegerType(Expr* e);
+	static VarType determineVarType(Expr* e);
+	static llvm::Type* getLlvmType(VarType t);
+	static llvm::Value* getDefaultValue(Expr* e);
+	static std::string getReadableType(Expr* expr);
+	static Expr* autoCastType(Expr* left, Expr* right);
+	static std::string getReadableType(llvm::Type* type);
+	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static void popSymbolTable()
+	{
+		SymTab_t* tab = symTabStack.back();
+		delete tab;
+
+		symTabStack.pop_back();
+	}
+
+	static void pushSymbolTable(SymTab_t* tab)
+	{
+		symTabStack.push_back(tab);
+	}
+
+	static void pushSymbolTable()
+	{
+		symTabStack.push_back(new SymTab_t());
+	}
+
+	static SymTab_t& getSymTab()
+	{
+		return *symTabStack.back();
+	}
+
+	static SymbolPair_t* getSymPair(const std::string& name)
+	{
+		// loop.
+		for(int i = symTabStack.size(); i-- > 0;)
+		{
+			SymTab_t* tab = symTabStack[i];
+
+			if(tab->find(name) != tab->end())
+				return &(*tab)[name];
+		}
+
+		return nullptr;
+	}
+
+	static llvm::Value* getSymInst(const std::string& name)
+	{
+		SymbolPair_t* pair = nullptr;
+		if((pair = getSymPair(name)))
+			return pair->first;
+
+		return nullptr;
+	}
+
+	static VarDecl* getSymDecl(const std::string& name)
+	{
+		SymbolPair_t* pair = nullptr;
+		if((pair = getSymPair(name)))
+			return pair->second;
+
+		return nullptr;
+	}
+
+	static bool isDuplicateSymbol(const std::string& name)
+	{
+		return getSymTab().find(name) != getSymTab().end();
+	}
 
 	static bool isBuiltinType(Expr* e)
 	{
@@ -158,7 +257,9 @@ namespace Codegen
 		Number* num;
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
-			VarDecl* decl = symbolTable[ref->name].second;
+			VarDecl* decl = getSymTab()[ref->name].second;
+			if(!decl)
+				error("Unknown variable '%s'", ref->name.c_str());
 
 			// it's a decl. get the type, motherfucker.
 			return e->varType = Parser::determineVarType(decl->type);
@@ -187,8 +288,15 @@ namespace Codegen
 			}
 			else
 			{
-				error("fuck off");
-				return VarType::Bool;
+				// need to determine type on both sides.
+				bo->left = autoCastType(bo->left, bo->right);
+
+				// make sure that now, both sides are the same.
+				if(determineVarType(bo->left) != determineVarType(bo->right))
+					error("Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
+
+
+				return determineVarType(bo->left);
 			}
 		}
 		else
@@ -240,10 +348,16 @@ namespace Codegen
 		return rso.str();
 	}
 
-	static Expr* autoCastNumber(Expr* left, Expr* right)
+	static std::string getReadableType(Expr* expr)
+	{
+		return getReadableType(getLlvmType(determineVarType(expr)));
+	}
+
+	static Expr* autoCastType(Expr* left, Expr* right)
 	{
 		// adjust the right hand int literal, if it is one
 		Number* n = nullptr;
+		BinOp* b = nullptr;
 		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
 			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8; //, printf("i8");
@@ -265,11 +379,28 @@ namespace Codegen
 			return right;
 		}
 
-		error("Could not convert number");
-		return nullptr;
+		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
+		return right;
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// begin codegen impl
 
 
 llvm::Value* Number::codeGen()
@@ -281,15 +412,13 @@ llvm::Value* Number::codeGen()
 	else if(this->type == "Float32" || this->type == "Float64")
 		return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(this->dval));
 
-
 	error("WHAT");
 	return nullptr;
 }
 
 llvm::Value* VarRef::codeGen()
 {
-	llvm::Value* val = Codegen::symbolTable[this->name].first;
-
+	llvm::Value* val = getSymInst(this->name);
 	if(!val)
 		error("Unknown variable name '%s'", this->name.c_str());
 
@@ -298,15 +427,18 @@ llvm::Value* VarRef::codeGen()
 
 llvm::Value* VarDecl::codeGen()
 {
+	if(isDuplicateSymbol(this->name))
+		error("Redefining duplicate symbol '%s'", this->name.c_str());
+
 	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
 
 	llvm::AllocaInst* ai = getAllocedInstanceInBlock(func, this);
-	symbolTable[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+	getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
 	if(this->initVal)
 	{
-		this->initVal = autoCastNumber(this, this->initVal);
+		this->initVal = autoCastType(this, this->initVal);
 		val = this->initVal->codeGen();
 	}
 	else
@@ -340,7 +472,7 @@ llvm::Value* FuncCall::codeGen()
 	assert(decl);
 
 	for(int i = 0; i < this->params.size(); i++)
-		this->params[i] = autoCastNumber(decl->params[i], this->params[i]);
+		this->params[i] = autoCastType(decl->params[i], this->params[i]);
 
 	for(Expr* e : this->params)
 	{
@@ -385,47 +517,6 @@ llvm::Value* Closure::codeGen()
 	return lastVal;
 }
 
-void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi)
-{
-	if(pairs.size() == 0)
-		return;
-
-	llvm::BasicBlock* t = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCaseR", func);
-	llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCaseR");
-
-	llvm::Value* cond = pairs.front().first->codeGen();
-
-	VarType apprType = determineVarType(pairs.front().first);
-	if(apprType != VarType::Bool)
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
-
-	else
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
-
-
-
-	mainBuilder.CreateCondBr(cond, t, f);
-	mainBuilder.SetInsertPoint(t);
-
-	llvm::Value* val = pairs.front().second->codeGen();
-
-	if(phi)
-		phi->addIncoming(val, t);
-
-	mainBuilder.CreateBr(merge);
-
-
-	// now the false case...
-	// set the insert point to the false case, then go again.
-	mainBuilder.SetInsertPoint(f);
-
-	// recursively call ourselves
-	pairs.pop_front();
-	codeGenRecursiveIf(func, pairs, merge, phi);
-
-	// once that's done, we can add the false-case block to the func
-	func->getBasicBlockList().push_back(f);
-}
 
 llvm::Value* UnaryOp::codeGen()
 {
@@ -449,6 +540,55 @@ llvm::Value* UnaryOp::codeGen()
 }
 
 
+
+void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi)
+{
+	if(pairs.size() == 0)
+		return;
+
+	llvm::BasicBlock* t = llvm::BasicBlock::Create(llvm::getGlobalContext(), "trueCaseR", func);
+	llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCaseR");
+
+	llvm::Value* cond = pairs.front().first->codeGen();
+
+
+	VarType apprType = determineVarType(pairs.front().first);
+	if(apprType != VarType::Bool)
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+
+	else
+		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, false, true)));
+
+
+
+	mainBuilder.CreateCondBr(cond, t, f);
+	mainBuilder.SetInsertPoint(t);
+
+	llvm::Value* val = nullptr;
+	{
+		pushSymbolTable();
+		val = pairs.front().second->codeGen();
+		popSymbolTable();
+	}
+
+	if(phi)
+		phi->addIncoming(val, t);
+
+	mainBuilder.CreateBr(merge);
+
+
+	// now the false case...
+	// set the insert point to the false case, then go again.
+	mainBuilder.SetInsertPoint(f);
+
+	// recursively call ourselves
+	pairs.pop_front();
+	codeGenRecursiveIf(func, pairs, merge, phi);
+
+	// once that's done, we can add the false-case block to the func
+	func->getBasicBlockList().push_back(f);
+}
+
 llvm::Value* If::codeGen()
 {
 	assert(this->cases.size() > 0);
@@ -467,16 +607,25 @@ llvm::Value* If::codeGen()
 	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "falseCase");
 	llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge");
 
-
 	// create the first conditional
 	mainBuilder.CreateCondBr(firstCond, trueb, falseb);
 
 
+
 	// emit code for the first block
-	mainBuilder.SetInsertPoint(trueb);
-	llvm::Value* truev = this->cases[0].second->codeGen();
-	// assert(truev);
-	mainBuilder.CreateBr(merge);
+	llvm::Value* truev = nullptr;
+	{
+		mainBuilder.SetInsertPoint(trueb);
+
+		// push a new symtab
+		pushSymbolTable();
+		truev = this->cases[0].second->codeGen();
+		popSymbolTable();
+
+		mainBuilder.CreateBr(merge);
+	}
+
+
 
 	// now for the clusterfuck.
 	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
@@ -505,7 +654,9 @@ llvm::Value* If::codeGen()
 	// if we have an 'else' case
 	if(this->final)
 	{
+		pushSymbolTable();
 		llvm::Value* v = this->final->codeGen();
+		popSymbolTable();
 
 		if(phi)
 			phi->addIncoming(v, falseb);
@@ -521,11 +672,14 @@ llvm::Value* If::codeGen()
 }
 
 
+
+
+
 llvm::Value* Func::codeGen()
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
-	symbolTable.clear();
+
 	llvm::Function* func = mainModule->getFunction(this->decl->name);
 	if(!func)
 	{
@@ -533,10 +687,13 @@ llvm::Value* Func::codeGen()
 		return nullptr;
 	}
 
+	// we need to clear all previous blocks' symbols
+	// but we can't destroy them, so employ a stack method.
+	// create a new 'table' for our own usage
+	pushSymbolTable();
 
 	llvm::BasicBlock* block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
 	mainBuilder.SetInsertPoint(block);
-
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
@@ -548,9 +705,8 @@ llvm::Value* Func::codeGen()
 		llvm::AllocaInst* ai = getAllocedInstanceInBlock(func, this->decl->params[i]);
 		mainBuilder.CreateStore(it, ai);
 
-		symbolTable[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
+		getSymTab()[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
 	}
-
 
 
 	// codegen everything in the body.
@@ -568,7 +724,6 @@ llvm::Value* Func::codeGen()
 		{
 			// else, if the cast failed it means we didn't explicitly return, so we take the
 			// value of the last expr as the return value.
-
 			mainBuilder.CreateRet(lastVal);
 		}
 	}
@@ -582,6 +737,10 @@ llvm::Value* Func::codeGen()
 	if(!DEBUG)
 		Fpm->run(*func);
 
+
+	// we've codegen'ed that stuff, pop the symbol table
+	popSymbolTable();
+
 	return func;
 }
 
@@ -590,8 +749,7 @@ llvm::Value* BinOp::codeGen()
 	llvm::Value* lhs;
 	llvm::Value* rhs;
 
-
-	this->right = autoCastNumber(this->left, this->right);
+	this->right = autoCastType(this->left, this->right);
 	lhs = this->left->codeGen();
 	rhs = this->right->codeGen();
 
@@ -604,7 +762,7 @@ llvm::Value* BinOp::codeGen()
 		if(!rhs)
 			error("What?");
 
-		llvm::Value* var = symbolTable[v->name].first;
+		llvm::Value* var = getSymTab()[v->name].first;
 		if(!var)
 			error("Unknown identifier (var) '%s'", v->name.c_str());
 
@@ -704,7 +862,7 @@ llvm::Value* Root::codeGen()
 
 
 
-#if DEBUG
+#if RUN
 
 extern "C" void printInt32(uint32_t i)
 {
