@@ -383,8 +383,6 @@ namespace Parser
 		if(eat(tokens)->type != TType::LBrace)
 			error("Expected '{' to begin a block");
 
-		skipNewline(tokens);
-
 		// get the stuff inside.
 		while(tokens.size() > 0 && tokens.front()->type != TType::RBrace)
 		{
@@ -672,25 +670,30 @@ namespace Parser
 			VarDecl* var = nullptr;
 			Func* func = nullptr;
 
-			if(!(var = dynamic_cast<VarDecl*>(stmt)) && !(func = dynamic_cast<Func*>(stmt)))
-				error("Only variable and function declarations are allowed in structs");
 
-			if(var)
+			if((var = dynamic_cast<VarDecl*>(stmt)))
 			{
 				if(str->nameMap.find(var->name) != str->nameMap.end())
 					error("Duplicate member '%s'", var->name.c_str());
 
 				str->members.push_back(var);
 				str->nameMap[var->name] = i;
-			}
 
-			else if(func)
+				printf("parser: %s -> %d\n", var->name.c_str(), i);
+			}
+			else if((func = dynamic_cast<Func*>(stmt)))
 			{
 				if(str->nameMap.find(func->decl->name) != str->nameMap.end())
 					error("Duplicate member '%s'", func->decl->name.c_str());
 
 				str->funcs.push_back(func);
 				str->nameMap[func->decl->name] = i;
+
+				printf("parser: %s -> %d\n", func->decl->name.c_str(), i);
+			}
+			else
+			{
+				error("Only variable and function declarations are allowed in structs");
 			}
 
 			i++;

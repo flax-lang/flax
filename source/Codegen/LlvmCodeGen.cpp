@@ -411,10 +411,15 @@ namespace Codegen
 	static bool isIntegerType(Expr* e)		{ return determineVarType(e) <= VarType::Uint64; }
 	static bool isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
-	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var)
+	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)
 	{
 		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
-		return tmpBuilder.CreateAlloca(getLlvmType(var), 0, var->name);
+		return tmpBuilder.CreateAlloca(type, 0, name);
+	}
+
+	static llvm::AllocaInst* getAllocedInstanceInBlock(llvm::Function* func, VarDecl* var)
+	{
+		return getAllocedInstanceInBlock(func, getLlvmType(var), var->name);
 	}
 
 
@@ -966,6 +971,10 @@ llvm::Value* Struct::codeGen()
 		if(func->decl->name == "init")
 			hasInit = true;
 
+		// mangle the name to include the struct
+		func->decl->name = "__struct@" + this->name + "_" + func->decl->name;
+
+		func->decl->codeGen();
 		std::vector<llvm::Type*> args;
 		for(VarDecl* v : func->decl->params)
 			args.push_back(getLlvmType(v));
@@ -986,7 +995,7 @@ llvm::Value* Struct::codeGen()
 	if(!hasInit)
 	{
 		// create one
-		llvm::FunctionType* ft = llvm::FunctionType::get(str, false);
+		llvm::FunctionType* ft = llvm::FunctionType::get(str, str, false);
 		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init@" + this->name, mainModule);
 
 		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
@@ -994,10 +1003,19 @@ llvm::Value* Struct::codeGen()
 		llvm::BasicBlock* old = mainBuilder.GetInsertBlock();
 		mainBuilder.SetInsertPoint(block);
 
-		for(VarDecl* var : this->members)
-			var->codeGen();
+		// create the local instance of reference to self
+		llvm::AllocaInst* self = getAllocedInstanceInBlock(func, str, "self");
 
-		// mainBuilder.SetInsertPoint(old);
+		// codegen the function bodies, then set the func pointers to those.
+
+		for(VarDecl* var : this->members)
+		{
+			int i = this->nameMap[var->name];
+			printf("[%s -> %d]\n", var->name.c_str(), i);
+
+			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
+			mainBuilder.CreateStore(llvm::ConstantInt::get(getContext(), llvm::APInt(64, 100, false)), ptr);
+		}
 	}
 
 
@@ -1027,6 +1045,10 @@ llvm::Value* MemberAccess::codeGen()
 		printf("[%s]\n", getReadableType(type->getStructElementType(i)).c_str());
 
 
+
+
+//      llvm::StructType *structReg = llvm::StructType::create(TargetModule->getContext(),vMember, "struct.Foo");
+//      structRegPtr = llvm::PointerType::get(structReg, 0);
 //      llvm::FunctionType* ty = llvm::FunctionType::get(llvm::Type::getInt32Ty(TargetModule->getContext()),structRegPtr,false);
 //      llvm::Constant *c = TargetModule->getOrInsertFunction(BB.getBlockName(),ty);
 //      fTest = llvm::cast<llvm::Function>(c);
