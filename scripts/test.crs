@@ -4,9 +4,15 @@ struct something
 {
 	var x: Int64 = 10
 	var y: Int64 = 20
+
+	func z()
+	{
+
+	}
 }
 
 func main()
 {
 	var a: something
+	a.x
 }

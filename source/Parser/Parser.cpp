@@ -522,13 +522,23 @@ namespace Parser
 		assert(tokens.front()->type == TType::Identifier);
 		std::string id = eat(tokens)->text;
 
-		// todo: handle function calling
-		skipNewline(tokens);
+		// check for dot syntax.
+		if(tokens.front()->type == TType::Period)
+		{
+			eat(tokens);
+			if(tokens.front()->type != TType::Identifier)
+				error("Expected identifier after '.' operator");
 
-		if(tokens.front()->type != TType::LParen)
+			return new MemberAccess(new VarRef(id), parseIdExpr(tokens));
+		}
+		else if(tokens.front()->type != TType::LParen)
+		{
 			return new VarRef(id);
+		}
 		else
+		{
 			return parseFunctionCall(tokens, id);
+		}
 	}
 
 	Number* parseNumber(std::deque<Token*>& tokens)
@@ -655,6 +665,7 @@ namespace Parser
 
 		// parse a clousure.
 		Closure* body = parseClosure(tokens);
+		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
 			// check for top-level statements
@@ -665,10 +676,24 @@ namespace Parser
 				error("Only variable and function declarations are allowed in structs");
 
 			if(var)
+			{
+				if(str->nameMap.find(var->name) != str->nameMap.end())
+					error("Duplicate member '%s'", var->name.c_str());
+
 				str->members.push_back(var);
+				str->nameMap[var->name] = i;
+			}
 
 			else if(func)
+			{
+				if(str->nameMap.find(func->decl->name) != str->nameMap.end())
+					error("Duplicate member '%s'", func->decl->name.c_str());
+
 				str->funcs.push_back(func);
+				str->nameMap[func->decl->name] = i;
+			}
+
+			i++;
 		}
 
 		return str;
