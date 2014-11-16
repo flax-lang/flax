@@ -678,8 +678,6 @@ namespace Parser
 
 				str->members.push_back(var);
 				str->nameMap[var->name] = i;
-
-				printf("parser: %s -> %d\n", var->name.c_str(), i);
 			}
 			else if((func = dynamic_cast<Func*>(stmt)))
 			{
@@ -688,8 +686,6 @@ namespace Parser
 
 				str->funcs.push_back(func);
 				str->nameMap[func->decl->name] = i;
-
-				printf("parser: %s -> %d\n", func->decl->name.c_str(), i);
 			}
 			else
 			{

@@ -4,10 +4,17 @@ struct something
 {
 	var x: Int64 = 10
 	var y: Int64 = 20
+
+	func z()
+	{
+		printInt64(1000)
+	}
 }
 
 func main()
 {
 	var a: something
-	a.x
+	a.z()
 }
+
+ffi func printInt64(x: Int64)
