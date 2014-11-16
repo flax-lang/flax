@@ -295,6 +295,7 @@ namespace Codegen
 	{
 		VarType t;
 
+		assert(expr);
 		if((t = determineVarType(expr)) != VarType::UserDefined)
 		{
 			switch(t)
@@ -323,11 +324,19 @@ namespace Codegen
 		}
 		else
 		{
-			TypePair_t* type = getType(expr->type);
-			if(!type)
-				error("Unknown type '%s'", expr->type.c_str());
+			VarRef* ref = nullptr;
+			if(dynamic_cast<VarDecl*>(expr))
+			{
+				TypePair_t* type = getType(expr->type);
+				if(!type)
+					error("Unknown type '%s'", expr->type.c_str());
 
-			return type->first;
+				return type->first;
+			}
+			else if((ref = dynamic_cast<VarRef*>(expr)))
+			{
+				return getLlvmType(getSymDecl(ref->name));
+			}
 		}
 
 		return nullptr;
@@ -394,7 +403,7 @@ namespace Codegen
 		}
 		else
 		{
-			error("Unable to determine var type - '%s'", e->type.c_str());
+			// error("Unable to determine var type - '%s'", e->type.c_str());
 			return VarType::UserDefined;
 		}
 	}
@@ -950,17 +959,86 @@ llvm::Value* Struct::codeGen()
 	if(isDuplicateType(this->name))
 		error("Duplicate type '%s'", this->name.c_str());
 
+	// check if there's an explicit initialiser
+	bool hasInit = false;
+	for(Func* func : this->funcs)
+	{
+		if(func->decl->name == "init")
+			hasInit = true;
+
+		std::vector<llvm::Type*> args;
+		for(VarDecl* v : func->decl->params)
+			args.push_back(getLlvmType(v));
+
+		types.push_back(llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0));
+	}
+
+
 	// create llvm types
 	for(VarDecl* var : this->members)
 		types.push_back(getLlvmType(var));
 
-	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(types), this->name);
 
+	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(types), this->name);
 	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+
+
+	if(!hasInit)
+	{
+		// create one
+		llvm::FunctionType* ft = llvm::FunctionType::get(str, false);
+		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init@" + this->name, mainModule);
+
+		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
+
+		llvm::BasicBlock* old = mainBuilder.GetInsertBlock();
+		mainBuilder.SetInsertPoint(block);
+
+		for(VarDecl* var : this->members)
+			var->codeGen();
+
+		// mainBuilder.SetInsertPoint(old);
+	}
+
+
+
+
+
+
+
+
+
 
 	return 0;
 }
 
+llvm::Value* MemberAccess::codeGen()
+{
+	// gen the var ref on the left.
+	this->target->codeGen();
+	llvm::Type* type = getLlvmType(this->target);
+	if(!type)
+		error("(%s:%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+
+	if(!type->isStructTy())
+		error("Cannot do member access on non-aggregate types");
+
+	for(int i = 0; i < type->getStructNumElements(); i++)
+		printf("[%s]\n", getReadableType(type->getStructElementType(i)).c_str());
+
+
+//      llvm::FunctionType* ty = llvm::FunctionType::get(llvm::Type::getInt32Ty(TargetModule->getContext()),structRegPtr,false);
+//      llvm::Constant *c = TargetModule->getOrInsertFunction(BB.getBlockName(),ty);
+//      fTest = llvm::cast<llvm::Function>(c);
+//      fTest ->setCallingConv(llvm::CallingConv::C);
+//
+// //Access the struct members
+// llvm:Value *ArgValuePtr = builder->CreateStructGEP(fTest ->arg_begin(),0,"ptrMember1");
+// llvm::Valuie *StructValue = builder->CreateLoad(ArgValuePtr,false,"member1");
+
+
+	return 0;
+}
 
 
 
@@ -990,8 +1068,6 @@ llvm::Value* Root::codeGen()
 
 	return nullptr;
 }
-
-
 
 
 

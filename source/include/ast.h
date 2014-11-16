@@ -12,7 +12,7 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-
+#include <map>
 #include <string>
 #include <deque>
 #include "parser.h"
@@ -221,9 +221,20 @@ namespace Ast
 		Struct(std::string name) : name(name) { }
 		virtual llvm::Value* codeGen() override;
 
+		std::map<std::string, int> nameMap;
 		std::string name;
 		std::deque<VarDecl*> members;
 		std::deque<Func*> funcs;
+	};
+
+	struct MemberAccess : Expr
+	{
+		~MemberAccess() { }
+		MemberAccess(VarRef* tgt, Expr* mem) : target(tgt), member(mem) { }
+		virtual llvm::Value* codeGen() override;
+
+		VarRef* target;
+		Expr* member;
 	};
 
 	struct Root : Expr
