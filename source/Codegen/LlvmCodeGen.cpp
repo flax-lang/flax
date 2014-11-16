@@ -960,7 +960,8 @@ llvm::Value* BinOp::codeGen()
 
 llvm::Value* Struct::codeGen()
 {
-	std::vector<llvm::Type*> types;
+	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
+
 	if(isDuplicateType(this->name))
 		error("Duplicate type '%s'", this->name.c_str());
 
@@ -971,24 +972,21 @@ llvm::Value* Struct::codeGen()
 		if(func->decl->name == "init")
 			hasInit = true;
 
-		// mangle the name to include the struct
-		func->decl->name = "__struct@" + this->name + "_" + func->decl->name;
-
-		func->decl->codeGen();
 		std::vector<llvm::Type*> args;
 		for(VarDecl* v : func->decl->params)
 			args.push_back(getLlvmType(v));
 
-		types.push_back(llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0));
+		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 	}
 
 
 	// create llvm types
 	for(VarDecl* var : this->members)
-		types.push_back(getLlvmType(var));
+		types[this->nameMap[var->name]] = getLlvmType(var);
 
 
-	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(types), this->name);
+	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));
+	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(vec), this->name);
 	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
 
 
@@ -1006,16 +1004,28 @@ llvm::Value* Struct::codeGen()
 		// create the local instance of reference to self
 		llvm::AllocaInst* self = getAllocedInstanceInBlock(func, str, "self");
 
-		// codegen the function bodies, then set the func pointers to those.
-
 		for(VarDecl* var : this->members)
 		{
 			int i = this->nameMap[var->name];
-			printf("[%s -> %d]\n", var->name.c_str(), i);
-
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
-			mainBuilder.CreateStore(llvm::ConstantInt::get(getContext(), llvm::APInt(64, 100, false)), ptr);
+			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen() : getDefaultValue(var), ptr);
 		}
+
+		for(Func* f : this->funcs)
+		{
+			int i = this->nameMap[f->decl->name];
+			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
+
+			// mangle
+			f->decl->name = "__struct@" + this->name + "_" + f->decl->name;
+			llvm::Value* val = f->decl->codeGen();
+
+			mainBuilder.CreateStore(val, ptr);
+
+			f->codeGen();
+		}
+
+
 	}
 
 
@@ -1025,7 +1035,7 @@ llvm::Value* Struct::codeGen()
 
 
 
-
+	delete types;
 
 	return 0;
 }
