@@ -240,27 +240,32 @@ namespace Parser
 
 			// check for keywords
 			// TODO: there has to be a better way
-			if(id == "class")		tok.type = TType::Class;
-			else if(id == "func")	tok.type = TType::Func;
-			else if(id == "import")	tok.type = TType::Import;
-			else if(id == "var")	tok.type = TType::Var;
-			else if(id == "val")	tok.type = TType::Val;
-			else if(id == "ptr")	tok.type = TType::Ptr;
-			else if(id == "deref")	tok.type = TType::Deref;
-			else if(id == "addr")	tok.type = TType::Addr;
-			else if(id == "for")	tok.type = TType::For;
-			else if(id == "while")	tok.type = TType::While;
-			else if(id == "if")		tok.type = TType::If;
-			else if(id == "else")	tok.type = TType::Else;
-			else if(id == "return")	tok.type = TType::Return;
-			else if(id == "as")		tok.type = TType::As;
-			else if(id == "is")		tok.type = TType::Is;
-			else if(id == "switch")	tok.type = TType::Switch;
-			else if(id == "case")	tok.type = TType::Case;
-			else if(id == "enum")	tok.type = TType::Enum;
-			else if(id == "ffi")	tok.type = TType::ForeignFunc;
+			if(id == "class")			tok.type = TType::Class;
+			else if(id == "func")		tok.type = TType::Func;
+			else if(id == "import")		tok.type = TType::Import;
+			else if(id == "var")		tok.type = TType::Var;
+			else if(id == "val")		tok.type = TType::Val;
+			else if(id == "ptr")		tok.type = TType::Ptr;
+			else if(id == "deref")		tok.type = TType::Deref;
+			else if(id == "addr")		tok.type = TType::Addr;
+			else if(id == "for")		tok.type = TType::For;
+			else if(id == "while")		tok.type = TType::While;
+			else if(id == "if")			tok.type = TType::If;
+			else if(id == "else")		tok.type = TType::Else;
+			else if(id == "return")		tok.type = TType::Return;
+			else if(id == "as")			tok.type = TType::As;
+			else if(id == "is")			tok.type = TType::Is;
+			else if(id == "switch")		tok.type = TType::Switch;
+			else if(id == "case")		tok.type = TType::Case;
+			else if(id == "enum")		tok.type = TType::Enum;
+			else if(id == "ffi")		tok.type = TType::ForeignFunc;
+			else if(id == "struct")		tok.type = TType::Struct;
 
-			else					tok.type = TType::Identifier;
+			else if(id == "public")		tok.type = TType::Public;
+			else if(id == "private")	tok.type = TType::Private;
+			else if(id == "internal")	tok.type = TType::Internal;
+
+			else						tok.type = TType::Identifier;
 		}
 		else
 		{

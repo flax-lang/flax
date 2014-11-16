@@ -1,15 +1,19 @@
 import Foundation
 
+
 func main()
 {
-	var a: Int32 = 0
+	var a: Int32 = 2
 
-	if !(a == 1)
+	if a == 1
 	{
-		printInt64(1000)
+		var x: Int64 = 555
+		printInt64(x)
 	}
 	else if a == 2
 	{
+		var x: Int64 = 333
+		printInt64(x + 444)
 	}
 }
 

@@ -176,8 +176,6 @@ namespace Parser
 			assert(tok != nullptr);
 			switch(tok->type)
 			{
-				// so-called 'top-level' things that need to manually recurse back into this function
-				// may be dangerous -- look into goto or smth instead of recursing
 				case TType::Func:
 					rootNode->functions.push_back(parseFunc(tokens));
 					break;
@@ -196,7 +194,6 @@ namespace Parser
 				case TType::Semicolon:
 					tokens.pop_front();
 					break;
-
 
 				default:	// wip: skip shit we don't know/care about for now
 					parseTopLevelExpr(tokens);
@@ -600,7 +597,7 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
 	{
 		Expr* expr = parseExpr(tokens);
-		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel", std::deque<VarDecl*>(), "");
+		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
 		Closure* cl = new Closure();
 		cl->statements.push_back(expr);
 
