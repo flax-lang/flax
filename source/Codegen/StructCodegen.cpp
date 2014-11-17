@@ -198,7 +198,18 @@ ValPtr_p MemberAccess::codeGen()
 		error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	}
 
-
-
 	return ValPtr_p(0, 0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

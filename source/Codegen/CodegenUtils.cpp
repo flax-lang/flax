@@ -257,7 +257,21 @@ namespace Codegen
 				case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
 				case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
 
+				case VarType::Uint8Ptr:
+				case VarType::Int8Ptr:	return llvm::Type::getInt8PtrTy(getContext());
+
+				case VarType::Uint16Ptr:
+				case VarType::Int16Ptr:	return llvm::Type::getInt16PtrTy(getContext());
+
+				case VarType::Uint32Ptr:
+				case VarType::Int32Ptr:	return llvm::Type::getInt32PtrTy(getContext());
+
+				case VarType::Uint64Ptr:
+				case VarType::Int64Ptr:	return llvm::Type::getInt64PtrTy(getContext());
+
+
 				case VarType::Void:		return llvm::Type::getVoidTy(getContext());
+				case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
 
 				default:
 					error("(%s:%s:%d) -> Internal check failed: invalid type", __FILE__, __PRETTY_FUNCTION__, __LINE__);

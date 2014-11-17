@@ -28,7 +28,7 @@ ValPtr_p VarRef::codeGen()
 	if(!val)
 		error("Unknown variable name '%s'", this->name.c_str());
 
-	return ValPtr_p(mainBuilder.CreateLoad(val, this->name), 0);
+	return ValPtr_p(mainBuilder.CreateLoad(val, this->name), val);
 }
 
 ValPtr_p VarDecl::codeGen()
@@ -90,8 +90,6 @@ ValPtr_p Return::codeGen()
 ValPtr_p UnaryOp::codeGen()
 {
 	assert(this->expr);
-	assert(this->op == ArithmeticOp::LogicalNot || this->op == ArithmeticOp::Plus || this->op == ArithmeticOp::Minus);
-
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
@@ -102,6 +100,25 @@ ValPtr_p UnaryOp::codeGen()
 
 		case ArithmeticOp::Plus:
 			return this->expr->codeGen();
+
+		case ArithmeticOp::Deref:
+		{
+			ValPtr_p vp = this->expr->codeGen();
+			return ValPtr_p(mainBuilder.CreateLoad(vp.first), vp.first);
+		}
+
+		case ArithmeticOp::AddrOf:
+		{
+			VarRef* vr = nullptr;
+			if((vr = dynamic_cast<VarRef*>(this->expr)))
+			{
+				return ValPtr_p(getSymInst(vr->name), 0);
+			}
+			else
+			{
+				error("Cannot take the address of that");
+			}
+		}
 
 		default:
 			error("(%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
@@ -116,13 +133,14 @@ ValPtr_p BinOp::codeGen()
 	this->right = autoCastType(this->left, this->right);
 
 	ValPtr_p valptr = this->left->codeGen();
+
 	llvm::Value* lhs = valptr.first;
 	llvm::Value* rhs = this->right->codeGen().first;
 
 	if(this->op == ArithmeticOp::Assign)
 	{
 		VarRef* v = nullptr;
-		MemberAccess* ma = nullptr;
+		UnaryOp* uo = nullptr;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
 			if(!rhs)
@@ -135,12 +153,13 @@ ValPtr_p BinOp::codeGen()
 			mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
 		}
-		else if((ma = dynamic_cast<MemberAccess*>(this->left)))
+		else if((dynamic_cast<MemberAccess*>(this->left)) || ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref))
 		{
 			// we know that the ptr lives in the second element
 			// so, use it
 
 			llvm::Value* ptr = valptr.second;
+			assert(ptr);
 
 			// make sure the left side is a pointer
 			if(!ptr->getType()->isPointerTy())

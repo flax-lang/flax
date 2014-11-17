@@ -242,6 +242,16 @@ namespace Parser
 
 			return new UnaryOp(op, parseUnary(tokens));
 		}
+		else if(tokens.front()->type == TType::Deref)
+		{
+			eat(tokens);
+			return new UnaryOp(ArithmeticOp::Deref, parseUnary(tokens));
+		}
+		else if(tokens.front()->type == TType::Addr)
+		{
+			eat(tokens);
+			return new UnaryOp(ArithmeticOp::AddrOf, parseUnary(tokens));
+		}
 		else
 		{
 			return parsePrimary(tokens);
@@ -444,10 +454,11 @@ namespace Parser
 		if((tmp = eat(tokens))->type != TType::Identifier)
 			error("Expected type for variable declaration");
 
-		// check if the next token is an identifier, and if so whether its text is 'ptr'
-		if(tokens.front()->type == TType::Identifier && tokens.front()->text == "ptr")
+		if(tokens.front()->type == TType::Ptr)
+		{
 			isPtr = true;
-
+			eat(tokens);
+		}
 
 		std::string ret = tmp->text + (isPtr ? "Ptr" : "");
 		return ret;
