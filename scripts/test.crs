@@ -14,7 +14,6 @@ struct something
 func main()
 {
 	var a: something
-	a.z()
 }
 
 ffi func printInt64(x: Int64)

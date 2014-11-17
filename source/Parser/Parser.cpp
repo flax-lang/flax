@@ -51,6 +51,7 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
+	void parseType(Token* curent, std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
@@ -149,6 +150,16 @@ namespace Parser
 		else if(type_id == "Uint16")	return VarType::Uint16;
 		else if(type_id == "Uint32")	return VarType::Uint32;
 		else if(type_id == "Uint64")	return VarType::Uint64;
+
+		else if(type_id == "Int8Ptr")	return VarType::Int8Ptr;
+		else if(type_id == "Int16Ptr")	return VarType::Int16Ptr;
+		else if(type_id == "Int32Ptr")	return VarType::Int32Ptr;
+		else if(type_id == "Int64Ptr")	return VarType::Int64Ptr;
+		else if(type_id == "Uint8Ptr")	return VarType::Uint8Ptr;
+		else if(type_id == "Uint16Ptr")	return VarType::Uint16Ptr;
+		else if(type_id == "Uint32Ptr")	return VarType::Uint32Ptr;
+		else if(type_id == "Uint64Ptr")	return VarType::Uint64Ptr;
+
 		else if(type_id == "Float32")	return VarType::Float32;
 		else if(type_id == "Float64")	return VarType::Float64;
 		else if(type_id == "Bool")		return VarType::Bool;

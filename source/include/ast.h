@@ -37,6 +37,16 @@ namespace Ast
 		Uint32,
 		Uint64,
 
+		Int8Ptr,
+		Int16Ptr,
+		Int32Ptr,
+		Int64Ptr,
+
+		Uint8Ptr,
+		Uint16Ptr,
+		Uint32Ptr,
+		Uint64Ptr,
+
 		// we do it this way so we can do math tricks on these to get the number of bits
 		Bool,
 		UserDefined,
@@ -44,6 +54,7 @@ namespace Ast
 		Float64,
 
 		Void,
+		AnyPtr,
 	};
 
 	enum class ArithmeticOp
@@ -220,6 +231,8 @@ namespace Ast
 		~Struct() { }
 		Struct(std::string name) : name(name) { }
 		virtual llvm::Value* codeGen() override;
+
+		llvm::Function* initFunc;
 
 		std::map<std::string, int> nameMap;
 		std::string name;
