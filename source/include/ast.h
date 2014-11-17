@@ -55,6 +55,7 @@ namespace Ast
 
 		Void,
 		AnyPtr,
+		Array,
 	};
 
 	enum class ArithmeticOp
@@ -256,6 +257,16 @@ namespace Ast
 
 		VarRef* target;
 		Expr* member;
+	};
+
+	struct ArrayIndex : Expr
+	{
+		~ArrayIndex() { }
+		ArrayIndex(VarRef* v, Expr* index) : var(v), index(index) { }
+		virtual ValPtr_p codeGen() override;
+
+		VarRef* var;
+		Expr* index;
 	};
 
 	struct Root : Expr

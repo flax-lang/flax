@@ -1,4 +1,4 @@
-// StructCodegen.cpp
+// AggrTypeCodegen.cpp
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -9,6 +9,66 @@
 
 using namespace Ast;
 using namespace Codegen;
+
+
+ValPtr_p ArrayIndex::codeGen()
+{
+	// get our array type
+	llvm::Type* atype = getLlvmType(this->var);
+	llvm::Type* etype = nullptr;
+
+	if(atype->isArrayTy())
+		etype = llvm::cast<llvm::ArrayType>(atype)->getArrayElementType();
+
+	else if(atype->isPointerTy())
+		etype = atype->getPointerElementType();
+
+	else
+		error("Can only index on pointer or array types.");
+
+
+	// try and do compile-time bounds checking
+	llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
+	if(atype->isArrayTy())
+	{
+		// dynamic arrays don't get bounds checking
+		if(at->getNumElements() != 0)
+		{
+			Number* n = nullptr;
+			if((n = dynamic_cast<Number*>(this->index)))
+			{
+				assert(!n->decimal);
+				if(n->ival >= at->getNumElements())
+					error("Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
+			}
+		}
+	}
+
+
+	// todo: verify for pointers
+	llvm::Value* lhs = this->var->codeGen().second;
+	llvm::Value* ind = this->index->codeGen().first;
+
+	std::vector<llvm::Value*> indices;
+	indices.push_back(llvm::ConstantInt::getNullValue(llvm::Type::getInt64Ty(getContext())));
+	indices.push_back(ind);
+
+	llvm::Value* gep = mainBuilder.CreateGEP(lhs, indices, "indexPtr");
+	return ValPtr_p(mainBuilder.CreateLoad(gep), gep);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ValPtr_p Struct::codeGen()

@@ -40,6 +40,7 @@ namespace Codegen
 	SymTab_t& getSymTab();
 	bool isPtr(Ast::Expr* e);
 	TypeMap_t& getVisibleTypes();
+	bool isArrayType(Ast::Expr* e);
 	llvm::LLVMContext& getContext();
 	bool isSignedType(Ast::Expr* e);
 	bool isBuiltinType(Ast::Expr* e);

@@ -164,7 +164,15 @@ namespace Parser
 		else if(type_id == "Float64")	return VarType::Float64;
 		else if(type_id == "Bool")		return VarType::Bool;
 		else if(type_id == "Void")		return VarType::Void;
-		else							return VarType::UserDefined;
+		else
+		{
+			// todo: risky
+			if(type_id.back() == ']')
+				return VarType::Array;
+
+			else
+				return VarType::UserDefined;
+		}
 	}
 
 
@@ -450,6 +458,8 @@ namespace Parser
 	std::string parseType(std::deque<Token*>& tokens)
 	{
 		bool isPtr = false;
+		bool isArr = false;
+		int arrsize = 0;
 		Token* tmp = nullptr;
 		if((tmp = eat(tokens))->type != TType::Identifier)
 			error("Expected type for variable declaration");
@@ -459,8 +469,20 @@ namespace Parser
 			isPtr = true;
 			eat(tokens);
 		}
+		else if(tokens.front()->type == TType::LSquare)
+		{
+			isArr = true;
+			eat(tokens);
 
-		std::string ret = tmp->text + (isPtr ? "Ptr" : "");
+			Token* next = eat(tokens);
+			if(next->type == TType::Integer)
+				arrsize = std::stoi(next->text), next = eat(tokens);
+
+			if(next->type != TType::RSquare)
+				error("Expected either constant integer or ']' after array declaration and '['");
+		}
+
+		std::string ret = tmp->text + (isPtr ? "Ptr" : (isArr ? "[" + std::to_string(arrsize) + "]" : ""));
 		return ret;
 	}
 
@@ -586,6 +608,16 @@ namespace Parser
 				error("Expected identifier after '.' operator");
 
 			return new MemberAccess(new VarRef(id), parseIdExpr(tokens));
+		}
+		else if(tokens.front()->type == TType::LSquare)
+		{
+			eat(tokens);
+			Expr* within = parseExpr(tokens);
+
+			if(eat(tokens)->type != TType::RSquare)
+				error("Expected ']'");
+
+			return new ArrayIndex(new VarRef(id), within);
 		}
 		else if(tokens.front()->type != TType::LParen)
 		{
