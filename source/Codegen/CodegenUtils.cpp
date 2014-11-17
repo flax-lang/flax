@@ -233,61 +233,112 @@ namespace Codegen
 		return (e >= VarType::Int8Ptr && e <= VarType::Uint64Ptr) || e == VarType::AnyPtr;
 	}
 
+	llvm::Type* getLlvmTypeOfBuiltin(VarType t)
+	{
+		switch(t)
+		{
+			case VarType::Uint8:
+			case VarType::Int8:		return llvm::Type::getInt8Ty(getContext());
+
+			case VarType::Uint16:
+			case VarType::Int16:	return llvm::Type::getInt16Ty(getContext());
+
+			case VarType::Uint32:
+			case VarType::Int32:	return llvm::Type::getInt32Ty(getContext());
+
+			case VarType::Uint64:
+			case VarType::Int64:	return llvm::Type::getInt64Ty(getContext());
+
+			case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
+			case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
+
+			case VarType::Uint8Ptr:
+			case VarType::Int8Ptr:	return llvm::Type::getInt8PtrTy(getContext());
+
+			case VarType::Uint16Ptr:
+			case VarType::Int16Ptr:	return llvm::Type::getInt16PtrTy(getContext());
+
+			case VarType::Uint32Ptr:
+			case VarType::Int32Ptr:	return llvm::Type::getInt32PtrTy(getContext());
+
+			case VarType::Uint64Ptr:
+			case VarType::Int64Ptr:	return llvm::Type::getInt64PtrTy(getContext());
+
+
+			case VarType::Void:		return llvm::Type::getVoidTy(getContext());
+			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
+
+			default:
+				error("(%s:%s:%d) -> Internal check failed: not a builtin type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				return nullptr;
+		}
+	}
+
 	llvm::Type* getLlvmType(Expr* expr)
 	{
 		VarType t;
 
 		assert(expr);
-		if((t = determineVarType(expr)) != VarType::UserDefined)
+		if((t = determineVarType(expr)) != VarType::UserDefined && t != VarType::Array)
 		{
-			switch(t)
-			{
-				case VarType::Uint8:
-				case VarType::Int8:		return llvm::Type::getInt8Ty(getContext());
-
-				case VarType::Uint16:
-				case VarType::Int16:	return llvm::Type::getInt16Ty(getContext());
-
-				case VarType::Uint32:
-				case VarType::Int32:	return llvm::Type::getInt32Ty(getContext());
-
-				case VarType::Uint64:
-				case VarType::Int64:	return llvm::Type::getInt64Ty(getContext());
-
-				case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
-				case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
-
-				case VarType::Uint8Ptr:
-				case VarType::Int8Ptr:	return llvm::Type::getInt8PtrTy(getContext());
-
-				case VarType::Uint16Ptr:
-				case VarType::Int16Ptr:	return llvm::Type::getInt16PtrTy(getContext());
-
-				case VarType::Uint32Ptr:
-				case VarType::Int32Ptr:	return llvm::Type::getInt32PtrTy(getContext());
-
-				case VarType::Uint64Ptr:
-				case VarType::Int64Ptr:	return llvm::Type::getInt64PtrTy(getContext());
-
-
-				case VarType::Void:		return llvm::Type::getVoidTy(getContext());
-				case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
-
-				default:
-					error("(%s:%s:%d) -> Internal check failed: invalid type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-					return nullptr;
-			}
+			return getLlvmTypeOfBuiltin(t);
 		}
 		else
 		{
 			VarRef* ref = nullptr;
-			if(dynamic_cast<VarDecl*>(expr))
+			VarDecl* decl = nullptr;
+			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
-				TypePair_t* type = getType(expr->type);
-				if(!type)
-					error("Unknown type '%s'", expr->type.c_str());
+				if(t != VarType::Array)
+				{
+					TypePair_t* type = getType(expr->type);
+					if(!type)
+						error("Unknown type '%s'", expr->type.c_str());
 
-				return type->first;
+					return type->first;
+				}
+
+
+
+
+
+				// it's an array. decide on its size.
+				size_t pos = decl->type.find_first_of('[');
+				if(pos == std::string::npos)
+					error("(%s:%s:%d) -> Internal check failed: invalid array declaration string", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+
+				std::string etype = decl->type.substr(0, pos);
+				std::string atype = decl->type.substr(pos);
+				assert(atype[0] == '[' && atype.back() == ']');
+
+				std::string num = atype.substr(1).substr(0, atype.length() - 2);
+				int sz = std::stoi(num);
+				if(sz == 0)
+					error("Dynamically sized arrays are not yet supported");
+
+				VarType evt = Parser::determineVarType(etype);
+
+				llvm::Type* eltype = nullptr;
+				if(evt == VarType::Array)
+					error("Nested arrays are not yet supported");
+
+				if(evt == VarType::Void)
+					error("You cannot create an array of void");
+
+				if(evt != VarType::UserDefined)
+				{
+					eltype = getLlvmTypeOfBuiltin(evt);
+				}
+				else
+				{
+					TypePair_t* type = getType(etype);
+					if(!type)
+						error("Unknown type '%s'", etype.c_str());
+
+					eltype = type->first;
+				}
+
+				return llvm::ArrayType::get(eltype, sz);
 			}
 			else if((ref = dynamic_cast<VarRef*>(expr)))
 			{
@@ -381,6 +432,8 @@ namespace Codegen
 
 	llvm::Value* getDefaultValue(Expr* e)
 	{
+		llvm::Type* llvmtype = getLlvmType(e);
+
 		VarType tp = determineVarType(e);
 		switch(tp)
 		{
@@ -397,6 +450,18 @@ namespace Codegen
 			case VarType::Float32:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0f));
 			case VarType::Float64:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0));
 			case VarType::Bool:		return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
+
+			case VarType::Array:
+			{
+				assert(llvmtype->isArrayTy());
+				llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(llvmtype);
+
+				std::vector<llvm::Constant*> els;
+				for(uint64_t i = 0; i < at->getNumElements(); i++)
+					els.push_back(llvm::ConstantArray::getNullValue(at->getElementType()));
+
+				return llvm::ConstantArray::get(at, els);
+			}
 
 			// todo: check for pointer type
 			default:				return llvm::Constant::getNullValue(getLlvmType(e));
@@ -467,6 +532,11 @@ namespace Codegen
 			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
 
 		return ret.substr(s->name.length());
+	}
+
+	bool isArrayType(Expr* e)
+	{
+		return getLlvmType(e)->isArrayTy();
 	}
 }
 

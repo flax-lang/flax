@@ -3,12 +3,14 @@ import Foundation
 
 func main()
 {
-	var x: Int64 = 100
-	var a: Int64 ptr = addrof x
+	var x: Int64[5]
+	var y: Int64[5]
 
-	deref a = 200
+	x[1] = 44193
 
-	printInt64(x)
+	y = x
+
+	printInt64(y[1])
 }
 
 ffi func printInt64(x: Int64)

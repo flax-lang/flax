@@ -22,66 +22,6 @@ ValPtr_p Number::codeGen()
 	return ValPtr_p(0, 0);
 }
 
-ValPtr_p VarRef::codeGen()
-{
-	llvm::Value* val = getSymInst(this->name);
-	if(!val)
-		error("Unknown variable name '%s'", this->name.c_str());
-
-	return ValPtr_p(mainBuilder.CreateLoad(val, this->name), val);
-}
-
-ValPtr_p VarDecl::codeGen()
-{
-	if(isDuplicateSymbol(this->name))
-		error("Redefining duplicate symbol '%s'", this->name.c_str());
-
-	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
-	llvm::Value* val = nullptr;
-
-	llvm::AllocaInst* ai = allocateInstanceInBlock(func, this);
-	getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
-
-	if(this->initVal)
-	{
-		this->initVal = autoCastType(this, this->initVal);
-		val = this->initVal->codeGen().first;
-	}
-	else if(isBuiltinType(this))
-	{
-		val = getDefaultValue(this);
-	}
-	else
-	{
-		// get our type
-		TypePair_t* pair = getType(this->type);
-		if(!pair)
-			error("Invalid type");
-
-		if(pair->first->isStructTy())
-		{
-			assert(pair->second.second == ExprType::Struct);
-			assert(pair->second.first);
-
-			Struct* str = nullptr;
-			assert((str = dynamic_cast<Struct*>(pair->second.first)));
-
-			val = mainBuilder.CreateCall(str->initFunc, ai);
-
-			// if it's not a pointer, we need to dereference.
-			if(!isPtr(this))
-				val = mainBuilder.CreateLoad(val, "derefPtr");
-		}
-		else
-		{
-			error("Unknown type encountered");
-		}
-	}
-
-	mainBuilder.CreateStore(val, ai);
-	return ValPtr_p(val, ai);
-}
-
 ValPtr_p Return::codeGen()
 {
 	return ValPtr_p(mainBuilder.CreateRet(this->val->codeGen().first), 0);
@@ -141,6 +81,7 @@ ValPtr_p BinOp::codeGen()
 	{
 		VarRef* v = nullptr;
 		UnaryOp* uo = nullptr;
+		ArrayIndex* ai = nullptr;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
 			if(!rhs)
@@ -150,10 +91,15 @@ ValPtr_p BinOp::codeGen()
 			if(!var)
 				error("Unknown identifier (var) '%s'", v->name.c_str());
 
+			if(lhs->getType() != rhs->getType())
+				error("Cannot assign different types");
+
 			mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
 		}
-		else if((dynamic_cast<MemberAccess*>(this->left)) || ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref))
+		else if((dynamic_cast<MemberAccess*>(this->left))
+			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
+			|| ((ai = dynamic_cast<ArrayIndex*>(this->left))))
 		{
 			// we know that the ptr lives in the second element
 			// so, use it
