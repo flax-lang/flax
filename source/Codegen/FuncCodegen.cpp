@@ -1,0 +1,158 @@
+// FuncCodegen.cpp
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+#include "../include/ast.h"
+#include "../include/codegen.h"
+#include "../include/llvm_all.h"
+
+using namespace Ast;
+using namespace Codegen;
+
+
+#define OPTIMISE 0
+
+llvm::Value* FuncCall::codeGen()
+{
+	llvm::Function* target = mainModule->getFunction(this->name);
+	if(target == 0)
+		error("Unknown function '%s'", this->name.c_str());
+
+	if(target->arg_size() != this->params.size())
+		error("Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+
+	std::vector<llvm::Value*> args;
+	llvm::Function::arg_iterator it = target->arg_begin();
+
+	// we need to get the function declaration
+	FuncDecl* decl = funcTable[this->name];
+	assert(decl);
+
+	for(int i = 0; i < this->params.size(); i++)
+		this->params[i] = autoCastType(decl->params[i], this->params[i]);
+
+	for(Expr* e : this->params)
+	{
+		args.push_back(e->codeGen());
+		if(args.back() == nullptr)
+			return 0;
+
+		it++;
+	}
+
+	return mainBuilder.CreateCall(target, args);
+}
+
+llvm::Value* FuncDecl::codeGen()
+{
+	std::string mangledname;
+
+	std::vector<llvm::Type*> argtypes;
+	for(VarDecl* v : this->params)
+	{
+		mangledname += "_" + getReadableType(v);
+		argtypes.push_back(getLlvmType(v));
+	}
+
+	// check if empty and if it's an extern. mangle the name to include type info if possible.
+	if(!mangledname.empty() && !this->isFFI)
+		this->name += "@" + mangledname;
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, false);
+	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, this->name, mainModule);
+
+	// check for redef
+	if(func->getName() != this->name)
+		error("Redefinition of function '%s'", this->name.c_str());
+
+	funcTable[this->name] = this;
+	return func;
+}
+
+llvm::Value* ForeignFuncDecl::codeGen()
+{
+	return this->decl->codeGen();
+}
+
+llvm::Value* Closure::codeGen()
+{
+	llvm::Value* lastVal = nullptr;
+	for(Expr* e : this->statements)
+		lastVal = e->codeGen();
+
+	return lastVal;
+}
+
+
+
+
+
+llvm::Value* Func::codeGen()
+{
+	// because the main code generator is two-pass, we expect all function declarations to have been generated
+	// so just fetch it.
+
+	llvm::Function* func = mainModule->getFunction(this->decl->name);
+	if(!func)
+	{
+		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
+		return nullptr;
+	}
+
+	// we need to clear all previous blocks' symbols
+	// but we can't destroy them, so employ a stack method.
+	// create a new 'table' for our own usage
+	pushScope();
+
+	llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "entry", func);
+	mainBuilder.SetInsertPoint(block);
+
+
+	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
+	int i = 0;
+	for(llvm::Function::arg_iterator it = func->arg_begin(); i != func->arg_size(); it++, i++)
+	{
+		it->setName(this->decl->params[i]->name);
+
+		llvm::AllocaInst* ai = allocateInstanceInBlock(func, this->decl->params[i]);
+		mainBuilder.CreateStore(it, ai);
+
+		getSymTab()[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
+	}
+
+
+	// codegen everything in the body.
+	llvm::Value* lastVal = this->closure->codeGen();
+
+	// check if we're not returning void
+	if(this->decl->varType != VarType::Void)
+	{
+		if(this->closure->statements.size() == 0)
+			error("Return value required for function '%s'", this->decl->name.c_str());
+
+		// the last expr is the final return value.
+		// if we had an explicit return, then the dynamic cast will succeed and we don't need to do anything
+		if(!dynamic_cast<Return*>(this->closure->statements.back()))
+		{
+			// else, if the cast failed it means we didn't explicitly return, so we take the
+			// value of the last expr as the return value.
+			mainBuilder.CreateRet(lastVal);
+		}
+	}
+	else
+	{
+		mainBuilder.CreateRetVoid();
+	}
+
+	llvm::verifyFunction(*func);
+
+	if(OPTIMISE)
+		Fpm->run(*func);
+
+
+	// we've codegen'ed that stuff, pop the symbol table
+	popScope();
+
+	return func;
+}
