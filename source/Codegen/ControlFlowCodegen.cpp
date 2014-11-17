@@ -20,7 +20,7 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	llvm::BasicBlock* t = llvm::BasicBlock::Create(getContext(), "trueCaseR", func);
 	llvm::BasicBlock* f = llvm::BasicBlock::Create(getContext(), "falseCaseR");
 
-	llvm::Value* cond = pairs.front().first->codeGen();
+	llvm::Value* cond = pairs.front().first->codeGen().first;
 
 
 	VarType apprType = determineVarType(pairs.front().first);
@@ -38,7 +38,7 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	llvm::Value* val = nullptr;
 	{
 		pushScope();
-		val = pairs.front().second->codeGen();
+		val = pairs.front().second->codeGen().first;
 		popScope();
 	}
 
@@ -60,10 +60,10 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	func->getBasicBlockList().push_back(f);
 }
 
-llvm::Value* If::codeGen()
+ValPtr_p If::codeGen()
 {
 	assert(this->cases.size() > 0);
-	llvm::Value* firstCond = this->cases[0].first->codeGen();
+	llvm::Value* firstCond = this->cases[0].first->codeGen().first;
 	VarType apprType = determineVarType(this->cases[0].first);
 
 	if(apprType != VarType::Bool)
@@ -90,7 +90,7 @@ llvm::Value* If::codeGen()
 
 		// push a new symtab
 		pushScope();
-		truev = this->cases[0].second->codeGen();
+		truev = this->cases[0].second->codeGen().first;
 		popScope();
 
 		mainBuilder.CreateBr(merge);
@@ -126,7 +126,7 @@ llvm::Value* If::codeGen()
 	if(this->final)
 	{
 		pushScope();
-		llvm::Value* v = this->final->codeGen();
+		llvm::Value* v = this->final->codeGen().first;
 		popScope();
 
 		if(phi)
@@ -138,6 +138,6 @@ llvm::Value* If::codeGen()
 	func->getBasicBlockList().push_back(merge);
 	mainBuilder.SetInsertPoint(merge);
 
-	return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
+	return ValPtr_p(llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true)), 0);
 }
 

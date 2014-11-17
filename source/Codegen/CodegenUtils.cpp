@@ -227,6 +227,12 @@ namespace Codegen
 		return e <= VarType::Bool || e == VarType::Float32 || e == VarType::Float64 || e == VarType::Void;
 	}
 
+	bool isPtr(Expr* expr)
+	{
+		VarType e = determineVarType(expr);
+		return (e >= VarType::Int8Ptr && e <= VarType::Uint64Ptr) || e == VarType::AnyPtr;
+	}
+
 	llvm::Type* getLlvmType(Expr* expr)
 	{
 		VarType t;
@@ -415,17 +421,38 @@ namespace Codegen
 			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64; //, printf("u64");
 			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32; //, printf("f32");
 			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64; //, printf("f64");
-			else
-			{
-				error("Cannot assign to target, it is too small.");
-			}
 
-			assert(determineVarType(left) == determineVarType(right));
 			return right;
 		}
 
 		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
 		return right;
+	}
+
+	std::string mangleName(Struct* s, std::string orig)
+	{
+		return "__struct@" + s->name + "_" + orig;
+	}
+
+	std::string unmangleName(Struct* s, std::string orig)
+	{
+		std::string ret = orig;
+		if(orig.find("__struct@") != 0)
+			error("'%s' is not a mangled name of a struct.", orig.c_str());
+
+
+		if(orig.length() < 10 || orig[9] != '_')
+			error("Invalid mangled name '%s'", orig.c_str());
+
+
+		// remove __struct@_
+		ret = ret.substr(10);
+
+		// make sure it's the right struct.
+		if(ret.find(s->name) != 0)
+			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
+
+		return ret.substr(s->name.length());
 	}
 }
 

@@ -14,6 +14,9 @@ struct something
 func main()
 {
 	var a: something
+	a.x = 591
+
+	printInt64(a.x)
 }
 
 ffi func printInt64(x: Int64)
