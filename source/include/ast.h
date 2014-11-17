@@ -78,6 +78,9 @@ namespace Ast
 		LogicalNot,
 		Plus,
 		Minus,
+
+		AddrOf,
+		Deref
 	};
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;

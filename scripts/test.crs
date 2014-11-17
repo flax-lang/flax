@@ -1,22 +1,14 @@
 import Foundation
 
-struct something
-{
-	var x: Int64 = 10
-	var y: Int64 = 20
-
-	func z()
-	{
-		printInt64(1000)
-	}
-}
 
 func main()
 {
-	var a: something
-	a.x = 591
+	var x: Int64 = 100
+	var a: Int64 ptr = addrof x
 
-	printInt64(a.x)
+	deref a = 200
+
+	printInt64(x)
 }
 
 ffi func printInt64(x: Int64)

@@ -247,7 +247,7 @@ namespace Parser
 			else if(id == "val")		tok.type = TType::Val;
 			else if(id == "ptr")		tok.type = TType::Ptr;
 			else if(id == "deref")		tok.type = TType::Deref;
-			else if(id == "addr")		tok.type = TType::Addr;
+			else if(id == "addrof")		tok.type = TType::Addr;
 			else if(id == "for")		tok.type = TType::For;
 			else if(id == "while")		tok.type = TType::While;
 			else if(id == "if")			tok.type = TType::If;
