@@ -46,12 +46,12 @@ namespace Parser
 	Import* parseImport(std::deque<Token*>& tokens);
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
+	std::string parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
-	void parseType(Token* curent, std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
@@ -298,6 +298,12 @@ namespace Parser
 		return nullptr;
 	}
 
+
+
+
+
+
+
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens)
 	{
 		assert(eat(tokens)->type == TType::Func);
@@ -413,6 +419,40 @@ namespace Parser
 		return new Func(decl, parseClosure(tokens));
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::string parseType(std::deque<Token*>& tokens)
+	{
+		bool isPtr = false;
+		Token* tmp = nullptr;
+		if((tmp = eat(tokens))->type != TType::Identifier)
+			error("Expected type for variable declaration");
+
+		// check if the next token is an identifier, and if so whether its text is 'ptr'
+		if(tokens.front()->type == TType::Identifier && tokens.front()->text == "ptr")
+			isPtr = true;
+
+
+		std::string ret = tmp->text + (isPtr ? "Ptr" : "");
+		return ret;
+	}
+
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens)
 	{
 		assert(tokens.front()->type == TType::Var || tokens.front()->type == TType::Val);
@@ -433,12 +473,8 @@ namespace Parser
 		if(eat(tokens)->type != TType::Colon)
 			error("Expected colon to indicate type for variable declaration");
 
-		Token* tok_type;
-		if((tok_type = eat(tokens))->type != TType::Identifier)
-			error("Expected type for variable declaration");
-
-		v->type = tok_type->text;
-		v->varType = determineVarType(tok_type->text);
+		v->type = parseType(tokens);
+		v->varType = determineVarType(v->type);
 
 		// TODO:
 		// check if we have a default value

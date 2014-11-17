@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-llvm::Value* Struct::codeGen()
+ValPtr_p Struct::codeGen()
 {
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
 
@@ -24,7 +24,10 @@ llvm::Value* Struct::codeGen()
 	for(Func* func : this->funcs)
 	{
 		if(func->decl->name == "init")
+		{
+			// todo: verify the function
 			ifunc = func;
+		}
 
 		std::vector<llvm::Type*> args;
 		for(VarDecl* v : func->decl->params)
@@ -47,7 +50,7 @@ llvm::Value* Struct::codeGen()
 	if(!ifunc)
 	{
 		// create one
-		llvm::FunctionType* ft = llvm::FunctionType::get(str, llvm::PointerType::get(str, 0), false);
+		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false);
 		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init@" + this->name, mainModule);
 
 		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
@@ -62,9 +65,8 @@ llvm::Value* Struct::codeGen()
 		{
 			int i = this->nameMap[var->name];
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
-			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen() : getDefaultValue(var), ptr);
+			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen().first : getDefaultValue(var), ptr);
 		}
-
 
 		for(Func* f : this->funcs)
 		{
@@ -73,7 +75,7 @@ llvm::Value* Struct::codeGen()
 
 			// mangle
 			f->decl->name = "__struct@" + this->name + "_" + f->decl->name;
-			llvm::Value* val = f->decl->codeGen();
+			llvm::Value* val = f->decl->codeGen().first;
 
 			mainBuilder.CreateStore(val, ptr);
 
@@ -81,16 +83,15 @@ llvm::Value* Struct::codeGen()
 			f->codeGen();
 			mainBuilder.SetInsertPoint(ob);
 		}
+
 		mainBuilder.CreateRet(self);
 
 		llvm::verifyFunction(*func);
 		this->initFunc = func;
-
-		printf("init function for '%s': [%s]\n", this->name.c_str(), getReadableType(func->getArgumentList().front().getType()).c_str());
 	}
 	else
 	{
-		this->initFunc = llvm::cast<llvm::Function>(ifunc->codeGen());
+		this->initFunc = llvm::cast<llvm::Function>(ifunc->codeGen().first);
 	}
 
 
@@ -102,13 +103,13 @@ llvm::Value* Struct::codeGen()
 
 	delete types;
 
-	return 0;
+	return ValPtr_p(nullptr, nullptr);
 }
 
-llvm::Value* MemberAccess::codeGen()
+ValPtr_p MemberAccess::codeGen()
 {
 	// gen the var ref on the left.
-	this->target->codeGen();
+	llvm::Value* self = this->target->codeGen().first;
 	llvm::Type* type = getLlvmType(this->target);
 	if(!type)
 		error("(%s:%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __PRETTY_FUNCTION__, __LINE__);
@@ -120,10 +121,18 @@ llvm::Value* MemberAccess::codeGen()
 	if(!pair)
 		error("(%s:%s:%d) -> Internal check failed: failed to retrieve type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
+
+
+
+	llvm::Function* insertfunc = mainBuilder.GetInsertBlock()->getParent();
+
 	if(pair->second.second == ExprType::Struct)
 	{
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		llvm::Type* str_t = pair->first;
+
 		assert(str);
+		assert(self);
 
 		// get the index for the member
 		Expr* rhs = this->member;
@@ -132,20 +141,57 @@ llvm::Value* MemberAccess::codeGen()
 		VarRef* var = nullptr;
 		FuncCall* fc = nullptr;
 		if((var = dynamic_cast<VarRef*>(rhs)))
-		{
 			i = str->nameMap[var->name];
-		}
+
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
-		{
 			i = str->nameMap[fc->name];
-		}
+
 		else
+			error("(%s:%s:%d) -> Internal check failed: no comprehendo", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+
+
+		// 1. we know this works because we codegen'ed it above
+		// 2. we need this because the codegen returns the value of a CreateLoad, which is apparently the wrong type.
+		llvm::Value* rawInst = getSymInst(this->target->name);
+		llvm::Value* ptr = mainBuilder.CreateStructGEP(getSymInst(this->target->name), i, "memberPtr");
+		llvm::Value* val = mainBuilder.CreateLoad(ptr);
+		if(fc)
 		{
-			error("(%s:%s:%d) -> Internal check failed: ?!?!", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+
+			// now we need to determine if it exists, and its params.
+			Func* callee = nullptr;
+			for(Func* f : str->funcs)
+			{
+				if(f->decl->name == mangleName(str, fc->name))
+				{
+					callee = f;
+					break;
+				}
+			}
+
+			if(!callee)
+				error("No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
+
+
+			// do some casting
+			for(int i = 0; i < fc->params.size(); i++)
+				fc->params[i] = autoCastType(callee->decl->params[i], fc->params[i]);
+
+
+			std::vector<llvm::Value*> args;
+			for(Expr* e : fc->params)
+			{
+				args.push_back(e->codeGen().first);
+				if(args.back() == nullptr)
+					return ValPtr_p(nullptr, nullptr);
+			}
+
+			return ValPtr_p(mainBuilder.CreateCall(val, args), nullptr);
 		}
-
-		//
-
+		else if(var)
+		{
+			return ValPtr_p(val, ptr);
+		}
 	}
 	else
 	{
@@ -154,5 +200,5 @@ llvm::Value* MemberAccess::codeGen()
 
 
 
-	return 0;
+	return ValPtr_p(0, 0);
 }

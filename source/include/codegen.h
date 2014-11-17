@@ -33,9 +33,12 @@ namespace Codegen
 	extern std::deque<TypeMap_t*> visibleTypes;
 	extern std::map<std::string, Ast::FuncDecl*> funcTable;
 
+
+
 	void popScope();
 	void pushScope();
 	SymTab_t& getSymTab();
+	bool isPtr(Ast::Expr* e);
 	TypeMap_t& getVisibleTypes();
 	llvm::LLVMContext& getContext();
 	bool isSignedType(Ast::Expr* e);
@@ -53,6 +56,8 @@ namespace Codegen
 	llvm::Value* getSymInst(const std::string& name);
 	SymbolPair_t* getSymPair(const std::string& name);
 	Ast::VarDecl* getSymDecl(const std::string& name);
+	std::string mangleName(Ast::Struct* s, std::string orig);
+	std::string unmangleName(Ast::Struct* s, std::string orig);
 	Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
 	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);

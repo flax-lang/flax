@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-llvm::Value* Root::codeGen()
+ValPtr_p Root::codeGen()
 {
 	// two pass: first codegen all the declarations
 	for(ForeignFuncDecl* f : this->foreignfuncs)
@@ -27,6 +27,6 @@ llvm::Value* Root::codeGen()
 	for(Func* f : this->functions)
 		f->codeGen();
 
-	return nullptr;
+	return ValPtr_p(0, 0);
 }
 

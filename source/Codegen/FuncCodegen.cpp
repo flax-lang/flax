@@ -13,7 +13,7 @@ using namespace Codegen;
 
 #define OPTIMISE 0
 
-llvm::Value* FuncCall::codeGen()
+ValPtr_p FuncCall::codeGen()
 {
 	llvm::Function* target = mainModule->getFunction(this->name);
 	if(target == 0)
@@ -23,7 +23,6 @@ llvm::Value* FuncCall::codeGen()
 		error("Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
-	llvm::Function::arg_iterator it = target->arg_begin();
 
 	// we need to get the function declaration
 	FuncDecl* decl = funcTable[this->name];
@@ -34,17 +33,15 @@ llvm::Value* FuncCall::codeGen()
 
 	for(Expr* e : this->params)
 	{
-		args.push_back(e->codeGen());
+		args.push_back(e->codeGen().first);
 		if(args.back() == nullptr)
-			return 0;
-
-		it++;
+			return ValPtr_p(0, 0);
 	}
 
-	return mainBuilder.CreateCall(target, args);
+	return ValPtr_p(mainBuilder.CreateCall(target, args), 0);
 }
 
-llvm::Value* FuncDecl::codeGen()
+ValPtr_p FuncDecl::codeGen()
 {
 	std::string mangledname;
 
@@ -67,17 +64,17 @@ llvm::Value* FuncDecl::codeGen()
 		error("Redefinition of function '%s'", this->name.c_str());
 
 	funcTable[this->name] = this;
-	return func;
+	return ValPtr_p(func, 0);
 }
 
-llvm::Value* ForeignFuncDecl::codeGen()
+ValPtr_p ForeignFuncDecl::codeGen()
 {
 	return this->decl->codeGen();
 }
 
-llvm::Value* Closure::codeGen()
+ValPtr_p Closure::codeGen()
 {
-	llvm::Value* lastVal = nullptr;
+	ValPtr_p lastVal;
 	for(Expr* e : this->statements)
 		lastVal = e->codeGen();
 
@@ -88,7 +85,7 @@ llvm::Value* Closure::codeGen()
 
 
 
-llvm::Value* Func::codeGen()
+ValPtr_p Func::codeGen()
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
@@ -97,7 +94,7 @@ llvm::Value* Func::codeGen()
 	if(!func)
 	{
 		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
-		return nullptr;
+		return ValPtr_p(0, 0);
 	}
 
 	// we need to clear all previous blocks' symbols
@@ -123,7 +120,7 @@ llvm::Value* Func::codeGen()
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = this->closure->codeGen();
+	llvm::Value* lastVal = this->closure->codeGen().first;
 
 	// check if we're not returning void
 	if(this->decl->varType != VarType::Void)
@@ -154,5 +151,5 @@ llvm::Value* Func::codeGen()
 	// we've codegen'ed that stuff, pop the symbol table
 	popScope();
 
-	return func;
+	return ValPtr_p(func, 0);
 }
