@@ -16,8 +16,12 @@ using namespace Codegen;
 ValPtr_p FuncCall::codeGen()
 {
 	llvm::Function* target = mainModule->getFunction(this->name);
+	if(!target)
+		target = mainModule->getFunction(mangleName(this->name, this->params));
+
 	if(target == 0)
 		error("Unknown function '%s'", this->name.c_str());
+
 
 	if(target->arg_size() != this->params.size())
 		error("Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
@@ -46,24 +50,26 @@ ValPtr_p FuncDecl::codeGen()
 	std::string mangledname;
 
 	std::vector<llvm::Type*> argtypes;
+	std::deque<Expr*> params_expr;
 	for(VarDecl* v : this->params)
 	{
-		mangledname += "_" + getReadableType(v);
+		params_expr.push_back(v);
 		argtypes.push_back(getLlvmType(v));
 	}
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
+	std::string mname = this->name;
 	if(!mangledname.empty() && !this->isFFI)
-		this->name += "@" + mangledname;
+		mname = mangleName(this->name, params_expr);
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, false);
-	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, this->name, mainModule);
+	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, mname, mainModule);
 
 	// check for redef
-	if(func->getName() != this->name)
+	if(func->getName() != mname)
 		error("Redefinition of function '%s'", this->name.c_str());
 
-	funcTable[this->name] = this;
+	funcTable[mname] = this;
 	return ValPtr_p(func, 0);
 }
 

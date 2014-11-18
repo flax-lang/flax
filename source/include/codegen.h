@@ -60,6 +60,7 @@ namespace Codegen
 	std::string mangleName(Ast::Struct* s, std::string orig);
 	std::string unmangleName(Ast::Struct* s, std::string orig);
 	Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
+	std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 

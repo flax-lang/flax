@@ -11,6 +11,10 @@ using namespace Codegen;
 
 ValPtr_p Root::codeGen()
 {
+	// we need to parse custom types first
+	for(Struct* s : this->structs)
+		s->createType();
+
 	// two pass: first codegen all the declarations
 	for(ForeignFuncDecl* f : this->foreignfuncs)
 		f->codeGen();
@@ -20,6 +24,7 @@ ValPtr_p Root::codeGen()
 
 	for(Struct* s : this->structs)
 		s->codeGen();
+
 
 
 

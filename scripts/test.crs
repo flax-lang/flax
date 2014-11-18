@@ -1,16 +1,22 @@
 import Foundation
 
+struct s
+{
+	var a: Int32 = 100
+	func z()
+	{
+		putchar(self.a)
+	}
+}
 
 func main()
 {
-	var x: Int64[5]
-	var y: Int64[5]
+	var y: s
+	y.a = 66
 
-	x[1] = 44193
-
-	y = x
-
-	printInt64(y[1])
+	var x: s ptr = addrof y
+	x.z()
 }
 
 ffi func printInt64(x: Int64)
+ffi func putchar(x: Int32) -> Int32

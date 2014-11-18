@@ -17,6 +17,7 @@ namespace Parser
 	PosInfo pos;
 	Root* rootNode;
 	Token* curtok;
+	std::string modname;
 
 	void error(const char* msg, ...)
 	{
@@ -35,6 +36,7 @@ namespace Parser
 
 	// woah shit it's forward declarations
 	// note: all these are expected to pop at least one token from the front of the list.
+
 	Expr* parseIf(std::deque<Token*>& tokens);
 	void parseAll(std::deque<Token*>& tokens);
 	Func* parseFunc(std::deque<Token*>& tokens);
@@ -56,6 +58,12 @@ namespace Parser
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
+
+	std::string getModuleName()
+	{
+		return modname;
+	}
+
 	Root* Parse(std::string filename, std::string str)
 	{
 		Token* t = nullptr;
@@ -69,6 +77,15 @@ namespace Parser
 
 		rootNode = new Root();
 		parseAll(tokens);
+
+
+		size_t lastdot = filename.find_last_of(".");
+		modname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+
+		size_t sep = modname.find_last_of("\\/");
+		if(sep != std::string::npos)
+			modname = modname.substr(sep + 1, modname.length() - sep - 1);
+
 
 		return rootNode;
 	}

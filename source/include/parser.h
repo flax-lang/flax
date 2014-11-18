@@ -121,6 +121,7 @@ namespace Parser
 		TType type;
 	};
 
+	std::string getModuleName();
 	Ast::Root* Parse(std::string filename, std::string str);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
 	Ast::VarType determineVarType(std::string type_id);
