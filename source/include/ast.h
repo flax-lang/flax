@@ -125,7 +125,7 @@ namespace Ast
 	struct VarDecl : Expr
 	{
 		~VarDecl() { }
-		VarDecl(std::string& name, bool immut) : name(name), immutable(immut) { }
+		VarDecl(std::string name, bool immut) : name(name), immutable(immut) { }
 		virtual ValPtr_p codeGen() override;
 
 		std::string name;
@@ -240,7 +240,10 @@ namespace Ast
 		~Struct() { }
 		Struct(std::string name) : name(name) { }
 		virtual ValPtr_p codeGen() override;
+		void createType();
 
+		bool didCreateType;
+		Func* ifunc;
 		llvm::Function* initFunc;
 
 		std::map<std::string, int> nameMap;

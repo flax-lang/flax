@@ -111,6 +111,10 @@ ValPtr_p BinOp::codeGen()
 			if(!ptr->getType()->isPointerTy())
 				error("Expression (type '%s' = '%s') is not assignable.", getReadableType(ptr->getType()).c_str(), getReadableType(rhs->getType()).c_str());
 
+			// redo the number casting
+			if(rhs->getType()->isIntegerTy())
+				rhs = mainBuilder.CreateIntCast(rhs, ptr->getType()->getPointerElementType(), false);
+
 			// dereference it
 			mainBuilder.CreateStore(rhs, ptr);
 			return ValPtr_p(rhs, ptr);

@@ -9,6 +9,7 @@
 #include <cfloat>
 #include <stdint.h>
 #include <typeinfo>
+#include <iostream>
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
@@ -16,7 +17,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 1
+#define RUN 0
 
 void error(const char* msg, ...)
 {
@@ -46,7 +47,7 @@ namespace Codegen
 	void doCodegen(Root* root)
 	{
 		llvm::InitializeNativeTarget();
-		mainModule = new llvm::Module("mainModule", llvm::getGlobalContext());
+		mainModule = new llvm::Module(Parser::getModuleName(), llvm::getGlobalContext());
 
 		std::string err;
 		execEngine = llvm::EngineBuilder(mainModule).setErrorStr(&err).create();
@@ -163,11 +164,9 @@ namespace Codegen
 
 	SymbolPair_t* getSymPair(const std::string& name)
 	{
-		// loop.
 		for(int i = symTabStack.size(); i-- > 0;)
 		{
 			SymTab_t* tab = symTabStack[i];
-
 			if(tab->find(name) != tab->end())
 				return &(*tab)[name];
 		}
@@ -293,13 +292,26 @@ namespace Codegen
 				{
 					TypePair_t* type = getType(expr->type);
 					if(!type)
+					{
+						// check if it ends with pointer, and if we have a type that's un-pointered
+						std::string sptr = std::string("Ptr");
+
+						if(expr->type.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), expr->type.rbegin()))
+						{
+							std::string notptr = expr->type.substr(0, expr->type.length() - 3);
+							TypePair_t* notptrtype = getType(notptr);
+
+							if(notptrtype)
+								return notptrtype->first->getPointerTo();
+						}
+
+
 						error("Unknown type '%s'", expr->type.c_str());
+						return nullptr;
+					}
 
 					return type->first;
 				}
-
-
-
 
 
 				// it's an array. decide on its size.
@@ -351,11 +363,13 @@ namespace Codegen
 
 	VarType determineVarType(Expr* e)
 	{
-		VarRef* ref = nullptr;
-		VarDecl* decl = nullptr;
-		BinOp* bo = nullptr;
-		Number* num = nullptr;
-		FuncDecl* fd = nullptr;
+		VarRef* ref			= nullptr;
+		VarDecl* decl		= nullptr;
+		BinOp* bo			= nullptr;
+		Number* num			= nullptr;
+		FuncDecl* fd		= nullptr;
+		MemberAccess* ma	= nullptr;
+
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
 			VarDecl* decl = getSymTab()[ref->name].second;
@@ -407,6 +421,10 @@ namespace Codegen
 
 				return determineVarType(bo->left);
 			}
+		}
+		else if((ma = dynamic_cast<MemberAccess*>(e)))
+		{
+			return determineVarType(ma->target);
 		}
 		else
 		{
@@ -510,13 +528,13 @@ namespace Codegen
 
 	std::string mangleName(Struct* s, std::string orig)
 	{
-		return "__struct@" + s->name + "_" + orig;
+		return "__struct#" + s->name + "_" + orig;
 	}
 
 	std::string unmangleName(Struct* s, std::string orig)
 	{
 		std::string ret = orig;
-		if(orig.find("__struct@") != 0)
+		if(orig.find("__struct#") != 0)
 			error("'%s' is not a mangled name of a struct.", orig.c_str());
 
 
@@ -524,7 +542,7 @@ namespace Codegen
 			error("Invalid mangled name '%s'", orig.c_str());
 
 
-		// remove __struct@_
+		// remove __struct#_
 		ret = ret.substr(10);
 
 		// make sure it's the right struct.
@@ -533,6 +551,17 @@ namespace Codegen
 
 		return ret.substr(s->name.length());
 	}
+
+	std::string mangleName(std::string base, std::deque<Expr*> args)
+	{
+		std::string mangled = "";
+
+		for(Expr* e : args)
+			mangled += "_" + getReadableType(e);
+
+		return base + (mangled.empty() ? "" : ("#" + mangled));
+	}
+
 
 	bool isArrayType(Expr* e)
 	{

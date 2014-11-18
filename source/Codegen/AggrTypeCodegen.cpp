@@ -73,45 +73,16 @@ ValPtr_p ArrayIndex::codeGen()
 
 ValPtr_p Struct::codeGen()
 {
-	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
+	assert(this->didCreateType);
+	llvm::StructType* str = llvm::cast<llvm::StructType>(getType(this->name)->first);
 
-	if(isDuplicateType(this->name))
-		error("Duplicate type '%s'", this->name.c_str());
+	// generate initialiser
 
-	// check if there's an explicit initialiser
-	Func* ifunc = nullptr;
-
-	for(Func* func : this->funcs)
-	{
-		if(func->decl->name == "init")
-		{
-			// todo: verify the function
-			ifunc = func;
-		}
-
-		std::vector<llvm::Type*> args;
-		for(VarDecl* v : func->decl->params)
-			args.push_back(getLlvmType(v));
-
-		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
-	}
-
-
-	// create llvm types
-	for(VarDecl* var : this->members)
-		types[this->nameMap[var->name]] = getLlvmType(var);
-
-
-	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));
-	llvm::StructType* str = llvm::StructType::create(getContext(), llvm::ArrayRef<llvm::Type*>(vec), this->name);
-	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
-
-
-	if(!ifunc)
+	if(!this->ifunc)
 	{
 		// create one
 		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false);
-		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init@" + this->name, mainModule);
+		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
 
 		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
 
@@ -125,6 +96,8 @@ ValPtr_p Struct::codeGen()
 		{
 			int i = this->nameMap[var->name];
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
+			var->initVal = autoCastType(var, var->initVal);
+
 			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen().first : getDefaultValue(var), ptr);
 		}
 
@@ -134,7 +107,7 @@ ValPtr_p Struct::codeGen()
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
 
 			// mangle
-			f->decl->name = "__struct@" + this->name + "_" + f->decl->name;
+			f->decl->name = mangleName(this, f->decl->name);
 			llvm::Value* val = f->decl->codeGen().first;
 
 			mainBuilder.CreateStore(val, ptr);
@@ -151,31 +124,102 @@ ValPtr_p Struct::codeGen()
 	}
 	else
 	{
-		this->initFunc = llvm::cast<llvm::Function>(ifunc->codeGen().first);
+		this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
 	}
-
-
-
-
-
-
-
-
-	delete types;
 
 	return ValPtr_p(nullptr, nullptr);
 }
 
+void Struct::createType()
+{
+
+	if(isDuplicateType(this->name))
+		error("Redefinition of type '%s'", this->name.c_str());
+
+	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
+
+	if(isDuplicateType(this->name))
+		error("Duplicate type '%s'", this->name.c_str());
+
+	// check if there's an explicit initialiser
+	this->ifunc = nullptr;
+
+	// create a bodyless struct so we can use it
+	llvm::StructType* str = llvm::StructType::create(getContext(), this->name);
+	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+
+	for(Func* func : this->funcs)
+	{
+		if(func->decl->name == "init")
+		{
+			// todo: verify the function
+			this->ifunc = func;
+		}
+
+		std::vector<llvm::Type*> args;
+
+		// implicit first paramter, is not shown
+		VarDecl* implicit_self = new VarDecl("self", true);
+		implicit_self->type = this->name + "Ptr";
+		func->decl->params.push_front(implicit_self);
+
+		for(VarDecl* v : func->decl->params)
+			args.push_back(getLlvmType(v));
+
+
+		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
+	}
+
+
+	// create llvm types
+	for(VarDecl* var : this->members)
+		types[this->nameMap[var->name]] = getLlvmType(var);
+
+
+	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));
+	str->setBody(vec);
+
+	this->didCreateType = true;
+
+	delete types;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ValPtr_p MemberAccess::codeGen()
 {
 	// gen the var ref on the left.
-	llvm::Value* self = this->target->codeGen().first;
+	ValPtr_p p = this->target->codeGen();
+
+	llvm::Value* self = p.first;
+	llvm::Value* selfPtr = p.second;
+	bool isPtr = false;
+
 	llvm::Type* type = getLlvmType(this->target);
 	if(!type)
 		error("(%s:%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
 	if(!type->isStructTy())
-		error("Cannot do member access on non-aggregate types");
+	{
+		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+			type = type->getPointerElementType(), isPtr = true;
+
+		else
+			error("Cannot do member access on non-aggregate types");
+	}
 
 	TypePair_t* pair = getType(type->getStructName());
 	if(!pair)
@@ -210,18 +254,17 @@ ValPtr_p MemberAccess::codeGen()
 			error("(%s:%s:%d) -> Internal check failed: no comprehendo", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
 
-		// 1. we know this works because we codegen'ed it above
-		// 2. we need this because the codegen returns the value of a CreateLoad, which is apparently the wrong type.
-		llvm::Value* rawInst = getSymInst(this->target->name);
-		llvm::Value* ptr = mainBuilder.CreateStructGEP(getSymInst(this->target->name), i, "memberPtr");
+		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
+		llvm::Value* ptr = mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr");
 		llvm::Value* val = mainBuilder.CreateLoad(ptr);
+
 		if(fc)
 		{
-
 			// now we need to determine if it exists, and its params.
 			Func* callee = nullptr;
 			for(Func* f : str->funcs)
 			{
+				// when comparing, we need to unmangle the first bit that is the implicit self pointer
 				if(f->decl->name == mangleName(str, fc->name))
 				{
 					callee = f;
@@ -239,6 +282,8 @@ ValPtr_p MemberAccess::codeGen()
 
 
 			std::vector<llvm::Value*> args;
+			args.push_back(isPtr ? self : selfPtr);
+
 			for(Expr* e : fc->params)
 			{
 				args.push_back(e->codeGen().first);
