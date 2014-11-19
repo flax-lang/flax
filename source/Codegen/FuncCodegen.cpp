@@ -29,7 +29,7 @@ ValPtr_p FuncCall::codeGen()
 	std::vector<llvm::Value*> args;
 
 	// we need to get the function declaration
-	FuncDecl* decl = funcTable[this->name];
+	FuncDecl* decl = getFuncDecl(this->name);
 	assert(decl);
 
 	for(int i = 0; i < this->params.size(); i++)
@@ -69,7 +69,7 @@ ValPtr_p FuncDecl::codeGen()
 	if(func->getName() != mname)
 		error("Redefinition of function '%s'", this->name.c_str());
 
-	funcTable[mname] = this;
+	getVisibleFuncDecls()[mname] = this;
 	return ValPtr_p(func, 0);
 }
 
@@ -140,7 +140,13 @@ ValPtr_p Func::codeGen()
 		{
 			// else, if the cast failed it means we didn't explicitly return, so we take the
 			// value of the last expr as the return value.
-			mainBuilder.CreateRet(lastVal);
+
+			// actually, if the last statement is an if-clause, then we can't tell for sure
+			// this will abort at runtime.
+
+			// TODO: make better.
+			if(!dynamic_cast<If*>(this->closure->statements.back()))
+				mainBuilder.CreateRet(lastVal);
 		}
 	}
 	else

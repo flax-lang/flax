@@ -23,6 +23,7 @@ namespace Codegen
 	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
+	typedef std::map<std::string, Ast::FuncDecl*> FuncMap_t;
 
 
 	extern llvm::Module* mainModule;
@@ -30,8 +31,9 @@ namespace Codegen
 	extern llvm::FunctionPassManager* Fpm;
 	extern std::deque<SymTab_t*> symTabStack;
 	extern llvm::ExecutionEngine* execEngine;
+	extern std::deque<FuncMap_t*> funcTabStack;
 	extern std::deque<TypeMap_t*> visibleTypes;
-	extern std::map<std::string, Ast::FuncDecl*> funcTable;
+
 
 
 
@@ -45,11 +47,14 @@ namespace Codegen
 	bool isSignedType(Ast::Expr* e);
 	bool isBuiltinType(Ast::Expr* e);
 	bool isIntegerType(Ast::Expr* e);
+	FuncMap_t& getVisibleFuncDecls();
 	TypePair_t* getType(std::string name);
 	bool isDuplicateType(std::string name);
 	llvm::Type* getLlvmType(Ast::Expr* expr);
+	bool isDuplicateFuncDecl(std::string name);
 	llvm::Value* getDefaultValue(Ast::Expr* e);
 	Ast::VarType determineVarType(Ast::Expr* e);
+	Ast::FuncDecl* getFuncDecl(std::string name);
 	std::string getReadableType(Ast::Expr* expr);
 	void pushScope(SymTab_t* tab, TypeMap_t* tp);
 	std::string getReadableType(llvm::Type* type);
