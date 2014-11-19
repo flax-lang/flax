@@ -12,7 +12,8 @@ using namespace Codegen;
 
 
 
-void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi)
+void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi,
+	bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
@@ -45,7 +46,9 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 	if(phi)
 		phi->addIncoming(val, t);
 
-	mainBuilder.CreateBr(merge);
+	// check if the last expr of the block is a return
+	if(pairs.front().second->statements.size() == 0 || !dynamic_cast<Return*>(pairs.front().second->statements.back()))
+		mainBuilder.CreateBr(merge), *didCreateMerge = true;
 
 
 	// now the false case...
@@ -54,7 +57,7 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 
 	// recursively call ourselves
 	pairs.pop_front();
-	codeGenRecursiveIf(func, pairs, merge, phi);
+	codeGenRecursiveIf(func, pairs, merge, phi, didCreateMerge);
 
 	// once that's done, we can add the false-case block to the func
 	func->getBasicBlockList().push_back(f);
@@ -82,6 +85,7 @@ ValPtr_p If::codeGen()
 	mainBuilder.CreateCondBr(firstCond, trueb, falseb);
 
 
+	bool didMerge = false;
 
 	// emit code for the first block
 	llvm::Value* truev = nullptr;
@@ -93,7 +97,8 @@ ValPtr_p If::codeGen()
 		truev = this->cases[0].second->codeGen().first;
 		popScope();
 
-		mainBuilder.CreateBr(merge);
+		if(this->cases[0].second->statements.size() == 0 || !dynamic_cast<Return*>(this->cases[0].second->statements.back()))
+			mainBuilder.CreateBr(merge), didMerge = true;
 	}
 
 
@@ -118,7 +123,7 @@ ValPtr_p If::codeGen()
 		phi->addIncoming(truev, trueb);
 
 	mainBuilder.SetInsertPoint(curblk);
-	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi);
+	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi, &didMerge);
 
 	func->getBasicBlockList().push_back(falseb);
 
@@ -133,11 +138,30 @@ ValPtr_p If::codeGen()
 			phi->addIncoming(v, falseb);
 	}
 
-	mainBuilder.CreateBr(merge);
 
-	func->getBasicBlockList().push_back(merge);
-	mainBuilder.SetInsertPoint(merge);
 
-	return ValPtr_p(llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true)), 0);
+	if(!this->final || !dynamic_cast<Return*>(this->final->statements.back()))
+		mainBuilder.CreateBr(merge), didMerge = true;
+
+	if(didMerge)
+	{
+		func->getBasicBlockList().push_back(merge);
+		mainBuilder.SetInsertPoint(merge);
+	}
+
+
+
+
+	return ValPtr_p(0, 0);
 }
+
+
+
+
+
+
+
+
+
+
 

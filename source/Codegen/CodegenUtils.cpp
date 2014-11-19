@@ -17,7 +17,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 0
+#define RUN 1
 
 void error(const char* msg, ...)
 {
@@ -40,8 +40,8 @@ namespace Codegen
 	llvm::FunctionPassManager* Fpm;
 	std::deque<SymTab_t*> symTabStack;
 	llvm::ExecutionEngine* execEngine;
+	std::deque<FuncMap_t*> funcTabStack;
 	std::deque<TypeMap_t*> visibleTypes;
-	std::map<std::string, FuncDecl*> funcTable;
 	llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 	void doCodegen(Root* root)
@@ -138,23 +138,27 @@ namespace Codegen
 	{
 		SymTab_t* tab = symTabStack.back();
 		TypeMap_t* types = visibleTypes.back();
+		FuncMap_t* funcs = funcTabStack.back();
 
 		delete types;
 		delete tab;
+		delete funcs;
 
 		symTabStack.pop_back();
 		visibleTypes.pop_back();
+		funcTabStack.pop_back();
 	}
 
-	void pushScope(SymTab_t* tab, TypeMap_t* tp)
+	void pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm)
 	{
 		symTabStack.push_back(tab);
 		visibleTypes.push_back(tp);
+		funcTabStack.push_back(fm);
 	}
 
 	void pushScope()
 	{
-		pushScope(new SymTab_t(), new TypeMap_t());
+		pushScope(new SymTab_t(), new TypeMap_t(), new FuncMap_t());
 	}
 
 	SymTab_t& getSymTab()
@@ -199,6 +203,9 @@ namespace Codegen
 
 
 
+
+	// stack based types.
+
 	TypeMap_t& getVisibleTypes()
 	{
 		return *visibleTypes.back();
@@ -219,6 +226,48 @@ namespace Codegen
 	{
 		return getType(name) != nullptr;
 	}
+
+
+
+	// funcs
+	FuncMap_t& getVisibleFuncDecls()
+	{
+		return *funcTabStack.back();
+	}
+
+	FuncDecl* getFuncDecl(std::string name)
+	{
+		for(int i = funcTabStack.size(); i-- > 0;)
+		{
+			FuncMap_t* tab = funcTabStack[i];
+			if(tab->find(name) != tab->end())
+				return (*tab)[name];
+		}
+
+		return nullptr;
+	}
+
+	bool isDuplicateFuncDecl(std::string name)
+	{
+		return getFuncDecl(name) != nullptr;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	bool isBuiltinType(Expr* expr)
 	{
@@ -286,6 +335,8 @@ namespace Codegen
 		{
 			VarRef* ref = nullptr;
 			VarDecl* decl = nullptr;
+			FuncCall* fc = nullptr;
+
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
 				if(t != VarType::Array)
@@ -356,8 +407,22 @@ namespace Codegen
 			{
 				return getLlvmType(getSymDecl(ref->name));
 			}
+			else if((fc = dynamic_cast<FuncCall*>(expr)))
+			{
+				printf("FUNC CALL\n");
+				FuncDecl* decl = getFuncDecl(fc->name);
+				if(!decl)
+					error("(%s:%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, fc->name.c_str());
+
+				VarType vt;
+				if((vt = Parser::determineVarType(decl->type)) != VarType::UserDefined)
+					return getLlvmTypeOfBuiltin(vt);
+
+				return getType(decl->type)->first;
+			}
 		}
 
+		error("(%s:%s:%d) -> Internal check failed: failed to determine type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 		return nullptr;
 	}
 
@@ -368,13 +433,14 @@ namespace Codegen
 		BinOp* bo			= nullptr;
 		Number* num			= nullptr;
 		FuncDecl* fd		= nullptr;
+		FuncCall* fc		= nullptr;
 		MemberAccess* ma	= nullptr;
 
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
-			VarDecl* decl = getSymTab()[ref->name].second;
+			VarDecl* decl = getSymDecl(ref->name);
 			if(!decl)
-				error("Unknown variable '%s'", ref->name.c_str());
+				error("Unknown variable '%s', could not find declaration", ref->name.c_str());
 
 			// it's a decl. get the type, motherfucker.
 			return e->varType = Parser::determineVarType(decl->type);
@@ -400,6 +466,10 @@ namespace Codegen
 		else if((fd = dynamic_cast<FuncDecl*>(e)))
 		{
 			return Parser::determineVarType(fd->type);
+		}
+		else if((fc = dynamic_cast<FuncCall*>(e)))
+		{
+			return Parser::determineVarType(getFuncDecl(fc->name)->type);
 		}
 		else if((bo = dynamic_cast<BinOp*>(e)))
 		{
@@ -433,7 +503,7 @@ namespace Codegen
 		}
 	}
 
-	bool isIntegerType(Expr* e)		{ return determineVarType(e) <= VarType::Uint64; }
+	bool isIntegerType(Expr* e)		{ return getLlvmType(e)->isIntegerTy(); }
 	bool isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
 	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)

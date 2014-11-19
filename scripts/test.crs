@@ -1,21 +1,33 @@
 import Foundation
 
-struct s
+func factorial(x: Int64) -> Int64
 {
-	var a: Int32 = 100
-	func z()
+	if x == 1
 	{
-		putchar(self.a)
+		return 1
+	}
+	else
+	{
+		return x * factorial(x - 1)
 	}
 }
 
+func fib(x: Int64) -> Int64
+{
+	if x <= 1
+	{
+		return x
+	}
+	else
+	{
+		return fib(x - 1) + fib(x - 2)
+	}
+}
+
+
 func main()
 {
-	var y: s
-	y.a = 66
-
-	var x: s ptr = addrof y
-	x.z()
+	printInt64(fib(10))
 }
 
 ffi func printInt64(x: Int64)

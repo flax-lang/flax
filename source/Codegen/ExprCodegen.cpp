@@ -24,7 +24,8 @@ ValPtr_p Number::codeGen()
 
 ValPtr_p Return::codeGen()
 {
-	return ValPtr_p(mainBuilder.CreateRet(this->val->codeGen().first), 0);
+	auto ret = this->val->codeGen();
+	return ValPtr_p(mainBuilder.CreateRet(ret.first), ret.second);
 }
 
 ValPtr_p UnaryOp::codeGen()
@@ -70,6 +71,7 @@ ValPtr_p UnaryOp::codeGen()
 
 ValPtr_p BinOp::codeGen()
 {
+	assert(this->left && this->right);
 	this->right = autoCastType(this->left, this->right);
 
 	ValPtr_p valptr = this->left->codeGen();
@@ -125,7 +127,6 @@ ValPtr_p BinOp::codeGen()
 		}
 	}
 
-	// if both ops are integer values
 	if(isIntegerType(this->left) && isIntegerType(this->right))
 	{
 		switch(this->op)
