@@ -82,11 +82,14 @@ ValPtr_p BinOp::codeGen()
 
 	ValPtr_p valptr = this->left->codeGen();
 
-	llvm::Value* lhs = valptr.first;
-	llvm::Value* rhs = this->right->codeGen().first;
+	llvm::Value* lhs;
+	llvm::Value* rhs;
 
 	if(this->op == ArithmeticOp::Assign)
 	{
+		lhs = valptr.first;
+		rhs = this->right->codeGen().first;
+
 		VarRef* v = nullptr;
 		UnaryOp* uo = nullptr;
 		ArrayIndex* ai = nullptr;
@@ -132,6 +135,51 @@ ValPtr_p BinOp::codeGen()
 			error("Left-hand side of assignment must be assignable");
 		}
 	}
+	else if(this->op == ArithmeticOp::Cast)
+	{
+		lhs = valptr.first;
+
+		// right hand side probably got interpreted as a varref
+		VarRef* vr = nullptr;
+		assert(vr = dynamic_cast<VarRef*>(this->right));
+
+		llvm::Type* rtype;
+		VarType vt = Parser::determineVarType(vr->name);
+		if(vt != VarType::UserDefined)
+		{
+			rtype = getLlvmTypeOfBuiltin(vt);
+		}
+		else
+		{
+			TypePair_t* tp = getType(vr->name);
+			if(!tp)
+				error("Unknown type '%s'", vr->name.c_str());
+
+			rtype = tp->first;
+		}
+
+		assert(rtype);
+		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+			return ValPtr_p(mainBuilder.CreateIntCast(lhs, rtype, isSignedType(this->left) || isSignedType(this->right)), 0);
+
+		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
+			return ValPtr_p(mainBuilder.CreateFPCast(lhs, rtype), 0);
+
+		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
+			return ValPtr_p(mainBuilder.CreatePointerCast(lhs, rtype), 0);
+
+		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
+			return ValPtr_p(mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+
+		else
+			return ValPtr_p(mainBuilder.CreateBitCast(lhs, rtype), 0);
+	}
+
+
+
+
+	lhs = valptr.first;
+	rhs = this->right->codeGen().first;
 
 	if(isIntegerType(this->left) && isIntegerType(this->right))
 	{

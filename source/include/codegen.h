@@ -60,6 +60,7 @@ namespace Codegen
 	std::string getReadableType(llvm::Type* type);
 	bool isDuplicateSymbol(const std::string& name);
 	llvm::Value* getSymInst(const std::string& name);
+	llvm::Type* getLlvmTypeOfBuiltin(Ast::VarType t);
 	SymbolPair_t* getSymPair(const std::string& name);
 	Ast::VarDecl* getSymDecl(const std::string& name);
 	std::string mangleName(Ast::Struct* s, std::string orig);

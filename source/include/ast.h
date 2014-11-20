@@ -91,6 +91,7 @@ namespace Ast
 		LogicalAnd,
 		LogicalOr,
 
+		Cast,
 	};
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
