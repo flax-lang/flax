@@ -134,7 +134,7 @@ namespace Ast
 	struct VarRef : Expr
 	{
 		~VarRef() { }
-		VarRef(std::string& name) : name(name) { }
+		VarRef(std::string name) : name(name) { }
 		virtual ValPtr_p codeGen() override;
 
 		std::string name;
@@ -264,6 +264,7 @@ namespace Ast
 
 		bool didCreateType;
 		Func* ifunc;
+		llvm::Function* defifunc;
 		llvm::Function* initFunc;
 
 		std::map<std::string, int> nameMap;

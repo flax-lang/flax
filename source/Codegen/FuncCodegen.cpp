@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-#define OPTIMISE 0
+#define OPTIMISE 1
 
 ValPtr_p FuncCall::codeGen()
 {
@@ -30,10 +30,11 @@ ValPtr_p FuncCall::codeGen()
 
 	// we need to get the function declaration
 	FuncDecl* decl = getFuncDecl(this->name);
-	assert(decl);
-
-	for(int i = 0; i < this->params.size(); i++)
-		this->params[i] = autoCastType(decl->params[i], this->params[i]);
+	if(decl)
+	{
+		for(int i = 0; i < this->params.size(); i++)
+			this->params[i] = autoCastType(decl->params[i], this->params[i]);
+	}
 
 	for(Expr* e : this->params)
 	{
@@ -129,7 +130,7 @@ ValPtr_p Func::codeGen()
 	llvm::Value* lastVal = this->closure->codeGen().first;
 
 	// check if we're not returning void
-	if(this->decl->varType != VarType::Void)
+	if(determineVarType(this) != VarType::Void)
 	{
 		if(this->closure->statements.size() == 0)
 			error("Return value required for function '%s'", this->decl->name.c_str());

@@ -159,6 +159,9 @@ ValPtr_p BinOp::codeGen()
 		}
 
 		assert(rtype);
+		if(lhs->getType() == rtype)
+			return ValPtr_p(lhs, 0);
+
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
 			return ValPtr_p(mainBuilder.CreateIntCast(lhs, rtype, isSignedType(this->left) || isSignedType(this->right)), 0);
 
@@ -181,7 +184,7 @@ ValPtr_p BinOp::codeGen()
 	lhs = valptr.first;
 	rhs = this->right->codeGen().first;
 
-	if(isIntegerType(this->left) && isIntegerType(this->right))
+	if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
 		switch(this->op)
 		{

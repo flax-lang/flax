@@ -77,10 +77,7 @@ ValPtr_p Struct::codeGen()
 	llvm::StructType* str = llvm::cast<llvm::StructType>(getType(this->name)->first);
 
 	// generate initialiser
-
-	if(!this->ifunc)
 	{
-		// create one
 		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false);
 		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
 
@@ -120,11 +117,30 @@ ValPtr_p Struct::codeGen()
 		mainBuilder.CreateRet(self);
 
 		llvm::verifyFunction(*func);
-		this->initFunc = func;
+		this->defifunc = func;
+	}
+
+
+
+	if(this->ifunc)
+	{
+		// this is a lot of shimmying to fight with ourselves
+		this->ifunc->decl->name = mangleName(this, this->ifunc->decl->name);
+		this->ifunc->decl->type = this->name + "Ptr";
+		this->ifunc->decl->varType = VarType::UserDefined;
+		this->ifunc->decl->codeGen();
+
+		std::deque<Expr*> cpphaspoorstandardconstructorslikesinglelengthdeques;
+		cpphaspoorstandardconstructorslikesinglelengthdeques.push_back(new VarRef("self"));
+
+		this->ifunc->closure->statements.push_back(new FuncCall(this->defifunc->getName(), cpphaspoorstandardconstructorslikesinglelengthdeques));
+
+		this->ifunc->closure->statements.push_back(new Return(new VarRef("self")));
+		this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
 	}
 	else
 	{
-		this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
+		this->initFunc = this->defifunc;
 	}
 
 	return ValPtr_p(nullptr, nullptr);
@@ -132,7 +148,6 @@ ValPtr_p Struct::codeGen()
 
 void Struct::createType()
 {
-
 	if(isDuplicateType(this->name))
 		error("Redefinition of type '%s'", this->name.c_str());
 
@@ -151,10 +166,7 @@ void Struct::createType()
 	for(Func* func : this->funcs)
 	{
 		if(func->decl->name == "init")
-		{
-			// todo: verify the function
 			this->ifunc = func;
-		}
 
 		std::vector<llvm::Type*> args;
 
@@ -165,7 +177,6 @@ void Struct::createType()
 
 		for(VarDecl* v : func->decl->params)
 			args.push_back(getLlvmType(v));
-
 
 		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 	}
@@ -264,7 +275,7 @@ ValPtr_p MemberAccess::codeGen()
 			Func* callee = nullptr;
 			for(Func* f : str->funcs)
 			{
-				// when comparing, we need to unmangle the first bit that is the implicit self pointer
+				// when comparing, we need to remangle the first bit that is the implicit self pointer
 				if(f->decl->name == mangleName(str, fc->name))
 				{
 					callee = f;
@@ -274,7 +285,6 @@ ValPtr_p MemberAccess::codeGen()
 
 			if(!callee)
 				error("No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
-
 
 			// do some casting
 			for(int i = 0; i < fc->params.size(); i++)
@@ -288,21 +298,19 @@ ValPtr_p MemberAccess::codeGen()
 			{
 				args.push_back(e->codeGen().first);
 				if(args.back() == nullptr)
-					return ValPtr_p(nullptr, nullptr);
+					return ValPtr_p(0, 0);
 			}
 
-			return ValPtr_p(mainBuilder.CreateCall(val, args), nullptr);
+			return ValPtr_p(mainBuilder.CreateCall(val, args), 0);
 		}
 		else if(var)
 		{
 			return ValPtr_p(val, ptr);
 		}
 	}
-	else
-	{
-		error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-	}
 
+
+	error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	return ValPtr_p(0, 0);
 }
 

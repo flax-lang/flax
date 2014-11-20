@@ -319,6 +319,9 @@ namespace Parser
 					return parseParenthesised(tokens);
 
 				case TType::Identifier:
+					if(tok->text == "init")
+						return parseFunc(tokens);
+
 					return parseIdExpr(tokens);
 
 				case TType::Integer:
@@ -364,7 +367,9 @@ namespace Parser
 
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens)
 	{
-		assert(eat(tokens)->type == TType::Func);
+		if(tokens.front()->text != "init")
+			assert(eat(tokens)->type == TType::Func);
+
 		if(tokens.front()->type != TType::Identifier)
 			error("Expected identifier, but got token of type %d", tokens.front()->type);
 
@@ -657,6 +662,12 @@ namespace Parser
 				error("Expected ']'");
 
 			return new ArrayIndex(new VarRef(id), within);
+		}
+		else if(tokens.front()->type == TType::Ptr)
+		{
+			eat(tokens);
+			id += "Ptr";
+			return new VarRef(id);
 		}
 		else if(tokens.front()->type != TType::LParen)
 		{
