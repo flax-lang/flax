@@ -5,10 +5,15 @@ func main()
 {
 	var a: Bool = true
 	var b: Bool = true
+	var c: Bool = true
+	var d: Bool = true
 
 	var x: Bool
-	x = a || b
+	x = a && b && c && d
+
+	printBool(x)
 }
 
+ffi func printBool(x: Bool)
 ffi func printInt64(x: Int64)
 ffi func putchar(x: Int32) -> Int32

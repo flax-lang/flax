@@ -662,6 +662,11 @@ extern "C" void printInt64(uint64_t i)
 	printf("%lld", i);
 }
 
+extern "C" void printBool(bool i)
+{
+	printf("%s", i ? "true" : "false");
+}
+
 #endif
 
 
