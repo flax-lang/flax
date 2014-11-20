@@ -11,9 +11,9 @@ struct String
 		self.data = malloc(64) as Int8 ptr
 	}
 
-	func length() -> Int64
+	func length()
 	{
-		return self.len
+		putchar(97)
 	}
 }
 
