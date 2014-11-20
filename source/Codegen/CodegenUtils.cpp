@@ -19,7 +19,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 0
+#define RUN 1
 #define DUMP 1
 #define COMPILE 1
 
