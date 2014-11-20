@@ -109,8 +109,8 @@ ValPtr_p Struct::codeGen()
 			if(f == this->ifunc)
 			{
 				f->decl->name = mangleName(this, f->decl->name);
-				f->decl->type = this->name + "Ptr";
-				f->decl->varType = VarType::UserDefined;
+				// f->decl->type = this->name + "Ptr";
+				// f->decl->varType = VarType::UserDefined;
 				val = f->decl->codeGen().first;
 
 
@@ -129,9 +129,8 @@ ValPtr_p Struct::codeGen()
 				f->codeGen();
 			}
 
-			printf("[%s, %s]\n", getReadableType(val->getType()).c_str(), getReadableType(ptr->getType()).c_str());
-			mainBuilder.CreateStore(val, ptr);
 			mainBuilder.SetInsertPoint(ob);
+			mainBuilder.CreateStore(val, ptr);
 		}
 
 		mainBuilder.CreateRet(self);
@@ -186,7 +185,12 @@ void Struct::createType()
 	for(Func* func : this->funcs)
 	{
 		if(func->decl->name == "init")
+		{
 			this->ifunc = func;
+
+			func->decl->type = this->name + "Ptr";
+			func->decl->varType = VarType::UserDefined;
+		}
 
 		std::vector<llvm::Type*> args;
 
