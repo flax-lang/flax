@@ -18,6 +18,7 @@
 #include "parser.h"
 
 #include "llvm/IR/Value.h"
+#include "llvm/IR/Instructions.h"
 
 namespace Ast
 {
@@ -81,7 +82,15 @@ namespace Ast
 		Minus,
 
 		AddrOf,
-		Deref
+		Deref,
+
+		BitwiseAnd,
+		BitwiseOr,
+		BitwiseXor,
+
+		LogicalAnd,
+		LogicalOr,
+
 	};
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
@@ -152,6 +161,7 @@ namespace Ast
 		Expr* right;
 
 		ArithmeticOp op;
+		llvm::PHINode* phi;
 	};
 
 	struct FuncDecl : Expr

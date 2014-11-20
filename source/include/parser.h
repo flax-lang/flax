@@ -72,13 +72,16 @@ namespace Parser
 		Semicolon,
 		Ampersand,
 		Percent,			// 47
+		Pipe,
+		LogicalOr,
+		LogicalAnd,
 
 		// compound symbols
 		Arrow,
 		EqualsTo,
 		NotEquals,
 		GreaterEquals,
-		LessThanEquals,		// 51
+		LessThanEquals,		// 54
 		ShiftLeft,
 		ShiftRight,
 		DoublePlus,			// doubleplusgood

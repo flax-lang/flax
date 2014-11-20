@@ -152,20 +152,73 @@ ValPtr_p BinOp::codeGen()
 				else 														return ValPtr_p(mainBuilder.CreateLShr(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:										return ValPtr_p(mainBuilder.CreateICmpEQ(lhs, rhs, "cmptmp"), 0);
-			case ArithmeticOp::CmpNEq:										return ValPtr_p(mainBuilder.CreateICmpNE(lhs, rhs, "cmptmp"), 0);
+			case ArithmeticOp::CmpEq:										return ValPtr_p(mainBuilder.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:										return ValPtr_p(mainBuilder.CreateICmpNE(lhs, rhs), 0);
 			case ArithmeticOp::CmpLT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLT(lhs, rhs, "cmptmp"), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpULT(lhs, rhs, "cmptmp"), 0);
+				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLT(lhs, rhs), 0);
+				else 														return ValPtr_p(mainBuilder.CreateICmpULT(lhs, rhs), 0);
 			case ArithmeticOp::CmpGT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGT(lhs, rhs, "cmptmp"), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpUGT(lhs, rhs, "cmptmp"), 0);
+				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGT(lhs, rhs), 0);
+				else 														return ValPtr_p(mainBuilder.CreateICmpUGT(lhs, rhs), 0);
 			case ArithmeticOp::CmpLEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLE(lhs, rhs, "cmptmp"), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpULE(lhs, rhs, "cmptmp"), 0);
+				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLE(lhs, rhs), 0);
+				else 														return ValPtr_p(mainBuilder.CreateICmpULE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGE(lhs, rhs, "cmptmp"), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpUGE(lhs, rhs, "cmptmp"), 0);
+				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGE(lhs, rhs), 0);
+				else 														return ValPtr_p(mainBuilder.CreateICmpUGE(lhs, rhs), 0);
+
+
+
+			case ArithmeticOp::BitwiseAnd:									return ValPtr_p(mainBuilder.CreateAnd(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseOr:									return ValPtr_p(mainBuilder.CreateOr(lhs, rhs), 0);
+
+
+			case ArithmeticOp::LogicalOr:
+			case ArithmeticOp::LogicalAnd:
+			{
+				int theOp = this->op == ArithmeticOp::LogicalOr ? 0 : 1;
+				llvm::Value* trueval = llvm::ConstantInt::get(getContext(), llvm::APInt(1, 1, true));
+				llvm::Value* falseval = llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
+
+
+				llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
+				llvm::Value* res = mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(getContext()));
+
+				llvm::BasicBlock* lb = llvm::BasicBlock::Create(getContext(), "leftbl", func);
+				llvm::BasicBlock* rb = llvm::BasicBlock::Create(getContext(), "rightbl");
+				llvm::BasicBlock* mb = llvm::BasicBlock::Create(getContext(), "mergebl");
+				mainBuilder.CreateCondBr(res, lb, rb);
+
+
+				mainBuilder.SetInsertPoint(mb);
+				// this kinda works recursively
+				if(!this->phi)
+					this->phi = mainBuilder.CreatePHI(llvm::Type::getInt1Ty(getContext()), 2);
+
+
+				// if this is a logical-or
+				if(theOp == 0)
+				{
+					// do the true case
+					mainBuilder.SetInsertPoint(lb);
+					this->phi->addIncoming(trueval, lb);
+
+					// if it succeeded (aka res is true), go to the merge block.
+					mainBuilder.CreateBr(mb);
+
+
+
+					// do the false case
+					mainBuilder.SetInsertPoint(rb);
+
+					// do another compare.
+					llvm::Value* rres = mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(getContext()));
+					mainBuilder.CreateCondBr(rres, lb, rb);
+				}
+
+				return ValPtr_p(falseval, 0);
+			}
+
 
 			default:
 				// should not be reached
@@ -175,6 +228,7 @@ ValPtr_p BinOp::codeGen()
 	}
 	else if(isBuiltinType(this->left) && isBuiltinType(this->right))
 	{
+		// then they're floats.
 		switch(this->op)
 		{
 			case ArithmeticOp::Add:			return ValPtr_p(mainBuilder.CreateFAdd(lhs, rhs), 0);
