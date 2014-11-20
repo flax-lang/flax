@@ -121,6 +121,9 @@ namespace Parser
 	{
 		switch(tok->type)
 		{
+			case TType::As:
+				return 200;
+
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
 				return 100;
@@ -389,12 +392,8 @@ namespace Parser
 			if(eat(tokens)->type != TType::Colon)
 				error("Expected ':' followed by a type");
 
-			Token* tok_type;
-			if((tok_type = eat(tokens))->type != TType::Identifier)
-				error("Expected type after parameter");
-
-			v->type = tok_type->text;
-			v->varType = determineVarType(tok_type->text);
+			v->type = parseType(tokens);
+			v->varType = determineVarType(v->type);
 
 			if(!nameCheck[v->name])
 			{
@@ -419,10 +418,7 @@ namespace Parser
 		if(checkHasMore(tokens) && tokens.front()->type == TType::Arrow)
 		{
 			eat(tokens);
-			if((tok_type = eat(tokens))->type != TType::Identifier)
-				error("Expected type after parameter");
-
-			ret = tok_type->text;
+			ret = parseType(tokens);
 		}
 		else
 		{
@@ -630,6 +626,7 @@ namespace Parser
 				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;	break;
 				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;	break;
 				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;	break;
+				case TType::As:				op = ArithmeticOp::Cast;		break;
 				default:					error("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
