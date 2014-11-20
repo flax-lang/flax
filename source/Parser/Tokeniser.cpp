@@ -152,42 +152,6 @@ namespace Parser
 			tok.type = TType::ShiftRightEq;
 			read = 3;
 		}
-		else if(!isalnum(stream[0]))
-		{
-			// check the first char
-			switch(stream[0])
-			{
-				// for single-char things
-				case '\n':	tok.type = TType::NewLine;	pos.line++;	break;
-				case '{':	tok.type = TType::LBrace;				break;
-				case '}':	tok.type = TType::RBrace;				break;
-				case '(':	tok.type = TType::LParen;				break;
-				case ')':	tok.type = TType::RParen;				break;
-				case '[':	tok.type = TType::LSquare;				break;
-				case ']':	tok.type = TType::RSquare;				break;
-				case '<':	tok.type = TType::LAngle;				break;
-				case '>':	tok.type = TType::RAngle;				break;
-				case '+':	tok.type = TType::Plus;					break;
-				case '-':	tok.type = TType::Minus;				break;
-				case '*':	tok.type = TType::Asterisk;				break;
-				case '/':	tok.type = TType::Divide;				break;
-				case '\'':	tok.type = TType::SQuote;				break;
-				case '"':	tok.type = TType::DQuote;				break;
-				case '.':	tok.type = TType::Period;				break;
-				case ',':	tok.type = TType::Comma;				break;
-				case ':':	tok.type = TType::Colon;				break;
-				case '=':	tok.type = TType::Equal;				break;
-				case '?':	tok.type = TType::Question;				break;
-				case '!':	tok.type = TType::Exclamation;			break;
-				case ';':	tok.type = TType::Semicolon;			break;
-				case '&':	tok.type = TType::Ampersand;			break;
-				case '%':	tok.type = TType::Percent;				break;
-				case '|':	tok.type = TType::Pipe;					break;
-			}
-
-			tok.text = stream[0];
-			read = 1;
-		}
 		else if(isnumber(stream[0]))
 		{
 			// todo: handle hex
@@ -243,7 +207,7 @@ namespace Parser
 			read = num.length();
 			tok.text = num;
 		}
-		else if(isalpha(stream[0]))
+		else if(isalpha(stream[0]) || stream[0] == '_')
 		{
 			std::string id;
 
@@ -253,7 +217,7 @@ namespace Parser
 
 
 			int tmp = 0;
-			while(isalnum(tmp = str.get()))
+			while(tmp = str.get(), (isalnum(tmp) || tmp == '_'))
 				id += (char) tmp;
 
 
@@ -262,7 +226,6 @@ namespace Parser
 
 
 			// check for keywords
-			// TODO: there has to be a better way
 			if(id == "class")			tok.type = TType::Class;
 			else if(id == "func")		tok.type = TType::Func;
 			else if(id == "import")		tok.type = TType::Import;
@@ -291,6 +254,42 @@ namespace Parser
 			else if(id == "internal")	tok.type = TType::Internal;
 
 			else						tok.type = TType::Identifier;
+		}
+		else if(!isalnum(stream[0]))
+		{
+			// check the first char
+			switch(stream[0])
+			{
+				// for single-char things
+				case '\n':	tok.type = TType::NewLine;	pos.line++;	break;
+				case '{':	tok.type = TType::LBrace;				break;
+				case '}':	tok.type = TType::RBrace;				break;
+				case '(':	tok.type = TType::LParen;				break;
+				case ')':	tok.type = TType::RParen;				break;
+				case '[':	tok.type = TType::LSquare;				break;
+				case ']':	tok.type = TType::RSquare;				break;
+				case '<':	tok.type = TType::LAngle;				break;
+				case '>':	tok.type = TType::RAngle;				break;
+				case '+':	tok.type = TType::Plus;					break;
+				case '-':	tok.type = TType::Minus;				break;
+				case '*':	tok.type = TType::Asterisk;				break;
+				case '/':	tok.type = TType::Divide;				break;
+				case '\'':	tok.type = TType::SQuote;				break;
+				case '"':	tok.type = TType::DQuote;				break;
+				case '.':	tok.type = TType::Period;				break;
+				case ',':	tok.type = TType::Comma;				break;
+				case ':':	tok.type = TType::Colon;				break;
+				case '=':	tok.type = TType::Equal;				break;
+				case '?':	tok.type = TType::Question;				break;
+				case '!':	tok.type = TType::Exclamation;			break;
+				case ';':	tok.type = TType::Semicolon;			break;
+				case '&':	tok.type = TType::Ampersand;			break;
+				case '%':	tok.type = TType::Percent;				break;
+				case '|':	tok.type = TType::Pipe;					break;
+			}
+
+			tok.text = stream[0];
+			read = 1;
 		}
 		else
 		{

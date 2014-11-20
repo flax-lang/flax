@@ -5,19 +5,23 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include <utility>
 #include <cfloat>
+#include <utility>
+#include <fstream>
 #include <stdint.h>
 #include <typeinfo>
 #include <iostream>
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
+#include "llvm/Bitcode/ReaderWriter.h"
 
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 1
+#define RUN 0
+#define DUMP 0
+#define COMPILE 1
 
 void error(const char* msg, ...)
 {
@@ -30,6 +34,8 @@ void error(const char* msg, ...)
 	fprintf(stderr, "Error: %s\n\n", alloc);
 
 	va_end(ap);
+
+	getchar();
 	exit(1);
 }
 
@@ -87,10 +93,22 @@ namespace Codegen
 		root->codeGen();
 		popScope();
 
-		mainModule->dump();
+
+		if(DUMP)
+		{
+			mainModule->dump();
+		}
 
 
+		if(COMPILE)
+		{
+			std::string e;
 
+			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+
+			llvm::raw_fd_ostream rso("test.bc", e, of);
+			llvm::WriteBitcodeToFile(mainModule, rso);
+		}
 
 		if(RUN)
 		{
@@ -106,6 +124,7 @@ namespace Codegen
 
 			printf("\n\n");
 		}
+
 	}
 
 
@@ -336,6 +355,7 @@ namespace Codegen
 			VarRef* ref = nullptr;
 			VarDecl* decl = nullptr;
 			FuncCall* fc = nullptr;
+			FuncDecl* fd = nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
@@ -409,16 +429,39 @@ namespace Codegen
 			}
 			else if((fc = dynamic_cast<FuncCall*>(expr)))
 			{
-				printf("FUNC CALL\n");
 				FuncDecl* decl = getFuncDecl(fc->name);
 				if(!decl)
 					error("(%s:%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, fc->name.c_str());
 
+				return getLlvmType(decl);
+			}
+			else if((fd = dynamic_cast<FuncDecl*>(expr)))
+			{
 				VarType vt;
-				if((vt = Parser::determineVarType(decl->type)) != VarType::UserDefined)
+				if((vt = Parser::determineVarType(fd->type)) != VarType::UserDefined)
 					return getLlvmTypeOfBuiltin(vt);
 
-				return getType(decl->type)->first;
+
+				TypePair_t* type = getType(fd->type);
+				if(!type)
+				{
+					// check if it ends with pointer, and if we have a type that's un-pointered
+					std::string sptr = std::string("Ptr");
+
+					if(expr->type.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), expr->type.rbegin()))
+					{
+						std::string notptr = expr->type.substr(0, expr->type.length() - 3);
+						TypePair_t* notptrtype = getType(notptr);
+
+						if(notptrtype)
+							return notptrtype->first->getPointerTo();
+					}
+
+					error("Unknown type '%s'", expr->type.c_str());
+					return nullptr;
+				}
+
+				return type->first;
 			}
 		}
 
@@ -654,17 +697,17 @@ namespace Codegen
 
 extern "C" void printInt32(uint32_t i)
 {
-	printf("%d", i);
+	printf("%d\n", i);
 }
 
 extern "C" void printInt64(uint64_t i)
 {
-	printf("%lld", i);
+	printf("%lld\n", i);
 }
 
 extern "C" void printBool(bool i)
 {
-	printf("%s", i ? "true" : "false");
+	printf("%s\n", i ? "true" : "false");
 }
 
 #endif

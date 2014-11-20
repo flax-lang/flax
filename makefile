@@ -20,10 +20,13 @@ clean:
 build: scripts/corec
 
 scripts/corec: $(CXXOBJ)
-	@$(CXX) `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core jit native` $(CXXFLAGS) -o $@ $(CXXOBJ)
+	@$(CXX) `$(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core jit native bitwriter` $(CXXFLAGS) -o $@ $(CXXOBJ)
 
 %.o: %.cpp
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 run: scripts/corec
 	@scripts/corec scripts/test.crs
+
+compileScript: run
+	@$(CXX) -o test test.bc
