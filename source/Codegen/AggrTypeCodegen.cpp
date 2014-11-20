@@ -76,14 +76,14 @@ ValPtr_p Struct::codeGen()
 	assert(this->didCreateType);
 	llvm::StructType* str = llvm::cast<llvm::StructType>(getType(this->name)->first);
 
+
+
 	// generate initialiser
 	{
-		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false);
-		llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
+		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
+
 
 		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
-
-		llvm::BasicBlock* old = mainBuilder.GetInsertBlock();
 		mainBuilder.SetInsertPoint(block);
 
 		// create the local instance of reference to self
@@ -93,8 +93,8 @@ ValPtr_p Struct::codeGen()
 		{
 			int i = this->nameMap[var->name];
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
-			var->initVal = autoCastType(var, var->initVal);
 
+			var->initVal = autoCastType(var, var->initVal);
 			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen().first : getDefaultValue(var), ptr);
 		}
 
@@ -102,15 +102,35 @@ ValPtr_p Struct::codeGen()
 		{
 			int i = this->nameMap[f->decl->name];
 			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
-
-			// mangle
-			f->decl->name = mangleName(this, f->decl->name);
-			llvm::Value* val = f->decl->codeGen().first;
-
-			mainBuilder.CreateStore(val, ptr);
-
 			llvm::BasicBlock* ob = mainBuilder.GetInsertBlock();
-			f->codeGen();
+
+
+			llvm::Value* val = nullptr;
+			if(f == this->ifunc)
+			{
+				f->decl->name = mangleName(this, f->decl->name);
+				f->decl->type = this->name + "Ptr";
+				f->decl->varType = VarType::UserDefined;
+				val = f->decl->codeGen().first;
+
+
+				std::deque<Expr*> fuckingshit;
+				fuckingshit.push_back(new VarRef("self"));
+
+				f->closure->statements.push_back(new FuncCall(f->decl->name, fuckingshit));
+				f->closure->statements.push_back(new Return(new VarRef("self")));
+				this->initFunc = llvm::cast<llvm::Function>(f->codeGen().first);
+			}
+			else
+			{
+				// mangle
+				f->decl->name = mangleName(this, f->decl->name);
+				val = f->decl->codeGen().first;
+				f->codeGen();
+			}
+
+			printf("[%s, %s]\n", getReadableType(val->getType()).c_str(), getReadableType(ptr->getType()).c_str());
+			mainBuilder.CreateStore(val, ptr);
 			mainBuilder.SetInsertPoint(ob);
 		}
 
@@ -124,19 +144,19 @@ ValPtr_p Struct::codeGen()
 
 	if(this->ifunc)
 	{
-		// this is a lot of shimmying to fight with ourselves
-		this->ifunc->decl->name = mangleName(this, this->ifunc->decl->name);
-		this->ifunc->decl->type = this->name + "Ptr";
-		this->ifunc->decl->varType = VarType::UserDefined;
-		this->ifunc->decl->codeGen();
+		// // this is a lot of shimmying to fight with ourselves
+		// this->ifunc->decl->name = mangleName(this, this->ifunc->decl->name);
+		// this->ifunc->decl->type = this->name + "Ptr";
+		// this->ifunc->decl->varType = VarType::UserDefined;
+		// this->ifunc->decl->codeGen();
 
-		std::deque<Expr*> cpphaspoorstandardconstructorslikesinglelengthdeques;
-		cpphaspoorstandardconstructorslikesinglelengthdeques.push_back(new VarRef("self"));
+		// std::deque<Expr*> fuckingshit;
+		// fuckingshit.push_back(new VarRef("self"));
 
-		this->ifunc->closure->statements.push_back(new FuncCall(this->defifunc->getName(), cpphaspoorstandardconstructorslikesinglelengthdeques));
+		// this->ifunc->closure->statements.push_back(new FuncCall(this->defifunc->getName(), fuckingshit));
 
-		this->ifunc->closure->statements.push_back(new Return(new VarRef("self")));
-		this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
+		// this->ifunc->closure->statements.push_back(new Return(new VarRef("self")));
+		// this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
 	}
 	else
 	{

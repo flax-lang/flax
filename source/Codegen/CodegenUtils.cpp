@@ -20,7 +20,7 @@ using namespace Ast;
 using namespace Codegen;
 
 #define RUN 0
-#define DUMP 0
+#define DUMP 1
 #define COMPILE 1
 
 void error(const char* msg, ...)
@@ -356,6 +356,7 @@ namespace Codegen
 			VarDecl* decl = nullptr;
 			FuncCall* fc = nullptr;
 			FuncDecl* fd = nullptr;
+			Func* f = nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
@@ -434,6 +435,10 @@ namespace Codegen
 					error("(%s:%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(decl);
+			}
+			else if((f = dynamic_cast<Func*>(expr)))
+			{
+				return getLlvmType(f->decl);
 			}
 			else if((fd = dynamic_cast<FuncDecl*>(expr)))
 			{
