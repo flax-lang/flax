@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-#define OPTIMISE 0
+#define OPTIMISE 1
 
 ValPtr_p FuncCall::codeGen()
 {

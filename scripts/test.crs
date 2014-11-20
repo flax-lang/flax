@@ -2,18 +2,18 @@ import Foundation
 
 struct String
 {
+	var len: Int64 = 491
 	var data: Int8 ptr
-	var len: Int64
 
-	init()
-	{
-		self.len = 64;
-		self.data = malloc(64) as Int8 ptr
-	}
+	// init()
+	// {
+	// 	self.len = 64;
+	// 	self.data = malloc(64) as Int8 ptr
+	// }
 
-	func length()
+	func length() -> Int64
 	{
-		putchar(97)
+		return self.len
 	}
 }
 
@@ -22,7 +22,7 @@ struct String
 func main()
 {
 	var s: String
-	s.length()
+	printInt64(s.length())
 }
 
 ffi func printBool(x: Bool)

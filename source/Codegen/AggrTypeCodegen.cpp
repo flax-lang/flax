@@ -109,16 +109,17 @@ ValPtr_p Struct::codeGen()
 			if(f == this->ifunc)
 			{
 				f->decl->name = mangleName(this, f->decl->name);
-				// f->decl->type = this->name + "Ptr";
-				// f->decl->varType = VarType::UserDefined;
 				val = f->decl->codeGen().first;
-
 
 				std::deque<Expr*> fuckingshit;
 				fuckingshit.push_back(new VarRef("self"));
 
-				f->closure->statements.push_back(new FuncCall(f->decl->name, fuckingshit));
-				f->closure->statements.push_back(new Return(new VarRef("self")));
+				VarRef* svr = new VarRef("self");
+				FuncCall* fc = new FuncCall("__automatic_init#" + this->name, fuckingshit);
+
+				BinOp* assign = new BinOp(svr, ArithmeticOp::Assign, fc);
+				f->closure->statements.push_front(assign);
+				f->closure->statements.push_back(new Return(svr));
 				this->initFunc = llvm::cast<llvm::Function>(f->codeGen().first);
 			}
 			else
@@ -141,23 +142,7 @@ ValPtr_p Struct::codeGen()
 
 
 
-	if(this->ifunc)
-	{
-		// // this is a lot of shimmying to fight with ourselves
-		// this->ifunc->decl->name = mangleName(this, this->ifunc->decl->name);
-		// this->ifunc->decl->type = this->name + "Ptr";
-		// this->ifunc->decl->varType = VarType::UserDefined;
-		// this->ifunc->decl->codeGen();
-
-		// std::deque<Expr*> fuckingshit;
-		// fuckingshit.push_back(new VarRef("self"));
-
-		// this->ifunc->closure->statements.push_back(new FuncCall(this->defifunc->getName(), fuckingshit));
-
-		// this->ifunc->closure->statements.push_back(new Return(new VarRef("self")));
-		// this->initFunc = llvm::cast<llvm::Function>(this->ifunc->codeGen().first);
-	}
-	else
+	if(!this->ifunc)
 	{
 		this->initFunc = this->defifunc;
 	}
