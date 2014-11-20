@@ -80,7 +80,7 @@ namespace Parser
 		{
 			tok.text = "//";
 
-			std::stringstream ss;
+			std::stringstream ss(stream);
 			std::getline(ss, tok.text, '\n');
 			read = tok.text.length();
 			pos.line++;
