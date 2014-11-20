@@ -56,15 +56,7 @@ ValPtr_p UnaryOp::codeGen()
 
 		case ArithmeticOp::AddrOf:
 		{
-			VarRef* vr = nullptr;
-			if((vr = dynamic_cast<VarRef*>(this->expr)))
-			{
-				return ValPtr_p(getSymInst(vr->name), 0);
-			}
-			else
-			{
-				error("Cannot take the address of that");
-			}
+			return ValPtr_p(this->expr->codeGen().second, 0);
 		}
 
 		default:
@@ -103,7 +95,7 @@ ValPtr_p BinOp::codeGen()
 				error("Unknown identifier (var) '%s'", v->name.c_str());
 
 			if(lhs->getType() != rhs->getType())
-				error("Cannot assign different types");
+				error("Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
 
 			mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
@@ -117,16 +109,20 @@ ValPtr_p BinOp::codeGen()
 
 			llvm::Value* ptr = valptr.second;
 			assert(ptr);
+			assert(rhs);
 
 			// make sure the left side is a pointer
 			if(!ptr->getType()->isPointerTy())
 				error("Expression (type '%s' = '%s') is not assignable.", getReadableType(ptr->getType()).c_str(), getReadableType(rhs->getType()).c_str());
 
 			// redo the number casting
-			if(rhs->getType()->isIntegerTy())
+			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
 				rhs = mainBuilder.CreateIntCast(rhs, ptr->getType()->getPointerElementType(), false);
 
-			// dereference it
+			else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
+				rhs = mainBuilder.CreateIntToPtr(rhs, lhs->getType());
+
+			// assign it
 			mainBuilder.CreateStore(rhs, ptr);
 			return ValPtr_p(rhs, ptr);
 		}
@@ -159,6 +155,7 @@ ValPtr_p BinOp::codeGen()
 		}
 
 		assert(rtype);
+
 		if(lhs->getType() == rtype)
 			return ValPtr_p(lhs, 0);
 
@@ -173,6 +170,9 @@ ValPtr_p BinOp::codeGen()
 
 		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
 			return ValPtr_p(mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+
+		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
+			return ValPtr_p(mainBuilder.CreateIntToPtr(lhs, rtype), 0);
 
 		else
 			return ValPtr_p(mainBuilder.CreateBitCast(lhs, rtype), 0);
