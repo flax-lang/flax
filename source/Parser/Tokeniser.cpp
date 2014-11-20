@@ -58,6 +58,18 @@ namespace Parser
 			tok.type = TType::NotEquals;
 			read = 2;
 		}
+		else if(stream.find("||") == 0)
+		{
+			tok.text = "||";
+			tok.type = TType::LogicalOr;
+			read = 2;
+		}
+		else if(stream.find("&&") == 0)
+		{
+			tok.text = "&&";
+			tok.type = TType::LogicalAnd;
+			read = 2;
+		}
 		else if(stream.find("->") == 0)
 		{
 			tok.text = "->";
@@ -79,6 +91,7 @@ namespace Parser
 		{
 			tok.text = "<<";
 			tok.type = TType::ShiftLeft;
+			read = 2;
 		}
 		else if(stream.find(">>") == 0)
 		{
@@ -89,46 +102,55 @@ namespace Parser
 		{
 			tok.text = "++";
 			tok.type = TType::DoublePlus;
+			read = 2;
 		}
 		else if(stream.find("--") == 0)
 		{
 			tok.text = "--";
 			tok.type = TType::DoubleMinus;
+			read = 2;
 		}
 		else if(stream.find("+=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::PlusEq;
+			read = 2;
 		}
 		else if(stream.find("-=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MinusEq;
+			read = 2;
 		}
 		else if(stream.find("*=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MultiplyEq;
+			read = 2;
 		}
 		else if(stream.find("/=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::DivideEq;
+			read = 2;
 		}
 		else if(stream.find("%=") == 0)
 		{
 			tok.text = "%=";
 			tok.type = TType::ModEq;
+			read = 2;
 		}
 		else if(stream.find("<<=") == 0)
 		{
 			tok.text = "<<=";
 			tok.type = TType::ShiftLeftEq;
+			read = 3;
 		}
 		else if(stream.find(">>=") == 0)
 		{
 			tok.text = ">>=";
 			tok.type = TType::ShiftRightEq;
+			read = 3;
 		}
 		else if(!isalnum(stream[0]))
 		{
@@ -160,6 +182,7 @@ namespace Parser
 				case ';':	tok.type = TType::Semicolon;			break;
 				case '&':	tok.type = TType::Ampersand;			break;
 				case '%':	tok.type = TType::Percent;				break;
+				case '|':	tok.type = TType::Pipe;					break;
 			}
 
 			tok.text = stream[0];

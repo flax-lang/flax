@@ -5,6 +5,9 @@ func main()
 {
 	var a: Bool = true
 	var b: Bool = true
+
+	var x: Bool
+	x = a || b
 }
 
 ffi func printInt64(x: Int64)

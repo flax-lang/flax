@@ -123,33 +123,45 @@ namespace Parser
 		{
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
-				return 50;
+				return 100;
 
 			case TType::Asterisk:
 			case TType::Divide:
 			case TType::Percent:
-				return 40;
+				return 90;
 
 			case TType::Plus:
 			case TType::Minus:
-				return 20;
+				return 80;
 
 			case TType::ShiftLeft:
 			case TType::ShiftRight:
-				return 10;
+				return 70;
 
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
-				return 5;
+				return 60;
 
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 4;
+				return 50;
+
+			case TType::Ampersand:
+				return 30;
+
+			case TType::Pipe:
+				return 25;
+
+			case TType::LogicalAnd:
+				return 20;
+
+			case TType::LogicalOr:
+				return 15;
 
 			case TType::Equal:
-				return 1;
+				return 10;
 
 			default:
 				return -1;
@@ -613,6 +625,11 @@ namespace Parser
 				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;		break;
 				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;		break;
 				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;		break;
+
+				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;	break;
+				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;	break;
+				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;	break;
+				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;	break;
 				default:					error("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
