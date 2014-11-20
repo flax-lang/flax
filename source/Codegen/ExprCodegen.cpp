@@ -183,14 +183,15 @@ ValPtr_p BinOp::codeGen()
 
 				llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
 				llvm::Value* res = mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(getContext()));
+				llvm::Value* ret = nullptr;
 
+				llvm::BasicBlock* entry = mainBuilder.GetInsertBlock();
 				llvm::BasicBlock* lb = llvm::BasicBlock::Create(getContext(), "leftbl", func);
-				llvm::BasicBlock* rb = llvm::BasicBlock::Create(getContext(), "rightbl");
-				llvm::BasicBlock* mb = llvm::BasicBlock::Create(getContext(), "mergebl");
+				llvm::BasicBlock* rb = llvm::BasicBlock::Create(getContext(), "rightbl", func);
 				mainBuilder.CreateCondBr(res, lb, rb);
 
 
-				mainBuilder.SetInsertPoint(mb);
+				mainBuilder.SetInsertPoint(rb);
 				// this kinda works recursively
 				if(!this->phi)
 					this->phi = mainBuilder.CreatePHI(llvm::Type::getInt1Ty(getContext()), 2);
@@ -204,7 +205,7 @@ ValPtr_p BinOp::codeGen()
 					this->phi->addIncoming(trueval, lb);
 
 					// if it succeeded (aka res is true), go to the merge block.
-					mainBuilder.CreateBr(mb);
+					mainBuilder.CreateBr(rb);
 
 
 
@@ -213,10 +214,24 @@ ValPtr_p BinOp::codeGen()
 
 					// do another compare.
 					llvm::Value* rres = mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(getContext()));
-					mainBuilder.CreateCondBr(rres, lb, rb);
+					this->phi->addIncoming(rres, entry);
+				}
+				else
+				{
+					// do the true case
+					mainBuilder.SetInsertPoint(lb);
+					llvm::Value* rres = mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(getContext()));
+					this->phi->addIncoming(rres, lb);
+
+					mainBuilder.CreateBr(rb);
+
+
+					// do the false case
+					mainBuilder.SetInsertPoint(rb);
+					phi->addIncoming(falseval, entry);
 				}
 
-				return ValPtr_p(falseval, 0);
+				return ValPtr_p(this->phi, 0);
 			}
 
 
