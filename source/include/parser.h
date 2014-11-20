@@ -40,6 +40,8 @@ namespace Parser
 		Enum,				// 17
 		ForeignFunc,
 		Struct,
+		True,
+		False,
 
 		Private,
 		Public,
@@ -69,14 +71,14 @@ namespace Parser
 		Exclamation,
 		Semicolon,
 		Ampersand,
-		Percent,			// 45
+		Percent,			// 47
 
 		// compound symbols
 		Arrow,
 		EqualsTo,
 		NotEquals,
 		GreaterEquals,
-		LessThanEquals,		// 49
+		LessThanEquals,		// 51
 		ShiftLeft,
 		ShiftRight,
 		DoublePlus,			// doubleplusgood

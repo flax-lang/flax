@@ -1,33 +1,10 @@
 import Foundation
 
-func factorial(x: Int64) -> Int64
-{
-	if x == 1
-	{
-		return 1
-	}
-	else
-	{
-		return x * factorial(x - 1)
-	}
-}
-
-func fib(x: Int64) -> Int64
-{
-	if x <= 1
-	{
-		return x
-	}
-	else
-	{
-		return fib(x - 1) + fib(x - 2)
-	}
-}
-
 
 func main()
 {
-	printInt64(fib(10))
+	var a: Bool = true
+	var b: Bool = true
 }
 
 ffi func printInt64(x: Int64)

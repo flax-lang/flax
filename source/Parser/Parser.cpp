@@ -323,6 +323,14 @@ namespace Parser
 					tokens.pop_front();
 					break;
 
+				case TType::True:
+					tokens.pop_front();
+					return new BoolVal(true);
+
+				case TType::False:
+					tokens.pop_front();
+					return new BoolVal(false);
+
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
 					tokens.pop_front();
