@@ -22,6 +22,12 @@ ValPtr_p Number::codeGen()
 	return ValPtr_p(0, 0);
 }
 
+
+ValPtr_p BoolVal::codeGen()
+{
+	return ValPtr_p(llvm::ConstantInt::get(getContext(), llvm::APInt(1, this->val, false)), 0);
+}
+
 ValPtr_p Return::codeGen()
 {
 	auto ret = this->val->codeGen();

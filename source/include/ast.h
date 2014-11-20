@@ -112,6 +112,15 @@ namespace Ast
 		};
 	};
 
+	struct BoolVal : Expr
+	{
+		~BoolVal() { }
+		BoolVal(bool val) : val(val) { }
+		virtual ValPtr_p codeGen() override;
+
+		bool val;
+	};
+
 	struct VarRef : Expr
 	{
 		~VarRef() { }

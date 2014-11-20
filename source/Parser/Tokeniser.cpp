@@ -260,6 +260,8 @@ namespace Parser
 			else if(id == "enum")		tok.type = TType::Enum;
 			else if(id == "ffi")		tok.type = TType::ForeignFunc;
 			else if(id == "struct")		tok.type = TType::Struct;
+			else if(id == "true")		tok.type = TType::True;
+			else if(id == "false")		tok.type = TType::False;
 
 			else if(id == "public")		tok.type = TType::Public;
 			else if(id == "private")	tok.type = TType::Private;
