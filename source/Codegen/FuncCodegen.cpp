@@ -40,7 +40,7 @@ ValPtr_p FuncCall::codeGen()
 	{
 		args.push_back(e->codeGen().first);
 		if(args.back() == nullptr)
-			return ValPtr_p(0, 0);
+			error("WHAT?");
 	}
 
 	return ValPtr_p(mainBuilder.CreateCall(target, args), 0);

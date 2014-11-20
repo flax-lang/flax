@@ -192,6 +192,8 @@ namespace Parser
 		else if(type_id == "Uint32Ptr")	return VarType::Uint32Ptr;
 		else if(type_id == "Uint64Ptr")	return VarType::Uint64Ptr;
 
+		else if(type_id == "AnyPtr")	return VarType::AnyPtr;
+
 		else if(type_id == "Float32")	return VarType::Float32;
 		else if(type_id == "Float64")	return VarType::Float64;
 		else if(type_id == "Bool")		return VarType::Bool;

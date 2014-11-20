@@ -57,9 +57,8 @@ ValPtr_p VarDecl::codeGen()
 
 			val = mainBuilder.CreateCall(str->initFunc, ai);
 
-			// if it's not a pointer, we need to dereference.
-			if(!isPtr(this))
-				val = mainBuilder.CreateLoad(val, "derefPtr");
+			// don't do the store, they return void
+			return ValPtr_p(val, ai);
 		}
 		else
 		{

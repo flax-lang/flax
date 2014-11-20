@@ -15,6 +15,7 @@
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
 #include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Transforms/Instrumentation.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -66,7 +67,6 @@ namespace Codegen
 		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(mainModule);
 
 		assert(execEngine);
-		mainModule->setDataLayout(execEngine->getDataLayout());
 
 		// Provide basic AliasAnalysis support for GVN.
 		OurFPM.add(llvm::createBasicAliasAnalysisPass());
@@ -331,7 +331,6 @@ namespace Codegen
 			case VarType::Uint64Ptr:
 			case VarType::Int64Ptr:	return llvm::Type::getInt64PtrTy(getContext());
 
-
 			case VarType::Void:		return llvm::Type::getVoidTy(getContext());
 			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
 
@@ -488,7 +487,12 @@ namespace Codegen
 		{
 			VarDecl* decl = getSymDecl(ref->name);
 			if(!decl)
+			{
+				if((e->varType = Parser::determineVarType(ref->name)) != VarType::UserDefined)
+					return e->varType;
+
 				error("Unknown variable '%s', could not find declaration", ref->name.c_str());
+			}
 
 			// it's a decl. get the type, motherfucker.
 			return e->varType = Parser::determineVarType(decl->type);
@@ -626,16 +630,16 @@ namespace Codegen
 		BinOp* b = nullptr;
 		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
-			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8; //, printf("i8");
-			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16; //, printf("i16");
-			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32; //, printf("i32");
-			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64; //, printf("i64");
-			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8; //, printf("u8");
-			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16; //, printf("u16");
-			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32; //, printf("u32");
-			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64; //, printf("u64");
-			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32; //, printf("f32");
-			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64; //, printf("f64");
+			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8;
+			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16;
+			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32;
+			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64;
+			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8;
+			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16;
+			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32;
+			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64;
+			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32;
+			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64;
 
 			return right;
 		}

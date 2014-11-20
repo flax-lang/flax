@@ -80,19 +80,18 @@ ValPtr_p Struct::codeGen()
 
 	// generate initialiser
 	{
-		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::PointerType::get(str, 0), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
+		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(getContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
 
-
-		llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "initialiser", func);
-		mainBuilder.SetInsertPoint(block);
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(getContext(), "initialiser", func);
+		mainBuilder.SetInsertPoint(iblock);
 
 		// create the local instance of reference to self
-		llvm::AllocaInst* self = allocateInstanceInBlock(func, str, "self");
+		llvm::Value* self = &func->getArgumentList().front();
 
 		for(VarDecl* var : this->members)
 		{
 			int i = this->nameMap[var->name];
-			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
+			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			var->initVal = autoCastType(var, var->initVal);
 			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen().first : getDefaultValue(var), ptr);
@@ -101,7 +100,7 @@ ValPtr_p Struct::codeGen()
 		for(Func* f : this->funcs)
 		{
 			int i = this->nameMap[f->decl->name];
-			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr");
+			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr_" + f->decl->name);
 			llvm::BasicBlock* ob = mainBuilder.GetInsertBlock();
 
 
@@ -112,15 +111,16 @@ ValPtr_p Struct::codeGen()
 				val = f->decl->codeGen().first;
 
 				std::deque<Expr*> fuckingshit;
-				fuckingshit.push_back(new VarRef("self"));
 
 				VarRef* svr = new VarRef("self");
-				FuncCall* fc = new FuncCall("__automatic_init#" + this->name, fuckingshit);
+				fuckingshit.push_back(svr);
 
-				BinOp* assign = new BinOp(svr, ArithmeticOp::Assign, fc);
-				f->closure->statements.push_front(assign);
-				f->closure->statements.push_back(new Return(svr));
+				FuncCall* fc = new FuncCall("__automatic_init#" + this->name, fuckingshit);
+				f->closure->statements.push_front(fc);
+
+				auto oi = mainBuilder.GetInsertBlock();
 				this->initFunc = llvm::cast<llvm::Function>(f->codeGen().first);
+				mainBuilder.SetInsertPoint(oi);
 			}
 			else
 			{
@@ -134,7 +134,7 @@ ValPtr_p Struct::codeGen()
 			mainBuilder.CreateStore(val, ptr);
 		}
 
-		mainBuilder.CreateRet(self);
+		mainBuilder.CreateRetVoid();
 
 		llvm::verifyFunction(*func);
 		this->defifunc = func;
@@ -170,12 +170,7 @@ void Struct::createType()
 	for(Func* func : this->funcs)
 	{
 		if(func->decl->name == "init")
-		{
 			this->ifunc = func;
-
-			func->decl->type = this->name + "Ptr";
-			func->decl->varType = VarType::UserDefined;
-		}
 
 		std::vector<llvm::Type*> args;
 
@@ -275,7 +270,7 @@ ValPtr_p MemberAccess::codeGen()
 
 
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
-		llvm::Value* ptr = mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr");
+		llvm::Value* ptr = mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
 		llvm::Value* val = mainBuilder.CreateLoad(ptr);
 
 		if(fc)
