@@ -327,7 +327,7 @@ namespace Parser
 
 					return parseIdExpr(tokens);
 
-				case TType::DQuote:
+				case TType::StringLiteral:
 					return parseStringLiteral(tokens);
 
 				case TType::Integer:
@@ -508,22 +508,25 @@ namespace Parser
 		if((tmp = eat(tokens))->type != TType::Identifier)
 			error("Expected type for variable declaration");
 
-		if(tokens.front()->type == TType::Ptr)
+		if(tokens.size() > 0)
 		{
-			isPtr = true;
-			eat(tokens);
-		}
-		else if(tokens.front()->type == TType::LSquare)
-		{
-			isArr = true;
-			eat(tokens);
+			if(tokens.front()->type == TType::Ptr)
+			{
+				isPtr = true;
+				eat(tokens);
+			}
+			else if(tokens.front()->type == TType::LSquare)
+			{
+				isArr = true;
+				eat(tokens);
 
-			Token* next = eat(tokens);
-			if(next->type == TType::Integer)
-				arrsize = std::stoi(next->text), next = eat(tokens);
+				Token* next = eat(tokens);
+				if(next->type == TType::Integer)
+					arrsize = std::stoi(next->text), next = eat(tokens);
 
-			if(next->type != TType::RSquare)
-				error("Expected either constant integer or ']' after array declaration and '['");
+				if(next->type != TType::RSquare)
+					error("Expected either constant integer or ']' after array declaration and '['");
+			}
 		}
 
 		std::string ret = tmp->text + (isPtr ? "Ptr" : (isArr ? "[" + std::to_string(arrsize) + "]" : ""));
@@ -855,6 +858,14 @@ namespace Parser
 			error("Expected module name after 'import' statement.");
 
 		return (new Import(tok_mod->text))->setPos(pos);
+	}
+
+	StringLiteral* parseStringLiteral(std::deque<Token *>& tokens)
+	{
+		assert(tokens.front()->type == TType::StringLiteral);
+		Token* str = eat(tokens);
+
+		return new StringLiteral(str->text);
 	}
 }
 

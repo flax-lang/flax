@@ -255,6 +255,37 @@ namespace Parser
 
 			else						tok.type = TType::Identifier;
 		}
+		else if(stream[0] == '"')
+		{
+			// parse a string literal
+			std::stringstream ss;
+
+			int i = 1;
+			for(; stream[i] != '"'; i++)
+			{
+				if(stream[i] == '\\')
+				{
+					i++;
+					switch(stream[i])
+					{
+						case 'n':	ss << "\n";	break;
+						case 'b':	ss << "\b";	break;
+						case 'r':	ss << "\r";	break;
+					}
+
+					continue;
+				}
+
+
+				ss << stream[i];
+				if(i == stream.size() - 1)
+					printf("Expected closing '\"' at (%s:%lld)\n", pos.file.c_str(), pos.line);
+			}
+
+			tok.type = TType::StringLiteral;
+			tok.text = ss.str();
+			read = i + 1;
+		}
 		else if(!isalnum(stream[0]))
 		{
 			// check the first char
@@ -275,7 +306,6 @@ namespace Parser
 				case '*':	tok.type = TType::Asterisk;				break;
 				case '/':	tok.type = TType::Divide;				break;
 				case '\'':	tok.type = TType::SQuote;				break;
-				case '"':	tok.type = TType::DQuote;				break;
 				case '.':	tok.type = TType::Period;				break;
 				case ',':	tok.type = TType::Comma;				break;
 				case ':':	tok.type = TType::Colon;				break;

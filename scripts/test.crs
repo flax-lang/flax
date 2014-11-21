@@ -19,11 +19,15 @@ struct String
 
 func main()
 {
-	var s: String
-	var d: String
+	var s: Int8 ptr = "Hello, World"
+	puts(s)
+
+	var x: String
+	printInt64(x.length())
 }
 
 ffi func printBool(x: Bool)
 ffi func printInt64(x: Int64)
 ffi func putchar(x: Int32) -> Int32
 ffi func malloc(x: Int64) -> Int8 ptr
+ffi func puts(x: Int8 ptr) -> Int32
