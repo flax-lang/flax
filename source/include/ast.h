@@ -108,6 +108,12 @@ namespace Ast
 		VarType varType;
 	};
 
+	struct DummyExpr : Expr
+	{
+		~DummyExpr() { }
+		virtual ValPtr_p codeGen() override { return ValPtr_p(0, 0); }
+	};
+
 
 	struct Number : Expr
 	{

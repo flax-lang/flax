@@ -350,8 +350,8 @@ namespace Parser
 				case TType::NewLine:
 				case TType::Comment:
 				case TType::Semicolon:
-					tokens.pop_front();
-					break;
+					eat(tokens);
+					return new DummyExpr();
 
 				case TType::True:
 					tokens.pop_front();
@@ -363,7 +363,7 @@ namespace Parser
 
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
-					tokens.pop_front();
+					eat(tokens);
 					break;
 			}
 		}
