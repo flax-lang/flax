@@ -24,21 +24,66 @@ using namespace Codegen;
 #define DUMP 1
 #define COMPILE 1
 
-void error(const char* msg, ...)
+
+void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap)
+{
+	char* alloc = nullptr;
+	vasprintf(&alloc, msg, ap);
+
+	fprintf(stderr, "Error (%s:%lld): %s\n\n", relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, alloc);
+
+
+	va_end(ap);
+
+	if(ex)
+	{
+		getchar();
+		exit(1);
+	}
+}
+
+
+
+
+void error(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
 
-	char* alloc = nullptr;
-	vasprintf(&alloc, msg, ap);
-
-	fprintf(stderr, "Error: %s\n\n", alloc);
-
-	va_end(ap);
-
-	getchar();
-	exit(1);
+	__error_gen(relevantast, msg, "Error", true, ap);
 }
+
+void error(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(nullptr, msg, "Error", true, ap);
+}
+
+
+void warn(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(nullptr, msg, "Warning", false, ap);
+}
+
+
+void warn(Expr* relevantast, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(relevantast, msg, "Warning", false, ap);
+}
+
+
+
+
+
+
+
+
+
 
 
 namespace Codegen
@@ -377,7 +422,7 @@ namespace Codegen
 						}
 
 
-						error("Unknown type '%s'", expr->type.c_str());
+						error(expr, "Unknown type '%s'", expr->type.c_str());
 						return nullptr;
 					}
 
@@ -397,16 +442,16 @@ namespace Codegen
 				std::string num = atype.substr(1).substr(0, atype.length() - 2);
 				int sz = std::stoi(num);
 				if(sz == 0)
-					error("Dynamically sized arrays are not yet supported");
+					error(decl, "Dynamically sized arrays are not yet supported");
 
 				VarType evt = Parser::determineVarType(etype);
 
 				llvm::Type* eltype = nullptr;
 				if(evt == VarType::Array)
-					error("Nested arrays are not yet supported");
+					error(decl, "Nested arrays are not yet supported");
 
 				if(evt == VarType::Void)
-					error("You cannot create an array of void");
+					error(decl, "You cannot create an array of void");
 
 				if(evt != VarType::UserDefined)
 				{
@@ -416,7 +461,7 @@ namespace Codegen
 				{
 					TypePair_t* type = getType(etype);
 					if(!type)
-						error("Unknown type '%s'", etype.c_str());
+						error(decl, "Unknown type '%s'", etype.c_str());
 
 					eltype = type->first;
 				}
@@ -461,7 +506,7 @@ namespace Codegen
 							return notptrtype->first->getPointerTo();
 					}
 
-					error("Unknown type '%s'", expr->type.c_str());
+					error(expr, "Unknown type '%s'", expr->type.c_str());
 					return nullptr;
 				}
 
@@ -491,7 +536,7 @@ namespace Codegen
 				if((e->varType = Parser::determineVarType(ref->name)) != VarType::UserDefined)
 					return e->varType;
 
-				error("Unknown variable '%s', could not find declaration", ref->name.c_str());
+				error(e, "Unknown variable '%s', could not find declaration", ref->name.c_str());
 			}
 
 			// it's a decl. get the type, motherfucker.
@@ -538,7 +583,7 @@ namespace Codegen
 
 				// make sure that now, both sides are the same.
 				if(determineVarType(bo->left) != determineVarType(bo->right))
-					error("Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
+					error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
 
 
 				return determineVarType(bo->left);

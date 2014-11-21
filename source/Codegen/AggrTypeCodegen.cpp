@@ -24,7 +24,7 @@ ValPtr_p ArrayIndex::codeGen()
 		etype = atype->getPointerElementType();
 
 	else
-		error("Can only index on pointer or array types.");
+		error(this, "Can only index on pointer or array types.");
 
 
 	// try and do compile-time bounds checking
@@ -39,7 +39,7 @@ ValPtr_p ArrayIndex::codeGen()
 			{
 				assert(!n->decimal);
 				if(n->ival >= at->getNumElements())
-					error("Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
+					error(this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
 			}
 		}
 	}
@@ -153,12 +153,12 @@ ValPtr_p Struct::codeGen()
 void Struct::createType()
 {
 	if(isDuplicateType(this->name))
-		error("Redefinition of type '%s'", this->name.c_str());
+		error(this, "Redefinition of type '%s'", this->name.c_str());
 
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
 
 	if(isDuplicateType(this->name))
-		error("Duplicate type '%s'", this->name.c_str());
+		error(this, "Duplicate type '%s'", this->name.c_str());
 
 	// check if there's an explicit initialiser
 	this->ifunc = nullptr;
@@ -233,7 +233,7 @@ ValPtr_p MemberAccess::codeGen()
 			type = type->getPointerElementType(), isPtr = true;
 
 		else
-			error("Cannot do member access on non-aggregate types");
+			error(this, "Cannot do member access on non-aggregate types");
 	}
 
 	TypePair_t* pair = getType(type->getStructName());
@@ -288,7 +288,7 @@ ValPtr_p MemberAccess::codeGen()
 			}
 
 			if(!callee)
-				error("No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
+				error(this, "No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
 			// do some casting
 			for(int i = 0; i < fc->params.size(); i++)

@@ -12,6 +12,7 @@
 
 using namespace Ast;
 
+
 namespace Parser
 {
 	PosInfo pos;
@@ -27,7 +28,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "Error (%s:%lld): %s\n\n", curtok->posinfo->file->c_str(), curtok->posinfo->line, alloc);
+		fprintf(stderr, "Error (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -67,7 +68,7 @@ namespace Parser
 	Root* Parse(std::string filename, std::string str)
 	{
 		Token* t = nullptr;
-		pos.file = new std::string(filename);
+		pos.file = filename;
 		pos.line = 1;
 
 		std::deque<Token*> tokens;
@@ -85,7 +86,6 @@ namespace Parser
 		size_t sep = modname.find_last_of("\\/");
 		if(sep != std::string::npos)
 			modname = modname.substr(sep + 1, modname.length() - sep - 1);
-
 
 		return rootNode;
 	}
@@ -345,11 +345,11 @@ namespace Parser
 
 				case TType::True:
 					tokens.pop_front();
-					return new BoolVal(true);
+					return (new BoolVal(true))->setPos(pos);
 
 				case TType::False:
 					tokens.pop_front();
-					return new BoolVal(false);
+					return (new BoolVal(false))->setPos(pos);
 
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
@@ -393,7 +393,7 @@ namespace Parser
 				error("Expected identifier");
 
 			std::string id = tok_id->text;
-			VarDecl* v = new VarDecl(id, true);
+			VarDecl* v = (new VarDecl(id, true))->setPos(pos);
 
 			// expect a colon
 			if(eat(tokens)->type != TType::Colon)
@@ -433,7 +433,7 @@ namespace Parser
 		}
 
 		skipNewline(tokens);
-		FuncDecl* f = new FuncDecl(id, params, ret);
+		FuncDecl* f = (new FuncDecl(id, params, ret))->setPos(pos);
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
 
 		return f;
@@ -447,12 +447,12 @@ namespace Parser
 		FuncDecl* decl = parseFuncDecl(tokens);
 		decl->isFFI = true;
 
-		return new ForeignFuncDecl(decl);
+		return (new ForeignFuncDecl(decl))->setPos(pos);
 	}
 
 	Closure* parseClosure(std::deque<Token*>& tokens)
 	{
-		Closure* c = new Closure();
+		Closure* c = (new Closure())->setPos(pos);
 
 		// make sure the first token is a left brace.
 		if(eat(tokens)->type != TType::LBrace)
@@ -474,7 +474,7 @@ namespace Parser
 	Func* parseFunc(std::deque<Token*>& tokens)
 	{
 		FuncDecl* decl = parseFuncDecl(tokens);
-		return new Func(decl, parseClosure(tokens));
+		return (new Func(decl, parseClosure(tokens)))->setPos(pos);
 	}
 
 
@@ -539,7 +539,7 @@ namespace Parser
 			error("Expected identifier for variable declaration.");
 
 		std::string id = tok_id->text;
-		VarDecl* v = new VarDecl(id, immutable);
+		VarDecl* v = (new VarDecl(id, immutable))->setPos(pos);
 
 		// check the type.
 		// todo: type inference
@@ -637,7 +637,7 @@ namespace Parser
 				default:					error("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
-			lhs = new BinOp(lhs, op, rhs);
+			lhs = (new BinOp(lhs, op, rhs))->setPos(pos);
 		}
 	}
 
@@ -645,6 +645,7 @@ namespace Parser
 	{
 		assert(tokens.front()->type == TType::Identifier);
 		std::string id = eat(tokens)->text;
+		VarRef* idvr = (new VarRef(id))->setPos(pos);
 
 		// check for dot syntax.
 		if(tokens.front()->type == TType::Period)
@@ -653,7 +654,7 @@ namespace Parser
 			if(tokens.front()->type != TType::Identifier)
 				error("Expected identifier after '.' operator");
 
-			return new MemberAccess(new VarRef(id), parseIdExpr(tokens));
+			return (new MemberAccess(idvr, parseIdExpr(tokens)))->setPos(pos);
 		}
 		else if(tokens.front()->type == TType::LSquare)
 		{
@@ -663,20 +664,21 @@ namespace Parser
 			if(eat(tokens)->type != TType::RSquare)
 				error("Expected ']'");
 
-			return new ArrayIndex(new VarRef(id), within);
+			return (new ArrayIndex(idvr, within))->setPos(pos);
 		}
 		else if(tokens.front()->type == TType::Ptr)
 		{
 			eat(tokens);
 			id += "Ptr";
-			return new VarRef(id);
+			return idvr;
 		}
 		else if(tokens.front()->type != TType::LParen)
 		{
-			return new VarRef(id);
+			return idvr;
 		}
 		else
 		{
+			delete idvr;
 			return parseFunctionCall(tokens, id);
 		}
 	}
@@ -687,7 +689,7 @@ namespace Parser
 		if(tokens.front()->type == TType::Integer)
 		{
 			Token* tok = eat(tokens);
-			n = new Number((int64_t) std::stoll(tok->text));
+			n = (new Number((int64_t) std::stoll(tok->text)))->setPos(pos);
 
 			// set the type.
 			// always used signed
@@ -696,7 +698,7 @@ namespace Parser
 		else if(tokens.front()->type == TType::Decimal)
 		{
 			Token* tok = eat(tokens);
-			n = new Number(std::stod(tok->text));
+			n = (new Number(std::stod(tok->text)))->setPos(pos);
 
 			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
 			else					n->varType = VarType::Float64;
@@ -743,7 +745,7 @@ namespace Parser
 			eat(tokens);
 		}
 
-		return new FuncCall(id, args);
+		return (new FuncCall(id, args))->setPos(pos);
 	}
 
 	Return* parseReturn(std::deque<Token*>& tokens)
@@ -751,7 +753,7 @@ namespace Parser
 		assert(tokens.front()->type == TType::Return);
 		eat(tokens);
 
-		return new Return(parseExpr(tokens));
+		return (new Return(parseExpr(tokens)))->setPos(pos);
 	}
 
 	Expr* parseIf(std::deque<Token*>& tokens)
@@ -788,7 +790,7 @@ namespace Parser
 			}
 		}
 
-		return new If(conds, ecase);
+		return (new If(conds, ecase))->setPos(pos);
 	}
 
 	Struct* parseStruct(std::deque<Token*>& tokens)
@@ -801,7 +803,7 @@ namespace Parser
 			error("Expected name after 'struct'");
 
 		id += eat(tokens)->text;
-		Struct* str = new Struct(id);
+		Struct* str = (new Struct(id))->setPos(pos);
 
 		// parse a clousure.
 		Closure* body = parseClosure(tokens);
@@ -848,7 +850,7 @@ namespace Parser
 		if((tok_mod = eat(tokens))->type != TType::Identifier)
 			error("Expected module name after 'import' statement.");
 
-		return new Import(tok_mod->text);
+		return (new Import(tok_mod->text))->setPos(pos);
 	}
 }
 

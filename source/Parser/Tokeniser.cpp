@@ -31,7 +31,7 @@ namespace Parser
 		Token* ret = new Token();
 
 		Token& tok = *ret;			// because doing '->' gets old
-		tok.posinfo = new PosInfo(pos);
+		tok.posinfo = pos;
 
 		// check compounds first.
 		if(stream.find("==") == 0)
@@ -178,7 +178,7 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid number found at (%s:%lld)\n", pos.file->c_str(), pos.line);
+					fprintf(stderr, "Error: invalid number found at (%s:%lld)\n", pos.file.c_str(), pos.line);
 					exit(1);
 				}
 			}
@@ -199,7 +199,7 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid decimal found at (%s:%lld)\n", pos.file->c_str(), pos.line);
+					fprintf(stderr, "Error: invalid decimal found at (%s:%lld)\n", pos.file.c_str(), pos.line);
 					exit(1);
 				}
 			}
@@ -293,7 +293,7 @@ namespace Parser
 		}
 		else
 		{
-			printf("Unknown token '%c' at (%s:%lld)\n", stream[0], pos.file->c_str(), pos.line);
+			printf("Unknown token '%c' at (%s:%lld)\n", stream[0], pos.file.c_str(), pos.line);
 
 			delete ret;
 			exit(1);
