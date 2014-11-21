@@ -21,7 +21,7 @@ struct String
 		self.data = other
 	}
 
-	operator==(other: String ptr) -> Bool
+	operator==(other: String) -> Bool
 	{
 		return false
 	}
