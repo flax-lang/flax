@@ -251,6 +251,21 @@ ValPtr_p OpOverload::codeGen()
 
 		// we can't actually do much, because they can assign to anything
 	}
+	else if(this->op == ArithmeticOp::CmpEq)
+	{
+		FuncDecl* decl = this->func->decl;
+		if(decl->params.size() != 1)
+			error("Operator overload for '==' can only have one argument");
+
+		if(Parser::determineVarType(decl->type) != VarType::Bool)
+			error("Operator overload for '==' must returna boolean value");
+
+		llvm::Type* ptype = getLlvmType(decl->params.front());
+		assert(ptype);
+
+		if(ptype != getType(this->str->name)->first->getPointerTo())
+			error("Type mismatch [%s, %s]", getReadableType(ptype).c_str(), getReadableType(getType(this->str->name)->first->getPointerTo()).c_str());
+	}
 	else
 	{
 		error("(%s:%s:%d) -> Internal check failed: invalid operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
@@ -296,8 +311,6 @@ ValPtr_p MemberAccess::codeGen()
 	TypePair_t* pair = getType(type->getStructName());
 	if(!pair)
 		error("(%s:%s:%d) -> Internal check failed: failed to retrieve type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-
-
 
 
 	llvm::Function* insertfunc = mainBuilder.GetInsertBlock()->getParent();
@@ -374,8 +387,6 @@ ValPtr_p MemberAccess::codeGen()
 	error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	return ValPtr_p(0, 0);
 }
-
-
 
 
 

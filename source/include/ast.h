@@ -314,6 +314,7 @@ namespace Ast
 		~MemberAccess() { }
 		MemberAccess(VarRef* tgt, Expr* mem) : target(tgt), member(mem) { }
 		virtual ValPtr_p codeGen() override;
+
 		MemberAccess* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* target;

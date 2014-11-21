@@ -84,20 +84,7 @@ ValPtr_p BinOp::codeGen()
 					if(!tp)
 						error(this, "Invalid type");
 
-					assert(tp->second.second == ExprType::Struct);
-					Struct* str = dynamic_cast<Struct*>(tp->second.first);
-
-					assert(str);
-					llvm::Function* opov = str->lopmap[ArithmeticOp::Assign];
-					if(!opov)
-						error(this, "No valid operator overload");
-
-					// check args.
-					if(opov->getArgumentList().back().getType() != rhs->getType())
-						error(this, "No valid operator overload");
-
-					mainBuilder.CreateCall2(opov, valptr.second, rhs);
-					return valptr;
+					return callOperatorOnStruct(tp, valptr.second, ArithmeticOp::Assign, rhs);
 				}
 				else
 				{
@@ -162,13 +149,13 @@ ValPtr_p BinOp::codeGen()
 			rtype = tp->first;
 		}
 
+		// todo: cleanup?
 		assert(rtype);
-
 		if(lhs->getType() == rtype)
 			return ValPtr_p(lhs, 0);
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
-			return ValPtr_p(mainBuilder.CreateIntCast(lhs, rtype, isSignedType(this->left) || isSignedType(this->right)), 0);
+			return ValPtr_p(mainBuilder.CreateIntCast(lhs, rtype, isSignedType(this->left)), 0);
 
 		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
 			return ValPtr_p(mainBuilder.CreateFPCast(lhs, rtype), 0);
@@ -190,7 +177,11 @@ ValPtr_p BinOp::codeGen()
 
 
 	lhs = valptr.first;
-	rhs = this->right->codeGen().first;
+	llvm::Value* rhsptr = nullptr;
+	auto r = this->right->codeGen();
+
+	rhs = r.first;
+	rhsptr = r.second;
 
 	if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
@@ -320,6 +311,14 @@ ValPtr_p BinOp::codeGen()
 
 			default:						error("Unsupported operator."); return ValPtr_p(0, 0);
 		}
+	}
+	else if(lhs->getType()->isStructTy())
+	{
+		TypePair_t* p = getType(lhs->getType()->getStructName());
+		if(!p)
+			error("Invalid type");
+
+		return callOperatorOnStruct(p, valptr.second, op, rhsptr);
 	}
 	else
 	{

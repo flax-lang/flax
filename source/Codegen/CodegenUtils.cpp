@@ -740,9 +740,6 @@ namespace Codegen
 		return getLlvmType(e)->isArrayTy();
 	}
 
-
-
-
 	ArithmeticOp determineArithmeticOp(std::string ch)
 	{
 		ArithmeticOp op;
@@ -770,7 +767,46 @@ namespace Codegen
 
 		return op;
 	}
+
+
+
+	ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
+	{
+		assert(pair);
+		assert(pair->first);
+		assert(pair->second.first);
+		assert(pair->second.second == ExprType::Struct);
+
+		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		assert(str);
+
+		llvm::Function* opov = str->lopmap[op];
+		if(!opov)
+			error("No valid operator overload");
+
+
+		if(opov->getArgumentList().back().getType() != val->getType())
+			error("No valid operator overload, [%s, %s]", getReadableType(opov->getArgumentList().back().getType()).c_str(), getReadableType(val->getType()).c_str());
+
+		// try the assign op.
+		if(op == ArithmeticOp::Assign && str->opmap[op])
+		{
+			// check args.
+			mainBuilder.CreateCall2(opov, self, val);
+			return ValPtr_p(mainBuilder.CreateLoad(self), self);
+		}
+		else if(op == ArithmeticOp::CmpEq && str->opmap[op])
+		{
+			// check that both types work
+			return ValPtr_p(mainBuilder.CreateCall2(opov, self, val), 0);
+		}
+
+
+		error("Invalid operator on type");
+		return ValPtr_p(0, 0);
+	}
 }
+
 
 
 
