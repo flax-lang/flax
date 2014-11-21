@@ -91,7 +91,8 @@ ValPtr_p VarDecl::codeGen()
 					if(opov->getArgumentList().back().getType() != ival->getType())
 						error("No valid operator overload");
 
-					return ValPtr_p(mainBuilder.CreateCall2(opov, ai, ival), ai);
+					mainBuilder.CreateCall2(opov, ai, ival);
+					return ValPtr_p(mainBuilder.CreateLoad(ai), ai);
 				}
 				else
 				{
