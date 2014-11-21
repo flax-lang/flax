@@ -55,6 +55,7 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
+	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
@@ -325,6 +326,9 @@ namespace Parser
 						return parseFunc(tokens);
 
 					return parseIdExpr(tokens);
+
+				case TType::DQuote:
+					return parseStringLiteral(tokens);
 
 				case TType::Integer:
 				case TType::Decimal:
