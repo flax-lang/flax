@@ -98,6 +98,7 @@ namespace Parser
 		Identifier,
 		Integer,
 		Decimal,
+		StringLiteral,
 
 		NewLine,
 		Comment,
