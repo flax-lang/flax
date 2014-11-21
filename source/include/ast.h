@@ -268,6 +268,20 @@ namespace Ast
 		Expr* expr;
 	};
 
+	// fuck
+	struct Struct;
+	struct OpOverload : Expr
+	{
+		~OpOverload() { }
+		OpOverload(ArithmeticOp op) : op(op) { }
+		virtual ValPtr_p codeGen() override;
+		OpOverload* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
+
+		Func* func;
+		ArithmeticOp op;
+		Struct* str;
+	};
+
 	struct Struct : Expr
 	{
 		~Struct() { }
@@ -285,6 +299,8 @@ namespace Ast
 		std::string name;
 		std::deque<VarDecl*> members;
 		std::deque<Func*> funcs;
+		std::map<ArithmeticOp, OpOverload*> opmap;
+		std::map<ArithmeticOp, llvm::Function*> lopmap;
 	};
 
 	struct MemberAccess : Expr
@@ -314,6 +330,7 @@ namespace Ast
 		~StringLiteral() { }
 		StringLiteral(std::string str) : str(str) { }
 		virtual ValPtr_p codeGen() override;
+		StringLiteral* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string str;
 	};

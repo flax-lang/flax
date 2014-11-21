@@ -20,6 +20,9 @@ namespace Parser
 	Token* curtok;
 	std::string modname;
 
+	// todo: hack
+	bool isParsingStruct;
+
 	void error(const char* msg, ...)
 	{
 		va_list ap;
@@ -55,6 +58,7 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
+	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
@@ -221,7 +225,6 @@ namespace Parser
 
 
 
-
 	void parseAll(std::deque<Token*>& tokens)
 	{
 		if(tokens.size() == 0)
@@ -325,6 +328,9 @@ namespace Parser
 					if(tok->text == "init")
 						return parseFunc(tokens);
 
+					else if(tok->text == "operator")
+						return parseOpOverload(tokens);
+
 					return parseIdExpr(tokens);
 
 				case TType::StringLiteral:
@@ -373,18 +379,19 @@ namespace Parser
 
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens)
 	{
-		if(tokens.front()->text != "init")
+		// todo: better things? it's right now mostly hacks.
+		if(tokens.front()->text != "init" && tokens.front()->text.find("operator") != 0)
 			assert(eat(tokens)->type == TType::Func);
 
 		if(tokens.front()->type != TType::Identifier)
 			error("Expected identifier, but got token of type %d", tokens.front()->type);
 
-		std::string id = tokens.front()->text;
-		eat(tokens);
+		std::string id = eat(tokens)->text;
 
 		// expect a left bracket
-		if(eat(tokens)->type != TType::LParen)
-			error("Expected '(' in function declaration");
+		Token* paren = eat(tokens);
+		if(paren->type != TType::LParen)
+			error("Expected '(' in function declaration, got '%s'", paren->text.c_str());
 
 		// get the parameter list
 		// expect an identifer, colon, type
@@ -803,6 +810,7 @@ namespace Parser
 	Struct* parseStruct(std::deque<Token*>& tokens)
 	{
 		assert(eat(tokens)->type == TType::Struct);
+		isParsingStruct = true;
 
 		// get the identifier (name)
 		std::string id;
@@ -820,7 +828,7 @@ namespace Parser
 			// check for top-level statements
 			VarDecl* var = nullptr;
 			Func* func = nullptr;
-
+			OpOverload* oo = nullptr;
 
 			if((var = dynamic_cast<VarDecl*>(stmt)))
 			{
@@ -837,6 +845,17 @@ namespace Parser
 
 				str->funcs.push_back(func);
 				str->nameMap[func->decl->name] = i;
+			}
+			else if((oo = dynamic_cast<OpOverload*>(stmt)))
+			{
+				oo->str = str;
+				str->opmap[oo->op] = oo;
+
+				if(str->nameMap.find(oo->func->decl->name) != str->nameMap.end())
+					error("Duplicate member '%s'", oo->func->decl->name.c_str());
+
+				str->funcs.push_back(oo->func);
+				str->nameMap[oo->func->decl->name] = i;
 			}
 			else
 			{
@@ -860,12 +879,45 @@ namespace Parser
 		return (new Import(tok_mod->text))->setPos(pos);
 	}
 
-	StringLiteral* parseStringLiteral(std::deque<Token *>& tokens)
+	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens)
 	{
 		assert(tokens.front()->type == TType::StringLiteral);
 		Token* str = eat(tokens);
 
-		return new StringLiteral(str->text);
+		return (new StringLiteral(str->text))->setPos(pos);
+	}
+
+	OpOverload* parseOpOverload(std::deque<Token*>& tokens)
+	{
+		if(!isParsingStruct)
+			error("Can only overload operators in the context of a named aggregate type");
+
+		assert(eat(tokens)->text == "operator");
+		Token* op = eat(tokens);
+
+		ArithmeticOp ao;
+		switch(op->type)
+		{
+			case TType::Equal:
+				ao = ArithmeticOp::Assign;
+				break;
+
+			default:
+				error("Unsupported operator overload on operator '%s'", op->text.c_str());
+		}
+
+		OpOverload* oo = (new OpOverload(ao))->setPos(pos);
+
+		Token* fake = new Token();
+		fake->posinfo = pos;
+		fake->text = "operator#" + op->text;
+		fake->type = TType::Identifier;
+
+		tokens.push_front(fake);
+
+		// parse a func declaration.
+		oo->func = parseFunc(tokens);
+		return oo;
 	}
 }
 

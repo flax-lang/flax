@@ -71,6 +71,7 @@ namespace Codegen
 	llvm::Type* getLlvmTypeOfBuiltin(Ast::VarType t);
 	SymbolPair_t* getSymPair(const std::string& name);
 	Ast::VarDecl* getSymDecl(const std::string& name);
+	Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 	std::string mangleName(Ast::Struct* s, std::string orig);
 	std::string unmangleName(Ast::Struct* s, std::string orig);
 	Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);

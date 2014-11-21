@@ -104,6 +104,10 @@ ValPtr_p Struct::codeGen()
 			llvm::BasicBlock* ob = mainBuilder.GetInsertBlock();
 
 
+			std::string oname = f->decl->name;
+			bool isOpOverload = oname.find("operator#") == 0;
+
+
 			llvm::Value* val = nullptr;
 			if(f == this->ifunc)
 			{
@@ -132,6 +136,19 @@ ValPtr_p Struct::codeGen()
 
 			mainBuilder.SetInsertPoint(ob);
 			mainBuilder.CreateStore(val, ptr);
+
+			if(isOpOverload)
+			{
+				oname = oname.substr(strlen("operator#"));
+				std::stringstream ss;
+
+				int i = 0;
+				while(i < oname.length() && oname[i] != '_')
+					(ss << oname[i]), i++;
+
+				ArithmeticOp ao = determineArithmeticOp(ss.str());
+				this->lopmap[ao] = llvm::cast<llvm::Function>(val);
+			}
 		}
 
 		mainBuilder.CreateRetVoid();
@@ -166,6 +183,12 @@ void Struct::createType()
 	// create a bodyless struct so we can use it
 	llvm::StructType* str = llvm::StructType::create(getContext(), this->name);
 	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+
+
+	for(auto p : this->opmap)
+		p.second->codeGen();
+
+
 
 	for(Func* func : this->funcs)
 	{
@@ -202,6 +225,40 @@ void Struct::createType()
 
 
 
+
+
+
+
+
+
+ValPtr_p OpOverload::codeGen()
+{
+	// this is never really called. operators are handled as functions
+	// so, we just put them into the structs' funcs.
+	// BinOp will do a lookup on the opMap, but never call codegen for this.
+
+	// however, this will get called, because we need to know if the parameters for
+	// the operator overload are legit. people ignore our return value.
+
+
+	if(this->op == ArithmeticOp::Assign)
+	{
+		// make sure the first and only parameter is an 'other' pointer.
+		FuncDecl* decl = this->func->decl;
+
+		if(decl->params.size() != 1)
+			error("Operator overload for '=' can only have one argument");
+
+		// we can't actually do much, because they can assign to anything
+	}
+	else
+	{
+		error("(%s:%s:%d) -> Internal check failed: invalid operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+	}
+
+
+	return ValPtr_p(0, 0);
+}
 
 
 
@@ -317,6 +374,11 @@ ValPtr_p MemberAccess::codeGen()
 	error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	return ValPtr_p(0, 0);
 }
+
+
+
+
+
 
 
 

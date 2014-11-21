@@ -77,7 +77,33 @@ ValPtr_p BinOp::codeGen()
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
 			if(lhs->getType() != rhs->getType())
-				error(this, "Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+			{
+				if(lhs->getType()->isStructTy())
+				{
+					TypePair_t* tp = getType(lhs->getType()->getStructName());
+					if(!tp)
+						error(this, "Invalid type");
+
+					assert(tp->second.second == ExprType::Struct);
+					Struct* str = dynamic_cast<Struct*>(tp->second.first);
+
+					assert(str);
+					llvm::Function* opov = str->lopmap[ArithmeticOp::Assign];
+					if(!opov)
+						error(this, "No valid operator overload");
+
+					// check args.
+					if(opov->getArgumentList().back().getType() != rhs->getType())
+						error(this, "No valid operator overload");
+
+					mainBuilder.CreateCall2(opov, valptr.second, rhs);
+					return valptr;
+				}
+				else
+				{
+					error(this, "Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+				}
+			}
 
 			mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
