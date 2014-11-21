@@ -32,3 +32,4 @@
 # overrides:
 commit
 run
+*.sublime-*
