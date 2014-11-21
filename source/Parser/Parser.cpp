@@ -902,6 +902,10 @@ namespace Parser
 				ao = ArithmeticOp::Assign;
 				break;
 
+			case TType::EqualsTo:
+				ao = ArithmeticOp::CmpEq;
+				break;
+
 			default:
 				error("Unsupported operator overload on operator '%s'", op->text.c_str());
 		}

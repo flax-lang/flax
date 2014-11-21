@@ -19,16 +19,22 @@ struct String
 	operator=(other: Int8 ptr)
 	{
 		self.data = other
-		puts(self.data)
+	}
 
-		// comment
+	operator==(other: String ptr) -> Bool
+	{
+		return false
 	}
 }
 
 func main()
 {
 	var x: String = "Hello, World!"
-	printInt64(x.length())
+	var y: String
+
+	var b: Bool = (x == y)
+
+	printInt64(b as Int64)
 }
 
 ffi func printBool(x: Bool)
