@@ -31,7 +31,10 @@ ValPtr_p VarDecl::codeGen()
 	llvm::AllocaInst* ai = allocateInstanceInBlock(func, this);
 	getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
-	if(this->initVal)
+
+	TypePair_t* cmplxtype = getType(this->type);
+
+	if(this->initVal && !cmplxtype)
 	{
 		this->initVal = autoCastType(this, this->initVal);
 		val = this->initVal->codeGen().first;
@@ -43,22 +46,58 @@ ValPtr_p VarDecl::codeGen()
 	else
 	{
 		// get our type
-		TypePair_t* pair = getType(this->type);
-		if(!pair)
+		if(!cmplxtype)
 			error(this, "Invalid type");
 
+		TypePair_t* pair = cmplxtype;
 		if(pair->first->isStructTy())
 		{
-			assert(pair->second.second == ExprType::Struct);
-			assert(pair->second.first);
-
 			Struct* str = nullptr;
 			assert((str = dynamic_cast<Struct*>(pair->second.first)));
 
-			val = mainBuilder.CreateCall(str->initFunc, ai);
+			if(!this->initVal)
+			{
+				assert(pair->second.second == ExprType::Struct);
+				assert(pair->second.first);
 
-			// don't do the store, they return void
-			return ValPtr_p(val, ai);
+
+				val = mainBuilder.CreateCall(str->initFunc, ai);
+
+				// don't do the store, they return void
+				return ValPtr_p(val, ai);
+			}
+			else
+			{
+				llvm::Value* ival = this->initVal->codeGen().first;
+
+				printf("{%s, %s}\n", getReadableType(ival->getType()).c_str(), getReadableType(ai->getType()).c_str());
+				if(ival->getType() == ai->getType()->getPointerElementType())
+				{
+					return ValPtr_p(mainBuilder.CreateStore(ival, ai), ai);
+				}
+
+				// try the assign op.
+				else if(str->opmap[ArithmeticOp::Assign])
+				{
+					assert(pair->second.second == ExprType::Struct);
+					Struct* str = dynamic_cast<Struct*>(pair->second.first);
+
+					assert(str);
+					llvm::Function* opov = str->lopmap[ArithmeticOp::Assign];
+					if(!opov)
+						error("No valid operator overload");
+
+					// check args.
+					if(opov->getArgumentList().back().getType() != ival->getType())
+						error("No valid operator overload");
+
+					return ValPtr_p(mainBuilder.CreateCall2(opov, ai, ival), ai);
+				}
+				else
+				{
+					error("(%s:%s:%d) -> Internal check failed: invalid assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				}
+			}
 		}
 		else
 		{

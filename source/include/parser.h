@@ -71,7 +71,7 @@ namespace Parser
 		Exclamation,
 		Semicolon,
 		Ampersand,
-		Percent,			// 47
+		Percent,			// 48
 		Pipe,
 		LogicalOr,
 		LogicalAnd,
@@ -81,7 +81,7 @@ namespace Parser
 		EqualsTo,
 		NotEquals,
 		GreaterEquals,
-		LessThanEquals,		// 54
+		LessThanEquals,		// 55
 		ShiftLeft,
 		ShiftRight,
 		DoublePlus,			// doubleplusgood

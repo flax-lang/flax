@@ -15,15 +15,20 @@ struct String
 	{
 		return self.len
 	}
+
+	operator=(other: Int8 ptr)
+	{
+		self.data = other
+		puts(self.data)
+	}
 }
 
 func main()
 {
-	var s: Int8 ptr = "Hello, World"
-	puts(s)
+	var x: String = "Hello, World"
+	var z: String = x
 
-	var x: String
-	printInt64(x.length())
+	printInt64(z.length())
 }
 
 ffi func printBool(x: Bool)
