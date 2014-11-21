@@ -20,8 +20,8 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 1
-#define DUMP 1
+#define RUN 0
+#define DUMP 0
 #define COMPILE 1
 
 
@@ -151,7 +151,7 @@ namespace Codegen
 
 			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
 
-			llvm::raw_fd_ostream rso("test.bc", e, of);
+			llvm::raw_fd_ostream rso((mainModule->getModuleIdentifier() + ".bc").c_str(), e, of);
 			llvm::WriteBitcodeToFile(mainModule, rso);
 		}
 

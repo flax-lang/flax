@@ -26,7 +26,7 @@ scripts/corec: $(CXXOBJ)
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 run: scripts/corec
-	@scripts/corec scripts/test.crs
+	@scripts/corec -sysroot scripts/sysroot scripts/test.crs
 
-compileScript: run
-	@$(CXX) -o test test.bc
+runScript: run
+	@./test

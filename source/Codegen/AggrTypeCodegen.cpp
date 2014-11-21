@@ -263,8 +263,13 @@ ValPtr_p OpOverload::codeGen()
 		llvm::Type* ptype = getLlvmType(decl->params.front());
 		assert(ptype);
 
-		if(ptype != getType(this->str->name)->first->getPointerTo())
-			error("Type mismatch [%s, %s]", getReadableType(ptype).c_str(), getReadableType(getType(this->str->name)->first->getPointerTo()).c_str());
+		llvm::Type* stype = getType(this->str->name)->first;
+
+		if(ptype->getPointerTo() == stype->getPointerTo())
+			error(this, "Argument of overload operators (usually 'other') must be a pointer.");
+
+		if(ptype != stype->getPointerTo())
+			error(this, "Type mismatch [%s, %s]", getReadableType(ptype).c_str(), getReadableType(stype).c_str());
 	}
 	else
 	{
