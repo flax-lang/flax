@@ -7,8 +7,16 @@
 #include "llvm_all.h"
 
 
+void __error_gen(Ast::Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap);
 
-extern void error(const char* msg, ...);
+void error(const char* msg, ...);
+void error(Ast::Expr* e, const char* msg, ...);
+
+void int_error(const char* msg, ...);
+void int_error(Ast::Expr* e, const char* msg, ...);
+
+void warn(const char* msg, ...);
+void warn(Ast::Expr* e, const char* msg, ...);
 
 namespace Codegen
 {

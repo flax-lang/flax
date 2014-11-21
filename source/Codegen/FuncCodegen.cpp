@@ -20,11 +20,11 @@ ValPtr_p FuncCall::codeGen()
 		target = mainModule->getFunction(mangleName(this->name, this->params));
 
 	if(target == 0)
-		error("Unknown function '%s'", this->name.c_str());
+		error(this, "Unknown function '%s'", this->name.c_str());
 
 
 	if(target->arg_size() != this->params.size())
-		error("Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
 
@@ -68,7 +68,7 @@ ValPtr_p FuncDecl::codeGen()
 
 	// check for redef
 	if(func->getName() != mname)
-		error("Redefinition of function '%s'", this->name.c_str());
+		error(this, "Redefinition of function '%s'", this->name.c_str());
 
 	getVisibleFuncDecls()[mname] = this;
 	return ValPtr_p(func, 0);
@@ -133,7 +133,7 @@ ValPtr_p Func::codeGen()
 	if(determineVarType(this) != VarType::Void)
 	{
 		if(this->closure->statements.size() == 0)
-			error("Return value required for function '%s'", this->decl->name.c_str());
+			error(this, "Return value required for function '%s'", this->decl->name.c_str());
 
 		// the last expr is the final return value.
 		// if we had an explicit return, then the dynamic cast will succeed and we don't need to do anything

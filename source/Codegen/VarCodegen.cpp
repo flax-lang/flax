@@ -15,7 +15,7 @@ ValPtr_p VarRef::codeGen()
 {
 	llvm::Value* val = getSymInst(this->name);
 	if(!val)
-		error("Unknown variable name '%s'", this->name.c_str());
+		error(this, "Unknown variable name '%s'", this->name.c_str());
 
 	return ValPtr_p(mainBuilder.CreateLoad(val, this->name), val);
 }
@@ -23,7 +23,7 @@ ValPtr_p VarRef::codeGen()
 ValPtr_p VarDecl::codeGen()
 {
 	if(isDuplicateSymbol(this->name))
-		error("Redefining duplicate symbol '%s'", this->name.c_str());
+		error(this, "Redefining duplicate symbol '%s'", this->name.c_str());
 
 	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
@@ -45,7 +45,7 @@ ValPtr_p VarDecl::codeGen()
 		// get our type
 		TypePair_t* pair = getType(this->type);
 		if(!pair)
-			error("Invalid type");
+			error(this, "Invalid type");
 
 		if(pair->first->isStructTy())
 		{
@@ -62,7 +62,7 @@ ValPtr_p VarDecl::codeGen()
 		}
 		else
 		{
-			error("Unknown type encountered");
+			error(this, "Unknown type encountered");
 		}
 	}
 

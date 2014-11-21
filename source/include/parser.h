@@ -105,23 +105,13 @@ namespace Parser
 
 	struct PosInfo
 	{
-		~PosInfo()
-		{
-			delete this->file;
-		}
-
 		uint64_t line;
-		std::string* file;
+		std::string file;
 	};
 
 	struct Token
 	{
-		~Token()
-		{
-			delete this->posinfo;
-		}
-
-		PosInfo* posinfo;
+		PosInfo posinfo;
 		std::string text;
 		TType type;
 	};

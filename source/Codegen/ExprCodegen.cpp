@@ -92,10 +92,10 @@ ValPtr_p BinOp::codeGen()
 
 			llvm::Value* var = getSymTab()[v->name].first;
 			if(!var)
-				error("Unknown identifier (var) '%s'", v->name.c_str());
+				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
 			if(lhs->getType() != rhs->getType())
-				error("Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+				error(this, "Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
 
 			mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
@@ -113,7 +113,7 @@ ValPtr_p BinOp::codeGen()
 
 			// make sure the left side is a pointer
 			if(!ptr->getType()->isPointerTy())
-				error("Expression (type '%s' = '%s') is not assignable.", getReadableType(ptr->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+				error(this, "Expression (type '%s' = '%s') is not assignable.", getReadableType(ptr->getType()).c_str(), getReadableType(rhs->getType()).c_str());
 
 			// redo the number casting
 			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
@@ -149,7 +149,7 @@ ValPtr_p BinOp::codeGen()
 		{
 			TypePair_t* tp = getType(vr->name);
 			if(!tp)
-				error("Unknown type '%s'", vr->name.c_str());
+				error(this, "Unknown type '%s'", vr->name.c_str());
 
 			rtype = tp->first;
 		}

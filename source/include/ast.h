@@ -102,6 +102,8 @@ namespace Ast
 	{
 		virtual ~Expr() { }
 		virtual ValPtr_p codeGen() = 0;
+
+		Parser::PosInfo posinfo;
 		std::string type;
 		VarType varType;
 	};
@@ -113,6 +115,7 @@ namespace Ast
 		Number(double val) : dval(val) { this->decimal = true; }
 		Number(int64_t val) : ival(val) { this->decimal = false; }
 		virtual ValPtr_p codeGen() override;
+		Number* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool decimal = false;
 		union
@@ -127,6 +130,7 @@ namespace Ast
 		~BoolVal() { }
 		BoolVal(bool val) : val(val) { }
 		virtual ValPtr_p codeGen() override;
+		BoolVal* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool val;
 	};
@@ -136,6 +140,7 @@ namespace Ast
 		~VarRef() { }
 		VarRef(std::string name) : name(name) { }
 		virtual ValPtr_p codeGen() override;
+		VarRef* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		Expr* initVal;
@@ -146,6 +151,7 @@ namespace Ast
 		~VarDecl() { }
 		VarDecl(std::string name, bool immut) : name(name), immutable(immut) { }
 		virtual ValPtr_p codeGen() override;
+		VarDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		bool immutable;
@@ -157,6 +163,7 @@ namespace Ast
 		~BinOp() { }
 		BinOp(Expr* lhs, ArithmeticOp operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
 		virtual ValPtr_p codeGen() override;
+		BinOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* left;
 		Expr* right;
@@ -168,12 +175,9 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl() { }
-		FuncDecl(std::string id, std::deque<VarDecl*> params, std::string ret) : name(id), params(params)
-		{
-			this->type = ret;
-		}
-
+		FuncDecl(std::string id, std::deque<VarDecl*> params, std::string ret) : name(id), params(params) { this->type = ret; }
 		virtual ValPtr_p codeGen() override;
+		FuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool isFFI;
 		std::string name;
@@ -184,6 +188,8 @@ namespace Ast
 	{
 		~Closure() { }
 		virtual ValPtr_p codeGen() override;
+		Closure* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
+
 		std::deque<Expr*> statements;
 	};
 
@@ -192,6 +198,7 @@ namespace Ast
 		~Func() { }
 		Func(FuncDecl* funcdecl, Closure* block) : decl(funcdecl), closure(block) { }
 		virtual ValPtr_p codeGen() override;
+		Func* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
 		Closure* closure;
@@ -202,6 +209,7 @@ namespace Ast
 		~FuncCall() { }
 		FuncCall(std::string target, std::deque<Expr*> args) : name(target), params(args) { }
 		virtual ValPtr_p codeGen() override;
+		FuncCall* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		std::deque<Expr*> params;
@@ -212,6 +220,7 @@ namespace Ast
 		~Return() { }
 		Return(Expr* e) : val(e) { }
 		virtual ValPtr_p codeGen() override;
+		Return* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* val;
 	};
@@ -221,6 +230,7 @@ namespace Ast
 		~Import() { }
 		Import(std::string name) : module(name) { }
 		virtual ValPtr_p codeGen() override { return ValPtr_p(nullptr, nullptr); }
+		Import* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string module;
 	};
@@ -230,6 +240,7 @@ namespace Ast
 		~ForeignFuncDecl() { }
 		ForeignFuncDecl(FuncDecl* func) : decl(func) { }
 		virtual ValPtr_p codeGen() override;
+		ForeignFuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
 	};
@@ -239,6 +250,7 @@ namespace Ast
 		~If() { }
 		If(std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : cases(cases), final(ecase) { }
 		virtual ValPtr_p codeGen() override;
+		If* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 
 		Closure* final;
@@ -250,6 +262,7 @@ namespace Ast
 		~UnaryOp() { }
 		UnaryOp(ArithmeticOp op, Expr* expr) : op(op), expr(expr) { }
 		virtual ValPtr_p codeGen() override;
+		UnaryOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		ArithmeticOp op;
 		Expr* expr;
@@ -260,6 +273,7 @@ namespace Ast
 		~Struct() { }
 		Struct(std::string name) : name(name) { }
 		virtual ValPtr_p codeGen() override;
+		Struct* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 		void createType();
 
 		bool didCreateType;
@@ -278,6 +292,7 @@ namespace Ast
 		~MemberAccess() { }
 		MemberAccess(VarRef* tgt, Expr* mem) : target(tgt), member(mem) { }
 		virtual ValPtr_p codeGen() override;
+		MemberAccess* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* target;
 		Expr* member;
@@ -288,6 +303,7 @@ namespace Ast
 		~ArrayIndex() { }
 		ArrayIndex(VarRef* v, Expr* index) : var(v), index(index) { }
 		virtual ValPtr_p codeGen() override;
+		ArrayIndex* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* var;
 		Expr* index;
