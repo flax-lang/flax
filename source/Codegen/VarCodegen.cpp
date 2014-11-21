@@ -55,18 +55,13 @@ ValPtr_p VarDecl::codeGen()
 			Struct* str = nullptr;
 			assert((str = dynamic_cast<Struct*>(pair->second.first)));
 
-			if(!this->initVal)
-			{
-				assert(pair->second.second == ExprType::Struct);
-				assert(pair->second.first);
+			assert(pair->second.second == ExprType::Struct);
+			assert(pair->second.first);
 
 
-				val = mainBuilder.CreateCall(str->initFunc, ai);
+			val = mainBuilder.CreateCall(str->initFunc, ai);
 
-				// don't do the store, they return void
-				return ValPtr_p(val, ai);
-			}
-			else
+			if(this->initVal)
 			{
 				llvm::Value* ival = this->initVal->codeGen().first;
 
@@ -98,6 +93,10 @@ ValPtr_p VarDecl::codeGen()
 				{
 					error("(%s:%s:%d) -> Internal check failed: invalid assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 				}
+			}
+			else
+			{
+				return ValPtr_p(val, ai);
 			}
 		}
 		else

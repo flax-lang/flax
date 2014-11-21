@@ -26,9 +26,7 @@ struct String
 func main()
 {
 	var x: String = "Hello, World!"
-	var z: String = x
-
-	printInt64(z.length())
+	printInt64(x.length())
 }
 
 ffi func printBool(x: Bool)
