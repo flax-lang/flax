@@ -309,6 +309,15 @@ namespace Ast
 		Expr* index;
 	};
 
+	struct StringLiteral : Expr
+	{
+		~StringLiteral() { }
+		StringLiteral(std::string str) : str(str) { }
+		virtual ValPtr_p codeGen() override;
+
+		std::string str;
+	};
+
 	struct Root : Expr
 	{
 		~Root() { }
