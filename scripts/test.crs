@@ -1,4 +1,4 @@
-import Foundation
+// import Foundation
 
 struct String
 {
@@ -21,7 +21,7 @@ struct String
 		self.data = other
 	}
 
-	operator==(other: String) -> Bool
+	operator==(other: String ptr) -> Bool
 	{
 		return false
 	}
