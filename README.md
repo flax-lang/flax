@@ -38,3 +38,19 @@ Compiler/parser for simple language. For kicks.
 - Rule the world
 - Type inference
 
+
+
+#### Building the corescript compiler ####
+
+- Screw makefiles. corescript is currently using a third-party build system.
+- Binaries and sources are available here: http://91.206.143.88/capri/releases/
+- Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
+- Run 'capri' in the top-level directory.
+- Find the 'corec' executable in 'build/sysroot/usr/bin'
+- Additionally, default libraries will be built from 'build/sysroot/lib' and the shared library files (.dylib or .so) placed in 'build/sysroot/usr/lib'
+
+
+#### Contributing (haha, who am I kidding) ####
+
+- Found a bug? Want a feature?
+- Just submit a pull request!
