@@ -316,6 +316,7 @@ namespace Parser
 				case '&':	tok.type = TType::Ampersand;			break;
 				case '%':	tok.type = TType::Percent;				break;
 				case '|':	tok.type = TType::Pipe;					break;
+				case '@':	tok.type = TType::At;					break;
 			}
 
 			tok.text = stream[0];

@@ -94,6 +94,11 @@ namespace Ast
 		Cast,
 	};
 
+	enum class Attribute
+	{
+		NoMangle,
+	};
+
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
 
 
@@ -103,6 +108,7 @@ namespace Ast
 		virtual ~Expr() { }
 		virtual ValPtr_p codeGen() = 0;
 
+		std::vector<Attribute> attribs;
 		Parser::PosInfo posinfo;
 		std::string type;
 		VarType varType;
@@ -357,7 +363,7 @@ namespace Ast
 
 namespace Codegen
 {
-	void doCodegen(Ast::Root* root);
+	void doCodegen(std::string filename, Ast::Root* root);
 }
 
 

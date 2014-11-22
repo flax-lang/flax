@@ -75,6 +75,7 @@ namespace Parser
 		Pipe,
 		LogicalOr,
 		LogicalAnd,
+		At,
 
 		// compound symbols
 		Arrow,

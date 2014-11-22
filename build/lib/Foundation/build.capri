@@ -1,0 +1,50 @@
+version 1.16;
+import "../../../build.capri";
+
+project libFoundation
+{
+	COREC	= "{sysroot}/{prefix}/{outputBin}";
+	CXX		= "clang++";
+
+	src		= "source";
+	objs	= "";
+
+
+	corec_invoke	= "'{COREC}' -lib -sysroot '{sysroot}' $file$";
+	cxx_invoke		= "{CXX} -o '{sysroot}/usr/lib/libCS_Foundation.dylib' -dynamiclib ";
+
+	task all depends compile, link;
+	task compile
+	{
+		Utils.println("Compiling 'Foundation'");
+		assert Utilities.executeForChanged(src, ".crs", corec_invoke, false);
+
+		// link together
+		foreach(file in File.listTree(src))
+		{
+			if(String.endsWith(file, ".bc"))
+				objs += "'{file}' ";
+		}
+	}
+
+	task link
+	{
+		Utils.println("Linking 'Foundation'");
+		if(objs != "")
+			assert System.execute("{cxx_invoke} {objs}") == 0;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

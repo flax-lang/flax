@@ -1,4 +1,4 @@
-// import Foundation
+import Foundation
 
 struct String
 {
@@ -26,6 +26,7 @@ struct String
 		return false
 	}
 }
+
 
 func main()
 {
