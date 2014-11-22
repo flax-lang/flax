@@ -1,0 +1,79 @@
+version 1.16;
+
+project Utilities {
+
+	/**
+	 * Determines if any of the files with one of the "suffixes" in the
+	 * "folder" has changed.
+	 *
+	 * @param folder	the lookup folder
+	 * @param suffixes	the suffixes to look for
+	 */
+	task hasChanges(folder, suffixes)
+	{
+		def hasChanges = false;
+		def files = File.listTree(folder);
+
+		foreach(file in files)
+		{
+			if(String.endsWith(file, suffixes))
+			{
+				if(File.hasChanged(file))
+				{
+					File.rememberModifyDate(file);
+					hasChanges = true;
+				}
+			}
+		}
+
+		return hasChanges;
+	}
+
+	/**
+	 * Executes the given command for all files in "folder" that have
+	 * one of the "suffixes" and that have changed since last execution.
+	 *
+	 * The command must have the wildcards:
+	 *		$file$			this is where the file path is inserted
+	 *		$objectName$	this is where the generated object name is inserted
+	 *
+	 * @param folder		the lookup folder
+	 * @param suffixes		the suffixes to look for
+	 * @param command		the command to execute, in String.fillPattern format
+	 * @param allOverride	executes the command for each file, no matter if it has changed
+	 */
+	task executeForChanged(folder, suffixes, command, allOverride)
+	{
+
+		if(allOverride == null)
+		{
+			allOverride = false;
+		}
+
+		def files = File.listTree(folder);
+
+		foreach(file in files)
+		{
+			if(String.endsWith(file, suffixes))
+			{
+				if(allOverride || File.hasChanged(file))
+				{
+					File.rememberModifyDate(file);
+
+					params["file"] = file;
+					params["objectName"] = File.makeFileNameFromPath(File.getAbsolutePath(file));
+					fileCommand = command | params;
+
+					if(System.execute("{fileCommand}") != 0)
+					{
+						return false;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+

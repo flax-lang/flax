@@ -1,0 +1,6 @@
+func printInt64(x: Int64)
+{
+	x
+	x
+	x
+}

@@ -19,6 +19,7 @@ namespace Parser
 	Root* rootNode;
 	Token* curtok;
 	std::string modname;
+	std::deque<Attribute> attribStack;
 
 	// todo: hack
 	bool isParsingStruct;
@@ -52,6 +53,7 @@ namespace Parser
 	Import* parseImport(std::deque<Token*>& tokens);
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
+	void parseAttribute(std::deque<Token*>& tokens);
 	std::string parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
@@ -96,7 +98,6 @@ namespace Parser
 	}
 
 	// helpers
-
 	static void skipNewline(std::deque<Token*>& tokens)
 	{
 		while(tokens.size() > 0 && tokens.front()->type == TType::NewLine)
@@ -332,6 +333,10 @@ namespace Parser
 						return parseOpOverload(tokens);
 
 					return parseIdExpr(tokens);
+
+				case TType::At:
+					parseAttribute(tokens);
+					return parsePrimary(tokens);
 
 				case TType::StringLiteral:
 					return parseStringLiteral(tokens);
@@ -866,6 +871,21 @@ namespace Parser
 		}
 
 		return str;
+	}
+
+	void parseAttribute(std::deque<Token*>& tokens)
+	{
+		assert(eat(tokens)->type == TType::At);
+		Token* id = eat(tokens);
+
+		if(id->type != TType::Identifier)
+			error("Expected attribute name after '@'");
+
+		Attribute attr;
+		if(id->text == "nomangle")		attr = Attribute::NoMangle;
+		else							error("Unknown attribute '%s'", id->text.c_str());
+
+		attribStack.push_back(attr);
 	}
 
 	Import* parseImport(std::deque<Token*>& tokens)

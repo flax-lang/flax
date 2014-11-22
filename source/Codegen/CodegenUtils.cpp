@@ -96,7 +96,7 @@ namespace Codegen
 	std::deque<TypeMap_t*> visibleTypes;
 	llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
-	void doCodegen(Root* root)
+	void doCodegen(std::string filename, Root* root)
 	{
 		llvm::InitializeNativeTarget();
 		mainModule = new llvm::Module(Parser::getModuleName(), llvm::getGlobalContext());
@@ -151,7 +151,13 @@ namespace Codegen
 
 			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
 
-			llvm::raw_fd_ostream rso((mainModule->getModuleIdentifier() + ".bc").c_str(), e, of);
+
+			size_t lastdot = filename.find_last_of(".");
+			std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+			oname += ".bc";
+
+			printf("Saving compiled bitcode to file '%s'\n", oname.c_str());
+			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 			llvm::WriteBitcodeToFile(mainModule, rso);
 		}
 

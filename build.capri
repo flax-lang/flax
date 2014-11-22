@@ -1,0 +1,119 @@
+version 1.16;
+import "build/capri/Utilities.capri";
+
+projDir		= "/Users/zhiayang/Desktop/Stuff/Orion Industries/corescript";
+sysroot 	= File.getAbsolutePath("{projDir}/build/sysroot");
+prefix		= "usr/bin";
+outputBin	= "corec";
+
+corecBin	= "{sysroot}/{prefix}/{outputBin}";
+
+project CoreScript
+{
+	CXX				= "clang++";
+	CXXFLAGS		= "-g -stdlib=libc++ -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include";
+	LLVM_CONFIG		= "/usr/local/opt/llvm/bin/llvm-config";
+
+
+	capriExec	= System.getExecutablePath();
+
+	src			= "source";
+	objs		= "";
+
+
+
+	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
+	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter";
+	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/{outputBin}' ";
+
+
+
+	// tasks
+	task all depends build, buildLib;
+	task build { compile(); link(); }
+
+
+	task runTest
+	{
+		all();
+
+		Utils.println("Running test");
+		System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs");
+	}
+
+
+
+
+	task clean
+	{
+		Utils.println("Cleaning");
+		Utilities.executeForChanged(src, ".o", "rm $file$", true);
+		File.clearModifyCache();
+	}
+
+	task compile
+	{
+		Utils.println("Compiling");
+		// check if any header files changed
+		changed = Utilities.hasChanges("{src}/include", ".h");
+
+		// compile them all
+		assert Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
+	}
+
+	task link
+	{
+		Utils.println("Linking");
+
+		// link together
+		foreach(file in File.listTree(src))
+		{
+			if(String.endsWith(file, ".o"))
+				objs += "'{file}' ";
+		}
+
+		System.execute("{final_invoke} {objs}");
+	}
+
+	task buildLib
+	{
+		Utils.println("Building Libraries");
+		foreach(fold in File.listFolder("{projDir}/build/lib"))
+		{
+			fold = "{projDir}/build/lib/" + fold;
+			if(File.isFolder(fold))
+			{
+				bs = "";
+				foreach(file in File.listFolder(fold))
+				{
+					if(file == "build.capri")
+					{
+						bs = "{fold}/{file}";
+						break;
+					}
+				}
+
+				if(bs != "")
+				{
+					// unfortunately, capri cannot import scripts at runtime (understandably)
+					// so, we just invoke it.
+					// good 'ol recursive make.
+					pwd = File.getAbsolutePath(File.getCurrentDirectory());
+
+					dirname = File.getPathOfFile(bs);
+					File.changeDirectory(dirname);
+
+					assert System.execute("{capriExec} --script '{bs}'") == 0;
+
+					File.changeDirectory(pwd);
+				}
+			}
+		}
+	}
+}
+
+
+
+
+
+
