@@ -11,10 +11,10 @@ using namespace Ast;
 using namespace Codegen;
 
 
-ValPtr_p ArrayIndex::codeGen()
+ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 {
 	// get our array type
-	llvm::Type* atype = getLlvmType(this->var);
+	llvm::Type* atype = cgi->getLlvmType(this->var);
 	llvm::Type* etype = nullptr;
 
 	if(atype->isArrayTy())
@@ -49,15 +49,15 @@ ValPtr_p ArrayIndex::codeGen()
 
 
 	// todo: verify for pointers
-	ValPtr_p lhsp = this->var->codeGen();
+	ValPtr_p lhsp = this->var->codegen(cgi);
 
 	llvm::Value* lhs;
 	if(lhsp.first->getType()->isPointerTy())		lhs = lhsp.first;
 	else											lhs = lhsp.second;
 
-	llvm::Value* ind = this->index->codeGen().first;
-	llvm::Value* gep = mainBuilder.CreateGEP(lhs, ind, "indexPtr");
-	return ValPtr_p(mainBuilder.CreateLoad(gep), gep);
+	llvm::Value* ind = this->index->codegen(cgi).first;
+	llvm::Value* gep = cgi->mainBuilder.CreateGEP(lhs, ind, "indexPtr");
+	return ValPtr_p(cgi->mainBuilder.CreateLoad(gep), gep);
 }
 
 
@@ -74,19 +74,19 @@ ValPtr_p ArrayIndex::codeGen()
 
 
 
-ValPtr_p Struct::codeGen()
+ValPtr_p Struct::codegen(CodegenInstance* cgi)
 {
 	assert(this->didCreateType);
-	llvm::StructType* str = llvm::cast<llvm::StructType>(getType(this->name)->first);
+	llvm::StructType* str = llvm::cast<llvm::StructType>(cgi->getType(this->name)->first);
 
 
 
 	// generate initialiser
 	{
-		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(getContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, mainModule);
+		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(cgi->getContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(getContext(), "initialiser", func);
-		mainBuilder.SetInsertPoint(iblock);
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(cgi->getContext(), "initialiser", func);
+		cgi->mainBuilder.SetInsertPoint(iblock);
 
 		// create the local instance of reference to self
 		llvm::Value* self = &func->getArgumentList().front();
@@ -94,17 +94,17 @@ ValPtr_p Struct::codeGen()
 		for(VarDecl* var : this->members)
 		{
 			int i = this->nameMap[var->name];
-			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-			var->initVal = autoCastType(var, var->initVal);
-			mainBuilder.CreateStore(var->initVal ? var->initVal->codeGen().first : getDefaultValue(var), ptr);
+			var->initVal = cgi->autoCastType(var, var->initVal);
+			cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).first : cgi->getDefaultValue(var), ptr);
 		}
 
 		for(Func* f : this->funcs)
 		{
 			int i = this->nameMap[f->decl->name];
-			llvm::Value* ptr = mainBuilder.CreateStructGEP(self, i, "memberPtr_" + f->decl->name);
-			llvm::BasicBlock* ob = mainBuilder.GetInsertBlock();
+			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + f->decl->name);
+			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
 
 
 			std::string oname = f->decl->name;
@@ -114,8 +114,8 @@ ValPtr_p Struct::codeGen()
 			llvm::Value* val = nullptr;
 			if(f == this->ifunc)
 			{
-				f->decl->name = mangleName(this, f->decl->name);
-				val = f->decl->codeGen().first;
+				f->decl->name = cgi->mangleName(this, f->decl->name);
+				val = f->decl->codegen(cgi).first;
 
 				std::deque<Expr*> fuckingshit;
 
@@ -125,20 +125,20 @@ ValPtr_p Struct::codeGen()
 				FuncCall* fc = new FuncCall("__automatic_init#" + this->name, fuckingshit);
 				f->closure->statements.push_front(fc);
 
-				auto oi = mainBuilder.GetInsertBlock();
-				this->initFunc = llvm::cast<llvm::Function>(f->codeGen().first);
-				mainBuilder.SetInsertPoint(oi);
+				auto oi = cgi->mainBuilder.GetInsertBlock();
+				this->initFunc = llvm::cast<llvm::Function>(f->codegen(cgi).first);
+				cgi->mainBuilder.SetInsertPoint(oi);
 			}
 			else
 			{
 				// mangle
-				f->decl->name = mangleName(this, f->decl->name);
-				val = f->decl->codeGen().first;
-				f->codeGen();
+				f->decl->name = cgi->mangleName(this, f->decl->name);
+				val = f->decl->codegen(cgi).first;
+				f->codegen(cgi);
 			}
 
-			mainBuilder.SetInsertPoint(ob);
-			mainBuilder.CreateStore(val, ptr);
+			cgi->mainBuilder.SetInsertPoint(ob);
+			cgi->mainBuilder.CreateStore(val, ptr);
 
 			if(isOpOverload)
 			{
@@ -149,12 +149,12 @@ ValPtr_p Struct::codeGen()
 				while(i < oname.length() && oname[i] != '_')
 					(ss << oname[i]), i++;
 
-				ArithmeticOp ao = determineArithmeticOp(ss.str());
+				ArithmeticOp ao = cgi->determineArithmeticOp(ss.str());
 				this->lopmap[ao] = llvm::cast<llvm::Function>(val);
 			}
 		}
 
-		mainBuilder.CreateRetVoid();
+		cgi->mainBuilder.CreateRetVoid();
 
 		llvm::verifyFunction(*func);
 		this->defifunc = func;
@@ -170,26 +170,26 @@ ValPtr_p Struct::codeGen()
 	return ValPtr_p(nullptr, nullptr);
 }
 
-void Struct::createType()
+void Struct::createType(CodegenInstance* cgi)
 {
-	if(isDuplicateType(this->name))
+	if(cgi->isDuplicateType(this->name))
 		error(this, "Redefinition of type '%s'", this->name.c_str());
 
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
 
-	if(isDuplicateType(this->name))
+	if(cgi->isDuplicateType(this->name))
 		error(this, "Duplicate type '%s'", this->name.c_str());
 
 	// check if there's an explicit initialiser
 	this->ifunc = nullptr;
 
 	// create a bodyless struct so we can use it
-	llvm::StructType* str = llvm::StructType::create(getContext(), this->name);
-	getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+	llvm::StructType* str = llvm::StructType::create(cgi->getContext(), this->name);
+	cgi->getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
 
 
 	for(auto p : this->opmap)
-		p.second->codeGen();
+		p.second->codegen(cgi);
 
 	for(Func* func : this->funcs)
 	{
@@ -205,25 +205,25 @@ void Struct::createType()
 
 		for(VarDecl* v : func->decl->params)
 		{
-			llvm::Type* vt = getLlvmType(v);
+			llvm::Type* vt = cgi->getLlvmType(v);
 			if(vt == str)
 				error(this, "Cannot have non-pointer member of type self");
 
 			args.push_back(vt);
 		}
 
-		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
+		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 	}
 
 
 	// create llvm types
 	for(VarDecl* var : this->members)
 	{
-		llvm::Type* type = getLlvmType(var);
+		llvm::Type* type = cgi->getLlvmType(var);
 		if(type == str)
 			error(this, "Cannot have non-pointer member of type self");
 
-		types[this->nameMap[var->name]] = getLlvmType(var);
+		types[this->nameMap[var->name]] = cgi->getLlvmType(var);
 	}
 
 
@@ -231,6 +231,7 @@ void Struct::createType()
 	str->setBody(vec);
 
 	this->didCreateType = true;
+	cgi->getRootAST()->publicTypes.push_back(str);
 
 	delete types;
 }
@@ -244,7 +245,7 @@ void Struct::createType()
 
 
 
-ValPtr_p OpOverload::codeGen()
+ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
 {
 	// this is never really called. operators are handled as functions
 	// so, we just put them into the structs' funcs.
@@ -273,16 +274,16 @@ ValPtr_p OpOverload::codeGen()
 		if(Parser::determineVarType(decl->type) != VarType::Bool)
 			error("Operator overload for '==' must returna boolean value");
 
-		llvm::Type* ptype = getLlvmType(decl->params.front());
+		llvm::Type* ptype = cgi->getLlvmType(decl->params.front());
 		assert(ptype);
 
-		llvm::Type* stype = getType(this->str->name)->first;
+		llvm::Type* stype = cgi->getType(this->str->name)->first;
 
 		if(ptype->getPointerTo() == stype->getPointerTo())
 			error(this, "Argument of overload operators (usually 'other') must be a pointer.");
 
 		if(ptype != stype->getPointerTo())
-			error(this, "Type mismatch [%s, %s]", getReadableType(ptype).c_str(), getReadableType(stype).c_str());
+			error(this, "Type mismatch [%s, %s]", cgi->getReadableType(ptype).c_str(), cgi->getReadableType(stype).c_str());
 	}
 	else
 	{
@@ -304,16 +305,16 @@ ValPtr_p OpOverload::codeGen()
 
 
 
-ValPtr_p MemberAccess::codeGen()
+ValPtr_p MemberAccess::codegen(CodegenInstance* cgi)
 {
 	// gen the var ref on the left.
-	ValPtr_p p = this->target->codeGen();
+	ValPtr_p p = this->target->codegen(cgi);
 
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;
 	bool isPtr = false;
 
-	llvm::Type* type = getLlvmType(this->target);
+	llvm::Type* type = cgi->getLlvmType(this->target);
 	if(!type)
 		error("(%s:%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
@@ -326,12 +327,12 @@ ValPtr_p MemberAccess::codeGen()
 			error(this, "Cannot do member access on non-aggregate types");
 	}
 
-	TypePair_t* pair = getType(type->getStructName());
+	TypePair_t* pair = cgi->getType(type->getStructName());
 	if(!pair)
 		error("(%s:%s:%d) -> Internal check failed: failed to retrieve type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
 
-	llvm::Function* insertfunc = mainBuilder.GetInsertBlock()->getParent();
+	llvm::Function* insertfunc = cgi->mainBuilder.GetInsertBlock()->getParent();
 
 	if(pair->second.second == ExprType::Struct)
 	{
@@ -358,8 +359,8 @@ ValPtr_p MemberAccess::codeGen()
 
 
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
-		llvm::Value* ptr = mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
-		llvm::Value* val = mainBuilder.CreateLoad(ptr);
+		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
+		llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
 
 		if(fc)
 		{
@@ -368,7 +369,7 @@ ValPtr_p MemberAccess::codeGen()
 			for(Func* f : str->funcs)
 			{
 				// when comparing, we need to remangle the first bit that is the implicit self pointer
-				if(f->decl->name == mangleName(str, fc->name))
+				if(f->decl->name == cgi->mangleName(str, fc->name))
 				{
 					callee = f;
 					break;
@@ -380,7 +381,7 @@ ValPtr_p MemberAccess::codeGen()
 
 			// do some casting
 			for(int i = 0; i < fc->params.size(); i++)
-				fc->params[i] = autoCastType(callee->decl->params[i], fc->params[i]);
+				fc->params[i] = cgi->autoCastType(callee->decl->params[i], fc->params[i]);
 
 
 			std::vector<llvm::Value*> args;
@@ -388,12 +389,12 @@ ValPtr_p MemberAccess::codeGen()
 
 			for(Expr* e : fc->params)
 			{
-				args.push_back(e->codeGen().first);
+				args.push_back(e->codegen(cgi).first);
 				if(args.back() == nullptr)
 					return ValPtr_p(0, 0);
 			}
 
-			return ValPtr_p(mainBuilder.CreateCall(val, args), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateCall(val, args), 0);
 		}
 		else if(var)
 		{

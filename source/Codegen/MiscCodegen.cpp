@@ -9,34 +9,37 @@
 using namespace Ast;
 using namespace Codegen;
 
-ValPtr_p Root::codeGen()
+ValPtr_p Root::codegen(CodegenInstance* cgi)
 {
 	// we need to parse custom types first
 	for(Struct* s : this->structs)
-		s->createType();
+		s->createType(cgi);
 
 	// two pass: first codegen all the declarations
 	for(ForeignFuncDecl* f : this->foreignfuncs)
-		f->codeGen();
+		f->codegen(cgi);
 
 	for(Func* f : this->functions)
 	{
 		// special case to handle main(): always FFI top-level functions named 'main'
 		if(f->decl->name == "main")
+		{
+			f->decl->attribs |= Attr_VisPublic;
 			f->decl->isFFI = true;
+		}
 
-		f->decl->codeGen();
+		f->decl->codegen(cgi);
 	}
 
 	for(Struct* s : this->structs)
-		s->codeGen();
+		s->codegen(cgi);
 
 
 
 
 	// then do the actual code
 	for(Func* f : this->functions)
-		f->codeGen();
+		f->codegen(cgi);
 
 	return ValPtr_p(0, 0);
 }

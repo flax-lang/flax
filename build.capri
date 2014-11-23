@@ -33,7 +33,7 @@ project CoreScript
 	task build { compile(); link(); }
 
 
-	task runTest
+	task test
 	{
 		all();
 
@@ -81,9 +81,9 @@ project CoreScript
 	task buildLib
 	{
 		Utils.println("Building Libraries");
-		foreach(fold in File.listFolder("{projDir}/build/lib"))
+		foreach(fold in File.listFolder("{projDir}/lib"))
 		{
-			fold = "{projDir}/build/lib/" + fold;
+			fold = "{projDir}/lib/" + fold;
 			if(File.isFolder(fold))
 			{
 				bs = "";

@@ -8,6 +8,7 @@
 
 #include "include/ast.h"
 #include "include/codegen.h"
+#include "include/compiler.h"
 using namespace Ast;
 
 static std::string parseQuotedString(char** argv, int& i)
@@ -33,13 +34,21 @@ static std::string parseQuotedString(char** argv, int& i)
 
 
 
+
+std::string sysroot;
+std::string getSysroot()
+{
+	return sysroot;
+}
+
+
 int main(int argc, char* argv[])
 {
 	if(argc > 1)
 	{
+		// parse arguments
 		bool isLib = false;
-		std::vector<std::string> filenames;
-		std::string sysroot;
+		std::string filename;
 		std::string outname;
 
 		// parse the command line opts
@@ -79,49 +88,47 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				filenames.push_back(argv[i]);
+				filename = argv[i];
 				break;
 			}
 		}
 
 
 		// open the file.
-		for(auto filename : filenames)
+		std::vector<std::string> filelist;
+		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
+		Root* root = Compiler::compileFile(filename, filelist, cgi);
+
+
+		std::string foldername;
+		size_t sep = filename.find_last_of("\\/");
+		if(sep != std::string::npos)
+			foldername = filename.substr(0, sep);
+
+		if(!isLib)
 		{
-			std::ifstream file = std::ifstream(filename);
-			std::stringstream stream;
+			// compile it by invoking clang on the bitcode
+			char* inv = new char[1024];
+			snprintf(inv, 1024, "clang++ -o '%s' -L'%s'", outname.empty() ? cgi->mainModule->getModuleIdentifier().c_str() : outname.c_str(), (sysroot + "/usr/lib").c_str());
 
-			stream << file.rdbuf();
-			std::string str = stream.str();
+			std::string libs;
+			for(std::string lib : root->referencedLibraries)
+				libs += " -lCS_" + lib;
 
-			// parse
-			Root* root = Parser::Parse(filename, str);
-			Codegen::doCodegen(filename, root);
+			std::string final = inv;
+			final += libs + " ";
 
+			for(auto s : filelist)
+				final += "'" + s + "' ";
 
-			std::string foldername;
-			size_t sep = filename.find_last_of("\\/");
-			if(sep != std::string::npos)
-				foldername = filename.substr(0, sep);
+			system(final.c_str());
 
-			if(!isLib)
-			{
-				// compile it by invoking clang on the bitcode
-				char* inv = new char[256];
-				snprintf(inv, 256, "clang++ -o '%s' -L'%s'", outname.empty() ? Codegen::mainModule->getModuleIdentifier().c_str() : outname.c_str(), (sysroot + "/usr/lib").c_str());
+			// clean up the intermediate files (ie. .bitcode files)
+			for(auto s : filelist)
+				remove(s.c_str());
 
-				std::string libs;
-				for(Import* imp : root->imports)
-					libs += " -lCS_" + imp->module;
-
-				std::string final = inv;
-				final += libs + " ";
-
-				final += foldername + "/" + Codegen::mainModule->getModuleIdentifier() + ".bc";
-				system(final.c_str());
-
-				delete[] inv;
-			}
+			delete[] inv;
+			delete cgi;
 		}
 	}
 	else

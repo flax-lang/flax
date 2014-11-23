@@ -1,5 +1,5 @@
 version 1.16;
-import "../../../build.capri";
+import "../../build.capri";
 
 project libFoundation
 {

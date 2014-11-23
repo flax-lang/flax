@@ -20,6 +20,11 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
 
+namespace Codegen
+{
+	class CodegenInstance;
+}
+
 namespace Ast
 {
 	// rant:
@@ -85,11 +90,12 @@ namespace Ast
 	};
 
 
-	uint32_t Attr_Invalid		= 0x0;
-	uint32_t Attr_NoMangle		= 0x1;
-	uint32_t Attr_VisPublic		= 0x2;
-	uint32_t Attr_VisInternal	= 0x4;
-	uint32_t Attr_VisPrivate	= 0x8;
+	extern uint32_t Attr_Invalid;
+	extern uint32_t Attr_NoMangle;
+	extern uint32_t Attr_VisPublic;
+	extern uint32_t Attr_VisInternal;
+	extern uint32_t Attr_VisPrivate;
+	extern uint32_t Attr_ForceMandle;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
 
@@ -98,7 +104,7 @@ namespace Ast
 	struct Expr
 	{
 		virtual ~Expr() { }
-		virtual ValPtr_p codeGen() = 0;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) = 0;
 
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
@@ -109,13 +115,13 @@ namespace Ast
 	struct DummyExpr : Expr
 	{
 		~DummyExpr() { }
-		virtual ValPtr_p codeGen() override { return ValPtr_p(0, 0); }
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(0, 0); }
 	};
 
 	struct VarArg : Expr
 	{
 		~VarArg() { }
-		virtual ValPtr_p codeGen() override { return ValPtr_p(0, 0); }
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(0, 0); }
 	};
 
 
@@ -124,7 +130,7 @@ namespace Ast
 		~Number() { }
 		Number(double val) : dval(val) { this->decimal = true; }
 		Number(int64_t val) : ival(val) { this->decimal = false; }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		Number* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool decimal = false;
@@ -139,7 +145,7 @@ namespace Ast
 	{
 		~BoolVal() { }
 		BoolVal(bool val) : val(val) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		BoolVal* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool val;
@@ -149,7 +155,7 @@ namespace Ast
 	{
 		~VarRef() { }
 		VarRef(std::string name) : name(name) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		VarRef* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
@@ -160,7 +166,7 @@ namespace Ast
 	{
 		~VarDecl() { }
 		VarDecl(std::string name, bool immut) : name(name), immutable(immut) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		VarDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
@@ -172,7 +178,7 @@ namespace Ast
 	{
 		~BinOp() { }
 		BinOp(Expr* lhs, ArithmeticOp operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		BinOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* left;
@@ -186,7 +192,7 @@ namespace Ast
 	{
 		~FuncDecl() { }
 		FuncDecl(std::string id, std::deque<VarDecl*> params, std::string ret) : name(id), params(params) { this->type = ret; }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		FuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool hasVarArg;
@@ -199,7 +205,7 @@ namespace Ast
 	struct Closure : Expr
 	{
 		~Closure() { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		Closure* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::deque<Expr*> statements;
@@ -209,7 +215,7 @@ namespace Ast
 	{
 		~Func() { }
 		Func(FuncDecl* funcdecl, Closure* block) : decl(funcdecl), closure(block) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		Func* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
@@ -220,7 +226,7 @@ namespace Ast
 	{
 		~FuncCall() { }
 		FuncCall(std::string target, std::deque<Expr*> args) : name(target), params(args) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		FuncCall* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
@@ -231,7 +237,7 @@ namespace Ast
 	{
 		~Return() { }
 		Return(Expr* e) : val(e) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		Return* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* val;
@@ -241,7 +247,7 @@ namespace Ast
 	{
 		~Import() { }
 		Import(std::string name) : module(name) { }
-		virtual ValPtr_p codeGen() override { return ValPtr_p(nullptr, nullptr); }
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(nullptr, nullptr); }
 		Import* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string module;
@@ -251,7 +257,7 @@ namespace Ast
 	{
 		~ForeignFuncDecl() { }
 		ForeignFuncDecl(FuncDecl* func) : decl(func) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		ForeignFuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
@@ -261,7 +267,7 @@ namespace Ast
 	{
 		~If() { }
 		If(std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : cases(cases), final(ecase) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		If* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 
@@ -273,7 +279,7 @@ namespace Ast
 	{
 		~UnaryOp() { }
 		UnaryOp(ArithmeticOp op, Expr* expr) : op(op), expr(expr) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		UnaryOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		ArithmeticOp op;
@@ -286,7 +292,7 @@ namespace Ast
 	{
 		~OpOverload() { }
 		OpOverload(ArithmeticOp op) : op(op) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		OpOverload* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Func* func;
@@ -298,9 +304,9 @@ namespace Ast
 	{
 		~Struct() { }
 		Struct(std::string name) : name(name) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		Struct* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
-		void createType();
+		void createType(Codegen::CodegenInstance* cgi);
 
 		bool didCreateType;
 		Func* ifunc;
@@ -319,7 +325,7 @@ namespace Ast
 	{
 		~MemberAccess() { }
 		MemberAccess(VarRef* tgt, Expr* mem) : target(tgt), member(mem) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
 		MemberAccess* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
@@ -331,7 +337,7 @@ namespace Ast
 	{
 		~ArrayIndex() { }
 		ArrayIndex(VarRef* v, Expr* index) : var(v), index(index) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		ArrayIndex* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* var;
@@ -342,7 +348,7 @@ namespace Ast
 	{
 		~StringLiteral() { }
 		StringLiteral(std::string str) : str(str) { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 		StringLiteral* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string str;
@@ -351,11 +357,18 @@ namespace Ast
 	struct Root : Expr
 	{
 		~Root() { }
-		virtual ValPtr_p codeGen() override;
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
 		// public functiondecls and type decls.
-		std::deque<FuncDecl*> publicdecls;
-		std::deque<Struct*> publicstructs;
+		std::deque<llvm::Function*> publicFuncs;
+		std::deque<llvm::StructType*> publicTypes;
+
+		// imported types. these exist, but we need to declare them manually while code-genning.
+		std::deque<llvm::Function*> externalFuncs;
+		std::deque<llvm::StructType*> externalTypes;
+
+		// libraries referenced by 'import'
+		std::deque<std::string> referencedLibraries;
 
 		std::deque<Func*> functions;
 		std::deque<Import*> imports;
@@ -363,12 +376,6 @@ namespace Ast
 		std::deque<ForeignFuncDecl*> foreignfuncs;
 	};
 }
-
-namespace Codegen
-{
-	void doCodegen(std::string filename, Ast::Root* root);
-}
-
 
 
 

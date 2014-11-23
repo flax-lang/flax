@@ -10,35 +10,35 @@ using namespace Ast;
 using namespace Codegen;
 
 
-ValPtr_p Return::codeGen()
+ValPtr_p Return::codegen(CodegenInstance* cgi)
 {
-	auto ret = this->val->codeGen();
-	return ValPtr_p(mainBuilder.CreateRet(ret.first), ret.second);
+	auto ret = this->val->codegen(cgi);
+	return ValPtr_p(cgi->mainBuilder.CreateRet(ret.first), ret.second);
 }
 
-ValPtr_p UnaryOp::codeGen()
+ValPtr_p UnaryOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->expr);
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return ValPtr_p(mainBuilder.CreateNot(this->expr->codeGen().first), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateNot(this->expr->codegen(cgi).first), 0);
 
 		case ArithmeticOp::Minus:
-			return ValPtr_p(mainBuilder.CreateNeg(this->expr->codeGen().first), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateNeg(this->expr->codegen(cgi).first), 0);
 
 		case ArithmeticOp::Plus:
-			return this->expr->codeGen();
+			return this->expr->codegen(cgi);
 
 		case ArithmeticOp::Deref:
 		{
-			ValPtr_p vp = this->expr->codeGen();
-			return ValPtr_p(mainBuilder.CreateLoad(vp.first), vp.first);
+			ValPtr_p vp = this->expr->codegen(cgi);
+			return ValPtr_p(cgi->mainBuilder.CreateLoad(vp.first), vp.first);
 		}
 
 		case ArithmeticOp::AddrOf:
 		{
-			return ValPtr_p(this->expr->codeGen().second, 0);
+			return ValPtr_p(this->expr->codegen(cgi).second, 0);
 		}
 
 		default:
@@ -49,12 +49,12 @@ ValPtr_p UnaryOp::codeGen()
 
 
 
-ValPtr_p BinOp::codeGen()
+ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
-	this->right = autoCastType(this->left, this->right);
+	this->right = cgi->autoCastType(this->left, this->right);
 
-	ValPtr_p valptr = this->left->codeGen();
+	ValPtr_p valptr = this->left->codegen(cgi);
 
 	llvm::Value* lhs;
 	llvm::Value* rhs;
@@ -62,7 +62,7 @@ ValPtr_p BinOp::codeGen()
 	if(this->op == ArithmeticOp::Assign)
 	{
 		lhs = valptr.first;
-		rhs = this->right->codeGen().first;
+		rhs = this->right->codegen(cgi).first;
 
 		VarRef* v = nullptr;
 		UnaryOp* uo = nullptr;
@@ -72,7 +72,7 @@ ValPtr_p BinOp::codeGen()
 			if(!rhs)
 				error("(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
-			llvm::Value* var = getSymTab()[v->name].first;
+			llvm::Value* var = cgi->getSymTab()[v->name].first;
 			if(!var)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
@@ -80,19 +80,19 @@ ValPtr_p BinOp::codeGen()
 			{
 				if(lhs->getType()->isStructTy())
 				{
-					TypePair_t* tp = getType(lhs->getType()->getStructName());
+					TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
 					if(!tp)
 						error(this, "Invalid type");
 
-					return callOperatorOnStruct(tp, valptr.second, ArithmeticOp::Assign, rhs);
+					return cgi->callOperatorOnStruct(tp, valptr.second, ArithmeticOp::Assign, rhs);
 				}
 				else
 				{
-					error(this, "Cannot assign different types '%s' and '%s'", getReadableType(lhs->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+					error(this, "Cannot assign different types '%s' and '%s'", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
 				}
 			}
 
-			mainBuilder.CreateStore(rhs, var);
+			cgi->mainBuilder.CreateStore(rhs, var);
 			return ValPtr_p(rhs, var);
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
@@ -108,17 +108,17 @@ ValPtr_p BinOp::codeGen()
 
 			// make sure the left side is a pointer
 			if(!ptr->getType()->isPointerTy())
-				error(this, "Expression (type '%s' = '%s') is not assignable.", getReadableType(ptr->getType()).c_str(), getReadableType(rhs->getType()).c_str());
+				error(this, "Expression (type '%s' = '%s') is not assignable.", cgi->getReadableType(ptr->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
 
 			// redo the number casting
 			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
-				rhs = mainBuilder.CreateIntCast(rhs, ptr->getType()->getPointerElementType(), false);
+				rhs = cgi->mainBuilder.CreateIntCast(rhs, ptr->getType()->getPointerElementType(), false);
 
 			else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
-				rhs = mainBuilder.CreateIntToPtr(rhs, lhs->getType());
+				rhs = cgi->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
 
 			// assign it
-			mainBuilder.CreateStore(rhs, ptr);
+			cgi->mainBuilder.CreateStore(rhs, ptr);
 			return ValPtr_p(rhs, ptr);
 		}
 		else
@@ -138,13 +138,13 @@ ValPtr_p BinOp::codeGen()
 		VarType vt = Parser::determineVarType(vr->name);
 		if(vt != VarType::UserDefined)
 		{
-			rtype = getLlvmTypeOfBuiltin(vt);
+			rtype = cgi->getLlvmTypeOfBuiltin(vt);
 		}
 		else
 		{
-			TypePair_t* tp = getType(vr->name);
+			TypePair_t* tp = cgi->getType(vr->name);
 			if(!tp)
-				error(this, "Unknown type '%s'", vr->name.c_str());
+				error(this, "(ExprCodegen.cpp:~147): Unknown type '%s'", vr->name.c_str());
 
 			rtype = tp->first;
 		}
@@ -155,22 +155,22 @@ ValPtr_p BinOp::codeGen()
 			return ValPtr_p(lhs, 0);
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
-			return ValPtr_p(mainBuilder.CreateIntCast(lhs, rtype, isSignedType(this->left)), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 
 		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
-			return ValPtr_p(mainBuilder.CreateFPCast(lhs, rtype), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
 
 		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
-			return ValPtr_p(mainBuilder.CreatePointerCast(lhs, rtype), 0);
+			return ValPtr_p(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
 
 		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
-			return ValPtr_p(mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+			return ValPtr_p(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
 
 		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
-			return ValPtr_p(mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
 
 		else
-			return ValPtr_p(mainBuilder.CreateBitCast(lhs, rtype), 0);
+			return ValPtr_p(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
 	}
 
 
@@ -178,7 +178,7 @@ ValPtr_p BinOp::codeGen()
 
 	lhs = valptr.first;
 	llvm::Value* rhsptr = nullptr;
-	auto r = this->right->codeGen();
+	auto r = this->right->codegen(cgi);
 
 	rhs = r.first;
 	rhsptr = r.second;
@@ -187,97 +187,123 @@ ValPtr_p BinOp::codeGen()
 	{
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:											return ValPtr_p(mainBuilder.CreateAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:									return ValPtr_p(mainBuilder.CreateSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:									return ValPtr_p(mainBuilder.CreateMul(lhs, rhs), 0);
-			case ArithmeticOp::ShiftLeft:									return ValPtr_p(mainBuilder.CreateShl(lhs, rhs), 0);
+			case ArithmeticOp::Add:											return ValPtr_p(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:									return ValPtr_p(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:									return ValPtr_p(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
+			case ArithmeticOp::ShiftLeft:									return ValPtr_p(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
 			case ArithmeticOp::Divide:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateSDiv(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateUDiv(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateUDiv(lhs, rhs), 0);
+
+
 			case ArithmeticOp::Modulo:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateSRem(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateURem(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateSRem(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateURem(lhs, rhs), 0);
+
+
 			case ArithmeticOp::ShiftRight:
-				if(isSignedType(this->left))								return ValPtr_p(mainBuilder.CreateAShr(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateLShr(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left))							return ValPtr_p(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
+				else 														return ValPtr_p(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:										return ValPtr_p(mainBuilder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:										return ValPtr_p(mainBuilder.CreateICmpNE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:										return ValPtr_p(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:										return ValPtr_p(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
+
+
 			case ArithmeticOp::CmpLT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLT(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpULT(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateICmpSLT(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateICmpULT(lhs, rhs), 0);
+
+
+
 			case ArithmeticOp::CmpGT:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGT(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpUGT(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateICmpSGT(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateICmpUGT(lhs, rhs), 0);
+
+
 			case ArithmeticOp::CmpLEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSLE(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpULE(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateICmpSLE(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateICmpULE(lhs, rhs), 0);
+
+
+
 			case ArithmeticOp::CmpGEq:
-				if(isSignedType(this->left) || isSignedType(this->right))	return ValPtr_p(mainBuilder.CreateICmpSGE(lhs, rhs), 0);
-				else 														return ValPtr_p(mainBuilder.CreateICmpUGE(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
+					return ValPtr_p(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
+				else
+					return ValPtr_p(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
 
 
 
-			case ArithmeticOp::BitwiseAnd:									return ValPtr_p(mainBuilder.CreateAnd(lhs, rhs), 0);
-			case ArithmeticOp::BitwiseOr:									return ValPtr_p(mainBuilder.CreateOr(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseAnd:									return ValPtr_p(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseOr:									return ValPtr_p(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:
 			case ArithmeticOp::LogicalAnd:
 			{
 				int theOp = this->op == ArithmeticOp::LogicalOr ? 0 : 1;
-				llvm::Value* trueval = llvm::ConstantInt::get(getContext(), llvm::APInt(1, 1, true));
-				llvm::Value* falseval = llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
+				llvm::Value* trueval = llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, 1, true));
+				llvm::Value* falseval = llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, 0, true));
 
 
-				llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
-				llvm::Value* res = mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(getContext()));
+				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 				llvm::Value* ret = nullptr;
 
-				llvm::BasicBlock* entry = mainBuilder.GetInsertBlock();
-				llvm::BasicBlock* lb = llvm::BasicBlock::Create(getContext(), "leftbl", func);
-				llvm::BasicBlock* rb = llvm::BasicBlock::Create(getContext(), "rightbl", func);
-				mainBuilder.CreateCondBr(res, lb, rb);
+				llvm::BasicBlock* entry = cgi->mainBuilder.GetInsertBlock();
+				llvm::BasicBlock* lb = llvm::BasicBlock::Create(cgi->getContext(), "leftbl", func);
+				llvm::BasicBlock* rb = llvm::BasicBlock::Create(cgi->getContext(), "rightbl", func);
+				cgi->mainBuilder.CreateCondBr(res, lb, rb);
 
 
-				mainBuilder.SetInsertPoint(rb);
+				cgi->mainBuilder.SetInsertPoint(rb);
 				// this kinda works recursively
 				if(!this->phi)
-					this->phi = mainBuilder.CreatePHI(llvm::Type::getInt1Ty(getContext()), 2);
+					this->phi = cgi->mainBuilder.CreatePHI(llvm::Type::getInt1Ty(cgi->getContext()), 2);
 
 
 				// if this is a logical-or
 				if(theOp == 0)
 				{
 					// do the true case
-					mainBuilder.SetInsertPoint(lb);
+					cgi->mainBuilder.SetInsertPoint(lb);
 					this->phi->addIncoming(trueval, lb);
 
 					// if it succeeded (aka res is true), go to the merge block.
-					mainBuilder.CreateBr(rb);
+					cgi->mainBuilder.CreateBr(rb);
 
 
 
 					// do the false case
-					mainBuilder.SetInsertPoint(rb);
+					cgi->mainBuilder.SetInsertPoint(rb);
 
 					// do another compare.
-					llvm::Value* rres = mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(getContext()));
+					llvm::Value* rres = cgi->mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, entry);
 				}
 				else
 				{
 					// do the true case
-					mainBuilder.SetInsertPoint(lb);
-					llvm::Value* rres = mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(getContext()));
+					cgi->mainBuilder.SetInsertPoint(lb);
+					llvm::Value* rres = cgi->mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, lb);
 
-					mainBuilder.CreateBr(rb);
+					cgi->mainBuilder.CreateBr(rb);
 
 
 					// do the false case
-					mainBuilder.SetInsertPoint(rb);
+					cgi->mainBuilder.SetInsertPoint(rb);
 					phi->addIncoming(falseval, entry);
 				}
 
@@ -291,34 +317,34 @@ ValPtr_p BinOp::codeGen()
 				return ValPtr_p(0, 0);
 		}
 	}
-	else if(isBuiltinType(this->left) && isBuiltinType(this->right))
+	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
 		// then they're floats.
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:			return ValPtr_p(mainBuilder.CreateFAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:	return ValPtr_p(mainBuilder.CreateFSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:	return ValPtr_p(mainBuilder.CreateFMul(lhs, rhs), 0);
-			case ArithmeticOp::Divide:		return ValPtr_p(mainBuilder.CreateFDiv(lhs, rhs), 0);
+			case ArithmeticOp::Add:			return ValPtr_p(cgi->mainBuilder.CreateFAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:	return ValPtr_p(cgi->mainBuilder.CreateFSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:	return ValPtr_p(cgi->mainBuilder.CreateFMul(lhs, rhs), 0);
+			case ArithmeticOp::Divide:		return ValPtr_p(cgi->mainBuilder.CreateFDiv(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:		return ValPtr_p(mainBuilder.CreateFCmpOEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return ValPtr_p(mainBuilder.CreateFCmpONE(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return ValPtr_p(mainBuilder.CreateFCmpOLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return ValPtr_p(mainBuilder.CreateFCmpOGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return ValPtr_p(mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return ValPtr_p(mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpONE(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOLT(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOGT(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
 			default:						error("Unsupported operator."); return ValPtr_p(0, 0);
 		}
 	}
 	else if(lhs->getType()->isStructTy())
 	{
-		TypePair_t* p = getType(lhs->getType()->getStructName());
+		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
 			error("Invalid type");
 
-		return callOperatorOnStruct(p, valptr.second, op, rhsptr);
+		return cgi->callOperatorOnStruct(p, valptr.second, op, rhsptr);
 	}
 	else
 	{

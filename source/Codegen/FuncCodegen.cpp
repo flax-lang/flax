@@ -13,11 +13,11 @@ using namespace Codegen;
 
 #define OPTIMISE 1
 
-ValPtr_p FuncCall::codeGen()
+ValPtr_p FuncCall::codegen(CodegenInstance* cgi)
 {
-	llvm::Function* target = mainModule->getFunction(this->name);
+	llvm::Function* target = cgi->mainModule->getFunction(this->name);
 	if(!target)
-		target = mainModule->getFunction(mangleName(this->name, this->params));
+		target = cgi->mainModule->getFunction(cgi->mangleName(this->name, this->params));
 
 	if(target == 0)
 		error(this, "Unknown function '%s'", this->name.c_str());
@@ -28,59 +28,59 @@ ValPtr_p FuncCall::codeGen()
 	std::vector<llvm::Value*> args;
 
 	// we need to get the function declaration
-	FuncDecl* decl = getFuncDecl(this->name);
+	FuncDecl* decl = cgi->getFuncDecl(this->name);
 	if(decl)
 	{
 		for(int i = 0; i < this->params.size(); i++)
-			this->params[i] = autoCastType(decl->params[i], this->params[i]);
+			this->params[i] = cgi->autoCastType(decl->params[i], this->params[i]);
 	}
 
 	for(Expr* e : this->params)
-	{
-		args.push_back(e->codeGen().first);
-		if(args.back() == nullptr)
-			error("WHAT?");
-	}
+		args.push_back(e->codegen(cgi).first);
 
-	return ValPtr_p(mainBuilder.CreateCall(target, args), 0);
+	return ValPtr_p(cgi->mainBuilder.CreateCall(target, args), 0);
 }
 
-ValPtr_p FuncDecl::codeGen()
+ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 {
 	std::vector<llvm::Type*> argtypes;
 	std::deque<Expr*> params_expr;
 	for(VarDecl* v : this->params)
 	{
 		params_expr.push_back(v);
-		argtypes.push_back(getLlvmType(v));
+		argtypes.push_back(cgi->getLlvmType(v));
 	}
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	this->mangledName = this->name;
 	if(!this->isFFI)
-		this->mangledName = mangleName(this->name, params_expr);
+		this->mangledName = cgi->mangleName(this->name, params_expr);
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, this->hasVarArg);
-	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, this->mangledName, mainModule);
+	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
+	llvm::Function* func = llvm::Function::Create(ft, this->attribs & Attr_VisPublic ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage, this->mangledName, cgi->mainModule);
 
 	// check for redef
 	if(func->getName() != this->mangledName)
 		error(this, "Redefinition of function '%s'", this->name.c_str());
 
-	getVisibleFuncDecls()[this->mangledName] = this;
+	cgi->getVisibleFuncDecls()[this->mangledName] = FuncPair_t(func, this);
+
+	if(this->attribs & Attr_VisPublic)
+		cgi->getRootAST()->publicFuncs.push_back(func);
+
 	return ValPtr_p(func, 0);
 }
 
-ValPtr_p ForeignFuncDecl::codeGen()
+ValPtr_p ForeignFuncDecl::codegen(CodegenInstance* cgi)
 {
-	return this->decl->codeGen();
+	return this->decl->codegen(cgi);
 }
 
-ValPtr_p Closure::codeGen()
+ValPtr_p Closure::codegen(CodegenInstance* cgi)
 {
 	ValPtr_p lastVal;
 	for(Expr* e : this->statements)
-		lastVal = e->codeGen();
+		lastVal = e->codegen(cgi);
 
 	return lastVal;
 }
@@ -89,12 +89,12 @@ ValPtr_p Closure::codeGen()
 
 
 
-ValPtr_p Func::codeGen()
+ValPtr_p Func::codegen(CodegenInstance* cgi)
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
-	llvm::Function* func = mainModule->getFunction(this->decl->mangledName);
+	llvm::Function* func = cgi->mainModule->getFunction(this->decl->mangledName);
 	if(!func)
 	{
 		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
@@ -104,10 +104,10 @@ ValPtr_p Func::codeGen()
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
 	// create a new 'table' for our own usage
-	pushScope();
+	cgi->pushScope();
 
-	llvm::BasicBlock* block = llvm::BasicBlock::Create(getContext(), "entry", func);
-	mainBuilder.SetInsertPoint(block);
+	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), "entry", func);
+	cgi->mainBuilder.SetInsertPoint(block);
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
@@ -116,18 +116,18 @@ ValPtr_p Func::codeGen()
 	{
 		it->setName(this->decl->params[i]->name);
 
-		llvm::AllocaInst* ai = allocateInstanceInBlock(func, this->decl->params[i]);
-		mainBuilder.CreateStore(it, ai);
+		llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(func, this->decl->params[i]);
+		cgi->mainBuilder.CreateStore(it, ai);
 
-		getSymTab()[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
+		cgi->getSymTab()[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
 	}
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = this->closure->codeGen().first;
+	llvm::Value* lastVal = this->closure->codegen(cgi).first;
 
 	// check if we're not returning void
-	if(determineVarType(this) != VarType::Void)
+	if(cgi->determineVarType(this) != VarType::Void)
 	{
 		if(this->closure->statements.size() == 0)
 			error(this, "Return value required for function '%s'", this->decl->name.c_str());
@@ -144,22 +144,22 @@ ValPtr_p Func::codeGen()
 
 			// TODO: make better.
 			if(!dynamic_cast<If*>(this->closure->statements.back()))
-				mainBuilder.CreateRet(lastVal);
+				cgi->mainBuilder.CreateRet(lastVal);
 		}
 	}
 	else
 	{
-		mainBuilder.CreateRetVoid();
+		cgi->mainBuilder.CreateRetVoid();
 	}
 
 	llvm::verifyFunction(*func);
 
 	if(OPTIMISE)
-		Fpm->run(*func);
+		cgi->Fpm->run(*func);
 
 
 	// we've codegen'ed that stuff, pop the symbol table
-	popScope();
+	cgi->popScope();
 
 	return ValPtr_p(func, 0);
 }

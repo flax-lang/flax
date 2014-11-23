@@ -11,37 +11,37 @@ using namespace Ast;
 using namespace Codegen;
 
 
-ValPtr_p VarRef::codeGen()
+ValPtr_p VarRef::codegen(CodegenInstance* cgi)
 {
-	llvm::Value* val = getSymInst(this->name);
+	llvm::Value* val = cgi->getSymInst(this->name);
 	if(!val)
 		error(this, "Unknown variable name '%s'", this->name.c_str());
 
-	return ValPtr_p(mainBuilder.CreateLoad(val, this->name), val);
+	return ValPtr_p(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-ValPtr_p VarDecl::codeGen()
+ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 {
-	if(isDuplicateSymbol(this->name))
+	if(cgi->isDuplicateSymbol(this->name))
 		error(this, "Redefining duplicate symbol '%s'", this->name.c_str());
 
-	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
+	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
 
-	llvm::AllocaInst* ai = allocateInstanceInBlock(func, this);
-	getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+	llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(func, this);
+	cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
 
-	TypePair_t* cmplxtype = getType(this->type);
+	TypePair_t* cmplxtype = cgi->getType(this->type);
 
 	if(this->initVal && !cmplxtype)
 	{
-		this->initVal = autoCastType(this, this->initVal);
-		val = this->initVal->codeGen().first;
+		this->initVal = cgi->autoCastType(this, this->initVal);
+		val = this->initVal->codegen(cgi).first;
 	}
-	else if(isBuiltinType(this) || isArrayType(this))
+	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this))
 	{
-		val = getDefaultValue(this);
+		val = cgi->getDefaultValue(this);
 	}
 	else
 	{
@@ -58,17 +58,17 @@ ValPtr_p VarDecl::codeGen()
 			assert(pair->second.second == ExprType::Struct);
 			assert(pair->second.first);
 
-			val = mainBuilder.CreateCall(str->initFunc, ai);
+			val = cgi->mainBuilder.CreateCall(str->initFunc, ai);
 
 			if(this->initVal)
 			{
-				llvm::Value* ival = this->initVal->codeGen().first;
+				llvm::Value* ival = this->initVal->codegen(cgi).first;
 
 				if(ival->getType() == ai->getType()->getPointerElementType())
-					return ValPtr_p(mainBuilder.CreateStore(ival, ai), ai);
+					return ValPtr_p(cgi->mainBuilder.CreateStore(ival, ai), ai);
 
 				else
-					return callOperatorOnStruct(pair, ai, ArithmeticOp::Assign, ival);
+					return cgi->callOperatorOnStruct(pair, ai, ArithmeticOp::Assign, ival);
 			}
 			else
 			{
@@ -81,7 +81,7 @@ ValPtr_p VarDecl::codeGen()
 		}
 	}
 
-	mainBuilder.CreateStore(val, ai);
+	cgi->mainBuilder.CreateStore(val, ai);
 	return ValPtr_p(val, ai);
 }
 

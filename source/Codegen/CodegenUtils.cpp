@@ -20,8 +20,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define RUN 0
-#define DUMP 0
 #define COMPILE 1
 
 
@@ -85,33 +83,22 @@ void warn(Expr* relevantast, const char* msg, ...)
 
 namespace Codegen
 {
-	Root* rootNode;
-	llvm::Module* mainModule;
-	llvm::FunctionPassManager* Fpm;
-	std::deque<SymTab_t*> symTabStack;
-	llvm::ExecutionEngine* execEngine;
-	std::deque<FuncMap_t*> funcTabStack;
-	std::deque<TypeMap_t*> visibleTypes;
-	llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
-
-	void doCodegen(std::string filename, Root* root)
+	llvm::Module* doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi)
 	{
 		llvm::InitializeNativeTarget();
-		mainModule = new llvm::Module(Parser::getModuleName(), llvm::getGlobalContext());
-
-		rootNode = root;
+		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
+		cgi->rootNode = root;
 
 		std::string err;
-		execEngine = llvm::EngineBuilder(mainModule).setErrorStr(&err).create();
+		cgi->execEngine = llvm::EngineBuilder(cgi->mainModule).setErrorStr(&err).create();
 
-		if(!execEngine)
+		if(!cgi->execEngine)
 		{
 			fprintf(stderr, "%s", err.c_str());
 			exit(1);
 		}
-		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(mainModule);
 
-		assert(execEngine);
+		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(cgi->mainModule);
 
 		// Provide basic AliasAnalysis support for GVN.
 		OurFPM.add(llvm::createBasicAliasAnalysisPass());
@@ -132,65 +119,44 @@ namespace Codegen
 
 
 		// Set the global so the code gen can use this.
-		Fpm = &OurFPM;
-
-		pushScope();
-		root->codeGen();
+		cgi->Fpm = &OurFPM;
+		cgi->pushScope();
 
 
-		// weed out the public defs, for both funcs and types (structs)
-		for(Func* f : root->functions)
+
+		std::string e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		size_t lastdot = filename.find_last_of(".");
+		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+		oname += ".bc";
+
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+
+
+
+		for(auto f : cgi->rootNode->externalFuncs)
 		{
-			if(f->decl->attribs & Attr_VisPublic)
-				root->publicdecls.push_back(f->decl);
+			f->deleteBody();
+
+			// add to the func table
+			cgi->mainModule->getOrInsertFunction(f->getName(), f->getFunctionType());
+		}
+		for(auto t : cgi->rootNode->externalTypes)
+		{
+			llvm::StructType::create(cgi->getContext(), t);
 		}
 
-		for(Struct* s : root->structs)
-		{
-			if(s->attribs & Attr_VisPublic)
-				root->publicstructs.push_back(s);
-		}
-
-		popScope();
-
-
-		if(DUMP)
-		{
-			mainModule->dump();
-		}
+		cgi->rootNode->codegen(cgi);
+		cgi->popScope();
 
 
 		if(COMPILE)
 		{
-			std::string e;
-
-			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
-
-
-			size_t lastdot = filename.find_last_of(".");
-			std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-			oname += ".bc";
-
-			printf("Saving compiled bitcode to file '%s'\n", oname.c_str());
-			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
-			llvm::WriteBitcodeToFile(mainModule, rso);
+			llvm::WriteBitcodeToFile(cgi->mainModule, rso);
 		}
 
-		if(RUN)
-		{
-			// check for a main() function and execute it
-			llvm::Function* main;
-			if((main = mainModule->getFunction("main")))
-			{
-				auto func = execEngine->getPointerToFunction(main);
-
-				void (*ptr)() = (void(*)()) func;
-				ptr();
-			}
-
-			printf("\n\n");
-		}
-
+		return cgi->mainModule;
 	}
 
 
@@ -214,17 +180,17 @@ namespace Codegen
 
 
 
-	llvm::LLVMContext& getContext()
+	llvm::LLVMContext& CodegenInstance::getContext()
 	{
 		return mainModule->getContext();
 	}
 
-	Root* getRootAST()
+	Root* CodegenInstance::getRootAST()
 	{
 		return rootNode;
 	}
 
-	void popScope()
+	void CodegenInstance::popScope()
 	{
 		SymTab_t* tab = symTabStack.back();
 		TypeMap_t* types = visibleTypes.back();
@@ -239,24 +205,24 @@ namespace Codegen
 		funcTabStack.pop_back();
 	}
 
-	void pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm)
+	void CodegenInstance::pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm)
 	{
 		symTabStack.push_back(tab);
 		visibleTypes.push_back(tp);
 		funcTabStack.push_back(fm);
 	}
 
-	void pushScope()
+	void CodegenInstance::pushScope()
 	{
 		pushScope(new SymTab_t(), new TypeMap_t(), new FuncMap_t());
 	}
 
-	SymTab_t& getSymTab()
+	SymTab_t& CodegenInstance::getSymTab()
 	{
 		return *symTabStack.back();
 	}
 
-	SymbolPair_t* getSymPair(const std::string& name)
+	SymbolPair_t* CodegenInstance::getSymPair(const std::string& name)
 	{
 		for(int i = symTabStack.size(); i-- > 0;)
 		{
@@ -268,7 +234,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	llvm::Value* getSymInst(const std::string& name)
+	llvm::Value* CodegenInstance::getSymInst(const std::string& name)
 	{
 		SymbolPair_t* pair = nullptr;
 		if((pair = getSymPair(name)))
@@ -277,7 +243,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	VarDecl* getSymDecl(const std::string& name)
+	VarDecl* CodegenInstance::getSymDecl(const std::string& name)
 	{
 		SymbolPair_t* pair = nullptr;
 		if((pair = getSymPair(name)))
@@ -286,7 +252,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool isDuplicateSymbol(const std::string& name)
+	bool CodegenInstance::isDuplicateSymbol(const std::string& name)
 	{
 		return getSymTab().find(name) != getSymTab().end();
 	}
@@ -296,12 +262,12 @@ namespace Codegen
 
 	// stack based types.
 
-	TypeMap_t& getVisibleTypes()
+	TypeMap_t& CodegenInstance::getVisibleTypes()
 	{
 		return *visibleTypes.back();
 	}
 
-	TypePair_t* getType(std::string name)
+	TypePair_t* CodegenInstance::getType(std::string name)
 	{
 		for(TypeMap_t* map : visibleTypes)
 		{
@@ -312,7 +278,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool isDuplicateType(std::string name)
+	bool CodegenInstance::isDuplicateType(std::string name)
 	{
 		return getType(name) != nullptr;
 	}
@@ -320,29 +286,29 @@ namespace Codegen
 
 
 	// funcs
-	FuncMap_t& getVisibleFuncDecls()
+	FuncMap_t& CodegenInstance::getVisibleFuncDecls()
 	{
 		return *funcTabStack.back();
 	}
 
-	FuncDecl* getFuncDecl(std::string name)
+	FuncDecl* CodegenInstance::getFuncDecl(std::string name)
 	{
 		for(int i = funcTabStack.size(); i-- > 0;)
 		{
 			FuncMap_t* tab = funcTabStack[i];
 			if(tab->find(name) != tab->end())
-				return (*tab)[name];
+				return (*tab)[name].second;
 		}
 
 		return nullptr;
 	}
 
-	bool isDuplicateFuncDecl(std::string name)
+	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
 		return getFuncDecl(name) != nullptr;
 	}
 
-	llvm::Type* unwrapPointerType(std::string type)
+	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
 	{
 		std::string sptr = std::string("Ptr");
 
@@ -364,7 +330,7 @@ namespace Codegen
 			}
 			else
 			{
-				error("Unknown type '%s'", actualType.c_str());
+				error("(CodegenUtils.cpp:~338): Unknown type '%s'", actualType.c_str());
 				return nullptr;
 			}
 		}
@@ -397,19 +363,19 @@ namespace Codegen
 
 
 
-	bool isBuiltinType(Expr* expr)
+	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		VarType e = determineVarType(expr);
 		return e <= VarType::Bool || e == VarType::Float32 || e == VarType::Float64 || e == VarType::Void;
 	}
 
-	bool isPtr(Expr* expr)
+	bool CodegenInstance::isPtr(Expr* expr)
 	{
 		VarType e = determineVarType(expr);
 		return e == VarType::AnyPtr || getLlvmType(expr)->isPointerTy();
 	}
 
-	llvm::Type* getLlvmTypeOfBuiltin(VarType t)
+	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(VarType t)
 	{
 		switch(t)
 		{
@@ -437,7 +403,7 @@ namespace Codegen
 		}
 	}
 
-	llvm::Type* getLlvmType(Expr* expr)
+	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
 	{
 		VarType t;
 
@@ -465,7 +431,7 @@ namespace Codegen
 						// check if it ends with pointer, and if we have a type that's un-pointered
 						llvm::Type* ret = unwrapPointerType(expr->type);
 						if(!ret)
-							error(expr, "Unknown type '%s'", expr->type.c_str());
+							error(expr, "(CodegenUtils.cpp:~439): Unknown type '%s'", expr->type.c_str());
 
 						return ret;
 					}
@@ -508,7 +474,7 @@ namespace Codegen
 					{
 						llvm::Type* ret = unwrapPointerType(etype);
 						if(!ret)
-							error(expr, "Unknown type '%s'", etype.c_str());
+							error(expr, "(CodegenUtils.cpp:~482): Unknown type '%s'", etype.c_str());
 
 						else
 							eltype = ret;
@@ -550,7 +516,7 @@ namespace Codegen
 					llvm::Type* ret = unwrapPointerType(fd->type);
 
 					if(!ret)
-						error(expr, "Unknown type '%s'", expr->type.c_str());
+						error(expr, "(CodegenUtils.cpp:~524): Unknown type '%s'", expr->type.c_str());
 
 
 					return ret;
@@ -568,7 +534,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	VarType determineVarType(Expr* e)
+	VarType CodegenInstance::determineVarType(Expr* e)
 	{
 		VarRef* ref			= nullptr;
 		VarDecl* decl		= nullptr;
@@ -650,22 +616,22 @@ namespace Codegen
 		}
 	}
 
-	bool isIntegerType(Expr* e)		{ return getLlvmType(e)->isIntegerTy(); }
-	bool isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
+	bool CodegenInstance::isIntegerType(Expr* e)		{ return getLlvmType(e)->isIntegerTy(); }
+	bool CodegenInstance::isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
-	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)
 	{
 		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
 		return tmpBuilder.CreateAlloca(type, 0, name);
 	}
 
-	llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, VarDecl* var)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, VarDecl* var)
 	{
 		return allocateInstanceInBlock(func, getLlvmType(var), var->name);
 	}
 
 
-	llvm::Value* getDefaultValue(Expr* e)
+	llvm::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
 		llvm::Type* llvmtype = getLlvmType(e);
 
@@ -703,7 +669,7 @@ namespace Codegen
 		}
 	}
 
-	std::string getReadableType(llvm::Type* type)
+	std::string CodegenInstance::getReadableType(llvm::Type* type)
 	{
 		std::string thing;
 		llvm::raw_string_ostream rso(thing);
@@ -713,12 +679,12 @@ namespace Codegen
 		return rso.str();
 	}
 
-	std::string getReadableType(Expr* expr)
+	std::string CodegenInstance::getReadableType(Expr* expr)
 	{
 		return getReadableType(getLlvmType(expr));
 	}
 
-	Expr* autoCastType(Expr* left, Expr* right)
+	Expr* CodegenInstance::autoCastType(Expr* left, Expr* right)
 	{
 		// adjust the right hand int literal, if it is one
 		Number* n = nullptr;
@@ -743,12 +709,12 @@ namespace Codegen
 		return right;
 	}
 
-	std::string mangleName(Struct* s, std::string orig)
+	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
 	{
 		return "__struct#" + s->name + "_" + orig;
 	}
 
-	std::string unmangleName(Struct* s, std::string orig)
+	std::string CodegenInstance::unmangleName(Struct* s, std::string orig)
 	{
 		std::string ret = orig;
 		if(orig.find("__struct#") != 0)
@@ -769,7 +735,7 @@ namespace Codegen
 		return ret.substr(s->name.length());
 	}
 
-	std::string mangleName(std::string base, std::deque<Expr*> args)
+	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
 	{
 		std::string mangled = "";
 
@@ -780,12 +746,12 @@ namespace Codegen
 	}
 
 
-	bool isArrayType(Expr* e)
+	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		return getLlvmType(e)->isArrayTy();
 	}
 
-	ArithmeticOp determineArithmeticOp(std::string ch)
+	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
 		ArithmeticOp op;
 
@@ -815,7 +781,7 @@ namespace Codegen
 
 
 
-	ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
+	ValPtr_p CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
 	{
 		assert(pair);
 		assert(pair->first);
@@ -850,12 +816,22 @@ namespace Codegen
 		error("Invalid operator on type");
 		return ValPtr_p(0, 0);
 	}
+
+
 }
 
 
 
 
-
+namespace Ast
+{
+	uint32_t Attr_Invalid		= 0x00;
+	uint32_t Attr_NoMangle		= 0x01;
+	uint32_t Attr_VisPublic		= 0x02;
+	uint32_t Attr_VisInternal	= 0x04;
+	uint32_t Attr_VisPrivate	= 0x08;
+	uint32_t Attr_ForceMandle	= 0x10;
+}
 
 
 
