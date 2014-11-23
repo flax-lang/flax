@@ -41,8 +41,11 @@ Compiler/parser for simple language. For kicks.
 #### Building the corescript compiler ####
 
 - You will need clang (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
+- You must modify the 'projDir' variable in the top-level build.capri script.
+- This is due to a limitation of the Capri system, it will be fixed soon according to its developer.
 - Screw makefiles. corescript is currently using a third-party build system.
 - Binaries and sources are available here: http://91.206.143.88/capri/releases/
+- Documentation for the Capri script is available here: http://forum.osdev.org/viewtopic.php?f=2&t=28568&start=0
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
 - Find the 'corec' executable in 'build/sysroot/usr/bin'
