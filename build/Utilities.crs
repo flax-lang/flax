@@ -1,0 +1,6 @@
+public func printInt64(x: Int64)
+{
+	printf("%lld", x)
+}
+
+ffi func printf(x: Int8 ptr, ...)

@@ -12,35 +12,34 @@ using namespace Codegen;
 
 
 
-void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi,
-	bool* didCreateMerge)
+void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
 
-	llvm::BasicBlock* t = llvm::BasicBlock::Create(getContext(), "trueCaseR", func);
-	llvm::BasicBlock* f = llvm::BasicBlock::Create(getContext(), "falseCaseR");
+	llvm::BasicBlock* t = llvm::BasicBlock::Create(cgi->getContext(), "trueCaseR", func);
+	llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "falseCaseR");
 
-	llvm::Value* cond = pairs.front().first->codeGen().first;
+	llvm::Value* cond = pairs.front().first->codegen(cgi).first;
 
 
-	VarType apprType = determineVarType(pairs.front().first);
+	VarType apprType = cgi->determineVarType(pairs.front().first);
 	if(apprType != VarType::Bool)
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+		cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
 
 	else
-		cond = mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(getContext(), llvm::APInt(1, false, true)));
+		cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)));
 
 
 
-	mainBuilder.CreateCondBr(cond, t, f);
-	mainBuilder.SetInsertPoint(t);
+	cgi->mainBuilder.CreateCondBr(cond, t, f);
+	cgi->mainBuilder.SetInsertPoint(t);
 
 	llvm::Value* val = nullptr;
 	{
-		pushScope();
-		val = pairs.front().second->codeGen().first;
-		popScope();
+		cgi->pushScope();
+		val = pairs.front().second->codegen(cgi).first;
+		cgi->popScope();
 	}
 
 	if(phi)
@@ -48,41 +47,41 @@ void codeGenRecursiveIf(llvm::Function* func, std::deque<std::pair<Expr*, Closur
 
 	// check if the last expr of the block is a return
 	if(pairs.front().second->statements.size() == 0 || !dynamic_cast<Return*>(pairs.front().second->statements.back()))
-		mainBuilder.CreateBr(merge), *didCreateMerge = true;
+		cgi->mainBuilder.CreateBr(merge), *didCreateMerge = true;
 
 
 	// now the false case...
 	// set the insert point to the false case, then go again.
-	mainBuilder.SetInsertPoint(f);
+	cgi->mainBuilder.SetInsertPoint(f);
 
 	// recursively call ourselves
 	pairs.pop_front();
-	codeGenRecursiveIf(func, pairs, merge, phi, didCreateMerge);
+	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge);
 
 	// once that's done, we can add the false-case block to the func
 	func->getBasicBlockList().push_back(f);
 }
 
-ValPtr_p If::codeGen()
+ValPtr_p If::codegen(CodegenInstance* cgi)
 {
 	assert(this->cases.size() > 0);
-	llvm::Value* firstCond = this->cases[0].first->codeGen().first;
-	VarType apprType = determineVarType(this->cases[0].first);
+	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).first;
+	VarType apprType = cgi->determineVarType(this->cases[0].first);
 
 	if(apprType != VarType::Bool)
-		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
+		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
 
 	else
-		firstCond = mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(getContext(), llvm::APInt(1, false, true)));
+		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)));
 
 
-	llvm::Function* func = mainBuilder.GetInsertBlock()->getParent();
-	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(getContext(), "trueCase", func);
-	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(getContext(), "falseCase");
-	llvm::BasicBlock* merge = llvm::BasicBlock::Create(getContext(), "merge");
+	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
+	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase");
+	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge");
 
 	// create the first conditional
-	mainBuilder.CreateCondBr(firstCond, trueb, falseb);
+	cgi->mainBuilder.CreateCondBr(firstCond, trueb, falseb);
 
 
 	bool didMerge = false;
@@ -90,15 +89,15 @@ ValPtr_p If::codeGen()
 	// emit code for the first block
 	llvm::Value* truev = nullptr;
 	{
-		mainBuilder.SetInsertPoint(trueb);
+		cgi->mainBuilder.SetInsertPoint(trueb);
 
 		// push a new symtab
-		pushScope();
-		truev = this->cases[0].second->codeGen().first;
-		popScope();
+		cgi->pushScope();
+		truev = this->cases[0].second->codegen(cgi).first;
+		cgi->popScope();
 
 		if(this->cases[0].second->statements.size() == 0 || !dynamic_cast<Return*>(this->cases[0].second->statements.back()))
-			mainBuilder.CreateBr(merge), didMerge = true;
+			cgi->mainBuilder.CreateBr(merge), didMerge = true;
 	}
 
 
@@ -107,13 +106,13 @@ ValPtr_p If::codeGen()
 	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
 	// of the if statement.
 
-	mainBuilder.SetInsertPoint(falseb);
+	cgi->mainBuilder.SetInsertPoint(falseb);
 
 	auto c1 = this->cases.front();
 	this->cases.pop_front();
 
-	llvm::BasicBlock* curblk = mainBuilder.GetInsertBlock();
-	mainBuilder.SetInsertPoint(merge);
+	llvm::BasicBlock* curblk = cgi->mainBuilder.GetInsertBlock();
+	cgi->mainBuilder.SetInsertPoint(merge);
 
 	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
@@ -122,17 +121,17 @@ ValPtr_p If::codeGen()
 	if(phi)
 		phi->addIncoming(truev, trueb);
 
-	mainBuilder.SetInsertPoint(curblk);
-	codeGenRecursiveIf(func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi, &didMerge);
+	cgi->mainBuilder.SetInsertPoint(curblk);
+	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi, &didMerge);
 
 	func->getBasicBlockList().push_back(falseb);
 
 	// if we have an 'else' case
 	if(this->final)
 	{
-		pushScope();
-		llvm::Value* v = this->final->codeGen().first;
-		popScope();
+		cgi->pushScope();
+		llvm::Value* v = this->final->codegen(cgi).first;
+		cgi->popScope();
 
 		if(phi)
 			phi->addIncoming(v, falseb);
@@ -141,12 +140,12 @@ ValPtr_p If::codeGen()
 
 
 	if(!this->final || !dynamic_cast<Return*>(this->final->statements.back()))
-		mainBuilder.CreateBr(merge), didMerge = true;
+		cgi->mainBuilder.CreateBr(merge), didMerge = true;
 
 	if(didMerge)
 	{
 		func->getBasicBlockList().push_back(merge);
-		mainBuilder.SetInsertPoint(merge);
+		cgi->mainBuilder.SetInsertPoint(merge);
 	}
 
 

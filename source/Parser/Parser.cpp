@@ -18,8 +18,7 @@ namespace Parser
 	PosInfo pos;
 	Root* rootNode;
 	Token* curtok;
-	std::string modname;
-	std::deque<Attribute> attribStack;
+	uint32_t curAttrib;
 
 	// todo: hack
 	bool isParsingStruct;
@@ -67,8 +66,15 @@ namespace Parser
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
 
-	std::string getModuleName()
+	std::string getModuleName(std::string filename)
 	{
+		size_t lastdot = filename.find_last_of(".");
+		std::string modname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+
+		size_t sep = modname.find_last_of("\\/");
+		if(sep != std::string::npos)
+			modname = modname.substr(sep + 1, modname.length() - sep - 1);
+
 		return modname;
 	}
 
@@ -85,14 +91,6 @@ namespace Parser
 
 		rootNode = new Root();
 		parseAll(tokens);
-
-
-		size_t lastdot = filename.find_last_of(".");
-		modname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-
-		size_t sep = modname.find_last_of("\\/");
-		if(sep != std::string::npos)
-			modname = modname.substr(sep + 1, modname.length() - sep - 1);
 
 		return rootNode;
 	}
@@ -250,6 +248,26 @@ namespace Parser
 					tokens.pop_front();
 					break;
 
+				case TType::Private:
+					eat(tokens);
+					curAttrib |= Attr_VisPrivate;
+					break;
+
+				case TType::Internal:
+					eat(tokens);
+					curAttrib |= Attr_VisInternal;
+					break;
+
+				case TType::Public:
+					eat(tokens);
+					curAttrib |= Attr_VisPublic;
+					break;
+
+
+				case TType::At:
+					parseAttribute(tokens);
+					break;
+
 				default:	// wip: skip shit we don't know/care about for now
 					parseTopLevelExpr(tokens);
 					break;
@@ -357,6 +375,25 @@ namespace Parser
 					tokens.pop_front();
 					return (new BoolVal(false))->setPos(pos);
 
+
+				case TType::Private:
+					eat(tokens);
+					curAttrib |= Attr_VisPrivate;
+					return parsePrimary(tokens);
+
+				case TType::Internal:
+					eat(tokens);
+					curAttrib |= Attr_VisInternal;
+					return parsePrimary(tokens);
+
+				case TType::Public:
+					eat(tokens);
+					curAttrib |= Attr_VisPublic;
+					return parsePrimary(tokens);
+
+
+
+
 				default:	// wip: skip shit we don't know/care about for now
 					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
 					eat(tokens);
@@ -455,6 +492,9 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = (new FuncDecl(id, params, ret))->setPos(pos);
+		f->attribs = curAttrib;
+		curAttrib = 0;
+
 		f->hasVarArg = isVA;
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
 
@@ -887,11 +927,11 @@ namespace Parser
 		if(id->type != TType::Identifier)
 			error("Expected attribute name after '@'");
 
-		Attribute attr;
-		if(id->text == "nomangle")		attr = Attribute::NoMangle;
+		uint32_t attr;
+		if(id->text == "nomangle")		attr |= Attr_NoMangle;
 		else							error("Unknown attribute '%s'", id->text.c_str());
 
-		attribStack.push_back(attr);
+		curAttrib |= attr;
 	}
 
 	Import* parseImport(std::deque<Token*>& tokens)

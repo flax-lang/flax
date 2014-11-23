@@ -1,6 +1,0 @@
-func printInt64(x: Int64)
-{
-
-}
-
-ffi func printf(Int8 ptr, ...)
