@@ -152,6 +152,12 @@ namespace Parser
 			tok.type = TType::ShiftRightEq;
 			read = 3;
 		}
+		else if(stream.find("...") == 0)
+		{
+			tok.text = "...";
+			tok.type = TType::Elipsis;
+			read = 3;
+		}
 		else if(isnumber(stream[0]))
 		{
 			// todo: handle hex

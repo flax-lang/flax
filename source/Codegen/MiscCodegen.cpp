@@ -20,7 +20,13 @@ ValPtr_p Root::codeGen()
 		f->codeGen();
 
 	for(Func* f : this->functions)
+	{
+		// special case to handle main(): always FFI top-level functions named 'main'
+		if(f->decl->name == "main")
+			f->decl->isFFI = true;
+
 		f->decl->codeGen();
+	}
 
 	for(Struct* s : this->structs)
 		s->codeGen();

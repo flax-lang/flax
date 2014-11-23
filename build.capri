@@ -37,8 +37,11 @@ project CoreScript
 	{
 		all();
 
-		Utils.println("Running test");
+		Utils.println("Compiling test program (build/test.crs)");
 		System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs");
+		Utils.println("=========================");
+		System.execute("./test");
+		File.deleteFile("./test");
 	}
 
 

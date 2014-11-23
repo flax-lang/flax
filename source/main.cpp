@@ -116,8 +116,6 @@ int main(int argc, char* argv[])
 			final += libs + " ";
 
 			final += foldername + "/" + Codegen::mainModule->getModuleIdentifier() + ".bc";
-
-			printf("Invoking clang++: %s\n", final.c_str());
 			system(final.c_str());
 
 			delete[] inv;

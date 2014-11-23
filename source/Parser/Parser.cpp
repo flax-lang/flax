@@ -189,15 +189,6 @@ namespace Parser
 		else if(type_id == "Uint32")	return VarType::Uint32;
 		else if(type_id == "Uint64")	return VarType::Uint64;
 
-		else if(type_id == "Int8Ptr")	return VarType::Int8Ptr;
-		else if(type_id == "Int16Ptr")	return VarType::Int16Ptr;
-		else if(type_id == "Int32Ptr")	return VarType::Int32Ptr;
-		else if(type_id == "Int64Ptr")	return VarType::Int64Ptr;
-		else if(type_id == "Uint8Ptr")	return VarType::Uint8Ptr;
-		else if(type_id == "Uint16Ptr")	return VarType::Uint16Ptr;
-		else if(type_id == "Uint32Ptr")	return VarType::Uint32Ptr;
-		else if(type_id == "Uint64Ptr")	return VarType::Uint64Ptr;
-
 		else if(type_id == "AnyPtr")	return VarType::AnyPtr;
 
 		else if(type_id == "Float32")	return VarType::Float32;
@@ -398,6 +389,7 @@ namespace Parser
 		if(paren->type != TType::LParen)
 			error("Expected '(' in function declaration, got '%s'", paren->text.c_str());
 
+		bool isVA = false;
 		// get the parameter list
 		// expect an identifer, colon, type
 		std::deque<VarDecl*> params;
@@ -406,7 +398,20 @@ namespace Parser
 		{
 			Token* tok_id;
 			if((tok_id = eat(tokens))->type != TType::Identifier)
-				error("Expected identifier");
+			{
+				if(tok_id->type == TType::Elipsis)
+				{
+					isVA = true;
+					if(tokens.front()->type != TType::RParen)
+						error("Vararg declaration must be last in the function declaration");
+
+					break;
+				}
+				else
+				{
+					error("Expected identifier");
+				}
+			}
 
 			std::string id = tok_id->text;
 			VarDecl* v = (new VarDecl(id, true))->setPos(pos);
@@ -450,6 +455,7 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = (new FuncDecl(id, params, ret))->setPos(pos);
+		f->hasVarArg = isVA;
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
 
 		return f;
@@ -513,19 +519,19 @@ namespace Parser
 
 	std::string parseType(std::deque<Token*>& tokens)
 	{
-		bool isPtr = false;
 		bool isArr = false;
 		int arrsize = 0;
 		Token* tmp = nullptr;
 		if((tmp = eat(tokens))->type != TType::Identifier)
 			error("Expected type for variable declaration");
 
+		std::string ptrAppend = "";
 		if(tokens.size() > 0)
 		{
 			if(tokens.front()->type == TType::Ptr)
 			{
-				isPtr = true;
-				eat(tokens);
+				while(tokens.front()->type == TType::Ptr)
+					eat(tokens), ptrAppend += "Ptr";
 			}
 			else if(tokens.front()->type == TType::LSquare)
 			{
@@ -541,7 +547,7 @@ namespace Parser
 			}
 		}
 
-		std::string ret = tmp->text + (isPtr ? "Ptr" : (isArr ? "[" + std::to_string(arrsize) + "]" : ""));
+		std::string ret = tmp->text + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
 		return ret;
 	}
 

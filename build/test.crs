@@ -1,5 +1,3 @@
-import Foundation
-
 struct String
 {
 	var len: Int64
@@ -28,18 +26,45 @@ struct String
 }
 
 
-func main()
+func main(argc: Int32, argv: Int8 ptr ptr)
 {
 	var x: String = "Hello, World!"
 	var y: String
 
-	var b: Bool = (x == y)
+	printf("Hello, %s\n", argv[0])
 
-	printInt64(b as Int64)
+	var a: Int8 = 100
+	var b: Int16 = 200
+	var c: Int32 = 300
+	var d: Int64 = 400
+
+	printInt(500)
 }
 
-ffi func printBool(x: Bool)
-ffi func printInt64(x: Int64)
+func printInt(x: Int8)
+{
+	printf("int8: %hhd\n", x)
+}
+
+func printInt(x: Int16)
+{
+	printf("int16: %hd\n", x)
+}
+
+func printInt(x: Int32)
+{
+	printf("int32: %d\n", x)
+}
+
+func printInt(x: Int64)
+{
+	printf("int64: %lld\n", x)
+}
+
+
+
+
 ffi func putchar(x: Int32) -> Int32
 ffi func malloc(x: Int64) -> Int8 ptr
 ffi func puts(x: Int8 ptr) -> Int32
+ffi func printf(x: Int8 ptr, ...) -> Int32

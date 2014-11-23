@@ -35,3 +35,6 @@ run
 *.sublime-*
 scripts/corec
 .modifydates
+
+*.ll
+*.bc

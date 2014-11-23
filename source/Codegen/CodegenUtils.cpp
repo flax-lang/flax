@@ -36,10 +36,7 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	va_end(ap);
 
 	if(ex)
-	{
-		getchar();
 		exit(1);
-	}
 }
 
 
@@ -322,7 +319,45 @@ namespace Codegen
 		return getFuncDecl(name) != nullptr;
 	}
 
+	llvm::Type* unwrapPointerType(std::string type)
+	{
+		std::string sptr = std::string("Ptr");
 
+		int indirections = 0;
+		std::string actualType = type;
+		if(actualType.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+		{
+			while(actualType.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+				actualType = actualType.substr(0, actualType.length() - 3), indirections++;
+		}
+
+		llvm::Type* ret = nullptr;
+		if(Parser::determineVarType(actualType) == VarType::UserDefined)
+		{
+			TypePair_t* notptrtype = getType(actualType);
+			if(notptrtype)
+			{
+				ret = notptrtype->first;
+			}
+			else
+			{
+				error("Unknown type '%s'", actualType.c_str());
+				return nullptr;
+			}
+		}
+		else
+		{
+			ret = getLlvmTypeOfBuiltin(Parser::determineVarType(actualType));
+		}
+
+		while(indirections > 0)
+		{
+			ret = ret->getPointerTo();
+			indirections--;
+		}
+
+		return ret;
+	}
 
 
 
@@ -348,7 +383,7 @@ namespace Codegen
 	bool isPtr(Expr* expr)
 	{
 		VarType e = determineVarType(expr);
-		return (e >= VarType::Int8Ptr && e <= VarType::Uint64Ptr) || e == VarType::AnyPtr;
+		return e == VarType::AnyPtr || getLlvmType(expr)->isPointerTy();
 	}
 
 	llvm::Type* getLlvmTypeOfBuiltin(VarType t)
@@ -369,18 +404,6 @@ namespace Codegen
 
 			case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
 			case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
-
-			case VarType::Uint8Ptr:
-			case VarType::Int8Ptr:	return llvm::Type::getInt8PtrTy(getContext());
-
-			case VarType::Uint16Ptr:
-			case VarType::Int16Ptr:	return llvm::Type::getInt16PtrTy(getContext());
-
-			case VarType::Uint32Ptr:
-			case VarType::Int32Ptr:	return llvm::Type::getInt32PtrTy(getContext());
-
-			case VarType::Uint64Ptr:
-			case VarType::Int64Ptr:	return llvm::Type::getInt64PtrTy(getContext());
 
 			case VarType::Void:		return llvm::Type::getVoidTy(getContext());
 			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
@@ -417,20 +440,11 @@ namespace Codegen
 					if(!type)
 					{
 						// check if it ends with pointer, and if we have a type that's un-pointered
-						std::string sptr = std::string("Ptr");
+						llvm::Type* ret = unwrapPointerType(expr->type);
+						if(!ret)
+							error(expr, "Unknown type '%s'", expr->type.c_str());
 
-						if(expr->type.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), expr->type.rbegin()))
-						{
-							std::string notptr = expr->type.substr(0, expr->type.length() - 3);
-							TypePair_t* notptrtype = getType(notptr);
-
-							if(notptrtype)
-								return notptrtype->first->getPointerTo();
-						}
-
-
-						error(expr, "Unknown type '%s'", expr->type.c_str());
-						return nullptr;
+						return ret;
 					}
 
 					return type->first;
@@ -468,9 +482,18 @@ namespace Codegen
 				{
 					TypePair_t* type = getType(etype);
 					if(!type)
-						error(decl, "Unknown type '%s'", etype.c_str());
+					{
+						llvm::Type* ret = unwrapPointerType(etype);
+						if(!ret)
+							error(expr, "Unknown type '%s'", etype.c_str());
 
-					eltype = type->first;
+						else
+							eltype = ret;
+					}
+					else
+					{
+						eltype = type->first;
+					}
 				}
 
 				return llvm::ArrayType::get(eltype, sz);
@@ -501,20 +524,13 @@ namespace Codegen
 				TypePair_t* type = getType(fd->type);
 				if(!type)
 				{
-					// check if it ends with pointer, and if we have a type that's un-pointered
-					std::string sptr = std::string("Ptr");
+					llvm::Type* ret = unwrapPointerType(fd->type);
 
-					if(expr->type.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), expr->type.rbegin()))
-					{
-						std::string notptr = expr->type.substr(0, expr->type.length() - 3);
-						TypePair_t* notptrtype = getType(notptr);
+					if(!ret)
+						error(expr, "Unknown type '%s'", expr->type.c_str());
 
-						if(notptrtype)
-							return notptrtype->first->getPointerTo();
-					}
 
-					error(expr, "Unknown type '%s'", expr->type.c_str());
-					return nullptr;
+					return ret;
 				}
 
 				return type->first;

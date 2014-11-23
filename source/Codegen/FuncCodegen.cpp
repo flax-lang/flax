@@ -22,8 +22,7 @@ ValPtr_p FuncCall::codeGen()
 	if(target == 0)
 		error(this, "Unknown function '%s'", this->name.c_str());
 
-
-	if(target->arg_size() != this->params.size())
+	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
 		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
@@ -48,8 +47,6 @@ ValPtr_p FuncCall::codeGen()
 
 ValPtr_p FuncDecl::codeGen()
 {
-	std::string mangledname;
-
 	std::vector<llvm::Type*> argtypes;
 	std::deque<Expr*> params_expr;
 	for(VarDecl* v : this->params)
@@ -59,18 +56,18 @@ ValPtr_p FuncDecl::codeGen()
 	}
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
-	std::string mname = this->name;
-	if(!mangledname.empty() && !this->isFFI)
-		mname = mangleName(this->name, params_expr);
+	this->mangledName = this->name;
+	if(!this->isFFI)
+		this->mangledName = mangleName(this->name, params_expr);
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, false);
-	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, mname, mainModule);
+	llvm::FunctionType* ft = llvm::FunctionType::get(getLlvmType(this), argtypes, this->hasVarArg);
+	llvm::Function* func = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, this->mangledName, mainModule);
 
 	// check for redef
-	if(func->getName() != mname)
+	if(func->getName() != this->mangledName)
 		error(this, "Redefinition of function '%s'", this->name.c_str());
 
-	getVisibleFuncDecls()[mname] = this;
+	getVisibleFuncDecls()[this->mangledName] = this;
 	return ValPtr_p(func, 0);
 }
 
@@ -97,7 +94,7 @@ ValPtr_p Func::codeGen()
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
-	llvm::Function* func = mainModule->getFunction(this->decl->name);
+	llvm::Function* func = mainModule->getFunction(this->decl->mangledName);
 	if(!func)
 	{
 		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());

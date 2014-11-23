@@ -11,7 +11,7 @@ project libFoundation
 
 
 	corec_invoke	= "'{COREC}' -lib -sysroot '{sysroot}' $file$";
-	cxx_invoke		= "{CXX} -o '{sysroot}/usr/lib/libCS_Foundation.dylib' -dynamiclib ";
+	cxx_invoke		= "{CXX} -w -o '{sysroot}/usr/lib/libCS_Foundation.dylib' -dynamiclib ";
 
 	task all depends compile, link;
 	task compile

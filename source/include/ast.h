@@ -38,16 +38,6 @@ namespace Ast
 		Uint32,
 		Uint64,
 
-		Int8Ptr,
-		Int16Ptr,
-		Int32Ptr,
-		Int64Ptr,
-
-		Uint8Ptr,
-		Uint16Ptr,
-		Uint32Ptr,
-		Uint64Ptr,
-
 		// we do it this way so we can do math tricks on these to get the number of bits
 		Bool,
 		UserDefined,
@@ -117,6 +107,12 @@ namespace Ast
 	struct DummyExpr : Expr
 	{
 		~DummyExpr() { }
+		virtual ValPtr_p codeGen() override { return ValPtr_p(0, 0); }
+	};
+
+	struct VarArg : Expr
+	{
+		~VarArg() { }
 		virtual ValPtr_p codeGen() override { return ValPtr_p(0, 0); }
 	};
 
@@ -191,8 +187,10 @@ namespace Ast
 		virtual ValPtr_p codeGen() override;
 		FuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
+		bool hasVarArg;
 		bool isFFI;
 		std::string name;
+		std::string mangledName;
 		std::deque<VarDecl*> params;
 	};
 
