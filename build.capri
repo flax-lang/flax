@@ -38,9 +38,9 @@ project CoreScript
 		all();
 
 		Utils.println("Compiling test program (build/test.crs)");
-		System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs");
+		assert System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs") == 0;
 		Utils.println("=========================");
-		System.execute("./test");
+		assert System.execute("./test") == 0;
 		File.deleteFile("./test");
 	}
 

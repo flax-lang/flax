@@ -48,6 +48,7 @@ namespace Codegen
 	void popScope();
 	void pushScope();
 	SymTab_t& getSymTab();
+	Ast::Root* getRootAST();
 	bool isPtr(Ast::Expr* e);
 	TypeMap_t& getVisibleTypes();
 	bool isArrayType(Ast::Expr* e);

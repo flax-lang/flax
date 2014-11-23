@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	if(argc > 1)
 	{
 		bool isLib = false;
-		std::string filename;
+		std::vector<std::string> filenames;
 		std::string sysroot;
 		std::string outname;
 
@@ -79,46 +79,49 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				filename = argv[i];
+				filenames.push_back(argv[i]);
 				break;
 			}
 		}
 
 
 		// open the file.
-		std::ifstream file = std::ifstream(filename);
-		std::stringstream stream;
-
-		stream << file.rdbuf();
-		std::string str = stream.str();
-
-		// parse
-		Root* root = Parser::Parse(filename, str);
-		Codegen::doCodegen(filename, root);
-
-
-		std::string foldername;
-		size_t sep = filename.find_last_of("\\/");
-		if(sep != std::string::npos)
-			foldername = filename.substr(0, sep);
-
-		if(!isLib)
+		for(auto filename : filenames)
 		{
-			// compile it by invoking clang on the bitcode
-			char* inv = new char[256];
-			snprintf(inv, 256, "clang++ -o '%s' -L'%s'", outname.empty() ?  Codegen::mainModule->getModuleIdentifier().c_str() : outname.c_str(), (sysroot + "/usr/lib").c_str());
+			std::ifstream file = std::ifstream(filename);
+			std::stringstream stream;
 
-			std::string libs;
-			for(Import* imp : root->imports)
-				libs += " -lCS_" + imp->module;
+			stream << file.rdbuf();
+			std::string str = stream.str();
 
-			std::string final = inv;
-			final += libs + " ";
+			// parse
+			Root* root = Parser::Parse(filename, str);
+			Codegen::doCodegen(filename, root);
 
-			final += foldername + "/" + Codegen::mainModule->getModuleIdentifier() + ".bc";
-			system(final.c_str());
 
-			delete[] inv;
+			std::string foldername;
+			size_t sep = filename.find_last_of("\\/");
+			if(sep != std::string::npos)
+				foldername = filename.substr(0, sep);
+
+			if(!isLib)
+			{
+				// compile it by invoking clang on the bitcode
+				char* inv = new char[256];
+				snprintf(inv, 256, "clang++ -o '%s' -L'%s'", outname.empty() ? Codegen::mainModule->getModuleIdentifier().c_str() : outname.c_str(), (sysroot + "/usr/lib").c_str());
+
+				std::string libs;
+				for(Import* imp : root->imports)
+					libs += " -lCS_" + imp->module;
+
+				std::string final = inv;
+				final += libs + " ";
+
+				final += foldername + "/" + Codegen::mainModule->getModuleIdentifier() + ".bc";
+				system(final.c_str());
+
+				delete[] inv;
+			}
 		}
 	}
 	else

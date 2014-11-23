@@ -85,6 +85,7 @@ void warn(Expr* relevantast, const char* msg, ...)
 
 namespace Codegen
 {
+	Root* rootNode;
 	llvm::Module* mainModule;
 	llvm::FunctionPassManager* Fpm;
 	std::deque<SymTab_t*> symTabStack;
@@ -97,6 +98,8 @@ namespace Codegen
 	{
 		llvm::InitializeNativeTarget();
 		mainModule = new llvm::Module(Parser::getModuleName(), llvm::getGlobalContext());
+
+		rootNode = root;
 
 		std::string err;
 		execEngine = llvm::EngineBuilder(mainModule).setErrorStr(&err).create();
@@ -133,6 +136,21 @@ namespace Codegen
 
 		pushScope();
 		root->codeGen();
+
+
+		// weed out the public defs, for both funcs and types (structs)
+		for(Func* f : root->functions)
+		{
+			if(f->decl->attribs & Attr_VisPublic)
+				root->publicdecls.push_back(f->decl);
+		}
+
+		for(Struct* s : root->structs)
+		{
+			if(s->attribs & Attr_VisPublic)
+				root->publicstructs.push_back(s);
+		}
+
 		popScope();
 
 
@@ -199,6 +217,11 @@ namespace Codegen
 	llvm::LLVMContext& getContext()
 	{
 		return mainModule->getContext();
+	}
+
+	Root* getRootAST()
+	{
+		return rootNode;
 	}
 
 	void popScope()

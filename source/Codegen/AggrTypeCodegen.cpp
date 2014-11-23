@@ -191,8 +191,6 @@ void Struct::createType()
 	for(auto p : this->opmap)
 		p.second->codeGen();
 
-
-
 	for(Func* func : this->funcs)
 	{
 		if(func->decl->name == "init")
@@ -206,7 +204,13 @@ void Struct::createType()
 		func->decl->params.push_front(implicit_self);
 
 		for(VarDecl* v : func->decl->params)
-			args.push_back(getLlvmType(v));
+		{
+			llvm::Type* vt = getLlvmType(v);
+			if(vt == str)
+				error(this, "Cannot have non-pointer member of type self");
+
+			args.push_back(vt);
+		}
 
 		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 	}
@@ -214,7 +218,13 @@ void Struct::createType()
 
 	// create llvm types
 	for(VarDecl* var : this->members)
+	{
+		llvm::Type* type = getLlvmType(var);
+		if(type == str)
+			error(this, "Cannot have non-pointer member of type self");
+
 		types[this->nameMap[var->name]] = getLlvmType(var);
+	}
 
 
 	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));

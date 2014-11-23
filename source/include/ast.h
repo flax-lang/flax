@@ -84,10 +84,12 @@ namespace Ast
 		Cast,
 	};
 
-	enum class Attribute
-	{
-		NoMangle,
-	};
+
+	uint32_t Attr_Invalid		= 0x0;
+	uint32_t Attr_NoMangle		= 0x1;
+	uint32_t Attr_VisPublic		= 0x2;
+	uint32_t Attr_VisInternal	= 0x4;
+	uint32_t Attr_VisPrivate	= 0x8;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
 
@@ -98,7 +100,7 @@ namespace Ast
 		virtual ~Expr() { }
 		virtual ValPtr_p codeGen() = 0;
 
-		std::vector<Attribute> attribs;
+		uint32_t attribs;
 		Parser::PosInfo posinfo;
 		std::string type;
 		VarType varType;
@@ -351,7 +353,10 @@ namespace Ast
 		~Root() { }
 		virtual ValPtr_p codeGen() override;
 
-		// todo: add stuff like imports, etc.
+		// public functiondecls and type decls.
+		std::deque<FuncDecl*> publicdecls;
+		std::deque<Struct*> publicstructs;
+
 		std::deque<Func*> functions;
 		std::deque<Import*> imports;
 		std::deque<Struct*> structs;
