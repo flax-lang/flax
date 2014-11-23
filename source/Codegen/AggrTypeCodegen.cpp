@@ -28,9 +28,12 @@ ValPtr_p ArrayIndex::codeGen()
 
 
 	// try and do compile-time bounds checking
-	llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
+
 	if(atype->isArrayTy())
 	{
+		assert(llvm::isa<llvm::ArrayType>(atype));
+		llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
+
 		// dynamic arrays don't get bounds checking
 		if(at->getNumElements() != 0)
 		{
@@ -46,14 +49,14 @@ ValPtr_p ArrayIndex::codeGen()
 
 
 	// todo: verify for pointers
-	llvm::Value* lhs = this->var->codeGen().second;
+	ValPtr_p lhsp = this->var->codeGen();
+
+	llvm::Value* lhs;
+	if(lhsp.first->getType()->isPointerTy())		lhs = lhsp.first;
+	else											lhs = lhsp.second;
+
 	llvm::Value* ind = this->index->codeGen().first;
-
-	std::vector<llvm::Value*> indices;
-	indices.push_back(llvm::ConstantInt::getNullValue(llvm::Type::getInt64Ty(getContext())));
-	indices.push_back(ind);
-
-	llvm::Value* gep = mainBuilder.CreateGEP(lhs, indices, "indexPtr");
+	llvm::Value* gep = mainBuilder.CreateGEP(lhs, ind, "indexPtr");
 	return ValPtr_p(mainBuilder.CreateLoad(gep), gep);
 }
 

@@ -94,6 +94,7 @@ namespace Parser
 		ModEq,
 		ShiftLeftEq,
 		ShiftRightEq,
+		Elipsis,
 
 		// other stuff.
 		Identifier,
