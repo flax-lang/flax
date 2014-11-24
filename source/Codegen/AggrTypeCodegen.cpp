@@ -94,6 +94,8 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 		for(VarDecl* var : this->members)
 		{
 			int i = this->nameMap[var->name];
+			assert(i >= 0);
+
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			var->initVal = cgi->autoCastType(var, var->initVal);
@@ -102,7 +104,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 
 		for(Func* f : this->funcs)
 		{
-			int i = this->nameMap[f->decl->name];
+			int i = this->nameMap[f->decl->mangledName];
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + f->decl->name);
 			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
 
@@ -161,7 +163,6 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 	}
 
 
-
 	if(!this->ifunc)
 	{
 		this->initFunc = this->defifunc;
@@ -188,8 +189,37 @@ void Struct::createType(CodegenInstance* cgi)
 	cgi->getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
 
 
+
+
+
+	// because we can't (and don't want to) mangle names in the parser,
+	// we could only build an incomplete name -> index map
+	// finish it here.
+	for(auto p : this->typeList)
+	{
+		Func* f = nullptr;
+		OpOverload* oo = nullptr;
+
+		if((oo = dynamic_cast<OpOverload*>(p.first)))
+			f = oo->func;
+
+
+		if(f || (f = dynamic_cast<Func*>(p.first)))
+		{
+			std::string mangled = cgi->mangleName(f->decl->name, f->decl->params);
+			if(this->nameMap.find(mangled) != this->nameMap.end())
+				error(this, "Duplicate member '%s'", f->decl->name.c_str());
+
+			f->decl->mangledName = mangled;
+			this->nameMap[mangled] = p.second;
+		}
+	}
+
+
+
 	for(auto p : this->opmap)
 		p.second->codegen(cgi);
+
 
 	for(Func* func : this->funcs)
 	{
@@ -212,11 +242,9 @@ void Struct::createType(CodegenInstance* cgi)
 			args.push_back(vt);
 		}
 
-		types[this->nameMap[func->decl->name]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
+		types[this->nameMap[func->decl->mangledName]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 	}
 
-
-	// create llvm types
 	for(VarDecl* var : this->members)
 	{
 		llvm::Type* type = cgi->getLlvmType(var);
@@ -232,6 +260,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(str);
+
 
 	delete types;
 }
@@ -352,11 +381,14 @@ ValPtr_p MemberAccess::codegen(CodegenInstance* cgi)
 			i = str->nameMap[var->name];
 
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
-			i = str->nameMap[fc->name];
-
+		{
+			std::string mangled = cgi->mangleName(fc->name, fc->params);
+			i = str->nameMap[mangled];
+		}
 		else
 			error("(%s:%s:%d) -> Internal check failed: no comprehendo", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
+		assert(i >= 0);
 
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));

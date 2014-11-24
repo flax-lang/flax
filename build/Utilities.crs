@@ -1,6 +1,18 @@
-public func printInt64(x: Int64)
+public func printInt(x: Int64)
 {
 	printf("%lld", x)
+}
+public func printInt(x: Int32)
+{
+	printf("%d", x)
+}
+public func printInt(x: Int16)
+{
+	printf("%hd", x)
+}
+public func printInt(x: Int8)
+{
+	printf("%hhd", x)
 }
 
 ffi func printf(x: Int8 ptr, ...)

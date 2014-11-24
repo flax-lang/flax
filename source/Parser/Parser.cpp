@@ -19,6 +19,7 @@ namespace Parser
 	Root* rootNode;
 	Token* curtok;
 	uint32_t curAttrib;
+	Codegen::CodegenInstance* curCgi;
 
 	// todo: hack
 	bool isParsingStruct;
@@ -78,8 +79,10 @@ namespace Parser
 		return modname;
 	}
 
-	Root* Parse(std::string filename, std::string str)
+	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
 	{
+		curCgi = cgi;
+
 		Token* t = nullptr;
 		pos.file = filename;
 		pos.line = 1;
@@ -891,22 +894,20 @@ namespace Parser
 			}
 			else if((func = dynamic_cast<Func*>(stmt)))
 			{
-				if(str->nameMap.find(func->decl->name) != str->nameMap.end())
-					error("Duplicate member '%s'", func->decl->name.c_str());
-
 				str->funcs.push_back(func);
-				str->nameMap[func->decl->name] = i;
+				str->typeList.push_back(std::pair<Expr*, int>(func, i));
 			}
 			else if((oo = dynamic_cast<OpOverload*>(stmt)))
 			{
 				oo->str = str;
 				str->opmap[oo->op] = oo;
 
-				if(str->nameMap.find(oo->func->decl->name) != str->nameMap.end())
-					error("Duplicate member '%s'", oo->func->decl->name.c_str());
-
 				str->funcs.push_back(oo->func);
-				str->nameMap[oo->func->decl->name] = i;
+				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
+			}
+			else if(dynamic_cast<DummyExpr*>(stmt))
+			{
+				continue;
 			}
 			else
 			{

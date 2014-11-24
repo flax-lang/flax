@@ -77,7 +77,7 @@ namespace Compiler
 		file.close();
 
 		// parse
-		Root* root = Parser::Parse(filename, str);
+		Root* root = Parser::Parse(filename, str, cgi);
 
 		// get imports
 		for(Import* imp : root->imports)
