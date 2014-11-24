@@ -735,6 +735,15 @@ namespace Codegen
 		return ret.substr(s->name.length());
 	}
 
+	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<Expr*> fuckingshit;
+		for(auto a : args)
+			fuckingshit.push_back(a);
+
+		return mangleName(base, fuckingshit);
+	}
+
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
 	{
 		std::string mangled = "";
@@ -836,28 +845,6 @@ namespace Ast
 
 
 
-
-
-
-
-#if RUN
-
-extern "C" void printInt32(uint32_t i)
-{
-	printf("%d\n", i);
-}
-
-extern "C" void printInt64(uint64_t i)
-{
-	printf("%lld\n", i);
-}
-
-extern "C" void printBool(bool i)
-{
-	printf("%s\n", i ? "true" : "false");
-}
-
-#endif
 
 
 

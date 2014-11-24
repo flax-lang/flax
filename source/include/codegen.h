@@ -81,6 +81,7 @@ namespace Codegen
 			Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
 			void pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm);
 			std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
+			std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 			Ast::ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);

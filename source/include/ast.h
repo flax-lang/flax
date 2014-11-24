@@ -313,6 +313,7 @@ namespace Ast
 		llvm::Function* defifunc;
 		llvm::Function* initFunc;
 
+		std::deque<std::pair<Expr*, int>> typeList;
 		std::map<std::string, int> nameMap;
 		std::string name;
 		std::deque<VarDecl*> members;

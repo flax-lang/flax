@@ -8,6 +8,11 @@
 #include <string>
 #include <sstream>
 
+namespace Codegen
+{
+	class CodegenInstance;
+}
+
 namespace Ast
 {
 	class Root;
@@ -120,7 +125,7 @@ namespace Parser
 	};
 
 	std::string getModuleName(std::string filename);
-	Ast::Root* Parse(std::string filename, std::string str);
+	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
 	Ast::VarType determineVarType(std::string type_id);
 }
