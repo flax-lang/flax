@@ -20,9 +20,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-#define COMPILE 1
-
-
 void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap)
 {
 	char* alloc = nullptr;
@@ -83,7 +80,7 @@ void warn(Expr* relevantast, const char* msg, ...)
 
 namespace Codegen
 {
-	llvm::Module* doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi)
+	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi)
 	{
 		llvm::InitializeNativeTarget();
 		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
@@ -124,16 +121,6 @@ namespace Codegen
 
 
 
-		std::string e;
-		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-		oname += ".bc";
-
-		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
-
-
-
 
 		for(auto f : cgi->rootNode->externalFuncs)
 		{
@@ -144,21 +131,27 @@ namespace Codegen
 		}
 		for(auto t : cgi->rootNode->externalTypes)
 		{
-			llvm::StructType::create(cgi->getContext(), t);
+			llvm::StructType* str = t;
+			cgi->getVisibleTypes()[str->getName()] = TypePair_t(str, TypedExpr_t(0, ExprType::Struct));
 		}
 
 		cgi->rootNode->codegen(cgi);
 		cgi->popScope();
-
-
-		if(COMPILE)
-		{
-			llvm::WriteBitcodeToFile(cgi->mainModule, rso);
-		}
-
-		return cgi->mainModule;
 	}
 
+	void writeBitcode(std::string filename, CodegenInstance* cgi)
+	{
+		std::string e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		size_t lastdot = filename.find_last_of(".");
+		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+		oname += ".bc";
+
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+		llvm::WriteBitcodeToFile(cgi->mainModule, rso);
+		rso.close();
+	}
 
 
 
@@ -839,7 +832,7 @@ namespace Ast
 	uint32_t Attr_VisPublic		= 0x02;
 	uint32_t Attr_VisInternal	= 0x04;
 	uint32_t Attr_VisPrivate	= 0x08;
-	uint32_t Attr_ForceMandle	= 0x10;
+	uint32_t Attr_ForceMangle	= 0x10;
 }
 
 

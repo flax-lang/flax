@@ -95,7 +95,7 @@ namespace Ast
 	extern uint32_t Attr_VisPublic;
 	extern uint32_t Attr_VisInternal;
 	extern uint32_t Attr_VisPrivate;
-	extern uint32_t Attr_ForceMandle;
+	extern uint32_t Attr_ForceMangle;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_p;
 

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "include/ast.h"
 #include "include/codegen.h"
@@ -94,7 +96,8 @@ int main(int argc, char* argv[])
 		}
 
 
-		// open the file.
+		// compile the file.
+		// the file Compiler.cpp handles imports.
 		std::vector<std::string> filelist;
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
 		Root* root = Compiler::compileFile(filename, filelist, cgi);
@@ -106,30 +109,17 @@ int main(int argc, char* argv[])
 			foldername = filename.substr(0, sep);
 
 		if(!isLib)
-		{
-			// compile it by invoking clang on the bitcode
-			char* inv = new char[1024];
-			snprintf(inv, 1024, "clang++ -o '%s' -L'%s'", outname.empty() ? cgi->mainModule->getModuleIdentifier().c_str() : outname.c_str(), (sysroot + "/usr/lib").c_str());
+			Compiler::compileProgram(cgi, filelist, root, foldername, outname);
 
-			std::string libs;
-			for(std::string lib : root->referencedLibraries)
-				libs += " -lCS_" + lib;
+		else
+			Compiler::compileLibrary(cgi, filelist, root, foldername, outname);
 
-			std::string final = inv;
-			final += libs + " ";
 
-			for(auto s : filelist)
-				final += "'" + s + "' ";
+		// clean up the intermediate files (ie. .bitcode files)
+		for(auto s : filelist)
+			remove(s.c_str());
 
-			system(final.c_str());
-
-			// clean up the intermediate files (ie. .bitcode files)
-			for(auto s : filelist)
-				remove(s.c_str());
-
-			delete[] inv;
-			delete cgi;
-		}
+		delete cgi;
 	}
 	else
 	{
