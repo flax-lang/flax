@@ -190,6 +190,25 @@ namespace Compiler
 			}
 			else
 			{
+				// TODO:
+				// TODO:
+				// BIG FUCKING TODO:
+				// FUCK ME
+
+				// Fix library importing of types.
+				// 1. llvm currently does not store the names of struct members.
+				// 2. We need the Ast::Struct* field in the type table to be able to access members by name
+				// 3. We need to be able to, obviously, get access to Ast::Struct to be able to access members
+				// 4. Fuck.
+
+				// Fix (eventually)
+				// Have the library symbol extractor output corescript instead.
+				// Functions will still go into the .ll file (because that still works, for functions)
+				// Types (structs) will just be output as corescript.
+				// possibly need to create a function in codegen to create a bogus 'Ast::Struct' instance...
+				// god dammit.
+
+
 				fname = fname.substr(1);
 				std::string lname = fname;
 
