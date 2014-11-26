@@ -261,7 +261,6 @@ void Struct::createType(CodegenInstance* cgi)
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(str);
 
-
 	delete types;
 }
 

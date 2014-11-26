@@ -929,8 +929,9 @@ namespace Parser
 			error("Expected attribute name after '@'");
 
 		uint32_t attr;
-		if(id->text == "nomangle")		attr |= Attr_NoMangle;
-		else							error("Unknown attribute '%s'", id->text.c_str());
+		if(id->text == "nomangle")				attr |= Attr_NoMangle;
+		else if(id->text == "forcemangle")		attr |= Attr_ForceMangle;
+		else									error("Unknown attribute '%s'", id->text.c_str());
 
 		curAttrib |= attr;
 	}

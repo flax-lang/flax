@@ -87,7 +87,8 @@ namespace Codegen
 			Ast::ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
 	};
 
-	llvm::Module* doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
+	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
+	void writeBitcode(std::string filename, CodegenInstance* cgi);
 }
 
 

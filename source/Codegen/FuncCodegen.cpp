@@ -53,7 +53,7 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	this->mangledName = this->name;
-	if(!this->isFFI)
+	if((!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
 		this->mangledName = cgi->mangleName(this->name, params_expr);
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);

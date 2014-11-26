@@ -1,0 +1,13 @@
+public struct StringFaggot
+{
+	var data: Int8 ptr
+	var leng: Int64
+}
+
+
+public func printInt64(x: Int64)
+{
+	printf("%lld", x)
+}
+
+public ffi func printf(x: Int8 ptr, ...)

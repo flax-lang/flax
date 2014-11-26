@@ -23,7 +23,7 @@ project CoreScript
 
 
 	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
-	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter";
+	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
 	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/{outputBin}' ";
 
 
@@ -40,8 +40,8 @@ project CoreScript
 		Utils.println("Compiling test program (build/test.crs)");
 		assert System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs") == 0;
 		Utils.println("=========================");
-		assert System.execute("./test") == 0;
-		File.deleteFile("./test");
+		assert System.execute("build/test") == 0;
+		File.deleteFile("build/test");
 	}
 
 
