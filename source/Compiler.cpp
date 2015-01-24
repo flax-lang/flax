@@ -136,9 +136,9 @@ namespace Compiler
 			for(VarDecl* member : type->members)
 			{
 				llvm::NamedMDNode* node = mod.getOrInsertNamedMetadata("__" + type->name + "|" + member->name);
-				llvm::Value* Elts[] = { llvm::MDString::get(mod.getContext(), member->type) };
+				llvm::Value* Elts[] = { llvm::MDString::get(llvm::getGlobalContext(), member->type) };
 
-				node->addOperand(llvm::MDNode::get(mod.getContext(), Elts));
+				node->addOperand(llvm::MDNode::get(llvm::getGlobalContext(), Elts));
 			}
 		}
 
@@ -255,9 +255,9 @@ namespace Compiler
 		}
 
 		Codegen::doCodegen(filename, root, cgi);
+
+		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
 		Codegen::writeBitcode(filename, cgi);
-		cgi->mainModule->dump();
-		printf("=========================================\n\n");
 
 		size_t lastdot = filename.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
@@ -288,7 +288,6 @@ namespace Compiler
 		for(auto s : filelist)
 			final += "'" + s + "' ";
 
-		printf("final: %s\n", final.c_str());
 		system(final.c_str());
 
 		delete[] inv;
