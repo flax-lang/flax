@@ -57,7 +57,7 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 		this->mangledName = cgi->mangleName(this->name, params_expr);
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
-	llvm::Function* func = llvm::Function::Create(ft, this->attribs & Attr_VisPublic ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage, this->mangledName, cgi->mainModule);
+	llvm::Function* func = llvm::Function::Create(ft, (this->attribs & Attr_VisPublic || this->isFFI) ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage, this->mangledName, cgi->mainModule);
 
 	// check for redef
 	if(func->getName() != this->mangledName)
@@ -66,7 +66,7 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 	cgi->getVisibleFuncDecls()[this->mangledName] = FuncPair_t(func, this);
 
 	if(this->attribs & Attr_VisPublic)
-		cgi->getRootAST()->publicFuncs.push_back(func);
+		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));
 
 	return ValPtr_p(func, 0);
 }
@@ -163,3 +163,17 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 
 	return ValPtr_p(func, 0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

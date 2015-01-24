@@ -361,12 +361,12 @@ namespace Ast
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
 		// public functiondecls and type decls.
-		std::deque<llvm::Function*> publicFuncs;
-		std::deque<llvm::StructType*> publicTypes;
+		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;
+		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
 
-		// imported types. these exist, but we need to declare them manually while code-genning.
-		std::deque<llvm::Function*> externalFuncs;
-		std::deque<llvm::StructType*> externalTypes;
+		// imported types. these exist, but we need to declare them manually while code-generating.
+		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;
+		std::deque<std::pair<Struct*, llvm::Type*>> externalTypes;
 
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;

@@ -53,10 +53,9 @@ ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 		if(pair->first->isStructTy())
 		{
 			Struct* str = nullptr;
-			assert((str = dynamic_cast<Struct*>(pair->second.first)));
-
-			assert(pair->second.second == ExprType::Struct);
 			assert(pair->second.first);
+			assert((str = dynamic_cast<Struct*>(pair->second.first)));
+			assert(pair->second.second == ExprType::Struct);
 
 			val = cgi->mainBuilder.CreateCall(str->initFunc, ai);
 

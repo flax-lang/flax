@@ -65,11 +65,10 @@ namespace Compiler
 		}
 	}
 
-	std::pair<std::deque<llvm::Function*>*, std::deque<llvm::Type*>*> extractLibraryPublicDefs(std::string filename, Codegen::CodegenInstance* cgi)
+	std::pair<std::deque<std::pair<FuncDecl*, llvm::Function*>>, std::deque<std::pair<Struct*, llvm::Type*>>> extractLibraryPublicDefs(std::string filename, Codegen::CodegenInstance* cgi)
 	{
-		auto types = new std::deque<llvm::Type*>();
-		auto funcs = new std::deque<llvm::Function*>();
-
+		std::deque<std::pair<Struct*, llvm::Type*>> types;
+		std::deque<std::pair<FuncDecl*, llvm::Function*>> funcs;
 
 		llvm::SMDiagnostic err;
 		llvm::Module* mod = llvm::ParseIRFile(filename, err, llvm::getGlobalContext());
@@ -78,7 +77,7 @@ namespace Compiler
 		for(decltype(mod->getFunctionList().begin()) it = mod->getFunctionList().begin(); it != mod->getFunctionList().end(); it++)
 		{
 			llvm::Function* func = it.getNodePtrUnchecked();
-			funcs->push_back(func);
+			funcs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, func));
 		}
 
 		for(decltype(mod->global_begin()) it = mod->global_begin(); it != mod->global_end(); it++)
@@ -87,7 +86,7 @@ namespace Compiler
 			// because llvm global variables are always pointers.
 
 			llvm::Type* type = it.getNodePtrUnchecked()->getType()->getPointerElementType();
-			types->push_back(type);
+			types.push_back(std::pair<Struct*, llvm::Type*>(0, type));
 		}
 
 		return std::pair<decltype(funcs), decltype(types)>(funcs, types);
@@ -114,15 +113,33 @@ namespace Compiler
 		llvm::Module& mod = *cgi->mainModule;
 		llvm::IRBuilder<>& builder = cgi->mainBuilder;
 
-		for(auto pub : root->publicFuncs)
+		for(std::pair<FuncDecl*, llvm::Function*> pair : root->publicFuncs)
 		{
-			pub->deleteBody();
-			mod.getOrInsertFunction(pub->getName(), pub->getFunctionType());
+			FuncDecl* pub = pair.first;
+			ValPtr_p vp = pub->codegen(cgi);
+			assert(vp.first->getType()->getPointerElementType()->isFunctionTy());
+
+			llvm::Function* f = llvm::cast<llvm::Function>(vp.first);
+			f->deleteBody();
+			mod.getOrInsertFunction(f->getName(), f->getFunctionType());
 		}
 
-		for(auto type : root->publicTypes)
+		for(std::pair<Struct*, llvm::Type*> pair : root->publicTypes)
 		{
-			mod.getOrInsertGlobal(("_varType" + type->getName().str()), type);
+			Struct* type = pair.first;
+
+			// this is to force the type to get inserted into the thingy
+			type->createType(cgi);
+			llvm::StructType* v = llvm::cast<llvm::StructType>(cgi->getType(type->name)->first);
+			mod.getOrInsertGlobal(("_varType" + type->name), v);
+
+			for(VarDecl* member : type->members)
+			{
+				llvm::NamedMDNode* node = mod.getOrInsertNamedMetadata("__" + type->name + "|" + member->name);
+				llvm::Value* Elts[] = { llvm::MDString::get(mod.getContext(), member->type) };
+
+				node->addOperand(llvm::MDNode::get(mod.getContext(), Elts));
+			}
 		}
 
 
@@ -130,6 +147,8 @@ namespace Compiler
 		llvm::raw_fd_ostream rso(filename.c_str(), err, of);
 
 		mod.print(rso, 0);
+
+		delete cgi;
 	}
 
 
@@ -183,10 +202,10 @@ namespace Compiler
 				delete rcgi;
 
 				for(auto v : r->publicFuncs)
-					root->externalFuncs.push_back(v);
+					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
 
 				for(auto v : r->publicTypes)
-					root->externalTypes.push_back(v);
+					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 			}
 			else
 			{
@@ -212,7 +231,6 @@ namespace Compiler
 				fname = fname.substr(1);
 				std::string lname = fname;
 
-
 				// extract the library name
 				{
 					size_t sep = fname.find_last_of("\\/");
@@ -225,16 +243,21 @@ namespace Compiler
 				}
 
 				auto ret = extractLibraryPublicDefs(fname + "/" + lname, cgi);
-				for(auto f : *ret.first)
-					root->externalFuncs.push_back(f);
+				for(auto f : ret.first)
+					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f.first, f.second));
 
-				for(auto t : *ret.second)
-					root->externalTypes.push_back(llvm::cast<llvm::StructType>(t));
+				// for(auto t : *ret.second)
+				// 	root->externalTypes.push_back(llvm::cast<llvm::StructType>(t));
+
+
+				root->referencedLibraries.push_back(imp->module);
 			}
 		}
 
 		Codegen::doCodegen(filename, root, cgi);
 		Codegen::writeBitcode(filename, cgi);
+		cgi->mainModule->dump();
+		printf("=========================================\n\n");
 
 		size_t lastdot = filename.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
@@ -257,7 +280,7 @@ namespace Compiler
 
 		std::string libs;
 		for(std::string lib : root->referencedLibraries)
-			libs += "-L'" + getSysroot() + "/usr/lib/libCS_" + lib + ".lib'" + " -lCS_" + lib + "";
+			libs += "-L'" + getSysroot() + "/usr/lib/libCS_" + lib + ".lib'" + " -lCS_" + lib;
 
 		std::string final = inv;
 		final += libs + " ";
@@ -265,6 +288,7 @@ namespace Compiler
 		for(auto s : filelist)
 			final += "'" + s + "' ";
 
+		printf("final: %s\n", final.c_str());
 		system(final.c_str());
 
 		delete[] inv;
