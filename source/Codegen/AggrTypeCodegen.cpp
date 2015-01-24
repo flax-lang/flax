@@ -85,6 +85,13 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 	{
 		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(cgi->getContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
+
+		// if(this->attribs & Attr_VisPublic)
+		{
+			// make the initialiser public as well
+			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, func));
+		}
+
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(cgi->getContext(), "initialiser", func);
 		cgi->mainBuilder.SetInsertPoint(iblock);
 
@@ -112,7 +119,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 			std::string oname = f->decl->name;
 			bool isOpOverload = oname.find("operator#") == 0;
 
-
+			llvm::Function* lf = nullptr;
 			llvm::Value* val = nullptr;
 			if(f == this->ifunc)
 			{
@@ -128,7 +135,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 				f->closure->statements.push_front(fc);
 
 				auto oi = cgi->mainBuilder.GetInsertBlock();
-				this->initFunc = llvm::cast<llvm::Function>(f->codegen(cgi).first);
+				this->initFunc = llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).first)));
 				cgi->mainBuilder.SetInsertPoint(oi);
 			}
 			else
@@ -136,7 +143,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 				// mangle
 				f->decl->name = cgi->mangleName(this, f->decl->name);
 				val = f->decl->codegen(cgi).first;
-				f->codegen(cgi);
+				lf = llvm::cast<llvm::Function>(f->codegen(cgi).first);
 			}
 
 			cgi->mainBuilder.SetInsertPoint(ob);
@@ -153,6 +160,12 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 
 				ArithmeticOp ao = cgi->determineArithmeticOp(ss.str());
 				this->lopmap[ao] = llvm::cast<llvm::Function>(val);
+			}
+
+			if(this->attribs & Attr_VisPublic)
+			{
+				// make the functions public as well
+				cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, lf));
 			}
 		}
 
@@ -259,7 +272,7 @@ void Struct::createType(CodegenInstance* cgi)
 	str->setBody(vec);
 
 	this->didCreateType = true;
-	cgi->getRootAST()->publicTypes.push_back(str);
+	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
 
 	delete types;
 }

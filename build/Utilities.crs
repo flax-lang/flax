@@ -1,3 +1,9 @@
+public struct String
+{
+	var data: Int8 ptr
+	var leng: Int64
+}
+
 public func printInt(x: Int64)
 {
 	printf("%lld", x)

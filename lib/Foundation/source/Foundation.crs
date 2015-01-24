@@ -1,9 +1,8 @@
-public struct StringFaggot
-{
-	var data: Int8 ptr
-	var leng: Int64
-}
-
+// public struct OtherString
+// {
+// 	var data: Int8 ptr
+// 	var length: Int64
+// }
 
 public func printInt64(x: Int64)
 {

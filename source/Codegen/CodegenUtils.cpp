@@ -122,17 +122,19 @@ namespace Codegen
 
 
 
-		for(auto f : cgi->rootNode->externalFuncs)
+		for(auto pair : cgi->rootNode->externalFuncs)
 		{
-			f->deleteBody();
+			auto func = pair.second;
+			func->deleteBody();
 
 			// add to the func table
-			cgi->mainModule->getOrInsertFunction(f->getName(), f->getFunctionType());
+			cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType());
 		}
-		for(auto t : cgi->rootNode->externalTypes)
+
+		for(auto pair : cgi->rootNode->externalTypes)
 		{
-			llvm::StructType* str = t;
-			cgi->getVisibleTypes()[str->getName()] = TypePair_t(str, TypedExpr_t(0, ExprType::Struct));
+			llvm::StructType* str = llvm::cast<llvm::StructType>(pair.second);
+			cgi->getVisibleTypes()[str->getName()] = TypePair_t(str, TypedExpr_t(pair.first, ExprType::Struct));
 		}
 
 		cgi->rootNode->codegen(cgi);
