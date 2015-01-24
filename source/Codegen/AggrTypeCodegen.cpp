@@ -83,7 +83,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 
 	// generate initialiser
 	{
-		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(cgi->getContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
+		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
 
 		// if(this->attribs & Attr_VisPublic)
@@ -92,7 +92,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, func));
 		}
 
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(cgi->getContext(), "initialiser", func);
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", func);
 		cgi->mainBuilder.SetInsertPoint(iblock);
 
 		// create the local instance of reference to self
@@ -198,7 +198,7 @@ void Struct::createType(CodegenInstance* cgi)
 	this->ifunc = nullptr;
 
 	// create a bodyless struct so we can use it
-	llvm::StructType* str = llvm::StructType::create(cgi->getContext(), this->name);
+	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->name);
 	cgi->getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
 
 

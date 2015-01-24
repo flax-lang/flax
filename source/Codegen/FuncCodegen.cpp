@@ -152,7 +152,7 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 		cgi->mainBuilder.CreateRetVoid();
 	}
 
-	llvm::verifyFunction(*func);
+	llvm::verifyFunction(*func, &llvm::errs());
 
 	if(OPTIMISE)
 		cgi->Fpm->run(*func);

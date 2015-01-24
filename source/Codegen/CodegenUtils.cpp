@@ -14,6 +14,7 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
 
@@ -84,6 +85,7 @@ namespace Codegen
 	{
 		llvm::InitializeNativeTarget();
 		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
+		cgi->mainModule->setTargetTriple(llvm::sys::getProcessTriple());
 		cgi->rootNode = root;
 
 		std::string err;
@@ -177,7 +179,8 @@ namespace Codegen
 
 	llvm::LLVMContext& CodegenInstance::getContext()
 	{
-		return mainModule->getContext();
+		// return mainModule->getContext();
+		return llvm::getGlobalContext();
 	}
 
 	Root* CodegenInstance::getRootAST()
