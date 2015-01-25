@@ -84,6 +84,7 @@ namespace Parser
 		LogicalOr,
 		LogicalAnd,
 		At,
+		Pound,
 
 		// compound symbols
 		Arrow,
