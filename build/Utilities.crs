@@ -1,1 +1,27 @@
 import Foundation
+
+public struct String
+{
+	var data: Int8 ptr
+	var length: Int64
+	var allocated: Int64
+
+	init()
+	{
+		self.data = malloc(64)
+		self.length = 0
+		self.allocated = 64
+	}
+
+	operator=(other: Int8 ptr)
+	{
+		var len: Int64 = strlen(other)
+		if(self.allocated < len)
+		{
+			free(self.data)
+			self.data = malloc((len + 31) / 32)
+		}
+
+		memcpy(self.data, other, len)
+	}
+}

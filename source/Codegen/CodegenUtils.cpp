@@ -18,6 +18,8 @@
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
 
+#include "../include/stacktrace.h"
+
 using namespace Ast;
 using namespace Codegen;
 
@@ -30,6 +32,9 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 
 
 	va_end(ap);
+
+
+	print_stacktrace();
 
 	if(ex)
 		exit(1);
@@ -514,9 +519,10 @@ namespace Codegen
 					llvm::Type* ret = unwrapPointerType(fd->type);
 
 					if(!ret)
-						error(expr, "(CodegenUtils.cpp:~524): Unknown type '%s'", expr->type.c_str());
-
-
+					{
+						error(expr, "(%s:%s:%d) -> Internal check failed: Unknown type '%s'",
+							__FILE__, __PRETTY_FUNCTION__, __LINE__, expr->type.c_str());
+					}
 					return ret;
 				}
 
@@ -592,13 +598,26 @@ namespace Codegen
 			}
 			else
 			{
-				// need to determine type on both sides.
-				bo->left = autoCastType(bo->left, bo->right);
+				if(bo->op == ArithmeticOp::Cast)
+				{
+					// in case of a cast, the right side is probably either a builtin type, or an identifier
+					// either way, it got interpreted by the parser as a VarRef, probably.
+					VarRef* vrtype = dynamic_cast<VarRef*>(bo->right);
+					assert(vrtype);
 
-				// make sure that now, both sides are the same.
-				if(determineVarType(bo->left) != determineVarType(bo->right))
-					error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
+					// look at the type.
+					VarType vt = Parser::determineVarType(vrtype->name);
+					return vt;
+				}
+				else
+				{
+					// need to determine type on both sides.
+					bo->right = autoCastType(bo->left, bo->right);
 
+					// make sure that now, both sides are the same.
+					if(determineVarType(bo->left) != determineVarType(bo->right))
+						error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
+				}
 
 				return determineVarType(bo->left);
 			}
@@ -614,7 +633,7 @@ namespace Codegen
 		}
 	}
 
-	bool CodegenInstance::isIntegerType(Expr* e)		{ return getLlvmType(e)->isIntegerTy(); }
+	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }
 	bool CodegenInstance::isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)

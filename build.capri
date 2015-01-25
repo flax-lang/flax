@@ -56,7 +56,6 @@ project CoreScript
 
 	task compile
 	{
-		Utils.println("Compiling");
 		// check if any header files changed
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
@@ -66,8 +65,6 @@ project CoreScript
 
 	task link
 	{
-		Utils.println("Linking");
-
 		// link together
 		foreach(file in File.listTree(src))
 		{
@@ -80,7 +77,6 @@ project CoreScript
 
 	task buildLib
 	{
-		Utils.println("Building Libraries");
 		foreach(fold in File.listFolder("{projDir}/lib"))
 		{
 			fold = "{projDir}/lib/" + fold;

@@ -72,7 +72,7 @@ namespace Compiler
 
 		llvm::SMDiagnostic err;
 		llvm::Module* mod = llvm::ParseIRFile(filename, err, llvm::getGlobalContext());
-
+		assert(mod);
 
 		for(decltype(mod->getFunctionList().begin()) it = mod->getFunctionList().begin(); it != mod->getFunctionList().end(); it++)
 		{
@@ -124,8 +124,6 @@ namespace Compiler
 			// llvm::Function* f = llvm::cast<llvm::Function>(vp.first);
 			f->deleteBody();
 			mod.getOrInsertFunction(f->getName(), f->getFunctionType());
-
-			printf("found func %s\n", f->getName().str().c_str());
 		}
 
 		for(std::pair<Struct*, llvm::Type*> pair : root->publicTypes)
@@ -253,12 +251,16 @@ namespace Compiler
 				for(auto t : ret.second)
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(t.first, t.second));
 
-
 				root->referencedLibraries.push_back(imp->module);
 			}
 		}
 
 		Codegen::doCodegen(filename, root, cgi);
+
+
+		// cgi->mainModule->dump();
+		// printf("=============================================\n");
+
 
 		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
 		Codegen::writeBitcode(filename, cgi);
@@ -268,6 +270,7 @@ namespace Compiler
 		oname += ".bc";
 
 		list.push_back(oname);
+
 
 		return root;
 	}

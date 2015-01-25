@@ -28,7 +28,6 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 
 
 	// try and do compile-time bounds checking
-
 	if(atype->isArrayTy())
 	{
 		assert(llvm::isa<llvm::ArrayType>(atype));
@@ -56,7 +55,9 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 	else											lhs = lhsp.second;
 
 	llvm::Value* ind = this->index->codegen(cgi).first;
-	llvm::Value* gep = cgi->mainBuilder.CreateGEP(lhs, ind, "indexPtr");
+	llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
+	llvm::Value* gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
+
 	return ValPtr_p(cgi->mainBuilder.CreateLoad(gep), gep);
 }
 
@@ -162,11 +163,8 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 				this->lopmap[ao] = llvm::cast<llvm::Function>(val);
 			}
 
-			if(this->attribs & Attr_VisPublic)
-			{
-				// make the functions public as well
-				cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, lf));
-			}
+			// make the functions public as well
+			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, lf));
 		}
 
 		cgi->mainBuilder.CreateRetVoid();
@@ -203,73 +201,73 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 
-
-
-	// because we can't (and don't want to) mangle names in the parser,
-	// we could only build an incomplete name -> index map
-	// finish it here.
-	for(auto p : this->typeList)
+	if(!this->didCreateType)
 	{
-		Func* f = nullptr;
-		OpOverload* oo = nullptr;
-
-		if((oo = dynamic_cast<OpOverload*>(p.first)))
-			f = oo->func;
-
-
-		if(f || (f = dynamic_cast<Func*>(p.first)))
+		// because we can't (and don't want to) mangle names in the parser,
+		// we could only build an incomplete name -> index map
+		// finish it here.
+		for(auto p : this->typeList)
 		{
-			std::string mangled = cgi->mangleName(f->decl->name, f->decl->params);
-			if(this->nameMap.find(mangled) != this->nameMap.end())
-				error(this, "Duplicate member '%s'", f->decl->name.c_str());
+			Func* f = nullptr;
+			OpOverload* oo = nullptr;
 
-			f->decl->mangledName = mangled;
-			this->nameMap[mangled] = p.second;
+			if((oo = dynamic_cast<OpOverload*>(p.first)))
+				f = oo->func;
+
+
+			if(f || (f = dynamic_cast<Func*>(p.first)))
+			{
+				std::string mangled = cgi->mangleName(f->decl->name, f->decl->params);
+				if(this->nameMap.find(mangled) != this->nameMap.end())
+					error(this, "Duplicate member '%s'", f->decl->name.c_str());
+
+				f->decl->mangledName = mangled;
+				this->nameMap[mangled] = p.second;
+			}
 		}
-	}
+
+		for(auto p : this->opmap)
+			p.second->codegen(cgi);
 
 
-
-	for(auto p : this->opmap)
-		p.second->codegen(cgi);
-
-
-	for(Func* func : this->funcs)
-	{
-		if(func->decl->name == "init")
-			this->ifunc = func;
-
-		std::vector<llvm::Type*> args;
-
-		// implicit first paramter, is not shown
-		VarDecl* implicit_self = new VarDecl("self", true);
-		implicit_self->type = this->name + "Ptr";
-		func->decl->params.push_front(implicit_self);
-
-		for(VarDecl* v : func->decl->params)
+		for(Func* func : this->funcs)
 		{
-			llvm::Type* vt = cgi->getLlvmType(v);
-			if(vt == str)
+			if(func->decl->name == "init")
+				this->ifunc = func;
+
+			std::vector<llvm::Type*> args;
+
+			// implicit first paramter, is not shown
+			VarDecl* implicit_self = new VarDecl("self", true);
+			implicit_self->type = this->name + "Ptr";
+			func->decl->params.push_front(implicit_self);
+
+			for(VarDecl* v : func->decl->params)
+			{
+				llvm::Type* vt = cgi->getLlvmType(v);
+				if(vt == str)
+					error(this, "Cannot have non-pointer member of type self");
+
+				args.push_back(vt);
+			}
+
+			types[this->nameMap[func->decl->mangledName]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
+		}
+
+		for(VarDecl* var : this->members)
+		{
+			llvm::Type* type = cgi->getLlvmType(var);
+			if(type == str)
 				error(this, "Cannot have non-pointer member of type self");
 
-			args.push_back(vt);
+			types[this->nameMap[var->name]] = cgi->getLlvmType(var);
 		}
-
-		types[this->nameMap[func->decl->mangledName]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
-	}
-
-	for(VarDecl* var : this->members)
-	{
-		llvm::Type* type = cgi->getLlvmType(var);
-		if(type == str)
-			error(this, "Cannot have non-pointer member of type self");
-
-		types[this->nameMap[var->name]] = cgi->getLlvmType(var);
 	}
 
 
 	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));
 	str->setBody(vec);
+
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
@@ -302,7 +300,9 @@ ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
 		FuncDecl* decl = this->func->decl;
 
 		if(decl->params.size() != 1)
-			error("Operator overload for '=' can only have one argument");
+		{
+			error("Operator overload for '=' can only have one argument (have %d)", decl->params.size());
+		}
 
 		// we can't actually do much, because they can assign to anything
 	}
@@ -330,7 +330,6 @@ ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
 	{
 		error("(%s:%s:%d) -> Internal check failed: invalid operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	}
-
 
 	return ValPtr_p(0, 0);
 }

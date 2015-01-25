@@ -52,6 +52,9 @@ namespace Parser
 		Public,
 		Internal,
 
+		BuiltinType,
+
+
 
 		// symbols
 		LBrace,

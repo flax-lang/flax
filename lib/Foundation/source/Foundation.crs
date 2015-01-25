@@ -1,20 +1,10 @@
-public struct String
-{
-	var data: Int8 ptr
-	var length: Int64
-}
-
-public func test()
-{
-	printf("DIE\n")
-}
-
-public func test(x: Int8)
-{
-	printf("> %hhd\n", x)
-}
+// Foundation.crs
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
 
 public ffi func printf(x: Int8 ptr, ...) -> Int32
 public ffi func memcpy(dest: Int8 ptr, source: Int8 ptr, length: Uint64) -> Int8 ptr
 public ffi func memset(dest: Int8 ptr, value: Int32, length: Uint64) -> Int8 ptr
 public ffi func strlen(str: Int8 ptr) -> Uint64
+public ffi func malloc(size: Uint64) -> Int8 ptr
+public ffi func free(pointer: Int8 ptr)
