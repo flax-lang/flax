@@ -336,6 +336,7 @@ namespace Parser
 				case TType::LParen:
 					return parseParenthesised(tokens);
 
+				case TType::BuiltinType:
 				case TType::Identifier:
 					if(tok->text == "init")
 						return parseFunc(tokens);
@@ -563,8 +564,8 @@ namespace Parser
 	{
 		bool isArr = false;
 		int arrsize = 0;
-		Token* tmp = nullptr;
-		if((tmp = eat(tokens))->type != TType::Identifier)
+		Token* tmp = eat(tokens);
+		if(tmp->type != TType::Identifier && tmp->type != TType::BuiltinType)
 			error("Expected type for variable declaration");
 
 		std::string ptrAppend = "";
@@ -710,7 +711,6 @@ namespace Parser
 
 	Expr* parseIdExpr(std::deque<Token*>& tokens)
 	{
-		assert(tokens.front()->type == TType::Identifier);
 		std::string id = eat(tokens)->text;
 		VarRef* idvr = (new VarRef(id))->setPos(pos);
 
@@ -725,6 +725,7 @@ namespace Parser
 		}
 		else if(tokens.front()->type == TType::LSquare)
 		{
+			// array dereference
 			eat(tokens);
 			Expr* within = parseExpr(tokens);
 
@@ -794,12 +795,6 @@ namespace Parser
 					return nullptr;
 
 				args.push_back(arg);
-				BinOp* b = dynamic_cast<BinOp*>(arg);
-				if(b)
-				{
-					printf("b(%p): %p, %p\n", b, b->left, b->right);
-				}
-
 				if(tokens.front()->type == TType::RParen)
 				{
 					eat(tokens);

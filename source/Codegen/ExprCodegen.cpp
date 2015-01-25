@@ -52,8 +52,6 @@ ValPtr_p UnaryOp::codegen(CodegenInstance* cgi)
 ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
-
-	printf("binop - %p, %p\n", this->left, this->right);
 	this->right = cgi->autoCastType(this->left, this->right);
 
 	ValPtr_p valptr = this->left->codegen(cgi);
@@ -99,7 +97,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
 			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
-			|| ((ai = dynamic_cast<ArrayIndex*>(this->left))))
+			|| (ai = dynamic_cast<ArrayIndex*>(this->left)))
 		{
 			// we know that the ptr lives in the second element
 			// so, use it

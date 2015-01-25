@@ -13,7 +13,6 @@ project libFoundation
 	task all depends compile;
 	task compile
 	{
-		Utils.println("Foundation");
 		assert System.execute("{corec_invoke} {src}/{mainFile}") == 0;
 	}
 }

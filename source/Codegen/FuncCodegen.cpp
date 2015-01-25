@@ -19,8 +19,8 @@ ValPtr_p FuncCall::codegen(CodegenInstance* cgi)
 	if(!target)
 		target = cgi->mainModule->getFunction(cgi->mangleName(this->name, this->params));
 
-	if(target == 0)
-		error(this, "Unknown function '%s'", this->name.c_str());
+	if(!target)
+		error(this, "Unknown function '%s' (mangled: %s)", this->name.c_str(), cgi->mangleName(this->name, this->params).c_str());
 
 	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
 		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
@@ -59,7 +59,19 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 		this->mangledName = cgi->mangleName(this->name, params_expr);
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
-	llvm::Function* func = llvm::Function::Create(ft, (this->attribs & Attr_VisPublic || this->isFFI) ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage, this->mangledName, cgi->mainModule);
+	llvm::GlobalValue::LinkageTypes linkageType;
+
+	if(this->isFFI)
+		linkageType = llvm::Function::ExternalWeakLinkage;
+
+	else if((this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal))
+		linkageType = llvm::Function::InternalLinkage;
+
+	else
+		linkageType = llvm::Function::ExternalLinkage;
+
+
+	llvm::Function* func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->mainModule);
 
 
 	// check for redef

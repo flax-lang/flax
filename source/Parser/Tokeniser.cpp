@@ -259,6 +259,20 @@ namespace Parser
 			else if(id == "private")	tok.type = TType::Private;
 			else if(id == "internal")	tok.type = TType::Internal;
 
+			else if(id == "Int8"
+				|| id == "Int16"
+				|| id == "Int32"
+				|| id == "Int64"
+				|| id == "Uint8"
+				|| id == "Uint16"
+				|| id == "Uint32"
+				|| id == "Uint64"
+				|| id == "Float32"
+				|| id == "Float64"
+				|| id == "AnyPtr"
+				|| id == "Bool"
+				|| id == "Void")		tok.type = TType::BuiltinType;
+
 			else						tok.type = TType::Identifier;
 		}
 		else if(stream[0] == '"')
