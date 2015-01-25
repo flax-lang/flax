@@ -223,7 +223,8 @@ namespace Parser
 		if(tokens.size() == 0)
 			return;
 
-		while(Token* tok = tokens.front())
+		Token* tok = nullptr;
+		while(tokens.size() > 0 && (tok = tokens.front()))
 		{
 			assert(tok != nullptr);
 			switch(tok->type)
