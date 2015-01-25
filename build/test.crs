@@ -1,19 +1,14 @@
-import Utilities
 import Foundation
 
-func main(argc: Int32, argv: Int8 ptr ptr) -> Int32
+func main(argc: Int32, argv: Int8 ptr ptr) -> Int64
 {
-	var y: String
+	// var y: String
 
-	puts("Hello, World!")
-	printInt(500)
-	printInt64(10000000000)
-	puts("")
-	return 0 as Int32
+	test()
+	test(5 as Int8)
+
+	// printf("%s number %d!\n", y.data, 1049)
+	// puts(y.data)
+
+	return 0
 }
-
-
-
-ffi func putchar(x: Int32) -> Int32
-ffi func malloc(x: Int64) -> Int8 ptr
-ffi func puts(x: Int8 ptr) -> Int32

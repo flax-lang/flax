@@ -1,4 +1,4 @@
-version 1.16;
+version 1.18;
 import "../../build.capri";
 
 project libFoundation
