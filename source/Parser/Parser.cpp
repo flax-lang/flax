@@ -266,7 +266,6 @@ namespace Parser
 					curAttrib |= Attr_VisPublic;
 					break;
 
-
 				case TType::At:
 					parseAttribute(tokens);
 					break;
@@ -785,7 +784,6 @@ namespace Parser
 	{
 		assert(eat(tokens)->type == TType::LParen);
 
-
 		std::deque<Expr*> args;
 		if(tokens.front()->type != TType::RParen)
 		{
@@ -796,6 +794,11 @@ namespace Parser
 					return nullptr;
 
 				args.push_back(arg);
+				BinOp* b = dynamic_cast<BinOp*>(arg);
+				if(b)
+				{
+					printf("b(%p): %p, %p\n", b, b->left, b->right);
+				}
 
 				if(tokens.front()->type == TType::RParen)
 				{

@@ -52,6 +52,8 @@ ValPtr_p UnaryOp::codegen(CodegenInstance* cgi)
 ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
+
+	printf("binop - %p, %p\n", this->left, this->right);
 	this->right = cgi->autoCastType(this->left, this->right);
 
 	ValPtr_p valptr = this->left->codegen(cgi);
@@ -187,10 +189,10 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 	{
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:											return ValPtr_p(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:									return ValPtr_p(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:									return ValPtr_p(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
-			case ArithmeticOp::ShiftLeft:									return ValPtr_p(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
+			case ArithmeticOp::Add:					return ValPtr_p(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:			return ValPtr_p(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:			return ValPtr_p(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
+			case ArithmeticOp::ShiftLeft:			return ValPtr_p(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
 			case ArithmeticOp::Divide:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
 					return ValPtr_p(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
@@ -206,12 +208,12 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 
 			case ArithmeticOp::ShiftRight:
-				if(cgi->isSignedType(this->left))							return ValPtr_p(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
-				else 														return ValPtr_p(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left))	return ValPtr_p(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
+				else 								return ValPtr_p(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:										return ValPtr_p(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:										return ValPtr_p(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return ValPtr_p(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return ValPtr_p(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLT:
@@ -245,8 +247,8 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 
 
-			case ArithmeticOp::BitwiseAnd:									return ValPtr_p(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
-			case ArithmeticOp::BitwiseOr:									return ValPtr_p(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseAnd:		return ValPtr_p(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseOr:		return ValPtr_p(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:

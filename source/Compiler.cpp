@@ -115,13 +115,17 @@ namespace Compiler
 
 		for(std::pair<FuncDecl*, llvm::Function*> pair : root->publicFuncs)
 		{
-			FuncDecl* pub = pair.first;
-			ValPtr_p vp = pub->codegen(cgi);
-			assert(vp.first->getType()->getPointerElementType()->isFunctionTy());
+			// FuncDecl* pub = pair.first;
+			// ValPtr_p vp = pub->codegen(cgi);
 
-			llvm::Function* f = llvm::cast<llvm::Function>(vp.first);
+			llvm::Function* f = pair.second;
+			assert(f->getType()->getPointerElementType()->isFunctionTy());
+
+			// llvm::Function* f = llvm::cast<llvm::Function>(vp.first);
 			f->deleteBody();
 			mod.getOrInsertFunction(f->getName(), f->getFunctionType());
+
+			printf("found func %s\n", f->getName().str().c_str());
 		}
 
 		for(std::pair<Struct*, llvm::Type*> pair : root->publicTypes)
@@ -246,8 +250,8 @@ namespace Compiler
 				for(auto f : ret.first)
 					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f.first, f.second));
 
-				// for(auto t : *ret.second)
-				// 	root->externalTypes.push_back(llvm::cast<llvm::StructType>(t));
+				for(auto t : ret.second)
+					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(t.first, t.second));
 
 
 				root->referencedLibraries.push_back(imp->module);

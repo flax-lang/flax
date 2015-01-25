@@ -699,8 +699,6 @@ namespace Codegen
 			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64;
 			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32;
 			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64;
-
-			return right;
 		}
 
 		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
@@ -735,11 +733,11 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
 	{
-		std::deque<Expr*> fuckingshit;
-		for(auto a : args)
-			fuckingshit.push_back(a);
+		std::deque<Expr*> a;
+		for(auto arg : args)
+			a.push_back(arg);
 
-		return mangleName(base, fuckingshit);
+		return mangleName(base, a);
 	}
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
@@ -749,7 +747,7 @@ namespace Codegen
 		for(Expr* e : args)
 			mangled += "_" + getReadableType(e);
 
-		return base + (mangled.empty() ? "" : ("#" + mangled));
+		return base + (mangled.empty() ? "#void" : ("#" + mangled));
 	}
 
 
@@ -804,7 +802,11 @@ namespace Codegen
 
 
 		if(opov->getArgumentList().back().getType() != val->getType())
-			error("No valid operator overload, [%s, %s]", getReadableType(opov->getArgumentList().back().getType()).c_str(), getReadableType(val->getType()).c_str());
+			error("No valid operator overload, have [%s], got [%s]", getReadableType(val->getType()).c_str(), getReadableType(opov->getArgumentList().back().getType()).c_str());
+
+		// get the function with the same name in the current module
+		opov = this->mainModule->getFunction(opov->getName());
+		assert(opov);
 
 		// try the assign op.
 		if(op == ArithmeticOp::Assign && str->opmap[op])

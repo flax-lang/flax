@@ -51,6 +51,8 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 		argtypes.push_back(cgi->getLlvmType(v));
 	}
 
+
+
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	this->mangledName = this->name;
 	if((!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
@@ -59,9 +61,20 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
 	llvm::Function* func = llvm::Function::Create(ft, (this->attribs & Attr_VisPublic || this->isFFI) ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage, this->mangledName, cgi->mainModule);
 
+
 	// check for redef
 	if(func->getName() != this->mangledName)
-		error(this, "Redefinition of function '%s'", this->name.c_str());
+	{
+		if(!this->isFFI)
+		{
+			error(this, "Redefinition of function '%s'", this->name.c_str());
+		}
+		else
+		{
+			// check for same name but different args
+			// TODO: c++ compat
+		}
+	}
 
 	cgi->getVisibleFuncDecls()[this->mangledName] = FuncPair_t(func, this);
 
@@ -129,8 +142,10 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 	// check if we're not returning void
 	if(cgi->determineVarType(this) != VarType::Void)
 	{
+		// if we have no statements at all:
 		if(this->closure->statements.size() == 0)
 			error(this, "Return value required for function '%s'", this->decl->name.c_str());
+
 
 		// the last expr is the final return value.
 		// if we had an explicit return, then the dynamic cast will succeed and we don't need to do anything
@@ -139,12 +154,16 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 			// else, if the cast failed it means we didn't explicitly return, so we take the
 			// value of the last expr as the return value.
 
-			// actually, if the last statement is an if-clause, then we can't tell for sure
-			// this will abort at runtime.
-
 			// TODO: make better.
 			if(!dynamic_cast<If*>(this->closure->statements.back()))
+			{
 				cgi->mainBuilder.CreateRet(lastVal);
+			}
+			else
+			{
+				// TODO: we need to make sure all code paths return a value
+				// for now this will cause a trap in LLVM's codegen.
+			}
 		}
 	}
 	else
