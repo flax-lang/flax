@@ -8,12 +8,12 @@ project libFoundation
 	mainFile	= "Foundation.crs";
 
 
-	corec_invoke	= "'{COREC}' -lib -sysroot '{sysroot}' -o '{sysroot}/usr/lib/'";
+	// corec_invoke	= "'{COREC}' -lib -sysroot '{sysroot}' -o '{sysroot}/usr/lib/'";
 
 	task all depends compile;
 	task compile
 	{
-		assert System.execute("{corec_invoke} {src}/{mainFile}") == 0;
+		assert System.execute("cp {src}/{mainFile} '{sysroot}'/usr/lib/corescript/") == 0;
 	}
 }
 

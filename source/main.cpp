@@ -99,21 +99,17 @@ int main(int argc, char* argv[])
 		// compile the file.
 		// the file Compiler.cpp handles imports.
 		std::vector<std::string> filelist;
-		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* root = Compiler::compileFile(filename, filelist, cgi);
+		std::map<std::string, Ast::Root*> rootmap;
 
+		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
+		Root* root = Compiler::compileFile(filename, filelist, rootmap, cgi);
 
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");
 		if(sep != std::string::npos)
 			foldername = filename.substr(0, sep);
 
-		if(!isLib)
-			Compiler::compileProgram(cgi, filelist, root, foldername, outname);
-
-		else
-			Compiler::compileLibrary(cgi, filelist, root, foldername, outname);
-
+		Compiler::compileProgram(cgi, filelist, foldername, outname);
 
 		// clean up the intermediate files (ie. .bitcode files)
 		for(auto s : filelist)

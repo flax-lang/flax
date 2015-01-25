@@ -28,8 +28,6 @@ public struct String
 	}
 }
 
-
-
 public ffi func printf(x: Int8 ptr, ...) -> Int32
 public ffi func memcpy(dest: Int8 ptr, source: Int8 ptr, length: Uint64) -> Int8 ptr
 public ffi func memset(dest: Int8 ptr, value: Int32, length: Uint64) -> Int8 ptr
