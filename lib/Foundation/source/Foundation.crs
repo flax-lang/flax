@@ -4,7 +4,7 @@
 
 public struct String
 {
-	var data: Int8 ptr
+	var data: Int8*
 	var length: Int64
 	var allocated: Int64
 
@@ -15,7 +15,7 @@ public struct String
 		self.allocated = 64
 	}
 
-	operator=(other: Int8 ptr)
+	operator=(other: Int8*)
 	{
 		var len: Int64 = strlen(other)
 		if(self.allocated < len)
@@ -28,9 +28,9 @@ public struct String
 	}
 }
 
-public ffi func printf(x: Int8 ptr, ...) -> Int32
-public ffi func memcpy(dest: Int8 ptr, source: Int8 ptr, length: Uint64) -> Int8 ptr
-public ffi func memset(dest: Int8 ptr, value: Int32, length: Uint64) -> Int8 ptr
-public ffi func strlen(str: Int8 ptr) -> Uint64
-public ffi func malloc(size: Uint64) -> Int8 ptr
-public ffi func free(pointer: Int8 ptr)
+public ffi func printf(x: Int8*, ...) -> Int32
+public ffi func memcpy(dest: Int8*, source: Int8 ptr, length: Uint64) -> Int8*
+public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+public ffi func strlen(str: Int8*) -> Uint64
+public ffi func malloc(size: Uint64) -> Int8*
+public ffi func free(pointer: Int8*)

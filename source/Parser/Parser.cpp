@@ -301,12 +301,12 @@ namespace Parser
 
 			return new UnaryOp(op, parseUnary(tokens));
 		}
-		else if(tokens.front()->type == TType::Deref)
+		else if(tokens.front()->type == TType::Deref || tokens.front()->type == TType::Pound)
 		{
 			eat(tokens);
 			return new UnaryOp(ArithmeticOp::Deref, parseUnary(tokens));
 		}
-		else if(tokens.front()->type == TType::Addr)
+		else if(tokens.front()->type == TType::Addr || tokens.front()->type == TType::Ampersand)
 		{
 			eat(tokens);
 			return new UnaryOp(ArithmeticOp::AddrOf, parseUnary(tokens));
@@ -572,9 +572,9 @@ namespace Parser
 		std::string ptrAppend = "";
 		if(tokens.size() > 0)
 		{
-			if(tokens.front()->type == TType::Ptr)
+			if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
 			{
-				while(tokens.front()->type == TType::Ptr)
+				while(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
 					eat(tokens), ptrAppend += "Ptr";
 			}
 			else if(tokens.front()->type == TType::LSquare)
