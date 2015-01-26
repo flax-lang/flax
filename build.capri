@@ -1,4 +1,4 @@
-version 1.18;
+version 1.17;
 import "build/capri/Utilities.capri";
 
 projDir		= "/Users/zhiayang/Desktop/Stuff/Orion Industries/flax";
