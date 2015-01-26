@@ -28,7 +28,7 @@ project Flax default all
 
 	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
 	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
-	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
+	final_invoke		= "{CXX} {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
 
 
 	target travis
@@ -87,7 +87,7 @@ project Flax default all
 		}
 
 		System.execute("mkdir -p '{sysroot}/{prefix}/bin'");
-		System.execute("{final_invoke} {objs}");
+		System.execute("{final_invoke} {objs} `{llvm_config_invoke}`");
 	}
 
 	task buildLib
