@@ -421,20 +421,14 @@ namespace Parser
 					curAttrib |= Attr_VisPublic;
 					return parsePrimary(tokens);
 
-
-
-
-				default:	// wip: skip shit we don't know/care about for now
-					fprintf(stderr, "Unknown token '%s', skipping\n", tok->text.c_str());
-					eat(tokens);
+				default:
+					error("Unexpected token '%s', skipping\n", tok->text.c_str());
 					break;
 			}
 		}
 
 		return nullptr;
 	}
-
-
 
 
 
@@ -919,7 +913,7 @@ namespace Parser
 		Expr* cond = parseExpr(tokens);
 		Closure* body = parseClosure(tokens);
 
-		return CreateAST(WhileLoop, tok_while, cond, body);
+		return CreateAST(WhileLoop, tok_while, cond, body, false);
 	}
 
 	Struct* parseStruct(std::deque<Token*>& tokens)

@@ -269,11 +269,14 @@ namespace Ast
 	struct WhileLoop : Expr
 	{
 		~WhileLoop() { }
-		WhileLoop(Parser::PosInfo pos, Expr* _cond, Closure* _body) : Expr(pos), cond(_cond), body(_body) { }
+		WhileLoop(Parser::PosInfo pos, Expr* _cond, Closure* _body, bool dowhile) : Expr(pos),
+			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
+
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
 		Expr* cond;
 		Closure* body;
+		bool isDoWhileVariant;
 	};
 
 	struct UnaryOp : Expr
