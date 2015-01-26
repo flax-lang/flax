@@ -3,9 +3,9 @@ compiler: clang
 before_install: sudo apt-get update
 
 install:
-	- build/get-dependencies.sh
-	- echo "LLVM $LLVM_VERSION"
-	- sudo apt-get install llvm
+    - build/get-dependencies.sh
+    - echo "LLVM $LLVM_VERSION"
+    - sudo apt-get install llvm
 
 script: ./capri
 
