@@ -158,25 +158,7 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 		if(this->closure->statements.size() == 0)
 			error(this, "Return value required for function '%s'", this->decl->name.c_str());
 
-
-		// the last expr is the final return value.
-		// if we had an explicit return, then the dynamic cast will succeed and we don't need to do anything
-		if(!dynamic_cast<Return*>(this->closure->statements.back()))
-		{
-			// else, if the cast failed it means we didn't explicitly return, so we take the
-			// value of the last expr as the return value.
-
-			// TODO: make better.
-			if(!dynamic_cast<If*>(this->closure->statements.back()))
-			{
-				cgi->mainBuilder.CreateRet(lastVal);
-			}
-			else
-			{
-				// TODO: we need to make sure all code paths return a value
-				// for now this will cause a trap in LLVM's codegen.
-			}
-		}
+		// TODO: proper detection of whether all code paths return
 	}
 	else
 	{
