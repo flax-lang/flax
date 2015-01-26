@@ -33,7 +33,7 @@
 commit
 run
 *.sublime-*
-scripts/corec
+build/sysroot
 .modifydates
 
 *.ll
