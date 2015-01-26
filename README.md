@@ -4,6 +4,18 @@ flax
 Compiler/parser for simple language. For kicks.
 
 
+#### Language Goals ####
+
+- This project grew out of my frustration with C/C++. I use C++ mainly for low level development, and its syntax is cumbersome, laden in C-derived K&R cruft... and the include files. Don't get me started on include files.
+- Flax targets the LLVM backend, simply because it is widely ported, has an incredible amount of optimisation passes, and can target freestanding platforms.
+- This language aims to have as little dependencies against userspace libraries as possible.
+- Therefore, only a small subset of libc functions will be required. While the language has not been finalised, I envision only basic functions (printf, malloc/free, memset/memcpy/memmove) being required.
+- The builtin standard library (tentatively 'Foundation') will be provided as a source-level library (written in Flax!), making it much easier to build against a freestanding target.
+- Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/requimrar/mx) in Flax, and if possible parts of the kernel or drivers.
+
+
+
+
 #### Current Features ####
 
 - Handwritten parser
