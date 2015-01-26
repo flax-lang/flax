@@ -11,7 +11,7 @@ flaxcBin	= "{sysroot}/{prefix}/{outputBin}";
 project Flax
 {
 	CXX				= "clang++";
-	CXXFLAGS		= "-g -stdlib=libc++ -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include";
+	CXXFLAGS		= "-g -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include";
 	LLVM_CONFIG		= "/usr/local/opt/llvm/bin/llvm-config";
 
 
