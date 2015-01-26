@@ -3,6 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
+#define __STDC_LIMIT_MACROS
+#define __STDC_CONSTANT_MACROS
+
 #include "llvm/Analysis/Passes.h"
 #include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
