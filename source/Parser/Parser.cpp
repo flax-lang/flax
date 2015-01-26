@@ -15,11 +15,19 @@ using namespace Ast;
 
 namespace Parser
 {
-	PosInfo pos;
+	PosInfo currentPos;
 	Root* rootNode;
 	Token* curtok;
 	uint32_t curAttrib;
 	Codegen::CodegenInstance* curCgi;
+
+
+	#define CreateAST(name, ...)			(new name (currentPos, ##__VA_ARGS__))
+	#define CreateAST_Tok(name, tok, ...)	(new name (tok->posinfo, ##__VA_ARGS__))
+
+
+
+
 
 	// todo: hack
 	bool isParsingStruct;
@@ -32,7 +40,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "Error (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
+		fprintf(stderr, "Parsing error (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -54,7 +62,7 @@ namespace Parser
 	Return* parseReturn(std::deque<Token*>& tokens);
 	Number* parseNumber(std::deque<Token*>& tokens);
 	void parseAttribute(std::deque<Token*>& tokens);
-	std::string parseType(std::deque<Token*>& tokens);
+	CastedType* parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
@@ -84,15 +92,18 @@ namespace Parser
 		curCgi = cgi;
 
 		Token* t = nullptr;
-		pos.file = filename;
-		pos.line = 1;
+		currentPos.file = filename;
+		currentPos.line = 1;
 
 		std::deque<Token*> tokens;
 
-		while((t = getNextToken(str, pos)) != nullptr)
+		while((t = getNextToken(str, currentPos)) != nullptr)
 			tokens.push_back(t);
 
 		rootNode = new Root();
+		currentPos.file = filename;
+		currentPos.line = 1;
+
 		parseAll(tokens);
 
 		return rootNode;
@@ -102,7 +113,10 @@ namespace Parser
 	static void skipNewline(std::deque<Token*>& tokens)
 	{
 		while(tokens.size() > 0 && tokens.front()->type == TType::NewLine)
+		{
 			tokens.pop_front();
+			currentPos.line++;
+		}
 	}
 
 	static Token* eat(std::deque<Token*>& tokens)
@@ -247,6 +261,9 @@ namespace Parser
 
 				// shit you just skip
 				case TType::NewLine:
+					currentPos.line++;
+					// no break
+
 				case TType::Comment:
 				case TType::Semicolon:
 					tokens.pop_front();
@@ -281,11 +298,11 @@ namespace Parser
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
 	{
 		Expr* expr = parseExpr(tokens);
-		FuncDecl* fakedecl = new FuncDecl("__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
-		Closure* cl = new Closure();
+		FuncDecl* fakedecl = CreateAST(FuncDecl, "__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
+		Closure* cl = CreateAST(Closure);
 		cl->statements.push_back(expr);
 
-		Func* fakefunc = new Func(fakedecl, cl);
+		Func* fakefunc = CreateAST(Func, fakedecl, cl);
 		rootNode->functions.push_back(fakefunc);
 
 		return fakefunc;
@@ -293,23 +310,25 @@ namespace Parser
 
 	Expr* parseUnary(std::deque<Token*>& tokens)
 	{
+		Token* front = tokens.front();
+
 		// check for unary shit
-		if(tokens.front()->type == TType::Exclamation || tokens.front()->type == TType::Plus || tokens.front()->type == TType::Minus)
+		if(front->type == TType::Exclamation || front->type == TType::Plus || front->type == TType::Minus)
 		{
 			TType tp = eat(tokens)->type;
 			ArithmeticOp op = tp == TType::Exclamation ? ArithmeticOp::LogicalNot : (tp == TType::Plus ? ArithmeticOp::Plus : ArithmeticOp::Minus);
 
-			return new UnaryOp(op, parseUnary(tokens));
+			return CreateAST_Tok(UnaryOp, front, op, parseUnary(tokens));
 		}
-		else if(tokens.front()->type == TType::Deref || tokens.front()->type == TType::Pound)
+		else if(front->type == TType::Deref || front->type == TType::Pound)
 		{
 			eat(tokens);
-			return new UnaryOp(ArithmeticOp::Deref, parseUnary(tokens));
+			return CreateAST_Tok(UnaryOp, front, ArithmeticOp::Deref, parseUnary(tokens));
 		}
-		else if(tokens.front()->type == TType::Addr || tokens.front()->type == TType::Ampersand)
+		else if(front->type == TType::Addr || front->type == TType::Ampersand)
 		{
 			eat(tokens);
-			return new UnaryOp(ArithmeticOp::AddrOf, parseUnary(tokens));
+			return CreateAST_Tok(UnaryOp, front, ArithmeticOp::AddrOf, parseUnary(tokens));
 		}
 		else
 		{
@@ -366,18 +385,21 @@ namespace Parser
 
 				// shit you just skip
 				case TType::NewLine:
+					currentPos.line++;
+					// fallthrough
+
 				case TType::Comment:
 				case TType::Semicolon:
 					eat(tokens);
-					return new DummyExpr();
+					return CreateAST_Tok(DummyExpr, tok);
 
 				case TType::True:
 					tokens.pop_front();
-					return (new BoolVal(true))->setPos(pos);
+					return CreateAST_Tok(BoolVal, tok, true);
 
 				case TType::False:
 					tokens.pop_front();
-					return (new BoolVal(false))->setPos(pos);
+					return CreateAST_Tok(BoolVal, tok, false);
 
 
 				case TType::Private:
@@ -423,7 +445,8 @@ namespace Parser
 		if(tokens.front()->type != TType::Identifier)
 			error("Expected identifier, but got token of type %d", tokens.front()->type);
 
-		std::string id = eat(tokens)->text;
+		Token* func_id = eat(tokens);
+		std::string id = func_id->text;
 
 		// expect a left bracket
 		Token* paren = eat(tokens);
@@ -455,13 +478,13 @@ namespace Parser
 			}
 
 			std::string id = tok_id->text;
-			VarDecl* v = (new VarDecl(id, true))->setPos(pos);
+			VarDecl* v = CreateAST_Tok(VarDecl, tok_id, id, true);
 
 			// expect a colon
 			if(eat(tokens)->type != TType::Colon)
 				error("Expected ':' followed by a type");
 
-			v->type = parseType(tokens);
+			v->type = parseType(tokens)->name;
 			v->varType = determineVarType(v->type);
 
 			if(!nameCheck[v->name])
@@ -487,7 +510,7 @@ namespace Parser
 		if(checkHasMore(tokens) && tokens.front()->type == TType::Arrow)
 		{
 			eat(tokens);
-			ret = parseType(tokens);
+			ret = parseType(tokens)->name;
 		}
 		else
 		{
@@ -495,7 +518,7 @@ namespace Parser
 		}
 
 		skipNewline(tokens);
-		FuncDecl* f = (new FuncDecl(id, params, ret))->setPos(pos);
+		FuncDecl* f = CreateAST_Tok(FuncDecl, func_id, id, params, ret);
 		f->attribs = curAttrib;
 		curAttrib = 0;
 
@@ -507,18 +530,19 @@ namespace Parser
 
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens)
 	{
-		assert(tokens.front()->type == TType::ForeignFunc);
+		Token* func = tokens.front();
+		assert(func->type == TType::ForeignFunc);
 		eat(tokens);
 
 		FuncDecl* decl = parseFuncDecl(tokens);
 		decl->isFFI = true;
 
-		return (new ForeignFuncDecl(decl))->setPos(pos);
+		return CreateAST_Tok(ForeignFuncDecl, func, decl);
 	}
 
 	Closure* parseClosure(std::deque<Token*>& tokens)
 	{
-		Closure* c = (new Closure())->setPos(pos);
+		Closure* c = CreateAST_Tok(Closure, tokens.front());
 
 		// make sure the first token is a left brace.
 		if(eat(tokens)->type != TType::LBrace)
@@ -539,8 +563,9 @@ namespace Parser
 
 	Func* parseFunc(std::deque<Token*>& tokens)
 	{
+		Token* front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
-		return (new Func(decl, parseClosure(tokens)))->setPos(pos);
+		return CreateAST_Tok(Func, front, decl, parseClosure(tokens));
 	}
 
 
@@ -561,7 +586,7 @@ namespace Parser
 
 
 
-	std::string parseType(std::deque<Token*>& tokens)
+	CastedType* parseType(std::deque<Token*>& tokens)
 	{
 		bool isArr = false;
 		int arrsize = 0;
@@ -592,7 +617,7 @@ namespace Parser
 		}
 
 		std::string ret = tmp->text + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
-		return ret;
+		return CreateAST_Tok(CastedType, tmp, ret);
 	}
 
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens)
@@ -608,14 +633,14 @@ namespace Parser
 			error("Expected identifier for variable declaration.");
 
 		std::string id = tok_id->text;
-		VarDecl* v = (new VarDecl(id, immutable))->setPos(pos);
+		VarDecl* v = CreateAST_Tok(VarDecl, tok_id, id, immutable);
 
 		// check the type.
 		// todo: type inference
 		if(eat(tokens)->type != TType::Colon)
 			error("Expected colon to indicate type for variable declaration");
 
-		v->type = parseType(tokens);
+		v->type = parseType(tokens)->name;
 		v->varType = determineVarType(v->type);
 
 		// TODO:
@@ -667,7 +692,7 @@ namespace Parser
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token* tok_op = eat(tokens);
 
-			Expr* rhs = tok_op->type == TType::As ? new CastedType(parseType(tokens)) : parseUnary(tokens);
+			Expr* rhs = tok_op->type == TType::As ? parseType(tokens) : parseUnary(tokens);
 			if(!rhs)
 				return nullptr;
 
@@ -706,14 +731,15 @@ namespace Parser
 				default:					error("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
-			lhs = (new BinOp(lhs, op, rhs))->setPos(pos);
+			lhs = CreateAST_Tok(BinOp, tok_op, lhs, op, rhs);
 		}
 	}
 
 	Expr* parseIdExpr(std::deque<Token*>& tokens)
 	{
-		std::string id = eat(tokens)->text;
-		VarRef* idvr = (new VarRef(id))->setPos(pos);
+		Token* tok_id = eat(tokens);
+		std::string id = tok_id->text;
+		VarRef* idvr = CreateAST_Tok(VarRef, tok_id, id);
 
 		// check for dot syntax.
 		if(tokens.front()->type == TType::Period)
@@ -722,7 +748,7 @@ namespace Parser
 			if(tokens.front()->type != TType::Identifier)
 				error("Expected identifier after '.' operator");
 
-			return (new MemberAccess(idvr, parseIdExpr(tokens)))->setPos(pos);
+			return CreateAST_Tok(MemberAccess, tok_id, idvr, parseIdExpr(tokens));
 		}
 		else if(tokens.front()->type == TType::LSquare)
 		{
@@ -733,7 +759,7 @@ namespace Parser
 			if(eat(tokens)->type != TType::RSquare)
 				error("Expected ']'");
 
-			return (new ArrayIndex(idvr, within))->setPos(pos);
+			return CreateAST_Tok(ArrayIndex, tok_id, idvr, within);
 		}
 		else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
 		{
@@ -758,7 +784,7 @@ namespace Parser
 		if(tokens.front()->type == TType::Integer)
 		{
 			Token* tok = eat(tokens);
-			n = (new Number((int64_t) std::stoll(tok->text)))->setPos(pos);
+			n = CreateAST_Tok(Number, tok, (int64_t) std::stoll(tok->text));
 
 			// set the type.
 			// always used signed
@@ -767,7 +793,7 @@ namespace Parser
 		else if(tokens.front()->type == TType::Decimal)
 		{
 			Token* tok = eat(tokens);
-			n = (new Number(std::stod(tok->text)))->setPos(pos);
+			n = CreateAST_Tok(Number, tok, std::stod(tok->text));
 
 			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
 			else					n->varType = VarType::Float64;
@@ -784,7 +810,8 @@ namespace Parser
 
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id)
 	{
-		assert(eat(tokens)->type == TType::LParen);
+		Token* front = eat(tokens);
+		assert(front->type == TType::LParen);
 
 		std::deque<Expr*> args;
 		if(tokens.front()->type != TType::RParen)
@@ -812,21 +839,21 @@ namespace Parser
 			eat(tokens);
 		}
 
-		return (new FuncCall(id, args))->setPos(pos);
+		return CreateAST_Tok(FuncCall, front, id, args);
 	}
 
 	Return* parseReturn(std::deque<Token*>& tokens)
 	{
-		assert(tokens.front()->type == TType::Return);
-		eat(tokens);
+		Token* front = eat(tokens);
+		assert(front->type == TType::Return);
 
-		return (new Return(parseExpr(tokens)))->setPos(pos);
+		return CreateAST_Tok(Return, front, parseExpr(tokens));
 	}
 
 	Expr* parseIf(std::deque<Token*>& tokens)
 	{
-		assert(tokens.front()->type == TType::If);
-		eat(tokens);
+		Token* tok_if = eat(tokens);
+		assert(tok_if->type == TType::If);
 
 		typedef std::pair<Expr*, Closure*> CCPair;
 		std::deque<CCPair> conds;
@@ -857,12 +884,13 @@ namespace Parser
 			}
 		}
 
-		return (new If(conds, ecase))->setPos(pos);
+		return CreateAST_Tok(If, tok_if, conds, ecase);
 	}
 
 	Struct* parseStruct(std::deque<Token*>& tokens)
 	{
-		assert(eat(tokens)->type == TType::Struct);
+		Token* tok_struct = eat(tokens);
+		assert(tok_struct->type == TType::Struct);
 		isParsingStruct = true;
 
 		// get the identifier (name)
@@ -871,7 +899,7 @@ namespace Parser
 			error("Expected name after 'struct'");
 
 		id += eat(tokens)->text;
-		Struct* str = (new Struct(id))->setPos(pos);
+		Struct* str = CreateAST_Tok(Struct, tok_struct, id);
 
 		// parse a clousure.
 		Closure* body = parseClosure(tokens);
@@ -943,7 +971,7 @@ namespace Parser
 		if((tok_mod = eat(tokens))->type != TType::Identifier)
 			error("Expected module name after 'import' statement.");
 
-		return (new Import(tok_mod->text))->setPos(pos);
+		return CreateAST_Tok(Import, tok_mod, tok_mod->text);
 	}
 
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens)
@@ -951,7 +979,7 @@ namespace Parser
 		assert(tokens.front()->type == TType::StringLiteral);
 		Token* str = eat(tokens);
 
-		return (new StringLiteral(str->text))->setPos(pos);
+		return CreateAST_Tok(StringLiteral, str, str->text);
 	}
 
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens)
@@ -977,10 +1005,10 @@ namespace Parser
 				error("Unsupported operator overload on operator '%s'", op->text.c_str());
 		}
 
-		OpOverload* oo = (new OpOverload(ao))->setPos(pos);
+		OpOverload* oo = CreateAST_Tok(OpOverload, op, ao);
 
 		Token* fake = new Token();
-		fake->posinfo = pos;
+		fake->posinfo = currentPos;
 		fake->text = "operator#" + op->text;
 		fake->type = TType::Identifier;
 
