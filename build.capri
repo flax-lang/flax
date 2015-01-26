@@ -95,20 +95,9 @@ project Flax default all
 			fold = "./lib/" + fold;
 			if(File.isFolder(fold))
 			{
-				bs = "";
 				foreach(file in File.listFolder(fold))
 				{
 					assert System.execute("cp {file} '{sysroot}/{prefix}/lib/flaxlibs/'");
-				}
-
-				if(bs != "")
-				{
-					// unfortunately, capri cannot import scripts at runtime (understandably)
-					// so, we just invoke it.
-					// good 'ol recursive make.
-
-
-					assert System.execute("{capriExec} --script '{bs}'") == 0;
 				}
 			}
 		}
