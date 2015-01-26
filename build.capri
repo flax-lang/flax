@@ -86,8 +86,10 @@ project Flax default all
 				objs += "'{file}' ";
 		}
 
-		System.execute("mkdir -p '{sysroot}/{prefix}/bin'");
-		System.execute("{final_invoke} {objs} `{llvm_config_invoke}`");
+		assert System.execute("mkdir -p '{sysroot}/{prefix}/bin'") == 0;
+		assert System.execute("{final_invoke} {objs} `{llvm_config_invoke}`") == 0;
+
+		Utils.println("Compilation complete.");
 	}
 
 	task buildLib

@@ -1,5 +1,5 @@
-flax
-====
+flax [![Build Status](https://travis-ci.org/requimrar/flax-lang.svg?branch=master)](https://travis-ci.org/requimrar/flax-lang)
+============
 
 Compiler/parser for simple language. For kicks.
 
@@ -14,7 +14,7 @@ Compiler/parser for simple language. For kicks.
 - Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/requimrar/mx) in Flax, and if possible parts of the kernel or drivers.
 
 
-
+==========================
 
 #### Current Features ####
 
@@ -26,7 +26,7 @@ Compiler/parser for simple language. For kicks.
 - Operator overloading on structs
 - Function overloading (C++-ish)
 
-
+=========================
 
 #### Language Syntax ####
 
@@ -40,7 +40,7 @@ Compiler/parser for simple language. For kicks.
 - Dynamic arrays not yet supported.
 - Pointers!
 
-
+======================
 
 #### Future Plans ####
 
@@ -48,6 +48,7 @@ Compiler/parser for simple language. For kicks.
 - Type inference
 
 
+====================================
 
 #### Building the Flax compiler ####
 
@@ -66,7 +67,7 @@ Compiler/parser for simple language. For kicks.
 
 
 
-
+========================
 
 #### Language Guide ####
 - Sorry this is a bit ghetto, but a more comprehensive guide will come soon.
