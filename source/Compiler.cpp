@@ -26,7 +26,7 @@ namespace Compiler
 	static std::string resolveImport(Import* imp, std::string curpath)
 	{
 		// first check the current directory.
-		std::string name = curpath + "/" + imp->module + ".crs";
+		std::string name = curpath + "/" + imp->module + ".flx";
 		char* fname = realpath(name.c_str(), 0);
 
 		// a file here
@@ -39,7 +39,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/lib/corescript/" + imp->module + ".crs";
+			std::string builtinlib = getSysroot() + "/usr/lib/flaxlibs/" + imp->module + ".flx";
 
 			struct stat buffer;
 			if(stat (builtinlib.c_str(), &buffer) == 0)

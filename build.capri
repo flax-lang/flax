@@ -1,14 +1,14 @@
 version 1.18;
 import "build/capri/Utilities.capri";
 
-projDir		= "/Users/zhiayang/Desktop/Stuff/Orion Industries/corescript";
+projDir		= "/Users/zhiayang/Desktop/Stuff/Orion Industries/flax";
 sysroot 	= File.getAbsolutePath("{projDir}/build/sysroot");
 prefix		= "usr/bin";
-outputBin	= "corec";
+outputBin	= "flaxcBin";
 
-corecBin	= "{sysroot}/{prefix}/{outputBin}";
+flaxcBin	= "{sysroot}/{prefix}/{outputBin}";
 
-project CoreScript
+project Flax
 {
 	CXX				= "clang++";
 	CXXFLAGS		= "-g -stdlib=libc++ -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include";
@@ -37,8 +37,8 @@ project CoreScript
 	{
 		all();
 
-		Utils.println("Compiling test program (build/test.crs)");
-		assert System.execute("'{corecBin}' -sysroot '{sysroot}' build/test.crs") == 0;
+		Utils.println("Compiling test program (build/test.flx)");
+		assert System.execute("'{flaxcBin}' -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 		File.deleteFile("build/test");
@@ -72,6 +72,7 @@ project CoreScript
 				objs += "'{file}' ";
 		}
 
+		System.execute("mkdir -p '{sysroot}/{prefix}'");
 		System.execute("{final_invoke} {objs}");
 	}
 
