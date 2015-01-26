@@ -115,6 +115,7 @@ int main(int argc, char* argv[])
 		for(auto s : filelist)
 			remove(s.c_str());
 
+		// cgi->mainModule->dump();
 		delete cgi;
 	}
 	else

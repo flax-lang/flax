@@ -8,18 +8,20 @@ import Utilities
 func main(argc: Int32, argv: Int8**) -> Int64
 {
 	var z: Int64 = 100
-	while x > 0
+
+	while(z > 0)
 	{
-		printf("looping\n")
+		printf("looping %d\n", z)
+		z = z - 1
 	}
 
-	var x: Int64* = malloc(8 * 4) as Int64*
-	x[0] = 100
-	x[1] = 400
-	x[2] = 900
-	x[3] = 4900
+	// var x: Int64* = malloc(8 * 4) as Int64*
+	// x[0] = 100
+	// x[1] = 400
+	// x[2] = 900
+	// x[3] = 4900
 
 	var y: String = "Hello, World!"
-	printf("%s - %d, %d, %d, %d\n", y.data, x[0] / (10 * 10), x[1] / (10 * 10), x[2] / (10 * 10), x[3] / (10 * 10))
+	printf("%s\n", y.data)
 	return 0
 }

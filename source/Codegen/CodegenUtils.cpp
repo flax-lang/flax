@@ -120,6 +120,9 @@ namespace Codegen
 		// Simplify the control flow graph (deleting unreachable blocks, etc).
 		OurFPM.add(llvm::createCFGSimplificationPass());
 
+		// mem2reg
+		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+
 		OurFPM.doInitialization();
 
 

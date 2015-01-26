@@ -69,11 +69,14 @@ ValPtr_p If::codegen(CodegenInstance* cgi)
 	VarType apprType = cgi->determineVarType(this->cases[0].first);
 
 	if(apprType != VarType::Bool)
+	{
 		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
-
+	}
 	else
-		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)));
-
+	{
+		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)),
+			"ifCond");
+	}
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
