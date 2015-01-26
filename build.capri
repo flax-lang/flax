@@ -56,7 +56,7 @@ project Flax
 
 	task compile
 	{
-		System.execute("`llvm-config --includedir` | ls -R");
+		System.execute("ls -R `llvm-config --includedir`");
 		// check if any header files changed
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
