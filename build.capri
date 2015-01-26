@@ -16,7 +16,7 @@ project Flax default all
 
 	target travis
 	{
-		LLVM_CONFIG = "llvm-config-3.5"
+		LLVM_CONFIG = "llvm-config-3.5";
 		Utils.println("Building for Travis CI");
 	}
 
