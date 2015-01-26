@@ -8,11 +8,18 @@ outputBin	= "flaxcBin";
 
 flaxcBin	= "{sysroot}/{prefix}/{outputBin}";
 
-project Flax
+project Flax default all
 {
 	CXX				= "clang++";
 	CXXFLAGS		= "-g -std=gnu++1y -frtti -fexceptions -I`llvm-config --includedir`";
-	LLVM_CONFIG		= "llvm-config";
+	def LLVM_CONFIG	= "llvm-config";
+
+	target travis
+	{
+		LLVM_CONFIG = "llvm-config-3.5"
+		Utils.println("Building for Travis CI");
+	}
+
 
 
 	capriExec	= System.getExecutablePath();
@@ -25,6 +32,10 @@ project Flax
 	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
 	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
 	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/{outputBin}' ";
+
+
+
+
 
 
 
