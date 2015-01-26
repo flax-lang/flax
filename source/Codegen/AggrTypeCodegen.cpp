@@ -46,7 +46,6 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 		}
 	}
 
-
 	// todo: verify for pointers
 	ValPtr_p lhsp = this->var->codegen(cgi);
 
@@ -54,9 +53,18 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 	if(lhsp.first->getType()->isPointerTy())		lhs = lhsp.first;
 	else											lhs = lhsp.second;
 
+	llvm::Value* gep = nullptr;
 	llvm::Value* ind = this->index->codegen(cgi).first;
-	llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
-	llvm::Value* gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
+
+	if(atype->isStructTy())
+	{
+		llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
+		gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
+	}
+	else
+	{
+		gep = cgi->mainBuilder.CreateGEP(lhs, ind, "arrayIndex");
+	}
 
 	return ValPtr_p(cgi->mainBuilder.CreateLoad(gep), gep);
 }

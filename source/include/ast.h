@@ -357,6 +357,16 @@ namespace Ast
 		std::string str;
 	};
 
+	struct CastedType : Expr
+	{
+		~CastedType() { }
+		CastedType(std::string _name) : name(_name) { }
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(0, 0); };
+		CastedType* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
+
+		std::string name;
+	};
+
 	struct Root : Expr
 	{
 		~Root() { }

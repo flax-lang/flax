@@ -12,9 +12,11 @@ Compiler/parser for simple language. For kicks.
 
 - Handwritten parser
 - Generates LLVM bitcode.
-- User-defined structs
-- Arrays
-- That's it ):
+- User-defined types (structs, mostly)
+- Arrays (compile-time fixed size only, dynamic arrays yet to be)
+- Pointer syntax (C-like)
+- Operator overloading on structs
+- Function overloading (C++-ish)
 
 
 
@@ -40,7 +42,7 @@ Compiler/parser for simple language. For kicks.
 
 #### Building the corescript compiler ####
 
-- You will need clang (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
+- You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
 - You must modify the 'projDir' variable in the top-level build.capri script.
 - This is due to a limitation of the Capri system, it will be fixed soon according to its developer.
 - Screw makefiles. corescript is currently using a third-party build system.
