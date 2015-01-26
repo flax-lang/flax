@@ -3,8 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <string>
-#include <iostream>
+#include <ctype.h>
 #include <cassert>
+#include <iostream>
 #include "../include/parser.h"
 
 namespace Parser
@@ -158,7 +159,7 @@ namespace Parser
 			tok.type = TType::Elipsis;
 			read = 3;
 		}
-		else if(isnumber(stream[0]))
+		else if(isdigit(stream[0]))
 		{
 			// todo: handle hex
 
@@ -169,7 +170,7 @@ namespace Parser
 			str << stream;
 
 			int tmp = 0;
-			while(isnumber(tmp = str.get()))
+			while(isdigit(tmp = str.get()))
 				num += (char) tmp;
 
 			if(tmp != '.')
@@ -192,7 +193,7 @@ namespace Parser
 			{
 				num += '.';
 
-				while(isnumber(tmp = str.get()))
+				while(isdigit(tmp = str.get()))
 					num += (char) tmp;
 
 				tok.type = TType::Decimal;
