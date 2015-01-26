@@ -5,7 +5,7 @@ before_install: sudo apt-get update
 install:
     - build/get-dependencies.sh
     - echo "LLVM $LLVM_VERSION"
-    - sudo apt-get install llvm
+    - sudo apt-get install libllvm-3.5
 
 script: ./capri
 
