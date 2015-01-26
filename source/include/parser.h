@@ -42,6 +42,8 @@ namespace Parser
 		Is,
 		Switch,
 		Case,
+		Match,
+		To,
 		Enum,				// 17
 		ForeignFunc,
 		Struct,
