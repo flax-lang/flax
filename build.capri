@@ -19,7 +19,7 @@ project Flax default all
 		Utils.println("Building for Travis CI");
 	}
 
-	CXXFLAGS		= "-g -std=gnu++1y -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
+	CXXFLAGS	= "-g -std=gnu++1y -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
 	capriExec	= System.getExecutablePath();
 
 	src			= "source";

@@ -65,7 +65,7 @@ namespace Compiler
 		}
 
 
-		std::ifstream file = std::ifstream(filename);
+		std::ifstream file(filename);
 		std::stringstream stream;
 
 		stream << file.rdbuf();
