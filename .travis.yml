@@ -5,9 +5,9 @@ before_install: sudo apt-get update
 install:
     - build/get-dependencies.sh
     - echo "LLVM $LLVM_VERSION"
-    - echo "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-3.5 main" >> /etc/apt/sources.list
-    - echo "deb-src http://llvm.org/apt/precise/ llvm-toolchain-precise-3.5 main" >> /etc/apt/sources.list
-    - echo "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu precise main" >> /etc/apt/sources.list
+    - sudo echo "deb http://llvm.org/apt/precise/ llvm-toolchain-precise-3.5 main" >> /etc/apt/sources.list
+    - sudo echo "deb-src http://llvm.org/apt/precise/ llvm-toolchain-precise-3.5 main" >> /etc/apt/sources.list
+    - sudo echo "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu precise main" >> /etc/apt/sources.list
     - sudo apt-get update
     - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key|sudo apt-key add -
     - sudo apt-get install libllvm3.5 libllvm3.5-dbg lldb-3.5 llvm-3.5 llvm-3.5-dev llvm-3.5-runtime
