@@ -33,7 +33,6 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 
 	va_end(ap);
 
-
 	// print_stacktrace();
 	// assert(0);
 

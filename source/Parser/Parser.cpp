@@ -422,7 +422,7 @@ namespace Parser
 					return parsePrimary(tokens);
 
 				default:
-					error("Unexpected token '%s', skipping\n", tok->text.c_str());
+					error("Unexpected token '%s'\n", tok->text.c_str());
 					break;
 			}
 		}
@@ -883,10 +883,11 @@ namespace Parser
 
 		// check for else and else if
 		Closure* ecase = nullptr;
+		bool parsedElse = false;
 		while(tokens.front()->type == TType::Else)
 		{
 			eat(tokens);
-			if(tokens.front()->type == TType::If)
+			if(tokens.front()->type == TType::If && !parsedElse)
 			{
 				eat(tokens);
 
@@ -896,9 +897,21 @@ namespace Parser
 
 				conds.push_back(CCPair(c, cl));
 			}
+			else if(!parsedElse)
+			{
+				parsedElse = true;
+				ecase = parseClosure(tokens);
+			}
 			else
 			{
-				ecase = parseClosure(tokens);
+				if(parsedElse && tokens.front()->type != TType::If)
+				{
+					error("Duplicate 'else' clause, only one else clause is permitted per if.");
+				}
+				else
+				{
+					error("The 'else' clause must be the last block in the if statement.");
+				}
 			}
 		}
 
