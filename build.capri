@@ -11,8 +11,8 @@ flaxcBin	= "{sysroot}/{prefix}/{outputBin}";
 project Flax
 {
 	CXX				= "clang++";
-	CXXFLAGS		= "-g -std=gnu++1y -frtti -fexceptions -I/usr/local/opt/llvm/include";
-	LLVM_CONFIG		= "/usr/local/opt/llvm/bin/llvm-config";
+	CXXFLAGS		= "-g -std=gnu++1y -frtti -fexceptions -I`llvm-config --includedir`";
+	LLVM_CONFIG		= "llvm-config";
 
 
 	capriExec	= System.getExecutablePath();
