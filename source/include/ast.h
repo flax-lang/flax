@@ -266,6 +266,16 @@ namespace Ast
 		std::deque<std::pair<Expr*, Closure*>> cases;
 	};
 
+	struct WhileLoop : Expr
+	{
+		~WhileLoop() { }
+		WhileLoop(Parser::PosInfo pos, Expr* _cond, Closure* _body) : Expr(pos), cond(_cond), body(_body) { }
+		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
+
+		Expr* cond;
+		Closure* body;
+	};
+
 	struct UnaryOp : Expr
 	{
 		~UnaryOp() { }
