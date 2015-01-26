@@ -1,0 +1,201 @@
+/*
+	Astral by HTML5 UP
+	html5up.net | @n33co
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+*/
+
+/*********************************************************************************/
+/* Basic                                                                         */
+/*********************************************************************************/
+
+	body,input,textarea,select
+	{
+		font-size: 11pt;
+		line-height: 1.75em;
+	}
+	
+	h1, h2
+	{
+		font-size: 1.75em;
+		letter-spacing: -0.025em;
+	}
+
+	h3, h4, h5, h6
+	{
+		font-size: 1.25em;
+		letter-spacing: -0.025em;
+	}
+
+	/* Section/Article */
+
+		header
+		{
+			margin: 0 0 1.5em 0;
+		}
+
+			header > p
+			{
+				margin: 0.5em 0 0 0;
+			}
+
+	/* Table */
+
+		table.style1
+		{
+			overflow-x: scroll;
+		}
+		
+	/* List */
+
+		ul.actions
+		{
+		}
+		
+			ul.actions li
+			{
+				display: block;
+				margin: 0.5em 0 0 0;
+			}
+			
+				ul.actions li:first-child
+				{
+					margin-top: 0;
+				}
+
+	/* Button */	
+		
+		input[type="button"],
+		input[type="submit"],
+		input[type="reset"],
+		.button
+		{
+			display: block;
+			width: 100%;
+			padding: 0.75em 0 0.75em 0;
+			text-align: center;
+		}
+	
+/*********************************************************************************/
+/* Wrapper                                                                       */
+/*********************************************************************************/
+			
+	#wrapper
+	{
+		padding: 7px;
+	}
+
+/*********************************************************************************/
+/* Nav                                                                           */
+/*********************************************************************************/
+	
+	#nav
+	{
+		text-align: center;
+		margin: 6px 0 8px 0;
+	}
+	
+		#nav a
+		{
+			font-size: 2em;
+			opacity: 0.5;
+			outline: 0;
+			width: 1.5em;
+			height: 1.5em;
+			line-height: 1.35em;
+			margin: 0 0.25em 0 0.25em;
+		}
+		
+			#nav a:active
+			{
+				opacity: 1.0;
+			}
+
+			#nav a span
+			{
+				display: none;
+			}
+	
+/*********************************************************************************/
+/* Panels                                                                        */
+/*********************************************************************************/
+
+	#main
+	{
+		background: none;
+	}
+
+	.panel
+	{
+		padding: 15px 15px 15px 15px;
+		margin: 0 0 7px 0;
+		background: #ffffff;
+		box-shadow: 0px 1px 0px 0px rgba(0,0,0,0.25);
+	}
+
+		.panel header
+		{
+			padding-top: 1em;
+		}
+	
+	/* Me */
+	
+		#me
+		{
+		}
+		
+			#me .pic
+			{
+				width: 100%;
+			}
+			
+				#me .pic img
+				{
+					display: block;
+					width: 100%;
+				}
+			
+				#me .pic .arrow
+				{
+					display: none;
+				}
+			
+			#me header
+			{
+				text-align: center;
+			}
+			
+				#me header > h1
+				{
+					font-size: 2.15em;
+					letter-spacing: -0.025em;
+				}
+				
+				#me header > p
+				{
+					font-size: 1.25em;
+				}
+
+/*********************************************************************************/
+/* Footer                                                                        */
+/*********************************************************************************/
+
+	#footer
+	{
+		text-align: center;
+		padding: 2em 0 0 0;
+		font-size: 0.85em;
+	}
+	
+		#footer .copyright
+		{
+		}
+		
+			#footer .copyright li
+			{
+				display: block;
+			}
+
+				#footer .copyright li:before
+				{
+					display: none;
+				}
