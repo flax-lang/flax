@@ -56,7 +56,8 @@ project Flax
 
 	task compile
 	{
-		System.execute("ls -R `llvm-config --includedir`");
+		System.execute("which llvm-config");
+		System.execute("which llvm-config-3.5");
 		// check if any header files changed
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
