@@ -33,7 +33,7 @@ project Flax default all
 
 	target travis
 	{
-		System.exectute(llvm_config_invoke);
+		System.execute(llvm_config_invoke);
 	}
 
 
