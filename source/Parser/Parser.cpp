@@ -667,7 +667,7 @@ namespace Parser
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token* tok_op = eat(tokens);
 
-			Expr* rhs = parseUnary(tokens);
+			Expr* rhs = tok_op->type == TType::As ? new CastedType(parseType(tokens)) : parseUnary(tokens);
 			if(!rhs)
 				return nullptr;
 
@@ -735,10 +735,10 @@ namespace Parser
 
 			return (new ArrayIndex(idvr, within))->setPos(pos);
 		}
-		else if(tokens.front()->type == TType::Ptr)
+		else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
 		{
 			eat(tokens);
-			id += "Ptr";
+			idvr->name += "Ptr";
 			return idvr;
 		}
 		else if(tokens.front()->type != TType::LParen)

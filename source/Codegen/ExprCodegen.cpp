@@ -52,8 +52,6 @@ ValPtr_p UnaryOp::codegen(CodegenInstance* cgi)
 ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
-	this->right = cgi->autoCastType(this->left, this->right);
-
 	ValPtr_p valptr = this->left->codegen(cgi);
 
 	llvm::Value* lhs;
@@ -61,6 +59,8 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 	if(this->op == ArithmeticOp::Assign)
 	{
+		this->right = cgi->autoCastType(this->left, this->right);
+
 		lhs = valptr.first;
 		rhs = this->right->codegen(cgi).first;
 
@@ -131,23 +131,19 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 		lhs = valptr.first;
 
 		// right hand side probably got interpreted as a varref
-		VarRef* vr = nullptr;
-		assert(vr = dynamic_cast<VarRef*>(this->right));
+		CastedType* ct = nullptr;
+		assert(ct = dynamic_cast<CastedType*>(this->right));
 
-		llvm::Type* rtype;
-		VarType vt = Parser::determineVarType(vr->name);
-		if(vt != VarType::UserDefined)
+		llvm::Type* rtype = cgi->getLlvmType(ct);
+		if(!rtype)
 		{
-			rtype = cgi->getLlvmTypeOfBuiltin(vt);
-		}
-		else
-		{
-			TypePair_t* tp = cgi->getType(vr->name);
+			TypePair_t* tp = cgi->getType(ct->name);
 			if(!tp)
-				error(this, "(ExprCodegen.cpp:~147): Unknown type '%s'", vr->name.c_str());
+				error(this, "(%s:%d): Unknown type '%s'", __FILE__, __LINE__, ct->name.c_str());
 
 			rtype = tp->first;
 		}
+
 
 		// todo: cleanup?
 		assert(rtype);
@@ -175,6 +171,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 
 
+	this->right = cgi->autoCastType(this->left, this->right);
 
 	lhs = valptr.first;
 	llvm::Value* rhsptr = nullptr;

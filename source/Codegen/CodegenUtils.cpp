@@ -35,6 +35,7 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 
 
 	print_stacktrace();
+	assert(0);
 
 	if(ex)
 		exit(1);
@@ -417,12 +418,13 @@ namespace Codegen
 		}
 		else
 		{
-			VarRef* ref = nullptr;
-			VarDecl* decl = nullptr;
-			FuncCall* fc = nullptr;
-			FuncDecl* fd = nullptr;
-			Func* f = nullptr;
-			StringLiteral* sl = nullptr;
+			VarRef* ref			= nullptr;
+			VarDecl* decl		= nullptr;
+			FuncCall* fc		= nullptr;
+			FuncDecl* fd		= nullptr;
+			Func* f				= nullptr;
+			StringLiteral* sl	= nullptr;
+			CastedType* ct		= nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
@@ -493,6 +495,10 @@ namespace Codegen
 			else if((ref = dynamic_cast<VarRef*>(expr)))
 			{
 				return getLlvmType(getSymDecl(ref->name));
+			}
+			else if((ct = dynamic_cast<CastedType*>(expr)))
+			{
+				return unwrapPointerType(ct->name);
 			}
 			else if((fc = dynamic_cast<FuncCall*>(expr)))
 			{
