@@ -6,7 +6,7 @@ install:
     - build/get-dependencies.sh
     - echo "LLVM $LLVM_VERSION"
     - sudo apt-get update
-    - sudo apt-get install libllvm3.4 libllvm3.4-dbg lldb-3.4 llvm-3.4 llvm-3.4-dev llvm-3.4-runtime
+    - sudo apt-get install libllvm3.4 libllvm3.4-dbg llvm-3.4 llvm-3.4-dev llvm-3.4-runtime
 
 script: ./capri
 
