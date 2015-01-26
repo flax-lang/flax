@@ -1,11 +1,7 @@
-core
+flax
 ====
 
 Compiler/parser for simple language. For kicks.
-
-
-
-
 
 
 #### Current Features ####
@@ -40,17 +36,17 @@ Compiler/parser for simple language. For kicks.
 
 
 
-#### Building the corescript compiler ####
+#### Building the Flax compiler ####
 
 - You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
 - You must modify the 'projDir' variable in the top-level build.capri script.
 - This is due to a limitation of the Capri system, it will be fixed soon according to its developer.
-- Screw makefiles. corescript is currently using a third-party build system.
+- Screw makefiles. Flax is currently using a third-party build system.
 - Binaries and sources are available here: http://91.206.143.88/capri/releases/
 - Documentation for the Capri script is available here: http://forum.osdev.org/viewtopic.php?f=2&t=28568&start=0
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
-- Find the 'corec' executable in 'build/sysroot/usr/bin'
+- Find the 'flaxc' executable in 'build/sysroot/usr/bin'
 - Additionally, default libraries will be built from 'build/sysroot/lib' and the shared library files (.dylib or .so) placed in 'build/sysroot/usr/lib'
 
 
@@ -65,7 +61,7 @@ Compiler/parser for simple language. For kicks.
 ##### General & Variables #####
 
 ```swift
-// CoreScript ignores semicolons.
+// Flax ignores semicolons.
 // It also does not distinguish between expressions and statements.
 
 // There are 11 builtin types:
@@ -113,9 +109,9 @@ func Foo(bar: Int64, qux: Int8 ptr) -> Int32
 
 
 // the keyword 'ffi' can be used to declare an external C function.
-// note that this is the only kind of declaration-without-body supported in Corescript.
+// note that this is the only kind of declaration-without-body supported in Flax.
 // Unfortunately, you still need to provide an identifier for the parameter. A fix is coming soon.
-// Varargs are only supported for external functions, you cannot currently write Corescript functions taking a varialbe
+// Varargs are only supported for external functions, you cannot currently write Flax functions taking a varialbe
 // number of parameters.
 ffi func printf(x: Int8 ptr, ...)
 
@@ -137,7 +133,7 @@ func printInt(x: Int32) { ... }
 ```swift
 // structs are obviously declared with the 'struct' keyword.
 // all functions in a struct have an implicit first parameter called 'self', which is a pointer type.
-// Corescript does not distinguish between pointer access and non-pointer access, both use the '.' operator.
+// Flax does not distinguish between pointer access and non-pointer access, both use the '.' operator.
 // However, pointers-to-pointers-to-structs cannot be accessed this way. Only a single-level of indirection is supported.
 struct GuideToGalaxy
 {
@@ -220,4 +216,4 @@ intArr[40] = 42
 
 - Found a bug? Want a feature?
 - Just submit a pull request!
-- Requested help: Error catching, please! A lot of the time the Corescript compiler will fail to catch invalid things, leading to failed assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
+- Requested help: Error catching, please! A lot of the time the Flax compiler will fail to catch invalid things, leading to failed assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)

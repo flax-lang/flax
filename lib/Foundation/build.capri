@@ -3,17 +3,15 @@ import "../../build.capri";
 
 project libFoundation
 {
-	COREC		= "{sysroot}/{prefix}/{outputBin}";
+	flaxc		= "{sysroot}/{prefix}/{outputBin}";
 	src			= "source";
-	mainFile	= "Foundation.crs";
-
-
-	// corec_invoke	= "'{COREC}' -lib -sysroot '{sysroot}' -o '{sysroot}/usr/lib/'";
+	mainFile	= "Foundation.flx";
 
 	task all depends compile;
 	task compile
 	{
-		assert System.execute("cp {src}/{mainFile} '{sysroot}'/usr/lib/corescript/") == 0;
+		assert System.execute("mkdir -p '{sysroot}'/usr/lib/flaxlibs") == 0;
+		assert System.execute("cp {src}/{mainFile} '{sysroot}'/usr/lib/flaxlibs/") == 0;
 	}
 }
 
