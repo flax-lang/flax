@@ -1,0 +1,36 @@
+// Foundation.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public struct String
+{
+	var data: Int8*
+	var length: Int64
+	var allocated: Int64
+
+	init()
+	{
+		self.data = malloc(64)
+		self.length = 0
+		self.allocated = 64
+	}
+
+	operator=(other: Int8*)
+	{
+		var len: Int64 = strlen(other)
+		if(self.allocated < len)
+		{
+			free(self.data)
+			self.data = malloc((len + 31) / 32)
+		}
+
+		memcpy(self.data, other, len)
+	}
+}
+
+public ffi func printf(x: Int8*, ...) -> Int32
+public ffi func memcpy(dest: Int8*, source: Int8 ptr, length: Uint64) -> Int8*
+public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+public ffi func strlen(str: Int8*) -> Uint64
+public ffi func malloc(size: Uint64) -> Int8*
+public ffi func free(pointer: Int8*)
