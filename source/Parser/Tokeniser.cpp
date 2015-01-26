@@ -83,7 +83,7 @@ namespace Parser
 			std::stringstream ss(stream);
 			std::getline(ss, tok.text, '\n');
 			read = tok.text.length();
-			pos.line++;
+			// pos.line++;
 
 			tok.type = TType::Comment;
 		}

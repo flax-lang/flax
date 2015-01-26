@@ -137,10 +137,10 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 
 				std::deque<Expr*> fuckingshit;
 
-				VarRef* svr = new VarRef("self");
+				VarRef* svr = new VarRef(this->posinfo, "self");
 				fuckingshit.push_back(svr);
 
-				FuncCall* fc = new FuncCall("__automatic_init#" + this->name, fuckingshit);
+				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, fuckingshit);
 				f->closure->statements.push_front(fc);
 
 				auto oi = cgi->mainBuilder.GetInsertBlock();
@@ -246,7 +246,7 @@ void Struct::createType(CodegenInstance* cgi)
 			std::vector<llvm::Type*> args;
 
 			// implicit first paramter, is not shown
-			VarDecl* implicit_self = new VarDecl("self", true);
+			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
 			implicit_self->type = this->name + "Ptr";
 			func->decl->params.push_front(implicit_self);
 

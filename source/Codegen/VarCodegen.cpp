@@ -80,6 +80,12 @@ ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 		}
 	}
 
+	if(val->getType() != ai->getType()->getPointerElementType())
+	{
+		error("Invalid assignment, type %s cannot be assigned to type %s", cgi->getReadableType(val->getType()).c_str(),
+			cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
+	}
+
 	cgi->mainBuilder.CreateStore(val, ai);
 	return ValPtr_p(val, ai);
 }

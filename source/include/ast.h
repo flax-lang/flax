@@ -103,6 +103,7 @@ namespace Ast
 
 	struct Expr
 	{
+		Expr(Parser::PosInfo pos) : posinfo(pos) { }
 		virtual ~Expr() { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) = 0;
 
@@ -114,6 +115,7 @@ namespace Ast
 
 	struct DummyExpr : Expr
 	{
+		DummyExpr(Parser::PosInfo pos) : Expr(pos) { }
 		~DummyExpr() { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(0, 0); }
 	};
@@ -128,10 +130,9 @@ namespace Ast
 	struct Number : Expr
 	{
 		~Number() { }
-		Number(double val) : dval(val) { this->decimal = true; }
-		Number(int64_t val) : ival(val) { this->decimal = false; }
+		Number(Parser::PosInfo pos, double val) : Expr(pos), dval(val) { this->decimal = true; }
+		Number(Parser::PosInfo pos, int64_t val) : Expr(pos), ival(val) { this->decimal = false; }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		Number* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool decimal = false;
 		union
@@ -144,9 +145,8 @@ namespace Ast
 	struct BoolVal : Expr
 	{
 		~BoolVal() { }
-		BoolVal(bool val) : val(val) { }
+		BoolVal(Parser::PosInfo pos, bool val) : Expr(pos), val(val) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		BoolVal* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool val;
 	};
@@ -154,9 +154,8 @@ namespace Ast
 	struct VarRef : Expr
 	{
 		~VarRef() { }
-		VarRef(std::string name) : name(name) { }
+		VarRef(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		VarRef* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		Expr* initVal;
@@ -165,9 +164,8 @@ namespace Ast
 	struct VarDecl : Expr
 	{
 		~VarDecl() { }
-		VarDecl(std::string name, bool immut) : name(name), immutable(immut) { }
+		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		VarDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		bool immutable;
@@ -177,9 +175,8 @@ namespace Ast
 	struct BinOp : Expr
 	{
 		~BinOp() { }
-		BinOp(Expr* lhs, ArithmeticOp operation, Expr* rhs) : left(lhs), op(operation), right(rhs) { }
+		BinOp(Parser::PosInfo pos, Expr* lhs, ArithmeticOp operation, Expr* rhs) : Expr(pos), left(lhs), op(operation), right(rhs) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		BinOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* left;
 		Expr* right;
@@ -191,9 +188,9 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl() { }
-		FuncDecl(std::string id, std::deque<VarDecl*> params, std::string ret) : name(id), params(params) { this->type = ret; }
+		FuncDecl(Parser::PosInfo pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), name(id), params(params)
+		{ this->type = ret; }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		FuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		bool hasVarArg;
 		bool isFFI;
@@ -204,9 +201,9 @@ namespace Ast
 
 	struct Closure : Expr
 	{
+		Closure(Parser::PosInfo pos) : Expr(pos) { }
 		~Closure() { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		Closure* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::deque<Expr*> statements;
 	};
@@ -214,9 +211,8 @@ namespace Ast
 	struct Func : Expr
 	{
 		~Func() { }
-		Func(FuncDecl* funcdecl, Closure* block) : decl(funcdecl), closure(block) { }
+		Func(Parser::PosInfo pos, FuncDecl* funcdecl, Closure* block) : Expr(pos), decl(funcdecl), closure(block) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		Func* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
 		Closure* closure;
@@ -225,9 +221,8 @@ namespace Ast
 	struct FuncCall : Expr
 	{
 		~FuncCall() { }
-		FuncCall(std::string target, std::deque<Expr*> args) : name(target), params(args) { }
+		FuncCall(Parser::PosInfo pos, std::string target, std::deque<Expr*> args) : Expr(pos), name(target), params(args) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		FuncCall* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 		std::deque<Expr*> params;
@@ -236,9 +231,8 @@ namespace Ast
 	struct Return : Expr
 	{
 		~Return() { }
-		Return(Expr* e) : val(e) { }
+		Return(Parser::PosInfo pos, Expr* e) : Expr(pos), val(e) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		Return* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Expr* val;
 	};
@@ -246,9 +240,8 @@ namespace Ast
 	struct Import : Expr
 	{
 		~Import() { }
-		Import(std::string name) : module(name) { }
+		Import(Parser::PosInfo pos, std::string name) : Expr(pos), module(name) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(nullptr, nullptr); }
-		Import* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string module;
 	};
@@ -256,9 +249,8 @@ namespace Ast
 	struct ForeignFuncDecl : Expr
 	{
 		~ForeignFuncDecl() { }
-		ForeignFuncDecl(FuncDecl* func) : decl(func) { }
+		ForeignFuncDecl(Parser::PosInfo pos, FuncDecl* func) : Expr(pos), decl(func) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		ForeignFuncDecl* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		FuncDecl* decl;
 	};
@@ -266,9 +258,8 @@ namespace Ast
 	struct If : Expr
 	{
 		~If() { }
-		If(std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : cases(cases), final(ecase) { }
+		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : Expr(pos), cases(cases), final(ecase) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		If* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 
 		Closure* final;
@@ -278,9 +269,8 @@ namespace Ast
 	struct UnaryOp : Expr
 	{
 		~UnaryOp() { }
-		UnaryOp(ArithmeticOp op, Expr* expr) : op(op), expr(expr) { }
+		UnaryOp(Parser::PosInfo pos, ArithmeticOp op, Expr* expr) : Expr(pos), op(op), expr(expr) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		UnaryOp* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		ArithmeticOp op;
 		Expr* expr;
@@ -291,9 +281,8 @@ namespace Ast
 	struct OpOverload : Expr
 	{
 		~OpOverload() { }
-		OpOverload(ArithmeticOp op) : op(op) { }
+		OpOverload(Parser::PosInfo pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		OpOverload* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		Func* func;
 		ArithmeticOp op;
@@ -303,9 +292,8 @@ namespace Ast
 	struct Struct : Expr
 	{
 		~Struct() { }
-		Struct(std::string name) : name(name) { }
+		Struct(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		Struct* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 		void createType(Codegen::CodegenInstance* cgi);
 
 		bool didCreateType;
@@ -325,10 +313,9 @@ namespace Ast
 	struct MemberAccess : Expr
 	{
 		~MemberAccess() { }
-		MemberAccess(VarRef* tgt, Expr* mem) : target(tgt), member(mem) { }
+		MemberAccess(Parser::PosInfo pos, VarRef* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
-		MemberAccess* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* target;
 		Expr* member;
@@ -337,9 +324,8 @@ namespace Ast
 	struct ArrayIndex : Expr
 	{
 		~ArrayIndex() { }
-		ArrayIndex(VarRef* v, Expr* index) : var(v), index(index) { }
+		ArrayIndex(Parser::PosInfo pos, VarRef* v, Expr* index) : Expr(pos), var(v), index(index) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		ArrayIndex* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		VarRef* var;
 		Expr* index;
@@ -350,9 +336,8 @@ namespace Ast
 	struct StringLiteral : Expr
 	{
 		~StringLiteral() { }
-		StringLiteral(std::string str) : str(str) { }
+		StringLiteral(Parser::PosInfo pos, std::string str) : Expr(pos), str(str) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
-		StringLiteral* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string str;
 	};
@@ -360,15 +345,15 @@ namespace Ast
 	struct CastedType : Expr
 	{
 		~CastedType() { }
-		CastedType(std::string _name) : name(_name) { }
+		CastedType(Parser::PosInfo pos, std::string _name) : Expr(pos), name(_name) { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override { return ValPtr_p(0, 0); };
-		CastedType* setPos(Parser::PosInfo p) { this->posinfo = p; return this; }
 
 		std::string name;
 	};
 
 	struct Root : Expr
 	{
+		Root() : Expr(Parser::PosInfo()) { }
 		~Root() { }
 		virtual ValPtr_p codegen(Codegen::CodegenInstance* cgi) override;
 
