@@ -1,12 +1,11 @@
 version 1.17;
 import "build/capri/Utilities.capri";
 
-projDir		= "/Users/zhiayang/Desktop/Stuff/Orion Industries/flax";
-sysroot 	= File.getAbsolutePath("{projDir}/build/sysroot");
-prefix		= "usr/bin";
+sysroot 	= File.getAbsolutePath("build/sysroot");
+prefix		= "/usr/local";
 outputBin	= "flaxcBin";
 
-flaxcBin	= "{sysroot}/{prefix}/{outputBin}";
+flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
 
 project Flax default all
 {
@@ -29,7 +28,7 @@ project Flax default all
 
 	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
 	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
-	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/{outputBin}' ";
+	final_invoke		= "{CXX} `{llvm_config_invoke}` {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
 
 
 
@@ -65,8 +64,8 @@ project Flax default all
 
 	task compile
 	{
-		System.execute("which llvm-config");
-		System.execute("which llvm-config-3.5");
+		// System.execute("which llvm-config");
+		// System.execute("which llvm-config-3.5");
 		// check if any header files changed
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
@@ -83,25 +82,23 @@ project Flax default all
 				objs += "'{file}' ";
 		}
 
-		System.execute("mkdir -p '{sysroot}/{prefix}'");
+		System.execute("mkdir -p '{sysroot}/{prefix}/bin'");
 		System.execute("{final_invoke} {objs}");
 	}
 
 	task buildLib
 	{
-		foreach(fold in File.listFolder("{projDir}/lib"))
+		System.execute("mkdir -p '{sysroot}/{prefix}/lib/flaxlibs'");
+
+		foreach(fold in File.listFolder("./libs"))
 		{
-			fold = "{projDir}/lib/" + fold;
+			fold = "./lib/" + fold;
 			if(File.isFolder(fold))
 			{
 				bs = "";
 				foreach(file in File.listFolder(fold))
 				{
-					if(file == "build.capri")
-					{
-						bs = "{fold}/{file}";
-						break;
-					}
+					assert System.execute("cp {file} '{sysroot}/{prefix}/lib/flaxlibs/'");
 				}
 
 				if(bs != "")
@@ -109,14 +106,9 @@ project Flax default all
 					// unfortunately, capri cannot import scripts at runtime (understandably)
 					// so, we just invoke it.
 					// good 'ol recursive make.
-					pwd = File.getAbsolutePath(File.getCurrentDirectory());
 
-					dirname = File.getPathOfFile(bs);
-					File.changeDirectory(dirname);
 
 					assert System.execute("{capriExec} --script '{bs}'") == 0;
-
-					File.changeDirectory(pwd);
 				}
 			}
 		}
