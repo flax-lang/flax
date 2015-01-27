@@ -49,6 +49,7 @@
 
 		var	$window = $(window);
 
+
 		$window.on('load', function() {
 
 			var	$body = $('body'),
@@ -230,7 +231,6 @@
 					$wrapper.fadeTo(400, 1.0);
 
 			}
-
 		});
 
 })(jQuery);

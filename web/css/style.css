@@ -452,8 +452,8 @@
 
 	.separated
 	{
-		margin-top: 70px;
-		margin-bottom: 70px;
+		margin-top: 20px;
+		margin-bottom: 80px;
 	}
 
 	#features .separated:first-child
@@ -468,6 +468,7 @@
 		height: 100%;
 
 		margin-top: 0px !important;
+		display: inline-block;
 	}
 
 	.csinner

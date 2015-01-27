@@ -1,22 +1,14 @@
 <!DOCTYPE HTML>
-<!--
-	Astral by HTML5 UP
-	html5up.net | @n33co
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
 <html>
 	<head>
 		<title>Flax Programming Language</title>
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta name="description" content="" />
 		<meta name="keywords" content="" />
-		<!--[if lte IE 8]><script src="css/ie/html5shiv.js"></script><![endif]-->
+
 		<script src="js/jquery.min.js"></script>
 		<script src="js/skel.min.js"></script>
 		<script src="js/init.js"></script>
-
-		<link rel="stylesheet" href="css/prism.css">
-		<script src="js/prism.js"></script>
 
 		<noscript>
 			<link rel="stylesheet" href="css/skel.css" />
@@ -24,7 +16,11 @@
 			<link rel="stylesheet" href="css/style-desktop.css" />
 			<link rel="stylesheet" href="css/style-noscript.css" />
 		</noscript>
-		<!--[if lte IE 8]><link rel="stylesheet" href="css/ie/v8.css" /><![endif]-->
+
+
+		<link rel="stylesheet" href="css/prism.css" />
+
+		<script src="js/prism.js"></script>
 	</head>
 	<body>
 
@@ -35,28 +31,28 @@
 					<nav id="nav">
 						<a href="#me" class="icon fa-home active"><span>Home</span></a>
 						<a href="#features" class="icon fa-flask"><span>Features</span></a>
-						<a href="#work" class="icon fa-folder"><span>work</span></a>
+						<a href="#syntax" class="icon fa-indent"><span>Syntax</span></a>
 						<a href="#contact" class="icon fa-envelope"><span>Contact</span></a>
 						<a href="#" class="icon fa-twitter"><span>Twitter</span></a>
 					</nav>
 
-				<!-- Main -->
+					<!-- Main -->
 					<div id="main">
 
-						<!-- Me -->
+							<!-- Frontpage -->
 							<article id="me" class="panel">
 								<header>
 									<h1>Foo</h1>
 									<p>Bar | Qux | Low-level</p>
 								</header>
-								<a href="#" class="jumplink pic">
-									<!-- <span class="arrow icon fa-chevron-right"></span> -->
+								<a href="#features" class="jumplink pic">
+									<span class="arrow icon fa-chevron-right"></span>
 									<!-- <img src="images/me.jpg" alt="" /> -->
 									<pre class="codesegment-main"><code class="lang-swift csinner-main">
 import Foundation
 func main(argc: Int32, argv: Int8**) -> Int32
 {
-	var foo: Bar
+	var foo: Greeter
 	printf("%s\n", foo.greet())
 }
 
@@ -71,89 +67,70 @@ struct Greeter
 								</a>
 							</article>
 
+
+							<!-- Features -->
 							<article id="features" class="panel">
 								<section class="separated">
+									<pre class="codesegment"><code class="lang-swift csinner">
+// Semicolons are ignored
+var foo: Int64 = 50
+var bar: Int32* = malloc(4 * 10) as Int32*
+									</code></pre>
 									<header>
-										<h2>Stuff</h2>
+										<h2>Clean Syntax</h2>
 									</header>
 									<p>
-										Lorem Ipsum sit dolor amet
+										Modern, concise and expressive syntax
 									</p>
 								</section>
 								<div><hr /></div>
 								<section class="separated">
-									<header><h2>Stuff 1</h2></header>
 									<pre class="codesegment"><code class="lang-swift csinner">
-import Foundation
-func main(argc: Int32, argv: Int8**) -> Int32
-{
-	var foo: Bar
-	printf("%d\n", foo.volume())
-}
+// Raw memcpy()
+memcpy(0xB8000 as Int8*, (0xB8000 as Int16*)
++ (cy - 24) * 80, (49 - cy) * 80 * 2)
+
+// Raw pointers
+#(0x2504 as Int64*) = 0x60000
 									</code></pre>
+									<header><h2>Raw Power</h2></header>
 									<p>
-										Some shit
+										<ul>
+										<li>&gt; &nbsp;&nbsp; Perform low-level tasks</li>
+										<li>&gt; &nbsp;&nbsp; Assign and dereference pointers</li>
+										</ul>
+									</p>
+								</section>
+								<div><hr /></div>
+								<section class="separated">
+									<pre class="codesegment"><code class="lang-c csinner">
+// OS-independent library
+import Foundation
+
+// requires (in libc)
+int malloc(size_t size)
+int free(void* ptr)
+int printf(const char* fmt, ...)
+									</code></pre>
+									<header><h2>Portable Stdlib</h2></header>
+									<p>
+										<ul>
+										<li>Flax's stdlib is written entirely in itself</li>
+										<li>Compiled Flax programs only need the libc to run</li>
+										</ul>
 									</p>
 								</section>
 							</article>
 
 
-						<!-- Work -->
-							<article id="work" class="panel">
+							<!-- Syntax -->
+							<article id="syntax" class="panel">
 								<header>
-									<h2>Work</h2>
+									<h2>Flax Syntax (WIP!)</h2>
 								</header>
-								<p>
-									Phasellus enim sapien, blandit ullamcorper elementum eu, condimentum eu elit.
-									Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia
-									luctus elit eget interdum.
-								</p>
-								<section>
-									<div class="row">
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic01.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic02.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic03.jpg" alt=""></a>
-										</div>
-									</div>
-									<div class="row">
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic04.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic05.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic06.jpg" alt=""></a>
-										</div>
-									</div>
-									<div class="row">
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic07.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic08.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic09.jpg" alt=""></a>
-										</div>
-									</div>
-									<div class="row">
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic10.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic11.jpg" alt=""></a>
-										</div>
-										<div class="4u">
-											<a href="#" class="image fit"><img src="images/pic12.jpg" alt=""></a>
-										</div>
-									</div>
-								</section>
+								<div id="flaxsyntaxdoc">
+
+								</div>
 							</article>
 
 						<!-- Contact -->
@@ -200,6 +177,5 @@ func main(argc: Int32, argv: Int8**) -> Int32
 					</div>
 
 			</div>
-
 	</body>
 </html>
