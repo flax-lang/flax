@@ -1,4 +1,4 @@
-Flax [![Build Status](https://travis-ci.org/requimrar/flax-lang.svg?branch=master)](https://travis-ci.org/requimrar/flax-lang)
+[Flax](https://flax-lang.github.io) [![Build Status](https://travis-ci.org/requimrar/flax-lang.svg?branch=master)](https://travis-ci.org/requimrar/flax-lang)
 ============
 
 A low level language with high level syntax and expressibility, aimed at OSDev work.
