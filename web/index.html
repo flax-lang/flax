@@ -15,9 +15,8 @@
 		<script src="js/skel.min.js"></script>
 		<script src="js/init.js"></script>
 
-		<link rel="stylesheet" href="highlight/styles/monokai_sublime.css">
-		<script src="js/highlight.pack.js"></script>
-		<script>hljs.initHighlightingOnLoad();</script>
+		<link rel="stylesheet" href="css/prism.css">
+		<script src="js/prism.js"></script>
 
 		<noscript>
 			<link rel="stylesheet" href="css/skel.css" />
@@ -35,7 +34,8 @@
 				<!-- Nav -->
 					<nav id="nav">
 						<a href="#me" class="icon fa-home active"><span>Home</span></a>
-						<a href="#work" class="icon fa-folder"><span>Work</span></a>
+						<a href="#features" class="icon fa-flask"><span>Features</span></a>
+						<a href="#work" class="icon fa-folder"><span>work</span></a>
 						<a href="#contact" class="icon fa-envelope"><span>Contact</span></a>
 						<a href="#" class="icon fa-twitter"><span>Twitter</span></a>
 					</nav>
@@ -46,12 +46,43 @@
 						<!-- Me -->
 							<article id="me" class="panel">
 								<header>
-									<h1>Flax</h1>
-									<p>Clean | Portable | Low-level</p>
+									<h1>Foo</h1>
+									<p>Bar | Qux | Low-level</p>
 								</header>
 								<a href="#" class="jumplink pic">
 									<!-- <span class="arrow icon fa-chevron-right"></span> -->
 									<!-- <img src="images/me.jpg" alt="" /> -->
+									<pre class="codesegment-main"><code class="lang-swift csinner-main">
+import Foundation
+func main(argc: Int32, argv: Int8**) -> Int32
+{
+	var foo: Bar
+	printf("%s\n", foo.greet())
+}
+
+struct Greeter
+{
+	func volume() -> Int8*
+	{
+		return "Hello, World!"
+	}
+}
+									</code></pre>
+								</a>
+							</article>
+
+							<article id="features" class="panel">
+								<section class="separated">
+									<header>
+										<h2>Stuff</h2>
+									</header>
+									<p>
+										Lorem Ipsum sit dolor amet
+									</p>
+								</section>
+								<div><hr /></div>
+								<section class="separated">
+									<header><h2>Stuff 1</h2></header>
 									<pre class="codesegment"><code class="lang-swift csinner">
 import Foundation
 func main(argc: Int32, argv: Int8**) -> Int32
@@ -59,22 +90,13 @@ func main(argc: Int32, argv: Int8**) -> Int32
 	var foo: Bar
 	printf("%d\n", foo.volume())
 }
-
-struct Bar
-{
-	var Length: Int32 = 17
-	var Width: Int32 = 5
-	var Thickness: Int32 = 2
-
-	func volume() -> Int32
-	{
-		return self.Length * self.Width * self.Thickness
-	}
-}
-
 									</code></pre>
-								</a>
+									<p>
+										Some shit
+									</p>
+								</section>
 							</article>
+
 
 						<!-- Work -->
 							<article id="work" class="panel">

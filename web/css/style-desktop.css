@@ -28,7 +28,7 @@
 		font-size: 14pt;
 		line-height: 1.75em;
 	}
-	
+
 	h1
 	{
 		font-size: 2.4em;
@@ -40,15 +40,15 @@
 		font-size: 1.8em;
 		letter-spacing: -0.015em;
 	}
-	
+
 	h3, h4, h5, h6
 	{
 		font-size: 1.25em;
 		letter-spacing: -0.015em;
 	}
 
-	/* Section/Article */	
-	
+	/* Section/Article */
+
 		header
 		{
 			margin: 0 0 1.5em 0;
@@ -76,7 +76,7 @@
 			{
 				font-size: 0.75em;
 			}
-			
+
 			input[type="button"].big,
 			input[type="submit"].big,
 			input[type="reset"].big,
@@ -85,7 +85,7 @@
 				font-size: 1.25em;
 				padding: 0.5em 1.25em 0.5em 1.25em;
 			}
-			
+
 			input[type="button"].huge,
 			input[type="submit"].huge,
 			input[type="reset"].huge,
@@ -94,11 +94,11 @@
 				font-size: 1.5em;
 				padding: 0.5em 1.25em 0.5em 1.25em;
 			}
-	
+
 /*********************************************************************************/
 /* Wrapper                                                                       */
 /*********************************************************************************/
-			
+
 	#wrapper
 	{
 		width: 45em;
@@ -110,18 +110,18 @@
 		{
 			padding-bottom: 6em;
 		}
-	
+
 /*********************************************************************************/
 /* Nav                                                                           */
 /*********************************************************************************/
-	
+
 	#nav
 	{
 		text-align: center;
 		height: 4.25em;
 		cursor: default;
 	}
-	
+
 		#nav a
 		{
 			font-size: 2.5em;
@@ -157,7 +157,7 @@
 				-ms-transition: border-bottom-width .25s ease-in-out;
 				transition: border-bottom-width .25s ease-in-out;
 			}
-		
+
 			#nav a span
 			{
 				display: block;
@@ -175,12 +175,12 @@
 				-o-transition: opacity .25s ease-in-out;
 				-ms-transition: opacity .25s ease-in-out;
 				transition: opacity .25s ease-in-out;
-				
+
 				/* Labels not wide enough? Increase its width below and set margin-left to ((width / 2) * -1) */
 				width: 5.5em;
 				margin-left: -2.75em;
 			}
-			
+
 				#nav a span:after
 				{
 					content: '';
@@ -202,8 +202,8 @@
 				#nav a:hover span
 				{
 					opacity: 1.0;
-				}	
-			
+				}
+
 			#nav a.active
 			{
 				opacity: 1.0;
@@ -213,7 +213,7 @@
 				{
 					border-bottom-width: 0.5em;
 				}
-			
+
 /*********************************************************************************/
 /* Panels                                                                        */
 /*********************************************************************************/
@@ -233,15 +233,15 @@
 		left: 0;
 		width: 45em;
 	}
-	
+
 	/* Me */
-	
+
 		#me
 		{
 			padding: 0;
 			height: 20em;
 		}
-		
+
 			#me .pic
 			{
 				display: block;
@@ -251,14 +251,14 @@
 				height: 100%;
 				text-decoration: none;
 			}
-			
+
 				#me .pic img
 				{
 					position: relative;
 					display: block;
 					height: 100%;
 				}
-			
+
 				#me .pic .arrow
 				{
 					display: block;
@@ -288,19 +288,19 @@
 						padding-right: 0;
 						top: 0.125em;
 					}
-			
+
 					#me .pic .arrow span
 					{
 						display: block;
 						text-indent: -9999px;
 					}
-				
+
 					#me .pic:hover .arrow
 					{
 						width: 3em;
 						padding-right: 0.25em;
 					}
-			
+
 			#me header
 			{
 				position: absolute;
@@ -310,7 +310,7 @@
 				height: 100%;
 				margin-left: 2.5em;
 			}
-			
+
 				#me header > h1
 				{
 					position: absolute;
@@ -318,8 +318,8 @@
 					bottom: 52.5%;
 					margin: 0;
 				}
-			
-				#me header > p 
+
+				#me header > p
 				{
 					position: absolute;
 					left: 0;
