@@ -14,9 +14,12 @@
 
 	body
 	{
-		background-image:			url('images/overlay.png'),		url('images/bg.jpg');
-		background-repeat:			repeat,							no-repeat;
-		background-size:			auto,							100% 100%;
+		background: -webkit-linear-gradient(90deg, #4b6cb7 10%, #182848 90%); /* Chrome 10+, Saf5.1+ */
+		background: -moz-linear-gradient(90deg, #4b6cb7 10%, #182848 90%); /* FF3.6+ */
+		background: -ms-linear-gradient(90deg, #4b6cb7 10%, #182848 90%); /* IE10 */
+		background: -o-linear-gradient(90deg, #4b6cb7 10%, #182848 90%); /* Opera 11.10+ */
+		background: linear-gradient(90deg, #4b6cb7 10%, #182848 90%); /* W3C */
+		background-size: auto, 100% 100%;
 	}
 
 		body.is-loading *
@@ -479,6 +482,29 @@
 
 		font-family: "Menlo", monospace;
 		display: block;
+	}
+
+	.dcsinner
+	{
+		font-size: 16px;
+		font-family: "Menlo", monospace;
+		display: block;
+	}
+
+	.dcodesegment
+	{
+
+	}
+
+	.inline-code
+	{
+		font-size: 16px;
+		font-family: "Menlo", monospace;
+	}
+
+	.docs
+	{
+		line-height: 1.1em;
 	}
 
 /*********************************************************************************/

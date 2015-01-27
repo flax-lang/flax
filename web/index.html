@@ -17,42 +17,15 @@
 			<link rel="stylesheet" href="css/style-noscript.css" />
 		</noscript>
 
-
 		<link rel="stylesheet" href="css/prism.css" />
-
 		<script src="js/prism.js"></script>
-		<script src="js/showdown.min.js"></script>
-		<script src="js/showdown.github.min.js"></script>
-
 
 		<script>
-			window.getSource = function(callback)
+			$.get("FlaxSyntax.html", function(response)
 			{
-				var response;
-				var xmlhttp;
-
-				xmlhttp = new XMLHttpRequest;
-				xmlhttp.onreadystatechange = function()
-				{
-					if(xmlhttp.readyState === 4 && xmlhttp.status === 200 && callback)
-						callback(xmlhttp.responseText);
-				}
-
-				xmlhttp.open("GET", "https://cdn.rawgit.com/requimrar/flax-lang/master/LanguageReference.md", true);
-				xmlhttp.send();
-			}
-
-			$(document).ready(function()
-			{
-				var converter = new Showdown.converter({ extensions: ["github"] });
-
-				getSource(function(response)
-				{
-					$("#flaxsyntaxdoc").html(converter.makeHtml(response));
-					$(window).resize();
-				});
+				$("#flaxsyntaxdoc").html(response);
+				Prism.highlightAll();
 			});
-
 		</script>
 	</head>
 	<body>
@@ -158,12 +131,7 @@ int printf(const char* fmt, ...)
 
 							<!-- Syntax -->
 							<article id="syntax" class="panel">
-								<header>
-									<h2>Flax Syntax (WIP!)</h2>
-								</header>
-								<div id="flaxsyntaxdoc">
-
-								</div>
+								<div id="flaxsyntaxdoc"></div>
 							</article>
 
 						<!-- Contact -->
