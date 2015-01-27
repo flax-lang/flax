@@ -1,8 +1,7 @@
-flax [![Build Status](https://travis-ci.org/requimrar/flax-lang.svg?branch=master)](https://travis-ci.org/requimrar/flax-lang)
+Flax [![Build Status](https://travis-ci.org/requimrar/flax-lang.svg?branch=master)](https://travis-ci.org/requimrar/flax-lang)
 ============
 
-Compiler/parser for simple language. For kicks.
-
+A low level language with high level syntax and expressibility, aimed at OSDev work.
 
 #### Language Goals ####
 
@@ -14,7 +13,7 @@ Compiler/parser for simple language. For kicks.
 - Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/requimrar/mx) in Flax, and if possible parts of the kernel or drivers.
 
 
-==========================
+--------------------------
 
 #### Current Features ####
 
@@ -26,7 +25,7 @@ Compiler/parser for simple language. For kicks.
 - Operator overloading on structs
 - Function overloading (C++-ish)
 
-=========================
+-------------------------
 
 #### Language Syntax ####
 
@@ -40,7 +39,7 @@ Compiler/parser for simple language. For kicks.
 - Dynamic arrays not yet supported.
 - Pointers!
 
-======================
+----------------------
 
 #### Future Plans ####
 
@@ -48,7 +47,7 @@ Compiler/parser for simple language. For kicks.
 - Type inference
 
 
-====================================
+------------------------------------
 
 #### Building the Flax compiler ####
 
@@ -63,10 +62,7 @@ Compiler/parser for simple language. For kicks.
 - Find the 'flaxc' executable in 'build/sysroot/usr/bin'
 - Additionally, default libraries will be built from 'build/sysroot/lib' and the shared library files (.dylib or .so) placed in 'build/sysroot/usr/lib'
 
-
-
-
-
+-----------------------------------------------
 
 #### Contributing (haha, who am I kidding) ####
 
