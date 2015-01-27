@@ -21,6 +21,41 @@
 		<link rel="stylesheet" href="css/prism.css" />
 
 		<script src="js/prism.js"></script>
+		<script src="js/showdown.min.js"></script>
+		<script src="js/showdown.github.min.js"></script>
+
+
+		<script>
+			// https://cdn.rawgit.com/requimrar/flax-lang/develop/README.md
+
+			window.getSource = function(callback)
+			{
+				var response;
+				var xmlhttp;
+
+				xmlhttp = new XMLHttpRequest;
+				xmlhttp.onreadystatechange = function()
+				{
+					if(xmlhttp.readyState === 4 && xmlhttp.status === 200 && callback)
+						callback(xmlhttp.responseText);
+				}
+
+				xmlhttp.open("GET", "https://cdn.rawgit.com/requimrar/flax-lang/master/LanguageReference.md", true);
+				xmlhttp.send();
+			}
+
+			$(document).ready(function()
+			{
+				var converter = new Showdown.converter({ extensions: ["github"] });
+
+				getSource(function(response)
+				{
+					$("#flaxsyntaxdoc").html(converter.makeHtml(response));
+					$(window).resize();
+				});
+			});
+
+		</script>
 	</head>
 	<body>
 
