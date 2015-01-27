@@ -13,7 +13,7 @@ Int16, Uint16
 Int32, Uint32
 Int64, Uint64
 Float32, Float64
-Void                // (which is not really a type)
+Bool                // (which is not really a type)
 ```
 
 Note that integer literals are 'Int64' by default. They will be automatically casted if possible.
