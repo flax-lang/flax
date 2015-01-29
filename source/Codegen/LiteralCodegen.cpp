@@ -9,25 +9,25 @@
 using namespace Ast;
 using namespace Codegen;
 
-ValPtr_p Number::codegen(CodegenInstance* cgi)
+Result_t Number::codegen(CodegenInstance* cgi)
 {
 	// check builtin type
 	if(this->varType <= VarType::Uint64)
-		return ValPtr_p(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64)), 0);
+		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64)), 0);
 
 	else if(this->type == "Float32" || this->type == "Float64")
-		return ValPtr_p(llvm::ConstantFP::get(cgi->getContext(), llvm::APFloat(this->dval)), 0);
+		return Result_t(llvm::ConstantFP::get(cgi->getContext(), llvm::APFloat(this->dval)), 0);
 
 	error("(%s:%s:%d) -> Internal check failed: invalid number", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }
 
-ValPtr_p BoolVal::codegen(CodegenInstance* cgi)
+Result_t BoolVal::codegen(CodegenInstance* cgi)
 {
-	return ValPtr_p(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, this->val, false)), 0);
+	return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, this->val, false)), 0);
 }
 
-ValPtr_p StringLiteral::codegen(CodegenInstance* cgi)
+Result_t StringLiteral::codegen(CodegenInstance* cgi)
 {
-	return ValPtr_p(cgi->mainBuilder.CreateGlobalStringPtr(this->str), 0);
+	return Result_t(cgi->mainBuilder.CreateGlobalStringPtr(this->str), 0);
 }
