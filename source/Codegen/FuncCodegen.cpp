@@ -11,17 +11,18 @@ using namespace Ast;
 using namespace Codegen;
 
 
-#define OPTIMISE 1
+#define OPTIMISE 0
 
 Result_t FuncCall::codegen(CodegenInstance* cgi)
 {
-	llvm::Function* target = cgi->mainModule->getFunction(this->name);
-	if(!target)
-		target = cgi->mainModule->getFunction(cgi->mangleName(this->name, this->params));
+	FuncPair_t* fp = cgi->getDeclaredFunc(this->name);
+	if(!fp)
+		fp = cgi->getDeclaredFunc(cgi->mangleName(this->name, this->params));
 
-	if(!target)
+	if(!fp)
 		error(this, "Unknown function '%s' (mangled: %s)", this->name.c_str(), cgi->mangleName(this->name, this->params).c_str());
 
+	llvm::Function* target = fp->first;
 	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
 		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
@@ -30,7 +31,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 
 
 	// we need to get the function declaration
-	FuncDecl* decl = cgi->getFuncDecl(this->name);
+	FuncDecl* decl = fp->second;
 	if(decl)
 	{
 		for(int i = 0; i < this->params.size(); i++)
@@ -52,8 +53,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 		params_expr.push_back(v);
 		argtypes.push_back(cgi->getLlvmType(v));
 	}
-
-
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	this->mangledName = this->name;
@@ -90,7 +89,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 		}
 	}
 
-	cgi->getVisibleFuncDecls()[this->mangledName] = FuncPair_t(func, this);
+	cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
 
 	if(this->attribs & Attr_VisPublic)
 		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));
@@ -129,14 +128,20 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	llvm::Function* func = cgi->mainModule->getFunction(this->decl->mangledName);
 	if(!func)
 	{
-		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
-		return Result_t(0, 0);
+		this->decl->codegen(cgi);
+		return this->codegen(cgi);
 	}
 
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
-	// create a new 'table' for our own usage
+	// create a new 'table' for our own usage.
+	// the reverse stack searching for symbols makes sure we can reference variables in outer scopes
 	cgi->pushScope();
+
+	// to support declaring functions inside functions, we need to remember
+	// the previous insert point, or all further codegen will happen inside this function
+	// and fuck shit up big time
+	llvm::BasicBlock* prevBlock = cgi->mainBuilder.GetInsertBlock();
 
 	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), "entry", func);
 	cgi->mainBuilder.SetInsertPoint(block);
@@ -180,6 +185,9 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();
+
+	if(prevBlock)
+		cgi->mainBuilder.SetInsertPoint(prevBlock);
 
 	return Result_t(func, 0);
 }
