@@ -17,4 +17,12 @@ namespace Compiler
 
 	std::string getSysroot();
 	int getOptimisationLevel();
+
+	enum class Flag
+	{
+		WarningsAsErrors		= 0x1,
+		NoWarnings				= 0x2,
+	};
+
+	bool getFlag(Flag f);
 }

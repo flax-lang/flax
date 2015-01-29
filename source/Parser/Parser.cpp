@@ -9,6 +9,7 @@
 #include <cassert>
 #include "../include/ast.h"
 #include "../include/parser.h"
+#include "../include/compiler.h"
 
 using namespace Ast;
 
@@ -44,6 +45,25 @@ namespace Parser
 
 		va_end(ap);
 		exit(1);
+	}
+
+	void warn(const char* msg, ...)
+	{
+		if(Compiler::getFlag(Compiler::Flag::NoWarnings))
+			return;
+
+		va_list ap;
+		va_start(ap, msg);
+
+		char* alloc = nullptr;
+		vasprintf(&alloc, msg, ap);
+
+		fprintf(stderr, "Warning (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
+
+		va_end(ap);
+
+		if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+			error("Treating warning as error because -Werror was passed");
 	}
 
 
@@ -438,6 +458,11 @@ namespace Parser
 					eat(tokens);
 					curAttrib |= Attr_VisPublic;
 					return parsePrimary(tokens);
+
+				case TType::LBrace:
+					warn("Anonymous closures are ignored; to run, preface with 'do'");
+					parseClosure(tokens);		// parse it, but throw it away
+					return CreateAST(DummyExpr, tokens.front());
 
 				default:
 					error("Unexpected token '%s'\n", tok->text.c_str());
@@ -963,7 +988,23 @@ namespace Parser
 
 			// parse the closure first
 			Closure* body = parseClosure(tokens);
-			return 0;
+
+			// syntax treat: since a raw closure is ignored (for good reason, how can we reference it?)
+			// we can use 'do' to run an anonymous closure
+			// therefore, the 'while' clause at the end is optional; if it's not present, then the condition is false.
+
+			Expr* cond = 0;
+			if(tokens.front()->type == TType::While)
+			{
+				eat(tokens);
+				cond = parseExpr(tokens);
+			}
+			else
+			{
+				cond = CreateAST(BoolVal, tokens.front(), false);
+			}
+
+			return CreateAST(WhileLoop, tok_while, cond, body, true);
 		}
 	}
 
