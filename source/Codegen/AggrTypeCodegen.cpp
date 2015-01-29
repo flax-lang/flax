@@ -92,20 +92,22 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 	// generate initialiser
 	{
-		llvm::Function* func = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
+		llvm::Function* autoinit = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
 
-		// if(this->attribs & Attr_VisPublic)
+		// if we have an init function, then the __automatic_init will only be called from the local module
+		// and only the normal init() needs to be exposed.
+		if(!this->ifunc)
 		{
-			// make the initialiser public as well
-			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, func));
+			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, autoinit));
 		}
 
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", func);
+		cgi->addFunctionToScope(autoinit->getName(), std::pair<llvm::Function*, FuncDecl*>(autoinit, 0));
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", autoinit);
 		cgi->mainBuilder.SetInsertPoint(iblock);
 
 		// create the local instance of reference to self
-		llvm::Value* self = &func->getArgumentList().front();
+		llvm::Value* self = &autoinit->getArgumentList().front();
 
 		for(VarDecl* var : this->members)
 		{
@@ -177,8 +179,8 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 		cgi->mainBuilder.CreateRetVoid();
 
-		llvm::verifyFunction(*func);
-		this->defifunc = func;
+		llvm::verifyFunction(*autoinit);
+		this->defifunc = autoinit;
 	}
 
 

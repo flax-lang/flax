@@ -103,8 +103,8 @@ namespace Compiler
 		Codegen::doCodegen(filename, root, cgi);
 
 
-		cgi->mainModule->dump();
-		printf("=============================================\n");
+		// cgi->mainModule->dump();
+		// printf("=============================================\n");
 
 
 		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
