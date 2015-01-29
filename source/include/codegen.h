@@ -99,6 +99,7 @@ namespace Codegen
 			llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 			Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
+			Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 	};
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
