@@ -137,8 +137,8 @@ namespace Parser
 	};
 
 
-	void error(const char* msg, ...);
-	void warn(const char* msg, ...);
+	void parserError(const char* msg, ...);
+	void parserWarn(const char* msg, ...);
 
 	std::string getModuleName(std::string filename);
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);

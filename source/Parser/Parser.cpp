@@ -33,7 +33,7 @@ namespace Parser
 
 	// todo: hack
 	bool isParsingStruct;
-	void error(const char* msg, ...)
+	void parserError(const char* msg, ...)
 	{
 		va_list ap;
 		va_start(ap, msg);
@@ -41,13 +41,13 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRId64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRId64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 		exit(1);
 	}
 
-	void warn(const char* msg, ...)
+	void parserWarn(const char* msg, ...)
 	{
 		if(Compiler::getFlag(Compiler::Flag::NoWarnings))
 			return;
@@ -58,12 +58,12 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRId64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRId64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
 		if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-			error("Treating warning as error because -Werror was passed");
+			parserError("Treating warning as error because -Werror was passed");
 	}
 
 
@@ -96,7 +96,7 @@ namespace Parser
 	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
-	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio, bool needParen);
+	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
 
@@ -148,8 +148,9 @@ namespace Parser
 	{
 		// returns the current front, then pops front.
 		if(tokens.size() == 0)
-			error("Unexpected end of input");
+			parserError("Unexpected end of input");
 
+		skipNewline(tokens);
 		Token* t = tokens.front();
 		tokens.pop_front();
 		skipNewline(tokens);
@@ -213,6 +214,13 @@ namespace Parser
 				return 15;
 
 			case TType::Equal:
+			case TType::PlusEq:
+			case TType::MinusEq:
+			case TType::MultiplyEq:
+			case TType::DivideEq:
+			case TType::ModEq:
+			case TType::ShiftLeftEq:
+			case TType::ShiftRightEq:
 				return 10;
 
 			default:
@@ -471,12 +479,12 @@ namespace Parser
 					return parsePrimary(tokens);
 
 				case TType::LBrace:
-					warn("Anonymous closures are ignored; to run, preface with 'do'");
+					parserWarn("Anonymous closures are ignored; to run, preface with 'do'");
 					parseClosure(tokens);		// parse it, but throw it away
 					return CreateAST(DummyExpr, tokens.front());
 
 				default:
-					error("Unexpected token '%s'\n", tok->text.c_str());
+					parserError("Unexpected token '%s'\n", tok->text.c_str());
 					break;
 			}
 		}
@@ -495,7 +503,7 @@ namespace Parser
 			assert(eat(tokens)->type == TType::Func);
 
 		if(tokens.front()->type != TType::Identifier)
-			error("Expected identifier, but got token of type %d", tokens.front()->type);
+			parserError("Expected identifier, but got token of type %d", tokens.front()->type);
 
 		Token* func_id = eat(tokens);
 		std::string id = func_id->text;
@@ -503,7 +511,7 @@ namespace Parser
 		// expect a left bracket
 		Token* paren = eat(tokens);
 		if(paren->type != TType::LParen)
-			error("Expected '(' in function declaration, got '%s'", paren->text.c_str());
+			parserError("Expected '(' in function declaration, got '%s'", paren->text.c_str());
 
 		bool isVA = false;
 		// get the parameter list
@@ -519,13 +527,13 @@ namespace Parser
 				{
 					isVA = true;
 					if(tokens.front()->type != TType::RParen)
-						error("Vararg declaration must be last in the function declaration");
+						parserError("Vararg declaration must be last in the function declaration");
 
 					break;
 				}
 				else
 				{
-					error("Expected identifier");
+					parserError("Expected identifier");
 				}
 			}
 
@@ -534,7 +542,7 @@ namespace Parser
 
 			// expect a colon
 			if(eat(tokens)->type != TType::Colon)
-				error("Expected ':' followed by a type");
+				parserError("Expected ':' followed by a type");
 
 			v->type = parseType(tokens)->name;
 			v->varType = determineVarType(v->type);
@@ -546,7 +554,7 @@ namespace Parser
 			}
 			else
 			{
-				error("Redeclared variable '%s' in argument list", v->name.c_str());
+				parserError("Redeclared variable '%s' in argument list", v->name.c_str());
 			}
 
 			if(tokens.front()->type == TType::Comma)
@@ -599,7 +607,7 @@ namespace Parser
 
 		// make sure the first token is a left brace.
 		if(tok_cls->type != TType::LBrace)
-			error("Expected '{' to begin a block, found '%s'!", tok_cls->text.c_str());
+			parserError("Expected '{' to begin a block, found '%s'!", tok_cls->text.c_str());
 
 		// get the stuff inside.
 		while(tokens.size() > 0 && tokens.front()->type != TType::RBrace)
@@ -609,7 +617,7 @@ namespace Parser
 		}
 
 		if(eat(tokens)->type != TType::RBrace)
-			error("Expected '}'");
+			parserError("Expected '}'");
 
 		return c;
 	}
@@ -646,7 +654,7 @@ namespace Parser
 		int arrsize = 0;
 		Token* tmp = eat(tokens);
 		if(tmp->type != TType::Identifier && tmp->type != TType::BuiltinType)
-			error("Expected type for variable declaration");
+			parserError("Expected type for variable declaration");
 
 		std::string ptrAppend = "";
 		if(tokens.size() > 0)
@@ -666,7 +674,7 @@ namespace Parser
 					arrsize = getIntegerValue(next), next = eat(tokens);
 
 				if(next->type != TType::RSquare)
-					error("Expected either constant integer or ']' after array declaration and '['");
+					parserError("Expected either constant integer or ']' after array declaration and '['");
 			}
 		}
 
@@ -684,7 +692,7 @@ namespace Parser
 		// get the identifier.
 		Token* tok_id;
 		if((tok_id = eat(tokens))->type != TType::Identifier)
-			error("Expected identifier for variable declaration.");
+			parserError("Expected identifier for variable declaration.");
 
 		std::string id = tok_id->text;
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
@@ -692,7 +700,7 @@ namespace Parser
 		// check the type.
 		// todo: type inference
 		if(eat(tokens)->type != TType::Colon)
-			error("Expected colon to indicate type for variable declaration");
+			parserError("Expected colon to indicate type for variable declaration");
 
 		v->type = parseType(tokens)->name;
 		v->varType = determineVarType(v->type);
@@ -707,7 +715,7 @@ namespace Parser
 
 			v->initVal = parseExpr(tokens);
 			if(!v->initVal)
-				error("Invalid initialiser for variable '%s'", v->name.c_str());
+				parserError("Invalid initialiser for variable '%s'", v->name.c_str());
 		}
 
 		return v;
@@ -719,39 +727,21 @@ namespace Parser
 		Expr* within = parseExpr(tokens);
 
 		if(eat(tokens)->type != TType::RParen)
-			error("Expected ')'");
+			parserError("Expected ')'");
 
 		return within;
 	}
 
 	Expr* parseExpr(std::deque<Token*>& tokens)
 	{
-		bool hadParen = false;
-
-		// optional parenthesis handling
-		if(tokens.front()->type == TType::LParen)
-		{
-			eat(tokens);
-			hadParen = true;
-		}
-
 		Expr* lhs = parseUnary(tokens);
 		if(!lhs)
 			return nullptr;
 
-		Expr* ret = parseRhs(tokens, lhs, 0, hadParen);
-		if(hadParen && !dynamic_cast<BinOp*>(ret))
-		{
-			if(tokens.front()->type != TType::RParen)
-				error("Expected ')'");
-
-			eat(tokens);
-		}
-
-		return ret;
+		return parseRhs(tokens, lhs, 0);
 	}
 
-	Expr* parseRhs(std::deque<Token*>& tokens, Expr* lhs, int prio, bool needParen)
+	Expr* parseRhs(std::deque<Token*>& tokens, Expr* lhs, int prio)
 	{
 		while(true)
 		{
@@ -764,24 +754,13 @@ namespace Parser
 			Token* tok_op = eat(tokens);
 
 			Expr* rhs = tok_op->type == TType::As ? parseType(tokens) : parseUnary(tokens);
-			if(needParen && tokens.front()->type != TType::RParen)
-				error("Expected ')'");
-
-
-			if(needParen)
-			{
-				eat(tokens);
-				needParen = false;
-			}
-
-
 			if(!rhs)
 				return nullptr;
 
 			int next = getOpPrec(tokens.front());
 			if(prec < next)
 			{
-				rhs = parseRhs(tokens, rhs, prec + 1, needParen);
+				rhs = parseRhs(tokens, rhs, prec + 1);
 				if(!rhs)
 					return nullptr;
 			}
@@ -789,28 +768,36 @@ namespace Parser
 			ArithmeticOp op;
 			switch(tok_op->type)
 			{
-				case TType::Plus:			op = ArithmeticOp::Add;			break;
-				case TType::Minus:			op = ArithmeticOp::Subtract;	break;
-				case TType::Asterisk:		op = ArithmeticOp::Multiply;	break;
-				case TType::Divide:			op = ArithmeticOp::Divide;		break;
-				case TType::Percent:		op = ArithmeticOp::Modulo;		break;
-				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;	break;
-				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;	break;
-				case TType::Equal:			op = ArithmeticOp::Assign;		break;
+				case TType::Plus:			op = ArithmeticOp::Add;					break;
+				case TType::Minus:			op = ArithmeticOp::Subtract;			break;
+				case TType::Asterisk:		op = ArithmeticOp::Multiply;			break;
+				case TType::Divide:			op = ArithmeticOp::Divide;				break;
+				case TType::Percent:		op = ArithmeticOp::Modulo;				break;
+				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;			break;
+				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;			break;
+				case TType::Equal:			op = ArithmeticOp::Assign;				break;
 
-				case TType::LAngle:			op = ArithmeticOp::CmpLT;		break;
-				case TType::RAngle:			op = ArithmeticOp::CmpGT;		break;
-				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;		break;
-				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;		break;
-				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;		break;
-				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;		break;
+				case TType::LAngle:			op = ArithmeticOp::CmpLT;				break;
+				case TType::RAngle:			op = ArithmeticOp::CmpGT;				break;
+				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;				break;
+				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;				break;
+				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;				break;
+				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;				break;
 
-				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;	break;
-				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;	break;
-				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;	break;
-				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;	break;
-				case TType::As:				op = ArithmeticOp::Cast;		break;
-				default:					error("Unknown operator '%s'", tok_op->text.c_str());
+				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
+				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
+				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
+				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
+				case TType::As:				op = ArithmeticOp::Cast;				break;
+
+				case TType::PlusEq:			op = ArithmeticOp::PlusEquals;			break;
+				case TType::MinusEq:		op = ArithmeticOp::MinusEquals;			break;
+				case TType::MultiplyEq:		op = ArithmeticOp::MultiplyEquals;		break;
+				case TType::DivideEq:		op = ArithmeticOp::DivideEquals;		break;
+				case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
+				case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
+				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
+				default:					parserError("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
 			lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
@@ -828,7 +815,7 @@ namespace Parser
 		{
 			eat(tokens);
 			if(tokens.front()->type != TType::Identifier)
-				error("Expected identifier after '.' operator");
+				parserError("Expected identifier after '.' operator");
 
 			return CreateAST(MemberAccess, tok_id, idvr, parseIdExpr(tokens));
 		}
@@ -839,7 +826,7 @@ namespace Parser
 			Expr* within = parseExpr(tokens);
 
 			if(eat(tokens)->type != TType::RSquare)
-				error("Expected ']'");
+				parserError("Expected ']'");
 
 			return CreateAST(ArrayIndex, tok_id, idvr, within);
 		}
@@ -882,7 +869,7 @@ namespace Parser
 		}
 		else
 		{
-			error("What!????");
+			parserError("What!????");
 			assert(false);
 			return nullptr;
 		}
@@ -913,7 +900,7 @@ namespace Parser
 
 				Token* t;
 				if((t = eat(tokens))->type != TType::Comma)
-					error("Expected either ',' or ')' in parameter list, got '%s'", t->text.c_str());
+					parserError("Expected either ',' or ')' in parameter list, got '%s'", t->text.c_str());
 			}
 		}
 		else
@@ -970,11 +957,11 @@ namespace Parser
 			{
 				if(parsedElse && tokens.front()->type != TType::If)
 				{
-					error("Duplicate 'else' clause, only one else clause is permitted per if.");
+					parserError("Duplicate 'else' clause, only one else clause is permitted per if.");
 				}
 				else
 				{
-					error("The 'else' clause must be the last block in the if statement.");
+					parserError("The 'else' clause must be the last block in the if statement.");
 				}
 			}
 		}
@@ -1041,7 +1028,7 @@ namespace Parser
 		// get the identifier (name)
 		std::string id;
 		if(tokens.front()->type != TType::Identifier)
-			error("Expected name after 'struct'");
+			parserError("Expected name after 'struct'");
 
 		id += eat(tokens)->text;
 		Struct* str = CreateAST(Struct, tok_struct, id);
@@ -1059,7 +1046,7 @@ namespace Parser
 			if((var = dynamic_cast<VarDecl*>(stmt)))
 			{
 				if(str->nameMap.find(var->name) != str->nameMap.end())
-					error("Duplicate member '%s'", var->name.c_str());
+					parserError("Duplicate member '%s'", var->name.c_str());
 
 				str->members.push_back(var);
 				str->nameMap[var->name] = i;
@@ -1083,7 +1070,7 @@ namespace Parser
 			}
 			else
 			{
-				error("Only variable and function declarations are allowed in structs");
+				parserError("Only variable and function declarations are allowed in structs");
 			}
 
 			i++;
@@ -1098,12 +1085,12 @@ namespace Parser
 		Token* id = eat(tokens);
 
 		if(id->type != TType::Identifier)
-			error("Expected attribute name after '@'");
+			parserError("Expected attribute name after '@'");
 
 		uint32_t attr;
 		if(id->text == "nomangle")				attr |= Attr_NoMangle;
 		else if(id->text == "forcemangle")		attr |= Attr_ForceMangle;
-		else									error("Unknown attribute '%s'", id->text.c_str());
+		else									parserError("Unknown attribute '%s'", id->text.c_str());
 
 		curAttrib |= attr;
 	}
@@ -1132,7 +1119,7 @@ namespace Parser
 
 		Token* tok_mod;
 		if((tok_mod = eat(tokens))->type != TType::Identifier)
-			error("Expected module name after 'import' statement.");
+			parserError("Expected module name after 'import' statement.");
 
 		return CreateAST(Import, tok_mod, tok_mod->text);
 	}
@@ -1148,7 +1135,7 @@ namespace Parser
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens)
 	{
 		if(!isParsingStruct)
-			error("Can only overload operators in the context of a named aggregate type");
+			parserError("Can only overload operators in the context of a named aggregate type");
 
 		assert(eat(tokens)->text == "operator");
 		Token* op = eat(tokens);
@@ -1165,7 +1152,7 @@ namespace Parser
 				break;
 
 			default:
-				error("Unsupported operator overload on operator '%s'", op->text.c_str());
+				parserError("Unsupported operator overload on operator '%s'", op->text.c_str());
 		}
 
 		OpOverload* oo = CreateAST(OpOverload, op, ao);

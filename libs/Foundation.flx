@@ -29,7 +29,7 @@ public struct String
 }
 
 public ffi func printf(x: Int8*, ...) -> Int32
-public ffi func memcpy(dest: Int8*, source: Int8 ptr, length: Uint64) -> Int8*
+public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
 public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
 public ffi func strlen(str: Int8*) -> Uint64
 public ffi func malloc(size: Uint64) -> Int8*
