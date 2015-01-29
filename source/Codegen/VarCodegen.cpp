@@ -11,16 +11,16 @@ using namespace Ast;
 using namespace Codegen;
 
 
-ValPtr_p VarRef::codegen(CodegenInstance* cgi)
+Result_t VarRef::codegen(CodegenInstance* cgi)
 {
 	llvm::Value* val = cgi->getSymInst(this->name);
 	if(!val)
 		error(this, "Unknown variable name '%s'", this->name.c_str());
 
-	return ValPtr_p(cgi->mainBuilder.CreateLoad(val, this->name), val);
+	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
+Result_t VarDecl::codegen(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		error(this, "Redefining duplicate symbol '%s'", this->name.c_str());
@@ -37,7 +37,7 @@ ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 	if(this->initVal && !cmplxtype)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
-		val = this->initVal->codegen(cgi).first;
+		val = this->initVal->codegen(cgi).result.first;
 	}
 	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this))
 	{
@@ -61,17 +61,17 @@ ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 
 			if(this->initVal)
 			{
-				llvm::Value* ival = this->initVal->codegen(cgi).first;
+				llvm::Value* ival = this->initVal->codegen(cgi).result.first;
 
 				if(ival->getType() == ai->getType()->getPointerElementType())
-					return ValPtr_p(cgi->mainBuilder.CreateStore(ival, ai), ai);
+					return Result_t(cgi->mainBuilder.CreateStore(ival, ai), ai);
 
 				else
 					return cgi->callOperatorOnStruct(pair, ai, ArithmeticOp::Assign, ival);
 			}
 			else
 			{
-				return ValPtr_p(val, ai);
+				return Result_t(val, ai);
 			}
 		}
 		else
@@ -87,7 +87,7 @@ ValPtr_p VarDecl::codegen(CodegenInstance* cgi)
 	}
 
 	cgi->mainBuilder.CreateStore(val, ai);
-	return ValPtr_p(val, ai);
+	return Result_t(val, ai);
 }
 
 

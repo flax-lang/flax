@@ -14,4 +14,15 @@ namespace Compiler
 
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
+
+	std::string getSysroot();
+	int getOptimisationLevel();
+
+	enum class Flag
+	{
+		WarningsAsErrors		= 0x1,
+		NoWarnings				= 0x2,
+	};
+
+	bool getFlag(Flag f);
 }
