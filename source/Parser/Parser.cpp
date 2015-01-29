@@ -40,7 +40,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%lld)%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRId64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -57,7 +57,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%lld)%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRId64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
