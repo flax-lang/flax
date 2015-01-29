@@ -50,6 +50,9 @@ namespace Parser
 		True,
 		False,
 
+		Break,
+		Continue,
+
 		Private,
 		Public,
 		Internal,

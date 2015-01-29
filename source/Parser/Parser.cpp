@@ -55,7 +55,9 @@ namespace Parser
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseUnary(std::deque<Token*>& tokens);
+	ForLoop* parseFor(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
+	Break* parseBreak(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
 	Struct* parseStruct(std::deque<Token*>& tokens);
 	Import* parseImport(std::deque<Token*>& tokens);
@@ -66,6 +68,7 @@ namespace Parser
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
+	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
@@ -381,11 +384,20 @@ namespace Parser
 				case TType::Return:
 					return parseReturn(tokens);
 
+				case TType::Break:
+					return parseBreak(tokens);
+
+				case TType::Continue:
+					return parseContinue(tokens);
+
 				case TType::If:
 					return parseIf(tokens);
 
 				case TType::While:
 					return parseWhile(tokens);
+
+				case TType::For:
+					return parseFor(tokens);
 
 				// shit you just skip
 				case TType::NewLine:
@@ -540,11 +552,12 @@ namespace Parser
 
 	Closure* parseClosure(std::deque<Token*>& tokens)
 	{
-		Closure* c = CreateAST(Closure, tokens.front());
+		Token* tok_cls = eat(tokens);
+		Closure* c = CreateAST(Closure, tok_cls);
 
 		// make sure the first token is a left brace.
-		if(eat(tokens)->type != TType::LBrace)
-			error("Expected '{' to begin a block");
+		if(tok_cls->type != TType::LBrace)
+			error("Expected '{' to begin a block, found '%s'!", tok_cls->text.c_str());
 
 		// get the stuff inside.
 		while(tokens.size() > 0 && tokens.front()->type != TType::RBrace)
@@ -684,6 +697,14 @@ namespace Parser
 			return nullptr;
 
 		Expr* ret = parseRhs(tokens, lhs, 0, hadParen);
+		if(hadParen && !dynamic_cast<BinOp*>(ret))
+		{
+			if(tokens.front()->type != TType::RParen)
+				error("Expected ')'");
+
+			eat(tokens);
+		}
+
 		return ret;
 	}
 
@@ -703,12 +724,12 @@ namespace Parser
 			if(needParen && tokens.front()->type != TType::RParen)
 				error("Expected ')'");
 
-			else if(needParen)
+
+			if(needParen)
 			{
 				eat(tokens);
 				needParen = false;
 			}
-
 
 
 			if(!rhs)
@@ -929,6 +950,14 @@ namespace Parser
 		return CreateAST(WhileLoop, tok_while, cond, body, false);
 	}
 
+	ForLoop* parseFor(std::deque<Token*>& tokens)
+	{
+		Token* tok_for = eat(tokens);
+		assert(tok_for->type == TType::For);
+
+		return 0;
+	}
+
 	Struct* parseStruct(std::deque<Token*>& tokens)
 	{
 		Token* tok_struct = eat(tokens);
@@ -1003,6 +1032,24 @@ namespace Parser
 		else									error("Unknown attribute '%s'", id->text.c_str());
 
 		curAttrib |= attr;
+	}
+
+	Break* parseBreak(std::deque<Token*>& tokens)
+	{
+		Token* tok_br = eat(tokens);
+		assert(tok_br->type == TType::Break);
+
+		Break* br = CreateAST(Break, tok_br);
+		return br;
+	}
+
+	Continue* parseContinue(std::deque<Token*>& tokens)
+	{
+		Token* tok_cn = eat(tokens);
+		assert(tok_cn->type == TType::Continue);
+
+		Continue* cn = CreateAST(Continue, tok_cn);
+		return cn;
 	}
 
 	Import* parseImport(std::deque<Token*>& tokens)

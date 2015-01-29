@@ -20,7 +20,6 @@
 
 using namespace Ast;
 
-extern std::string getSysroot();
 namespace Compiler
 {
 	static std::string resolveImport(Import* imp, std::string curpath)
@@ -39,7 +38,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/lib/flaxlibs/" + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + "/usr/local/lib/flaxlibs/" + imp->module + ".flx";
 
 			struct stat buffer;
 			if(stat (builtinlib.c_str(), &buffer) == 0)
@@ -104,8 +103,8 @@ namespace Compiler
 		Codegen::doCodegen(filename, root, cgi);
 
 
-		// cgi->mainModule->dump();
-		// printf("=============================================\n");
+		cgi->mainModule->dump();
+		printf("=============================================\n");
 
 
 		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
@@ -237,7 +236,7 @@ namespace Compiler
 	// 	for(std::pair<FuncDecl*, llvm::Function*> pair : root->publicFuncs)
 	// 	{
 	// 		// FuncDecl* pub = pair.first;
-	// 		// ValPtr_p vp = pub->codegen(cgi);
+	// 		// ValPtr_t vp = pub->codegen(cgi);
 
 	// 		llvm::Function* f = pair.second;
 	// 		assert(f->getType()->getPointerElementType()->isFunctionTy());

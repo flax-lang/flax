@@ -9,7 +9,31 @@
 using namespace Ast;
 using namespace Codegen;
 
-ValPtr_p Root::codegen(CodegenInstance* cgi)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Result_t Root::codegen(CodegenInstance* cgi)
 {
 	// we need to parse custom types first
 	for(Struct* s : this->structs)
@@ -41,6 +65,6 @@ ValPtr_p Root::codegen(CodegenInstance* cgi)
 	for(Func* f : this->functions)
 		f->codegen(cgi);
 
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }
 
