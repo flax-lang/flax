@@ -93,7 +93,6 @@ namespace Parser
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
-	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
@@ -436,10 +435,8 @@ namespace Parser
 				// since both have the same kind of AST node, parseWhile can handle both
 				case TType::Do:
 				case TType::While:
-					return parseWhile(tokens);
-
 				case TType::Loop:
-					return parseInfiniteLoop(tokens);
+					return parseWhile(tokens);
 
 				case TType::For:
 					return parseFor(tokens);
@@ -982,7 +979,7 @@ namespace Parser
 		}
 		else
 		{
-			assert(tok_while->type == TType::Do);
+			assert(tok_while->type == TType::Do || tok_while->type == TType::Loop);
 
 			// parse the closure first
 			Closure* body = parseClosure(tokens);
@@ -990,6 +987,10 @@ namespace Parser
 			// syntax treat: since a raw closure is ignored (for good reason, how can we reference it?)
 			// we can use 'do' to run an anonymous closure
 			// therefore, the 'while' clause at the end is optional; if it's not present, then the condition is false.
+
+			// 'loop' and 'do', when used without the 'while' clause on the end, have opposite behaviours
+			// do { ... } runs the block only once, while loop { ... } runs it infinite times.
+			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
 			if(tokens.front()->type == TType::While)
@@ -999,16 +1000,12 @@ namespace Parser
 			}
 			else
 			{
-				cond = CreateAST(BoolVal, tokens.front(), false);
+				// here's the magic: continue condition is 'false' for do, 'true' for loop
+				cond = CreateAST(BoolVal, tokens.front(), tok_while->type == TType::Do ? false : true);
 			}
 
 			return CreateAST(WhileLoop, tok_while, cond, body, true);
 		}
-	}
-
-	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens)
-	{
-		return 0;
 	}
 
 	ForLoop* parseFor(std::deque<Token*>& tokens)
