@@ -7,6 +7,7 @@
 #include <cassert>
 #include <fstream>
 #include <cstdlib>
+#include <cinttypes>
 
 #include <sys/stat.h>
 #include "include/ast.h"
@@ -47,9 +48,8 @@ namespace Compiler
 			}
 			else
 			{
-				fprintf(stderr, "Error (%s:%lld): No module or library with the name '%s' could be found.\n", imp->posinfo.file.c_str(), imp->posinfo.line, imp->module.c_str());
-
-				exit(-1);
+				Parser::parserError("No module or library with the name '%s' could be found", imp->module.c_str());
+				return 0;
 			}
 		}
 	}

@@ -6,6 +6,8 @@
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
 
+#include <llvm/IR/DataLayout.h>
+
 using namespace Ast;
 using namespace Codegen;
 
@@ -35,7 +37,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi)
 		}
 
 		default:
-			error("(%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+			error("this, (%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 			return Result_t(0, 0);
 	}
 }
@@ -50,7 +52,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	llvm::Value* lhs;
 	llvm::Value* rhs;
 
-	if(this->op == ArithmeticOp::Assign)
+	if(this->op == ArithmeticOp::Assign
+		|| this->op == ArithmeticOp::PlusEquals			|| this->op == ArithmeticOp::MinusEquals
+		|| this->op == ArithmeticOp::MultiplyEquals		|| this->op == ArithmeticOp::DivideEquals
+		|| this->op == ArithmeticOp::ModEquals			|| this->op == ArithmeticOp::ShiftLeftEquals
+		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
+		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		this->right = cgi->autoCastType(this->left, this->right);
 
@@ -60,33 +67,40 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		VarRef* v = nullptr;
 		UnaryOp* uo = nullptr;
 		ArrayIndex* ai = nullptr;
+
+		llvm::Value* varptr = 0;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
 			if(!rhs)
-				error("(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				error(this, "(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
-			llvm::Value* var = cgi->getSymTab()[v->name].first;
-			if(!var)
+			varptr = cgi->getSymTab()[v->name].first;
+			if(!varptr)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
 			if(lhs->getType() != rhs->getType())
 			{
-				if(lhs->getType()->isStructTy())
+				// ensure we can always store 0 to pointers without a cast
+				Number* n = 0;
+				if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->right)) && n->ival == 0)
+				{
+					rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
+				}
+				else if(lhs->getType()->isStructTy())
 				{
 					TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
 					if(!tp)
 						error(this, "Invalid type");
 
-					return cgi->callOperatorOnStruct(tp, valptr.second, ArithmeticOp::Assign, rhs);
+					// struct will handle all the weird operators by checking overloaded-ness
+					// we only need to handle for arithmetic types
+					return cgi->callOperatorOnStruct(tp, valptr.second, this->op, rhs);
 				}
 				else
 				{
 					error(this, "Cannot assign different types '%s' and '%s'", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
 				}
 			}
-
-			cgi->mainBuilder.CreateStore(rhs, var);
-			return Result_t(rhs, var);
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
 			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
@@ -95,28 +109,42 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			// we know that the ptr lives in the second element
 			// so, use it
 
-			llvm::Value* ptr = valptr.second;
-			assert(ptr);
+			varptr = valptr.second;
+			assert(varptr);
 			assert(rhs);
 
 			// make sure the left side is a pointer
-			if(!ptr->getType()->isPointerTy())
-				error(this, "Expression (type '%s' = '%s') is not assignable.", cgi->getReadableType(ptr->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
+			if(!varptr->getType()->isPointerTy())
+				error(this, "Expression (type '%s' = '%s') is not assignable.", cgi->getReadableType(varptr->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
 
 			// redo the number casting
 			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
-				rhs = cgi->mainBuilder.CreateIntCast(rhs, ptr->getType()->getPointerElementType(), false);
+				rhs = cgi->mainBuilder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
 
 			else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
 				rhs = cgi->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
-
-			// assign it
-			cgi->mainBuilder.CreateStore(rhs, ptr);
-			return Result_t(rhs, ptr);
 		}
 		else
 		{
-			error("Left-hand side of assignment must be assignable");
+			error(this, "Left-hand side of assignment must be assignable");
+		}
+
+
+
+		// do it all together now
+		if(this->op == ArithmeticOp::Assign)
+		{
+			cgi->mainBuilder.CreateStore(rhs, varptr);
+			return Result_t(rhs, varptr);
+		}
+		else
+		{
+			// get the llvm op
+			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+
+			llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
+			cgi->mainBuilder.CreateStore(newrhs, varptr);
+			return Result_t(newrhs, varptr);
 		}
 	}
 	else if(this->op == ArithmeticOp::Cast)
@@ -132,7 +160,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		{
 			TypePair_t* tp = cgi->getType(ct->name);
 			if(!tp)
-				error(this, "(%s:%d): Unknown type '%s'", __FILE__, __LINE__, ct->name.c_str());
+				error(this, "Unknown type '%s'", ct->name.c_str());
 
 			rtype = tp->first;
 		}
@@ -163,42 +191,35 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	}
 
 
+	// else case.
+	// no point being explicit about this and wasting indentation
 
 	this->right = cgi->autoCastType(this->left, this->right);
 
 	lhs = valptr.first;
-	llvm::Value* rhsptr = nullptr;
+	llvm::Value* lhsptr = valptr.second;
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	rhsptr = r.second;
+	llvm::Value* rhsptr = r.second;
 
-	if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
+
+	// if adding integer to pointer
+	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract))
 	{
+		return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
+	}
+	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
+	{
+		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
+			cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+
+		if(lop != (llvm::Instruction::BinaryOps) 0)
+			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:					return Result_t(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:			return Result_t(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:			return Result_t(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
-			case ArithmeticOp::ShiftLeft:			return Result_t(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
-			case ArithmeticOp::Divide:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
-				else
-					return Result_t(cgi->mainBuilder.CreateUDiv(lhs, rhs), 0);
-
-
-			case ArithmeticOp::Modulo:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateSRem(lhs, rhs), 0);
-				else
-					return Result_t(cgi->mainBuilder.CreateURem(lhs, rhs), 0);
-
-
-			case ArithmeticOp::ShiftRight:
-				if(cgi->isSignedType(this->left))	return Result_t(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
-				else 								return Result_t(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
-
 			// comparisons
 			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
 			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
@@ -232,11 +253,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 					return Result_t(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
 				else
 					return Result_t(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
-
-
-
-			case ArithmeticOp::BitwiseAnd:		return Result_t(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
-			case ArithmeticOp::BitwiseOr:		return Result_t(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:
@@ -300,7 +316,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				return Result_t(this->phi, 0);
 			}
 
-
 			default:
 				// should not be reached
 				error("what?!");
@@ -325,20 +340,20 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error("Unsupported operator."); return Result_t(0, 0);
+			default:						error(this, "Unsupported operator."); return Result_t(0, 0);
 		}
 	}
 	else if(lhs->getType()->isStructTy())
 	{
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
-			error("Invalid type");
+			error(this, "Invalid type");
 
 		return cgi->callOperatorOnStruct(p, valptr.second, op, rhsptr);
 	}
 	else
 	{
-		error("Unsupported operator on type");
+		error(this, "Unsupported operator on type");
 		return Result_t(0, 0);
 	}
 }

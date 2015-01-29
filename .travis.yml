@@ -12,3 +12,5 @@ install:
 
 script: ./capri --target travis
 
+notifications:
+    email: false
