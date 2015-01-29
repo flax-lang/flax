@@ -173,23 +173,35 @@ namespace Parser
 			while(isdigit(tmp = str.get()))
 				num += (char) tmp;
 
+			int base = 10;
+			if(num == "0" && tmp == 'x')
+			{
+				base = 16;
+				num = "";
+
+				while(isdigit(tmp = str.get()))
+					num += (char) tmp;
+			}
+
 			if(tmp != '.')
 			{
 				// we're an int, set shit and return
 				tok.type = TType::Integer;
-
 				try
 				{
 					// makes sure we get the right shit done
-					std::stoll(num);
+					std::stoll(num, nullptr, base);
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid number found at (%s:%lld)\n", pos.file.c_str(), pos.line);
+					Parser::parserError("Invalid number\n");
 					exit(1);
 				}
+
+				if(base == 16)
+					num = "0x" + num;
 			}
-			else
+			else if(base == 10)
 			{
 				num += '.';
 
@@ -198,7 +210,6 @@ namespace Parser
 
 				tok.type = TType::Decimal;
 
-
 				try
 				{
 					// makes sure we get the right shit done
@@ -206,12 +217,25 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid decimal found at (%s:%lld)\n", pos.file.c_str(), pos.line);
+					Parser::parserError("Invalid decimal number\n");
 					exit(1);
 				}
 			}
+			else
+			{
+				Parser::parserError("Decimals in hexadecimal representation are not supported");
+			}
 
-			read = num.length();
+
+			// make sure the next char is not a letter, prevents things like
+			// 98091824097foobar from working when 'foobar' is a var name
+			// hack below to let us see the next letter without stringstream eating the space
+			stream = stream.substr(num.length());
+
+			if(stream.length() > 0 && isalpha(stream[0]))
+				Parser::parserError("Malformed integer literal");
+
+			read = 0;		// done above
 			tok.text = num;
 		}
 		else if(isalpha(stream[0]) || stream[0] == '_')
@@ -238,9 +262,9 @@ namespace Parser
 			else if(id == "import")		tok.type = TType::Import;
 			else if(id == "var")		tok.type = TType::Var;
 			else if(id == "val")		tok.type = TType::Val;
-			else if(id == "ptr")		tok.type = TType::Ptr;
-			else if(id == "deref")		tok.type = TType::Deref;
-			else if(id == "addrof")		tok.type = TType::Addr;
+			// else if(id == "ptr")		tok.type = TType::Ptr;
+			// else if(id == "deref")		tok.type = TType::Deref;
+			// else if(id == "addrof")		tok.type = TType::Addr;
 			else if(id == "for")		tok.type = TType::For;
 			else if(id == "while")		tok.type = TType::While;
 			else if(id == "if")			tok.type = TType::If;
@@ -296,6 +320,7 @@ namespace Parser
 						case 'n':	ss << "\n";	break;
 						case 'b':	ss << "\b";	break;
 						case 'r':	ss << "\r";	break;
+						case '\\':	ss << "\\"; break;
 					}
 
 					continue;
@@ -304,7 +329,7 @@ namespace Parser
 
 				ss << stream[i];
 				if(i == stream.size() - 1)
-					printf("Expected closing '\"' at (%s:%lld)\n", pos.file.c_str(), pos.line);
+					Parser::parserError("Expected closing '\"'");
 			}
 
 			tok.type = TType::StringLiteral;
@@ -350,10 +375,8 @@ namespace Parser
 		}
 		else
 		{
-			printf("Unknown token '%c' at (%s:%lld)\n", stream[0], pos.file.c_str(), pos.line);
-
 			delete ret;
-			exit(1);
+			Parser::parserError("Unknown token '%c'", stream[0]);
 		}
 
 		stream = stream.substr(read);
