@@ -73,6 +73,7 @@ namespace Parser
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
+	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio, bool needParen);
@@ -393,8 +394,13 @@ namespace Parser
 				case TType::If:
 					return parseIf(tokens);
 
+				// since both have the same kind of AST node, parseWhile can handle both
+				case TType::Do:
 				case TType::While:
 					return parseWhile(tokens);
+
+				case TType::Loop:
+					return parseInfiniteLoop(tokens);
 
 				case TType::For:
 					return parseFor(tokens);
@@ -576,6 +582,7 @@ namespace Parser
 	{
 		Token* front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
+
 		return CreateAST(Func, front, decl, parseClosure(tokens));
 	}
 
@@ -942,12 +949,27 @@ namespace Parser
 	WhileLoop* parseWhile(std::deque<Token*>& tokens)
 	{
 		Token* tok_while = eat(tokens);
-		assert(tok_while->type == TType::While);
 
-		Expr* cond = parseExpr(tokens);
-		Closure* body = parseClosure(tokens);
+		if(tok_while->type == TType::While)
+		{
+			Expr* cond = parseExpr(tokens);
+			Closure* body = parseClosure(tokens);
 
-		return CreateAST(WhileLoop, tok_while, cond, body, false);
+			return CreateAST(WhileLoop, tok_while, cond, body, false);
+		}
+		else
+		{
+			assert(tok_while->type == TType::Do);
+
+			// parse the closure first
+			Closure* body = parseClosure(tokens);
+			return 0;
+		}
+	}
+
+	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens)
+	{
+		return 0;
 	}
 
 	ForLoop* parseFor(std::deque<Token*>& tokens)

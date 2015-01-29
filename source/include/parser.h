@@ -33,8 +33,6 @@ namespace Parser
 		Ptr,
 		Deref,
 		Addr,
-		For,
-		While,
 		If,
 		Else,
 		Return,
@@ -49,6 +47,11 @@ namespace Parser
 		Struct,
 		True,
 		False,
+
+		For,
+		While,
+		Do,
+		Loop,
 
 		Break,
 		Continue,
