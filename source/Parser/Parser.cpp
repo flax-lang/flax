@@ -7,6 +7,7 @@
 #include <cfloat>
 #include <fstream>
 #include <cassert>
+#include <inttypes.h>
 #include "../include/ast.h"
 #include "../include/parser.h"
 #include "../include/compiler.h"
