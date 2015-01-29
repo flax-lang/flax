@@ -670,6 +670,7 @@ namespace Codegen
 		FuncDecl* fd		= nullptr;
 		FuncCall* fc		= nullptr;
 		MemberAccess* ma	= nullptr;
+		BoolVal* bv			= nullptr;
 
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
@@ -694,6 +695,10 @@ namespace Codegen
 		{
 			// it's a decl. get the type, motherfucker.
 			return num->varType;
+		}
+		else if((bv = dynamic_cast<BoolVal*>(e)))
+		{
+			return VarType::Bool;
 		}
 		else if(dynamic_cast<UnaryOp*>(e))
 		{
