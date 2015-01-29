@@ -39,6 +39,8 @@ static std::string parseQuotedString(char** argv, int& i)
 
 namespace Compiler
 {
+	static uint64_t Flags;
+
 	static std::string sysroot;
 	std::string getSysroot()
 	{
@@ -49,6 +51,11 @@ namespace Compiler
 	int getOptimisationLevel()
 	{
 		return optLevel;
+	}
+
+	bool getFlag(Flag f)
+	{
+		return (Flags & (uint64_t) f);
 	}
 }
 
@@ -95,6 +102,14 @@ int main(int argc, char* argv[])
 			else if(!strcmp(argv[i], "-lib"))
 			{
 				isLib = true;
+			}
+			else if(!strcmp(argv[i], "-Werror"))
+			{
+				Compiler::Flags |= (uint64_t) Compiler::Flag::WarningsAsErrors;
+			}
+			else if(!strcmp(argv[i], "-w"))
+			{
+				Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{
