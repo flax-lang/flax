@@ -50,7 +50,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	llvm::Value* lhs;
 	llvm::Value* rhs;
 
-	if(this->op == ArithmeticOp::Assign)
+	if(this->op == ArithmeticOp::Assign
+		|| this->op == ArithmeticOp::PlusEquals			|| this->op == ArithmeticOp::MinusEquals
+		|| this->op == ArithmeticOp::MultiplyEquals		|| this->op == ArithmeticOp::DivideEquals
+		|| this->op == ArithmeticOp::ModEquals			|| this->op == ArithmeticOp::ShiftLeftEquals
+		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
+		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		this->right = cgi->autoCastType(this->left, this->right);
 
@@ -83,7 +88,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 					if(!tp)
 						error(this, "Invalid type");
 
-					return cgi->callOperatorOnStruct(tp, valptr.second, ArithmeticOp::Assign, rhs);
+					// struct will handle all the weird operators by checking overloaded-ness
+					// we only need to handle for arithmetic types
+					return cgi->callOperatorOnStruct(tp, valptr.second, this->op, rhs);
 				}
 				else
 				{
@@ -91,8 +98,22 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				}
 			}
 
-			cgi->mainBuilder.CreateStore(rhs, var);
-			return Result_t(rhs, var);
+
+
+			if(this->op == ArithmeticOp::Assign)
+			{
+				cgi->mainBuilder.CreateStore(rhs, var);
+				return Result_t(rhs, var);
+			}
+			else
+			{
+				// get the llvm op
+				llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+
+				llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
+				cgi->mainBuilder.CreateStore(newrhs, var);
+				return Result_t(newrhs, var);
+			}
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
 			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
@@ -169,6 +190,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	}
 
 
+	// else case.
+	// no point being explicit about this
 
 	this->right = cgi->autoCastType(this->left, this->right);
 
@@ -181,30 +204,16 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 	if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
+		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
+			cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+
+		if(lop != (llvm::Instruction::BinaryOps) 0)
+		{
+			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+		}
+
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:					return Result_t(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:			return Result_t(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:			return Result_t(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
-			case ArithmeticOp::ShiftLeft:			return Result_t(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
-			case ArithmeticOp::Divide:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
-				else
-					return Result_t(cgi->mainBuilder.CreateUDiv(lhs, rhs), 0);
-
-
-			case ArithmeticOp::Modulo:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateSRem(lhs, rhs), 0);
-				else
-					return Result_t(cgi->mainBuilder.CreateURem(lhs, rhs), 0);
-
-
-			case ArithmeticOp::ShiftRight:
-				if(cgi->isSignedType(this->left))	return Result_t(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
-				else 								return Result_t(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
-
 			// comparisons
 			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
 			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
@@ -238,11 +247,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 					return Result_t(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
 				else
 					return Result_t(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
-
-
-
-			case ArithmeticOp::BitwiseAnd:		return Result_t(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
-			case ArithmeticOp::BitwiseOr:		return Result_t(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:
@@ -305,7 +309,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 				return Result_t(this->phi, 0);
 			}
-
 
 			default:
 				// should not be reached
