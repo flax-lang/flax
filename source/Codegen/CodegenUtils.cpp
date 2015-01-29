@@ -14,6 +14,7 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
+#include "../include/compiler.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
@@ -37,7 +38,7 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	// assert(0);
 
 	if(ex)
-		exit(1);
+		abort();
 }
 
 
@@ -104,23 +105,27 @@ namespace Codegen
 
 		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(cgi->mainModule);
 
-		// Provide basic AliasAnalysis support for GVN.
-		OurFPM.add(llvm::createBasicAliasAnalysisPass());
 
-		// Do simple "peephole" optimisations and bit-twiddling optzns.
-		OurFPM.add(llvm::createInstructionCombiningPass());
+		if(Compiler::getOptimisationLevel() > 0)
+		{
+			// Provide basic AliasAnalysis support for GVN.
+			OurFPM.add(llvm::createBasicAliasAnalysisPass());
 
-		// Reassociate expressions.
-		OurFPM.add(llvm::createReassociatePass());
+			// Do simple "peephole" optimisations and bit-twiddling optzns.
+			OurFPM.add(llvm::createInstructionCombiningPass());
 
-		// Eliminate Common SubExpressions.
-		OurFPM.add(llvm::createGVNPass());
+			// Reassociate expressions.
+			OurFPM.add(llvm::createReassociatePass());
 
-		// Simplify the control flow graph (deleting unreachable blocks, etc).
-		OurFPM.add(llvm::createCFGSimplificationPass());
+			// Eliminate Common SubExpressions.
+			OurFPM.add(llvm::createGVNPass());
 
-		// mem2reg
-		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+			// Simplify the control flow graph (deleting unreachable blocks, etc).
+			OurFPM.add(llvm::createCFGSimplificationPass());
+
+			// mem2reg
+			OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		}
 
 		OurFPM.doInitialization();
 
@@ -129,16 +134,14 @@ namespace Codegen
 		cgi->Fpm = &OurFPM;
 		cgi->pushScope();
 
-
-
-
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
 			auto func = pair.second;
-			func->deleteBody();
 
 			// add to the func table
-			cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType());
+			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
+			f->deleteBody();
+			cgi->addFunctionToScope(func->getName(), std::pair<llvm::Function*, FuncDecl*>(f, pair.first));
 		}
 
 		for(auto pair : cgi->rootNode->externalTypes)
@@ -196,36 +199,41 @@ namespace Codegen
 		return rootNode;
 	}
 
+
+
+
+
+
+
 	void CodegenInstance::popScope()
 	{
 		SymTab_t* tab = symTabStack.back();
 		TypeMap_t* types = visibleTypes.back();
-		FuncMap_t* funcs = funcTabStack.back();
 
 		delete types;
 		delete tab;
-		delete funcs;
 
 		symTabStack.pop_back();
 		visibleTypes.pop_back();
-		funcTabStack.pop_back();
+
+		this->popFuncScope();
 	}
 
-	void CodegenInstance::pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm)
+	void CodegenInstance::pushScope(SymTab_t* tab, TypeMap_t* tp)
 	{
-		symTabStack.push_back(tab);
-		visibleTypes.push_back(tp);
-		funcTabStack.push_back(fm);
+		this->symTabStack.push_back(tab);
+		this->visibleTypes.push_back(tp);
+		this->pushFuncScope("#__anon__");
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		pushScope(new SymTab_t(), new TypeMap_t(), new FuncMap_t());
+		this->pushScope(new SymTab_t(), new TypeMap_t());
 	}
 
 	SymTab_t& CodegenInstance::getSymTab()
 	{
-		return *symTabStack.back();
+		return *this->symTabStack.back();
 	}
 
 	SymbolPair_t* CodegenInstance::getSymPair(const std::string& name)
@@ -267,7 +275,6 @@ namespace Codegen
 
 
 	// stack based types.
-
 	TypeMap_t& CodegenInstance::getVisibleTypes()
 	{
 		return *visibleTypes.back();
@@ -289,21 +296,58 @@ namespace Codegen
 		return getType(name) != nullptr;
 	}
 
+	void CodegenInstance::popClosure()
+	{
+		this->closureStack.pop_back();
+	}
+
+	ClosureScope* CodegenInstance::getCurrentClosureScope()
+	{
+		return this->closureStack.size() > 0 ? &this->closureStack.back() : 0;
+	}
+
+	void CodegenInstance::pushClosure(Ast::BreakableClosure* closure, llvm::BasicBlock* body, llvm::BasicBlock* after)
+	{
+		ClosureScope cs = std::make_pair(closure, std::make_pair(body, after));
+		this->closureStack.push_back(cs);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	// funcs
-	FuncMap_t& CodegenInstance::getVisibleFuncDecls()
+	void CodegenInstance::pushFuncScope(std::string namespc)
 	{
-		return *funcTabStack.back();
+		NamespacePair_t* nsp = new NamespacePair_t(namespc, FuncMap_t());
+		this->funcTabStack.push_back(nsp);
 	}
 
-	FuncDecl* CodegenInstance::getFuncDecl(std::string name)
+	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
+		this->funcTabStack.back()->second[name] = func;
+	}
+
+	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
+	{
+		// todo: handle actual namespacing, ie. calling functions like
+		// SomeNamespace::someFunction()
 		for(int i = funcTabStack.size(); i-- > 0;)
 		{
-			FuncMap_t* tab = funcTabStack[i];
-			if(tab->find(name) != tab->end())
-				return (*tab)[name].second;
+			FuncMap_t& tab = funcTabStack[i]->second;
+			if(tab.find(name) != tab.end())
+				return &tab[name];
 		}
 
 		return nullptr;
@@ -311,8 +355,35 @@ namespace Codegen
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
-		return getFuncDecl(name) != nullptr;
+		return getDeclaredFunc(name) != nullptr;
 	}
+
+	void CodegenInstance::popFuncScope()
+	{
+		NamespacePair_t* nsp = this->funcTabStack.back();
+		this->funcTabStack.pop_back();
+
+		delete nsp;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
 	{
@@ -504,11 +575,11 @@ namespace Codegen
 			}
 			else if((fc = dynamic_cast<FuncCall*>(expr)))
 			{
-				FuncDecl* decl = getFuncDecl(fc->name);
-				if(!decl)
+				FuncPair_t* fp = getDeclaredFunc(fc->name);
+				if(!fp)
 					error("(%s:%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, fc->name.c_str());
 
-				return getLlvmType(decl);
+				return getLlvmType(fp->second);
 			}
 			else if((f = dynamic_cast<Func*>(expr)))
 			{
@@ -594,7 +665,11 @@ namespace Codegen
 		}
 		else if((fc = dynamic_cast<FuncCall*>(e)))
 		{
-			return Parser::determineVarType(getFuncDecl(fc->name)->type);
+			FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+			if(!fp)
+				error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
+
+			return Parser::determineVarType(fp->second->type);
 		}
 		else if((bo = dynamic_cast<BinOp*>(e)))
 		{
@@ -813,7 +888,7 @@ namespace Codegen
 
 
 
-	ValPtr_p CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
+	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
 	{
 		assert(pair);
 		assert(pair->first);
@@ -840,17 +915,17 @@ namespace Codegen
 		{
 			// check args.
 			mainBuilder.CreateCall2(opov, self, val);
-			return ValPtr_p(mainBuilder.CreateLoad(self), self);
+			return Result_t(mainBuilder.CreateLoad(self), self);
 		}
 		else if(op == ArithmeticOp::CmpEq && str->opmap[op])
 		{
 			// check that both types work
-			return ValPtr_p(mainBuilder.CreateCall2(opov, self, val), 0);
+			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
 
 		error("Invalid operator on type");
-		return ValPtr_p(0, 0);
+		return Result_t(0, 0);
 	}
 
 
