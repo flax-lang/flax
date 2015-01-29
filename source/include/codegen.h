@@ -33,6 +33,8 @@ namespace Codegen
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
 	typedef std::map<std::string, FuncPair_t> FuncMap_t;
+	typedef std::pair<std::string, FuncMap_t> NamespacePair_t;
+	typedef std::pair<Ast::BreakableClosure*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> ClosureScope;
 
 	class CodegenInstance
 	{
@@ -42,14 +44,34 @@ namespace Codegen
 			llvm::FunctionPassManager* Fpm;
 			std::deque<SymTab_t*> symTabStack;
 			llvm::ExecutionEngine* execEngine;
-			std::deque<FuncMap_t*> funcTabStack;
 			std::deque<TypeMap_t*> visibleTypes;
+			std::deque<ClosureScope> closureStack;
+			std::deque<NamespacePair_t*> funcTabStack;
 			llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
+			// "closure" scopes, ie. breakable bodies (loops)
+			void pushClosure(Ast::BreakableClosure* closure, llvm::BasicBlock* body, llvm::BasicBlock* after);
+			ClosureScope* getCurrentClosureScope();
+			void popClosure();
 
-			void popScope();
+			// normal scopes, ie. variable scopes within braces
 			void pushScope();
+			void pushScope(SymTab_t* tab, TypeMap_t* tp);
 			SymTab_t& getSymTab();
+			bool isDuplicateSymbol(const std::string& name);
+			llvm::Value* getSymInst(const std::string& name);
+			SymbolPair_t* getSymPair(const std::string& name);
+			Ast::VarDecl* getSymDecl(const std::string& name);
+			void popScope();
+
+			// function scopes: namespaces, nested functions.
+			void pushFuncScope(std::string namespc);
+			void addFunctionToScope(std::string name, FuncPair_t func);
+			bool isDuplicateFuncDecl(std::string name);
+			FuncPair_t* getDeclaredFunc(std::string name);
+			void popFuncScope();
+
+
 			Ast::Root* getRootAST();
 			bool isPtr(Ast::Expr* e);
 			TypeMap_t& getVisibleTypes();
@@ -58,33 +80,24 @@ namespace Codegen
 			bool isSignedType(Ast::Expr* e);
 			bool isBuiltinType(Ast::Expr* e);
 			bool isIntegerType(Ast::Expr* e);
-			FuncMap_t& getVisibleFuncDecls();
 			TypePair_t* getType(std::string name);
 			bool isDuplicateType(std::string name);
 			llvm::Type* getLlvmType(Ast::Expr* expr);
-			bool isDuplicateFuncDecl(std::string name);
 			llvm::Value* getDefaultValue(Ast::Expr* e);
 			Ast::VarType determineVarType(Ast::Expr* e);
-			Ast::FuncDecl* getFuncDecl(std::string name);
 			std::string getReadableType(Ast::Expr* expr);
-			void pushScope(SymTab_t* tab, TypeMap_t* tp);
 			std::string getReadableType(llvm::Type* type);
-			bool isDuplicateSymbol(const std::string& name);
 			llvm::Type* unwrapPointerType(std::string type);
-			llvm::Value* getSymInst(const std::string& name);
 			llvm::Type* getLlvmTypeOfBuiltin(Ast::VarType t);
-			SymbolPair_t* getSymPair(const std::string& name);
-			Ast::VarDecl* getSymDecl(const std::string& name);
 			Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 			std::string mangleName(Ast::Struct* s, std::string orig);
 			std::string unmangleName(Ast::Struct* s, std::string orig);
 			Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
-			void pushScope(SymTab_t* tab, TypeMap_t* tp, FuncMap_t* fm);
 			std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 			std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
-			Ast::ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
+			Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
 	};
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
