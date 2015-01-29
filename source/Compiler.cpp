@@ -20,7 +20,6 @@
 
 using namespace Ast;
 
-extern std::string getSysroot();
 namespace Compiler
 {
 	static std::string resolveImport(Import* imp, std::string curpath)
@@ -39,7 +38,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/lib/flaxlibs/" + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + "/usr/local/lib/flaxlibs/" + imp->module + ".flx";
 
 			struct stat buffer;
 			if(stat (builtinlib.c_str(), &buffer) == 0)
@@ -135,6 +134,10 @@ namespace Compiler
 		for(auto s : filelist)
 			final += "'" + s + "' ";
 
+		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
+		// that warning is not affected by any flags I can pass
+		// besides, LLVM itself should have caught everything.
+		final += " &>/dev/null";
 		system(final.c_str());
 		delete[] inv;
 	}
@@ -237,7 +240,7 @@ namespace Compiler
 	// 	for(std::pair<FuncDecl*, llvm::Function*> pair : root->publicFuncs)
 	// 	{
 	// 		// FuncDecl* pub = pair.first;
-	// 		// ValPtr_p vp = pub->codegen(cgi);
+	// 		// ValPtr_t vp = pub->codegen(cgi);
 
 	// 		llvm::Function* f = pair.second;
 	// 		assert(f->getType()->getPointerElementType()->isFunctionTy());

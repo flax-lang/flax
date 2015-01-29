@@ -9,6 +9,7 @@
 #include <cassert>
 #include "../include/ast.h"
 #include "../include/parser.h"
+#include "../include/compiler.h"
 
 using namespace Ast;
 
@@ -46,6 +47,25 @@ namespace Parser
 		exit(1);
 	}
 
+	void warn(const char* msg, ...)
+	{
+		if(Compiler::getFlag(Compiler::Flag::NoWarnings))
+			return;
+
+		va_list ap;
+		va_start(ap, msg);
+
+		char* alloc = nullptr;
+		vasprintf(&alloc, msg, ap);
+
+		fprintf(stderr, "Warning (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
+
+		va_end(ap);
+
+		if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+			error("Treating warning as error because -Werror was passed");
+	}
+
 
 	// woah shit it's forward declarations
 	// note: all these are expected to pop at least one token from the front of the list.
@@ -55,7 +75,9 @@ namespace Parser
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseUnary(std::deque<Token*>& tokens);
+	ForLoop* parseFor(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
+	Break* parseBreak(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
 	Struct* parseStruct(std::deque<Token*>& tokens);
 	Import* parseImport(std::deque<Token*>& tokens);
@@ -66,10 +88,12 @@ namespace Parser
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	Closure* parseClosure(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
+	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
+	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio, bool needParen);
@@ -381,11 +405,25 @@ namespace Parser
 				case TType::Return:
 					return parseReturn(tokens);
 
+				case TType::Break:
+					return parseBreak(tokens);
+
+				case TType::Continue:
+					return parseContinue(tokens);
+
 				case TType::If:
 					return parseIf(tokens);
 
+				// since both have the same kind of AST node, parseWhile can handle both
+				case TType::Do:
 				case TType::While:
 					return parseWhile(tokens);
+
+				case TType::Loop:
+					return parseInfiniteLoop(tokens);
+
+				case TType::For:
+					return parseFor(tokens);
 
 				// shit you just skip
 				case TType::NewLine:
@@ -420,6 +458,11 @@ namespace Parser
 					eat(tokens);
 					curAttrib |= Attr_VisPublic;
 					return parsePrimary(tokens);
+
+				case TType::LBrace:
+					warn("Anonymous closures are ignored; to run, preface with 'do'");
+					parseClosure(tokens);		// parse it, but throw it away
+					return CreateAST(DummyExpr, tokens.front());
 
 				default:
 					error("Unexpected token '%s'\n", tok->text.c_str());
@@ -540,11 +583,12 @@ namespace Parser
 
 	Closure* parseClosure(std::deque<Token*>& tokens)
 	{
-		Closure* c = CreateAST(Closure, tokens.front());
+		Token* tok_cls = eat(tokens);
+		Closure* c = CreateAST(Closure, tok_cls);
 
 		// make sure the first token is a left brace.
-		if(eat(tokens)->type != TType::LBrace)
-			error("Expected '{' to begin a block");
+		if(tok_cls->type != TType::LBrace)
+			error("Expected '{' to begin a block, found '%s'!", tok_cls->text.c_str());
 
 		// get the stuff inside.
 		while(tokens.size() > 0 && tokens.front()->type != TType::RBrace)
@@ -563,6 +607,7 @@ namespace Parser
 	{
 		Token* front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
+
 		return CreateAST(Func, front, decl, parseClosure(tokens));
 	}
 
@@ -684,6 +729,14 @@ namespace Parser
 			return nullptr;
 
 		Expr* ret = parseRhs(tokens, lhs, 0, hadParen);
+		if(hadParen && !dynamic_cast<BinOp*>(ret))
+		{
+			if(tokens.front()->type != TType::RParen)
+				error("Expected ')'");
+
+			eat(tokens);
+		}
+
 		return ret;
 	}
 
@@ -703,12 +756,12 @@ namespace Parser
 			if(needParen && tokens.front()->type != TType::RParen)
 				error("Expected ')'");
 
-			else if(needParen)
+
+			if(needParen)
 			{
 				eat(tokens);
 				needParen = false;
 			}
-
 
 
 			if(!rhs)
@@ -921,12 +974,51 @@ namespace Parser
 	WhileLoop* parseWhile(std::deque<Token*>& tokens)
 	{
 		Token* tok_while = eat(tokens);
-		assert(tok_while->type == TType::While);
 
-		Expr* cond = parseExpr(tokens);
-		Closure* body = parseClosure(tokens);
+		if(tok_while->type == TType::While)
+		{
+			Expr* cond = parseExpr(tokens);
+			Closure* body = parseClosure(tokens);
 
-		return CreateAST(WhileLoop, tok_while, cond, body, false);
+			return CreateAST(WhileLoop, tok_while, cond, body, false);
+		}
+		else
+		{
+			assert(tok_while->type == TType::Do);
+
+			// parse the closure first
+			Closure* body = parseClosure(tokens);
+
+			// syntax treat: since a raw closure is ignored (for good reason, how can we reference it?)
+			// we can use 'do' to run an anonymous closure
+			// therefore, the 'while' clause at the end is optional; if it's not present, then the condition is false.
+
+			Expr* cond = 0;
+			if(tokens.front()->type == TType::While)
+			{
+				eat(tokens);
+				cond = parseExpr(tokens);
+			}
+			else
+			{
+				cond = CreateAST(BoolVal, tokens.front(), false);
+			}
+
+			return CreateAST(WhileLoop, tok_while, cond, body, true);
+		}
+	}
+
+	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens)
+	{
+		return 0;
+	}
+
+	ForLoop* parseFor(std::deque<Token*>& tokens)
+	{
+		Token* tok_for = eat(tokens);
+		assert(tok_for->type == TType::For);
+
+		return 0;
 	}
 
 	Struct* parseStruct(std::deque<Token*>& tokens)
@@ -1003,6 +1095,24 @@ namespace Parser
 		else									error("Unknown attribute '%s'", id->text.c_str());
 
 		curAttrib |= attr;
+	}
+
+	Break* parseBreak(std::deque<Token*>& tokens)
+	{
+		Token* tok_br = eat(tokens);
+		assert(tok_br->type == TType::Break);
+
+		Break* br = CreateAST(Break, tok_br);
+		return br;
+	}
+
+	Continue* parseContinue(std::deque<Token*>& tokens)
+	{
+		Token* tok_cn = eat(tokens);
+		assert(tok_cn->type == TType::Continue);
+
+		Continue* cn = CreateAST(Continue, tok_cn);
+		return cn;
 	}
 
 	Import* parseImport(std::deque<Token*>& tokens)
