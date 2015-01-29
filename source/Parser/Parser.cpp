@@ -213,6 +213,13 @@ namespace Parser
 				return 15;
 
 			case TType::Equal:
+			case TType::PlusEq:
+			case TType::MinusEq:
+			case TType::MultiplyEq:
+			case TType::DivideEq:
+			case TType::ModEq:
+			case TType::ShiftLeftEq:
+			case TType::ShiftRightEq:
 				return 10;
 
 			default:
@@ -789,27 +796,35 @@ namespace Parser
 			ArithmeticOp op;
 			switch(tok_op->type)
 			{
-				case TType::Plus:			op = ArithmeticOp::Add;			break;
-				case TType::Minus:			op = ArithmeticOp::Subtract;	break;
-				case TType::Asterisk:		op = ArithmeticOp::Multiply;	break;
-				case TType::Divide:			op = ArithmeticOp::Divide;		break;
-				case TType::Percent:		op = ArithmeticOp::Modulo;		break;
-				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;	break;
-				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;	break;
-				case TType::Equal:			op = ArithmeticOp::Assign;		break;
+				case TType::Plus:			op = ArithmeticOp::Add;					break;
+				case TType::Minus:			op = ArithmeticOp::Subtract;			break;
+				case TType::Asterisk:		op = ArithmeticOp::Multiply;			break;
+				case TType::Divide:			op = ArithmeticOp::Divide;				break;
+				case TType::Percent:		op = ArithmeticOp::Modulo;				break;
+				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;			break;
+				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;			break;
+				case TType::Equal:			op = ArithmeticOp::Assign;				break;
 
-				case TType::LAngle:			op = ArithmeticOp::CmpLT;		break;
-				case TType::RAngle:			op = ArithmeticOp::CmpGT;		break;
-				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;		break;
-				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;		break;
-				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;		break;
-				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;		break;
+				case TType::LAngle:			op = ArithmeticOp::CmpLT;				break;
+				case TType::RAngle:			op = ArithmeticOp::CmpGT;				break;
+				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;				break;
+				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;				break;
+				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;				break;
+				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;				break;
 
-				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;	break;
-				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;	break;
-				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;	break;
-				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;	break;
-				case TType::As:				op = ArithmeticOp::Cast;		break;
+				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
+				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
+				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
+				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
+				case TType::As:				op = ArithmeticOp::Cast;				break;
+
+				case TType::PlusEq:			op = ArithmeticOp::PlusEquals;			break;
+				case TType::MinusEq:		op = ArithmeticOp::MinusEquals;			break;
+				case TType::MultiplyEq:		op = ArithmeticOp::MultiplyEquals;		break;
+				case TType::DivideEq:		op = ArithmeticOp::DivideEquals;		break;
+				case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
+				case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
+				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
 				default:					parserError("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
