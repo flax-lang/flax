@@ -96,6 +96,7 @@ namespace Codegen
 			std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 			std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
+			llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 			Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
 	};

@@ -82,11 +82,23 @@ namespace Ast
 		BitwiseAnd,
 		BitwiseOr,
 		BitwiseXor,
+		BitwiseNot,
 
 		LogicalAnd,
 		LogicalOr,
 
 		Cast,
+
+		PlusEquals,
+		MinusEquals,
+		MultiplyEquals,
+		DivideEquals,
+		ModEquals,
+		ShiftLeftEquals,
+		ShiftRightEquals,
+		BitwiseAndEquals,
+		BitwiseOrEquals,
+		BitwiseXorEquals,
 	};
 
 

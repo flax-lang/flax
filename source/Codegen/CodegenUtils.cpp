@@ -434,6 +434,55 @@ namespace Codegen
 
 
 
+	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(Ast::ArithmeticOp op, bool isSigned)
+	{
+		using llvm::Instruction;
+		switch(op)
+		{
+			case ArithmeticOp::Add:
+			case ArithmeticOp::PlusEquals:
+				return Instruction::BinaryOps::Add;
+
+			case ArithmeticOp::Subtract:
+			case ArithmeticOp::MinusEquals:
+				return Instruction::BinaryOps::Sub;
+
+			case ArithmeticOp::Multiply:
+			case ArithmeticOp::MultiplyEquals:
+				return Instruction::BinaryOps::Mul;
+
+			case ArithmeticOp::Divide:
+			case ArithmeticOp::DivideEquals:
+				return isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv;
+
+			case ArithmeticOp::Modulo:
+			case ArithmeticOp::ModEquals:
+				return isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem;
+
+			case ArithmeticOp::ShiftLeft:
+			case ArithmeticOp::ShiftLeftEquals:
+				return Instruction::BinaryOps::Shl;
+
+			case ArithmeticOp::ShiftRight:
+			case ArithmeticOp::ShiftRightEquals:
+				return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
+
+			case ArithmeticOp::BitwiseAnd:
+			case ArithmeticOp::BitwiseAndEquals:
+				return Instruction::BinaryOps::And;
+
+			case ArithmeticOp::BitwiseOr:
+			case ArithmeticOp::BitwiseOrEquals:
+				return Instruction::BinaryOps::Or;
+
+			case ArithmeticOp::BitwiseXor:
+			case ArithmeticOp::BitwiseXorEquals:
+				return Instruction::BinaryOps::Xor;
+
+			default:
+				return (Instruction::BinaryOps) 0;
+		}
+	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
