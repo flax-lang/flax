@@ -101,23 +101,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 					error(this, "Cannot assign different types '%s' and '%s'", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
 				}
 			}
-
-
-
-			if(this->op == ArithmeticOp::Assign)
-			{
-				cgi->mainBuilder.CreateStore(rhs, varptr);
-				return Result_t(rhs, varptr);
-			}
-			else
-			{
-				// get the llvm op
-				llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
-
-				llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
-				cgi->mainBuilder.CreateStore(newrhs, varptr);
-				return Result_t(newrhs, varptr);
-			}
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
 			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
@@ -209,47 +192,23 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 
 	// else case.
-	// no point being explicit about this
+	// no point being explicit about this and wasting indentation
 
 	this->right = cgi->autoCastType(this->left, this->right);
 
 	lhs = valptr.first;
 	llvm::Value* lhsptr = valptr.second;
-	llvm::Value* rhsptr = nullptr;
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	rhsptr = r.second;
+	llvm::Value* rhsptr = r.second;
 
 
 	// if adding integer to pointer
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract))
 	{
-		// unsigned ops on pointers, always
-		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, false);
-
-		if(lop != (llvm::Instruction::BinaryOps) 0)
-		{
-			// first, multiply the RHS by the number of bits the pointer type is, divided by 8
-			// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
-
-			uint64_t typesize = cgi->mainModule->getDataLayout()->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-			llvm::APInt apint = llvm::APInt(cgi->mainModule->getDataLayout()->getPointerSizeInBits(), typesize);
-
-			llvm::Value* newrhs = cgi->mainBuilder.CreateMul(rhs, llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(cgi->getContext(), cgi->mainModule->getDataLayout()->getPointerSizeInBits()), apint));
-
-			// get the int value
-			llvm::Value* ptrval = cgi->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
-
-			// create the add/sub
-			printf("types: %s, %s\n", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
-			llvm::Value* res = cgi->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
-
-			llvm::Value* properres = cgi->mainBuilder.CreateIntToPtr(res, lhs->getType());
-			cgi->mainBuilder.CreateStore(properres, lhsptr);
-			return Result_t(properres, lhsptr);
-		}
+		return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
 	}
 
 

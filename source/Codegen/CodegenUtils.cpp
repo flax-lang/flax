@@ -972,7 +972,36 @@ namespace Codegen
 		return Result_t(0, 0);
 	}
 
+	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
+	{
+		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
 
+		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false);
+		assert(lop);
+
+
+		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
+		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
+
+		uint64_t typesize = this->mainModule->getDataLayout()->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
+		llvm::APInt apint = llvm::APInt(this->mainModule->getDataLayout()->getPointerSizeInBits(), typesize);
+
+		// this is the properly adjusted thing
+		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), this->mainModule->getDataLayout()->getPointerSizeInBits()), apint));
+
+
+		// convert the lhs pointer to an int value, so we can add/sub on it
+		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
+
+		// create the add/sub
+		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
+
+		// turn the int back into a pointer, so we can store it back into the var.
+		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
+		this->mainBuilder.CreateStore(properres, lhsptr);
+		return Result_t(properres, lhsptr);
+	}
 }
 
 
