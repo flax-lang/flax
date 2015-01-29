@@ -325,15 +325,6 @@ namespace Ast
 
 	};
 
-	struct InfiniteLoop : BreakableClosure
-	{
-		~InfiniteLoop() { }
-		InfiniteLoop(Parser::PosInfo pos, Closure* _body) : BreakableClosure(pos), body(_body) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
-
-		Closure* body;
-	};
-
 	struct Break : Expr
 	{
 		~Break() { }
