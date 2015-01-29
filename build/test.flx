@@ -7,13 +7,8 @@ import Utilities
 
 func main(argc: Int32, argv: Int8**) -> Int64
 {
-	func other() -> Void
-	{
-		printf("OTHER\n")
-	}
-
 	var i: Int32 = 0
-	var j: Int32 = 0
+	var j: Int32 = 0x40
 
 
 	// var x: Int64* = malloc(8 * 4) as Int64*
@@ -23,8 +18,7 @@ func main(argc: Int32, argv: Int8**) -> Int64
 	// x[3] = 4900
 
 	var y: String = "Hello, World!"
-	printf("%s\n", y.data)
+	printf("%s, %d\n", y.data, j)
 
-	other()
 	return 0
 }

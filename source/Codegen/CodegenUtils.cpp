@@ -29,16 +29,10 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	char* alloc = nullptr;
 	vasprintf(&alloc, msg, ap);
 
-	fprintf(stderr, "Error (%s:%lld): %s\n\n", relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, alloc);
-
+	fprintf(stderr, "%s(%s:%lld)%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 
 	va_end(ap);
-
-	// print_stacktrace();
-	// assert(0);
-
-	if(ex)
-		abort();
+	if(ex) abort();
 }
 
 
