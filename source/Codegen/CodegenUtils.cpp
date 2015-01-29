@@ -434,6 +434,55 @@ namespace Codegen
 
 
 
+	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(Ast::ArithmeticOp op, bool isSigned)
+	{
+		using llvm::Instruction;
+		switch(op)
+		{
+			case ArithmeticOp::Add:
+			case ArithmeticOp::PlusEquals:
+				return Instruction::BinaryOps::Add;
+
+			case ArithmeticOp::Subtract:
+			case ArithmeticOp::MinusEquals:
+				return Instruction::BinaryOps::Sub;
+
+			case ArithmeticOp::Multiply:
+			case ArithmeticOp::MultiplyEquals:
+				return Instruction::BinaryOps::Mul;
+
+			case ArithmeticOp::Divide:
+			case ArithmeticOp::DivideEquals:
+				return isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv;
+
+			case ArithmeticOp::Modulo:
+			case ArithmeticOp::ModEquals:
+				return isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem;
+
+			case ArithmeticOp::ShiftLeft:
+			case ArithmeticOp::ShiftLeftEquals:
+				return Instruction::BinaryOps::Shl;
+
+			case ArithmeticOp::ShiftRight:
+			case ArithmeticOp::ShiftRightEquals:
+				return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
+
+			case ArithmeticOp::BitwiseAnd:
+			case ArithmeticOp::BitwiseAndEquals:
+				return Instruction::BinaryOps::And;
+
+			case ArithmeticOp::BitwiseOr:
+			case ArithmeticOp::BitwiseOrEquals:
+				return Instruction::BinaryOps::Or;
+
+			case ArithmeticOp::BitwiseXor:
+			case ArithmeticOp::BitwiseXorEquals:
+				return Instruction::BinaryOps::Xor;
+
+			default:
+				return (Instruction::BinaryOps) 0;
+		}
+	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
@@ -621,6 +670,7 @@ namespace Codegen
 		FuncDecl* fd		= nullptr;
 		FuncCall* fc		= nullptr;
 		MemberAccess* ma	= nullptr;
+		BoolVal* bv			= nullptr;
 
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
@@ -645,6 +695,10 @@ namespace Codegen
 		{
 			// it's a decl. get the type, motherfucker.
 			return num->varType;
+		}
+		else if((bv = dynamic_cast<BoolVal*>(e)))
+		{
+			return VarType::Bool;
 		}
 		else if(dynamic_cast<UnaryOp*>(e))
 		{
@@ -923,7 +977,36 @@ namespace Codegen
 		return Result_t(0, 0);
 	}
 
+	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
+	{
+		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
 
+		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false);
+		assert(lop);
+
+
+		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
+		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
+
+		uint64_t typesize = this->mainModule->getDataLayout()->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
+		llvm::APInt apint = llvm::APInt(this->mainModule->getDataLayout()->getPointerSizeInBits(), typesize);
+
+		// this is the properly adjusted thing
+		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), this->mainModule->getDataLayout()->getPointerSizeInBits()), apint));
+
+
+		// convert the lhs pointer to an int value, so we can add/sub on it
+		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
+
+		// create the add/sub
+		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
+
+		// turn the int back into a pointer, so we can store it back into the var.
+		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
+		this->mainBuilder.CreateStore(properres, lhsptr);
+		return Result_t(properres, lhsptr);
+	}
 }
 
 
