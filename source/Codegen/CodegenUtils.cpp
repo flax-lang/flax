@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <typeinfo>
 #include <iostream>
-#include <inttypes.h>
+#include <cinttypes>
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
