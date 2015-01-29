@@ -134,6 +134,10 @@ namespace Compiler
 		for(auto s : filelist)
 			final += "'" + s + "' ";
 
+		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
+		// that warning is not affected by any flags I can pass
+		// besides, LLVM itself should have caught everything.
+		final += " &>/dev/null";
 		system(final.c_str());
 		delete[] inv;
 	}
