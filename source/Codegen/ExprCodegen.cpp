@@ -35,7 +35,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi)
 		}
 
 		default:
-			error("(%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+			error("this, (%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 			return Result_t(0, 0);
 	}
 }
@@ -63,7 +63,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
 			if(!rhs)
-				error("(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				error(this, "(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
 			llvm::Value* var = cgi->getSymTab()[v->name].first;
 			if(!var)
@@ -71,7 +71,13 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 			if(lhs->getType() != rhs->getType())
 			{
-				if(lhs->getType()->isStructTy())
+				// ensure we can always store 0 to pointers without a cast
+				Number* n = 0;
+				if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->right)) && n->ival == 0)
+				{
+					rhs = llvm::Constant::getNullValue(var->getType()->getPointerElementType());
+				}
+				else if(lhs->getType()->isStructTy())
 				{
 					TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
 					if(!tp)
@@ -116,7 +122,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		}
 		else
 		{
-			error("Left-hand side of assignment must be assignable");
+			error(this, "Left-hand side of assignment must be assignable");
 		}
 	}
 	else if(this->op == ArithmeticOp::Cast)
@@ -132,7 +138,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		{
 			TypePair_t* tp = cgi->getType(ct->name);
 			if(!tp)
-				error(this, "(%s:%d): Unknown type '%s'", __FILE__, __LINE__, ct->name.c_str());
+				error(this, "Unknown type '%s'", ct->name.c_str());
 
 			rtype = tp->first;
 		}
@@ -325,20 +331,20 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error("Unsupported operator."); return Result_t(0, 0);
+			default:						error(this, "Unsupported operator."); return Result_t(0, 0);
 		}
 	}
 	else if(lhs->getType()->isStructTy())
 	{
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
-			error("Invalid type");
+			error(this, "Invalid type");
 
 		return cgi->callOperatorOnStruct(p, valptr.second, op, rhsptr);
 	}
 	else
 	{
-		error("Unsupported operator on type");
+		error(this, "Unsupported operator on type");
 		return Result_t(0, 0);
 	}
 }

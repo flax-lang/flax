@@ -39,7 +39,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;
 	}
-	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this))
+	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this))
 	{
 		val = cgi->getDefaultValue(this);
 	}
@@ -82,8 +82,16 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
-		error("Invalid assignment, type %s cannot be assigned to type %s", cgi->getReadableType(val->getType()).c_str(),
-			cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
+		Number* n = 0;
+		if(val->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
+		{
+			val = llvm::Constant::getNullValue(ai->getType()->getPointerElementType());
+		}
+		else
+		{
+			error(this, "Invalid assignment, type %s cannot be assigned to type %s", cgi->getReadableType(val->getType()).c_str(),
+				cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
+		}
 	}
 
 	cgi->mainBuilder.CreateStore(val, ai);
