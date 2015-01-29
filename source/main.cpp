@@ -37,12 +37,20 @@ static std::string parseQuotedString(char** argv, int& i)
 
 
 
-std::string sysroot;
-std::string getSysroot()
+namespace Compiler
 {
-	return sysroot;
-}
+	static std::string sysroot;
+	std::string getSysroot()
+	{
+		return sysroot;
+	}
 
+	static int optLevel;
+	int getOptimisationLevel()
+	{
+		return optLevel;
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -61,12 +69,12 @@ int main(int argc, char* argv[])
 				if(i != argc - 1)
 				{
 					i++;
-					sysroot = parseQuotedString(argv, i);
+					Compiler::sysroot = parseQuotedString(argv, i);
 					continue;
 				}
 				else
 				{
-					fprintf(stderr, "Error: Expected directory name after '-sysroot' option");
+					fprintf(stderr, "Error: Expected directory name after '-sysroot' option\n");
 					exit(1);
 				}
 			}
@@ -80,13 +88,30 @@ int main(int argc, char* argv[])
 				}
 				else
 				{
-					fprintf(stderr, "Error: Expected filename name after '-o' option");
+					fprintf(stderr, "Error: Expected filename name after '-o' option\n");
 					exit(1);
 				}
 			}
 			else if(!strcmp(argv[i], "-lib"))
 			{
 				isLib = true;
+			}
+			else if(strstr(argv[i], "-O") == argv[i])
+			{
+				// make sure we have at least 3 chars
+				if(strlen(argv[i]) < 3)
+				{
+					fprintf(stderr, "Error: '-O' is not a valid option on its own\n");
+					exit(1);
+				}
+
+				Compiler::optLevel = argv[i][2] - '0';
+			}
+			else if(argv[i][0] == '-')
+			{
+				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
+
+				exit(1);
 			}
 			else
 			{

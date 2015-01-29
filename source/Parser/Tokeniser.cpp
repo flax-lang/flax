@@ -34,7 +34,7 @@ namespace Parser
 		Token& tok = *ret;			// because doing '->' gets old
 		tok.posinfo = pos;
 
-		// check compounds first.
+		// check compound symbols first.
 		if(stream.find("==") == 0)
 		{
 			tok.text = "==";
@@ -255,6 +255,9 @@ namespace Parser
 			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "true")		tok.type = TType::True;
 			else if(id == "false")		tok.type = TType::False;
+
+			else if(id == "break")		tok.type = TType::Break;
+			else if(id == "continue")	tok.type = TType::Continue;
 
 			else if(id == "public")		tok.type = TType::Public;
 			else if(id == "private")	tok.type = TType::Private;

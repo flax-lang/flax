@@ -33,6 +33,7 @@ namespace Codegen
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
 	typedef std::map<std::string, FuncPair_t> FuncMap_t;
+	typedef std::pair<Ast::BreakableClosure*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> ClosureScope;
 
 	class CodegenInstance
 	{
@@ -44,8 +45,12 @@ namespace Codegen
 			llvm::ExecutionEngine* execEngine;
 			std::deque<FuncMap_t*> funcTabStack;
 			std::deque<TypeMap_t*> visibleTypes;
+			std::deque<ClosureScope> closureStack;
 			llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
+			void popClosure();
+			ClosureScope* getCurrentClosureScope();
+			void pushClosure(Ast::BreakableClosure* closure, llvm::BasicBlock* body, llvm::BasicBlock* after);
 
 			void popScope();
 			void pushScope();
@@ -84,7 +89,7 @@ namespace Codegen
 			std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
-			Ast::ValPtr_p callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
+			Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val);
 	};
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);

@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
+Result_t ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 {
 	// get our array type
 	llvm::Type* atype = cgi->getLlvmType(this->var);
@@ -47,14 +47,14 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 	}
 
 	// todo: verify for pointers
-	ValPtr_p lhsp = this->var->codegen(cgi);
+	Result_t lhsp = this->var->codegen(cgi);
 
 	llvm::Value* lhs;
-	if(lhsp.first->getType()->isPointerTy())		lhs = lhsp.first;
-	else											lhs = lhsp.second;
+	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
+	else											lhs = lhsp.result.second;
 
 	llvm::Value* gep = nullptr;
-	llvm::Value* ind = this->index->codegen(cgi).first;
+	llvm::Value* ind = this->index->codegen(cgi).result.first;
 
 	if(atype->isStructTy())
 	{
@@ -66,7 +66,7 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 		gep = cgi->mainBuilder.CreateGEP(lhs, ind, "arrayIndex");
 	}
 
-	return ValPtr_p(cgi->mainBuilder.CreateLoad(gep), gep);
+	return Result_t(cgi->mainBuilder.CreateLoad(gep), gep);
 }
 
 
@@ -83,7 +83,7 @@ ValPtr_p ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 
 
 
-ValPtr_p Struct::codegen(CodegenInstance* cgi)
+Result_t Struct::codegen(CodegenInstance* cgi)
 {
 	assert(this->didCreateType);
 	llvm::StructType* str = llvm::cast<llvm::StructType>(cgi->getType(this->name)->first);
@@ -115,7 +115,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			var->initVal = cgi->autoCastType(var, var->initVal);
-			cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).first : cgi->getDefaultValue(var), ptr);
+			cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).result.first : cgi->getDefaultValue(var), ptr);
 		}
 
 		for(Func* f : this->funcs)
@@ -133,7 +133,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 			if(f == this->ifunc)
 			{
 				f->decl->name = cgi->mangleName(this, f->decl->name);
-				val = f->decl->codegen(cgi).first;
+				val = f->decl->codegen(cgi).result.first;
 
 				std::deque<Expr*> fuckingshit;
 
@@ -144,15 +144,15 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 				f->closure->statements.push_front(fc);
 
 				auto oi = cgi->mainBuilder.GetInsertBlock();
-				this->initFunc = llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).first)));
+				this->initFunc = llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first)));
 				cgi->mainBuilder.SetInsertPoint(oi);
 			}
 			else
 			{
 				// mangle
 				f->decl->name = cgi->mangleName(this, f->decl->name);
-				val = f->decl->codegen(cgi).first;
-				lf = llvm::cast<llvm::Function>(f->codegen(cgi).first);
+				val = f->decl->codegen(cgi).result.first;
+				lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first);
 			}
 
 			cgi->mainBuilder.SetInsertPoint(ob);
@@ -187,7 +187,7 @@ ValPtr_p Struct::codegen(CodegenInstance* cgi)
 		this->initFunc = this->defifunc;
 	}
 
-	return ValPtr_p(nullptr, nullptr);
+	return Result_t(nullptr, nullptr);
 }
 
 void Struct::createType(CodegenInstance* cgi)
@@ -292,7 +292,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 
-ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
+Result_t OpOverload::codegen(CodegenInstance* cgi)
 {
 	// this is never really called. operators are handled as functions
 	// so, we just put them into the structs' funcs.
@@ -339,7 +339,7 @@ ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
 		error("(%s:%s:%d) -> Internal check failed: invalid operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 	}
 
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }
 
 
@@ -353,10 +353,10 @@ ValPtr_p OpOverload::codegen(CodegenInstance* cgi)
 
 
 
-ValPtr_p MemberAccess::codegen(CodegenInstance* cgi)
+Result_t MemberAccess::codegen(CodegenInstance* cgi)
 {
 	// gen the var ref on the left.
-	ValPtr_p p = this->target->codegen(cgi);
+	ValPtr_t p = this->target->codegen(cgi).result;
 
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;
@@ -440,22 +440,22 @@ ValPtr_p MemberAccess::codegen(CodegenInstance* cgi)
 
 			for(Expr* e : fc->params)
 			{
-				args.push_back(e->codegen(cgi).first);
+				args.push_back(e->codegen(cgi).result.first);
 				if(args.back() == nullptr)
-					return ValPtr_p(0, 0);
+					return Result_t(0, 0);
 			}
 
-			return ValPtr_p(cgi->mainBuilder.CreateCall(val, args), 0);
+			return Result_t(cgi->mainBuilder.CreateCall(val, args), 0);
 		}
 		else if(var)
 		{
-			return ValPtr_p(val, ptr);
+			return Result_t(val, ptr);
 		}
 	}
 
 
 	error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }
 
 

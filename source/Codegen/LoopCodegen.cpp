@@ -9,7 +9,44 @@
 using namespace Ast;
 using namespace Codegen;
 
-ValPtr_p WhileLoop::codegen(CodegenInstance* cgi)
+
+Result_t Break::codegen(CodegenInstance* cgi)
+{
+	ClosureScope* cs = cgi->getCurrentClosureScope();
+	if(!cs)
+		error(this, "Break can only be used inside loop bodies");
+
+	assert(cs->first);
+	assert(cs->second.first);
+	assert(cs->second.second);
+
+	// for break, we go to the ending block
+	cgi->mainBuilder.CreateBr(cs->second.second);
+	return Result_t(0, 0, ResultType::BreakCodegen);
+}
+
+Result_t Continue::codegen(CodegenInstance* cgi)
+{
+	ClosureScope* cs = cgi->getCurrentClosureScope();
+	if(!cs)
+		error(this, "Continue can only be used inside loop bodies");
+
+	assert(cs->first);
+	assert(cs->second.first);
+	assert(cs->second.second);
+
+	// for continue, we go to the beginning (loop) block
+	cgi->mainBuilder.CreateBr(cs->second.first);
+	return Result_t(0, 0, ResultType::BreakCodegen);
+}
+
+Result_t Return::codegen(CodegenInstance* cgi)
+{
+	auto ret = this->val->codegen(cgi);
+	return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
+}
+
+Result_t WhileLoop::codegen(CodegenInstance* cgi)
 {
 	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);
@@ -19,7 +56,7 @@ ValPtr_p WhileLoop::codegen(CodegenInstance* cgi)
 	cgi->mainBuilder.CreateBr(setupBlock);
 	cgi->mainBuilder.SetInsertPoint(setupBlock);
 
-	llvm::Value* condOutside = this->cond->codegen(cgi).first;
+	llvm::Value* condOutside = this->cond->codegen(cgi).result.first;
 
 	// branch to the body, since llvm doesn't allow unforced fallthroughs
 	// if we're a do-while, don't check the condition the first time
@@ -32,16 +69,19 @@ ValPtr_p WhileLoop::codegen(CodegenInstance* cgi)
 
 
 	cgi->mainBuilder.SetInsertPoint(loopBody);
+	cgi->pushClosure(this, loopBody, loopEnd);
 
 	this->body->codegen(cgi);
 
+	cgi->popClosure();
+
 	// put a branch to see if we will go back
-	llvm::Value* condInside = this->cond->codegen(cgi).first;
+	llvm::Value* condInside = this->cond->codegen(cgi).result.first;
 	cgi->mainBuilder.CreateCondBr(condInside, loopBody, loopEnd);
 
 
 	parentFunc->getBasicBlockList().push_back(loopEnd);
 	cgi->mainBuilder.SetInsertPoint(loopEnd);
 
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }

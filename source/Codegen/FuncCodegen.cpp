@@ -13,7 +13,7 @@ using namespace Codegen;
 
 #define OPTIMISE 1
 
-ValPtr_p FuncCall::codegen(CodegenInstance* cgi)
+Result_t FuncCall::codegen(CodegenInstance* cgi)
 {
 	llvm::Function* target = cgi->mainModule->getFunction(this->name);
 	if(!target)
@@ -38,12 +38,12 @@ ValPtr_p FuncCall::codegen(CodegenInstance* cgi)
 	}
 
 	for(Expr* e : this->params)
-		args.push_back(e->codegen(cgi).first);
+		args.push_back(e->codegen(cgi).result.first);
 
-	return ValPtr_p(cgi->mainBuilder.CreateCall(target, args), 0);
+	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
 }
 
-ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
+Result_t FuncDecl::codegen(CodegenInstance* cgi)
 {
 	std::vector<llvm::Type*> argtypes;
 	std::deque<Expr*> params_expr;
@@ -95,28 +95,33 @@ ValPtr_p FuncDecl::codegen(CodegenInstance* cgi)
 	if(this->attribs & Attr_VisPublic)
 		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));
 
-	return ValPtr_p(func, 0);
+	return Result_t(func, 0);
 }
 
-ValPtr_p ForeignFuncDecl::codegen(CodegenInstance* cgi)
+Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi)
 {
 	return this->decl->codegen(cgi);
 }
 
-ValPtr_p Closure::codegen(CodegenInstance* cgi)
+Result_t Closure::codegen(CodegenInstance* cgi)
 {
-	ValPtr_p lastVal;
+	Result_t lastval(0, 0);
 	for(Expr* e : this->statements)
-		lastVal = e->codegen(cgi);
+	{
+		lastval = e->codegen(cgi);
 
-	return lastVal;
+		if(lastval.type == ResultType::BreakCodegen)
+			break;		// haha: don't generate the rest of the code. cascade the BreakCodegen value into higher levels
+	}
+
+	return lastval;
 }
 
 
 
 
 
-ValPtr_p Func::codegen(CodegenInstance* cgi)
+Result_t Func::codegen(CodegenInstance* cgi)
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
@@ -125,7 +130,7 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 	if(!func)
 	{
 		error("(%s:%s:%d) -> Internal check failed: Failed to get function declaration for func '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, this->decl->name.c_str());
-		return ValPtr_p(0, 0);
+		return Result_t(0, 0);
 	}
 
 	// we need to clear all previous blocks' symbols
@@ -151,7 +156,7 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = this->closure->codegen(cgi).first;
+	llvm::Value* lastVal = this->closure->codegen(cgi).result.first;
 
 	// check if we're not returning void
 	if(cgi->determineVarType(this) != VarType::Void)
@@ -176,7 +181,7 @@ ValPtr_p Func::codegen(CodegenInstance* cgi)
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();
 
-	return ValPtr_p(func, 0);
+	return Result_t(func, 0);
 }
 
 

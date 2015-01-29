@@ -14,6 +14,7 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
+#include "../include/compiler.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
@@ -104,23 +105,27 @@ namespace Codegen
 
 		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(cgi->mainModule);
 
-		// Provide basic AliasAnalysis support for GVN.
-		OurFPM.add(llvm::createBasicAliasAnalysisPass());
 
-		// Do simple "peephole" optimisations and bit-twiddling optzns.
-		OurFPM.add(llvm::createInstructionCombiningPass());
+		if(Compiler::getOptimisationLevel() > 0)
+		{
+			// Provide basic AliasAnalysis support for GVN.
+			OurFPM.add(llvm::createBasicAliasAnalysisPass());
 
-		// Reassociate expressions.
-		OurFPM.add(llvm::createReassociatePass());
+			// Do simple "peephole" optimisations and bit-twiddling optzns.
+			OurFPM.add(llvm::createInstructionCombiningPass());
 
-		// Eliminate Common SubExpressions.
-		OurFPM.add(llvm::createGVNPass());
+			// Reassociate expressions.
+			OurFPM.add(llvm::createReassociatePass());
 
-		// Simplify the control flow graph (deleting unreachable blocks, etc).
-		OurFPM.add(llvm::createCFGSimplificationPass());
+			// Eliminate Common SubExpressions.
+			OurFPM.add(llvm::createGVNPass());
 
-		// mem2reg
-		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+			// Simplify the control flow graph (deleting unreachable blocks, etc).
+			OurFPM.add(llvm::createCFGSimplificationPass());
+
+			// mem2reg
+			OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		}
 
 		OurFPM.doInitialization();
 
@@ -288,6 +293,35 @@ namespace Codegen
 	{
 		return getType(name) != nullptr;
 	}
+
+	void CodegenInstance::popClosure()
+	{
+		this->closureStack.pop_back();
+	}
+
+	ClosureScope* CodegenInstance::getCurrentClosureScope()
+	{
+		return this->closureStack.size() > 0 ? &this->closureStack.back() : 0;
+	}
+
+	void CodegenInstance::pushClosure(Ast::BreakableClosure* closure, llvm::BasicBlock* body, llvm::BasicBlock* after)
+	{
+		ClosureScope cs = std::make_pair(closure, std::make_pair(body, after));
+		this->closureStack.push_back(cs);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -813,7 +847,7 @@ namespace Codegen
 
 
 
-	ValPtr_p CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
+	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
 	{
 		assert(pair);
 		assert(pair->first);
@@ -840,17 +874,17 @@ namespace Codegen
 		{
 			// check args.
 			mainBuilder.CreateCall2(opov, self, val);
-			return ValPtr_p(mainBuilder.CreateLoad(self), self);
+			return Result_t(mainBuilder.CreateLoad(self), self);
 		}
 		else if(op == ArithmeticOp::CmpEq && str->opmap[op])
 		{
 			// check that both types work
-			return ValPtr_p(mainBuilder.CreateCall2(opov, self, val), 0);
+			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
 
 		error("Invalid operator on type");
-		return ValPtr_p(0, 0);
+		return Result_t(0, 0);
 	}
 
 

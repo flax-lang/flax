@@ -50,7 +50,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O0 -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 		File.deleteFile("build/test");
@@ -96,15 +96,12 @@ project Flax default all
 	{
 		System.execute("mkdir -p '{sysroot}/{prefix}/lib/flaxlibs'");
 
-		foreach(fold in File.listFolder("./libs"))
+		foreach(file in File.listFolder("./libs"))
 		{
-			fold = "./lib/" + fold;
-			if(File.isFolder(fold))
+			file = "libs/" + file;
+			if(File.isFile(file))
 			{
-				foreach(file in File.listFolder(fold))
-				{
-					assert System.execute("cp {file} '{sysroot}/{prefix}/lib/flaxlibs/'");
-				}
+				assert System.execute("cp {file} '{sysroot}/{prefix}/lib/flaxlibs/'") == 0;
 			}
 		}
 	}
