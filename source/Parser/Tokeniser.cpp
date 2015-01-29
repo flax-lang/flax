@@ -173,23 +173,35 @@ namespace Parser
 			while(isdigit(tmp = str.get()))
 				num += (char) tmp;
 
+			int base = 10;
+			if(num == "0" && tmp == 'x')
+			{
+				base = 16;
+				num = "";
+
+				while(isdigit(tmp = str.get()))
+					num += (char) tmp;
+			}
+
 			if(tmp != '.')
 			{
 				// we're an int, set shit and return
 				tok.type = TType::Integer;
-
 				try
 				{
 					// makes sure we get the right shit done
-					std::stoll(num);
+					std::stoll(num, nullptr, base);
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid number found at (%s:%lld)\n", pos.file.c_str(), pos.line);
+					Parser::error("Invalid number\n");
 					exit(1);
 				}
+
+				if(base == 16)
+					num = "0x" + num;
 			}
-			else
+			else if(base == 10)
 			{
 				num += '.';
 
@@ -198,7 +210,6 @@ namespace Parser
 
 				tok.type = TType::Decimal;
 
-
 				try
 				{
 					// makes sure we get the right shit done
@@ -206,9 +217,13 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					fprintf(stderr, "Error: invalid decimal found at (%s:%lld)\n", pos.file.c_str(), pos.line);
+					Parser::error("Invalid decimal number\n");
 					exit(1);
 				}
+			}
+			else
+			{
+				Parser::error("Decimals in hexadecimal representation are not supported");
 			}
 
 			read = num.length();
@@ -350,10 +365,8 @@ namespace Parser
 		}
 		else
 		{
-			printf("Unknown token '%c' at (%s:%lld)\n", stream[0], pos.file.c_str(), pos.line);
-
 			delete ret;
-			exit(1);
+			error("Unknown token '%c'", stream[0]);
 		}
 
 		stream = stream.substr(read);

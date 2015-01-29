@@ -136,6 +136,10 @@ namespace Parser
 		TType type;
 	};
 
+
+	void error(const char* msg, ...);
+	void warn(const char* msg, ...);
+
 	std::string getModuleName(std::string filename);
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
