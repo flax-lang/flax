@@ -96,7 +96,7 @@ namespace Parser
 	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
-	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio, bool needParen);
+	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
 	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
 
@@ -150,6 +150,7 @@ namespace Parser
 		if(tokens.size() == 0)
 			parserError("Unexpected end of input");
 
+		skipNewline(tokens);
 		Token* t = tokens.front();
 		tokens.pop_front();
 		skipNewline(tokens);
@@ -733,32 +734,14 @@ namespace Parser
 
 	Expr* parseExpr(std::deque<Token*>& tokens)
 	{
-		bool hadParen = false;
-
-		// optional parenthesis handling
-		if(tokens.front()->type == TType::LParen)
-		{
-			eat(tokens);
-			hadParen = true;
-		}
-
 		Expr* lhs = parseUnary(tokens);
 		if(!lhs)
 			return nullptr;
 
-		Expr* ret = parseRhs(tokens, lhs, 0, hadParen);
-		if(hadParen && !dynamic_cast<BinOp*>(ret))
-		{
-			if(tokens.front()->type != TType::RParen)
-				parserError("Expected ')'");
-
-			eat(tokens);
-		}
-
-		return ret;
+		return parseRhs(tokens, lhs, 0);
 	}
 
-	Expr* parseRhs(std::deque<Token*>& tokens, Expr* lhs, int prio, bool needParen)
+	Expr* parseRhs(std::deque<Token*>& tokens, Expr* lhs, int prio)
 	{
 		while(true)
 		{
@@ -771,24 +754,13 @@ namespace Parser
 			Token* tok_op = eat(tokens);
 
 			Expr* rhs = tok_op->type == TType::As ? parseType(tokens) : parseUnary(tokens);
-			if(needParen && tokens.front()->type != TType::RParen)
-				parserError("Expected ')'");
-
-
-			if(needParen)
-			{
-				eat(tokens);
-				needParen = false;
-			}
-
-
 			if(!rhs)
 				return nullptr;
 
 			int next = getOpPrec(tokens.front());
 			if(prec < next)
 			{
-				rhs = parseRhs(tokens, rhs, prec + 1, needParen);
+				rhs = parseRhs(tokens, rhs, prec + 1);
 				if(!rhs)
 					return nullptr;
 			}

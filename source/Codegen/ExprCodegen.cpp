@@ -210,11 +210,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	{
 		return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
 	}
-
-
-
-	// allow to cascade down if the above fails
-	if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
+	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
 		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
