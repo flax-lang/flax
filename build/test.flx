@@ -7,12 +7,13 @@ import Utilities
 
 func main(argc: Int32, argv: Int8**) -> Int64
 {
-	var pointer: Int64*
+	var pointer: Int64* = 0
 	var m: Int64 = 100
 	m += 40
 
+	pointer = pointer + 40
 	var y: String = "Hello, World!"
-	printf("%d\n", m)
+	printf("%p\n", pointer)
 
 	return 0
 }
