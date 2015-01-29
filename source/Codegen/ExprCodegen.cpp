@@ -9,50 +9,43 @@
 using namespace Ast;
 using namespace Codegen;
 
-
-ValPtr_p Return::codegen(CodegenInstance* cgi)
-{
-	auto ret = this->val->codegen(cgi);
-	return ValPtr_p(cgi->mainBuilder.CreateRet(ret.first), ret.second);
-}
-
-ValPtr_p UnaryOp::codegen(CodegenInstance* cgi)
+Result_t UnaryOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->expr);
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return ValPtr_p(cgi->mainBuilder.CreateNot(this->expr->codegen(cgi).first), 0);
+			return Result_t(cgi->mainBuilder.CreateNot(this->expr->codegen(cgi).result.first), 0);
 
 		case ArithmeticOp::Minus:
-			return ValPtr_p(cgi->mainBuilder.CreateNeg(this->expr->codegen(cgi).first), 0);
+			return Result_t(cgi->mainBuilder.CreateNeg(this->expr->codegen(cgi).result.first), 0);
 
 		case ArithmeticOp::Plus:
 			return this->expr->codegen(cgi);
 
 		case ArithmeticOp::Deref:
 		{
-			ValPtr_p vp = this->expr->codegen(cgi);
-			return ValPtr_p(cgi->mainBuilder.CreateLoad(vp.first), vp.first);
+			Result_t vp = this->expr->codegen(cgi);
+			return Result_t(cgi->mainBuilder.CreateLoad(vp.result.first), vp.result.first);
 		}
 
 		case ArithmeticOp::AddrOf:
 		{
-			return ValPtr_p(this->expr->codegen(cgi).second, 0);
+			return Result_t(this->expr->codegen(cgi).result.second, 0);
 		}
 
 		default:
 			error("(%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-			return ValPtr_p(0, 0);
+			return Result_t(0, 0);
 	}
 }
 
 
 
-ValPtr_p BinOp::codegen(CodegenInstance* cgi)
+Result_t BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
-	ValPtr_p valptr = this->left->codegen(cgi);
+	ValPtr_t valptr = this->left->codegen(cgi).result;
 
 	llvm::Value* lhs;
 	llvm::Value* rhs;
@@ -62,7 +55,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 		this->right = cgi->autoCastType(this->left, this->right);
 
 		lhs = valptr.first;
-		rhs = this->right->codegen(cgi).first;
+		rhs = this->right->codegen(cgi).result.first;
 
 		VarRef* v = nullptr;
 		UnaryOp* uo = nullptr;
@@ -93,7 +86,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 			}
 
 			cgi->mainBuilder.CreateStore(rhs, var);
-			return ValPtr_p(rhs, var);
+			return Result_t(rhs, var);
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
 			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
@@ -119,7 +112,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 			// assign it
 			cgi->mainBuilder.CreateStore(rhs, ptr);
-			return ValPtr_p(rhs, ptr);
+			return Result_t(rhs, ptr);
 		}
 		else
 		{
@@ -148,25 +141,25 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 		// todo: cleanup?
 		assert(rtype);
 		if(lhs->getType() == rtype)
-			return ValPtr_p(lhs, 0);
+			return Result_t(lhs, 0);
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
-			return ValPtr_p(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
+			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 
 		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
-			return ValPtr_p(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
+			return Result_t(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
 
 		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
-			return ValPtr_p(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
+			return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
 
 		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
-			return ValPtr_p(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+			return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
 
 		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
-			return ValPtr_p(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+			return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
 
 		else
-			return ValPtr_p(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+			return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
 	}
 
 
@@ -175,7 +168,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 
 	lhs = valptr.first;
 	llvm::Value* rhsptr = nullptr;
-	auto r = this->right->codegen(cgi);
+	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
 	rhsptr = r.second;
@@ -184,66 +177,66 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 	{
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:					return ValPtr_p(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:			return ValPtr_p(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:			return ValPtr_p(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
-			case ArithmeticOp::ShiftLeft:			return ValPtr_p(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
+			case ArithmeticOp::Add:					return Result_t(cgi->mainBuilder.CreateAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:			return Result_t(cgi->mainBuilder.CreateSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:			return Result_t(cgi->mainBuilder.CreateMul(lhs, rhs), 0);
+			case ArithmeticOp::ShiftLeft:			return Result_t(cgi->mainBuilder.CreateShl(lhs, rhs), 0);
 			case ArithmeticOp::Divide:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateSDiv(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateUDiv(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateUDiv(lhs, rhs), 0);
 
 
 			case ArithmeticOp::Modulo:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateSRem(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateSRem(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateURem(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateURem(lhs, rhs), 0);
 
 
 			case ArithmeticOp::ShiftRight:
-				if(cgi->isSignedType(this->left))	return ValPtr_p(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
-				else 								return ValPtr_p(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
+				if(cgi->isSignedType(this->left))	return Result_t(cgi->mainBuilder.CreateAShr(lhs, rhs), 0);
+				else 								return Result_t(cgi->mainBuilder.CreateLShr(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:		return ValPtr_p(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return ValPtr_p(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLT:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateICmpSLT(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpSLT(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateICmpULT(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpULT(lhs, rhs), 0);
 
 
 
 			case ArithmeticOp::CmpGT:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateICmpSGT(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpSGT(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateICmpUGT(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpUGT(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLEq:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateICmpSLE(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpSLE(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateICmpULE(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpULE(lhs, rhs), 0);
 
 
 
 			case ArithmeticOp::CmpGEq:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return ValPtr_p(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
 				else
-					return ValPtr_p(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
+					return Result_t(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
 
 
 
-			case ArithmeticOp::BitwiseAnd:		return ValPtr_p(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
-			case ArithmeticOp::BitwiseOr:		return ValPtr_p(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseAnd:		return Result_t(cgi->mainBuilder.CreateAnd(lhs, rhs), 0);
+			case ArithmeticOp::BitwiseOr:		return Result_t(cgi->mainBuilder.CreateOr(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:
@@ -304,14 +297,14 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 					phi->addIncoming(falseval, entry);
 				}
 
-				return ValPtr_p(this->phi, 0);
+				return Result_t(this->phi, 0);
 			}
 
 
 			default:
 				// should not be reached
 				error("what?!");
-				return ValPtr_p(0, 0);
+				return Result_t(0, 0);
 		}
 	}
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
@@ -319,20 +312,20 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 		// then they're floats.
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:			return ValPtr_p(cgi->mainBuilder.CreateFAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:	return ValPtr_p(cgi->mainBuilder.CreateFSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:	return ValPtr_p(cgi->mainBuilder.CreateFMul(lhs, rhs), 0);
-			case ArithmeticOp::Divide:		return ValPtr_p(cgi->mainBuilder.CreateFDiv(lhs, rhs), 0);
+			case ArithmeticOp::Add:			return Result_t(cgi->mainBuilder.CreateFAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:	return Result_t(cgi->mainBuilder.CreateFSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:	return Result_t(cgi->mainBuilder.CreateFMul(lhs, rhs), 0);
+			case ArithmeticOp::Divide:		return Result_t(cgi->mainBuilder.CreateFDiv(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpONE(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return ValPtr_p(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateFCmpOEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateFCmpONE(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->mainBuilder.CreateFCmpOLT(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->mainBuilder.CreateFCmpOGT(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error("Unsupported operator."); return ValPtr_p(0, 0);
+			default:						error("Unsupported operator."); return Result_t(0, 0);
 		}
 	}
 	else if(lhs->getType()->isStructTy())
@@ -346,7 +339,7 @@ ValPtr_p BinOp::codegen(CodegenInstance* cgi)
 	else
 	{
 		error("Unsupported operator on type");
-		return ValPtr_p(0, 0);
+		return Result_t(0, 0);
 	}
 }
 

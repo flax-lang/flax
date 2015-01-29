@@ -20,7 +20,7 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	llvm::BasicBlock* t = llvm::BasicBlock::Create(cgi->getContext(), "trueCaseR", func);
 	llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "falseCaseR");
 
-	llvm::Value* cond = pairs.front().first->codegen(cgi).first;
+	llvm::Value* cond = pairs.front().first->codegen(cgi).result.first;
 
 
 	VarType apprType = cgi->determineVarType(pairs.front().first);
@@ -35,10 +35,12 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	cgi->mainBuilder.CreateCondBr(cond, t, f);
 	cgi->mainBuilder.SetInsertPoint(t);
 
+	Result_t closureResult(0, 0);
 	llvm::Value* val = nullptr;
 	{
 		cgi->pushScope();
-		val = pairs.front().second->codegen(cgi).first;
+		closureResult = pairs.front().second->codegen(cgi);
+		val = closureResult.result.first;
 		cgi->popScope();
 	}
 
@@ -46,7 +48,7 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 		phi->addIncoming(val, t);
 
 	// check if the last expr of the block is a return
-	if(pairs.front().second->statements.size() == 0 || !dynamic_cast<Return*>(pairs.front().second->statements.back()))
+	if(closureResult.type != ResultType::BreakCodegen)
 		cgi->mainBuilder.CreateBr(merge), *didCreateMerge = true;
 
 
@@ -62,10 +64,10 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	func->getBasicBlockList().push_back(f);
 }
 
-ValPtr_p If::codegen(CodegenInstance* cgi)
+Result_t If::codegen(CodegenInstance* cgi)
 {
 	assert(this->cases.size() > 0);
-	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).first;
+	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
 	VarType apprType = cgi->determineVarType(this->cases[0].first);
 
 	if(apprType != VarType::Bool)
@@ -96,10 +98,13 @@ ValPtr_p If::codegen(CodegenInstance* cgi)
 
 		// push a new symtab
 		cgi->pushScope();
-		truev = this->cases[0].second->codegen(cgi).first;
+
+		// generate the statements inside
+		Result_t cresult = this->cases[0].second->codegen(cgi);
+		truev = cresult.result.first;
 		cgi->popScope();
 
-		if(this->cases[0].second->statements.size() == 0 || !dynamic_cast<Return*>(this->cases[0].second->statements.back()))
+		if(cresult.type != ResultType::BreakCodegen)
 			cgi->mainBuilder.CreateBr(merge), didMerge = true;
 	}
 
@@ -130,20 +135,23 @@ ValPtr_p If::codegen(CodegenInstance* cgi)
 	func->getBasicBlockList().push_back(falseb);
 
 	// if we have an 'else' case
+	Result_t elseResult(0, 0);
 	if(this->final)
 	{
 		cgi->pushScope();
-		llvm::Value* v = this->final->codegen(cgi).first;
+		elseResult = this->final->codegen(cgi);
 		cgi->popScope();
+
+		llvm::Value* v = elseResult.result.first;
 
 		if(phi)
 			phi->addIncoming(v, falseb);
 	}
 
 
-
-	if(!this->final || !dynamic_cast<Return*>(this->final->statements.back()))
+	if(!this->final || elseResult.type != ResultType::BreakCodegen)
 		cgi->mainBuilder.CreateBr(merge), didMerge = true;
+
 
 	if(didMerge)
 	{
@@ -151,10 +159,7 @@ ValPtr_p If::codegen(CodegenInstance* cgi)
 		cgi->mainBuilder.SetInsertPoint(merge);
 	}
 
-
-
-
-	return ValPtr_p(0, 0);
+	return Result_t(0, 0);
 }
 
 
