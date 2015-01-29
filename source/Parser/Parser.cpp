@@ -32,7 +32,6 @@ namespace Parser
 
 	// todo: hack
 	bool isParsingStruct;
-
 	void error(const char* msg, ...)
 	{
 		va_list ap;
@@ -41,7 +40,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "Parsing error (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
+		fprintf(stderr, "%s(%s:%lld)%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -58,7 +57,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "Warning (%s:%lld): %s\n\n", curtok->posinfo.file.c_str(), curtok->posinfo.line, alloc);
+		fprintf(stderr, "%s(%s:%lld)%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok->posinfo.file.c_str(), curtok->posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
@@ -165,6 +164,9 @@ namespace Parser
 
 	static int getOpPrec(Token* tok)
 	{
+		if(!tok)
+			return -1;
+
 		switch(tok->type)
 		{
 			case TType::As:
@@ -246,7 +248,15 @@ namespace Parser
 		}
 	}
 
+	int64_t getIntegerValue(Token* t)
+	{
+		assert(t->type == TType::Integer);
+		int base = 10;
+		if(t->text.find("0x") == 0)
+			base = 16;
 
+		return std::stoll(t->text, nullptr, base);
+	}
 
 
 
@@ -652,7 +662,7 @@ namespace Parser
 
 				Token* next = eat(tokens);
 				if(next->type == TType::Integer)
-					arrsize = std::stoi(next->text), next = eat(tokens);
+					arrsize = getIntegerValue(next), next = eat(tokens);
 
 				if(next->type != TType::RSquare)
 					error("Expected either constant integer or ']' after array declaration and '['");
@@ -855,7 +865,7 @@ namespace Parser
 		if(tokens.front()->type == TType::Integer)
 		{
 			Token* tok = eat(tokens);
-			n = CreateAST(Number, tok, (int64_t) std::stoll(tok->text));
+			n = CreateAST(Number, tok, getIntegerValue(tok));
 
 			// set the type.
 			// always used signed
