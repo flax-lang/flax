@@ -122,32 +122,28 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 		for(Func* f : this->funcs)
 		{
-			int i = this->nameMap[f->decl->mangledName];
-			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + f->decl->name);
 			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
-
 
 			std::string oname = f->decl->name;
 			bool isOpOverload = oname.find("operator#") == 0;
 
 			llvm::Function* lf = nullptr;
 			llvm::Value* val = nullptr;
-			if(f == this->ifunc)
+			if(f->decl->name == "init")
 			{
-				f->decl->name = cgi->mangleName(this, f->decl->name);
+				this->ifunc = f;
+				f->decl->mangledName = cgi->mangleName(this, f->decl->name);		// f->decl->name
 				val = f->decl->codegen(cgi).result.first;
 
-				std::deque<Expr*> fuckingshit;
+				std::deque<Expr*> todeque;
 
 				VarRef* svr = new VarRef(this->posinfo, "self");
-				fuckingshit.push_back(svr);
+				todeque.push_back(svr);
 
-				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, fuckingshit);
+				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
 				f->closure->statements.push_front(fc);
 
-				auto oi = cgi->mainBuilder.GetInsertBlock();
 				this->initFunc = llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first)));
-				cgi->mainBuilder.SetInsertPoint(oi);
 			}
 			else
 			{
@@ -158,7 +154,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			}
 
 			cgi->mainBuilder.SetInsertPoint(ob);
-			cgi->mainBuilder.CreateStore(val, ptr);
+			this->lfuncs.push_back(lf);
 
 			if(isOpOverload)
 			{
@@ -183,7 +179,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 		this->defifunc = autoinit;
 	}
 
-
 	if(!this->ifunc)
 	{
 		this->initFunc = this->defifunc;
@@ -202,12 +197,11 @@ void Struct::createType(CodegenInstance* cgi)
 	if(cgi->isDuplicateType(this->name))
 		error(this, "Duplicate type '%s'", this->name.c_str());
 
-	// check if there's an explicit initialiser
 	this->ifunc = nullptr;
 
 	// create a bodyless struct so we can use it
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->name);
-	cgi->getVisibleTypes()[this->name] = TypePair_t(str, TypedExpr_t(this, ExprType::Struct));
+	cgi->addNewType(str, this, ExprType::Struct);
 
 
 
@@ -239,30 +233,13 @@ void Struct::createType(CodegenInstance* cgi)
 		for(auto p : this->opmap)
 			p.second->codegen(cgi);
 
-
 		for(Func* func : this->funcs)
 		{
-			if(func->decl->name == "init")
-				this->ifunc = func;
-
-			std::vector<llvm::Type*> args;
-
-			// implicit first paramter, is not shown
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
 			implicit_self->type = this->name + "Ptr";
 			func->decl->params.push_front(implicit_self);
-
-			for(VarDecl* v : func->decl->params)
-			{
-				llvm::Type* vt = cgi->getLlvmType(v);
-				if(vt == str)
-					error(this, "Cannot have non-pointer member of type self");
-
-				args.push_back(vt);
-			}
-
-			types[this->nameMap[func->decl->mangledName]] = llvm::PointerType::get(llvm::FunctionType::get(cgi->getLlvmType(func), llvm::ArrayRef<llvm::Type*>(args), false), 0);
 		}
+
 
 		for(VarDecl* var : this->members)
 		{
@@ -275,9 +252,8 @@ void Struct::createType(CodegenInstance* cgi)
 	}
 
 
-	std::vector<llvm::Type*> vec(types, types + (this->funcs.size() + this->members.size()));
+	std::vector<llvm::Type*> vec(types, types + this->members.size());
 	str->setBody(vec);
-
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
@@ -296,8 +272,8 @@ void Struct::createType(CodegenInstance* cgi)
 
 Result_t OpOverload::codegen(CodegenInstance* cgi)
 {
-	// this is never really called. operators are handled as functions
-	// so, we just put them into the structs' funcs.
+	// this is never really called for actual codegen. operators are handled as functions,
+	// so we just put them into the structs' funcs.
 	// BinOp will do a lookup on the opMap, but never call codegen for this.
 
 	// however, this will get called, because we need to know if the parameters for
@@ -402,19 +378,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			i = str->nameMap[var->name];
 
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
-		{
-			std::string mangled = cgi->mangleName(fc->name, fc->params);
-			i = str->nameMap[mangled];
-		}
+			i = -1;
+
 		else
 			error("(%s:%s:%d) -> Internal check failed: no comprehendo", __FILE__, __PRETTY_FUNCTION__, __LINE__);
 
-		assert(i >= 0);
 
-		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
-		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
-		llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
-
+		// if we're a function call
 		if(fc)
 		{
 			// now we need to determine if it exists, and its params.
@@ -436,7 +406,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			for(int i = 0; i < fc->params.size(); i++)
 				fc->params[i] = cgi->autoCastType(callee->decl->params[i], fc->params[i]);
 
-
 			std::vector<llvm::Value*> args;
 			args.push_back(isPtr ? self : selfPtr);
 
@@ -447,10 +416,32 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 					return Result_t(0, 0);
 			}
 
-			return Result_t(cgi->mainBuilder.CreateCall(val, args), 0);
+
+
+			llvm::Function* lcallee = 0;
+			for(llvm::Function* lf : str->lfuncs)
+			{
+				if(lf->getName() == cgi->mangleName(str, fc->name))
+				{
+					lcallee = lf;
+					break;
+				}
+			}
+
+			if(!callee)
+				error(this, "nani?!");
+
+			return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
 		}
 		else if(var)
 		{
+			assert(i >= 0);
+			// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
+			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
+			llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
+
+
+			// else we're just var access
 			return Result_t(val, ptr);
 		}
 	}

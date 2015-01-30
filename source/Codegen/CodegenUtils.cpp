@@ -142,7 +142,7 @@ namespace Codegen
 		for(auto pair : cgi->rootNode->externalTypes)
 		{
 			llvm::StructType* str = llvm::cast<llvm::StructType>(pair.second);
-			cgi->getVisibleTypes()[str->getName()] = TypePair_t(str, TypedExpr_t(pair.first, ExprType::Struct));
+			cgi->addNewType(str, pair.first, ExprType::Struct);
 		}
 
 		cgi->rootNode->codegen(cgi);
@@ -181,7 +181,11 @@ namespace Codegen
 
 
 
-
+	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
+	{
+		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
+		(*this->visibleTypes.back())[atype->name] = tpair;
+	}
 
 	llvm::LLVMContext& CodegenInstance::getContext()
 	{
@@ -268,12 +272,6 @@ namespace Codegen
 
 
 
-
-	// stack based types.
-	TypeMap_t& CodegenInstance::getVisibleTypes()
-	{
-		return *visibleTypes.back();
-	}
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{

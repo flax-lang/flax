@@ -74,7 +74,6 @@ namespace Codegen
 
 			Ast::Root* getRootAST();
 			bool isPtr(Ast::Expr* e);
-			TypeMap_t& getVisibleTypes();
 			bool isArrayType(Ast::Expr* e);
 			llvm::LLVMContext& getContext();
 			bool isSignedType(Ast::Expr* e);
@@ -93,6 +92,7 @@ namespace Codegen
 			std::string mangleName(Ast::Struct* s, std::string orig);
 			std::string unmangleName(Ast::Struct* s, std::string orig);
 			Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
+			void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 			std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 			std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 			llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
