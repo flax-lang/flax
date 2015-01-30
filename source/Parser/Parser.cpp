@@ -1047,6 +1047,8 @@ namespace Parser
 
 				str->members.push_back(var);
 				str->nameMap[var->name] = i;
+
+				i++;
 			}
 			else if((func = dynamic_cast<Func*>(stmt)))
 			{
@@ -1069,8 +1071,6 @@ namespace Parser
 			{
 				parserError("Only variable and function declarations are allowed in structs");
 			}
-
-			i++;
 		}
 
 		return str;

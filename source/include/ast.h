@@ -379,6 +379,7 @@ namespace Ast
 		std::string name;
 		std::deque<VarDecl*> members;
 		std::deque<Func*> funcs;
+		std::deque<llvm::Function*> lfuncs;
 		std::map<ArithmeticOp, OpOverload*> opmap;
 		std::map<ArithmeticOp, llvm::Function*> lopmap;
 	};
