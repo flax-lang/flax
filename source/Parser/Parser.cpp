@@ -20,7 +20,7 @@ namespace Parser
 	PosInfo currentPos;
 	Root* rootNode;
 	Token* curtok;
-	uint32_t curAttrib;
+	uint32_t curAttrib = 0;
 	Codegen::CodegenInstance* curCgi;
 
 
@@ -328,9 +328,51 @@ namespace Parser
 		return std::stoll(t->text, nullptr, base);
 	}
 
+	double getDecimalValue(Token* t)
+	{
+		return std::stod(t->text);
+	}
+
+	uint32_t checkAndApplyAttributes(int numAttr, ...)
+	{
+		static const char* ReadableAttrNames[] =
+		{
+			"Invalid",
+			"NoMangle",
+			"Public",
+			"Internal",
+			"Private",
+			"ForceMangle",
+			"NoAutoInit",
+			"PackedStruct"
+		};
+
+		va_list ap;
+		va_start(ap, numAttr);
+
+		uint32_t allowed = 0;
+		for(int i = 0; i < numAttr; i++)
+			allowed |= va_arg(ap, uint32_t);
 
 
+		uint32_t disallowed = ~allowed;
 
+		if(curAttrib & disallowed)
+		{
+			int shifts = 0;
+			while((disallowed & 1) == 0)
+				disallowed >>= 1, shifts++;
+
+			if(shifts > 0)
+				parserError("Invalid attribute '%s' for expression", ReadableAttrNames[shifts]);
+		}
+
+		va_end(ap);
+
+		uint32_t ret = curAttrib;
+		curAttrib = 0;
+		return ret;
+	}
 
 
 
@@ -638,8 +680,7 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
-		f->attribs = curAttrib;
-		curAttrib = 0;
+		f->attribs = checkAndApplyAttributes(5, Attr_VisPublic, Attr_VisInternal, Attr_VisPrivate, Attr_NoMangle, Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
@@ -746,6 +787,8 @@ namespace Parser
 		assert(tokens.front()->type == TType::Var || tokens.front()->type == TType::Val);
 
 		bool immutable = tokens.front()->type == TType::Val;
+		bool noautoinit = checkAndApplyAttributes(1, Attr_NoAutoInit) > 0;
+
 		eat(tokens);
 
 		// get the identifier.
@@ -755,6 +798,7 @@ namespace Parser
 
 		std::string id = tok_id->text;
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
+		v->disableAutoInit = noautoinit;
 
 		// check the type.
 		// todo: type inference
@@ -789,6 +833,10 @@ namespace Parser
 			v->initVal = parseExpr(tokens);
 			if(!v->initVal)
 				parserError("Invalid initialiser for variable '%s'", v->name.c_str());
+		}
+		else if(immutable)
+		{
+			parserError("Constant variables require an initialiser at the declaration site");
 		}
 
 		return v;
@@ -903,12 +951,12 @@ namespace Parser
 
 			return CreateAST(ArrayIndex, tok_id, idvr, within);
 		}
-		else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
-		{
-			eat(tokens);
-			idvr->name += "Ptr";
-			return idvr;
-		}
+		// else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
+		// {
+		// 	eat(tokens);
+		// 	idvr->name += "Ptr";
+		// 	return idvr;
+		// }
 		else if(tokens.front()->type != TType::LParen)
 		{
 			return idvr;
@@ -935,7 +983,7 @@ namespace Parser
 		else if(tokens.front()->type == TType::Decimal)
 		{
 			Token* tok = eat(tokens);
-			n = CreateAST(Number, tok, std::stod(tok->text));
+			n = CreateAST(Number, tok, getDecimalValue(tok));
 
 			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
 			else					n->varType = VarType::Float64;
@@ -1106,6 +1154,10 @@ namespace Parser
 		id += eat(tokens)->text;
 		Struct* str = CreateAST(Struct, tok_struct, id);
 
+		uint32_t attr = checkAndApplyAttributes(2, Attr_PackedStruct, Attr_VisPublic);
+		if(attr)
+			str->packed = true;
+
 		// parse a clousure.
 		BracedBlock* body = parseBracedBlock(tokens);
 		int i = 0;
@@ -1163,6 +1215,8 @@ namespace Parser
 		uint32_t attr;
 		if(id->text == "nomangle")				attr |= Attr_NoMangle;
 		else if(id->text == "forcemangle")		attr |= Attr_ForceMangle;
+		else if(id->text == "noautoinit")		attr |= Attr_NoAutoInit;
+		else if(id->text == "packed")			attr |= Attr_PackedStruct;
 		else									parserError("Unknown attribute '%s'", id->text.c_str());
 
 		curAttrib |= attr;
@@ -1246,11 +1300,17 @@ namespace Parser
 
 
 
-
-
-
-
-
+namespace Ast
+{
+	uint32_t Attr_Invalid		= 0x00;
+	uint32_t Attr_NoMangle		= 0x01;
+	uint32_t Attr_VisPublic		= 0x02;
+	uint32_t Attr_VisInternal	= 0x04;
+	uint32_t Attr_VisPrivate	= 0x08;
+	uint32_t Attr_ForceMangle	= 0x10;
+	uint32_t Attr_NoAutoInit	= 0x20;
+	uint32_t Attr_PackedStruct	= 0x40;
+}
 
 
 
