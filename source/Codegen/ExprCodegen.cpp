@@ -68,16 +68,26 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		UnaryOp* uo = nullptr;
 		ArrayIndex* ai = nullptr;
 
+
+		cgi->autoCastLlvmType(lhs, rhs);
+
 		llvm::Value* varptr = 0;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
+			{
+				VarDecl* vdecl = cgi->getSymDecl(v->name);
+				if(!vdecl) error(this, "Failed to find declaration for variable '%s'", v->name.c_str());
+
+				if(vdecl->immutable)
+					error(this, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+			}
+
 			if(!rhs)
-				error(this, "(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				error(this, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
 
 			varptr = cgi->getSymTab()[v->name].first;
 			if(!varptr)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
-
 
 			// try and see if we have operator overloads for this thing
 			if(lhs->getType()->isStructTy())
@@ -152,7 +162,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		else
 		{
 			// get the llvm op
-			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
 
 			llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
 			cgi->mainBuilder.CreateStore(newrhs, varptr);
@@ -225,7 +235,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
 		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
-			cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		if(lop != (llvm::Instruction::BinaryOps) 0)
 			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
@@ -336,6 +346,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	}
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
+		// if one of them is an integer, cast it first
+		cgi->autoCastLlvmType(lhs, rhs);
+
 		// then they're floats.
 		switch(this->op)
 		{
