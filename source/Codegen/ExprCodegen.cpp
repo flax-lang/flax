@@ -74,13 +74,20 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		llvm::Value* varptr = 0;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
+			{
+				VarDecl* vdecl = cgi->getSymDecl(v->name);
+				if(!vdecl) error(this, "Failed to find declaration for variable '%s'", v->name.c_str());
+
+				if(vdecl->immutable)
+					error(this, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+			}
+
 			if(!rhs)
-				error(this, "(%s:%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				error(this, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
 
 			varptr = cgi->getSymTab()[v->name].first;
 			if(!varptr)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
-
 
 			// try and see if we have operator overloads for this thing
 			if(lhs->getType()->isStructTy())
