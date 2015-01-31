@@ -328,7 +328,10 @@ namespace Parser
 		return std::stoll(t->text, nullptr, base);
 	}
 
-
+	double getDecimalValue(Token* t)
+	{
+		return std::stod(t->text);
+	}
 
 
 
@@ -903,12 +906,12 @@ namespace Parser
 
 			return CreateAST(ArrayIndex, tok_id, idvr, within);
 		}
-		else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
-		{
-			eat(tokens);
-			idvr->name += "Ptr";
-			return idvr;
-		}
+		// else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
+		// {
+		// 	eat(tokens);
+		// 	idvr->name += "Ptr";
+		// 	return idvr;
+		// }
 		else if(tokens.front()->type != TType::LParen)
 		{
 			return idvr;
@@ -935,7 +938,7 @@ namespace Parser
 		else if(tokens.front()->type == TType::Decimal)
 		{
 			Token* tok = eat(tokens);
-			n = CreateAST(Number, tok, std::stod(tok->text));
+			n = CreateAST(Number, tok, getDecimalValue(tok));
 
 			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
 			else					n->varType = VarType::Float64;

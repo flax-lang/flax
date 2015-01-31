@@ -91,11 +91,12 @@ namespace Codegen
 		std::string mangleName(Ast::Struct* s, std::string orig);
 		std::string unmangleName(Ast::Struct* s, std::string orig);
 		Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
+		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
-		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned);
+		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 		Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
