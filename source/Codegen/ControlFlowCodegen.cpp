@@ -12,7 +12,7 @@ using namespace Codegen;
 
 
 
-void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, Closure*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
+void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
@@ -35,12 +35,12 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	cgi->mainBuilder.CreateCondBr(cond, t, f);
 	cgi->mainBuilder.SetInsertPoint(t);
 
-	Result_t closureResult(0, 0);
+	Result_t blockResult(0, 0);
 	llvm::Value* val = nullptr;
 	{
 		cgi->pushScope();
-		closureResult = pairs.front().second->codegen(cgi);
-		val = closureResult.result.first;
+		blockResult = pairs.front().second->codegen(cgi);
+		val = blockResult.result.first;
 		cgi->popScope();
 	}
 
@@ -48,7 +48,7 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 		phi->addIncoming(val, t);
 
 	// check if the last expr of the block is a return
-	if(closureResult.type != ResultType::BreakCodegen)
+	if(blockResult.type != ResultType::BreakCodegen)
 		cgi->mainBuilder.CreateBr(merge), *didCreateMerge = true;
 
 
@@ -130,7 +130,7 @@ Result_t If::codegen(CodegenInstance* cgi)
 		phi->addIncoming(truev, trueb);
 
 	cgi->mainBuilder.SetInsertPoint(curblk);
-	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, Closure*>>(this->cases), merge, phi, &didMerge);
+	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
 	func->getBasicBlockList().push_back(falseb);
 
