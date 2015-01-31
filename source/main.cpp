@@ -40,6 +40,7 @@ static std::string parseQuotedString(char** argv, int& i)
 namespace Compiler
 {
 	static uint64_t Flags;
+	static bool dumpModule;
 
 	static std::string sysroot;
 	std::string getSysroot()
@@ -111,6 +112,10 @@ int main(int argc, char* argv[])
 			{
 				Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 			}
+			else if(!strcmp(argv[i], "-dump-ir"))
+			{
+				Compiler::dumpModule = true;
+			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{
 				// make sure we have at least 3 chars
@@ -155,7 +160,9 @@ int main(int argc, char* argv[])
 		for(auto s : filelist)
 			remove(s.c_str());
 
-		// cgi->mainModule->dump();
+		if(Compiler::dumpModule)
+			cgi->mainModule->dump();
+
 		delete cgi;
 	}
 	else
