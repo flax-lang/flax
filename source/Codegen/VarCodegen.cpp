@@ -55,7 +55,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			this->inferredLType = val->getType();
 		}
 	}
-	else if(!cmplxtype)
+	else if(!cmplxtype && this->initVal)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;

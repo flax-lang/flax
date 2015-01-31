@@ -117,11 +117,10 @@ namespace Codegen
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
 			OurFPM.add(llvm::createCFGSimplificationPass());
-
-			// mem2reg
-			OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
 		}
 
+		// always do the mem2reg pass, our generated code is too inefficient
+		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
 		OurFPM.doInitialization();
 
 
@@ -432,30 +431,30 @@ namespace Codegen
 
 
 
-	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(Ast::ArithmeticOp op, bool isSigned)
+	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP)
 	{
 		using llvm::Instruction;
 		switch(op)
 		{
 			case ArithmeticOp::Add:
 			case ArithmeticOp::PlusEquals:
-				return Instruction::BinaryOps::Add;
+				return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
 
 			case ArithmeticOp::Subtract:
 			case ArithmeticOp::MinusEquals:
-				return Instruction::BinaryOps::Sub;
+				return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
 
 			case ArithmeticOp::Multiply:
 			case ArithmeticOp::MultiplyEquals:
-				return Instruction::BinaryOps::Mul;
+				return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
 
 			case ArithmeticOp::Divide:
 			case ArithmeticOp::DivideEquals:
-				return isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv;
+				return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
 
 			case ArithmeticOp::Modulo:
 			case ArithmeticOp::ModEquals:
-				return isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem;
+				return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
 
 			case ArithmeticOp::ShiftLeft:
 			case ArithmeticOp::ShiftLeftEquals:
@@ -699,7 +698,7 @@ namespace Codegen
 		}
 		else if((num = dynamic_cast<Number*>(e)))
 		{
-			// it's a decl. get the type, motherfucker.
+			// it's a number. get the type, motherfucker.
 			return num->varType;
 		}
 		else if((bv = dynamic_cast<BoolVal*>(e)))
@@ -753,8 +752,8 @@ namespace Codegen
 					bo->right = autoCastType(bo->left, bo->right);
 
 					// make sure that now, both sides are the same.
-					if(determineVarType(bo->left) != determineVarType(bo->right))
-						error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
+					// if(determineVarType(bo->left) != determineVarType(bo->right))
+					// 	error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
 				}
 
 				return determineVarType(bo->left);
@@ -860,6 +859,15 @@ namespace Codegen
 
 		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
 		return right;
+	}
+
+	void CodegenInstance::autoCastLlvmType(llvm::Value*& lhs, llvm::Value*& rhs)
+	{
+		if(lhs->getType()->isIntegerTy() && rhs->getType()->isFloatingPointTy())
+			lhs = this->mainBuilder.CreateSIToFP(lhs, rhs->getType());
+
+		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isFloatingPointTy())
+			rhs = this->mainBuilder.CreateSIToFP(rhs, lhs->getType());
 	}
 
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
@@ -997,7 +1005,7 @@ namespace Codegen
 		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
 
-		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false);
+		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
 		assert(lop);
 
 
