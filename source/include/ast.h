@@ -108,6 +108,8 @@ namespace Ast
 	extern uint32_t Attr_VisInternal;
 	extern uint32_t Attr_VisPrivate;
 	extern uint32_t Attr_ForceMangle;
+	extern uint32_t Attr_NoAutoInit;
+	extern uint32_t Attr_PackedStruct;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
@@ -191,6 +193,7 @@ namespace Ast
 
 		std::string name;
 		bool immutable;
+		bool disableAutoInit;
 		Expr* initVal;
 		llvm::Type* inferredLType;
 	};
@@ -374,6 +377,7 @@ namespace Ast
 		Func* ifunc;
 		llvm::Function* defifunc;
 		llvm::Function* initFunc;
+		bool packed;
 
 		std::deque<std::pair<Expr*, int>> typeList;
 		std::map<std::string, int> nameMap;

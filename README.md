@@ -28,23 +28,15 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 -------------------------
 
 #### Language Syntax ####
-
-- Actually mostly Swift-like
-- 'func' to declare/define functions
-- Two-pass parser, no need for forward declarations
-- var id: type style variable declarations
-- 'ffi' (foreign function interface) for calling into C-code (supports varargs a-la printf)
-- Strictly defined types, (U?)Int(8|16|32|64) and Float(32|64)
-- Arrays declared with Type[length] syntax
-- Dynamic arrays not yet supported.
-- Pointers!
+- See https://flax-lang.github.io#syntax
 
 ----------------------
 
 #### Future Plans ####
 
 - Rule the world
-- Type inference
+- Generic Types
+- Type inheritance of some kind
 
 
 ------------------------------------
@@ -52,15 +44,13 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 #### Building the Flax compiler ####
 
 - You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
-- You must modify the 'projDir' variable in the top-level build.capri script.
-- This is due to a limitation of the Capri system, it will be fixed soon according to its developer.
 - Screw makefiles. Flax is currently using a third-party build system.
 - Binaries and sources are available here: http://91.206.143.88/capri/releases/
 - Documentation for the Capri script is available here: http://forum.osdev.org/viewtopic.php?f=2&t=28568&start=0
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
-- Find the 'flaxc' executable in 'build/sysroot/usr/bin'
-- Additionally, default libraries will be built from 'build/sysroot/lib' and the shared library files (.dylib or .so) placed in 'build/sysroot/usr/lib'
+- Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
+- Additionally, default libraries will be copied from './libs' to './build/sysroot/usr/local/lib'
 
 -----------------------------------------------
 
@@ -68,4 +58,4 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 - Found a bug? Want a feature?
 - Just submit a pull request!
-- Requested help: Error catching, please! A lot of the time the Flax compiler will fail to catch invalid things, leading to failed assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
+- Requested help: Error catching, please! A lot of the time the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
