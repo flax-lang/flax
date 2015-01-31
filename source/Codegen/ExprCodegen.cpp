@@ -68,6 +68,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		UnaryOp* uo = nullptr;
 		ArrayIndex* ai = nullptr;
 
+
+		cgi->autoCastLlvmType(lhs, rhs);
+
 		llvm::Value* varptr = 0;
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
@@ -152,7 +155,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		else
 		{
 			// get the llvm op
-			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
 
 			llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
 			cgi->mainBuilder.CreateStore(newrhs, varptr);
@@ -225,7 +228,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
 		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
-			cgi->isSignedType(this->left) || cgi->isSignedType(this->right));
+			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		if(lop != (llvm::Instruction::BinaryOps) 0)
 			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
@@ -336,6 +339,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	}
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
+		// if one of them is an integer, cast it first
+		cgi->autoCastLlvmType(lhs, rhs);
+
 		// then they're floats.
 		switch(this->op)
 		{
