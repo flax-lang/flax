@@ -1035,20 +1035,6 @@ namespace Codegen
 
 
 
-namespace Ast
-{
-	uint32_t Attr_Invalid		= 0x00;
-	uint32_t Attr_NoMangle		= 0x01;
-	uint32_t Attr_VisPublic		= 0x02;
-	uint32_t Attr_VisInternal	= 0x04;
-	uint32_t Attr_VisPrivate	= 0x08;
-	uint32_t Attr_ForceMangle	= 0x10;
-}
-
-
-
-
-
 
 
 
