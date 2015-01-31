@@ -192,6 +192,7 @@ namespace Ast
 		std::string name;
 		bool immutable;
 		Expr* initVal;
+		llvm::Type* inferredLType;
 	};
 
 	struct BinOp : Expr
@@ -221,10 +222,10 @@ namespace Ast
 		std::deque<VarDecl*> params;
 	};
 
-	struct Closure : Expr
+	struct BracedBlock : Expr
 	{
-		Closure(Parser::PosInfo pos) : Expr(pos) { }
-		~Closure() { }
+		BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
+		~BracedBlock() { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<Expr*> statements;
@@ -233,11 +234,11 @@ namespace Ast
 	struct Func : Expr
 	{
 		~Func() { }
-		Func(Parser::PosInfo pos, FuncDecl* funcdecl, Closure* block) : Expr(pos), decl(funcdecl), closure(block) { }
+		Func(Parser::PosInfo pos, FuncDecl* funcdecl, BracedBlock* block) : Expr(pos), decl(funcdecl), block(block) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		FuncDecl* decl;
-		Closure* closure;
+		BracedBlock* block;
 	};
 
 	struct FuncCall : Expr
@@ -278,41 +279,41 @@ namespace Ast
 	};
 
 
-	struct BreakableClosure : Expr
+	struct BreakableBracedBlock : Expr
 	{
-		BreakableClosure(Parser::PosInfo pos) : Expr(pos) { }
+		BreakableBracedBlock(Parser::PosInfo pos) : Expr(pos) { }
 	};
 
 	struct If : Expr
 	{
 		~If() { }
-		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, Closure*>> cases, Closure* ecase) : Expr(pos),
+		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
 			cases(cases), final(ecase) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 
-		Closure* final;
-		std::deque<std::pair<Expr*, Closure*>> cases;
+		BracedBlock* final;
+		std::deque<std::pair<Expr*, BracedBlock*>> cases;
 	};
 
-	struct WhileLoop : BreakableClosure
+	struct WhileLoop : BreakableBracedBlock
 	{
 		~WhileLoop() { }
-		WhileLoop(Parser::PosInfo pos, Expr* _cond, Closure* _body, bool dowhile) : BreakableClosure(pos),
+		WhileLoop(Parser::PosInfo pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos),
 			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		Expr* cond;
-		Closure* body;
+		BracedBlock* body;
 		bool isDoWhileVariant;
 	};
 
-	struct ForLoop : BreakableClosure
+	struct ForLoop : BreakableBracedBlock
 	{
 		~ForLoop() { }
-		ForLoop(Parser::PosInfo pos, VarDecl* _var, Expr* _cond, Expr* _eval) : BreakableClosure(pos),
+		ForLoop(Parser::PosInfo pos, VarDecl* _var, Expr* _cond, Expr* _eval) : BreakableBracedBlock(pos),
 			var(_var), cond(_cond), eval(_eval) { }
 
 		VarDecl* var;
@@ -320,18 +321,9 @@ namespace Ast
 		Expr* eval;
 	};
 
-	struct ForeachLoop : BreakableClosure
+	struct ForeachLoop : BreakableBracedBlock
 	{
 
-	};
-
-	struct InfiniteLoop : BreakableClosure
-	{
-		~InfiniteLoop() { }
-		InfiniteLoop(Parser::PosInfo pos, Closure* _body) : BreakableClosure(pos), body(_body) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
-
-		Closure* body;
 	};
 
 	struct Break : Expr
@@ -388,8 +380,10 @@ namespace Ast
 		std::string name;
 		std::deque<VarDecl*> members;
 		std::deque<Func*> funcs;
-		std::map<ArithmeticOp, OpOverload*> opmap;
-		std::map<ArithmeticOp, llvm::Function*> lopmap;
+		std::deque<llvm::Function*> lfuncs;
+
+		std::deque<OpOverload*> opOverloads;
+		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
 	};
 
 	struct MemberAccess : Expr
