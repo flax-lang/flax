@@ -23,9 +23,7 @@ public struct String
 
 	operator=(other: Int8*)
 	{
-		memset(self.data, 0, self.allocated)
-		self.length = 0
-
+		self.clear()
 		var len: Int64 = strlen(other)
 		if self.allocated < len
 		{
@@ -38,11 +36,10 @@ public struct String
 
 	operator=(other: String)
 	{
+		self.clear()
+
 		var len: Int64 = strlen(other.data)
 		self.length = len
-
-		memset(self.data, 0, self.allocated)
-		self.length = 0
 
 		if self.allocated >= len
 		{
