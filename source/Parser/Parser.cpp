@@ -86,14 +86,13 @@ namespace Parser
 	void parseAttribute(std::deque<Token*>& tokens);
 	CastedType* parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
-	Closure* parseClosure(std::deque<Token*>& tokens);
+	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
 	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
-	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
@@ -257,6 +256,68 @@ namespace Parser
 		}
 	}
 
+	std::string getVarTypeString(Ast::VarType vt)
+	{
+		// kinda hardcoded
+		if(vt == VarType::Int8)				return "Int8";
+		else if(vt == VarType::Int16)		return "Int16";
+		else if(vt == VarType::Int32)		return "Int32";
+		else if(vt == VarType::Int64)		return "Int64";
+		else if(vt == VarType::Uint8)		return "Uint8";
+		else if(vt == VarType::Uint16)		return "Uint16";
+		else if(vt == VarType::Uint32)		return "Uint32";
+		else if(vt == VarType::Uint64)		return "Uint64";
+		else if(vt == VarType::AnyPtr)		return "AnyPtr";
+		else if(vt == VarType::Float32)		return "Float32";
+		else if(vt == VarType::Float64)		return "Float64";
+		else if(vt == VarType::Bool)		return "Bool";
+		else if(vt == VarType::Void)		return "Void";
+		else								return "UserDefined";
+	}
+
+	std::string arithmeticOpToString(Ast::ArithmeticOp op)
+	{
+		switch(op)
+		{
+			case ArithmeticOp::Add:					return "+";
+			case ArithmeticOp::Subtract:			return "-";
+			case ArithmeticOp::Multiply:			return "*";
+			case ArithmeticOp::Divide:				return "/";
+			case ArithmeticOp::Modulo:				return "%";
+			case ArithmeticOp::ShiftLeft:			return "<<";
+			case ArithmeticOp::ShiftRight:			return ">>";
+			case ArithmeticOp::Assign:				return "=";
+			case ArithmeticOp::CmpLT:				return "<";
+			case ArithmeticOp::CmpGT:				return ">";
+			case ArithmeticOp::CmpLEq:				return "<=";
+			case ArithmeticOp::CmpGEq:				return ">=";
+			case ArithmeticOp::CmpEq:				return "==";
+			case ArithmeticOp::CmpNEq:				return "!=";
+			case ArithmeticOp::LogicalNot:			return "!";
+			case ArithmeticOp::Plus:				return "+";
+			case ArithmeticOp::Minus:				return "-";
+			case ArithmeticOp::AddrOf:				return "&";
+			case ArithmeticOp::Deref:				return "#";
+			case ArithmeticOp::BitwiseAnd:			return "&";
+			case ArithmeticOp::BitwiseOr:			return "|";
+			case ArithmeticOp::BitwiseXor:			return "^";
+			case ArithmeticOp::BitwiseNot:			return "~";
+			case ArithmeticOp::LogicalAnd:			return "&&";
+			case ArithmeticOp::LogicalOr:			return "||";
+			case ArithmeticOp::Cast:				return "as";
+			case ArithmeticOp::PlusEquals:			return "+=";
+			case ArithmeticOp::MinusEquals:			return "-=";
+			case ArithmeticOp::MultiplyEquals:		return "*=";
+			case ArithmeticOp::DivideEquals:		return "/=";
+			case ArithmeticOp::ModEquals:			return "%=";
+			case ArithmeticOp::ShiftLeftEquals:		return "<<=";
+			case ArithmeticOp::ShiftRightEquals:	return ">>=";
+			case ArithmeticOp::BitwiseAndEquals:	return "&=";
+			case ArithmeticOp::BitwiseOrEquals:		return "|=";
+			case ArithmeticOp::BitwiseXorEquals:	return "^=";
+		}
+	}
+
 	int64_t getIntegerValue(Token* t)
 	{
 		assert(t->type == TType::Integer);
@@ -343,7 +404,7 @@ namespace Parser
 	{
 		Expr* expr = parseExpr(tokens);
 		FuncDecl* fakedecl = CreateAST_Raw(FuncDecl, "__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
-		Closure* cl = CreateAST_Raw(Closure);
+		BracedBlock* cl = CreateAST_Raw(BracedBlock);
 		cl->statements.push_back(expr);
 
 		Func* fakefunc = CreateAST_Raw(Func, fakedecl, cl);
@@ -436,10 +497,8 @@ namespace Parser
 				// since both have the same kind of AST node, parseWhile can handle both
 				case TType::Do:
 				case TType::While:
-					return parseWhile(tokens);
-
 				case TType::Loop:
-					return parseInfiniteLoop(tokens);
+					return parseWhile(tokens);
 
 				case TType::For:
 					return parseFor(tokens);
@@ -479,8 +538,8 @@ namespace Parser
 					return parsePrimary(tokens);
 
 				case TType::LBrace:
-					parserWarn("Anonymous closures are ignored; to run, preface with 'do'");
-					parseClosure(tokens);		// parse it, but throw it away
+					parserWarn("Anonymous blocks are ignored; to run, preface with 'do'");
+					parseBracedBlock(tokens);		// parse it, but throw it away
 					return CreateAST(DummyExpr, tokens.front());
 
 				default:
@@ -600,10 +659,10 @@ namespace Parser
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}
 
-	Closure* parseClosure(std::deque<Token*>& tokens)
+	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens)
 	{
 		Token* tok_cls = eat(tokens);
-		Closure* c = CreateAST(Closure, tok_cls);
+		BracedBlock* c = CreateAST(BracedBlock, tok_cls);
 
 		// make sure the first token is a left brace.
 		if(tok_cls->type != TType::LBrace)
@@ -627,7 +686,7 @@ namespace Parser
 		Token* front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
 
-		return CreateAST(Func, front, decl, parseClosure(tokens));
+		return CreateAST(Func, front, decl, parseBracedBlock(tokens));
 	}
 
 
@@ -699,11 +758,25 @@ namespace Parser
 
 		// check the type.
 		// todo: type inference
-		if(eat(tokens)->type != TType::Colon)
-			parserError("Expected colon to indicate type for variable declaration");
+		// parserError("Expected colon to indicate type for variable declaration");
+		Token* colon = eat(tokens);
+		if(colon->type == TType::Colon)
+		{
+			v->type = parseType(tokens)->name;
+			v->varType = determineVarType(v->type);
+		}
+		else if(colon->type == TType::Equal)
+		{
+			v->varType = VarType::UserDefined;
+			v->type = "Inferred";
 
-		v->type = parseType(tokens)->name;
-		v->varType = determineVarType(v->type);
+			// make sure the init value parser below works, push the colon back onto the stack
+			tokens.push_front(colon);
+		}
+		else
+		{
+			parserError("Variable declaration without type requires initialiser for type inference");
+		}
 
 		// TODO:
 		// check if we have a default value
@@ -924,16 +997,16 @@ namespace Parser
 		Token* tok_if = eat(tokens);
 		assert(tok_if->type == TType::If);
 
-		typedef std::pair<Expr*, Closure*> CCPair;
+		typedef std::pair<Expr*, BracedBlock*> CCPair;
 		std::deque<CCPair> conds;
 
 		Expr* cond = parseExpr(tokens);
-		Closure* tcase = parseClosure(tokens);
+		BracedBlock* tcase = parseBracedBlock(tokens);
 
 		conds.push_back(CCPair(cond, tcase));
 
 		// check for else and else if
-		Closure* ecase = nullptr;
+		BracedBlock* ecase = nullptr;
 		bool parsedElse = false;
 		while(tokens.front()->type == TType::Else)
 		{
@@ -942,16 +1015,16 @@ namespace Parser
 			{
 				eat(tokens);
 
-				// parse an expr, then a closure
+				// parse an expr, then a block
 				Expr* c = parseExpr(tokens);
-				Closure* cl = parseClosure(tokens);
+				BracedBlock* cl = parseBracedBlock(tokens);
 
 				conds.push_back(CCPair(c, cl));
 			}
 			else if(!parsedElse)
 			{
 				parsedElse = true;
-				ecase = parseClosure(tokens);
+				ecase = parseBracedBlock(tokens);
 			}
 			else
 			{
@@ -976,20 +1049,24 @@ namespace Parser
 		if(tok_while->type == TType::While)
 		{
 			Expr* cond = parseExpr(tokens);
-			Closure* body = parseClosure(tokens);
+			BracedBlock* body = parseBracedBlock(tokens);
 
 			return CreateAST(WhileLoop, tok_while, cond, body, false);
 		}
 		else
 		{
-			assert(tok_while->type == TType::Do);
+			assert(tok_while->type == TType::Do || tok_while->type == TType::Loop);
 
-			// parse the closure first
-			Closure* body = parseClosure(tokens);
+			// parse the block first
+			BracedBlock* body = parseBracedBlock(tokens);
 
-			// syntax treat: since a raw closure is ignored (for good reason, how can we reference it?)
-			// we can use 'do' to run an anonymous closure
+			// syntax treat: since a raw block is ignored (for good reason, how can we reference it?)
+			// we can use 'do' to run an anonymous block
 			// therefore, the 'while' clause at the end is optional; if it's not present, then the condition is false.
+
+			// 'loop' and 'do', when used without the 'while' clause on the end, have opposite behaviours
+			// do { ... } runs the block only once, while loop { ... } runs it infinite times.
+			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
 			if(tokens.front()->type == TType::While)
@@ -999,16 +1076,12 @@ namespace Parser
 			}
 			else
 			{
-				cond = CreateAST(BoolVal, tokens.front(), false);
+				// here's the magic: continue condition is 'false' for do, 'true' for loop
+				cond = CreateAST(BoolVal, tokens.front(), tok_while->type == TType::Do ? false : true);
 			}
 
 			return CreateAST(WhileLoop, tok_while, cond, body, true);
 		}
-	}
-
-	InfiniteLoop* parseInfiniteLoop(std::deque<Token*>& tokens)
-	{
-		return 0;
 	}
 
 	ForLoop* parseFor(std::deque<Token*>& tokens)
@@ -1034,7 +1107,7 @@ namespace Parser
 		Struct* str = CreateAST(Struct, tok_struct, id);
 
 		// parse a clousure.
-		Closure* body = parseClosure(tokens);
+		BracedBlock* body = parseBracedBlock(tokens);
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
@@ -1050,6 +1123,8 @@ namespace Parser
 
 				str->members.push_back(var);
 				str->nameMap[var->name] = i;
+
+				i++;
 			}
 			else if((func = dynamic_cast<Func*>(stmt)))
 			{
@@ -1059,7 +1134,7 @@ namespace Parser
 			else if((oo = dynamic_cast<OpOverload*>(stmt)))
 			{
 				oo->str = str;
-				str->opmap[oo->op] = oo;
+				str->opOverloads.push_back(oo);
 
 				str->funcs.push_back(oo->func);
 				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
@@ -1072,8 +1147,6 @@ namespace Parser
 			{
 				parserError("Only variable and function declarations are allowed in structs");
 			}
-
-			i++;
 		}
 
 		return str;
