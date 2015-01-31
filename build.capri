@@ -50,7 +50,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -dump-ir -O0 -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O0 -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 		File.deleteFile("build/test");

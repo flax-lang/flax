@@ -381,7 +381,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			i = -1;
 
 		else
-			error("(%s:%s:%d) -> Internal check failed: no comprehendo", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+			error("(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
 
 
 		// if we're a function call
@@ -417,7 +417,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			llvm::Function* lcallee = 0;
 			for(llvm::Function* lf : str->lfuncs)
 			{
-				if(lf->getName() == cgi->mangleName(str, fc->name))
+				if(lf->getName() == callee->decl->mangledName)
 				{
 					lcallee = lf;
 					break;
@@ -425,7 +425,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			}
 
 			if(!lcallee)
-				error(this, "nani?!");
+				error(this, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
 
 			return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
 		}
@@ -442,7 +442,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 	}
 
 
-	error("(%s:%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+	error("(%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __LINE__);
 	return Result_t(0, 0);
 }
 
