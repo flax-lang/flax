@@ -15,16 +15,46 @@ public struct String
 		self.allocated = 64
 	}
 
+	func clear()
+	{
+		memset(self.data, 0, self.allocated)
+		self.length = 0
+	}
+
 	operator=(other: Int8*)
 	{
+		memset(self.data, 0, self.allocated)
+		self.length = 0
+
 		var len: Int64 = strlen(other)
-		if(self.allocated < len)
+		if self.allocated < len
 		{
 			free(self.data)
 			self.data = malloc((len + 31) / 32)
 		}
 
 		memcpy(self.data, other, len)
+	}
+
+	operator=(other: String)
+	{
+		var len: Int64 = strlen(other.data)
+		self.length = len
+
+		memset(self.data, 0, self.allocated)
+		self.length = 0
+
+		if self.allocated >= len
+		{
+			memcpy(self.data, other.data, len)
+		}
+		else
+		{
+			free(self.data)
+			self.data = malloc((len + 31) / 32)
+
+			memcpy(self.data, other.data, len)
+		}
 	}
 }
 

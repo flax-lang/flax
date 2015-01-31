@@ -12,7 +12,7 @@ using namespace Codegen;
 
 Result_t Break::codegen(CodegenInstance* cgi)
 {
-	ClosureScope* cs = cgi->getCurrentClosureScope();
+	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
 		error(this, "Break can only be used inside loop bodies");
 
@@ -27,7 +27,7 @@ Result_t Break::codegen(CodegenInstance* cgi)
 
 Result_t Continue::codegen(CodegenInstance* cgi)
 {
-	ClosureScope* cs = cgi->getCurrentClosureScope();
+	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
 		error(this, "Continue can only be used inside loop bodies");
 
@@ -69,11 +69,11 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi)
 
 
 	cgi->mainBuilder.SetInsertPoint(loopBody);
-	cgi->pushClosure(this, loopBody, loopEnd);
+	cgi->pushBracedBlock(this, loopBody, loopEnd);
 
 	this->body->codegen(cgi);
 
-	cgi->popClosure();
+	cgi->popBracedBlock();
 
 	// put a branch to see if we will go back
 	llvm::Value* condInside = this->cond->codegen(cgi).result.first;
