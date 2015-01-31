@@ -55,7 +55,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			this->inferredLType = val->getType();
 		}
 	}
-	else if(!cmplxtype)
+	else if(!cmplxtype && this->initVal)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;
@@ -89,11 +89,20 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		assert(cmplxtype);
 		Struct* str = (Struct*) cmplxtype->second.first;
 
-		cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+		if(!this->disableAutoInit)
+			val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
 
 		cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
-		BinOp* bo = new BinOp(this->posinfo, new VarRef(this->posinfo, this->name), ArithmeticOp::Assign, this->initVal);
-		return Result_t(bo->codegen(cgi).result.first, ai);
+
+		if(this->initVal)
+		{
+			BinOp* bo = new BinOp(this->posinfo, new VarRef(this->posinfo, this->name), ArithmeticOp::Assign, this->initVal);
+			return Result_t(bo->codegen(cgi).result.first, ai);
+		}
+		else
+		{
+			return Result_t(val, ai);
+		}
 	}
 
 

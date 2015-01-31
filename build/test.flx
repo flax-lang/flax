@@ -5,14 +5,12 @@
 import Foundation
 import Utilities
 
+
 func main(argc: Int32, argv: Int8**) -> Int64
 {
-	var z = 501
+	@noautoinit var x: String
+	val immut = 42
 
-	var y: String = "Hello, World!"
-	var k = y
-
-	k = "penis"
-	printf("%s, %d\n", k.data, z)
+	printf("%ld\n", immut)
 	return 0
 }
