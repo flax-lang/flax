@@ -141,7 +141,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 				todeque.push_back(svr);
 
 				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
-				f->closure->statements.push_front(fc);
+				f->block->statements.push_front(fc);
 
 				this->initFunc = llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first)));
 			}
@@ -166,7 +166,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 					(ss << oname[i]), i++;
 
 				ArithmeticOp ao = cgi->determineArithmeticOp(ss.str());
-				this->lopmap[ao] = llvm::cast<llvm::Function>(val);
+				this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
 			}
 
 			// make the functions public as well
@@ -230,16 +230,16 @@ void Struct::createType(CodegenInstance* cgi)
 			}
 		}
 
-		for(auto p : this->opmap)
-			p.second->codegen(cgi);
+		for(auto p : this->opOverloads)
+			p->codegen(cgi);
 
 		for(Func* func : this->funcs)
 		{
+			// add the implicit self to the declarations.
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
 			implicit_self->type = this->name + "Ptr";
 			func->decl->params.push_front(implicit_self);
 		}
-
 
 		for(VarDecl* var : this->members)
 		{
@@ -412,11 +412,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			for(Expr* e : fc->params)
 			{
 				args.push_back(e->codegen(cgi).result.first);
-				if(args.back() == nullptr)
-					return Result_t(0, 0);
 			}
-
-
 
 			llvm::Function* lcallee = 0;
 			for(llvm::Function* lf : str->lfuncs)
@@ -428,7 +424,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 				}
 			}
 
-			if(!callee)
+			if(!lcallee)
 				error(this, "nani?!");
 
 			return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
@@ -439,7 +435,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
 			llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
-
 
 			// else we're just var access
 			return Result_t(val, ptr);

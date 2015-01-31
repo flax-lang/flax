@@ -78,6 +78,28 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			if(!varptr)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
+
+			// try and see if we have operator overloads for this thing
+			if(lhs->getType()->isStructTy())
+			{
+				TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
+				if(!tp)
+					error(this, "Invalid type");
+
+				// struct will handle all the weird operators by checking overloaded-ness
+
+				// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
+				Result_t ret = cgi->callOperatorOnStruct(tp, valptr.second, this->op, rhs, false);
+				if(ret.result.first != 0 && ret.result.second != 0)
+					return ret;
+
+				else if(this->op != ArithmeticOp::Assign)
+				{
+					// only assign can conceivably be done automatically
+					error(this, "Type %s does not have a defined operator for '%s'", ((Struct*) tp->second.first)->name.c_str(), Parser::arithmeticOpToString(op).c_str());
+				}
+			}
+
 			if(lhs->getType() != rhs->getType())
 			{
 				// ensure we can always store 0 to pointers without a cast
@@ -85,16 +107,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->right)) && n->ival == 0)
 				{
 					rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
-				}
-				else if(lhs->getType()->isStructTy())
-				{
-					TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
-					if(!tp)
-						error(this, "Invalid type");
-
-					// struct will handle all the weird operators by checking overloaded-ness
-					// we only need to handle for arithmetic types
-					return cgi->callOperatorOnStruct(tp, valptr.second, this->op, rhs);
 				}
 				else
 				{

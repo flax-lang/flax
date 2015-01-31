@@ -102,7 +102,7 @@ Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi)
 	return this->decl->codegen(cgi);
 }
 
-Result_t Closure::codegen(CodegenInstance* cgi)
+Result_t BracedBlock::codegen(CodegenInstance* cgi)
 {
 	Result_t lastval(0, 0);
 	for(Expr* e : this->statements)
@@ -161,13 +161,13 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = this->closure->codegen(cgi).result.first;
+	llvm::Value* lastVal = this->block->codegen(cgi).result.first;
 
 	// check if we're not returning void
 	if(cgi->determineVarType(this) != VarType::Void)
 	{
 		// if we have no statements at all:
-		if(this->closure->statements.size() == 0)
+		if(this->block->statements.size() == 0)
 			error(this, "Return value required for function '%s'", this->decl->name.c_str());
 
 		// TODO: proper detection of whether all code paths return

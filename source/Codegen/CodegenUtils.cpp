@@ -289,20 +289,20 @@ namespace Codegen
 		return getType(name) != nullptr;
 	}
 
-	void CodegenInstance::popClosure()
+	void CodegenInstance::popBracedBlock()
 	{
-		this->closureStack.pop_back();
+		this->blockStack.pop_back();
 	}
 
-	ClosureScope* CodegenInstance::getCurrentClosureScope()
+	BracedBlockScope* CodegenInstance::getCurrentBracedBlockScope()
 	{
-		return this->closureStack.size() > 0 ? &this->closureStack.back() : 0;
+		return this->blockStack.size() > 0 ? &this->blockStack.back() : 0;
 	}
 
-	void CodegenInstance::pushClosure(Ast::BreakableClosure* closure, llvm::BasicBlock* body, llvm::BasicBlock* after)
+	void CodegenInstance::pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after)
 	{
-		ClosureScope cs = std::make_pair(closure, std::make_pair(body, after));
-		this->closureStack.push_back(cs);
+		BracedBlockScope cs = std::make_pair(block, std::make_pair(body, after));
+		this->blockStack.push_back(cs);
 	}
 
 
@@ -400,7 +400,7 @@ namespace Codegen
 			}
 			else
 			{
-				error("(CodegenUtils.cpp:~338): Unknown type '%s'", actualType.c_str());
+				error("(CodegenUtils.cpp:~403): Unknown type '%s'", actualType.c_str());
 				return nullptr;
 			}
 		}
@@ -545,18 +545,26 @@ namespace Codegen
 			{
 				if(t != VarType::Array)
 				{
-					TypePair_t* type = getType(expr->type);
-					if(!type)
+					if(decl->type == "Inferred")
 					{
-						// check if it ends with pointer, and if we have a type that's un-pointered
-						llvm::Type* ret = unwrapPointerType(expr->type);
-						if(!ret)
-							error(expr, "(CodegenUtils.cpp:~439): Unknown type '%s'", expr->type.c_str());
-
-						return ret;
+						assert(decl->inferredLType);
+						return decl->inferredLType;
 					}
+					else
+					{
+						TypePair_t* type = getType(expr->type);
+						if(!type)
+						{
+							// check if it ends with pointer, and if we have a type that's un-pointered
+							llvm::Type* ret = unwrapPointerType(expr->type);
+							if(!ret)
+								error(expr, "(CodegenUtils.cpp:~439): Unknown type '%s'", expr->type.c_str());
 
-					return type->first;
+							return ret;
+						}
+
+						return type->first;
+					}
 				}
 
 
@@ -935,7 +943,7 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val)
+	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
 	{
 		assert(pair);
 		assert(pair->first);
@@ -945,33 +953,42 @@ namespace Codegen
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 		assert(str);
 
-		llvm::Function* opov = str->lopmap[op];
+		llvm::Function* opov = nullptr;
+		for(auto f : str->lOpOverloads)
+		{
+			if(f.first == op && (f.second->getArgumentList().back().getType() == val->getType()))
+			{
+				opov = f.second;
+				break;
+			}
+		}
+
 		if(!opov)
-			error("No valid operator overload");
-
-
-		if(opov->getArgumentList().back().getType() != val->getType())
-			error("No valid operator overload, have [%s], got [%s]", getReadableType(val->getType()).c_str(), getReadableType(opov->getArgumentList().back().getType()).c_str());
+		{
+			if(fail)	error("No valid operator overload for operator");
+			else		return Result_t(0, 0);
+		}
 
 		// get the function with the same name in the current module
 		opov = this->mainModule->getFunction(opov->getName());
 		assert(opov);
 
 		// try the assign op.
-		if(op == ArithmeticOp::Assign && str->opmap[op])
+		if(op == ArithmeticOp::Assign)
 		{
 			// check args.
 			mainBuilder.CreateCall2(opov, self, val);
 			return Result_t(mainBuilder.CreateLoad(self), self);
 		}
-		else if(op == ArithmeticOp::CmpEq && str->opmap[op])
+		else if(op == ArithmeticOp::CmpEq)
 		{
 			// check that both types work
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
+		if(fail)
+			error("Invalid operator on type");
 
-		error("Invalid operator on type");
 		return Result_t(0, 0);
 	}
 
