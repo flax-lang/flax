@@ -28,16 +28,46 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
 
-	llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(func, this);
-	cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
-
-
 	TypePair_t* cmplxtype = cgi->getType(this->type);
+	llvm::AllocaInst* ai = nullptr;
 
-	if(this->initVal && !cmplxtype)
+	if(this->type == "Inferred")
+	{
+		if(!this->initVal)
+			error(this, "Type inference requires an initial assignment to infer type");
+
+		if(!cmplxtype)
+		{
+			this->initVal = cgi->autoCastType(this, this->initVal);
+			val = this->initVal->codegen(cgi).result.first;
+		}
+
+
+		if(cgi->isBuiltinType(this->initVal))
+		{
+			this->varType = cgi->determineVarType(this->initVal);
+			this->type = Parser::getVarTypeString(this->varType);
+		}
+		else
+		{
+			// it's not a builtin type
+			ai = cgi->allocateInstanceInBlock(func, val->getType(), this->name);
+			this->inferredLType = val->getType();
+		}
+	}
+	else if(!cmplxtype)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;
+	}
+
+
+
+
+	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
+	if(this->initVal && !cmplxtype && this->type != "Inferred")
+	{
+		// ...
 	}
 	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this))
 	{
@@ -45,40 +75,27 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		// get our type
-		if(!cmplxtype)
-			error(this, "Invalid type");
-
-		TypePair_t* pair = cmplxtype;
-		if(pair->first->isStructTy())
+		// we always need to call the init function, even if we have an assignment
+		for(TypeMap_t* tm : cgi->visibleTypes)
 		{
-			Struct* str = nullptr;
-			assert(pair->second.first);
-			assert((str = dynamic_cast<Struct*>(pair->second.first)));
-			assert(pair->second.second == ExprType::Struct);
-
-			val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
-
-			if(this->initVal)
+			for(auto pair : *tm)
 			{
-				llvm::Value* ival = this->initVal->codegen(cgi).result.first;
-
-				if(ival->getType() == ai->getType()->getPointerElementType())
-					return Result_t(cgi->mainBuilder.CreateStore(ival, ai), ai);
-
-				else
-					return cgi->callOperatorOnStruct(pair, ai, ArithmeticOp::Assign, ival);
-			}
-			else
-			{
-				return Result_t(val, ai);
+				llvm::Type* ltype = pair.second.first;
+				if(ltype == this->inferredLType)
+					cmplxtype = &pair.second;
 			}
 		}
-		else
-		{
-			error(this, "Unknown type encountered");
-		}
+
+		assert(cmplxtype);
+		Struct* str = (Struct*) cmplxtype->second.first;
+
+		cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+
+		cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+		BinOp* bo = new BinOp(this->posinfo, new VarRef(this->posinfo, this->name), ArithmeticOp::Assign, this->initVal);
+		return Result_t(bo->codegen(cgi).result.first, ai);
 	}
+
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
@@ -94,6 +111,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		}
 	}
 
+
+
+	cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);
 	return Result_t(val, ai);
 }
