@@ -25,4 +25,3 @@ deploy:
     skip-cleanup: true
     on:
         tags: true
-        branch: master
