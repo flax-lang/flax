@@ -823,6 +823,16 @@ namespace Codegen
 		}
 	}
 
+	static void StringReplace(std::string& str, const std::string& from, const std::string& to)
+	{
+		size_t start_pos = 0;
+		while((start_pos = str.find(from, start_pos)) != std::string::npos)
+		{
+			str.replace(start_pos, from.length(), to);
+			start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+		}
+	}
+
 	std::string CodegenInstance::getReadableType(llvm::Type* type)
 	{
 		std::string thing;
@@ -830,7 +840,18 @@ namespace Codegen
 
 		type->print(rso);
 
-		return rso.str();
+
+		// turn it into Flax types.
+		std::string ret = rso.str();
+		StringReplace(ret, "i8", "Int8");
+		StringReplace(ret, "i16", "Int16");
+		StringReplace(ret, "i32", "Int32");
+		StringReplace(ret, "i64", "Int64");
+
+		StringReplace(ret, "float", "Float32");
+		StringReplace(ret, "double", "Float64");
+
+		return ret;
 	}
 
 	std::string CodegenInstance::getReadableType(Expr* expr)
@@ -1029,6 +1050,93 @@ namespace Codegen
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
 		this->mainBuilder.CreateStore(properres, lhsptr);
 		return Result_t(properres, lhsptr);
+	}
+
+
+	static void errorNoReturn(Expr* e)
+	{
+		error(e, "Not all code paths return a value");
+	}
+
+	static void verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r)
+	{
+		if(!r)
+		{
+			errorNoReturn(bb);
+		}
+		else
+		{
+			llvm::Type* expected = 0;
+			llvm::Type* have = 0;
+
+			if((have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
+				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead", cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
+		}
+	}
+
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb)
+	{
+		if(bb->statements.size() == 0)
+			errorNoReturn(bb);
+
+		Return* r = nullptr;
+		for(Expr* e : bb->statements)
+		{
+			If* i = nullptr;
+			if((i = dynamic_cast<If*>(e)))
+				recursiveVerifyBranch(cgi, f, i);
+
+			else if((r = dynamic_cast<Return*>(e)))
+				break;
+		}
+
+		verifyReturnType(cgi, f, bb, r);
+		return r;
+	}
+
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib)
+	{
+		Return* r = 0;
+		for(std::pair<Expr*, BracedBlock*> pair : ib->cases)
+		{
+			r = recursiveVerifyBlock(cgi, f, pair.second);
+		}
+
+		if(ib->final)
+			r = recursiveVerifyBlock(cgi, f, ib->final);
+
+		return r;
+	}
+
+	void CodegenInstance::verifyAllPathsReturn(Func* func)
+	{
+		if(this->determineVarType(func) == VarType::Void)
+			return;
+
+		// check the block
+		if(func->block->statements.size() == 0)
+			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.c_str());
+
+
+		// now loop through all exprs in the block
+		Return* ret = 0;
+		for(Expr* e : func->block->statements)
+		{
+			If* i = nullptr;
+
+			if((i = dynamic_cast<If*>(e)))
+				ret = recursiveVerifyBranch(this, func, i);
+
+			// "top level" returns we will just accept.
+			else if((ret = dynamic_cast<Return*>(e)))
+				break;
+		}
+
+		if(!ret)
+			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
+
+		verifyReturnType(this, func, func->block, ret);
 	}
 }
 

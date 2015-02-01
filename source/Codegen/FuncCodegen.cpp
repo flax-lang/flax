@@ -166,11 +166,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	// check if we're not returning void
 	if(cgi->determineVarType(this) != VarType::Void)
 	{
-		// if we have no statements at all:
-		if(this->block->statements.size() == 0)
-			error(this, "Return value required for function '%s'", this->decl->name.c_str());
-
-		// TODO: proper detection of whether all code paths return
+		cgi->verifyAllPathsReturn(this);
 	}
 	else
 	{
