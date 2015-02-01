@@ -43,6 +43,8 @@ Result_t Continue::codegen(CodegenInstance* cgi)
 Result_t Return::codegen(CodegenInstance* cgi)
 {
 	auto ret = this->val->codegen(cgi);
+	this->llvmRetVal = ret.result.first;
+
 	return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
 }
 

@@ -223,6 +223,8 @@ namespace Ast
 		std::string name;
 		std::string mangledName;
 		std::deque<VarDecl*> params;
+
+		llvm::Type* llvmRetType;
 	};
 
 	struct BracedBlock : Expr
@@ -261,6 +263,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		Expr* val;
+		llvm::Value* llvmRetVal;
 	};
 
 	struct Import : Expr
@@ -409,8 +412,6 @@ namespace Ast
 
 		VarRef* var;
 		Expr* index;
-
-		llvm::Value* cachedIndex;
 	};
 
 	struct StringLiteral : Expr
