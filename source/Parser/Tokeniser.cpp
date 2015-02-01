@@ -289,6 +289,7 @@ namespace Parser
 			else if(id == "private")	tok.type = TType::Private;
 			else if(id == "internal")	tok.type = TType::Internal;
 			else if(id == "alloc")		tok.type = TType::Alloc;
+			else if(id == "dealloc")	tok.type = TType::Dealloc;
 
 			else if(id == "Int8"
 				|| id == "Int16"

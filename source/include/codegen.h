@@ -26,7 +26,14 @@ namespace Codegen
 		Func
 	};
 
-	typedef std::pair<llvm::AllocaInst*, Ast::VarDecl*> SymbolPair_t;
+	enum class SymbolValidity
+	{
+		Valid,
+		UseAfterDealloc
+	};
+
+	typedef std::pair<llvm::AllocaInst*, SymbolValidity> SymbolValidity_t;
+	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
 	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
@@ -58,9 +65,10 @@ namespace Codegen
 		void pushScope(SymTab_t* tab, TypeMap_t* tp);
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
-		llvm::Value* getSymInst(const std::string& name);
-		SymbolPair_t* getSymPair(const std::string& name);
-		Ast::VarDecl* getSymDecl(const std::string& name);
+		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
+		SymbolPair_t* getSymPair(Ast::Expr* user, const std::string& name);
+		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
+		void addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl);
 		void popScope();
 
 		// function scopes: namespaces, nested functions.

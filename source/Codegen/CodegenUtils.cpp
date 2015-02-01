@@ -234,7 +234,7 @@ namespace Codegen
 		return *this->symTabStack.back();
 	}
 
-	SymbolPair_t* CodegenInstance::getSymPair(const std::string& name)
+	SymbolPair_t* CodegenInstance::getSymPair(Expr* user, const std::string& name)
 	{
 		for(int i = symTabStack.size(); i-- > 0;)
 		{
@@ -246,19 +246,24 @@ namespace Codegen
 		return nullptr;
 	}
 
-	llvm::Value* CodegenInstance::getSymInst(const std::string& name)
+	llvm::Value* CodegenInstance::getSymInst(Expr* user, const std::string& name)
 	{
 		SymbolPair_t* pair = nullptr;
-		if((pair = getSymPair(name)))
-			return pair->first;
+		if((pair = getSymPair(user, name)))
+		{
+			if(pair->first.second != SymbolValidity::Valid)
+				error(user, "Tried to access invalid symbol '%s' (probably use-after-dealloc)", name.c_str());
+
+			return pair->first.first;
+		}
 
 		return nullptr;
 	}
 
-	VarDecl* CodegenInstance::getSymDecl(const std::string& name)
+	VarDecl* CodegenInstance::getSymDecl(Expr* user, const std::string& name)
 	{
 		SymbolPair_t* pair = nullptr;
-		if((pair = getSymPair(name)))
+		if((pair = getSymPair(user, name)))
 			return pair->second;
 
 		return nullptr;
@@ -267,6 +272,14 @@ namespace Codegen
 	bool CodegenInstance::isDuplicateSymbol(const std::string& name)
 	{
 		return getSymTab().find(name) != getSymTab().end();
+	}
+
+	void CodegenInstance::addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl)
+	{
+		SymbolValidity_t sv(ai, SymbolValidity::Valid);
+		SymbolPair_t sp(sv, vardecl);
+
+		this->getSymTab()[name] = sp;
 	}
 
 
@@ -618,7 +631,7 @@ namespace Codegen
 			}
 			else if((ref = dynamic_cast<VarRef*>(expr)))
 			{
-				return getLlvmType(getSymDecl(ref->name));
+				return getLlvmType(getSymDecl(ref, ref->name));
 			}
 			else if((uo = dynamic_cast<UnaryOp*>(expr)))
 			{
@@ -692,7 +705,7 @@ namespace Codegen
 
 		if((ref = dynamic_cast<VarRef*>(e)))
 		{
-			VarDecl* decl = getSymDecl(ref->name);
+			VarDecl* decl = getSymDecl(ref, ref->name);
 			if(!decl)
 			{
 				if((e->varType = Parser::determineVarType(ref->name)) != VarType::UserDefined)
