@@ -18,6 +18,30 @@ void int_error(Ast::Expr* e, const char* msg, ...);
 void warn(const char* msg, ...);
 void warn(Ast::Expr* e, const char* msg, ...);
 
+
+enum class SymbolType
+{
+	Generic,
+	Function,
+	Variable,
+	Type
+};
+
+namespace GenError
+{
+	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st);
+	void useAfterFree(Ast::Expr* e, std::string symname);
+	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st);
+}
+
+
+
+
+
+
+
+
+
 namespace Codegen
 {
 	enum class ExprType

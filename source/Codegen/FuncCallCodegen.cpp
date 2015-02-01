@@ -17,7 +17,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 		fp = cgi->getDeclaredFunc(cgi->mangleName(this->name, this->params));
 
 	if(!fp)
-		error(this, "Unknown function '%s' (mangled: %s)", this->name.c_str(), cgi->mangleName(this->name, this->params).c_str());
+		GenError::unknownSymbol(this, this->name, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
 	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))

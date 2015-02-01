@@ -25,52 +25,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap)
-{
-	char* alloc = nullptr;
-	vasprintf(&alloc, msg, ap);
-
-	fprintf(stderr, "%s(%s:%" PRId64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
-
-	va_end(ap);
-	if(ex) abort();
-}
-
-
-
-
-void error(Expr* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(relevantast, msg, "Error", true, ap);
-}
-
-void error(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(nullptr, msg, "Error", true, ap);
-}
-
-
-void warn(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(nullptr, msg, "Warning", false, ap);
-}
-
-
-void warn(Expr* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(relevantast, msg, "Warning", false, ap);
-}
-
-
 
 
 
@@ -252,7 +206,7 @@ namespace Codegen
 		if((pair = getSymPair(user, name)))
 		{
 			if(pair->first.second != SymbolValidity::Valid)
-				error(user, "Tried to access invalid symbol '%s' (probably use-after-dealloc)", name.c_str());
+				GenError::useAfterFree(user, name);
 
 			return pair->first.first;
 		}
@@ -413,7 +367,7 @@ namespace Codegen
 			}
 			else
 			{
-				error("(CodegenUtils.cpp:~403): Unknown type '%s'", actualType.c_str());
+				GenError::unknownSymbol(0, actualType, SymbolType::Type);
 				return nullptr;
 			}
 		}
@@ -571,9 +525,7 @@ namespace Codegen
 						{
 							// check if it ends with pointer, and if we have a type that's un-pointered
 							llvm::Type* ret = unwrapPointerType(expr->type);
-							if(!ret)
-								error(expr, "(CodegenUtils.cpp:~439): Unknown type '%s'", expr->type.c_str());
-
+							assert(ret);	// if it returned without calling error(), it shouldn't be null.
 							return ret;
 						}
 
@@ -615,11 +567,9 @@ namespace Codegen
 					if(!type)
 					{
 						llvm::Type* ret = unwrapPointerType(etype);
-						if(!ret)
-							error(expr, "(CodegenUtils.cpp:~482): Unknown type '%s'", etype.c_str());
+						assert(ret);	// if it returned without calling error(), it shouldn't be null.
 
-						else
-							eltype = ret;
+						eltype = ret;
 					}
 					else
 					{

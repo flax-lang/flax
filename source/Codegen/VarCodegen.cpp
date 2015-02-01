@@ -15,7 +15,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 {
 	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
-		error(this, "Unknown variable name '%s'", this->name.c_str());
+		GenError::unknownSymbol(this, this->name, SymbolType::Variable);
 
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
@@ -23,7 +23,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 Result_t VarDecl::codegen(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateSymbol(this->name))
-		error(this, "Redefining duplicate symbol '%s'", this->name.c_str());
+		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
