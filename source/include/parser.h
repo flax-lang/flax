@@ -62,6 +62,7 @@ namespace Parser
 		Internal,
 
 		BuiltinType,
+		Alloc,
 
 
 

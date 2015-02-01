@@ -11,78 +11,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
-{
-	// get our array type
-	llvm::Type* atype = cgi->getLlvmType(this->var);
-	llvm::Type* etype = nullptr;
-
-	if(atype->isArrayTy())
-		etype = llvm::cast<llvm::ArrayType>(atype)->getArrayElementType();
-
-	else if(atype->isPointerTy())
-		etype = atype->getPointerElementType();
-
-	else
-		error(this, "Can only index on pointer or array types.");
-
-
-	// try and do compile-time bounds checking
-	if(atype->isArrayTy())
-	{
-		assert(llvm::isa<llvm::ArrayType>(atype));
-		llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
-
-		// dynamic arrays don't get bounds checking
-		if(at->getNumElements() != 0)
-		{
-			Number* n = nullptr;
-			if((n = dynamic_cast<Number*>(this->index)))
-			{
-				assert(!n->decimal);
-				if(n->ival >= at->getNumElements())
-					error(this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
-			}
-		}
-	}
-
-	// todo: verify for pointers
-	Result_t lhsp = this->var->codegen(cgi);
-
-	llvm::Value* lhs;
-	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
-	else											lhs = lhsp.result.second;
-
-	llvm::Value* gep = nullptr;
-	llvm::Value* ind = this->index->codegen(cgi).result.first;
-
-	if(atype->isStructTy())
-	{
-		llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
-		gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
-	}
-	else
-	{
-		gep = cgi->mainBuilder.CreateGEP(lhs, ind, "arrayIndex");
-	}
-
-	return Result_t(cgi->mainBuilder.CreateLoad(gep), gep);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Result_t Struct::codegen(CodegenInstance* cgi)
 {
 	assert(this->didCreateType);
@@ -237,7 +165,7 @@ void Struct::createType(CodegenInstance* cgi)
 		{
 			// add the implicit self to the declarations.
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-			implicit_self->type = this->name + "Ptr";
+			implicit_self->type = this->name + "*";
 			func->decl->params.push_front(implicit_self);
 		}
 
@@ -314,7 +242,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		error("(%s:%s:%d) -> Internal check failed: invalid operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+		error("(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
 	}
 
 	return Result_t(0, 0);
@@ -342,7 +270,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 	llvm::Type* type = cgi->getLlvmType(this->target);
 	if(!type)
-		error("(%s:%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
 	if(!type->isStructTy())
 	{
@@ -355,10 +283,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 	TypePair_t* pair = cgi->getType(type->getStructName());
 	if(!pair)
-		error("(%s:%s:%d) -> Internal check failed: failed to retrieve type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-
-
-	llvm::Function* insertfunc = cgi->mainBuilder.GetInsertBlock()->getParent();
+		error("(%s:%d) -> Internal check failed: failed to retrieve type", __FILE__, __LINE__);
 
 	if(pair->second.second == ExprType::Struct)
 	{
@@ -438,6 +363,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 			// else we're just var access
 			return Result_t(val, ptr);
+		}
+		else
+		{
+			error("(%s:%d) -> Internal check failed: not var or function?!", __FILE__, __LINE__);
 		}
 	}
 

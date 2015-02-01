@@ -379,14 +379,15 @@ namespace Codegen
 
 	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
 	{
-		std::string sptr = std::string("Ptr");
+		std::string sptr = std::string("*");
+		int ptrStrLength = sptr.length();
 
 		int indirections = 0;
 		std::string actualType = type;
-		if(actualType.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 		{
-			while(actualType.length() > 3 && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
-				actualType = actualType.substr(0, actualType.length() - 3), indirections++;
+			while(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+				actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
 		}
 
 		llvm::Type* ret = nullptr;
@@ -516,7 +517,7 @@ namespace Codegen
 			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
 
 			default:
-				error("(%s:%s:%d) -> Internal check failed: not a builtin type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+				error("(%s:%d) -> Internal check failed: not a builtin type", __FILE__, __LINE__);
 				return nullptr;
 		}
 	}
@@ -538,6 +539,7 @@ namespace Codegen
 			FuncDecl* fd		= nullptr;
 			Func* f				= nullptr;
 			StringLiteral* sl	= nullptr;
+			UnaryOp* uo			= nullptr;
 			CastedType* ct		= nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
@@ -570,7 +572,7 @@ namespace Codegen
 				// it's an array. decide on its size.
 				size_t pos = decl->type.find_first_of('[');
 				if(pos == std::string::npos)
-					error("(%s:%s:%d) -> Internal check failed: invalid array declaration string", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+					error("(%s:%d) -> Internal check failed: invalid array declaration string", __FILE__, __LINE__);
 
 				std::string etype = decl->type.substr(0, pos);
 				std::string atype = decl->type.substr(pos);
@@ -618,6 +620,17 @@ namespace Codegen
 			{
 				return getLlvmType(getSymDecl(ref->name));
 			}
+			else if((uo = dynamic_cast<UnaryOp*>(expr)))
+			{
+				if(uo->op == ArithmeticOp::Deref)
+					return this->getLlvmType(uo->expr)->getPointerElementType();
+
+				else if(uo->op == ArithmeticOp::AddrOf)
+					return this->getLlvmType(uo->expr)->getPointerTo();
+
+				else
+					return this->getLlvmType(uo->expr);
+			}
 			else if((ct = dynamic_cast<CastedType*>(expr)))
 			{
 				return unwrapPointerType(ct->name);
@@ -626,7 +639,7 @@ namespace Codegen
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc->name);
 				if(!fp)
-					error("(%s:%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __PRETTY_FUNCTION__, __LINE__, fc->name.c_str());
+					error("(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(fp->second);
 			}
@@ -648,8 +661,8 @@ namespace Codegen
 
 					if(!ret)
 					{
-						error(expr, "(%s:%s:%d) -> Internal check failed: Unknown type '%s'",
-							__FILE__, __PRETTY_FUNCTION__, __LINE__, expr->type.c_str());
+						error(expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
+							__FILE__, __LINE__, expr->type.c_str());
 					}
 					return ret;
 				}
@@ -662,7 +675,7 @@ namespace Codegen
 			}
 		}
 
-		error("(%s:%s:%d) -> Internal check failed: failed to determine type", __FILE__, __PRETTY_FUNCTION__, __LINE__);
+		error("(%s:%d) -> Internal check failed: failed to determine type", __FILE__, __LINE__);
 		return nullptr;
 	}
 

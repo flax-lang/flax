@@ -6,47 +6,45 @@
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
 
-#include <llvm/IR/DataLayout.h>
-
 using namespace Ast;
 using namespace Codegen;
 
-Result_t UnaryOp::codegen(CodegenInstance* cgi)
+static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, BinOp* b, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs)
 {
-	assert(this->expr);
-	switch(this->op)
+	if(structRef->getType()->getPointerElementType()->isStructTy())
 	{
-		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->mainBuilder.CreateNot(this->expr->codegen(cgi).result.first), 0);
+		TypePair_t* tp = cgi->getType(structRef->getType()->getPointerElementType()->getStructName());
+		if(!tp)
+			error(b, "Invalid type");
 
-		case ArithmeticOp::Minus:
-			return Result_t(cgi->mainBuilder.CreateNeg(this->expr->codegen(cgi).result.first), 0);
+		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
+		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
+		if(ret.result.first != 0 && ret.result.second != 0)
+			return ret;
 
-		case ArithmeticOp::Plus:
-			return this->expr->codegen(cgi);
-
-		case ArithmeticOp::Deref:
+		else if(op != ArithmeticOp::Assign)
 		{
-			Result_t vp = this->expr->codegen(cgi);
-			return Result_t(cgi->mainBuilder.CreateLoad(vp.result.first), vp.result.first);
+			// only assign can conceivably be done automatically
+			error(b, "Type %s does not have a defined operator for '%s'", ((Struct*) tp->second.first)->name.c_str(), Parser::arithmeticOpToString(op).c_str());
 		}
-
-		case ArithmeticOp::AddrOf:
-		{
-			return Result_t(this->expr->codegen(cgi).result.second, 0);
-		}
-
-		default:
-			error("this, (%s:%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __PRETTY_FUNCTION__, __LINE__);
-			return Result_t(0, 0);
+		else
+			printf("op overload failed\n");
 	}
-}
 
+	return Result_t(0, 0);
+}
 
 
 Result_t BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
+	if(this->op == ArithmeticOp::MemberAccess)
+	{
+		MemberAccess* fakema = new MemberAccess(this->posinfo, this->left, this->right);
+		return fakema->codegen(cgi);
+	}
+
+
 	ValPtr_t valptr = this->left->codegen(cgi).result;
 
 	llvm::Value* lhs;
@@ -90,25 +88,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 
 			// try and see if we have operator overloads for this thing
-			if(lhs->getType()->isStructTy())
-			{
-				TypePair_t* tp = cgi->getType(lhs->getType()->getStructName());
-				if(!tp)
-					error(this, "Invalid type");
+			Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, valptr.second, rhs);
+			if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
+				return tryOpOverload;
 
-				// struct will handle all the weird operators by checking overloaded-ness
-
-				// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
-				Result_t ret = cgi->callOperatorOnStruct(tp, valptr.second, this->op, rhs, false);
-				if(ret.result.first != 0 && ret.result.second != 0)
-					return ret;
-
-				else if(this->op != ArithmeticOp::Assign)
-				{
-					// only assign can conceivably be done automatically
-					error(this, "Type %s does not have a defined operator for '%s'", ((Struct*) tp->second.first)->name.c_str(), Parser::arithmeticOpToString(op).c_str());
-				}
-			}
 
 			if(lhs->getType() != rhs->getType())
 			{
@@ -156,6 +139,13 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		// do it all together now
 		if(this->op == ArithmeticOp::Assign)
 		{
+			if(varptr->getType()->getPointerElementType()->isStructTy())
+			{
+				Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, varptr, rhs);
+				if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
+					return tryOpOverload;
+			}
+
 			cgi->mainBuilder.CreateStore(rhs, varptr);
 			return Result_t(rhs, varptr);
 		}
