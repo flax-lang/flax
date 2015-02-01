@@ -439,6 +439,15 @@ namespace Ast
 		std::string typeName;
 	};
 
+	struct Dealloc : Expr
+	{
+		~Dealloc() { }
+		Dealloc(Parser::PosInfo pos, VarRef* _var) : Expr(pos), var(_var) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+
+		VarRef* var;
+	};
+
 	struct Root : Expr
 	{
 		Root() : Expr(Parser::PosInfo()) { }

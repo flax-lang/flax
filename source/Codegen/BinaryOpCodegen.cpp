@@ -73,7 +73,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		if((v = dynamic_cast<VarRef*>(this->left)))
 		{
 			{
-				VarDecl* vdecl = cgi->getSymDecl(v->name);
+				VarDecl* vdecl = cgi->getSymDecl(this, v->name);
 				if(!vdecl) error(this, "Failed to find declaration for variable '%s'", v->name.c_str());
 
 				if(vdecl->immutable)
@@ -83,7 +83,16 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			if(!rhs)
 				error(this, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
 
-			varptr = cgi->getSymTab()[v->name].first;
+			SymbolValidity_t sv = cgi->getSymPair(this, v->name)->first;
+			if(sv.second != SymbolValidity::Valid)
+			{
+				error(this, "Attempted to use invalidated variable '%s', probably use-after-dealloc", v->name.c_str());
+			}
+			else
+			{
+				varptr = sv.first;
+			}
+
 			if(!varptr)
 				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
 

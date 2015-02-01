@@ -46,7 +46,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	// and fuck shit up big time
 	llvm::BasicBlock* prevBlock = cgi->mainBuilder.GetInsertBlock();
 
-	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), "entry", func);
+	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
 	cgi->mainBuilder.SetInsertPoint(block);
 
 
@@ -59,7 +59,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 		llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(func, this->decl->params[i]);
 		cgi->mainBuilder.CreateStore(it, ai);
 
-		cgi->getSymTab()[this->decl->params[i]->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this->decl->params[i]);
+		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
 	}
 
 
