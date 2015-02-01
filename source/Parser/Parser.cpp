@@ -1154,8 +1154,8 @@ namespace Parser
 		id += eat(tokens)->text;
 		Struct* str = CreateAST(Struct, tok_struct, id);
 
-		uint32_t attr = checkAndApplyAttributes(2, Attr_PackedStruct, Attr_VisPublic);
-		if(attr)
+		uint32_t attr = checkAndApplyAttributes(4, Attr_PackedStruct, Attr_VisPublic, Attr_VisInternal, Attr_VisPrivate);
+		if(attr & Attr_PackedStruct)
 			str->packed = true;
 
 		// parse a clousure.
