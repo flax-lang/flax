@@ -14,3 +14,15 @@ script: ./capri --target travis
 
 notifications:
     email: false
+
+after_success:
+    - zip -r linux-x64 build/sysroot
+
+deploy:
+    provider: releases
+    api-key: eecf57661be6e48de37f97df2acb70c043cad380
+    file: linux-x64.zip
+    skip-cleanup: true
+    on:
+        all_branches: true
+        tags: true

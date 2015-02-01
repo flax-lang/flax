@@ -13,7 +13,7 @@ using namespace Codegen;
 
 Result_t VarRef::codegen(CodegenInstance* cgi)
 {
-	llvm::Value* val = cgi->getSymInst(this->name);
+	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
 		error(this, "Unknown variable name '%s'", this->name.c_str());
 
@@ -93,7 +93,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 				val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
 		}
 
-		cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+
+		cgi->addSymbol(this->name, ai, this);
 
 		if(this->initVal)
 		{
@@ -123,7 +124,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 
 
-	cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+	cgi->addSymbol(this->name, ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);
 	return Result_t(val, ai);
 }

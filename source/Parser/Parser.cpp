@@ -88,6 +88,7 @@ namespace Parser
 	CastedType* parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
+	Dealloc* parseDealloc(std::deque<Token*>& tokens);
 	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
@@ -519,6 +520,9 @@ namespace Parser
 
 				case TType::Alloc:
 					return parseAlloc(tokens);
+
+				case TType::Dealloc:
+					return parseDealloc(tokens);
 
 				case TType::At:
 					parseAttribute(tokens);
@@ -982,6 +986,19 @@ namespace Parser
 		delete tid;
 
 		return CreateAST(Alloc, tok_alloc, tname);
+	}
+
+	Dealloc* parseDealloc(std::deque<Token*>& tokens)
+	{
+		Token* tok_dealloc = eat(tokens);
+		assert(tok_dealloc->type == TType::Dealloc);
+
+		Token* tok_id = eat(tokens);
+		if(tok_id->type != TType::Identifier)
+			parserError("Expected identifier after 'dealloc'");
+
+		VarRef* vr = CreateAST(VarRef, tok_dealloc, tok_id->text);
+		return CreateAST(Dealloc, tok_dealloc, vr);
 	}
 
 	Number* parseNumber(std::deque<Token*>& tokens)
