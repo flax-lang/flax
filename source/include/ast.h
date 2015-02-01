@@ -99,6 +99,7 @@ namespace Ast
 		BitwiseAndEquals,
 		BitwiseOrEquals,
 		BitwiseXorEquals,
+		MemberAccess,
 	};
 
 
@@ -393,11 +394,11 @@ namespace Ast
 	struct MemberAccess : Expr
 	{
 		~MemberAccess() { }
-		MemberAccess(Parser::PosInfo pos, VarRef* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
+		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 
-		VarRef* target;
+		Expr* target;
 		Expr* member;
 	};
 
@@ -424,9 +425,18 @@ namespace Ast
 	{
 		~CastedType() { }
 		CastedType(Parser::PosInfo pos, std::string _name) : Expr(pos), name(_name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override { return Result_t(0, 0); };
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override { return Result_t(nullptr, nullptr); }
 
 		std::string name;
+	};
+
+	struct Alloc : Expr
+	{
+		~Alloc() { }
+		Alloc(Parser::PosInfo pos, std::string _typeName) : Expr(pos), typeName(_typeName) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+
+		std::string typeName;
 	};
 
 	struct Root : Expr
