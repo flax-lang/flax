@@ -86,7 +86,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			SymbolValidity_t sv = cgi->getSymPair(this, v->name)->first;
 			if(sv.second != SymbolValidity::Valid)
 			{
-				error(this, "Attempted to use invalidated variable '%s', probably use-after-dealloc", v->name.c_str());
+				GenError::useAfterFree(this, v->name);
 			}
 			else
 			{
@@ -94,7 +94,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			}
 
 			if(!varptr)
-				error(this, "Unknown identifier (var) '%s'", v->name.c_str());
+				GenError::unknownSymbol(this, v->name, SymbolType::Variable);
 
 			// try and see if we have operator overloads for this thing
 			Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, valptr.second, rhs);
@@ -181,7 +181,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		{
 			TypePair_t* tp = cgi->getType(ct->name);
 			if(!tp)
-				error(this, "Unknown type '%s'", ct->name.c_str());
+				GenError::unknownSymbol(this, ct->name, SymbolType::Type);
 
 			rtype = tp->first;
 		}
