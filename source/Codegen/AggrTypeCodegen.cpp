@@ -253,7 +253,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 	std::vector<llvm::Type*> vec(types, types + this->members.size());
-	str->setBody(vec);
+	str->setBody(vec, this->packed);
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
