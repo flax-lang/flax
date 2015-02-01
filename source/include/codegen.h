@@ -70,7 +70,6 @@ namespace Codegen
 		FuncPair_t* getDeclaredFunc(std::string name);
 		void popFuncScope();
 
-
 		Ast::Root* getRootAST();
 		bool isPtr(Ast::Expr* e);
 		bool isArrayType(Ast::Expr* e);
@@ -82,6 +81,7 @@ namespace Codegen
 		bool isDuplicateType(std::string name);
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Value* getDefaultValue(Ast::Expr* e);
+		void verifyAllPathsReturn(Ast::Func* func);
 		Ast::VarType determineVarType(Ast::Expr* e);
 		std::string getReadableType(Ast::Expr* expr);
 		std::string getReadableType(llvm::Type* type);
