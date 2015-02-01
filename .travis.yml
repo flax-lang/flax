@@ -14,3 +14,15 @@ script: ./capri --target travis
 
 notifications:
     email: false
+
+after_success:
+    - zip -r flaxCompiler build/sysroot
+
+deploy:
+    provider: releases
+    api-key: eecf57661be6e48de37f97df2acb70c043cad380
+    file: flaxCompiler.zip
+    skip-cleanup: true
+    on:
+        tags: true
+        branch: master
