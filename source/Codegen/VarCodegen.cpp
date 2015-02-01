@@ -117,8 +117,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		}
 		else
 		{
-			error(this, "Invalid assignment, type %s cannot be assigned to type %s", cgi->getReadableType(val->getType()).c_str(),
-				cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
+			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
 		}
 	}
 

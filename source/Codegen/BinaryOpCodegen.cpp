@@ -25,10 +25,10 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, BinOp* b, Ari
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
-			error(b, "Type %s does not have a defined operator for '%s'", ((Struct*) tp->second.first)->name.c_str(), Parser::arithmeticOpToString(op).c_str());
+			GenError::noOpOverload(b, ((Struct*) tp->second.first)->name, op);
 		}
-		else
-			printf("op overload failed\n");
+
+		// fail gracefully-ish
 	}
 
 	return Result_t(0, 0);
@@ -74,7 +74,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		{
 			{
 				VarDecl* vdecl = cgi->getSymDecl(this, v->name);
-				if(!vdecl) error(this, "Failed to find declaration for variable '%s'", v->name.c_str());
+				if(!vdecl) GenError::unknownSymbol(this, v->name, SymbolType::Variable);
 
 				if(vdecl->immutable)
 					error(this, "Cannot assign to immutable variable '%s'!", v->name.c_str());
@@ -112,7 +112,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				}
 				else
 				{
-					error(this, "Cannot assign different types '%s' and '%s'", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
+					GenError::invalidAssignment(this, lhs, rhs);
 				}
 			}
 		}
@@ -129,7 +129,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 			// make sure the left side is a pointer
 			if(!varptr->getType()->isPointerTy())
-				error(this, "Expression (type '%s' = '%s') is not assignable.", cgi->getReadableType(varptr->getType()).c_str(), cgi->getReadableType(rhs->getType()).c_str());
+				GenError::invalidAssignment(this, varptr, rhs);
 
 			// redo the number casting
 			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
