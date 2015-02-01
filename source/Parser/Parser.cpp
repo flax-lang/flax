@@ -18,10 +18,10 @@ using namespace Ast;
 namespace Parser
 {
 	PosInfo currentPos;
-	Root* rootNode;
-	Token* curtok;
-	uint32_t curAttrib = 0;
-	Codegen::CodegenInstance* curCgi;
+	Root* rootNode						= nullptr;
+	Token* curtok						= nullptr;
+	uint32_t curAttrib					= 0;
+	Codegen::CodegenInstance* curCgi	= nullptr;
 
 
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
@@ -75,6 +75,7 @@ namespace Parser
 	Func* parseFunc(std::deque<Token*>& tokens);
 	Expr* parseExpr(std::deque<Token*>& tokens);
 	Expr* parseUnary(std::deque<Token*>& tokens);
+	Alloc* parseAlloc(std::deque<Token*>& tokens);
 	ForLoop* parseFor(std::deque<Token*>& tokens);
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
 	Break* parseBreak(std::deque<Token*>& tokens);
@@ -86,13 +87,13 @@ namespace Parser
 	void parseAttribute(std::deque<Token*>& tokens);
 	CastedType* parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
-	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
 	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
+	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
@@ -118,6 +119,7 @@ namespace Parser
 		Token* t = nullptr;
 		currentPos.file = filename;
 		currentPos.line = 1;
+		curAttrib = 0;
 
 		std::deque<Token*> tokens;
 
@@ -171,7 +173,8 @@ namespace Parser
 		switch(tok->type)
 		{
 			case TType::As:
-				return 200;
+			case TType::Period:
+				return 110;
 
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
@@ -315,6 +318,7 @@ namespace Parser
 			case ArithmeticOp::BitwiseAndEquals:	return "&=";
 			case ArithmeticOp::BitwiseOrEquals:		return "|=";
 			case ArithmeticOp::BitwiseXorEquals:	return "^=";
+			case ArithmeticOp::MemberAccess:		return ".";
 		}
 	}
 
@@ -512,6 +516,9 @@ namespace Parser
 						return parseOpOverload(tokens);
 
 					return parseIdExpr(tokens);
+
+				case TType::Alloc:
+					return parseAlloc(tokens);
 
 				case TType::At:
 					parseAttribute(tokens);
@@ -762,7 +769,7 @@ namespace Parser
 			if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
 			{
 				while(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
-					eat(tokens), ptrAppend += "Ptr";
+					eat(tokens), ptrAppend += "*";
 			}
 			else if(tokens.front()->type == TType::LSquare)
 			{
@@ -918,6 +925,7 @@ namespace Parser
 				case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
 				case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
 				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
+				case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
 				default:					parserError("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
@@ -951,12 +959,6 @@ namespace Parser
 
 			return CreateAST(ArrayIndex, tok_id, idvr, within);
 		}
-		// else if(tokens.front()->type == TType::Ptr || tokens.front()->type == TType::Asterisk)
-		// {
-		// 	eat(tokens);
-		// 	idvr->name += "Ptr";
-		// 	return idvr;
-		// }
 		else if(tokens.front()->type != TType::LParen)
 		{
 			return idvr;
@@ -966,6 +968,20 @@ namespace Parser
 			delete idvr;
 			return parseFunctionCall(tokens, id);
 		}
+	}
+
+	Alloc* parseAlloc(std::deque<Token*>& tokens)
+	{
+		Token* tok_alloc = eat(tokens);
+		assert(tok_alloc->type == TType::Alloc);
+
+		VarRef* tid = dynamic_cast<VarRef*>(parseIdExpr(tokens));	// probably got a varref
+		assert(tid);
+
+		std::string tname = tid->name;
+		delete tid;
+
+		return CreateAST(Alloc, tok_alloc, tname);
 	}
 
 	Number* parseNumber(std::deque<Token*>& tokens)

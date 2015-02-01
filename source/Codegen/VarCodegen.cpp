@@ -42,7 +42,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			val = this->initVal->codegen(cgi).result.first;
 		}
 
-
 		if(cgi->isBuiltinType(this->initVal))
 		{
 			this->varType = cgi->determineVarType(this->initVal);
@@ -61,15 +60,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		val = this->initVal->codegen(cgi).result.first;
 	}
 
-
-
-
 	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
 	{
 		// ...
 	}
-	else if(cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this))
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
 	{
 		val = cgi->getDefaultValue(this);
 	}
@@ -82,15 +78,20 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			{
 				llvm::Type* ltype = pair.second.first;
 				if(ltype == this->inferredLType)
+				{
 					cmplxtype = &pair.second;
+					break;
+				}
 			}
 		}
 
-		assert(cmplxtype);
-		Struct* str = (Struct*) cmplxtype->second.first;
+		if(cmplxtype)
+		{
+			Struct* str = (Struct*) cmplxtype->second.first;
 
-		if(!this->disableAutoInit)
-			val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+			if(!this->disableAutoInit)
+				val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+		}
 
 		cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
 
