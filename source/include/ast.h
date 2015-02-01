@@ -409,8 +409,6 @@ namespace Ast
 
 		VarRef* var;
 		Expr* index;
-
-		llvm::Value* cachedIndex;
 	};
 
 	struct StringLiteral : Expr
