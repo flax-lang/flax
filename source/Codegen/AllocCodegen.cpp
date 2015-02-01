@@ -49,7 +49,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 	{
 		typePair = cgi->getType(this->typeName);
 		if(!typePair)
-			error(this, "Unknown type '%s'", this->typeName.c_str());
+			GenError::unknownSymbol(this, this->typeName, SymbolType::Type);
 
 		allocType = typePair->first;
 	}
