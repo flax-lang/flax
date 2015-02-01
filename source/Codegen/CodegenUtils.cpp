@@ -843,11 +843,11 @@ namespace Codegen
 
 		// turn it into Flax types.
 		std::string ret = rso.str();
+
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
 		StringReplace(ret, "i32", "Int32");
 		StringReplace(ret, "i64", "Int64");
-
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
 
