@@ -32,6 +32,9 @@ namespace GenError
 	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st);
 	void useAfterFree(Ast::Expr* e, std::string symname);
 	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st);
+	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op);
+	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b);
+	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b);
 }
 
 

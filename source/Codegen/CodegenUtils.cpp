@@ -970,7 +970,7 @@ namespace Codegen
 
 		if(!opov)
 		{
-			if(fail)	error("No valid operator overload for operator");
+			if(fail)	GenError::noOpOverload(str, str->name, op);
 			else		return Result_t(0, 0);
 		}
 
@@ -991,9 +991,7 @@ namespace Codegen
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
-		if(fail)
-			error("Invalid operator on type");
-
+		if(fail)	GenError::noOpOverload(str, str->name, op);
 		return Result_t(0, 0);
 	}
 

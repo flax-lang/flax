@@ -75,6 +75,27 @@ namespace GenError
 	{
 		error(e, "Duplicate %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
 	}
+
+	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op)
+	{
+		error(e, "No valid operator overload for '%s' on type '%s'", Parser::arithmeticOpToString(op).c_str(), type.c_str());
+	}
+
+	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b)
+	{
+		// note: HACK
+		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
+		// the 'this' pointer (it doesn't) we'll be fine.
+		Codegen::CodegenInstance* cgi = 0;
+
+		error(e, "Invalid assignment from type '%s' to '%s'", cgi->getReadableType(a).c_str(),
+			cgi->getReadableType(b).c_str());
+	}
+
+	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b)
+	{
+		invalidAssignment(e, a->getType(), b->getType());
+	}
 }
 
 
