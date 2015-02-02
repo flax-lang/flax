@@ -13,11 +13,14 @@ using namespace Codegen;
 Result_t FuncCall::codegen(CodegenInstance* cgi)
 {
 	FuncPair_t* fp = cgi->getDeclaredFunc(this->name);
-	if(!fp)
-		fp = cgi->getDeclaredFunc(cgi->mangleName(this->name, this->params));
+	std::string cmangled = "";
+	std::string cppmangled = "";
+
+	if(!fp)	fp = cgi->getDeclaredFunc(cmangled = cgi->mangleName(this->name, this->params));
+	if(!fp)	fp = cgi->getDeclaredFunc(cppmangled = cgi->mangleCppName(this->name, this->params));
 
 	if(!fp)
-		GenError::unknownSymbol(this, this->name, SymbolType::Function);
+		GenError::unknownSymbol(this, this->name + ", tried (c): " + cmangled + ", (c++): " + cppmangled, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
 	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
