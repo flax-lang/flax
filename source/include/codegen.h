@@ -18,6 +18,33 @@ void int_error(Ast::Expr* e, const char* msg, ...);
 void warn(const char* msg, ...);
 void warn(Ast::Expr* e, const char* msg, ...);
 
+
+enum class SymbolType
+{
+	Generic,
+	Function,
+	Variable,
+	Type
+};
+
+namespace GenError
+{
+	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st);
+	void useAfterFree(Ast::Expr* e, std::string symname);
+	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st);
+	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op);
+	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b);
+	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b);
+}
+
+
+
+
+
+
+
+
+
 namespace Codegen
 {
 	enum class ExprType
@@ -26,7 +53,14 @@ namespace Codegen
 		Func
 	};
 
-	typedef std::pair<llvm::AllocaInst*, Ast::VarDecl*> SymbolPair_t;
+	enum class SymbolValidity
+	{
+		Valid,
+		UseAfterDealloc
+	};
+
+	typedef std::pair<llvm::AllocaInst*, SymbolValidity> SymbolValidity_t;
+	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
 	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
@@ -58,9 +92,10 @@ namespace Codegen
 		void pushScope(SymTab_t* tab, TypeMap_t* tp);
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
-		llvm::Value* getSymInst(const std::string& name);
-		SymbolPair_t* getSymPair(const std::string& name);
-		Ast::VarDecl* getSymDecl(const std::string& name);
+		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
+		SymbolPair_t* getSymPair(Ast::Expr* user, const std::string& name);
+		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
+		void addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl);
 		void popScope();
 
 		// function scopes: namespaces, nested functions.
@@ -93,8 +128,11 @@ namespace Codegen
 		Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
 		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
+		std::string unwrapPointerType(std::string type, int* indirections);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
+		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);

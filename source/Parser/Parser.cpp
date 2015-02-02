@@ -88,6 +88,7 @@ namespace Parser
 	CastedType* parseType(std::deque<Token*>& tokens);
 	VarDecl* parseVarDecl(std::deque<Token*>& tokens);
 	WhileLoop* parseWhile(std::deque<Token*>& tokens);
+	Dealloc* parseDealloc(std::deque<Token*>& tokens);
 	Continue* parseContinue(std::deque<Token*>& tokens);
 	Func* parseTopLevelExpr(std::deque<Token*>& tokens);
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
@@ -520,6 +521,9 @@ namespace Parser
 				case TType::Alloc:
 					return parseAlloc(tokens);
 
+				case TType::Dealloc:
+					return parseDealloc(tokens);
+
 				case TType::At:
 					parseAttribute(tokens);
 					return parsePrimary(tokens);
@@ -701,8 +705,32 @@ namespace Parser
 		assert(func->type == TType::ForeignFunc);
 		eat(tokens);
 
+		FFIType ffitype;
+
+		// check for specifying the type
+		if(tokens.front()->type == TType::LParen)
+		{
+			eat(tokens);
+			if(tokens.front()->type != TType::Identifier)
+				parserError("Expected type of external function, either C (default) or Cpp");
+
+			Token* ftype = eat(tokens);
+			std::string lftype = ftype->text;
+			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
+
+			if(lftype == "c")			ffitype = FFIType::C;
+			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
+			else						parserError("Unknown FFI type '%s'", ftype->text.c_str());
+
+			if(eat(tokens)->type != TType::RParen)
+				parserError("Expected ')'");
+		}
+
+
+
 		FuncDecl* decl = parseFuncDecl(tokens);
 		decl->isFFI = true;
+		decl->ffiType = ffitype;
 
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}
@@ -984,6 +1012,19 @@ namespace Parser
 		return CreateAST(Alloc, tok_alloc, tname);
 	}
 
+	Dealloc* parseDealloc(std::deque<Token*>& tokens)
+	{
+		Token* tok_dealloc = eat(tokens);
+		assert(tok_dealloc->type == TType::Dealloc);
+
+		Token* tok_id = eat(tokens);
+		if(tok_id->type != TType::Identifier)
+			parserError("Expected identifier after 'dealloc'");
+
+		VarRef* vr = CreateAST(VarRef, tok_dealloc, tok_id->text);
+		return CreateAST(Dealloc, tok_dealloc, vr);
+	}
+
 	Number* parseNumber(std::deque<Token*>& tokens)
 	{
 		Number* n;
@@ -992,9 +1033,15 @@ namespace Parser
 			Token* tok = eat(tokens);
 			n = CreateAST(Number, tok, getIntegerValue(tok));
 
+			// todo: handle integer suffixes
+			if(n->ival > INT_MAX)
+				n->varType = VarType::Int64;
+
+			else
+				n->varType = VarType::Int32;
+
 			// set the type.
 			// always used signed
-			n->varType = VarType::Int64;
 		}
 		else if(tokens.front()->type == TType::Decimal)
 		{
