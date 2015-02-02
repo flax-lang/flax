@@ -66,7 +66,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		UnaryOp* uo = nullptr;
 		ArrayIndex* ai = nullptr;
 
-
 		cgi->autoCastLlvmType(lhs, rhs);
 
 		llvm::Value* varptr = 0;
@@ -85,16 +84,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 			SymbolValidity_t sv = cgi->getSymPair(this, v->name)->first;
 			if(sv.second != SymbolValidity::Valid)
-			{
 				GenError::useAfterFree(this, v->name);
-			}
+
 			else
-			{
 				varptr = sv.first;
-			}
 
 			if(!varptr)
 				GenError::unknownSymbol(this, v->name, SymbolType::Variable);
+
 
 			// try and see if we have operator overloads for this thing
 			Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, valptr.second, rhs);
@@ -107,13 +104,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				// ensure we can always store 0 to pointers without a cast
 				Number* n = 0;
 				if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->right)) && n->ival == 0)
-				{
 					rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
-				}
+
 				else
-				{
 					GenError::invalidAssignment(this, lhs, rhs);
-				}
 			}
 		}
 		else if((dynamic_cast<MemberAccess*>(this->left))
@@ -153,6 +147,37 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 				Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, varptr, rhs);
 				if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
 					return tryOpOverload;
+			}
+
+			// check for overflow
+			if(lhs->getType()->isIntegerTy())
+			{
+				Number* n = 0;
+				uint64_t max = 1;
+
+				// why the fuck does c++ not have a uint64_t pow function
+				{
+					for(int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
+						max *= 2;
+				}
+
+				if(max == 0)
+					max = -1;
+
+				if((n = dynamic_cast<Number*>(this->right)) && !n->decimal)
+				{
+					bool shouldwarn = false;
+					if(!cgi->isSignedType(n))
+					{
+						if((uint64_t) n->ival > max)
+							shouldwarn = true;
+					}
+					else if(n->ival > max)
+							shouldwarn = true;
+
+					if(shouldwarn)
+						warn(this, "Value '%" PRId64 "' is too large for variable type '%s', max %lld", n->ival, cgi->getReadableType(lhs->getType()).c_str(), max);
+				}
 			}
 
 			cgi->mainBuilder.CreateStore(rhs, varptr);
