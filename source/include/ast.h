@@ -102,6 +102,11 @@ namespace Ast
 		MemberAccess,
 	};
 
+	enum class FFIType
+	{
+		C,
+		Cpp,
+	};
 
 	extern uint32_t Attr_Invalid;
 	extern uint32_t Attr_NoMangle;
@@ -221,6 +226,7 @@ namespace Ast
 
 		bool hasVarArg;
 		bool isFFI;
+		FFIType ffiType;
 		std::string name;
 		std::string mangledName;
 		std::deque<VarDecl*> params;

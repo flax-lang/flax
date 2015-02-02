@@ -342,14 +342,12 @@ namespace Codegen
 
 
 
-
-
-	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
+	std::string CodegenInstance::unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = std::string("*");
 		int ptrStrLength = sptr.length();
 
-		int indirections = 0;
+		int& indirections = *_indirections;
 		std::string actualType = type;
 		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 		{
@@ -357,6 +355,14 @@ namespace Codegen
 				actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
 		}
 
+		return actualType;
+	}
+
+	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
+	{
+		int indirections = 0;
+
+		std::string actualType = this->unwrapPointerType(type, &indirections);
 		llvm::Type* ret = nullptr;
 		if(Parser::determineVarType(actualType) == VarType::UserDefined)
 		{
@@ -661,7 +667,7 @@ namespace Codegen
 				if((e->varType = Parser::determineVarType(ref->name)) != VarType::UserDefined)
 					return e->varType;
 
-				error(e, "Unknown variable '%s', could not find declaration", ref->name.c_str());
+				GenError::unknownSymbol(e, ref->name, SymbolType::Variable);
 			}
 
 			// it's a decl. get the type, motherfucker.
@@ -820,6 +826,7 @@ namespace Codegen
 		// turn it into Flax types.
 		std::string ret = rso.str();
 
+		StringReplace(ret, "i1", "Bool");
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
 		StringReplace(ret, "i32", "Int32");
@@ -911,6 +918,135 @@ namespace Codegen
 
 		return base + (mangled.empty() ? "#void" : ("#" + mangled));
 	}
+
+	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<Expr*> a;
+		for(auto arg : args)
+			a.push_back(arg);
+
+		return this->mangleCppName(base, a);
+	}
+
+	static char typeStringToCppMangledShorthand(std::string stype)
+	{
+		// todo: handle namespaces when we get there
+		// according to C++ conventions:
+
+		// todo: linux and bsd have different definitions for "uint64_t"
+		// BSD uses ULL, linux uses UL
+
+		if(stype == "Int8")			return 'a';
+		else if(stype == "Int16")	return 's';
+		else if(stype == "Int32")	return 'i';
+		else if(stype == "Int64")	return 'x';			// 'l' for long (linux)
+
+		else if(stype == "Uint8")	return 'h';
+		else if(stype == "Uint16")	return 't';
+		else if(stype == "Uint32")	return 'j';
+		else if(stype == "Uint64")	return 'y';			// 'm' for unsigned long (linux)
+
+		else if(stype == "Bool")	return 'b';
+		else if(stype == "Float32")	return 'f';
+		else if(stype == "Float64")	return 'd';
+		else return '?';
+	}
+
+	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
+	{
+		// better for perf then a bunch of +=s, probably.
+		std::stringstream mangled;
+
+		// Always start with '_Z'.
+		mangled << "_Z";
+
+		// length of unmangled function name
+		mangled << base.length();
+
+		// original function name
+		mangled << base;
+
+		if(args.size() == 0)
+			mangled << "v";
+
+
+		for(Expr* d : args)
+		{
+			VarType vt = this->determineVarType(d);
+			if(vt != VarType::Array && vt != VarType::UserDefined)
+			{
+				mangled << typeStringToCppMangledShorthand(Parser::getVarTypeString(vt));
+			}
+			else if(vt == VarType::UserDefined)
+			{
+				llvm::Type* type = 0;
+
+				// get the type from one of our magic functions
+				// note: llvm doesn't give half a shit whether the integer is signed or unsigned
+				// so mangling would give the wrong chars.
+				// we need a way of getting a proper, BuiltinType from a varRef.
+				// next, we might get a pointer type, so the determineVarType() call would return UserDefined.
+				// we would then need to cry
+
+				VarRef*		vr = 0;
+				VarDecl*	vd = dynamic_cast<VarDecl*>(d);
+
+				if(!vd && (vr = dynamic_cast<VarRef*>(d)))
+				{
+					vd = this->getSymDecl(vr, vr->name);
+					if(!vd)
+						GenError::unknownSymbol(vr, vr->name, SymbolType::Variable);
+				}
+				assert(vd);
+				type = getLlvmType(vd);
+				assert(type);
+
+
+				{
+					int indr = 0;
+					std::string unwrapped = unwrapPointerType(vd->type, &indr);
+
+					for(int i = 0; i < indr; i++)
+						mangled << "P";
+
+
+
+					mangled << typeStringToCppMangledShorthand(unwrapped);
+					type = 0;
+				}
+
+				if(type)
+				{
+					while(type->isPointerTy())
+					{
+						mangled << "P";
+						type = type->getPointerElementType();
+					}
+
+					mangled << (this->mainModule->getDataLayout()->getTypeSizeInBits(type) / 8);
+					mangled << type->getStructName().str().substr(1);	// remove leading '%' on llvm types
+				}
+			}
+			else
+			{
+				// todo: not supported
+				error("enosup");
+			}
+		}
+
+		return mangled.str();
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 
 	bool CodegenInstance::isArrayType(Expr* e)

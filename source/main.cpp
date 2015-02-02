@@ -40,7 +40,13 @@ static std::string parseQuotedString(char** argv, int& i)
 namespace Compiler
 {
 	static uint64_t Flags;
-	static bool dumpModule;
+	static bool dumpModule = false;
+	static bool compileOnly = false;
+
+	bool getIsCompileOnly()
+	{
+		return compileOnly;
+	}
 
 	static std::string sysroot;
 	std::string getSysroot()
@@ -115,6 +121,10 @@ int main(int argc, char* argv[])
 			else if(!strcmp(argv[i], "-dump-ir"))
 			{
 				Compiler::dumpModule = true;
+			}
+			else if(!strcmp(argv[i], "-c"))
+			{
+				Compiler::compileOnly = true;
 			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{

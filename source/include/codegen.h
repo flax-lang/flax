@@ -128,8 +128,11 @@ namespace Codegen
 		Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
 		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
+		std::string unwrapPointerType(std::string type, int* indirections);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
+		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
