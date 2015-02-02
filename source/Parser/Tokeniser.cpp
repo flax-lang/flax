@@ -179,7 +179,7 @@ namespace Parser
 				base = 16;
 				num = "";
 
-				while(isdigit(tmp = str.get()))
+				while(ishexnumber(tmp = str.get()))
 					num += (char) tmp;
 			}
 
@@ -194,8 +194,7 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					Parser::parserError("Invalid number\n");
-					exit(1);
+					Parser::parserError("Invalid number '%s'\n", num.c_str());
 				}
 
 				if(base == 16)
@@ -217,8 +216,7 @@ namespace Parser
 				}
 				catch(std::exception)
 				{
-					Parser::parserError("Invalid decimal number\n");
-					exit(1);
+					Parser::parserError("Invalid number\n");
 				}
 			}
 			else
@@ -289,6 +287,7 @@ namespace Parser
 			else if(id == "private")	tok.type = TType::Private;
 			else if(id == "internal")	tok.type = TType::Internal;
 			else if(id == "alloc")		tok.type = TType::Alloc;
+			else if(id == "dealloc")	tok.type = TType::Dealloc;
 
 			else if(id == "Int8"
 				|| id == "Int16"

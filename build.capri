@@ -3,7 +3,7 @@ import "build/capri/Utilities.capri";
 
 sysroot 	= File.getAbsolutePath("build/sysroot");
 prefix		= "/usr/local";
-outputBin	= "flaxcBin";
+outputBin	= "flaxc";
 
 flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
 
@@ -50,7 +50,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -O3 -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 	}

@@ -118,13 +118,9 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 void Struct::createType(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateType(this->name))
-		error(this, "Redefinition of type '%s'", this->name.c_str());
+		GenError::duplicateSymbol(this, this->name, SymbolType::Type);
 
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
-
-	if(cgi->isDuplicateType(this->name))
-		error(this, "Duplicate type '%s'", this->name.c_str());
-
 	this->ifunc = nullptr;
 
 	// create a bodyless struct so we can use it

@@ -13,9 +13,9 @@ using namespace Codegen;
 
 Result_t VarRef::codegen(CodegenInstance* cgi)
 {
-	llvm::Value* val = cgi->getSymInst(this->name);
+	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
-		error(this, "Unknown variable name '%s'", this->name.c_str());
+		GenError::unknownSymbol(this, this->name, SymbolType::Variable);
 
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
@@ -23,7 +23,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 Result_t VarDecl::codegen(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateSymbol(this->name))
-		error(this, "Redefining duplicate symbol '%s'", this->name.c_str());
+		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
@@ -93,7 +93,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 				val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
 		}
 
-		cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+
+		cgi->addSymbol(this->name, ai, this);
 
 		if(this->initVal)
 		{
@@ -116,14 +117,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		}
 		else
 		{
-			error(this, "Invalid assignment, type %s cannot be assigned to type %s", cgi->getReadableType(val->getType()).c_str(),
-				cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
+			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
 		}
 	}
 
 
 
-	cgi->getSymTab()[this->name] = std::pair<llvm::AllocaInst*, VarDecl*>(ai, this);
+	cgi->addSymbol(this->name, ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);
 	return Result_t(val, ai);
 }
