@@ -1033,9 +1033,15 @@ namespace Parser
 			Token* tok = eat(tokens);
 			n = CreateAST(Number, tok, getIntegerValue(tok));
 
+			// todo: handle integer suffixes
+			if(n->ival > INT_MAX)
+				n->varType = VarType::Int64;
+
+			else
+				n->varType = VarType::Int32;
+
 			// set the type.
 			// always used signed
-			n->varType = VarType::Int64;
 		}
 		else if(tokens.front()->type == TType::Decimal)
 		{
