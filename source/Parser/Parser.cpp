@@ -705,8 +705,32 @@ namespace Parser
 		assert(func->type == TType::ForeignFunc);
 		eat(tokens);
 
+		FFIType ffitype;
+
+		// check for specifying the type
+		if(tokens.front()->type == TType::LParen)
+		{
+			eat(tokens);
+			if(tokens.front()->type != TType::Identifier)
+				parserError("Expected type of external function, either C (default) or Cpp");
+
+			Token* ftype = eat(tokens);
+			std::string lftype = ftype->text;
+			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
+
+			if(lftype == "c")			ffitype = FFIType::C;
+			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
+			else						parserError("Unknown FFI type '%s'", ftype->text.c_str());
+
+			if(eat(tokens)->type != TType::RParen)
+				parserError("Expected ')'");
+		}
+
+
+
 		FuncDecl* decl = parseFuncDecl(tokens);
 		decl->isFFI = true;
+		decl->ffiType = ffitype;
 
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}

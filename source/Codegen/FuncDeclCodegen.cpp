@@ -25,6 +25,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 	if((!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
 		this->mangledName = cgi->mangleName(this->name, params_expr);
 
+	else if(this->isFFI && this->ffiType == FFIType::Cpp)
+		this->mangledName = cgi->mangleCppName(this->name, this->params);
+
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
 	llvm::GlobalValue::LinkageTypes linkageType;
 
