@@ -1054,7 +1054,6 @@ namespace Codegen
 
 
 
-
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		return getLlvmType(e)->isArrayTy();
@@ -1136,6 +1135,61 @@ namespace Codegen
 		if(fail)	GenError::noOpOverload(str, str->name, op);
 		return Result_t(0, 0);
 	}
+
+	llvm::Function* CodegenInstance::getAppropriateStructInitialiser(Expr* user, TypePair_t* pair, std::deque<Expr*> args)
+	{
+		assert(pair);
+		assert(pair->first);
+		assert(pair->second.first);
+		assert(pair->second.second == ExprType::Struct);
+
+		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		assert(str);
+
+		std::vector<llvm::Value*> vals;
+		for(auto e : args)
+			vals.push_back(e->codegen(this).result.first);
+
+
+		llvm::Function* initf = 0;
+		for(llvm::Function* initers : str->initFuncs)
+		{
+			int i = 0;
+			if(initers->arg_size() < 1)
+				error(user, "(%s:%d) -> Internal check failed: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+
+			for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+			{
+				// wtf llvm, deleting operators
+				if(i == 0)
+					continue;
+
+				llvm::Value& arg = (*it);
+				if(vals[i]->getType() != arg.getType())
+					goto breakout;
+			}
+
+			// fuuuuuuuuck this is ugly
+			initf = initers;
+			break;
+
+			breakout:
+			continue;
+		}
+
+		if(!initf)
+			GenError::invalidInitialiser(user, str, vals);
+
+		return this->mainModule->getFunction(initf->getName());
+	}
+
+
+
+
+
+
+
+
 
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
 	{

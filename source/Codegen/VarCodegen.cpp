@@ -90,7 +90,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			Struct* str = (Struct*) cmplxtype->second.first;
 
 			if(!this->disableAutoInit)
-				val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+			{
+				// TODO: constructor args
+				llvm::Function* initfunc = cgi->getAppropriateStructInitialiser(this, cmplxtype, std::deque<Expr*>());
+				val = cgi->mainBuilder.CreateCall(initfunc, ai);
+			}
 		}
 
 
