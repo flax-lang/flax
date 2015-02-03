@@ -59,6 +59,13 @@ namespace Codegen
 		UseAfterDealloc
 	};
 
+	struct WrappedType
+	{
+		WrappedType(llvm::Type* t, bool us) : ltype(t), isUnsigned(us) { }
+		llvm::Type* ltype;
+		bool isUnsigned;
+	};
+
 	typedef std::pair<llvm::AllocaInst*, SymbolValidity> SymbolValidity_t;
 	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
