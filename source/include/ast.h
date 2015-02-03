@@ -381,9 +381,7 @@ namespace Ast
 		void createType(Codegen::CodegenInstance* cgi);
 
 		bool didCreateType;
-		Func* ifunc;
-		llvm::Function* defifunc;
-		llvm::Function* initFunc;
+		std::deque<llvm::Function*> initFuncs;
 		bool packed;
 
 		std::deque<std::pair<Expr*, int>> typeList;

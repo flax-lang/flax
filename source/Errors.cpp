@@ -96,6 +96,23 @@ namespace GenError
 	{
 		invalidAssignment(e, a->getType(), b->getType());
 	}
+
+	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args)
+	{
+		// same hack as above
+		Codegen::CodegenInstance* cgi = 0;
+
+
+		std::string args_str;
+		for(llvm::Value* v : args)
+			args_str += ", " + cgi->getReadableType(v->getType());
+
+		// remove leading commas
+		if(args_str.length() > 2)
+			args_str = args_str.substr(2);
+
+		error(e, "No valid init() candidate for type '%s' taking parameters [%s]", str->name.c_str(), args_str.c_str());
+	}
 }
 
 

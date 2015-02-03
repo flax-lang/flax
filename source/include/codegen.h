@@ -35,6 +35,7 @@ namespace GenError
 	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op);
 	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b);
 	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b);
+	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args);
 }
 
 
@@ -143,6 +144,7 @@ namespace Codegen
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
+		llvm::Function* getAppropriateStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::deque<Ast::Expr*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 		Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
 	};
