@@ -15,6 +15,10 @@ public struct String
 		self.allocated = 64
 	}
 
+	init(str: Int8*)
+	{
+	}
+
 	func clear()
 	{
 		memset(self.data, 0, self.allocated)
