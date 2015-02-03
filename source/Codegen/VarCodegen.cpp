@@ -87,8 +87,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cmplxtype)
 		{
-			Struct* str = (Struct*) cmplxtype->second.first;
-
 			if(!this->disableAutoInit)
 			{
 				// TODO: constructor args

@@ -10,8 +10,35 @@
 using namespace Ast;
 using namespace Codegen;
 
+static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
+{
+	assert(tp);
+
+
+	// TODO: constructor args
+	llvm::Function* initfunc = cgi->getAppropriateStructInitialiser(fc, tp, fc->params);
+	llvm::Value* ai = cgi->mainBuilder.CreateAlloca(tp->first);
+	cgi->mainBuilder.CreateCall(initfunc, ai);
+	llvm::Value* val = cgi->mainBuilder.CreateLoad(ai);
+
+	return Result_t(val, ai);
+}
+
+
+
+
+
+
+
+
+
 Result_t FuncCall::codegen(CodegenInstance* cgi)
 {
+	// always try the type first.
+	if(cgi->getType(this->name) != nullptr)
+		return callConstructor(cgi, cgi->getType(this->name), this);
+
+
 	FuncPair_t* fp = cgi->getDeclaredFunc(this->name);
 	std::string cmangled = "";
 	std::string cppmangled = "";

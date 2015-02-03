@@ -54,8 +54,9 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* val = nullptr;
 			if(f->decl->name == "init")		// do some magic
 			{
-				f->decl->mangledName = cgi->mangleName(this, f->decl->name);
 				val = f->decl->codegen(cgi).result.first;
+				f->decl->mangledName = cgi->mangleName(this, f->decl->mangledName);
+				printf("init: %s\n", f->decl->mangledName.c_str());
 
 				std::deque<Expr*> todeque;
 
