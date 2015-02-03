@@ -17,6 +17,7 @@ public struct String
 
 	init(str: Int8*)
 	{
+		printf("called\n")
 	}
 
 	func clear()
