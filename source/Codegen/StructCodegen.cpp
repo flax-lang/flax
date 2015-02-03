@@ -278,7 +278,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 	if(pair->second.second == ExprType::Struct)
 	{
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
-		llvm::Type* str_t = pair->first;
 
 		assert(str);
 		assert(self);
@@ -290,8 +289,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 		VarRef* var = nullptr;
 		FuncCall* fc = nullptr;
 		if((var = dynamic_cast<VarRef*>(rhs)))
-			i = str->nameMap[var->name];
-
+		{
+			if(str->nameMap.find(var->name) != str->nameMap.end())
+				i = str->nameMap[var->name];
+			else
+				error(this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
+		}
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
 			i = -1;
 
