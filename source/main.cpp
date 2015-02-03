@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
 		std::map<std::string, Ast::Root*> rootmap;
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* root = Compiler::compileFile(filename, filelist, rootmap, cgi);
+		Compiler::compileFile(filename, filelist, rootmap, cgi);
 
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");
