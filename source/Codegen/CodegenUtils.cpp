@@ -709,7 +709,8 @@ namespace Codegen
 		{
 			FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 			if(!fp)
-				error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
+				return VarType::UserDefined;
+				// error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
 
 			return Parser::determineVarType(fp->second->type);
 		}
