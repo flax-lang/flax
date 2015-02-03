@@ -852,7 +852,6 @@ namespace Codegen
 	{
 		// adjust the right hand int literal, if it is one
 		Number* n = nullptr;
-		BinOp* b = nullptr;
 		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
 			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8;
@@ -934,6 +933,7 @@ namespace Codegen
 		return this->mangleCppName(base, a);
 	}
 
+	#if 0
 	static char typeStringToCppMangledShorthand(std::string stype)
 	{
 		// todo: handle namespaces when we get there
@@ -957,9 +957,14 @@ namespace Codegen
 		else if(stype == "Float64")	return 'd';
 		else return '?';
 	}
+	#endif
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
 	{
+		// TODO:
+		return "enosup";
+
+		#if 0
 		// better for perf then a bunch of +=s, probably.
 		std::stringstream mangled;
 
@@ -1041,6 +1046,7 @@ namespace Codegen
 		}
 
 		return mangled.str();
+		#endif
 	}
 
 
@@ -1082,7 +1088,7 @@ namespace Codegen
 		else if(ch == "&&")	op = ArithmeticOp::LogicalOr;
 		else if(ch == "||")	op = ArithmeticOp::LogicalAnd;
 		else if(ch == "as")	op = ArithmeticOp::Cast;
-		else			error("Unknown operator '%s'", ch.c_str());
+		else				error("Unknown operator '%s'", ch.c_str());
 
 		return op;
 	}
