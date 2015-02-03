@@ -71,6 +71,12 @@ namespace Codegen
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
 			OurFPM.add(llvm::createCFGSimplificationPass());
+
+			// hmm.
+			OurFPM.add(llvm::createScalarizerPass());
+			OurFPM.add(llvm::createLoadCombinePass());
+			OurFPM.add(llvm::createConstantHoistingPass());
+			OurFPM.add(llvm::createStructurizeCFGPass());
 		}
 
 		// always do the mem2reg pass, our generated code is too inefficient
