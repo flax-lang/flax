@@ -54,9 +54,14 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* val = nullptr;
 			if(f->decl->name == "init")		// do some magic
 			{
+				f->decl->name = cgi->mangleName(this, f->decl->name);
 				val = f->decl->codegen(cgi).result.first;
-				f->decl->mangledName = cgi->mangleName(this, f->decl->mangledName);
-				printf("init: %s\n", f->decl->mangledName.c_str());
+
+				// this is kind of a hack. since mangleName() operates on f->decl->name, if we
+				// modify that to include the __struct#Type prefix, then revert it after, it should
+				// add it to f->decl->mangledName, but let us keep f->decl->name
+
+				f->decl->name = cgi->unmangleName(this, f->decl->name);
 
 				std::deque<Expr*> todeque;
 
