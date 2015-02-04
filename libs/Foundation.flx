@@ -10,14 +10,15 @@ public struct String
 
 	init()
 	{
-		self.data = malloc(64)
+		self.data = malloc(32)
 		self.length = 0
-		self.allocated = 64
+		self.allocated = 32
 	}
 
 	init(str: Int8*)
 	{
-		printf("called\n")
+		self.init()
+		self = str
 	}
 
 	func clear()
