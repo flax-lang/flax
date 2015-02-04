@@ -892,16 +892,18 @@ namespace Codegen
 			error("'%s' is not a mangled name of a struct.", orig.c_str());
 
 
-		if(orig.length() < 10 || orig[9] != '_')
+		if(orig.length() < 9)
 			error("Invalid mangled name '%s'", orig.c_str());
 
-
-		// remove __struct#_
-		ret = ret.substr(10);
+		// remove __struct#
+		ret = ret.substr(9);
 
 		// make sure it's the right struct.
 		if(ret.find(s->name) != 0)
 			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
+
+		// remove the leading '_'
+		ret = ret.substr(1);
 
 		return ret.substr(s->name.length());
 	}
@@ -1143,7 +1145,7 @@ namespace Codegen
 		return Result_t(0, 0);
 	}
 
-	llvm::Function* CodegenInstance::getAppropriateStructInitialiser(Expr* user, TypePair_t* pair, std::deque<Expr*> args)
+	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
 	{
 		assert(pair);
 		assert(pair->first);
@@ -1153,24 +1155,18 @@ namespace Codegen
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 		assert(str);
 
-		std::vector<llvm::Value*> vals;
-		for(auto e : args)
-			vals.push_back(e->codegen(this).result.first);
-
-
 		llvm::Function* initf = 0;
 		for(llvm::Function* initers : str->initFuncs)
 		{
-			int i = 0;
 			if(initers->arg_size() < 1)
 				error(user, "(%s:%d) -> Internal check failed: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
+			if(initers->arg_size() != vals.size())
+				continue;
+
+			int i = 0;
 			for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
 			{
-				// wtf llvm, deleting operators
-				if(i == 0)
-					continue;
-
 				llvm::Value& arg = (*it);
 				if(vals[i]->getType() != arg.getType())
 					goto breakout;

@@ -107,7 +107,12 @@ namespace GenError
 
 		std::string args_str;
 		for(llvm::Value* v : args)
+		{
+			if(!v)
+				continue;
+
 			args_str += ", " + cgi->getReadableType(v->getType());
+		}
 
 		// remove leading commas
 		if(args_str.length() > 2)

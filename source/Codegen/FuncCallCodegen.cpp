@@ -13,12 +13,17 @@ using namespace Codegen;
 static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
 {
 	assert(tp);
-
+	llvm::Value* ai = cgi->mainBuilder.CreateAlloca(tp->first);
 
 	// TODO: constructor args
-	llvm::Function* initfunc = cgi->getAppropriateStructInitialiser(fc, tp, fc->params);
-	llvm::Value* ai = cgi->mainBuilder.CreateAlloca(tp->first);
-	cgi->mainBuilder.CreateCall(initfunc, ai);
+	std::vector<llvm::Value*> args;
+	args.push_back(ai);
+	for(Expr* e : fc->params)
+		args.push_back(e->codegen(cgi).result.first);
+
+	llvm::Function* initfunc = cgi->getStructInitialiser(fc, tp, args);
+
+	cgi->mainBuilder.CreateCall(initfunc, args);
 	llvm::Value* val = cgi->mainBuilder.CreateLoad(ai);
 
 	return Result_t(val, ai);
