@@ -85,12 +85,18 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			}
 		}
 
+
 		if(cmplxtype)
 		{
-			Struct* str = (Struct*) cmplxtype->second.first;
-
 			if(!this->disableAutoInit)
-				val = cgi->mainBuilder.CreateCall(cgi->mainModule->getFunction(str->initFunc->getName()), ai);
+			{
+				// TODO: constructor args
+				std::vector<llvm::Value*> args;
+				args.push_back(ai);
+
+				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+				val = cgi->mainBuilder.CreateCall(initfunc, args);
+			}
 		}
 
 

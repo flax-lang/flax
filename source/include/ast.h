@@ -22,7 +22,7 @@
 
 namespace Codegen
 {
-	class CodegenInstance;
+	struct CodegenInstance;
 }
 
 namespace Ast
@@ -207,7 +207,7 @@ namespace Ast
 	struct BinOp : Expr
 	{
 		~BinOp() { }
-		BinOp(Parser::PosInfo pos, Expr* lhs, ArithmeticOp operation, Expr* rhs) : Expr(pos), left(lhs), op(operation), right(rhs) { }
+		BinOp(Parser::PosInfo pos, Expr* lhs, ArithmeticOp operation, Expr* rhs) : Expr(pos), left(lhs), right(rhs), op(operation) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		Expr* left;
@@ -298,7 +298,7 @@ namespace Ast
 	{
 		~If() { }
 		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
-			cases(cases), final(ecase) { }
+			final(ecase), cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
@@ -381,9 +381,7 @@ namespace Ast
 		void createType(Codegen::CodegenInstance* cgi);
 
 		bool didCreateType;
-		Func* ifunc;
-		llvm::Function* defifunc;
-		llvm::Function* initFunc;
+		std::deque<llvm::Function*> initFuncs;
 		bool packed;
 
 		std::deque<std::pair<Expr*, int>> typeList;

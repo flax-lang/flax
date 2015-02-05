@@ -71,6 +71,12 @@ namespace Codegen
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
 			OurFPM.add(llvm::createCFGSimplificationPass());
+
+			// hmm.
+			OurFPM.add(llvm::createScalarizerPass());
+			OurFPM.add(llvm::createLoadCombinePass());
+			OurFPM.add(llvm::createConstantHoistingPass());
+			OurFPM.add(llvm::createStructurizeCFGPass());
 		}
 
 		// always do the mem2reg pass, our generated code is too inefficient
@@ -644,7 +650,7 @@ namespace Codegen
 			}
 		}
 
-		error("(%s:%d) -> Internal check failed: failed to determine type", __FILE__, __LINE__);
+		error("(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 		return nullptr;
 	}
 
@@ -703,7 +709,8 @@ namespace Codegen
 		{
 			FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 			if(!fp)
-				error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
+				return VarType::UserDefined;
+				// error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
 
 			return Parser::determineVarType(fp->second->type);
 		}
@@ -846,7 +853,6 @@ namespace Codegen
 	{
 		// adjust the right hand int literal, if it is one
 		Number* n = nullptr;
-		BinOp* b = nullptr;
 		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
 			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8;
@@ -886,37 +892,47 @@ namespace Codegen
 			error("'%s' is not a mangled name of a struct.", orig.c_str());
 
 
-		if(orig.length() < 10 || orig[9] != '_')
+		if(orig.length() < 9)
 			error("Invalid mangled name '%s'", orig.c_str());
 
-
-		// remove __struct#_
-		ret = ret.substr(10);
+		// remove __struct#
+		ret = ret.substr(9);
 
 		// make sure it's the right struct.
 		if(ret.find(s->name) != 0)
 			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
 
+		// remove the leading '_'
+		ret = ret.substr(1);
+
 		return ret.substr(s->name.length());
 	}
-
-	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
 	{
-		std::deque<Expr*> a;
-		for(auto arg : args)
-			a.push_back(arg);
+		std::string mangled = "";
 
-		return mangleName(base, a);
+		for(llvm::Type* e : args)
+			mangled += "_" + getReadableType(e);
+
+		return base + (mangled.empty() ? "#void" : ("#" + mangled));
 	}
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
 	{
-		std::string mangled = "";
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
 
-		for(Expr* e : args)
-			mangled += "_" + getReadableType(e);
+		return mangleName(base, a);
+	}
 
-		return base + (mangled.empty() ? "#void" : ("#" + mangled));
+	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
+
+		return mangleName(base, a);
 	}
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
@@ -928,6 +944,7 @@ namespace Codegen
 		return this->mangleCppName(base, a);
 	}
 
+	#if 0
 	static char typeStringToCppMangledShorthand(std::string stype)
 	{
 		// todo: handle namespaces when we get there
@@ -951,9 +968,14 @@ namespace Codegen
 		else if(stype == "Float64")	return 'd';
 		else return '?';
 	}
+	#endif
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
 	{
+		// TODO:
+		return "enosup";
+
+		#if 0
 		// better for perf then a bunch of +=s, probably.
 		std::stringstream mangled;
 
@@ -1035,8 +1057,8 @@ namespace Codegen
 		}
 
 		return mangled.str();
+		#endif
 	}
-
 
 
 
@@ -1077,7 +1099,7 @@ namespace Codegen
 		else if(ch == "&&")	op = ArithmeticOp::LogicalOr;
 		else if(ch == "||")	op = ArithmeticOp::LogicalAnd;
 		else if(ch == "as")	op = ArithmeticOp::Cast;
-		else			error("Unknown operator '%s'", ch.c_str());
+		else				error("Unknown operator '%s'", ch.c_str());
 
 		return op;
 	}
@@ -1130,6 +1152,55 @@ namespace Codegen
 		if(fail)	GenError::noOpOverload(str, str->name, op);
 		return Result_t(0, 0);
 	}
+
+	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
+	{
+		assert(pair);
+		assert(pair->first);
+		assert(pair->second.first);
+		assert(pair->second.second == ExprType::Struct);
+
+		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		assert(str);
+
+		llvm::Function* initf = 0;
+		for(llvm::Function* initers : str->initFuncs)
+		{
+			if(initers->arg_size() < 1)
+				error(user, "(%s:%d) -> Internal check failed: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+
+			if(initers->arg_size() != vals.size())
+				continue;
+
+			int i = 0;
+			for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+			{
+				llvm::Value& arg = (*it);
+				if(vals[i]->getType() != arg.getType())
+					goto breakout;
+			}
+
+			// fuuuuuuuuck this is ugly
+			initf = initers;
+			break;
+
+			breakout:
+			continue;
+		}
+
+		if(!initf)
+			GenError::invalidInitialiser(user, str, vals);
+
+		return this->mainModule->getFunction(initf->getName());
+	}
+
+
+
+
+
+
+
+
 
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
 	{

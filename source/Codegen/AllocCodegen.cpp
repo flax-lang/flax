@@ -72,10 +72,12 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		llvm::Function* initfunc = cgi->mainModule->getFunction(((Struct*) typePair->second.first)->initFunc->getName());
-		assert(initfunc);
+		// todo: constructor params
+		std::vector<llvm::Value*> args;
+		args.push_back(allocatedmem);
 
-		defaultValue = cgi->mainBuilder.CreateCall(initfunc, allocatedmem);
+		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
+		defaultValue = cgi->mainBuilder.CreateCall(initfunc, args);
 	}
 
 	return Result_t(allocatedmem, 0);
