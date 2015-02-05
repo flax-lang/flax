@@ -39,7 +39,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		assert(!cmplxtype);
 		val = this->initVal->codegen(cgi).result.first;
 
-
 		if(cgi->isBuiltinType(this->initVal))
 		{
 			this->varType = cgi->determineVarType(this->initVal);
@@ -52,11 +51,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			this->inferredLType = val->getType();
 		}
 	}
-	else if(!cmplxtype && this->initVal)
+	else if(this->initVal)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;
 	}
+
+
 
 	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
