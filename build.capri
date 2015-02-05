@@ -11,17 +11,14 @@ project Flax default all
 {
 	CXX				= "clang++";
 	def LLVM_CONFIG	= "llvm-config";
-	def CXXFLAGS	= "-std=gnu++1y";
 
-	target travis
+	target ci
 	{
 		LLVM_CONFIG = "llvm-config-3.5";
 		Utils.println("Building for automated deployment");
-		CXXFLAGS = "-std=gnu++14";
 	}
 
-
-	CXXFLAGS	+= " -g -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
+	CXXFLAGS	= "-std=gnu++1y -g -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
 	capriExec	= System.getExecutablePath();
 
 	src			= "source";
@@ -32,15 +29,6 @@ project Flax default all
 	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
 	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
 	final_invoke		= "{CXX} {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
-
-
-	target travis
-	{
-		System.execute(llvm_config_invoke);
-	}
-
-
-
 
 
 	// tasks
@@ -76,7 +64,7 @@ project Flax default all
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
 		// compile them all
-		assert Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
+		Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
 	}
 
 	task link
