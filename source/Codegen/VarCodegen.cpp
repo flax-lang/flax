@@ -86,7 +86,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cmplxtype)
 		{
-			if(!this->disableAutoInit)
+			if(!this->disableAutoInit && !this->initVal)
 			{
 				// TODO: constructor args
 				std::vector<llvm::Value*> args;
