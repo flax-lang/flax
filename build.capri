@@ -11,14 +11,17 @@ project Flax default all
 {
 	CXX				= "clang++";
 	def LLVM_CONFIG	= "llvm-config";
+	def CXXFLAGS	= "-g -Wall -frtti -fexceptions";
 
 	target travis
 	{
 		LLVM_CONFIG = "llvm-config-3.5";
-		Utils.println("Building for Travis CI");
+		Utils.println("Building for automated deployment");
+		CXXFLAGS += " -std=gnu++14 ";
 	}
 
-	CXXFLAGS	= "-g -std=gnu++1y -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
+
+	CXXFLAGS	+= " -std=gnu++1y -I`{LLVM_CONFIG} --includedir`";
 	capriExec	= System.getExecutablePath();
 
 	src			= "source";
