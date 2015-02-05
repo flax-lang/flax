@@ -338,7 +338,7 @@ namespace Parser
 		return std::stod(t->text);
 	}
 
-	uint32_t checkAndApplyAttributes(int numAttr, ...)
+	uint32_t checkAndApplyAttributes(uint32_t allowed)
 	{
 		static const char* ReadableAttrNames[] =
 		{
@@ -351,15 +351,6 @@ namespace Parser
 			"NoAutoInit",
 			"PackedStruct"
 		};
-
-		va_list ap;
-		va_start(ap, numAttr);
-
-		uint32_t allowed = 0;
-		for(int i = 0; i < numAttr; i++)
-			allowed |= va_arg(ap, uint32_t);
-
-
 		uint32_t disallowed = ~allowed;
 
 		if(curAttrib & disallowed)
@@ -371,8 +362,6 @@ namespace Parser
 			if(shifts > 0)
 				parserError("Invalid attribute '%s' for expression", ReadableAttrNames[shifts]);
 		}
-
-		va_end(ap);
 
 		uint32_t ret = curAttrib;
 		curAttrib = 0;
@@ -691,7 +680,7 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
-		f->attribs = checkAndApplyAttributes(5, Attr_VisPublic, Attr_VisInternal, Attr_VisPrivate, Attr_NoMangle, Attr_ForceMangle);
+		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
 		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
@@ -705,7 +694,7 @@ namespace Parser
 		assert(func->type == TType::ForeignFunc);
 		eat(tokens);
 
-		FFIType ffitype;
+		FFIType ffitype = FFIType::C;
 
 		// check for specifying the type
 		if(tokens.front()->type == TType::LParen)
@@ -822,7 +811,7 @@ namespace Parser
 		assert(tokens.front()->type == TType::Var || tokens.front()->type == TType::Val);
 
 		bool immutable = tokens.front()->type == TType::Val;
-		bool noautoinit = checkAndApplyAttributes(1, Attr_NoAutoInit) > 0;
+		bool noautoinit = checkAndApplyAttributes(Attr_NoAutoInit) > 0;
 
 		eat(tokens);
 
@@ -1217,7 +1206,7 @@ namespace Parser
 		id += eat(tokens)->text;
 		Struct* str = CreateAST(Struct, tok_struct, id);
 
-		uint32_t attr = checkAndApplyAttributes(4, Attr_PackedStruct, Attr_VisPublic, Attr_VisInternal, Attr_VisPrivate);
+		uint32_t attr = checkAndApplyAttributes(Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		if(attr & Attr_PackedStruct)
 			str->packed = true;
 
@@ -1275,7 +1264,7 @@ namespace Parser
 		if(id->type != TType::Identifier)
 			parserError("Expected attribute name after '@'");
 
-		uint32_t attr;
+		uint32_t attr = 0;
 		if(id->text == "nomangle")				attr |= Attr_NoMangle;
 		else if(id->text == "forcemangle")		attr |= Attr_ForceMangle;
 		else if(id->text == "noautoinit")		attr |= Attr_NoAutoInit;
