@@ -135,6 +135,7 @@ namespace Codegen
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		std::string unwrapPointerType(std::string type, int* indirections);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
+		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);

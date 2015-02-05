@@ -23,8 +23,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	{
 		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
-
-
 		cgi->addFunctionToScope(defaultInitFunc->getName(), std::pair<llvm::Function*, FuncDecl*>(defaultInitFunc, 0));
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 		cgi->mainBuilder.SetInsertPoint(iblock);
@@ -43,6 +41,13 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).result.first : cgi->getDefaultValue(var), ptr);
 		}
 
+
+
+
+		// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)
+		// before their bodies are codegened, so this makes functions in structs order-dependent.
+
+		// pass 1
 		for(Func* f : this->funcs)
 		{
 			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
@@ -50,8 +55,8 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			std::string oname = f->decl->name;
 			bool isOpOverload = oname.find("operator#") == 0;
 
-			llvm::Function* lf = nullptr;
 			llvm::Value* val = nullptr;
+
 			if(f->decl->name == "init")		// do some magic
 			{
 				f->decl->name = cgi->mangleName(this, f->decl->name);
@@ -61,28 +66,19 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 				// modify that to include the __struct#Type prefix, then revert it after, it should
 				// add it to f->decl->mangledName, but let us keep f->decl->name
 
-				f->decl->name = cgi->unmangleName(this, f->decl->name);
-
-				std::deque<Expr*> todeque;
-
-				VarRef* svr = new VarRef(this->posinfo, "self");
-				todeque.push_back(svr);
-
-				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
-				f->block->statements.push_front(fc);
-
-				this->initFuncs.push_back(llvm::cast<llvm::Function>((lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first))));
+				f->decl->name = oname;
+				this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
 			}
 			else
 			{
 				// mangle
 				f->decl->name = cgi->mangleName(this, f->decl->name);
 				val = f->decl->codegen(cgi).result.first;
-				lf = llvm::cast<llvm::Function>(f->codegen(cgi).result.first);
+				f->decl->name = oname;
 			}
 
 			cgi->mainBuilder.SetInsertPoint(ob);
-			this->lfuncs.push_back(lf);
+			this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
 
 			if(isOpOverload)
 			{
@@ -98,8 +94,50 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			}
 
 			// make the functions public as well
-			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, lf));
+			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
 		}
+
+
+
+
+		// pass 2
+		for(Func* f : this->funcs)
+		{
+			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+
+			if(f->decl->name == "init")
+			{
+				std::deque<Expr*> todeque;
+
+				VarRef* svr = new VarRef(this->posinfo, "self");
+				todeque.push_back(svr);
+
+				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
+				f->block->statements.push_front(fc);
+			}
+
+			f->codegen(cgi);
+			cgi->mainBuilder.SetInsertPoint(ob);
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		cgi->mainBuilder.CreateRetVoid();
 
@@ -134,25 +172,6 @@ void Struct::createType(CodegenInstance* cgi)
 		// because we can't (and don't want to) mangle names in the parser,
 		// we could only build an incomplete name -> index map
 		// finish it here.
-		for(auto p : this->typeList)
-		{
-			Func* f = nullptr;
-			OpOverload* oo = nullptr;
-
-			if((oo = dynamic_cast<OpOverload*>(p.first)))
-				f = oo->func;
-
-
-			if(f || (f = dynamic_cast<Func*>(p.first)))
-			{
-				std::string mangled = cgi->mangleName(f->decl->name, f->decl->params);
-				if(this->nameMap.find(mangled) != this->nameMap.end())
-					error(this, "Duplicate member '%s'", f->decl->name.c_str());
-
-				f->decl->mangledName = mangled;
-				this->nameMap[mangled] = p.second;
-			}
-		}
 
 		for(auto p : this->opOverloads)
 			p->codegen(cgi);
@@ -163,6 +182,13 @@ void Struct::createType(CodegenInstance* cgi)
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
 			implicit_self->type = this->name + "*";
 			func->decl->params.push_front(implicit_self);
+
+			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
+			if(this->nameMap.find(mangled) != this->nameMap.end())
+				error(this, "Duplicate member '%s'", func->decl->name.c_str());
+
+			func->decl->mangledName = cgi->mangleName(this, mangled);
+			// this->nameMap[mangled] = p.second;
 		}
 
 		for(VarDecl* var : this->members)
@@ -181,7 +207,6 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
-
 	delete types;
 }
 
@@ -274,7 +299,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			type = type->getPointerElementType(), isPtr = true;
 
 		else
-			error(this, "Cannot do member access on non-aggregate types");
+			error(this, "Cannot do member access on non-struct types");
 	}
 
 	TypePair_t* pair = cgi->getType(type->getStructName());
@@ -302,8 +327,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 				error(this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
 		}
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
+		{
+			VarRef* fakevr = new VarRef(this->posinfo, "self");
+			fc->params.push_front(fakevr);
 			i = -1;
-
+		}
 		else
 			error("(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
 
@@ -311,12 +339,30 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 		// if we're a function call
 		if(fc)
 		{
+			// make the args first.
+			// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
+			// we codegen first, then use the llvm version.
+			std::vector<llvm::Value*> args;
+			std::deque<llvm::Type*> argtypes;
+			args.push_back(isPtr ? self : selfPtr);
+
+			for(Expr* e : fc->params)
+			{
+				args.push_back(e->codegen(cgi).result.first);
+				argtypes.push_back(args.back()->getType());
+			}
+
+
+			// need to remove the dummy 'self' reference
+			fc->params.pop_front();
+			args.erase(args.begin());
+
 			// now we need to determine if it exists, and its params.
 			Func* callee = nullptr;
 			for(Func* f : str->funcs)
 			{
-				// when comparing, we need to remangle the first bit that is the implicit self pointer
-				if(f->decl->name == cgi->mangleName(str, fc->name))
+				std::string match = cgi->mangleName(str, cgi->mangleName(fc->name, argtypes));
+				if(f->decl->mangledName == match)
 				{
 					callee = f;
 					break;
@@ -326,17 +372,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			if(!callee)
 				error(this, "No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
+
 			// do some casting
-			for(int i = 0; i < fc->params.size(); i++)
-				fc->params[i] = cgi->autoCastType(callee->decl->params[i], fc->params[i]);
+			// for(int i = 0; i < fc->params.size(); i++)
+			// 	fc->params[i] = cgi->autoCastType(callee->decl->params[i], fc->params[i]);
 
-			std::vector<llvm::Value*> args;
-			args.push_back(isPtr ? self : selfPtr);
-
-			for(Expr* e : fc->params)
-			{
-				args.push_back(e->codegen(cgi).result.first);
-			}
 
 			llvm::Function* lcallee = 0;
 			for(llvm::Function* lf : str->lfuncs)
