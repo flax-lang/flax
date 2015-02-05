@@ -650,7 +650,7 @@ namespace Codegen
 			}
 		}
 
-		error("(%s:%d) -> Internal check failed: failed to determine type", __FILE__, __LINE__);
+		error("(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 		return nullptr;
 	}
 
@@ -907,24 +907,32 @@ namespace Codegen
 
 		return ret.substr(s->name.length());
 	}
-
-	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
 	{
-		std::deque<Expr*> a;
-		for(auto arg : args)
-			a.push_back(arg);
+		std::string mangled = "";
 
-		return mangleName(base, a);
+		for(llvm::Type* e : args)
+			mangled += "_" + getReadableType(e);
+
+		return base + (mangled.empty() ? "#void" : ("#" + mangled));
 	}
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
 	{
-		std::string mangled = "";
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
 
-		for(Expr* e : args)
-			mangled += "_" + getReadableType(e);
+		return mangleName(base, a);
+	}
 
-		return base + (mangled.empty() ? "#void" : ("#" + mangled));
+	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
+
+		return mangleName(base, a);
 	}
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
