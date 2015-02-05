@@ -112,6 +112,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 				VarRef* svr = new VarRef(this->posinfo, "self");
 				todeque.push_back(svr);
 
+				// add the call to auto init
 				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
 				f->block->statements.push_front(fc);
 			}
