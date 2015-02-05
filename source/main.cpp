@@ -71,14 +71,13 @@ int main(int argc, char* argv[])
 	if(argc > 1)
 	{
 		// parse arguments
-		bool isLib = false;
 		std::string filename;
 		std::string outname;
 
 		// parse the command line opts
 		for(int i = 1; i < argc; i++)
 		{
-			if(!strcmp(argv[i], "-sysroot"))
+			if(!strcmp(argv[i], "--sysroot"))
 			{
 				if(i != argc - 1)
 				{
@@ -105,10 +104,6 @@ int main(int argc, char* argv[])
 					fprintf(stderr, "Error: Expected filename name after '-o' option\n");
 					exit(1);
 				}
-			}
-			else if(!strcmp(argv[i], "-lib"))
-			{
-				isLib = true;
 			}
 			else if(!strcmp(argv[i], "-Werror"))
 			{
@@ -157,7 +152,7 @@ int main(int argc, char* argv[])
 		std::map<std::string, Ast::Root*> rootmap;
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* root = Compiler::compileFile(filename, filelist, rootmap, cgi);
+		Compiler::compileFile(filename, filelist, rootmap, cgi);
 
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");

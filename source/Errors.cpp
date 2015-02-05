@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/codegen.h"
-#include "../include/compiler.h"
+#include "include/codegen.h"
+#include "include/compiler.h"
 
 using namespace Ast;
 
@@ -12,7 +12,7 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	char* alloc = nullptr;
 	vasprintf(&alloc, msg, ap);
 
-	fprintf(stderr, "%s(%s:%" PRId64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+	fprintf(stderr, "%s(%s:%" PRId64 ")%s %s%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, type, COLOUR_RESET, alloc);
 
 	va_end(ap);
 	if(ex) abort();
@@ -24,6 +24,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_start(ap, msg);
 
 	__error_gen(relevantast, msg, "Error", true, ap);
+	abort();
 }
 
 void error(const char* msg, ...)
@@ -31,6 +32,7 @@ void error(const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, msg, "Error", true, ap);
+	abort();
 }
 
 
@@ -63,22 +65,22 @@ namespace GenError
 
 	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Using undeclared %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void useAfterFree(Ast::Expr* e, std::string symname)
 	{
-		error(e, "Attempted to use variable '%s' after it was deallocated", symname.c_str());
+		error(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
 	}
 
 	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Duplicate %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op)
 	{
-		error(e, "No valid operator overload for '%s' on type '%s'", Parser::arithmeticOpToString(op).c_str(), type.c_str());
+		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(op).c_str(), type.c_str());
 	}
 
 	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b)
@@ -88,13 +90,35 @@ namespace GenError
 		// the 'this' pointer (it doesn't) we'll be fine.
 		Codegen::CodegenInstance* cgi = 0;
 
-		error(e, "Invalid assignment from type '%s' to '%s'", cgi->getReadableType(a).c_str(),
+		error(e, "Invalid assignment from type %s to %s", cgi->getReadableType(a).c_str(),
 			cgi->getReadableType(b).c_str());
 	}
 
 	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b)
 	{
 		invalidAssignment(e, a->getType(), b->getType());
+	}
+
+	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args)
+	{
+		// same hack as above
+		Codegen::CodegenInstance* cgi = 0;
+
+
+		std::string args_str;
+		for(llvm::Value* v : args)
+		{
+			if(!v)
+				continue;
+
+			args_str += ", " + cgi->getReadableType(v->getType());
+		}
+
+		// remove leading commas
+		if(args_str.length() > 2)
+			args_str = args_str.substr(2);
+
+		error(e, "No valid init() candidate for type %s taking parameters [%s]", str->name.c_str(), args_str.c_str());
 	}
 }
 
