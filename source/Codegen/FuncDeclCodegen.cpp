@@ -45,16 +45,15 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 
 
 	// check for redef
-	if(func->getName() != this->mangledName)
+	if(cgi->getType(this->mangledName) != nullptr)
+	{
+		GenError::duplicateSymbol(this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
+	}
+	else if(func->getName() != this->mangledName)
 	{
 		if(!this->isFFI)
 		{
-			error(this, "Redefinition of function '%s'", this->name.c_str());
-		}
-		else
-		{
-			// check for same name but different args
-			// TODO: c++ compat
+			GenError::duplicateSymbol(this, this->name, SymbolType::Function);
 		}
 	}
 

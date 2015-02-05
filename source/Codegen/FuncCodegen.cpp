@@ -64,7 +64,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 
 	// codegen everything in the body.
-	llvm::Value* lastVal = this->block->codegen(cgi).result.first;
+	this->block->codegen(cgi);
 
 	// check if we're not returning void
 	if(cgi->determineVarType(this) != VarType::Void)

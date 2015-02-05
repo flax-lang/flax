@@ -10,12 +10,12 @@
 
 namespace Codegen
 {
-	class CodegenInstance;
+	struct CodegenInstance;
 }
 
 namespace Ast
 {
-	class Root;
+	struct Root;
 	enum class VarType;
 	enum class ArithmeticOp;
 }
@@ -140,7 +140,7 @@ namespace Parser
 	};
 
 
-	void parserError(const char* msg, ...);
+	void parserError(const char* msg, ...) __attribute__((noreturn));
 	void parserWarn(const char* msg, ...);
 
 	std::string getModuleName(std::string filename);

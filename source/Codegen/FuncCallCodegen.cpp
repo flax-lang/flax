@@ -10,8 +10,40 @@
 using namespace Ast;
 using namespace Codegen;
 
+static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
+{
+	assert(tp);
+	llvm::Value* ai = cgi->mainBuilder.CreateAlloca(tp->first);
+
+	// TODO: constructor args
+	std::vector<llvm::Value*> args;
+	args.push_back(ai);
+	for(Expr* e : fc->params)
+		args.push_back(e->codegen(cgi).result.first);
+
+	llvm::Function* initfunc = cgi->getStructInitialiser(fc, tp, args);
+
+	cgi->mainBuilder.CreateCall(initfunc, args);
+	llvm::Value* val = cgi->mainBuilder.CreateLoad(ai);
+
+	return Result_t(val, ai);
+}
+
+
+
+
+
+
+
+
+
 Result_t FuncCall::codegen(CodegenInstance* cgi)
 {
+	// always try the type first.
+	if(cgi->getType(this->name) != nullptr)
+		return callConstructor(cgi, cgi->getType(this->name), this);
+
+
 	FuncPair_t* fp = cgi->getDeclaredFunc(this->name);
 	std::string cmangled = "";
 	std::string cppmangled = "";
@@ -27,7 +59,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
-
 
 
 	// we need to get the function declaration
