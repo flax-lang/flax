@@ -13,10 +13,12 @@ public struct String
 		self.data = malloc(32)
 		self.length = 0
 		self.allocated = 32
+		printf("constructed\n");
 	}
 
 	init(str: Int8*)
 	{
+		printf("calling: ");
 		self.init()
 		self.set(str)
 	}
