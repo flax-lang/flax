@@ -65,7 +65,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 	llvm::Value* defaultValue = 0;
 	allocatedmem = cgi->mainBuilder.CreatePointerCast(allocatedmem, allocType->getPointerTo());
 
-	Struct* str = ((Struct*) typePair->second.first);
 	if(builtinVt != VarType::UserDefined)
 	{
 		defaultValue = llvm::Constant::getNullValue(allocType);
@@ -74,8 +73,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 	else
 	{
 		// todo: constructor params
-		llvm::Function* initfunc = cgi->getAppropriateStructInitialiser(this, typePair, std::deque<Expr*>());
-		defaultValue = cgi->mainBuilder.CreateCall(initfunc, allocatedmem);
+		std::vector<llvm::Value*> args;
+		args.push_back(allocatedmem);
+
+		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
+		defaultValue = cgi->mainBuilder.CreateCall(initfunc, args);
 	}
 
 	return Result_t(allocatedmem, 0);

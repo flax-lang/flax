@@ -10,13 +10,15 @@ public struct String
 
 	init()
 	{
-		self.data = malloc(64)
+		self.data = malloc(32)
 		self.length = 0
-		self.allocated = 64
+		self.allocated = 32
 	}
 
 	init(str: Int8*)
 	{
+		self.init()
+		self.set(str)
 	}
 
 	func clear()
@@ -25,37 +27,27 @@ public struct String
 		self.length = 0
 	}
 
-	operator=(other: Int8*)
+	func set(str: Int8*)
 	{
 		self.clear()
-		var len: Int64 = strlen(other)
+		var len: Int64 = strlen(str)
 		if self.allocated < len
 		{
 			free(self.data)
 			self.data = malloc((len + 31) / 32)
 		}
 
-		memcpy(self.data, other, len)
+		memcpy(self.data, str, len)
+	}
+
+	operator=(other: Int8*)
+	{
+		self.set(other)
 	}
 
 	operator=(other: String)
 	{
-		self.clear()
-
-		var len: Int64 = strlen(other.data)
-		self.length = len
-
-		if self.allocated >= len
-		{
-			memcpy(self.data, other.data, len)
-		}
-		else
-		{
-			free(self.data)
-			self.data = malloc((len + 31) / 32)
-
-			memcpy(self.data, other.data, len)
-		}
+		self.set(other.data)
 	}
 }
 

@@ -85,15 +85,17 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			}
 		}
 
+
 		if(cmplxtype)
 		{
-			Struct* str = (Struct*) cmplxtype->second.first;
-
 			if(!this->disableAutoInit)
 			{
 				// TODO: constructor args
-				llvm::Function* initfunc = cgi->getAppropriateStructInitialiser(this, cmplxtype, std::deque<Expr*>());
-				val = cgi->mainBuilder.CreateCall(initfunc, ai);
+				std::vector<llvm::Value*> args;
+				args.push_back(ai);
+
+				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+				val = cgi->mainBuilder.CreateCall(initfunc, args);
 			}
 		}
 

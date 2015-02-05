@@ -24,6 +24,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_start(ap, msg);
 
 	__error_gen(relevantast, msg, "Error", true, ap);
+	abort();
 }
 
 void error(const char* msg, ...)
@@ -31,6 +32,7 @@ void error(const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, msg, "Error", true, ap);
+	abort();
 }
 
 
@@ -63,22 +65,22 @@ namespace GenError
 
 	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Using undeclared %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void useAfterFree(Ast::Expr* e, std::string symname)
 	{
-		error(e, "Attempted to use variable '%s' after it was deallocated", symname.c_str());
+		error(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
 	}
 
 	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Duplicate %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op)
 	{
-		error(e, "No valid operator overload for '%s' on type '%s'", Parser::arithmeticOpToString(op).c_str(), type.c_str());
+		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(op).c_str(), type.c_str());
 	}
 
 	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b)
@@ -88,7 +90,7 @@ namespace GenError
 		// the 'this' pointer (it doesn't) we'll be fine.
 		Codegen::CodegenInstance* cgi = 0;
 
-		error(e, "Invalid assignment from type '%s' to '%s'", cgi->getReadableType(a).c_str(),
+		error(e, "Invalid assignment from type %s to %s", cgi->getReadableType(a).c_str(),
 			cgi->getReadableType(b).c_str());
 	}
 
@@ -105,13 +107,18 @@ namespace GenError
 
 		std::string args_str;
 		for(llvm::Value* v : args)
+		{
+			if(!v)
+				continue;
+
 			args_str += ", " + cgi->getReadableType(v->getType());
+		}
 
 		// remove leading commas
 		if(args_str.length() > 2)
 			args_str = args_str.substr(2);
 
-		error(e, "No valid init() candidate for type '%s' taking parameters [%s]", str->name.c_str(), args_str.c_str());
+		error(e, "No valid init() candidate for type %s taking parameters [%s]", str->name.c_str(), args_str.c_str());
 	}
 }
 
