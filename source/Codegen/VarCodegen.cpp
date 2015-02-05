@@ -36,11 +36,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		if(!this->initVal)
 			error(this, "Type inference requires an initial assignment to infer type");
 
-		if(!cmplxtype)
-		{
-			this->initVal = cgi->autoCastType(this, this->initVal);
-			val = this->initVal->codegen(cgi).result.first;
-		}
+		assert(!cmplxtype);
+		val = this->initVal->codegen(cgi).result.first;
 
 		if(cgi->isBuiltinType(this->initVal))
 		{
@@ -54,11 +51,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			this->inferredLType = val->getType();
 		}
 	}
-	else if(!cmplxtype && this->initVal)
+	else if(this->initVal)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
 		val = this->initVal->codegen(cgi).result.first;
 	}
+
+
 
 	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
@@ -88,7 +87,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cmplxtype)
 		{
-			if(!this->disableAutoInit)
+			if(!this->disableAutoInit && !this->initVal)
 			{
 				// TODO: constructor args
 				std::vector<llvm::Value*> args;
@@ -99,13 +98,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			}
 		}
 
-
 		cgi->addSymbol(this->name, ai, this);
 
-		if(this->initVal)
+		if(this->initVal && !cmplxtype)
 		{
-			BinOp* bo = new BinOp(this->posinfo, new VarRef(this->posinfo, this->name), ArithmeticOp::Assign, this->initVal);
-			return Result_t(bo->codegen(cgi).result.first, ai);
+			// this only works if we don't call a constructor
+			return cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
 		}
 		else
 		{
@@ -126,8 +124,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
 		}
 	}
-
-
 
 	cgi->addSymbol(this->name, ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);

@@ -9,13 +9,13 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, BinOp* b, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs)
+static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs)
 {
 	if(structRef->getType()->getPointerElementType()->isStructTy())
 	{
 		TypePair_t* tp = cgi->getType(structRef->getType()->getPointerElementType()->getStructName());
 		if(!tp)
-			error(b, "Invalid type");
+			error(user, "Invalid type");
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
@@ -25,7 +25,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, BinOp* b, Ari
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
-			GenError::noOpOverload(b, ((Struct*) tp->second.first)->name, op);
+			GenError::noOpOverload(user, ((Struct*) tp->second.first)->name, op);
 		}
 
 		// fail gracefully-ish
@@ -33,6 +33,174 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, BinOp* b, Ari
 
 	return Result_t(0, 0);
 }
+
+
+
+Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, llvm::Value* lhs,
+	llvm::Value* ref, llvm::Value* rhs)
+{
+	VarRef* v = nullptr;
+	UnaryOp* uo = nullptr;
+	ArrayIndex* ai = nullptr;
+
+	this->autoCastLlvmType(lhs, rhs);
+
+	llvm::Value* varptr = 0;
+	if((v = dynamic_cast<VarRef*>(left)))
+	{
+		{
+			VarDecl* vdecl = this->getSymDecl(user, v->name);
+			if(!vdecl) GenError::unknownSymbol(user, v->name, SymbolType::Variable);
+
+			if(vdecl->immutable)
+				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+		}
+
+		if(!rhs)
+			error(user, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
+
+		SymbolValidity_t sv = this->getSymPair(user, v->name)->first;
+		if(sv.second != SymbolValidity::Valid)
+			GenError::useAfterFree(user, v->name);
+
+		else
+			varptr = sv.first;
+
+		if(!varptr)
+			GenError::unknownSymbol(user, v->name, SymbolType::Variable);
+
+		// try and see if we have operator overloads for bo thing
+		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs);
+		if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
+			return tryOpOverload;
+
+		if(lhs->getType() != rhs->getType())
+		{
+			// ensure we can always store 0 to pointers without a cast
+			Number* n = 0;
+			if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
+				rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
+
+			else
+				GenError::invalidAssignment(user, lhs, rhs);
+		}
+	}
+	else if((dynamic_cast<MemberAccess*>(left))
+		|| ((uo = dynamic_cast<UnaryOp*>(left)) && uo->op == ArithmeticOp::Deref)
+		|| (ai = dynamic_cast<ArrayIndex*>(left)))
+	{
+		// we know that the ptr lives in the second element
+		// so, use it
+
+		varptr = ref;
+		assert(varptr);
+		assert(rhs);
+
+		// make sure the left side is a pointer
+		if(!varptr->getType()->isPointerTy())
+			GenError::invalidAssignment(user, varptr, rhs);
+
+		// redo the number casting
+		if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
+			rhs = this->mainBuilder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
+
+		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
+			rhs = this->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
+	}
+	else
+	{
+		error(user, "Left-hand side of assignment must be assignable");
+	}
+
+
+
+	// do it all together now
+	if(op == ArithmeticOp::Assign)
+	{
+		if(varptr->getType()->getPointerElementType()->isStructTy())
+		{
+			Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs);
+			if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
+				return tryOpOverload;
+		}
+
+		// check for overflow
+		if(lhs->getType()->isIntegerTy())
+		{
+			Number* n = 0;
+			uint64_t max = 1;
+
+			// why the fuck does c++ not have a uint64_t pow function
+			{
+				for(int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
+					max *= 2;
+			}
+
+			if(max == 0)
+				max = -1;
+
+			if((n = dynamic_cast<Number*>(right)) && !n->decimal)
+			{
+				bool shouldwarn = false;
+				if(!this->isSignedType(n))
+				{
+					if((uint64_t) n->ival > max)
+						shouldwarn = true;
+				}
+				else if(n->ival > max)
+						shouldwarn = true;
+
+				if(shouldwarn)
+					warn(user, "Value '%" PRId64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
+			}
+		}
+
+		this->mainBuilder.CreateStore(rhs, varptr);
+		return Result_t(rhs, varptr);
+	}
+	else
+	{
+		// get the llvm op
+		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, this->isSignedType(left) || this->isSignedType(right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
+
+		llvm::Value* newrhs = this->mainBuilder.CreateBinOp(lop, lhs, rhs);
+		this->mainBuilder.CreateStore(newrhs, varptr);
+		return Result_t(newrhs, varptr);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Result_t BinOp::codegen(CodegenInstance* cgi)
@@ -62,136 +230,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		lhs = valptr.first;
 		rhs = this->right->codegen(cgi).result.first;
 
-		VarRef* v = nullptr;
-		UnaryOp* uo = nullptr;
-		ArrayIndex* ai = nullptr;
-
-		cgi->autoCastLlvmType(lhs, rhs);
-
-		llvm::Value* varptr = 0;
-		if((v = dynamic_cast<VarRef*>(this->left)))
-		{
-			{
-				VarDecl* vdecl = cgi->getSymDecl(this, v->name);
-				if(!vdecl) GenError::unknownSymbol(this, v->name, SymbolType::Variable);
-
-				if(vdecl->immutable)
-					error(this, "Cannot assign to immutable variable '%s'!", v->name.c_str());
-			}
-
-			if(!rhs)
-				error(this, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
-
-			SymbolValidity_t sv = cgi->getSymPair(this, v->name)->first;
-			if(sv.second != SymbolValidity::Valid)
-				GenError::useAfterFree(this, v->name);
-
-			else
-				varptr = sv.first;
-
-			if(!varptr)
-				GenError::unknownSymbol(this, v->name, SymbolType::Variable);
-
-
-			// try and see if we have operator overloads for this thing
-			Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, valptr.second, rhs);
-			if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
-				return tryOpOverload;
-
-
-			if(lhs->getType() != rhs->getType())
-			{
-				// ensure we can always store 0 to pointers without a cast
-				Number* n = 0;
-				if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->right)) && n->ival == 0)
-					rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
-
-				else
-					GenError::invalidAssignment(this, lhs, rhs);
-			}
-		}
-		else if((dynamic_cast<MemberAccess*>(this->left))
-			|| ((uo = dynamic_cast<UnaryOp*>(this->left)) && uo->op == ArithmeticOp::Deref)
-			|| (ai = dynamic_cast<ArrayIndex*>(this->left)))
-		{
-			// we know that the ptr lives in the second element
-			// so, use it
-
-			varptr = valptr.second;
-			assert(varptr);
-			assert(rhs);
-
-			// make sure the left side is a pointer
-			if(!varptr->getType()->isPointerTy())
-				GenError::invalidAssignment(this, varptr, rhs);
-
-			// redo the number casting
-			if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
-				rhs = cgi->mainBuilder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
-
-			else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
-				rhs = cgi->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
-		}
-		else
-		{
-			error(this, "Left-hand side of assignment must be assignable");
-		}
-
-
-
-		// do it all together now
-		if(this->op == ArithmeticOp::Assign)
-		{
-			if(varptr->getType()->getPointerElementType()->isStructTy())
-			{
-				Result_t tryOpOverload = callOperatorOverloadOnStruct(cgi, this, this->op, varptr, rhs);
-				if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
-					return tryOpOverload;
-			}
-
-			// check for overflow
-			if(lhs->getType()->isIntegerTy())
-			{
-				Number* n = 0;
-				uint64_t max = 1;
-
-				// why the fuck does c++ not have a uint64_t pow function
-				{
-					for(int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
-						max *= 2;
-				}
-
-				if(max == 0)
-					max = -1;
-
-				if((n = dynamic_cast<Number*>(this->right)) && !n->decimal)
-				{
-					bool shouldwarn = false;
-					if(!cgi->isSignedType(n))
-					{
-						if((uint64_t) n->ival > max)
-							shouldwarn = true;
-					}
-					else if(n->ival > max)
-							shouldwarn = true;
-
-					if(shouldwarn)
-						warn(this, "Value '%" PRId64 "' is too large for variable type '%s', max %lld", n->ival, cgi->getReadableType(lhs->getType()).c_str(), max);
-				}
-			}
-
-			cgi->mainBuilder.CreateStore(rhs, varptr);
-			return Result_t(rhs, varptr);
-		}
-		else
-		{
-			// get the llvm op
-			llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op, cgi->isSignedType(this->left) || cgi->isSignedType(this->right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
-
-			llvm::Value* newrhs = cgi->mainBuilder.CreateBinOp(lop, lhs, rhs);
-			cgi->mainBuilder.CreateStore(newrhs, varptr);
-			return Result_t(newrhs, varptr);
-		}
+		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
 	}
 	else if(this->op == ArithmeticOp::Cast)
 	{
@@ -311,7 +350,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 
 				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
-				llvm::Value* ret = nullptr;
 
 				llvm::BasicBlock* entry = cgi->mainBuilder.GetInsertBlock();
 				llvm::BasicBlock* lb = llvm::BasicBlock::Create(cgi->getContext(), "leftbl", func);
