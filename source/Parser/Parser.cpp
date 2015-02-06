@@ -41,7 +41,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRId64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 		exit(1);
@@ -58,7 +58,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRId64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
@@ -826,12 +826,21 @@ namespace Parser
 
 		// check the type.
 		// todo: type inference
-		// parserError("Expected colon to indicate type for variable declaration");
 		Token* colon = eat(tokens);
 		if(colon->type == TType::Colon)
 		{
 			v->type = parseType(tokens)->name;
 			v->varType = determineVarType(v->type);
+
+			if(tokens.front()->type == TType::LParen)
+			{
+				// this form:
+				// var foo: String("bla")
+
+				// since parseFunctionCall is actually built for this kind of hack (like with the init() thing)
+				// it's easy.
+				v->initVal = parseFunctionCall(tokens, v->type);
+			}
 		}
 		else if(colon->type == TType::Equal)
 		{
@@ -846,21 +855,21 @@ namespace Parser
 			parserError("Variable declaration without type requires initialiser for type inference");
 		}
 
-		// TODO:
-		// check if we have a default value
-		v->initVal = nullptr;
-		if(tokens.front()->type == TType::Equal)
+		if(!v->initVal)
 		{
-			// we do
-			eat(tokens);
+			if(tokens.front()->type == TType::Equal)
+			{
+				// we do
+				eat(tokens);
 
-			v->initVal = parseExpr(tokens);
-			if(!v->initVal)
-				parserError("Invalid initialiser for variable '%s'", v->name.c_str());
-		}
-		else if(immutable)
-		{
-			parserError("Constant variables require an initialiser at the declaration site");
+				v->initVal = parseExpr(tokens);
+				if(!v->initVal)
+					parserError("Invalid initialiser for variable '%s'", v->name.c_str());
+			}
+			else if(immutable)
+			{
+				parserError("Constant variables require an initialiser at the declaration site");
+			}
 		}
 
 		return v;
