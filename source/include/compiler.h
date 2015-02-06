@@ -15,6 +15,7 @@ namespace Compiler
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
+	std::string getTarget();
 	std::string getSysroot();
 	int getOptimisationLevel();
 	bool getIsCompileOnly();

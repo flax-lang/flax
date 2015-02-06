@@ -242,6 +242,7 @@ namespace Parser
 		else if(type_id == "Uint16")	return VarType::Uint16;
 		else if(type_id == "Uint32")	return VarType::Uint32;
 		else if(type_id == "Uint64")	return VarType::Uint64;
+		else if(type_id == "UintPtr")	return VarType::UintPtr;
 
 		else if(type_id == "AnyPtr")	return VarType::AnyPtr;
 
@@ -276,6 +277,7 @@ namespace Parser
 		else if(vt == VarType::Float64)		return "Float64";
 		else if(vt == VarType::Bool)		return "Bool";
 		else if(vt == VarType::Void)		return "Void";
+		else if(vt == VarType::UintPtr)		return "UintPtr";
 		else								return "UserDefined";
 	}
 
@@ -991,7 +993,7 @@ namespace Parser
 		}
 		else
 		{
-			delete idvr;
+			// delete idvr;
 			return parseFunctionCall(tokens, id);
 		}
 	}
