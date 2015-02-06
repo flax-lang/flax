@@ -52,6 +52,7 @@ namespace Ast
 		Void,
 		AnyPtr,
 		Array,
+		UintPtr,
 	};
 
 	enum class ArithmeticOp

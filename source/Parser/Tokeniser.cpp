@@ -301,6 +301,7 @@ namespace Parser
 				|| id == "Float64"
 				|| id == "AnyPtr"
 				|| id == "Bool"
+				|| id == "UintPtr"
 				|| id == "Void")		tok.type = TType::BuiltinType;
 
 			else						tok.type = TType::Identifier;
@@ -376,7 +377,7 @@ namespace Parser
 		}
 		else
 		{
-			delete ret;
+			// delete ret;
 			Parser::parserError("Unknown token '%c'", stream[0]);
 		}
 
