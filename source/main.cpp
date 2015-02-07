@@ -54,6 +54,12 @@ namespace Compiler
 		return sysroot;
 	}
 
+	static std::string target;
+	std::string getTarget()
+	{
+		return target;
+	}
+
 	static int optLevel;
 	int getOptimisationLevel()
 	{
@@ -77,7 +83,7 @@ int main(int argc, char* argv[])
 		// parse the command line opts
 		for(int i = 1; i < argc; i++)
 		{
-			if(!strcmp(argv[i], "--sysroot"))
+			if(!strcmp(argv[i], "-sysroot"))
 			{
 				if(i != argc - 1)
 				{
@@ -88,6 +94,20 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected directory name after '-sysroot' option\n");
+					exit(1);
+				}
+			}
+			if(!strcmp(argv[i], "-target"))
+			{
+				if(i != argc - 1)
+				{
+					i++;
+					Compiler::target = parseQuotedString(argv, i);
+					continue;
+				}
+				else
+				{
+					fprintf(stderr, "Error: Expected target string after '-target' option\n");
 					exit(1);
 				}
 			}

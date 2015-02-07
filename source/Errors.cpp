@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include <cinttypes>
 #include "include/codegen.h"
 #include "include/compiler.h"
 
@@ -12,7 +13,7 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	char* alloc = nullptr;
 	vasprintf(&alloc, msg, ap);
 
-	fprintf(stderr, "%s(%s:%" PRId64 ")%s %s%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, type, COLOUR_RESET, alloc);
+	fprintf(stderr, "%s(%s:%" PRIu64 ")%s %s%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, type, COLOUR_RESET, alloc);
 
 	va_end(ap);
 	if(ex) abort();

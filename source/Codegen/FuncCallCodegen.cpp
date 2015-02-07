@@ -43,16 +43,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 	if(cgi->getType(this->name) != nullptr)
 		return callConstructor(cgi, cgi->getType(this->name), this);
 
-
-	FuncPair_t* fp = cgi->getDeclaredFunc(this->name);
-	std::string cmangled = "";
-	std::string cppmangled = "";
-
-	if(!fp)	fp = cgi->getDeclaredFunc(cmangled = cgi->mangleName(this->name, this->params));
-	if(!fp)	fp = cgi->getDeclaredFunc(cppmangled = cgi->mangleCppName(this->name, this->params));
-
+	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
-		GenError::unknownSymbol(this, this->name + ", tried (c): " + cmangled + ", (c++): " + cppmangled, SymbolType::Function);
+		GenError::unknownSymbol(this, this->name, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
 	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
@@ -74,3 +67,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 
 	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
 }
+
+
+
+
+
