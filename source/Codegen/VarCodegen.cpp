@@ -70,7 +70,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		// we always need to call the init function, even if we have an assignment
 		for(TypeMap_t* tm : cgi->visibleTypes)
 		{
 			for(auto pair : *tm)
@@ -87,6 +86,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cmplxtype)
 		{
+			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
 				// TODO: constructor args
@@ -107,6 +107,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		}
 		else
 		{
+			cgi->mainBuilder.CreateStore(val, ai);
 			return Result_t(val, ai);
 		}
 	}
