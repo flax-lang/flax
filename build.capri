@@ -2,7 +2,7 @@ version 1.17;
 import "build/capri/Utilities.capri";
 
 sysroot 	= File.getAbsolutePath("build/sysroot");
-prefix		= "/usr/local";
+prefix		= "/usr";
 outputBin	= "flaxc";
 
 flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
@@ -12,13 +12,13 @@ project Flax default all
 	CXX				= "clang++";
 	def LLVM_CONFIG	= "llvm-config";
 
-	target travis
+	target ci
 	{
 		LLVM_CONFIG = "llvm-config-3.5";
-		Utils.println("Building for Travis CI");
+		Utils.println("Building for automated deployment");
 	}
 
-	CXXFLAGS	= "-g -std=gnu++1y -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
+	CXXFLAGS	= "-std=gnu++1y -g -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
 	capriExec	= System.getExecutablePath();
 
 	src			= "source";
@@ -31,15 +31,6 @@ project Flax default all
 	final_invoke		= "{CXX} {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
 
 
-	target travis
-	{
-		System.execute(llvm_config_invoke);
-	}
-
-
-
-
-
 	// tasks
 	task all depends build, buildLib;
 	task build { compile(); link(); }
@@ -50,7 +41,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -O3 -o build/test --sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 	}
@@ -73,7 +64,7 @@ project Flax default all
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
 		// compile them all
-		assert Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
+		Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
 	}
 
 	task link
