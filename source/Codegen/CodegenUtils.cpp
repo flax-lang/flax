@@ -1247,15 +1247,22 @@ namespace Codegen
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
 		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
 
+		uint64_t ptrWidth = this->mainModule->getDataLayout()->getPointerSizeInBits();
 		uint64_t typesize = this->mainModule->getDataLayout()->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-		llvm::APInt apint = llvm::APInt(this->mainModule->getDataLayout()->getPointerSizeInBits(), typesize);
+		llvm::APInt apint = llvm::APInt(ptrWidth, typesize);
+		llvm::Value* intval = llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), ptrWidth), apint);
+
+		if(rhs->getType()->getIntegerBitWidth() != ptrWidth)
+			rhs = this->mainBuilder.CreateIntCast(rhs, intval->getType(), false);
+
 
 		// this is the properly adjusted thing
-		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), this->mainModule->getDataLayout()->getPointerSizeInBits()), apint));
+		printf("ptr arith: %s, %s\n", this->getReadableType(rhs->getType()).c_str(), this->getReadableType(intval->getType()).c_str());
+		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
 
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
-		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
+		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, newrhs->getType());
 
 		// create the add/sub
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
