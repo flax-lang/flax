@@ -14,23 +14,42 @@ struct Foo
 {
 	var flob: Bar
 	var bar: Int32 = 400
-	var qux: Int32 = 800
+	var qux: Int32
+
+	init(q: Int32)
+	{
+		self.qux = q
+		self.flob.norf = q * 400
+	}
+	init()
+	{
+		self.qux = 800
+		self.flob.norf = 800 * 3
+	}
 }
 
 
 func main(argc: Int32, argv: Int8**) -> Int32
 {
 	var x: String("Hello, World")
-	var z: UintPtr = 591
 
-	printf("[%s], [%d]\n", x.data, z)
+	printf("[%s], ", x.data)
 
 	func Lol() -> Foo
 	{
-		var Foo = alloc Foo
+		var num = 4
+		var Foo = alloc(num) Foo(30)
 		return #Foo
 	}
 
-	printf("[%d]\n", Lol().flob.norf)
+	var bla = Lol()
+	printf("[%d]\n", bla.flob.norf)
 	return 0
 }
+
+
+
+
+
+
+
