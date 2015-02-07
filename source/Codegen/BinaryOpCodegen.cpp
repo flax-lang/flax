@@ -222,7 +222,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		return fakema->codegen(cgi);
 	}
 
-
 	ValPtr_t valptr = this->left->codegen(cgi).result;
 
 	llvm::Value* lhs;
@@ -235,11 +234,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
-		this->right = cgi->autoCastType(this->left, this->right);
-
 		lhs = valptr.first;
 		rhs = this->right->codegen(cgi).result.first;
 
+		cgi->autoCastType(lhs, rhs);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
 	}
 	else if(this->op == ArithmeticOp::Cast)
@@ -289,14 +287,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	// else case.
 	// no point being explicit about this and wasting indentation
 
-	this->right = cgi->autoCastType(this->left, this->right);
-
 	lhs = valptr.first;
 	llvm::Value* lhsptr = valptr.second;
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
 	llvm::Value* rhsptr = r.second;
+
+	cgi->autoCastType(lhs, rhs);
 
 	// if adding integer to pointer
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()

@@ -381,24 +381,7 @@ namespace Codegen
 		int indirections = 0;
 
 		std::string actualType = this->unwrapPointerType(type, &indirections);
-		llvm::Type* ret = nullptr;
-		if(Parser::determineVarType(actualType) == VarType::UserDefined)
-		{
-			TypePair_t* notptrtype = getType(actualType);
-			if(notptrtype)
-			{
-				ret = notptrtype->first;
-			}
-			else
-			{
-				GenError::unknownSymbol(0, actualType, SymbolType::Type);
-				return nullptr;
-			}
-		}
-		else
-		{
-			ret = getLlvmTypeOfBuiltin(Parser::determineVarType(actualType));
-		}
+		llvm::Type* ret = this->getLlvmType(actualType);
 
 		while(indirections > 0)
 		{
@@ -475,55 +458,51 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
-		VarType e = determineVarType(expr);
-		return e <= VarType::Bool || e == VarType::Float32 || e == VarType::Float64 || e == VarType::Void;
+		llvm::Type* ltype = this->getLlvmType(expr);
+		return (ltype->isIntegerTy() || ltype->isFloatingPointTy());
+	}
+
+	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
+	{
+		if(type == "Int8")			return llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
+
+		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Uint32")	return llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Uint64")	return llvm::Type::getInt64Ty(this->getContext());
+
+		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
+		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
+		else return nullptr;
+	}
+
+	llvm::Type* CodegenInstance::getLlvmType(std::string type)
+	{
+		llvm::Type* ret = this->getLlvmTypeOfBuiltin(type);
+		if(ret) return ret;
+
+		// not so lucky
+		TypePair_t* tp = this->getType(type);
+		if(!tp)
+			GenError::unknownSymbol(0, type, SymbolType::Type);
+
+		return tp->first;
 	}
 
 	bool CodegenInstance::isPtr(Expr* expr)
 	{
-		VarType e = determineVarType(expr);
-		return e == VarType::AnyPtr || getLlvmType(expr)->isPointerTy();
-	}
-
-	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(VarType t)
-	{
-		switch(t)
-		{
-			case VarType::Uint8:
-			case VarType::Int8:		return llvm::Type::getInt8Ty(getContext());
-
-			case VarType::Uint16:
-			case VarType::Int16:	return llvm::Type::getInt16Ty(getContext());
-
-			case VarType::Uint32:
-			case VarType::Int32:	return llvm::Type::getInt32Ty(getContext());
-
-			case VarType::Uint64:
-			case VarType::Int64:	return llvm::Type::getInt64Ty(getContext());
-
-			case VarType::Float32:	return llvm::Type::getFloatTy(getContext());
-			case VarType::Float64:	return llvm::Type::getDoubleTy(getContext());
-
-			case VarType::Void:		return llvm::Type::getVoidTy(getContext());
-			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
-			case VarType::UintPtr:	return llvm::Type::getIntNTy(getContext(), this->mainModule->getDataLayout()->getPointerSizeInBits());
-
-			default:
-				error("(%s:%d) -> Internal check failed: not a builtin type", __FILE__, __LINE__);
-				return nullptr;
-		}
+		llvm::Type* ltype = this->getLlvmType(expr);
+		return ltype->isPointerTy();
 	}
 
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
 	{
-		VarType t;
-
 		assert(expr);
-		if((t = determineVarType(expr)) != VarType::UserDefined && t != VarType::Array)
-		{
-			return getLlvmTypeOfBuiltin(t);
-		}
-		else
 		{
 			VarRef* ref			= nullptr;
 			VarDecl* decl		= nullptr;
@@ -535,76 +514,28 @@ namespace Codegen
 			CastedType* ct		= nullptr;
 			MemberAccess* ma	= nullptr;
 			BinOp* bo			= nullptr;
+			Number* nm			= nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
-				if(t != VarType::Array)
+				if(decl->type == "Inferred")
 				{
-					if(decl->type == "Inferred")
-					{
-						assert(decl->inferredLType);
-						return decl->inferredLType;
-					}
-					else
-					{
-						TypePair_t* type = getType(expr->type);
-						if(!type)
-						{
-							// check if it ends with pointer, and if we have a type that's un-pointered
-							llvm::Type* ret = unwrapPointerType(expr->type);
-							assert(ret);	// if it returned without calling error(), it shouldn't be null.
-							return ret;
-						}
-
-						return type->first;
-					}
-				}
-
-
-				// it's an array. decide on its size.
-				size_t pos = decl->type.find_first_of('[');
-				if(pos == std::string::npos)
-					error("(%s:%d) -> Internal check failed: invalid array declaration string", __FILE__, __LINE__);
-
-				std::string etype = decl->type.substr(0, pos);
-				std::string atype = decl->type.substr(pos);
-				assert(atype[0] == '[' && atype.back() == ']');
-
-				std::string num = atype.substr(1).substr(0, atype.length() - 2);
-				int sz = std::stoi(num);
-				if(sz == 0)
-					error(decl, "Dynamically sized arrays are not yet supported");
-
-				VarType evt = Parser::determineVarType(etype);
-
-				llvm::Type* eltype = nullptr;
-				if(evt == VarType::Array)
-					error(decl, "Nested arrays are not yet supported");
-
-				if(evt == VarType::Void)
-					error(decl, "You cannot create an array of void");
-
-				if(evt != VarType::UserDefined)
-				{
-					eltype = getLlvmTypeOfBuiltin(evt);
+					assert(decl->inferredLType);
+					return decl->inferredLType;
 				}
 				else
 				{
-					TypePair_t* type = getType(etype);
+					TypePair_t* type = getType(expr->type);
 					if(!type)
 					{
-						llvm::Type* ret = unwrapPointerType(etype);
+						// check if it ends with pointer, and if we have a type that's un-pointered
+						llvm::Type* ret = unwrapPointerType(expr->type);
 						assert(ret);	// if it returned without calling error(), it shouldn't be null.
+						return ret;
+					}
 
-						eltype = ret;
-					}
-					else
-					{
-						eltype = type->first;
-					}
+					return type->first;
 				}
-
-				return llvm::ArrayType::get(eltype, sz);
 			}
 			else if((ref = dynamic_cast<VarRef*>(expr)))
 			{
@@ -639,11 +570,6 @@ namespace Codegen
 			}
 			else if((fd = dynamic_cast<FuncDecl*>(expr)))
 			{
-				VarType vt;
-				if((vt = Parser::determineVarType(fd->type)) != VarType::UserDefined)
-					return getLlvmTypeOfBuiltin(vt);
-
-
 				TypePair_t* type = getType(fd->type);
 				if(!type)
 				{
@@ -679,119 +605,18 @@ namespace Codegen
 					return this->getLlvmType(bo->right);
 				}
 			}
+			else if((nm = dynamic_cast<Number*>(expr)))
+			{
+				return nm->codegen(this).result.first->getType();
+			}
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 		return nullptr;
 	}
 
-	VarType CodegenInstance::determineVarType(Expr* e)
-	{
-		VarRef* ref			= nullptr;
-		VarDecl* decl		= nullptr;
-		BinOp* bo			= nullptr;
-		Number* num			= nullptr;
-		FuncDecl* fd		= nullptr;
-		FuncCall* fc		= nullptr;
-		MemberAccess* ma	= nullptr;
-		BoolVal* bv			= nullptr;
-
-		if((ref = dynamic_cast<VarRef*>(e)))
-		{
-			VarDecl* decl = getSymDecl(ref, ref->name);
-			if(!decl)
-			{
-				if((e->varType = Parser::determineVarType(ref->name)) != VarType::UserDefined)
-					return e->varType;
-
-				GenError::unknownSymbol(e, ref->name, SymbolType::Variable);
-			}
-
-			// it's a decl. get the type, motherfucker.
-			return e->varType = Parser::determineVarType(decl->type);
-		}
-		else if((decl = dynamic_cast<VarDecl*>(e)))
-		{
-			// it's a decl. get the type, motherfucker.
-			return e->varType = Parser::determineVarType(decl->type);
-		}
-		else if((num = dynamic_cast<Number*>(e)))
-		{
-			// it's a number. get the type, motherfucker.
-			return num->varType;
-		}
-		else if((bv = dynamic_cast<BoolVal*>(e)))
-		{
-			return VarType::Bool;
-		}
-		else if(dynamic_cast<UnaryOp*>(e))
-		{
-			return determineVarType(dynamic_cast<UnaryOp*>(e)->expr);
-		}
-		else if(dynamic_cast<Func*>(e))
-		{
-			return determineVarType(dynamic_cast<Func*>(e)->decl);
-		}
-		else if((fd = dynamic_cast<FuncDecl*>(e)))
-		{
-			return Parser::determineVarType(fd->type);
-		}
-		else if((fc = dynamic_cast<FuncCall*>(e)))
-		{
-			FuncPair_t* fp = this->getDeclaredFunc(fc);
-			if(!fp)
-				return VarType::UserDefined;
-				// error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
-
-			return Parser::determineVarType(fp->second->type);
-		}
-		else if((bo = dynamic_cast<BinOp*>(e)))
-		{
-			// check what kind of shit it is
-			if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
-				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
-			{
-				return VarType::Bool;
-			}
-			else
-			{
-				if(bo->op == ArithmeticOp::Cast)
-				{
-					// in case of a cast, the right side is probably either a builtin type, or an identifier
-					// either way, it got interpreted by the parser as a VarRef, probably.
-					VarRef* vrtype = dynamic_cast<VarRef*>(bo->right);
-					assert(vrtype);
-
-					// look at the type.
-					VarType vt = Parser::determineVarType(vrtype->name);
-					return vt;
-				}
-				else
-				{
-					// need to determine type on both sides.
-					bo->right = autoCastType(bo->left, bo->right);
-
-					// make sure that now, both sides are the same.
-					// if(determineVarType(bo->left) != determineVarType(bo->right))
-					// 	error(bo, "Unable to form binary expression with different types '%s' and '%s'", getReadableType(bo->left).c_str(), getReadableType(bo->right).c_str());
-				}
-
-				return determineVarType(bo->left);
-			}
-		}
-		else if((ma = dynamic_cast<MemberAccess*>(e)))
-		{
-			return determineVarType(ma->target);
-		}
-		else
-		{
-			// error("Unable to determine var type - '%s'", e->type.c_str());
-			return VarType::UserDefined;
-		}
-	}
-
 	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }
-	bool CodegenInstance::isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
+	bool CodegenInstance::isSignedType(Expr* e)		{ return false; }		// TODO: something about this
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
@@ -806,41 +631,7 @@ namespace Codegen
 
 	llvm::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
-		llvm::Type* llvmtype = getLlvmType(e);
-
-		VarType tp = determineVarType(e);
-		switch(tp)
-		{
-			case VarType::Int8:		return llvm::ConstantInt::get(getContext(), llvm::APInt(8, 0, false));
-			case VarType::Int16:	return llvm::ConstantInt::get(getContext(), llvm::APInt(16, 0, false));
-			case VarType::Int32:	return llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, false));
-			case VarType::Int64:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, false));
-
-			case VarType::Uint32:	return llvm::ConstantInt::get(getContext(), llvm::APInt(8, 0, true));
-			case VarType::Uint64:	return llvm::ConstantInt::get(getContext(), llvm::APInt(16, 0, true));
-			case VarType::Uint8:	return llvm::ConstantInt::get(getContext(), llvm::APInt(32, 0, true));
-			case VarType::Uint16:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, true));
-
-			case VarType::Float32:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0f));
-			case VarType::Float64:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0));
-			case VarType::Bool:		return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
-			case VarType::UintPtr:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, true));
-
-			case VarType::Array:
-			{
-				assert(llvmtype->isArrayTy());
-				llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(llvmtype);
-
-				std::vector<llvm::Constant*> els;
-				for(uint64_t i = 0; i < at->getNumElements(); i++)
-					els.push_back(llvm::ConstantArray::getNullValue(at->getElementType()));
-
-				return llvm::ConstantArray::get(at, els);
-			}
-
-			// todo: check for pointer type
-			default:				return llvm::Constant::getNullValue(getLlvmType(e));
-		}
+		return llvm::Constant::getNullValue(getLlvmType(e));
 	}
 
 	static void StringReplace(std::string& str, const std::string& from, const std::string& to)
@@ -880,36 +671,27 @@ namespace Codegen
 		return getReadableType(getLlvmType(expr));
 	}
 
-	Expr* CodegenInstance::autoCastType(Expr* left, Expr* right)
-	{
-		// adjust the right hand int literal, if it is one
-		Number* n = nullptr;
-		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
-		{
-			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)				right->varType = VarType::Int8;
-			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)		right->varType = VarType::Int16;
-			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)		right->varType = VarType::Int32;
-			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)		right->varType = VarType::Int64;
-			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)		right->varType = VarType::Uint8;
-			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)		right->varType = VarType::Uint16;
-			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)		right->varType = VarType::Uint32;
-			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)		right->varType = VarType::Uint64;
-			else if(determineVarType(left) == VarType::UintPtr && n->ival <= UINTPTR_MAX)	right->varType = VarType::UintPtr;
-			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)		right->varType = VarType::Float32;
-			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)		right->varType = VarType::Float64;
-		}
-
-		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
-		return right;
-	}
-
 	void CodegenInstance::autoCastLlvmType(llvm::Value*& lhs, llvm::Value*& rhs)
 	{
-		if(lhs->getType()->isIntegerTy() && rhs->getType()->isFloatingPointTy())
-			lhs = this->mainBuilder.CreateSIToFP(lhs, rhs->getType());
+		// assert(lhs);
+		// assert(rhs);
 
-		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isFloatingPointTy())
-			rhs = this->mainBuilder.CreateSIToFP(rhs, lhs->getType());
+		// if(lhs->getType()->isIntegerTy() && rhs->getType()->isFloatingPointTy())
+		// 	lhs = this->mainBuilder.CreateSIToFP(lhs, rhs->getType());
+
+		// else if(rhs->getType()->isIntegerTy() && lhs->getType()->isFloatingPointTy())
+		// 	rhs = this->mainBuilder.CreateSIToFP(rhs, lhs->getType());
+	}
+
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right)
+	{
+		assert(left);
+		assert(right);
+
+		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy())
+		{
+			right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+		}
 	}
 
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
@@ -1332,7 +1114,7 @@ namespace Codegen
 
 	void CodegenInstance::verifyAllPathsReturn(Func* func)
 	{
-		if(this->determineVarType(func) == VarType::Void)
+		if(this->getLlvmType(func)->isVoidTy())
 			return;
 
 		// check the block

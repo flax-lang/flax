@@ -12,9 +12,13 @@ using namespace Codegen;
 Result_t Number::codegen(CodegenInstance* cgi)
 {
 	// check builtin type
-	if(!this->decimal && this->varType != VarType::Float32 && this->varType != VarType::Float64)
+	if(!this->decimal)
 	{
-		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) this->varType % 4) * 8, this->ival, this->varType > VarType::Int64)), 0);
+		int bits = 32;
+		if(this->type == "Uint64" || this->type == "Int64")
+			bits = 64;
+
+		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(bits, this->ival, !(this->type[0] == 'U'))), 0);
 	}
 	else
 	{
