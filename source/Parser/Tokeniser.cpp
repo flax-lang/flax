@@ -328,9 +328,8 @@ namespace Parser
 					continue;
 				}
 
-
 				ss << stream[i];
-				if(i == stream.size() - 1)
+				if(i == stream.size() - 1 || stream[i] == '\n')
 					Parser::parserError("Expected closing '\"'");
 			}
 

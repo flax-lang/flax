@@ -23,13 +23,8 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	llvm::Value* cond = pairs.front().first->codegen(cgi).result.first;
 
 
-	VarType apprType = cgi->determineVarType(pairs.front().first);
-	if(apprType != VarType::Bool)
-		cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
-
-	else
-		cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)));
-
+	llvm::Type* apprType = cgi->getLlvmType(pairs.front().first);
+	cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::Constant::getNullValue(apprType), "ifCond");
 
 
 	cgi->mainBuilder.CreateCondBr(cond, t, f);
@@ -68,17 +63,10 @@ Result_t If::codegen(CodegenInstance* cgi)
 {
 	assert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
-	VarType apprType = cgi->determineVarType(this->cases[0].first);
+	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
+	firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
 
-	if(apprType != VarType::Bool)
-	{
-		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(pow(2, (int) apprType % 4) * 8, 0, apprType > VarType::Int64)), "ifCond");
-	}
-	else
-	{
-		firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, false, true)),
-			"ifCond");
-	}
+
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);

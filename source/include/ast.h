@@ -58,34 +58,6 @@ namespace Codegen
 
 namespace Ast
 {
-	// rant:
-	// fuck this. c++ structs are exactly the same as classes, except with public visibility by default
-	// i'm lazy so this is the way it'll be.
-
-	enum class VarType
-	{
-		Int8,
-		Int16,
-		Int32,
-		Int64,
-
-		Uint8,
-		Uint16,
-		Uint32,
-		Uint64,
-
-		// we do it this way so we can do math tricks on these to get the number of bits
-		Bool,
-		UserDefined,
-		Float32,
-		Float64,
-
-		Void,
-		AnyPtr,
-		Array,
-		UintPtr,
-	};
-
 	enum class ArithmeticOp
 	{
 		Add,
@@ -172,7 +144,6 @@ namespace Ast
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
 		std::string type;
-		VarType varType;
 	};
 
 	struct DummyExpr : Expr
@@ -197,6 +168,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		bool decimal = false;
+		llvm::Type* properLlvmType = 0;
 		union
 		{
 			int64_t ival;
@@ -471,11 +443,10 @@ namespace Ast
 	struct Alloc : Expr
 	{
 		~Alloc() { }
-		Alloc(Parser::PosInfo pos, std::string _typeName) : Expr(pos), typeName(_typeName) { }
+		Alloc(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		Expr* count;
-		std::string typeName;
 		std::deque<Expr*> params;
 	};
 
