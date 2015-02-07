@@ -33,20 +33,45 @@ namespace Parser
 
 	// todo: hack
 	bool isParsingStruct;
+	void parserError(Token* token, const char* msg, va_list args)
+	{
+		char* alloc = nullptr;
+		vasprintf(&alloc, msg, args);
+
+		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, token ? token->posinfo.file.c_str() : "?", token ? token->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+	}
+
+
+	// what the fuck
+	void parserError(Token* token, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(Token* token, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		parserError(token, msg, ap);
+
+		va_end(ap);
+		abort();
+
+	}
+
+	// come on man
+	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 	void parserError(const char* msg, ...)
 	{
 		va_list ap;
 		va_start(ap, msg);
 
-		char* alloc = nullptr;
-		vasprintf(&alloc, msg, ap);
-
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, curtok ? curtok->posinfo.file.c_str() : "?", curtok ? curtok->posinfo.line : 0, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		parserError(curtok, msg, ap);
 
 		va_end(ap);
-		exit(1);
+		abort();
+
 	}
 
+	// grr
+	void parserWarn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 	void parserWarn(const char* msg, ...)
 	{
 		if(Compiler::getFlag(Compiler::Flag::NoWarnings))
@@ -80,6 +105,7 @@ namespace Parser
 	Expr* parseIdExpr(std::deque<Token*>& tokens);
 	Break* parseBreak(std::deque<Token*>& tokens);
 	Expr* parsePrimary(std::deque<Token*>& tokens);
+	Expr* parseInitFunc(std::deque<Token*>& tokens);
 	Struct* parseStruct(std::deque<Token*>& tokens);
 	Import* parseImport(std::deque<Token*>& tokens);
 	Return* parseReturn(std::deque<Token*>& tokens);
@@ -97,8 +123,8 @@ namespace Parser
 	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
+	Expr* parseFuncCall(std::deque<Token*>& tokens, std::string id);
 	Expr* parseRhs(std::deque<Token*>& tokens, Expr* expr, int prio);
-	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id);
 
 
 	std::string getModuleName(std::string filename)
@@ -502,7 +528,7 @@ namespace Parser
 				case TType::BuiltinType:
 				case TType::Identifier:
 					if(tok->text == "init")
-						return parseFunc(tokens);
+						return parseInitFunc(tokens);
 
 					else if(tok->text == "operator")
 						return parseOpOverload(tokens);
@@ -757,6 +783,67 @@ namespace Parser
 	}
 
 
+	Expr* parseInitFunc(std::deque<Token*>& tokens)
+	{
+		Token* front = tokens.front();
+		assert(front->text == "init");
+
+		// we need to disambiguate between calling the init() function, and defining an init() function
+		// to do this, we can loop through the tokens (without consuming) until we find the closing ')'
+		// then see if the token following that is a '{'. if so, it's a declaration, if not it's a call
+
+		if(tokens.size() < 3)
+			parserError("Unexpected end of input");
+
+		else if(tokens.size() > 3 && tokens[1]->type != TType::LParen)
+			parserError("Expected '(' for either function call or declaration");
+
+		int parenLevel = 0;
+		bool foundBrace = false;
+		for(size_t i = 1; i < tokens.size(); i++)
+		{
+			if(tokens[i]->type == TType::LParen)
+			{
+				parenLevel++;
+			}
+			else if(tokens[i]->type == TType::RParen)
+			{
+				parenLevel--;
+				if(parenLevel == 0)
+				{
+					// look through each until we find a brace
+					for(size_t k = i + 1; k < tokens.size() && !foundBrace; k++)
+					{
+						if(tokens[k]->type == TType::Comment || tokens[k]->type == TType::NewLine)
+							continue;
+
+						else if(tokens[k]->type == TType::LBrace)
+							foundBrace = true;
+
+						else
+							break;
+					}
+
+					break;
+				}
+			}
+		}
+
+		if(foundBrace)
+		{
+			// found a brace, it's a decl
+			FuncDecl* decl = parseFuncDecl(tokens);
+			return CreateAST(Func, front, decl, parseBracedBlock(tokens));
+		}
+		else
+		{
+			// no brace, it's a call
+			// eat the "init" token
+			eat(tokens);
+			return parseFuncCall(tokens, "init");
+		}
+	}
+
 
 
 
@@ -839,9 +926,9 @@ namespace Parser
 				// this form:
 				// var foo: String("bla")
 
-				// since parseFunctionCall is actually built for this kind of hack (like with the init() thing)
+				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
 				// it's easy.
-				v->initVal = parseFunctionCall(tokens, v->type);
+				v->initVal = parseFuncCall(tokens, v->type);
 			}
 		}
 		else if(colon->type == TType::Equal)
@@ -968,15 +1055,7 @@ namespace Parser
 		VarRef* idvr = CreateAST(VarRef, tok_id, id);
 
 		// check for dot syntax.
-		if(tokens.front()->type == TType::Period)
-		{
-			eat(tokens);
-			if(tokens.front()->type != TType::Identifier)
-				parserError("Expected identifier after '.' operator");
-
-			return CreateAST(MemberAccess, tok_id, idvr, parseIdExpr(tokens));
-		}
-		else if(tokens.front()->type == TType::LSquare)
+		if(tokens.front()->type == TType::LSquare)
 		{
 			// array dereference
 			eat(tokens);
@@ -987,14 +1066,14 @@ namespace Parser
 
 			return CreateAST(ArrayIndex, tok_id, idvr, within);
 		}
-		else if(tokens.front()->type != TType::LParen)
+		else if(tokens.front()->type == TType::LParen)
 		{
-			return idvr;
+			// delete idvr;
+			return parseFuncCall(tokens, id);
 		}
 		else
 		{
-			// delete idvr;
-			return parseFunctionCall(tokens, id);
+			return idvr;
 		}
 	}
 
@@ -1061,7 +1140,7 @@ namespace Parser
 		return n;
 	}
 
-	Expr* parseFunctionCall(std::deque<Token*>& tokens, std::string id)
+	Expr* parseFuncCall(std::deque<Token*>& tokens, std::string id)
 	{
 		Token* front = eat(tokens);
 		assert(front->type == TType::LParen);
