@@ -475,6 +475,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
 		std::string typeName;
+		std::deque<Expr*> params;
 	};
 
 	struct Dealloc : Expr
