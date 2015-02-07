@@ -298,7 +298,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	rhs = r.first;
 	llvm::Value* rhsptr = r.second;
 
-
 	// if adding integer to pointer
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract))
