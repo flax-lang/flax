@@ -40,20 +40,8 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 
 	llvm::Type* allocType = 0;
 	TypePair_t* typePair = 0;
-	VarType builtinVt = Parser::determineVarType(this->typeName);
-	if(builtinVt != VarType::UserDefined)
-	{
-		allocType = cgi->getLlvmTypeOfBuiltin(builtinVt);
-	}
-	else
-	{
-		typePair = cgi->getType(this->typeName);
-		if(!typePair)
-			GenError::unknownSymbol(this, this->typeName, SymbolType::Type);
 
-		allocType = typePair->first;
-	}
-
+	allocType = cgi->getLlvmType(this->type);
 	assert(allocType);
 
 
@@ -83,8 +71,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 
 	// call the initialiser, if there is one
 	llvm::Value* defaultValue = 0;
-
-	if(builtinVt != VarType::UserDefined)
+	if(allocType->isIntegerTy() || allocType->isPointerTy())
 	{
 		defaultValue = llvm::Constant::getNullValue(allocType);
 		cgi->mainBuilder.CreateMemSet(allocatedmem, defaultValue, allocsize, typesize);
@@ -139,6 +126,10 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
+
+		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+
+		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
 		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 	}
 

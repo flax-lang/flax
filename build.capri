@@ -33,7 +33,7 @@ project Flax default all
 
 	// tasks
 	task all depends build, buildLib;
-	task build { compile(); link(); }
+	task build { compile(); link(); buildLib(); }
 
 
 	task test
@@ -41,7 +41,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -dump-ir -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 	}

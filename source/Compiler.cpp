@@ -137,7 +137,7 @@ namespace Compiler
 		system(llvmlink.c_str());
 
 		memset(inv, 0, 1024);
-		snprintf(inv, 1024, "clang++ %s %s -o '%s' '%s.bc'", tgt.c_str(), Compiler::getIsCompileOnly() ? "-c" : "", oname.c_str(), oname.c_str());
+		snprintf(inv, 1024, "clang++ %s %s %s %s -o '%s' '%s.bc'", getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel()).c_str(), getIsPositionIndependent() ? "-fPIC" : "", tgt.c_str(), Compiler::getIsCompileOnly() ? "-c" : "", oname.c_str(), oname.c_str());
 		std::string final = inv;
 
 		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
