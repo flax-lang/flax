@@ -16,7 +16,6 @@ namespace Codegen
 namespace Ast
 {
 	struct Root;
-	enum class VarType;
 	enum class ArithmeticOp;
 }
 
@@ -146,8 +145,6 @@ namespace Parser
 	std::string getModuleName(std::string filename);
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
 	Token* getNextToken(std::string& stream, PosInfo& pos);
-	Ast::VarType determineVarType(std::string type_id);
-	std::string getVarTypeString(Ast::VarType vt);
 	std::string arithmeticOpToString(Ast::ArithmeticOp op);
 }
 
