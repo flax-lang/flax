@@ -81,6 +81,10 @@ namespace Codegen
 		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 		void popFuncScope();
 
+
+		llvm::Type* getLlvmType(std::string name);
+
+
 		Ast::Root* getRootAST();
 		bool isPtr(Ast::Expr* e);
 		bool isArrayType(Ast::Expr* e);
@@ -93,15 +97,14 @@ namespace Codegen
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		void verifyAllPathsReturn(Ast::Func* func);
-		Ast::VarType determineVarType(Ast::Expr* e);
 		std::string getReadableType(Ast::Expr* expr);
 		std::string getReadableType(llvm::Type* type);
 		llvm::Type* unwrapPointerType(std::string type);
-		llvm::Type* getLlvmTypeOfBuiltin(Ast::VarType t);
+		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		std::string mangleName(Ast::Struct* s, std::string orig);
+		void autoCastType(llvm::Value* left, llvm::Value*& right);
 		std::string unmangleName(Ast::Struct* s, std::string orig);
-		Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
 		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
 		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);

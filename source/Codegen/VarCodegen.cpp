@@ -135,8 +135,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cgi->isBuiltinType(this->initVal))
 		{
-			this->varType = cgi->determineVarType(this->initVal);
-			this->type = Parser::getVarTypeString(this->varType);
+			this->type = cgi->getReadableType(this->initVal);
 		}
 		else
 		{
@@ -147,7 +146,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	}
 	else if(this->initVal)
 	{
-		this->initVal = cgi->autoCastType(this, this->initVal);
 		auto r = this->initVal->codegen(cgi).result;
 
 		val = r.first;
