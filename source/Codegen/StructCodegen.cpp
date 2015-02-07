@@ -38,7 +38,9 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			var->initVal = cgi->autoCastType(var, var->initVal);
-			cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).result.first : cgi->getDefaultValue(var), ptr);
+			var->doInitialValue(cgi, cgi->getType(var->type), var->initVal ? var->initVal->codegen(cgi).result.first : 0, ptr);
+
+			// cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).result.first : cgi->getDefaultValue(var), ptr);
 		}
 
 
@@ -288,9 +290,20 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;
+
+	if(selfPtr == nullptr)
+	{
+		// we don't have a pointer value for this
+		// it's required for CreateStructGEP, so we'll have to make a temp variable
+		// then store the result of the LHS into it.
+
+		selfPtr = cgi->mainBuilder.CreateAlloca(self->getType());
+		cgi->mainBuilder.CreateStore(self, selfPtr);
+	}
+
 	bool isPtr = false;
 
-	llvm::Type* type = cgi->getLlvmType(this->target);
+	llvm::Type* type = p.first->getType();
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
@@ -334,10 +347,19 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			i = -1;
 		}
 		else
-			error("(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+		{
+			error(this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+		}
 
 
-		// if we're a function call
+
+
+
+
+
+
+
+
 		if(fc)
 		{
 			// make the args first.
@@ -373,12 +395,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			if(!callee)
 				error(this, "No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
-
-			// do some casting
-			// for(int i = 0; i < fc->params.size(); i++)
-			// 	fc->params[i] = cgi->autoCastType(callee->decl->params[i], fc->params[i]);
-
-
 			llvm::Function* lcallee = 0;
 			for(llvm::Function* lf : str->lfuncs)
 			{
@@ -397,7 +413,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 		else if(var)
 		{
 			assert(i >= 0);
+
 			// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
+			// if we don't have a pointer reference, we're fucked
+
+
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
 			llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
 

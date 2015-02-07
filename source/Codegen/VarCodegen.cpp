@@ -20,12 +20,93 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
+llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* storage)
+{
+	llvm::Value* ai = storage;
+
+	if(this->initVal && !cmplxtype && this->type != "Inferred")
+	{
+		// ...
+	}
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
+	{
+		val = cgi->getDefaultValue(this);
+	}
+	else
+	{
+		for(TypeMap_t* tm : cgi->visibleTypes)
+		{
+			for(auto pair : *tm)
+			{
+				llvm::Type* ltype = pair.second.first;
+				if(ltype == this->inferredLType)
+				{
+					cmplxtype = &pair.second;
+					break;
+				}
+			}
+		}
+
+		if(cmplxtype)
+		{
+			// automatically call the init() function
+			if(!this->disableAutoInit && !this->initVal)
+			{
+				// TODO: constructor args
+				std::vector<llvm::Value*> args;
+				args.push_back(ai);
+
+				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+				val = cgi->mainBuilder.CreateCall(initfunc, args);
+			}
+		}
+
+		cgi->addSymbol(this->name, ai, this);
+
+		if(this->initVal && !cmplxtype)
+		{
+			// this only works if we don't call a constructor
+			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
+			return val;
+		}
+		else if(!cmplxtype)
+		{
+			if(!val)
+				val = cgi->getDefaultValue(this);
+
+			cgi->mainBuilder.CreateStore(val, ai);
+			return val;
+		}
+		else
+		{
+			return val;
+		}
+	}
+
+
+	if(val->getType() != ai->getType()->getPointerElementType())
+	{
+		Number* n = 0;
+		if(val->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
+		{
+			val = llvm::Constant::getNullValue(ai->getType()->getPointerElementType());
+		}
+		else
+		{
+			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
+		}
+	}
+
+	cgi->addSymbol(this->name, ai, this);
+	cgi->mainBuilder.CreateStore(val, ai);
+	return val;
+}
+
 Result_t VarDecl::codegen(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
 
-	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::Value* val = nullptr;
 
 	TypePair_t* cmplxtype = cgi->getType(this->type);
@@ -47,7 +128,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		else
 		{
 			// it's not a builtin type
-			ai = cgi->allocateInstanceInBlock(func, val->getType(), this->name);
+			ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
 			this->inferredLType = val->getType();
 		}
 	}
@@ -57,76 +138,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		val = this->initVal->codegen(cgi).result.first;
 	}
 
+	if(!ai)	ai = cgi->allocateInstanceInBlock(this);
+	val = this->doInitialValue(cgi, cmplxtype, val, ai);
 
-
-	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
-	if(this->initVal && !cmplxtype && this->type != "Inferred")
-	{
-		// ...
-	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
-	{
-		val = cgi->getDefaultValue(this);
-	}
-	else
-	{
-		// we always need to call the init function, even if we have an assignment
-		for(TypeMap_t* tm : cgi->visibleTypes)
-		{
-			for(auto pair : *tm)
-			{
-				llvm::Type* ltype = pair.second.first;
-				if(ltype == this->inferredLType)
-				{
-					cmplxtype = &pair.second;
-					break;
-				}
-			}
-		}
-
-
-		if(cmplxtype)
-		{
-			if(!this->disableAutoInit && !this->initVal)
-			{
-				// TODO: constructor args
-				std::vector<llvm::Value*> args;
-				args.push_back(ai);
-
-				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
-				val = cgi->mainBuilder.CreateCall(initfunc, args);
-			}
-		}
-
-		cgi->addSymbol(this->name, ai, this);
-
-		if(this->initVal && !cmplxtype)
-		{
-			// this only works if we don't call a constructor
-			return cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
-		}
-		else
-		{
-			return Result_t(val, ai);
-		}
-	}
-
-
-	if(val->getType() != ai->getType()->getPointerElementType())
-	{
-		Number* n = 0;
-		if(val->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
-		{
-			val = llvm::Constant::getNullValue(ai->getType()->getPointerElementType());
-		}
-		else
-		{
-			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
-		}
-	}
-
-	cgi->addSymbol(this->name, ai, this);
-	cgi->mainBuilder.CreateStore(val, ai);
 	return Result_t(val, ai);
 }
 
