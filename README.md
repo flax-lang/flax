@@ -49,8 +49,8 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 - Documentation for the Capri script is available here: http://forum.osdev.org/viewtopic.php?f=2&t=28568&start=0
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
-- Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
-- Additionally, default libraries will be copied from './libs' to './build/sysroot/usr/local/lib'
+- Find the 'flaxc' executable in 'build/sysroot/usr/bin'
+- Additionally, default libraries will be copied from './libs' to './build/sysroot/usr/lib'
 
 -----------------------------------------------
 

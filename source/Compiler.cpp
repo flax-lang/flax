@@ -39,7 +39,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/local/lib/flaxlibs/" + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + "/usr/lib/flaxlibs/" + imp->module + ".flx";
 
 			struct stat buffer;
 			if(stat (builtinlib.c_str(), &buffer) == 0)
@@ -121,6 +121,11 @@ namespace Compiler
 
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname)
 	{
+		std::string tgt;
+		if(!getTarget().empty())
+			tgt = "-target " + getTarget();
+
+
 		std::string oname = outname.empty() ? (foldername + "/" + cgi->mainModule->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
@@ -132,7 +137,7 @@ namespace Compiler
 		system(llvmlink.c_str());
 
 		memset(inv, 0, 1024);
-		snprintf(inv, 1024, "clang++ %s-o '%s' '%s.bc'", Compiler::getIsCompileOnly() ? "-c " : "", oname.c_str(), oname.c_str());
+		snprintf(inv, 1024, "clang++ %s %s -o '%s' '%s.bc'", tgt.c_str(), Compiler::getIsCompileOnly() ? "-c" : "", oname.c_str(), oname.c_str());
 		std::string final = inv;
 
 		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
