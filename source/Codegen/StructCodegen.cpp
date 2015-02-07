@@ -320,6 +320,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 		VarRef* var = nullptr;
 		FuncCall* fc = nullptr;
+		MemberAccess* ma = nullptr;
 		if((var = dynamic_cast<VarRef*>(rhs)))
 		{
 			if(str->nameMap.find(var->name) != str->nameMap.end())
@@ -333,11 +334,25 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			fc->params.push_front(fakevr);
 			i = -1;
 		}
+		else if((ma = dynamic_cast<MemberAccess*>(rhs)))
+		{
+			if((var = dynamic_cast<VarRef*>(ma->target)))
+				;
+
+			else if((fc = dynamic_cast<FuncCall*>(ma->target)))
+				;
+		}
 		else
-			error("(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+		{
+			error(this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+		}
 
 
-		// if we're a function call
+
+
+
+
+
 		if(fc)
 		{
 			// make the args first.
