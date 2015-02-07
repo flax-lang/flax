@@ -19,6 +19,8 @@ namespace Compiler
 	std::string getSysroot();
 	int getOptimisationLevel();
 	bool getIsCompileOnly();
+	bool getIsPositionIndependent();
+	std::string getMcModel();
 
 	enum class Flag
 	{

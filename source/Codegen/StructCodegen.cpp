@@ -37,7 +37,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-			var->initVal = cgi->autoCastType(var, var->initVal);
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
 		}
@@ -249,8 +248,8 @@ Result_t OpOverload::codegen(CodegenInstance* cgi)
 		if(decl->params.size() != 1)
 			error("Operator overload for '==' can only have one argument");
 
-		if(Parser::determineVarType(decl->type) != VarType::Bool)
-			error("Operator overload for '==' must returna boolean value");
+		if(decl->type != "Bool")
+			error("Operator overload for '==' must return a boolean value");
 
 		llvm::Type* ptype = cgi->getLlvmType(decl->params.front());
 		assert(ptype);
@@ -414,13 +413,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			assert(i >= 0);
 
 			// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
-			// if we don't have a pointer reference, we're fucked
-
-
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
 			llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
-
-			// else we're just var access
 			return Result_t(val, ptr);
 		}
 		else
