@@ -39,10 +39,10 @@ static std::string parseQuotedString(char** argv, int& i)
 
 namespace Compiler
 {
-	static uint64_t Flags;
 	static bool dumpModule = false;
-	static bool compileOnly = false;
 
+
+	static bool compileOnly = false;
 	bool getIsCompileOnly()
 	{
 		return compileOnly;
@@ -66,9 +66,22 @@ namespace Compiler
 		return optLevel;
 	}
 
+	static uint64_t Flags;
 	bool getFlag(Flag f)
 	{
 		return (Flags & (uint64_t) f);
+	}
+
+	bool isPIC = false;
+	bool getIsPositionIndependent()
+	{
+		return isPIC;
+	}
+
+	std::string mcmodel;
+	std::string getMcModel()
+	{
+		return mcmodel;
 	}
 }
 
@@ -122,6 +135,30 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected filename name after '-o' option\n");
+					exit(1);
+				}
+			}
+			else if(!strcmp(argv[i], "-fPIC"))
+			{
+				Compiler::isPIC = true;
+			}
+			else if(!strcmp(argv[i], "-mcmodel"))
+			{
+				if(i != argc - 1)
+				{
+					i++;
+					std::string mm = parseQuotedString(argv, i);
+					if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
+					{
+						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'. '%s' is invalid.\n", mm.c_str());
+						exit(1);
+					}
+
+					Compiler::mcmodel = mm;
+				}
+				else
+				{
+					fprintf(stderr, "Error: Expected mcmodel name after '-mcmodel' option\n");
 					exit(1);
 				}
 			}

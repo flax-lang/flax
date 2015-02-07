@@ -33,7 +33,7 @@ project Flax default all
 
 	// tasks
 	task all depends build, buildLib;
-	task build { compile(); link(); }
+	task build { compile(); link(); buildLib(); }
 
 
 	task test
