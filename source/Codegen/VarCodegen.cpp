@@ -51,7 +51,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				// TODO: constructor args
 				std::vector<llvm::Value*> args;
 				args.push_back(ai);
 
@@ -68,7 +67,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
 			return val;
 		}
-		else if(!cmplxtype)
+		else if(!cmplxtype && !this->initVal)
 		{
 			if(!val)
 				val = cgi->getDefaultValue(this);
@@ -76,9 +75,13 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
 		}
+		else if(cmplxtype && this->initVal)
+		{
+			cgi->mainBuilder.CreateStore(val, ai);
+			return val;
+		}
 		else
 		{
-			// ...
 			if(valptr)
 				val = cgi->mainBuilder.CreateLoad(valptr);
 
@@ -132,8 +135,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		if(cgi->isBuiltinType(this->initVal))
 		{
-			this->varType = cgi->determineVarType(this->initVal);
-			this->type = Parser::getVarTypeString(this->varType);
+			this->type = cgi->getReadableType(this->initVal);
 		}
 		else
 		{
@@ -144,7 +146,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	}
 	else if(this->initVal)
 	{
-		this->initVal = cgi->autoCastType(this, this->initVal);
 		auto r = this->initVal->codegen(cgi).result;
 
 		val = r.first;
