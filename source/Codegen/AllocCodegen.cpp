@@ -75,6 +75,8 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 		// todo: constructor params
 		std::vector<llvm::Value*> args;
 		args.push_back(allocatedmem);
+		for(Expr* e : this->params)
+			args.push_back(e->codegen(cgi).result.first);
 
 		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
 		defaultValue = cgi->mainBuilder.CreateCall(initfunc, args);

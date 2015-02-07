@@ -1082,13 +1082,27 @@ namespace Parser
 		Token* tok_alloc = eat(tokens);
 		assert(tok_alloc->type == TType::Alloc);
 
-		VarRef* tid = dynamic_cast<VarRef*>(parseIdExpr(tokens));	// probably got a varref
-		assert(tid);
+		Alloc* ret = CreateAST(Alloc, tok_alloc, "");
 
-		std::string tname = tid->name;
-		delete tid;
+		Expr* type = parseIdExpr(tokens);
+		VarRef* vr = dynamic_cast<VarRef*>(type);
+		FuncCall* fc = dynamic_cast<FuncCall*>(type);
 
-		return CreateAST(Alloc, tok_alloc, tname);
+		if(vr)
+		{
+			ret->typeName = vr->name;
+		}
+		else if(fc)
+		{
+			ret->typeName  = fc->name;
+			ret->params = fc->params;
+		}
+		else
+		{
+			parserError("What?!");
+		}
+
+		return ret;
 	}
 
 	Dealloc* parseDealloc(std::deque<Token*>& tokens)
