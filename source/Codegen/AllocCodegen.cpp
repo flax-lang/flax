@@ -58,7 +58,18 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 
 	// call malloc
 	uint64_t typesize = cgi->mainModule->getDataLayout()->getTypeSizeInBits(allocType) / 8;
-	llvm::Value* allocatedmem = cgi->mainBuilder.CreateCall(mallocf, llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), typesize));
+	llvm::Value* allocsize = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), typesize);
+	if(this->count)
+	{
+		llvm::Value* num = this->count->codegen(cgi).result.first;
+		if(!num->getType()->isIntegerTy())
+			error(this, "Expected integer type in alloc");
+
+		num = cgi->mainBuilder.CreateIntCast(num, allocsize->getType(), false);
+		allocsize = cgi->mainBuilder.CreateMul(allocsize, num);
+	}
+
+	llvm::Value* allocatedmem = cgi->mainBuilder.CreateCall(mallocf, allocsize);
 
 
 	// call the initialiser, if there is one
@@ -72,7 +83,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		// todo: constructor params
 		std::vector<llvm::Value*> args;
 		args.push_back(allocatedmem);
 		for(Expr* e : this->params)
