@@ -64,7 +64,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
-			printf("binop assign var %s\n", this->name.c_str());
 			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
 			return val;
 		}
@@ -73,14 +72,11 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			if(!val)
 				val = cgi->getDefaultValue(this);
 
-			printf("no type for %s\n", this->name.c_str());
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			printf("dafaq: %s (types %s, %s)\n", this->name.c_str(), cgi->getReadableType(val->getType()).c_str(), cgi->getReadableType(ai->getType()).c_str());
-
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
 		}
