@@ -51,9 +51,27 @@ public struct String
 	}
 }
 
+// printing
+public ffi func puts(x: Int8*) -> Int32
 public ffi func printf(x: Int8*, ...) -> Int32
+
+// memcpy/set/move
 public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
 public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+
+// string ops (todo: write in Flax)
 public ffi func strlen(str: Int8*) -> Uint64
+
+// memory
 public ffi func malloc(size: Uint64) -> Int8*
 public ffi func free(pointer: Int8*)
+
+
+
+
+
+
+
+
+
+
