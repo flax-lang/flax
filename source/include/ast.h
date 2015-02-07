@@ -474,6 +474,7 @@ namespace Ast
 		Alloc(Parser::PosInfo pos, std::string _typeName) : Expr(pos), typeName(_typeName) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
+		Expr* count;
 		std::string typeName;
 		std::deque<Expr*> params;
 	};

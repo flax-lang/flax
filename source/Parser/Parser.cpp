@@ -1084,6 +1084,14 @@ namespace Parser
 
 		Alloc* ret = CreateAST(Alloc, tok_alloc, "");
 
+		if(tokens.front()->type == TType::LParen)
+		{
+			eat(tokens);
+			ret->count = parseExpr(tokens);
+			if(eat(tokens)->type != TType::RParen)
+				parserError("Expected ')' after alloc(num)");
+		}
+
 		Expr* type = parseIdExpr(tokens);
 		VarRef* vr = dynamic_cast<VarRef*>(type);
 		FuncCall* fc = dynamic_cast<FuncCall*>(type);
