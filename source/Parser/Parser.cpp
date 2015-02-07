@@ -257,56 +257,6 @@ namespace Parser
 		}
 	}
 
-	VarType determineVarType(std::string type_id)
-	{
-		// kinda hardcoded
-		if(type_id == "Int8")			return VarType::Int8;
-		else if(type_id == "Int16")		return VarType::Int16;
-		else if(type_id == "Int32")		return VarType::Int32;
-		else if(type_id == "Int64")		return VarType::Int64;
-		else if(type_id == "Uint8")		return VarType::Uint8;
-		else if(type_id == "Uint16")	return VarType::Uint16;
-		else if(type_id == "Uint32")	return VarType::Uint32;
-		else if(type_id == "Uint64")	return VarType::Uint64;
-		else if(type_id == "UintPtr")	return VarType::UintPtr;
-
-		else if(type_id == "AnyPtr")	return VarType::AnyPtr;
-
-		else if(type_id == "Float32")	return VarType::Float32;
-		else if(type_id == "Float64")	return VarType::Float64;
-		else if(type_id == "Bool")		return VarType::Bool;
-		else if(type_id == "Void")		return VarType::Void;
-		else
-		{
-			// todo: risky
-			if(type_id.back() == ']')
-				return VarType::Array;
-
-			else
-				return VarType::UserDefined;
-		}
-	}
-
-	std::string getVarTypeString(Ast::VarType vt)
-	{
-		// kinda hardcoded
-		if(vt == VarType::Int8)				return "Int8";
-		else if(vt == VarType::Int16)		return "Int16";
-		else if(vt == VarType::Int32)		return "Int32";
-		else if(vt == VarType::Int64)		return "Int64";
-		else if(vt == VarType::Uint8)		return "Uint8";
-		else if(vt == VarType::Uint16)		return "Uint16";
-		else if(vt == VarType::Uint32)		return "Uint32";
-		else if(vt == VarType::Uint64)		return "Uint64";
-		else if(vt == VarType::AnyPtr)		return "AnyPtr";
-		else if(vt == VarType::Float32)		return "Float32";
-		else if(vt == VarType::Float64)		return "Float64";
-		else if(vt == VarType::Bool)		return "Bool";
-		else if(vt == VarType::Void)		return "Void";
-		else if(vt == VarType::UintPtr)		return "UintPtr";
-		else								return "UserDefined";
-	}
-
 	std::string arithmeticOpToString(Ast::ArithmeticOp op)
 	{
 		switch(op)
@@ -674,7 +624,6 @@ namespace Parser
 				parserError("Expected ':' followed by a type");
 
 			v->type = parseType(tokens)->name;
-			v->varType = determineVarType(v->type);
 
 			if(!nameCheck[v->name])
 			{
@@ -695,7 +644,6 @@ namespace Parser
 
 		// get return type.
 		std::string ret;
-		Token* tok_type = nullptr;
 		if(checkHasMore(tokens) && tokens.front()->type == TType::Arrow)
 		{
 			eat(tokens);
@@ -711,7 +659,6 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
-		f->varType = tok_type == nullptr ? VarType::Void : determineVarType(tok_type->text);
 
 		return f;
 	}
@@ -919,7 +866,6 @@ namespace Parser
 		if(colon->type == TType::Colon)
 		{
 			v->type = parseType(tokens)->name;
-			v->varType = determineVarType(v->type);
 
 			if(tokens.front()->type == TType::LParen)
 			{
@@ -933,7 +879,6 @@ namespace Parser
 		}
 		else if(colon->type == TType::Equal)
 		{
-			v->varType = VarType::UserDefined;
 			v->type = "Inferred";
 
 			// make sure the init value parser below works, push the colon back onto the stack
@@ -1082,7 +1027,7 @@ namespace Parser
 		Token* tok_alloc = eat(tokens);
 		assert(tok_alloc->type == TType::Alloc);
 
-		Alloc* ret = CreateAST(Alloc, tok_alloc, "");
+		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
 		if(tokens.front()->type == TType::LParen)
 		{
@@ -1098,11 +1043,11 @@ namespace Parser
 
 		if(vr)
 		{
-			ret->typeName = vr->name;
+			ret->type = vr->name;
 		}
 		else if(fc)
 		{
-			ret->typeName  = fc->name;
+			ret->type = fc->name;
 			ret->params = fc->params;
 		}
 		else
@@ -1136,10 +1081,10 @@ namespace Parser
 
 			// todo: handle integer suffixes
 			if(n->ival > INT_MAX)
-				n->varType = VarType::Int64;
+				n->type = "Int64";
 
 			else
-				n->varType = VarType::Int32;
+				n->type = "Int32";
 
 			// set the type.
 			// always used signed
@@ -1149,8 +1094,8 @@ namespace Parser
 			Token* tok = eat(tokens);
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
-			if(n->dval < FLT_MAX)	n->varType = VarType::Float32;
-			else					n->varType = VarType::Float64;
+			if(n->dval < FLT_MAX)	n->type = "Float32";
+			else					n->type = "Float64";
 		}
 		else
 		{
