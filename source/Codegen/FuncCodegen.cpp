@@ -56,7 +56,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	{
 		it->setName(this->decl->params[i]->name);
 
-		llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(func, this->decl->params[i]);
+		llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
 		cgi->mainBuilder.CreateStore(it, ai);
 
 		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);

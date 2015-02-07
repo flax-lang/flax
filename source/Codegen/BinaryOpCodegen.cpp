@@ -39,9 +39,10 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, llvm::Value* lhs,
 	llvm::Value* ref, llvm::Value* rhs)
 {
-	VarRef* v = nullptr;
-	UnaryOp* uo = nullptr;
-	ArrayIndex* ai = nullptr;
+	VarRef* v		= nullptr;
+	UnaryOp* uo		= nullptr;
+	ArrayIndex* ai	= nullptr;
+	BinOp* bo		= nullptr;
 
 	this->autoCastLlvmType(lhs, rhs);
 
@@ -107,9 +108,17 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
 			rhs = this->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
 	}
+	else if((bo = dynamic_cast<BinOp*>(left)) && bo->op == ArithmeticOp::MemberAccess)
+	{
+		// great job, folks
+		// printf("(%s:%lld): dot operator as LHS of op\n", bo->posinfo.file.c_str(), bo->posinfo.line);
+		MemberAccess* fakema = new MemberAccess(bo->posinfo, bo->left, bo->right);
+		BinOp* fakebo = new BinOp(bo->posinfo, fakema, op, right);
+		return fakebo->codegen(this);
+	}
 	else
 	{
-		error(user, "Left-hand side of assignment must be assignable");
+		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
 
@@ -151,7 +160,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 						shouldwarn = true;
 
 				if(shouldwarn)
-					warn(user, "Value '%" PRId64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
+					warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
 			}
 		}
 

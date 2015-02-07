@@ -64,10 +64,7 @@ project Utilities {
 					params["objectName"] = File.makeFileNameFromPath(File.getAbsolutePath(file));
 					fileCommand = command | params;
 
-					if(System.execute("{fileCommand}") != 0)
-					{
-						return false;
-					}
+					assert System.execute("{fileCommand}") == 0;
 				}
 			}
 		}
