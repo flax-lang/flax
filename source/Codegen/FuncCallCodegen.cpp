@@ -54,19 +54,31 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 	std::vector<llvm::Value*> args;
 
 
-	// we need to get the function declaration
-	FuncDecl* decl = fp->second;
-	if(decl)
-	{
-		for(int i = 0; i < this->params.size(); i++)
-			this->params[i] = cgi->autoCastType(decl->params[i], this->params[i]);
-	}
-
 	for(Expr* e : this->params)
 		args.push_back(e->codegen(cgi).result.first);
 
+	auto arg_it = target->arg_begin();
+	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
+	{
+		if(arg_it->getType()->isIntegerTy() && args[i]->getType()->isIntegerTy())
+		{
+			args[i] = cgi->mainBuilder.CreateIntCast(args[i], arg_it->getType(), false);
+		}
+	}
+
 	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -67,7 +67,7 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	this->block->codegen(cgi);
 
 	// check if we're not returning void
-	if(cgi->determineVarType(this) != VarType::Void)
+	if(this->decl->type != "Void")
 	{
 		cgi->verifyAllPathsReturn(this);
 	}
