@@ -20,10 +20,9 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* storage)
+llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage)
 {
 	llvm::Value* ai = storage;
-
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
 	{
 		// ...
@@ -79,10 +78,18 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			return val;
+			// ...
+			if(valptr)
+				val = cgi->mainBuilder.CreateLoad(valptr);
+
+			else
+				return val;
 		}
 	}
 
+
+	if(!cgi->isDuplicateSymbol(this->name))
+		cgi->addSymbol(this->name, ai, this);
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
@@ -97,7 +104,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 	}
 
-	cgi->addSymbol(this->name, ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);
 	return val;
 }
@@ -108,6 +114,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
 
 	llvm::Value* val = nullptr;
+	llvm::Value* valptr = nullptr;
 
 	TypePair_t* cmplxtype = cgi->getType(this->type);
 	llvm::AllocaInst* ai = nullptr;
@@ -118,7 +125,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			error(this, "Type inference requires an initial assignment to infer type");
 
 		assert(!cmplxtype);
-		val = this->initVal->codegen(cgi).result.first;
+		auto r = this->initVal->codegen(cgi).result;
+
+		val = r.first;
+		valptr = r.second;
 
 		if(cgi->isBuiltinType(this->initVal))
 		{
@@ -135,11 +145,14 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	else if(this->initVal)
 	{
 		this->initVal = cgi->autoCastType(this, this->initVal);
-		val = this->initVal->codegen(cgi).result.first;
+		auto r = this->initVal->codegen(cgi).result;
+
+		val = r.first;
+		valptr = r.second;
 	}
 
 	if(!ai)	ai = cgi->allocateInstanceInBlock(this);
-	val = this->doInitialValue(cgi, cmplxtype, val, ai);
+	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 
 	return Result_t(val, ai);
 }
