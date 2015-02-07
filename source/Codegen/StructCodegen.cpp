@@ -38,9 +38,8 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			var->initVal = cgi->autoCastType(var, var->initVal);
-			var->doInitialValue(cgi, cgi->getType(var->type), var->initVal ? var->initVal->codegen(cgi).result.first : 0, ptr);
-
-			// cgi->mainBuilder.CreateStore(var->initVal ? var->initVal->codegen(cgi).result.first : cgi->getDefaultValue(var), ptr);
+			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+			var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
 		}
 
 

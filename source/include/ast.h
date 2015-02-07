@@ -229,7 +229,7 @@ namespace Ast
 		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
-		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* storage);
+		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage);
 
 		std::string name;
 		bool immutable;
@@ -474,7 +474,9 @@ namespace Ast
 		Alloc(Parser::PosInfo pos, std::string _typeName) : Expr(pos), typeName(_typeName) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
+		Expr* count;
 		std::string typeName;
+		std::deque<Expr*> params;
 	};
 
 	struct Dealloc : Expr
