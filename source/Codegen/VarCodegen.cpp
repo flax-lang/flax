@@ -20,46 +20,10 @@ Result_t VarRef::codegen(CodegenInstance* cgi)
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-Result_t VarDecl::codegen(CodegenInstance* cgi)
+llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* storage)
 {
-	if(cgi->isDuplicateSymbol(this->name))
-		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
+	llvm::Value* ai = storage;
 
-	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
-	llvm::Value* val = nullptr;
-
-	TypePair_t* cmplxtype = cgi->getType(this->type);
-	llvm::AllocaInst* ai = nullptr;
-
-	if(this->type == "Inferred")
-	{
-		if(!this->initVal)
-			error(this, "Type inference requires an initial assignment to infer type");
-
-		assert(!cmplxtype);
-		val = this->initVal->codegen(cgi).result.first;
-
-		if(cgi->isBuiltinType(this->initVal))
-		{
-			this->varType = cgi->determineVarType(this->initVal);
-			this->type = Parser::getVarTypeString(this->varType);
-		}
-		else
-		{
-			// it's not a builtin type
-			ai = cgi->allocateInstanceInBlock(func, val->getType(), this->name);
-			this->inferredLType = val->getType();
-		}
-	}
-	else if(this->initVal)
-	{
-		this->initVal = cgi->autoCastType(this, this->initVal);
-		val = this->initVal->codegen(cgi).result.first;
-	}
-
-
-
-	if(!ai)	ai = cgi->allocateInstanceInBlock(func, this);
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
 	{
 		// ...
@@ -83,7 +47,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			}
 		}
 
-
 		if(cmplxtype)
 		{
 			// automatically call the init() function
@@ -103,12 +66,20 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
-			return cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
+			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
+			return val;
+		}
+		else if(!cmplxtype)
+		{
+			if(!val)
+				val = cgi->getDefaultValue(this);
+
+			cgi->mainBuilder.CreateStore(val, ai);
+			return val;
 		}
 		else
 		{
-			cgi->mainBuilder.CreateStore(val, ai);
-			return Result_t(val, ai);
+			return val;
 		}
 	}
 
@@ -128,6 +99,48 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 	cgi->addSymbol(this->name, ai, this);
 	cgi->mainBuilder.CreateStore(val, ai);
+	return val;
+}
+
+Result_t VarDecl::codegen(CodegenInstance* cgi)
+{
+	if(cgi->isDuplicateSymbol(this->name))
+		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
+
+	llvm::Value* val = nullptr;
+
+	TypePair_t* cmplxtype = cgi->getType(this->type);
+	llvm::AllocaInst* ai = nullptr;
+
+	if(this->type == "Inferred")
+	{
+		if(!this->initVal)
+			error(this, "Type inference requires an initial assignment to infer type");
+
+		assert(!cmplxtype);
+		val = this->initVal->codegen(cgi).result.first;
+
+		if(cgi->isBuiltinType(this->initVal))
+		{
+			this->varType = cgi->determineVarType(this->initVal);
+			this->type = Parser::getVarTypeString(this->varType);
+		}
+		else
+		{
+			// it's not a builtin type
+			ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
+			this->inferredLType = val->getType();
+		}
+	}
+	else if(this->initVal)
+	{
+		this->initVal = cgi->autoCastType(this, this->initVal);
+		val = this->initVal->codegen(cgi).result.first;
+	}
+
+	if(!ai)	ai = cgi->allocateInstanceInBlock(this);
+	val = this->doInitialValue(cgi, cmplxtype, val, ai);
+
 	return Result_t(val, ai);
 }
 

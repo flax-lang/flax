@@ -80,6 +80,7 @@ namespace Codegen
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.doInitialization();
 
 
@@ -180,7 +181,7 @@ namespace Codegen
 	{
 		this->symTabStack.push_back(tab);
 		this->visibleTypes.push_back(tp);
-		this->pushFuncScope("#__anon__");
+		this->pushFuncScope(this->mainBuilder.GetInsertBlock() ? this->mainBuilder.GetInsertBlock()->getName() : "__anon__");
 	}
 
 	void CodegenInstance::pushScope()
@@ -233,7 +234,7 @@ namespace Codegen
 		return getSymTab().find(name) != getSymTab().end();
 	}
 
-	void CodegenInstance::addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl)
+	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl)
 	{
 		SymbolValidity_t sv(ai, SymbolValidity::Valid);
 		SymbolPair_t sp(sv, vardecl);
@@ -315,6 +316,18 @@ namespace Codegen
 		}
 
 		return nullptr;
+	}
+
+	FuncPair_t* CodegenInstance::getDeclaredFunc(Ast::FuncCall* fc)
+	{
+		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+		std::string cmangled = "";
+		std::string cppmangled = "";
+
+		if(!fp)	fp = this->getDeclaredFunc(cmangled = this->mangleName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(cppmangled = this->mangleCppName(fc->name, fc->params));
+
+		return fp;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
@@ -520,6 +533,8 @@ namespace Codegen
 			StringLiteral* sl	= nullptr;
 			UnaryOp* uo			= nullptr;
 			CastedType* ct		= nullptr;
+			MemberAccess* ma	= nullptr;
+			BinOp* bo			= nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
@@ -612,9 +627,9 @@ namespace Codegen
 			}
 			else if((fc = dynamic_cast<FuncCall*>(expr)))
 			{
-				FuncPair_t* fp = getDeclaredFunc(fc->name);
+				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
-					error("(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+					error(expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(fp->second);
 			}
@@ -648,9 +663,25 @@ namespace Codegen
 			{
 				return llvm::Type::getInt8PtrTy(getContext());
 			}
+			else if((ma = dynamic_cast<MemberAccess*>(expr)))
+			{
+				return this->getLlvmType(ma->target);
+			}
+			else if((bo = dynamic_cast<BinOp*>(expr)))
+			{
+				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
+				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
+				{
+					return llvm::IntegerType::getInt1Ty(this->getContext());
+				}
+				else
+				{
+					return this->getLlvmType(bo->right);
+				}
+			}
 		}
 
-		error("(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 		return nullptr;
 	}
 
@@ -707,7 +738,7 @@ namespace Codegen
 		}
 		else if((fc = dynamic_cast<FuncCall*>(e)))
 		{
-			FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+			FuncPair_t* fp = this->getDeclaredFunc(fc);
 			if(!fp)
 				return VarType::UserDefined;
 				// error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
@@ -762,15 +793,14 @@ namespace Codegen
 	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }
 	bool CodegenInstance::isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
-		return tmpBuilder.CreateAlloca(type, 0, name);
+		return this->mainBuilder.CreateAlloca(type, 0, name);
 	}
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, VarDecl* var)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
 	{
-		return allocateInstanceInBlock(func, getLlvmType(var), var->name);
+		return allocateInstanceInBlock(getLlvmType(var), var->name);
 	}
 
 
@@ -1101,6 +1131,7 @@ namespace Codegen
 		else if(ch == "&&")	op = ArithmeticOp::LogicalOr;
 		else if(ch == "||")	op = ArithmeticOp::LogicalAnd;
 		else if(ch == "as")	op = ArithmeticOp::Cast;
+		else if(ch == ".")	op = ArithmeticOp::MemberAccess;
 		else				error("Unknown operator '%s'", ch.c_str());
 
 		return op;

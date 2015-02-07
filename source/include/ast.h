@@ -20,8 +20,39 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
 
+namespace Ast
+{
+	struct Expr;
+	struct VarDecl;
+	struct FuncDecl;
+	struct BreakableBracedBlock;
+}
+
 namespace Codegen
 {
+	enum class ExprType
+	{
+		Struct,
+		Func
+	};
+
+	enum class SymbolValidity
+	{
+		Valid,
+		UseAfterDealloc
+	};
+
+	typedef std::pair<llvm::Value*, SymbolValidity> SymbolValidity_t;
+	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
+	typedef std::map<std::string, SymbolPair_t> SymTab_t;
+	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
+	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
+	typedef std::map<std::string, TypePair_t> TypeMap_t;
+	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
+	typedef std::map<std::string, FuncPair_t> FuncMap_t;
+	typedef std::pair<std::string, FuncMap_t> NamespacePair_t;
+	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
+
 	struct CodegenInstance;
 }
 
@@ -197,6 +228,8 @@ namespace Ast
 		~VarDecl() { }
 		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+
+		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* storage);
 
 		std::string name;
 		bool immutable;
