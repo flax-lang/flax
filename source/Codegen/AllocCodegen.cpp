@@ -139,6 +139,10 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
+
+		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+
+		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
 		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 	}
 
