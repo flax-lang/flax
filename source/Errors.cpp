@@ -109,7 +109,7 @@ namespace GenError
 		std::string args_str;
 		for(llvm::Value* v : args)
 		{
-			if(!v)
+			if(!v || args[0] == v)
 				continue;
 
 			args_str += ", " + cgi->getReadableType(v->getType());
