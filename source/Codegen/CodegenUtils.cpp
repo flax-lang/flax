@@ -40,7 +40,6 @@ namespace Codegen
 	{
 		llvm::InitializeNativeTarget();
 		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
-		cgi->mainModule->setTargetTriple(llvm::sys::getProcessTriple());
 		cgi->rootNode = root;
 
 		std::string err;
@@ -81,6 +80,7 @@ namespace Codegen
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.doInitialization();
 
 
@@ -181,7 +181,7 @@ namespace Codegen
 	{
 		this->symTabStack.push_back(tab);
 		this->visibleTypes.push_back(tp);
-		this->pushFuncScope("#__anon__");
+		this->pushFuncScope(this->mainBuilder.GetInsertBlock() ? this->mainBuilder.GetInsertBlock()->getName() : "__anon__");
 	}
 
 	void CodegenInstance::pushScope()
@@ -234,7 +234,7 @@ namespace Codegen
 		return getSymTab().find(name) != getSymTab().end();
 	}
 
-	void CodegenInstance::addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl)
+	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl)
 	{
 		SymbolValidity_t sv(ai, SymbolValidity::Valid);
 		SymbolPair_t sp(sv, vardecl);
@@ -316,6 +316,18 @@ namespace Codegen
 		}
 
 		return nullptr;
+	}
+
+	FuncPair_t* CodegenInstance::getDeclaredFunc(Ast::FuncCall* fc)
+	{
+		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+		std::string cmangled = "";
+		std::string cppmangled = "";
+
+		if(!fp)	fp = this->getDeclaredFunc(cmangled = this->mangleName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(cppmangled = this->mangleCppName(fc->name, fc->params));
+
+		return fp;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
@@ -494,6 +506,7 @@ namespace Codegen
 
 			case VarType::Void:		return llvm::Type::getVoidTy(getContext());
 			case VarType::Bool:		return llvm::Type::getInt1Ty(getContext());
+			case VarType::UintPtr:	return llvm::Type::getIntNTy(getContext(), this->mainModule->getDataLayout()->getPointerSizeInBits());
 
 			default:
 				error("(%s:%d) -> Internal check failed: not a builtin type", __FILE__, __LINE__);
@@ -520,6 +533,8 @@ namespace Codegen
 			StringLiteral* sl	= nullptr;
 			UnaryOp* uo			= nullptr;
 			CastedType* ct		= nullptr;
+			MemberAccess* ma	= nullptr;
+			BinOp* bo			= nullptr;
 
 			if((decl = dynamic_cast<VarDecl*>(expr)))
 			{
@@ -612,9 +627,9 @@ namespace Codegen
 			}
 			else if((fc = dynamic_cast<FuncCall*>(expr)))
 			{
-				FuncPair_t* fp = getDeclaredFunc(fc->name);
+				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
-					error("(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+					error(expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(fp->second);
 			}
@@ -648,9 +663,25 @@ namespace Codegen
 			{
 				return llvm::Type::getInt8PtrTy(getContext());
 			}
+			else if((ma = dynamic_cast<MemberAccess*>(expr)))
+			{
+				return this->getLlvmType(ma->target);
+			}
+			else if((bo = dynamic_cast<BinOp*>(expr)))
+			{
+				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
+				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
+				{
+					return llvm::IntegerType::getInt1Ty(this->getContext());
+				}
+				else
+				{
+					return this->getLlvmType(bo->right);
+				}
+			}
 		}
 
-		error("(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 		return nullptr;
 	}
 
@@ -707,7 +738,7 @@ namespace Codegen
 		}
 		else if((fc = dynamic_cast<FuncCall*>(e)))
 		{
-			FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+			FuncPair_t* fp = this->getDeclaredFunc(fc);
 			if(!fp)
 				return VarType::UserDefined;
 				// error(fc, "Failed to find function declaration for '%s'", fc->name.c_str());
@@ -762,15 +793,14 @@ namespace Codegen
 	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }
 	bool CodegenInstance::isSignedType(Expr* e)		{ return determineVarType(e) <= VarType::Int64; }
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
-		return tmpBuilder.CreateAlloca(type, 0, name);
+		return this->mainBuilder.CreateAlloca(type, 0, name);
 	}
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Function* func, VarDecl* var)
+	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
 	{
-		return allocateInstanceInBlock(func, getLlvmType(var), var->name);
+		return allocateInstanceInBlock(getLlvmType(var), var->name);
 	}
 
 
@@ -794,6 +824,7 @@ namespace Codegen
 			case VarType::Float32:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0f));
 			case VarType::Float64:	return llvm::ConstantFP::get(getContext(), llvm::APFloat(0.0));
 			case VarType::Bool:		return llvm::ConstantInt::get(getContext(), llvm::APInt(1, 0, true));
+			case VarType::UintPtr:	return llvm::ConstantInt::get(getContext(), llvm::APInt(64, 0, true));
 
 			case VarType::Array:
 			{
@@ -855,16 +886,17 @@ namespace Codegen
 		Number* n = nullptr;
 		if((n = dynamic_cast<Number*>(right)) || (dynamic_cast<UnaryOp*>(right) && (n = dynamic_cast<Number*>(dynamic_cast<UnaryOp*>(right)->expr))))
 		{
-			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)			right->varType = VarType::Int8;
-			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)	right->varType = VarType::Int16;
-			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)	right->varType = VarType::Int32;
-			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)	right->varType = VarType::Int64;
-			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)	right->varType = VarType::Uint8;
-			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)	right->varType = VarType::Uint16;
-			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)	right->varType = VarType::Uint32;
-			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)	right->varType = VarType::Uint64;
-			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)	right->varType = VarType::Float32;
-			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)	right->varType = VarType::Float64;
+			if(determineVarType(left) == VarType::Int8 && n->ival <= INT8_MAX)				right->varType = VarType::Int8;
+			else if(determineVarType(left) == VarType::Int16 && n->ival <= INT16_MAX)		right->varType = VarType::Int16;
+			else if(determineVarType(left) == VarType::Int32 && n->ival <= INT32_MAX)		right->varType = VarType::Int32;
+			else if(determineVarType(left) == VarType::Int64 && n->ival <= INT64_MAX)		right->varType = VarType::Int64;
+			else if(determineVarType(left) == VarType::Uint8 && n->ival <= UINT8_MAX)		right->varType = VarType::Uint8;
+			else if(determineVarType(left) == VarType::Uint16 && n->ival <= UINT16_MAX)		right->varType = VarType::Uint16;
+			else if(determineVarType(left) == VarType::Uint32 && n->ival <= UINT32_MAX)		right->varType = VarType::Uint32;
+			else if(determineVarType(left) == VarType::Uint64 && n->ival <= UINT64_MAX)		right->varType = VarType::Uint64;
+			else if(determineVarType(left) == VarType::UintPtr && n->ival <= UINTPTR_MAX)	right->varType = VarType::UintPtr;
+			else if(determineVarType(left) == VarType::Float32 && n->dval <= FLT_MAX)		right->varType = VarType::Float32;
+			else if(determineVarType(left) == VarType::Float64 && n->dval <= DBL_MAX)		right->varType = VarType::Float64;
 		}
 
 		// ignore it if we can't convert it, likely it is a more complex expression or a varRef.
@@ -1099,6 +1131,7 @@ namespace Codegen
 		else if(ch == "&&")	op = ArithmeticOp::LogicalOr;
 		else if(ch == "||")	op = ArithmeticOp::LogicalAnd;
 		else if(ch == "as")	op = ArithmeticOp::Cast;
+		else if(ch == ".")	op = ArithmeticOp::MemberAccess;
 		else				error("Unknown operator '%s'", ch.c_str());
 
 		return op;

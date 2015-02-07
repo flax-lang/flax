@@ -45,36 +45,6 @@ namespace GenError
 
 namespace Codegen
 {
-	enum class ExprType
-	{
-		Struct,
-		Func
-	};
-
-	enum class SymbolValidity
-	{
-		Valid,
-		UseAfterDealloc
-	};
-
-	struct WrappedType
-	{
-		WrappedType(llvm::Type* t, bool us) : ltype(t), isUnsigned(us) { }
-		llvm::Type* ltype;
-		bool isUnsigned;
-	};
-
-	typedef std::pair<llvm::AllocaInst*, SymbolValidity> SymbolValidity_t;
-	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
-	typedef std::map<std::string, SymbolPair_t> SymTab_t;
-	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
-	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
-	typedef std::map<std::string, TypePair_t> TypeMap_t;
-	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
-	typedef std::map<std::string, FuncPair_t> FuncMap_t;
-	typedef std::pair<std::string, FuncMap_t> NamespacePair_t;
-	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
-
 	struct CodegenInstance
 	{
 		Ast::Root* rootNode;
@@ -100,7 +70,7 @@ namespace Codegen
 		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
 		SymbolPair_t* getSymPair(Ast::Expr* user, const std::string& name);
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
-		void addSymbol(std::string name, llvm::AllocaInst* ai, Ast::VarDecl* vardecl);
+		void addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
 
 		// function scopes: namespaces, nested functions.
@@ -108,6 +78,7 @@ namespace Codegen
 		void addFunctionToScope(std::string name, FuncPair_t func);
 		bool isDuplicateFuncDecl(std::string name);
 		FuncPair_t* getDeclaredFunc(std::string name);
+		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 		void popFuncScope();
 
 		Ast::Root* getRootAST();
@@ -131,6 +102,7 @@ namespace Codegen
 		std::string mangleName(Ast::Struct* s, std::string orig);
 		std::string unmangleName(Ast::Struct* s, std::string orig);
 		Ast::Expr* autoCastType(Ast::Expr* left, Ast::Expr* right);
+		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
 		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		std::string unwrapPointerType(std::string type, int* indirections);
@@ -139,9 +111,8 @@ namespace Codegen
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
-		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, Ast::VarDecl* var);
+		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
-		llvm::AllocaInst* allocateInstanceInBlock(llvm::Function* func, llvm::Type* type, std::string name);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs);
