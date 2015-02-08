@@ -421,6 +421,7 @@ namespace Ast
 		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
 
+		bool done = false;
 		Expr* scope;
 		Expr* member;
 	};
