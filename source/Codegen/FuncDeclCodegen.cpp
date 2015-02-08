@@ -13,20 +13,30 @@ using namespace Codegen;
 Result_t FuncDecl::codegen(CodegenInstance* cgi)
 {
 	std::vector<llvm::Type*> argtypes;
-	std::deque<Expr*> params_expr;
 	for(VarDecl* v : this->params)
 	{
-		params_expr.push_back(v);
 		argtypes.push_back(cgi->getLlvmType(v));
 	}
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
-	this->mangledName = this->name;
-	if((!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
-		this->mangledName = cgi->mangleName(this->name, params_expr);
 
-	else if(this->isFFI && this->ffiType == FFIType::Cpp)
+	bool alreadyMangled = false;
+	this->mangledName = this->name;
+	if(!this->isFFI && !cgi->isStructCodegen)
+	{
+		alreadyMangled = true;
+		this->mangledName = cgi->mangleWithNamespace(this->mangledName);
+		this->mangledName = cgi->mangleName(this->mangledName, this->params);
+	}
+
+
+	if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
+		this->mangledName = cgi->mangleName(this->name, this->params);
+
+	else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
 		this->mangledName = cgi->mangleCppName(this->name, this->params);
+
+
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
 	llvm::GlobalValue::LinkageTypes linkageType;

@@ -13,9 +13,15 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi)
 {
-	assert(this->didCreateType);
-	llvm::StructType* str = llvm::cast<llvm::StructType>(cgi->getType(this->name)->first);
+	cgi->isStructCodegen = true;
 
+	assert(this->didCreateType);
+	TypePair_t* _type = cgi->getType(this->name);
+	if(!_type)
+		GenError::unknownSymbol(this, this->name, SymbolType::Type);
+
+
+	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 	llvm::Function* defaultInitFunc = 0;
 
 
@@ -55,25 +61,19 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 			llvm::Value* val = nullptr;
 
-			if(f->decl->name == "init")		// do some magic
-			{
-				f->decl->name = cgi->mangleName(this, f->decl->name);
-				val = f->decl->codegen(cgi).result.first;
 
-				// this is kind of a hack. since mangleName() operates on f->decl->name, if we
-				// modify that to include the __struct#Type prefix, then revert it after, it should
-				// add it to f->decl->mangledName, but let us keep f->decl->name
+			// this is kind of a hack. since mangleName() operates on f->decl->name, if we
+			// modify that to include the __struct#Type prefix, then revert it after, it should
+			// add it to f->decl->mangledName, but let us keep f->decl->name
 
-				f->decl->name = oname;
+			f->decl->name = cgi->mangleName(this, f->decl->name);
+			val = f->decl->codegen(cgi).result.first;
+			f->decl->name = oname;
+
+
+			if(f->decl->name == "init")
 				this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
-			}
-			else
-			{
-				// mangle
-				f->decl->name = cgi->mangleName(this, f->decl->name);
-				val = f->decl->codegen(cgi).result.first;
-				f->decl->name = oname;
-			}
+
 
 			cgi->mainBuilder.SetInsertPoint(ob);
 			this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
@@ -150,6 +150,8 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	// if we have an init function, then the __automatic_init will only be called from the local module
 	// and only the normal init() needs to be exposed.
 	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
+
+	cgi->isStructCodegen = false;
 	return Result_t(nullptr, nullptr);
 }
 
@@ -187,7 +189,6 @@ void Struct::createType(CodegenInstance* cgi)
 				error(this, "Duplicate member '%s'", func->decl->name.c_str());
 
 			func->decl->mangledName = cgi->mangleName(this, mangled);
-			// this->nameMap[mangled] = p.second;
 		}
 
 		for(VarDecl* var : this->members)
@@ -338,8 +339,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 		}
 		else if((fc = dynamic_cast<FuncCall*>(rhs)))
 		{
-			VarRef* fakevr = new VarRef(this->posinfo, "self");
-			fc->params.push_front(fakevr);
+			// VarRef* fakevr = new VarRef(this->posinfo, "self");
+			// fc->params.push_front(fakevr);
 			i = -1;
 		}
 		else
@@ -364,6 +365,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			std::vector<llvm::Value*> args;
 			std::deque<llvm::Type*> argtypes;
 			args.push_back(isPtr ? self : selfPtr);
+			argtypes.push_back((isPtr ? self : selfPtr)->getType());
 
 			for(Expr* e : fc->params)
 			{
@@ -371,10 +373,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 				argtypes.push_back(args.back()->getType());
 			}
 
-
 			// need to remove the dummy 'self' reference
-			fc->params.pop_front();
-			args.erase(args.begin());
 
 			// now we need to determine if it exists, and its params.
 			Func* callee = nullptr;
@@ -403,6 +402,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 			if(!lcallee)
 				error(this, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
+
+			lcallee = cgi->mainModule->getFunction(lcallee->getName());
+			assert(lcallee);
 
 			return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
 		}

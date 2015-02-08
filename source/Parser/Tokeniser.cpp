@@ -163,7 +163,7 @@ namespace Parser
 		{
 			tok.text = "::";
 			tok.type = TType::DoubleColon;
-			read = 3;
+			read = 2;
 		}
 		else if(isdigit(stream[0]))
 		{

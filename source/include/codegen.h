@@ -48,13 +48,20 @@ namespace Codegen
 {
 	struct CodegenInstance
 	{
+		// todo: hack
+		bool isStructCodegen = false;
+
 		Ast::Root* rootNode;
 		llvm::Module* mainModule;
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t*> symTabStack;
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<NamespacePair_t> namespaceStack;
+		std::deque<std::string> namespaceStack;
+
+		TypeMap_t typeMap;
+		FuncMap_t funcMap;
+
 		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 		// "block" scopes, ie. breakable bodies (loops)
@@ -75,7 +82,7 @@ namespace Codegen
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		void pushFuncScope(std::string namespc);
+		void pushNamespaceScope(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t* func);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
@@ -86,8 +93,8 @@ namespace Codegen
 		FuncPair_t* getDeclaredFunc(std::string name);
 		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 
-		void clearFuncScope();
-		void popFuncScope();
+		void clearNamespaceScope();
+		void popNamespaceScope();
 
 
 
@@ -109,8 +116,10 @@ namespace Codegen
 		bool isDuplicateType(std::string name);
 
 
+		std::string mangleWithNamespace(std::string original);
+		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
+
 		std::string mangleName(Ast::Struct* s, std::string orig);
-		std::string unmangleName(Ast::Struct* s, std::string orig);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);

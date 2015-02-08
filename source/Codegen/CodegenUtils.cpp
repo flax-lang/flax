@@ -87,6 +87,7 @@ namespace Codegen
 		// Set the global so the code gen can use this.
 		cgi->Fpm = &OurFPM;
 		cgi->pushScope();
+		cgi->pushNamespaceScope("");
 
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
@@ -144,12 +145,17 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
 	{
 		TypePair_t* tpair = new TypePair_t(ltype, TypedExpr_t(atype, e));
-		(*this->namespaceStack.back().second.second)[atype->name] = tpair;
+
+		if(this->typeMap.find(atype->name) == this->typeMap.end())
+			this->typeMap[atype->name] = tpair;
+		else
+		{
+			error(0, "duplicate type %s", atype->name.c_str());
+		}
 	}
 
 	llvm::LLVMContext& CodegenInstance::getContext()
 	{
-		// return mainModule->getContext();
 		return llvm::getGlobalContext();
 	}
 
@@ -170,20 +176,18 @@ namespace Codegen
 		delete tab;
 
 		symTabStack.pop_back();
-		this->popFuncScope();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		symTabStack.clear();
 
-		this->clearFuncScope();
+		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope(SymTab_t* tab)
 	{
 		this->symTabStack.push_back(tab);
-		this->pushFuncScope(this->mainBuilder.GetInsertBlock() ? this->mainBuilder.GetInsertBlock()->getName() : "__anon__");
 	}
 
 	void CodegenInstance::pushScope()
@@ -249,30 +253,18 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
-		for(NamespacePair_t map : this->namespaceStack)
-		{
-			TypeMap_t* tm = map.second.second;
-			assert(tm);
-
-			if(tm->find(name) != tm->end())
-				return (*tm)[name];
-		}
+		if(this->typeMap.find(name) != this->typeMap.end())
+			return this->typeMap[name];
 
 		return nullptr;
 	}
 
 	TypePair_t* CodegenInstance::getType(llvm::Type* type)
 	{
-		for(NamespacePair_t map : this->namespaceStack)
+		for(auto pair : this->typeMap)
 		{
-			TypeMap_t* tm = map.second.second;
-			assert(tm);
-
-			for(auto tp : *tm)
-			{
-				if(tp.second->first == type)
-					return tp.second;
-			}
+			if(pair.second->first == type)
+				return pair.second;
 		}
 
 		return nullptr;
@@ -315,23 +307,21 @@ namespace Codegen
 
 
 	// funcs
-	void CodegenInstance::pushFuncScope(std::string namespc)
+	void CodegenInstance::pushNamespaceScope(std::string namespc)
 	{
-		this->namespaceStack.push_back(NamespacePair_t(namespc, std::make_pair(new FuncMap_t(), new TypeMap_t())));
+		this->namespaceStack.push_back(namespc);
 	}
 
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t* func)
 	{
-		(*this->namespaceStack.back().second.first)[name] = func;
+		this->funcMap[name] = func;
 	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
-		// todo: handle actual namespacing, ie. calling functions like
-		// SomeNamespace::someFunction()
-		for(int i = namespaceStack.size(); i-- > 0;)
+		for(int i = this->namespaceStack.size(); i-- > 0;)
 		{
-			FuncMap_t& tab = *(namespaceStack[i].second.first);
+			FuncMap_t& tab = this->funcMap;
 			if(tab.find(name) != tab.end())
 				return tab[name];
 		}
@@ -356,12 +346,12 @@ namespace Codegen
 		return getDeclaredFunc(name) != nullptr;
 	}
 
-	void CodegenInstance::popFuncScope()
+	void CodegenInstance::popNamespaceScope()
 	{
 		this->namespaceStack.pop_back();
 	}
 
-	void CodegenInstance::clearFuncScope()
+	void CodegenInstance::clearNamespaceScope()
 	{
 		this->namespaceStack.clear();
 	}
@@ -719,31 +709,9 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
 	{
-		return "__struct#" + s->name + "_" + orig;
+		return "__struct#" + this->mangleWithNamespace(s->name) + "_" + orig;
 	}
 
-	std::string CodegenInstance::unmangleName(Struct* s, std::string orig)
-	{
-		std::string ret = orig;
-		if(orig.find("__struct#") != 0)
-			error("'%s' is not a mangled name of a struct.", orig.c_str());
-
-
-		if(orig.length() < 9)
-			error("Invalid mangled name '%s'", orig.c_str());
-
-		// remove __struct#
-		ret = ret.substr(9);
-
-		// make sure it's the right struct.
-		if(ret.find(s->name) != 0)
-			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
-
-		// remove the leading '_'
-		ret = ret.substr(1);
-
-		return ret.substr(s->name.length());
-	}
 	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
 	{
 		std::string mangled = "";
@@ -774,130 +742,39 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
 	{
-		std::deque<Expr*> a;
-		for(auto arg : args)
-			a.push_back(arg);
-
-		return this->mangleCppName(base, a);
+		return "enosup";
 	}
 
-	#if 0
-	static char typeStringToCppMangledShorthand(std::string stype)
-	{
-		// todo: handle namespaces when we get there
-		// according to C++ conventions:
 
-		// todo: linux and bsd have different definitions for "uint64_t"
-		// BSD uses ULL, linux uses UL
-
-		if(stype == "Int8")			return 'a';
-		else if(stype == "Int16")	return 's';
-		else if(stype == "Int32")	return 'i';
-		else if(stype == "Int64")	return 'x';			// 'l' for long (linux)
-
-		else if(stype == "Uint8")	return 'h';
-		else if(stype == "Uint16")	return 't';
-		else if(stype == "Uint32")	return 'j';
-		else if(stype == "Uint64")	return 'y';			// 'm' for unsigned long (linux)
-
-		else if(stype == "Bool")	return 'b';
-		else if(stype == "Float32")	return 'f';
-		else if(stype == "Float64")	return 'd';
-		else return '?';
-	}
-	#endif
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
 	{
 		// TODO:
 		return "enosup";
-
-		#if 0
-		// better for perf then a bunch of +=s, probably.
-		std::stringstream mangled;
-
-		// Always start with '_Z'.
-		mangled << "_Z";
-
-		// length of unmangled function name
-		mangled << base.length();
-
-		// original function name
-		mangled << base;
-
-		if(args.size() == 0)
-			mangled << "v";
-
-
-		for(Expr* d : args)
-		{
-			VarType vt = this->determineVarType(d);
-			if(vt != VarType::Array && vt != VarType::UserDefined)
-			{
-				mangled << typeStringToCppMangledShorthand(Parser::getVarTypeString(vt));
-			}
-			else if(vt == VarType::UserDefined)
-			{
-				llvm::Type* type = 0;
-
-				// get the type from one of our magic functions
-				// note: llvm doesn't give half a shit whether the integer is signed or unsigned
-				// so mangling would give the wrong chars.
-				// we need a way of getting a proper, BuiltinType from a varRef.
-				// next, we might get a pointer type, so the determineVarType() call would return UserDefined.
-				// we would then need to cry
-
-				VarRef*		vr = 0;
-				VarDecl*	vd = dynamic_cast<VarDecl*>(d);
-
-				if(!vd && (vr = dynamic_cast<VarRef*>(d)))
-				{
-					vd = this->getSymDecl(vr, vr->name);
-					if(!vd)
-						GenError::unknownSymbol(vr, vr->name, SymbolType::Variable);
-				}
-				assert(vd);
-				type = getLlvmType(vd);
-				assert(type);
-
-
-				{
-					int indr = 0;
-					std::string unwrapped = unwrapPointerType(vd->type, &indr);
-
-					for(int i = 0; i < indr; i++)
-						mangled << "P";
-
-
-
-					mangled << typeStringToCppMangledShorthand(unwrapped);
-					type = 0;
-				}
-
-				if(type)
-				{
-					while(type->isPointerTy())
-					{
-						mangled << "P";
-						type = type->getPointerElementType();
-					}
-
-					mangled << (this->mainModule->getDataLayout()->getTypeSizeInBits(type) / 8);
-					mangled << type->getStructName().str().substr(1);	// remove leading '%' on llvm types
-				}
-			}
-			else
-			{
-				// todo: not supported
-				error("enosup");
-			}
-		}
-
-		return mangled.str();
-		#endif
 	}
 
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	{
+		std::string ret = "__NS";
+		for(std::string s : ns)
+		{
+			if(s.length() > 0)
+				ret += std::to_string(s.length()) + s;
+		}
 
+		ret += std::to_string(original.length()) + original;
+
+		return ret;
+	}
+
+	std::string CodegenInstance::mangleWithNamespace(std::string original)
+	{
+		std::deque<std::string> ns;
+		for(std::string np : this->namespaceStack)
+			ns.push_back(np);
+
+		return this->mangleWithNamespace(original, ns);
+	}
 
 
 
