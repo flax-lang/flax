@@ -52,7 +52,6 @@ namespace Codegen
 
 	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
 	typedef std::map<std::string, FuncPair_t*> FuncMap_t;
-	typedef std::pair<std::string, std::pair<FuncMap_t*, TypeMap_t*>> NamespacePair_t;
 
 	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
 

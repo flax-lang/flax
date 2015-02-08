@@ -223,6 +223,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	}
 	else if(this->op == ArithmeticOp::ScopeResolution)
 	{
+		ScopeResolution* fakesr = new ScopeResolution(this->posinfo, this->left, this->right);
+		return fakesr->codegen(cgi);
 	}
 
 	ValPtr_t valptr = this->left->codegen(cgi).result;
