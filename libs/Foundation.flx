@@ -2,6 +2,21 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+namespace Memory
+{
+	func Set(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+	{
+		var i = 0
+		while i < length
+		{
+			dest[i] = value
+			i += 1
+		}
+
+		return dest
+	}
+}
+
 public struct String
 {
 	var data: Int8*
@@ -17,13 +32,13 @@ public struct String
 
 	init(str: Int8*)
 	{
-		self.init()
+		self.allocated = 0
 		self.set(str)
 	}
 
 	func clear()
 	{
-		memset(self.data, 0, self.length)
+		Memory::Set(self.data, 0, self.length)
 		self.length = 0
 	}
 
@@ -38,6 +53,7 @@ public struct String
 		}
 
 		memcpy(self.data, str, len)
+		self.length = len
 	}
 
 	operator=(other: Int8*)
@@ -51,13 +67,17 @@ public struct String
 	}
 }
 
+
+
+
+
+
 // printing
 public ffi func puts(x: Int8*) -> Int32
 public ffi func printf(x: Int8*, ...) -> Int32
 
 // memcpy/set/move
 public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
-public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
 
 // string ops (todo: write in Flax)
 public ffi func strlen(str: Int8*) -> Uint64
