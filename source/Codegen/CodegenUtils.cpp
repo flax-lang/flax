@@ -322,6 +322,15 @@ namespace Codegen
 		for(int i = this->namespaceStack.size(); i-- > 0;)
 		{
 			FuncMap_t& tab = this->funcMap;
+			printf("find %s:\n{\n", name.c_str());
+
+			for(auto p : tab)
+			{
+				printf("%s\n", p.first.c_str());
+			}
+
+			printf("}\n");
+
 			if(tab.find(name) != tab.end())
 				return tab[name];
 		}
