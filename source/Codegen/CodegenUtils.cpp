@@ -319,20 +319,21 @@ namespace Codegen
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
+		std::deque<std::string> nss = this->namespaceStack;
 		for(int i = this->namespaceStack.size(); i-- > 0;)
 		{
 			FuncMap_t& tab = this->funcMap;
+
+			#if 0
 			printf("find %s:\n{\n", name.c_str());
-
-			for(auto p : tab)
-			{
-				printf("%s\n", p.first.c_str());
-			}
-
+			for(auto p : tab) printf("%s\n", p.first.c_str());
 			printf("}\n");
+			#endif
 
 			if(tab.find(name) != tab.end())
 				return tab[name];
+
+			nss.pop_back();
 		}
 
 		return nullptr;
@@ -341,11 +342,12 @@ namespace Codegen
 	FuncPair_t* CodegenInstance::getDeclaredFunc(Ast::FuncCall* fc)
 	{
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
-		std::string cmangled = "";
-		std::string cppmangled = "";
 
-		if(!fp)	fp = this->getDeclaredFunc(cmangled = this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(cppmangled = this->mangleCppName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleCppName(fc->name, fc->params));
+
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleWithNamespace(fc->name));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
 
 		return fp;
 	}
@@ -772,7 +774,6 @@ namespace Codegen
 		}
 
 		ret += std::to_string(original.length()) + original;
-
 		return ret;
 	}
 
