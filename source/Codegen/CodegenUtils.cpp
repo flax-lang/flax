@@ -94,8 +94,9 @@ namespace Codegen
 
 			// add to the func table
 			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
+
 			f->deleteBody();
-			cgi->addFunctionToScope(func->getName(), std::pair<llvm::Function*, FuncDecl*>(f, pair.first));
+			cgi->addFunctionToScope(func->getName(), new FuncPair_t(f, pair.first));
 		}
 
 		for(auto pair : cgi->rootNode->externalTypes)
@@ -142,8 +143,8 @@ namespace Codegen
 
 	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
 	{
-		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		(*this->visibleTypes.back())[atype->name] = tpair;
+		TypePair_t* tpair = new TypePair_t(ltype, TypedExpr_t(atype, e));
+		(*this->namespaceStack.back().second.second)[atype->name] = tpair;
 	}
 
 	llvm::LLVMContext& CodegenInstance::getContext()
@@ -166,27 +167,28 @@ namespace Codegen
 	void CodegenInstance::popScope()
 	{
 		SymTab_t* tab = symTabStack.back();
-		TypeMap_t* types = visibleTypes.back();
-
-		delete types;
 		delete tab;
 
 		symTabStack.pop_back();
-		visibleTypes.pop_back();
-
 		this->popFuncScope();
 	}
 
-	void CodegenInstance::pushScope(SymTab_t* tab, TypeMap_t* tp)
+	void CodegenInstance::clearScope()
+	{
+		symTabStack.clear();
+
+		this->clearFuncScope();
+	}
+
+	void CodegenInstance::pushScope(SymTab_t* tab)
 	{
 		this->symTabStack.push_back(tab);
-		this->visibleTypes.push_back(tp);
 		this->pushFuncScope(this->mainBuilder.GetInsertBlock() ? this->mainBuilder.GetInsertBlock()->getName() : "__anon__");
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		this->pushScope(new SymTab_t(), new TypeMap_t());
+		this->pushScope(new SymTab_t());
 	}
 
 	SymTab_t& CodegenInstance::getSymTab()
@@ -247,10 +249,30 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
-		for(TypeMap_t* map : visibleTypes)
+		for(NamespacePair_t map : this->namespaceStack)
 		{
-			if(map->find(name) != map->end())
-				return &(*map)[name];
+			TypeMap_t* tm = map.second.second;
+			assert(tm);
+
+			if(tm->find(name) != tm->end())
+				return (*tm)[name];
+		}
+
+		return nullptr;
+	}
+
+	TypePair_t* CodegenInstance::getType(llvm::Type* type)
+	{
+		for(NamespacePair_t map : this->namespaceStack)
+		{
+			TypeMap_t* tm = map.second.second;
+			assert(tm);
+
+			for(auto tp : *tm)
+			{
+				if(tp.second->first == type)
+					return tp.second;
+			}
 		}
 
 		return nullptr;
@@ -295,24 +317,23 @@ namespace Codegen
 	// funcs
 	void CodegenInstance::pushFuncScope(std::string namespc)
 	{
-		NamespacePair_t* nsp = new NamespacePair_t(namespc, FuncMap_t());
-		this->funcTabStack.push_back(nsp);
+		this->namespaceStack.push_back(NamespacePair_t(namespc, std::make_pair(new FuncMap_t(), new TypeMap_t())));
 	}
 
-	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
+	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t* func)
 	{
-		this->funcTabStack.back()->second[name] = func;
+		(*this->namespaceStack.back().second.first)[name] = func;
 	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
 		// todo: handle actual namespacing, ie. calling functions like
 		// SomeNamespace::someFunction()
-		for(int i = funcTabStack.size(); i-- > 0;)
+		for(int i = namespaceStack.size(); i-- > 0;)
 		{
-			FuncMap_t& tab = funcTabStack[i]->second;
+			FuncMap_t& tab = *(namespaceStack[i].second.first);
 			if(tab.find(name) != tab.end())
-				return &tab[name];
+				return tab[name];
 		}
 
 		return nullptr;
@@ -337,10 +358,12 @@ namespace Codegen
 
 	void CodegenInstance::popFuncScope()
 	{
-		NamespacePair_t* nsp = this->funcTabStack.back();
-		this->funcTabStack.pop_back();
+		this->namespaceStack.pop_back();
+	}
 
-		delete nsp;
+	void CodegenInstance::clearFuncScope()
+	{
+		this->namespaceStack.clear();
 	}
 
 

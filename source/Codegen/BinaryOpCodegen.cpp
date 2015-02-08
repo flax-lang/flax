@@ -221,6 +221,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		MemberAccess* fakema = new MemberAccess(this->posinfo, this->left, this->right);
 		return fakema->codegen(cgi);
 	}
+	else if(this->op == ArithmeticOp::ScopeResolution)
+	{
+	}
 
 	ValPtr_t valptr = this->left->codegen(cgi).result;
 

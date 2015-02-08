@@ -23,7 +23,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	{
 		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
-		cgi->addFunctionToScope(defaultInitFunc->getName(), std::pair<llvm::Function*, FuncDecl*>(defaultInitFunc, 0));
+		cgi->addFunctionToScope(defaultInitFunc->getName(), new FuncPair_t(defaultInitFunc, 0));
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 		cgi->mainBuilder.SetInsertPoint(iblock);
 
@@ -40,8 +40,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
 		}
-
-
 
 
 		// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)

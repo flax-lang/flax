@@ -64,7 +64,7 @@ project Flax default all
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
 		// compile them all
-		Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
+		Utilities.executeForChanged(src, ".cpp", "echo $file$;" + cxx_invoke, changed);
 	}
 
 	task link
