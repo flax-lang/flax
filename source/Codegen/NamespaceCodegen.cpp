@@ -14,8 +14,10 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 	// lhs and rhs are probably var refs
 	VarRef* vrl = nullptr;
 
+	printf("one\n");
+
 	if(!(vrl = dynamic_cast<VarRef*>(this->scope)))
-		GenError::expected(this, "identifier");
+		error(this, "expected identifier, got %s", typeid(*this->scope).name());
 
 	std::deque<std::string> scopes;
 	scopes.push_back(vrl->name);
