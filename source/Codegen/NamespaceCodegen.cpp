@@ -17,10 +17,35 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 	if(!(vrl = dynamic_cast<VarRef*>(this->scope)))
 		GenError::expected(this, "identifier");
 
-	std::string sscope = vrl->name;
+	std::deque<std::string> scopes;
+	scopes.push_back(vrl->name);
+
+	ScopeResolution* nested = nullptr;
+
+	while((nested = dynamic_cast<ScopeResolution*>(this->member)))
+	{
+		VarRef* vrs = dynamic_cast<VarRef*>(nested->scope);
+		if(!vrs)
+			GenError::expected(this, "identifier");
+
+		scopes.push_back(vrs->name);
+		this->member = nested;
+	}
 
 
-	return Result_t(0, 0);
+	{
+		FuncCall* fc = nullptr;
+		if((fc = dynamic_cast<FuncCall*>(this->member)))
+		{
+			// the funccall generator will try the pure unmangled type first
+			// so we just screw with fc->name.
+
+			fc->name = cgi->mangleWithNamespace(fc->name, scopes);
+			fc->name = cgi->mangleName(fc->name, fc->params);
+		}
+	}
+
+	return this->member->codegen(cgi);
 }
 
 
@@ -29,7 +54,15 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 
 Result_t NamespaceDecl::codegen(CodegenInstance* cgi)
 {
-	return Result_t(0, 0);
+	for(std::string s : this->name)
+		cgi->pushNamespaceScope(s);
+
+	auto ret = this->innards->codegen(cgi);
+
+	for(std::string s : this->name)
+		cgi->popNamespaceScope();
+
+	return ret;
 }
 
 

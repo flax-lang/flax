@@ -488,6 +488,10 @@ namespace Parser
 				case TType::Dealloc:
 					return parseDealloc(tokens);
 
+				case TType::Struct:
+					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					return rootNode->topLevelExpressions.back();
+
 				case TType::At:
 					parseAttribute(tokens);
 					return parsePrimary(tokens);
@@ -577,7 +581,7 @@ namespace Parser
 		// parse an identifier
 		Token* front = tokens.front();
 		std::deque<std::string> scopes;
-		while(front && front->type != TType::LBrace)
+		while((front = eat(tokens)) && front->type != TType::LBrace)
 		{
 			if(front->type == TType::Identifier)
 				scopes.push_back(front->text);
@@ -589,7 +593,8 @@ namespace Parser
 				parserError("Unexpected token '%s'", front->text.c_str());
 		}
 
-		assert(front->type == TType::LBrace);
+		tokens.push_front(front);
+		assert(tokens.front()->type == TType::LBrace);
 		BracedBlock* inside = parseBracedBlock(tokens);
 
 		return CreateAST(NamespaceDecl, tok_ns, scopes, inside);

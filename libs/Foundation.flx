@@ -23,7 +23,7 @@ public struct String
 
 	func clear()
 	{
-		memset(self.data, 0, self.allocated)
+		memset(self.data, 0, self.length)
 		self.length = 0
 	}
 

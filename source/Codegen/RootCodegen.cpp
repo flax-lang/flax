@@ -26,8 +26,7 @@ Result_t Root::codegen(CodegenInstance* cgi)
 			ffi->codegen(cgi);
 
 		else if((ns = dynamic_cast<NamespaceDecl*>(e)))
-			;
-			// ns->codegen(cgi);
+			ns->codegen(cgi);
 
 		else if((func = dynamic_cast<Func*>(e)))
 		{
@@ -41,19 +40,35 @@ Result_t Root::codegen(CodegenInstance* cgi)
 		}
 	}
 
-	// cgi->clearScope();
-	// cgi->pushScope();
+	// we need to clear the namespaces, then re-add them
 
+	std::deque<std::string> namespaces = cgi->namespaceStack;
+	cgi->clearNamespaceScope();
+
+	cgi->namespaceStack.push_back(namespaces[0]);
+
+	int nestedness = 1;
 	for(Expr* e : this->topLevelExpressions)
 	{
 		Struct* str				= nullptr;
 		Func* func				= nullptr;
+		NamespaceDecl* ns		= nullptr;
 
 		if((str = dynamic_cast<Struct*>(e)))
 			str->codegen(cgi);
 
 		else if((func = dynamic_cast<Func*>(e)))
 			func->codegen(cgi);
+
+		else if((ns = dynamic_cast<NamespaceDecl*>(e)))
+		{
+			if(nestedness < namespaces.size())
+			{
+				printf("namespace: %s\n", namespaces[nestedness].c_str());
+				cgi->namespaceStack.push_back(namespaces[nestedness]);
+				nestedness++;
+			}
+		}
 	}
 
 	return Result_t(0, 0);
