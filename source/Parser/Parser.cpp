@@ -120,6 +120,7 @@ namespace Parser
 	FuncDecl* parseFuncDecl(std::deque<Token*>& tokens);
 	Expr* parseParenthesised(std::deque<Token*>& tokens);
 	OpOverload* parseOpOverload(std::deque<Token*>& tokens);
+	NamespaceDecl* parseNamespace(std::deque<Token*>& tokens);
 	BracedBlock* parseBracedBlock(std::deque<Token*>& tokens);
 	StringLiteral* parseStringLiteral(std::deque<Token*>& tokens);
 	ForeignFuncDecl* parseForeignFunc(std::deque<Token*>& tokens);
@@ -199,48 +200,51 @@ namespace Parser
 
 		switch(tok->type)
 		{
+			case TType::DoubleColon:
+				return 1000;			// lol
+
 			case TType::As:
 			case TType::Period:
-				return 110;
+				return 120;
 
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
-				return 100;
+				return 110;
 
 			case TType::Asterisk:
 			case TType::Divide:
 			case TType::Percent:
-				return 90;
+				return 100;
 
 			case TType::Plus:
 			case TType::Minus:
-				return 80;
+				return 90;
 
 			case TType::ShiftLeft:
 			case TType::ShiftRight:
-				return 70;
+				return 80;
 
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
-				return 60;
+				return 70;
 
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 50;
+				return 60;
 
 			case TType::Ampersand:
-				return 30;
+				return 50;
 
 			case TType::Pipe:
-				return 25;
+				return 40;
 
 			case TType::LogicalAnd:
-				return 20;
+				return 30;
 
 			case TType::LogicalOr:
-				return 15;
+				return 20;
 
 			case TType::Equal:
 			case TType::PlusEq:
@@ -298,6 +302,7 @@ namespace Parser
 			case ArithmeticOp::BitwiseOrEquals:		return "|=";
 			case ArithmeticOp::BitwiseXorEquals:	return "^=";
 			case ArithmeticOp::MemberAccess:		return ".";
+			case ArithmeticOp::ScopeResolution:		return "::";
 		}
 	}
 
@@ -363,19 +368,24 @@ namespace Parser
 			switch(tok->type)
 			{
 				case TType::Func:
-					rootNode->functions.push_back(parseFunc(tokens));
+					rootNode->topLevelExpressions.push_back(parseFunc(tokens));
 					break;
 
 				case TType::Import:
-					rootNode->imports.push_back(parseImport(tokens));
+					rootNode->topLevelExpressions.push_back(parseImport(tokens));
 					break;
 
 				case TType::ForeignFunc:
-					rootNode->foreignfuncs.push_back(parseForeignFunc(tokens));
+					rootNode->topLevelExpressions.push_back(parseForeignFunc(tokens));
 					break;
 
 				case TType::Struct:
-					rootNode->structs.push_back(parseStruct(tokens));
+					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					break;
+
+				// only at top level
+				case TType::Namespace:
+					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
 					break;
 
 				// shit you just skip
@@ -408,23 +418,10 @@ namespace Parser
 					break;
 
 				default:	// wip: skip shit we don't know/care about for now
-					parseTopLevelExpr(tokens);
+					parserError("wtf?");
 					break;
 			}
 		}
-	}
-
-	Func* parseTopLevelExpr(std::deque<Token*>& tokens)
-	{
-		Expr* expr = parseExpr(tokens);
-		FuncDecl* fakedecl = CreateAST_Raw(FuncDecl, "__anonymous_toplevel_0", std::deque<VarDecl*>(), "");
-		BracedBlock* cl = CreateAST_Raw(BracedBlock);
-		cl->statements.push_back(expr);
-
-		Func* fakefunc = CreateAST_Raw(Func, fakedecl, cl);
-		rootNode->functions.push_back(fakefunc);
-
-		return fakefunc;
 	}
 
 	Expr* parseUnary(std::deque<Token*>& tokens)
@@ -571,6 +568,32 @@ namespace Parser
 		return nullptr;
 	}
 
+
+	NamespaceDecl* parseNamespace(std::deque<Token*>& tokens)
+	{
+		Token* tok_ns = eat(tokens);
+		assert(tok_ns->type == TType::Namespace);
+
+		// parse an identifier
+		Token* front = tokens.front();
+		std::deque<std::string> scopes;
+		while(front && front->type != TType::LBrace)
+		{
+			if(front->type == TType::Identifier)
+				scopes.push_back(front->text);
+
+			else if(front->type == TType::DoubleColon)
+				continue;
+
+			else
+				parserError("Unexpected token '%s'", front->text.c_str());
+		}
+
+		assert(front->type == TType::LBrace);
+		BracedBlock* inside = parseBracedBlock(tokens);
+
+		return CreateAST(NamespaceDecl, tok_ns, scopes, inside);
+	}
 
 
 
@@ -986,6 +1009,7 @@ namespace Parser
 				case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
 				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
 				case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
+				case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 				default:					parserError("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
