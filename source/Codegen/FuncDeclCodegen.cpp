@@ -57,7 +57,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 		}
 	}
 
-	cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
+	cgi->addFunctionToScope(this->mangledName, new FuncPair_t(func, this));
 
 	if(this->attribs & Attr_VisPublic)
 		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));

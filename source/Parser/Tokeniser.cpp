@@ -159,6 +159,12 @@ namespace Parser
 			tok.type = TType::Elipsis;
 			read = 3;
 		}
+		else if(stream.find("::") == 0)
+		{
+			tok.text = "::";
+			tok.type = TType::DoubleColon;
+			read = 3;
+		}
 		else if(isdigit(stream[0]))
 		{
 			// todo: handle hex
@@ -288,6 +294,9 @@ namespace Parser
 			else if(id == "internal")	tok.type = TType::Internal;
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
+
+			else if(id == "module")		tok.type = TType::Module;
+			else if(id == "namespace")	tok.type = TType::Namespace;
 
 			else if(id == "Int8"
 				|| id == "Int16"

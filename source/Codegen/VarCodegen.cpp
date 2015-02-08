@@ -33,18 +33,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	}
 	else
 	{
-		for(TypeMap_t* tm : cgi->visibleTypes)
-		{
-			for(auto pair : *tm)
-			{
-				llvm::Type* ltype = pair.second.first;
-				if(ltype == this->inferredLType)
-				{
-					cmplxtype = &pair.second;
-					break;
-				}
-			}
-		}
+		cmplxtype = cgi->getType(this->inferredLType);
 
 		if(cmplxtype)
 		{

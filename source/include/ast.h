@@ -45,12 +45,15 @@ namespace Codegen
 	typedef std::pair<llvm::Value*, SymbolValidity> SymbolValidity_t;
 	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
+
 	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
-	typedef std::map<std::string, TypePair_t> TypeMap_t;
+	typedef std::map<std::string, TypePair_t*> TypeMap_t;
+
 	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
-	typedef std::map<std::string, FuncPair_t> FuncMap_t;
-	typedef std::pair<std::string, FuncMap_t> NamespacePair_t;
+	typedef std::map<std::string, FuncPair_t*> FuncMap_t;
+	typedef std::pair<std::string, std::pair<FuncMap_t*, TypeMap_t*>> NamespacePair_t;
+
 	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
 
 	struct CodegenInstance;
@@ -104,6 +107,7 @@ namespace Ast
 		BitwiseOrEquals,
 		BitwiseXorEquals,
 		MemberAccess,
+		ScopeResolution,
 	};
 
 	enum class FFIType
@@ -412,6 +416,27 @@ namespace Ast
 		Expr* member;
 	};
 
+	struct ScopeResolution : Expr
+	{
+		~ScopeResolution() { }
+		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+
+		Expr* scope;
+		Expr* member;
+	};
+
+	struct NamespaceDecl : Expr
+	{
+		~NamespaceDecl() { }
+		NamespaceDecl(Parser::PosInfo pos, std::deque<std::string> names, BracedBlock* inside) : Expr(pos), innards(inside), name(names)
+		{ }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+
+		BracedBlock* innards;
+		std::deque<std::string> name;
+	};
+
 	struct ArrayIndex : Expr
 	{
 		~ArrayIndex() { }
@@ -476,10 +501,13 @@ namespace Ast
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;
 
-		std::deque<Func*> functions;
-		std::deque<Import*> imports;
-		std::deque<Struct*> structs;
-		std::deque<ForeignFuncDecl*> foreignfuncs;
+
+		std::deque<Expr*> topLevelExpressions;
+
+		// std::deque<Func*> functions;
+		// std::deque<Import*> imports;
+		// std::deque<Struct*> structs;
+		// std::deque<ForeignFuncDecl*> foreignfuncs;
 	};
 }
 
