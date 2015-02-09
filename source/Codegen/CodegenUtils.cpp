@@ -261,6 +261,9 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(llvm::Type* type)
 	{
+		if(!type)
+			return nullptr;
+
 		for(auto pair : this->typeMap)
 		{
 			if(pair.second->first == type)
