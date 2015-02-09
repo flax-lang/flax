@@ -29,7 +29,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	{
 		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
 
-		cgi->addFunctionToScope(defaultInitFunc->getName(), new FuncPair_t(defaultInitFunc, 0));
+		cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 		cgi->mainBuilder.SetInsertPoint(iblock);
 
