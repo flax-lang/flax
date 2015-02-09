@@ -14,21 +14,21 @@ Result_t Root::codegen(CodegenInstance* cgi)
 	// pass 1: create types and function declarations
 	for(Expr* e : this->topLevelExpressions)
 	{
-		Struct* str				= nullptr;
-		ForeignFuncDecl* ffi	= nullptr;
-		Func* func				= nullptr;
-		NamespaceDecl* ns		= nullptr;
+		Struct* str				= dynamic_cast<Struct*>(e);
+		ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
+		Func* func				= dynamic_cast<Func*>(e);
+		NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-		if((str = dynamic_cast<Struct*>(e)))
+		if(str)
 			str->createType(cgi);
 
-		else if((ffi = dynamic_cast<ForeignFuncDecl*>(e)))
+		else if(ffi)
 			ffi->codegen(cgi);
 
-		else if((ns = dynamic_cast<NamespaceDecl*>(e)))
+		else if(ns)
 			ns->codegen(cgi);
 
-		else if((func = dynamic_cast<Func*>(e)))
+		else if(func)
 		{
 			if(func->decl->name == "main")
 			{
@@ -50,21 +50,20 @@ Result_t Root::codegen(CodegenInstance* cgi)
 	int nestedness = 1;
 	for(Expr* e : this->topLevelExpressions)
 	{
-		Struct* str				= nullptr;
-		Func* func				= nullptr;
-		NamespaceDecl* ns		= nullptr;
+		Struct* str				= dynamic_cast<Struct*>(e);
+		Func* func				= dynamic_cast<Func*>(e);
+		NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-		if((str = dynamic_cast<Struct*>(e)))
+		if(str)
 			str->codegen(cgi);
 
-		else if((func = dynamic_cast<Func*>(e)))
+		else if(func)
 			func->codegen(cgi);
 
-		else if((ns = dynamic_cast<NamespaceDecl*>(e)))
+		else if(ns)
 		{
 			if(nestedness < namespaces.size())
 			{
-				printf("namespace: %s\n", namespaces[nestedness].c_str());
 				cgi->namespaceStack.push_back(namespaces[nestedness]);
 				nestedness++;
 			}

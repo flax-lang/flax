@@ -19,19 +19,17 @@ namespace Parser
 
 
 	// warning: messy function
-	Token* getNextToken(std::string& stream, PosInfo& pos)
+	Token getNextToken(std::string& stream, PosInfo& pos)
 	{
 		if(stream.length() == 0)
-			return nullptr;
+			return Token();
 
 		int read = 0;
 
 		// first eat all whitespace
 		skipWhitespace(stream);
 
-		Token* ret = new Token();
-
-		Token& tok = *ret;			// because doing '->' gets old
+		Token tok;			// because doing '->' gets old
 		tok.posinfo = pos;
 
 		// check compound symbols first.
@@ -390,7 +388,7 @@ namespace Parser
 		}
 
 		stream = stream.substr(read);
-		return ret;
+		return tok;
 	}
 }
 
