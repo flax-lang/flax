@@ -681,6 +681,7 @@ namespace Codegen
 		// turn it into Flax types.
 		std::string ret = rso.str();
 
+		StringReplace(ret, "void", "Void");
 		StringReplace(ret, "i1", "Bool");
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
@@ -720,19 +721,89 @@ namespace Codegen
 		}
 	}
 
+	static std::string convertToMangled(CodegenInstance* cgi, llvm::Type* type)
+	{
+		std::string r = cgi->getReadableType(type);
+
+		int ind = 0;
+		r = cgi->unwrapPointerType(r, &ind);
+
+		if(r.find("Int8") == 0)			r = "a";
+		else if(r.find("Int16") == 0)	r = "s";
+		else if(r.find("Int32") == 0)	r = "i";
+		else if(r.find("Int64") == 0)	r = "l";
+
+		else if(r.find("Uint8") == 0)	r = "h";
+		else if(r.find("Uint16") == 0)	r = "t";
+		else if(r.find("Uint32") == 0)	r = "j";
+		else if(r.find("Uint64") == 0)	r = "m";
+
+		else if(r.find("Float32") == 0)	r = "f";
+		else if(r.find("Float64") == 0)	r = "d";
+		else if(r.find("Void") == 0)	r = "v";
+		else
+		{
+			if(r.size() > 0 && r.front() == '%')
+				r = r.substr(1);
+
+			// remove anything at the back
+			// find first of space, then remove everything after
+
+			size_t firstSpace = r.find_first_of(' ');
+			if(firstSpace != std::string::npos)
+				r.erase(firstSpace);
+
+			r = std::to_string(r.length()) + r;
+		}
+
+		for(int i = 0; i < ind; i++)
+			r += "P";
+
+		return r;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
 	{
-		return "__struct#" + this->mangleWithNamespace(s->name) + "_" + orig;
+		return this->mangleWithNamespace(s->name) + "_" + orig;
 	}
+
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	{
+		std::string ret = "_Z";
+		for(std::string s : ns)
+		{
+			if(s.length() > 0)
+				ret += "N" + std::to_string(s.length()) + s;
+		}
+
+		ret += std::to_string(original.length()) + original;
+		return ret;
+	}
+
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
 	{
 		std::string mangled = "";
 
 		for(llvm::Type* e : args)
-			mangled += "_" + getReadableType(e);
+			mangled += convertToMangled(this, e);
 
-		return base + (mangled.empty() ? "#void" : ("#" + mangled));
+		return base + (mangled.empty() ? "v" : (mangled));
 	}
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
@@ -765,20 +836,6 @@ namespace Codegen
 		// TODO:
 		return "enosup";
 	}
-
-	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
-	{
-		std::string ret = "__NS";
-		for(std::string s : ns)
-		{
-			if(s.length() > 0)
-				ret += std::to_string(s.length()) + s;
-		}
-
-		ret += std::to_string(original.length()) + original;
-		return ret;
-	}
-
 	std::string CodegenInstance::mangleWithNamespace(std::string original)
 	{
 		std::deque<std::string> ns;
