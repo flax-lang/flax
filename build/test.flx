@@ -30,8 +30,10 @@ namespace Thing::Troll
 
 	struct Flob
 	{
-		func fooooo()
+		var haha: Int32 = 691
+		func food() -> Int32
 		{
+			return 1058
 		}
 	}
 }
@@ -65,6 +67,9 @@ func main(argc: Int32, argv: Int8**) -> Int32
 	// x.clear()
 
 	// printf("[%s]\n", x.data)
+
+	var d: Flob
+	printf("%d\n", d.haha)
 
 	Thing::Troll::test()
 	return 0
