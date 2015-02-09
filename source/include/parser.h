@@ -148,7 +148,7 @@ namespace Parser
 
 	std::string getModuleName(std::string filename);
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
-	Token* getNextToken(std::string& stream, PosInfo& pos);
+	Token getNextToken(std::string& stream, PosInfo& pos);
 	std::string arithmeticOpToString(Ast::ArithmeticOp op);
 }
 

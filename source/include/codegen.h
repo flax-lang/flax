@@ -54,7 +54,7 @@ namespace Codegen
 		Ast::Root* rootNode;
 		llvm::Module* mainModule;
 		llvm::FunctionPassManager* Fpm;
-		std::deque<SymTab_t*> symTabStack;
+		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<std::string> namespaceStack;
@@ -71,7 +71,7 @@ namespace Codegen
 
 		// normal scopes, ie. variable scopes within braces
 		void pushScope();
-		void pushScope(SymTab_t* tab);
+		void pushScope(SymTab_t tab);
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
 		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
@@ -84,7 +84,7 @@ namespace Codegen
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc);
 
-		void addFunctionToScope(std::string name, FuncPair_t* func);
+		void addFunctionToScope(std::string name, FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		bool isDuplicateFuncDecl(std::string name);
 

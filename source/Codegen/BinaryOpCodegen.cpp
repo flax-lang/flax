@@ -115,7 +115,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// printf("(%s:%lld): dot operator as LHS of op\n", bo->posinfo.file.c_str(), bo->posinfo.line);
 		MemberAccess* fakema = new MemberAccess(bo->posinfo, bo->left, bo->right);
 		BinOp* fakebo = new BinOp(bo->posinfo, fakema, op, right);
-		return fakebo->codegen(this);
+
+		Result_t res = fakebo->codegen(this);
+
+		delete fakema;
+		delete fakebo;
+
+		return res;
 	}
 	else
 	{
@@ -219,7 +225,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	if(this->op == ArithmeticOp::MemberAccess)
 	{
 		MemberAccess* fakema = new MemberAccess(this->posinfo, this->left, this->right);
-		return fakema->codegen(cgi);
+		Result_t res = fakema->codegen(cgi);
+		delete fakema;
+
+		return res;
 	}
 
 	ValPtr_t valptr = this->left->codegen(cgi).result;

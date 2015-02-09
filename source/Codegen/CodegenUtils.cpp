@@ -97,7 +97,7 @@ namespace Codegen
 			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
 
 			f->deleteBody();
-			cgi->addFunctionToScope(func->getName(), new FuncPair_t(f, pair.first));
+			cgi->addFunctionToScope(func->getName(), FuncPair_t(f, pair.first));
 		}
 
 		for(auto pair : cgi->rootNode->externalTypes)
@@ -108,6 +108,9 @@ namespace Codegen
 
 		cgi->rootNode->codegen(cgi);
 		cgi->popScope();
+
+		// free the memory
+		cgi->clearScope();
 	}
 
 	void writeBitcode(std::string filename, CodegenInstance* cgi)
@@ -142,18 +145,6 @@ namespace Codegen
 
 
 
-	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
-	{
-		TypePair_t* tpair = new TypePair_t(ltype, TypedExpr_t(atype, e));
-
-		if(this->typeMap.find(atype->name) == this->typeMap.end())
-			this->typeMap[atype->name] = tpair;
-		else
-		{
-			error(0, "duplicate type %s", atype->name.c_str());
-		}
-	}
-
 	llvm::LLVMContext& CodegenInstance::getContext()
 	{
 		return llvm::getGlobalContext();
@@ -172,41 +163,37 @@ namespace Codegen
 
 	void CodegenInstance::popScope()
 	{
-		SymTab_t* tab = symTabStack.back();
-		delete tab;
-
 		symTabStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		symTabStack.clear();
-
 		this->clearNamespaceScope();
 	}
 
-	void CodegenInstance::pushScope(SymTab_t* tab)
+	void CodegenInstance::pushScope(SymTab_t tab)
 	{
 		this->symTabStack.push_back(tab);
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		this->pushScope(new SymTab_t());
+		this->pushScope(SymTab_t());
 	}
 
 	SymTab_t& CodegenInstance::getSymTab()
 	{
-		return *this->symTabStack.back();
+		return this->symTabStack.back();
 	}
 
 	SymbolPair_t* CodegenInstance::getSymPair(Expr* user, const std::string& name)
 	{
 		for(int i = symTabStack.size(); i-- > 0;)
 		{
-			SymTab_t* tab = symTabStack[i];
-			if(tab->find(name) != tab->end())
-				return &(*tab)[name];
+			SymTab_t& tab = symTabStack[i];
+			if(tab.find(name) != tab.end())
+				return &(tab[name]);
 		}
 
 		return nullptr;
@@ -214,8 +201,8 @@ namespace Codegen
 
 	llvm::Value* CodegenInstance::getSymInst(Expr* user, const std::string& name)
 	{
-		SymbolPair_t* pair = nullptr;
-		if((pair = getSymPair(user, name)))
+		SymbolPair_t* pair = getSymPair(user, name);
+		if(pair)
 		{
 			if(pair->first.second != SymbolValidity::Valid)
 				GenError::useAfterFree(user, name);
@@ -249,12 +236,24 @@ namespace Codegen
 	}
 
 
+	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
+	{
+		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
+		if(this->typeMap.find(atype->name) == this->typeMap.end())
+		{
+			this->typeMap[atype->name] = tpair;
+		}
+		else
+		{
+			error(0, "Duplicate type %s", atype->name.c_str());
+		}
+	}
 
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
 		if(this->typeMap.find(name) != this->typeMap.end())
-			return this->typeMap[name];
+			return &(this->typeMap[name]);
 
 		return nullptr;
 	}
@@ -266,8 +265,8 @@ namespace Codegen
 
 		for(auto pair : this->typeMap)
 		{
-			if(pair.second->first == type)
-				return pair.second;
+			if(pair.second.first == type)
+				return &this->typeMap[pair.first];
 		}
 
 		return nullptr;
@@ -315,7 +314,7 @@ namespace Codegen
 		this->namespaceStack.push_back(namespc);
 	}
 
-	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t* func)
+	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
 		this->funcMap[name] = func;
 	}
@@ -334,7 +333,7 @@ namespace Codegen
 			#endif
 
 			if(tab.find(name) != tab.end())
-				return tab[name];
+				return &tab[name];
 
 			nss.pop_back();
 		}
