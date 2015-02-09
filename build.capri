@@ -11,10 +11,12 @@ project Flax default all
 {
 	CXX				= "clang++";
 	def LLVM_CONFIG	= "llvm-config";
+	def GenDebugSym	= "dsymutil '{sysroot}/{prefix}/bin/{outputBin}' -o '{sysroot}/{prefix}/bin/{outputBin}.dSYM'";
 
 	target ci
 	{
 		LLVM_CONFIG = "llvm-config-3.5";
+		GenDebugSym = "";
 		Utils.println("Building for automated deployment");
 	}
 
@@ -26,9 +28,9 @@ project Flax default all
 
 
 
-	cxx_invoke			= "{CXX} {CXXFLAGS} -c -o $file$.o $file$";
+	cxx_invoke			= "{CXX} {CXXFLAGS} -g -c -o $file$.o $file$";
 	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
-	final_invoke		= "{CXX} {CXXFLAGS} -o '{sysroot}/{prefix}/bin/{outputBin}' ";
+	final_invoke		= "{CXX} {CXXFLAGS} -g -o '{sysroot}/{prefix}/bin/{outputBin}' ";
 
 
 	// tasks
@@ -58,13 +60,11 @@ project Flax default all
 
 	task compile
 	{
-		// System.execute("which llvm-config");
-		// System.execute("which llvm-config-3.5");
 		// check if any header files changed
 		changed = Utilities.hasChanges("{src}/include", ".h");
 
 		// compile them all
-		Utilities.executeForChanged(src, ".cpp", cxx_invoke, changed);
+		Utilities.executeForChanged(src, ".cpp", "echo $file$;" + cxx_invoke, changed);
 	}
 
 	task link
@@ -79,6 +79,7 @@ project Flax default all
 		assert System.execute("mkdir -p '{sysroot}/{prefix}/bin'") == 0;
 		assert System.execute("{final_invoke} {objs} `{llvm_config_invoke}`") == 0;
 
+		assert System.execute(GenDebugSym) == 0;
 		Utils.println("Compilation complete.");
 	}
 

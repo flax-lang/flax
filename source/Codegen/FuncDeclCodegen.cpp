@@ -13,20 +13,30 @@ using namespace Codegen;
 Result_t FuncDecl::codegen(CodegenInstance* cgi)
 {
 	std::vector<llvm::Type*> argtypes;
-	std::deque<Expr*> params_expr;
 	for(VarDecl* v : this->params)
 	{
-		params_expr.push_back(v);
 		argtypes.push_back(cgi->getLlvmType(v));
 	}
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
-	this->mangledName = this->name;
-	if((!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
-		this->mangledName = cgi->mangleName(this->name, params_expr);
 
-	else if(this->isFFI && this->ffiType == FFIType::Cpp)
+	bool alreadyMangled = false;
+	this->mangledName = this->name;
+	if(!this->isFFI && !cgi->isStructCodegen)
+	{
+		alreadyMangled = true;
+		this->mangledName = cgi->mangleWithNamespace(this->mangledName);
+		this->mangledName = cgi->mangleName(this->mangledName, this->params);
+	}
+
+
+	if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
+		this->mangledName = cgi->mangleName(this->name, this->params);
+
+	else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
 		this->mangledName = cgi->mangleCppName(this->name, this->params);
+
+
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
 	llvm::GlobalValue::LinkageTypes linkageType;
@@ -41,23 +51,25 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi)
 		linkageType = llvm::Function::ExternalLinkage;
 
 
-	llvm::Function* func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->mainModule);
-
 
 	// check for redef
+	llvm::Function* func = nullptr;
 	if(cgi->getType(this->mangledName) != nullptr)
 	{
 		GenError::duplicateSymbol(this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(func->getName() != this->mangledName)
+	else if(cgi->mainModule->getFunction(this->mangledName))
 	{
 		if(!this->isFFI)
 		{
 			GenError::duplicateSymbol(this, this->name, SymbolType::Function);
 		}
 	}
-
-	cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
+	else
+	{
+		func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->mainModule);
+		cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
+	}
 
 	if(this->attribs & Attr_VisPublic)
 		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));

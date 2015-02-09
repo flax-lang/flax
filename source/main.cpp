@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
 		std::map<std::string, Ast::Root*> rootmap;
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Compiler::compileFile(filename, filelist, rootmap, cgi);
+		Root* r = Compiler::compileFile(filename, filelist, rootmap, cgi);
 
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");
@@ -226,6 +226,10 @@ int main(int argc, char* argv[])
 			cgi->mainModule->dump();
 
 		delete cgi;
+		for(auto p : rootmap)
+			delete p.second;
+
+		delete r;
 	}
 	else
 	{

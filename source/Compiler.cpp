@@ -75,29 +75,33 @@ namespace Compiler
 		Root* root = Parser::Parse(filename, str, cgi);
 
 		// get imports
-		for(Import* imp : root->imports)
+		for(Expr* e : root->topLevelExpressions)
 		{
-			std::string fname = resolveImport(imp, curpath);
-
-			// simple, compile the source
-			Root* r = nullptr;
-			if(rootmap.find(imp->module) != rootmap.end())
+			Import* imp = 0;
+			if((imp = dynamic_cast<Import*>(e)))
 			{
-				r = rootmap[imp->module];
-			}
-			else
-			{
-				Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
-				r = compileFile(fname, list, rootmap, rcgi);
-				rootmap[imp->module] = r;
-				delete rcgi;
-			}
+				std::string fname = resolveImport(imp, curpath);
 
-			for(auto v : r->publicFuncs)
-				root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+				// simple, compile the source
+				Root* r = nullptr;
+				if(rootmap.find(imp->module) != rootmap.end())
+				{
+					r = rootmap[imp->module];
+				}
+				else
+				{
+					Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
+					r = compileFile(fname, list, rootmap, rcgi);
+					rootmap[imp->module] = r;
+					delete rcgi;
+				}
 
-			for(auto v : r->publicTypes)
-				root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+				for(auto v : r->publicFuncs)
+					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+
+				for(auto v : r->publicTypes)
+					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+			}
 		}
 
 		Codegen::doCodegen(filename, root, cgi);

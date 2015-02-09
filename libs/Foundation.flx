@@ -2,6 +2,21 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+// namespace Memory
+// {
+// 	func Set(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+// 	{
+// 		var i = 0
+// 		while i < length
+// 		{
+// 			dest[i] = value
+// 			i += 1
+// 		}
+
+// 		return dest
+// 	}
+// }
+
 public struct String
 {
 	var data: Int8*
@@ -17,13 +32,13 @@ public struct String
 
 	init(str: Int8*)
 	{
-		self.init()
+		self.allocated = 0
 		self.set(str)
 	}
 
 	func clear()
 	{
-		memset(self.data, 0, self.allocated)
+		memset(self.data, 0, self.length)
 		self.length = 0
 	}
 
@@ -38,6 +53,7 @@ public struct String
 		}
 
 		memcpy(self.data, str, len)
+		self.length = len
 	}
 
 	operator=(other: Int8*)
@@ -50,6 +66,11 @@ public struct String
 		self.set(other.data)
 	}
 }
+
+
+
+
+
 
 // printing
 public ffi func puts(x: Int8*) -> Int32
