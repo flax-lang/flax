@@ -9,45 +9,68 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t ScopeResolution::codegen(CodegenInstance* cgi)
+// recursively resolves the scope, and returns only the right-most thing (probably a function call or type ref or whatever)
+static void recursiveResolveScope(ScopeResolution* _sr, CodegenInstance* cgi, std::deque<std::string>* scopes)
 {
 	// lhs and rhs are probably var refs
-	VarRef* vrl = nullptr;
+	ScopeResolution* sr	= nullptr;
+	VarRef* left = nullptr;
 
-	printf("one\n");
+	if((left = dynamic_cast<VarRef*>(_sr->scope)))
+		scopes->push_back(left->name);
 
-	if(!(vrl = dynamic_cast<VarRef*>(this->scope)))
-		error(this, "expected identifier, got %s", typeid(*this->scope).name());
+	else if((sr = dynamic_cast<ScopeResolution*>(_sr->scope)))
+		recursiveResolveScope(sr, cgi, scopes);
 
+	else
+		error(_sr, "Unexpected expr type %s", typeid(*_sr->scope).name());
+
+
+	VarRef* vr = nullptr;
+	if((vr = dynamic_cast<VarRef*>(_sr->member)))
+		scopes->push_back(vr->name);
+}
+
+
+
+static Expr* resolveScope(ScopeResolution* _sr, CodegenInstance* cgi, std::deque<std::string>* scopes)
+{
+	// lhs and rhs are probably var refs
+	ScopeResolution* sr	= nullptr;
+	VarRef* left = nullptr;
+
+	if((left = dynamic_cast<VarRef*>(_sr->scope)))
+		scopes->push_back(left->name);
+
+	else if((sr = dynamic_cast<ScopeResolution*>(_sr->scope)))
+		recursiveResolveScope(sr, cgi, scopes);
+
+	else
+		error(_sr, "Unexpected expr type %s", typeid(*_sr->scope).name());
+
+	return _sr->member;
+}
+
+
+
+Result_t ScopeResolution::codegen(CodegenInstance* cgi)
+{
 	std::deque<std::string> scopes;
-	scopes.push_back(vrl->name);
+	Expr* result = resolveScope(this, cgi, &scopes);
 
-	ScopeResolution* nested = nullptr;
 
-	while((nested = dynamic_cast<ScopeResolution*>(this->member)))
+	FuncCall* fc = nullptr;
+	if((fc = dynamic_cast<FuncCall*>(result)))
 	{
-		VarRef* vrs = dynamic_cast<VarRef*>(nested->scope);
-		if(!vrs)
-			GenError::expected(this, "identifier");
+		// the funccall generator will try the pure unmangled type first
+		// so we just screw with fc->name.
 
-		scopes.push_back(vrs->name);
-		this->member = nested;
+		fc->name = cgi->mangleWithNamespace(fc->name, scopes);
+		fc->name = cgi->mangleName(fc->name, fc->params);
 	}
 
-
-	{
-		FuncCall* fc = nullptr;
-		if((fc = dynamic_cast<FuncCall*>(this->member)))
-		{
-			// the funccall generator will try the pure unmangled type first
-			// so we just screw with fc->name.
-
-			fc->name = cgi->mangleWithNamespace(fc->name, scopes);
-			fc->name = cgi->mangleName(fc->name, fc->params);
-		}
-	}
-
-	return this->member->codegen(cgi);
+	return result->codegen(cgi);
+	return Result_t(0, 0);
 }
 
 
