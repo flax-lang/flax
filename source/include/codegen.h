@@ -27,12 +27,13 @@ enum class SymbolType
 namespace GenError
 {
 	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void useAfterFree(Ast::Expr* e, std::string symname) __attribute__((noreturn));
+	void useAfterFree(Ast::Expr* e, std::string symname);
 	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
 	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
 	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
 	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
 	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args) __attribute__((noreturn));
+	void expected(Ast::Expr* e, std::string exp) __attribute__((noreturn));
 }
 
 
@@ -47,14 +48,20 @@ namespace Codegen
 {
 	struct CodegenInstance
 	{
+		// todo: hack
+		bool isStructCodegen = false;
+
 		Ast::Root* rootNode;
 		llvm::Module* mainModule;
 		llvm::FunctionPassManager* Fpm;
-		std::deque<SymTab_t*> symTabStack;
+		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
-		std::deque<TypeMap_t*> visibleTypes;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<NamespacePair_t*> funcTabStack;
+		std::deque<std::string> namespaceStack;
+
+		TypeMap_t typeMap;
+		FuncMap_t funcMap;
+
 		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 		// "block" scopes, ie. breakable bodies (loops)
@@ -64,7 +71,7 @@ namespace Codegen
 
 		// normal scopes, ie. variable scopes within braces
 		void pushScope();
-		void pushScope(SymTab_t* tab, TypeMap_t* tp);
+		void pushScope(SymTab_t tab);
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
 		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
@@ -72,48 +79,70 @@ namespace Codegen
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
 		void addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
+		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		void pushFuncScope(std::string namespc);
+		void pushNamespaceScope(std::string namespc);
+
 		void addFunctionToScope(std::string name, FuncPair_t func);
+		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		bool isDuplicateFuncDecl(std::string name);
+
+		TypePair_t* getType(std::string name);
+		TypePair_t* getType(llvm::Type* type);
 		FuncPair_t* getDeclaredFunc(std::string name);
 		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
-		void popFuncScope();
+
+		void clearNamespaceScope();
+		void popNamespaceScope();
 
 
+
+
+
+
+
+
+		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
+		void autoCastType(llvm::Value* left, llvm::Value*& right);
 
 
-		Ast::Root* getRootAST();
 		bool isPtr(Ast::Expr* e);
 		bool isArrayType(Ast::Expr* e);
-		llvm::LLVMContext& getContext();
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
-		TypePair_t* getType(std::string name);
 		bool isDuplicateType(std::string name);
-		llvm::Type* getLlvmType(Ast::Expr* expr);
-		llvm::Value* getDefaultValue(Ast::Expr* e);
-		void verifyAllPathsReturn(Ast::Func* func);
-		std::string getReadableType(Ast::Expr* expr);
-		std::string getReadableType(llvm::Type* type);
-		llvm::Type* unwrapPointerType(std::string type);
-		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
-		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
+
+
+		std::string mangleWithNamespace(std::string original);
+		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
+
 		std::string mangleName(Ast::Struct* s, std::string orig);
-		void autoCastType(llvm::Value* left, llvm::Value*& right);
-		std::string unmangleName(Ast::Struct* s, std::string orig);
-		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
-		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
-		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
-		std::string unwrapPointerType(std::string type, int* indirections);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
+
+
+		std::string getReadableType(Ast::Expr* expr);
+		std::string getReadableType(llvm::Type* type);
+		std::string getReadableType(llvm::Value* val);
+
+
+
+		Ast::Root* getRootAST();
+		llvm::LLVMContext& getContext();
+		llvm::Value* getDefaultValue(Ast::Expr* e);
+		void verifyAllPathsReturn(Ast::Func* func);
+		llvm::Type* unwrapPointerType(std::string type);
+		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
+		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
+		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
+		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
+		std::string unwrapPointerType(std::string type, int* indirections);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);

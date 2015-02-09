@@ -2,8 +2,41 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
+// import Foundation
 import Utilities
+
+// printing
+public ffi func puts(x: Int8*) -> Int32
+public ffi func printf(x: Int8*, ...) -> Int32
+
+// memcpy/set/move
+public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
+
+// string ops (todo: write in Flax)
+public ffi func strlen(str: Int8*) -> Uint64
+
+// memory
+public ffi func malloc(size: Uint64) -> Int8*
+public ffi func free(pointer: Int8*)
+
+
+
+namespace Thing::Troll
+{
+	func test()
+	{
+		printf("TESTING\n")
+	}
+
+	struct Flob
+	{
+		var haha: Int32 = 691
+		func food() -> Int32
+		{
+			return 1058
+		}
+	}
+}
 
 struct Bar
 {
@@ -28,12 +61,18 @@ struct Foo
 	}
 }
 
-
 func main(argc: Int32, argv: Int8**) -> Int32
 {
-	var x: String("Hello, World\n")
-	printf("[%s]\n", x.data)
+	// var x: String("Hello, World")
+	// x.clear()
 
+	// printf("[%s]\n", x.data)
+
+
+	var d: Flob
+	printf("%d\n", d.haha)
+
+	Thing::Troll::test()
 	return 0
 }
 

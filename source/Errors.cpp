@@ -71,7 +71,7 @@ namespace GenError
 
 	void useAfterFree(Ast::Expr* e, std::string symname)
 	{
-		error(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
+		warn(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
 	}
 
 	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st)
@@ -120,6 +120,11 @@ namespace GenError
 			args_str = args_str.substr(2);
 
 		error(e, "No valid init() candidate for type %s taking parameters [%s]", str->name.c_str(), args_str.c_str());
+	}
+
+	void expected(Ast::Expr* e, std::string expect)
+	{
+		error(e, "Expected %s", expect.c_str());
 	}
 }
 
