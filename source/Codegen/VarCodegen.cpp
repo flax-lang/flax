@@ -33,18 +33,12 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	}
 	else
 	{
-		for(TypeMap_t* tm : cgi->visibleTypes)
-		{
-			for(auto pair : *tm)
-			{
-				llvm::Type* ltype = pair.second.first;
-				if(ltype == this->inferredLType)
-				{
-					cmplxtype = &pair.second;
-					break;
-				}
-			}
-		}
+		if(this->inferredLType)
+			cmplxtype = cgi->getType(this->inferredLType);
+
+		else
+			cmplxtype = cgi->getType(this->type);
+
 
 		if(cmplxtype)
 		{
@@ -60,7 +54,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 
 		cgi->addSymbol(this->name, ai, this);
-
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
