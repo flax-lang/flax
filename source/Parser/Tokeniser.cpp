@@ -19,19 +19,17 @@ namespace Parser
 
 
 	// warning: messy function
-	Token* getNextToken(std::string& stream, PosInfo& pos)
+	Token getNextToken(std::string& stream, PosInfo& pos)
 	{
 		if(stream.length() == 0)
-			return nullptr;
+			return Token();
 
 		int read = 0;
 
 		// first eat all whitespace
 		skipWhitespace(stream);
 
-		Token* ret = new Token();
-
-		Token& tok = *ret;			// because doing '->' gets old
+		Token tok;			// because doing '->' gets old
 		tok.posinfo = pos;
 
 		// check compound symbols first.
@@ -158,6 +156,12 @@ namespace Parser
 			tok.text = "...";
 			tok.type = TType::Elipsis;
 			read = 3;
+		}
+		else if(stream.find("::") == 0)
+		{
+			tok.text = "::";
+			tok.type = TType::DoubleColon;
+			read = 2;
 		}
 		else if(isdigit(stream[0]))
 		{
@@ -289,6 +293,9 @@ namespace Parser
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
 
+			else if(id == "module")		tok.type = TType::Module;
+			else if(id == "namespace")	tok.type = TType::Namespace;
+
 			else if(id == "Int8"
 				|| id == "Int16"
 				|| id == "Int32"
@@ -381,7 +388,7 @@ namespace Parser
 		}
 
 		stream = stream.substr(read);
-		return ret;
+		return tok;
 	}
 }
 
