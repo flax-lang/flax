@@ -2,24 +2,8 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Foundation
+import Foundation
 import Utilities
-
-// printing
-public ffi func puts(x: Int8*) -> Int32
-public ffi func printf(x: Int8*, ...) -> Int32
-
-// memcpy/set/move
-public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
-
-// string ops (todo: write in Flax)
-public ffi func strlen(str: Int8*) -> Uint64
-
-// memory
-public ffi func malloc(size: Uint64) -> Int8*
-public ffi func free(pointer: Int8*)
-
-
 
 namespace Thing::Troll
 {
@@ -49,11 +33,12 @@ struct Foo
 	var bar: Int32 = 400
 	var qux: Int32
 
-	init(q: Int32)
+	init(q: Int64)
 	{
-		self.qux = q
-		self.flob.norf = q * 400
+		self.qux = q as Int32
+		self.flob.norf = (q * 400) as Int32
 	}
+
 	init()
 	{
 		self.qux = 800
