@@ -1018,7 +1018,11 @@ namespace Parser
 				default:					parserError("Unknown operator '%s'", tok_op->text.c_str());
 			}
 
-			lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
+			if(op == ArithmeticOp::ScopeResolution)
+				lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
+
+			else
+				lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
 		}
 	}
 
