@@ -87,6 +87,7 @@ namespace Codegen
 		// Set the global so the code gen can use this.
 		cgi->Fpm = &OurFPM;
 		cgi->pushScope();
+		cgi->pushNamespaceScope("");
 
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
@@ -94,8 +95,9 @@ namespace Codegen
 
 			// add to the func table
 			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
+
 			f->deleteBody();
-			cgi->addFunctionToScope(func->getName(), std::pair<llvm::Function*, FuncDecl*>(f, pair.first));
+			cgi->addFunctionToScope(func->getName(), FuncPair_t(f, pair.first));
 		}
 
 		for(auto pair : cgi->rootNode->externalTypes)
@@ -106,6 +108,9 @@ namespace Codegen
 
 		cgi->rootNode->codegen(cgi);
 		cgi->popScope();
+
+		// free the memory
+		cgi->clearScope();
 	}
 
 	void writeBitcode(std::string filename, CodegenInstance* cgi)
@@ -140,15 +145,8 @@ namespace Codegen
 
 
 
-	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
-	{
-		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		(*this->visibleTypes.back())[atype->name] = tpair;
-	}
-
 	llvm::LLVMContext& CodegenInstance::getContext()
 	{
-		// return mainModule->getContext();
 		return llvm::getGlobalContext();
 	}
 
@@ -165,42 +163,37 @@ namespace Codegen
 
 	void CodegenInstance::popScope()
 	{
-		SymTab_t* tab = symTabStack.back();
-		TypeMap_t* types = visibleTypes.back();
-
-		delete types;
-		delete tab;
-
 		symTabStack.pop_back();
-		visibleTypes.pop_back();
-
-		this->popFuncScope();
 	}
 
-	void CodegenInstance::pushScope(SymTab_t* tab, TypeMap_t* tp)
+	void CodegenInstance::clearScope()
+	{
+		symTabStack.clear();
+		this->clearNamespaceScope();
+	}
+
+	void CodegenInstance::pushScope(SymTab_t tab)
 	{
 		this->symTabStack.push_back(tab);
-		this->visibleTypes.push_back(tp);
-		this->pushFuncScope(this->mainBuilder.GetInsertBlock() ? this->mainBuilder.GetInsertBlock()->getName() : "__anon__");
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		this->pushScope(new SymTab_t(), new TypeMap_t());
+		this->pushScope(SymTab_t());
 	}
 
 	SymTab_t& CodegenInstance::getSymTab()
 	{
-		return *this->symTabStack.back();
+		return this->symTabStack.back();
 	}
 
 	SymbolPair_t* CodegenInstance::getSymPair(Expr* user, const std::string& name)
 	{
 		for(int i = symTabStack.size(); i-- > 0;)
 		{
-			SymTab_t* tab = symTabStack[i];
-			if(tab->find(name) != tab->end())
-				return &(*tab)[name];
+			SymTab_t& tab = symTabStack[i];
+			if(tab.find(name) != tab.end())
+				return &(tab[name]);
 		}
 
 		return nullptr;
@@ -208,8 +201,8 @@ namespace Codegen
 
 	llvm::Value* CodegenInstance::getSymInst(Expr* user, const std::string& name)
 	{
-		SymbolPair_t* pair = nullptr;
-		if((pair = getSymPair(user, name)))
+		SymbolPair_t* pair = getSymPair(user, name);
+		if(pair)
 		{
 			if(pair->first.second != SymbolValidity::Valid)
 				GenError::useAfterFree(user, name);
@@ -243,14 +236,37 @@ namespace Codegen
 	}
 
 
+	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
+	{
+		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
+		if(this->typeMap.find(atype->name) == this->typeMap.end())
+		{
+			this->typeMap[atype->name] = tpair;
+		}
+		else
+		{
+			error(0, "Duplicate type %s", atype->name.c_str());
+		}
+	}
 
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
-		for(TypeMap_t* map : visibleTypes)
+		if(this->typeMap.find(name) != this->typeMap.end())
+			return &(this->typeMap[name]);
+
+		return nullptr;
+	}
+
+	TypePair_t* CodegenInstance::getType(llvm::Type* type)
+	{
+		if(!type)
+			return nullptr;
+
+		for(auto pair : this->typeMap)
 		{
-			if(map->find(name) != map->end())
-				return &(*map)[name];
+			if(pair.second.first == type)
+				return &this->typeMap[pair.first];
 		}
 
 		return nullptr;
@@ -293,26 +309,33 @@ namespace Codegen
 
 
 	// funcs
-	void CodegenInstance::pushFuncScope(std::string namespc)
+	void CodegenInstance::pushNamespaceScope(std::string namespc)
 	{
-		NamespacePair_t* nsp = new NamespacePair_t(namespc, FuncMap_t());
-		this->funcTabStack.push_back(nsp);
+		this->namespaceStack.push_back(namespc);
 	}
 
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
-		this->funcTabStack.back()->second[name] = func;
+		this->funcMap[name] = func;
 	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
-		// todo: handle actual namespacing, ie. calling functions like
-		// SomeNamespace::someFunction()
-		for(int i = funcTabStack.size(); i-- > 0;)
+		std::deque<std::string> nss = this->namespaceStack;
+		for(int i = this->namespaceStack.size(); i-- > 0;)
 		{
-			FuncMap_t& tab = funcTabStack[i]->second;
+			FuncMap_t& tab = this->funcMap;
+
+			#if 0
+			printf("find %s:\n{\n", name.c_str());
+			for(auto p : tab) printf("%s\n", p.first.c_str());
+			printf("}\n");
+			#endif
+
 			if(tab.find(name) != tab.end())
 				return &tab[name];
+
+			nss.pop_back();
 		}
 
 		return nullptr;
@@ -321,11 +344,12 @@ namespace Codegen
 	FuncPair_t* CodegenInstance::getDeclaredFunc(Ast::FuncCall* fc)
 	{
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
-		std::string cmangled = "";
-		std::string cppmangled = "";
 
-		if(!fp)	fp = this->getDeclaredFunc(cmangled = this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(cppmangled = this->mangleCppName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleCppName(fc->name, fc->params));
+
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleWithNamespace(fc->name));
+		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
 
 		return fp;
 	}
@@ -335,12 +359,14 @@ namespace Codegen
 		return getDeclaredFunc(name) != nullptr;
 	}
 
-	void CodegenInstance::popFuncScope()
+	void CodegenInstance::popNamespaceScope()
 	{
-		NamespacePair_t* nsp = this->funcTabStack.back();
-		this->funcTabStack.pop_back();
+		this->namespaceStack.pop_back();
+	}
 
-		delete nsp;
+	void CodegenInstance::clearNamespaceScope()
+	{
+		this->namespaceStack.clear();
 	}
 
 
@@ -696,31 +722,9 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
 	{
-		return "__struct#" + s->name + "_" + orig;
+		return "__struct#" + this->mangleWithNamespace(s->name) + "_" + orig;
 	}
 
-	std::string CodegenInstance::unmangleName(Struct* s, std::string orig)
-	{
-		std::string ret = orig;
-		if(orig.find("__struct#") != 0)
-			error("'%s' is not a mangled name of a struct.", orig.c_str());
-
-
-		if(orig.length() < 9)
-			error("Invalid mangled name '%s'", orig.c_str());
-
-		// remove __struct#
-		ret = ret.substr(9);
-
-		// make sure it's the right struct.
-		if(ret.find(s->name) != 0)
-			error("'%s' is not a mangled name of struct '%s'", orig.c_str(), s->name.c_str());
-
-		// remove the leading '_'
-		ret = ret.substr(1);
-
-		return ret.substr(s->name.length());
-	}
 	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
 	{
 		std::string mangled = "";
@@ -751,130 +755,38 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
 	{
-		std::deque<Expr*> a;
-		for(auto arg : args)
-			a.push_back(arg);
-
-		return this->mangleCppName(base, a);
+		return "enosup";
 	}
 
-	#if 0
-	static char typeStringToCppMangledShorthand(std::string stype)
-	{
-		// todo: handle namespaces when we get there
-		// according to C++ conventions:
 
-		// todo: linux and bsd have different definitions for "uint64_t"
-		// BSD uses ULL, linux uses UL
-
-		if(stype == "Int8")			return 'a';
-		else if(stype == "Int16")	return 's';
-		else if(stype == "Int32")	return 'i';
-		else if(stype == "Int64")	return 'x';			// 'l' for long (linux)
-
-		else if(stype == "Uint8")	return 'h';
-		else if(stype == "Uint16")	return 't';
-		else if(stype == "Uint32")	return 'j';
-		else if(stype == "Uint64")	return 'y';			// 'm' for unsigned long (linux)
-
-		else if(stype == "Bool")	return 'b';
-		else if(stype == "Float32")	return 'f';
-		else if(stype == "Float64")	return 'd';
-		else return '?';
-	}
-	#endif
 
 	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
 	{
 		// TODO:
 		return "enosup";
-
-		#if 0
-		// better for perf then a bunch of +=s, probably.
-		std::stringstream mangled;
-
-		// Always start with '_Z'.
-		mangled << "_Z";
-
-		// length of unmangled function name
-		mangled << base.length();
-
-		// original function name
-		mangled << base;
-
-		if(args.size() == 0)
-			mangled << "v";
-
-
-		for(Expr* d : args)
-		{
-			VarType vt = this->determineVarType(d);
-			if(vt != VarType::Array && vt != VarType::UserDefined)
-			{
-				mangled << typeStringToCppMangledShorthand(Parser::getVarTypeString(vt));
-			}
-			else if(vt == VarType::UserDefined)
-			{
-				llvm::Type* type = 0;
-
-				// get the type from one of our magic functions
-				// note: llvm doesn't give half a shit whether the integer is signed or unsigned
-				// so mangling would give the wrong chars.
-				// we need a way of getting a proper, BuiltinType from a varRef.
-				// next, we might get a pointer type, so the determineVarType() call would return UserDefined.
-				// we would then need to cry
-
-				VarRef*		vr = 0;
-				VarDecl*	vd = dynamic_cast<VarDecl*>(d);
-
-				if(!vd && (vr = dynamic_cast<VarRef*>(d)))
-				{
-					vd = this->getSymDecl(vr, vr->name);
-					if(!vd)
-						GenError::unknownSymbol(vr, vr->name, SymbolType::Variable);
-				}
-				assert(vd);
-				type = getLlvmType(vd);
-				assert(type);
-
-
-				{
-					int indr = 0;
-					std::string unwrapped = unwrapPointerType(vd->type, &indr);
-
-					for(int i = 0; i < indr; i++)
-						mangled << "P";
-
-
-
-					mangled << typeStringToCppMangledShorthand(unwrapped);
-					type = 0;
-				}
-
-				if(type)
-				{
-					while(type->isPointerTy())
-					{
-						mangled << "P";
-						type = type->getPointerElementType();
-					}
-
-					mangled << (this->mainModule->getDataLayout()->getTypeSizeInBits(type) / 8);
-					mangled << type->getStructName().str().substr(1);	// remove leading '%' on llvm types
-				}
-			}
-			else
-			{
-				// todo: not supported
-				error("enosup");
-			}
-		}
-
-		return mangled.str();
-		#endif
 	}
 
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	{
+		std::string ret = "__NS";
+		for(std::string s : ns)
+		{
+			if(s.length() > 0)
+				ret += std::to_string(s.length()) + s;
+		}
 
+		ret += std::to_string(original.length()) + original;
+		return ret;
+	}
+
+	std::string CodegenInstance::mangleWithNamespace(std::string original)
+	{
+		std::deque<std::string> ns;
+		for(std::string np : this->namespaceStack)
+			ns.push_back(np);
+
+		return this->mangleWithNamespace(original, ns);
+	}
 
 
 

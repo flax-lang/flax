@@ -42,7 +42,7 @@ namespace Parser
 		Case,
 		Match,
 		To,
-		Enum,				// 17
+		Enum,
 		ForeignFunc,
 		Struct,
 		True,
@@ -64,6 +64,8 @@ namespace Parser
 		Alloc,
 		Dealloc,
 
+		Module,
+		Namespace,
 
 
 		// symbols
@@ -89,19 +91,20 @@ namespace Parser
 		Exclamation,
 		Semicolon,
 		Ampersand,
-		Percent,			// 48
+		Percent,
 		Pipe,
 		LogicalOr,
 		LogicalAnd,
 		At,
 		Pound,
 
+
 		// compound symbols
 		Arrow,
 		EqualsTo,
 		NotEquals,
 		GreaterEquals,
-		LessThanEquals,		// 55
+		LessThanEquals,
 		ShiftLeft,
 		ShiftRight,
 		DoublePlus,			// doubleplusgood
@@ -114,6 +117,7 @@ namespace Parser
 		ShiftLeftEq,
 		ShiftRightEq,
 		Elipsis,
+		DoubleColon,
 
 		// other stuff.
 		Identifier,
@@ -144,7 +148,7 @@ namespace Parser
 
 	std::string getModuleName(std::string filename);
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
-	Token* getNextToken(std::string& stream, PosInfo& pos);
+	Token getNextToken(std::string& stream, PosInfo& pos);
 	std::string arithmeticOpToString(Ast::ArithmeticOp op);
 }
 
