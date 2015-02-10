@@ -2,7 +2,7 @@ version 1.17;
 import "build/capri/Utilities.capri";
 
 sysroot 	= File.getAbsolutePath("build/sysroot");
-prefix		= "/usr";
+prefix		= "/usr/local";
 outputBin	= "flaxc";
 
 flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
