@@ -34,10 +34,23 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	else
 	{
 		if(this->inferredLType)
+		{
 			cmplxtype = cgi->getType(this->inferredLType);
-
+		}
 		else
-			cmplxtype = cgi->getType(this->type);
+		{
+			if(this->type.find("::") != std::string::npos)
+				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+
+			else
+				cmplxtype = cgi->getType(this->type);
+		}
+
+		if(!ai)
+		{
+			assert(cmplxtype);
+			ai = cgi->mainBuilder.CreateAlloca(cmplxtype->first);
+		}
 
 
 		if(cmplxtype)
@@ -113,6 +126,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 	llvm::Value* valptr = nullptr;
 
 	TypePair_t* cmplxtype = cgi->getType(this->type);
+	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+
 	llvm::AllocaInst* ai = nullptr;
 
 	if(this->type == "Inferred")
@@ -145,7 +160,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		valptr = r.second;
 	}
 
-	if(!ai)	ai = cgi->allocateInstanceInBlock(this);
 	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 
 	return Result_t(val, ai);
