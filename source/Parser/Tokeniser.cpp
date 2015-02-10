@@ -183,7 +183,7 @@ namespace Parser
 				base = 16;
 				num = "";
 
-				while(ishexnumber(tmp = str.get()))
+				while(isxdigit(tmp = str.get()))
 					num += (char) tmp;
 			}
 
