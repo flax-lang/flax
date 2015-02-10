@@ -850,6 +850,33 @@ namespace Parser
 		if(tmp.type != TType::Identifier && tmp.type != TType::BuiltinType)
 			parserError("Expected type for variable declaration");
 
+		std::string baseType = tmp.text;
+
+		// parse until we get a non-identifier and non-scoperes
+		{
+			Token t;
+			bool expectingScope = true;
+			while((t = tokens.front()).text.length() > 0)
+			{
+				if(t.type == TType::DoubleColon && expectingScope)
+				{
+					baseType += "::";
+					expectingScope = false;
+				}
+				else if(t.type == TType::Identifier && !expectingScope)
+				{
+					baseType += t.text;
+					expectingScope = true;
+				}
+				else
+				{
+					break;
+				}
+
+				eat(tokens);
+			}
+		}
+
 		std::string ptrAppend = "";
 		if(tokens.size() > 0)
 		{
@@ -872,7 +899,7 @@ namespace Parser
 			}
 		}
 
-		std::string ret = tmp.text + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
+		std::string ret = baseType + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
 		return CreateAST(CastedType, tmp, ret);
 	}
 
