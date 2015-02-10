@@ -74,23 +74,119 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 }
 
 
+static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions)
+{
+	if(pass == 1)
+	{
+		// pass 1: create types and function declarations
+		for(Expr* e : expressions)
+		{
+			Struct* str				= dynamic_cast<Struct*>(e);
+			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
+			Func* func				= dynamic_cast<Func*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+
+			if(str)
+				str->createType(cgi);
+
+			else if(ffi)
+				ffi->codegen(cgi);
+
+			else if(ns)
+				ns->codegenPass1(cgi);
+
+			else if(func)
+			{
+				if(func->decl->name == "main")
+				{
+					func->decl->attribs |= Attr_VisPublic;
+					func->decl->isFFI = true;
+				}
+
+				func->decl->codegen(cgi);
+			}
+		}
+	}
+	else if(pass == 2)
+	{
+		for(Expr* e : expressions)
+		{
+			Struct* str				= dynamic_cast<Struct*>(e);
+			Func* func				= dynamic_cast<Func*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+
+			if(str)
+				str->codegen(cgi);
+
+			else if(func)
+				func->codegen(cgi);
+
+			else if(ns)
+				ns->codegenPass2(cgi);
+		}
+	}
+	else
+	{
+		error("Invalid pass number '%d'\n", pass);
+	}
+}
 
 
 
-Result_t NamespaceDecl::codegen(CodegenInstance* cgi)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void NamespaceDecl::codegenPass1(CodegenInstance* cgi)
 {
 	for(std::string s : this->name)
 		cgi->pushNamespaceScope(s);
 
-	auto ret = this->innards->codegen(cgi);
+	codegenTopLevel(cgi, 1, this->innards->statements);
 
 	for(std::string s : this->name)
 		cgi->popNamespaceScope();
-
-	return ret;
 }
 
 
+
+void NamespaceDecl::codegenPass2(CodegenInstance* cgi)
+{
+	for(std::string s : this->name)
+		cgi->pushNamespaceScope(s);
+
+	codegenTopLevel(cgi, 2, this->innards->statements);
+
+	for(std::string s : this->name)
+		cgi->popNamespaceScope();
+}
+
+
+Result_t Root::codegen(CodegenInstance* cgi)
+{
+	codegenTopLevel(cgi, 1, this->topLevelExpressions);
+	codegenTopLevel(cgi, 2, this->topLevelExpressions);
+
+	return Result_t(0, 0);
+}
 
 
 
