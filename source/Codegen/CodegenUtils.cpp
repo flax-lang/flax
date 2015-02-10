@@ -334,7 +334,7 @@ namespace Codegen
 
 		#if 0
 		printf("find %s:\n{\n", name.c_str());
-		for(auto p : tab) printf("%s\n", p.first.c_str());
+		for(auto p : tab) printf("\t%s\n", p.first.c_str());
 		printf("}\n");
 		#endif
 
@@ -808,7 +808,7 @@ namespace Codegen
 			}
 			else if((ma = dynamic_cast<MemberAccess*>(expr)))
 			{
-				return this->getLlvmType(ma->target);
+				return this->getLlvmType(ma->member);
 			}
 			else if((bo = dynamic_cast<BinOp*>(expr)))
 			{

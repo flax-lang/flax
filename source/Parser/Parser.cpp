@@ -1062,6 +1062,9 @@ namespace Parser
 			if(op == ArithmeticOp::ScopeResolution)
 				lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
 
+			else if(op == ArithmeticOp::MemberAccess)
+				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
+
 			else
 				lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
 		}
