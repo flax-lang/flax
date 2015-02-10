@@ -43,6 +43,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 	if(cgi->getType(this->name) != nullptr)
 		return callConstructor(cgi, cgi->getType(this->name), this);
 
+	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
+		return callConstructor(cgi, cgi->getType(cgi->mangleRawNamespace(this->name)), this);
+
+
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
 		GenError::unknownSymbol(this, this->name, SymbolType::Function);

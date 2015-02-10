@@ -116,10 +116,12 @@ namespace Codegen
 		bool isDuplicateType(std::string name);
 
 
+		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
 
 		std::string mangleName(Ast::Struct* s, std::string orig);
+		std::string mangleName(Ast::Struct* s, Ast::FuncCall* fc);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);

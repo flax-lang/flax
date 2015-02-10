@@ -436,7 +436,10 @@ namespace Ast
 		~NamespaceDecl();
 		NamespaceDecl(Parser::PosInfo pos, std::deque<std::string> names, BracedBlock* inside) : Expr(pos), innards(inside), name(names)
 		{ }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi) override { return Result_t(0, 0); };
+
+		void codegenPass1(Codegen::CodegenInstance* cgi);
+		void codegenPass2(Codegen::CodegenInstance* cgi);
 
 		BracedBlock* innards;
 		std::deque<std::string> name;
