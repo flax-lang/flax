@@ -55,7 +55,9 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
 
 			std::string oname = f->decl->name;
-			bool isOpOverload = oname.find("operator#") == 0;
+			bool isOpOverload = f->decl->name.find("operator#") == 0;
+			if(isOpOverload)
+				f->decl->name = f->decl->name.substr(strlen("operator#"));
 
 			llvm::Value* val = nullptr;
 
@@ -80,14 +82,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 			if(isOpOverload)
 			{
-				oname = oname.substr(strlen("operator#"));
-				std::stringstream ss;
-
-				int i = 0;
-				while(i < oname.length() && oname[i] != '_')
-					(ss << oname[i]), i++;
-
-				ArithmeticOp ao = cgi->determineArithmeticOp(ss.str());
+				ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
 				this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
 			}
 
