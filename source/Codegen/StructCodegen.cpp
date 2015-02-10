@@ -13,10 +13,8 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi)
 {
-	cgi->isStructCodegen = true;
-
 	assert(this->didCreateType);
-	TypePair_t* _type = cgi->getType(cgi->mangleWithNamespace(this->name));
+	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
 		GenError::unknownSymbol(this, this->name, SymbolType::Type);
 
@@ -27,7 +25,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 	// generate initialiser
 	{
-		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + cgi->mangleWithNamespace(this->name), cgi->mainModule);
+		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->mangledName, cgi->mainModule);
 
 		cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
@@ -62,10 +60,16 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 			llvm::Value* val = nullptr;
 
 
-			f->decl->name = cgi->mangleName(this, f->decl->name);
-			val = f->decl->codegen(cgi).result.first;
-			f->decl->name = oname;
 
+			// hack:
+			// 1. append 'E' to the end of the function's basename, as per C++ ABI
+			// 2. remove the first varDecl of its parameters (self)
+			// 3. mangle the name
+			// 4. restore the parameter
+			// this makes sure that we don't get ridiculous mangled names for member functions
+
+
+			val = f->decl->codegen(cgi).result.first;
 
 			if(f->decl->name == "init")
 				this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
@@ -107,7 +111,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 				todeque.push_back(svr);
 
 				// add the call to auto init
-				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + cgi->mangleWithNamespace(this->name), todeque);
+				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->mangledName, todeque);
 				f->block->statements.push_front(fc);
 			}
 
@@ -147,7 +151,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	// and only the normal init() needs to be exposed.
 	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
 
-	cgi->isStructCodegen = false;
 	return Result_t(nullptr, nullptr);
 }
 
@@ -159,7 +162,8 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
 
 	// create a bodyless struct so we can use it
-	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), cgi->mangleWithNamespace(this->name));
+	this->mangledName = cgi->mangleWithNamespace(this->name);
+	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	cgi->addNewType(str, this, ExprType::Struct);
 
 
@@ -175,16 +179,11 @@ void Struct::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
-			// add the implicit self to the declarations.
-			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-			implicit_self->type = cgi->mangleWithNamespace(this->name) + "*";
-			func->decl->params.push_front(implicit_self);
+			func->decl->parentStruct = this;
 
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
 				error(this, "Duplicate member '%s'", func->decl->name.c_str());
-
-			func->decl->mangledName = cgi->mangleName(this, mangled);
 		}
 
 		for(VarDecl* var : this->members)
@@ -203,6 +202,8 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	cgi->getRootAST()->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
+	this->scope = cgi->namespaceStack;
+
 	delete types;
 }
 
@@ -359,22 +360,19 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
 			// we codegen first, then use the llvm version.
 			std::vector<llvm::Value*> args;
-			std::deque<llvm::Type*> argtypes;
+			// std::deque<llvm::Type*> argtypes;
+
 			args.push_back(isPtr ? self : selfPtr);
-			argtypes.push_back((isPtr ? self : selfPtr)->getType());
 
 			for(Expr* e : fc->params)
-			{
 				args.push_back(e->codegen(cgi).result.first);
-				argtypes.push_back(args.back()->getType());
-			}
 
 			// need to remove the dummy 'self' reference
 			// now we need to determine if it exists, and its params.
 			Func* callee = nullptr;
 			for(Func* f : str->funcs)
 			{
-				std::string match = cgi->mangleName(str, fc);
+				std::string match = cgi->mangleMemberFunction(str, fc->name, fc->params, str->scope);
 				if(f->decl->mangledName == match)
 				{
 					callee = f;
