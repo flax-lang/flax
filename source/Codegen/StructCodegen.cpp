@@ -374,12 +374,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			}
 
 			// need to remove the dummy 'self' reference
-
 			// now we need to determine if it exists, and its params.
 			Func* callee = nullptr;
 			for(Func* f : str->funcs)
 			{
-				std::string match = cgi->mangleName(str, cgi->mangleName(fc->name, argtypes));
+				std::string match = cgi->mangleName(str, fc);
 				if(f->decl->mangledName == match)
 				{
 					callee = f;
@@ -388,7 +387,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			}
 
 			if(!callee)
-				error(this, "No such function with name '%s' as member of struct '%s'", fc->name.c_str(), str->name.c_str());
+				error(this, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
 			llvm::Function* lcallee = 0;
 			for(llvm::Function* lf : str->lfuncs)
