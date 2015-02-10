@@ -16,7 +16,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 	cgi->isStructCodegen = true;
 
 	assert(this->didCreateType);
-	TypePair_t* _type = cgi->getType(this->name);
+	TypePair_t* _type = cgi->getType(cgi->mangleWithNamespace(this->name));
 	if(!_type)
 		GenError::unknownSymbol(this, this->name, SymbolType::Type);
 
@@ -27,7 +27,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 	// generate initialiser
 	{
-		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->name, cgi->mainModule);
+		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + cgi->mangleWithNamespace(this->name), cgi->mainModule);
 
 		cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
@@ -61,10 +61,6 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 
 			llvm::Value* val = nullptr;
 
-
-			// this is kind of a hack. since mangleName() operates on f->decl->name, if we
-			// modify that to include the __struct#Type prefix, then revert it after, it should
-			// add it to f->decl->mangledName, but let us keep f->decl->name
 
 			f->decl->name = cgi->mangleName(this, f->decl->name);
 			val = f->decl->codegen(cgi).result.first;
@@ -111,7 +107,7 @@ Result_t Struct::codegen(CodegenInstance* cgi)
 				todeque.push_back(svr);
 
 				// add the call to auto init
-				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->name, todeque);
+				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + cgi->mangleWithNamespace(this->name), todeque);
 				f->block->statements.push_front(fc);
 			}
 
@@ -163,7 +159,7 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
 
 	// create a bodyless struct so we can use it
-	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->name);
+	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), cgi->mangleWithNamespace(this->name));
 	cgi->addNewType(str, this, ExprType::Struct);
 
 
@@ -181,7 +177,7 @@ void Struct::createType(CodegenInstance* cgi)
 		{
 			// add the implicit self to the declarations.
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-			implicit_self->type = this->name + "*";
+			implicit_self->type = cgi->mangleWithNamespace(this->name) + "*";
 			func->decl->params.push_front(implicit_self);
 
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);

@@ -116,6 +116,7 @@ namespace Codegen
 		bool isDuplicateType(std::string name);
 
 
+		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
 
