@@ -120,6 +120,9 @@ namespace Codegen
 		std::string mangleWithNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
 
+		std::string mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Ast::Expr*> args);
+		std::string mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
+
 		std::string mangleName(Ast::Struct* s, std::string orig);
 		std::string mangleName(Ast::Struct* s, Ast::FuncCall* fc);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
