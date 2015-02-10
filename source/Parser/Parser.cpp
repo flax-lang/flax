@@ -693,7 +693,6 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
-
 		return f;
 	}
 
