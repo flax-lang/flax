@@ -222,15 +222,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 Result_t BinOp::codegen(CodegenInstance* cgi)
 {
 	assert(this->left && this->right);
-	if(this->op == ArithmeticOp::MemberAccess)
-	{
-		MemberAccess* fakema = new MemberAccess(this->posinfo, this->left, this->right);
-		Result_t res = fakema->codegen(cgi);
-		delete fakema;
-
-		return res;
-	}
-
 	ValPtr_t valptr = this->left->codegen(cgi).result;
 
 	llvm::Value* lhs;
