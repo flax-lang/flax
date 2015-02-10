@@ -150,6 +150,9 @@ namespace Parser
 	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
 	Token getNextToken(std::string& stream, PosInfo& pos);
 	std::string arithmeticOpToString(Ast::ArithmeticOp op);
+
+	Ast::ArithmeticOp mangledStringToOperator(std::string op);
+	std::string operatorToMangledString(Ast::ArithmeticOp op);
 }
 
 
