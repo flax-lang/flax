@@ -373,6 +373,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 			for(Func* f : str->funcs)
 			{
 				std::string match = cgi->mangleMemberFunction(str, fc->name, fc->params, str->scope);
+
+				#if 0
+				printf("func %s vs %s\n", match.c_str(), f->decl->mangledName.c_str());
+				#endif
+
 				if(f->decl->mangledName == match)
 				{
 					callee = f;
