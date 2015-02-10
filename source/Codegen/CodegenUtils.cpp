@@ -945,34 +945,8 @@ namespace Codegen
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
-		ArithmeticOp op;
-
-		if(ch == "+")		op = ArithmeticOp::Add;
-		else if(ch == "-")	op = ArithmeticOp::Subtract;
-		else if(ch == "*")	op = ArithmeticOp::Multiply;
-		else if(ch == "/")	op = ArithmeticOp::Divide;
-		else if(ch == "%")	op = ArithmeticOp::Modulo;
-		else if(ch == "<<")	op = ArithmeticOp::ShiftLeft;
-		else if(ch == ">>")	op = ArithmeticOp::ShiftRight;
-		else if(ch == "=")	op = ArithmeticOp::Assign;
-		else if(ch == "<")	op = ArithmeticOp::CmpLT;
-		else if(ch == ">")	op = ArithmeticOp::CmpGT;
-		else if(ch == "<=")	op = ArithmeticOp::CmpLEq;
-		else if(ch == ">=")	op = ArithmeticOp::CmpGEq;
-		else if(ch == "==")	op = ArithmeticOp::CmpEq;
-		else if(ch == "!=")	op = ArithmeticOp::CmpNEq;
-		else if(ch == "&")	op = ArithmeticOp::BitwiseAnd;
-		else if(ch == "|")	op = ArithmeticOp::BitwiseOr;
-		else if(ch == "&&")	op = ArithmeticOp::LogicalOr;
-		else if(ch == "||")	op = ArithmeticOp::LogicalAnd;
-		else if(ch == "as")	op = ArithmeticOp::Cast;
-		else if(ch == ".")	op = ArithmeticOp::MemberAccess;
-		else				error("Unknown operator '%s'", ch.c_str());
-
-		return op;
+		return Parser::mangledStringToOperator(ch);
 	}
-
-
 
 	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
 	{
