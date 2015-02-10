@@ -1445,6 +1445,89 @@ namespace Parser
 		return CreateAST(StringLiteral, str, str.text);
 	}
 
+
+	ArithmeticOp mangledStringToOperator(std::string op)
+	{
+		if(op == "aS")		return ArithmeticOp::Assign;
+		else if(op == "pL")	return ArithmeticOp::PlusEquals;
+		else if(op == "aS") return ArithmeticOp::Assign;
+		else if(op == "pL") return ArithmeticOp::PlusEquals;
+		else if(op == "mI") return ArithmeticOp::MinusEquals;
+		else if(op == "mL") return ArithmeticOp::MultiplyEquals;
+		else if(op == "dV") return ArithmeticOp::DivideEquals;
+		else if(op == "rM") return ArithmeticOp::ModEquals;
+		else if(op == "aN") return ArithmeticOp::BitwiseAndEquals;
+		else if(op == "oR") return ArithmeticOp::BitwiseOrEquals;
+		else if(op == "eO") return ArithmeticOp::BitwiseXorEquals;
+		else if(op == "lS") return ArithmeticOp::ShiftLeftEquals;
+		else if(op == "rS") return ArithmeticOp::ShiftRightEquals;
+		else if(op == "ad") return ArithmeticOp::AddrOf;
+		else if(op == "de") return ArithmeticOp::Deref;
+		else if(op == "nt") return ArithmeticOp::LogicalNot;
+		else if(op == "aa") return ArithmeticOp::LogicalAnd;
+		else if(op == "oo") return ArithmeticOp::LogicalOr;
+		else if(op == "pl") return ArithmeticOp::Add;
+		else if(op == "mi") return ArithmeticOp::Subtract;
+		else if(op == "ml") return ArithmeticOp::Multiply;
+		else if(op == "dv") return ArithmeticOp::Divide;
+		else if(op == "rm") return ArithmeticOp::Modulo;
+		else if(op == "an") return ArithmeticOp::BitwiseAnd;
+		else if(op == "or") return ArithmeticOp::BitwiseOr;
+		else if(op == "eo") return ArithmeticOp::BitwiseXor;
+		else if(op == "co") return ArithmeticOp::BitwiseNot;
+		else if(op == "ls") return ArithmeticOp::ShiftLeft;
+		else if(op == "rs") return ArithmeticOp::ShiftRight;
+		else if(op == "eq") return ArithmeticOp::CmpEq;
+		else if(op == "ne") return ArithmeticOp::CmpNEq;
+		else if(op == "lt") return ArithmeticOp::CmpLT;
+		else if(op == "gt") return ArithmeticOp::CmpGT;
+		else if(op == "le") return ArithmeticOp::CmpLEq;
+		else if(op == "ge") return ArithmeticOp::CmpGEq;
+		else				parserError("Invalid operator '%s'", op.c_str());
+	}
+
+	std::string operatorToMangledString(ArithmeticOp op)
+	{
+		// see https://refspecs.linuxbase.org/cxxabi-1.75.html#mangling-operator
+		switch(op)
+		{
+			case ArithmeticOp::Assign:				return "aS";
+			case ArithmeticOp::PlusEquals:			return "pL";
+			case ArithmeticOp::MinusEquals:			return "mI";
+			case ArithmeticOp::MultiplyEquals:		return "mL";
+			case ArithmeticOp::DivideEquals:		return "dV";
+			case ArithmeticOp::ModEquals:			return "rM";
+			case ArithmeticOp::BitwiseAndEquals:	return "aN";
+			case ArithmeticOp::BitwiseOrEquals:		return "oR";
+			case ArithmeticOp::BitwiseXorEquals:	return "eO";
+			case ArithmeticOp::ShiftLeftEquals:		return "lS";
+			case ArithmeticOp::ShiftRightEquals:	return "rS";
+			case ArithmeticOp::AddrOf:				return "ad";
+			case ArithmeticOp::Deref:				return "de";
+			case ArithmeticOp::LogicalNot:			return "nt";
+			case ArithmeticOp::LogicalAnd:			return "aa";
+			case ArithmeticOp::LogicalOr:			return "oo";
+			case ArithmeticOp::Add:					return "pl";
+			case ArithmeticOp::Subtract:			return "mi";
+			case ArithmeticOp::Multiply:			return "ml";
+			case ArithmeticOp::Divide:				return "dv";
+			case ArithmeticOp::Modulo:				return "rm";
+			case ArithmeticOp::BitwiseAnd:			return "an";
+			case ArithmeticOp::BitwiseOr:			return "or";
+			case ArithmeticOp::BitwiseXor:			return "eo";
+			case ArithmeticOp::BitwiseNot:			return "co";
+			case ArithmeticOp::ShiftLeft:			return "ls";
+			case ArithmeticOp::ShiftRight:			return "rs";
+			case ArithmeticOp::CmpEq:				return "eq";
+			case ArithmeticOp::CmpNEq:				return "ne";
+			case ArithmeticOp::CmpLT:				return "lt";
+			case ArithmeticOp::CmpGT:				return "gt";
+			case ArithmeticOp::CmpLEq:				return "le";
+			case ArithmeticOp::CmpGEq:				return "ge";
+			default:								parserError("Invalid operator");
+		}
+	}
+
 	OpOverload* parseOpOverload(std::deque<Token>& tokens)
 	{
 		if(!isParsingStruct)
@@ -1472,7 +1555,7 @@ namespace Parser
 
 		Token fake;
 		fake.posinfo = currentPos;
-		fake.text = "operator#" + op.text;
+		fake.text = "operator#" + operatorToMangledString(ao);
 		fake.type = TType::Identifier;
 
 		tokens.push_front(fake);
