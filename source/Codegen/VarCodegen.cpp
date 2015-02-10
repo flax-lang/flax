@@ -30,6 +30,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
 	{
 		val = cgi->getDefaultValue(this);
+		assert(val);
 	}
 	else
 	{
@@ -49,9 +50,8 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(!ai)
 		{
 			assert(cmplxtype);
-			ai = cgi->mainBuilder.CreateAlloca(cmplxtype->first);
+			assert((ai = cgi->mainBuilder.CreateAlloca(cmplxtype->first)));
 		}
-
 
 		if(cmplxtype)
 		{
@@ -96,6 +96,8 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 	}
 
+	if(!ai)
+		error(this, "ai is null");
 
 	if(!cgi->isDuplicateSymbol(this->name))
 		cgi->addSymbol(this->name, ai, this);
@@ -158,6 +160,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 
 		val = r.first;
 		valptr = r.second;
+		ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
 	}
 
 	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
