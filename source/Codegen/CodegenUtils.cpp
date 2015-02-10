@@ -332,7 +332,7 @@ namespace Codegen
 	{
 		FuncMap_t& tab = this->funcMap;
 
-		#if 1
+		#if 0
 		printf("find %s:\n{\n", name.c_str());
 		for(auto p : tab) printf("%s\n", p.first.c_str());
 		printf("}\n");
@@ -417,19 +417,49 @@ namespace Codegen
 	}
 
 
+	std::string CodegenInstance::mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Expr*> args)
+	{
+		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
+	}
+
+	std::string CodegenInstance::mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
+	{
+		std::string mangled;
+		mangled = this->mangleWithNamespace("", ns);
+
+		// last char is 0
+		if(mangled.length() > 0)
+		{
+			assert(mangled.back() == '0');
+			mangled = mangled.substr(0, mangled.length() - 1);
+		}
+
+		mangled += std::to_string(s->name.length()) + s->name;
+		mangled += this->mangleName(std::to_string(orig.length()) + orig + "E", args);
+
+		return mangled;
+	}
 
 	std::string CodegenInstance::mangleName(Ast::Struct* s, Ast::FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
-		assert(this->getType(s->name));
-		largs.push_back(this->getType(s->name)->first->getPointerTo());	// push the implicit self parameter (as a pointer)
+		assert(this->getType(s->mangledName));
 
+		bool first = true;
 		for(Expr* e : fc->params)
-			largs.push_back(this->getLlvmType(e));
+		{
+			if(!first)
+			{
+				// we have an implicit self, don't push that
+				largs.push_back(this->getLlvmType(e));
+			}
 
+			first = false;
+		}
 
-		std::string mangledFunc = this->mangleName(fc->name, largs);
-		return this->mangleWithNamespace(s->name) + std::to_string(fc->name.length()) + mangledFunc;
+		std::string basename = fc->name + "E";
+		std::string mangledFunc = this->mangleName(basename, largs);
+		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
 	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
@@ -480,11 +510,7 @@ namespace Codegen
 	}
 	std::string CodegenInstance::mangleWithNamespace(std::string original)
 	{
-		std::deque<std::string> ns;
-		for(std::string np : this->namespaceStack)
-			ns.push_back(np);
-
-		return this->mangleWithNamespace(original, ns);
+		return this->mangleWithNamespace(original, this->namespaceStack);
 	}
 
 
