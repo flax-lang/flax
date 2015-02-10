@@ -17,9 +17,10 @@ using namespace Ast;
 
 namespace Parser
 {
-	PosInfo currentPos;
-	Root* rootNode						= nullptr;
 	Token curtok;
+	PosInfo currentPos;
+	bool isInsideNamespace				= false;
+	Root* rootNode						= nullptr;
 	uint32_t curAttrib					= 0;
 	Codegen::CodegenInstance* curCgi	= nullptr;
 
@@ -368,7 +369,7 @@ namespace Parser
 			switch(tok.type)
 			{
 				case TType::Func:
-					rootNode->topLevelExpressions.push_back(parseFunc(tokens));
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseFunc(tokens));
 					break;
 
 				case TType::Import:
@@ -380,7 +381,7 @@ namespace Parser
 					break;
 
 				case TType::Struct:
-					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseStruct(tokens));
 					break;
 
 				// only at top level
@@ -489,8 +490,7 @@ namespace Parser
 					return parseDealloc(tokens);
 
 				case TType::Struct:
-					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
-					return rootNode->topLevelExpressions.back();
+					return parseStruct(tokens);
 
 				case TType::At:
 					parseAttribute(tokens);
@@ -596,7 +596,12 @@ namespace Parser
 
 		tokens.push_front(front);
 		assert(tokens.front().type == TType::LBrace);
+
+		bool wasInsideNamespace = isInsideNamespace;
+
+		isInsideNamespace = true;
 		BracedBlock* inside = parseBracedBlock(tokens);
+		isInsideNamespace = wasInsideNamespace;
 
 		return CreateAST(NamespaceDecl, tok_ns, scopes, inside);
 	}
@@ -693,7 +698,6 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
-
 		return f;
 	}
 
@@ -851,6 +855,33 @@ namespace Parser
 		if(tmp.type != TType::Identifier && tmp.type != TType::BuiltinType)
 			parserError("Expected type for variable declaration");
 
+		std::string baseType = tmp.text;
+
+		// parse until we get a non-identifier and non-scoperes
+		{
+			Token t;
+			bool expectingScope = true;
+			while((t = tokens.front()).text.length() > 0)
+			{
+				if(t.type == TType::DoubleColon && expectingScope)
+				{
+					baseType += "::";
+					expectingScope = false;
+				}
+				else if(t.type == TType::Identifier && !expectingScope)
+				{
+					baseType += t.text;
+					expectingScope = true;
+				}
+				else
+				{
+					break;
+				}
+
+				eat(tokens);
+			}
+		}
+
 		std::string ptrAppend = "";
 		if(tokens.size() > 0)
 		{
@@ -873,7 +904,7 @@ namespace Parser
 			}
 		}
 
-		std::string ret = tmp.text + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
+		std::string ret = baseType + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
 		return CreateAST(CastedType, tmp, ret);
 	}
 

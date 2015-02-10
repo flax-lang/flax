@@ -87,7 +87,6 @@ namespace Codegen
 		// Set the global so the code gen can use this.
 		cgi->Fpm = &OurFPM;
 		cgi->pushScope();
-		cgi->pushNamespaceScope("");
 
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
@@ -239,9 +238,11 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, Struct* atype, ExprType e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		if(this->typeMap.find(atype->name) == this->typeMap.end())
+		std::string mangled = this->mangleWithNamespace(atype->name);
+
+		if(this->typeMap.find(mangled) == this->typeMap.end())
 		{
-			this->typeMap[atype->name] = tpair;
+			this->typeMap[mangled] = tpair;
 		}
 		else
 		{
@@ -252,6 +253,14 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
+		#if 0
+		printf("finding %s\n{\n", name.c_str());
+		for(auto p : this->typeMap)
+			printf("\t%s\n", p.first.c_str());
+
+		printf("}\n");
+		#endif
+
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
 
@@ -321,22 +330,16 @@ namespace Codegen
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
-		std::deque<std::string> nss = this->namespaceStack;
-		for(int i = this->namespaceStack.size(); i-- > 0;)
-		{
-			FuncMap_t& tab = this->funcMap;
+		FuncMap_t& tab = this->funcMap;
 
-			#if 0
-			printf("find %s:\n{\n", name.c_str());
-			for(auto p : tab) printf("%s\n", p.first.c_str());
-			printf("}\n");
-			#endif
+		#if 1
+		printf("find %s:\n{\n", name.c_str());
+		for(auto p : tab) printf("%s\n", p.first.c_str());
+		printf("}\n");
+		#endif
 
-			if(tab.find(name) != tab.end())
-				return &tab[name];
-
-			nss.pop_back();
-		}
+		if(tab.find(name) != tab.end())
+			return &tab[name];
 
 		return nullptr;
 	}
@@ -371,6 +374,161 @@ namespace Codegen
 
 
 
+
+	static std::string convertToMangled(CodegenInstance* cgi, llvm::Type* type)
+	{
+		std::string r = cgi->getReadableType(type);
+
+		int ind = 0;
+		r = cgi->unwrapPointerType(r, &ind);
+
+		if(r.find("Int8") == 0)			r = "a";
+		else if(r.find("Int16") == 0)	r = "s";
+		else if(r.find("Int32") == 0)	r = "i";
+		else if(r.find("Int64") == 0)	r = "l";
+
+		else if(r.find("Uint8") == 0)	r = "h";
+		else if(r.find("Uint16") == 0)	r = "t";
+		else if(r.find("Uint32") == 0)	r = "j";
+		else if(r.find("Uint64") == 0)	r = "m";
+
+		else if(r.find("Float32") == 0)	r = "f";
+		else if(r.find("Float64") == 0)	r = "d";
+		else if(r.find("Void") == 0)	r = "v";
+		else
+		{
+			if(r.size() > 0 && r.front() == '%')
+				r = r.substr(1);
+
+			// remove anything at the back
+			// find first of space, then remove everything after
+
+			size_t firstSpace = r.find_first_of(' ');
+			if(firstSpace != std::string::npos)
+				r.erase(firstSpace);
+
+			r = std::to_string(r.length()) + r;
+		}
+
+		for(int i = 0; i < ind; i++)
+			r += "P";
+
+		return r;
+	}
+
+
+
+	std::string CodegenInstance::mangleName(Ast::Struct* s, Ast::FuncCall* fc)
+	{
+		std::deque<llvm::Type*> largs;
+		assert(this->getType(s->name));
+		largs.push_back(this->getType(s->name)->first->getPointerTo());	// push the implicit self parameter (as a pointer)
+
+		for(Expr* e : fc->params)
+			largs.push_back(this->getLlvmType(e));
+
+
+		std::string mangledFunc = this->mangleName(fc->name, largs);
+		return this->mangleWithNamespace(s->name) + std::to_string(fc->name.length()) + mangledFunc;
+	}
+
+	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
+	{
+		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
+	}
+
+
+	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
+	{
+		std::string mangled = "";
+
+		for(llvm::Type* e : args)
+			mangled += convertToMangled(this, e);
+
+		return base + (mangled.empty() ? "v" : (mangled));
+	}
+
+	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
+	{
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
+
+		return mangleName(base, a);
+	}
+
+	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<llvm::Type*> a;
+		for(auto arg : args)
+			a.push_back(this->getLlvmType(arg));
+
+		return mangleName(base, a);
+	}
+
+	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
+	{
+		return "enosup";
+	}
+
+
+
+	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
+	{
+		// TODO:
+		return "enosup";
+	}
+	std::string CodegenInstance::mangleWithNamespace(std::string original)
+	{
+		std::deque<std::string> ns;
+		for(std::string np : this->namespaceStack)
+			ns.push_back(np);
+
+		return this->mangleWithNamespace(original, ns);
+	}
+
+
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	{
+		std::string ret = "_Z";
+		ret += (ns.size() > 0 ? "N" : "");
+
+		for(std::string s : ns)
+		{
+			if(s.length() > 0)
+				ret += std::to_string(s.length()) + s;
+		}
+
+		ret += std::to_string(original.length()) + original;
+		if(ns.size() == 0)
+			ret = original;
+
+		return ret;
+	}
+
+	std::string CodegenInstance::mangleRawNamespace(std::string _orig)
+	{
+		std::string original = _orig;
+		std::string ret = "_ZN";
+
+		// we have a name now
+		size_t next = 0;
+		while((next = original.find_first_of("::")) != std::string::npos)
+		{
+			std::string ns = original.substr(0, next);
+			ret += std::to_string(ns.length()) + ns;
+
+			original = original.substr(next, -1);
+
+			if(original.find("::") == 0)
+				original = original.substr(2);
+		}
+
+		if(original.length() > 0)
+			ret += std::to_string(original.length()) + original;
+
+		return ret;
+	}
 
 
 
@@ -409,10 +567,13 @@ namespace Codegen
 		std::string actualType = this->unwrapPointerType(type, &indirections);
 		llvm::Type* ret = this->getLlvmType(actualType);
 
-		while(indirections > 0)
+		if(ret)
 		{
-			ret = ret->getPointerTo();
-			indirections--;
+			while(indirections > 0)
+			{
+				ret = ret->getPointerTo();
+				indirections--;
+			}
 		}
 
 		return ret;
@@ -485,7 +646,7 @@ namespace Codegen
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
-		return (ltype->isIntegerTy() || ltype->isFloatingPointTy());
+		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()));
 	}
 
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
@@ -523,7 +684,7 @@ namespace Codegen
 	bool CodegenInstance::isPtr(Expr* expr)
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
-		return ltype->isPointerTy();
+		return ltype && ltype->isPointerTy();
 	}
 
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
@@ -551,13 +712,17 @@ namespace Codegen
 				}
 				else
 				{
-					TypePair_t* type = getType(expr->type);
+					TypePair_t* type = getType(decl->type);
 					if(!type)
 					{
 						// check if it ends with pointer, and if we have a type that's un-pointered
-						llvm::Type* ret = unwrapPointerType(expr->type);
-						assert(ret);	// if it returned without calling error(), it shouldn't be null.
-						return ret;
+						if(decl->type.find("::") != std::string::npos)
+						{
+							decl->type = this->mangleRawNamespace(decl->type);
+							return this->getLlvmType(decl);
+						}
+
+						return unwrapPointerType(decl->type);
 					}
 
 					return type->first;
@@ -681,6 +846,7 @@ namespace Codegen
 		// turn it into Flax types.
 		std::string ret = rso.str();
 
+		StringReplace(ret, "void", "Void");
 		StringReplace(ret, "i1", "Bool");
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
@@ -720,73 +886,21 @@ namespace Codegen
 		}
 	}
 
-	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
-	{
-		return "__struct#" + this->mangleWithNamespace(s->name) + "_" + orig;
-	}
-
-	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
-	{
-		std::string mangled = "";
-
-		for(llvm::Type* e : args)
-			mangled += "_" + getReadableType(e);
-
-		return base + (mangled.empty() ? "#void" : ("#" + mangled));
-	}
-
-	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
-	{
-		std::deque<llvm::Type*> a;
-		for(auto arg : args)
-			a.push_back(this->getLlvmType(arg));
-
-		return mangleName(base, a);
-	}
-
-	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
-	{
-		std::deque<llvm::Type*> a;
-		for(auto arg : args)
-			a.push_back(this->getLlvmType(arg));
-
-		return mangleName(base, a);
-	}
-
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
-	{
-		return "enosup";
-	}
 
 
 
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
-	{
-		// TODO:
-		return "enosup";
-	}
 
-	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
-	{
-		std::string ret = "__NS";
-		for(std::string s : ns)
-		{
-			if(s.length() > 0)
-				ret += std::to_string(s.length()) + s;
-		}
 
-		ret += std::to_string(original.length()) + original;
-		return ret;
-	}
 
-	std::string CodegenInstance::mangleWithNamespace(std::string original)
-	{
-		std::deque<std::string> ns;
-		for(std::string np : this->namespaceStack)
-			ns.push_back(np);
 
-		return this->mangleWithNamespace(original, ns);
-	}
+
+
+
+
+
+
+
+
 
 
 
@@ -799,7 +913,8 @@ namespace Codegen
 
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
-		return getLlvmType(e)->isArrayTy();
+		llvm::Type* ltype = this->getLlvmType(e);
+		return ltype && ltype->isArrayTy();
 	}
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
