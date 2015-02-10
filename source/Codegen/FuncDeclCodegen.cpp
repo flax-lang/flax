@@ -12,29 +12,48 @@ using namespace Codegen;
 
 Result_t FuncDecl::codegen(CodegenInstance* cgi)
 {
+	// check if empty and if it's an extern. mangle the name to include type info if possible.
+	bool isMemberFunction = (this->parentStruct != nullptr);
+
+
+	this->mangledName = this->name;
+	if(isMemberFunction)
+	{
+		assert(!this->isFFI);
+		std::deque<Expr*> es;
+		for(auto p : this->params)
+			es.push_back(p);
+
+		this->mangledName = cgi->mangleMemberFunction(this->parentStruct, this->name, es);
+
+		VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
+		implicit_self->type = cgi->mangleWithNamespace(this->parentStruct->name) + "*";
+		this->params.push_front(implicit_self);
+	}
+	else
+	{
+		bool alreadyMangled = false;
+		if(!this->isFFI)
+		{
+			alreadyMangled = true;
+			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
+			this->mangledName = cgi->mangleName(this->mangledName, this->params);
+		}
+
+
+		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
+			this->mangledName = cgi->mangleName(this->name, this->params);
+
+		else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
+			this->mangledName = cgi->mangleCppName(this->name, this->params);
+	}
+
 	std::vector<llvm::Type*> argtypes;
 	for(VarDecl* v : this->params)
 	{
 		argtypes.push_back(cgi->getLlvmType(v));
 	}
 
-	// check if empty and if it's an extern. mangle the name to include type info if possible.
-
-	bool alreadyMangled = false;
-	this->mangledName = this->name;
-	if(!this->isFFI && !cgi->isStructCodegen)
-	{
-		alreadyMangled = true;
-		this->mangledName = cgi->mangleWithNamespace(this->mangledName);
-		this->mangledName = cgi->mangleName(this->mangledName, this->params);
-	}
-
-
-	if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
-		this->mangledName = cgi->mangleName(this->name, this->params);
-
-	else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
-		this->mangledName = cgi->mangleCppName(this->name, this->params);
 
 
 
