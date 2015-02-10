@@ -39,10 +39,10 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/lib/flaxlibs/" + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + "/usr/local/lib/flaxlibs/" + imp->module + ".flx";
 
 			struct stat buffer;
-			if(stat (builtinlib.c_str(), &buffer) == 0)
+			if(stat(builtinlib.c_str(), &buffer) == 0)
 			{
 				return builtinlib;
 			}
