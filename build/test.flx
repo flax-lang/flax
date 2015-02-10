@@ -15,7 +15,7 @@ namespace Thing::Troll
 		printf("TESTING\n")
 	}
 
-	struct Flob
+	struct Floby
 	{
 		var haha: Int32 = 691
 		init(d: Int32)
@@ -63,9 +63,9 @@ func main(argc: Int32, argv: Int8**) -> Int32
 
 	// printf("[%s]\n", x.data)
 
-	var d: Thing::Troll::Flob(400)
+	var d: Thing::Troll::Floby(400)
 
-	printf("%d\n", d.haha)
+	printf("%d, %d\n", d.haha, d.food())
 
 	Thing::Troll::test()
 	return 0

@@ -51,15 +51,18 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
-	int i = 0;
-	for(llvm::Function::arg_iterator it = func->arg_begin(); i != func->arg_size(); it++, i++)
+	if(func->arg_size() > 0)
 	{
-		it->setName(this->decl->params[i]->name);
+		int i = 0;
+		for(llvm::Function::arg_iterator it = func->arg_begin(); it != func->arg_end(); it++, i++)
+		{
+			it->setName(this->decl->params[i]->name);
 
-		llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
-		cgi->mainBuilder.CreateStore(it, ai);
+			llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+			cgi->mainBuilder.CreateStore(it, ai);
 
-		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+		}
 	}
 
 

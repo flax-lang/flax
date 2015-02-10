@@ -230,6 +230,7 @@ namespace Ast
 		llvm::PHINode* phi = 0;
 	};
 
+	struct Struct;
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
@@ -239,6 +240,8 @@ namespace Ast
 
 		bool hasVarArg = false;
 		bool isFFI = false;
+
+		Struct* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;
 		std::string name;
 		std::string mangledName;
@@ -398,9 +401,12 @@ namespace Ast
 		bool didCreateType = false;
 		std::deque<llvm::Function*> initFuncs;
 
+		std::string name;
+		std::string mangledName;
+
+		std::deque<std::string> scope;
 		std::deque<std::pair<Expr*, int>> typeList;
 		std::map<std::string, int> nameMap;
-		std::string name;
 		std::deque<VarDecl*> members;
 		std::deque<Func*> funcs;
 		std::deque<llvm::Function*> lfuncs;
