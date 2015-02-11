@@ -49,7 +49,6 @@ namespace Compiler
 			else
 			{
 				Parser::parserError("No module or library with the name '%s' could be found", imp->module.c_str());
-				return 0;
 			}
 		}
 	}

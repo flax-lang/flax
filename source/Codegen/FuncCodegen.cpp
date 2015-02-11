@@ -76,7 +76,9 @@ Result_t Func::codegen(CodegenInstance* cgi)
 	}
 	else
 	{
-		cgi->mainBuilder.CreateRetVoid();
+		// if the last expression was a return, don't add an explicit one.
+		if(this->block->statements.size() > 0 && !dynamic_cast<Return*>(this->block->statements.back()))
+			cgi->mainBuilder.CreateRetVoid();
 	}
 
 	llvm::verifyFunction(*func, &llvm::errs());

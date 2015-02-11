@@ -72,13 +72,13 @@ namespace Compiler
 		return (Flags & (uint64_t) f);
 	}
 
-	bool isPIC = false;
+	static bool isPIC = false;
 	bool getIsPositionIndependent()
 	{
 		return isPIC;
 	}
 
-	std::string mcmodel;
+	static std::string mcmodel;
 	std::string getMcModel()
 	{
 		return mcmodel;
