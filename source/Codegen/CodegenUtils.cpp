@@ -573,7 +573,7 @@ namespace Codegen
 	std::string CodegenInstance::unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = std::string("*");
-		int ptrStrLength = sptr.length();
+		size_t ptrStrLength = sptr.length();
 
 		int& indirections = *_indirections;
 		std::string actualType = type;
@@ -834,7 +834,6 @@ namespace Codegen
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
-		return nullptr;
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }

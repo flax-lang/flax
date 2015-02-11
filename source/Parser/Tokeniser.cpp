@@ -10,7 +10,7 @@
 
 namespace Parser
 {
-	void skipWhitespace(std::string& line)
+	static void skipWhitespace(std::string& line)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
 		if(std::string::npos != startpos)
@@ -264,9 +264,6 @@ namespace Parser
 			else if(id == "import")		tok.type = TType::Import;
 			else if(id == "var")		tok.type = TType::Var;
 			else if(id == "val")		tok.type = TType::Val;
-			// else if(id == "ptr")		tok.type = TType::Ptr;
-			// else if(id == "deref")		tok.type = TType::Deref;
-			// else if(id == "addrof")		tok.type = TType::Addr;
 			else if(id == "for")		tok.type = TType::For;
 			else if(id == "while")		tok.type = TType::While;
 			else if(id == "if")			tok.type = TType::If;
@@ -318,7 +315,7 @@ namespace Parser
 			// parse a string literal
 			std::stringstream ss;
 
-			int i = 1;
+			unsigned long i = 1;
 			for(; stream[i] != '"'; i++)
 			{
 				if(stream[i] == '\\')

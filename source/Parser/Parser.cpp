@@ -17,12 +17,12 @@ using namespace Ast;
 
 namespace Parser
 {
-	Token curtok;
-	PosInfo currentPos;
-	bool isInsideNamespace				= false;
-	Root* rootNode						= nullptr;
-	uint32_t curAttrib					= 0;
-	Codegen::CodegenInstance* curCgi	= nullptr;
+	static Token curtok;
+	static PosInfo currentPos;
+	static bool isInsideNamespace				= false;
+	static Root* rootNode						= nullptr;
+	static uint32_t curAttrib					= 0;
+	static Codegen::CodegenInstance* curCgi	= nullptr;
 
 
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
@@ -33,28 +33,13 @@ namespace Parser
 
 
 	// todo: hack
-	bool isParsingStruct;
-	void parserError(Token token, const char* msg, va_list args)
+	static bool isParsingStruct;
+	static void parserError(Token token, const char* msg, va_list args)
 	{
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, args);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
-	}
-
-
-	// what the fuck
-	void parserError(Token token, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(Token token, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		parserError(token, msg, ap);
-
-		va_end(ap);
-		abort();
-
+		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 	}
 
 	// come on man
@@ -308,7 +293,7 @@ namespace Parser
 		}
 	}
 
-	int64_t getIntegerValue(Token t)
+	static int64_t getIntegerValue(Token t)
 	{
 		assert(t.type == TType::Integer);
 		int base = 10;
@@ -318,12 +303,12 @@ namespace Parser
 		return std::stoll(t.text, nullptr, base);
 	}
 
-	double getDecimalValue(Token t)
+	static double getDecimalValue(Token t)
 	{
 		return std::stod(t.text);
 	}
 
-	uint32_t checkAndApplyAttributes(uint32_t allowed)
+	static uint32_t checkAndApplyAttributes(uint32_t allowed)
 	{
 		static const char* ReadableAttrNames[] =
 		{
@@ -392,7 +377,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					currentPos.line++;
-					// no break
+					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -419,8 +404,7 @@ namespace Parser
 					break;
 
 				default:	// wip: skip shit we don't know/care about for now
-					parserError("wtf?");
-					break;
+					parserError("Unknown token '%s'", tok.text.c_str());
 			}
 		}
 	}
@@ -527,7 +511,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					currentPos.line++;
-					// fallthrough
+					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -541,7 +525,6 @@ namespace Parser
 				case TType::False:
 					tokens.pop_front();
 					return CreateAST(BoolVal, tok, false);
-
 
 				case TType::Private:
 					eat(tokens);
@@ -565,7 +548,6 @@ namespace Parser
 
 				default:
 					parserError("Unexpected token '%s'\n", tok.text.c_str());
-					break;
 			}
 		}
 
@@ -687,6 +669,9 @@ namespace Parser
 			CastedType* ctype = parseType(tokens);
 			ret = ctype->name;
 			delete ctype;
+
+			if(ret == "Void")
+				parserWarn("Explicitly specifying 'Void' as the return type is redundant");
 		}
 		else
 		{
@@ -1223,7 +1208,14 @@ namespace Parser
 		Token front = eat(tokens);
 		assert(front.type == TType::Return);
 
-		return CreateAST(Return, front, parseExpr(tokens));
+		Expr* retval = nullptr;
+
+		// kinda hack: if the next token is a closing brace, then we don't expect an expression
+		// this works most of the time.
+		if(tokens.front().type != TType::RBrace)
+			retval = parseExpr(tokens);
+
+		return CreateAST(Return, front, retval);
 	}
 
 	Expr* parseIf(std::deque<Token>& tokens)

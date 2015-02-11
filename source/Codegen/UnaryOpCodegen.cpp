@@ -33,6 +33,5 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi)
 
 		default:
 			error("this, (%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
-			return Result_t(0, 0);
 	}
 }
