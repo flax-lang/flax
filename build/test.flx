@@ -8,9 +8,10 @@ ffi func printf(x: Int8*, ...) -> Int32
 
 namespace Thing::Troll
 {
-	func test()
+	func test() -> Void
 	{
 		printf("TESTING\n")
+		return
 	}
 
 	struct Floby

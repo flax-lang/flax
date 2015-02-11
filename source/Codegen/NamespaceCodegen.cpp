@@ -70,7 +70,6 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 	}
 
 	return result->codegen(cgi);
-	return Result_t(0, 0);
 }
 
 

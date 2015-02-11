@@ -418,7 +418,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 
 
 	error("(%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __LINE__);
-	return Result_t(0, 0);
 }
 
 

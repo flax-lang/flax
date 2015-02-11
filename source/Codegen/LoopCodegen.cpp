@@ -42,8 +42,15 @@ Result_t Continue::codegen(CodegenInstance* cgi)
 
 Result_t Return::codegen(CodegenInstance* cgi)
 {
-	auto ret = this->val->codegen(cgi);
-	return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
+	if(this->val)
+	{
+		auto ret = this->val->codegen(cgi);
+		return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
+	}
+	else
+	{
+		return Result_t(cgi->mainBuilder.CreateRetVoid(), 0, ResultType::BreakCodegen);
+	}
 }
 
 Result_t WhileLoop::codegen(CodegenInstance* cgi)
