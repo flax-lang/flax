@@ -96,11 +96,17 @@ namespace Compiler
 					delete rcgi;
 				}
 
+				// add to both imported and exported lists
 				for(auto v : r->publicFuncs)
+				{
 					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
-
+					root->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+				}
 				for(auto v : r->publicTypes)
+				{
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+				}
 			}
 		}
 

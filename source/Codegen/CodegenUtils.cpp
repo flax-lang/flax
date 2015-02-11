@@ -717,19 +717,20 @@ namespace Codegen
 	{
 		assert(expr);
 		{
-			VarRef* ref			= nullptr;
-			VarDecl* decl		= nullptr;
-			FuncCall* fc		= nullptr;
-			FuncDecl* fd		= nullptr;
-			Func* f				= nullptr;
-			StringLiteral* sl	= nullptr;
-			UnaryOp* uo			= nullptr;
-			CastedType* ct		= nullptr;
-			MemberAccess* ma	= nullptr;
-			BinOp* bo			= nullptr;
-			Number* nm			= nullptr;
+			VarRef* ref			= dynamic_cast<VarRef*>(expr);
+			VarDecl* decl		= dynamic_cast<VarDecl*>(expr);
+			FuncCall* fc		= dynamic_cast<FuncCall*>(expr);
+			FuncDecl* fd		= dynamic_cast<FuncDecl*>(expr);
+			Func* f				= dynamic_cast<Func*>(expr);
+			StringLiteral* sl	= dynamic_cast<StringLiteral*>(expr);
+			UnaryOp* uo			= dynamic_cast<UnaryOp*>(expr);
+			CastedType* ct		= dynamic_cast<CastedType*>(expr);
+			MemberAccess* ma	= dynamic_cast<MemberAccess*>(expr);
+			BinOp* bo			= dynamic_cast<BinOp*>(expr);
+			Number* nm			= dynamic_cast<Number*>(expr);
+			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
 
-			if((decl = dynamic_cast<VarDecl*>(expr)))
+			if(decl)
 			{
 				if(decl->type == "Inferred")
 				{
@@ -754,11 +755,11 @@ namespace Codegen
 					return type->first;
 				}
 			}
-			else if((ref = dynamic_cast<VarRef*>(expr)))
+			else if(ref)
 			{
 				return getLlvmType(getSymDecl(ref, ref->name));
 			}
-			else if((uo = dynamic_cast<UnaryOp*>(expr)))
+			else if(uo)
 			{
 				if(uo->op == ArithmeticOp::Deref)
 					return this->getLlvmType(uo->expr)->getPointerElementType();
@@ -769,11 +770,11 @@ namespace Codegen
 				else
 					return this->getLlvmType(uo->expr);
 			}
-			else if((ct = dynamic_cast<CastedType*>(expr)))
+			else if(ct)
 			{
 				return unwrapPointerType(ct->name);
 			}
-			else if((fc = dynamic_cast<FuncCall*>(expr)))
+			else if(fc)
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
@@ -781,11 +782,11 @@ namespace Codegen
 
 				return getLlvmType(fp->second);
 			}
-			else if((f = dynamic_cast<Func*>(expr)))
+			else if(f)
 			{
 				return getLlvmType(f->decl);
 			}
-			else if((fd = dynamic_cast<FuncDecl*>(expr)))
+			else if(fd)
 			{
 				TypePair_t* type = getType(fd->type);
 				if(!type)
@@ -802,15 +803,15 @@ namespace Codegen
 
 				return type->first;
 			}
-			else if((sl = dynamic_cast<StringLiteral*>(expr)))
+			else if(sl)
 			{
 				return llvm::Type::getInt8PtrTy(getContext());
 			}
-			else if((ma = dynamic_cast<MemberAccess*>(expr)))
+			else if(ma)
 			{
 				return this->getLlvmType(ma->member);
 			}
-			else if((bo = dynamic_cast<BinOp*>(expr)))
+			else if(bo)
 			{
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
@@ -822,9 +823,13 @@ namespace Codegen
 					return this->getLlvmType(bo->right);
 				}
 			}
-			else if((nm = dynamic_cast<Number*>(expr)))
+			else if(nm)
 			{
 				return nm->codegen(this).result.first->getType();
+			}
+			else if(bv)
+			{
+				return llvm::Type::getInt1Ty(getContext());
 			}
 		}
 

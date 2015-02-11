@@ -292,8 +292,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	llvm::Value* rhsptr = r.second;
-
 	cgi->autoCastType(lhs, rhs);
 
 	// if adding integer to pointer
@@ -443,7 +441,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		if(!p)
 			error(this, "Invalid type");
 
-		return cgi->callOperatorOnStruct(p, valptr.second, op, rhsptr);
+		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
 	}
 	else
 	{

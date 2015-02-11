@@ -242,16 +242,16 @@ Result_t OpOverload::codegen(CodegenInstance* cgi)
 		if(decl->type != "Bool")
 			error("Operator overload for '==' must return a boolean value");
 
-		llvm::Type* ptype = cgi->getLlvmType(decl->params.front());
-		assert(ptype);
+		// llvm::Type* ptype = cgi->getLlvmType(decl->params.front());
+		// assert(ptype);
 
-		llvm::Type* stype = cgi->getType(this->str->name)->first;
+		// llvm::Type* stype = cgi->getType(this->str->name)->first;
 
-		if(ptype->getPointerTo() == stype->getPointerTo())
-			error(this, "Argument of overload operators (usually 'other') must be a pointer.");
+		// if(ptype->getPointerTo() == stype->getPointerTo())
+		// 	error(this, "Argument of overload operators (usually 'other') must be a pointer.");
 
-		if(ptype != stype->getPointerTo())
-			error(this, "Type mismatch [%s, %s]", cgi->getReadableType(ptype).c_str(), cgi->getReadableType(stype).c_str());
+		// if(ptype != stype->getPointerTo())
+		// 	error(this, "Type mismatch [%s, %s]", cgi->getReadableType(ptype).c_str(), cgi->getReadableType(stype).c_str());
 	}
 	else
 	{
