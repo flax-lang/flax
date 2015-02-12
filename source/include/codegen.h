@@ -141,7 +141,7 @@ namespace Codegen
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
-		void verifyAllPathsReturn(Ast::Func* func);
+		bool verifyAllPathsReturn(Ast::Func* func);
 		llvm::Type* unwrapPointerType(std::string type);
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
