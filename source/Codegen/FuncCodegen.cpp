@@ -67,12 +67,13 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 
 	// codegen everything in the body.
-	this->block->codegen(cgi);
+	Result_t lastval = this->block->codegen(cgi);
 
 	// check if we're not returning void
+	bool isImplicitReturn = false;
 	if(this->decl->type != "Void")
 	{
-		cgi->verifyAllPathsReturn(this);
+		isImplicitReturn = cgi->verifyAllPathsReturn(this);
 	}
 	else
 	{
@@ -80,6 +81,9 @@ Result_t Func::codegen(CodegenInstance* cgi)
 		if(this->block->statements.size() > 0 && !dynamic_cast<Return*>(this->block->statements.back()))
 			cgi->mainBuilder.CreateRetVoid();
 	}
+
+	if(isImplicitReturn)
+		cgi->mainBuilder.CreateRet(lastval.result.first);
 
 	llvm::verifyFunction(*func, &llvm::errs());
 	cgi->Fpm->run(*func);
