@@ -729,6 +729,7 @@ namespace Codegen
 			BinOp* bo			= dynamic_cast<BinOp*>(expr);
 			Number* nm			= dynamic_cast<Number*>(expr);
 			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
+			Return* retr		= dynamic_cast<Return*>(expr);
 
 			if(decl)
 			{
@@ -820,7 +821,22 @@ namespace Codegen
 				}
 				else
 				{
-					return this->getLlvmType(bo->right);
+					// check if both are integers
+					llvm::Type* ltype = this->getLlvmType(bo->left);
+					llvm::Type* rtype = this->getLlvmType(bo->right);
+
+					if(ltype->isIntegerTy() && rtype->isIntegerTy())
+					{
+						if(ltype->getIntegerBitWidth() > rtype->getIntegerBitWidth())
+							return ltype;
+
+						return rtype;
+					}
+					else
+					{
+						// usually the right
+						return this->getLlvmType(bo->right);
+					}
 				}
 			}
 			else if(nm)
@@ -831,6 +847,19 @@ namespace Codegen
 			{
 				return llvm::Type::getInt1Ty(getContext());
 			}
+			else if(retr)
+			{
+				return this->getLlvmType(retr->val);
+			}
+			else if(dynamic_cast<DummyExpr*>(expr))
+			{
+				return llvm::Type::getVoidTy(getContext());
+			}
+			else if(dynamic_cast<If*>(expr))
+			{
+				return llvm::Type::getVoidTy(getContext());
+			}
+
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
@@ -912,7 +941,12 @@ namespace Codegen
 
 		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy())
 		{
-			right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+			// always cast to a higher sized type
+			if(left->getType()->getIntegerBitWidth() > right->getType()->getIntegerBitWidth())
+				right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+
+			else
+				left = this->mainBuilder.CreateIntCast(left, right->getType(), false);
 		}
 	}
 
@@ -1070,7 +1104,6 @@ namespace Codegen
 
 
 		// this is the properly adjusted thing
-		printf("ptr arith: %s, %s\n", this->getReadableType(rhs->getType()).c_str(), this->getReadableType(intval->getType()).c_str());
 		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
 
 
@@ -1143,10 +1176,10 @@ namespace Codegen
 		return r;
 	}
 
-	void CodegenInstance::verifyAllPathsReturn(Func* func)
+	bool CodegenInstance::verifyAllPathsReturn(Func* func)
 	{
 		if(this->getLlvmType(func)->isVoidTy())
-			return;
+			return false;
 
 		// check the block
 		if(func->block->statements.size() == 0)
@@ -1155,11 +1188,13 @@ namespace Codegen
 
 		// now loop through all exprs in the block
 		Return* ret = 0;
+		Expr* final = 0;
 		for(Expr* e : func->block->statements)
 		{
-			If* i = nullptr;
+			If* i = dynamic_cast<If*>(e);
+			final = e;
 
-			if((i = dynamic_cast<If*>(e)))
+			if(i)
 				ret = recursiveVerifyBranch(this, func, i);
 
 			// "top level" returns we will just accept.
@@ -1167,10 +1202,14 @@ namespace Codegen
 				break;
 		}
 
+		if(!ret && this->getLlvmType(final) == this->getLlvmType(func))
+			return true;
+
 		if(!ret)
 			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
 
 		verifyReturnType(this, func, func->block, ret);
+		return false;
 	}
 }
 
