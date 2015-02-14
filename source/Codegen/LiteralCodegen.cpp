@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Number::codegen(CodegenInstance* cgi)
+Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// check builtin type
 	if(!this->decimal)
@@ -26,14 +26,20 @@ Result_t Number::codegen(CodegenInstance* cgi)
 	}
 }
 
-Result_t BoolVal::codegen(CodegenInstance* cgi)
+Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, this->val, false)), 0);
 }
 
-Result_t StringLiteral::codegen(CodegenInstance* cgi)
+Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
-	llvm::Value* alloca = cgi->mainBuilder.CreateAlloca(cgi->stringType);
+	llvm::Value* alloca = nullptr;
+
+	if(lhsPtr)	alloca = lhsPtr;
+	else		alloca = cgi->mainBuilder.CreateAlloca(cgi->stringType);
+
+	printf("[%s]\n", cgi->getReadableType(alloca).c_str());
+
 	llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
 	llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
 

@@ -224,7 +224,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi)
+Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->left && this->right);
 	ValPtr_t valptr = this->left->codegen(cgi).result;
@@ -240,7 +240,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		lhs = valptr.first;
-		rhs = this->right->codegen(cgi).result.first;
+		rhs = this->right->codegen(cgi, valptr.second).result.first;
 
 		cgi->autoCastType(lhs, rhs);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);

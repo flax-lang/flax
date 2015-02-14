@@ -16,7 +16,7 @@ namespace Codegen
 	Result_t handleBuiltinTypeAccess(CodegenInstance* cgi, MemberAccess* ma);
 }
 
-Result_t MemberAccess::codegen(CodegenInstance* cgi)
+Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// gen the var ref on the left.
 	ValPtr_t p = this->target->codegen(cgi).result;
@@ -30,8 +30,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi)
 		// it's required for CreateStructGEP, so we'll have to make a temp variable
 		// then store the result of the LHS into it.
 
-		selfPtr = cgi->mainBuilder.CreateAlloca(self->getType());
-		cgi->mainBuilder.CreateStore(self, selfPtr);
+		if(lhsPtr)
+		{
+			selfPtr = lhsPtr;
+		}
+		else
+		{
+			selfPtr = cgi->mainBuilder.CreateAlloca(self->getType());
+			cgi->mainBuilder.CreateStore(self, selfPtr);
+		}
 	}
 
 	bool isPtr = false;
