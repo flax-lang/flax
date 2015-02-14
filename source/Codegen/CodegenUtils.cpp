@@ -107,7 +107,11 @@ namespace Codegen
 
 		cgi->stringType = cgi->mainModule->getTypeByName("__BuiltinStringType");
 		if(!cgi->stringType)
-			cgi->stringType = llvm::StructType::create("__BuiltinStringType", llvm::Type::getInt64Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()), NULL);
+		{
+			llvm::StructType* stype = llvm::StructType::create(cgi->getContext(), "__BuiltinStringType");
+			llvm::Type* typearr[] = { llvm::Type::getInt32Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()) };
+			stype->setBody(typearr, true);
+		}
 
 
 		cgi->rootNode->codegen(cgi);

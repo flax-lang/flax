@@ -37,7 +37,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi)
 	llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
 	llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
 
-	llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), this->str.length());
+	llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(cgi->getContext()), this->str.length());
 	llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
 
 	cgi->mainBuilder.CreateStore(lengthVal, lengthPtr);
