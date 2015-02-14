@@ -33,5 +33,43 @@ Result_t BoolVal::codegen(CodegenInstance* cgi)
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi)
 {
-	return Result_t(cgi->mainBuilder.CreateGlobalStringPtr(this->str), 0);
+	llvm::Value* alloca = cgi->mainBuilder.CreateAlloca(cgi->stringType);
+	llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
+	llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
+
+	llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), this->str.length());
+	llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
+
+	cgi->mainBuilder.CreateStore(lengthVal, lengthPtr);
+	cgi->mainBuilder.CreateStore(stringVal, stringPtr);
+
+	llvm::Value* val = cgi->mainBuilder.CreateLoad(alloca);
+	return Result_t(val, alloca);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

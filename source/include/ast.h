@@ -15,7 +15,6 @@
 #include <map>
 #include <string>
 #include <deque>
-#include "parser.h"
 
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
@@ -30,6 +29,15 @@ namespace Ast
 	struct VarDecl;
 	struct FuncDecl;
 	struct BreakableBracedBlock;
+}
+
+namespace Parser
+{
+	struct PosInfo
+	{
+		uint64_t line;
+		std::string file;
+	};
 }
 
 namespace Codegen

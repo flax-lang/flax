@@ -22,7 +22,6 @@ namespace Parser
 	static bool isInsideNamespace				= false;
 	static Root* rootNode						= nullptr;
 	static uint32_t curAttrib					= 0;
-	static Codegen::CodegenInstance* curCgi	= nullptr;
 
 
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
@@ -78,42 +77,6 @@ namespace Parser
 	}
 
 
-	// woah shit it's forward declarations
-	// note: all these are expected to pop at least one token from the front of the list.
-
-	Expr* parseIf(std::deque<Token>& tokens);
-	void parseAll(std::deque<Token>& tokens);
-	Func* parseFunc(std::deque<Token>& tokens);
-	Expr* parseExpr(std::deque<Token>& tokens);
-	Expr* parseUnary(std::deque<Token>& tokens);
-	Alloc* parseAlloc(std::deque<Token>& tokens);
-	ForLoop* parseFor(std::deque<Token>& tokens);
-	Expr* parseIdExpr(std::deque<Token>& tokens);
-	Break* parseBreak(std::deque<Token>& tokens);
-	Expr* parsePrimary(std::deque<Token>& tokens);
-	Expr* parseInitFunc(std::deque<Token>& tokens);
-	Struct* parseStruct(std::deque<Token>& tokens);
-	Import* parseImport(std::deque<Token>& tokens);
-	Return* parseReturn(std::deque<Token>& tokens);
-	Number* parseNumber(std::deque<Token>& tokens);
-	void parseAttribute(std::deque<Token>& tokens);
-	CastedType* parseType(std::deque<Token>& tokens);
-	VarDecl* parseVarDecl(std::deque<Token>& tokens);
-	WhileLoop* parseWhile(std::deque<Token>& tokens);
-	Dealloc* parseDealloc(std::deque<Token>& tokens);
-	Continue* parseContinue(std::deque<Token>& tokens);
-	Func* parseTopLevelExpr(std::deque<Token>& tokens);
-	FuncDecl* parseFuncDecl(std::deque<Token>& tokens);
-	Expr* parseParenthesised(std::deque<Token>& tokens);
-	OpOverload* parseOpOverload(std::deque<Token>& tokens);
-	NamespaceDecl* parseNamespace(std::deque<Token>& tokens);
-	BracedBlock* parseBracedBlock(std::deque<Token>& tokens);
-	StringLiteral* parseStringLiteral(std::deque<Token>& tokens);
-	ForeignFuncDecl* parseForeignFunc(std::deque<Token>& tokens);
-	Expr* parseFuncCall(std::deque<Token>& tokens, std::string id);
-	Expr* parseRhs(std::deque<Token>& tokens, Expr* expr, int prio);
-
-
 	std::string getModuleName(std::string filename)
 	{
 		size_t lastdot = filename.find_last_of(".");
@@ -124,33 +87,6 @@ namespace Parser
 			modname = modname.substr(sep + 1, modname.length() - sep - 1);
 
 		return modname;
-	}
-
-	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
-	{
-		curCgi = cgi;
-
-		Token t;
-		currentPos.file = filename;
-		currentPos.line = 1;
-		curAttrib = 0;
-
-		std::deque<Token> tokens;
-		std::deque<Token> tokenPtrs;
-
-		while((t = getNextToken(str, currentPos)).text.size() > 0)
-		{
-			tokens.push_back(t);
-			tokenPtrs.push_back(t);
-		}
-
-		rootNode = new Root();
-		currentPos.file = filename;
-		currentPos.line = 1;
-
-		parseAll(tokens);
-
-		return rootNode;
 	}
 
 	// helpers
@@ -339,6 +275,28 @@ namespace Parser
 	}
 
 
+
+	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
+	{
+		Token t;
+		currentPos.file = filename;
+		currentPos.line = 1;
+		curAttrib = 0;
+
+		std::deque<Token> tokens;
+
+		while((t = getNextToken(str, currentPos)).text.size() > 0)
+			tokens.push_back(t);
+
+		rootNode = new Root();
+		currentPos.file = filename;
+		currentPos.line = 1;
+
+		skipNewline(tokens);
+		parseAll(tokens);
+
+		return rootNode;
+	}
 
 
 
