@@ -99,13 +99,19 @@ namespace Codegen
 
 
 
+		// llvm::Types for non-primitive (POD) builtin types (string)
+		llvm::Type* stringType = 0;
+
+
+
+
 
 
 
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
-		void autoCastType(llvm::Value* left, llvm::Value*& right);
+		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rightPtr = 0);
 
 
 		bool isPtr(Ast::Expr* e);
@@ -146,7 +152,6 @@ namespace Codegen
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
-		void autoCastLlvmType(llvm::Value*& left, llvm::Value*& right);
 		std::string unwrapPointerType(std::string type, int* indirections);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
@@ -158,7 +163,6 @@ namespace Codegen
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
-
 }
 
 
