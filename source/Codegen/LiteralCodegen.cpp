@@ -38,8 +38,6 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	if(lhsPtr)	alloca = lhsPtr;
 	else		alloca = cgi->mainBuilder.CreateAlloca(cgi->stringType);
 
-	printf("[%s]\n", cgi->getReadableType(alloca).c_str());
-
 	llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
 	llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
 

@@ -690,11 +690,16 @@ namespace Codegen
 		}
 	}
 
+	bool CodegenInstance::isBuiltinType(llvm::Type* ltype)
+	{
+		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()
+			|| (ltype->isStructTy() && ltype->getStructName() == "__BuiltinStringType")));
+	}
+
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
-		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()
-			|| (ltype->isStructTy() && ltype->getStructName() == "__BuiltinStringType")));
+		return this->isBuiltinType(ltype);
 	}
 
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
@@ -937,6 +942,7 @@ namespace Codegen
 		StringReplace(ret, "i64", "Int64");
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
+		StringReplace(ret, "__BuiltinStringType", "String");
 
 		return ret;
 	}

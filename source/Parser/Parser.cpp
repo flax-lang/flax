@@ -1049,12 +1049,12 @@ namespace Parser
 
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
-		if(tokens.front().type == TType::LParen)
+		if(tokens.front().type == TType::LSquare)
 		{
 			eat(tokens);
 			ret->count = parseExpr(tokens);
-			if(eat(tokens).type != TType::RParen)
-				parserError("Expected ')' after alloc(num)");
+			if(eat(tokens).type != TType::RSquare)
+				parserError("Expected ']' after alloc[num]");
 		}
 
 		Expr* type = parseIdExpr(tokens);
