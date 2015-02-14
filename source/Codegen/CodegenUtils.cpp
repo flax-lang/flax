@@ -72,17 +72,29 @@ namespace Codegen
 			OurFPM.add(llvm::createCFGSimplificationPass());
 
 			// hmm.
-			OurFPM.add(llvm::createScalarizerPass());
 			OurFPM.add(llvm::createLoadCombinePass());
 			OurFPM.add(llvm::createConstantHoistingPass());
+			OurFPM.add(llvm::createDelinearizationPass());
+			OurFPM.add(llvm::createFlattenCFGPass());
+			OurFPM.add(llvm::createScalarizerPass());
+			OurFPM.add(llvm::createSinkingPass());
 			OurFPM.add(llvm::createStructurizeCFGPass());
+			OurFPM.add(llvm::createInstructionSimplifierPass());
+			OurFPM.add(llvm::createDeadStoreEliminationPass());
+			OurFPM.add(llvm::createDeadInstEliminationPass());
+			OurFPM.add(llvm::createMemCpyOptPass());
+			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
+
+			OurFPM.add(llvm::createSCCPPass());
+			OurFPM.add(llvm::createAggressiveDCEPass());
 		}
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
+		OurFPM.add(llvm::createConstantPropagationPass());
+		OurFPM.add(llvm::createDeadCodeEliminationPass());
 		OurFPM.doInitialization();
-
 
 		// Set the global so the code gen can use this.
 		cgi->Fpm = &OurFPM;
@@ -818,7 +830,7 @@ namespace Codegen
 			}
 			else if(sl)
 			{
-				return llvm::Type::getInt8PtrTy(getContext());
+				return this->stringType;
 			}
 			else if(ma)
 			{

@@ -37,7 +37,7 @@ static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* 
 
 
 
-Result_t FuncCall::codegen(CodegenInstance* cgi)
+Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// always try the type first.
 	if(cgi->getType(this->name) != nullptr)

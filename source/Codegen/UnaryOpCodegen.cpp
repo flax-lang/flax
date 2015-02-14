@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t UnaryOp::codegen(CodegenInstance* cgi)
+Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->expr);
 	Result_t res = this->expr->codegen(cgi);

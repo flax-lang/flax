@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Struct::codegen(CodegenInstance* cgi)
+Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
@@ -211,7 +211,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 
-Result_t OpOverload::codegen(CodegenInstance* cgi)
+Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// this is never really called for actual codegen. operators are handled as functions,
 	// so we just put them into the structs' funcs.
