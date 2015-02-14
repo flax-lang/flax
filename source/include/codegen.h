@@ -119,6 +119,7 @@ namespace Codegen
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
+		bool isBuiltinType(llvm::Type* e);
 		bool isDuplicateType(std::string name);
 
 
@@ -163,6 +164,7 @@ namespace Codegen
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
+	Ast::Result_t handleBuiltinTypeAccess(CodegenInstance* cgi, Ast::MemberAccess* ma);
 }
 
 
