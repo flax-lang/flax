@@ -10,7 +10,7 @@
 #include <cinttypes>
 
 #include <sys/stat.h>
-#include "include/ast.h"
+#include "include/parser.h"
 #include "include/codegen.h"
 #include "include/compiler.h"
 
@@ -119,7 +119,6 @@ namespace Compiler
 		oname += ".bc";
 
 		list.push_back(oname);
-
 
 		return root;
 	}

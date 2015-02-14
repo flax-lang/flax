@@ -162,6 +162,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 		valptr = r.second;
 		ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
 	}
+	else
+	{
+		ai = cgi->allocateInstanceInBlock(this);
+	}
 
 	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 

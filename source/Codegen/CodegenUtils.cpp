@@ -12,7 +12,7 @@
 #include <typeinfo>
 #include <iostream>
 #include <cinttypes>
-#include "../include/ast.h"
+#include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
 #include "../include/compiler.h"
@@ -104,6 +104,11 @@ namespace Codegen
 			llvm::StructType* str = llvm::cast<llvm::StructType>(pair.second);
 			cgi->addNewType(str, pair.first, ExprType::Struct);
 		}
+
+		cgi->stringType = cgi->mainModule->getTypeByName("__BuiltinStringType");
+		if(!cgi->stringType)
+			cgi->stringType = llvm::StructType::create("__BuiltinStringType", llvm::Type::getInt64Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()), NULL);
+
 
 		cgi->rootNode->codegen(cgi);
 		cgi->popScope();
@@ -672,7 +677,8 @@ namespace Codegen
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
-		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()));
+		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()
+			|| (ltype->isStructTy() && ltype->getStructName() == "__BuiltinStringType")));
 	}
 
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
@@ -691,6 +697,8 @@ namespace Codegen
 		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
+
+		else if(type == "String")	return this->stringType;
 		else return nullptr;
 	}
 
@@ -917,24 +925,17 @@ namespace Codegen
 		return ret;
 	}
 
+	std::string CodegenInstance::getReadableType(llvm::Value* val)
+	{
+		return this->getReadableType(val->getType());
+	}
+
 	std::string CodegenInstance::getReadableType(Expr* expr)
 	{
-		return getReadableType(getLlvmType(expr));
+		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastLlvmType(llvm::Value*& lhs, llvm::Value*& rhs)
-	{
-		// assert(lhs);
-		// assert(rhs);
-
-		// if(lhs->getType()->isIntegerTy() && rhs->getType()->isFloatingPointTy())
-		// 	lhs = this->mainBuilder.CreateSIToFP(lhs, rhs->getType());
-
-		// else if(rhs->getType()->isIntegerTy() && lhs->getType()->isFloatingPointTy())
-		// 	rhs = this->mainBuilder.CreateSIToFP(rhs, lhs->getType());
-	}
-
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right)
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rightPtr)
 	{
 		assert(left);
 		assert(right);
@@ -947,6 +948,24 @@ namespace Codegen
 
 			else
 				left = this->mainBuilder.CreateIntCast(left, right->getType(), false);
+		}
+		else if(left->getType() == llvm::Type::getInt8PtrTy(this->getContext()))
+		{
+			llvm::Value* sptr = 0;
+			if(right->getType()->isStructTy() && right->getType()->getStructName() == "__BuiltinStringType")
+			{
+				sptr = rightPtr;
+			}
+			else if(right->getType()->isPointerTy() && right->getType()->getPointerElementType()->isStructTy()
+				&& right->getType()->getPointerElementType()->getStructName() == "__BuiltinStringType")
+			{
+				sptr = this->mainBuilder.CreateLoad(right);
+			}
+
+			if(sptr)
+			{
+				right = this->mainBuilder.CreateLoad(this->mainBuilder.CreateStructGEP(sptr, 1));
+			}
 		}
 	}
 
