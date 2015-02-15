@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t VarRef::codegen(CodegenInstance* cgi)
+Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
@@ -119,7 +119,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	return val;
 }
 
-Result_t VarDecl::codegen(CodegenInstance* cgi)
+Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
@@ -138,29 +138,29 @@ Result_t VarDecl::codegen(CodegenInstance* cgi)
 			error(this, "Type inference requires an initial assignment to infer type");
 
 		assert(!cmplxtype);
-		auto r = this->initVal->codegen(cgi).result;
+
+
+		ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
+		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
 		valptr = r.second;
+		this->inferredLType = val->getType();
 
 		if(cgi->isBuiltinType(this->initVal))
-		{
 			this->type = cgi->getReadableType(this->initVal);
-		}
-		else
-		{
-			// it's not a builtin type
-			ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
-			this->inferredLType = val->getType();
-		}
 	}
 	else if(this->initVal)
 	{
-		auto r = this->initVal->codegen(cgi).result;
+		ai = cgi->allocateInstanceInBlock(this);
+		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
 		valptr = r.second;
-		ai = cgi->allocateInstanceInBlock(val->getType(), this->name);
+	}
+	else
+	{
+		ai = cgi->allocateInstanceInBlock(this);
 	}
 
 	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);

@@ -13,7 +13,7 @@ namespace Parser
 	static void skipWhitespace(std::string& line)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
-		if(std::string::npos != startpos)
+		if(startpos != std::string::npos )
 			line = line.substr(startpos);
 	}
 
@@ -303,9 +303,10 @@ namespace Parser
 				|| id == "Uint64"
 				|| id == "Float32"
 				|| id == "Float64"
-				|| id == "AnyPtr"
+				|| id == "Any"
 				|| id == "Bool"
 				|| id == "UintPtr"
+				|| id == "String"
 				|| id == "Void")		tok.type = TType::BuiltinType;
 
 			else						tok.type = TType::Identifier;
