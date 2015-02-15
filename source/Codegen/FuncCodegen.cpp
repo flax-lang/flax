@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	Result_t lastval(0, 0);
 	for(Expr* e : this->statements)
@@ -23,7 +23,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi)
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi)
+Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
@@ -67,17 +67,23 @@ Result_t Func::codegen(CodegenInstance* cgi)
 
 
 	// codegen everything in the body.
-	this->block->codegen(cgi);
+	Result_t lastval = this->block->codegen(cgi);
 
 	// check if we're not returning void
+	bool isImplicitReturn = false;
 	if(this->decl->type != "Void")
 	{
-		cgi->verifyAllPathsReturn(this);
+		isImplicitReturn = cgi->verifyAllPathsReturn(this);
 	}
 	else
 	{
-		cgi->mainBuilder.CreateRetVoid();
+		// if the last expression was a return, don't add an explicit one.
+		if(this->block->statements.size() > 0 && !dynamic_cast<Return*>(this->block->statements.back()))
+			cgi->mainBuilder.CreateRetVoid();
 	}
+
+	if(isImplicitReturn)
+		cgi->mainBuilder.CreateRet(lastval.result.first);
 
 	llvm::verifyFunction(*func, &llvm::errs());
 	cgi->Fpm->run(*func);

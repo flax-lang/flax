@@ -12,7 +12,7 @@
 #include <typeinfo>
 #include <iostream>
 #include <cinttypes>
-#include "../include/ast.h"
+#include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
 #include "../include/compiler.h"
@@ -72,17 +72,29 @@ namespace Codegen
 			OurFPM.add(llvm::createCFGSimplificationPass());
 
 			// hmm.
-			OurFPM.add(llvm::createScalarizerPass());
 			OurFPM.add(llvm::createLoadCombinePass());
 			OurFPM.add(llvm::createConstantHoistingPass());
+			OurFPM.add(llvm::createDelinearizationPass());
+			OurFPM.add(llvm::createFlattenCFGPass());
+			OurFPM.add(llvm::createScalarizerPass());
+			OurFPM.add(llvm::createSinkingPass());
 			OurFPM.add(llvm::createStructurizeCFGPass());
+			OurFPM.add(llvm::createInstructionSimplifierPass());
+			OurFPM.add(llvm::createDeadStoreEliminationPass());
+			OurFPM.add(llvm::createDeadInstEliminationPass());
+			OurFPM.add(llvm::createMemCpyOptPass());
+			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
+
+			OurFPM.add(llvm::createSCCPPass());
+			OurFPM.add(llvm::createAggressiveDCEPass());
 		}
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
+		OurFPM.add(llvm::createConstantPropagationPass());
+		OurFPM.add(llvm::createDeadCodeEliminationPass());
 		OurFPM.doInitialization();
-
 
 		// Set the global so the code gen can use this.
 		cgi->Fpm = &OurFPM;
@@ -104,6 +116,15 @@ namespace Codegen
 			llvm::StructType* str = llvm::cast<llvm::StructType>(pair.second);
 			cgi->addNewType(str, pair.first, ExprType::Struct);
 		}
+
+		cgi->stringType = cgi->mainModule->getTypeByName("__BuiltinStringType");
+		if(!cgi->stringType)
+		{
+			llvm::StructType* stype = llvm::StructType::create(cgi->getContext(), "__BuiltinStringType");
+			llvm::Type* typearr[] = { llvm::Type::getInt32Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()) };
+			stype->setBody(typearr, true);
+		}
+
 
 		cgi->rootNode->codegen(cgi);
 		cgi->popScope();
@@ -573,7 +594,7 @@ namespace Codegen
 	std::string CodegenInstance::unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = std::string("*");
-		int ptrStrLength = sptr.length();
+		size_t ptrStrLength = sptr.length();
 
 		int& indirections = *_indirections;
 		std::string actualType = type;
@@ -669,10 +690,16 @@ namespace Codegen
 		}
 	}
 
+	bool CodegenInstance::isBuiltinType(llvm::Type* ltype)
+	{
+		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()
+			|| (ltype->isStructTy() && ltype->getStructName() == "__BuiltinStringType")));
+	}
+
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
-		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()));
+		return this->isBuiltinType(ltype);
 	}
 
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
@@ -691,6 +718,8 @@ namespace Codegen
 		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
+
+		else if(type == "String")	return this->stringType;
 		else return nullptr;
 	}
 
@@ -717,19 +746,21 @@ namespace Codegen
 	{
 		assert(expr);
 		{
-			VarRef* ref			= nullptr;
-			VarDecl* decl		= nullptr;
-			FuncCall* fc		= nullptr;
-			FuncDecl* fd		= nullptr;
-			Func* f				= nullptr;
-			StringLiteral* sl	= nullptr;
-			UnaryOp* uo			= nullptr;
-			CastedType* ct		= nullptr;
-			MemberAccess* ma	= nullptr;
-			BinOp* bo			= nullptr;
-			Number* nm			= nullptr;
+			VarRef* ref			= dynamic_cast<VarRef*>(expr);
+			VarDecl* decl		= dynamic_cast<VarDecl*>(expr);
+			FuncCall* fc		= dynamic_cast<FuncCall*>(expr);
+			FuncDecl* fd		= dynamic_cast<FuncDecl*>(expr);
+			Func* f				= dynamic_cast<Func*>(expr);
+			StringLiteral* sl	= dynamic_cast<StringLiteral*>(expr);
+			UnaryOp* uo			= dynamic_cast<UnaryOp*>(expr);
+			CastedType* ct		= dynamic_cast<CastedType*>(expr);
+			MemberAccess* ma	= dynamic_cast<MemberAccess*>(expr);
+			BinOp* bo			= dynamic_cast<BinOp*>(expr);
+			Number* nm			= dynamic_cast<Number*>(expr);
+			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
+			Return* retr		= dynamic_cast<Return*>(expr);
 
-			if((decl = dynamic_cast<VarDecl*>(expr)))
+			if(decl)
 			{
 				if(decl->type == "Inferred")
 				{
@@ -754,11 +785,11 @@ namespace Codegen
 					return type->first;
 				}
 			}
-			else if((ref = dynamic_cast<VarRef*>(expr)))
+			else if(ref)
 			{
 				return getLlvmType(getSymDecl(ref, ref->name));
 			}
-			else if((uo = dynamic_cast<UnaryOp*>(expr)))
+			else if(uo)
 			{
 				if(uo->op == ArithmeticOp::Deref)
 					return this->getLlvmType(uo->expr)->getPointerElementType();
@@ -769,11 +800,11 @@ namespace Codegen
 				else
 					return this->getLlvmType(uo->expr);
 			}
-			else if((ct = dynamic_cast<CastedType*>(expr)))
+			else if(ct)
 			{
 				return unwrapPointerType(ct->name);
 			}
-			else if((fc = dynamic_cast<FuncCall*>(expr)))
+			else if(fc)
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
@@ -781,11 +812,11 @@ namespace Codegen
 
 				return getLlvmType(fp->second);
 			}
-			else if((f = dynamic_cast<Func*>(expr)))
+			else if(f)
 			{
 				return getLlvmType(f->decl);
 			}
-			else if((fd = dynamic_cast<FuncDecl*>(expr)))
+			else if(fd)
 			{
 				TypePair_t* type = getType(fd->type);
 				if(!type)
@@ -802,15 +833,15 @@ namespace Codegen
 
 				return type->first;
 			}
-			else if((sl = dynamic_cast<StringLiteral*>(expr)))
+			else if(sl)
 			{
-				return llvm::Type::getInt8PtrTy(getContext());
+				return this->stringType;
 			}
-			else if((ma = dynamic_cast<MemberAccess*>(expr)))
+			else if(ma)
 			{
 				return this->getLlvmType(ma->member);
 			}
-			else if((bo = dynamic_cast<BinOp*>(expr)))
+			else if(bo)
 			{
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
@@ -819,17 +850,48 @@ namespace Codegen
 				}
 				else
 				{
-					return this->getLlvmType(bo->right);
+					// check if both are integers
+					llvm::Type* ltype = this->getLlvmType(bo->left);
+					llvm::Type* rtype = this->getLlvmType(bo->right);
+
+					if(ltype->isIntegerTy() && rtype->isIntegerTy())
+					{
+						if(ltype->getIntegerBitWidth() > rtype->getIntegerBitWidth())
+							return ltype;
+
+						return rtype;
+					}
+					else
+					{
+						// usually the right
+						return this->getLlvmType(bo->right);
+					}
 				}
 			}
-			else if((nm = dynamic_cast<Number*>(expr)))
+			else if(nm)
 			{
 				return nm->codegen(this).result.first->getType();
 			}
+			else if(bv)
+			{
+				return llvm::Type::getInt1Ty(getContext());
+			}
+			else if(retr)
+			{
+				return this->getLlvmType(retr->val);
+			}
+			else if(dynamic_cast<DummyExpr*>(expr))
+			{
+				return llvm::Type::getVoidTy(getContext());
+			}
+			else if(dynamic_cast<If*>(expr))
+			{
+				return llvm::Type::getVoidTy(getContext());
+			}
+
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
-		return nullptr;
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)	{ return getLlvmType(e)->isIntegerTy(); }
@@ -880,35 +942,52 @@ namespace Codegen
 		StringReplace(ret, "i64", "Int64");
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
+		StringReplace(ret, "__BuiltinStringType", "String");
 
 		return ret;
 	}
 
+	std::string CodegenInstance::getReadableType(llvm::Value* val)
+	{
+		return this->getReadableType(val->getType());
+	}
+
 	std::string CodegenInstance::getReadableType(Expr* expr)
 	{
-		return getReadableType(getLlvmType(expr));
+		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastLlvmType(llvm::Value*& lhs, llvm::Value*& rhs)
-	{
-		// assert(lhs);
-		// assert(rhs);
-
-		// if(lhs->getType()->isIntegerTy() && rhs->getType()->isFloatingPointTy())
-		// 	lhs = this->mainBuilder.CreateSIToFP(lhs, rhs->getType());
-
-		// else if(rhs->getType()->isIntegerTy() && lhs->getType()->isFloatingPointTy())
-		// 	rhs = this->mainBuilder.CreateSIToFP(rhs, lhs->getType());
-	}
-
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right)
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rightPtr)
 	{
 		assert(left);
 		assert(right);
 
 		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy())
 		{
-			right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+			// always cast to a higher sized type
+			if(left->getType()->getIntegerBitWidth() > right->getType()->getIntegerBitWidth())
+				right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+
+			else
+				left = this->mainBuilder.CreateIntCast(left, right->getType(), false);
+		}
+		else if(left->getType() == llvm::Type::getInt8PtrTy(this->getContext()))
+		{
+			llvm::Value* sptr = 0;
+			if(right->getType()->isStructTy() && right->getType()->getStructName() == "__BuiltinStringType")
+			{
+				sptr = rightPtr;
+			}
+			else if(right->getType()->isPointerTy() && right->getType()->getPointerElementType()->isStructTy()
+				&& right->getType()->getPointerElementType()->getStructName() == "__BuiltinStringType")
+			{
+				sptr = this->mainBuilder.CreateLoad(right);
+			}
+
+			if(sptr)
+			{
+				right = this->mainBuilder.CreateLoad(this->mainBuilder.CreateStructGEP(sptr, 1));
+			}
 		}
 	}
 
@@ -1066,7 +1145,6 @@ namespace Codegen
 
 
 		// this is the properly adjusted thing
-		printf("ptr arith: %s, %s\n", this->getReadableType(rhs->getType()).c_str(), this->getReadableType(intval->getType()).c_str());
 		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
 
 
@@ -1139,10 +1217,10 @@ namespace Codegen
 		return r;
 	}
 
-	void CodegenInstance::verifyAllPathsReturn(Func* func)
+	bool CodegenInstance::verifyAllPathsReturn(Func* func)
 	{
 		if(this->getLlvmType(func)->isVoidTy())
-			return;
+			return false;
 
 		// check the block
 		if(func->block->statements.size() == 0)
@@ -1151,11 +1229,13 @@ namespace Codegen
 
 		// now loop through all exprs in the block
 		Return* ret = 0;
+		Expr* final = 0;
 		for(Expr* e : func->block->statements)
 		{
-			If* i = nullptr;
+			If* i = dynamic_cast<If*>(e);
+			final = e;
 
-			if((i = dynamic_cast<If*>(e)))
+			if(i)
 				ret = recursiveVerifyBranch(this, func, i);
 
 			// "top level" returns we will just accept.
@@ -1163,10 +1243,14 @@ namespace Codegen
 				break;
 		}
 
+		if(!ret && this->getLlvmType(final) == this->getLlvmType(func))
+			return true;
+
 		if(!ret)
 			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
 
 		verifyReturnType(this, func, func->block, ret);
+		return false;
 	}
 }
 

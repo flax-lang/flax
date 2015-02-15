@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include "include/stacktrace.h"
 
+#if 0
 /** Print a demangled stack backtrace of the caller function to FILE* out. */
 void print_stacktrace(FILE* out, unsigned int max_frames)
 {
@@ -174,5 +175,5 @@ void print_stacktrace(FILE* out, unsigned int max_frames)
 
 	fflush(out);
 }
-
+#endif
 

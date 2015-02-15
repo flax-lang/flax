@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// get our array type
 	llvm::Type* atype = cgi->getLlvmType(this->var);
@@ -40,7 +40,7 @@ Result_t ArrayIndex::codegen(Codegen::CodegenInstance* cgi)
 			if((n = dynamic_cast<Number*>(this->index)))
 			{
 				assert(!n->decimal);
-				if(n->ival >= at->getNumElements())
+				if((uint64_t) n->ival >= at->getNumElements())
 					error(this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
 			}
 		}

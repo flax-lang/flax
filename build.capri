@@ -2,7 +2,7 @@ version 1.17;
 import "build/capri/Utilities.capri";
 
 sysroot 	= File.getAbsolutePath("build/sysroot");
-prefix		= "/usr";
+prefix		= "/usr/local";
 outputBin	= "flaxc";
 
 flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
@@ -20,7 +20,9 @@ project Flax default all
 		Utils.println("Building for automated deployment");
 	}
 
-	CXXFLAGS	= "-std=gnu++1y -g -Wall -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
+	DISABLEWARN	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs";
+
+	CXXFLAGS	= "-std=gnu++1y -g -Wall -Weverything {DISABLEWARN} -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
 	capriExec	= System.getExecutablePath();
 
 	src			= "source";
@@ -43,7 +45,7 @@ project Flax default all
 		all();
 
 		Utils.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O0 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
 		Utils.println("=========================");
 		System.execute("build/test");
 	}
