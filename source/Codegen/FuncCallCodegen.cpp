@@ -37,7 +37,7 @@ static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* 
 
 
 
-Result_t FuncCall::codegen(CodegenInstance* cgi)
+Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// always try the type first.
 	if(cgi->getType(this->name) != nullptr)
@@ -56,19 +56,18 @@ Result_t FuncCall::codegen(CodegenInstance* cgi)
 		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 
 	std::vector<llvm::Value*> args;
-
+	std::vector<llvm::Value*> argPtrs;
 
 	for(Expr* e : this->params)
-		args.push_back(e->codegen(cgi).result.first);
+	{
+		auto res = e->codegen(cgi).result;
+		args.push_back(res.first);
+		argPtrs.push_back(res.second);
+	}
 
 	auto arg_it = target->arg_begin();
 	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
-	{
-		if(arg_it->getType()->isIntegerTy() && args[i]->getType()->isIntegerTy())
-		{
-			args[i] = cgi->mainBuilder.CreateIntCast(args[i], arg_it->getType(), false);
-		}
-	}
+		cgi->autoCastType(arg_it, args[i], argPtrs[i]);		// this also takes care of calling functions accepting int8*s with a String arg
 
 	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
 }

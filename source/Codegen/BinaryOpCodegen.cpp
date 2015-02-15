@@ -16,7 +16,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 	{
 		TypePair_t* tp = cgi->getType(structRef->getType()->getPointerElementType()->getStructName());
 		if(!tp)
-			error(user, "Invalid type");
+			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
@@ -45,7 +45,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	ArrayIndex* ai	= nullptr;
 	BinOp* bo		= nullptr;
 
-	this->autoCastLlvmType(lhs, rhs);
+	this->autoCastType(lhs, rhs);
 
 	llvm::Value* varptr = 0;
 	if((v = dynamic_cast<VarRef*>(left)))
@@ -224,7 +224,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi)
+Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->left && this->right);
 	ValPtr_t valptr = this->left->codegen(cgi).result;
@@ -240,7 +240,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		lhs = valptr.first;
-		rhs = this->right->codegen(cgi).result.first;
+		rhs = this->right->codegen(cgi, valptr.second).result.first;
 
 		cgi->autoCastType(lhs, rhs);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
@@ -418,7 +418,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
 		// if one of them is an integer, cast it first
-		cgi->autoCastLlvmType(lhs, rhs);
+		cgi->autoCastType(lhs, rhs);
 
 		// then they're floats.
 		switch(this->op)
