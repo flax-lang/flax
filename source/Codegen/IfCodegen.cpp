@@ -12,7 +12,7 @@ using namespace Codegen;
 
 
 
-void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
+static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
@@ -59,7 +59,7 @@ void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<s
 	func->getBasicBlockList().push_back(f);
 }
 
-Result_t If::codegen(CodegenInstance* cgi)
+Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;

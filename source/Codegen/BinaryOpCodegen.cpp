@@ -16,7 +16,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 	{
 		TypePair_t* tp = cgi->getType(structRef->getType()->getPointerElementType()->getStructName());
 		if(!tp)
-			error(user, "Invalid type");
+			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
@@ -45,7 +45,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	ArrayIndex* ai	= nullptr;
 	BinOp* bo		= nullptr;
 
-	this->autoCastLlvmType(lhs, rhs);
+	this->autoCastType(lhs, rhs);
 
 	llvm::Value* varptr = 0;
 	if((v = dynamic_cast<VarRef*>(left)))
@@ -148,7 +148,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 			// why the fuck does c++ not have a uint64_t pow function
 			{
-				for(int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
+				for(unsigned int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
 					max *= 2;
 			}
 
@@ -163,8 +163,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					if((uint64_t) n->ival > max)
 						shouldwarn = true;
 				}
-				else if(n->ival > max)
+				else
+				{
+					max /= 2;		// minus one bit for signed types
+
+					if(n->ival > (int64_t) max)
 						shouldwarn = true;
+				}
 
 				if(shouldwarn)
 					warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
@@ -219,7 +224,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi)
+Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	assert(this->left && this->right);
 	ValPtr_t valptr = this->left->codegen(cgi).result;
@@ -235,7 +240,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		lhs = valptr.first;
-		rhs = this->right->codegen(cgi).result.first;
+		rhs = this->right->codegen(cgi, valptr.second).result.first;
 
 		cgi->autoCastType(lhs, rhs);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
@@ -292,8 +297,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	llvm::Value* rhsptr = r.second;
-
 	cgi->autoCastType(lhs, rhs);
 
 	// if adding integer to pointer
@@ -410,13 +413,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			default:
 				// should not be reached
 				error("what?!");
-				return Result_t(0, 0);
 		}
 	}
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
 		// if one of them is an integer, cast it first
-		cgi->autoCastLlvmType(lhs, rhs);
+		cgi->autoCastType(lhs, rhs);
 
 		// then they're floats.
 		switch(this->op)
@@ -434,7 +436,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error(this, "Unsupported operator."); return Result_t(0, 0);
+			default:						error(this, "Unsupported operator.");
 		}
 	}
 	else if(lhs->getType()->isStructTy())
@@ -443,12 +445,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi)
 		if(!p)
 			error(this, "Invalid type");
 
-		return cgi->callOperatorOnStruct(p, valptr.second, op, rhsptr);
+		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
 	}
 	else
 	{
 		error(this, "Unsupported operator on type");
-		return Result_t(0, 0);
 	}
 }
 

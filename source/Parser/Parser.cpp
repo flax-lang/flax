@@ -17,12 +17,11 @@ using namespace Ast;
 
 namespace Parser
 {
-	Token curtok;
-	PosInfo currentPos;
-	bool isInsideNamespace				= false;
-	Root* rootNode						= nullptr;
-	uint32_t curAttrib					= 0;
-	Codegen::CodegenInstance* curCgi	= nullptr;
+	static Token curtok;
+	static PosInfo currentPos;
+	static bool isInsideNamespace				= false;
+	static Root* rootNode						= nullptr;
+	static uint32_t curAttrib					= 0;
 
 
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
@@ -33,28 +32,13 @@ namespace Parser
 
 
 	// todo: hack
-	bool isParsingStruct;
-	void parserError(Token token, const char* msg, va_list args)
+	static bool isParsingStruct;
+	static void parserError(Token token, const char* msg, va_list args)
 	{
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, args);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Parsing error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
-	}
-
-
-	// what the fuck
-	void parserError(Token token, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(Token token, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		parserError(token, msg, ap);
-
-		va_end(ap);
-		abort();
-
+		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 	}
 
 	// come on man
@@ -93,42 +77,6 @@ namespace Parser
 	}
 
 
-	// woah shit it's forward declarations
-	// note: all these are expected to pop at least one token from the front of the list.
-
-	Expr* parseIf(std::deque<Token>& tokens);
-	void parseAll(std::deque<Token>& tokens);
-	Func* parseFunc(std::deque<Token>& tokens);
-	Expr* parseExpr(std::deque<Token>& tokens);
-	Expr* parseUnary(std::deque<Token>& tokens);
-	Alloc* parseAlloc(std::deque<Token>& tokens);
-	ForLoop* parseFor(std::deque<Token>& tokens);
-	Expr* parseIdExpr(std::deque<Token>& tokens);
-	Break* parseBreak(std::deque<Token>& tokens);
-	Expr* parsePrimary(std::deque<Token>& tokens);
-	Expr* parseInitFunc(std::deque<Token>& tokens);
-	Struct* parseStruct(std::deque<Token>& tokens);
-	Import* parseImport(std::deque<Token>& tokens);
-	Return* parseReturn(std::deque<Token>& tokens);
-	Number* parseNumber(std::deque<Token>& tokens);
-	void parseAttribute(std::deque<Token>& tokens);
-	CastedType* parseType(std::deque<Token>& tokens);
-	VarDecl* parseVarDecl(std::deque<Token>& tokens);
-	WhileLoop* parseWhile(std::deque<Token>& tokens);
-	Dealloc* parseDealloc(std::deque<Token>& tokens);
-	Continue* parseContinue(std::deque<Token>& tokens);
-	Func* parseTopLevelExpr(std::deque<Token>& tokens);
-	FuncDecl* parseFuncDecl(std::deque<Token>& tokens);
-	Expr* parseParenthesised(std::deque<Token>& tokens);
-	OpOverload* parseOpOverload(std::deque<Token>& tokens);
-	NamespaceDecl* parseNamespace(std::deque<Token>& tokens);
-	BracedBlock* parseBracedBlock(std::deque<Token>& tokens);
-	StringLiteral* parseStringLiteral(std::deque<Token>& tokens);
-	ForeignFuncDecl* parseForeignFunc(std::deque<Token>& tokens);
-	Expr* parseFuncCall(std::deque<Token>& tokens, std::string id);
-	Expr* parseRhs(std::deque<Token>& tokens, Expr* expr, int prio);
-
-
 	std::string getModuleName(std::string filename)
 	{
 		size_t lastdot = filename.find_last_of(".");
@@ -139,33 +87,6 @@ namespace Parser
 			modname = modname.substr(sep + 1, modname.length() - sep - 1);
 
 		return modname;
-	}
-
-	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
-	{
-		curCgi = cgi;
-
-		Token t;
-		currentPos.file = filename;
-		currentPos.line = 1;
-		curAttrib = 0;
-
-		std::deque<Token> tokens;
-		std::deque<Token> tokenPtrs;
-
-		while((t = getNextToken(str, currentPos)).text.size() > 0)
-		{
-			tokens.push_back(t);
-			tokenPtrs.push_back(t);
-		}
-
-		rootNode = new Root();
-		currentPos.file = filename;
-		currentPos.line = 1;
-
-		parseAll(tokens);
-
-		return rootNode;
 	}
 
 	// helpers
@@ -308,7 +229,7 @@ namespace Parser
 		}
 	}
 
-	int64_t getIntegerValue(Token t)
+	static int64_t getIntegerValue(Token t)
 	{
 		assert(t.type == TType::Integer);
 		int base = 10;
@@ -318,12 +239,12 @@ namespace Parser
 		return std::stoll(t.text, nullptr, base);
 	}
 
-	double getDecimalValue(Token t)
+	static double getDecimalValue(Token t)
 	{
 		return std::stod(t.text);
 	}
 
-	uint32_t checkAndApplyAttributes(uint32_t allowed)
+	static uint32_t checkAndApplyAttributes(uint32_t allowed)
 	{
 		static const char* ReadableAttrNames[] =
 		{
@@ -354,6 +275,28 @@ namespace Parser
 	}
 
 
+
+	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
+	{
+		Token t;
+		currentPos.file = filename;
+		currentPos.line = 1;
+		curAttrib = 0;
+
+		std::deque<Token> tokens;
+
+		while((t = getNextToken(str, currentPos)).text.size() > 0)
+			tokens.push_back(t);
+
+		rootNode = new Root();
+		currentPos.file = filename;
+		currentPos.line = 1;
+
+		skipNewline(tokens);
+		parseAll(tokens);
+
+		return rootNode;
+	}
 
 
 
@@ -392,7 +335,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					currentPos.line++;
-					// no break
+					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -419,8 +362,7 @@ namespace Parser
 					break;
 
 				default:	// wip: skip shit we don't know/care about for now
-					parserError("wtf?");
-					break;
+					parserError("Unknown token '%s'", tok.text.c_str());
 			}
 		}
 	}
@@ -527,7 +469,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					currentPos.line++;
-					// fallthrough
+					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -541,7 +483,6 @@ namespace Parser
 				case TType::False:
 					tokens.pop_front();
 					return CreateAST(BoolVal, tok, false);
-
 
 				case TType::Private:
 					eat(tokens);
@@ -565,7 +506,6 @@ namespace Parser
 
 				default:
 					parserError("Unexpected token '%s'\n", tok.text.c_str());
-					break;
 			}
 		}
 
@@ -687,6 +627,9 @@ namespace Parser
 			CastedType* ctype = parseType(tokens);
 			ret = ctype->name;
 			delete ctype;
+
+			if(ret == "Void")
+				parserWarn("Explicitly specifying 'Void' as the return type is redundant");
 		}
 		else
 		{
@@ -1106,12 +1049,12 @@ namespace Parser
 
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
-		if(tokens.front().type == TType::LParen)
+		if(tokens.front().type == TType::LSquare)
 		{
 			eat(tokens);
 			ret->count = parseExpr(tokens);
-			if(eat(tokens).type != TType::RParen)
-				parserError("Expected ')' after alloc(num)");
+			if(eat(tokens).type != TType::RSquare)
+				parserError("Expected ']' after alloc[num]");
 		}
 
 		Expr* type = parseIdExpr(tokens);
@@ -1223,7 +1166,14 @@ namespace Parser
 		Token front = eat(tokens);
 		assert(front.type == TType::Return);
 
-		return CreateAST(Return, front, parseExpr(tokens));
+		Expr* retval = nullptr;
+
+		// kinda hack: if the next token is a closing brace, then we don't expect an expression
+		// this works most of the time.
+		if(tokens.front().type != TType::RBrace)
+			retval = parseExpr(tokens);
+
+		return CreateAST(Return, front, retval);
 	}
 
 	Expr* parseIf(std::deque<Token>& tokens)

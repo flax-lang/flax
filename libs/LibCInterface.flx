@@ -1,0 +1,20 @@
+// LibCInterface.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+// printing
+public ffi func puts(x: Int8*) -> Int32
+public ffi func printf(x: Int8*, ...) -> Int32
+
+// memcpy/set/move
+public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
+public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
+
+// memory
+public ffi func malloc(size: Uint64) -> Int8*
+public ffi func free(pointer: Int8*)
+
+
+
+
+
