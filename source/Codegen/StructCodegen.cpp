@@ -82,6 +82,10 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	llvm::verifyFunction(*defaultInitFunc);
 
 
+
+
+
+
 	// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)
 	// before their bodies are codegened, so this makes functions in structs order-dependent.
 
@@ -125,7 +129,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		// make the functions public as well
 		cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
 	}
-
 
 	// pass 2
 	for(Func* f : this->funcs)
