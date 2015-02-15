@@ -327,6 +327,10 @@ namespace Parser
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseStruct(tokens));
 					break;
 
+				case TType::Extension:
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseExtension(tokens));
+					break;
+
 				// only at top level
 				case TType::Namespace:
 					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
@@ -433,6 +437,9 @@ namespace Parser
 
 				case TType::Struct:
 					return parseStruct(tokens);
+
+				case TType::Extension:
+					return parseExtension(tokens);
 
 				case TType::At:
 					parseAttribute(tokens);
@@ -1276,19 +1283,17 @@ namespace Parser
 		return 0;
 	}
 
-	Struct* parseStruct(std::deque<Token>& tokens)
+	static StructBase* parseStructBody(std::deque<Token>& tokens)
 	{
-		Token tok_struct = eat(tokens);
-		assert(tok_struct.type == TType::Struct);
 		isParsingStruct = true;
+		Token tok_id = eat(tokens);
 
-		// get the identifier (name)
 		std::string id;
-		if(tokens.front().type != TType::Identifier)
-			parserError("Expected name after 'struct'");
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier");
 
-		id += eat(tokens).text;
-		Struct* str = CreateAST(Struct, tok_struct, id);
+		id += tok_id.text;
+		Struct* str = CreateAST(Struct, tok_id, id);
 
 		uint32_t attr = checkAndApplyAttributes(Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		if(attr & Attr_PackedStruct)
@@ -1337,7 +1342,52 @@ namespace Parser
 			}
 		}
 
+		isParsingStruct = false;
+		delete body;
 		return str;
+	}
+
+
+
+
+	Struct* parseStruct(std::deque<Token>& tokens)
+	{
+		Token tok_struct = eat(tokens);
+		assert(tok_struct.type == TType::Struct);
+
+		Struct* str = CreateAST(Struct, tok_struct, "");
+		StructBase* sb = parseStructBody(tokens);
+
+		str->attribs		= sb->attribs;
+		str->funcs			= sb->funcs;
+		str->opOverloads	= sb->opOverloads;
+		str->typeList		= sb->typeList;
+		str->members		= sb->members;
+		str->nameMap		= sb->nameMap;
+		str->name			= sb->name;
+
+		delete sb;
+		return str;
+	}
+
+	Extension* parseExtension(std::deque<Token>& tokens)
+	{
+		Token tok_ext = eat(tokens);
+		assert(tok_ext.type == TType::Extension);
+
+		Extension* ext = CreateAST(Extension, tok_ext, "");
+		StructBase* str = parseStructBody(tokens);
+
+		ext->attribs		= str->attribs;
+		ext->funcs			= str->funcs;
+		ext->opOverloads	= str->opOverloads;
+		ext->typeList		= str->typeList;
+		ext->members		= str->members;
+		ext->nameMap		= str->nameMap;
+		ext->name			= str->name;
+
+		delete str;
+		return ext;
 	}
 
 	void parseAttribute(std::deque<Token>& tokens)
@@ -1394,6 +1444,16 @@ namespace Parser
 
 		return CreateAST(StringLiteral, str, str.text);
 	}
+
+
+
+
+
+
+
+
+
+
 
 
 	ArithmeticOp mangledStringToOperator(std::string op)
