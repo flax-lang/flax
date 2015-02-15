@@ -305,6 +305,7 @@ namespace Parser
 				|| id == "Float32"
 				|| id == "Float64"
 				|| id == "Any"
+				|| id == "Int"
 				|| id == "Bool"
 				|| id == "UintPtr"
 				|| id == "String"
