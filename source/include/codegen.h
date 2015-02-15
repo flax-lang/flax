@@ -88,6 +88,7 @@ namespace Codegen
 		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
 		bool isDuplicateFuncDecl(std::string name);
 
+		void removeType(std::string name);
 		TypePair_t* getType(std::string name);
 		TypePair_t* getType(llvm::Type* type);
 		FuncPair_t* getDeclaredFunc(std::string name);
@@ -102,12 +103,7 @@ namespace Codegen
 		// llvm::Types for non-primitive (POD) builtin types (string)
 		llvm::Type* stringType = 0;
 
-
-
-
-
-
-
+		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
@@ -127,11 +123,11 @@ namespace Codegen
 		std::string mangleWithNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
 
-		std::string mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
 
-		std::string mangleName(Ast::Struct* s, std::string orig);
-		std::string mangleName(Ast::Struct* s, Ast::FuncCall* fc);
+		std::string mangleName(Ast::StructBase* s, std::string orig);
+		std::string mangleName(Ast::StructBase* s, Ast::FuncCall* fc);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
