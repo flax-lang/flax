@@ -103,12 +103,7 @@ namespace Codegen
 		// llvm::Types for non-primitive (POD) builtin types (string)
 		llvm::Type* stringType = 0;
 
-
-
-
-
-
-
+		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
