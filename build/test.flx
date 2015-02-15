@@ -31,6 +31,7 @@ namespace Thing::Troll
 struct Bar
 {
 	var norf: Int = 1600
+	var yorg: Int = 5000
 
 	init(q: Int, a: Int)
 	{
