@@ -14,9 +14,9 @@ Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	// check builtin type
 	if(!this->decimal)
 	{
-		int bits = 32;
-		if(this->type == "Uint64" || this->type == "Int64")
-			bits = 64;
+		int bits = 64;
+		if(this->type == "Uint32" || this->type == "Int32")
+			bits = 32;
 
 		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(bits, this->ival, !(this->type[0] == 'U'))), 0);
 	}

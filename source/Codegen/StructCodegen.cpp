@@ -20,123 +20,133 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
-	llvm::Function* defaultInitFunc = 0;
-
 
 	// generate initialiser
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->mangledName, cgi->mainModule);
+
+	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
+	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
+	cgi->mainBuilder.SetInsertPoint(iblock);
+
+	// create the local instance of reference to self
+	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
+	// self->setName("self");
+	for(VarDecl* var : this->members)
 	{
-		defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->mangledName, cgi->mainModule);
+		int i = this->nameMap[var->name];
+		assert(i >= 0);
 
-		cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
-		cgi->mainBuilder.SetInsertPoint(iblock);
+		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-		// create the local instance of reference to self
-		llvm::Value* self = &defaultInitFunc->getArgumentList().front();
+		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
+	}
 
-		for(VarDecl* var : this->members)
+	// create all the other automatic init functions for our extensions
+	std::deque<llvm::Function*> extensionInitialisers;
+	{
+		int i = 0;
+		for(auto ext : this->extensions)
 		{
-			int i = this->nameMap[var->name];
-			assert(i >= 0);
+			extensionInitialisers.push_back(ext->createAutomaticInitialiser(cgi, str, i));
+			i++;
+		}
+	}
 
-			printf("self: %s\n", cgi->getReadableType(self).c_str());
-			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
+
+	// check if we have any user-defined init() functions.
+	// if we do, then we can stick the extension-init()-calls there
+	// if not, then we need to do it here
+
+	bool didFindInit = false;
+	for(Func* f : this->funcs)
+	{
+		if(f->decl->name == "init")
+		{
+			didFindInit = true;
+			break;
+		}
+	}
+
+	if(!didFindInit)
+	{
+		for(llvm::Function* f : extensionInitialisers)
+		{
+			llvm::Function* actual = cgi->mainModule->getFunction(f->getName());
+			cgi->mainBuilder.CreateCall(actual, self);
+		}
+	}
+
+	cgi->mainBuilder.CreateRetVoid();
+	llvm::verifyFunction(*defaultInitFunc);
+
+
+	// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)
+	// before their bodies are codegened, so this makes functions in structs order-dependent.
+
+	// pass 1
+	for(Func* f : this->funcs)
+	{
+		llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+
+		std::string oname = f->decl->name;
+		bool isOpOverload = f->decl->name.find("operator#") == 0;
+		if(isOpOverload)
+			f->decl->name = f->decl->name.substr(strlen("operator#"));
+
+		llvm::Value* val = nullptr;
+
+
+
+		// hack:
+		// 1. append 'E' to the end of the function's basename, as per C++ ABI
+		// 2. remove the first varDecl of its parameters (self)
+		// 3. mangle the name
+		// 4. restore the parameter
+		// this makes sure that we don't get ridiculous mangled names for member functions
+
+
+		val = f->decl->codegen(cgi).result.first;
+
+		if(f->decl->name == "init")
+			this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
+
+
+		cgi->mainBuilder.SetInsertPoint(ob);
+		this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
+
+		if(isOpOverload)
+		{
+			ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
+			this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
 		}
 
+		// make the functions public as well
+		cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
+	}
 
-		// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)
-		// before their bodies are codegened, so this makes functions in structs order-dependent.
 
-		// pass 1
-		for(Func* f : this->funcs)
+	// pass 2
+	for(Func* f : this->funcs)
+	{
+		llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+
+		if(f->decl->name == "init")
 		{
-			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+			std::deque<Expr*> todeque;
 
-			std::string oname = f->decl->name;
-			bool isOpOverload = f->decl->name.find("operator#") == 0;
-			if(isOpOverload)
-				f->decl->name = f->decl->name.substr(strlen("operator#"));
+			VarRef* svr = new VarRef(this->posinfo, "self");
+			todeque.push_back(svr);
 
-			llvm::Value* val = nullptr;
+			for(auto extInit : extensionInitialisers)
+				f->block->statements.push_front(new FuncCall(this->posinfo, extInit->getName(), todeque));
 
-
-
-			// hack:
-			// 1. append 'E' to the end of the function's basename, as per C++ ABI
-			// 2. remove the first varDecl of its parameters (self)
-			// 3. mangle the name
-			// 4. restore the parameter
-			// this makes sure that we don't get ridiculous mangled names for member functions
-
-
-			val = f->decl->codegen(cgi).result.first;
-
-			if(f->decl->name == "init")
-				this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
-
-
-			cgi->mainBuilder.SetInsertPoint(ob);
-			this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
-
-			if(isOpOverload)
-			{
-				ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
-				this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
-			}
-
-			// make the functions public as well
-			cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
+			f->block->statements.push_front(new FuncCall(this->posinfo, "__automatic_init#" + this->mangledName, todeque));
 		}
 
-
-
-
-		// pass 2
-		for(Func* f : this->funcs)
-		{
-			llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
-
-			if(f->decl->name == "init")
-			{
-				std::deque<Expr*> todeque;
-
-				VarRef* svr = new VarRef(this->posinfo, "self");
-				todeque.push_back(svr);
-
-				// add the call to auto init
-				FuncCall* fc = new FuncCall(this->posinfo, "__automatic_init#" + this->mangledName, todeque);
-				f->block->statements.push_front(fc);
-			}
-
-			f->codegen(cgi);
-			cgi->mainBuilder.SetInsertPoint(ob);
-		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		cgi->mainBuilder.CreateRetVoid();
-
-		llvm::verifyFunction(*defaultInitFunc);
+		f->codegen(cgi);
+		cgi->mainBuilder.SetInsertPoint(ob);
 	}
 
 	if(this->initFuncs.size() == 0)

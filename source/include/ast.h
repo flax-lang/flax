@@ -422,15 +422,6 @@ namespace Ast
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
 	};
 
-	struct Struct : StructBase
-	{
-		~Struct();
-		Struct(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
-
-	};
-
 	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
 	struct Extension : StructBase
 	{
@@ -438,6 +429,18 @@ namespace Ast
 		Extension(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
 		virtual void createType(Codegen::CodegenInstance* cgi) override;
+
+		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
+	};
+
+	struct Struct : StructBase
+	{
+		~Struct();
+		Struct(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
+
+		std::deque<Extension*> extensions;
 	};
 
 	struct MemberAccess : Expr

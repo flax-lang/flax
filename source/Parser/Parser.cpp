@@ -1107,11 +1107,7 @@ namespace Parser
 			n = CreateAST(Number, tok, getIntegerValue(tok));
 
 			// todo: handle integer suffixes
-			if(n->ival > INT_MAX)
-				n->type = "Int64";
-
-			else
-				n->type = "Int32";
+			n->type = "Int64";
 
 			// set the type.
 			// always used signed

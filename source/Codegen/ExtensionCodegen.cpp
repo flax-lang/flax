@@ -15,6 +15,42 @@ Result_t Extension::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	return Result_t(0, 0);
 }
 
+llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm::StructType* stype, int extIndex)
+{
+	// generate initialiser
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(stype, 0), false), llvm::Function::ExternalLinkage,
+		"__automatic_init#" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->mainModule);
+
+	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
+	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
+
+	llvm::BasicBlock* oldIP = cgi->mainBuilder.GetInsertBlock();
+	cgi->mainBuilder.SetInsertPoint(iblock);
+
+	// create the local instance of reference to self
+	llvm::Value* self = defaultInitFunc->arg_begin();
+	self->setName("self");
+
+	int memberBeginOffset = stype->getNumElements() - this->members.size();
+	for(VarDecl* var : this->members)
+	{
+		assert(this->nameMap.find(var->name) != this->nameMap.end());
+		int i = memberBeginOffset + this->nameMap[var->name];
+		assert(i >= 0);
+
+		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+
+		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
+	}
+
+	cgi->mainBuilder.CreateRetVoid();
+	llvm::verifyFunction(*defaultInitFunc);
+
+	cgi->mainBuilder.SetInsertPoint(oldIP);
+	return defaultInitFunc;
+}
+
 void Extension::createType(CodegenInstance* cgi)
 {
 	if(!cgi->isDuplicateType(this->name))
@@ -51,20 +87,21 @@ void Extension::createType(CodegenInstance* cgi)
 				error(func, "Duplicate member '%s'", func->decl->name.c_str());
 		}
 
+
+		int beginOffset = str->members.size();
+		for(auto p : this->nameMap)
+		{
+			if(str->nameMap.find(p.first) != str->nameMap.end())
+				error(this, "Duplicate member '%s' in extension", p.first.c_str());
+
+			str->nameMap[p.first] = beginOffset + p.second;
+		}
+
 		for(VarDecl* var : this->members)
 		{
 			llvm::Type* type = cgi->getLlvmType(var);
 			if(type == existing)
 				error(var, "Cannot have non-pointer member of type self");
-
-			if(str->nameMap.find(var->name) != str->nameMap.end())
-				error(var, "Duplicate member '%s' in extension", var->name.c_str());
-
-			int beginOffset = str->members.size();
-			for(auto p : this->nameMap)
-			{
-				str->nameMap[p.first] = beginOffset + p.second;
-			}
 
 			types[this->nameMap[var->name]] = cgi->getLlvmType(var);
 		}
@@ -84,16 +121,13 @@ void Extension::createType(CodegenInstance* cgi)
 		llvm::StructType* newType = llvm::StructType::create(cgi->getContext(), this->mangledName);
 		newType->setBody(vec, existing->isPacked());
 
+		// finally, override the type here
 		existingtp->first = newType;
-
-		// // next, erase the type that we had (in our own type table)
-		// cgi->removeType(this->mangledName);
-
-		// // add the type again
-		// cgi->addNewType(newType, (Struct*) existingtp->second.first, ExprType::Struct);
 
 		this->didCreateType = true;
 		this->scope = cgi->namespaceStack;
+
+		str->extensions.push_back(this);
 		delete types;
 	}
 }
