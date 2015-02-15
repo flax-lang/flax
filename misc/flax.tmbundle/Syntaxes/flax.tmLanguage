@@ -530,7 +530,7 @@
 			<key>comment</key>
 			<string>function-result</string>
 			<key>end</key>
-			<string>\s*(\{)</string>
+			<string>\s*(\{|\n)</string>
 			<key>name</key>
 			<string>meta.function-result.flax</string>
 			<key>patterns</key>
