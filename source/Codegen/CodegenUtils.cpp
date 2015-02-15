@@ -36,7 +36,7 @@ using namespace Codegen;
 
 namespace Codegen
 {
-	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi)
+	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
 		llvm::InitializeNativeTarget();
 		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
@@ -179,8 +179,6 @@ namespace Codegen
 
 
 
-
-
 	void CodegenInstance::popScope()
 	{
 		symTabStack.pop_back();
@@ -247,7 +245,7 @@ namespace Codegen
 		return getSymTab().find(name) != getSymTab().end();
 	}
 
-	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl)
+	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, VarDecl* vardecl)
 	{
 		SymbolValidity_t sv(ai, SymbolValidity::Valid);
 		SymbolPair_t sp(sv, vardecl);
@@ -271,6 +269,14 @@ namespace Codegen
 		}
 	}
 
+
+	void CodegenInstance::removeType(std::string name)
+	{
+		if(this->typeMap.find(name) == this->typeMap.end())
+			error("Type '%s' does not exist, cannot remove", name.c_str());
+
+		this->typeMap.erase(name);
+	}
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
@@ -317,7 +323,7 @@ namespace Codegen
 		return this->blockStack.size() > 0 ? &this->blockStack.back() : 0;
 	}
 
-	void CodegenInstance::pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after)
+	void CodegenInstance::pushBracedBlock(BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after)
 	{
 		BracedBlockScope cs = std::make_pair(block, std::make_pair(body, after));
 		this->blockStack.push_back(cs);
@@ -365,7 +371,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	FuncPair_t* CodegenInstance::getDeclaredFunc(Ast::FuncCall* fc)
+	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 
@@ -393,6 +399,27 @@ namespace Codegen
 		this->namespaceStack.clear();
 	}
 
+	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
+	{
+		for(Expr* e : exprs)
+		{
+			Extension* ext		= dynamic_cast<Extension*>(e);
+			NamespaceDecl* ns	= dynamic_cast<NamespaceDecl*>(e);
+
+			if(ext && ext->mangledName == extName)
+				ext->createType(cgi);
+
+			else if(ns)
+				searchForAndApplyExtension(cgi, ns->innards->statements, extName);
+		}
+	}
+
+	void CodegenInstance::applyExtensionToStruct(std::string ext)
+	{
+		searchForAndApplyExtension(this, this->rootNode->topLevelExpressions, ext);
+	}
+
+
 
 
 
@@ -407,6 +434,7 @@ namespace Codegen
 		else if(r.find("Int16") == 0)	r = "s";
 		else if(r.find("Int32") == 0)	r = "i";
 		else if(r.find("Int64") == 0)	r = "l";
+		else if(r.find("Int") == 0)		r = "l";
 
 		else if(r.find("Uint8") == 0)	r = "h";
 		else if(r.find("Uint16") == 0)	r = "t";
@@ -438,12 +466,12 @@ namespace Codegen
 	}
 
 
-	std::string CodegenInstance::mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Expr*> args)
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args)
 	{
 		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
 	}
 
-	std::string CodegenInstance::mangleMemberFunction(Ast::Struct* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
 	{
 		std::string mangled;
 		mangled = this->mangleWithNamespace("", ns);
@@ -461,7 +489,7 @@ namespace Codegen
 		return mangled;
 	}
 
-	std::string CodegenInstance::mangleName(Ast::Struct* s, Ast::FuncCall* fc)
+	std::string CodegenInstance::mangleName(StructBase* s, FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
 		assert(this->getType(s->mangledName));
@@ -483,7 +511,7 @@ namespace Codegen
 		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
-	std::string CodegenInstance::mangleName(Struct* s, std::string orig)
+	std::string CodegenInstance::mangleName(StructBase* s, std::string orig)
 	{
 		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
 	}
@@ -640,7 +668,7 @@ namespace Codegen
 
 
 
-	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP)
+	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
 	{
 		using llvm::Instruction;
 		switch(op)
@@ -708,6 +736,7 @@ namespace Codegen
 		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")	return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
 		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
