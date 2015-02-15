@@ -94,6 +94,8 @@ namespace Codegen
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.add(llvm::createConstantPropagationPass());
 		OurFPM.add(llvm::createDeadCodeEliminationPass());
+
+
 		OurFPM.doInitialization();
 
 		// Set the global so the code gen can use this.
@@ -128,9 +130,7 @@ namespace Codegen
 		}
 
 		TypeInfo::initialiseTypeInfo(cgi);
-
 		cgi->rootNode->codegen(cgi);
-
 		TypeInfo::generateTypeInfo(cgi);
 
 		cgi->popScope();
