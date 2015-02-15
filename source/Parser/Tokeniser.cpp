@@ -292,6 +292,7 @@ namespace Parser
 
 			else if(id == "module")		tok.type = TType::Module;
 			else if(id == "namespace")	tok.type = TType::Namespace;
+			else if(id == "extension")	tok.type = TType::Extension;
 
 			else if(id == "Int8"
 				|| id == "Int16"
@@ -304,6 +305,7 @@ namespace Parser
 				|| id == "Float32"
 				|| id == "Float64"
 				|| id == "Any"
+				|| id == "Int"
 				|| id == "Bool"
 				|| id == "UintPtr"
 				|| id == "String"

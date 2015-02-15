@@ -149,7 +149,6 @@ namespace Ast
 		ResultType type;
 	};
 
-
 	struct Expr
 	{
 		Expr(Parser::PosInfo pos) : posinfo(pos) { }
@@ -238,7 +237,7 @@ namespace Ast
 		llvm::PHINode* phi = 0;
 	};
 
-	struct Struct;
+	struct StructBase;
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
@@ -249,7 +248,7 @@ namespace Ast
 		bool hasVarArg = false;
 		bool isFFI = false;
 
-		Struct* parentStruct = nullptr;
+		StructBase* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;
 		std::string name;
 		std::string mangledName;
@@ -398,12 +397,12 @@ namespace Ast
 		Struct* str;
 	};
 
-	struct Struct : Expr
+	struct StructBase : Expr
 	{
-		~Struct();
-		Struct(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
-		void createType(Codegen::CodegenInstance* cgi);
+		virtual ~StructBase();
+		StructBase(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override = 0;
+		virtual void createType(Codegen::CodegenInstance* cgi) = 0;
 
 		bool packed = false;
 		bool didCreateType = false;
@@ -421,6 +420,27 @@ namespace Ast
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
+	};
+
+	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
+	struct Extension : StructBase
+	{
+		~Extension();
+		Extension(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
+
+		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
+	};
+
+	struct Struct : StructBase
+	{
+		~Struct();
+		Struct(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
+
+		std::deque<Extension*> extensions;
 	};
 
 	struct MemberAccess : Expr
@@ -452,8 +472,7 @@ namespace Ast
 		{ }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(0, 0); }
 
-		void codegenPass1(Codegen::CodegenInstance* cgi);
-		void codegenPass2(Codegen::CodegenInstance* cgi);
+		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
 		BracedBlock* innards;
 		std::deque<std::string> name;
