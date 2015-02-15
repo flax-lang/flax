@@ -5,7 +5,7 @@
 #pragma once
 #include "ast.h"
 #include "llvm_all.h"
-
+#include "typeinfo.h"
 
 void __error_gen(Ast::Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap);
 
@@ -35,14 +35,6 @@ namespace GenError
 	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args) __attribute__((noreturn));
 	void expected(Ast::Expr* e, std::string exp) __attribute__((noreturn));
 }
-
-
-
-
-
-
-
-
 
 namespace Codegen
 {

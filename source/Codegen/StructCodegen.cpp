@@ -176,8 +176,6 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	cgi->addNewType(str, this, ExprType::Struct);
 
-
-
 	if(!this->didCreateType)
 	{
 		// because we can't (and don't want to) mangle names in the parser,
@@ -216,6 +214,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	this->scope = cgi->namespaceStack;
+	TypeInfo::addNewStructType(cgi, str, this);
 
 	delete types;
 }
