@@ -14,7 +14,7 @@ using namespace Codegen;
 #define FREE_FUNC		"free"
 
 
-Result_t Alloc::codegen(CodegenInstance* cgi)
+Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	// if we haven't declared malloc() yet, then we need to do it here
 	// NOTE: this is one of the only places in the compiler where a hardcoded call is made to a non-provided function.
@@ -137,7 +137,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi)
 }
 
 
-Result_t Dealloc::codegen(CodegenInstance* cgi)
+Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	SymbolPair_t* sp = cgi->getSymPair(this, this->var->name);
 	if(!sp)

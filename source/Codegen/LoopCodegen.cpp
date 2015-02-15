@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Break::codegen(CodegenInstance* cgi)
+Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -25,7 +25,7 @@ Result_t Break::codegen(CodegenInstance* cgi)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Continue::codegen(CodegenInstance* cgi)
+Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -40,13 +40,20 @@ Result_t Continue::codegen(CodegenInstance* cgi)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Return::codegen(CodegenInstance* cgi)
+Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
-	auto ret = this->val->codegen(cgi);
-	return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
+	if(this->val)
+	{
+		auto ret = this->val->codegen(cgi);
+		return Result_t(cgi->mainBuilder.CreateRet(ret.result.first), ret.result.second, ResultType::BreakCodegen);
+	}
+	else
+	{
+		return Result_t(cgi->mainBuilder.CreateRetVoid(), 0, ResultType::BreakCodegen);
+	}
 }
 
-Result_t WhileLoop::codegen(CodegenInstance* cgi)
+Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
 	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);

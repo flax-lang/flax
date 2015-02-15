@@ -2,81 +2,26 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-public struct String
+import LibCInterface
+func min(a: Uint64, b: Uint64) -> Uint64
 {
-	var data: Int8*
-	var length: Int64
-	var allocated: Int64
-
-	init()
+	if a < b
 	{
-		self.data = malloc(32)
-		self.length = 0
-		self.allocated = 32
+		return a
 	}
 
-	init(str: Int8*)
-	{
-		self.allocated = 0
-		self.set(str)
-	}
-
-	func clear()
-	{
-		memset(self.data, 0, self.length)
-		self.length = 0
-	}
-
-	func set(str: Int8*)
-	{
-		self.clear()
-		var len: Int64 = strlen(str)
-		if self.allocated < len
-		{
-			free(self.data)
-			self.data = malloc((len + 31) / 32)
-		}
-
-		memcpy(self.data, str, len)
-		self.length = len
-	}
-
-	operator=(other: Int8*)
-	{
-		self.set(other)
-	}
-
-	operator=(other: String)
-	{
-		self.set(other.data)
-	}
+	return b
 }
 
+func max(a: Uint64, b: Uint64) -> Uint64
+{
+	if a > b
+	{
+		return a
+	}
 
-
-
-
-
-// printing
-public ffi func puts(x: Int8*) -> Int32
-public ffi func printf(x: Int8*, ...) -> Int32
-
-// memcpy/set/move
-public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
-public ffi func memset(dest: Int8*, value: Int32, length: Uint64) -> Int8*
-
-// string ops (todo: write in Flax)
-public ffi func strlen(str: Int8*) -> Uint64
-
-// memory
-public ffi func malloc(size: Uint64) -> Int8*
-public ffi func free(pointer: Int8*)
-
-
-
-
-
-
+	return b
+}
 
 
 

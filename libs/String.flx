@@ -1,0 +1,73 @@
+// String.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import LibCInterface
+
+public ffi func strlen(str: Int8*) -> Uint64
+public ffi func strcmp(str1: Int8*, str2: Int8*) -> Int32
+
+public struct String
+{
+	var data: Int8*
+	var length: Int64
+	var allocated: Int64
+
+	init()
+	{
+		self.data = malloc(32)
+		self.length = 0
+		self.allocated = 32
+	}
+
+	init(str: Int8*)
+	{
+		self.allocated = 0
+		self.set(str)
+	}
+
+	func clear()
+	{
+		memset(self.data, 0, self.length)
+		self.length = 0
+	}
+
+	func set(str: Int8*)
+	{
+		self.clear()
+		var len: Int64 = strlen(str)
+		if self.allocated < len
+		{
+			free(self.data)
+			self.data = malloc((len + 31) / 32)
+		}
+
+		memcpy(self.data, str, len)
+		self.length = len
+	}
+
+	operator=(other: Int8*)
+	{
+		self.set(other)
+	}
+
+	operator=(other: String)
+	{
+		self.set(other.data)
+	}
+
+	operator==(other: Int8*) -> Bool
+	{
+		// return false
+		return strcmp(self.data, other) == 0
+	}
+
+	operator==(other: String) -> Bool
+	{
+		return strcmp(self.data, other.data) == 0
+	}
+}
+
+
+
+

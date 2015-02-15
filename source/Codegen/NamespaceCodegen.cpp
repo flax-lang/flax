@@ -53,7 +53,7 @@ static Expr* resolveScope(ScopeResolution* _sr, CodegenInstance* cgi, std::deque
 
 
 
-Result_t ScopeResolution::codegen(CodegenInstance* cgi)
+Result_t ScopeResolution::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	std::deque<std::string> scopes;
 	Expr* result = resolveScope(this, cgi, &scopes);
@@ -70,7 +70,6 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi)
 	}
 
 	return result->codegen(cgi);
-	return Result_t(0, 0);
 }
 
 
@@ -180,7 +179,7 @@ void NamespaceDecl::codegenPass2(CodegenInstance* cgi)
 }
 
 
-Result_t Root::codegen(CodegenInstance* cgi)
+Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	codegenTopLevel(cgi, 1, this->topLevelExpressions);
 	codegenTopLevel(cgi, 2, this->topLevelExpressions);
