@@ -80,11 +80,13 @@ void Extension::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
-			func->decl->parentStruct = this;
+			func->decl->parentStruct = str;
 
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
 				error(func, "Duplicate member '%s'", func->decl->name.c_str());
+
+			str->funcs.push_back(func);
 		}
 
 
