@@ -31,7 +31,7 @@ project Flax default all
 
 
 	cxx_invoke			= "{CXX} {CXXFLAGS} -g -c -o $file$.o $file$";
-	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter irreader";
+	llvm_config_invoke	= "{LLVM_CONFIG} --cxxflags --ldflags --system-libs --libs core jit native bitwriter";
 	final_invoke		= "{CXX} {CXXFLAGS} -g -o '{sysroot}/{prefix}/bin/{outputBin}' ";
 
 
