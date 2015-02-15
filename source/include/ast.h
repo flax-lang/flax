@@ -545,6 +545,7 @@ namespace Ast
 		std::deque<Expr*> topLevelExpressions;
 
 		std::vector<TypeInfo::Type*> typeInformationTable;
+		std::map<std::string, llvm::Value*> typeInfoMap;
 	};
 }
 

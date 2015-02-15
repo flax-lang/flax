@@ -138,7 +138,7 @@ namespace TypeInfo
 				llvm::Value* membersPtr = cgi->mainBuilder.CreateConstGEP2_32(gvMemArr, 0, 0);
 
 				llvm::Constant* str = llvm::ConstantStruct::get(strType, structName, structKind, memberCount, membersPtr, NULL);
-				new llvm::GlobalVariable(*cgi->mainModule, str->getType(), true, llvm::GlobalValue::ExternalLinkage, str, "__TypeInfo#" + st->name);
+				cgi->rootNode->typeInfoMap[st->name] = new llvm::GlobalVariable(*cgi->mainModule, str->getType(), true, llvm::GlobalValue::ExternalLinkage, str, "__TypeInfo#" + st->name);
 			}
 		}
 	}
