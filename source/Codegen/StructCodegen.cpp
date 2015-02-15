@@ -39,6 +39,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 			int i = this->nameMap[var->name];
 			assert(i >= 0);
 
+			printf("self: %s\n", cgi->getReadableType(self).c_str());
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
@@ -155,7 +156,7 @@ void Struct::createType(CodegenInstance* cgi)
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(this, this->name, SymbolType::Type);
 
-	llvm::Type** types = new llvm::Type*[this->funcs.size() + this->members.size()];
+	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
 	this->mangledName = cgi->mangleWithNamespace(this->name);
@@ -188,7 +189,11 @@ void Struct::createType(CodegenInstance* cgi)
 			if(type == str)
 				error(this, "Cannot have non-pointer member of type self");
 
-			types[this->nameMap[var->name]] = cgi->getLlvmType(var);
+			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type));
+			int i = this->nameMap[var->name];
+			assert(i >= 0);
+
+			types[i] = cgi->getLlvmType(var);
 		}
 	}
 
@@ -201,9 +206,6 @@ void Struct::createType(CodegenInstance* cgi)
 
 	delete types;
 }
-
-
-
 
 
 
