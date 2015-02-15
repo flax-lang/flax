@@ -123,10 +123,16 @@ namespace Codegen
 			llvm::StructType* stype = llvm::StructType::create(cgi->getContext(), "__BuiltinStringType");
 			llvm::Type* typearr[] = { llvm::Type::getInt32Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()) };
 			stype->setBody(typearr, true);
+
+			cgi->stringType = stype;
 		}
 
+		TypeInfo::initialiseTypeInfo(cgi);
 
 		cgi->rootNode->codegen(cgi);
+
+		TypeInfo::generateTypeInfo(cgi);
+
 		cgi->popScope();
 
 		// free the memory
