@@ -61,6 +61,8 @@ namespace Parser
 		Public,
 		Internal,
 
+		Extension,
+
 		BuiltinType,
 		Alloc,
 		Dealloc,
@@ -147,9 +149,9 @@ namespace Parser
 
 
 
-
-	Ast::Expr* parseIf(std::deque<Token>& tokens);
 	void parseAll(std::deque<Token>& tokens);
+	Ast::Expr* parseIf(std::deque<Token>& tokens);
+	void parseAttribute(std::deque<Token>& tokens);
 	Ast::Func* parseFunc(std::deque<Token>& tokens);
 	Ast::Expr* parseExpr(std::deque<Token>& tokens);
 	Ast::Expr* parseUnary(std::deque<Token>& tokens);
@@ -163,7 +165,6 @@ namespace Parser
 	Ast::Import* parseImport(std::deque<Token>& tokens);
 	Ast::Return* parseReturn(std::deque<Token>& tokens);
 	Ast::Number* parseNumber(std::deque<Token>& tokens);
-	void parseAttribute(std::deque<Token>& tokens);
 	Ast::CastedType* parseType(std::deque<Token>& tokens);
 	Ast::VarDecl* parseVarDecl(std::deque<Token>& tokens);
 	Ast::WhileLoop* parseWhile(std::deque<Token>& tokens);
@@ -172,6 +173,7 @@ namespace Parser
 	Ast::Func* parseTopLevelExpr(std::deque<Token>& tokens);
 	Ast::FuncDecl* parseFuncDecl(std::deque<Token>& tokens);
 	Ast::Expr* parseParenthesised(std::deque<Token>& tokens);
+	Ast::Extension* parseExtension(std::deque<Token>& tokens);
 	Ast::OpOverload* parseOpOverload(std::deque<Token>& tokens);
 	Ast::NamespaceDecl* parseNamespace(std::deque<Token>& tokens);
 	Ast::BracedBlock* parseBracedBlock(std::deque<Token>& tokens);
