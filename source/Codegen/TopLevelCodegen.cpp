@@ -11,6 +11,7 @@ using namespace Codegen;
 
 
 // 4-pass system.
+// pass 0: set up the mangled names for extensions so we can reference them later
 // pass 1: struct->createType()
 // pass 2: extensions->createType()		-- overrides struct bodies
 // pass 3: decls->codegen()
@@ -18,7 +19,19 @@ using namespace Codegen;
 
 static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions)
 {
-	if(pass == 1)
+	if(pass == 0)
+	{
+		// pass 0: setup extensions
+		for(Expr* e : expressions)
+		{
+			Extension* ext			= dynamic_cast<Extension*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+
+			if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
+			else if(ns)				ns->codegenPass(cgi, pass);
+		}
+	}
+	else if(pass == 1)
 	{
 		// pass 1: create struct types
 		for(Expr* e : expressions)
@@ -35,11 +48,11 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 2: override struct types with any extensions
 		for(Expr* e : expressions)
 		{
-			Extension* ext			= dynamic_cast<Extension*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			// Extension* ext			= dynamic_cast<Extension*>(e);
+			// NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-			if(ext)					ext->createType(cgi);
-			else if(ns)				ns->codegenPass(cgi, pass);
+			// if(ext)					ext->createType(cgi);
+			// else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
 	else if(pass == 3)
@@ -100,6 +113,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
+	codegenTopLevel(cgi, 0, this->topLevelExpressions);
 	codegenTopLevel(cgi, 1, this->topLevelExpressions);
 	codegenTopLevel(cgi, 2, this->topLevelExpressions);
 	codegenTopLevel(cgi, 3, this->topLevelExpressions);

@@ -179,8 +179,6 @@ namespace Codegen
 
 
 
-
-
 	void CodegenInstance::popScope()
 	{
 		symTabStack.pop_back();
@@ -400,6 +398,27 @@ namespace Codegen
 	{
 		this->namespaceStack.clear();
 	}
+
+	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
+	{
+		for(Expr* e : exprs)
+		{
+			Extension* ext		= dynamic_cast<Extension*>(e);
+			NamespaceDecl* ns	= dynamic_cast<NamespaceDecl*>(e);
+
+			if(ext && ext->mangledName == extName)
+				ext->createType(cgi);
+
+			else if(ns)
+				searchForAndApplyExtension(cgi, ns->innards->statements, extName);
+		}
+	}
+
+	void CodegenInstance::applyExtensionToStruct(std::string ext)
+	{
+		searchForAndApplyExtension(this, this->rootNode->topLevelExpressions, ext);
+	}
+
 
 
 

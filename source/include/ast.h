@@ -149,7 +149,6 @@ namespace Ast
 		ResultType type;
 	};
 
-
 	struct Expr
 	{
 		Expr(Parser::PosInfo pos) : posinfo(pos) { }
