@@ -33,6 +33,9 @@ struct Bar
 	var norf: Int32 = 1600
 }
 
+extension Bar
+{
+}
 
 struct Foo
 {
