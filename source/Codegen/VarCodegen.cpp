@@ -109,6 +109,18 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		{
 			val = llvm::Constant::getNullValue(ai->getType()->getPointerElementType());
 		}
+		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
+		{
+			printf("both ints\n");
+			Number* n = 0;
+			if((n = dynamic_cast<Number*>(this->initVal)))
+			{
+				uint64_t max = pow(2, val->getType()->getIntegerBitWidth());
+				if(max == 0) max = UINT64_MAX;
+				if((uint64_t) n->ival < max)
+					val = cgi->mainBuilder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+			}
+		}
 		else
 		{
 			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());

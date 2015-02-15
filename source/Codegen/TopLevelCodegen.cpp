@@ -48,11 +48,11 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 2: override struct types with any extensions
 		for(Expr* e : expressions)
 		{
-			// Extension* ext			= dynamic_cast<Extension*>(e);
-			// NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			Extension* ext			= dynamic_cast<Extension*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-			// if(ext)					ext->createType(cgi);
-			// else if(ns)				ns->codegenPass(cgi, pass);
+			if(ext)					ext->createType(cgi);
+			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
 	else if(pass == 3)

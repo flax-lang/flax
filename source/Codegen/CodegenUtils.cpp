@@ -434,6 +434,7 @@ namespace Codegen
 		else if(r.find("Int16") == 0)	r = "s";
 		else if(r.find("Int32") == 0)	r = "i";
 		else if(r.find("Int64") == 0)	r = "l";
+		else if(r.find("Int") == 0)		r = "l";
 
 		else if(r.find("Uint8") == 0)	r = "h";
 		else if(r.find("Uint16") == 0)	r = "t";
@@ -735,6 +736,7 @@ namespace Codegen
 		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")	return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
 		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
@@ -1121,11 +1123,9 @@ namespace Codegen
 				continue;
 
 			int i = 0;
-			printf("[%s]\n", this->getReadableType(initers).c_str());
 			for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
 			{
 				llvm::Value& arg = (*it);
-				printf("%s, %s\n", this->getReadableType(vals[i]).c_str(), this->getReadableType(arg.getType()).c_str());
 				if(vals[i]->getType() != arg.getType())
 					goto breakout;
 			}
