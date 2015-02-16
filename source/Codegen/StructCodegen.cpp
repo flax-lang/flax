@@ -155,12 +155,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	if(this->initFuncs.size() == 0)
 		this->initFuncs.push_back(defaultInitFunc);
 
-
-	// if we have an init function, then the __automatic_init will only be called from the local module
-	// and only the normal init() needs to be exposed.
 	cgi->rootNode->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
 	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
-
 	return Result_t(nullptr, nullptr);
 }
 
