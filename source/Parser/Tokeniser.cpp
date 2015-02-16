@@ -340,7 +340,8 @@ namespace Parser
 			}
 
 			tok.type = TType::StringLiteral;
-			tok.text = ss.str();
+			tok.text = "_" + ss.str();			// HACK: Parser checks for string length > 0, so if we have an empty string we
+												// need something here.
 			read = i + 1;
 		}
 		else if(!isalnum(stream[0]))
