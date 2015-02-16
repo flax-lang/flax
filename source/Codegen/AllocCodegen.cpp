@@ -88,7 +88,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		// we need to keep calling this... essentially looping.
 		llvm::BasicBlock* curbb = cgi->mainBuilder.GetInsertBlock();	// store the current bb
 		llvm::BasicBlock* loopBegin = llvm::BasicBlock::Create(cgi->getContext(), "loopBegin", curbb->getParent());
-		llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd");
+		llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", curbb->getParent());
 
 		// create the loop counter (initialise it with the value)
 		llvm::Value* counterptr = cgi->mainBuilder.CreateAlloca(allocsize->getType());
@@ -122,7 +122,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 		// at loopend:
 		cgi->mainBuilder.SetInsertPoint(loopEnd);
-		curbb->getParent()->getBasicBlockList().push_back(loopEnd);
+		// curbb->getParent()->getBasicBlockList().push_back(loopEnd);
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
