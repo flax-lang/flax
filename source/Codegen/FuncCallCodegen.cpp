@@ -67,7 +67,11 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 	auto arg_it = target->arg_begin();
 	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
-		cgi->autoCastType(arg_it, args[i], argPtrs[i]);		// this also takes care of calling functions accepting int8*s with a String arg
+	{
+		cgi->autoCastType(arg_it, args[i], argPtrs[i]);
+		if(arg_it->getType() != args[i]->getType())
+			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1, cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
+	}
 
 	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
 }

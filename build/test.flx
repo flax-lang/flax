@@ -31,6 +31,7 @@ namespace Thing::Troll
 struct Bar
 {
 	var norf: Int = 1600
+	var yorg: Int = 5000
 
 	init(q: Int, a: Int)
 	{
@@ -58,15 +59,8 @@ extension Bar
 func mult(x: Int) -> Int { x * 2 }
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	var x = "Hello, World\n"
-	x = ""
-
-	var k: Bar()
-
-	k.fwoosh()
-
-	printf("[%d, %d]\n", k.qux, k.aaa)
-	printf("%d: %s\n", x.length, x.bytes)
+	var d: String("HELLO")
+	printf("%d: %s\n", UnicodeLengthInCodepoints(d.data), d.data)
 
 	return 0
 }

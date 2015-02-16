@@ -159,7 +159,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		valptr = r.second;
 		this->inferredLType = val->getType();
 
-		if(cgi->isBuiltinType(this->initVal))
+		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
 			this->type = cgi->getReadableType(this->initVal);
 	}
 	else if(this->initVal)
