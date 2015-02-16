@@ -287,6 +287,7 @@ namespace Parser
 			else if(id == "public")		tok.type = TType::Public;
 			else if(id == "private")	tok.type = TType::Private;
 			else if(id == "internal")	tok.type = TType::Internal;
+
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
 
@@ -308,7 +309,6 @@ namespace Parser
 				|| id == "Int"
 				|| id == "Bool"
 				|| id == "UintPtr"
-				|| id == "String"
 				|| id == "Void")		tok.type = TType::BuiltinType;
 
 			else						tok.type = TType::Identifier;
@@ -341,7 +341,8 @@ namespace Parser
 			}
 
 			tok.type = TType::StringLiteral;
-			tok.text = ss.str();
+			tok.text = "_" + ss.str();			// HACK: Parser checks for string length > 0, so if we have an empty string we
+												// need something here.
 			read = i + 1;
 		}
 		else if(!isalnum(stream[0]))
