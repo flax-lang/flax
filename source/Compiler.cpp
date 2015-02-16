@@ -62,7 +62,6 @@ namespace Compiler
 				curpath = filename.substr(0, sep);
 		}
 
-
 		std::ifstream file(filename);
 		std::stringstream stream;
 
@@ -76,13 +75,27 @@ namespace Compiler
 		// get imports
 		for(Expr* e : root->topLevelExpressions)
 		{
-			Import* imp = 0;
-			if((imp = dynamic_cast<Import*>(e)))
+			Root* r = nullptr;
+			Import* imp = dynamic_cast<Import*>(e);
+
+			if(rootmap.find("Core") == rootmap.end())
+			{
+				Ast::Import* fakeImport = new Ast::Import(Parser::PosInfo(), "Core");
+				Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
+
+				// so we don't recurse into infinity, insert a dummy value
+				rootmap["Core"] = 0;
+
+				r = compileFile(resolveImport(fakeImport, curpath), list, rootmap, rcgi);
+				rootmap["Core"] = r;
+			}
+
+
+			if(imp)
 			{
 				std::string fname = resolveImport(imp, curpath);
 
-				// simple, compile the source
-				Root* r = nullptr;
+				// if already compiled, don't do it again
 				if(rootmap.find(imp->module) != rootmap.end())
 				{
 					r = rootmap[imp->module];
@@ -94,7 +107,12 @@ namespace Compiler
 					rootmap[imp->module] = r;
 					delete rcgi;
 				}
+			}
 
+
+
+			if(r)
+			{
 				// add to both imported and exported lists
 				for(auto v : r->publicFuncs)
 				{
@@ -119,7 +137,6 @@ namespace Compiler
 		oname += ".bc";
 
 		list.push_back(oname);
-
 		return root;
 	}
 

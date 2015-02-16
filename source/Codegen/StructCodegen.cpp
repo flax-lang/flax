@@ -155,12 +155,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	if(this->initFuncs.size() == 0)
 		this->initFuncs.push_back(defaultInitFunc);
 
-
-	// if we have an init function, then the __automatic_init will only be called from the local module
-	// and only the normal init() needs to be exposed.
 	cgi->rootNode->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
 	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
-
 	return Result_t(nullptr, nullptr);
 }
 
@@ -175,8 +171,6 @@ void Struct::createType(CodegenInstance* cgi)
 	this->mangledName = cgi->mangleWithNamespace(this->name);
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	cgi->addNewType(str, this, ExprType::Struct);
-
-
 
 	if(!this->didCreateType)
 	{
@@ -216,6 +210,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	this->scope = cgi->namespaceStack;
+	TypeInfo::addNewStructType(cgi, str, this);
 
 	delete types;
 }

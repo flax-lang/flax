@@ -1438,6 +1438,8 @@ namespace Parser
 		assert(tokens.front().type == TType::StringLiteral);
 		Token str = eat(tokens);
 
+		// reference hack in tokeniser.cpp
+		str.text = str.text.substr(1);
 		return CreateAST(StringLiteral, str, str.text);
 	}
 
