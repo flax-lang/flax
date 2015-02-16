@@ -809,6 +809,10 @@ namespace Codegen
 			}
 			else if(ref)
 			{
+				VarDecl* decl = getSymDecl(ref, ref->name);
+				if(!decl)
+					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+
 				return getLlvmType(getSymDecl(ref, ref->name));
 			}
 			else if(uo)
@@ -861,6 +865,37 @@ namespace Codegen
 			}
 			else if(ma)
 			{
+				// first, get the type of the lhs
+				llvm::Type* lhs = this->getLlvmType(ma->target);
+				TypePair_t* pair = this->getType(lhs);
+
+				if(!pair)
+					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
+
+				Struct* str = dynamic_cast<Struct*>(pair->second.first);
+				assert(str);
+
+				VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
+				FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
+
+				if(memberVr)
+				{
+					for(VarDecl* mem : str->members)
+					{
+						if(mem->name == memberVr->name)
+							return this->getLlvmType(mem);
+					}
+				}
+				else if(memberFc)
+				{
+					error("enosup");
+				}
+				else
+				{
+					error(expr, "invalid");
+				}
+
+
 				return this->getLlvmType(ma->member);
 			}
 			else if(bo)

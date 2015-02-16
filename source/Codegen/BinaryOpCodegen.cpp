@@ -303,7 +303,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 	// if adding integer to pointer
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
-		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract))
+		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
+			|| this->op == ArithmeticOp::MinusEquals))
 	{
 		return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
 	}
@@ -361,11 +362,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 
 				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+				assert(func);
+
 				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 
 				llvm::BasicBlock* entry = cgi->mainBuilder.GetInsertBlock();
 				llvm::BasicBlock* lb = llvm::BasicBlock::Create(cgi->getContext(), "leftbl", func);
 				llvm::BasicBlock* rb = llvm::BasicBlock::Create(cgi->getContext(), "rightbl", func);
+				llvm::BasicBlock* mb = llvm::BasicBlock::Create(cgi->getContext(), "mergebl", func);
 				cgi->mainBuilder.CreateCondBr(res, lb, rb);
 
 
@@ -408,6 +412,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 					cgi->mainBuilder.SetInsertPoint(rb);
 					phi->addIncoming(falseval, entry);
 				}
+
+				cgi->mainBuilder.CreateBr(mb);
+				cgi->mainBuilder.SetInsertPoint(mb);
 
 				return Result_t(this->phi, 0);
 			}
