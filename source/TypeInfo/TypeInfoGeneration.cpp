@@ -16,15 +16,17 @@ namespace TypeInfo
 		// unsupported atm
 	}
 
-	static llvm::Value* createFlaxStringName(CodegenInstance* cgi, std::string name)
-	{
-		llvm::Type* i32 = llvm::Type::getInt32Ty(cgi->getContext());
-		llvm::StructType* flaxStringType = llvm::cast<llvm::StructType>(cgi->stringType);
+	// static llvm::Value* createFlaxStringName(CodegenInstance* cgi, std::string name)
+	// {
+	// 	llvm::Type* i32 = llvm::Type::getInt32Ty(cgi->getContext());
+	// 	llvm::StructType* flaxStringType = llvm::cast<llvm::StructType>(cgi->stringType);
 
-		llvm::Constant* nameLength = llvm::ConstantInt::get(i32, name.length());
-		llvm::Value* nameString = cgi->mainBuilder.CreateGlobalStringPtr(name.c_str());
-		return llvm::ConstantStruct::get(flaxStringType, nameLength, nameString, NULL);
-	}
+	// 	llvm::Constant* nameLength = llvm::ConstantInt::get(i32, name.length());
+	// 	llvm::Value* nameString = cgi->mainBuilder.CreateGlobalStringPtr(name.c_str());
+	// 	return llvm::ConstantStruct::get(flaxStringType, nameLength, nameString, NULL);
+
+	// 	return 0;
+	// }
 
 	void addNewStructType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str)
 	{
@@ -92,55 +94,56 @@ namespace TypeInfo
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		llvm::StructType* flaxStringType = llvm::cast<llvm::StructType>(cgi->stringType);
-		llvm::Type* i32 = llvm::Type::getInt32Ty(cgi->getContext());
-		llvm::Type* i64 = llvm::Type::getInt64Ty(cgi->getContext());
+		return;
+		// llvm::StructType* flaxStringType = llvm::cast<llvm::StructType>(cgi->stringType);
+		// llvm::Type* i32 = llvm::Type::getInt32Ty(cgi->getContext());
+		// llvm::Type* i64 = llvm::Type::getInt64Ty(cgi->getContext());
 
-		static llvm::StructType* memType = llvm::StructType::create("__TypeInfo#structMemberType", flaxStringType, i32, i64, NULL);
-		static llvm::StructType* strType = llvm::StructType::create("__TypeInfo#structType", flaxStringType, i32, i64, memType->getPointerTo(), NULL);
-
-
-		llvm::Value* structKind = llvm::ConstantInt::get(i32, (int) TypeKind::Struct);
+		// static llvm::StructType* memType = llvm::StructType::create("__TypeInfo#structMemberType", flaxStringType, i32, i64, NULL);
+		// static llvm::StructType* strType = llvm::StructType::create("__TypeInfo#structType", flaxStringType, i32, i64, memType->getPointerTo(), NULL);
 
 
-		for(Type* t : cgi->rootNode->typeInformationTable)
-		{
-			StructType* st = dynamic_cast<StructType*>(t);
-			if(st)
-			{
-				// layout:
-				// name: FlaxString			(4 + sizeof(void*) bytes)
-				// kind: int				(4 bytes)
-				// memberCount: uint64_t	(8 bytes)
-				// members: Member*			(sizeof(void*) bytes)
+		// llvm::Value* structKind = llvm::ConstantInt::get(i32, (int) TypeKind::Struct);
 
-				// member:
-				// name: FlaxString
-				// kind: int
-				// offset: uint64_t
 
-				llvm::Value* structName = createFlaxStringName(cgi, st->name);
-				llvm::Value* memberCount = llvm::ConstantInt::get(i64, st->members.size());
+		// for(Type* t : cgi->rootNode->typeInformationTable)
+		// {
+		// 	StructType* st = dynamic_cast<StructType*>(t);
+		// 	if(st)
+		// 	{
+		// 		// layout:
+		// 		// name: FlaxString			(4 + sizeof(void*) bytes)
+		// 		// kind: int				(4 bytes)
+		// 		// memberCount: uint64_t	(8 bytes)
+		// 		// members: Member*			(sizeof(void*) bytes)
 
-				std::vector<llvm::Constant*> mems;
-				for(StructMemberType smt : st->members)
-				{
-					llvm::Value* memberName = createFlaxStringName(cgi, smt.name);
-					llvm::Value* memberKind = llvm::ConstantInt::get(i32, (int) smt.kind);
-					llvm::Value* memberOffs = llvm::ConstantInt::get(i64, smt.offset);
+		// 		// member:
+		// 		// name: FlaxString
+		// 		// kind: int
+		// 		// offset: uint64_t
 
-					mems.push_back(llvm::ConstantStruct::get(memType, memberName, memberKind, memberOffs, NULL));
-				}
+		// 		llvm::Value* structName = createFlaxStringName(cgi, st->name);
+		// 		llvm::Value* memberCount = llvm::ConstantInt::get(i64, st->members.size());
 
-				llvm::Constant* membersArr = llvm::ConstantArray::get(llvm::ArrayType::get(memType, st->members.size()), mems);
-				llvm::GlobalVariable* gvMemArr = new llvm::GlobalVariable(*cgi->mainModule, membersArr->getType(), true, llvm::GlobalValue::ExternalLinkage, membersArr);
+		// 		std::vector<llvm::Constant*> mems;
+		// 		for(StructMemberType smt : st->members)
+		// 		{
+		// 			llvm::Value* memberName = createFlaxStringName(cgi, smt.name);
+		// 			llvm::Value* memberKind = llvm::ConstantInt::get(i32, (int) smt.kind);
+		// 			llvm::Value* memberOffs = llvm::ConstantInt::get(i64, smt.offset);
 
-				llvm::Value* membersPtr = cgi->mainBuilder.CreateConstGEP2_32(gvMemArr, 0, 0);
+		// 			mems.push_back(llvm::ConstantStruct::get(memType, memberName, memberKind, memberOffs, NULL));
+		// 		}
 
-				llvm::Constant* str = llvm::ConstantStruct::get(strType, structName, structKind, memberCount, membersPtr, NULL);
-				cgi->rootNode->typeInfoMap[st->name] = new llvm::GlobalVariable(*cgi->mainModule, str->getType(), true, llvm::GlobalValue::ExternalLinkage, str, "__TypeInfo#" + st->name);
-			}
-		}
+		// 		llvm::Constant* membersArr = llvm::ConstantArray::get(llvm::ArrayType::get(memType, st->members.size()), mems);
+		// 		llvm::GlobalVariable* gvMemArr = new llvm::GlobalVariable(*cgi->mainModule, membersArr->getType(), true, llvm::GlobalValue::ExternalLinkage, membersArr);
+
+		// 		llvm::Value* membersPtr = cgi->mainBuilder.CreateConstGEP2_32(gvMemArr, 0, 0);
+
+		// 		llvm::Constant* str = llvm::ConstantStruct::get(strType, structName, structKind, memberCount, membersPtr, NULL);
+		// 		cgi->rootNode->typeInfoMap[st->name] = new llvm::GlobalVariable(*cgi->mainModule, str->getType(), true, llvm::GlobalValue::ExternalLinkage, str, "__TypeInfo#" + st->name);
+		// 	}
+		// }
 	}
 }
 

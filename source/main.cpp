@@ -40,8 +40,6 @@ static std::string parseQuotedString(char** argv, int& i)
 namespace Compiler
 {
 	static bool dumpModule = false;
-
-
 	static bool compileOnly = false;
 	bool getIsCompileOnly()
 	{
