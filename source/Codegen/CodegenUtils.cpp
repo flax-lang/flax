@@ -436,6 +436,7 @@ namespace Codegen
 		else if(r.find("Uint16") == 0)	r = "t";
 		else if(r.find("Uint32") == 0)	r = "j";
 		else if(r.find("Uint64") == 0)	r = "m";
+		else if(r.find("Uint") == 0)	r = "m";
 
 		else if(r.find("Float32") == 0)	r = "f";
 		else if(r.find("Float64") == 0)	r = "d";
@@ -731,12 +732,13 @@ namespace Codegen
 		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Int")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
 		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Uint32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Uint64")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
 		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
