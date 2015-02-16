@@ -307,6 +307,7 @@ namespace Parser
 				|| id == "Float64"
 				|| id == "Any"
 				|| id == "Int"
+				|| id == "Uint"
 				|| id == "Bool"
 				|| id == "UintPtr"
 				|| id == "Void")		tok.type = TType::BuiltinType;
