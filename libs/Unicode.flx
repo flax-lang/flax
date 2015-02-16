@@ -60,10 +60,7 @@ public func UnicodeLengthInCodepoints(_text: Int8*) -> Uint64
 		length += 1;
 
 		// Check if encoding is valid
-
-		printf("text before: %p\n", text)
 		src = text + 1;
-		printf("text after: %p\n", text)
 
 
 		var src_index = 1

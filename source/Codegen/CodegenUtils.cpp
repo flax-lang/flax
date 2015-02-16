@@ -1226,7 +1226,6 @@ namespace Codegen
 		// this is the properly adjusted thing
 		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
 
-
 		// convert the lhs pointer to an int value, so we can add/sub on it
 		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, newrhs->getType());
 
@@ -1234,9 +1233,11 @@ namespace Codegen
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
+		llvm::Value* tempRes = this->mainBuilder.CreateAlloca(lhs->getType());
+
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
-		this->mainBuilder.CreateStore(properres, lhsptr);
-		return Result_t(properres, lhsptr);
+		this->mainBuilder.CreateStore(properres, tempRes);
+		return Result_t(properres, tempRes);
 	}
 
 

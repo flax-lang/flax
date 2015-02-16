@@ -59,15 +59,8 @@ extension Bar
 func mult(x: Int) -> Int { x * 2 }
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	var k: Int8* = 4 as Int8*
-	var m: Int8*
-
-	m = k + 1
-	printf("k: %d, m: %d\n", k, m)
-
-	// var d: String("HELLO")
-
-	// printf("%d: %s\n", UnicodeLengthInCodepoints(d.data), d.data)
+	var d: String("HELLO")
+	printf("%d: %s\n", UnicodeLengthInCodepoints(d.data), d.data)
 
 	return 0
 }
