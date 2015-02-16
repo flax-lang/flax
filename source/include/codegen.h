@@ -5,7 +5,8 @@
 #pragma once
 #include "ast.h"
 #include "llvm_all.h"
-
+#include "typeinfo.h"
+#include "utf8rewind.h"
 
 void __error_gen(Ast::Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap);
 
@@ -35,14 +36,6 @@ namespace GenError
 	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args) __attribute__((noreturn));
 	void expected(Ast::Expr* e, std::string exp) __attribute__((noreturn));
 }
-
-
-
-
-
-
-
-
 
 namespace Codegen
 {
@@ -98,16 +91,12 @@ namespace Codegen
 		void popNamespaceScope();
 
 
-
-
 		// llvm::Types for non-primitive (POD) builtin types (string)
-		llvm::Type* stringType = 0;
-
 		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
-		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rightPtr = 0);
+		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
 
 		bool isPtr(Ast::Expr* e);
@@ -160,7 +149,6 @@ namespace Codegen
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
-	Ast::Result_t handleBuiltinTypeAccess(CodegenInstance* cgi, Ast::MemberAccess* ma);
 }
 
 

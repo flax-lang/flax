@@ -56,9 +56,11 @@ Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
+	assert(parentFunc);
+
 	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);
 	llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(cgi->getContext(), "loopBody", parentFunc);
-	llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd");
+	llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", parentFunc);
 
 	cgi->mainBuilder.CreateBr(setupBlock);
 	cgi->mainBuilder.SetInsertPoint(setupBlock);
@@ -87,7 +89,7 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	cgi->mainBuilder.CreateCondBr(condInside, loopBody, loopEnd);
 
 
-	parentFunc->getBasicBlockList().push_back(loopEnd);
+	// parentFunc->getBasicBlockList().push_back(loopEnd);
 	cgi->mainBuilder.SetInsertPoint(loopEnd);
 
 	return Result_t(0, 0);

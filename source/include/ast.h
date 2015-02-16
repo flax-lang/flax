@@ -16,6 +16,7 @@
 #include <string>
 #include <deque>
 
+#include "typeinfo.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
 
@@ -542,6 +543,9 @@ namespace Ast
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
+
+		std::vector<TypeInfo::Type*> typeInformationTable;
+		std::map<std::string, llvm::Value*> typeInfoMap;
 	};
 }
 

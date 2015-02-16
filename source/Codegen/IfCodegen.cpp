@@ -69,9 +69,11 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+	assert(func);
+
 	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
-	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase");
-	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge");
+	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase", func);
+	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge", func);
 
 	// create the first conditional
 	cgi->mainBuilder.CreateCondBr(firstCond, trueb, falseb);
@@ -120,7 +122,7 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	cgi->mainBuilder.SetInsertPoint(curblk);
 	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
-	func->getBasicBlockList().push_back(falseb);
+	// func->getBasicBlockList().push_back(falseb);
 
 	// if we have an 'else' case
 	Result_t elseResult(0, 0);
@@ -143,8 +145,8 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 	if(didMerge)
 	{
-		func->getBasicBlockList().push_back(merge);
 		cgi->mainBuilder.SetInsertPoint(merge);
+		// func->getBasicBlockList().push_back(merge);
 	}
 
 	return Result_t(0, 0);
