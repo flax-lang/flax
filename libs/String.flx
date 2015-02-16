@@ -2,16 +2,14 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Unicode
 import LibCInterface
-
-public ffi func strlen(str: Int8*) -> Uint64
-public ffi func strcmp(str1: Int8*, str2: Int8*) -> Int32
 
 public struct String
 {
 	var data: Int8*
-	var length: Int64
-	var allocated: Int64
+	var length: Uint64
+	var allocated: Uint64
 
 	init()
 	{
@@ -24,6 +22,11 @@ public struct String
 	{
 		self.allocated = 0
 		self.set(str)
+	}
+
+	init(str: String)
+	{
+		self.init(str.data)
 	}
 
 	func clear()
@@ -67,7 +70,3 @@ public struct String
 		return strcmp(self.data, other.data) == 0
 	}
 }
-
-
-
-

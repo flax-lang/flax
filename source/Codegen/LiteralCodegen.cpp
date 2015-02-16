@@ -34,21 +34,40 @@ Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
 	llvm::Value* alloca = nullptr;
+	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+	if(pair)
+	{
+		llvm::StructType* stringType = llvm::cast<llvm::StructType>(pair->first);
 
-	if(lhsPtr)	alloca = lhsPtr;
-	else		alloca = cgi->mainBuilder.CreateAlloca(cgi->stringType);
+		if(lhsPtr)	alloca = lhsPtr;
+		else		alloca = cgi->mainBuilder.CreateAlloca(stringType);
 
-	llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
-	llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
+		// String layout:
+		// var data: Int8*
+		// var length: Uint64
+		// var allocated: Uint64
 
-	llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(cgi->getContext()), this->str.length());
-	llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
 
-	cgi->mainBuilder.CreateStore(lengthVal, lengthPtr);
-	cgi->mainBuilder.CreateStore(stringVal, stringPtr);
+		llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
+		llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
+		llvm::Value* allocdPtr = cgi->mainBuilder.CreateStructGEP(alloca, 2);
 
-	llvm::Value* val = cgi->mainBuilder.CreateLoad(alloca);
-	return Result_t(val, alloca);
+		llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), utf8len(this->str.c_str()));
+		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
+
+		cgi->mainBuilder.CreateStore(lengthVal, lengthPtr);
+		cgi->mainBuilder.CreateStore(stringVal, stringPtr);
+		cgi->mainBuilder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
+
+		llvm::Value* val = cgi->mainBuilder.CreateLoad(alloca);
+		return Result_t(val, alloca);
+	}
+	else
+	{
+		// good old Int8*
+		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
+		return Result_t(stringVal, 0);
+	}
 }
 
 
