@@ -47,9 +47,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
 			type = type->getPointerElementType(), isPtr = true;
 
-		else if(type->isPointerTy() && cgi->isBuiltinType(type->getPointerElementType()))
-			return Codegen::handleBuiltinTypeAccess(cgi, this);
-
 		else
 			error(this, "Cannot do member access on non-struct types");
 	}
@@ -57,14 +54,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	TypePair_t* pair = cgi->getType(type->getStructName());
 	if(!pair)
 	{
-		if(cgi->isBuiltinType(type))
-		{
-			return Codegen::handleBuiltinTypeAccess(cgi, this);
-		}
-		else
-		{
-			error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
-		}
+		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}
 
 	if(pair->second.second == ExprType::Struct)

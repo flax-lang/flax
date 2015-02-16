@@ -10,7 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs)
+static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs, Ast::Expr* rhsExpr)
 {
 	if(structRef->getType()->getPointerElementType()->isStructTy())
 	{
@@ -72,7 +72,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			GenError::unknownSymbol(user, v->name, SymbolType::Variable);
 
 		// try and see if we have operator overloads for bo thing
-		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs);
+		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
 		if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
 			return tryOpOverload;
 
@@ -135,7 +135,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		if(varptr->getType()->getPointerElementType()->isStructTy())
 		{
-			Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs);
+			Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, right);
 			if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
 				return tryOpOverload;
 		}
@@ -240,9 +240,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		lhs = valptr.first;
-		rhs = this->right->codegen(cgi, valptr.second).result.first;
+		auto res = this->right->codegen(cgi, valptr.second).result;
+		rhs = res.first;
+		llvm::Value* rhsPtr = res.second;
 
-		cgi->autoCastType(lhs, rhs);
+		cgi->autoCastType(lhs, rhs, rhsPtr);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
 	}
 	else if(this->op == ArithmeticOp::Cast)
@@ -297,7 +299,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	cgi->autoCastType(lhs, rhs);
+	cgi->autoCastType(lhs, rhs, r.second);
 
 	// if adding integer to pointer
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
@@ -418,7 +420,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
 		// if one of them is an integer, cast it first
-		cgi->autoCastType(lhs, rhs);
+		cgi->autoCastType(lhs, rhs, r.second);
 
 		// then they're floats.
 		switch(this->op)

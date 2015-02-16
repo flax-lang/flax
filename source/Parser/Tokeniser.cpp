@@ -308,7 +308,6 @@ namespace Parser
 				|| id == "Int"
 				|| id == "Bool"
 				|| id == "UintPtr"
-				|| id == "String"
 				|| id == "Void")		tok.type = TType::BuiltinType;
 
 			else						tok.type = TType::Identifier;
