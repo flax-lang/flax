@@ -1,0 +1,89 @@
+// Unicode.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import LibCInterface
+
+public func UnicodeLengthInCodepoints(_text: Int8*) -> Uint64
+{
+	var text = _text
+	var src: Int8* = 0
+	var length = 0
+	var codepoint_length = 0
+	var codepoint: Uint8 = 0
+
+	if (text as Uint64) == 0
+	{
+		return length
+	}
+
+	var text_length = strlen(text)
+	if text_length == 0
+	{
+		return length
+	}
+
+	while(#text != 0)
+	{
+		codepoint = #text as Uint8;
+
+		if codepoint == 0
+		{
+			break
+		}
+
+		else if((codepoint & 0x80) == 0 || (codepoint & 0xC0) != 0xC0 || (codepoint & 0xFE) == 0xFE)
+		{
+			codepoint_length = 1;
+		}
+		else if((codepoint & 0xE0) == 0xC0)
+		{
+			codepoint_length = 2;
+		}
+		else if((codepoint & 0xF0) == 0xE0)
+		{
+			codepoint_length = 3;
+		}
+		else if((codepoint & 0xF8) == 0xF0)
+		{
+			codepoint_length = 4;
+		}
+		else if((codepoint & 0xFC) == 0xF8)
+		{
+			codepoint_length = 5;
+		}
+		else
+		{
+			codepoint_length = 6;
+		}
+
+		length += 1;
+
+		// Check if encoding is valid
+		src = text + 1;
+
+
+		var src_index = 1
+		while(src_index < codepoint_length)
+		{
+			if (#src & 0x80) == 0
+			{
+				break
+			}
+
+			src_index += 1
+			src = src + 1
+		}
+
+
+		if src_index > text_length
+		{
+			break
+		}
+
+		text = text + src_index
+		text_length -= src_index
+	}
+
+	return length
+}

@@ -94,6 +94,8 @@ namespace Codegen
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.add(llvm::createConstantPropagationPass());
 		OurFPM.add(llvm::createDeadCodeEliminationPass());
+
+
 		OurFPM.doInitialization();
 
 		// Set the global so the code gen can use this.
@@ -117,16 +119,10 @@ namespace Codegen
 			cgi->addNewType(str, pair.first, ExprType::Struct);
 		}
 
-		cgi->stringType = cgi->mainModule->getTypeByName("__BuiltinStringType");
-		if(!cgi->stringType)
-		{
-			llvm::StructType* stype = llvm::StructType::create(cgi->getContext(), "__BuiltinStringType");
-			llvm::Type* typearr[] = { llvm::Type::getInt32Ty(cgi->getContext()), llvm::Type::getInt8PtrTy(cgi->getContext()) };
-			stype->setBody(typearr, true);
-		}
-
-
+		TypeInfo::initialiseTypeInfo(cgi);
 		cgi->rootNode->codegen(cgi);
+		TypeInfo::generateTypeInfo(cgi);
+
 		cgi->popScope();
 
 		// free the memory
@@ -265,7 +261,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(0, "Duplicate type %s", atype->name.c_str());
+			error(atype, "Duplicate type %s", atype->name.c_str());
 		}
 	}
 
@@ -720,8 +716,7 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(llvm::Type* ltype)
 	{
-		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()
-			|| (ltype->isStructTy() && ltype->getStructName() == "__BuiltinStringType")));
+		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()));
 	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
@@ -747,8 +742,6 @@ namespace Codegen
 		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
-
-		else if(type == "String")	return this->stringType;
 		else return nullptr;
 	}
 
@@ -816,6 +809,10 @@ namespace Codegen
 			}
 			else if(ref)
 			{
+				VarDecl* decl = getSymDecl(ref, ref->name);
+				if(!decl)
+					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+
 				return getLlvmType(getSymDecl(ref, ref->name));
 			}
 			else if(uo)
@@ -864,10 +861,41 @@ namespace Codegen
 			}
 			else if(sl)
 			{
-				return this->stringType;
+				return this->getType("String")->first;
 			}
 			else if(ma)
 			{
+				// first, get the type of the lhs
+				llvm::Type* lhs = this->getLlvmType(ma->target);
+				TypePair_t* pair = this->getType(lhs);
+
+				if(!pair)
+					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
+
+				Struct* str = dynamic_cast<Struct*>(pair->second.first);
+				assert(str);
+
+				VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
+				FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
+
+				if(memberVr)
+				{
+					for(VarDecl* mem : str->members)
+					{
+						if(mem->name == memberVr->name)
+							return this->getLlvmType(mem);
+					}
+				}
+				else if(memberFc)
+				{
+					error("enosup");
+				}
+				else
+				{
+					error(expr, "invalid");
+				}
+
+
 				return this->getLlvmType(ma->member);
 			}
 			else if(bo)
@@ -971,7 +999,6 @@ namespace Codegen
 		StringReplace(ret, "i64", "Int64");
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
-		StringReplace(ret, "__BuiltinStringType", "String");
 
 		return ret;
 	}
@@ -986,36 +1013,59 @@ namespace Codegen
 		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rightPtr)
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
 		assert(left);
 		assert(right);
 
-		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy())
+		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy()
+			&& left->getType()->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
 		{
-			// always cast to a higher sized type
-			if(left->getType()->getIntegerBitWidth() > right->getType()->getIntegerBitWidth())
+			unsigned int lBits = left->getType()->getIntegerBitWidth();
+			unsigned int rBits = right->getType()->getIntegerBitWidth();
+
+			bool shouldCast = lBits > rBits;
+			// check if the RHS is a constant value
+			llvm::ConstantInt* constVal = llvm::dyn_cast<llvm::ConstantInt>(right);
+			if(constVal)
+			{
+				// check if the number fits in the LHS type
+				if(lBits < 64)	// 64 is the max
+				{
+					if(constVal->getSExtValue() < 0)
+					{
+						int64_t max = -1 * powl(2, lBits - 1);
+						if(constVal->getSExtValue() > max)
+							shouldCast = true;
+					}
+					else
+					{
+						uint64_t max = powl(2, lBits) - 1;
+						if(constVal->getZExtValue() < max)
+							shouldCast = true;
+					}
+				}
+			}
+
+			if(shouldCast)
 				right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
-
-			else
-				left = this->mainBuilder.CreateIntCast(left, right->getType(), false);
 		}
-		else if(left->getType() == llvm::Type::getInt8PtrTy(this->getContext()))
-		{
-			llvm::Value* sptr = 0;
-			if(right->getType()->isStructTy() && right->getType()->getStructName() == "__BuiltinStringType")
-			{
-				sptr = rightPtr;
-			}
-			else if(right->getType()->isPointerTy() && right->getType()->getPointerElementType()->isStructTy()
-				&& right->getType()->getPointerElementType()->getStructName() == "__BuiltinStringType")
-			{
-				sptr = this->mainBuilder.CreateLoad(right);
-			}
 
-			if(sptr)
+		// check if we're passing a string to a function expecting an Int8*
+		else if(left->getType()->isPointerTy() && left->getType()->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
+		{
+			if(right->getType()->isStructTy() && right->getType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 			{
-				right = this->mainBuilder.CreateLoad(this->mainBuilder.CreateStructGEP(sptr, 1));
+				// get the struct gep:
+				// Layout of string:
+				// var data: Int8*
+				// var length: Uint64
+				// var allocated: Uint64
+
+				// cast the RHS to the LHS
+				assert(rhsPtr);
+				llvm::Value* ret = this->mainBuilder.CreateStructGEP(rhsPtr, 0);
+				right = this->mainBuilder.CreateLoad(ret);	// mutating
 			}
 		}
 	}
@@ -1176,7 +1226,6 @@ namespace Codegen
 		// this is the properly adjusted thing
 		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
 
-
 		// convert the lhs pointer to an int value, so we can add/sub on it
 		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, newrhs->getType());
 
@@ -1184,9 +1233,11 @@ namespace Codegen
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
+		llvm::Value* tempRes = this->mainBuilder.CreateAlloca(lhs->getType());
+
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
-		this->mainBuilder.CreateStore(properres, lhsptr);
-		return Result_t(properres, lhsptr);
+		this->mainBuilder.CreateStore(properres, tempRes);
+		return Result_t(properres, tempRes);
 	}
 
 
