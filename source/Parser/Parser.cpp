@@ -895,6 +895,73 @@ namespace Parser
 				// it's easy.
 				v->initVal = parseFuncCall(tokens, v->type);
 			}
+			else if(tokens.front().type == TType::LBrace)
+			{
+				if(!isParsingStruct)
+					parserError("Computed properties can only be declared inside structs");
+
+				// computed property, getting and setting
+
+				// eat the brace, skip whitespace
+				ComputedProperty* cprop = CreateAST(ComputedProperty, eat(tokens), id);
+				cprop->type = v->type;
+				delete v;
+
+				bool didGetter = false;
+				bool didSetter = false;
+				for(int i = 0; i < 2; i++)
+				{
+					if(tokens.front().type == TType::Get)
+					{
+						if(didGetter)
+							parserError("Only one getter is allowed per computed property");
+
+						didGetter = true;
+
+						// parse a braced block.
+						eat(tokens);
+						if(tokens.front().type != TType::LBrace)
+							parserError("Expected '{' after 'get'");
+
+						cprop->getter = parseBracedBlock(tokens);
+					}
+					else if(tokens.front().type == TType::Set)
+					{
+						if(didSetter)
+							parserError("Only one getter is allowed per computed property");
+
+						didSetter = true;
+
+						eat(tokens);
+						std::string setValName = "newValue";
+
+						// see if we have parentheses
+						if(tokens.front().type == TType::LParen)
+						{
+							eat(tokens);
+							if(tokens.front().type != TType::Identifier)
+								parserError("Expected identifier for custom setter argument name");
+
+							setValName = eat(tokens).text;
+
+							if(eat(tokens).type != TType::RParen)
+								parserError("Expected closing ')'");
+						}
+
+						cprop->setter = parseBracedBlock(tokens);
+						cprop->setterArgName = setValName;
+					}
+					else
+					{
+						parserError("Only 'get' or 'set' expected in computed property, got '%s'", tokens.front().text.c_str());
+					}
+				}
+
+				if(eat(tokens).type != TType::RBrace)
+					parserError("Expected closing '}'");
+
+				return cprop;
+			}
 		}
 		else if(colon.type == TType::Equal)
 		{
@@ -1301,11 +1368,22 @@ namespace Parser
 		for(Expr* stmt : body->statements)
 		{
 			// check for top-level statements
-			VarDecl* var = nullptr;
-			Func* func = nullptr;
-			OpOverload* oo = nullptr;
+			VarDecl* var = dynamic_cast<VarDecl*>(stmt);
+			Func* func = dynamic_cast<Func*>(stmt);
+			OpOverload* oo = dynamic_cast<OpOverload*>(stmt);
+			ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt);
 
-			if((var = dynamic_cast<VarDecl*>(stmt)))
+			if(cprop)
+			{
+				for(ComputedProperty* c : str->cprops)
+				{
+					if(c->name == cprop->name)
+						parserError("Duplicate member '%s'", cprop->name.c_str());
+				}
+
+				str->cprops.push_back(cprop);
+			}
+			else if(var)
 			{
 				if(str->nameMap.find(var->name) != str->nameMap.end())
 					parserError("Duplicate member '%s'", var->name.c_str());
@@ -1315,12 +1393,12 @@ namespace Parser
 
 				i++;
 			}
-			else if((func = dynamic_cast<Func*>(stmt)))
+			else if(func)
 			{
 				str->funcs.push_back(func);
 				str->typeList.push_back(std::pair<Expr*, int>(func, i));
 			}
-			else if((oo = dynamic_cast<OpOverload*>(stmt)))
+			else if(oo)
 			{
 				oo->str = str;
 				str->opOverloads.push_back(oo);
@@ -1361,6 +1439,7 @@ namespace Parser
 		str->members		= sb->members;
 		str->nameMap		= sb->nameMap;
 		str->name			= sb->name;
+		str->cprops			= sb->cprops;
 
 		delete sb;
 		return str;
@@ -1381,6 +1460,7 @@ namespace Parser
 		ext->members		= str->members;
 		ext->nameMap		= str->nameMap;
 		ext->name			= str->name;
+		ext->cprops			= str->cprops;
 
 		delete str;
 		return ext;

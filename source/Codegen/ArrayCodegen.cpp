@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// get our array type
 	llvm::Type* atype = cgi->getLlvmType(this->var);

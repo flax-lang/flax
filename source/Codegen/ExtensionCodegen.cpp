@@ -10,7 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Extension::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t Extension::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	return Result_t(0, 0);
 }
