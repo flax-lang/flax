@@ -8,13 +8,37 @@ import LibCInterface
 public struct String
 {
 	var data: Int8*
-	var length: Uint64
 	var allocated: Uint64
+
+	var length: Uint64
+	{
+		get
+		{
+			if self.data == 0
+			{
+				return 0
+			}
+
+			return Utf8Length(self.data)
+		}
+	}
+
+	var byteCount: Uint64
+	{
+		get
+		{
+			if self.data != 0
+			{
+				return strlen(self.data)
+			}
+
+			return 0
+		}
+	}
 
 	init()
 	{
 		self.data = malloc(32)
-		self.length = 0
 		self.allocated = 32
 	}
 
@@ -35,8 +59,11 @@ public struct String
 		{
 			memset(self.data, 0, self.length)
 		}
-
-		self.length = 0
+		else
+		{
+			self.allocated = 0
+			self.data = 0
+		}
 	}
 
 	func grow(newSize: Uint64)
@@ -45,7 +72,7 @@ public struct String
 
 		self.allocated = (newSize + 31) / 32
 		var newDat = malloc(self.allocated)
-		var moveCount = strlen(self.data)
+		var moveCount = self.byteCount
 
 		memcpy(newDat, self.data, moveCount)
 
@@ -61,14 +88,13 @@ public struct String
 	func setString(str: Int8*)
 	{
 		self.clear()
-		var len = strlen(self.data)
+		var len = self.byteCount
 		if self.allocated < len
 		{
 			self.grow(len)
 		}
 
 		memcpy(self.data, str, len)
-		self.length = UnicodeStringLength(self.data)
 	}
 
 	func append(str: Int8*)
@@ -76,11 +102,10 @@ public struct String
 		var addlen = strlen(str)
 		if strlen(self.data) + addlen >= self.allocated
 		{
-			self.grow(strlen(self.data) + addlen + 1)
+			self.grow(self.byteCount + addlen + 1)
 		}
 
-		memcpy(self.data + strlen(self.data), str, addlen)
-		self.length += addlen
+		memcpy(self.data + self.byteCount, str, addlen)
 	}
 
 
