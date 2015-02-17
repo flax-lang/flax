@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// check builtin type
 	if(!this->decimal)
@@ -26,12 +26,12 @@ Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	}
 }
 
-Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, this->val, false)), 0);
 }
 
-Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
 	if(pair)

@@ -291,6 +291,9 @@ namespace Parser
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
 
+			else if(id == "get")		tok.type = TType::Get;
+			else if(id == "set")		tok.type = TType::Set;
+
 			else if(id == "module")		tok.type = TType::Module;
 			else if(id == "namespace")	tok.type = TType::Namespace;
 			else if(id == "extension")	tok.type = TType::Extension;
