@@ -1145,7 +1145,7 @@ namespace Codegen
 			mainBuilder.CreateCall2(opov, self, val);
 			return Result_t(mainBuilder.CreateLoad(self), self);
 		}
-		else if(op == ArithmeticOp::CmpEq)
+		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract)
 		{
 			// check that both types work
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
