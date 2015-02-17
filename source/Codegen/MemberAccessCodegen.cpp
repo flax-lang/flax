@@ -175,6 +175,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			{
 				if(_rhs)
 				{
+					if(!cprop->setter)
+					{
+						error(this, "Property '%s' of type has no setter and is readonly", cprop->name.c_str());
+					}
+
 					llvm::Function* lcallee = 0;
 					for(llvm::Function* lf : str->lfuncs)
 					{
@@ -196,6 +201,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 					// to return something. We're still used in a binOp though, so...
 
 					// create a fake alloca to return to them.
+					lcallee = cgi->mainModule->getFunction(lcallee->getName());
 					return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), cgi->mainBuilder.CreateAlloca(_rhs->getType()));
 				}
 				else
@@ -213,6 +219,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 					if(!lcallee)
 						error(this, "?!??!!");
 
+					lcallee = cgi->mainModule->getFunction(lcallee->getName());
 					std::vector<llvm::Value*> args { isPtr ? self : selfPtr };
 					return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
 				}

@@ -815,7 +815,7 @@ namespace Codegen
 				if(!decl)
 					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 
-				return getLlvmType(getSymDecl(ref, ref->name));
+				return getLlvmType(decl);
 			}
 			else if(uo)
 			{
@@ -886,6 +886,11 @@ namespace Codegen
 					{
 						if(mem->name == memberVr->name)
 							return this->getLlvmType(mem);
+					}
+					for(ComputedProperty* c : str->cprops)
+					{
+						if(c->name == memberVr->name)
+							return this->getLlvmType(c->type);
 					}
 				}
 				else if(memberFc)
@@ -1061,7 +1066,6 @@ namespace Codegen
 				// get the struct gep:
 				// Layout of string:
 				// var data: Int8*
-				// var length: Uint64
 				// var allocated: Uint64
 
 				// cast the RHS to the LHS
