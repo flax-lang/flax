@@ -57,6 +57,9 @@ namespace Parser
 		Break,
 		Continue,
 
+		Get,
+		Set,
+
 		Private,
 		Public,
 		Internal,

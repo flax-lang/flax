@@ -10,7 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentStruct != nullptr);
@@ -96,7 +96,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	return Result_t(func, 0);
 }
 
-Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	return this->decl->codegen(cgi);
 }

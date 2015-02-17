@@ -111,7 +111,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 		cgi->popNamespaceScope();
 }
 
-Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	codegenTopLevel(cgi, 0, this->topLevelExpressions);
 	codegenTopLevel(cgi, 1, this->topLevelExpressions);

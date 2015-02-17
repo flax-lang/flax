@@ -59,7 +59,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 	func->getBasicBlockList().push_back(f);
 }
 
-Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	assert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
