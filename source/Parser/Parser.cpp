@@ -951,6 +951,10 @@ namespace Parser
 						cprop->setter = parseBracedBlock(tokens);
 						cprop->setterArgName = setValName;
 					}
+					else if(tokens.front().type == TType::RBrace)
+					{
+						break;
+					}
 					else
 					{
 						parserError("Only 'get' or 'set' expected in computed property, got '%s'", tokens.front().text.c_str());
