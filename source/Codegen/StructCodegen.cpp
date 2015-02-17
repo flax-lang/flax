@@ -248,10 +248,12 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		if(decl->type != "Bool")
 			error("Operator overload for '==' must return a boolean value");
 	}
-	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract)
+	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
+		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
+		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
 	{
 		if(decl->params.size() != 1)
-			error("Operator overload for '==' can only have one argument");
+			error("Operator overload can only have one argument");
 	}
 	else
 	{
