@@ -869,7 +869,7 @@ namespace Codegen
 			{
 				// first, get the type of the lhs
 				llvm::Type* lhs = this->getLlvmType(ma->target);
-				TypePair_t* pair = this->getType(lhs);
+				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
 
 				if(!pair)
 					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());

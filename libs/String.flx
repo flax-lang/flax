@@ -46,8 +46,7 @@ public struct String
 		}
 
 		memcpy(self.data, str, len)
-		var k: Int8* = self.data
-		self.length = UnicodeStringLength(k)
+		self.length = UnicodeStringLength(self.data)
 	}
 
 	operator=(other: Int8*)
