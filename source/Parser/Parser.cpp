@@ -1550,6 +1550,13 @@ namespace Parser
 		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
 		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
 		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
+		else if(op.type == TType::Asterisk)		ao = ArithmeticOp::Multiply;
+		else if(op.type == TType::Divide)		ao = ArithmeticOp::Divide;
+
+		else if(op.type == TType::PlusEq)		ao = ArithmeticOp::PlusEquals;
+		else if(op.type == TType::MinusEq)		ao = ArithmeticOp::MinusEquals;
+		else if(op.type == TType::MultiplyEq)	ao = ArithmeticOp::MultiplyEquals;
+		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
 		else									parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
 
 		OpOverload* oo = CreateAST(OpOverload, op, ao);

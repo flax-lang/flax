@@ -33,14 +33,12 @@ Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 {
-	llvm::Value* alloca = nullptr;
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
 	if(pair)
 	{
 		llvm::StructType* stringType = llvm::cast<llvm::StructType>(pair->first);
 
-		if(lhsPtr)	alloca = lhsPtr;
-		else		alloca = cgi->mainBuilder.CreateAlloca(stringType);
+		llvm::Value* alloca = cgi->mainBuilder.CreateAlloca(stringType);
 
 		// String layout:
 		// var data: Int8*
@@ -64,6 +62,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	}
 	else
 	{
+		warn(this, "String type not available, using Int8* for string literal");
+
 		// good old Int8*
 		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
 		return Result_t(stringVal, 0);
