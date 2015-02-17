@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	Result_t lastval(0, 0);
 	for(Expr* e : this->statements)
@@ -23,7 +23,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.

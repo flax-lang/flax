@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	assert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
@@ -30,7 +30,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 	// create the local instance of reference to self
 	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
-	// self->setName("self");
+
+
 	for(VarDecl* var : this->members)
 	{
 		int i = this->nameMap[var->name];
@@ -83,6 +84,43 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 
 
+	// add getters/setters (ie. computed properties)
+	// as functions to simplify our code
+	for(ComputedProperty* c : this->cprops)
+	{
+		VarDecl* fakeSelf = new VarDecl(c->posinfo, "self", true);
+		fakeSelf->type = this->name + "*";
+
+		if(c->getter)
+		{
+			std::deque<VarDecl*> params { fakeSelf };
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_get" + std::to_string(c->name.length()) + c->name, params, c->type);
+			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->getter);
+
+			this->funcs.push_back(fakeFunc);
+			c->generatedFunc = fakeDecl;
+
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -93,8 +131,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	for(Func* f : this->funcs)
 	{
 		llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
-
-		std::string oname = f->decl->name;
 		bool isOpOverload = f->decl->name.find("operator#") == 0;
 		if(isOpOverload)
 			f->decl->name = f->decl->name.substr(strlen("operator#"));
@@ -184,7 +220,6 @@ void Struct::createType(CodegenInstance* cgi)
 		for(Func* func : this->funcs)
 		{
 			func->decl->parentStruct = this;
-
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
 				error(this, "Duplicate member '%s'", func->decl->name.c_str());
@@ -221,7 +256,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// this is never really called for actual codegen. operators are handled as functions,
 	// so we just put them into the structs' funcs.
