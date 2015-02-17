@@ -175,7 +175,28 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			{
 				if(_rhs)
 				{
-					error("");
+					llvm::Function* lcallee = 0;
+					for(llvm::Function* lf : str->lfuncs)
+					{
+						if(lf->getName() == cprop->generatedFunc->mangledName)
+						{
+							lcallee = lf;
+							break;
+						}
+					}
+
+					if(!lcallee)
+						error(this, "?!??!!");
+
+
+					std::vector<llvm::Value*> args { isPtr ? self : selfPtr, _rhs };
+
+					// todo: rather large hack. since the nature of computed properties
+					// is that they don't have a backing storage in the struct itself, we need
+					// to return something. We're still used in a binOp though, so...
+
+					// create a fake alloca to return to them.
+					return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), cgi->mainBuilder.CreateAlloca(_rhs->getType()));
 				}
 				else
 				{

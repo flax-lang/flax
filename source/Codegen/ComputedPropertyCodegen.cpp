@@ -13,6 +13,5 @@ using namespace Codegen;
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	printf("cprop cg\n");
 	return Result_t(0, 0);
 }

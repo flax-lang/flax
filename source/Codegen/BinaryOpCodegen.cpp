@@ -242,7 +242,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		auto res = this->right->codegen(cgi).result;
 		rhs = res.first;
 
-		valptr = this->left->codegen(cgi, 0, res.second).result;
+		valptr = this->left->codegen(cgi, 0, rhs).result;
 
 		lhs = valptr.first;
 		llvm::Value* rhsPtr = res.second;

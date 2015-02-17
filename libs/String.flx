@@ -109,7 +109,6 @@ public struct String
 
 	operator+=(other: String) -> String
 	{
-		printf("self: %s, other: %s\n", self.data, other.data)
 		self.append(other.data)
 		return #self
 	}

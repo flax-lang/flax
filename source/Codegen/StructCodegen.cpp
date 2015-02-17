@@ -99,7 +99,18 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 			this->funcs.push_back(fakeFunc);
 			c->generatedFunc = fakeDecl;
+		}
+		if(c->setter)
+		{
+			VarDecl* setterArg = new VarDecl(c->posinfo, c->setterArgName, true);
+			setterArg->type = c->type;
 
+			std::deque<VarDecl*> params { fakeSelf, setterArg };
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type);
+			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
+
+			this->funcs.push_back(fakeFunc);
+			c->generatedFunc = fakeDecl;
 		}
 	}
 
