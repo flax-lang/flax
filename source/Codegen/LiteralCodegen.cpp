@@ -42,18 +42,14 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 
 		// String layout:
 		// var data: Int8*
-		// var length: Uint64
 		// var allocated: Uint64
 
 
 		llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
-		llvm::Value* lengthPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
-		llvm::Value* allocdPtr = cgi->mainBuilder.CreateStructGEP(alloca, 2);
+		llvm::Value* allocdPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
 
-		llvm::Value* lengthVal = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), utf8len(this->str.c_str()));
 		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
 
-		cgi->mainBuilder.CreateStore(lengthVal, lengthPtr);
 		cgi->mainBuilder.CreateStore(stringVal, stringPtr);
 		cgi->mainBuilder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
 
