@@ -1139,13 +1139,15 @@ namespace Codegen
 		assert(opov);
 
 		// try the assign op.
-		if(op == ArithmeticOp::Assign)
+		if(op == ArithmeticOp::Assign || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
+		|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
 			// check args.
-			mainBuilder.CreateCall2(opov, self, val);
-			return Result_t(mainBuilder.CreateLoad(self), self);
+			llvm::Value* ret = mainBuilder.CreateCall2(opov, self, val);
+			return Result_t(ret, self);
 		}
-		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract)
+		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::Multiply
+		|| op == ArithmeticOp::Divide)
 		{
 			// check that both types work
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);

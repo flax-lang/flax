@@ -31,7 +31,11 @@ public struct String
 
 	func clear()
 	{
-		memset(self.data, 0, self.length)
+		if self.allocated > 0
+		{
+			memset(self.data, 0, self.length)
+		}
+
 		self.length = 0
 	}
 
@@ -87,9 +91,6 @@ public struct String
 
 
 
-
-
-
 	operator+(other: String) -> String
 	{
 		var ret = #self
@@ -106,6 +107,18 @@ public struct String
 		return ret
 	}
 
+	operator+=(other: String) -> String
+	{
+		printf("self: %s, other: %s\n", self.data, other.data)
+		self.append(other.data)
+		return #self
+	}
+
+	operator+=(other: Int8*) -> String
+	{
+		self.append(other)
+		return #self
+	}
 
 
 
