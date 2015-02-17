@@ -230,12 +230,9 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	// however, this will get called, because we need to know if the parameters for
 	// the operator overload are legit. people ignore our return value.
 
-
+	FuncDecl* decl = this->func->decl;
 	if(this->op == ArithmeticOp::Assign)
 	{
-		// make sure the first and only parameter is an 'other' pointer.
-		FuncDecl* decl = this->func->decl;
-
 		if(decl->params.size() != 1)
 		{
 			error("Operator overload for '=' can only have one argument (have %d)", decl->params.size());
@@ -245,23 +242,18 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	}
 	else if(this->op == ArithmeticOp::CmpEq)
 	{
-		FuncDecl* decl = this->func->decl;
 		if(decl->params.size() != 1)
 			error("Operator overload for '==' can only have one argument");
 
 		if(decl->type != "Bool")
 			error("Operator overload for '==' must return a boolean value");
-
-		// llvm::Type* ptype = cgi->getLlvmType(decl->params.front());
-		// assert(ptype);
-
-		// llvm::Type* stype = cgi->getType(this->str->name)->first;
-
-		// if(ptype->getPointerTo() == stype->getPointerTo())
-		// 	error(this, "Argument of overload operators (usually 'other') must be a pointer.");
-
-		// if(ptype != stype->getPointerTo())
-		// 	error(this, "Type mismatch [%s, %s]", cgi->getReadableType(ptype).c_str(), cgi->getReadableType(stype).c_str());
+	}
+	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
+		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
+		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
+	{
+		if(decl->params.size() != 1)
+			error("Operator overload can only have one argument");
 	}
 	else
 	{

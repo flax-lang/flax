@@ -31,23 +31,96 @@ public struct String
 
 	func clear()
 	{
-		memset(self.data, 0, self.length)
+		if self.allocated > 0
+		{
+			memset(self.data, 0, self.length)
+		}
+
 		self.length = 0
 	}
+
+	func grow(newSize: Uint64)
+	{
+		var needFree = (self.allocated != 0)
+
+		self.allocated = (newSize + 31) / 32
+		var newDat = malloc(self.allocated)
+		var moveCount = strlen(self.data)
+
+		memcpy(newDat, self.data, moveCount)
+
+		if needFree
+		{
+			free(self.data)
+		}
+
+		self.data = newDat
+	}
+
 
 	func set(str: Int8*)
 	{
 		self.clear()
-		var len: Int64 = strlen(str)
+		var len = strlen(self.data)
 		if self.allocated < len
 		{
-			free(self.data)
-			self.data = malloc((len + 31) / 32)
+			self.grow(len)
 		}
 
 		memcpy(self.data, str, len)
-		self.length = len
+		self.length = UnicodeStringLength(self.data)
 	}
+
+	func append(str: Int8*)
+	{
+		var addlen = strlen(str)
+		if strlen(self.data) + addlen >= self.allocated
+		{
+			self.grow(strlen(self.data) + addlen + 1)
+		}
+
+		memcpy(self.data + strlen(self.data), str, addlen)
+		self.length += addlen
+	}
+
+
+
+
+
+
+
+
+
+	operator+(other: String) -> String
+	{
+		var ret = #self
+		ret.append(other.data)
+
+		return ret
+	}
+
+	operator+(other: Int8*) -> String
+	{
+		var ret = #self
+		ret.append(other)
+
+		return ret
+	}
+
+	operator+=(other: String) -> String
+	{
+		printf("self: %s, other: %s\n", self.data, other.data)
+		self.append(other.data)
+		return #self
+	}
+
+	operator+=(other: Int8*) -> String
+	{
+		self.append(other)
+		return #self
+	}
+
+
 
 	operator=(other: Int8*)
 	{

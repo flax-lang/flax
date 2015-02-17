@@ -20,9 +20,10 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
-		if(ret.result.first != 0 && ret.result.second != 0)
+		if(ret.result.first != 0)
+		{
 			return ret;
-
+		}
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
@@ -73,7 +74,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		// try and see if we have operator overloads for bo thing
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
-		if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
+		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 
 		if(lhs->getType() != rhs->getType())
@@ -128,54 +129,52 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
+	if(varptr->getType()->getPointerElementType()->isStructTy())
+	{
+		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, right);
+		if(tryOpOverload.result.first != 0)
+			return tryOpOverload;
+	}
 
+	// check for overflow
+	if(lhs->getType()->isIntegerTy())
+	{
+		Number* n = 0;
+		uint64_t max = 1;
+
+		// why the fuck does c++ not have a uint64_t pow function
+		{
+			for(unsigned int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
+				max *= 2;
+		}
+
+		if(max == 0)
+			max = -1;
+
+		if((n = dynamic_cast<Number*>(right)) && !n->decimal)
+		{
+			bool shouldwarn = false;
+			if(!this->isSignedType(n))
+			{
+				if((uint64_t) n->ival > max)
+					shouldwarn = true;
+			}
+			else
+			{
+				max /= 2;		// minus one bit for signed types
+
+				if(n->ival > (int64_t) max)
+					shouldwarn = true;
+			}
+
+			if(shouldwarn)
+				warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
+		}
+	}
 
 	// do it all together now
 	if(op == ArithmeticOp::Assign)
 	{
-		if(varptr->getType()->getPointerElementType()->isStructTy())
-		{
-			Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, right);
-			if(tryOpOverload.result.first != 0 && tryOpOverload.result.second != 0)
-				return tryOpOverload;
-		}
-
-		// check for overflow
-		if(lhs->getType()->isIntegerTy())
-		{
-			Number* n = 0;
-			uint64_t max = 1;
-
-			// why the fuck does c++ not have a uint64_t pow function
-			{
-				for(unsigned int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
-					max *= 2;
-			}
-
-			if(max == 0)
-				max = -1;
-
-			if((n = dynamic_cast<Number*>(right)) && !n->decimal)
-			{
-				bool shouldwarn = false;
-				if(!this->isSignedType(n))
-				{
-					if((uint64_t) n->ival > max)
-						shouldwarn = true;
-				}
-				else
-				{
-					max /= 2;		// minus one bit for signed types
-
-					if(n->ival > (int64_t) max)
-						shouldwarn = true;
-				}
-
-				if(shouldwarn)
-					warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
-			}
-		}
-
 		this->mainBuilder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}

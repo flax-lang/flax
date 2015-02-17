@@ -78,19 +78,6 @@ namespace Compiler
 			Root* r = nullptr;
 			Import* imp = dynamic_cast<Import*>(e);
 
-			if(rootmap.find("Core") == rootmap.end())
-			{
-				Ast::Import* fakeImport = new Ast::Import(Parser::PosInfo(), "Core");
-				Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
-
-				// so we don't recurse into infinity, insert a dummy value
-				rootmap["Core"] = 0;
-
-				r = compileFile(resolveImport(fakeImport, curpath), list, rootmap, rcgi);
-				rootmap["Core"] = r;
-			}
-
-
 			if(imp)
 			{
 				std::string fname = resolveImport(imp, curpath);
@@ -107,12 +94,8 @@ namespace Compiler
 					rootmap[imp->module] = r;
 					delete rcgi;
 				}
-			}
 
 
-
-			if(r)
-			{
 				// add to both imported and exported lists
 				for(auto v : r->publicFuncs)
 				{
