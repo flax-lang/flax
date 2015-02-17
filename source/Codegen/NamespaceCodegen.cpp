@@ -53,7 +53,7 @@ static Expr* resolveScope(ScopeResolution* _sr, CodegenInstance* cgi, std::deque
 
 
 
-Result_t ScopeResolution::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t ScopeResolution::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	std::deque<std::string> scopes;
 	Expr* result = resolveScope(this, cgi, &scopes);

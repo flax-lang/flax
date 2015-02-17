@@ -154,7 +154,7 @@ namespace Ast
 	{
 		Expr(Parser::PosInfo pos) : posinfo(pos) { }
 		virtual ~Expr() { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) = 0;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) = 0;
 
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
@@ -165,13 +165,13 @@ namespace Ast
 	{
 		DummyExpr(Parser::PosInfo pos) : Expr(pos) { }
 		~DummyExpr();
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(0, 0); }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 	};
 
 	struct VarArg : Expr
 	{
 		~VarArg();
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(0, 0); }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 	};
 
 
@@ -180,7 +180,7 @@ namespace Ast
 		~Number();
 		Number(Parser::PosInfo pos, double val) : Expr(pos), dval(val) { this->decimal = true; }
 		Number(Parser::PosInfo pos, int64_t val) : Expr(pos), ival(val) { this->decimal = false; }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool decimal = false;
 		llvm::Type* properLlvmType = 0;
@@ -195,7 +195,7 @@ namespace Ast
 	{
 		~BoolVal();
 		BoolVal(Parser::PosInfo pos, bool val) : Expr(pos), val(val) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool val;
 	};
@@ -204,7 +204,7 @@ namespace Ast
 	{
 		~VarRef();
 		VarRef(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::string name;
 	};
@@ -213,7 +213,7 @@ namespace Ast
 	{
 		~VarDecl();
 		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage);
 
@@ -225,11 +225,24 @@ namespace Ast
 		llvm::Type* inferredLType = 0;
 	};
 
+	struct BracedBlock;
+	struct ComputedProperty : VarDecl
+	{
+		~ComputedProperty();
+		ComputedProperty(Parser::PosInfo pos, std::string name) : VarDecl(pos, name, false) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		FuncDecl* generatedFunc = 0;
+		std::string setterArgName;
+		BracedBlock* getter = 0;
+		BracedBlock* setter = 0;
+	};
+
 	struct BinOp : Expr
 	{
 		~BinOp();
 		BinOp(Parser::PosInfo pos, Expr* lhs, ArithmeticOp operation, Expr* rhs) : Expr(pos), left(lhs), right(rhs), op(operation) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* left;
 		Expr* right;
@@ -244,7 +257,7 @@ namespace Ast
 		~FuncDecl();
 		FuncDecl(Parser::PosInfo pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), name(id), params(params)
 		{ this->type = ret; }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool hasVarArg = false;
 		bool isFFI = false;
@@ -260,7 +273,7 @@ namespace Ast
 	{
 		BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
 		~BracedBlock();
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::deque<Expr*> statements;
 	};
@@ -269,7 +282,7 @@ namespace Ast
 	{
 		~Func();
 		Func(Parser::PosInfo pos, FuncDecl* funcdecl, BracedBlock* block) : Expr(pos), decl(funcdecl), block(block) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		FuncDecl* decl;
 		BracedBlock* block;
@@ -279,7 +292,7 @@ namespace Ast
 	{
 		~FuncCall();
 		FuncCall(Parser::PosInfo pos, std::string target, std::deque<Expr*> args) : Expr(pos), name(target), params(args) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::string name;
 		std::deque<Expr*> params;
@@ -289,7 +302,7 @@ namespace Ast
 	{
 		~Return();
 		Return(Parser::PosInfo pos, Expr* e) : Expr(pos), val(e) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* val;
 	};
@@ -298,7 +311,7 @@ namespace Ast
 	{
 		~Import();
 		Import(Parser::PosInfo pos, std::string name) : Expr(pos), module(name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(nullptr, nullptr); }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(nullptr, nullptr); }
 
 		std::string module;
 	};
@@ -307,7 +320,7 @@ namespace Ast
 	{
 		~ForeignFuncDecl();
 		ForeignFuncDecl(Parser::PosInfo pos, FuncDecl* func) : Expr(pos), decl(func) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		FuncDecl* decl;
 	};
@@ -325,7 +338,7 @@ namespace Ast
 		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
 			final(ecase), cases(cases) { }
 
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 
 		BracedBlock* final;
@@ -338,7 +351,7 @@ namespace Ast
 		WhileLoop(Parser::PosInfo pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos),
 			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
 
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* cond;
 		BracedBlock* body;
@@ -365,21 +378,21 @@ namespace Ast
 	{
 		~Break();
 		Break(Parser::PosInfo pos) : Expr(pos) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 	};
 
 	struct Continue : Expr
 	{
 		~Continue();
 		Continue(Parser::PosInfo pos) : Expr(pos) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 	};
 
 	struct UnaryOp : Expr
 	{
 		~UnaryOp();
 		UnaryOp(Parser::PosInfo pos, ArithmeticOp op, Expr* expr) : Expr(pos), op(op), expr(expr) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		ArithmeticOp op;
 		Expr* expr;
@@ -391,7 +404,7 @@ namespace Ast
 	{
 		~OpOverload();
 		OpOverload(Parser::PosInfo pos, ArithmeticOp op) : Expr(pos), op(op) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Func* func;
 		ArithmeticOp op;
@@ -402,7 +415,7 @@ namespace Ast
 	{
 		virtual ~StructBase();
 		StructBase(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override = 0;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override = 0;
 		virtual void createType(Codegen::CodegenInstance* cgi) = 0;
 
 		bool packed = false;
@@ -416,6 +429,7 @@ namespace Ast
 		std::deque<std::pair<Expr*, int>> typeList;
 		std::map<std::string, int> nameMap;
 		std::deque<VarDecl*> members;
+		std::deque<ComputedProperty*> cprops;
 		std::deque<Func*> funcs;
 		std::deque<llvm::Function*> lfuncs;
 
@@ -428,7 +442,7 @@ namespace Ast
 	{
 		~Extension();
 		Extension(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
@@ -438,7 +452,7 @@ namespace Ast
 	{
 		~Struct();
 		Struct(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<Extension*> extensions;
@@ -448,7 +462,7 @@ namespace Ast
 	{
 		~MemberAccess();
 		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 
 		Expr* target;
@@ -459,7 +473,7 @@ namespace Ast
 	{
 		~ScopeResolution();
 		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool done = false;
 		Expr* scope;
@@ -471,7 +485,7 @@ namespace Ast
 		~NamespaceDecl();
 		NamespaceDecl(Parser::PosInfo pos, std::deque<std::string> names, BracedBlock* inside) : Expr(pos), innards(inside), name(names)
 		{ }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(0, 0); }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 
 		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
@@ -483,7 +497,7 @@ namespace Ast
 	{
 		~ArrayIndex();
 		ArrayIndex(Parser::PosInfo pos, VarRef* v, Expr* index) : Expr(pos), var(v), index(index) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		VarRef* var;
 		Expr* index;
@@ -493,7 +507,7 @@ namespace Ast
 	{
 		~StringLiteral();
 		StringLiteral(Parser::PosInfo pos, std::string str) : Expr(pos), str(str) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::string str;
 	};
@@ -502,7 +516,7 @@ namespace Ast
 	{
 		~CastedType();
 		CastedType(Parser::PosInfo pos, std::string _name) : Expr(pos), name(_name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override { return Result_t(nullptr, nullptr); }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(nullptr, nullptr); }
 
 		std::string name;
 	};
@@ -511,7 +525,7 @@ namespace Ast
 	{
 		~Alloc();
 		Alloc(Parser::PosInfo pos) : Expr(pos) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* count;
 		std::deque<Expr*> params;
@@ -521,7 +535,7 @@ namespace Ast
 	{
 		~Dealloc();
 		Dealloc(Parser::PosInfo pos, VarRef* _var) : Expr(pos), var(_var) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		VarRef* var;
 	};
@@ -530,7 +544,7 @@ namespace Ast
 	{
 		Root() : Expr(Parser::PosInfo()) { }
 		~Root();
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0) override;
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		// public functiondecls and type decls.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;

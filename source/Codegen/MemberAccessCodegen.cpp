@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	// gen the var ref on the left.
 	ValPtr_t p = this->target->codegen(cgi).result;
@@ -68,22 +68,33 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		Expr* rhs = this->member;
 		int i = -1;
 
-		VarRef* var = nullptr;
-		FuncCall* fc = nullptr;
-		if((var = dynamic_cast<VarRef*>(rhs)))
+		VarRef* var = dynamic_cast<VarRef*>(rhs);
+		FuncCall* fc = dynamic_cast<FuncCall*>(rhs);
+
+
+		if(var)
 		{
 			if(str->nameMap.find(var->name) != str->nameMap.end())
+			{
 				i = str->nameMap[var->name];
+			}
 			else
-				error(this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
+			{
+				bool found = false;
+				for(auto c : str->cprops)
+				{
+					if(c->name == var->name)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if(!found)
+					error(this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
+			}
 		}
-		else if((fc = dynamic_cast<FuncCall*>(rhs)))
-		{
-			// VarRef* fakevr = new VarRef(this->posinfo, "self");
-			// fc->params.push_front(fakevr);
-			i = -1;
-		}
-		else
+		else if(!var && !fc)
 		{
 			error(this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
 		}
@@ -103,7 +114,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 			// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
 			// we codegen first, then use the llvm version.
 			std::vector<llvm::Value*> args;
-			// std::deque<llvm::Type*> argtypes;
 
 			args.push_back(isPtr ? self : selfPtr);
 
@@ -151,12 +161,50 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		}
 		else if(var)
 		{
-			assert(i >= 0);
+			ComputedProperty* cprop = nullptr;
+			for(ComputedProperty* c : str->cprops)
+			{
+				if(c->name == var->name)
+				{
+					cprop = c;
+					break;
+				}
+			}
 
-			// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
-			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
-			llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
-			return Result_t(val, ptr);
+			if(cprop)
+			{
+				if(_rhs)
+				{
+					error("");
+				}
+				else
+				{
+					llvm::Function* lcallee = 0;
+					for(llvm::Function* lf : str->lfuncs)
+					{
+						if(lf->getName() == cprop->generatedFunc->mangledName)
+						{
+							lcallee = lf;
+							break;
+						}
+					}
+
+					if(!lcallee)
+						error(this, "?!??!!");
+
+					std::vector<llvm::Value*> args { isPtr ? self : selfPtr };
+					return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
+				}
+			}
+			else
+			{
+				assert(i >= 0);
+
+				// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
+				llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + (fc ? fc->name : var->name));
+				llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
+				return Result_t(val, ptr);
+			}
 		}
 		else
 		{
