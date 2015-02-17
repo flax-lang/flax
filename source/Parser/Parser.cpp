@@ -1545,19 +1545,12 @@ namespace Parser
 		Token op = eat(tokens);
 
 		ArithmeticOp ao;
-		switch(op.type)
-		{
-			case TType::Equal:
-				ao = ArithmeticOp::Assign;
-				break;
 
-			case TType::EqualsTo:
-				ao = ArithmeticOp::CmpEq;
-				break;
-
-			default:
-				parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
-		}
+		if(op.type == TType::Equal)				ao = ArithmeticOp::Assign;
+		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
+		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
+		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
+		else									parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
 
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 

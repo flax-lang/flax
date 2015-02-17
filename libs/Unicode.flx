@@ -4,7 +4,7 @@
 
 import LibCInterface
 
-public func UnicodeLengthInCodepoints(_text: Int8*) -> Uint64
+public func UnicodeStringLength(_text: Int8*) -> Uint64
 {
 	var text = _text
 	var src: Int8* = 0
