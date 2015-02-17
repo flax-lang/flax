@@ -310,11 +310,26 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	cgi->autoCastType(lhs, rhs, r.second);
 
 	// if adding integer to pointer
-	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
-		&& (this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
-			|| this->op == ArithmeticOp::MinusEquals))
+	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 	{
-		return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
+		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
+			|| this->op == ArithmeticOp::MinusEquals))
+		{
+			return cgi->doPointerArithmetic(this->op, lhs, lhsptr, rhs);
+		}
+		else if(this->op == ArithmeticOp::CmpEq || this->op == ArithmeticOp::CmpNEq)
+		{
+			Number* n = dynamic_cast<Number*>(this->right);
+			if(n && !n->decimal && n->ival == 0)
+			{
+				llvm::Value* casted = cgi->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
+
+				if(this->op == ArithmeticOp::CmpEq)
+					return Result_t(cgi->mainBuilder.CreateICmpEQ(casted, rhs), 0);
+				else
+					return Result_t(cgi->mainBuilder.CreateICmpNE(casted, rhs), 0);
+			}
+		}
 	}
 	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
 	{
@@ -464,10 +479,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
 	}
-	else
-	{
-		error(this, "Unsupported operator on type");
-	}
+
+	error(this, "Unsupported operator on type");
 }
 
 
