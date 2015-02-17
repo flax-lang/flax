@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
@@ -131,7 +131,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	return val;
 }
 
-Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);

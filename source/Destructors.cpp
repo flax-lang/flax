@@ -87,6 +87,11 @@ namespace Ast
 
 	}
 
+	ComputedProperty::~ComputedProperty()
+	{
+
+	}
+
 	Break::~Break()
 	{
 

@@ -223,10 +223,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
+Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	assert(this->left && this->right);
-	ValPtr_t valptr = this->left->codegen(cgi).result;
+	ValPtr_t valptr;
 
 	llvm::Value* lhs;
 	llvm::Value* rhs;
@@ -238,9 +238,13 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
-		lhs = valptr.first;
-		auto res = this->right->codegen(cgi, valptr.second).result;
+		// todo: somehow solve a circular dependency of lhs <> rhs
+		auto res = this->right->codegen(cgi).result;
 		rhs = res.first;
+
+		valptr = this->left->codegen(cgi, 0, rhs).result;
+
+		lhs = valptr.first;
 		llvm::Value* rhsPtr = res.second;
 
 		cgi->autoCastType(lhs, rhs, rhsPtr);
@@ -248,6 +252,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 	}
 	else if(this->op == ArithmeticOp::Cast)
 	{
+		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
 
 		// right hand side probably got interpreted as a varref
@@ -287,6 +292,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr)
 
 		else
 			return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+	}
+	else
+	{
+		valptr = this->left->codegen(cgi).result;
 	}
 
 
