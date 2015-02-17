@@ -21,7 +21,7 @@ public struct String
 	init(str: Int8*)
 	{
 		self.allocated = 0
-		self.set(str)
+		self.setString(str)
 	}
 
 	init(str: String)
@@ -58,7 +58,7 @@ public struct String
 	}
 
 
-	func set(str: Int8*)
+	func setString(str: Int8*)
 	{
 		self.clear()
 		var len = strlen(self.data)
@@ -109,7 +109,6 @@ public struct String
 
 	operator+=(other: String) -> String
 	{
-		printf("self: %s, other: %s\n", self.data, other.data)
 		self.append(other.data)
 		return #self
 	}
@@ -124,12 +123,12 @@ public struct String
 
 	operator=(other: Int8*)
 	{
-		self.set(other)
+		self.setString(other)
 	}
 
 	operator=(other: String)
 	{
-		self.set(other.data)
+		self.setString(other.data)
 	}
 
 	operator==(other: Int8*) -> Bool
