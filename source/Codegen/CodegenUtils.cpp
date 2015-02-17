@@ -436,6 +436,7 @@ namespace Codegen
 		else if(r.find("Uint16") == 0)	r = "t";
 		else if(r.find("Uint32") == 0)	r = "j";
 		else if(r.find("Uint64") == 0)	r = "m";
+		else if(r.find("Uint") == 0)	r = "m";
 
 		else if(r.find("Float32") == 0)	r = "f";
 		else if(r.find("Float64") == 0)	r = "d";
@@ -731,12 +732,13 @@ namespace Codegen
 		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Int")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
 		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Uint32")	return llvm::Type::getInt32Ty(this->getContext());
 		else if(type == "Uint64")	return llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
 		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
@@ -867,7 +869,7 @@ namespace Codegen
 			{
 				// first, get the type of the lhs
 				llvm::Type* lhs = this->getLlvmType(ma->target);
-				TypePair_t* pair = this->getType(lhs);
+				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
 
 				if(!pair)
 					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
@@ -1143,7 +1145,7 @@ namespace Codegen
 			mainBuilder.CreateCall2(opov, self, val);
 			return Result_t(mainBuilder.CreateLoad(self), self);
 		}
-		else if(op == ArithmeticOp::CmpEq)
+		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract)
 		{
 			// check that both types work
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
