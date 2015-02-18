@@ -355,7 +355,7 @@ namespace Codegen
 	{
 		FuncMap_t& tab = this->funcMap;
 
-		#if 0
+		#if 1
 		printf("find %s:\n{\n", name.c_str());
 		for(auto p : tab) printf("\t%s\n", p.first.c_str());
 		printf("}\n");
