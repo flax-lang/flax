@@ -175,6 +175,9 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	// do it all together now
 	if(op == ArithmeticOp::Assign)
 	{
+		if(this->isEnum(varptr->getType()->getPointerElementType()))
+			varptr = this->mainBuilder.CreateStructGEP(varptr, 0);
+
 		this->mainBuilder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}
