@@ -78,7 +78,7 @@ namespace Codegen
 		void pushNamespaceScope(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
+		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprType e);
 		bool isDuplicateFuncDecl(std::string name);
 
 		void removeType(std::string name);
@@ -147,6 +147,7 @@ namespace Codegen
 		Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
 	};
 
+	Ast::Result_t enumerationAccessCodegen(CodegenInstance* cgi, Ast::Expr* lhs, Ast::Expr* rhs);
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
 }
