@@ -100,6 +100,8 @@ namespace Codegen
 
 
 		bool isPtr(Ast::Expr* e);
+		bool isEnum(std::string name);
+		bool isEnum(llvm::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
