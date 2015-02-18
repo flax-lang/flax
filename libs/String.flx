@@ -12,28 +12,22 @@ public struct String
 
 	var length: Uint64
 	{
-		get
+		if self.data == 0
 		{
-			if self.data == 0
-			{
-				return 0
-			}
-
-			return Utf8Length(self.data)
+			return 0
 		}
+
+		return Utf8Length(self.data)
 	}
 
 	var byteCount: Uint64
 	{
-		get
+		if self.data != 0
 		{
-			if self.data != 0
-			{
-				return strlen(self.data)
-			}
-
-			return 0
+			return strlen(self.data)
 		}
+
+		return 0
 	}
 
 	init()
