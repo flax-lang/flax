@@ -78,7 +78,7 @@ namespace Codegen
 		void pushNamespaceScope(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::Struct* atype, ExprType e);
+		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprType e);
 		bool isDuplicateFuncDecl(std::string name);
 
 		void removeType(std::string name);
