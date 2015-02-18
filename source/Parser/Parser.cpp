@@ -958,6 +958,7 @@ namespace Parser
 					else
 					{
 						// implicit read-only, 'get' not required
+						// there's no set, so make i = 1 so we error on extra bits
 						i = 1;
 
 						// insert a dummy brace

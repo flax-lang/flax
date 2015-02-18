@@ -17,7 +17,7 @@ public struct String
 			return 0
 		}
 
-		return Utf8Length(self.data)
+		Utf8Length(self.data)
 	}
 
 	var byteCount: Uint64
@@ -27,7 +27,7 @@ public struct String
 			return strlen(self.data)
 		}
 
-		return 0
+		0
 	}
 
 	init()
@@ -137,8 +137,6 @@ public struct String
 		self.append(other)
 		return #self
 	}
-
-
 
 	operator=(other: Int8*)
 	{
