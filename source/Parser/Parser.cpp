@@ -957,7 +957,22 @@ namespace Parser
 					}
 					else
 					{
-						parserError("Only 'get' or 'set' expected in computed property, got '%s'", tokens.front().text.c_str());
+						// implicit read-only, 'get' not required
+						i = 1;
+
+						// insert a dummy brace
+						Token dummy;
+						dummy.type = TType::LBrace;
+						dummy.text = "{";
+
+						tokens.push_front(dummy);
+						cprop->getter = parseBracedBlock(tokens);
+
+
+						// lol, another hack
+						dummy.type = TType::RBrace;
+						dummy.text = "}";
+						tokens.push_front(dummy);
 					}
 				}
 
