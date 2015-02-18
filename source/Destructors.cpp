@@ -157,6 +157,10 @@ namespace Ast
 	{
 	}
 
+	Enumeration::~Enumeration()
+	{
+	}
+
 	Root::~Root()
 	{
 		for(Expr* e : this->topLevelExpressions)
