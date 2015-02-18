@@ -867,6 +867,27 @@ namespace Codegen
 			}
 			else if(ma)
 			{
+				VarRef* _vr = dynamic_cast<VarRef*>(ma->target);
+				if(_vr)
+				{
+					// check for type function access
+					TypePair_t* tp = 0;
+					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
+					{
+						if(tp->second.second == ExprType::Enum)
+						{
+							assert(tp->first->isStructTy());
+							return tp->first->getStructElementType(0);
+						}
+					}
+				}
+
+
+
+
+
+
+
 				// first, get the type of the lhs
 				llvm::Type* lhs = this->getLlvmType(ma->target);
 				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
@@ -895,13 +916,12 @@ namespace Codegen
 				}
 				else if(memberFc)
 				{
-					error("enosup");
+					return this->getLlvmType(memberFc);
 				}
 				else
 				{
 					error(expr, "invalid");
 				}
-
 
 				return this->getLlvmType(ma->member);
 			}

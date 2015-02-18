@@ -61,7 +61,8 @@ void Enumeration::createType(CodegenInstance* cgi)
 		prev = t;
 	}
 
+	llvm::StructType* wrapper = llvm::StructType::create(this->name, prev, NULL);
 
 	// now that they're all the same type:
-	cgi->addNewType(prev, this, ExprType::Enum);
+	cgi->addNewType(wrapper, this, ExprType::Enum);
 }

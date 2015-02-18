@@ -1513,18 +1513,20 @@ namespace Parser
 		bool isFirst = true;
 		bool isNumeric = false;
 		Number* prevNumber = nullptr;
-		while((front = eat(tokens)).type != TType::RBrace)
+
+		while((front = tokens.front()).type != TType::RBrace)
 		{
 			if(front.type != TType::Case)
 				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
 
-			front = eat(tokens);
-			if(front.type != TType::Identifier)
-				parserError("Expected identifier after 'case'");
+			eat(tokens);
+			if((front = eat(tokens)).type != TType::Identifier)
+				parserError("Expected identifier after 'case', got '%s'", front.text.c_str());
 
 			std::string eName = front.text;
 			Expr* value = 0;
 
+			skipNewline(tokens);
 			front = tokens.front();
 			if(front.type == TType::Equal)
 			{
@@ -1534,32 +1536,43 @@ namespace Parser
 				if((prevNumber = dynamic_cast<Number*>(value)))
 					isNumeric = true;
 			}
-			else
+			else if(front.type == TType::Case)
 			{
-				if(!isNumeric && !isFirst)
-				{
-					parserWarn("Enum case '%s' has no explicit value, and value cannot be inferred from previous cases", eName.c_str());
-				}
-				else if(isNumeric)
+				if(isNumeric)
 				{
 					int64_t val = 0;
 					if(prevNumber)
-						val = prevNumber->dval;
+						val = prevNumber->dval + 1;
 
 					// increment it.
-					value = CreateAST(Number, front, val);
-					prevNumber = (Number*) val;
+					prevNumber = CreateAST(Number, front, val);
+
+					value = prevNumber;
 				}
 				else if(isFirst)
 				{
 					int64_t val = 0;
-					value = CreateAST(Number, front, val);
+					prevNumber = CreateAST(Number, front, val);
 
 					isNumeric = true;
-					prevNumber = (Number*) value;
+					value = prevNumber;
+				}
+				else
+				{
+					parserWarn("Enum case '%s' has no explicit value, and value cannot be inferred from previous cases", eName.c_str());
 				}
 			}
+			else if(front.type != TType::RBrace)
+			{
+				parserError("Unexpected token '%s'", front.text.c_str());
+			}
+			else
+			{
+				eat(tokens);
+				break;
+			}
 
+			assert(value);
 			enumer->cases.push_back(std::make_pair(eName, value));
 			isFirst = false;
 		}
