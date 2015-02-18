@@ -13,6 +13,22 @@ using namespace Codegen;
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
+	VarRef* _vr = dynamic_cast<VarRef*>(this->target);
+	if(_vr)
+	{
+		// check for type function access
+		TypePair_t* tp = 0;
+		if((tp = cgi->getType(cgi->mangleWithNamespace(_vr->name))))
+		{
+			if(tp->second.second == ExprType::Enum)
+				return enumerationAccessCodegen(cgi, this->target, this->member);
+		}
+	}
+
+
+
+
+
 	// gen the var ref on the left.
 	ValPtr_t p = this->target->codegen(cgi).result;
 

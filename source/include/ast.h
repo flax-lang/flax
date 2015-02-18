@@ -46,6 +46,7 @@ namespace Codegen
 	enum class ExprType
 	{
 		Struct,
+		Enum,
 		Func
 	};
 
@@ -456,6 +457,16 @@ namespace Ast
 		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<Extension*> extensions;
+	};
+
+	struct Enumeration : StructBase
+	{
+		~Enumeration();
+		Enumeration(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
+
+		std::deque<std::pair<std::string, Expr*>> cases;
 	};
 
 	struct MemberAccess : Expr
