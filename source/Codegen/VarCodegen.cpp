@@ -83,6 +83,9 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(cmplxtype && this->initVal)
 		{
+			if(cgi->isEnum(ai->getType()->getPointerElementType()))
+				ai = cgi->mainBuilder.CreateStructGEP(ai, 0);
+
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
 		}
@@ -157,7 +160,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		val = r.first;
 		valptr = r.second;
-		this->inferredLType = val->getType();
+		this->inferredLType = cgi->getLlvmType(this->initVal);
 
 		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
 			this->type = cgi->getReadableType(this->initVal);
@@ -169,14 +172,16 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		val = r.first;
 		valptr = r.second;
+
+		this->inferredLType = cgi->getLlvmType(this->initVal);
 	}
 	else
 	{
 		ai = cgi->allocateInstanceInBlock(this);
 	}
 
-	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 
+	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 	return Result_t(val, ai);
 }
 
