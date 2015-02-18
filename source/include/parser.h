@@ -153,6 +153,8 @@ namespace Parser
 
 
 	void parseAll(std::deque<Token>& tokens);
+	Ast::Expr* parsePrimary(std::deque<Token>& tokens);
+
 	Ast::Expr* parseIf(std::deque<Token>& tokens);
 	void parseAttribute(std::deque<Token>& tokens);
 	Ast::Func* parseFunc(std::deque<Token>& tokens);
@@ -162,7 +164,6 @@ namespace Parser
 	Ast::ForLoop* parseFor(std::deque<Token>& tokens);
 	Ast::Expr* parseIdExpr(std::deque<Token>& tokens);
 	Ast::Break* parseBreak(std::deque<Token>& tokens);
-	Ast::Expr* parsePrimary(std::deque<Token>& tokens);
 	Ast::Expr* parseInitFunc(std::deque<Token>& tokens);
 	Ast::Struct* parseStruct(std::deque<Token>& tokens);
 	Ast::Import* parseImport(std::deque<Token>& tokens);
@@ -172,6 +173,7 @@ namespace Parser
 	Ast::VarDecl* parseVarDecl(std::deque<Token>& tokens);
 	Ast::WhileLoop* parseWhile(std::deque<Token>& tokens);
 	Ast::Dealloc* parseDealloc(std::deque<Token>& tokens);
+	Ast::Enumeration* parseEnum(std::deque<Token>& tokens);
 	Ast::Continue* parseContinue(std::deque<Token>& tokens);
 	Ast::Func* parseTopLevelExpr(std::deque<Token>& tokens);
 	Ast::FuncDecl* parseFuncDecl(std::deque<Token>& tokens);
