@@ -355,7 +355,7 @@ namespace Codegen
 	{
 		FuncMap_t& tab = this->funcMap;
 
-		#if 1
+		#if 0
 		printf("find %s:\n{\n", name.c_str());
 		for(auto p : tab) printf("\t%s\n", p.first.c_str());
 		printf("}\n");
@@ -766,6 +766,33 @@ namespace Codegen
 		return ltype && ltype->isPointerTy();
 	}
 
+	bool CodegenInstance::isEnum(std::string name)
+	{
+		TypePair_t* tp = 0;
+		if((tp = this->getType(this->mangleWithNamespace(name))))
+		{
+			if(tp->second.second == ExprType::Enum)
+				return true;
+		}
+
+		return false;
+	}
+
+	bool CodegenInstance::isEnum(llvm::Type* type)
+	{
+		if(!type) return false;
+
+		bool res = true;
+		if(!type->isStructTy())							res = false;
+		if(res && type->getStructNumElements() != 1)	res = false;
+
+		TypePair_t* tp = 0;
+		if((tp = this->getType(type)))
+			return tp->second.second == ExprType::Enum;
+
+		return res;
+	}
+
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
 	{
 		assert(expr);
@@ -815,7 +842,8 @@ namespace Codegen
 				if(!decl)
 					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 
-				return getLlvmType(decl);
+				auto x = getLlvmType(decl);
+				return x;
 			}
 			else if(uo)
 			{
@@ -877,7 +905,8 @@ namespace Codegen
 						if(tp->second.second == ExprType::Enum)
 						{
 							assert(tp->first->isStructTy());
-							return tp->first->getStructElementType(0);
+							return tp->first;
+							// return tp->first->getStructElementType(0);
 						}
 					}
 				}
@@ -1137,7 +1166,12 @@ namespace Codegen
 		assert(pair);
 		assert(pair->first);
 		assert(pair->second.first);
-		assert(pair->second.second == ExprType::Struct);
+
+		if(pair->second.second != ExprType::Struct)
+		{
+			if(fail)	error("!!??!?!?!");
+			else		return Result_t(0, 0);
+		}
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 		assert(str);
