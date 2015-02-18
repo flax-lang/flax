@@ -46,15 +46,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
 		return callConstructor(cgi, cgi->getType(cgi->mangleRawNamespace(this->name)), this);
 
-
-	FuncPair_t* fp = cgi->getDeclaredFunc(this);
-	if(!fp)
-		GenError::unknownSymbol(this, this->name, SymbolType::Function);
-
-	llvm::Function* target = fp->first;
-	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
-		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
-
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
@@ -64,6 +55,19 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		args.push_back(res.first);
 		argPtrs.push_back(res.second);
 	}
+
+
+
+
+	FuncPair_t* fp = cgi->getDeclaredFunc(this);
+	if(!fp)
+		GenError::unknownSymbol(this, this->name, SymbolType::Function);
+
+	llvm::Function* target = fp->first;
+	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
+		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+
+
 
 	auto arg_it = target->arg_begin();
 	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
