@@ -108,6 +108,9 @@ void Extension::createType(CodegenInstance* cgi)
 			types[this->nameMap[var->name]] = cgi->getLlvmType(var);
 		}
 
+		for(ComputedProperty* c : this->cprops)
+			str->cprops.push_back(c);
+
 		std::vector<llvm::Type*> vec;
 		for(unsigned int i = 0; i < existing->getStructNumElements(); i++)
 			vec.push_back(existing->getElementType(i));
