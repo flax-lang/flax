@@ -92,6 +92,7 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("norf after: %d\n", k.norf)
 
 	printf("%d: %s\n", d.length, d.data)
+	printf("winner: %d\n", winner)
 
 	return 0
 }
