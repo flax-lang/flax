@@ -33,19 +33,21 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 1)
 	{
-		// pass 1: create struct types
+		// pass 1: create types
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
+			Enumeration* enr		= dynamic_cast<Enumeration*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->createType(cgi);
+			if(enr)					enr->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
 	else if(pass == 2)
 	{
-		// pass 2: override struct types with any extensions
+		// pass 2: override types with any extensions
 		for(Expr* e : expressions)
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
@@ -84,11 +86,13 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
+			Enumeration* enr		= dynamic_cast<Enumeration*>(e);
 			Extension* ext			= dynamic_cast<Extension*>(e);
 			Func* func				= dynamic_cast<Func*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->codegen(cgi);
+			else if(enr)			enr->codegen(cgi);
 			else if(ext)			ext->codegen(cgi);
 			else if(func)			func->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);

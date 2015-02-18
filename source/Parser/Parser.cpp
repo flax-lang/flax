@@ -92,7 +92,8 @@ namespace Parser
 	// helpers
 	static void skipNewline(std::deque<Token>& tokens)
 	{
-		while(tokens.size() > 0 && tokens.front().type == TType::NewLine)
+		// eat newlines AND comments
+		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment))
 		{
 			tokens.pop_front();
 			currentPos.line++;
@@ -327,6 +328,10 @@ namespace Parser
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseStruct(tokens));
 					break;
 
+				case TType::Enum:
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseEnum(tokens));
+					break;
+
 				case TType::Extension:
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseExtension(tokens));
 					break;
@@ -437,6 +442,9 @@ namespace Parser
 
 				case TType::Struct:
 					return parseStruct(tokens);
+
+				case TType::Enum:
+					return parseEnum(tokens);
 
 				case TType::Extension:
 					return parseExtension(tokens);
@@ -1484,6 +1492,79 @@ namespace Parser
 
 		delete str;
 		return ext;
+	}
+
+	Ast::Enumeration* parseEnum(std::deque<Token>& tokens)
+	{
+		assert(eat(tokens).type == TType::Enum);
+
+		Token tok_id;
+		if((tok_id = eat(tokens)).type != TType::Identifier)
+			parserError("Expected identifier after 'enum'");
+
+		if(eat(tokens).type != TType::LBrace)
+			parserError("Expected body after 'enum'");
+
+
+		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
+		Token front = tokens.front();
+
+		// parse the stuff.
+		bool isFirst = true;
+		bool isNumeric = false;
+		Number* prevNumber = nullptr;
+		while((front = eat(tokens)).type != TType::RBrace)
+		{
+			if(front.type != TType::Case)
+				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
+
+			front = eat(tokens);
+			if(front.type != TType::Identifier)
+				parserError("Expected identifier after 'case'");
+
+			std::string eName = front.text;
+			Expr* value = 0;
+
+			front = tokens.front();
+			if(front.type == TType::Equal)
+			{
+				eat(tokens);
+				value = parseExpr(tokens);
+
+				if((prevNumber = dynamic_cast<Number*>(value)))
+					isNumeric = true;
+			}
+			else
+			{
+				if(!isNumeric && !isFirst)
+				{
+					parserWarn("Enum case '%s' has no explicit value, and value cannot be inferred from previous cases", eName.c_str());
+				}
+				else if(isNumeric)
+				{
+					int64_t val = 0;
+					if(prevNumber)
+						val = prevNumber->dval;
+
+					// increment it.
+					value = CreateAST(Number, front, val);
+					prevNumber = (Number*) val;
+				}
+				else if(isFirst)
+				{
+					int64_t val = 0;
+					value = CreateAST(Number, front, val);
+
+					isNumeric = true;
+					prevNumber = (Number*) value;
+				}
+			}
+
+			enumer->cases.push_back(std::make_pair(eName, value));
+			isFirst = false;
+		}
+
+		return enumer;
 	}
 
 	void parseAttribute(std::deque<Token>& tokens)
