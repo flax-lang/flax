@@ -161,6 +161,10 @@ namespace Ast
 	{
 	}
 
+	TypeAlias::~TypeAlias()
+	{
+	}
+
 	Root::~Root()
 	{
 		for(Expr* e : this->topLevelExpressions)

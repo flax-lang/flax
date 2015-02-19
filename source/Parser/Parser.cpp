@@ -90,7 +90,7 @@ namespace Parser
 	}
 
 	// helpers
-	static void skipNewline(std::deque<Token>& tokens)
+	static void skipNewline(TokenList& tokens)
 	{
 		// eat newlines AND comments
 		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment))
@@ -100,7 +100,7 @@ namespace Parser
 		}
 	}
 
-	static Token eat(std::deque<Token>& tokens)
+	static Token eat(TokenList& tokens)
 	{
 		// returns the current front, then pops front.
 		if(tokens.size() == 0)
@@ -115,7 +115,7 @@ namespace Parser
 		return t;
 	}
 
-	static bool checkHasMore(std::deque<Token>& tokens)
+	static bool checkHasMore(TokenList& tokens)
 	{
 		return tokens.size() > 0;
 	}
@@ -284,7 +284,7 @@ namespace Parser
 		currentPos.line = 1;
 		curAttrib = 0;
 
-		std::deque<Token> tokens;
+		TokenList tokens;
 
 		while((t = getNextToken(str, currentPos)).text.size() > 0)
 			tokens.push_back(t);
@@ -302,7 +302,7 @@ namespace Parser
 
 
 
-	void parseAll(std::deque<Token>& tokens)
+	void parseAll(TokenList& tokens)
 	{
 		if(tokens.size() == 0)
 			return;
@@ -351,6 +351,10 @@ namespace Parser
 					tokens.pop_front();
 					break;
 
+				case TType::TypeAlias:
+					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
+					break;
+
 				case TType::Private:
 					eat(tokens);
 					curAttrib |= Attr_VisPrivate;
@@ -376,7 +380,7 @@ namespace Parser
 		}
 	}
 
-	Expr* parseUnary(std::deque<Token>& tokens)
+	Expr* parseUnary(TokenList& tokens)
 	{
 		Token front = tokens.front();
 
@@ -404,7 +408,7 @@ namespace Parser
 		}
 	}
 
-	Expr* parsePrimary(std::deque<Token>& tokens)
+	Expr* parsePrimary(TokenList& tokens)
 	{
 		if(tokens.size() == 0)
 			return nullptr;
@@ -491,6 +495,9 @@ namespace Parser
 					eat(tokens);
 					return CreateAST(DummyExpr, tok);
 
+				case TType::TypeAlias:
+					return parseTypeAlias(tokens);
+
 				case TType::True:
 					tokens.pop_front();
 					return CreateAST(BoolVal, tok, true);
@@ -528,7 +535,7 @@ namespace Parser
 	}
 
 
-	NamespaceDecl* parseNamespace(std::deque<Token>& tokens)
+	NamespaceDecl* parseNamespace(TokenList& tokens)
 	{
 		Token tok_ns = eat(tokens);
 		assert(tok_ns.type == TType::Namespace);
@@ -564,7 +571,7 @@ namespace Parser
 
 
 
-	FuncDecl* parseFuncDecl(std::deque<Token>& tokens)
+	FuncDecl* parseFuncDecl(TokenList& tokens)
 	{
 		// todo: better things? it's right now mostly hacks.
 		if(tokens.front().text != "init" && tokens.front().text.find("operator") != 0)
@@ -659,7 +666,7 @@ namespace Parser
 		return f;
 	}
 
-	ForeignFuncDecl* parseForeignFunc(std::deque<Token>& tokens)
+	ForeignFuncDecl* parseForeignFunc(TokenList& tokens)
 	{
 		Token func = tokens.front();
 		assert(func.type == TType::ForeignFunc);
@@ -695,7 +702,7 @@ namespace Parser
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}
 
-	BracedBlock* parseBracedBlock(std::deque<Token>& tokens)
+	BracedBlock* parseBracedBlock(TokenList& tokens)
 	{
 		Token tok_cls = eat(tokens);
 		BracedBlock* c = CreateAST(BracedBlock, tok_cls);
@@ -717,7 +724,7 @@ namespace Parser
 		return c;
 	}
 
-	Func* parseFunc(std::deque<Token>& tokens)
+	Func* parseFunc(TokenList& tokens)
 	{
 		Token front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
@@ -726,7 +733,7 @@ namespace Parser
 	}
 
 
-	Expr* parseInitFunc(std::deque<Token>& tokens)
+	Expr* parseInitFunc(TokenList& tokens)
 	{
 		Token front = tokens.front();
 		assert(front.text == "init");
@@ -804,7 +811,7 @@ namespace Parser
 
 
 
-	CastedType* parseType(std::deque<Token>& tokens)
+	CastedType* parseType(TokenList& tokens)
 	{
 		bool isArr = false;
 		int arrsize = 0;
@@ -866,7 +873,7 @@ namespace Parser
 		return CreateAST(CastedType, tmp, ret);
 	}
 
-	VarDecl* parseVarDecl(std::deque<Token>& tokens)
+	VarDecl* parseVarDecl(TokenList& tokens)
 	{
 		assert(tokens.front().type == TType::Var || tokens.front().type == TType::Val);
 
@@ -1023,7 +1030,7 @@ namespace Parser
 		return v;
 	}
 
-	Expr* parseParenthesised(std::deque<Token>& tokens)
+	Expr* parseParenthesised(TokenList& tokens)
 	{
 		assert(eat(tokens).type == TType::LParen);
 		Expr* within = parseExpr(tokens);
@@ -1034,7 +1041,7 @@ namespace Parser
 		return within;
 	}
 
-	Expr* parseExpr(std::deque<Token>& tokens)
+	Expr* parseExpr(TokenList& tokens)
 	{
 		Expr* lhs = parseUnary(tokens);
 		if(!lhs)
@@ -1043,7 +1050,7 @@ namespace Parser
 		return parseRhs(tokens, lhs, 0);
 	}
 
-	Expr* parseRhs(std::deque<Token>& tokens, Expr* lhs, int prio)
+	Expr* parseRhs(TokenList& tokens, Expr* lhs, int prio)
 	{
 		while(true)
 		{
@@ -1115,7 +1122,7 @@ namespace Parser
 		}
 	}
 
-	Expr* parseIdExpr(std::deque<Token>& tokens)
+	Expr* parseIdExpr(TokenList& tokens)
 	{
 		Token tok_id = eat(tokens);
 		std::string id = tok_id.text;
@@ -1144,7 +1151,7 @@ namespace Parser
 		}
 	}
 
-	Alloc* parseAlloc(std::deque<Token>& tokens)
+	Alloc* parseAlloc(TokenList& tokens)
 	{
 		Token tok_alloc = eat(tokens);
 		assert(tok_alloc.type == TType::Alloc);
@@ -1180,7 +1187,7 @@ namespace Parser
 		return ret;
 	}
 
-	Dealloc* parseDealloc(std::deque<Token>& tokens)
+	Dealloc* parseDealloc(TokenList& tokens)
 	{
 		Token tok_dealloc = eat(tokens);
 		assert(tok_dealloc.type == TType::Dealloc);
@@ -1193,7 +1200,7 @@ namespace Parser
 		return CreateAST(Dealloc, tok_dealloc, vr);
 	}
 
-	Number* parseNumber(std::deque<Token>& tokens)
+	Number* parseNumber(TokenList& tokens)
 	{
 		Number* n;
 		if(tokens.front().type == TType::Integer)
@@ -1225,7 +1232,7 @@ namespace Parser
 		return n;
 	}
 
-	Expr* parseFuncCall(std::deque<Token>& tokens, std::string id)
+	Expr* parseFuncCall(TokenList& tokens, std::string id)
 	{
 		Token front = eat(tokens);
 		assert(front.type == TType::LParen);
@@ -1259,7 +1266,7 @@ namespace Parser
 		return CreateAST(FuncCall, front, id, args);
 	}
 
-	Return* parseReturn(std::deque<Token>& tokens)
+	Return* parseReturn(TokenList& tokens)
 	{
 		Token front = eat(tokens);
 		assert(front.type == TType::Return);
@@ -1274,7 +1281,7 @@ namespace Parser
 		return CreateAST(Return, front, retval);
 	}
 
-	Expr* parseIf(std::deque<Token>& tokens)
+	Expr* parseIf(TokenList& tokens)
 	{
 		Token tok_if = eat(tokens);
 		assert(tok_if.type == TType::If);
@@ -1324,7 +1331,7 @@ namespace Parser
 		return CreateAST(If, tok_if, conds, ecase);
 	}
 
-	WhileLoop* parseWhile(std::deque<Token>& tokens)
+	WhileLoop* parseWhile(TokenList& tokens)
 	{
 		Token tok_while = eat(tokens);
 
@@ -1366,7 +1373,7 @@ namespace Parser
 		}
 	}
 
-	ForLoop* parseFor(std::deque<Token>& tokens)
+	ForLoop* parseFor(TokenList& tokens)
 	{
 		Token tok_for = eat(tokens);
 		assert(tok_for.type == TType::For);
@@ -1374,7 +1381,7 @@ namespace Parser
 		return 0;
 	}
 
-	static StructBase* parseStructBody(std::deque<Token>& tokens)
+	static StructBase* parseStructBody(TokenList& tokens)
 	{
 		isParsingStruct = true;
 		Token tok_id = eat(tokens);
@@ -1452,7 +1459,7 @@ namespace Parser
 
 
 
-	Struct* parseStruct(std::deque<Token>& tokens)
+	Struct* parseStruct(TokenList& tokens)
 	{
 		Token tok_struct = eat(tokens);
 		assert(tok_struct.type == TType::Struct);
@@ -1473,7 +1480,7 @@ namespace Parser
 		return str;
 	}
 
-	Extension* parseExtension(std::deque<Token>& tokens)
+	Extension* parseExtension(TokenList& tokens)
 	{
 		Token tok_ext = eat(tokens);
 		assert(tok_ext.type == TType::Extension);
@@ -1494,7 +1501,7 @@ namespace Parser
 		return ext;
 	}
 
-	Ast::Enumeration* parseEnum(std::deque<Token>& tokens)
+	Ast::Enumeration* parseEnum(TokenList& tokens)
 	{
 		assert(eat(tokens).type == TType::Enum);
 
@@ -1580,7 +1587,7 @@ namespace Parser
 		return enumer;
 	}
 
-	void parseAttribute(std::deque<Token>& tokens)
+	void parseAttribute(TokenList& tokens)
 	{
 		assert(eat(tokens).type == TType::At);
 		Token id = eat(tokens);
@@ -1593,12 +1600,14 @@ namespace Parser
 		else if(id.text == "forcemangle")		attr |= Attr_ForceMangle;
 		else if(id.text == "noautoinit")		attr |= Attr_NoAutoInit;
 		else if(id.text == "packed")			attr |= Attr_PackedStruct;
+		else if(id.text == "strong")			attr |= Attr_StrongTypeAlias;
+		else if(id.text == "rawstring")			attr |= Attr_RawString;
 		else									parserError("Unknown attribute '%s'", id.text.c_str());
 
 		curAttrib |= attr;
 	}
 
-	Break* parseBreak(std::deque<Token>& tokens)
+	Break* parseBreak(TokenList& tokens)
 	{
 		Token tok_br = eat(tokens);
 		assert(tok_br.type == TType::Break);
@@ -1607,7 +1616,7 @@ namespace Parser
 		return br;
 	}
 
-	Continue* parseContinue(std::deque<Token>& tokens)
+	Continue* parseContinue(TokenList& tokens)
 	{
 		Token tok_cn = eat(tokens);
 		assert(tok_cn.type == TType::Continue);
@@ -1616,7 +1625,7 @@ namespace Parser
 		return cn;
 	}
 
-	Import* parseImport(std::deque<Token>& tokens)
+	Import* parseImport(TokenList& tokens)
 	{
 		assert(eat(tokens).type == TType::Import);
 
@@ -1627,17 +1636,48 @@ namespace Parser
 		return CreateAST(Import, tok_mod, tok_mod.text);
 	}
 
-	StringLiteral* parseStringLiteral(std::deque<Token>& tokens)
+	StringLiteral* parseStringLiteral(TokenList& tokens)
 	{
 		assert(tokens.front().type == TType::StringLiteral);
 		Token str = eat(tokens);
 
+
 		// reference hack in tokeniser.cpp
 		str.text = str.text.substr(1);
-		return CreateAST(StringLiteral, str, str.text);
+		auto ret = CreateAST(StringLiteral, str, str.text);
+
+		uint32_t attr = checkAndApplyAttributes(Attr_RawString);
+		if(attr & Attr_RawString)
+			ret->isRaw = true;
+
+		return ret;
 	}
 
+	TypeAlias* parseTypeAlias(TokenList& tokens)
+	{
+		assert(eat(tokens).type == TType::TypeAlias);
+		Token tok_name = eat(tokens);
+		if(tok_name.type != TType::Identifier)
+			parserError("Expected identifier after 'typealias'");
 
+		if(eat(tokens).type != TType::Equal)
+			parserError("Expected '='");
+
+
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
+
+		CastedType* ct = parseType(tokens);
+		assert(ct);
+
+		ret->origType = ct->name;
+		delete ct;
+
+		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias);
+		if(attr & Attr_StrongTypeAlias)
+			ret->isStrong = true;
+
+		return ret;
+	}
 
 
 
@@ -1730,7 +1770,7 @@ namespace Parser
 		}
 	}
 
-	OpOverload* parseOpOverload(std::deque<Token>& tokens)
+	OpOverload* parseOpOverload(TokenList& tokens)
 	{
 		if(!isParsingStruct)
 			parserError("Can only overload operators in the context of a named aggregate type");
@@ -1773,14 +1813,16 @@ namespace Parser
 
 namespace Ast
 {
-	uint32_t Attr_Invalid		= 0x00;
-	uint32_t Attr_NoMangle		= 0x01;
-	uint32_t Attr_VisPublic		= 0x02;
-	uint32_t Attr_VisInternal	= 0x04;
-	uint32_t Attr_VisPrivate	= 0x08;
-	uint32_t Attr_ForceMangle	= 0x10;
-	uint32_t Attr_NoAutoInit	= 0x20;
-	uint32_t Attr_PackedStruct	= 0x40;
+	uint32_t Attr_Invalid			= 0x00;
+	uint32_t Attr_NoMangle			= 0x01;
+	uint32_t Attr_VisPublic			= 0x02;
+	uint32_t Attr_VisInternal		= 0x04;
+	uint32_t Attr_VisPrivate		= 0x08;
+	uint32_t Attr_ForceMangle		= 0x10;
+	uint32_t Attr_NoAutoInit		= 0x20;
+	uint32_t Attr_PackedStruct		= 0x40;
+	uint32_t Attr_StrongTypeAlias	= 0x80;
+	uint32_t Attr_RawString			= 0x100;
 }
 
 
