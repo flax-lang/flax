@@ -892,7 +892,11 @@ namespace Codegen
 			}
 			else if(sl)
 			{
-				return this->getType("String")->first;
+				if(sl->isRaw)
+					return llvm::Type::getInt8PtrTy(this->getContext());
+
+				else
+					return this->getType("String")->first;
 			}
 			else if(ma)
 			{
