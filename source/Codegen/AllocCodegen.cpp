@@ -83,6 +83,10 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
+		typePair = cgi->getType(allocType);
+
+
+
 		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
 
 		// we need to keep calling this... essentially looping.

@@ -52,8 +52,10 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
 
 			if(ext)					ext->createType(cgi);
+			else if(ta)				ta->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
