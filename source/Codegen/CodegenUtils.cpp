@@ -810,6 +810,7 @@ namespace Codegen
 			Number* nm			= dynamic_cast<Number*>(expr);
 			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
 			Return* retr		= dynamic_cast<Return*>(expr);
+			Alloc* alloc		= dynamic_cast<Alloc*>(expr);
 
 			if(decl)
 			{
@@ -891,7 +892,11 @@ namespace Codegen
 			}
 			else if(sl)
 			{
-				return this->getType("String")->first;
+				if(sl->isRaw)
+					return llvm::Type::getInt8PtrTy(this->getContext());
+
+				else
+					return this->getType("String")->first;
 			}
 			else if(ma)
 			{
@@ -980,6 +985,10 @@ namespace Codegen
 						return this->getLlvmType(bo->right);
 					}
 				}
+			}
+			else if(alloc)
+			{
+				return this->getLlvmType(alloc->type)->getPointerTo();
 			}
 			else if(nm)
 			{

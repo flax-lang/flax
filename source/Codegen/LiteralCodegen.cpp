@@ -34,7 +34,7 @@ Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
-	if(pair)
+	if(pair && !this->isRaw)
 	{
 		llvm::StructType* stringType = llvm::cast<llvm::StructType>(pair->first);
 
@@ -58,7 +58,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 	}
 	else
 	{
-		warn(this, "String type not available, using Int8* for string literal");
+		if(!this->isRaw)
+			warn(this, "String type not available, using Int8* for string literal");
 
 		// good old Int8*
 		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
