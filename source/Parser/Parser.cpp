@@ -1600,6 +1600,8 @@ namespace Parser
 		else if(id.text == "forcemangle")		attr |= Attr_ForceMangle;
 		else if(id.text == "noautoinit")		attr |= Attr_NoAutoInit;
 		else if(id.text == "packed")			attr |= Attr_PackedStruct;
+		else if(id.text == "strong")			attr |= Attr_StrongTypeAlias;
+		else if(id.text == "rawstring")			attr |= Attr_RawString;
 		else									parserError("Unknown attribute '%s'", id.text.c_str());
 
 		curAttrib |= attr;
@@ -1639,9 +1641,16 @@ namespace Parser
 		assert(tokens.front().type == TType::StringLiteral);
 		Token str = eat(tokens);
 
+
 		// reference hack in tokeniser.cpp
 		str.text = str.text.substr(1);
-		return CreateAST(StringLiteral, str, str.text);
+		auto ret = CreateAST(StringLiteral, str, str.text);
+
+		uint32_t attr = checkAndApplyAttributes(Attr_RawString);
+		if(attr & Attr_RawString)
+			ret->isRaw = true;
+
+		return ret;
 	}
 
 	TypeAlias* parseTypeAlias(TokenList& tokens)
@@ -1654,13 +1663,20 @@ namespace Parser
 		if(eat(tokens).type != TType::Equal)
 			parserError("Expected '='");
 
+
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
+
 		CastedType* ct = parseType(tokens);
 		assert(ct);
 
-		std::string type = ct->name;
+		ret->origType = ct->name;
 		delete ct;
 
-		return CreateAST(TypeAlias, tok_name, tok_name.text, type);
+		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias);
+		if(attr & Attr_StrongTypeAlias)
+			ret->isStrong = true;
+
+		return ret;
 	}
 
 
@@ -1806,6 +1822,7 @@ namespace Ast
 	uint32_t Attr_NoAutoInit		= 0x20;
 	uint32_t Attr_PackedStruct		= 0x40;
 	uint32_t Attr_StrongTypeAlias	= 0x80;
+	uint32_t Attr_RawString			= 0x100;
 }
 
 
