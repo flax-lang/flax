@@ -76,7 +76,6 @@ enum Fac
 	case Athena
 }
 
-typealias BarPtr = Bar*
 
 struct sa
 {
@@ -89,8 +88,10 @@ struct sb
 }
 
 func fac(x: Fac) { printf("[%d]\n", x) }
-
 func fad(x: BarPtr) { printf("[%d, %d]\n", x.qux, x.aaa) }
+
+@strong typealias BarPtr = Bar*
+
 
 func mult(x: Int) -> Int { x * 2 }
 func main(argc: Int32, argv: Int8**) -> Int
