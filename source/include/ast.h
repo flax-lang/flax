@@ -47,6 +47,7 @@ namespace Codegen
 	{
 		Struct,
 		Enum,
+		TypeAlias,
 		Func
 	};
 
@@ -137,6 +138,8 @@ namespace Ast
 	extern uint32_t Attr_ForceMangle;
 	extern uint32_t Attr_NoAutoInit;
 	extern uint32_t Attr_PackedStruct;
+	extern uint32_t Attr_StrongTypeAlias;
+	extern uint32_t Attr_RawString;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
@@ -520,6 +523,7 @@ namespace Ast
 		StringLiteral(Parser::PosInfo pos, std::string str) : Expr(pos), str(str) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
+		bool isRaw = false;
 		std::string str;
 	};
 
@@ -530,6 +534,17 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(nullptr, nullptr); }
 
 		std::string name;
+	};
+
+	struct TypeAlias : Expr
+	{
+		~TypeAlias();
+		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : Expr(pos), alias(_alias), origType(_origType) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		bool isStrong = false;
+		std::string alias;
+		std::string origType;
 	};
 
 	struct Alloc : Expr
