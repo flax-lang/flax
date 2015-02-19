@@ -178,6 +178,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	else
 	{
 		ai = cgi->allocateInstanceInBlock(this);
+		this->inferredLType = cgi->getLlvmType(this);
 	}
 
 
