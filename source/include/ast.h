@@ -536,14 +536,14 @@ namespace Ast
 		std::string name;
 	};
 
-	struct TypeAlias : Expr
+	struct TypeAlias : StructBase
 	{
 		~TypeAlias();
-		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : Expr(pos), alias(_alias), origType(_origType) { }
+		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		void createType(Codegen::CodegenInstance* cgi);
 
 		bool isStrong = false;
-		std::string alias;
 		std::string origType;
 	};
 
