@@ -793,6 +793,45 @@ namespace Codegen
 		return res;
 	}
 
+	bool CodegenInstance::isTypeAlias(std::string name)
+	{
+		TypePair_t* tp = 0;
+		if((tp = this->getType(this->mangleWithNamespace(name))))
+		{
+			if(tp->second.second == ExprType::TypeAlias)
+				return true;
+		}
+
+		return false;
+	}
+
+	bool CodegenInstance::isTypeAlias(llvm::Type* type)
+	{
+		if(!type) return false;
+
+		bool res = true;
+		if(!type->isStructTy())							res = false;
+		if(res && type->getStructNumElements() != 1)	res = false;
+
+		TypePair_t* tp = 0;
+		if((tp = this->getType(type)))
+			return tp->second.second == ExprType::TypeAlias;
+
+		return res;
+	}
+
+	llvm::Value* CodegenInstance::lastMinuteUnwrapType(llvm::Value* alloca)
+	{
+		assert(alloca->getType()->isPointerTy());
+		llvm::Type* baseType = alloca->getType()->getPointerElementType();
+
+		if(this->isEnum(baseType) || this->isTypeAlias(baseType))
+			return this->mainBuilder.CreateStructGEP(alloca, 0);
+
+		return alloca;
+	}
+
+
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
 	{
 		assert(expr);
