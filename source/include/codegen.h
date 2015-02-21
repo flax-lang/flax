@@ -107,7 +107,11 @@ namespace Codegen
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(llvm::Type* e);
+		bool isTypeAlias(std::string name);
+		bool isTypeAlias(llvm::Type* type);
 		bool isDuplicateType(std::string name);
+
+		llvm::Value* lastMinuteUnwrapType(llvm::Value* alloca);
 
 
 		std::string mangleRawNamespace(std::string original);

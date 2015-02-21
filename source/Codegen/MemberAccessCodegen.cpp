@@ -35,7 +35,33 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;
 
-	if(selfPtr == nullptr)
+	bool isPtr = false;
+	bool isWrapped = false;
+
+	llvm::Type* type = p.first->getType();
+	if(!type)
+		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
+
+	if(cgi->isTypeAlias(type))
+	{
+		assert(type->isStructTy());
+		assert(type->getStructNumElements() == 1);
+		type = type->getStructElementType(0);
+
+		isWrapped = true;
+	}
+
+
+	if(!type->isStructTy())
+	{
+		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+			type = type->getPointerElementType(), isPtr = true;
+
+		else
+			error(this, "Cannot do member access on non-struct types");
+	}
+
+	if(selfPtr == nullptr && !isPtr)
 	{
 		// we don't have a pointer value for this
 		// it's required for CreateStructGEP, so we'll have to make a temp variable
@@ -47,31 +73,49 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			selfPtr = cgi->mainBuilder.CreateAlloca(self->getType());
+			selfPtr = cgi->mainBuilder.CreateAlloca(type);
 			cgi->mainBuilder.CreateStore(self, selfPtr);
 		}
 	}
 
-	bool isPtr = false;
-
-	llvm::Type* type = p.first->getType();
-	if(!type)
-		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
-
-	if(!type->isStructTy())
+	if(isWrapped)
 	{
-		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
-			type = type->getPointerElementType(), isPtr = true;
+		bool wasSelfPtr = false;
 
+		if(selfPtr)
+		{
+			selfPtr = cgi->lastMinuteUnwrapType(selfPtr);
+			wasSelfPtr = true;
+			isPtr = false;
+		}
 		else
-			error(this, "Cannot do member access on non-struct types");
+		{
+			self = cgi->lastMinuteUnwrapType(self);
+		}
+
+
+		// if we're faced with a double pointer, we need to load it once
+		if(wasSelfPtr)
+		{
+			if(selfPtr->getType()->isPointerTy() && selfPtr->getType()->getPointerElementType()->isPointerTy())
+				selfPtr = cgi->mainBuilder.CreateLoad(selfPtr);
+		}
+		else
+		{
+			if(self->getType()->isPointerTy() && self->getType()->getPointerElementType()->isPointerTy())
+				self = cgi->mainBuilder.CreateLoad(self);
+		}
 	}
 
-	TypePair_t* pair = cgi->getType(type->getStructName());
+
+
+
+	TypePair_t* pair = cgi->getType(type);
 	if(!pair)
 	{
 		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}
+
 
 	if(pair->second.second == ExprType::Struct)
 	{
