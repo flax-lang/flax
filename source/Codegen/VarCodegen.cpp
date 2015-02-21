@@ -58,8 +58,15 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				std::vector<llvm::Value*> args;
-				args.push_back(ai);
+				llvm::Value* oldAi = ai;
+				ai = cgi->lastMinuteUnwrapType(oldAi);
+				if(oldAi != ai)
+				{
+					cmplxtype = cgi->getType(ai->getType()->getPointerElementType());
+					assert(cmplxtype);
+				}
+
+				std::vector<llvm::Value*> args { ai };
 
 				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
 				val = cgi->mainBuilder.CreateCall(initfunc, args);
@@ -83,8 +90,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			if(cgi->isEnum(ai->getType()->getPointerElementType()))
-				ai = cgi->mainBuilder.CreateStructGEP(ai, 0);
+			ai = cgi->lastMinuteUnwrapType(ai);
 
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
