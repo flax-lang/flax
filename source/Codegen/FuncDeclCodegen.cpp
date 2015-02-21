@@ -33,7 +33,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	else
 	{
 		bool alreadyMangled = false;
-		if(!this->isFFI)
+		if(!this->isFFI && !(this->attribs & Attr_NoMangle))
 		{
 			alreadyMangled = true;
 			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
@@ -50,12 +50,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	std::vector<llvm::Type*> argtypes;
 	for(VarDecl* v : this->params)
-	{
 		argtypes.push_back(cgi->getLlvmType(v));
-	}
-
-
-
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
 	llvm::GlobalValue::LinkageTypes linkageType;
