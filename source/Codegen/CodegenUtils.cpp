@@ -476,6 +476,9 @@ namespace Codegen
 		// last char is 0
 		if(mangled.length() > 0)
 		{
+			if(mangled.back() == 'E')
+				mangled = mangled.substr(0, mangled.length() - 1);
+
 			assert(mangled.back() == '0');
 			mangled = mangled.substr(0, mangled.length() - 1);
 		}
@@ -573,7 +576,13 @@ namespace Codegen
 
 		ret += std::to_string(original.length()) + original;
 		if(ns.size() == 0)
+		{
 			ret = original;
+		}
+		else
+		{
+			ret += "E";
+		}
 
 		return ret;
 	}
