@@ -28,7 +28,12 @@ namespace Parser
 	#define CreateAST(name, tok, ...)		(new name (tok.posinfo, ##__VA_ARGS__))
 
 
-
+	#define ATTR_STR_NOMANGLE			"nomangle"
+	#define ATTR_STR_FORCEMANGLE		"forcemangle"
+	#define ATTR_STR_NOAUTOINIT			"noinit"
+	#define ATTR_STR_PACKEDSTRUCT		"packed"
+	#define ATTR_STR_STRONGTYPEALIAS	"strong"
+	#define ATTR_STR_RAWSTRING			"rstring"
 
 
 	// todo: hack
@@ -1596,13 +1601,13 @@ namespace Parser
 			parserError("Expected attribute name after '@'");
 
 		uint32_t attr = 0;
-		if(id.text == "nomangle")				attr |= Attr_NoMangle;
-		else if(id.text == "forcemangle")		attr |= Attr_ForceMangle;
-		else if(id.text == "noautoinit")		attr |= Attr_NoAutoInit;
-		else if(id.text == "packed")			attr |= Attr_PackedStruct;
-		else if(id.text == "strong")			attr |= Attr_StrongTypeAlias;
-		else if(id.text == "rawstring")			attr |= Attr_RawString;
-		else									parserError("Unknown attribute '%s'", id.text.c_str());
+		if(id.text == ATTR_STR_NOMANGLE)				attr |= Attr_NoMangle;
+		else if(id.text == ATTR_STR_FORCEMANGLE)		attr |= Attr_ForceMangle;
+		else if(id.text == ATTR_STR_NOAUTOINIT)			attr |= Attr_NoAutoInit;
+		else if(id.text == ATTR_STR_PACKEDSTRUCT)		attr |= Attr_PackedStruct;
+		else if(id.text == ATTR_STR_STRONGTYPEALIAS)	attr |= Attr_StrongTypeAlias;
+		else if(id.text == ATTR_STR_RAWSTRING)			attr |= Attr_RawString;
+		else											parserError("Unknown attribute '%s'", id.text.c_str());
 
 		curAttrib |= attr;
 	}
