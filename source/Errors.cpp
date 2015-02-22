@@ -14,7 +14,11 @@ void __error_gen(Expr* relevantast, const char* msg, const char* type, bool ex, 
 	char* alloc = nullptr;
 	vasprintf(&alloc, msg, ap);
 
-	fprintf(stderr, "%s(%s:%" PRIu64 ")%s %s%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, COLOUR_RED_BOLD, type, COLOUR_RESET, alloc);
+	auto colour = COLOUR_RED_BOLD;
+	if(strcmp(type, "Warning") == 0)
+		colour = COLOUR_MAGENTA_BOLD;
+
+	fprintf(stderr, "%s(%s:%" PRIu64 ")%s %s%s: %s\n\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", relevantast ? relevantast->posinfo.line : 0, colour, type, COLOUR_RESET, alloc);
 
 	va_end(ap);
 	if(ex) abort();
