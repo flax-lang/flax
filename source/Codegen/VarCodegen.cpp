@@ -151,7 +151,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	TypePair_t* cmplxtype = cgi->getType(this->type);
 	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
 
-	llvm::AllocaInst* ai = nullptr;
+	llvm::Value* ai = nullptr;
 
 	if(this->type == "Inferred")
 	{
@@ -160,8 +160,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		assert(!cmplxtype);
 
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
+		}
 
-		ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
 		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
@@ -173,7 +176,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else if(this->initVal)
 	{
-		ai = cgi->allocateInstanceInBlock(this);
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(this);
+		}
+
 		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
@@ -183,10 +190,22 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
-		ai = cgi->allocateInstanceInBlock(this);
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(this);
+		}
 		this->inferredLType = cgi->getLlvmType(this);
 	}
 
+	// TODO: call global constructors
+	if(this->isGlobal)
+	{
+		ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable,
+			llvm::GlobalValue::CommonLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+
+		if(this->initVal)
+			warn(this, "Global variables currently do not support initial values");
+	}
 
 	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 	return Result_t(val, ai);

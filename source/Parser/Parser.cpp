@@ -346,6 +346,11 @@ namespace Parser
 					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
 					break;
 
+				case TType::Var:
+				case TType::Val:
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
+					break;
+
 				// shit you just skip
 				case TType::NewLine:
 					currentPos.line++;

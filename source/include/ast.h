@@ -224,6 +224,7 @@ namespace Ast
 		std::string name;
 		bool immutable;
 
+		bool isGlobal = false;
 		bool disableAutoInit = false;
 		Expr* initVal = 0;
 		llvm::Type* inferredLType = 0;
