@@ -201,13 +201,26 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	if(this->isGlobal)
 	{
 		ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable,
-			llvm::GlobalValue::CommonLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+			this->attribs & Attr_VisPublic ? llvm::GlobalValue::ExternalLinkage : llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
 
 		if(this->initVal)
-			warn(this, "Global variables currently do not support initial values");
+		{
+			assert(val);
+			if(llvm::cast<llvm::Constant>(val))
+				llvm::cast<llvm::GlobalVariable>(ai)->setInitializer(llvm::cast<llvm::Constant>(val));
+
+			else
+				warn(this, "Global variables currently do not support initial values");
+		}
+
+
+		cgi->addSymbol(this->name, ai, this);
+	}
+	else
+	{
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 	}
 
-	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
 	return Result_t(val, ai);
 }
 

@@ -339,7 +339,15 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		if(lop != (llvm::Instruction::BinaryOps) 0)
+		{
+			cgi->autoCastType(lhs, rhs);
+			cgi->autoCastType(rhs, lhs);
+
+			if(lhs->getType() != rhs->getType())
+				error(this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+
 			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+		}
 
 		switch(this->op)
 		{

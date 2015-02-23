@@ -33,7 +33,10 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	else
 	{
 		bool alreadyMangled = false;
-		if(!this->isFFI && !(this->attribs & Attr_NoMangle))
+
+		// if we're a normal function, or we're ffi and the type is c++, mangle it
+		// our mangling is compatible with c++ to reduce headache
+		if((!this->isFFI && !(this->attribs & Attr_NoMangle)) || (this->isFFI && this->ffiType == FFIType::Cpp))
 		{
 			alreadyMangled = true;
 			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
@@ -43,9 +46,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
 			this->mangledName = cgi->mangleName(this->name, this->params);
-
-		else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
-			this->mangledName = cgi->mangleCppName(this->name, this->params);
 	}
 
 	std::vector<llvm::Type*> argtypes;
