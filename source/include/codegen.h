@@ -126,8 +126,6 @@ namespace Codegen
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
-		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
