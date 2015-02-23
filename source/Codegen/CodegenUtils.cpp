@@ -123,6 +123,8 @@ namespace Codegen
 		cgi->rootNode->codegen(cgi);
 		TypeInfo::generateTypeInfo(cgi);
 
+		// cgi->mainModule->dump();
+
 		cgi->popScope();
 
 		// free the memory
@@ -372,8 +374,6 @@ namespace Codegen
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 
 		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleCppName(fc->name, fc->params));
-
 		if(!fp)	fp = this->getDeclaredFunc(this->mangleWithNamespace(fc->name));
 		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
 
@@ -545,18 +545,6 @@ namespace Codegen
 		return mangleName(base, a);
 	}
 
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
-	{
-		return "enosup";
-	}
-
-
-
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
-	{
-		// TODO:
-		return "enosup";
-	}
 	std::string CodegenInstance::mangleWithNamespace(std::string original)
 	{
 		return this->mangleWithNamespace(original, this->namespaceStack);
@@ -1105,13 +1093,14 @@ namespace Codegen
 		std::string ret = rso.str();
 
 		StringReplace(ret, "void", "Void");
-		StringReplace(ret, "i1", "Bool");
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
 		StringReplace(ret, "i32", "Int32");
 		StringReplace(ret, "i64", "Int64");
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
+
+		StringReplace(ret, "i1", "Bool");
 
 		return ret;
 	}

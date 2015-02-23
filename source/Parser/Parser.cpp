@@ -435,6 +435,13 @@ namespace Parser
 				case TType::Func:
 					return parseFunc(tokens);
 
+				case TType::Namespace:
+					if(isInsideNamespace)		return parseNamespace(tokens);
+					else						parserError("Namespaces can only be declared at top level");
+
+				case TType::ForeignFunc:
+					return parseForeignFunc(tokens);
+
 				case TType::LParen:
 					return parseParenthesised(tokens);
 
