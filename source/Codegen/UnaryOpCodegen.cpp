@@ -17,10 +17,10 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->mainBuilder.CreateNot(res.result.first), 0);
+			return Result_t(cgi->mainBuilder.CreateICmpEQ(res.result.first, llvm::Constant::getNullValue(res.result.first->getType())), res.result.second);
 
 		case ArithmeticOp::Minus:
-			return Result_t(cgi->mainBuilder.CreateNeg(res.result.first), 0);
+			return Result_t(cgi->mainBuilder.CreateNeg(res.result.first), res.result.second);
 
 		case ArithmeticOp::Plus:
 			return res;
@@ -31,7 +31,10 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		case ArithmeticOp::AddrOf:
 			return Result_t(res.result.second, 0);
 
+		case ArithmeticOp::BitwiseNot:
+			return Result_t(cgi->mainBuilder.CreateNot(res.result.first), res.result.second);
+
 		default:
-			error("this, (%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
+			error(this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
 	}
 }

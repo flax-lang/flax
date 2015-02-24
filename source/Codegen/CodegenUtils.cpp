@@ -357,7 +357,7 @@ namespace Codegen
 	{
 		FuncMap_t& tab = this->funcMap;
 
-		#if 0
+		#if 1
 		printf("find %s:\n{\n", name.c_str());
 		for(auto p : tab) printf("\t%s\n", p.first.c_str());
 		printf("}\n");
@@ -374,7 +374,6 @@ namespace Codegen
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 
 		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleWithNamespace(fc->name));
 		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
 
 		return fp;
@@ -846,6 +845,7 @@ namespace Codegen
 			Number* nm			= dynamic_cast<Number*>(expr);
 			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
 			Return* retr		= dynamic_cast<Return*>(expr);
+			ScopeResolution* sr	= dynamic_cast<ScopeResolution*>(expr);
 			Alloc* alloc		= dynamic_cast<Alloc*>(expr);
 
 			if(decl)
@@ -1022,6 +1022,10 @@ namespace Codegen
 					}
 				}
 			}
+			else if(sr)
+			{
+				return this->getLlvmType(sr->getActualExpr(this));
+			}
 			else if(alloc)
 			{
 				return this->getLlvmType(alloc->type)->getPointerTo();
@@ -1046,7 +1050,6 @@ namespace Codegen
 			{
 				return llvm::Type::getVoidTy(getContext());
 			}
-
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
@@ -1117,8 +1120,8 @@ namespace Codegen
 
 	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
-		assert(left);
-		assert(right);
+		if(!left || !right)
+			return;
 
 		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy()
 			&& left->getType()->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
