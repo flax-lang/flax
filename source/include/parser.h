@@ -104,6 +104,7 @@ namespace Parser
 		LogicalAnd,
 		At,
 		Pound,
+		Tilde,
 
 
 		// compound symbols

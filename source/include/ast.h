@@ -37,6 +37,7 @@ namespace Parser
 	struct PosInfo
 	{
 		uint64_t line;
+		uint64_t col;
 		std::string file;
 	};
 }
@@ -77,6 +78,7 @@ namespace Ast
 {
 	enum class ArithmeticOp
 	{
+		Invalid,
 		Add,
 		Subtract,
 		Multiply,
@@ -489,6 +491,7 @@ namespace Ast
 		~ScopeResolution();
 		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		Expr* getActualExpr(Codegen::CodegenInstance* cgi);
 
 		bool done = false;
 		Expr* scope;
