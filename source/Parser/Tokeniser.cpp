@@ -10,11 +10,14 @@
 
 namespace Parser
 {
-	static void skipWhitespace(std::string& line)
+	static void skipWhitespace(std::string& line, PosInfo& pos)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
-		if(startpos != std::string::npos )
+		if(startpos != std::string::npos)
+		{
+			pos.col += startpos;
 			line = line.substr(startpos);
+		}
 	}
 
 
@@ -27,9 +30,9 @@ namespace Parser
 		int read = 0;
 
 		// first eat all whitespace
-		skipWhitespace(stream);
+		skipWhitespace(stream, pos);
 
-		Token tok;			// because doing '->' gets old
+		Token tok;
 		tok.posinfo = pos;
 
 		// check compound symbols first.
@@ -394,6 +397,17 @@ namespace Parser
 		}
 
 		stream = stream.substr(read);
+		if(tok.type != TType::NewLine)
+		{
+			tok.posinfo.col += read;
+			pos.col += read;
+		}
+		else
+		{
+			tok.posinfo.col = 1;
+			pos.col = 1;
+		}
+
 		return tok;
 	}
 }

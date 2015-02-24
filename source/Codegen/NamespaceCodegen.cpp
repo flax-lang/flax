@@ -51,26 +51,53 @@ static Expr* resolveScope(ScopeResolution* _sr, CodegenInstance* cgi, std::deque
 	return _sr->member;
 }
 
+Expr* ScopeResolution::getActualExpr(CodegenInstance* cgi)
+{
+	std::deque<std::string> scopes;
+	Expr* result = resolveScope(this, cgi, &scopes);
 
+	return result;
+}
 
 Result_t ScopeResolution::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	std::deque<std::string> scopes;
 	Expr* result = resolveScope(this, cgi, &scopes);
 
-
-	FuncCall* fc = nullptr;
-	if((fc = dynamic_cast<FuncCall*>(result)))
+	FuncCall* fc = dynamic_cast<FuncCall*>(result);
+	if(fc)
 	{
 		// the funccall generator will try the pure unmangled type first
 		// so we just screw with fc->name.
 
 		fc->name = cgi->mangleWithNamespace(fc->name, scopes);
 		fc->name = cgi->mangleName(fc->name, fc->params);
+
+		printf("fc scope res (%s)\n", fc->name.c_str());
 	}
+	else
+	{
+		printf("???: %s\n", typeid(*result).name());
+	}
+
 
 	return result->codegen(cgi);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

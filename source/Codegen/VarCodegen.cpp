@@ -120,7 +120,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
 		{
-			printf("both ints\n");
 			Number* n = 0;
 			if((n = dynamic_cast<Number*>(this->initVal)))
 			{

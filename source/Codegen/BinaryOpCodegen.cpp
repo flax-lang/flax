@@ -312,6 +312,15 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	cgi->autoCastType(lhs, rhs, r.second);
 
 	// if adding integer to pointer
+	if(!lhs)
+		error(this, "lhs null");
+
+	if(!rhs)
+	{
+		printf("rhs: %s\n", typeid(*this->right).name());
+		error(this, "rhs null");
+	}
+
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 	{
 		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals

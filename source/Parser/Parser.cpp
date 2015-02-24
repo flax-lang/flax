@@ -232,6 +232,7 @@ namespace Parser
 			case ArithmeticOp::BitwiseXorEquals:	return "^=";
 			case ArithmeticOp::MemberAccess:		return ".";
 			case ArithmeticOp::ScopeResolution:		return "::";
+			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 		}
 	}
 
@@ -287,6 +288,7 @@ namespace Parser
 		Token t;
 		currentPos.file = filename;
 		currentPos.line = 1;
+		currentPos.col = 1;
 		curAttrib = 0;
 
 		TokenList tokens;
@@ -297,6 +299,7 @@ namespace Parser
 		rootNode = new Root();
 		currentPos.file = filename;
 		currentPos.line = 1;
+		currentPos.col = 1;
 
 		skipNewline(tokens);
 		parseAll(tokens);
@@ -395,27 +398,22 @@ namespace Parser
 		Token front = tokens.front();
 
 		// check for unary shit
-		if(front.type == TType::Exclamation || front.type == TType::Plus || front.type == TType::Minus)
-		{
-			TType tp = eat(tokens).type;
-			ArithmeticOp op = tp == TType::Exclamation ? ArithmeticOp::LogicalNot : (tp == TType::Plus ? ArithmeticOp::Plus : ArithmeticOp::Minus);
+		ArithmeticOp op = ArithmeticOp::Invalid;
 
+		if(front.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
+		else if(front.type == TType::Plus)			op = ArithmeticOp::Plus;
+		else if(front.type == TType::Minus)			op = ArithmeticOp::Minus;
+		else if(front.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
+		else if(front.type == TType::Pound)			op = ArithmeticOp::Deref;
+		else if(front.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+
+		if(op != ArithmeticOp::Invalid)
+		{
+			eat(tokens);
 			return CreateAST(UnaryOp, front, op, parseUnary(tokens));
 		}
-		else if(front.type == TType::Deref || front.type == TType::Pound)
-		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, ArithmeticOp::Deref, parseUnary(tokens));
-		}
-		else if(front.type == TType::Addr || front.type == TType::Ampersand)
-		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, ArithmeticOp::AddrOf, parseUnary(tokens));
-		}
-		else
-		{
-			return parsePrimary(tokens);
-		}
+
+		return parsePrimary(tokens);
 	}
 
 	Expr* parsePrimary(TokenList& tokens)
@@ -1052,8 +1050,11 @@ namespace Parser
 		assert(eat(tokens).type == TType::LParen);
 		Expr* within = parseExpr(tokens);
 
-		if(eat(tokens).type != TType::RParen)
-			parserError("Expected ')'");
+		if(tokens.front().type == TType::RParen)
+			eat(tokens);
+
+		// if(eat(tokens).type != TType::RParen)
+		// 	parserError("Expected ')'");
 
 		return within;
 	}
