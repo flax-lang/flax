@@ -11,29 +11,54 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t recursivelyResolveScope(CodegenInstance* cgi, MemberAccess* ma, std::deque<std::string> names)
+struct ResolvedScope
 {
-	VarRef* left = dynamic_cast<VarRef*>(ma->target);
-	assert(left);
+	uint64_t magic = 0xDEADC0DE1594BEEF;
+	std::deque<std::string> scopes;
+};
 
-	names.push_back(left->name);
 
-	FuncCall* fc = dynamic_cast<FuncCall*>(ma->member);
-	MemberAccess* ns = dynamic_cast<MemberAccess*>(ma->member);
-	if(fc)
+
+
+
+
+
+
+static Result_t recursivelyResolveScope(CodegenInstance* cgi, MemberAccess* ma, std::deque<std::string>* names)
+{
+	VarRef* leftVr			= dynamic_cast<VarRef*>(ma->target);
+	MemberAccess* leftNs	= dynamic_cast<MemberAccess*>(ma->target);
+
+	if(leftVr)
 	{
-		fc->name = cgi->mangleWithNamespace(fc->name, names);
-		fc->name = cgi->mangleName(fc->name, fc->params);
-
-		return fc->codegen(cgi);
+		names->push_back(leftVr->name);
 	}
-	else if(ns)
+	else if(leftNs)
 	{
-		return recursivelyResolveScope(cgi, ns, names);
+		recursivelyResolveScope(cgi, leftNs, names);
+	}
+
+
+
+	VarRef* rightVr		= dynamic_cast<VarRef*>(ma->member);
+	FuncCall* rightFc	= dynamic_cast<FuncCall*>(ma->member);
+
+	if(rightVr)
+	{
+		names->push_back(rightVr->name);
+
+		return Result_t((llvm::Value*) new ResolvedScope(), 0);
+	}
+	else if(rightFc)
+	{
+		rightFc->name = cgi->mangleWithNamespace(rightFc->name, *names);
+		rightFc->name = cgi->mangleName(rightFc->name, rightFc->params);
+
+		return rightFc->codegen(cgi);
 	}
 	else
 	{
-		error(ma, "!??!?!?! %s", typeid(*ma->member).name());
+		error(ma, "Unknown expression %s", ma->member ? typeid(*ma->member).name() : "(null)");
 	}
 }
 
@@ -61,18 +86,33 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		{
 			// resolve the namespace instead
 			// how?
+			// no fucking clue
 
 			printf("valid ns\n");
-			return recursivelyResolveScope(cgi, this, std::deque<std::string>());
+			auto dq = std::deque<std::string>();
+			return recursivelyResolveScope(cgi, this, &dq);
 		}
+	}
+
+
+	// gen the var ref on the left.
+	ValPtr_t p = this->target->codegen(cgi).result;
+
+	// safety is not first.
+	// this is such a big fucking hack
+	ResolvedScope* _rs = (ResolvedScope*) p.first;
+	if(_rs->magic == 0xDEADC0DE1594BEEF)
+	{
+		auto ret = recursivelyResolveScope(cgi, this, &_rs->scopes);
+		delete _rs;
+
+		return ret;
 	}
 
 
 
 
 
-	// gen the var ref on the left.
-	ValPtr_t p = this->target->codegen(cgi).result;
 
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;

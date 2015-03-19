@@ -778,6 +778,9 @@ namespace Codegen
 		// not so lucky
 		TypePair_t* tp = this->getType(type);
 		if(!tp)
+			tp = this->getType(type + "E");		// nested types. hack.
+
+		if(!tp)
 			GenError::unknownSymbol(0, type, SymbolType::Type);
 
 		return tp->first;

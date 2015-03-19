@@ -53,7 +53,6 @@ Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		if(left->getType()->isIntegerTy() && f->getReturnType()->isIntegerTy())
 			left = cgi->mainBuilder.CreateIntCast(left, f->getReturnType(), false);
 
-		printf("retval: %s -> %s\n", cgi->getReadableType(left).c_str(), cgi->getReadableType(f->getReturnType()).c_str());
 		this->actualReturnValue = left;
 
 		return Result_t(cgi->mainBuilder.CreateRet(left), res.second, ResultType::BreakCodegen);
