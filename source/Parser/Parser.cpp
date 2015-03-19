@@ -1129,24 +1129,24 @@ namespace Parser
 				default:					parserError("Unknown operator '%s'", tok_op.text.c_str());
 			}
 
-			if(op == ArithmeticOp::ScopeResolution)
-			{
-				printf("parsed sr (%lld:%lld): ", tok_op.posinfo.line, tok_op.posinfo.col);
-				VarRef* left = dynamic_cast<VarRef*>(lhs);
-				VarRef* rightv = dynamic_cast<VarRef*>(rhs);
-				FuncCall* rightf = dynamic_cast<FuncCall*>(rhs);
+			// if(op == ArithmeticOp::ScopeResolution)
+			// {
+			// 	printf("parsed sr (%lld:%lld): ", tok_op.posinfo.line, tok_op.posinfo.col);
+			// 	VarRef* left = dynamic_cast<VarRef*>(lhs);
+			// 	VarRef* rightv = dynamic_cast<VarRef*>(rhs);
+			// 	FuncCall* rightf = dynamic_cast<FuncCall*>(rhs);
 
-				if(left)
-				printf("::%s", left->name.c_str());
+			// 	if(left)
+			// 	printf("::%s", left->name.c_str());
 
-				if(rightv)	printf("::%s", rightv->name.c_str());
-				if(rightf)	printf("::%s()", rightf->name.c_str());
-				printf("\n");
+			// 	if(rightv)	printf("::%s", rightv->name.c_str());
+			// 	if(rightf)	printf("::%s()", rightf->name.c_str());
+			// 	printf("\n");
 
-				lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
-			}
+			// 	lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
+			// }
 
-			else if(op == ArithmeticOp::MemberAccess)
+			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
 
 			else
