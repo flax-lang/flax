@@ -23,6 +23,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			if(tp->second.second == ExprType::Enum)
 				return enumerationAccessCodegen(cgi, this->target, this->member);
 		}
+		else if(cgi->isValidNamespace(_vr->name))
+		{
+			// resolve the namespace instead
+			// how?
+			printf("valid ns\n");
+		}
 	}
 
 

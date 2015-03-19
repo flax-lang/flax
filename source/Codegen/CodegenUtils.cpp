@@ -123,8 +123,6 @@ namespace Codegen
 		cgi->rootNode->codegen(cgi);
 		TypeInfo::generateTypeInfo(cgi);
 
-		// cgi->mainModule->dump();
-
 		cgi->popScope();
 
 		// free the memory
@@ -348,6 +346,21 @@ namespace Codegen
 		this->namespaceStack.push_back(namespc);
 	}
 
+	bool CodegenInstance::isValidNamespace(std::string namespc)
+	{
+		// check if it's imported anywhere
+		for(auto nses : this->importedNamespaces)
+		{
+			for(std::string ns : nses)
+			{
+				if(ns == namespc)
+					return true;
+			}
+		}
+
+		return false;
+	}
+
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
 		this->funcMap[name] = func;
@@ -357,7 +370,7 @@ namespace Codegen
 	{
 		FuncMap_t& tab = this->funcMap;
 
-		#if 1
+		#if 0
 		printf("find %s:\n{\n", name.c_str());
 		for(auto p : tab) printf("\t%s\n", p.first.c_str());
 		printf("}\n");
@@ -371,17 +384,29 @@ namespace Codegen
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{
+		// step one: unmangled name
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
+		// step two: mangled name
+		if(!fp)
+		{
+			fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
+			if(!fp)
+			{
+				for(auto ns : this->importedNamespaces)
+				{
+					fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name, ns), fc->params));
+					if(fp) break;
+				}
+			}
+		}
 
 		return fp;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
-		return getDeclaredFunc(name) != nullptr;
+		return this->getDeclaredFunc(name) != nullptr;
 	}
 
 	void CodegenInstance::popNamespaceScope()
@@ -393,6 +418,8 @@ namespace Codegen
 	{
 		this->namespaceStack.clear();
 	}
+
+
 
 	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
 	{
@@ -1118,15 +1145,15 @@ namespace Codegen
 		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	void CodegenInstance::autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
-		if(!left || !right)
+		if(!target || !right)
 			return;
 
-		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy()
-			&& left->getType()->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
+		if(target->isIntegerTy() && right->getType()->isIntegerTy()
+			&& target->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
 		{
-			unsigned int lBits = left->getType()->getIntegerBitWidth();
+			unsigned int lBits = target->getIntegerBitWidth();
 			unsigned int rBits = right->getType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
@@ -1146,18 +1173,18 @@ namespace Codegen
 					else
 					{
 						uint64_t max = powl(2, lBits) - 1;
-						if(constVal->getZExtValue() < max)
+						if(constVal->getZExtValue() <= max)
 							shouldCast = true;
 					}
 				}
 			}
 
 			if(shouldCast)
-				right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+				right = this->mainBuilder.CreateIntCast(right, target, false);
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(left->getType()->isPointerTy() && left->getType()->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
+		else if(target->isPointerTy() && target->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
 		{
 			if(right->getType()->isStructTy() && right->getType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 			{
@@ -1172,6 +1199,11 @@ namespace Codegen
 				right = this->mainBuilder.CreateLoad(ret);	// mutating
 			}
 		}
+	}
+
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	{
+		this->autoCastType(left->getType(), right, rhsPtr);
 	}
 
 
@@ -1368,7 +1400,10 @@ namespace Codegen
 			llvm::Type* expected = 0;
 			llvm::Type* have = 0;
 
-			if((have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
+			if(r->actualReturnValue)
+				have = r->actualReturnValue->getType();
+
+			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead", cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 		}
 	}

@@ -312,6 +312,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* val;
+		llvm::Value* actualReturnValue = 0;
 	};
 
 	struct Import : Expr

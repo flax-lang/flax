@@ -62,7 +62,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		linkageType = llvm::Function::InternalLinkage;
 
 	else
-		linkageType = llvm::Function::ExternalLinkage;
+		linkageType = llvm::Function::LinkOnceAnyLinkage;
 
 
 
