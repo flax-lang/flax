@@ -487,18 +487,6 @@ namespace Ast
 		Expr* member;
 	};
 
-	struct ScopeResolution : Expr
-	{
-		~ScopeResolution();
-		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		Expr* getActualExpr(Codegen::CodegenInstance* cgi);
-
-		bool done = false;
-		Expr* scope;
-		Expr* member;
-	};
-
 	struct NamespaceDecl : Expr
 	{
 		~NamespaceDecl();

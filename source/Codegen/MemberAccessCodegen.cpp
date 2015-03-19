@@ -11,6 +11,40 @@
 using namespace Ast;
 using namespace Codegen;
 
+Result_t recursivelyResolveScope(CodegenInstance* cgi, MemberAccess* ma, std::deque<std::string> names)
+{
+	VarRef* left = dynamic_cast<VarRef*>(ma->target);
+	assert(left);
+
+	names.push_back(left->name);
+
+	FuncCall* fc = dynamic_cast<FuncCall*>(ma->member);
+	MemberAccess* ns = dynamic_cast<MemberAccess*>(ma->member);
+	if(fc)
+	{
+		fc->name = cgi->mangleWithNamespace(fc->name, names);
+		fc->name = cgi->mangleName(fc->name, fc->params);
+
+		return fc->codegen(cgi);
+	}
+	else if(ns)
+	{
+		return recursivelyResolveScope(cgi, ns, names);
+	}
+	else
+	{
+		error(ma, "!??!?!?! %s", typeid(*ma->member).name());
+	}
+}
+
+
+
+
+
+
+
+
+
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	VarRef* _vr = dynamic_cast<VarRef*>(this->target);
@@ -27,7 +61,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		{
 			// resolve the namespace instead
 			// how?
+
 			printf("valid ns\n");
+			return recursivelyResolveScope(cgi, this, std::deque<std::string>());
 		}
 	}
 

@@ -126,10 +126,6 @@ namespace Ast
 	{
 	}
 
-	ScopeResolution::~ScopeResolution()
-	{
-	}
-
 	NamespaceDecl::~NamespaceDecl()
 	{
 	}
