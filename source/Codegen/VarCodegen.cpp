@@ -17,7 +17,6 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	if(!val)
 		GenError::unknownSymbol(this, this->name, SymbolType::Variable);
 
-	printf("var ref: %s -> %s\n", this->name.c_str(), cgi->getReadableType(val->getType()->getPointerElementType()).c_str());
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
@@ -109,7 +108,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	if(!ai)
 		error(this, "ai is null");
 
-	printf("var %s has type %s\n", this->name.c_str(), cgi->getReadableType(ai->getType()->getPointerElementType()).c_str());
 	if(!cgi->isDuplicateSymbol(this->name))
 		cgi->addSymbol(this->name, ai, this);
 
@@ -211,7 +209,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			if(llvm::cast<llvm::Constant>(val))
 			{
 				cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
-				printf("GLOBAL: (%s) -> (%s, %s)\n", this->name.c_str(), cgi->getReadableType(ai->getType()->getPointerElementType()).c_str(), cgi->getReadableType(val).c_str());
 				llvm::cast<llvm::GlobalVariable>(ai)->setInitializer(llvm::cast<llvm::Constant>(val));
 			}
 			else

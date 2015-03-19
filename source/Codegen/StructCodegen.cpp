@@ -19,6 +19,16 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		GenError::unknownSymbol(this, this->name, SymbolType::Type);
 
 
+
+	// see if we have nested types
+	for(Struct* nested : this->nestedTypes)
+	{
+		nested->codegen(cgi);
+	}
+
+
+
+
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
@@ -30,6 +40,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	// create the local instance of reference to self
 	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
+
 
 
 	for(VarDecl* var : this->members)
@@ -221,6 +232,17 @@ void Struct::createType(CodegenInstance* cgi)
 
 	if(!this->didCreateType)
 	{
+		printf("created type for %s\n", this->mangledName.c_str());
+
+		// see if we have nested types
+		for(Struct* nested : this->nestedTypes)
+		{
+			cgi->pushNamespaceScope(this->name);
+			nested->createType(cgi);
+			cgi->popNamespaceScope();
+		}
+
+
 		// because we can't (and don't want to) mangle names in the parser,
 		// we could only build an incomplete name -> index map
 		// finish it here.

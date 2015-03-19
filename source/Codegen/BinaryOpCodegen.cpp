@@ -362,7 +362,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		}
 
 		cgi->autoCastType(rhs, lhs);
-		printf("%s op %s\n", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
 		switch(this->op)
 		{
 			// comparisons
