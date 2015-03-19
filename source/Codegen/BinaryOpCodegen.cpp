@@ -278,7 +278,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			return Result_t(lhs, 0);
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+		{
+			// warn(this, "cast codegen both ints: %s -> %s", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rtype).c_str());
 			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
+		}
 
 		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
 			return Result_t(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
@@ -358,6 +361,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
 		}
 
+		cgi->autoCastType(rhs, lhs);
+		printf("%s op %s\n", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
 		switch(this->op)
 		{
 			// comparisons

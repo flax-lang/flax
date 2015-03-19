@@ -64,16 +64,20 @@ Result_t ScopeResolution::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llv
 	std::deque<std::string> scopes;
 	Expr* result = resolveScope(this, cgi, &scopes);
 
+	// printf("sr codegen: %s\n", typeid(*result).name());
+	// for(auto s : scopes) printf("::%s", s.c_str());
+	// printf("\n");
+
 	FuncCall* fc = dynamic_cast<FuncCall*>(result);
 	if(fc)
 	{
+		// printf("%lld, fc scope res (%s)\n", this->posinfo.line, fc->name.c_str());
 		// the funccall generator will try the pure unmangled type first
 		// so we just screw with fc->name.
 
 		fc->name = cgi->mangleWithNamespace(fc->name, scopes);
 		fc->name = cgi->mangleName(fc->name, fc->params);
 
-		printf("fc scope res (%s)\n", fc->name.c_str());
 	}
 	else
 	{

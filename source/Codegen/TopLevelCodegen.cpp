@@ -110,13 +110,19 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
+	auto before = cgi->importedNamespaces;
 	for(std::string s : this->name)
+	{
 		cgi->pushNamespaceScope(s);
+		cgi->importedNamespaces.push_back(cgi->namespaceStack);
+	}
 
 	codegenTopLevel(cgi, pass, this->innards->statements);
 
 	for(std::string s : this->name)
 		cgi->popNamespaceScope();
+
+	cgi->importedNamespaces = before;
 }
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
