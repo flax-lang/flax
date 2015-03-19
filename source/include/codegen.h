@@ -51,6 +51,7 @@ namespace Codegen
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<std::string> namespaceStack;
+		std::deque<std::deque<std::string>> importedNamespaces;
 
 		TypeMap_t typeMap;
 		FuncMap_t funcMap;
@@ -76,6 +77,7 @@ namespace Codegen
 
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc);
+		bool isValidNamespace(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprType e);
@@ -96,6 +98,7 @@ namespace Codegen
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
+		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
 

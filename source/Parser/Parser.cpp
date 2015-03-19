@@ -43,7 +43,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, args);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, token.posinfo.col, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 	}
 
 	// come on man
@@ -73,7 +73,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, curtok.posinfo.col, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
@@ -98,7 +98,7 @@ namespace Parser
 	static void skipNewline(TokenList& tokens)
 	{
 		// eat newlines AND comments
-		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment))
+		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment || tokens.front().type == TType::Semicolon))
 		{
 			tokens.pop_front();
 			currentPos.line++;
@@ -564,7 +564,7 @@ namespace Parser
 			if(front.type == TType::Identifier)
 				scopes.push_back(front.text);
 
-			else if(front.type == TType::DoubleColon)
+			else if(front.type == TType::DoubleColon || front.type == TType::Period)
 				continue;
 
 			else
@@ -843,7 +843,7 @@ namespace Parser
 			bool expectingScope = true;
 			while((t = tokens.front()).text.length() > 0)
 			{
-				if(t.type == TType::DoubleColon && expectingScope)
+				if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
 				{
 					baseType += "::";
 					expectingScope = false;
@@ -1130,13 +1130,31 @@ namespace Parser
 			}
 
 			if(op == ArithmeticOp::ScopeResolution)
+			{
+				printf("parsed sr (%lld:%lld): ", tok_op.posinfo.line, tok_op.posinfo.col);
+				VarRef* left = dynamic_cast<VarRef*>(lhs);
+				VarRef* rightv = dynamic_cast<VarRef*>(rhs);
+				FuncCall* rightf = dynamic_cast<FuncCall*>(rhs);
+
+				if(left)
+				printf("::%s", left->name.c_str());
+
+				if(rightv)	printf("::%s", rightv->name.c_str());
+				if(rightf)	printf("::%s()", rightf->name.c_str());
+				printf("\n");
+
 				lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
+			}
 
 			else if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
 
 			else
 				lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
+
+
+			// if(op == ArithmeticOp::Cast)
+			// 	parserWarn("cast");
 		}
 	}
 
