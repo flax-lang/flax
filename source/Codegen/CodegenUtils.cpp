@@ -872,7 +872,6 @@ namespace Codegen
 			Number* nm			= dynamic_cast<Number*>(expr);
 			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
 			Return* retr		= dynamic_cast<Return*>(expr);
-			ScopeResolution* sr	= dynamic_cast<ScopeResolution*>(expr);
 			Alloc* alloc		= dynamic_cast<Alloc*>(expr);
 
 			if(decl)
@@ -1048,10 +1047,6 @@ namespace Codegen
 						return this->getLlvmType(bo->right);
 					}
 				}
-			}
-			else if(sr)
-			{
-				return this->getLlvmType(sr->getActualExpr(this));
 			}
 			else if(alloc)
 			{
