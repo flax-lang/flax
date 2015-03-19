@@ -26,40 +26,42 @@ struct ResolvedScope
 
 static Result_t recursivelyResolveScope(CodegenInstance* cgi, MemberAccess* ma, std::deque<std::string>* names)
 {
-	VarRef* leftVr			= dynamic_cast<VarRef*>(ma->target);
-	MemberAccess* leftNs	= dynamic_cast<MemberAccess*>(ma->target);
+	// VarRef* leftVr			= dynamic_cast<VarRef*>(ma->target);
+	// MemberAccess* leftNs	= dynamic_cast<MemberAccess*>(ma->target);
 
-	if(leftVr)
-	{
-		names->push_back(leftVr->name);
-	}
-	else if(leftNs)
-	{
-		recursivelyResolveScope(cgi, leftNs, names);
-	}
+	// if(leftVr)
+	// {
+	// 	names->push_back(leftVr->name);
+	// }
+	// else if(leftNs)
+	// {
+	// 	recursivelyResolveScope(cgi, leftNs, names);
+	// }
 
 
 
-	VarRef* rightVr		= dynamic_cast<VarRef*>(ma->member);
-	FuncCall* rightFc	= dynamic_cast<FuncCall*>(ma->member);
+	// VarRef* rightVr		= dynamic_cast<VarRef*>(ma->member);
+	// FuncCall* rightFc	= dynamic_cast<FuncCall*>(ma->member);
 
-	if(rightVr)
-	{
-		names->push_back(rightVr->name);
+	// if(rightVr)
+	// {
+	// 	names->push_back(rightVr->name);
 
-		return Result_t((llvm::Value*) new ResolvedScope(), 0);
-	}
-	else if(rightFc)
-	{
-		rightFc->name = cgi->mangleWithNamespace(rightFc->name, *names);
-		rightFc->name = cgi->mangleName(rightFc->name, rightFc->params);
+	// 	return Result_t((llvm::Value*) new ResolvedScope(), 0);
+	// }
+	// else if(rightFc)
+	// {
+	// 	rightFc->name = cgi->mangleWithNamespace(rightFc->name, *names);
+	// 	rightFc->name = cgi->mangleName(rightFc->name, rightFc->params);
 
-		return rightFc->codegen(cgi);
-	}
-	else
-	{
-		error(ma, "Unknown expression %s", ma->member ? typeid(*ma->member).name() : "(null)");
-	}
+	// 	return rightFc->codegen(cgi);
+	// }
+	// else
+	// {
+	// 	error(ma, "Unknown expression %s", ma->member ? typeid(*ma->member).name() : "(null)");
+	// }
+
+	return Result_t(0, 0);
 }
 
 
@@ -268,12 +270,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			for(Func* f : str->funcs)
 			{
 				std::string match = cgi->mangleMemberFunction(str, fc->name, fc->params, str->scope);
+				std::string funcN = cgi->mangleMemberFunction(str, f->decl->name, f->decl->params, str->scope);
 
-				#if 0
-				printf("func %s vs %s\n", match.c_str(), f->decl->mangledName.c_str());
+				#if 1
+				printf("func %s vs %s, orig %s\n", match.c_str(), funcN.c_str(), f->decl->name.c_str());
 				#endif
 
-				if(f->decl->mangledName == match)
+				if(funcN == match)
 				{
 					callee = f;
 					break;
