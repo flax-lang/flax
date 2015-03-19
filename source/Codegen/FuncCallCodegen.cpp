@@ -46,8 +46,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
 		return callConstructor(cgi, cgi->getType(cgi->mangleRawNamespace(this->name)), this);
 
-	printf("func call %s\n", this->name.c_str());
-
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
@@ -76,7 +74,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		if(arg_it->getType() != args[i]->getType())
 		{
-			printf("types: %s vs %s, casting\n", cgi->getReadableType(arg_it->getType()).c_str(), cgi->getReadableType(args[i]).c_str());
+			// printf("types: %s vs %s, casting\n", cgi->getReadableType(arg_it->getType()).c_str(), cgi->getReadableType(args[i]).c_str());
 			cgi->autoCastType(arg_it, args[i], argPtrs[i]);
 		}
 

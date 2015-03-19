@@ -1129,32 +1129,11 @@ namespace Parser
 				default:					parserError("Unknown operator '%s'", tok_op.text.c_str());
 			}
 
-			// if(op == ArithmeticOp::ScopeResolution)
-			// {
-			// 	printf("parsed sr (%lld:%lld): ", tok_op.posinfo.line, tok_op.posinfo.col);
-			// 	VarRef* left = dynamic_cast<VarRef*>(lhs);
-			// 	VarRef* rightv = dynamic_cast<VarRef*>(rhs);
-			// 	FuncCall* rightf = dynamic_cast<FuncCall*>(rhs);
-
-			// 	if(left)
-			// 	printf("::%s", left->name.c_str());
-
-			// 	if(rightv)	printf("::%s", rightv->name.c_str());
-			// 	if(rightf)	printf("::%s()", rightf->name.c_str());
-			// 	printf("\n");
-
-			// 	lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
-			// }
-
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
 
 			else
 				lhs = CreateAST(BinOp, tok_op, lhs, op, rhs);
-
-
-			// if(op == ArithmeticOp::Cast)
-			// 	parserWarn("cast");
 		}
 	}
 
@@ -1442,6 +1421,7 @@ namespace Parser
 			VarDecl* var = dynamic_cast<VarDecl*>(stmt);
 			Func* func = dynamic_cast<Func*>(stmt);
 			OpOverload* oo = dynamic_cast<OpOverload*>(stmt);
+			Struct* nstr = dynamic_cast<Struct*>(stmt);
 			ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt);
 
 			if(cprop)
@@ -1477,13 +1457,17 @@ namespace Parser
 				str->funcs.push_back(oo->func);
 				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
 			}
+			else if(nstr)
+			{
+				str->nestedTypes.push_back(nstr);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
 			}
 			else
 			{
-				parserError("Only variable and function declarations are allowed in structs, got %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s", typeid(*stmt).name());
 			}
 		}
 
@@ -1510,6 +1494,7 @@ namespace Parser
 		str->members		= sb->members;
 		str->nameMap		= sb->nameMap;
 		str->name			= sb->name;
+		str->nestedTypes	= sb->nestedTypes;
 		str->cprops			= sb->cprops;
 
 		delete sb;
