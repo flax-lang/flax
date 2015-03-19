@@ -6,30 +6,6 @@ import Foundation
 
 var m = 40
 
-namespace Thing.Troll
-{
-	func test()
-	{
-		return
-	}
-
-	struct Floby
-	{
-		var haha: Int = 691
-		init(d: Int)
-		{
-			self.haha = d
-		}
-		init()
-		{
-		}
-		func food() -> Int
-		{
-			return 1058
-		}
-	}
-}
-
 struct Bar
 {
 	var norf: Int = 1600

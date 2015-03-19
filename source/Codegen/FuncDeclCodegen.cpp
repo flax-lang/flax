@@ -27,7 +27,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		this->mangledName = cgi->mangleMemberFunction(this->parentStruct, this->name, es);
 
 		VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-		implicit_self->type = cgi->mangleWithNamespace(this->parentStruct->name) + "*";
+		implicit_self->type = this->parentStruct->mangledName + "*";
 		this->params.push_front(implicit_self);
 	}
 	else

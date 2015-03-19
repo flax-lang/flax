@@ -489,6 +489,24 @@ namespace Codegen
 	}
 
 
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns)
+	{
+		std::deque<Expr*> exprs;
+
+		// todo: kinda hack? omit the first vardecl, since it's 'self'
+
+		int i = 0;
+		for(auto v : args)
+		{
+			if(i++ == 0)
+				continue;
+
+			exprs.push_back(v);
+		}
+
+		return this->mangleMemberFunction(s, orig, exprs, ns);
+	}
+
 	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args)
 	{
 		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
@@ -497,10 +515,11 @@ namespace Codegen
 	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
 	{
 		std::string mangled;
-		mangled = this->mangleWithNamespace("", ns);
+		mangled = (ns.size() > 0 ? "" : "_ZN") + this->mangleWithNamespace("", ns);
+		printf("mangled: %s\n", mangled.c_str());
 
-		// last char is 0
-		if(mangled.length() > 0)
+		// last char is 0 or E
+		if(mangled.length() > 3)
 		{
 			if(mangled.back() == 'E')
 				mangled = mangled.substr(0, mangled.length() - 1);
