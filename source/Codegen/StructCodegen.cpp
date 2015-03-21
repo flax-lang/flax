@@ -16,7 +16,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	assert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
-		GenError::unknownSymbol(this, this->name, SymbolType::Type);
+		GenError::unknownSymbol(this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
 
 
@@ -226,7 +226,9 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	this->mangledName = cgi->mangleWithNamespace(this->name);
+	this->mangledName = cgi->mangleWithNamespace(this->name, false);
+
+
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	cgi->addNewType(str, this, ExprType::Struct);
 

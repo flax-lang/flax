@@ -253,7 +253,8 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, ExprType e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		std::string mangled = this->mangleWithNamespace(atype->name);
+		std::string mangled = this->mangleWithNamespace(atype->name, false);
+		assert(mangled == atype->mangledName);
 
 		if(this->typeMap.find(mangled) == this->typeMap.end())
 		{
@@ -516,7 +517,6 @@ namespace Codegen
 	{
 		std::string mangled;
 		mangled = (ns.size() > 0 ? "" : "_ZN") + this->mangleWithNamespace("", ns);
-		printf("mangled: %s\n", mangled.c_str());
 
 		// last char is 0 or E
 		if(mangled.length() > 3)
@@ -590,13 +590,13 @@ namespace Codegen
 		return mangleName(base, a);
 	}
 
-	std::string CodegenInstance::mangleWithNamespace(std::string original)
+	std::string CodegenInstance::mangleWithNamespace(std::string original, bool isFunction)
 	{
-		return this->mangleWithNamespace(original, this->namespaceStack);
+		return this->mangleWithNamespace(original, this->namespaceStack, isFunction);
 	}
 
 
-	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction)
 	{
 		std::string ret = "_Z";
 		ret += (ns.size() > 0 ? "N" : "");
@@ -614,7 +614,10 @@ namespace Codegen
 		}
 		else
 		{
-			ret += "E";
+			if(isFunction)
+			{
+				ret += "E";
+			}
 		}
 
 		return ret;
