@@ -118,8 +118,8 @@ namespace Codegen
 
 
 		std::string mangleRawNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
+		std::string mangleWithNamespace(std::string original, bool isFunction = true);
+		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
 
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
