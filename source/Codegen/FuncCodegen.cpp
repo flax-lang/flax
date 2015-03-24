@@ -12,8 +12,17 @@ using namespace Codegen;
 Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	Result_t lastval(0, 0);
+
 	for(Expr* e : this->statements)
 	{
+		if(e->isBreaking() && this->deferredStatements.size() > 0)
+		{
+			for(Expr* e : this->deferredStatements)
+			{
+				e->codegen(cgi);
+			}
+		}
+
 		lastval = e->codegen(cgi);
 
 		if(lastval.type == ResultType::BreakCodegen)
