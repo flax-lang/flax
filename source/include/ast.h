@@ -167,6 +167,7 @@ namespace Ast
 		Expr(Parser::PosInfo pos) : posinfo(pos) { }
 		virtual ~Expr() { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) = 0;
+		virtual bool isBreaking() { return false; }
 
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
@@ -290,6 +291,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::deque<Expr*> statements;
+		std::deque<Expr*> deferredStatements;
 	};
 
 	struct Func : Expr
@@ -317,6 +319,7 @@ namespace Ast
 		~Return();
 		Return(Parser::PosInfo pos, Expr* e) : Expr(pos), val(e) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual bool isBreaking() override { return true; }
 
 		Expr* val;
 		llvm::Value* actualReturnValue = 0;
@@ -340,6 +343,15 @@ namespace Ast
 		FuncDecl* decl;
 	};
 
+	struct DeferredExpr : Expr
+	{
+		DeferredExpr(Parser::PosInfo pos, Expr* e) : Expr(pos), expr(e) { }
+		~DeferredExpr();
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		Expr* expr;
+	};
 
 	struct BreakableBracedBlock : Expr
 	{
@@ -394,6 +406,7 @@ namespace Ast
 		~Break();
 		Break(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual bool isBreaking() override { return true; }
 	};
 
 	struct Continue : Expr
@@ -401,6 +414,7 @@ namespace Ast
 		~Continue();
 		Continue(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual bool isBreaking() override { return true; }
 	};
 
 	struct UnaryOp : Expr
