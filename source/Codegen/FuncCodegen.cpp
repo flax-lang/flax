@@ -29,8 +29,6 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 			break;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
 	}
 
-	cgi->mainBuilder.GetInsertBlock()->dump();
-
 	return lastval;
 }
 
