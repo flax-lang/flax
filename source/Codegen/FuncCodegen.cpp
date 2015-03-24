@@ -12,13 +12,24 @@ using namespace Codegen;
 Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	Result_t lastval(0, 0);
+
 	for(Expr* e : this->statements)
 	{
+		if(e->isBreaking() && this->deferredStatements.size() > 0)
+		{
+			for(Expr* e : this->deferredStatements)
+			{
+				e->codegen(cgi);
+			}
+		}
+
 		lastval = e->codegen(cgi);
 
 		if(lastval.type == ResultType::BreakCodegen)
-			break;		// haha: don't generate the rest of the code. cascade the BreakCodegen value into higher levels
+			break;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
 	}
+
+	cgi->mainBuilder.GetInsertBlock()->dump();
 
 	return lastval;
 }

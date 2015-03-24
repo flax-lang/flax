@@ -161,6 +161,10 @@ namespace Ast
 	{
 	}
 
+	DeferredExpr::~DeferredExpr()
+	{
+	}
+
 	Root::~Root()
 	{
 		for(Expr* e : this->topLevelExpressions)

@@ -469,6 +469,9 @@ namespace Parser
 				case TType::Enum:
 					return parseEnum(tokens);
 
+				case TType::Defer:
+					return parseDefer(tokens);
+
 				case TType::Extension:
 					return parseExtension(tokens);
 
@@ -742,15 +745,36 @@ namespace Parser
 		if(tok_cls.type != TType::LBrace)
 			parserError("Expected '{' to begin a block, found '%s'!", tok_cls.text.c_str());
 
+
+		std::deque<DeferredExpr*> defers;
+
 		// get the stuff inside.
 		while(tokens.size() > 0 && tokens.front().type != TType::RBrace)
 		{
-			c->statements.push_back(parseExpr(tokens));
+			Expr* e = parseExpr(tokens);
+			DeferredExpr* d = nullptr;
+
+			if((d = dynamic_cast<DeferredExpr*>(e)))
+			{
+				defers.push_front(d);
+			}
+			else
+			{
+				c->statements.push_back(e);
+			}
+
 			skipNewline(tokens);
 		}
 
 		if(eat(tokens).type != TType::RBrace)
 			parserError("Expected '}'");
+
+
+
+		for(auto d : defers)
+		{
+			c->deferredStatements.push_back(d);
+		}
 
 		return c;
 	}
@@ -1716,7 +1740,11 @@ namespace Parser
 		return ret;
 	}
 
-
+	DeferredExpr* parseDefer(TokenList& tokens)
+	{
+		assert(tokens.front().type == TType::Defer);
+		return CreateAST(DeferredExpr, eat(tokens), parseExpr(tokens));
+	}
 
 
 

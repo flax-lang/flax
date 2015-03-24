@@ -287,6 +287,7 @@ namespace Parser
 			else if(id == "continue")	tok.type = TType::Continue;
 			else if(id == "do")			tok.type = TType::Do;
 			else if(id == "loop")		tok.type = TType::Loop;
+			else if(id == "defer")		tok.type = TType::Defer;
 
 			else if(id == "public")		tok.type = TType::Public;
 			else if(id == "private")	tok.type = TType::Private;

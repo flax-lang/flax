@@ -720,7 +720,7 @@
 					<key>comment</key>
 					<string>statement keyword</string>
 					<key>match</key>
-					<string>\b(break|case|continue|default|do|loop|else|fallthrough|if|in|for|return|switch|where|while)\b</string>
+					<string>\b(break|case|continue|default|do|loop|else|fallthrough|if|in|for|return|switch|where|while|defer)\b</string>
 					<key>name</key>
 					<string>keyword.statement.flax</string>
 				</dict>
