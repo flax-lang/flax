@@ -123,7 +123,8 @@ namespace Codegen
 
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
+			bool isStatic = false);
 
 		std::string mangleName(Ast::StructBase* s, std::string orig);
 		std::string mangleName(Ast::StructBase* s, Ast::FuncCall* fc);

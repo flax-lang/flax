@@ -82,7 +82,7 @@ project Flax
 		assert System.execute("mkdir -p '{sysroot}/{prefix}/bin'") == 0;
 		assert System.execute("{final_invoke} {objs} `{llvm_config_invoke}`") == 0;
 
-		assert System.execute(GenDebugSym) == 0;
+		// assert System.execute(GenDebugSym) == 0;
 		IO.println("Compilation complete.");
 	}
 

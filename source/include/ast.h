@@ -147,13 +147,19 @@ namespace Ast
 	enum class ResultType { Normal, BreakCodegen };
 	struct Result_t
 	{
-		Result_t(llvm::Value* val, llvm::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
-		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
 		explicit Result_t(ValPtr_t vp) : result(vp), type(ResultType::Normal) { }
+
+
+		Result_t(llvm::Value* val, llvm::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
+		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal), hackyReturn(0) { }
+		Result_t(llvm::Value* val, llvm::Value* ptr, Expr* hackyRet) : result(val, ptr), type(ResultType::Normal), hackyReturn(hackyRet) { }
+
+
 		Result_t(ValPtr_t vp, ResultType rt) : result(vp), type(rt) { }
 
 		ValPtr_t result;
 		ResultType type;
+		Expr* hackyReturn = 0;
 	};
 
 	struct Expr
@@ -268,6 +274,7 @@ namespace Ast
 
 		bool hasVarArg = false;
 		bool isFFI = false;
+		bool isStatic = false;
 
 		StructBase* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;

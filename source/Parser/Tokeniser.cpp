@@ -281,6 +281,7 @@ namespace Parser
 			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "true")		tok.type = TType::True;
 			else if(id == "false")		tok.type = TType::False;
+			else if(id == "static")		tok.type = TType::Static;
 
 			else if(id == "break")		tok.type = TType::Break;
 			else if(id == "continue")	tok.type = TType::Continue;
