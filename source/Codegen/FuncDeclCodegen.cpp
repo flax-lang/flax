@@ -26,14 +26,20 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		this->mangledName = cgi->mangleMemberFunction(this->parentStruct, this->name, es);
 
-		VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-		implicit_self->type = cgi->mangleWithNamespace(this->parentStruct->name) + "*";
-		this->params.push_front(implicit_self);
+		if(!this->isStatic)
+		{
+			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
+			implicit_self->type = this->parentStruct->mangledName + "*";
+			this->params.push_front(implicit_self);
+		}
 	}
 	else
 	{
 		bool alreadyMangled = false;
-		if(!this->isFFI && !(this->attribs & Attr_NoMangle))
+
+		// if we're a normal function, or we're ffi and the type is c++, mangle it
+		// our mangling is compatible with c++ to reduce headache
+		if((!this->isFFI && !(this->attribs & Attr_NoMangle)) || (this->isFFI && this->ffiType == FFIType::Cpp))
 		{
 			alreadyMangled = true;
 			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
@@ -43,9 +49,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
 			this->mangledName = cgi->mangleName(this->name, this->params);
-
-		else if(!alreadyMangled && this->isFFI && this->ffiType == FFIType::Cpp)
-			this->mangledName = cgi->mangleCppName(this->name, this->params);
 	}
 
 	std::vector<llvm::Type*> argtypes;
@@ -56,13 +59,21 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::GlobalValue::LinkageTypes linkageType;
 
 	if(this->isFFI)
+	{
 		linkageType = llvm::Function::ExternalWeakLinkage;
-
+	}
 	else if((this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal))
+	{
 		linkageType = llvm::Function::InternalLinkage;
-
-	else
+	}
+	else if(this->attribs & Attr_VisPublic)
+	{
 		linkageType = llvm::Function::ExternalLinkage;
+	}
+	else
+	{
+		linkageType = llvm::Function::LinkOnceAnyLinkage;
+	}
 
 
 

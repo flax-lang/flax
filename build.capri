@@ -1,29 +1,30 @@
-version 1.17;
+import io;
+import system;
 import "build/capri/Utilities.capri";
 
-sysroot 	= File.getAbsolutePath("build/sysroot");
-prefix		= "/usr/local";
-outputBin	= "flaxc";
-
-flaxcBin	= "{sysroot}/{prefix}/bin/{outputBin}";
-
-project Flax default all
+project Flax
 {
-	CXX				= "clang++";
-	def LLVM_CONFIG	= "llvm-config";
-	def GenDebugSym	= "dsymutil '{sysroot}/{prefix}/bin/{outputBin}' -o '{sysroot}/{prefix}/bin/{outputBin}.dSYM'";
+	sysroot 		= File.getAbsolutePath("build/sysroot");
+	prefix			= "/usr/local";
+	outputBin		= "flaxc";
 
-	target ci
-	{
+	flaxcBin		= "{sysroot}/{prefix}/bin/{outputBin}";
+
+
+	CXX				= "clang++";
+	LLVM_CONFIG		= "llvm-config";
+	GenDebugSym		= "dsymutil '{sysroot}/{prefix}/bin/{outputBin}' -o '{sysroot}/{prefix}/bin/{outputBin}.dSYM'";
+
+	on target ci, all {
+
 		LLVM_CONFIG = "llvm-config-3.5";
 		GenDebugSym = "";
-		Utils.println("Building for automated deployment");
-	}
+		IO.println("Building for automated deployment");
+	};
 
 	DISABLEWARN	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs";
 
 	CXXFLAGS	= "-std=gnu++1y -g -Wall -Weverything {DISABLEWARN} -frtti -fexceptions -I`{LLVM_CONFIG} --includedir`";
-	capriExec	= System.getExecutablePath();
 
 	src			= "source";
 	objs		= "";
@@ -44,9 +45,9 @@ project Flax default all
 	{
 		all();
 
-		Utils.println("Compiling test program (build/test.flx)");
+		IO.println("Compiling test program (build/test.flx)");
 		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
-		Utils.println("=========================");
+		IO.println("=========================");
 		System.execute("build/test");
 	}
 
@@ -55,7 +56,7 @@ project Flax default all
 
 	task clean
 	{
-		Utils.println("Cleaning");
+		IO.println("Cleaning");
 		Utilities.executeForChanged(src, ".o", "rm $file$", true);
 		File.clearModifyCache();
 	}
@@ -81,8 +82,8 @@ project Flax default all
 		assert System.execute("mkdir -p '{sysroot}/{prefix}/bin'") == 0;
 		assert System.execute("{final_invoke} {objs} `{llvm_config_invoke}`") == 0;
 
-		assert System.execute(GenDebugSym) == 0;
-		Utils.println("Compilation complete.");
+		// assert System.execute(GenDebugSym) == 0;
+		IO.println("Compilation complete.");
 	}
 
 	task buildLib

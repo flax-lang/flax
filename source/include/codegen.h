@@ -51,6 +51,7 @@ namespace Codegen
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<std::string> namespaceStack;
+		std::deque<std::deque<std::string>> importedNamespaces;
 
 		TypeMap_t typeMap;
 		FuncMap_t funcMap;
@@ -76,6 +77,7 @@ namespace Codegen
 
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc);
+		bool isValidNamespace(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprType e);
@@ -96,6 +98,7 @@ namespace Codegen
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
 		llvm::Type* getLlvmType(std::string name);
+		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
 
@@ -115,19 +118,19 @@ namespace Codegen
 
 
 		std::string mangleRawNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns);
+		std::string mangleWithNamespace(std::string original, bool isFunction = true);
+		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
 
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
+			bool isStatic = false);
 
 		std::string mangleName(Ast::StructBase* s, std::string orig);
 		std::string mangleName(Ast::StructBase* s, Ast::FuncCall* fc);
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
-		std::string mangleCppName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleCppName(std::string base, std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
