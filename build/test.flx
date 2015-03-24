@@ -77,7 +77,7 @@ func main(argc: Int32, argv: Int8**) -> Int
 {
 	var k: Bar.Nested
 	var j: Bar.Nested.Nest2
-	printf("%d, %d, %d\n", k.g, Bar.unNest(), j.doShit())
+	printf("%d, %d, %d, %d\n", k.g, Bar.unNest(), j.doShit(), Bar.Nested.Nest2.staticFunc())
 
 	return 0
 }
