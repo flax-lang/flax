@@ -54,6 +54,7 @@ namespace Parser
 		While,
 		Do,
 		Loop,
+		Defer,
 
 		Break,
 		Continue,
@@ -185,6 +186,7 @@ namespace Parser
 	Ast::Func* parseTopLevelExpr(TokenList& tokens);
 	Ast::FuncDecl* parseFuncDecl(TokenList& tokens);
 	Ast::Expr* parseParenthesised(TokenList& tokens);
+	Ast::DeferredExpr* parseDefer(TokenList& tokens);
 	Ast::TypeAlias* parseTypeAlias(TokenList& tokens);
 	Ast::Extension* parseExtension(TokenList& tokens);
 	Ast::OpOverload* parseOpOverload(TokenList& tokens);
