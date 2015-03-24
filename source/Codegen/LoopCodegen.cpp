@@ -63,6 +63,12 @@ Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	}
 }
 
+
+Result_t DeferredExpr::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+{
+	return expr->codegen(cgi);
+}
+
 Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
