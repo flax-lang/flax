@@ -112,6 +112,8 @@ namespace Compiler
 
 		Codegen::doCodegen(filename, root, cgi);
 
+		// cgi->mainModule->dump();
+
 		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
 		Codegen::writeBitcode(filename, cgi);
 

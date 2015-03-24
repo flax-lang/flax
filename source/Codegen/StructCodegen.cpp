@@ -16,7 +16,17 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	assert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
-		GenError::unknownSymbol(this, this->name, SymbolType::Type);
+		GenError::unknownSymbol(this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
+
+
+
+	// see if we have nested types
+	for(Struct* nested : this->nestedTypes)
+	{
+		nested->codegen(cgi);
+	}
+
+
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
@@ -30,6 +40,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	// create the local instance of reference to self
 	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
+
 
 
 	for(VarDecl* var : this->members)
@@ -215,12 +226,25 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	this->mangledName = cgi->mangleWithNamespace(this->name);
+	this->mangledName = cgi->mangleWithNamespace(this->name, false);
+
+
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	cgi->addNewType(str, this, ExprType::Struct);
 
 	if(!this->didCreateType)
 	{
+		// printf("created type for %s\n", this->mangledName.c_str());
+
+		// see if we have nested types
+		for(Struct* nested : this->nestedTypes)
+		{
+			cgi->pushNamespaceScope(this->name);
+			nested->createType(cgi);
+			cgi->popNamespaceScope();
+		}
+
+
 		// because we can't (and don't want to) mangle names in the parser,
 		// we could only build an incomplete name -> index map
 		// finish it here.

@@ -253,7 +253,8 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, ExprType e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		std::string mangled = this->mangleWithNamespace(atype->name);
+		std::string mangled = this->mangleWithNamespace(atype->name, false);
+		assert(mangled == atype->mangledName);
 
 		if(this->typeMap.find(mangled) == this->typeMap.end())
 		{
@@ -346,6 +347,21 @@ namespace Codegen
 		this->namespaceStack.push_back(namespc);
 	}
 
+	bool CodegenInstance::isValidNamespace(std::string namespc)
+	{
+		// check if it's imported anywhere
+		for(auto nses : this->importedNamespaces)
+		{
+			for(std::string ns : nses)
+			{
+				if(ns == namespc)
+					return true;
+			}
+		}
+
+		return false;
+	}
+
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
 		this->funcMap[name] = func;
@@ -369,20 +385,29 @@ namespace Codegen
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{
+		// step one: unmangled name
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
 
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(fc->name, fc->params));
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleCppName(fc->name, fc->params));
-
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleWithNamespace(fc->name));
-		if(!fp)	fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
+		// step two: mangled name
+		if(!fp)
+		{
+			fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
+			if(!fp)
+			{
+				for(auto ns : this->importedNamespaces)
+				{
+					fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name, ns), fc->params));
+					if(fp) break;
+				}
+			}
+		}
 
 		return fp;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
-		return getDeclaredFunc(name) != nullptr;
+		return this->getDeclaredFunc(name) != nullptr;
 	}
 
 	void CodegenInstance::popNamespaceScope()
@@ -394,6 +419,8 @@ namespace Codegen
 	{
 		this->namespaceStack.clear();
 	}
+
+
 
 	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
 	{
@@ -463,6 +490,25 @@ namespace Codegen
 	}
 
 
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
+		bool isStatic)
+	{
+		std::deque<Expr*> exprs;
+
+		// todo: kinda hack? omit the first vardecl, since it's 'self'
+
+		int i = 0;
+		for(auto v : args)
+		{
+			if(i++ == 0 && !isStatic)		// static funcs don't have 'this'
+				continue;
+
+			exprs.push_back(v);
+		}
+
+		return this->mangleMemberFunction(s, orig, exprs, ns);
+	}
+
 	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args)
 	{
 		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
@@ -471,11 +517,14 @@ namespace Codegen
 	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
 	{
 		std::string mangled;
-		mangled = this->mangleWithNamespace("", ns);
+		mangled = (ns.size() > 0 ? "" : "_ZN") + this->mangleWithNamespace("", ns);
 
-		// last char is 0
-		if(mangled.length() > 0)
+		// last char is 0 or E
+		if(mangled.length() > 3)
 		{
+			if(mangled.back() == 'E')
+				mangled = mangled.substr(0, mangled.length() - 1);
+
 			assert(mangled.back() == '0');
 			mangled = mangled.substr(0, mangled.length() - 1);
 		}
@@ -542,25 +591,13 @@ namespace Codegen
 		return mangleName(base, a);
 	}
 
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<VarDecl*> args)
+	std::string CodegenInstance::mangleWithNamespace(std::string original, bool isFunction)
 	{
-		return "enosup";
+		return this->mangleWithNamespace(original, this->namespaceStack, isFunction);
 	}
 
 
-
-	std::string CodegenInstance::mangleCppName(std::string base, std::deque<Expr*> args)
-	{
-		// TODO:
-		return "enosup";
-	}
-	std::string CodegenInstance::mangleWithNamespace(std::string original)
-	{
-		return this->mangleWithNamespace(original, this->namespaceStack);
-	}
-
-
-	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction)
 	{
 		std::string ret = "_Z";
 		ret += (ns.size() > 0 ? "N" : "");
@@ -573,7 +610,16 @@ namespace Codegen
 
 		ret += std::to_string(original.length()) + original;
 		if(ns.size() == 0)
+		{
 			ret = original;
+		}
+		else
+		{
+			if(isFunction)
+			{
+				ret += "E";
+			}
+		}
 
 		return ret;
 	}
@@ -754,6 +800,9 @@ namespace Codegen
 
 		// not so lucky
 		TypePair_t* tp = this->getType(type);
+		if(!tp)
+			tp = this->getType(type + "E");		// nested types. hack.
+
 		if(!tp)
 			GenError::unknownSymbol(0, type, SymbolType::Type);
 
@@ -1049,7 +1098,6 @@ namespace Codegen
 			{
 				return llvm::Type::getVoidTy(getContext());
 			}
-
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
@@ -1096,13 +1144,14 @@ namespace Codegen
 		std::string ret = rso.str();
 
 		StringReplace(ret, "void", "Void");
-		StringReplace(ret, "i1", "Bool");
 		StringReplace(ret, "i8", "Int8");
 		StringReplace(ret, "i16", "Int16");
 		StringReplace(ret, "i32", "Int32");
 		StringReplace(ret, "i64", "Int64");
 		StringReplace(ret, "float", "Float32");
 		StringReplace(ret, "double", "Float64");
+
+		StringReplace(ret, "i1", "Bool");
 
 		return ret;
 	}
@@ -1117,15 +1166,15 @@ namespace Codegen
 		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	void CodegenInstance::autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
-		assert(left);
-		assert(right);
+		if(!target || !right)
+			return;
 
-		if(left->getType()->isIntegerTy() && right->getType()->isIntegerTy()
-			&& left->getType()->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
+		if(target->isIntegerTy() && right->getType()->isIntegerTy()
+			&& target->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
 		{
-			unsigned int lBits = left->getType()->getIntegerBitWidth();
+			unsigned int lBits = target->getIntegerBitWidth();
 			unsigned int rBits = right->getType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
@@ -1145,18 +1194,18 @@ namespace Codegen
 					else
 					{
 						uint64_t max = powl(2, lBits) - 1;
-						if(constVal->getZExtValue() < max)
+						if(constVal->getZExtValue() <= max)
 							shouldCast = true;
 					}
 				}
 			}
 
 			if(shouldCast)
-				right = this->mainBuilder.CreateIntCast(right, left->getType(), false);
+				right = this->mainBuilder.CreateIntCast(right, target, false);
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(left->getType()->isPointerTy() && left->getType()->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
+		else if(target->isPointerTy() && target->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
 		{
 			if(right->getType()->isStructTy() && right->getType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 			{
@@ -1171,6 +1220,11 @@ namespace Codegen
 				right = this->mainBuilder.CreateLoad(ret);	// mutating
 			}
 		}
+	}
+
+	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	{
+		this->autoCastType(left->getType(), right, rhsPtr);
 	}
 
 
@@ -1367,13 +1421,16 @@ namespace Codegen
 			llvm::Type* expected = 0;
 			llvm::Type* have = 0;
 
-			if((have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
+			if(r->actualReturnValue)
+				have = r->actualReturnValue->getType();
+
+			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead", cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch);
-	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType = true);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType = true)
 	{
 		if(bb->statements.size() == 0)
 			errorNoReturn(bb);
@@ -1389,32 +1446,46 @@ namespace Codegen
 				break;
 		}
 
-		verifyReturnType(cgi, f, bb, r);
+		if(checkType)
+		{
+			verifyReturnType(cgi, f, bb, r);
+		}
+
 		return r;
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType)
 	{
 		Return* r = 0;
 		for(std::pair<Expr*, BracedBlock*> pair : ib->cases)
 		{
-			r = recursiveVerifyBlock(cgi, f, pair.second);
+			r = recursiveVerifyBlock(cgi, f, pair.second, checkType);
 		}
 
 		if(ib->final)
-			r = recursiveVerifyBlock(cgi, f, ib->final);
+		{
+			r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
+		}
 
 		return r;
 	}
 
+	// if the function returns void, the return value of verifyAllPathsReturn indicates whether or not
+	// all code paths have explicit returns -- if true, Func::codegen is expected to insert a ret void at the end
+	// of the body.
 	bool CodegenInstance::verifyAllPathsReturn(Func* func)
 	{
-		if(this->getLlvmType(func)->isVoidTy())
-			return false;
+		bool isVoid = this->getLlvmType(func)->isVoidTy();
 
 		// check the block
-		if(func->block->statements.size() == 0)
+		if(func->block->statements.size() == 0 && !isVoid)
+		{
 			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.c_str());
+		}
+		else if(isVoid)
+		{
+			return true;
+		}
 
 
 		// now loop through all exprs in the block
@@ -1426,14 +1497,14 @@ namespace Codegen
 			final = e;
 
 			if(i)
-				ret = recursiveVerifyBranch(this, func, i);
+				ret = recursiveVerifyBranch(this, func, i, !isVoid);
 
 			// "top level" returns we will just accept.
 			else if((ret = dynamic_cast<Return*>(e)))
 				break;
 		}
 
-		if(!ret && this->getLlvmType(final) == this->getLlvmType(func))
+		if(!ret && (isVoid || this->getLlvmType(final) == this->getLlvmType(func)))
 			return true;
 
 		if(!ret)

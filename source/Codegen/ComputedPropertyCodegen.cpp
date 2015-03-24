@@ -13,5 +13,6 @@ using namespace Codegen;
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	// implemented fully in MemberAccessCodegen.cpp
 	return Result_t(0, 0);
 }

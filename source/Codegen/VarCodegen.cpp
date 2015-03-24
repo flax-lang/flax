@@ -120,7 +120,6 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
 		{
-			printf("both ints\n");
 			Number* n = 0;
 			if((n = dynamic_cast<Number*>(this->initVal)))
 			{
@@ -151,7 +150,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	TypePair_t* cmplxtype = cgi->getType(this->type);
 	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
 
-	llvm::AllocaInst* ai = nullptr;
+	llvm::Value* ai = nullptr;
 
 	if(this->type == "Inferred")
 	{
@@ -160,8 +159,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		assert(!cmplxtype);
 
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
+		}
 
-		ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
 		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
@@ -173,22 +175,56 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else if(this->initVal)
 	{
-		ai = cgi->allocateInstanceInBlock(this);
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(this);
+		}
+
 		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
 		valptr = r.second;
 
-		this->inferredLType = cgi->getLlvmType(this->initVal);
+		this->inferredLType = cgi->getLlvmType(this);
 	}
 	else
 	{
-		ai = cgi->allocateInstanceInBlock(this);
+		if(!this->isGlobal)
+		{
+			ai = cgi->allocateInstanceInBlock(this);
+		}
 		this->inferredLType = cgi->getLlvmType(this);
 	}
 
+	// TODO: call global constructors
+	if(this->isGlobal)
+	{
+		ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable,
+			this->attribs & Attr_VisPublic ? llvm::GlobalValue::ExternalLinkage : llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
 
-	this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
+		if(this->initVal)
+		{
+			assert(val);
+
+			if(llvm::cast<llvm::Constant>(val))
+			{
+				cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
+				llvm::cast<llvm::GlobalVariable>(ai)->setInitializer(llvm::cast<llvm::Constant>(val));
+			}
+			else
+			{
+				warn(this, "Global variables currently only support constant initialisers");
+			}
+		}
+
+
+		cgi->addSymbol(this->name, ai, this);
+	}
+	else
+	{
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
+	}
+
 	return Result_t(val, ai);
 }
 

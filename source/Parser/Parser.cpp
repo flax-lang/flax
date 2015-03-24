@@ -43,7 +43,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, args);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, token.posinfo.col, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
 	}
 
 	// come on man
@@ -73,7 +73,7 @@ namespace Parser
 		char* alloc = nullptr;
 		vasprintf(&alloc, msg, ap);
 
-		fprintf(stderr, "%s(%s:%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, curtok.posinfo.col, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
 
@@ -98,7 +98,7 @@ namespace Parser
 	static void skipNewline(TokenList& tokens)
 	{
 		// eat newlines AND comments
-		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment))
+		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment || tokens.front().type == TType::Semicolon))
 		{
 			tokens.pop_front();
 			currentPos.line++;
@@ -232,6 +232,7 @@ namespace Parser
 			case ArithmeticOp::BitwiseXorEquals:	return "^=";
 			case ArithmeticOp::MemberAccess:		return ".";
 			case ArithmeticOp::ScopeResolution:		return "::";
+			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 		}
 	}
 
@@ -287,6 +288,7 @@ namespace Parser
 		Token t;
 		currentPos.file = filename;
 		currentPos.line = 1;
+		currentPos.col = 1;
 		curAttrib = 0;
 
 		TokenList tokens;
@@ -297,6 +299,7 @@ namespace Parser
 		rootNode = new Root();
 		currentPos.file = filename;
 		currentPos.line = 1;
+		currentPos.col = 1;
 
 		skipNewline(tokens);
 		parseAll(tokens);
@@ -307,6 +310,7 @@ namespace Parser
 
 
 
+	// this only handles the topmost level.
 	void parseAll(TokenList& tokens)
 	{
 		if(tokens.size() == 0)
@@ -341,6 +345,11 @@ namespace Parser
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseExtension(tokens));
 					break;
 
+				case TType::Var:
+				case TType::Val:
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
+					break;
+
 				// only at top level
 				case TType::Namespace:
 					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
@@ -357,7 +366,7 @@ namespace Parser
 					break;
 
 				case TType::TypeAlias:
-					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
 					break;
 
 				case TType::Private:
@@ -390,27 +399,22 @@ namespace Parser
 		Token front = tokens.front();
 
 		// check for unary shit
-		if(front.type == TType::Exclamation || front.type == TType::Plus || front.type == TType::Minus)
-		{
-			TType tp = eat(tokens).type;
-			ArithmeticOp op = tp == TType::Exclamation ? ArithmeticOp::LogicalNot : (tp == TType::Plus ? ArithmeticOp::Plus : ArithmeticOp::Minus);
+		ArithmeticOp op = ArithmeticOp::Invalid;
 
+		if(front.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
+		else if(front.type == TType::Plus)			op = ArithmeticOp::Plus;
+		else if(front.type == TType::Minus)			op = ArithmeticOp::Minus;
+		else if(front.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
+		else if(front.type == TType::Pound)			op = ArithmeticOp::Deref;
+		else if(front.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+
+		if(op != ArithmeticOp::Invalid)
+		{
+			eat(tokens);
 			return CreateAST(UnaryOp, front, op, parseUnary(tokens));
 		}
-		else if(front.type == TType::Deref || front.type == TType::Pound)
-		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, ArithmeticOp::Deref, parseUnary(tokens));
-		}
-		else if(front.type == TType::Addr || front.type == TType::Ampersand)
-		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, ArithmeticOp::AddrOf, parseUnary(tokens));
-		}
-		else
-		{
-			return parsePrimary(tokens);
-		}
+
+		return parsePrimary(tokens);
 	}
 
 	Expr* parsePrimary(TokenList& tokens)
@@ -430,6 +434,13 @@ namespace Parser
 				case TType::Func:
 					return parseFunc(tokens);
 
+				case TType::Namespace:
+					if(isInsideNamespace)		return parseNamespace(tokens);
+					else						parserError("Namespaces can only be declared at top level");
+
+				case TType::ForeignFunc:
+					return parseForeignFunc(tokens);
+
 				case TType::LParen:
 					return parseParenthesised(tokens);
 
@@ -442,6 +453,9 @@ namespace Parser
 						return parseOpOverload(tokens);
 
 					return parseIdExpr(tokens);
+
+				case TType::Static:
+					return parseStaticFunc(tokens);
 
 				case TType::Alloc:
 					return parseAlloc(tokens);
@@ -554,7 +568,7 @@ namespace Parser
 			if(front.type == TType::Identifier)
 				scopes.push_back(front.text);
 
-			else if(front.type == TType::DoubleColon)
+			else if(front.type == TType::DoubleColon || front.type == TType::Period)
 				continue;
 
 			else
@@ -575,6 +589,18 @@ namespace Parser
 
 
 
+	Func* parseStaticFunc(TokenList& tokens)
+	{
+		assert(tokens.front().type == TType::Static);
+		if(!isParsingStruct)
+			parserError("Static functions are only allowed inside struct definitions");
+
+		eat(tokens);
+		Func* ret = parseFunc(tokens);
+
+		ret->decl->isStatic = true;
+		return ret;
+	}
 
 	FuncDecl* parseFuncDecl(TokenList& tokens)
 	{
@@ -833,7 +859,7 @@ namespace Parser
 			bool expectingScope = true;
 			while((t = tokens.front()).text.length() > 0)
 			{
-				if(t.type == TType::DoubleColon && expectingScope)
+				if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
 				{
 					baseType += "::";
 					expectingScope = false;
@@ -1040,8 +1066,11 @@ namespace Parser
 		assert(eat(tokens).type == TType::LParen);
 		Expr* within = parseExpr(tokens);
 
-		if(eat(tokens).type != TType::RParen)
-			parserError("Expected ')'");
+		if(tokens.front().type == TType::RParen)
+			eat(tokens);
+
+		// if(eat(tokens).type != TType::RParen)
+		// 	parserError("Expected ')'");
 
 		return within;
 	}
@@ -1116,10 +1145,7 @@ namespace Parser
 				default:					parserError("Unknown operator '%s'", tok_op.text.c_str());
 			}
 
-			if(op == ArithmeticOp::ScopeResolution)
-				lhs = CreateAST(ScopeResolution, tok_op, lhs, rhs);
-
-			else if(op == ArithmeticOp::MemberAccess)
+			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
 
 			else
@@ -1411,6 +1437,7 @@ namespace Parser
 			VarDecl* var = dynamic_cast<VarDecl*>(stmt);
 			Func* func = dynamic_cast<Func*>(stmt);
 			OpOverload* oo = dynamic_cast<OpOverload*>(stmt);
+			Struct* nstr = dynamic_cast<Struct*>(stmt);
 			ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt);
 
 			if(cprop)
@@ -1446,13 +1473,17 @@ namespace Parser
 				str->funcs.push_back(oo->func);
 				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
 			}
+			else if(nstr)
+			{
+				str->nestedTypes.push_back(nstr);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
 			}
 			else
 			{
-				parserError("Only variable and function declarations are allowed in structs, got %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s", typeid(*stmt).name());
 			}
 		}
 
@@ -1479,6 +1510,7 @@ namespace Parser
 		str->members		= sb->members;
 		str->nameMap		= sb->nameMap;
 		str->name			= sb->name;
+		str->nestedTypes	= sb->nestedTypes;
 		str->cprops			= sb->cprops;
 
 		delete sb;

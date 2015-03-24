@@ -92,12 +92,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Extension* ext			= dynamic_cast<Extension*>(e);
 			Func* func				= dynamic_cast<Func*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(enr)			enr->codegen(cgi);
 			else if(ext)			ext->codegen(cgi);
 			else if(func)			func->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
+			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
 		}
 	}
 	else
@@ -108,13 +110,19 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
+	auto before = cgi->importedNamespaces;
 	for(std::string s : this->name)
+	{
 		cgi->pushNamespaceScope(s);
+		cgi->importedNamespaces.push_back(cgi->namespaceStack);
+	}
 
 	codegenTopLevel(cgi, pass, this->innards->statements);
 
 	for(std::string s : this->name)
 		cgi->popNamespaceScope();
+
+	cgi->importedNamespaces = before;
 }
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
