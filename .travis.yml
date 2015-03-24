@@ -20,7 +20,7 @@ after_success:
 
 deploy:
     provider: releases
-    api-key: GITHUB_OAUTH_TOKEN
+    api-key: ${GITHUB_OAUTH_TOKEN}
     file: linux-x64.zip
     skip-cleanup: true
     on:
