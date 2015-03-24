@@ -26,9 +26,12 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		this->mangledName = cgi->mangleMemberFunction(this->parentStruct, this->name, es);
 
-		VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-		implicit_self->type = this->parentStruct->mangledName + "*";
-		this->params.push_front(implicit_self);
+		if(!this->isStatic)
+		{
+			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
+			implicit_self->type = this->parentStruct->mangledName + "*";
+			this->params.push_front(implicit_self);
+		}
 	}
 	else
 	{
@@ -56,13 +59,21 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::GlobalValue::LinkageTypes linkageType;
 
 	if(this->isFFI)
+	{
 		linkageType = llvm::Function::ExternalWeakLinkage;
-
+	}
 	else if((this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal))
+	{
 		linkageType = llvm::Function::InternalLinkage;
-
+	}
+	else if(this->attribs & Attr_VisPublic)
+	{
+		linkageType = llvm::Function::ExternalLinkage;
+	}
 	else
+	{
 		linkageType = llvm::Function::LinkOnceAnyLinkage;
+	}
 
 
 

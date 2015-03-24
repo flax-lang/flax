@@ -310,6 +310,7 @@ namespace Parser
 
 
 
+	// this only handles the topmost level.
 	void parseAll(TokenList& tokens)
 	{
 		if(tokens.size() == 0)
@@ -344,14 +345,14 @@ namespace Parser
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseExtension(tokens));
 					break;
 
-				// only at top level
-				case TType::Namespace:
-					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
-					break;
-
 				case TType::Var:
 				case TType::Val:
 					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
+					break;
+
+				// only at top level
+				case TType::Namespace:
+					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
 					break;
 
 				// shit you just skip
@@ -365,7 +366,7 @@ namespace Parser
 					break;
 
 				case TType::TypeAlias:
-					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
+					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
 					break;
 
 				case TType::Private:
@@ -452,6 +453,9 @@ namespace Parser
 						return parseOpOverload(tokens);
 
 					return parseIdExpr(tokens);
+
+				case TType::Static:
+					return parseStaticFunc(tokens);
 
 				case TType::Alloc:
 					return parseAlloc(tokens);
@@ -585,6 +589,18 @@ namespace Parser
 
 
 
+	Func* parseStaticFunc(TokenList& tokens)
+	{
+		assert(tokens.front().type == TType::Static);
+		if(!isParsingStruct)
+			parserError("Static functions are only allowed inside struct definitions");
+
+		eat(tokens);
+		Func* ret = parseFunc(tokens);
+
+		ret->decl->isStatic = true;
+		return ret;
+	}
 
 	FuncDecl* parseFuncDecl(TokenList& tokens)
 	{

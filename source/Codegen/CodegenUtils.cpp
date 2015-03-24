@@ -490,7 +490,8 @@ namespace Codegen
 	}
 
 
-	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
+		bool isStatic)
 	{
 		std::deque<Expr*> exprs;
 
@@ -499,7 +500,7 @@ namespace Codegen
 		int i = 0;
 		for(auto v : args)
 		{
-			if(i++ == 0)
+			if(i++ == 0 && !isStatic)		// static funcs don't have 'this'
 				continue;
 
 			exprs.push_back(v);
@@ -1428,8 +1429,8 @@ namespace Codegen
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch);
-	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType = true);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType = true)
 	{
 		if(bb->statements.size() == 0)
 			errorNoReturn(bb);
@@ -1445,32 +1446,46 @@ namespace Codegen
 				break;
 		}
 
-		verifyReturnType(cgi, f, bb, r);
+		if(checkType)
+		{
+			verifyReturnType(cgi, f, bb, r);
+		}
+
 		return r;
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType)
 	{
 		Return* r = 0;
 		for(std::pair<Expr*, BracedBlock*> pair : ib->cases)
 		{
-			r = recursiveVerifyBlock(cgi, f, pair.second);
+			r = recursiveVerifyBlock(cgi, f, pair.second, checkType);
 		}
 
 		if(ib->final)
-			r = recursiveVerifyBlock(cgi, f, ib->final);
+		{
+			r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
+		}
 
 		return r;
 	}
 
+	// if the function returns void, the return value of verifyAllPathsReturn indicates whether or not
+	// all code paths have explicit returns -- if true, Func::codegen is expected to insert a ret void at the end
+	// of the body.
 	bool CodegenInstance::verifyAllPathsReturn(Func* func)
 	{
-		if(this->getLlvmType(func)->isVoidTy())
-			return false;
+		bool isVoid = this->getLlvmType(func)->isVoidTy();
 
 		// check the block
-		if(func->block->statements.size() == 0)
+		if(func->block->statements.size() == 0 && !isVoid)
+		{
 			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.c_str());
+		}
+		else if(isVoid)
+		{
+			return true;
+		}
 
 
 		// now loop through all exprs in the block
@@ -1482,14 +1497,14 @@ namespace Codegen
 			final = e;
 
 			if(i)
-				ret = recursiveVerifyBranch(this, func, i);
+				ret = recursiveVerifyBranch(this, func, i, !isVoid);
 
 			// "top level" returns we will just accept.
 			else if((ret = dynamic_cast<Return*>(e)))
 				break;
 		}
 
-		if(!ret && this->getLlvmType(final) == this->getLlvmType(func))
+		if(!ret && (isVoid || this->getLlvmType(final) == this->getLlvmType(func)))
 			return true;
 
 		if(!ret)
