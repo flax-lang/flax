@@ -278,7 +278,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			return Result_t(lhs, 0);
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+		{
+			// warn(this, "cast codegen both ints: %s -> %s", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rtype).c_str());
 			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
+		}
 
 		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
 			return Result_t(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
@@ -312,6 +315,15 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	cgi->autoCastType(lhs, rhs, r.second);
 
 	// if adding integer to pointer
+	if(!lhs)
+		error(this, "lhs null");
+
+	if(!rhs)
+	{
+		printf("rhs: %s\n", typeid(*this->right).name());
+		error(this, "rhs null");
+	}
+
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 	{
 		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
@@ -339,8 +351,17 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		if(lop != (llvm::Instruction::BinaryOps) 0)
-			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+		{
+			cgi->autoCastType(lhs, rhs);
+			cgi->autoCastType(rhs, lhs);
 
+			if(lhs->getType() != rhs->getType())
+				error(this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+
+			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+		}
+
+		cgi->autoCastType(rhs, lhs);
 		switch(this->op)
 		{
 			// comparisons

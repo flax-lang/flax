@@ -45,8 +45,7 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 - You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
 - Screw makefiles. Flax is currently using a third-party build system.
-- Binaries and sources are available here: http://91.206.143.88/capri/releases/
-- Documentation for the Capri script is available here: http://forum.osdev.org/viewtopic.php?f=2&t=28568&start=0
+- Binaries and sources are available here: http://capri.ghostkernel.org/
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
 - Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'

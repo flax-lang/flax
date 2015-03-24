@@ -37,6 +37,7 @@ namespace Parser
 	struct PosInfo
 	{
 		uint64_t line;
+		uint64_t col;
 		std::string file;
 	};
 }
@@ -77,6 +78,7 @@ namespace Ast
 {
 	enum class ArithmeticOp
 	{
+		Invalid,
 		Add,
 		Subtract,
 		Multiply,
@@ -145,13 +147,19 @@ namespace Ast
 	enum class ResultType { Normal, BreakCodegen };
 	struct Result_t
 	{
-		Result_t(llvm::Value* val, llvm::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
-		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
 		explicit Result_t(ValPtr_t vp) : result(vp), type(ResultType::Normal) { }
+
+
+		Result_t(llvm::Value* val, llvm::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
+		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal), hackyReturn(0) { }
+		Result_t(llvm::Value* val, llvm::Value* ptr, Expr* hackyRet) : result(val, ptr), type(ResultType::Normal), hackyReturn(hackyRet) { }
+
+
 		Result_t(ValPtr_t vp, ResultType rt) : result(vp), type(rt) { }
 
 		ValPtr_t result;
 		ResultType type;
+		Expr* hackyReturn = 0;
 	};
 
 	struct Expr
@@ -224,6 +232,7 @@ namespace Ast
 		std::string name;
 		bool immutable;
 
+		bool isGlobal = false;
 		bool disableAutoInit = false;
 		Expr* initVal = 0;
 		llvm::Type* inferredLType = 0;
@@ -265,6 +274,7 @@ namespace Ast
 
 		bool hasVarArg = false;
 		bool isFFI = false;
+		bool isStatic = false;
 
 		StructBase* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;
@@ -309,6 +319,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* val;
+		llvm::Value* actualReturnValue = 0;
 	};
 
 	struct Import : Expr
@@ -439,6 +450,7 @@ namespace Ast
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
+		std::deque<Struct*> nestedTypes;
 	};
 
 	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
@@ -480,17 +492,6 @@ namespace Ast
 
 
 		Expr* target;
-		Expr* member;
-	};
-
-	struct ScopeResolution : Expr
-	{
-		~ScopeResolution();
-		ScopeResolution(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), scope(tgt), member(mem) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-
-		bool done = false;
-		Expr* scope;
 		Expr* member;
 	};
 

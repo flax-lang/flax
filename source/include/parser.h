@@ -46,6 +46,7 @@ namespace Parser
 		Enum,
 		ForeignFunc,
 		Struct,
+		Static,
 		True,
 		False,
 
@@ -104,6 +105,7 @@ namespace Parser
 		LogicalAnd,
 		At,
 		Pound,
+		Tilde,
 
 
 		// compound symbols
@@ -177,6 +179,7 @@ namespace Parser
 	Ast::VarDecl* parseVarDecl(TokenList& tokens);
 	Ast::WhileLoop* parseWhile(TokenList& tokens);
 	Ast::Dealloc* parseDealloc(TokenList& tokens);
+	Ast::Func* parseStaticFunc(TokenList& tokens);
 	Ast::Enumeration* parseEnum(TokenList& tokens);
 	Ast::Continue* parseContinue(TokenList& tokens);
 	Ast::Func* parseTopLevelExpr(TokenList& tokens);
