@@ -46,7 +46,7 @@ project Flax
 		all();
 
 		IO.println("Compiling test program (build/test.flx)");
-		assert System.execute("'{flaxcBin}' -dump-ir -O0 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
+		assert System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0;
 		IO.println("=========================");
 		System.execute("build/test");
 	}
