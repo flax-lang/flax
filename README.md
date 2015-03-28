@@ -17,13 +17,16 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 #### Current Features ####
 
-- Handwritten parser
-- Generates LLVM bitcode.
-- User-defined types (structs, mostly)
-- Arrays (compile-time fixed size only, dynamic arrays yet to be)
+- User-defined types (structs, enums and typealiases)
+- Arrays (probably regressed and broken)
 - Pointer syntax (C-like)
 - Operator overloading on structs
 - Function overloading (C++-ish)
+- Type inference
+- Nested types
+- Static functions
+- Deferred statements (executes at end of current block scope)
+- Swift-like extensions to existing types
 
 -------------------------
 
@@ -38,14 +41,13 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 - Generic Types
 - Type inheritance of some kind
 
-
 ------------------------------------
 
 #### Building the Flax compiler ####
 
 - You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
 - Screw makefiles. Flax is currently using a third-party build system.
-- Binaries and sources are available here: http://capri.ghostkernel.org/
+- Source is available here: http://capri.ghostkernel.org, follow instructions to build capri.
 - Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
 - Run 'capri' in the top-level directory.
 - Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
