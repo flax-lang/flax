@@ -11,6 +11,7 @@
 #include "../include/ast.h"
 #include "../include/parser.h"
 #include "../include/compiler.h"
+#include "../include/codegen.h"
 
 using namespace Ast;
 
@@ -292,6 +293,16 @@ namespace Parser
 		curAttrib = 0;
 
 		TokenList tokens;
+
+		// split into lines
+		{
+			std::stringstream ss(str);
+
+			std::string tmp;
+			while(std::getline(ss, tmp, '\n'))
+				cgi->rawLines.push_back(tmp);
+		}
+
 
 		while((t = getNextToken(str, currentPos)).text.size() > 0)
 			tokens.push_back(t);

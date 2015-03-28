@@ -15,7 +15,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 {
 	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
-		GenError::unknownSymbol(this, this->name, SymbolType::Variable);
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
@@ -115,7 +115,9 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	}
 
 	if(!ai)
-		error(this, "ai is null");
+	{
+		error(cgi, this, "ai is null");
+	}
 
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
@@ -140,7 +142,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
+			GenError::invalidAssignment(cgi, this, val->getType(), ai->getType()->getPointerElementType());
 		}
 	}
 
@@ -151,7 +153,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))
-		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
 
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
@@ -164,7 +166,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	if(this->type == "Inferred")
 	{
 		if(!this->initVal)
-			error(this, "Type inference requires an initial assignment to infer type");
+		{
+			error(cgi, this, "Type inference requires an initial assignment to infer type");
+		}
 
 		assert(!cmplxtype);
 

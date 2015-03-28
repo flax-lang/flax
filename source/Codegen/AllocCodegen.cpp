@@ -61,7 +61,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	{
 		allocnum = this->count->codegen(cgi).result.first;
 		if(!allocnum->getType()->isIntegerTy())
-			error(this, "Expected integer type in alloc");
+			error(cgi, this, "Expected integer type in alloc");
 
 		allocnum = cgi->mainBuilder.CreateIntCast(allocnum, allocsize->getType(), false);
 		allocsize = cgi->mainBuilder.CreateMul(allocsize, allocnum);
@@ -193,7 +193,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 {
 	SymbolPair_t* sp = cgi->getSymPair(this, this->var->name);
 	if(!sp)
-		error(this, "Unknown symbol '%s'", this->var->name.c_str());
+		error(cgi, this, "Unknown symbol '%s'", this->var->name.c_str());
 
 	sp->first.second = SymbolValidity::UseAfterDealloc;
 

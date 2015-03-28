@@ -27,13 +27,13 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		case ArithmeticOp::Deref:
 			if(!res.result.first->getType()->isPointerTy())
-				error(this, "Cannot dereference non-pointer type!");
+				error(cgi, this, "Cannot dereference non-pointer type!");
 
 			return Result_t(cgi->mainBuilder.CreateLoad(res.result.first), res.result.first);
 
 		case ArithmeticOp::AddrOf:
 			if(!res.result.second)
-				error(this, "Cannot take address of literal or whatever it is you're trying to take the address of!");
+				error(cgi, this, "Cannot take address of literal or whatever it is you're trying to take the address of!");
 
 			return Result_t(res.result.second, 0);
 
@@ -41,6 +41,6 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			return Result_t(cgi->mainBuilder.CreateNot(res.result.first), res.result.second);
 
 		default:
-			error(this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
+			error(cgi, this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
 	}
 }
