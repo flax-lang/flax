@@ -83,7 +83,6 @@ namespace Codegen
 			OurFPM.add(llvm::createDeadStoreEliminationPass());
 			OurFPM.add(llvm::createDeadInstEliminationPass());
 			OurFPM.add(llvm::createMemCpyOptPass());
-			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
 
 			OurFPM.add(llvm::createSCCPPass());
 			OurFPM.add(llvm::createAggressiveDCEPass());
@@ -91,6 +90,7 @@ namespace Codegen
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		OurFPM.add(llvm::createMergedLoadStoreMotionPass());
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.add(llvm::createConstantPropagationPass());
 		OurFPM.add(llvm::createDeadCodeEliminationPass());
@@ -1366,7 +1366,7 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
+	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
@@ -1397,7 +1397,7 @@ namespace Codegen
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
-		llvm::Value* tempRes = this->mainBuilder.CreateAlloca(lhs->getType());
+		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->mainBuilder.CreateAlloca(lhs->getType());
 
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
 		this->mainBuilder.CreateStore(properres, tempRes);
