@@ -20,9 +20,13 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage)
+llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr,
+	llvm::Value* storage, bool shouldAddToSymtab)
 {
+
 	llvm::Value* ai = storage;
+	bool didAddToSymtab = false;
+
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
 	{
 		// ...
@@ -50,7 +54,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(!ai)
 		{
 			assert(cmplxtype);
-			assert((ai = cgi->mainBuilder.CreateAlloca(cmplxtype->first)));
+			assert((ai = cgi->allocateInstanceInBlock(cmplxtype->first)));
 		}
 
 		if(cmplxtype)
@@ -73,7 +77,12 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			}
 		}
 
-		cgi->addSymbol(this->name, ai, this);
+		if(shouldAddToSymtab)
+		{
+			cgi->addSymbol(this->name, ai, this);
+			didAddToSymtab = true;
+		}
+
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
@@ -108,7 +117,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	if(!ai)
 		error(this, "ai is null");
 
-	if(!cgi->isDuplicateSymbol(this->name))
+	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
 
 	if(val->getType() != ai->getType()->getPointerElementType())
@@ -222,7 +231,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
-		this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
 
 	return Result_t(val, ai);

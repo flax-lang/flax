@@ -1127,7 +1127,7 @@ namespace Codegen
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		return this->mainBuilder.CreateAlloca(type, 0, name);
+		return this->mainBuilder.CreateAlloca(type, 0, name == "" ? "" : this->mainBuilder.GetInsertBlock()->getName() + name);
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
@@ -1419,7 +1419,7 @@ namespace Codegen
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
-		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->mainBuilder.CreateAlloca(lhs->getType());
+		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->allocateInstanceInBlock(lhs->getType());
 
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
 		this->mainBuilder.CreateStore(properres, tempRes);

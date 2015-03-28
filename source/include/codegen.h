@@ -138,6 +138,8 @@ namespace Codegen
 		std::string getReadableType(llvm::Value* val);
 
 
+		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
+		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name = "");
 
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
@@ -146,9 +148,7 @@ namespace Codegen
 		llvm::Type* unwrapPointerType(Ast::Expr* user, std::string type);
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
-		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
 		std::string unwrapPointerType(std::string type, int* indirections);
-		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
