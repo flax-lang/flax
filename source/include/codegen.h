@@ -97,7 +97,7 @@ namespace Codegen
 		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
-		llvm::Type* getLlvmType(std::string name);
+		llvm::Type* getLlvmType(Ast::Expr* user, std::string name);
 		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
@@ -143,7 +143,7 @@ namespace Codegen
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func);
-		llvm::Type* unwrapPointerType(std::string type);
+		llvm::Type* unwrapPointerType(Ast::Expr* user, std::string type);
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
