@@ -1234,24 +1234,6 @@ namespace Parser
 
 		ret->type = type;
 
-		// Expr* type = parseIdExpr(tokens);
-		// VarRef* vr = dynamic_cast<VarRef*>(type);
-		// FuncCall* fc = dynamic_cast<FuncCall*>(type);
-
-		// if(vr)
-		// {
-		// 	ret->type = vr->name;
-		// }
-		// else if(fc)
-		// {
-		// 	ret->type = fc->name;
-		// 	ret->params = fc->params;
-		// }
-		// else
-		// {
-		// 	parserError("What?!");
-		// }
-
 		return ret;
 	}
 
