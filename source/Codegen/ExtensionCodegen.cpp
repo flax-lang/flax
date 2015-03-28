@@ -54,7 +54,7 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 void Extension::createType(CodegenInstance* cgi)
 {
 	if(!cgi->isDuplicateType(this->name))
-		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
+		error(cgi, this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
 
 	this->mangledName = cgi->mangleWithNamespace(this->name);
 
@@ -94,7 +94,7 @@ void Extension::createType(CodegenInstance* cgi)
 		for(auto p : this->nameMap)
 		{
 			if(str->nameMap.find(p.first) != str->nameMap.end())
-				error(this, "Duplicate member '%s' in extension", p.first.c_str());
+				error(cgi, this, "Duplicate member '%s' in extension", p.first.c_str());
 
 			str->nameMap[p.first] = beginOffset + p.second;
 		}

@@ -8,13 +8,7 @@
 #include "typeinfo.h"
 #include "utf8rewind.h"
 
-void __error_gen(Ast::Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap);
-
-void error(const char* msg, ...) __attribute__((noreturn));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
-
-void warn(const char* msg, ...);
-void warn(Ast::Expr* e, const char* msg, ...);
+#include <vector>
 
 
 enum class SymbolType
@@ -27,14 +21,17 @@ enum class SymbolType
 
 namespace GenError
 {
-	void unknownSymbol(Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void useAfterFree(Ast::Expr* e, std::string symname);
-	void duplicateSymbol(Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void noOpOverload(Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
-	void invalidAssignment(Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
-	void invalidAssignment(Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
-	void invalidInitialiser(Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args) __attribute__((noreturn));
-	void expected(Ast::Expr* e, std::string exp) __attribute__((noreturn));
+	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
+	void useAfterFree(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname);
+	void duplicateSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
+	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
+
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Struct* str,
+		std::vector<llvm::Value*> args) __attribute__((noreturn));
+
+	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 }
 
 namespace Codegen
@@ -52,6 +49,8 @@ namespace Codegen
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<std::string> namespaceStack;
 		std::deque<std::deque<std::string>> importedNamespaces;
+
+		std::vector<std::string> rawLines;
 
 		TypeMap_t typeMap;
 		FuncMap_t funcMap;
@@ -162,6 +161,13 @@ namespace Codegen
 }
 
 
+void error(const char* msg, ...) __attribute__((noreturn));
+void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
+void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
+
+void warn(const char* msg, ...);
+void warn(Ast::Expr* e, const char* msg, ...);
+void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
 
 
 

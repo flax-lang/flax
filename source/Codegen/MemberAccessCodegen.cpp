@@ -103,10 +103,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	if(!type->isStructTy())
 	{
 		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+		{
 			type = type->getPointerElementType(), isPtr = true;
-
+		}
 		else
-			error(this, "Cannot do member access on non-struct types");
+		{
+			error(cgi, this, "Cannot do member access on non-struct types");
+		}
 	}
 
 	if(selfPtr == nullptr && !isPtr)
@@ -199,12 +202,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 				}
 
 				if(!found)
-					error(this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
+				{
+					error(cgi, this, "Type '%s' does not have a member '%s'", str->name.c_str(), var->name.c_str());
+				}
 			}
 		}
 		else if(!var && !fc)
 		{
-			error(this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+			error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
 		}
 
 
@@ -453,7 +458,7 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, LeftSideR
 
 		TypePair_t* tp = cgi->getType(cgi->mangleWithNamespace(last, nses.size() > 0 ? nses : cgi->namespaceStack, false));
 		if(!tp)
-			GenError::unknownSymbol(right, last, SymbolType::Type);
+			GenError::unknownSymbol(cgi, right, last, SymbolType::Type);
 
 		Struct* str = dynamic_cast<Struct*>(tp->second.first);
 		assert(str);

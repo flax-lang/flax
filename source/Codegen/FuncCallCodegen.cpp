@@ -61,11 +61,14 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
-		GenError::unknownSymbol(this, this->name, SymbolType::Function);
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
-	if((target->arg_size() != this->params.size() && !target->isVarArg()) || (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
-		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+	if((target->arg_size() != this->params.size() && !target->isVarArg())
+		|| (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
+	{
+		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+	}
 
 
 
@@ -80,7 +83,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 
 		if(arg_it->getType() != args[i]->getType())
-			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1, cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
+		{
+			error(cgi, this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+				cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
+		}
 	}
 
 	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);

@@ -81,13 +81,13 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::Function* func = nullptr;
 	if(cgi->getType(this->mangledName) != nullptr)
 	{
-		GenError::duplicateSymbol(this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
+		GenError::duplicateSymbol(cgi, this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
 	else if(cgi->mainModule->getFunction(this->mangledName))
 	{
 		if(!this->isFFI)
 		{
-			GenError::duplicateSymbol(this, this->name, SymbolType::Function);
+			GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Function);
 		}
 	}
 	else

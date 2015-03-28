@@ -219,7 +219,7 @@ namespace Codegen
 		if(pair)
 		{
 			if(pair->first.second != SymbolValidity::Valid)
-				GenError::useAfterFree(user, name);
+				GenError::useAfterFree(this, user, name);
 
 			return pair->first.first;
 		}
@@ -804,7 +804,7 @@ namespace Codegen
 			tp = this->getType(type + "E");		// nested types. hack.
 
 		if(!tp)
-			GenError::unknownSymbol(user, type, SymbolType::Type);
+			GenError::unknownSymbol(this, user, type, SymbolType::Type);
 
 		return tp->first;
 	}
@@ -929,7 +929,7 @@ namespace Codegen
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
-					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 
 				auto x = getLlvmType(decl);
 				return x;
@@ -940,7 +940,7 @@ namespace Codegen
 				{
 					llvm::Type* ltype = this->getLlvmType(uo->expr);
 					if(!ltype->isPointerTy())
-						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
+						error(this, expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
 
 					return this->getLlvmType(uo->expr)->getPointerElementType();
 				}
@@ -959,7 +959,7 @@ namespace Codegen
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
-					error(expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+					error(this, expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(fp->second);
 			}
@@ -976,7 +976,7 @@ namespace Codegen
 
 					if(!ret)
 					{
-						error(expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
+						error(this, expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
 							__FILE__, __LINE__, expr->type.c_str());
 					}
 					return ret;
@@ -1312,7 +1312,7 @@ namespace Codegen
 
 		if(!opov)
 		{
-			if(fail)	GenError::noOpOverload(str, str->name, op);
+			if(fail)	GenError::noOpOverload(this, str, str->name, op);
 			else		return Result_t(0, 0);
 		}
 
@@ -1335,7 +1335,7 @@ namespace Codegen
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
-		if(fail)	GenError::noOpOverload(str, str->name, op);
+		if(fail)	GenError::noOpOverload(this, str, str->name, op);
 		return Result_t(0, 0);
 	}
 
@@ -1375,7 +1375,7 @@ namespace Codegen
 		}
 
 		if(!initf)
-			GenError::invalidInitialiser(user, str, vals);
+			GenError::invalidInitialiser(this, user, str, vals);
 
 		return this->mainModule->getFunction(initf->getName());
 	}
