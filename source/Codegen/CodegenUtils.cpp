@@ -678,12 +678,12 @@ namespace Codegen
 		return actualType;
 	}
 
-	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
+	llvm::Type* CodegenInstance::unwrapPointerType(Ast::Expr* user, std::string type)
 	{
 		int indirections = 0;
 
 		std::string actualType = this->unwrapPointerType(type, &indirections);
-		llvm::Type* ret = this->getLlvmType(actualType);
+		llvm::Type* ret = this->getLlvmType(user, actualType);
 
 		if(ret)
 		{
@@ -793,7 +793,7 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(std::string type)
+	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, std::string type)
 	{
 		llvm::Type* ret = this->getLlvmTypeOfBuiltin(type);
 		if(ret) return ret;
@@ -804,7 +804,7 @@ namespace Codegen
 			tp = this->getType(type + "E");		// nested types. hack.
 
 		if(!tp)
-			GenError::unknownSymbol(0, type, SymbolType::Type);
+			GenError::unknownSymbol(user, type, SymbolType::Type);
 
 		return tp->first;
 	}
@@ -919,7 +919,7 @@ namespace Codegen
 							return this->getLlvmType(decl);
 						}
 
-						return unwrapPointerType(decl->type);
+						return unwrapPointerType(decl, decl->type);
 					}
 
 					return type->first;
@@ -937,7 +937,13 @@ namespace Codegen
 			else if(uo)
 			{
 				if(uo->op == ArithmeticOp::Deref)
+				{
+					llvm::Type* ltype = this->getLlvmType(uo->expr);
+					if(!ltype->isPointerTy())
+						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
+
 					return this->getLlvmType(uo->expr)->getPointerElementType();
+				}
 
 				else if(uo->op == ArithmeticOp::AddrOf)
 					return this->getLlvmType(uo->expr)->getPointerTo();
@@ -947,7 +953,7 @@ namespace Codegen
 			}
 			else if(ct)
 			{
-				return unwrapPointerType(ct->name);
+				return unwrapPointerType(ct, ct->name);
 			}
 			else if(fc)
 			{
@@ -966,7 +972,7 @@ namespace Codegen
 				TypePair_t* type = getType(fd->type);
 				if(!type)
 				{
-					llvm::Type* ret = unwrapPointerType(fd->type);
+					llvm::Type* ret = unwrapPointerType(fd, fd->type);
 
 					if(!ret)
 					{
@@ -1033,7 +1039,7 @@ namespace Codegen
 					for(ComputedProperty* c : str->cprops)
 					{
 						if(c->name == memberVr->name)
-							return this->getLlvmType(c->type);
+							return this->getLlvmType(c, c->type);
 					}
 				}
 				else if(memberFc)
@@ -1083,10 +1089,10 @@ namespace Codegen
 					if(alloc->type.find("::") != std::string::npos)
 					{
 						alloc->type = this->mangleRawNamespace(alloc->type);
-						return this->getLlvmType(alloc->type)->getPointerTo();
+						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
 					}
 
-					return unwrapPointerType(alloc->type);
+					return unwrapPointerType(alloc, alloc->type);
 				}
 
 				return type->first->getPointerTo();
@@ -1165,6 +1171,9 @@ namespace Codegen
 		StringReplace(ret, "double", "Float64");
 
 		StringReplace(ret, "i1", "Bool");
+
+		if(ret.length() > 0 && ret[0] == '%')
+			ret = ret.substr(1);
 
 		return ret;
 	}
