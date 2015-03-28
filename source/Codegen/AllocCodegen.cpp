@@ -17,7 +17,7 @@ using namespace Codegen;
 Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// if we haven't declared malloc() yet, then we need to do it here
-	// NOTE: this is one of the only places in the compiler where a hardcoded call is made to a non-provided function.
+	// NOTE: this is the only place in the compiler where a hardcoded call is made to a non-provided function.
 
 	FuncPair_t* fp = cgi->getDeclaredFunc(MALLOC_FUNC);
 	if(!fp)
@@ -64,7 +64,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		allocsize = cgi->mainBuilder.CreateMul(allocsize, allocnum);
 	}
 
-	llvm::Value* allocmemptr = cgi->mainBuilder.CreateAlloca(allocType->getPointerTo());
+	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->mainBuilder.CreateAlloca(allocType->getPointerTo());
 	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo()), allocmemptr);
 
 	allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
@@ -113,6 +113,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// move the allocatedmem pointer by the type size
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
+		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 
 		// subtract the counter
 		counter = cgi->mainBuilder.CreateLoad(counterptr);
@@ -126,7 +127,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// at loopend:
 		cgi->mainBuilder.SetInsertPoint(loopEnd);
-		// curbb->getParent()->getBasicBlockList().push_back(loopEnd);
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
