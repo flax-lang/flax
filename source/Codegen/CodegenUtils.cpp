@@ -1076,7 +1076,20 @@ namespace Codegen
 			}
 			else if(alloc)
 			{
-				return this->getLlvmType(alloc->type)->getPointerTo();
+				TypePair_t* type = getType(alloc->type);
+				if(!type)
+				{
+					// check if it ends with pointer, and if we have a type that's un-pointered
+					if(alloc->type.find("::") != std::string::npos)
+					{
+						alloc->type = this->mangleRawNamespace(alloc->type);
+						return this->getLlvmType(alloc->type)->getPointerTo();
+					}
+
+					return unwrapPointerType(alloc->type);
+				}
+
+				return type->first->getPointerTo();
 			}
 			else if(nm)
 			{

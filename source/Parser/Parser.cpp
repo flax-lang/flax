@@ -1221,23 +1221,36 @@ namespace Parser
 				parserError("Expected ']' after alloc[num]");
 		}
 
-		Expr* type = parseIdExpr(tokens);
-		VarRef* vr = dynamic_cast<VarRef*>(type);
-		FuncCall* fc = dynamic_cast<FuncCall*>(type);
+		auto ct = parseType(tokens);
+		std::string type = ct->name;
+		delete ct;
 
-		if(vr)
+		if(tokens.front().type == TType::LParen)
 		{
-			ret->type = vr->name;
-		}
-		else if(fc)
-		{
-			ret->type = fc->name;
+			// alloc[...] Foo(...)
+			FuncCall* fc = parseFuncCall(tokens, type);
 			ret->params = fc->params;
 		}
-		else
-		{
-			parserError("What?!");
-		}
+
+		ret->type = type;
+
+		// Expr* type = parseIdExpr(tokens);
+		// VarRef* vr = dynamic_cast<VarRef*>(type);
+		// FuncCall* fc = dynamic_cast<FuncCall*>(type);
+
+		// if(vr)
+		// {
+		// 	ret->type = vr->name;
+		// }
+		// else if(fc)
+		// {
+		// 	ret->type = fc->name;
+		// 	ret->params = fc->params;
+		// }
+		// else
+		// {
+		// 	parserError("What?!");
+		// }
 
 		return ret;
 	}
@@ -1287,7 +1300,7 @@ namespace Parser
 		return n;
 	}
 
-	Expr* parseFuncCall(TokenList& tokens, std::string id)
+	FuncCall* parseFuncCall(TokenList& tokens, std::string id)
 	{
 		Token front = eat(tokens);
 		assert(front.type == TType::LParen);
