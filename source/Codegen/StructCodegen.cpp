@@ -51,7 +51,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
+		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr, false);
 	}
 
 	// create all the other automatic init functions for our extensions

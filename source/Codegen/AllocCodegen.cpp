@@ -84,7 +84,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		}
 	}
 
-	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->mainBuilder.CreateAlloca(allocType->getPointerTo());
+	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->allocateInstanceInBlock(allocType->getPointerTo());
 	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo()), allocmemptr);
 
 	allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
@@ -116,6 +116,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 		// check for zero.
+		if(isZero)
 		{
 			llvm::BasicBlock* notZero = llvm::BasicBlock::Create(cgi->getContext(), "notZero", curbb->getParent());
 			llvm::BasicBlock* setToZero = llvm::BasicBlock::Create(cgi->getContext(), "zeroAlloc", curbb->getParent());
@@ -138,7 +139,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 		// create the loop counter (initialise it with the value)
-		llvm::Value* counterptr = cgi->mainBuilder.CreateAlloca(allocsize->getType());
+		llvm::Value* counterptr = cgi->allocateInstanceInBlock(allocsize->getType());
 		cgi->mainBuilder.CreateStore(allocnum, counterptr);
 		llvm::Value* counter = cgi->mainBuilder.CreateLoad(counterptr);
 

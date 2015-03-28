@@ -121,7 +121,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			selfPtr = cgi->mainBuilder.CreateAlloca(type);
+			selfPtr = cgi->allocateInstanceInBlock(type);
 			cgi->mainBuilder.CreateStore(self, selfPtr);
 		}
 	}
@@ -348,7 +348,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 
 		// create a fake alloca to return to them.
 		lcallee = cgi->mainModule->getFunction(lcallee->getName());
-		return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), cgi->mainBuilder.CreateAlloca(_rhs->getType()));
+		return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), cgi->allocateInstanceInBlock(_rhs->getType()));
 	}
 	else
 	{

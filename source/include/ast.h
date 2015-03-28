@@ -228,7 +228,7 @@ namespace Ast
 		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage);
+		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage, bool shouldAddToSymtab);
 
 		std::string name;
 		bool immutable;
