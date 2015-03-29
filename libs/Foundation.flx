@@ -27,8 +27,5 @@ func max(a: Uint64, b: Uint64) -> Uint64
 
 public func println(a: String)
 {
-	printf(a)
-	printf("\n")
+	printf("%s\n", a)
 }
-
-

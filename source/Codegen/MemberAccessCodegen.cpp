@@ -20,18 +20,9 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, llvm::Value* _rhs, llvm::Value* self, llvm::Value* selfPtr, bool isPtr, Struct* str);
 
-struct LeftSideResolved;
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, LeftSideResolved* lsr);
+static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
+static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
 
-
-
-
-struct LeftSideResolved : Expr
-{
-	LeftSideResolved() : Expr(Parser::PosInfo()) { }
-	~LeftSideResolved() { }
-	virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
-};
 
 
 
@@ -48,6 +39,7 @@ struct LeftSideResolved : Expr
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
+	// check for special cases -- static calling and enums.
 	VarRef* _vr = dynamic_cast<VarRef*>(this->target);
 	if(_vr)
 	{
@@ -61,11 +53,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			}
 			else if(tp->second.second == ExprType::Struct)
 			{
-				return doStaticAccess(cgi, this, nullptr);
+				return doStaticAccess(cgi, this);
 			}
 		}
 	}
 
+
+	Expr* re = rearrangeNonStaticAccess(cgi, this);
+	(void) re;
 
 	// gen the var ref on the left.
 	Result_t res = this->target->codegen(cgi);
@@ -73,11 +68,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 	llvm::Value* self = p.first;
 	llvm::Value* selfPtr = p.second;
-
-	if(dynamic_cast<LeftSideResolved*>(res.hackyReturn))
-	{
-		return doStaticAccess(cgi, this, dynamic_cast<LeftSideResolved*>(res.hackyReturn));
-	}
 
 
 
@@ -112,6 +102,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 	}
 
+
+	// find out whether we need self or selfptr.
 	if(selfPtr == nullptr && !isPtr)
 	{
 		// we don't have a pointer value for this
@@ -129,6 +121,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 	}
 
+
+	// handle type aliases
 	if(isWrapped)
 	{
 		bool wasSelfPtr = false;
@@ -161,6 +155,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
+
+
+
 	TypePair_t* pair = cgi->getType(type);
 	if(!pair)
 	{
@@ -175,8 +172,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		assert(str);
 		assert(self);
 
-		// get the index for the member
+		// transform
+		// a.(b.(c.(d.e))) into (((a.b).c).d).e
 		Expr* rhs = this->member;
+
+
+		// get the index for the member
+		// Expr* rhs = this->member;
 		int i = -1;
 
 		VarRef* var = dynamic_cast<VarRef*>(rhs);
@@ -209,16 +211,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else if(!var && !fc)
 		{
-			error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo", __FILE__, __LINE__);
+			error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
 		}
-
-
-
-
-
-
-
-
 
 
 		if(fc)
@@ -253,6 +247,138 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
+
+
+
+
+
+
+
+namespace Codegen
+{
+	Func* CodegenInstance::getFunctionFromStructFuncCall(StructBase* str, FuncCall* fc)
+	{
+		// now we need to determine if it exists, and its params.
+		Func* callee = nullptr;
+		for(Func* f : str->funcs)
+		{
+			std::string match = this->mangleMemberFunction(str, fc->name, fc->params, str->scope);
+			std::string funcN = this->mangleMemberFunction(str, f->decl->name, f->decl->params, str->scope, f->decl->isStatic);
+
+			#if 0
+			printf("func %s vs %s, orig %s\n", match.c_str(), funcN.c_str(), f->decl->name.c_str());
+			#endif
+
+			if(funcN == match)
+			{
+				callee = f;
+				break;
+			}
+		}
+
+		if(!callee)
+			error(this, fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
+
+		return callee;
+	}
+
+
+	Struct* CodegenInstance::getNestedStructFromScopes(Expr* user, std::deque<std::string> scopes)
+	{
+		std::string last = scopes.back();
+		scopes.pop_back();
+
+		TypePair_t* tp = this->getType(this->mangleWithNamespace(last, scopes.size() > 0 ? scopes : this->namespaceStack, false));
+		if(!tp)
+			GenError::unknownSymbol(this, user, last, SymbolType::Type);
+
+		Struct* str = dynamic_cast<Struct*>(tp->second.first);
+		assert(str);
+
+		return str;
+	}
+
+	static Expr* _recursivelyResolveNested(MemberAccess* base, std::deque<std::string>& scopes)
+	{
+		VarRef* left = dynamic_cast<VarRef*>(base->target);
+		assert(left);
+
+		scopes.push_back(left->name);
+
+		MemberAccess* maR = dynamic_cast<MemberAccess*>(base->member);
+		FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
+
+		if(maR)
+		{
+			return _recursivelyResolveNested(maR, scopes);
+		}
+		else
+		{
+			return fcR;
+		}
+	}
+
+	Expr* CodegenInstance::recursivelyResolveNested(MemberAccess* base, std::deque<std::string>* __scopes)
+	{
+		VarRef* left = dynamic_cast<VarRef*>(base->target);
+		assert(left);
+
+		std::deque<std::string> tmpscopes;
+		std::deque<std::string>* _scopes = nullptr;
+
+		// fuck this shit. we need to know if we were originally passed a non-null.
+		if(!__scopes)
+			_scopes = &tmpscopes;
+
+		else
+			_scopes = __scopes;
+
+
+		std::deque<std::string>& scopes = *_scopes;
+
+
+		MemberAccess* maR = dynamic_cast<MemberAccess*>(base->member);
+		FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
+
+		if(maR)
+		{
+			// kinda hacky behaviour.
+			// if we call with _scopes != 0, that means
+			// we're interested in the function call.
+
+			// if not, then we're only interested in the type.
+
+			scopes.push_back(left->name);
+
+			Expr* ret = _recursivelyResolveNested(maR, scopes);
+
+			// todo: handle static vars
+			FuncCall* fc = dynamic_cast<FuncCall*>(ret);
+			assert(fc);
+
+			if(__scopes != nullptr)
+			{
+				return fc;
+			}
+			else
+			{
+				Struct* str = this->getNestedStructFromScopes(base, scopes);
+				return this->getFunctionFromStructFuncCall(str, fc);
+			}
+		}
+		else
+		{
+			return fcR;
+		}
+	}
+}
+
+
+
+
+
+
+
 static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* self, llvm::Value* selfPtr, bool isPtr, Struct* str, bool isStaticFunctionCall)
 {
 	// make the args first.
@@ -261,31 +387,12 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 	std::vector<llvm::Value*> args;
 
 	args.push_back(isPtr ? self : selfPtr);
-
 	for(Expr* e : fc->params)
 		args.push_back(e->codegen(cgi).result.first);
 
-	// need to remove the dummy 'self' reference
+
 	// now we need to determine if it exists, and its params.
-	Func* callee = nullptr;
-	for(Func* f : str->funcs)
-	{
-		std::string match = cgi->mangleMemberFunction(str, fc->name, fc->params, str->scope);
-		std::string funcN = cgi->mangleMemberFunction(str, f->decl->name, f->decl->params, str->scope, f->decl->isStatic);
-
-		#if 0
-		printf("func %s vs %s, orig %s\n", match.c_str(), funcN.c_str(), f->decl->name.c_str());
-		#endif
-
-		if(funcN == match)
-		{
-			callee = f;
-			break;
-		}
-	}
-
-	if(!callee)
-		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
+	Func* callee = cgi->getFunctionFromStructFuncCall(str, fc);
 
 	if(callee->decl->isStatic)
 	{
@@ -296,7 +403,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 
 	if(callee->decl->isStatic != isStaticFunctionCall)
 	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+		error(cgi, fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
 	}
 
 
@@ -406,82 +513,74 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 
 
 
-
-
-
-static void accumulateNamespace(MemberAccess* ma, std::deque<std::string>* nses)
+static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma)
 {
-	if(!ma) return;
+	std::deque<std::string> scopes;
+	Expr* rightmost = cgi->recursivelyResolveNested(ma, &scopes);
+	FuncCall* fc = dynamic_cast<FuncCall*>(rightmost);
 
-	MemberAccess* left = dynamic_cast<MemberAccess*>(ma->target);
-	if(left)
-	{
-		accumulateNamespace(left, nses);
-	}
-	else
-	{
-		VarRef* left = dynamic_cast<VarRef*>(ma->target);
+	// todo: static vars
+	assert(fc);
 
-		assert(left);
-		nses->push_back(left->name);
-	}
-
-	VarRef* right = dynamic_cast<VarRef*>(ma->member);
-	if(right)
-		nses->push_back(right->name);
-}
-
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, LeftSideResolved* lsr)
-{
-	VarRef* leftVr = dynamic_cast<VarRef*>(ma->target);
-	MemberAccess* leftMa = dynamic_cast<MemberAccess*>(ma->target);
-
-	FuncCall* right = dynamic_cast<FuncCall*>(ma->member);
-	if(right)
-	{
-		// we can stop here.
-		std::deque<std::string> nses;
-
-		if(leftMa)
-		{
-			accumulateNamespace(leftMa, &nses);
-			assert(nses.size() > 0);
-		}
-		else
-		{
-			assert(leftVr);
-			nses.push_back(leftVr->name);
-		}
-
-		std::string last = nses.back();
-		nses.pop_back();
-
-		TypePair_t* tp = cgi->getType(cgi->mangleWithNamespace(last, nses.size() > 0 ? nses : cgi->namespaceStack, false));
-		if(!tp)
-			GenError::unknownSymbol(cgi, right, last, SymbolType::Type);
-
-		Struct* str = dynamic_cast<Struct*>(tp->second.first);
-		assert(str);
-
-		return doFunctionCall(cgi, right, nullptr, nullptr, false, str, true);
-	}
-	else if(leftVr || leftMa)
-	{
-		// it doesn't matter what we have inside.
-		// we always have a back-reference to ma->target, which can be another MemberAccess.
-		// therefore, using this method, we "trick" the codegen to sustain our tomfoolery
-		// such that eventually, we'll end up back here, and once our RHS is a function call or a legit variable,
-		// we can do the proper stuff.
-
-		return Result_t(0, 0, new LeftSideResolved());
-	}
-	else
-	{
-		error(ma, "Unknown expression type %s", typeid(*ma->member).name());
-	}
+	Struct* str = cgi->getNestedStructFromScopes(ma, scopes);
+	return doFunctionCall(cgi, fc, 0, 0, false, str, true);
 }
 
 
+
+
+
+
+
+
+static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* base)
+{
+	std::vector<Expr*> stack;
+	std::vector<MemberAccess*> mas;
+	Expr* expr = base;
+	Expr* rightmost = base->member;
+
+	MemberAccess* curr = nullptr;
+
+	size_t i = 0;
+	while(dynamic_cast<MemberAccess*>(expr))
+	{
+		MemberAccess* ma = dynamic_cast<MemberAccess*>(expr);
+		stack.push_back(ma->target);
+		mas.push_back(ma);
+
+		expr = ma->member;
+
+		curr = ma;
+		i++;
+	}
+
+	stack.push_back(expr);
+
+	// now that everything is in a nice list
+	// transform a.(b.(c.d)) into ((a.b).c).d
+	// start at the front of the list, and the last ma.
+
+	assert(mas.size() == stack.size() - 1);
+	assert(stack.size() > 1);
+	mas.back()->target = stack[0];
+	mas.back()->member = stack[1];
+
+	i = 2;
+	while(mas.size() > 1)
+	{
+		MemberAccess* mbr = mas.back();
+		mas.pop_back();
+
+		MemberAccess* newback = mas.back();
+		newback->target = mbr;
+		newback->member = stack[i];
+		i++;
+	}
+
+
+	return rightmost;
+}
 
 
 
