@@ -140,14 +140,21 @@ namespace Codegen
 		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name = "");
 
+
+		llvm::Type* unwrapPointerType(Ast::Expr* user, std::string type);
+		std::string unwrapPointerType(std::string type, int* indirections);
+
+		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
+		Ast::Expr* recursivelyResolveNested(Ast::MemberAccess* base, std::deque<std::string>* scopes = 0);
+		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
+
+
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func);
-		llvm::Type* unwrapPointerType(Ast::Expr* user, std::string type);
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
-		std::string unwrapPointerType(std::string type, int* indirections);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
