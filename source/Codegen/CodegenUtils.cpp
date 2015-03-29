@@ -990,7 +990,14 @@ namespace Codegen
 					return llvm::Type::getInt8PtrTy(this->getContext());
 
 				else
-					return this->getType("String")->first;
+				{
+					auto tp = this->getType("String");
+					if(!tp)
+						return llvm::Type::getInt8PtrTy(this->getContext());
+
+
+					return tp->first;
+				}
 			}
 			else if(ma)
 			{
@@ -1005,10 +1012,16 @@ namespace Codegen
 						{
 							assert(tp->first->isStructTy());
 							return tp->first;
-							// return tp->first->getStructElementType(0);
+						}
+						else if(tp->second.second == ExprType::Struct)
+						{
+							Expr* rightmost = this->recursivelyResolveNested(ma);
+							return this->getLlvmType(rightmost);
 						}
 					}
 				}
+
+
 
 
 
@@ -1044,7 +1057,7 @@ namespace Codegen
 				}
 				else if(memberFc)
 				{
-					return this->getLlvmType(memberFc);
+					return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 				}
 				else
 				{

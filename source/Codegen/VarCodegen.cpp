@@ -181,6 +181,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		val = r.first;
 		valptr = r.second;
+
 		this->inferredLType = cgi->getLlvmType(this->initVal);
 
 		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
