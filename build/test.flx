@@ -113,9 +113,9 @@ func main(argc: Int32, argv: Int8**) -> Int
 	var k: Bar.Nested
 	var j = alloc[15] Bar
 
-	// val k = Bar.Nested.Nest2.staticFunc()
+	val k1 = Bar.Nested.Nest2.staticFunc()
 
-	printf("%d, %d, %d, %d\n", k.g, 7, j.afoo.ty, Bar.Nested.Nest2.staticFunc())
+	printf("%d, %d, %d, %d\n", k.g, 7, j.afoo.ty, k1)
 	printf("testing: %d\n", testing())
 	return 0
 }
