@@ -40,7 +40,10 @@ static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const 
 	uint64_t line = relevantast ? relevantast->posinfo.line : 0;
 	uint64_t col = relevantast ? relevantast->posinfo.col : 0;
 
-	fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s %s%s: %s\n", COLOUR_BLACK_BOLD, relevantast ? relevantast->posinfo.file.c_str() : "?", line, col, colour, type, COLOUR_RESET, alloc);
+	if(line > 0 && col > 0 && relevantast)
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, relevantast->posinfo.file.c_str(), line, col);
+
+	fprintf(stderr, "%s%s%s: %s\n", colour, type, COLOUR_RESET, alloc);
 
 	if(cgi && line > 0 && col > 0)
 		printContext(cgi, line, col);
