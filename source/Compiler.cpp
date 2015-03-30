@@ -136,6 +136,13 @@ namespace Compiler
 			tgt = "-target " + getTarget();
 
 
+		if(!Compiler::getIsCompileOnly() && !cgi->mainModule->getFunction("main"))
+		{
+			error(0, "No main() function, a program cannot be compiled.");
+		}
+
+
+
 		std::string oname = outname.empty() ? (foldername + "/" + cgi->mainModule->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
