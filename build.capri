@@ -24,7 +24,7 @@ project Flax
 
 	DISABLEWARN	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs";
 
-	CXXFLAGS	= "-std=gnu++1y -g -Wall -Weverything {DISABLEWARN} -frtti -fexceptions -fno-omit-frame-pointer -I`{LLVM_CONFIG} --includedir`";
+	CXXFLAGS	= "-std=gnu++1z -g -Wall -Weverything {DISABLEWARN} -frtti -fexceptions -fno-omit-frame-pointer -I`{LLVM_CONFIG} --includedir`";
 
 	src			= "source";
 	objs		= "";
@@ -46,7 +46,7 @@ project Flax
 		all();
 
 		IO.println("Compiling test program (build/test.flx)");
-		if(System.execute("'{flaxcBin}' -O3 -o build/test -sysroot '{sysroot}' build/test.flx") == 0)
+		if(System.execute("'{flaxcBin}' -Ox -o build/test -sysroot '{sysroot}' build/test.flx") == 0)
 		{
 			IO.println("=========================");
 			System.execute("build/test");
