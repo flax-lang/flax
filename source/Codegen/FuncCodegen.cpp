@@ -13,20 +13,24 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 {
 	Result_t lastval(0, 0);
 
+	bool broke = false;
 	for(Expr* e : this->statements)
 	{
-		if(e->isBreaking() && this->deferredStatements.size() > 0)
+		if(e->isBreaking() && cgi->getCurrentFunctionScope()->block->deferredStatements.size() > 0)
 		{
-			for(Expr* e : this->deferredStatements)
+			for(Expr* e : cgi->getCurrentFunctionScope()->block->deferredStatements)
 			{
 				e->codegen(cgi);
 			}
 		}
 
-		lastval = e->codegen(cgi);
+		if(!broke)
+		{
+			lastval = e->codegen(cgi);
+		}
 
 		if(lastval.type == ResultType::BreakCodegen)
-			break;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
+			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
 	}
 
 	return lastval;
@@ -44,11 +48,19 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		return this->codegen(cgi);
 	}
 
+
+
+
+
+
+
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
 	// create a new 'table' for our own usage.
 	// the reverse stack searching for symbols makes sure we can reference variables in outer scopes
 	cgi->pushScope();
+	cgi->setCurrentFunctionScope(this);
+
 
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
@@ -75,14 +87,33 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	}
 
 
-	// codegen everything in the body.
-	Result_t lastval = this->block->codegen(cgi);
+	// since Flax is a statically typed language (good!)
+	// we know the types of everything at compilet time
+
+	// to work around things like dangling returns (ie. if { return } else { return }, and the function itself has a return)
+	// we verify that all the code paths return first
+	// verifyAllCodePathsReturn also gives us the number of statements before everything is guaranteed
+	// to return, so we cut out anything after that, and issue a warning.
+
 
 	// check if we're not returning void
 	bool isImplicitReturn = false;
+	bool doRetVoid = false;
+	bool premature = false;
 	if(this->decl->type != "Void")
 	{
-		isImplicitReturn = cgi->verifyAllPathsReturn(this);
+		size_t counter = 0;
+		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false);
+
+
+		if(counter != this->block->statements.size())
+		{
+			warn(cgi, this->block->statements[counter], "Code will never be executed!");
+
+			// cut off the rest.
+			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
+			premature = true;
+		}
 	}
 	else
 	{
@@ -90,12 +121,27 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		if(this->block->statements.size() == 0
 			|| (this->block->statements.size() > 0 && !dynamic_cast<Return*>(this->block->statements.back())))
 		{
-			cgi->mainBuilder.CreateRetVoid();
+			doRetVoid = true;
 		}
 	}
 
-	if(isImplicitReturn)
+
+
+
+
+	// codegen everything in the body.
+	Result_t lastval = this->block->codegen(cgi);
+
+
+	// verify again, this type checking the types
+	cgi->verifyAllPathsReturn(this, nullptr, true);
+
+	if(doRetVoid)
+		cgi->mainBuilder.CreateRetVoid();
+
+	else if(isImplicitReturn)
 		cgi->mainBuilder.CreateRet(lastval.result.first);
+
 
 	llvm::verifyFunction(*func, &llvm::errs());
 	cgi->Fpm->run(*func);
@@ -106,6 +152,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	if(prevBlock)
 		cgi->mainBuilder.SetInsertPoint(prevBlock);
 
+	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);
 }
 

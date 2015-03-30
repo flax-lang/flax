@@ -30,10 +30,6 @@ using namespace Codegen;
 
 
 
-
-
-
-
 namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
@@ -52,7 +48,6 @@ namespace Codegen
 		}
 
 		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(cgi->mainModule);
-
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
@@ -88,12 +83,15 @@ namespace Codegen
 			OurFPM.add(llvm::createAggressiveDCEPass());
 		}
 
-		// always do the mem2reg pass, our generated code is too inefficient
-		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
-		OurFPM.add(llvm::createMergedLoadStoreMotionPass());
-		OurFPM.add(llvm::createScalarReplAggregatesPass());
-		OurFPM.add(llvm::createConstantPropagationPass());
-		OurFPM.add(llvm::createDeadCodeEliminationPass());
+		if(Compiler::getOptimisationLevel() >= 0)
+		{
+			// always do the mem2reg pass, our generated code is too inefficient
+			OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
+			OurFPM.add(llvm::createScalarReplAggregatesPass());
+			OurFPM.add(llvm::createConstantPropagationPass());
+			OurFPM.add(llvm::createDeadCodeEliminationPass());
+		}
 
 
 		OurFPM.doInitialization();
@@ -195,6 +193,22 @@ namespace Codegen
 	{
 		this->pushScope(SymTab_t());
 	}
+
+	Func* CodegenInstance::getCurrentFunctionScope()
+	{
+		return this->funcStack.back();
+	}
+
+	void CodegenInstance::setCurrentFunctionScope(Func* f)
+	{
+		this->funcStack.push_back(f);
+	}
+
+	void CodegenInstance::clearCurrentFunctionScope()
+	{
+		this->funcStack.pop_back();
+	}
+
 
 	SymTab_t& CodegenInstance::getSymTab()
 	{
@@ -1445,13 +1459,9 @@ namespace Codegen
 		error(e, "Not all code paths return a value");
 	}
 
-	static void verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r)
+	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r)
 	{
-		if(!r)
-		{
-			errorNoReturn(bb);
-		}
-		else
+		if(r)
 		{
 			llvm::Type* expected = 0;
 			llvm::Type* have = 0;
@@ -1461,11 +1471,18 @@ namespace Codegen
 
 			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead", cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
+
+
+			return true;
+		}
+		else
+		{
+			return false;
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType = true);
-	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType = true)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType)
 	{
 		if(bb->statements.size() == 0)
 			errorNoReturn(bb);
@@ -1475,7 +1492,14 @@ namespace Codegen
 		{
 			If* i = nullptr;
 			if((i = dynamic_cast<If*>(e)))
-				recursiveVerifyBranch(cgi, f, i);
+			{
+				Return* tmp = recursiveVerifyBranch(cgi, f, i, checkType);
+				if(tmp)
+				{
+					r = tmp;
+					break;
+				}
+			}
 
 			else if((r = dynamic_cast<Return*>(e)))
 				break;
@@ -1492,14 +1516,27 @@ namespace Codegen
 	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType)
 	{
 		Return* r = 0;
-		for(std::pair<Expr*, BracedBlock*> pair : ib->cases)
+		bool first = true;
+		for(std::pair<Expr*, BracedBlock*> pair : ib->_cases)	// use the preserved one
 		{
-			r = recursiveVerifyBlock(cgi, f, pair.second, checkType);
+			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType);
+			if(first)
+				r = tmp;
+
+			else if(r != nullptr)
+				r = tmp;
+
+			first = false;
 		}
 
 		if(ib->final)
 		{
-			r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
+			if(r != nullptr)
+				r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
+		}
+		else
+		{
+			r = nullptr;
 		}
 
 		return r;
@@ -1508,8 +1545,12 @@ namespace Codegen
 	// if the function returns void, the return value of verifyAllPathsReturn indicates whether or not
 	// all code paths have explicit returns -- if true, Func::codegen is expected to insert a ret void at the end
 	// of the body.
-	bool CodegenInstance::verifyAllPathsReturn(Func* func)
+	bool CodegenInstance::verifyAllPathsReturn(Func* func, size_t* stmtCounter, bool checkType)
 	{
+		if(stmtCounter)
+			*stmtCounter = 0;
+
+
 		bool isVoid = this->getLlvmType(func)->isVoidTy();
 
 		// check the block
@@ -1528,24 +1569,31 @@ namespace Codegen
 		Expr* final = 0;
 		for(Expr* e : func->block->statements)
 		{
+			if(stmtCounter)
+				(*stmtCounter)++;
+
 			If* i = dynamic_cast<If*>(e);
 			final = e;
 
 			if(i)
-				ret = recursiveVerifyBranch(this, func, i, !isVoid);
+				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType);
 
 			// "top level" returns we will just accept.
-			else if((ret = dynamic_cast<Return*>(e)))
+			if(ret || (ret = dynamic_cast<Return*>(e)))
 				break;
 		}
 
-		if(!ret && (isVoid || this->getLlvmType(final) == this->getLlvmType(func)))
+		if(!ret && (isVoid || !checkType || this->getLlvmType(final) == this->getLlvmType(func)))
 			return true;
 
 		if(!ret)
 			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
 
-		verifyReturnType(this, func, func->block, ret);
+		if(checkType)
+		{
+			verifyReturnType(this, func, func->block, ret);
+		}
+
 		return false;
 	}
 }

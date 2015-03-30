@@ -47,6 +47,7 @@ namespace Codegen
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
+		std::deque<Ast::Func*> funcStack;
 		std::deque<std::string> namespaceStack;
 		std::deque<std::deque<std::string>> importedNamespaces;
 
@@ -60,6 +61,9 @@ namespace Codegen
 		// "block" scopes, ie. breakable bodies (loops)
 		void pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after);
 		BracedBlockScope* getCurrentBracedBlockScope();
+		Ast::Func* getCurrentFunctionScope();
+		void setCurrentFunctionScope(Ast::Func* f);
+		void clearCurrentFunctionScope();
 		void popBracedBlock();
 
 		// normal scopes, ie. variable scopes within braces
@@ -152,7 +156,8 @@ namespace Codegen
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
-		bool verifyAllPathsReturn(Ast::Func* func);
+		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType);
+
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
