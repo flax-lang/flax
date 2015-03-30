@@ -16,7 +16,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	assert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
-		GenError::unknownSymbol(this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
+		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
 
 
@@ -51,7 +51,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr);
+		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr, false);
 	}
 
 	// create all the other automatic init functions for our extensions
@@ -221,7 +221,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 void Struct::createType(CodegenInstance* cgi)
 {
 	if(cgi->isDuplicateType(this->name))
-		GenError::duplicateSymbol(this, this->name, SymbolType::Type);
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
 
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
@@ -257,14 +257,18 @@ void Struct::createType(CodegenInstance* cgi)
 			func->decl->parentStruct = this;
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
-				error(this, "Duplicate member '%s'", func->decl->name.c_str());
+			{
+				error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
+			}
 		}
 
 		for(VarDecl* var : this->members)
 		{
 			llvm::Type* type = cgi->getLlvmType(var);
 			if(type == str)
-				error(this, "Cannot have non-pointer member of type self");
+			{
+				error(cgi, this, "Cannot have non-pointer member of type self");
+			}
 
 			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type));
 			int i = this->nameMap[var->name];
@@ -305,7 +309,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	{
 		if(decl->params.size() != 1)
 		{
-			error("Operator overload for '=' can only have one argument (have %d)", decl->params.size());
+			error(cgi, this, "Operator overload for '=' can only have one argument (have %d)", decl->params.size());
 		}
 
 		// we can't actually do much, because they can assign to anything
@@ -313,21 +317,21 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	else if(this->op == ArithmeticOp::CmpEq)
 	{
 		if(decl->params.size() != 1)
-			error("Operator overload for '==' can only have one argument");
+			error(cgi, this, "Operator overload for '==' can only have one argument");
 
 		if(decl->type != "Bool")
-			error("Operator overload for '==' must return a boolean value");
+			error(cgi, this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
 		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
 		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
 	{
 		if(decl->params.size() != 1)
-			error("Operator overload can only have one argument");
+			error(cgi, this, "Operator overload can only have one argument");
 	}
 	else
 	{
-		error("(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
+		error(cgi, this, "(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
 	}
 
 	return Result_t(0, 0);

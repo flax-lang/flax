@@ -27,7 +27,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
-			GenError::noOpOverload(user, ((Struct*) tp->second.first)->name, op);
+			GenError::noOpOverload(cgi, user, ((Struct*) tp->second.first)->name, op);
 		}
 
 		// fail gracefully-ish
@@ -53,7 +53,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		{
 			VarDecl* vdecl = this->getSymDecl(user, v->name);
-			if(!vdecl) GenError::unknownSymbol(user, v->name, SymbolType::Variable);
+			if(!vdecl) GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 			if(vdecl->immutable)
 				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
@@ -64,13 +64,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		SymbolValidity_t sv = this->getSymPair(user, v->name)->first;
 		if(sv.second != SymbolValidity::Valid)
-			GenError::useAfterFree(user, v->name);
+			GenError::useAfterFree(this, user, v->name);
 
 		else
 			varptr = sv.first;
 
 		if(!varptr)
-			GenError::unknownSymbol(user, v->name, SymbolType::Variable);
+			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 		// try and see if we have operator overloads for bo thing
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
@@ -85,7 +85,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
 
 			else
-				GenError::invalidAssignment(user, lhs, rhs);
+				GenError::invalidAssignment(this, user, lhs, rhs);
 		}
 	}
 	else if((dynamic_cast<MemberAccess*>(left))
@@ -101,7 +101,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		// make sure the left side is a pointer
 		if(!varptr->getType()->isPointerTy())
-			GenError::invalidAssignment(user, varptr, rhs);
+			GenError::invalidAssignment(this, user, varptr, rhs);
 
 		// redo the number casting
 		if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
@@ -266,7 +266,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		{
 			TypePair_t* tp = cgi->getType(ct->name);
 			if(!tp)
-				GenError::unknownSymbol(this, ct->name, SymbolType::Type);
+				GenError::unknownSymbol(cgi, this, ct->name, SymbolType::Type);
 
 			rtype = tp->first;
 		}
@@ -316,12 +316,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 	// if adding integer to pointer
 	if(!lhs)
-		error(this, "lhs null");
+		error(cgi, this, "lhs null");
 
 	if(!rhs)
 	{
 		printf("rhs: %s\n", typeid(*this->right).name());
-		error(this, "rhs null");
+		error(cgi, this, "rhs null");
 	}
 
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
@@ -356,7 +356,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			cgi->autoCastType(rhs, lhs);
 
 			if(lhs->getType() != rhs->getType())
-				error(this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+			{
+				error(cgi, this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(),
+					cgi->getReadableType(rhs).c_str());
+			}
 
 			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
 		}
@@ -491,19 +494,21 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error(this, "Unsupported operator.");
+			default:						error(cgi, this, "Unsupported operator.");
 		}
 	}
 	else if(lhs->getType()->isStructTy())
 	{
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
-			error(this, "Invalid type");
+		{
+			error(cgi, this, "Invalid type");
+		}
 
 		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
 	}
 
-	error(this, "Unsupported operator on type");
+	error(cgi, this, "Unsupported operator on type");
 }
 
 

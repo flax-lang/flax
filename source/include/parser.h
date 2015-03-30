@@ -194,7 +194,7 @@ namespace Parser
 	Ast::BracedBlock* parseBracedBlock(TokenList& tokens);
 	Ast::StringLiteral* parseStringLiteral(TokenList& tokens);
 	Ast::ForeignFuncDecl* parseForeignFunc(TokenList& tokens);
-	Ast::Expr* parseFuncCall(TokenList& tokens, std::string id);
+	Ast::FuncCall* parseFuncCall(TokenList& tokens, std::string id);
 	Ast::Expr* parseRhs(TokenList& tokens, Ast::Expr* expr, int prio);
 
 
