@@ -185,7 +185,15 @@ int main(int argc, char* argv[])
 					exit(1);
 				}
 
-				Compiler::optLevel = argv[i][2] - '0';
+				if(argv[i][2] == 'x')
+				{
+					// literally nothing
+					Compiler::optLevel = -1;
+				}
+				else
+				{
+					Compiler::optLevel = argv[i][2] - '0';
+				}
 			}
 			else if(argv[i][0] == '-')
 			{

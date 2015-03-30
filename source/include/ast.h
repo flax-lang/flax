@@ -360,13 +360,14 @@ namespace Ast
 	{
 		~If();
 		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
-			final(ecase), cases(cases) { }
+			final(ecase), cases(cases), _cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 
 		BracedBlock* final;
 		std::deque<std::pair<Expr*, BracedBlock*>> cases;
+		std::deque<std::pair<Expr*, BracedBlock*>> _cases;	// needed to preserve stuff, since If->codegen modifies this->cases
 	};
 
 	struct WhileLoop : BreakableBracedBlock
