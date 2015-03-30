@@ -148,6 +148,10 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 		cgi->mainBuilder.SetInsertPoint(merge);
 		// func->getBasicBlockList().push_back(merge);
 	}
+	else
+	{
+		merge->eraseFromParent();
+	}
 
 	return Result_t(0, 0);
 }
