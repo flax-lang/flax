@@ -1527,20 +1527,12 @@ namespace Codegen
 				r = tmp;
 
 			first = false;
-
-			printf("end of if: %p\n", r);
 		}
 
 		if(ib->final)
 		{
 			if(r != nullptr)
 				r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
-
-			printf("else: %p\n", r);
-			if(r == 0)
-			{
-				//
-			}
 		}
 		else
 		{
