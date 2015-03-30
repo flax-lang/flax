@@ -24,7 +24,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		etype = atype->getPointerElementType();
 
 	else
-		error(this, "Can only index on pointer or array types.");
+		error(cgi, this, "Can only index on pointer or array types.");
 
 
 	// try and do compile-time bounds checking
@@ -41,7 +41,9 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 			{
 				assert(!n->decimal);
 				if((uint64_t) n->ival >= at->getNumElements())
-					error(this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
+				{
+					error(cgi, this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
+				}
 			}
 		}
 	}

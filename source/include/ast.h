@@ -151,15 +151,12 @@ namespace Ast
 
 
 		Result_t(llvm::Value* val, llvm::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
-		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal), hackyReturn(0) { }
-		Result_t(llvm::Value* val, llvm::Value* ptr, Expr* hackyRet) : result(val, ptr), type(ResultType::Normal), hackyReturn(hackyRet) { }
-
+		Result_t(llvm::Value* val, llvm::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
 
 		Result_t(ValPtr_t vp, ResultType rt) : result(vp), type(rt) { }
 
 		ValPtr_t result;
 		ResultType type;
-		Expr* hackyReturn = 0;
 	};
 
 	struct Expr
@@ -228,7 +225,7 @@ namespace Ast
 		VarDecl(Parser::PosInfo pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage);
+		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage, bool shouldAddToSymtab);
 
 		std::string name;
 		bool immutable;

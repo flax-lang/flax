@@ -15,14 +15,18 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 {
 	llvm::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
-		GenError::unknownSymbol(this, this->name, SymbolType::Variable);
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
-llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage)
+llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr,
+	llvm::Value* storage, bool shouldAddToSymtab)
 {
+
 	llvm::Value* ai = storage;
+	bool didAddToSymtab = false;
+
 	if(this->initVal && !cmplxtype && this->type != "Inferred")
 	{
 		// ...
@@ -50,7 +54,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(!ai)
 		{
 			assert(cmplxtype);
-			assert((ai = cgi->mainBuilder.CreateAlloca(cmplxtype->first)));
+			assert((ai = cgi->allocateInstanceInBlock(cmplxtype->first)));
 		}
 
 		if(cmplxtype)
@@ -73,7 +77,12 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			}
 		}
 
-		cgi->addSymbol(this->name, ai, this);
+		if(shouldAddToSymtab)
+		{
+			cgi->addSymbol(this->name, ai, this);
+			didAddToSymtab = true;
+		}
+
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
@@ -106,9 +115,11 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	}
 
 	if(!ai)
-		error(this, "ai is null");
+	{
+		error(cgi, this, "ai is null");
+	}
 
-	if(!cgi->isDuplicateSymbol(this->name))
+	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
 
 	if(val->getType() != ai->getType()->getPointerElementType())
@@ -131,7 +142,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			GenError::invalidAssignment(this, val->getType(), ai->getType()->getPointerElementType());
+			GenError::invalidAssignment(cgi, this, val->getType(), ai->getType()->getPointerElementType());
 		}
 	}
 
@@ -142,7 +153,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))
-		GenError::duplicateSymbol(this, this->name, SymbolType::Variable);
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
 
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
@@ -155,7 +166,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	if(this->type == "Inferred")
 	{
 		if(!this->initVal)
-			error(this, "Type inference requires an initial assignment to infer type");
+		{
+			error(cgi, this, "Type inference requires an initial assignment to infer type");
+		}
 
 		assert(!cmplxtype);
 
@@ -168,6 +181,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		val = r.first;
 		valptr = r.second;
+
 		this->inferredLType = cgi->getLlvmType(this->initVal);
 
 		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
@@ -222,7 +236,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
-		this->doInitialValue(cgi, cmplxtype, val, valptr, ai);
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
 
 	return Result_t(val, ai);

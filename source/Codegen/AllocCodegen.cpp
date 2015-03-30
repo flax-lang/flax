@@ -17,7 +17,7 @@ using namespace Codegen;
 Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// if we haven't declared malloc() yet, then we need to do it here
-	// NOTE: this is one of the only places in the compiler where a hardcoded call is made to a non-provided function.
+	// NOTE: this is the only place in the compiler where a hardcoded call is made to a non-provided function.
 
 	FuncPair_t* fp = cgi->getDeclaredFunc(MALLOC_FUNC);
 	if(!fp)
@@ -41,7 +41,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::Type* allocType = 0;
 	TypePair_t* typePair = 0;
 
-	allocType = cgi->getLlvmType(this->type);
+	allocType = cgi->getLlvmType(this, this->type);
 	assert(allocType);
 
 
@@ -54,17 +54,37 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	uint64_t typesize = cgi->mainModule->getDataLayout()->getTypeSizeInBits(allocType) / 8;
 	llvm::Value* allocsize = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), typesize);
 	llvm::Value* allocnum = oneValue;
+
+
+	llvm::Value* isZero = nullptr;
 	if(this->count)
 	{
 		allocnum = this->count->codegen(cgi).result.first;
 		if(!allocnum->getType()->isIntegerTy())
-			error(this, "Expected integer type in alloc");
+			error(cgi, this, "Expected integer type in alloc");
 
 		allocnum = cgi->mainBuilder.CreateIntCast(allocnum, allocsize->getType(), false);
 		allocsize = cgi->mainBuilder.CreateMul(allocsize, allocnum);
+
+
+		// compare to zero. first see what we can do at compile time, if the constant is zero.
+		if(llvm::isa<llvm::ConstantInt>(allocnum))
+		{
+			llvm::ConstantInt* ci = llvm::cast<llvm::ConstantInt>(allocnum);
+			if(ci->isZeroValue())
+			{
+				warn(this, "Allocating zero members with alloc[], will return null");
+				isZero = llvm::ConstantInt::getTrue(cgi->getContext());
+			}
+		}
+		else
+		{
+			// do it at runtime.
+			isZero = cgi->mainBuilder.CreateICmpEQ(allocnum, llvm::ConstantInt::getNullValue(allocsize->getType()));
+		}
 	}
 
-	llvm::Value* allocmemptr = cgi->mainBuilder.CreateAlloca(allocType->getPointerTo());
+	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->allocateInstanceInBlock(allocType->getPointerTo());
 	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo()), allocmemptr);
 
 	allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
@@ -85,17 +105,41 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		typePair = cgi->getType(allocType);
 
-
-
 		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
 
 		// we need to keep calling this... essentially looping.
 		llvm::BasicBlock* curbb = cgi->mainBuilder.GetInsertBlock();	// store the current bb
 		llvm::BasicBlock* loopBegin = llvm::BasicBlock::Create(cgi->getContext(), "loopBegin", curbb->getParent());
 		llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", curbb->getParent());
+		llvm::BasicBlock* after = llvm::BasicBlock::Create(cgi->getContext(), "afterLoop", curbb->getParent());
+
+
+
+		// check for zero.
+		if(isZero)
+		{
+			llvm::BasicBlock* notZero = llvm::BasicBlock::Create(cgi->getContext(), "notZero", curbb->getParent());
+			llvm::BasicBlock* setToZero = llvm::BasicBlock::Create(cgi->getContext(), "zeroAlloc", curbb->getParent());
+			cgi->mainBuilder.CreateCondBr(isZero, setToZero, notZero);
+
+			cgi->mainBuilder.SetInsertPoint(setToZero);
+			cgi->mainBuilder.CreateStore(llvm::ConstantPointerNull::getNullValue(allocatedmem->getType()), allocmemptr);
+			allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+			cgi->mainBuilder.CreateBr(after);
+
+			cgi->mainBuilder.SetInsertPoint(notZero);
+		}
+
+
+
+
+
+
+
+
 
 		// create the loop counter (initialise it with the value)
-		llvm::Value* counterptr = cgi->mainBuilder.CreateAlloca(allocsize->getType());
+		llvm::Value* counterptr = cgi->allocateInstanceInBlock(allocsize->getType());
 		cgi->mainBuilder.CreateStore(allocnum, counterptr);
 		llvm::Value* counter = cgi->mainBuilder.CreateLoad(counterptr);
 
@@ -113,6 +157,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// move the allocatedmem pointer by the type size
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
+		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 
 		// subtract the counter
 		counter = cgi->mainBuilder.CreateLoad(counterptr);
@@ -126,7 +171,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// at loopend:
 		cgi->mainBuilder.SetInsertPoint(loopEnd);
-		// curbb->getParent()->getBasicBlockList().push_back(loopEnd);
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
@@ -134,6 +178,10 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
+
+
+		cgi->mainBuilder.CreateBr(after);
+		cgi->mainBuilder.SetInsertPoint(after);
 		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 	}
 
@@ -145,7 +193,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 {
 	SymbolPair_t* sp = cgi->getSymPair(this, this->var->name);
 	if(!sp)
-		error(this, "Unknown symbol '%s'", this->var->name.c_str());
+		error(cgi, this, "Unknown symbol '%s'", this->var->name.c_str());
 
 	sp->first.second = SymbolValidity::UseAfterDealloc;
 

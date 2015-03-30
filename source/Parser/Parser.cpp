@@ -11,6 +11,7 @@
 #include "../include/ast.h"
 #include "../include/parser.h"
 #include "../include/compiler.h"
+#include "../include/codegen.h"
 
 using namespace Ast;
 
@@ -123,6 +124,14 @@ namespace Parser
 	static bool checkHasMore(TokenList& tokens)
 	{
 		return tokens.size() > 0;
+	}
+
+	static bool isRightAssociativeOp(Token tok)
+	{
+		if(tok.type == TType::Period)
+			return true;
+
+		return false;
 	}
 
 	static int getOpPrec(Token tok)
@@ -292,6 +301,16 @@ namespace Parser
 		curAttrib = 0;
 
 		TokenList tokens;
+
+		// split into lines
+		{
+			std::stringstream ss(str);
+
+			std::string tmp;
+			while(std::getline(ss, tmp, '\n'))
+				cgi->rawLines.push_back(tmp);
+		}
+
 
 		while((t = getNextToken(str, currentPos)).text.size() > 0)
 			tokens.push_back(t);
@@ -1113,7 +1132,7 @@ namespace Parser
 		while(true)
 		{
 			int prec = getOpPrec(tokens.front());
-			if(prec < prio)
+			if(prec < prio && !isRightAssociativeOp(tokens.front()))
 				return lhs;
 
 
@@ -1125,7 +1144,7 @@ namespace Parser
 				return nullptr;
 
 			int next = getOpPrec(tokens.front());
-			if(prec < next)
+			if(next > prec || isRightAssociativeOp(tokens.front()))
 			{
 				rhs = parseRhs(tokens, rhs, prec + 1);
 				if(!rhs)
@@ -1221,23 +1240,18 @@ namespace Parser
 				parserError("Expected ']' after alloc[num]");
 		}
 
-		Expr* type = parseIdExpr(tokens);
-		VarRef* vr = dynamic_cast<VarRef*>(type);
-		FuncCall* fc = dynamic_cast<FuncCall*>(type);
+		auto ct = parseType(tokens);
+		std::string type = ct->name;
+		delete ct;
 
-		if(vr)
+		if(tokens.front().type == TType::LParen)
 		{
-			ret->type = vr->name;
-		}
-		else if(fc)
-		{
-			ret->type = fc->name;
+			// alloc[...] Foo(...)
+			FuncCall* fc = parseFuncCall(tokens, type);
 			ret->params = fc->params;
 		}
-		else
-		{
-			parserError("What?!");
-		}
+
+		ret->type = type;
 
 		return ret;
 	}
@@ -1287,7 +1301,7 @@ namespace Parser
 		return n;
 	}
 
-	Expr* parseFuncCall(TokenList& tokens, std::string id)
+	FuncCall* parseFuncCall(TokenList& tokens, std::string id)
 	{
 		Token front = eat(tokens);
 		assert(front.type == TType::LParen);

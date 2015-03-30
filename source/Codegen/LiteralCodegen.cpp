@@ -38,7 +38,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 	{
 		llvm::StructType* stringType = llvm::cast<llvm::StructType>(pair->first);
 
-		llvm::Value* alloca = cgi->mainBuilder.CreateAlloca(stringType);
+		llvm::Value* alloca = cgi->allocateInstanceInBlock(stringType);
 
 		// String layout:
 		// var data: Int8*

@@ -83,7 +83,6 @@ namespace Codegen
 			OurFPM.add(llvm::createDeadStoreEliminationPass());
 			OurFPM.add(llvm::createDeadInstEliminationPass());
 			OurFPM.add(llvm::createMemCpyOptPass());
-			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
 
 			OurFPM.add(llvm::createSCCPPass());
 			OurFPM.add(llvm::createAggressiveDCEPass());
@@ -91,6 +90,7 @@ namespace Codegen
 
 		// always do the mem2reg pass, our generated code is too inefficient
 		OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
+		OurFPM.add(llvm::createMergedLoadStoreMotionPass());
 		OurFPM.add(llvm::createScalarReplAggregatesPass());
 		OurFPM.add(llvm::createConstantPropagationPass());
 		OurFPM.add(llvm::createDeadCodeEliminationPass());
@@ -219,7 +219,7 @@ namespace Codegen
 		if(pair)
 		{
 			if(pair->first.second != SymbolValidity::Valid)
-				GenError::useAfterFree(user, name);
+				GenError::useAfterFree(this, user, name);
 
 			return pair->first.first;
 		}
@@ -678,12 +678,12 @@ namespace Codegen
 		return actualType;
 	}
 
-	llvm::Type* CodegenInstance::unwrapPointerType(std::string type)
+	llvm::Type* CodegenInstance::unwrapPointerType(Ast::Expr* user, std::string type)
 	{
 		int indirections = 0;
 
 		std::string actualType = this->unwrapPointerType(type, &indirections);
-		llvm::Type* ret = this->getLlvmType(actualType);
+		llvm::Type* ret = this->getLlvmType(user, actualType);
 
 		if(ret)
 		{
@@ -793,7 +793,7 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(std::string type)
+	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, std::string type)
 	{
 		llvm::Type* ret = this->getLlvmTypeOfBuiltin(type);
 		if(ret) return ret;
@@ -804,7 +804,7 @@ namespace Codegen
 			tp = this->getType(type + "E");		// nested types. hack.
 
 		if(!tp)
-			GenError::unknownSymbol(0, type, SymbolType::Type);
+			GenError::unknownSymbol(this, user, type, SymbolType::Type);
 
 		return tp->first;
 	}
@@ -919,7 +919,7 @@ namespace Codegen
 							return this->getLlvmType(decl);
 						}
 
-						return unwrapPointerType(decl->type);
+						return unwrapPointerType(decl, decl->type);
 					}
 
 					return type->first;
@@ -929,7 +929,7 @@ namespace Codegen
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
-					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 
 				auto x = getLlvmType(decl);
 				return x;
@@ -937,7 +937,13 @@ namespace Codegen
 			else if(uo)
 			{
 				if(uo->op == ArithmeticOp::Deref)
+				{
+					llvm::Type* ltype = this->getLlvmType(uo->expr);
+					if(!ltype->isPointerTy())
+						error(this, expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
+
 					return this->getLlvmType(uo->expr)->getPointerElementType();
+				}
 
 				else if(uo->op == ArithmeticOp::AddrOf)
 					return this->getLlvmType(uo->expr)->getPointerTo();
@@ -947,13 +953,13 @@ namespace Codegen
 			}
 			else if(ct)
 			{
-				return unwrapPointerType(ct->name);
+				return unwrapPointerType(ct, ct->name);
 			}
 			else if(fc)
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
-					error(expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+					error(this, expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
 
 				return getLlvmType(fp->second);
 			}
@@ -966,11 +972,11 @@ namespace Codegen
 				TypePair_t* type = getType(fd->type);
 				if(!type)
 				{
-					llvm::Type* ret = unwrapPointerType(fd->type);
+					llvm::Type* ret = unwrapPointerType(fd, fd->type);
 
 					if(!ret)
 					{
-						error(expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
+						error(this, expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
 							__FILE__, __LINE__, expr->type.c_str());
 					}
 					return ret;
@@ -984,7 +990,14 @@ namespace Codegen
 					return llvm::Type::getInt8PtrTy(this->getContext());
 
 				else
-					return this->getType("String")->first;
+				{
+					auto tp = this->getType("String");
+					if(!tp)
+						return llvm::Type::getInt8PtrTy(this->getContext());
+
+
+					return tp->first;
+				}
 			}
 			else if(ma)
 			{
@@ -999,10 +1012,16 @@ namespace Codegen
 						{
 							assert(tp->first->isStructTy());
 							return tp->first;
-							// return tp->first->getStructElementType(0);
+						}
+						else if(tp->second.second == ExprType::Struct)
+						{
+							Expr* rightmost = this->recursivelyResolveNested(ma);
+							return this->getLlvmType(rightmost);
 						}
 					}
 				}
+
+
 
 
 
@@ -1033,12 +1052,12 @@ namespace Codegen
 					for(ComputedProperty* c : str->cprops)
 					{
 						if(c->name == memberVr->name)
-							return this->getLlvmType(c->type);
+							return this->getLlvmType(c, c->type);
 					}
 				}
 				else if(memberFc)
 				{
-					return this->getLlvmType(memberFc);
+					return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 				}
 				else
 				{
@@ -1076,7 +1095,20 @@ namespace Codegen
 			}
 			else if(alloc)
 			{
-				return this->getLlvmType(alloc->type)->getPointerTo();
+				TypePair_t* type = getType(alloc->type);
+				if(!type)
+				{
+					// check if it ends with pointer, and if we have a type that's un-pointered
+					if(alloc->type.find("::") != std::string::npos)
+					{
+						alloc->type = this->mangleRawNamespace(alloc->type);
+						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
+					}
+
+					return unwrapPointerType(alloc, alloc->type);
+				}
+
+				return type->first->getPointerTo();
 			}
 			else if(nm)
 			{
@@ -1108,7 +1140,7 @@ namespace Codegen
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		return this->mainBuilder.CreateAlloca(type, 0, name);
+		return this->mainBuilder.CreateAlloca(type, 0, name == "" ? "" : this->mainBuilder.GetInsertBlock()->getName() + name);
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
@@ -1152,6 +1184,9 @@ namespace Codegen
 		StringReplace(ret, "double", "Float64");
 
 		StringReplace(ret, "i1", "Bool");
+
+		if(ret.length() > 0 && ret[0] == '%')
+			ret = ret.substr(1);
 
 		return ret;
 	}
@@ -1290,7 +1325,7 @@ namespace Codegen
 
 		if(!opov)
 		{
-			if(fail)	GenError::noOpOverload(str, str->name, op);
+			if(fail)	GenError::noOpOverload(this, str, str->name, op);
 			else		return Result_t(0, 0);
 		}
 
@@ -1313,7 +1348,7 @@ namespace Codegen
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
-		if(fail)	GenError::noOpOverload(str, str->name, op);
+		if(fail)	GenError::noOpOverload(this, str, str->name, op);
 		return Result_t(0, 0);
 	}
 
@@ -1353,7 +1388,7 @@ namespace Codegen
 		}
 
 		if(!initf)
-			GenError::invalidInitialiser(user, str, vals);
+			GenError::invalidInitialiser(this, user, str, vals);
 
 		return this->mainModule->getFunction(initf->getName());
 	}
@@ -1366,7 +1401,7 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs)
+	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
@@ -1397,7 +1432,7 @@ namespace Codegen
 		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
-		llvm::Value* tempRes = this->mainBuilder.CreateAlloca(lhs->getType());
+		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->allocateInstanceInBlock(lhs->getType());
 
 		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
 		this->mainBuilder.CreateStore(properres, tempRes);
