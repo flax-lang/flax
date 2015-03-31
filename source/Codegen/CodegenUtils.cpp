@@ -891,13 +891,26 @@ namespace Codegen
 		return res;
 	}
 
-	llvm::Value* CodegenInstance::lastMinuteUnwrapType(llvm::Value* alloca)
+	llvm::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, llvm::Value* alloca)
 	{
 		assert(alloca->getType()->isPointerTy());
 		llvm::Type* baseType = alloca->getType()->getPointerElementType();
 
 		if(this->isEnum(baseType) || this->isTypeAlias(baseType))
+		{
+			TypePair_t* tp = this->getType(baseType);
+			if(!tp)
+				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
+
+			assert(tp->second.second == ExprType::Enum);
+			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+
+			assert(enr);
+			if(enr->isStrong)
+				return alloca;		// fail.
+
 			return this->mainBuilder.CreateStructGEP(alloca, 0);
+		}
 
 		return alloca;
 	}

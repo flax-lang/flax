@@ -123,7 +123,7 @@ namespace Codegen
 		bool isTypeAlias(llvm::Type* type);
 		bool isDuplicateType(std::string name);
 
-		llvm::Value* lastMinuteUnwrapType(llvm::Value* alloca);
+		llvm::Value* lastMinuteUnwrapType(Ast::Expr* user, llvm::Value* alloca);
 
 
 		std::string mangleRawNamespace(std::string original);

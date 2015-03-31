@@ -1592,6 +1592,10 @@ namespace Parser
 		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
 		Token front = tokens.front();
 
+		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		if(attr & Attr_StrongTypeAlias)
+			enumer->isStrong = true;
+
 		// parse the stuff.
 		bool isFirst = true;
 		bool isNumeric = false;

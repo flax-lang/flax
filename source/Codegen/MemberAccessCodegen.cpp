@@ -129,13 +129,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 		if(selfPtr)
 		{
-			selfPtr = cgi->lastMinuteUnwrapType(selfPtr);
+			selfPtr = cgi->lastMinuteUnwrapType(this, selfPtr);
 			wasSelfPtr = true;
 			isPtr = false;
 		}
 		else
 		{
-			self = cgi->lastMinuteUnwrapType(self);
+			self = cgi->lastMinuteUnwrapType(this, self);
 		}
 
 
