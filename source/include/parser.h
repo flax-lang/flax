@@ -69,7 +69,7 @@ namespace Parser
 		Extension,
 		TypeAlias,
 
-		BuiltinType,
+		Typeof,
 		Alloc,
 		Dealloc,
 

@@ -296,6 +296,7 @@ namespace Parser
 
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
+			else if(id == "typeof")		tok.type = TType::Typeof;
 
 			else if(id == "get")		tok.type = TType::Get;
 			else if(id == "set")		tok.type = TType::Set;

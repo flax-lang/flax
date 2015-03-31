@@ -109,6 +109,19 @@ namespace Compiler
 				}
 				for(auto v : r->typeList)
 				{
+					bool skip = false;
+					for(auto k : root->typeList)
+					{
+						if(k.first == v.first)
+						{
+							skip = true;
+							break;
+						}
+					}
+
+					if(skip)
+						continue;
+
 					root->typeList.push_back(v);
 				}
 			}
