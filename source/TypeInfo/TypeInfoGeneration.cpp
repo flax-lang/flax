@@ -11,10 +11,10 @@ using namespace Codegen;
 
 namespace TypeInfo
 {
-	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, ExprType etype)
+	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, ExprKind etype)
 	{
 		(void) str;
-		if(dynamic_cast<Enumeration*>(str) && cgi->isEnum(stype) && etype == ExprType::Enum && str->name == "Type")
+		if(dynamic_cast<Enumeration*>(str) && cgi->isEnum(stype) && etype == ExprKind::Enum && str->name == "Type")
 			return;
 
 
@@ -42,7 +42,7 @@ namespace TypeInfo
 
 			Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
 
-			for(std::pair<std::string, ExprType> pair : cgi->rootNode->typeList)
+			for(std::pair<std::string, ExprKind> pair : cgi->rootNode->typeList)
 			{
 				enr->cases.push_back(std::make_pair(pair.first, num));
 
