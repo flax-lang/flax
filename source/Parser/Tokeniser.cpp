@@ -303,24 +303,6 @@ namespace Parser
 			else if(id == "namespace")	tok.type = TType::Namespace;
 			else if(id == "extension")	tok.type = TType::Extension;
 			else if(id == "typealias")	tok.type = TType::TypeAlias;
-
-			else if(id == "Int8"
-				|| id == "Int16"
-				|| id == "Int32"
-				|| id == "Int64"
-				|| id == "Uint8"
-				|| id == "Uint16"
-				|| id == "Uint32"
-				|| id == "Uint64"
-				|| id == "Float32"
-				|| id == "Float64"
-				|| id == "Any"
-				|| id == "Int"
-				|| id == "Uint"
-				|| id == "Bool"
-				|| id == "UintPtr"
-				|| id == "Void")		tok.type = TType::BuiltinType;
-
 			else						tok.type = TType::Identifier;
 		}
 		else if(stream[0] == '"')

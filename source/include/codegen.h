@@ -58,6 +58,12 @@ namespace Codegen
 
 		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
+
+
+
+
+
+
 		// "block" scopes, ie. breakable bodies (loops)
 		void pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after);
 		BracedBlockScope* getCurrentBracedBlockScope();

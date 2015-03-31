@@ -254,6 +254,9 @@ void Struct::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
+			if(this->attribs & Attr_VisPublic)
+				func->decl->attribs |= Attr_VisPublic;
+
 			func->decl->parentStruct = this;
 			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
@@ -284,7 +287,6 @@ void Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 	this->scope = cgi->namespaceStack;
-	TypeInfo::addNewStructType(cgi, str, this);
 
 	delete types;
 }
