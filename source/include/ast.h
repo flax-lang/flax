@@ -494,6 +494,7 @@ namespace Ast
 		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<std::pair<std::string, Expr*>> cases;
+		bool isStrong = false;
 	};
 
 	struct MemberAccess : Expr

@@ -87,6 +87,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			else
 				GenError::invalidAssignment(this, user, lhs, rhs);
 		}
+		else if(this->isEnum(lhs->getType()))
+		{
+			warn(this, left, "enum assign\n");
+		}
 	}
 	else if((dynamic_cast<MemberAccess*>(left))
 		|| ((uo = dynamic_cast<UnaryOp*>(left)) && uo->op == ArithmeticOp::Deref)
