@@ -58,6 +58,12 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ta)				ta->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
+
+		// step 2: generate the type info.
+		// now that we have all the types that we need, and they're all fully
+		// processed, we create the Type enum.
+
+		TypeInfo::generateTypeInfo(cgi);
 	}
 	else if(pass == 3)
 	{

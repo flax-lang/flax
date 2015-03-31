@@ -463,7 +463,6 @@ namespace Parser
 				case TType::LParen:
 					return parseParenthesised(tokens);
 
-				case TType::BuiltinType:
 				case TType::Identifier:
 					if(tok.text == "init")
 						return parseInitFunc(tokens);
@@ -891,7 +890,7 @@ namespace Parser
 		int arrsize = 0;
 		Token tmp = eat(tokens);
 
-		if(tmp.type != TType::Identifier && tmp.type != TType::BuiltinType)
+		if(tmp.type != TType::Identifier)
 			parserError("Expected type for variable declaration");
 
 		std::string baseType = tmp.text;
@@ -1466,6 +1465,8 @@ namespace Parser
 		if(attr & Attr_PackedStruct)
 			str->packed = true;
 
+		str->attribs = attr;
+
 		// parse a clousure.
 		BracedBlock* body = parseBracedBlock(tokens);
 		int i = 0;
@@ -1596,7 +1597,7 @@ namespace Parser
 		bool isNumeric = false;
 		Number* prevNumber = nullptr;
 
-		while((front = tokens.front()).type != TType::RBrace)
+		while(front = tokens.front(), tokens.size() > 0)
 		{
 			if(front.type != TType::Case)
 				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
@@ -1618,7 +1619,7 @@ namespace Parser
 				if((prevNumber = dynamic_cast<Number*>(value)))
 					isNumeric = true;
 			}
-			else if(front.type == TType::Case)
+			else
 			{
 				if(isNumeric)
 				{
@@ -1641,8 +1642,17 @@ namespace Parser
 				}
 				else
 				{
-					parserWarn("Enum case '%s' has no explicit value, and value cannot be inferred from previous cases", eName.c_str());
+					parserError("Enum case '%s' has no explicit value, and value cannot be inferred from previous cases", eName.c_str());
 				}
+			}
+
+
+			skipNewline(tokens);
+
+			front = tokens.front();
+			if(front.type == TType::Case)
+			{
+				// ...
 			}
 			else if(front.type != TType::RBrace)
 			{

@@ -26,10 +26,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-
-
-
-
 namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
@@ -119,7 +115,6 @@ namespace Codegen
 
 		TypeInfo::initialiseTypeInfo(cgi);
 		cgi->rootNode->codegen(cgi);
-		TypeInfo::generateTypeInfo(cgi);
 
 		cgi->popScope();
 
@@ -268,6 +263,9 @@ namespace Codegen
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 		std::string mangled = this->mangleWithNamespace(atype->name, false);
+		if(atype->mangledName.empty())
+			atype->mangledName = mangled;
+
 		assert(mangled == atype->mangledName);
 
 		if(this->typeMap.find(mangled) == this->typeMap.end())
@@ -278,6 +276,8 @@ namespace Codegen
 		{
 			error(atype, "Duplicate type %s", atype->name.c_str());
 		}
+
+		TypeInfo::addNewType(this, ltype, atype, e);
 	}
 
 
@@ -788,6 +788,14 @@ namespace Codegen
 
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
 	{
+		if(!Compiler::getDisableLowercaseBuiltinTypes())
+		{
+			if(type.length() > 0)
+			{
+				type[0] = toupper(type[0]);
+			}
+		}
+
 		if(type == "Int8")			return llvm::Type::getInt8Ty(this->getContext());
 		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
 		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());

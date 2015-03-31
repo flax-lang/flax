@@ -597,8 +597,7 @@ namespace Ast
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
 
-		std::vector<TypeInfo::Type*> typeInformationTable;
-		std::map<std::string, llvm::Value*> typeInfoMap;
+		std::vector<std::pair<std::string, Codegen::ExprType>> typeList;
 	};
 }
 

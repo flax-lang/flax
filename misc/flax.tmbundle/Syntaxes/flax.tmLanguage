@@ -728,7 +728,7 @@
 					<key>comment</key>
 					<string>expression and type keyword</string>
 					<key>match</key>
-					<string>\b(as|dynamicType|is|new|super|self|Self|Type)\b</string>
+					<string>\b(as|dynamicType|is|new|super|self|Self)\b</string>
 					<key>name</key>
 					<string>keyword.other.statement.flax</string>
 				</dict>
@@ -926,7 +926,7 @@
 			<key>comment</key>
 			<string>Primitive types</string>
 			<key>match</key>
-			<string>\b(Int8|Int16|Int32|Int64|Uint8|Byte|Uint16|Uint32|Uint64|UintPtr|Float32|Float64|Int|Uint|String|Bool|Character|Void|Any|ffi)\b</string>
+			<string>\b((I|i)nt8|(I|i)nt16|(I|i)nt32|(I|i)nt64|(U|u)int8|(B|b)yte|(U|u)int16|(U|u)int32|(U|u)int64|(U|u)intPtr|(F|f)loat32|(F|f)loat64|(I|i)nt|(U|u)int|(S|s)tring|(B|b)ool|(C|c)haracter|(V|v)oid|Any|Type|ffi)\b</string>
 			<key>name</key>
 			<string>support.type.flax</string>
 		</dict>

@@ -107,6 +107,10 @@ namespace Compiler
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 				}
+				for(auto v : r->typeList)
+				{
+					root->typeList.push_back(v);
+				}
 			}
 		}
 
