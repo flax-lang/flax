@@ -20,69 +20,14 @@ namespace Ast
 namespace Codegen
 {
 	struct CodegenInstance;
+	enum class ExprType;
 }
 
 namespace TypeInfo
 {
-	void addNewPrimitiveType(Codegen::CodegenInstance* cgi, llvm::Type* type);
-	void addNewStructType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str);
+	void addNewType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str, Codegen::ExprType etype);
 	void initialiseTypeInfo(Codegen::CodegenInstance* cgi);
 	void generateTypeInfo(Codegen::CodegenInstance* cgi);
-
-	enum class TypeKind
-	{
-		Unknown		= 0,
-		Integer		= 1,
-		FloatingPt	= 2,
-		Struct		= 3,
-		Function	= 4,
-	};
-
-	struct Type
-	{
-		virtual ~Type() { }
-		std::string name;
-		TypeKind kind;
-	};
-
-	struct StructMemberType : Type
-	{
-		// name
-		// kind
-
-		uint64_t offset;
-	};
-
-	struct StructType : Type
-	{
-		// name
-		// kind
-
-		std::vector<StructMemberType> members;
-	};
-
-	struct IntegerType : Type
-	{
-		// name
-		// kind
-
-		uint8_t bits;
-		bool isSigned;
-	};
-
-	struct FloatingPointType : Type
-	{
-		// name
-		// kind
-
-		bool isSinglePrecision;
-	};
-
-	struct FunctionType : Type
-	{
-		// name
-		// kind
-	};
 }
 
 
