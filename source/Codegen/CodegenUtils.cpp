@@ -809,7 +809,7 @@ namespace Codegen
 		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
-		else if(type == "Float64")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float64")	return llvm::Type::getDoubleTy(this->getContext());
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
 		else return nullptr;
@@ -931,7 +931,7 @@ namespace Codegen
 				}
 				else
 				{
-					TypePair_t* type = getType(decl->type);
+					TypePair_t* type = this->getType(decl->type);
 					if(!type)
 					{
 						// check if it ends with pointer, and if we have a type that's un-pointered
@@ -1162,12 +1162,12 @@ namespace Codegen
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		return this->mainBuilder.CreateAlloca(type, 0, name == "" ? "" : this->mainBuilder.GetInsertBlock()->getName() + name);
+		return this->mainBuilder.CreateAlloca(type, 0, name == "" ? "" : name);
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
 	{
-		return allocateInstanceInBlock(getLlvmType(var), var->name);
+		return allocateInstanceInBlock(this->getLlvmType(var), var->name);
 	}
 
 

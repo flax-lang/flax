@@ -46,7 +46,7 @@ project Flax
 		all();
 
 		IO.println("Compiling test program (build/test.flx)");
-		if(System.execute("'{flaxcBin}' -O3 -no-lowercase-builtin -o build/test -sysroot '{sysroot}' build/test.flx") == 0)
+		if(System.execute("'{flaxcBin}' -O3 -dump-ir -no-lowercase-builtin -o build/test -sysroot '{sysroot}' build/test.flx") == 0)
 		{
 			IO.println("=========================");
 			System.execute("build/test");

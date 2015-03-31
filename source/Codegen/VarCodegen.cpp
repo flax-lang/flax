@@ -62,15 +62,14 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				llvm::Value* oldAi = ai;
-				ai = cgi->lastMinuteUnwrapType(oldAi);
-				if(oldAi != ai)
+				llvm::Value* unwrappedAi = cgi->lastMinuteUnwrapType(ai);
+				if(unwrappedAi != ai)
 				{
-					cmplxtype = cgi->getType(ai->getType()->getPointerElementType());
+					cmplxtype = cgi->getType(unwrappedAi->getType()->getPointerElementType());
 					assert(cmplxtype);
 				}
 
-				std::vector<llvm::Value*> args { ai };
+				std::vector<llvm::Value*> args { unwrappedAi };
 
 				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
 				val = cgi->mainBuilder.CreateCall(initfunc, args);
@@ -203,11 +202,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
+		this->inferredLType = cgi->getLlvmType(this);
 		if(!this->isGlobal)
 		{
 			ai = cgi->allocateInstanceInBlock(this);
+			assert(ai->getType()->getPointerElementType() == this->inferredLType);
 		}
-		this->inferredLType = cgi->getLlvmType(this);
 	}
 
 	// TODO: call global constructors
@@ -238,7 +238,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	{
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
-
 	return Result_t(val, ai);
 }
 

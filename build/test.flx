@@ -4,97 +4,97 @@
 
 import Foundation
 
-struct Foo
-{
-	var ty: Int = 491
-}
+// struct Foo
+// {
+// 	var ty: Int = 491
+// }
 
-struct Bar
-{
-	var norf: Int = 1600
-	var yorg: Int = 5000
-	var goop: Int = 6810
-	var afoo: Foo
+// struct Bar
+// {
+// 	var norf: Int = 1600
+// 	var yorg: Int = 5000
+// 	var goop: Int = 6810
+// 	var afoo: Foo
 
-	static func unNest() -> Int
-	{
-		return 581
-	}
+// 	static func unNest() -> Int
+// 	{
+// 		return 581
+// 	}
 
-	func shit() -> Int
-	{
-		return self.goop - self.norf
-	}
+// 	func shit() -> Int
+// 	{
+// 		return self.goop - self.norf
+// 	}
 
-	struct Nested
-	{
-		var g: Int = 500
+// 	struct Nested
+// 	{
+// 		var g: Int = 500
 
-		struct Nest2
-		{
-			var m: Int = 230
-			func doShit() -> Int
-			{
-				println("doing shit...")
-				return 47
-			}
+// 		struct Nest2
+// 		{
+// 			var m: Int = 230
+// 			func doShit() -> Int
+// 			{
+// 				println("doing shit...")
+// 				return 47
+// 			}
 
-			static func staticFunc() -> Int
-			{
-				println("Doing some shit of a static nature...")
-				return 74
-			}
-		}
+// 			static func staticFunc() -> Int
+// 			{
+// 				println("Doing some shit of a static nature...")
+// 				return 74
+// 			}
+// 		}
 
-		func stuff() -> Int
-		{
-			printf("in stuff(): self is %x\n", self)
-			return 69
-		}
-	}
+// 		func stuff() -> Int
+// 		{
+// 			printf("in stuff(): self is %x\n", self)
+// 			return 69
+// 		}
+// 	}
 
-	init()
-	{
-		self.norf = 1000
-		self.goop = 1500
-	}
-}
+// 	init()
+// 	{
+// 		self.norf = 1000
+// 		self.goop = 1500
+// 	}
+// }
 
-extension Bar
-{
-	var qux: Int = 500
-	var aaa: Int = 1000
+// extension Bar
+// {
+// 	var qux: Int = 500
+// 	var aaa: Int = 1000
 
-	func fwoosh()
-	{
-		println("Fwoosh! The joke goes over your head.");
-	}
+// 	func fwoosh()
+// 	{
+// 		println("Fwoosh! The joke goes over your head.");
+// 	}
 
-	var poog: Int
-	{
-		get
-		{
-			return 500
-		}
-		set(fag)
-		{
-			self.norf = fag / 4
-		}
-	}
-}
+// 	var poog: Int
+// 	{
+// 		get
+// 		{
+// 			return 500
+// 		}
+// 		set(fag)
+// 		{
+// 			self.norf = fag / 4
+// 		}
+// 	}
+// }
 
 
-func testing() -> Int
-{
-	if true
-	{
-		return 58
-	}
-	else
-	{
-		return 43
-	}
-}
+// func testing() -> Int
+// {
+// 	if true
+// 	{
+// 		return 58
+// 	}
+// 	else
+// 	{
+// 		return 43
+// 	}
+// }
 
 enum SomeEnum
 {
@@ -105,17 +105,17 @@ enum SomeEnum
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	var k: Bar.Nested
-	var j: Bar
+	// var k: Bar.Nested
+	// var j: Bar
 
-	val k1 = Bar.Nested.Nest2.staticFunc()
+	// val k1 = Bar.Nested.Nest2.staticFunc()
 
 	var k2: SomeEnum
-	k2 = "five"
 
-	printf("%d, %d, %d, %d\n", k.g, 7, j.afoo.ty, k1)
-	printf("%s\n", k2)
-	printf("testing: %d\n", testing())
+
+	// printf("%d, %d, %d, %d\n", k.g, 7, j.afoo.ty, k1)
+	printf("%.2f\n", k3)
+	// printf("testing: %d\n", testing())
 	return 0
 }
 

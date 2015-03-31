@@ -175,7 +175,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	// do it all together now
 	if(op == ArithmeticOp::Assign)
 	{
-		varptr = this->lastMinuteUnwrapType(varptr);
+		// varptr = this->lastMinuteUnwrapType(varptr);
 
 		this->mainBuilder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
@@ -275,28 +275,65 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		// todo: cleanup?
 		assert(rtype);
 		if(lhs->getType() == rtype)
+		{
+			warn(cgi, this, "Redundant cast");
 			return Result_t(lhs, 0);
+		}
 
 		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
 		{
-			// warn(this, "cast codegen both ints: %s -> %s", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rtype).c_str());
 			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 		}
+		else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
+		{
+			return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
+		}
+		else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
+		{
+			printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
+			if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
+				return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
 
-		else if(lhs->getType()->isFloatTy() && rtype->isFloatTy())
-			return Result_t(cgi->mainBuilder.CreateFPCast(lhs, rtype), 0);
-
+			else
+				return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
+		}
 		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
+		{
 			return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
-
+		}
 		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
+		{
 			return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
-
+		}
 		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
+		{
 			return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+		}
+		else if(cgi->isEnum(rtype))
+		{
+			// dealing with enum
+			llvm::Type* insideType = rtype->getStructElementType(0);
+			if(lhs->getType() == insideType)
+			{
+				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype);
 
+				// printf("[%s, %s]\n", cgi->getReadableType(tmp).c_str(), cgi->getReadableType(tmpLoaded).c_str());
+				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+				cgi->mainBuilder.CreateStore(lhs, gep);
+
+				return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+			}
+			else
+			{
+				error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
+					cgi->getReadableType(lhs).c_str());
+			}
+		}
 		else
+		{
+			warn(cgi, this, "Unknown cast, doing raw bitcast...");
 			return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+		}
 	}
 	else
 	{
