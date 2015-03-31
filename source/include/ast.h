@@ -44,7 +44,7 @@ namespace Parser
 
 namespace Codegen
 {
-	enum class ExprType
+	enum class ExprKind
 	{
 		Struct,
 		Enum,
@@ -62,7 +62,7 @@ namespace Codegen
 	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
 
-	typedef std::pair<Ast::Expr*, ExprType> TypedExpr_t;
+	typedef std::pair<Ast::Expr*, ExprKind> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 
@@ -159,6 +159,34 @@ namespace Ast
 		ResultType type;
 	};
 
+
+	// not to be confused with exprkind
+	struct ExprType
+	{
+		bool isLiteral = true;
+		std::string strType;
+
+		Expr* type = 0;
+
+		ExprType() : isLiteral(true), strType(""), type(0) { }
+		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
+
+		void operator=(std::string stryp)
+		{
+			this->strType = stryp;
+			this->isLiteral = true;
+		}
+	};
+
+
+
+
+
+
+
+
+
+
 	struct Expr
 	{
 		Expr(Parser::PosInfo pos) : posinfo(pos) { }
@@ -168,7 +196,7 @@ namespace Ast
 
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
-		std::string type;
+		ExprType type;
 	};
 
 	struct DummyExpr : Expr
@@ -267,7 +295,7 @@ namespace Ast
 	{
 		~FuncDecl();
 		FuncDecl(Parser::PosInfo pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), name(id), params(params)
-		{ this->type = ret; }
+		{ this->type.strType = ret; }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool hasVarArg = false;
@@ -598,7 +626,7 @@ namespace Ast
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
 
-		std::vector<std::pair<std::string, Codegen::ExprType>> typeList;
+		std::vector<std::pair<std::string, Codegen::ExprKind>> typeList;
 	};
 }
 

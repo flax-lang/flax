@@ -41,7 +41,7 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr, false);
+		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
 	}
 
 	cgi->mainBuilder.CreateRetVoid();
