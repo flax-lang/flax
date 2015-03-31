@@ -27,13 +27,33 @@ namespace Codegen
 		Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 		assert(enr);
 
+		Result_t res(0, 0);
+		bool found = false;
 		for(auto p : enr->cases)
 		{
 			if(p.first == caseName->name)
-				return p.second->codegen(cgi);
+			{
+				res = p.second->codegen(cgi);
+				found = true;
+				break;
+			}
 		}
 
-		error(rhs, "Enum '%s' has no such case '%s'", enumName->name.c_str(), caseName->name.c_str());
+
+		if(!found)
+			error(rhs, "Enum '%s' has no such case '%s'", enumName->name.c_str(), caseName->name.c_str());
+
+		if(!enr->isStrong)
+			return res;
+
+
+		// strong enum.
+		// create a temp alloca, then use GEP to set the value, then return.
+		llvm::Value* alloca = cgi->allocateInstanceInBlock(tp->first);
+		llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(alloca, 0);
+
+		cgi->mainBuilder.CreateStore(res.result.first, gep);
+		return Result_t(cgi->mainBuilder.CreateLoad(alloca), alloca);
 	}
 }
 
