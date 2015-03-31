@@ -27,7 +27,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	llvm::Value* ai = storage;
 	bool didAddToSymtab = false;
 
-	if(this->initVal && !cmplxtype && this->type != "Inferred")
+	if(this->initVal && !cmplxtype && this->type.strType != "Inferred")
 	{
 		// ...
 	}
@@ -44,11 +44,11 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			if(this->type.find("::") != std::string::npos)
-				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+			if(this->type.strType.find("::") != std::string::npos)
+				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
 
 			else
-				cmplxtype = cgi->getType(this->type);
+				cmplxtype = cgi->getType(this->type.strType);
 		}
 
 		if(!ai)
@@ -162,12 +162,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
 
-	TypePair_t* cmplxtype = cgi->getType(this->type);
-	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+	TypePair_t* cmplxtype = cgi->getType(this->type.strType);
+	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
 
 	llvm::Value* ai = nullptr;
 
-	if(this->type == "Inferred")
+	if(this->type.strType == "Inferred")
 	{
 		if(!this->initVal)
 		{

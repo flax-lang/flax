@@ -110,7 +110,7 @@ namespace Codegen
 		for(auto pair : cgi->rootNode->externalTypes)
 		{
 			llvm::StructType* str = llvm::cast<llvm::StructType>(pair.second);
-			cgi->addNewType(str, pair.first, ExprType::Struct);
+			cgi->addNewType(str, pair.first, ExprKind::Struct);
 		}
 
 		TypeInfo::initialiseTypeInfo(cgi);
@@ -259,7 +259,7 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, ExprType e)
+	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, ExprKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 		std::string mangled = this->mangleWithNamespace(atype->name, false);
@@ -697,7 +697,7 @@ namespace Codegen
 		int indirections = 0;
 
 		std::string actualType = this->unwrapPointerType(type, &indirections);
-		llvm::Type* ret = this->getLlvmType(user, actualType);
+		llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
 
 		if(ret)
 		{
@@ -815,20 +815,27 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, std::string type)
+	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, ExprType type)
 	{
-		llvm::Type* ret = this->getLlvmTypeOfBuiltin(type);
-		if(ret) return ret;
+		if(type.isLiteral)
+		{
+			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
+			if(ret) return ret;
 
-		// not so lucky
-		TypePair_t* tp = this->getType(type);
-		if(!tp)
-			tp = this->getType(type + "E");		// nested types. hack.
+			// not so lucky
+			TypePair_t* tp = this->getType(type.strType);
+			if(!tp)
+				tp = this->getType(type.strType + "E");		// nested types. hack.
 
-		if(!tp)
-			GenError::unknownSymbol(this, user, type, SymbolType::Type);
+			if(!tp)
+				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
 
-		return tp->first;
+			return tp->first;
+		}
+		else
+		{
+			error(this, user, "enosup");
+		}
 	}
 
 	bool CodegenInstance::isPtr(Expr* expr)
@@ -837,16 +844,23 @@ namespace Codegen
 		return ltype && ltype->isPointerTy();
 	}
 
-	bool CodegenInstance::isEnum(std::string name)
+	bool CodegenInstance::isEnum(ExprType type)
 	{
-		TypePair_t* tp = 0;
-		if((tp = this->getType(this->mangleWithNamespace(name))))
+		if(type.isLiteral)
 		{
-			if(tp->second.second == ExprType::Enum)
-				return true;
-		}
+			TypePair_t* tp = 0;
+			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			{
+				if(tp->second.second == ExprKind::Enum)
+					return true;
+			}
 
-		return false;
+			return false;
+		}
+		else
+		{
+			error("enosup");
+		}
 	}
 
 	bool CodegenInstance::isEnum(llvm::Type* type)
@@ -859,21 +873,28 @@ namespace Codegen
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
-			return tp->second.second == ExprType::Enum;
+			return tp->second.second == ExprKind::Enum;
 
 		return res;
 	}
 
-	bool CodegenInstance::isTypeAlias(std::string name)
+	bool CodegenInstance::isTypeAlias(ExprType type)
 	{
-		TypePair_t* tp = 0;
-		if((tp = this->getType(this->mangleWithNamespace(name))))
+		if(type.isLiteral)
 		{
-			if(tp->second.second == ExprType::TypeAlias)
-				return true;
-		}
+			TypePair_t* tp = 0;
+			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			{
+				if(tp->second.second == ExprKind::TypeAlias)
+					return true;
+			}
 
-		return false;
+			return false;
+		}
+		else
+		{
+			error("enosup");
+		}
 	}
 
 	bool CodegenInstance::isTypeAlias(llvm::Type* type)
@@ -886,7 +907,7 @@ namespace Codegen
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
-			return tp->second.second == ExprType::TypeAlias;
+			return tp->second.second == ExprKind::TypeAlias;
 
 		return res;
 	}
@@ -902,7 +923,7 @@ namespace Codegen
 			if(!tp)
 				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
 
-			assert(tp->second.second == ExprType::Enum);
+			assert(tp->second.second == ExprKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 
 			assert(enr);
@@ -937,24 +958,24 @@ namespace Codegen
 
 			if(decl)
 			{
-				if(decl->type == "Inferred")
+				if(decl->type.strType == "Inferred")
 				{
 					assert(decl->inferredLType);
 					return decl->inferredLType;
 				}
 				else
 				{
-					TypePair_t* type = this->getType(decl->type);
+					TypePair_t* type = this->getType(decl->type.strType);
 					if(!type)
 					{
 						// check if it ends with pointer, and if we have a type that's un-pointered
-						if(decl->type.find("::") != std::string::npos)
+						if(decl->type.strType.find("::") != std::string::npos)
 						{
-							decl->type = this->mangleRawNamespace(decl->type);
+							decl->type.strType = this->mangleRawNamespace(decl->type.strType);
 							return this->getLlvmType(decl);
 						}
 
-						return unwrapPointerType(decl, decl->type);
+						return unwrapPointerType(decl, decl->type.strType);
 					}
 
 					return type->first;
@@ -1004,15 +1025,15 @@ namespace Codegen
 			}
 			else if(fd)
 			{
-				TypePair_t* type = getType(fd->type);
+				TypePair_t* type = getType(fd->type.strType);
 				if(!type)
 				{
-					llvm::Type* ret = unwrapPointerType(fd, fd->type);
+					llvm::Type* ret = unwrapPointerType(fd, fd->type.strType);
 
 					if(!ret)
 					{
 						error(this, expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
-							__FILE__, __LINE__, expr->type.c_str());
+							__FILE__, __LINE__, expr->type.strType.c_str());
 					}
 					return ret;
 				}
@@ -1043,12 +1064,12 @@ namespace Codegen
 					TypePair_t* tp = 0;
 					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
 					{
-						if(tp->second.second == ExprType::Enum)
+						if(tp->second.second == ExprKind::Enum)
 						{
 							assert(tp->first->isStructTy());
 							return tp->first;
 						}
-						else if(tp->second.second == ExprType::Struct)
+						else if(tp->second.second == ExprKind::Struct)
 						{
 							Expr* rightmost = this->recursivelyResolveNested(ma);
 							return this->getLlvmType(rightmost);
@@ -1130,17 +1151,17 @@ namespace Codegen
 			}
 			else if(alloc)
 			{
-				TypePair_t* type = getType(alloc->type);
+				TypePair_t* type = getType(alloc->type.strType);
 				if(!type)
 				{
 					// check if it ends with pointer, and if we have a type that's un-pointered
-					if(alloc->type.find("::") != std::string::npos)
+					if(alloc->type.strType.find("::") != std::string::npos)
 					{
-						alloc->type = this->mangleRawNamespace(alloc->type);
+						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
 						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
 					}
 
-					return unwrapPointerType(alloc, alloc->type);
+					return unwrapPointerType(alloc, alloc->type.strType);
 				}
 
 				return type->first->getPointerTo();
@@ -1339,7 +1360,7 @@ namespace Codegen
 		assert(pair->first);
 		assert(pair->second.first);
 
-		if(pair->second.second != ExprType::Struct)
+		if(pair->second.second != ExprKind::Struct)
 		{
 			if(fail)	error("!!??!?!?!");
 			else		return Result_t(0, 0);
@@ -1392,7 +1413,7 @@ namespace Codegen
 		assert(pair);
 		assert(pair->first);
 		assert(pair->second.first);
-		assert(pair->second.second == ExprType::Struct);
+		assert(pair->second.second == ExprKind::Struct);
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 		assert(str);
@@ -1577,7 +1598,7 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.c_str());
+			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.strType.c_str());
 		}
 		else if(isVoid)
 		{

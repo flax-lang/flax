@@ -981,7 +981,7 @@ namespace Parser
 
 				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
 				// it's easy.
-				v->initVal = parseFuncCall(tokens, v->type);
+				v->initVal = parseFuncCall(tokens, v->type.strType);
 			}
 			else if(tokens.front().type == TType::LBrace)
 			{

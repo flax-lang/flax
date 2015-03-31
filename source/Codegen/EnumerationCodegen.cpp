@@ -22,7 +22,7 @@ namespace Codegen
 
 		TypePair_t* tp = cgi->getType(enumName->name);
 		assert(tp);
-		assert(tp->second.second == ExprType::Enum);
+		assert(tp->second.second == ExprKind::Enum);
 
 		Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 		assert(enr);
@@ -84,5 +84,5 @@ void Enumeration::createType(CodegenInstance* cgi)
 	llvm::StructType* wrapper = llvm::StructType::create(this->name, prev, NULL);
 
 	// now that they're all the same type:
-	cgi->addNewType(wrapper, this, ExprType::Enum);
+	cgi->addNewType(wrapper, this, ExprKind::Enum);
 }
