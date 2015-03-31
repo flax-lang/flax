@@ -103,7 +103,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		{
 			ai = cgi->lastMinuteUnwrapType(this, ai);
 			if(ai->getType()->getPointerElementType() != val->getType())
-				GenError::invalidAssignment(cgi, this, val->getType(), ai->getType()->getPointerElementType());
+				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
