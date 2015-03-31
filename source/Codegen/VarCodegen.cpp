@@ -62,17 +62,20 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				llvm::Value* unwrappedAi = cgi->lastMinuteUnwrapType(ai);
+				llvm::Value* unwrappedAi = cgi->lastMinuteUnwrapType(this, ai);
 				if(unwrappedAi != ai)
 				{
 					cmplxtype = cgi->getType(unwrappedAi->getType()->getPointerElementType());
 					assert(cmplxtype);
 				}
 
-				std::vector<llvm::Value*> args { unwrappedAi };
+				if(!cgi->isEnum(ai->getType()->getPointerElementType()))
+				{
+					std::vector<llvm::Value*> args { unwrappedAi };
 
-				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
-				val = cgi->mainBuilder.CreateCall(initfunc, args);
+					llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+					val = cgi->mainBuilder.CreateCall(initfunc, args);
+				}
 			}
 		}
 
@@ -98,7 +101,9 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			ai = cgi->lastMinuteUnwrapType(ai);
+			ai = cgi->lastMinuteUnwrapType(this, ai);
+			if(ai->getType()->getPointerElementType() != val->getType())
+				GenError::invalidAssignment(cgi, this, val->getType(), ai->getType()->getPointerElementType());
 
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
