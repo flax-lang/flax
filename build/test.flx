@@ -104,18 +104,10 @@ struct Foo
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	// var k: Bar.Nested
-	// var j: Bar
+	let a1 = 59
+	let a2 = "seven"
 
-	// val k1 = Bar.Nested.Nest2.staticFunc()
-
-	var k2: Type = Type.Foo
-	var k: Foobar = Foobar.One
-
-
-	// printf("%d, %d, %d, %d\n", k.g, 7, j.afoo.ty, k1)
-	printf("%d\n", k2)
-	// printf("testing: %d\n", testing())
+	printf("%d, %s\n", a1, a2)
 	return 0
 }
 

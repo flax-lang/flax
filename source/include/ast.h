@@ -178,7 +178,11 @@ namespace Ast
 		}
 	};
 
-
+	struct AstDependency
+	{
+		std::string name;
+		Expr* dep;
+	};
 
 
 
@@ -194,8 +198,10 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) = 0;
 		virtual bool isBreaking() { return false; }
 
+		bool didCodegen = false;
 		uint32_t attribs;
 		Parser::PosInfo posinfo;
+		std::deque<AstDependency> dependencies;
 		ExprType type;
 	};
 
@@ -567,15 +573,6 @@ namespace Ast
 
 		bool isRaw = false;
 		std::string str;
-	};
-
-	struct CastedType : Expr
-	{
-		~CastedType();
-		CastedType(Parser::PosInfo pos, std::string _name) : Expr(pos), name(_name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(nullptr, nullptr); }
-
-		std::string name;
 	};
 
 	struct TypeAlias : StructBase

@@ -160,6 +160,9 @@ namespace Codegen
 		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
 
 
+		void evaluateDependencies(Ast::Expr* expr);
+
+
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);

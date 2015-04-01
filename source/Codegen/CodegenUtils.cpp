@@ -20,8 +20,6 @@
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
 
-#include "../include/stacktrace.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -928,7 +926,9 @@ namespace Codegen
 
 			assert(enr);
 			if(enr->isStrong)
+			{
 				return alloca;		// fail.
+			}
 
 			return this->mainBuilder.CreateStructGEP(alloca, 0);
 		}
@@ -941,22 +941,7 @@ namespace Codegen
 	{
 		assert(expr);
 		{
-			VarRef* ref			= dynamic_cast<VarRef*>(expr);
-			VarDecl* decl		= dynamic_cast<VarDecl*>(expr);
-			FuncCall* fc		= dynamic_cast<FuncCall*>(expr);
-			FuncDecl* fd		= dynamic_cast<FuncDecl*>(expr);
-			Func* f				= dynamic_cast<Func*>(expr);
-			StringLiteral* sl	= dynamic_cast<StringLiteral*>(expr);
-			UnaryOp* uo			= dynamic_cast<UnaryOp*>(expr);
-			CastedType* ct		= dynamic_cast<CastedType*>(expr);
-			MemberAccess* ma	= dynamic_cast<MemberAccess*>(expr);
-			BinOp* bo			= dynamic_cast<BinOp*>(expr);
-			Number* nm			= dynamic_cast<Number*>(expr);
-			BoolVal* bv			= dynamic_cast<BoolVal*>(expr);
-			Return* retr		= dynamic_cast<Return*>(expr);
-			Alloc* alloc		= dynamic_cast<Alloc*>(expr);
-
-			if(decl)
+			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
 			{
 				if(decl->type.strType == "Inferred")
 				{
@@ -981,7 +966,7 @@ namespace Codegen
 					return type->first;
 				}
 			}
-			else if(ref)
+			else if(VarRef* ref = dynamic_cast<VarRef*>(expr))
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
@@ -990,7 +975,7 @@ namespace Codegen
 				auto x = getLlvmType(decl);
 				return x;
 			}
-			else if(uo)
+			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
 			{
 				if(uo->op == ArithmeticOp::Deref)
 				{
@@ -1007,11 +992,7 @@ namespace Codegen
 				else
 					return this->getLlvmType(uo->expr);
 			}
-			else if(ct)
-			{
-				return unwrapPointerType(ct, ct->name);
-			}
-			else if(fc)
+			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 			{
 				FuncPair_t* fp = getDeclaredFunc(fc);
 				if(!fp)
@@ -1019,11 +1000,11 @@ namespace Codegen
 
 				return getLlvmType(fp->second);
 			}
-			else if(f)
+			else if(Func* f = dynamic_cast<Func*>(expr))
 			{
 				return getLlvmType(f->decl);
 			}
-			else if(fd)
+			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
 				TypePair_t* type = getType(fd->type.strType);
 				if(!type)
@@ -1040,7 +1021,7 @@ namespace Codegen
 
 				return type->first;
 			}
-			else if(sl)
+			else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
 			{
 				if(sl->isRaw)
 					return llvm::Type::getInt8PtrTy(this->getContext());
@@ -1055,7 +1036,7 @@ namespace Codegen
 					return tp->first;
 				}
 			}
-			else if(ma)
+			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
 				VarRef* _vr = dynamic_cast<VarRef*>(ma->target);
 				if(_vr)
@@ -1122,7 +1103,7 @@ namespace Codegen
 
 				return this->getLlvmType(ma->member);
 			}
-			else if(bo)
+			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 			{
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
@@ -1149,7 +1130,7 @@ namespace Codegen
 					}
 				}
 			}
-			else if(alloc)
+			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
 			{
 				TypePair_t* type = getType(alloc->type.strType);
 				if(!type)
@@ -1166,21 +1147,28 @@ namespace Codegen
 
 				return type->first->getPointerTo();
 			}
-			else if(nm)
+			else if(Number* nm = dynamic_cast<Number*>(expr))
 			{
 				return nm->codegen(this).result.first->getType();
 			}
-			else if(bv)
+			else if(dynamic_cast<BoolVal*>(expr))
 			{
 				return llvm::Type::getInt1Ty(getContext());
 			}
-			else if(retr)
+			else if(Return* retr = dynamic_cast<Return*>(expr))
 			{
 				return this->getLlvmType(retr->val);
 			}
-			else if(dynamic_cast<DummyExpr*>(expr))
+			else if(DummyExpr* dum = dynamic_cast<DummyExpr*>(expr))
 			{
-				return llvm::Type::getVoidTy(getContext());
+				if(dum->type.isLiteral)
+				{
+					return this->unwrapPointerType(expr, dum->type.strType);
+				}
+				else
+				{
+					return this->getLlvmType(dum->type.type);
+				}
 			}
 			else if(dynamic_cast<If*>(expr))
 			{
@@ -1637,6 +1625,34 @@ namespace Codegen
 		}
 
 		return false;
+	}
+
+	static void checkCircularDependencies(CodegenInstance* cgi, Expr* expr, Expr* dep)
+	{
+		if(expr == dep)
+			error(cgi, expr, "Circular dependency detected");
+
+
+		VarRef* vrE = dynamic_cast<VarRef*>(expr);
+		VarRef* vrD = dynamic_cast<VarRef*>(dep);
+
+		if(vrE && vrD)
+		{
+			if(vrE->name == vrD->name)
+				error(cgi, expr, "Circular dependency detected");
+		}
+	}
+
+	void CodegenInstance::evaluateDependencies(Expr* expr)
+	{
+		for(AstDependency dep : expr->dependencies)
+		{
+			checkCircularDependencies(this, expr, dep.dep);
+			this->evaluateDependencies(dep.dep);
+
+			if(!dep.dep->didCodegen)
+				dep.dep->codegen(this);
+		}
 	}
 }
 
