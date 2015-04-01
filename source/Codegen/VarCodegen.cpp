@@ -101,7 +101,10 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			ai = cgi->lastMinuteUnwrapType(this, ai);
+			if(ai->getType()->getPointerElementType() != val->getType())
+				ai = cgi->lastMinuteUnwrapType(this, ai);
+
+
 			if(ai->getType()->getPointerElementType() != val->getType())
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 

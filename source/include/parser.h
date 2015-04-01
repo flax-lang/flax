@@ -164,6 +164,7 @@ namespace Parser
 
 	Ast::Expr* parseIf(TokenList& tokens);
 	void parseAttribute(TokenList& tokens);
+	Ast::Expr* parseType(TokenList& tokens);
 	Ast::Func* parseFunc(TokenList& tokens);
 	Ast::Expr* parseExpr(TokenList& tokens);
 	Ast::Expr* parseUnary(TokenList& tokens);
@@ -176,7 +177,6 @@ namespace Parser
 	Ast::Import* parseImport(TokenList& tokens);
 	Ast::Return* parseReturn(TokenList& tokens);
 	Ast::Number* parseNumber(TokenList& tokens);
-	Ast::CastedType* parseType(TokenList& tokens);
 	Ast::VarDecl* parseVarDecl(TokenList& tokens);
 	Ast::WhileLoop* parseWhile(TokenList& tokens);
 	Ast::Dealloc* parseDealloc(TokenList& tokens);

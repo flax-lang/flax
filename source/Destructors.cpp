@@ -140,11 +140,6 @@ namespace Ast
 
 	}
 
-	CastedType::~CastedType()
-	{
-
-	}
-
 	Alloc::~Alloc()
 	{
 	}
