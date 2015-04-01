@@ -261,18 +261,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
 
-		// right hand side probably got interpreted as a varref
-		CastedType* ct = nullptr;
-		assert(ct = dynamic_cast<CastedType*>(this->right));
-
-		llvm::Type* rtype = cgi->getLlvmType(ct);
+		llvm::Type* rtype = cgi->getLlvmType(this->right);
 		if(!rtype)
 		{
-			TypePair_t* tp = cgi->getType(ct->name);
-			if(!tp)
-				GenError::unknownSymbol(cgi, this, ct->name, SymbolType::Type);
+			// TypePair_t* tp = cgi->getType(ct->name);
+			// if(!tp)
+				GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
 
-			rtype = tp->first;
+			// rtype = tp->first;
 		}
 
 
@@ -321,7 +317,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			{
 				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype);
 
-				// printf("[%s, %s]\n", cgi->getReadableType(tmp).c_str(), cgi->getReadableType(tmpLoaded).c_str());
 				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
 				cgi->mainBuilder.CreateStore(lhs, gep);
 
