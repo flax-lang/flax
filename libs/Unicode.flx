@@ -25,7 +25,7 @@ public func Utf8Length(_text: Int8*) -> Uint64
 
 	while(#text != 0)
 	{
-		codepoint = #text as Uint8;
+		codepoint = #text
 
 		if codepoint == 0
 		{

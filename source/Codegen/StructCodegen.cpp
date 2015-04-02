@@ -22,11 +22,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	// see if we have nested types
 	for(Struct* nested : this->nestedTypes)
-	{
 		nested->codegen(cgi);
-	}
-
-
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
@@ -51,7 +47,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type), r.first, r.second, ptr, false);
+		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
 	}
 
 	// create all the other automatic init functions for our extensions
@@ -105,7 +101,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		if(c->getter)
 		{
 			std::deque<VarDecl*> params { fakeSelf };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_get" + std::to_string(c->name.length()) + c->name, params, c->type);
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->getter);
 
 			this->funcs.push_back(fakeFunc);
@@ -117,7 +113,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type);
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
 
 			this->funcs.push_back(fakeFunc);
@@ -230,7 +226,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
-	cgi->addNewType(str, this, ExprType::Struct);
+	cgi->addNewType(str, this, ExprKind::Struct);
 
 	if(!this->didCreateType)
 	{
@@ -273,7 +269,7 @@ void Struct::createType(CodegenInstance* cgi)
 				error(cgi, this, "Cannot have non-pointer member of type self");
 			}
 
-			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type));
+			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
 			int i = this->nameMap[var->name];
 			assert(i >= 0);
 
@@ -321,7 +317,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		if(decl->params.size() != 1)
 			error(cgi, this, "Operator overload for '==' can only have one argument");
 
-		if(decl->type != "Bool")
+		if(decl->type.strType != "Bool")
 			error(cgi, this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply

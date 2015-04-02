@@ -89,7 +89,7 @@ namespace Codegen
 		bool isValidNamespace(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprType e);
+		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprKind e);
 		bool isDuplicateFuncDecl(std::string name);
 
 		void removeType(std::string name);
@@ -106,24 +106,25 @@ namespace Codegen
 		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr);
-		llvm::Type* getLlvmType(Ast::Expr* user, std::string name);
+		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type);
 		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
 
 		bool isPtr(Ast::Expr* e);
-		bool isEnum(std::string name);
+		bool isEnum(Ast::ExprType type);
 		bool isEnum(llvm::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(llvm::Type* e);
-		bool isTypeAlias(std::string name);
+		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(llvm::Type* type);
+
 		bool isDuplicateType(std::string name);
 
-		llvm::Value* lastMinuteUnwrapType(llvm::Value* alloca);
+		llvm::Value* lastMinuteUnwrapType(Ast::Expr* user, llvm::Value* alloca);
 
 
 		std::string mangleRawNamespace(std::string original);
@@ -157,6 +158,9 @@ namespace Codegen
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
 		Ast::Expr* recursivelyResolveNested(Ast::MemberAccess* base, std::deque<std::string>* scopes = 0);
 		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
+
+
+		void evaluateDependencies(Ast::Expr* expr);
 
 
 		Ast::Root* getRootAST();

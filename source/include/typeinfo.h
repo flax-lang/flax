@@ -20,14 +20,14 @@ namespace Ast
 namespace Codegen
 {
 	struct CodegenInstance;
-	enum class ExprType;
+	enum class ExprKind;
 }
 
 namespace TypeInfo
 {
-	void addNewType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str, Codegen::ExprType etype);
-	void initialiseTypeInfo(Codegen::CodegenInstance* cgi);
+	void addNewType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str, Codegen::ExprKind etype);
 	void generateTypeInfo(Codegen::CodegenInstance* cgi);
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type);
 }
 
 

@@ -27,7 +27,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	llvm::Value* ai = storage;
 	bool didAddToSymtab = false;
 
-	if(this->initVal && !cmplxtype && this->type != "Inferred")
+	if(this->initVal && !cmplxtype && this->type.strType != "Inferred")
 	{
 		// ...
 	}
@@ -44,11 +44,11 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			if(this->type.find("::") != std::string::npos)
-				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+			if(this->type.strType.find("::") != std::string::npos)
+				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
 
 			else
-				cmplxtype = cgi->getType(this->type);
+				cmplxtype = cgi->getType(this->type.strType);
 		}
 
 		if(!ai)
@@ -62,18 +62,20 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				llvm::Value* oldAi = ai;
-				ai = cgi->lastMinuteUnwrapType(oldAi);
-				if(oldAi != ai)
+				llvm::Value* unwrappedAi = cgi->lastMinuteUnwrapType(this, ai);
+				if(unwrappedAi != ai)
 				{
-					cmplxtype = cgi->getType(ai->getType()->getPointerElementType());
+					cmplxtype = cgi->getType(unwrappedAi->getType()->getPointerElementType());
 					assert(cmplxtype);
 				}
 
-				std::vector<llvm::Value*> args { ai };
+				if(!cgi->isEnum(ai->getType()->getPointerElementType()))
+				{
+					std::vector<llvm::Value*> args { unwrappedAi };
 
-				llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
-				val = cgi->mainBuilder.CreateCall(initfunc, args);
+					llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+					val = cgi->mainBuilder.CreateCall(initfunc, args);
+				}
 			}
 		}
 
@@ -99,7 +101,12 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			ai = cgi->lastMinuteUnwrapType(ai);
+			if(ai->getType()->getPointerElementType() != val->getType())
+				ai = cgi->lastMinuteUnwrapType(this, ai);
+
+
+			if(ai->getType()->getPointerElementType() != val->getType())
+				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
 			cgi->mainBuilder.CreateStore(val, ai);
 			return val;
@@ -158,12 +165,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
 
-	TypePair_t* cmplxtype = cgi->getType(this->type);
-	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type));
+	TypePair_t* cmplxtype = cgi->getType(this->type.strType);
+	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
 
 	llvm::Value* ai = nullptr;
 
-	if(this->type == "Inferred")
+	if(this->type.strType == "Inferred")
 	{
 		if(!this->initVal)
 		{
@@ -203,11 +210,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
+		this->inferredLType = cgi->getLlvmType(this);
 		if(!this->isGlobal)
 		{
 			ai = cgi->allocateInstanceInBlock(this);
+			assert(ai->getType()->getPointerElementType() == this->inferredLType);
 		}
-		this->inferredLType = cgi->getLlvmType(this);
 	}
 
 	// TODO: call global constructors
@@ -238,7 +246,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	{
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
-
 	return Result_t(val, ai);
 }
 

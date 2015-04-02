@@ -267,6 +267,7 @@ namespace Parser
 			else if(id == "import")		tok.type = TType::Import;
 			else if(id == "var")		tok.type = TType::Var;
 			else if(id == "val")		tok.type = TType::Val;
+			else if(id == "let")		tok.type = TType::Val;
 			else if(id == "for")		tok.type = TType::For;
 			else if(id == "while")		tok.type = TType::While;
 			else if(id == "if")			tok.type = TType::If;
@@ -295,6 +296,7 @@ namespace Parser
 
 			else if(id == "alloc")		tok.type = TType::Alloc;
 			else if(id == "dealloc")	tok.type = TType::Dealloc;
+			else if(id == "typeof")		tok.type = TType::Typeof;
 
 			else if(id == "get")		tok.type = TType::Get;
 			else if(id == "set")		tok.type = TType::Set;
