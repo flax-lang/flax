@@ -49,7 +49,8 @@ namespace Codegen
 		Struct,
 		Enum,
 		TypeAlias,
-		Func
+		Func,
+		BuiltinType
 	};
 
 	enum class SymbolValidity
@@ -605,6 +606,15 @@ namespace Ast
 		VarRef* var;
 	};
 
+	struct Typeof : Expr
+	{
+		~Typeof();
+		Typeof(Parser::PosInfo pos, Expr* _inside) : Expr(pos), inside(_inside) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		Expr* inside;
+	};
+
 	struct Root : Expr
 	{
 		Root() : Expr(Parser::PosInfo()) { }
@@ -623,7 +633,7 @@ namespace Ast
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
 
-		std::vector<std::pair<std::string, Codegen::ExprKind>> typeList;
+		std::vector<std::tuple<std::string, llvm::Type*, Codegen::ExprKind>> typeList;
 	};
 }
 

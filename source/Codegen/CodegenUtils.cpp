@@ -111,7 +111,6 @@ namespace Codegen
 			cgi->addNewType(str, pair.first, ExprKind::Struct);
 		}
 
-		TypeInfo::initialiseTypeInfo(cgi);
 		cgi->rootNode->codegen(cgi);
 
 		cgi->popScope();
@@ -1173,6 +1172,13 @@ namespace Codegen
 			else if(dynamic_cast<If*>(expr))
 			{
 				return llvm::Type::getVoidTy(getContext());
+			}
+			else if(dynamic_cast<Typeof*>(expr))
+			{
+				TypePair_t* tp = this->getType("Type");
+				assert(tp);
+
+				return tp->first;
 			}
 		}
 

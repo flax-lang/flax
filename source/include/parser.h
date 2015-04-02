@@ -176,6 +176,7 @@ namespace Parser
 	Ast::Struct* parseStruct(TokenList& tokens);
 	Ast::Import* parseImport(TokenList& tokens);
 	Ast::Return* parseReturn(TokenList& tokens);
+	Ast::Typeof* parseTypeof(TokenList& tokens);
 	Ast::Number* parseNumber(TokenList& tokens);
 	Ast::VarDecl* parseVarDecl(TokenList& tokens);
 	Ast::WhileLoop* parseWhile(TokenList& tokens);

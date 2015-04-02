@@ -490,6 +490,9 @@ namespace Parser
 				case TType::Defer:
 					return parseDefer(tokens);
 
+				case TType::Typeof:
+					return parseTypeof(tokens);
+
 				case TType::Extension:
 					return parseExtension(tokens);
 
@@ -896,9 +899,9 @@ namespace Parser
 
 			// parse until we get a non-identifier and non-scoperes
 			{
-				Token t;
 				bool expectingScope = true;
-				while((t = tokens.front()).text.length() > 0)
+				Token& t = tokens.front();
+				while(t.text.length() > 0)
 				{
 					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
 					{
@@ -916,6 +919,7 @@ namespace Parser
 					}
 
 					eat(tokens);
+					t = tokens.front();
 				}
 			}
 
@@ -1791,7 +1795,11 @@ namespace Parser
 		return CreateAST(DeferredExpr, eat(tokens), parseExpr(tokens));
 	}
 
-
+	Typeof* parseTypeof(TokenList& tokens)
+	{
+		assert(tokens.front().type == TType::Typeof);
+		return CreateAST(Typeof, eat(tokens), parseExpr(tokens));
+	}
 
 
 

@@ -6,6 +6,7 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 #include "../include/llvm_all.h"
+#include "../include/parser.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -229,7 +230,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value* _rhs)
 {
 	assert(this->left && this->right);
 	ValPtr_t valptr;
@@ -315,7 +316,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			llvm::Type* insideType = rtype->getStructElementType(0);
 			if(lhs->getType() == insideType)
 			{
-				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype);
+				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
 
 				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
 				cgi->mainBuilder.CreateStore(lhs, gep);
@@ -327,6 +328,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 				error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
 					cgi->getReadableType(lhs).c_str());
 			}
+		}
+		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
+		{
+			assert(valptr.second);
+			llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+			llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
+
+			return Result_t(val, gep);
 		}
 		else
 		{
@@ -344,10 +353,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	// no point being explicit about this and wasting indentation
 
 	lhs = valptr.first;
+	llvm::Value* lhsPtr = valptr.second;
 	llvm::Value* lhsptr = valptr.second;
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
+	llvm::Value* rhsPtr = r.second;
 	cgi->autoCastType(lhs, rhs, r.second);
 
 	// if adding integer to pointer
@@ -532,6 +543,35 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 			default:						error(cgi, this, "Unsupported operator.");
 		}
+	}
+	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
+	{
+		assert(lhsPtr);
+		assert(rhsPtr);
+
+		llvm::Value* gepL = cgi->mainBuilder.CreateStructGEP(lhsPtr, 0);
+		llvm::Value* gepR = cgi->mainBuilder.CreateStructGEP(rhsPtr, 0);
+
+		llvm::Value* l = cgi->mainBuilder.CreateLoad(gepL);
+		llvm::Value* r = cgi->mainBuilder.CreateLoad(gepR);
+
+		llvm::Value* res = 0;
+
+		if(this->op == ArithmeticOp::CmpEq)
+		{
+			res = cgi->mainBuilder.CreateICmpEQ(l, r);
+		}
+		else if(this->op == ArithmeticOp::CmpNEq)
+		{
+			res = cgi->mainBuilder.CreateICmpNE(l, r);
+		}
+		else
+		{
+			error(cgi, this, "Invalid comparison %s on Type!", Parser::arithmeticOpToString(this->op).c_str());
+		}
+
+
+		return Result_t(res, 0);
 	}
 	else if(lhs->getType()->isStructTy())
 	{
