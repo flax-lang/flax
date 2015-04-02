@@ -34,7 +34,7 @@ namespace Parser
 	#define ATTR_STR_NOAUTOINIT			"noinit"
 	#define ATTR_STR_PACKEDSTRUCT		"packed"
 	#define ATTR_STR_STRONGTYPEALIAS	"strong"
-	#define ATTR_STR_RAWSTRING			"rstring"
+	#define ATTR_STR_RAWSTRING			"raw"
 
 
 	// todo: hack
