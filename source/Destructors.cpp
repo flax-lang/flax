@@ -57,6 +57,10 @@ namespace Ast
 	{
 	}
 
+	Typeof::~Typeof()
+	{
+	}
+
 	Return::~Return()
 	{
 	}
