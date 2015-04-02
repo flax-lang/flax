@@ -26,8 +26,8 @@ namespace Codegen
 namespace TypeInfo
 {
 	void addNewType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str, Codegen::ExprKind etype);
-	void initialiseTypeInfo(Codegen::CodegenInstance* cgi);
 	void generateTypeInfo(Codegen::CodegenInstance* cgi);
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type);
 }
 
 
