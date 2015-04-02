@@ -20,6 +20,7 @@ namespace Compiler
 	int getOptimisationLevel();
 	bool getIsCompileOnly();
 	bool getIsPositionIndependent();
+	bool getDisableLowercaseBuiltinTypes();
 	std::string getMcModel();
 
 	enum class Flag

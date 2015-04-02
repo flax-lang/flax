@@ -63,11 +63,23 @@ namespace Compiler
 		}
 
 		std::ifstream file(filename);
-		std::stringstream stream;
 
-		stream << file.rdbuf();
-		std::string str = stream.str();
-		file.close();
+		// stream << file.rdbuf();
+		// std::string str = stream.str();
+		// file.close();
+
+		std::string str;
+		if(file)
+		{
+			std::ostringstream contents;
+			contents << file.rdbuf();
+			file.close();
+			str = contents.str();
+		}
+		else
+		{
+			throw(errno);
+		}
 
 		// parse
 		Root* root = Parser::Parse(filename, str, cgi);
@@ -106,6 +118,23 @@ namespace Compiler
 				{
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+				}
+				for(auto v : r->typeList)
+				{
+					bool skip = false;
+					for(auto k : root->typeList)
+					{
+						if(std::get<0>(k) == std::get<0>(v))
+						{
+							skip = true;
+							break;
+						}
+					}
+
+					if(skip)
+						continue;
+
+					root->typeList.push_back(v);
 				}
 			}
 		}

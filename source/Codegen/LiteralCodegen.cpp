@@ -15,10 +15,10 @@ Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	if(!this->decimal)
 	{
 		int bits = 64;
-		if(this->type == "Uint32" || this->type == "Int32")
+		if(this->type.strType == "Uint32" || this->type.strType == "Int32")
 			bits = 32;
 
-		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(bits, this->ival, !(this->type[0] == 'U'))), 0);
+		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(bits, this->ival, !(this->type.strType[0] == 'U'))), 0);
 	}
 	else
 	{
