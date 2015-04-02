@@ -20,15 +20,11 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 		llvm::Type* t = cgi->getLlvmType(decl);
 		index = TypeInfo::getIndexForType(cgi, t);
-
-		printf("type (var): %s\n", cgi->getReadableType(t).c_str());
 	}
 	else
 	{
 		llvm::Type* t = cgi->getLlvmType(this->inside);
 		index = TypeInfo::getIndexForType(cgi, t);
-
-		printf("type (expr): %s\n", cgi->getReadableType(t).c_str());
 	}
 
 
