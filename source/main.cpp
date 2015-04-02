@@ -81,6 +81,12 @@ namespace Compiler
 	{
 		return mcmodel;
 	}
+
+	static bool noLowercaseTypes;
+	bool getDisableLowercaseBuiltinTypes()
+	{
+		return noLowercaseTypes;
+	}
 }
 
 int main(int argc, char* argv[])
@@ -171,6 +177,10 @@ int main(int argc, char* argv[])
 			else if(!strcmp(argv[i], "-dump-ir"))
 			{
 				Compiler::dumpModule = true;
+			}
+			else if(!strcmp(argv[i], "-no-lowercase-builtin"))
+			{
+				Compiler::noLowercaseTypes = true;
 			}
 			else if(!strcmp(argv[i], "-c"))
 			{

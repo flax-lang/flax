@@ -57,6 +57,10 @@ namespace Ast
 	{
 	}
 
+	Typeof::~Typeof()
+	{
+	}
+
 	Return::~Return()
 	{
 	}
@@ -136,11 +140,6 @@ namespace Ast
 	}
 
 	StringLiteral::~StringLiteral()
-	{
-
-	}
-
-	CastedType::~CastedType()
 	{
 
 	}

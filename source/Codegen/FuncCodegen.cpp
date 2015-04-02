@@ -100,7 +100,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
 	bool premature = false;
-	if(this->decl->type != "Void")
+	if(this->decl->type.strType != "Void")
 	{
 		size_t counter = 0;
 		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false);
@@ -108,7 +108,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 		if(counter != this->block->statements.size())
 		{
-			warn(cgi, this->block->statements[counter], "Code will never be executed!");
+			warn(cgi, this->block->statements[counter], "Code will never be executed");
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
