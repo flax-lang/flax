@@ -23,6 +23,7 @@ namespace TypeInfo
 				return;
 		}
 
+		printf("type %s has index %d\n", stype->getStructName().str().c_str(), (int) cgi->rootNode->typeList.size() - 1);
 		cgi->rootNode->typeList.push_back(std::make_tuple(stype->getStructName(), stype, etype));
 	}
 
@@ -32,7 +33,10 @@ namespace TypeInfo
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(std::get<1>(k) == type)
+			{
+				printf("index for %s: %d\n", cgi->getReadableType(type).c_str(), (int) i);
 				return i;
+			}
 
 			i++;
 		}
@@ -48,24 +52,39 @@ namespace TypeInfo
 		Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
 
 
-		cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getLlvmTypeOfBuiltin("Int8"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getLlvmTypeOfBuiltin("Int16"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getLlvmTypeOfBuiltin("Int32"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getLlvmTypeOfBuiltin("Int64"), ExprKind::BuiltinType));
+		bool done = false;
+		for(auto t : cgi->rootNode->typeList)
+		{
+			if(std::get<0>(t) == "Int8")
+			{
+				done = true;
+				break;
+			}
+		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getLlvmTypeOfBuiltin("Uint8"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getLlvmTypeOfBuiltin("Uint16"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getLlvmTypeOfBuiltin("Uint32"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getLlvmTypeOfBuiltin("Uint64"), ExprKind::BuiltinType));
+		if(!done)
+		{
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getLlvmTypeOfBuiltin("Int8"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getLlvmTypeOfBuiltin("Int16"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getLlvmTypeOfBuiltin("Int32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getLlvmTypeOfBuiltin("Int64"), ExprKind::BuiltinType));
 
-		cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getLlvmTypeOfBuiltin("Float32"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getLlvmTypeOfBuiltin("Float64"), ExprKind::BuiltinType));
-		cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getLlvmTypeOfBuiltin("Bool"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getLlvmTypeOfBuiltin("Uint8"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getLlvmTypeOfBuiltin("Uint16"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getLlvmTypeOfBuiltin("Uint32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getLlvmTypeOfBuiltin("Uint64"), ExprKind::BuiltinType));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getLlvmTypeOfBuiltin("Float32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getLlvmTypeOfBuiltin("Float64"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getLlvmTypeOfBuiltin("Bool"), ExprKind::BuiltinType));
+		}
 
 
 		for(auto tup : cgi->rootNode->typeList)
 		{
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
+			printf("%s -> %d\n", std::get<0>(tup).c_str(), (int) num->ival);
+
 			num = new Number(Parser::PosInfo(), num->ival + 1);
 		}
 
