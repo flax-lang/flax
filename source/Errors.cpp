@@ -144,8 +144,9 @@ namespace GenError
 		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
 		// the 'this' pointer (it doesn't) we'll be fine.
 		// thus, we don't check whether cgi is null.
-		error(cgi, e, "Invalid assignment from type %s to %s", cgi->getReadableType(a).c_str(),
-			cgi->getReadableType(b).c_str());
+
+		error(cgi, e, "Invalid assignment from type %s to %s", cgi->getReadableType(b).c_str(),
+			cgi->getReadableType(a).c_str());
 	}
 
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b)

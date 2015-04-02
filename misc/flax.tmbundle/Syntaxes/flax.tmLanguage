@@ -440,23 +440,10 @@
 		</dict>
 		<key>floating-point-literal</key>
 		<dict>
+			<key>match</key>
+			<string>\b((0(x|X)[0-9a-fA-F_]*)|(([0-9_]+\.?[0-9_]*)|(\.[0-9_]+))((e|E)(\+|-)?[0-9_]+)?)([LlFfUuDd]|UL|ul)?\b</string>
 			<key>name</key>
-			<string>constant.numeric.floating-point.flax</string>
-			<key>patterns</key>
-			<array>
-				<dict>
-					<key>comment</key>
-					<string>floating-point-literal -&gt; (decimal-literal)(decimal-fraction)?(decimal-exponent)?</string>
-					<key>match</key>
-					<string>\b([0-9][0-9_]*)(\.([0-9][0-9_]*))?([eE][+\-]?([0-9][0-9_]*))?\b</string>
-				</dict>
-				<dict>
-					<key>comment</key>
-					<string>floating-point-literal -&gt; (hexadecimal-literal)(hexadecimal-fraction)?(hexadecimal-exponent)</string>
-					<key>match</key>
-					<string>\b(0x\h[\h_]*)(\.(0x\h[\h_]*))?([pP][+\-]?(0x\h[\h_]*))\b</string>
-				</dict>
-			</array>
+			<string>constant.numeric.swift</string>
 		</dict>
 		<key>function-body</key>
 		<dict>
@@ -647,7 +634,7 @@
 		<key>integer-literal</key>
 		<dict>
 			<key>name</key>
-			<string>constant.numeric.integer.swift</string>
+			<string>constant.numeric.integer.flax</string>
 			<key>patterns</key>
 			<array>
 				<dict>
@@ -656,31 +643,23 @@
 					<key>match</key>
 					<string>(\B\-|\b)(0b[01][01_]*)\b</string>
 					<key>name</key>
-					<string>constant.numeric.integer.binary.swift</string>
+					<string>constant.numeric.integer.binary.flax</string>
 				</dict>
-				<dict>
-					<key>comment</key>
-					<string>octal-literal</string>
-					<key>match</key>
-					<string>(\B\-|\b)(0o[0-7][0-7_]*)\b</string>
-					<key>name</key>
-					<string>constant.numeric.integer.octal.swift</string>
-				</dict>
-				<dict>
+				<!-- <dict>
 					<key>comment</key>
 					<string>decimal-literal</string>
 					<key>match</key>
 					<string>(\B\-|\b)([0-9][0-9_]*)\b</string>
 					<key>name</key>
-					<string>constant.numeric.integer.decimal.swift</string>
-				</dict>
+					<string>constant.numeric.integer.decimal.flax</string>
+				</dict> -->
 				<dict>
 					<key>comment</key>
 					<string>hexadecimal-literal</string>
 					<key>match</key>
 					<string>(\B\-|\b)(0x\h[\h_]*)\b</string>
 					<key>name</key>
-					<string>constant.numeric.integer.hexadecimal.swift</string>
+					<string>constant.numeric.integer.hexadecimal.flax</string>
 				</dict>
 			</array>
 		</dict>
@@ -712,7 +691,7 @@
 					<key>comment</key>
 					<string>declaration keyword</string>
 					<key>match</key>
-					<string>\b(class|deinit|enum|extension|func|import|init|let|protocol|static|struct|subscript|typealias|var)\b</string>
+					<string>\b(class|deinit|enum|extension|func|import|init|let|protocol|static|struct|subscript|typealias|var|typeof|val)\b</string>
 					<key>name</key>
 					<string>keyword.declaration.flax</string>
 				</dict>
@@ -728,7 +707,7 @@
 					<key>comment</key>
 					<string>expression and type keyword</string>
 					<key>match</key>
-					<string>\b(as|dynamicType|is|new|super|self|Self|Type)\b</string>
+					<string>\b(as|dynamicType|is|new|super|self|Self)\b</string>
 					<key>name</key>
 					<string>keyword.other.statement.flax</string>
 				</dict>
@@ -926,7 +905,7 @@
 			<key>comment</key>
 			<string>Primitive types</string>
 			<key>match</key>
-			<string>\b(Int8|Int16|Int32|Int64|Uint8|Byte|Uint16|Uint32|Uint64|UintPtr|Float32|Float64|Int|Uint|String|Bool|Character|Void|Any|ffi)\b</string>
+			<string>\b((I|i)nt8|(I|i)nt16|(I|i)nt32|(I|i)nt64|(U|u)int8|(B|b)yte|(U|u)int16|(U|u)int32|(U|u)int64|(U|u)intPtr|(F|f)loat32|(F|f)loat64|(I|i)nt|(U|u)int|(S|s)tring|(B|b)ool|(C|c)haracter|(V|v)oid|Any|Type|ffi)\b</string>
 			<key>name</key>
 			<string>support.type.flax</string>
 		</dict>
@@ -1008,7 +987,7 @@
 		<key>storage-type</key>
 		<dict>
 			<key>match</key>
-			<string>\b(var|val|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|public|private|internal)\b</string>
+			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|public|private|internal)\b</string>
 			<key>name</key>
 			<string>storage.type.flax</string>
 		</dict>
