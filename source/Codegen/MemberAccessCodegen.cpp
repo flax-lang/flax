@@ -47,11 +47,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		TypePair_t* tp = 0;
 		if((tp = cgi->getType(cgi->mangleWithNamespace(_vr->name, false))))
 		{
-			if(tp->second.second == ExprType::Enum)
+			if(tp->second.second == ExprKind::Enum)
 			{
 				return enumerationAccessCodegen(cgi, this->target, this->member);
 			}
-			else if(tp->second.second == ExprType::Struct)
+			else if(tp->second.second == ExprKind::Struct)
 			{
 				return doStaticAccess(cgi, this);
 			}
@@ -129,13 +129,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 		if(selfPtr)
 		{
-			selfPtr = cgi->lastMinuteUnwrapType(selfPtr);
+			selfPtr = cgi->lastMinuteUnwrapType(this, selfPtr);
 			wasSelfPtr = true;
 			isPtr = false;
 		}
 		else
 		{
-			self = cgi->lastMinuteUnwrapType(self);
+			self = cgi->lastMinuteUnwrapType(this, self);
 		}
 
 
@@ -165,7 +165,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	}
 
 
-	if(pair->second.second == ExprType::Struct)
+	if(pair->second.second == ExprKind::Struct)
 	{
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 

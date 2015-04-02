@@ -49,14 +49,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-	for(Expr* e : this->params)
-	{
-		auto res = e->codegen(cgi).result;
-		args.push_back(res.first);
-		argPtrs.push_back(res.second);
-	}
-
-
 
 
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
@@ -71,15 +63,28 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 
 
+	for(Expr* e : this->params)
+	{
+		ValPtr_t res = e->codegen(cgi).result;
+
+		llvm::Value* arg = res.first;
+		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
+		{
+			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
+		}
+
+		args.push_back(arg);
+		argPtrs.push_back(res.second);
+	}
+
+
+
 
 	auto arg_it = target->arg_begin();
 	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
 	{
 		if(arg_it->getType() != args[i]->getType())
-		{
-			// printf("types: %s vs %s, casting\n", cgi->getReadableType(arg_it->getType()).c_str(), cgi->getReadableType(args[i]).c_str());
 			cgi->autoCastType(arg_it, args[i], argPtrs[i]);
-		}
 
 
 		if(arg_it->getType() != args[i]->getType())

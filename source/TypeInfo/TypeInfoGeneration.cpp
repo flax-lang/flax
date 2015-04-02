@@ -11,35 +11,82 @@ using namespace Codegen;
 
 namespace TypeInfo
 {
-	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, ExprType etype)
+	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, ExprKind etype)
 	{
-		(void) str;
-		cgi->rootNode->typeList.push_back(std::make_pair(stype->getStructName(), etype));
+		if(dynamic_cast<Enumeration*>(str) && cgi->isEnum(stype) && etype == ExprKind::Enum && str->name == "Type")
+			return;
+
+
+		for(auto k : cgi->rootNode->typeList)
+		{
+			if(std::get<0>(k) == stype->getStructName())
+				return;
+		}
+
+		cgi->rootNode->typeList.push_back(std::make_tuple(stype->getStructName(), stype, etype));
 	}
 
-	// this adds the type info for all the basic types
-	void initialiseTypeInfo(CodegenInstance* cgi)
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type)
 	{
-		(void) cgi;
+		size_t i = 0;
+		for(auto k : cgi->rootNode->typeList)
+		{
+			if(std::get<1>(k) == type)
+			{
+				return i;
+			}
+
+			i++;
+		}
+
+		return 0;
 	}
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		if(cgi->rootNode->typeList.size() > 0)
+		Enumeration* enr = new Enumeration(Parser::PosInfo(), "Type");
+		enr->isStrong = true;
+
+		Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
+
+
+		bool done = false;
+		for(auto t : cgi->rootNode->typeList)
 		{
-			Enumeration* enr = new Enumeration(Parser::PosInfo(), "Type");
-			Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
-
-			for(std::pair<std::string, ExprType> pair : cgi->rootNode->typeList)
+			if(std::get<0>(t) == "Int8")
 			{
-				enr->cases.push_back(std::make_pair(pair.first, num));
-				num = new Number(Parser::PosInfo(), num->ival + 1);
+				done = true;
+				break;
 			}
-
-			// note: Enumeration does nothing in codegen()
-			// fix this if that happens to change in the future.
-			enr->createType(cgi);
 		}
+
+		if(!done)
+		{
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getLlvmTypeOfBuiltin("Int8"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getLlvmTypeOfBuiltin("Int16"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getLlvmTypeOfBuiltin("Int32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getLlvmTypeOfBuiltin("Int64"), ExprKind::BuiltinType));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getLlvmTypeOfBuiltin("Uint8"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getLlvmTypeOfBuiltin("Uint16"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getLlvmTypeOfBuiltin("Uint32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getLlvmTypeOfBuiltin("Uint64"), ExprKind::BuiltinType));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getLlvmTypeOfBuiltin("Float32"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getLlvmTypeOfBuiltin("Float64"), ExprKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getLlvmTypeOfBuiltin("Bool"), ExprKind::BuiltinType));
+		}
+
+
+		for(auto tup : cgi->rootNode->typeList)
+		{
+			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
+			num = new Number(Parser::PosInfo(), num->ival + 1);
+		}
+
+		// note: Enumeration does nothing in codegen()
+		// fix this if that happens to change in the future.
+		enr->createType(cgi);
 	}
 }
 
