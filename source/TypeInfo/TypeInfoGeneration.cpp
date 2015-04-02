@@ -23,7 +23,6 @@ namespace TypeInfo
 				return;
 		}
 
-		printf("type %s has index %d\n", stype->getStructName().str().c_str(), (int) cgi->rootNode->typeList.size() - 1);
 		cgi->rootNode->typeList.push_back(std::make_tuple(stype->getStructName(), stype, etype));
 	}
 
@@ -34,7 +33,6 @@ namespace TypeInfo
 		{
 			if(std::get<1>(k) == type)
 			{
-				printf("index for %s: %d\n", cgi->getReadableType(type).c_str(), (int) i);
 				return i;
 			}
 
@@ -83,8 +81,6 @@ namespace TypeInfo
 		for(auto tup : cgi->rootNode->typeList)
 		{
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
-			printf("%s -> %d\n", std::get<0>(tup).c_str(), (int) num->ival);
-
 			num = new Number(Parser::PosInfo(), num->ival + 1);
 		}
 
