@@ -34,7 +34,7 @@ namespace Parser
 	#define ATTR_STR_NOAUTOINIT			"noinit"
 	#define ATTR_STR_PACKEDSTRUCT		"packed"
 	#define ATTR_STR_STRONGTYPEALIAS	"strong"
-	#define ATTR_STR_RAWSTRING			"rstring"
+	#define ATTR_STR_RAWSTRING			"raw"
 
 
 	// todo: hack
@@ -490,6 +490,9 @@ namespace Parser
 				case TType::Defer:
 					return parseDefer(tokens);
 
+				case TType::Typeof:
+					return parseTypeof(tokens);
+
 				case TType::Extension:
 					return parseExtension(tokens);
 
@@ -672,8 +675,8 @@ namespace Parser
 			if(eat(tokens).type != TType::Colon)
 				parserError("Expected ':' followed by a type");
 
-			CastedType* ctype = parseType(tokens);
-			v->type = ctype->name;
+			Expr* ctype = parseType(tokens);
+			v->type = ctype->type;
 			delete ctype;		// cleanup
 
 			if(!nameCheck[v->name])
@@ -698,8 +701,8 @@ namespace Parser
 		if(checkHasMore(tokens) && tokens.front().type == TType::Arrow)
 		{
 			eat(tokens);
-			CastedType* ctype = parseType(tokens);
-			ret = ctype->name;
+			Expr* ctype = parseType(tokens);
+			ret = ctype->type.strType;
 			delete ctype;
 
 			if(ret == "Void")
@@ -884,66 +887,84 @@ namespace Parser
 
 
 
-	CastedType* parseType(TokenList& tokens)
+	Expr* parseType(TokenList& tokens)
 	{
 		bool isArr = false;
 		int arrsize = 0;
 		Token tmp = eat(tokens);
 
-		if(tmp.type != TType::Identifier)
+		if(tmp.type == TType::Identifier)
+		{
+			std::string baseType = tmp.text;
+
+			// parse until we get a non-identifier and non-scoperes
+			{
+				bool expectingScope = true;
+				Token& t = tokens.front();
+				while(t.text.length() > 0)
+				{
+					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
+					{
+						baseType += "::";
+						expectingScope = false;
+					}
+					else if(t.type == TType::Identifier && !expectingScope)
+					{
+						baseType += t.text;
+						expectingScope = true;
+					}
+					else
+					{
+						break;
+					}
+
+					eat(tokens);
+					t = tokens.front();
+				}
+			}
+
+			std::string ptrAppend = "";
+			if(tokens.size() > 0)
+			{
+				if(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
+				{
+					while(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
+						eat(tokens), ptrAppend += "*";
+				}
+				else if(tokens.front().type == TType::LSquare)
+				{
+					isArr = true;
+					eat(tokens);
+
+					Token next = eat(tokens);
+					if(next.type == TType::Integer)
+						arrsize = getIntegerValue(next), next = eat(tokens);
+
+					if(next.type != TType::RSquare)
+						parserError("Expected either constant integer or ']' after array declaration and '['");
+				}
+			}
+
+			std::string ret = baseType + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
+			Expr* ct = CreateAST(DummyExpr, tmp);
+			ct->type.isLiteral = true;
+			ct->type.strType = ret;
+
+			return ct;
+		}
+		else if(tmp.type == TType::Typeof)
+		{
+			Expr* ct = CreateAST(DummyExpr, tmp);
+			ct->type.isLiteral = false;
+			ct->type.strType = "__internal_error__";
+
+			ct->type.type = parseExpr(tokens);
+			return ct;
+		}
+		else
+		{
 			parserError("Expected type for variable declaration");
-
-		std::string baseType = tmp.text;
-
-		// parse until we get a non-identifier and non-scoperes
-		{
-			Token t;
-			bool expectingScope = true;
-			while((t = tokens.front()).text.length() > 0)
-			{
-				if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
-				{
-					baseType += "::";
-					expectingScope = false;
-				}
-				else if(t.type == TType::Identifier && !expectingScope)
-				{
-					baseType += t.text;
-					expectingScope = true;
-				}
-				else
-				{
-					break;
-				}
-
-				eat(tokens);
-			}
 		}
-
-		std::string ptrAppend = "";
-		if(tokens.size() > 0)
-		{
-			if(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
-			{
-				while(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
-					eat(tokens), ptrAppend += "*";
-			}
-			else if(tokens.front().type == TType::LSquare)
-			{
-				isArr = true;
-				eat(tokens);
-
-				Token next = eat(tokens);
-				if(next.type == TType::Integer)
-					arrsize = getIntegerValue(next), next = eat(tokens);
-
-				if(next.type != TType::RSquare)
-					parserError("Expected either constant integer or ']' after array declaration and '['");
-			}
-		}
-
-		std::string ret = baseType + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
-		return CreateAST(CastedType, tmp, ret);
 	}
 
 	VarDecl* parseVarDecl(TokenList& tokens)
@@ -969,8 +990,8 @@ namespace Parser
 		Token colon = eat(tokens);
 		if(colon.type == TType::Colon)
 		{
-			CastedType* ctype = parseType(tokens);
-			v->type = ctype->name;
+			Expr* ctype = parseType(tokens);
+			v->type = ctype->type;
 
 			delete ctype;	// cleanup
 
@@ -981,7 +1002,7 @@ namespace Parser
 
 				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
 				// it's easy.
-				v->initVal = parseFuncCall(tokens, v->type);
+				v->initVal = parseFuncCall(tokens, v->type.strType);
 			}
 			else if(tokens.front().type == TType::LBrace)
 			{
@@ -1240,7 +1261,7 @@ namespace Parser
 		}
 
 		auto ct = parseType(tokens);
-		std::string type = ct->name;
+		std::string type = ct->type.strType;
 		delete ct;
 
 		if(tokens.front().type == TType::LParen)
@@ -1592,6 +1613,10 @@ namespace Parser
 		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
 		Token front = tokens.front();
 
+		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		if(attr & Attr_StrongTypeAlias)
+			enumer->isStrong = true;
+
 		// parse the stuff.
 		bool isFirst = true;
 		bool isNumeric = false;
@@ -1751,10 +1776,10 @@ namespace Parser
 
 		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
 
-		CastedType* ct = parseType(tokens);
+		Expr* ct = parseType(tokens);
 		assert(ct);
 
-		ret->origType = ct->name;
+		ret->origType = ct->type.strType;
 		delete ct;
 
 		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias);
@@ -1770,7 +1795,11 @@ namespace Parser
 		return CreateAST(DeferredExpr, eat(tokens), parseExpr(tokens));
 	}
 
-
+	Typeof* parseTypeof(TokenList& tokens)
+	{
+		assert(tokens.front().type == TType::Typeof);
+		return CreateAST(Typeof, eat(tokens), parseExpr(tokens));
+	}
 
 
 
