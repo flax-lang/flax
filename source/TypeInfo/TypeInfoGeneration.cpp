@@ -13,10 +13,6 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, ExprKind etype)
 	{
-		if(dynamic_cast<Enumeration*>(str) && cgi->isEnum(stype) && etype == ExprKind::Enum && str->name == "Type")
-			return;
-
-
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(std::get<0>(k) == stype->getStructName())
@@ -28,7 +24,7 @@ namespace TypeInfo
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type)
 	{
-		size_t i = 0;
+		size_t i = 1;
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(std::get<1>(k) == type)
@@ -83,6 +79,8 @@ namespace TypeInfo
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
 			num = new Number(Parser::PosInfo(), num->ival + 1);
 		}
+
+		enr->cases.push_back(std::make_pair("Type", num));
 
 		// note: Enumeration does nothing in codegen()
 		// fix this if that happens to change in the future.
