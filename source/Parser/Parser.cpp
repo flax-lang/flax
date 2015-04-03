@@ -57,8 +57,9 @@ namespace Parser
 		parserError(curtok, msg, ap);
 
 		va_end(ap);
-		abort();
 
+		fprintf(stderr, "There were errors, compilation cannot continue\n");
+		abort();
 	}
 
 	// grr
@@ -266,23 +267,25 @@ namespace Parser
 		{
 			"Invalid",
 			"NoMangle",
-			"Public",
-			"Internal",
-			"Private",
+			"VisPublic",
+			"VisInternal",
+			"VisPrivate",
 			"ForceMangle",
 			"NoAutoInit",
-			"PackedStruct"
+			"PackedStruct",
+			"StrongType",
+			"RawValue",
 		};
 		uint32_t disallowed = ~allowed;
 
 		if(curAttrib & disallowed)
 		{
 			int shifts = 0;
-			while((disallowed & 1) == 0)
-				disallowed >>= 1, shifts++;
+			while(((curAttrib & disallowed) & 1) == 0)
+				curAttrib >>= 1, disallowed >>= 1, shifts++;
 
 			if(shifts > 0)
-				parserError("Invalid attribute '%s' for expression", ReadableAttrNames[shifts]);
+				parserError("Invalid attribute '%s' for expression", ReadableAttrNames[shifts + 1]);
 		}
 
 		uint32_t ret = curAttrib;
@@ -1610,6 +1613,10 @@ namespace Parser
 			parserError("Expected body after 'enum'");
 
 
+		if(tokens.front().type == TType::RBrace)
+			parserError("Empty enumerations are not allowed");
+
+
 		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
 		Token front = tokens.front();
 
@@ -1702,7 +1709,7 @@ namespace Parser
 		assert(eat(tokens).type == TType::At);
 		Token id = eat(tokens);
 
-		if(id.type != TType::Identifier)
+		if(id.type != TType::Identifier && id.type != TType::Private && id.type != TType::Internal && id.type != TType::Public)
 			parserError("Expected attribute name after '@'");
 
 		uint32_t attr = 0;
@@ -1712,6 +1719,21 @@ namespace Parser
 		else if(id.text == ATTR_STR_PACKEDSTRUCT)	attr |= Attr_PackedStruct;
 		else if(id.text == ATTR_STR_STRONG)			attr |= Attr_StrongTypeAlias;
 		else if(id.text == ATTR_STR_RAW)			attr |= Attr_RawString;
+		else if(id.text == "public")
+		{
+			parserWarn("Attribute 'public' is a keyword, usage as an attribute is deprecated");
+			attr |= Attr_VisPublic;
+		}
+		else if(id.text == "internal")
+		{
+			parserWarn("Attribute 'internal' is a keyword, usage as an attribute is deprecated");
+			attr |= Attr_VisInternal;
+		}
+		else if(id.text == "private")
+		{
+			parserWarn("Attribute 'private' is a keyword, usage as an attribute is deprecated");
+			attr |= Attr_VisPrivate;
+		}
 		else										parserError("Unknown attribute '%s'", id.text.c_str());
 
 		curAttrib |= attr;
