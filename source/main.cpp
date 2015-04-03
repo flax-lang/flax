@@ -11,6 +11,8 @@
 #include "include/ast.h"
 #include "include/codegen.h"
 #include "include/compiler.h"
+
+#include <llvm/Support/Filesystem.h>
 using namespace Ast;
 
 static std::string parseQuotedString(char** argv, int& i)
@@ -40,6 +42,7 @@ static std::string parseQuotedString(char** argv, int& i)
 namespace Compiler
 {
 	static bool dumpModule = false;
+	static bool printModule = false;
 	static bool compileOnly = false;
 	bool getIsCompileOnly()
 	{
@@ -178,6 +181,10 @@ int main(int argc, char* argv[])
 			{
 				Compiler::dumpModule = true;
 			}
+			else if(!strcmp(argv[i], "-print-ir"))
+			{
+				Compiler::printModule = true;
+			}
 			else if(!strcmp(argv[i], "-no-lowercase-builtin"))
 			{
 				Compiler::noLowercaseTypes = true;
@@ -238,8 +245,17 @@ int main(int argc, char* argv[])
 		for(auto s : filelist)
 			remove(s.c_str());
 
-		if(Compiler::dumpModule)
+		if(Compiler::printModule)
 			cgi->mainModule->dump();
+
+		if(Compiler::dumpModule)
+		{
+			std::string err_info;
+			llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
+
+			out << *(cgi->mainModule);
+			out.close();
+		}
 
 		delete cgi;
 		for(auto p : rootmap)

@@ -38,7 +38,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 	assert(enr);
 
-	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "tmp_shit");
+	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
 	llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(wrapper, 0, "wrapped");
 
 	cgi->mainBuilder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
