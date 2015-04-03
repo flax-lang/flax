@@ -15,10 +15,19 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))
 	{
 		VarDecl* decl = cgi->getSymDecl(this, vr->name);
+		llvm::Type* t = 0;
 		if(!decl)
-			GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
+		{
+			t = cgi->unwrapPointerType(this, vr->name);
 
-		llvm::Type* t = cgi->getLlvmType(decl);
+			if(!t)
+				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
+		}
+		else
+		{
+			t = cgi->getLlvmType(decl);
+		}
+
 		index = TypeInfo::getIndexForType(cgi, t);
 	}
 	else

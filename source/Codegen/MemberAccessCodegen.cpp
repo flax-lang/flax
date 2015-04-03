@@ -485,7 +485,6 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs, llvm::Value* self, llvm::Value* selfPtr, bool isPtr, Struct* str, int i)
 {
-
 	ComputedProperty* cprop = nullptr;
 	for(ComputedProperty* c : str->cprops)
 	{
@@ -507,6 +506,10 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + var->name);
 		llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
+
+		if(str->members[i]->immutable)
+			ptr = 0;
+
 		return Result_t(val, ptr);
 	}
 }

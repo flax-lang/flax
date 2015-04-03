@@ -67,6 +67,10 @@ void Enumeration::createType(CodegenInstance* cgi)
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
 
+	if(cgi->isDuplicateType(this->name))
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+
 	llvm::Type* prev = 0;
 	for(auto pair : this->cases)
 	{

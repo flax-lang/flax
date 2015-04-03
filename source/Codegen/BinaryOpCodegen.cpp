@@ -57,7 +57,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			if(!vdecl) GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 			if(vdecl->immutable)
-				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+				error(this, user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
 		}
 
 		if(!rhs)
@@ -101,11 +101,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// so, use it
 
 		varptr = ref;
-		assert(varptr);
 		assert(rhs);
 
 		// make sure the left side is a pointer
-		if(!varptr->getType()->isPointerTy())
+		if(!varptr)
+			error(this, user, "Cannot assign to immutable variable");
+
+		else if(!varptr->getType()->isPointerTy())
 			GenError::invalidAssignment(this, user, varptr, rhs);
 
 		// redo the number casting
