@@ -849,6 +849,25 @@ namespace Codegen
 		return ltype && ltype->isPointerTy();
 	}
 
+	bool CodegenInstance::isAnyType(llvm::Type* type)
+	{
+		if(type->isStructTy())
+		{
+			if(type->getStructName() == "Any")
+			{
+				return true;
+			}
+
+			TypePair_t* pair = this->getType("Any");
+			assert(pair);
+
+			if(pair->first == type)
+				return true;
+		}
+
+		return false;
+	}
+
 	bool CodegenInstance::isEnum(ExprType type)
 	{
 		if(type.isLiteral)

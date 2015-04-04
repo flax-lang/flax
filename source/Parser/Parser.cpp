@@ -230,6 +230,7 @@ namespace Parser
 			case ArithmeticOp::LogicalAnd:			return "&&";
 			case ArithmeticOp::LogicalOr:			return "||";
 			case ArithmeticOp::Cast:				return "as";
+			case ArithmeticOp::ForcedCast:			return "as!";
 			case ArithmeticOp::PlusEquals:			return "+=";
 			case ArithmeticOp::MinusEquals:			return "-=";
 			case ArithmeticOp::MultiplyEquals:		return "*=";
@@ -966,7 +967,7 @@ namespace Parser
 		}
 		else
 		{
-			parserError("Expected type for variable declaration");
+			parserError("Expected type for variable declaration, got %s", tmp.text.c_str());
 		}
 	}
 
@@ -1162,7 +1163,7 @@ namespace Parser
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token tok_op = eat(tokens);
 
-			Expr* rhs = tok_op.type == TType::As ? parseType(tokens) : parseUnary(tokens);
+			Expr* rhs = (tok_op.type == TType::As) ? parseType(tokens) : parseUnary(tokens);
 			if(!rhs)
 				return nullptr;
 
@@ -1197,7 +1198,6 @@ namespace Parser
 				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
 				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
 				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
-				case TType::As:				op = ArithmeticOp::Cast;				break;
 
 				case TType::PlusEq:			op = ArithmeticOp::PlusEquals;			break;
 				case TType::MinusEq:		op = ArithmeticOp::MinusEquals;			break;
@@ -1208,6 +1208,8 @@ namespace Parser
 				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
 				case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
 				case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
+				case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
+											break;
 				default:					parserError("Unknown operator '%s'", tok_op.text.c_str());
 			}
 
