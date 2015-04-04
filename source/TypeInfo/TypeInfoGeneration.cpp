@@ -38,6 +38,16 @@ namespace TypeInfo
 		return 0;
 	}
 
+	llvm::Type* getTypeForIndex(Codegen::CodegenInstance* cgi, size_t index)
+	{
+		// since 'index' is going to be from enum values.
+		index -= 1;
+		if(index >= cgi->rootNode->typeList.size())
+			return nullptr;
+
+		return std::get<1>(cgi->rootNode->typeList[index]);
+	}
+
 	void initialiseTypeInfo(CodegenInstance* cgi)
 	{
 		Enumeration* enr = 0;
@@ -75,15 +85,11 @@ namespace TypeInfo
 				VarDecl* type = new VarDecl(Parser::PosInfo(), "type", false);
 				type->type.strType = "Type";
 
-				VarDecl* ptrData = new VarDecl(Parser::PosInfo(), "ptrData", false);
-				ptrData->type.strType = "Int8*";
-
-				VarDecl* literal = new VarDecl(Parser::PosInfo(), "literal", false);
-				literal->type.strType = "Uint64";
+				VarDecl* data = new VarDecl(Parser::PosInfo(), "value", false);
+				data->type.strType = "Int8*";
 
 				any->members.push_back(type);		any->nameMap["type"] = 0;
-				any->members.push_back(ptrData);	any->nameMap["ptrData"] = 1;
-				any->members.push_back(literal);	any->nameMap["literal"] = 2;
+				any->members.push_back(data);		any->nameMap["value"] = 1;
 			}
 
 			any->createType(cgi);
