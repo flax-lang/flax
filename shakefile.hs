@@ -8,7 +8,7 @@ import Development.Shake.Command
 import Development.Shake.FilePath
 import Development.Shake.Util
 
-main :: IO ()
+main :: IO()
 
 sysroot		= "build/sysroot"
 prefix		= "usr/local"
@@ -33,7 +33,6 @@ flaxcFlags			= "-O3 -no-lowercase-builtin -o " ++ compiledTest ++ " -sysroot '" 
 
 
 main = shakeArgs shakeOptions{shakeFiles="build"} $ do
-	want [finalOutput]
 	want [compiledTest]
 
 	phony "clean" $ do
@@ -42,11 +41,32 @@ main = shakeArgs shakeOptions{shakeFiles="build"} $ do
 
 
 	compiledTest %> \out -> do
+		orderOnly [finalOutput]
 		alwaysRerun
+		ls <- getDirectoryFiles "" ["libs//*.flx"]
+
+		let libs = [sysroot </> prefix </> "lib/flaxlibs" </> (takeFileName lib) | lib <- ls]
+		need libs
+
 		Exit code <- cmd Shell finalOutput [flaxcFlags] testSource
 
 		putNormal "======================================="
 		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
+
+
+
+	"//*.flx" %> \out -> do
+		let fnp = "libs" </> (takeFileName out)
+		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs" </> (takeFileName out))
+
+		quietly (cmd Shell "cp" [fnp] [ut])
+
+		-- todo: Wtf? haskell plz
+		-- putNormal ("fnp: " ++ fnp)
+		-- putNormal ("out: " ++ out)
+		-- putNormal ("ut: " ++ ut)
+		-- copyFileChanged fnp ut
+
 
 
 	finalOutput %> \out -> do
@@ -54,7 +74,6 @@ main = shakeArgs shakeOptions{shakeFiles="build"} $ do
 		let os = [c ++ ".o" | c <- cs]
 		need os
 
-		putNormal finalOutput
 		cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
 
 
