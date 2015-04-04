@@ -21,7 +21,7 @@ finalOutput	= sysroot </> prefix </> "bin" </> outputBin
 llvmConfig	= "llvm-config"
 disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs"
 
-cxxFlags	= "-std=gnu++1z -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ llvmConfig ++ " --includedir`"
+cxxFlags	= "-std=gnu++1y -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ llvmConfig ++ " --includedir`"
 
 llvmConfigInvoke	= "`" ++ llvmConfig ++ " --cxxflags --ldflags --system-libs --libs core jit native bitwriter`"
 
