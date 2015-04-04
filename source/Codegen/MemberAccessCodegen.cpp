@@ -82,8 +82,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 	if(cgi->isTypeAlias(type))
 	{
-		assert(type->isStructTy());
-		assert(type->getStructNumElements() == 1);
+		iceAssert(type->isStructTy());
+		iceAssert(type->getStructNumElements() == 1);
 		type = type->getStructElementType(0);
 
 		isWrapped = true;
@@ -169,8 +169,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	{
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 
-		assert(str);
-		assert(self);
+		iceAssert(str);
+		iceAssert(self);
 
 		// transform
 		// a.(b.(c.(d.e))) into (((a.b).c).d).e
@@ -293,7 +293,7 @@ namespace Codegen
 			GenError::unknownSymbol(this, user, last, SymbolType::Type);
 
 		Struct* str = dynamic_cast<Struct*>(tp->second.first);
-		assert(str);
+		iceAssert(str);
 
 		return str;
 	}
@@ -301,7 +301,7 @@ namespace Codegen
 	static Expr* _recursivelyResolveNested(MemberAccess* base, std::deque<std::string>& scopes)
 	{
 		VarRef* left = dynamic_cast<VarRef*>(base->target);
-		assert(left);
+		iceAssert(left);
 
 		scopes.push_back(left->name);
 
@@ -321,7 +321,7 @@ namespace Codegen
 	Expr* CodegenInstance::recursivelyResolveNested(MemberAccess* base, std::deque<std::string>* __scopes)
 	{
 		VarRef* left = dynamic_cast<VarRef*>(base->target);
-		assert(left);
+		iceAssert(left);
 
 		std::deque<std::string> tmpscopes;
 		std::deque<std::string>* _scopes = nullptr;
@@ -354,7 +354,7 @@ namespace Codegen
 
 			// todo: handle static vars
 			FuncCall* fc = dynamic_cast<FuncCall*>(ret);
-			assert(fc);
+			iceAssert(fc);
 
 			if(__scopes != nullptr)
 			{
@@ -423,7 +423,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
 
 	lcallee = cgi->mainModule->getFunction(lcallee->getName());
-	assert(lcallee);
+	iceAssert(lcallee);
 
 	return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
 }
@@ -501,7 +501,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 	}
 	else
 	{
-		assert(i >= 0);
+		iceAssert(i >= 0);
 
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + var->name);
@@ -523,7 +523,7 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma)
 	FuncCall* fc = dynamic_cast<FuncCall*>(rightmost);
 
 	// todo: static vars
-	assert(fc);
+	iceAssert(fc);
 
 	Struct* str = cgi->getNestedStructFromScopes(ma, scopes);
 	return doFunctionCall(cgi, fc, 0, 0, false, str, true);
@@ -564,8 +564,8 @@ static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* base)
 	// transform a.(b.(c.d)) into ((a.b).c).d
 	// start at the front of the list, and the last ma.
 
-	assert(mas.size() == stack.size() - 1);
-	assert(stack.size() > 1);
+	iceAssert(mas.size() == stack.size() - 1);
+	iceAssert(stack.size() > 1);
 	mas.back()->target = stack[0];
 	mas.back()->member = stack[1];
 
