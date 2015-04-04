@@ -40,3 +40,7 @@ build/test
 *.bc
 
 *.ir
+*.o.m
+shakefile.hi
+shakefile
+.shake.database
