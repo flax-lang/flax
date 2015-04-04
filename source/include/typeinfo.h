@@ -29,6 +29,7 @@ namespace TypeInfo
 	void initialiseTypeInfo(Codegen::CodegenInstance* cgi);
 	void generateTypeInfo(Codegen::CodegenInstance* cgi);
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type);
+	llvm::Type* getTypeForIndex(Codegen::CodegenInstance* cgi, size_t index);
 }
 
 

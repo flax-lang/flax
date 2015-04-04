@@ -27,7 +27,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	llvm::Value* ai = storage;
 	bool didAddToSymtab = false;
 
-	if(this->initVal && !cmplxtype && this->type.strType != "Inferred")
+	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()))
 	{
 		// ...
 	}
@@ -85,11 +85,14 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			didAddToSymtab = true;
 		}
 
-		if(this->initVal && !cmplxtype)
+
+		if(this->initVal && (!cmplxtype || ((StructBase*) cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
-			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val, valptr);
-			return val;
+			auto res = cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal,
+				ArithmeticOp::Assign, cgi->mainBuilder.CreateLoad(ai), ai, val, valptr);
+
+			return res.result.first;
 		}
 		else if(!cmplxtype && !this->initVal)
 		{
@@ -149,7 +152,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else
 		{
-			GenError::invalidAssignment(cgi, this, val->getType(), ai->getType()->getPointerElementType());
+			GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 		}
 	}
 
@@ -174,12 +177,42 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			error(cgi, this, "Type inference requires an initial assignment to infer type");
 		}
 
+		ValPtr_t r;
 		if(!this->isGlobal)
 		{
-			ai = cgi->allocateInstanceInBlock(cgi->getLlvmType(this->initVal), this->name);
+			llvm::Type* vartype = cgi->getLlvmType(this->initVal);
+			if(cgi->isAnyType(vartype))
+			{
+				#if 0
+				// printf("aitype for %s: %s\n", this->name.c_str(), cgi->getReadableType(vartype).c_str());
+
+				// don't codegen with the allocainst, since we don't fucking have it
+				r = this->initVal->codegen(cgi).result;
+				assert(r.first && cgi->isAnyType(r.first->getType()));
+				assert(r.second);
+
+				llvm::Value* typegep = cgi->mainBuilder.CreateStructGEP(r.second, 0);
+				llvm::Value* typ = cgi->mainBuilder.CreateLoad(typegep);
+
+
+				size_t index = cint->getZExtValue();
+				vartype = TypeInfo::getTypeForIndex(cgi, index);
+				#endif
+
+
+				// todo: fix this shit
+				warn(cgi, this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
+			}
+
+			#if 0
+			else
+			#endif
+			{
+				ai = cgi->allocateInstanceInBlock(vartype, this->name);
+				r = this->initVal->codegen(cgi, ai).result;
+			}
 		}
 
-		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
 		valptr = r.second;
