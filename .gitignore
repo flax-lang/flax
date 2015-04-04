@@ -39,3 +39,4 @@ build/test
 *.ll
 *.bc
 
+*.ir
