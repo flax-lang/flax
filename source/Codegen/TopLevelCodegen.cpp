@@ -30,6 +30,10 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
+
+		// we need the 'Type' enum to be available, as well as the 'Any' type,
+		// before any variables are encountered.
+		TypeInfo::initialiseTypeInfo(cgi);
 	}
 	else if(pass == 1)
 	{
@@ -62,7 +66,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// step 2: generate the type info.
 		// now that we have all the types that we need, and they're all fully
 		// processed, we create the Type enum.
-
 		TypeInfo::generateTypeInfo(cgi);
 	}
 	else if(pass == 3)
