@@ -61,7 +61,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 
 Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	assert(this->cases.size() > 0);
+	iceAssert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
 	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
 	firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
@@ -69,7 +69,7 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 
 
 	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
-	assert(func);
+	iceAssert(func);
 
 	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
 	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase", func);

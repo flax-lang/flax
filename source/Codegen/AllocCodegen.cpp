@@ -32,17 +32,17 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		fakefm->codegen(cgi);
 
-		assert((fp = cgi->getDeclaredFunc(MALLOC_FUNC)));
+		iceAssert((fp = cgi->getDeclaredFunc(MALLOC_FUNC)));
 	}
 
 	llvm::Function* mallocf = fp->first;
-	assert(mallocf);
+	iceAssert(mallocf);
 
 	llvm::Type* allocType = 0;
 	TypePair_t* typePair = 0;
 
 	allocType = cgi->getLlvmType(this, this->type);
-	assert(allocType);
+	iceAssert(allocType);
 
 
 	llvm::Value* oneValue = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 1);
@@ -211,7 +211,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		fakefm->codegen(cgi);
 
-		assert((fp = cgi->getDeclaredFunc(FREE_FUNC)));
+		iceAssert((fp = cgi->getDeclaredFunc(FREE_FUNC)));
 	}
 
 	// this will be an alloca instance (aka pointer to whatever type it actually was)
