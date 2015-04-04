@@ -40,7 +40,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 
 Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, llvm::Value* lhs,
-	llvm::Value* ref, llvm::Value* rhs)
+	llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr)
 {
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
@@ -72,6 +72,98 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		if(!varptr)
 			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
+
+
+
+
+		// assigning something to Any
+		if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
+		{
+			// dealing with any.
+			assert(ref);
+			llvm::Value* typegep = this->mainBuilder.CreateStructGEP(ref, 0);	// Any
+			typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
+
+
+			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(ref, 1, "value");
+
+			size_t index = TypeInfo::getIndexForType(this, rhs->getType());
+			assert(index > 0);
+
+			llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
+			this->mainBuilder.CreateStore(constint, typegep);
+
+			if(rhsPtr)
+			{
+				// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
+				llvm::Value* casted = this->mainBuilder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
+				this->mainBuilder.CreateStore(casted, valgep);
+			}
+			else
+			{
+				llvm::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : llvm::IntegerType::getInt64Ty(this->getContext());
+
+
+				if(rhs->getType()->isIntegerTy())
+				{
+					llvm::Value* casted = this->mainBuilder.CreateIntToPtr(rhs, targetType);
+					this->mainBuilder.CreateStore(casted, valgep);
+				}
+				else
+				{
+					llvm::Value* casted = this->mainBuilder.CreateBitCast(rhs, targetType);
+					casted = this->mainBuilder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
+					this->mainBuilder.CreateStore(casted, valgep);
+				}
+			}
+
+
+			return Result_t(this->mainBuilder.CreateLoad(ref), ref);
+		}
+
+
+
+
+		// assigning something to Any
+		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
+		{
+			// todo: find some fucking way to unwrap this shit at compile time.
+			warn(this, left, "Assignment from 'Any' to typed variable is not checked, this is a forced cast.");
+
+			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(rhsPtr, 1);
+			llvm::Value* loadedval = this->mainBuilder.CreateLoad(valgep);
+
+			if(lhs->getType()->isStructTy())
+			{
+				// use pointer stuff
+				llvm::Value* valptr = this->mainBuilder.CreatePointerCast(loadedval, lhs->getType()->getPointerTo());
+				llvm::Value* loaded = this->mainBuilder.CreateLoad(valptr);
+
+				return Result_t(loaded, valptr);
+			}
+			else
+			{
+				// the pointer is actually a literal
+				llvm::Type* targetType = lhs->getType()->isIntegerTy() ? lhs->getType() : llvm::IntegerType::getInt64Ty(this->getContext());
+				llvm::Value* val = this->mainBuilder.CreatePtrToInt(loadedval, targetType);
+
+				if(val->getType() != lhs->getType())
+				{
+					val = this->mainBuilder.CreateBitCast(val, lhs->getType());
+				}
+
+				return Result_t(val, 0);
+			}
+
+			// llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
+			// return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
+		}
+
+
+
+
+
+
 
 		// try and see if we have operator overloads for bo thing
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
@@ -257,9 +349,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		llvm::Value* rhsPtr = res.second;
 
 		cgi->autoCastType(lhs, rhs, rhsPtr);
-		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
+		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs, rhsPtr);
 	}
-	else if(this->op == ArithmeticOp::Cast)
+	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
 	{
 		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
@@ -283,67 +375,90 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			return Result_t(lhs, 0);
 		}
 
-		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+		if(this->op != ArithmeticOp::ForcedCast)
 		{
-			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
-		}
-		else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
-		{
-			return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
-		{
-			printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
-			if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
-				return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
-
-			else
-				return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
-		}
-		else if(cgi->isEnum(rtype))
-		{
-			// dealing with enum
-			llvm::Type* insideType = rtype->getStructElementType(0);
-			if(lhs->getType() == insideType)
+			if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
 			{
-				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
-
-				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
-				cgi->mainBuilder.CreateStore(lhs, gep);
-
-				return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+				return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 			}
-			else
+			else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
-					cgi->getReadableType(lhs).c_str());
+				return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
+			{
+				printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
+				if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
+					return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
+
+				else
+					return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+			}
+			else if(cgi->isEnum(rtype))
+			{
+				// dealing with enum
+				llvm::Type* insideType = rtype->getStructElementType(0);
+				if(lhs->getType() == insideType)
+				{
+					llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
+
+					llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+					cgi->mainBuilder.CreateStore(lhs, gep);
+
+					return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+				}
+				else
+				{
+					error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
+						cgi->getReadableType(lhs).c_str());
+				}
+			}
+			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
+			{
+				assert(valptr.second);
+				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+				llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
+
+				return Result_t(val, gep);
 			}
 		}
-		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
+
+
+
+		if(cgi->isAnyType(lhs->getType()))
 		{
+			// convert the int8* to a pointer to rtype, then load it... if it's not a literal type.
 			assert(valptr.second);
-			llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
-			llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
+			llvm::Value* valgep = cgi->mainBuilder.CreateStructGEP(valptr.second, 1);
+			llvm::Value* loadedval = cgi->mainBuilder.CreateLoad(valgep);
 
-			return Result_t(val, gep);
+			if(rtype->isIntegerTy() || rtype->isFloatingPointTy())
+			{
+				llvm::Value* casted = cgi->mainBuilder.CreatePtrToInt(loadedval, llvm::IntegerType::getInt64Ty(cgi->getContext()));
+				return Result_t(cgi->mainBuilder.CreateBitCast(casted, rtype), 0);
+			}
+
+			llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
+			return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
 		}
-		else
+		else if(this->op != ArithmeticOp::ForcedCast)
 		{
-			warn(cgi, this, "Unknown cast, doing raw bitcast...");
-			return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+			warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rtype).c_str());
 		}
+
+		return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
 	}
 	else
 	{
