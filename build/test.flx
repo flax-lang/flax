@@ -85,7 +85,7 @@ extension Bar
 
 struct Qux
 {
-	var k: Int = 591
+	var k: Float64 = 591.4
 }
 
 typealias foo = Qux
@@ -114,15 +114,13 @@ func main(argc: Int32, argv: Int8**) -> Int
 	let a1 = "hello!"
 	let k: Type = typeof(0)
 	var m: foo
+	m.k = 500.1409
 
 	var m1 = &m as Int8*
 
-	var t: Any
-	t = 3.44
+	var t: Any = 3.55
 
-	m.k = 51
-
-	printf("%d, %f\n", t.type, t.literal as! Float64)
+	printf("%d, %f\n", t.type, t as Float64)
 	return 0
 }
 
