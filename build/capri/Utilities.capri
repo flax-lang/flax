@@ -1,5 +1,7 @@
 import io;
 import string;
+import lang;
+import arrays;
 
 project Utilities {
 
@@ -45,13 +47,15 @@ project Utilities {
 	 */
 	task executeForChanged(folder, suffixes, command, allOverride)
 	{
-
 		if(allOverride == null)
 		{
 			allOverride = false;
 		}
 
 		def files = File.listTree(folder);
+		cur_threads = 1;
+		max_threads = 7;
+		ids[0] = concurrent IO.println("start");
 
 		foreach(file in files)
 		{
@@ -65,9 +69,34 @@ project Utilities {
 					params["objectName"] = File.makeFileNameFromPath(File.getAbsolutePath(file));
 					fileCommand = command << params;
 
-					assert System.execute("{fileCommand}") == 0;
+					if(cur_threads < max_threads)
+					{
+						IO.println("concur");
+						ids[cur_threads] = concurrent(fileCommand) System.execute("{fileCommand}");
+						IO.println("imm");
+						cur_threads += 1;
+					}
+					else
+					{
+						IO.println("not concur");
+						assert System.execute("{fileCommand}") == 0;
+
+						foreach(id in ids)
+						{
+							IO.println("join {id}");
+							join id;
+						}
+
+						cur_threads = 0;
+					}
 				}
 			}
+		}
+
+		foreach(id in ids)
+		{
+			IO.println("join {id}");
+			join id;
 		}
 	}
 }
