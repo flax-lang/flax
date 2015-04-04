@@ -46,10 +46,8 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 #### Building the Flax compiler ####
 
 - You will need clang++ (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
-- Screw makefiles. Flax is currently using a third-party build system.
-- Source is available here: http://capri.ghostkernel.org, follow instructions to build capri.
-- Ensure that the 'capri' executable is on your path (or just provide the absolute path to your shell)
-- Run 'capri' in the top-level directory.
+- Flax uses Shake, available at http://shakebuild.com
+- To summarise: install `ghc`, install `cabal`, `cabal update; cabal install shake`, `runhaskell shakefile.hs` to build Flax.
 - Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
 - Additionally, default libraries will be copied from './libs' to './build/sysroot/usr/local/lib'
 
