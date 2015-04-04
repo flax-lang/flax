@@ -11,6 +11,7 @@
 #include <vector>
 
 
+
 enum class SymbolType
 {
 	Generic,
@@ -199,7 +200,8 @@ void warn(Ast::Expr* e, const char* msg, ...);
 void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
 
 
-
+#define __nothing
+#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n%s", __FILE__, __LINE__, #x))
 
 
 

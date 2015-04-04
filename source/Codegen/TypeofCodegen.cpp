@@ -42,10 +42,10 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	TypePair_t* tp = cgi->getType("Type");
-	assert(tp);
+	iceAssert(tp);
 
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
-	assert(enr);
+	iceAssert(enr);
 
 	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
 	llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(wrapper, 0, "wrapped");

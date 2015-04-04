@@ -80,7 +80,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
 		{
 			// dealing with any.
-			assert(ref);
+			iceAssert(ref);
 			return this->assignValueToAny(ref, rhs, rhsPtr);
 		}
 
@@ -131,7 +131,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// so, use it
 
 		varptr = ref;
-		assert(rhs);
+		iceAssert(rhs);
 
 		// make sure the left side is a pointer
 		if(!varptr)
@@ -264,7 +264,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value* _rhs)
 {
-	assert(this->left && this->right);
+	iceAssert(this->left && this->right);
 	ValPtr_t valptr;
 
 	llvm::Value* lhs;
@@ -297,16 +297,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		llvm::Type* rtype = cgi->getLlvmType(this->right);
 		if(!rtype)
 		{
-			// TypePair_t* tp = cgi->getType(ct->name);
-			// if(!tp)
-				GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
-
-			// rtype = tp->first;
+			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
 		}
 
 
-		// todo: cleanup?
-		assert(rtype);
+		iceAssert(rtype);
 		if(lhs->getType() == rtype)
 		{
 			warn(cgi, this, "Redundant cast");
@@ -365,7 +360,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			}
 			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
 			{
-				assert(valptr.second);
+				iceAssert(valptr.second);
 				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
 				llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
 
@@ -377,7 +372,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 		if(cgi->isAnyType(lhs->getType()))
 		{
-			assert(valptr.second);
+			iceAssert(valptr.second);
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
 		else if(this->op != ArithmeticOp::ForcedCast)
@@ -502,7 +497,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 
 				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
-				assert(func);
+				iceAssert(func);
 
 				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 
@@ -590,8 +585,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
 	{
-		assert(lhsPtr);
-		assert(rhsPtr);
+		iceAssert(lhsPtr);
+		iceAssert(rhsPtr);
 
 		llvm::Value* gepL = cgi->mainBuilder.CreateStructGEP(lhsPtr, 0);
 		llvm::Value* gepR = cgi->mainBuilder.CreateStructGEP(rhsPtr, 0);

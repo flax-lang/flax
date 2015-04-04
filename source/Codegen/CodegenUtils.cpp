@@ -269,7 +269,7 @@ namespace Codegen
 		if(atype->mangledName.empty())
 			atype->mangledName = mangled;
 
-		assert(mangled == atype->mangledName);
+		iceAssert(mangled == atype->mangledName);
 
 		if(this->typeMap.find(mangled) == this->typeMap.end())
 		{
@@ -302,7 +302,7 @@ namespace Codegen
 		printf("}\n");
 		#endif
 		if(name == "Inferred" || name == "_ZN8Inferred")
-			assert(0);		// todo: see if this ever fires.
+			iceAssert(0);		// todo: see if this ever fires.
 
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
@@ -544,7 +544,7 @@ namespace Codegen
 			if(mangled.back() == 'E')
 				mangled = mangled.substr(0, mangled.length() - 1);
 
-			assert(mangled.back() == '0');
+			iceAssert(mangled.back() == '0');
 			mangled = mangled.substr(0, mangled.length() - 1);
 		}
 
@@ -557,7 +557,7 @@ namespace Codegen
 	std::string CodegenInstance::mangleName(StructBase* s, FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
-		assert(this->getType(s->mangledName));
+		iceAssert(this->getType(s->mangledName));
 
 		bool first = true;
 		for(Expr* e : fc->params)
@@ -859,7 +859,7 @@ namespace Codegen
 			}
 
 			TypePair_t* pair = this->getType("Any");
-			assert(pair);
+			iceAssert(pair);
 
 			if(pair->first == type)
 				return true;
@@ -938,7 +938,7 @@ namespace Codegen
 
 	llvm::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, llvm::Value* alloca)
 	{
-		assert(alloca->getType()->isPointerTy());
+		iceAssert(alloca->getType()->isPointerTy());
 		llvm::Type* baseType = alloca->getType()->getPointerElementType();
 
 		if(this->isEnum(baseType) || this->isTypeAlias(baseType))
@@ -947,10 +947,10 @@ namespace Codegen
 			if(!tp)
 				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
 
-			assert(tp->second.second == ExprKind::Enum);
+			iceAssert(tp->second.second == ExprKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 
-			assert(enr);
+			iceAssert(enr);
 			if(enr->isStrong)
 			{
 				return alloca;		// fail.
@@ -965,13 +965,13 @@ namespace Codegen
 
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
 	{
-		assert(expr);
+		iceAssert(expr);
 		{
 			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
 			{
 				if(decl->type.strType == "Inferred")
 				{
-					assert(decl->inferredLType);
+					iceAssert(decl->inferredLType);
 					return decl->inferredLType;
 				}
 				else
@@ -1073,7 +1073,7 @@ namespace Codegen
 					{
 						if(tp->second.second == ExprKind::Enum)
 						{
-							assert(tp->first->isStructTy());
+							iceAssert(tp->first->isStructTy());
 							return tp->first;
 						}
 						else if(tp->second.second == ExprKind::Struct)
@@ -1100,7 +1100,7 @@ namespace Codegen
 					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
 
 				Struct* str = dynamic_cast<Struct*>(pair->second.first);
-				assert(str);
+				iceAssert(str);
 
 				VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
 				FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
@@ -1203,7 +1203,7 @@ namespace Codegen
 			else if(dynamic_cast<Typeof*>(expr))
 			{
 				TypePair_t* tp = this->getType("Type");
-				assert(tp);
+				iceAssert(tp);
 
 				return tp->first;
 			}
@@ -1327,7 +1327,7 @@ namespace Codegen
 				// var allocated: Uint64
 
 				// cast the RHS to the LHS
-				assert(rhsPtr);
+				iceAssert(rhsPtr);
 				llvm::Value* ret = this->mainBuilder.CreateStructGEP(rhsPtr, 0);
 				right = this->mainBuilder.CreateLoad(ret);	// mutating
 			}
@@ -1377,9 +1377,9 @@ namespace Codegen
 
 	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
 	{
-		assert(pair);
-		assert(pair->first);
-		assert(pair->second.first);
+		iceAssert(pair);
+		iceAssert(pair->first);
+		iceAssert(pair->second.first);
 
 		if(pair->second.second != ExprKind::Struct)
 		{
@@ -1388,7 +1388,7 @@ namespace Codegen
 		}
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
-		assert(str);
+		iceAssert(str);
 
 		llvm::Function* opov = nullptr;
 		for(auto f : str->lOpOverloads)
@@ -1408,7 +1408,7 @@ namespace Codegen
 
 		// get the function with the same name in the current module
 		opov = this->mainModule->getFunction(opov->getName());
-		assert(opov);
+		iceAssert(opov);
 
 		// try the assign op.
 		if(op == ArithmeticOp::Assign || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
@@ -1431,13 +1431,13 @@ namespace Codegen
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
 	{
-		assert(pair);
-		assert(pair->first);
-		assert(pair->second.first);
-		assert(pair->second.second == ExprKind::Struct);
+		iceAssert(pair);
+		iceAssert(pair->first);
+		iceAssert(pair->second.first);
+		iceAssert(pair->second.second == ExprKind::Struct);
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
-		assert(str);
+		iceAssert(str);
 
 		llvm::Function* initf = 0;
 		for(llvm::Function* initers : str->initFuncs)
@@ -1477,7 +1477,7 @@ namespace Codegen
 		typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
-		assert(index > 0);
+		iceAssert(index > 0);
 
 		llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
 		this->mainBuilder.CreateStore(constint, typegep);
@@ -1548,11 +1548,11 @@ namespace Codegen
 
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
-		assert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
 
 		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
-		assert(lop);
+		iceAssert(lop);
 
 
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8

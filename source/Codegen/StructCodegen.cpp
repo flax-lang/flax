@@ -13,7 +13,7 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	assert(this->didCreateType);
+	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
 		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
@@ -42,7 +42,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	for(VarDecl* var : this->members)
 	{
 		int i = this->nameMap[var->name];
-		assert(i >= 0);
+		iceAssert(i >= 0);
 
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
@@ -271,7 +271,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
 			int i = this->nameMap[var->name];
-			assert(i >= 0);
+			iceAssert(i >= 0);
 
 			types[i] = cgi->getLlvmType(var);
 		}
