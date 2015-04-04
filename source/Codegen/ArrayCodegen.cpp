@@ -30,7 +30,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	// try and do compile-time bounds checking
 	if(atype->isArrayTy())
 	{
-		assert(llvm::isa<llvm::ArrayType>(atype));
+		iceAssert(llvm::isa<llvm::ArrayType>(atype));
 		llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
 
 		// dynamic arrays don't get bounds checking
@@ -39,7 +39,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 			Number* n = nullptr;
 			if((n = dynamic_cast<Number*>(this->index)))
 			{
-				assert(!n->decimal);
+				iceAssert(!n->decimal);
 				if((uint64_t) n->ival >= at->getNumElements())
 				{
 					error(cgi, this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());

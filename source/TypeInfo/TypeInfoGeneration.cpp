@@ -68,12 +68,12 @@ namespace TypeInfo
 		else
 		{
 			auto pair = cgi->getType("Type");
-			assert(pair);
+			iceAssert(pair);
 
-			assert(pair->second.second == ExprKind::Enum);
+			iceAssert(pair->second.second == ExprKind::Enum);
 
 			enr = dynamic_cast<Enumeration*>(pair->second.first);
-			assert(enr);
+			iceAssert(enr);
 		}
 
 
@@ -100,7 +100,7 @@ namespace TypeInfo
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
 		Enumeration* enr = dynamic_cast<Enumeration*>(cgi->getType("Type")->second.first);
-		assert(enr);
+		iceAssert(enr);
 
 		// start at 2, we already have 1
 		Number* num = new Number(Parser::PosInfo(), (int64_t) 2);

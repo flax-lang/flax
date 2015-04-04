@@ -11,6 +11,7 @@
 #include <vector>
 
 
+
 enum class SymbolType
 {
 	Generic,
@@ -163,6 +164,11 @@ namespace Codegen
 
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
 
+
+		Ast::Result_t assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr);
+		Ast::Result_t extractValueFromAny(llvm::Type* type, llvm::Value* ptr);
+
+
 		void evaluateDependencies(Ast::Expr* expr);
 
 
@@ -194,7 +200,8 @@ void warn(Ast::Expr* e, const char* msg, ...);
 void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
 
 
-
+#define __nothing
+#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n%s", __FILE__, __LINE__, #x))
 
 
 

@@ -11,7 +11,7 @@ using namespace Codegen;
 
 Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	assert(this->expr);
+	iceAssert(this->expr);
 	Result_t res = this->expr->codegen(cgi);
 
 	switch(this->op)
