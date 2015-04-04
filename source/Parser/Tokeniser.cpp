@@ -273,7 +273,7 @@ namespace Parser
 			else if(id == "if")			tok.type = TType::If;
 			else if(id == "else")		tok.type = TType::Else;
 			else if(id == "return")		tok.type = TType::Return;
-			else if(id == "as")			tok.type = TType::As;
+			else if(id == "as")			{ tok.type = TType::As; if(tmp == '!') { read++; tok.text = "as!"; } }
 			else if(id == "is")			tok.type = TType::Is;
 			else if(id == "switch")		tok.type = TType::Switch;
 			else if(id == "case")		tok.type = TType::Case;

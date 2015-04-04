@@ -112,6 +112,7 @@ namespace Ast
 		LogicalOr,
 
 		Cast,
+		ForcedCast,
 
 		PlusEquals,
 		MinusEquals,
