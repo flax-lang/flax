@@ -12,7 +12,8 @@
 #include "include/codegen.h"
 #include "include/compiler.h"
 
-#include "llvm/Support/Filesystem.h"
+// #include "llvm/Support/Filesystem.h"
+
 using namespace Ast;
 
 static std::string parseQuotedString(char** argv, int& i)
@@ -114,7 +115,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected directory name after '-sysroot' option\n");
-					exit(1);
+					exit(-1);
 				}
 			}
 			if(!strcmp(argv[i], "-target"))
@@ -128,7 +129,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected target string after '-target' option\n");
-					exit(1);
+					exit(-1);
 				}
 			}
 			else if(!strcmp(argv[i], "-o"))
@@ -142,7 +143,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected filename name after '-o' option\n");
-					exit(1);
+					exit(-1);
 				}
 			}
 			else if(!strcmp(argv[i], "-fPIC"))
@@ -158,7 +159,7 @@ int main(int argc, char* argv[])
 					if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
 					{
 						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'. '%s' is invalid.\n", mm.c_str());
-						exit(1);
+						exit(-1);
 					}
 
 					Compiler::mcmodel = mm;
@@ -166,7 +167,7 @@ int main(int argc, char* argv[])
 				else
 				{
 					fprintf(stderr, "Error: Expected mcmodel name after '-mcmodel' option\n");
-					exit(1);
+					exit(-1);
 				}
 			}
 			else if(!strcmp(argv[i], "-Werror"))
@@ -199,7 +200,7 @@ int main(int argc, char* argv[])
 				if(strlen(argv[i]) < 3)
 				{
 					fprintf(stderr, "Error: '-O' is not a valid option on its own\n");
-					exit(1);
+					exit(-1);
 				}
 
 				if(argv[i][2] == 'x')
@@ -216,7 +217,7 @@ int main(int argc, char* argv[])
 			{
 				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
 
-				exit(1);
+				exit(-1);
 			}
 			else
 			{
@@ -250,11 +251,14 @@ int main(int argc, char* argv[])
 
 		if(Compiler::dumpModule)
 		{
-			std::string err_info;
-			llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
+			// std::string err_info;
+			// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
 
-			out << *(cgi->mainModule);
-			out.close();
+			// out << *(cgi->mainModule);
+			// out.close();
+
+			fprintf(stderr, "enosup\n");
+			exit(-1);
 		}
 
 		delete cgi;
