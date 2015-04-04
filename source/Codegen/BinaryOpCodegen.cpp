@@ -81,82 +81,20 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			// dealing with any.
 			assert(ref);
-			llvm::Value* typegep = this->mainBuilder.CreateStructGEP(ref, 0);	// Any
-			typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
-
-
-			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(ref, 1, "value");
-
-			size_t index = TypeInfo::getIndexForType(this, rhs->getType());
-			assert(index > 0);
-
-			llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
-			this->mainBuilder.CreateStore(constint, typegep);
-
-			if(rhsPtr)
-			{
-				// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
-				llvm::Value* casted = this->mainBuilder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
-				this->mainBuilder.CreateStore(casted, valgep);
-			}
-			else
-			{
-				llvm::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : llvm::IntegerType::getInt64Ty(this->getContext());
-
-
-				if(rhs->getType()->isIntegerTy())
-				{
-					llvm::Value* casted = this->mainBuilder.CreateIntToPtr(rhs, targetType);
-					this->mainBuilder.CreateStore(casted, valgep);
-				}
-				else
-				{
-					llvm::Value* casted = this->mainBuilder.CreateBitCast(rhs, targetType);
-					casted = this->mainBuilder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
-					this->mainBuilder.CreateStore(casted, valgep);
-				}
-			}
-
-
-			return Result_t(this->mainBuilder.CreateLoad(ref), ref);
+			return this->assignValueToAny(ref, rhs, rhsPtr);
 		}
 
 
 
 
-		// assigning something to Any
+		// assigning Any to something
 		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
 			warn(this, left, "Assignment from 'Any' to typed variable is not checked, this is a forced cast.");
 
-			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(rhsPtr, 1);
-			llvm::Value* loadedval = this->mainBuilder.CreateLoad(valgep);
-
-			if(lhs->getType()->isStructTy())
-			{
-				// use pointer stuff
-				llvm::Value* valptr = this->mainBuilder.CreatePointerCast(loadedval, lhs->getType()->getPointerTo());
-				llvm::Value* loaded = this->mainBuilder.CreateLoad(valptr);
-
-				return Result_t(loaded, valptr);
-			}
-			else
-			{
-				// the pointer is actually a literal
-				llvm::Type* targetType = lhs->getType()->isIntegerTy() ? lhs->getType() : llvm::IntegerType::getInt64Ty(this->getContext());
-				llvm::Value* val = this->mainBuilder.CreatePtrToInt(loadedval, targetType);
-
-				if(val->getType() != lhs->getType())
-				{
-					val = this->mainBuilder.CreateBitCast(val, lhs->getType());
-				}
-
-				return Result_t(val, 0);
-			}
-
-			// llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
-			// return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
+			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
+			return Result_t(this->mainBuilder.CreateStore(res.result.first, ref), ref);
 		}
 
 
@@ -439,19 +377,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 		if(cgi->isAnyType(lhs->getType()))
 		{
-			// convert the int8* to a pointer to rtype, then load it... if it's not a literal type.
 			assert(valptr.second);
-			llvm::Value* valgep = cgi->mainBuilder.CreateStructGEP(valptr.second, 1);
-			llvm::Value* loadedval = cgi->mainBuilder.CreateLoad(valgep);
-
-			if(rtype->isIntegerTy() || rtype->isFloatingPointTy())
-			{
-				llvm::Value* casted = cgi->mainBuilder.CreatePtrToInt(loadedval, llvm::IntegerType::getInt64Ty(cgi->getContext()));
-				return Result_t(cgi->mainBuilder.CreateBitCast(casted, rtype), 0);
-			}
-
-			llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
-			return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
+			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
 		else if(this->op != ArithmeticOp::ForcedCast)
 		{
