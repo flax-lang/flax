@@ -75,11 +75,15 @@ namespace TypeInfo
 				VarDecl* type = new VarDecl(Parser::PosInfo(), "type", false);
 				type->type.strType = "Type";
 
-				VarDecl* data = new VarDecl(Parser::PosInfo(), "data", false);
-				data->type.strType = "Int8*";
+				VarDecl* ptrData = new VarDecl(Parser::PosInfo(), "ptrData", false);
+				ptrData->type.strType = "Int8*";
 
-				any->members.push_back(type);	any->nameMap["type"] = 0;
-				any->members.push_back(data);	any->nameMap["data"] = 1;
+				VarDecl* literal = new VarDecl(Parser::PosInfo(), "literal", false);
+				literal->type.strType = "Uint64";
+
+				any->members.push_back(type);		any->nameMap["type"] = 0;
+				any->members.push_back(ptrData);	any->nameMap["ptrData"] = 1;
+				any->members.push_back(literal);	any->nameMap["literal"] = 2;
 			}
 
 			any->createType(cgi);
@@ -144,6 +148,7 @@ namespace TypeInfo
 			num = new Number(Parser::PosInfo(), num->ival + 1);
 		}
 
+		#if 0
 		printf("Final type list for module %s\n{\n", cgi->mainModule->getModuleIdentifier().c_str());
 
 		int i = 1;
@@ -153,6 +158,7 @@ namespace TypeInfo
 			i++;
 		}
 		printf("}\n\n");
+		#endif
 	}
 }
 

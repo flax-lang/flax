@@ -88,7 +88,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(this->initVal && !cmplxtype)
 		{
 			// this only works if we don't call a constructor
-			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val);
+			cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal, ArithmeticOp::Assign, val, ai, val, valptr);
 			return val;
 		}
 		else if(!cmplxtype && !this->initVal)
