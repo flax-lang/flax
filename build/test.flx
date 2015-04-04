@@ -9,92 +9,99 @@ struct Foo
 	var ty: Int = 491
 }
 
-// struct Bar
-// {
-// 	var norf: Int = 1600
-// 	var yorg: Int = 5000
-// 	var goop: Int = 6810
-// 	var afoo: Foo
+struct Bar
+{
+	var norf: Int = 1600
+	var yorg: Int = 5000
+	var goop: Int = 6810
+	var afoo: Foo
 
-// 	static func unNest() -> Int
-// 	{
-// 		return 581
-// 	}
+	static func unNest() -> Int
+	{
+		return 581
+	}
 
-// 	func shit() -> Int
-// 	{
-// 		return self.goop - self.norf
-// 	}
+	func shit() -> Int
+	{
+		return self.goop - self.norf
+	}
 
-// 	struct Nested
-// 	{
-// 		var g: Int = 500
+	struct Nested
+	{
+		var g: Int = 500
 
-// 		struct Nest2
-// 		{
-// 			var m: Int = 230
-// 			func doShit() -> Int
-// 			{
-// 				println("doing shit...")
-// 				return 47
-// 			}
+		struct Nest2
+		{
+			var m: Int = 230
+			func doShit() -> Int
+			{
+				println("doing shit...")
+				return 47
+			}
 
-// 			static func staticFunc() -> Int
-// 			{
-// 				println("Doing some shit of a static nature...")
-// 				return 74
-// 			}
-// 		}
+			static func staticFunc() -> Int
+			{
+				println("Doing some shit of a static nature...")
+				return 74
+			}
+		}
 
-// 		func stuff() -> Int
-// 		{
-// 			printf("in stuff(): self is %x\n", self)
-// 			return 69
-// 		}
-// 	}
+		func stuff() -> Int
+		{
+			printf("in stuff(): self is %x\n", self)
+			return 69
+		}
+	}
 
-// 	init()
-// 	{
-// 		self.norf = 1000
-// 		self.goop = 1500
-// 	}
-// }
+	init()
+	{
+		self.norf = 1000
+		self.goop = 1500
+	}
+}
 
-// extension Bar
-// {
-// 	var qux: Int = 500
-// 	var aaa: Int = 1000
+extension Bar
+{
+	var qux: Int = 500
+	var aaa: Int = 1000
 
-// 	func fwoosh()
-// 	{
-// 		println("Fwoosh! The joke goes over your head.");
-// 	}
+	func fwoosh()
+	{
+		println("Fwoosh! The joke goes over your head.");
+	}
 
-// 	var poog: Int
-// 	{
-// 		get
-// 		{
-// 			return 500
-// 		}
-// 		set(fag)
-// 		{
-// 			self.norf = fag / 4
-// 		}
-// 	}
-// }
+	var poog: Int
+	{
+		get
+		{
+			return 500
+		}
+		set(fag)
+		{
+			self.norf = fag / 4
+		}
+	}
+}
+
+struct Qux
+{
+	var k: Float64 = 591.4
+}
+
+typealias foo = Qux
 
 
-// func testing() -> Int
-// {
-// 	if true
-// 	{
-// 		return 58
-// 	}
-// 	else
-// 	{
-// 		return 43
-// 	}
-// }
+func testing() -> Int
+{
+	if true
+	{
+		return 58
+	}
+	else
+	{
+		return 43
+	}
+}
 @strong enum Foobar
 {
 	case One = "one"
@@ -105,11 +112,16 @@ struct Foo
 func main(argc: Int32, argv: Int8**) -> Int
 {
 	let a1 = "hello!"
+	let k: Type = typeof(0)
+	var m: foo
+	m.k = 500.1409
 
-	let k = typeof(a1)
+	var m1 = &m as Int8*
 
-	printf("%s, %d, %d\n", "bye", 6, 435)
-	printf("%d\n", k)
+	var t: Any = 3.55
+	var g: Float64 = t
+
+	printf("%d, %f, %f\n", t.type, t as Float64, g)
 	return 0
 }
 

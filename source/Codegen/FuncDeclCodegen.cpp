@@ -19,7 +19,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	this->mangledName = this->name;
 	if(isMemberFunction)
 	{
-		assert(!this->isFFI);
+		iceAssert(!this->isFFI);
 		std::deque<Expr*> es;
 		for(auto p : this->params)
 			es.push_back(p);
@@ -72,7 +72,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else
 	{
-		linkageType = llvm::Function::LinkOnceAnyLinkage;
+		linkageType = llvm::Function::InternalLinkage;
 	}
 
 

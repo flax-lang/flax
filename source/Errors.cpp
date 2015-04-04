@@ -90,6 +90,9 @@ void warn(const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, nullptr, msg, "Warning", false, ap);
+
+	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+		error("Treating warning as error because -Werror was passed");
 }
 
 void warn(Expr* relevantast, const char* msg, ...)
@@ -97,6 +100,10 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, relevantast, msg, "Warning", false, ap);
+
+
+	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+		error("Treating warning as error because -Werror was passed");
 }
 
 void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
@@ -104,6 +111,10 @@ void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(cgi, relevantast, msg, "Warning", false, ap);
+
+
+	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+		error("Treating warning as error because -Werror was passed");
 }
 
 

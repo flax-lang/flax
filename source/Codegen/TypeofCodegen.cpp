@@ -15,10 +15,19 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))
 	{
 		VarDecl* decl = cgi->getSymDecl(this, vr->name);
+		llvm::Type* t = 0;
 		if(!decl)
-			GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
+		{
+			t = cgi->unwrapPointerType(this, vr->name);
 
-		llvm::Type* t = cgi->getLlvmType(decl);
+			if(!t)
+				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
+		}
+		else
+		{
+			t = cgi->getLlvmType(decl);
+		}
+
 		index = TypeInfo::getIndexForType(cgi, t);
 	}
 	else
@@ -33,12 +42,12 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	TypePair_t* tp = cgi->getType("Type");
-	assert(tp);
+	iceAssert(tp);
 
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
-	assert(enr);
+	iceAssert(enr);
 
-	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "tmp_shit");
+	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
 	llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(wrapper, 0, "wrapped");
 
 	cgi->mainBuilder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
