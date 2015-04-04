@@ -3,6 +3,9 @@
 -- Licensed under the Apache License Version 2.0.
 
 import System.Exit
+import System.IO.Unsafe
+import Data.IORef
+import Data.Maybe
 import Development.Shake
 import Development.Shake.Command
 import Development.Shake.FilePath
@@ -23,16 +26,13 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 cxxFlags	= "-std=gnu++1y -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ llvmConfig ++ " --includedir`"
 
-llvmConfigInvoke	= "`" ++ llvmConfig ++ " --cxxflags --ldflags --system-libs --libs core jit native bitwriter`"
-
-
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
 flaxcFlags			= "-O3 -no-lowercase-builtin -o " ++ compiledTest ++ " -sysroot '" ++ sysroot ++ "'"
 
 
-main = shakeArgs shakeOptions{shakeFiles="build"} $ do
+main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 	want [compiledTest]
 
 	phony "clean" $ do
@@ -51,6 +51,8 @@ main = shakeArgs shakeOptions{shakeFiles="build"} $ do
 		Exit code <- cmd Shell finalOutput [flaxcFlags] testSource
 
 		putNormal "======================================="
+
+
 		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
 
 
@@ -73,6 +75,11 @@ main = shakeArgs shakeOptions{shakeFiles="build"} $ do
 		cs <- getDirectoryFiles "" ["source//*.cpp"]
 		let os = [c ++ ".o" | c <- cs]
 		need os
+
+		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
+		let lconf = maybelconf
+
+		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core jit native bitwriter`"
 
 		cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
 
