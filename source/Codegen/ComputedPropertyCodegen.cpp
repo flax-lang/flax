@@ -16,3 +16,4 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	// implemented fully in MemberAccessCodegen.cpp
 	return Result_t(0, 0);
 }
+
