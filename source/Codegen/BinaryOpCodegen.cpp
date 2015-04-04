@@ -80,83 +80,21 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
 		{
 			// dealing with any.
-			assert(ref);
-			llvm::Value* typegep = this->mainBuilder.CreateStructGEP(ref, 0);	// Any
-			typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
-
-
-			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(ref, 1, "value");
-
-			size_t index = TypeInfo::getIndexForType(this, rhs->getType());
-			assert(index > 0);
-
-			llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
-			this->mainBuilder.CreateStore(constint, typegep);
-
-			if(rhsPtr)
-			{
-				// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
-				llvm::Value* casted = this->mainBuilder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
-				this->mainBuilder.CreateStore(casted, valgep);
-			}
-			else
-			{
-				llvm::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : llvm::IntegerType::getInt64Ty(this->getContext());
-
-
-				if(rhs->getType()->isIntegerTy())
-				{
-					llvm::Value* casted = this->mainBuilder.CreateIntToPtr(rhs, targetType);
-					this->mainBuilder.CreateStore(casted, valgep);
-				}
-				else
-				{
-					llvm::Value* casted = this->mainBuilder.CreateBitCast(rhs, targetType);
-					casted = this->mainBuilder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
-					this->mainBuilder.CreateStore(casted, valgep);
-				}
-			}
-
-
-			return Result_t(this->mainBuilder.CreateLoad(ref), ref);
+			iceAssert(ref);
+			return this->assignValueToAny(ref, rhs, rhsPtr);
 		}
 
 
 
 
-		// assigning something to Any
+		// assigning Any to something
 		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
 			warn(this, left, "Assignment from 'Any' to typed variable is not checked, this is a forced cast.");
 
-			llvm::Value* valgep = this->mainBuilder.CreateStructGEP(rhsPtr, 1);
-			llvm::Value* loadedval = this->mainBuilder.CreateLoad(valgep);
-
-			if(lhs->getType()->isStructTy())
-			{
-				// use pointer stuff
-				llvm::Value* valptr = this->mainBuilder.CreatePointerCast(loadedval, lhs->getType()->getPointerTo());
-				llvm::Value* loaded = this->mainBuilder.CreateLoad(valptr);
-
-				return Result_t(loaded, valptr);
-			}
-			else
-			{
-				// the pointer is actually a literal
-				llvm::Type* targetType = lhs->getType()->isIntegerTy() ? lhs->getType() : llvm::IntegerType::getInt64Ty(this->getContext());
-				llvm::Value* val = this->mainBuilder.CreatePtrToInt(loadedval, targetType);
-
-				if(val->getType() != lhs->getType())
-				{
-					val = this->mainBuilder.CreateBitCast(val, lhs->getType());
-				}
-
-				return Result_t(val, 0);
-			}
-
-			// llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
-			// return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
+			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
+			return Result_t(this->mainBuilder.CreateStore(res.result.first, ref), ref);
 		}
 
 
@@ -193,7 +131,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// so, use it
 
 		varptr = ref;
-		assert(rhs);
+		iceAssert(rhs);
 
 		// make sure the left side is a pointer
 		if(!varptr)
@@ -326,7 +264,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value* _rhs)
 {
-	assert(this->left && this->right);
+	iceAssert(this->left && this->right);
 	ValPtr_t valptr;
 
 	llvm::Value* lhs;
@@ -359,16 +297,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		llvm::Type* rtype = cgi->getLlvmType(this->right);
 		if(!rtype)
 		{
-			// TypePair_t* tp = cgi->getType(ct->name);
-			// if(!tp)
-				GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
-
-			// rtype = tp->first;
+			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
 		}
 
 
-		// todo: cleanup?
-		assert(rtype);
+		iceAssert(rtype);
 		if(lhs->getType() == rtype)
 		{
 			warn(cgi, this, "Redundant cast");
@@ -427,7 +360,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			}
 			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
 			{
-				assert(valptr.second);
+				iceAssert(valptr.second);
 				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
 				llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
 
@@ -439,19 +372,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 		if(cgi->isAnyType(lhs->getType()))
 		{
-			// convert the int8* to a pointer to rtype, then load it... if it's not a literal type.
-			assert(valptr.second);
-			llvm::Value* valgep = cgi->mainBuilder.CreateStructGEP(valptr.second, 1);
-			llvm::Value* loadedval = cgi->mainBuilder.CreateLoad(valgep);
-
-			if(rtype->isIntegerTy() || rtype->isFloatingPointTy())
-			{
-				llvm::Value* casted = cgi->mainBuilder.CreatePtrToInt(loadedval, llvm::IntegerType::getInt64Ty(cgi->getContext()));
-				return Result_t(cgi->mainBuilder.CreateBitCast(casted, rtype), 0);
-			}
-
-			llvm::Value* rtypeptr = cgi->mainBuilder.CreatePointerCast(loadedval, rtype->getPointerTo());
-			return Result_t(cgi->mainBuilder.CreateLoad(rtypeptr), rtypeptr);
+			iceAssert(valptr.second);
+			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
 		else if(this->op != ArithmeticOp::ForcedCast)
 		{
@@ -575,7 +497,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 
 				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
-				assert(func);
+				iceAssert(func);
 
 				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 
@@ -663,8 +585,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
 	{
-		assert(lhsPtr);
-		assert(rhsPtr);
+		iceAssert(lhsPtr);
+		iceAssert(rhsPtr);
 
 		llvm::Value* gepL = cgi->mainBuilder.CreateStructGEP(lhsPtr, 0);
 		llvm::Value* gepR = cgi->mainBuilder.CreateStructGEP(rhsPtr, 0);

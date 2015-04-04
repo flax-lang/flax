@@ -34,7 +34,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
 	{
 		val = cgi->getDefaultValue(this);
-		assert(val);
+		iceAssert(val);
 	}
 	else
 	{
@@ -53,8 +53,8 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 
 		if(!ai)
 		{
-			assert(cmplxtype);
-			assert((ai = cgi->allocateInstanceInBlock(cmplxtype->first)));
+			iceAssert(cmplxtype);
+			iceAssert((ai = cgi->allocateInstanceInBlock(cmplxtype->first)));
 		}
 
 		if(cmplxtype)
@@ -66,7 +66,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 				if(unwrappedAi != ai)
 				{
 					cmplxtype = cgi->getType(unwrappedAi->getType()->getPointerElementType());
-					assert(cmplxtype);
+					iceAssert(cmplxtype);
 				}
 
 				if(!cgi->isEnum(ai->getType()->getPointerElementType()))
@@ -188,8 +188,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 				// don't codegen with the allocainst, since we don't fucking have it
 				r = this->initVal->codegen(cgi).result;
-				assert(r.first && cgi->isAnyType(r.first->getType()));
-				assert(r.second);
+				iceAssert(r.first && cgi->isAnyType(r.first->getType()));
+				iceAssert(r.second);
 
 				llvm::Value* typegep = cgi->mainBuilder.CreateStructGEP(r.second, 0);
 				llvm::Value* typ = cgi->mainBuilder.CreateLoad(typegep);
@@ -242,7 +242,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		if(!this->isGlobal)
 		{
 			ai = cgi->allocateInstanceInBlock(this);
-			assert(ai->getType()->getPointerElementType() == this->inferredLType);
+			iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
 		}
 	}
 
@@ -255,7 +255,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		if(this->initVal)
 		{
-			assert(val);
+			iceAssert(val);
 
 			if(llvm::cast<llvm::Constant>(val))
 			{

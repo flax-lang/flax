@@ -12,7 +12,7 @@ using namespace Codegen;
 
 static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
 {
-	assert(tp);
+	iceAssert(tp);
 	llvm::Value* ai = cgi->allocateInstanceInBlock(tp->first, "tmp");
 
 	// TODO: constructor args
