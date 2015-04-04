@@ -38,12 +38,72 @@ namespace TypeInfo
 		return 0;
 	}
 
+	llvm::Type* getTypeForIndex(Codegen::CodegenInstance* cgi, size_t index)
+	{
+		// since 'index' is going to be from enum values.
+		index -= 1;
+		if(index >= cgi->rootNode->typeList.size())
+			return nullptr;
+
+		return std::get<1>(cgi->rootNode->typeList[index]);
+	}
+
+	void initialiseTypeInfo(CodegenInstance* cgi)
+	{
+		Enumeration* enr = 0;
+
+		if(cgi->getType("Type") == nullptr)
+		{
+			enr = new Enumeration(Parser::PosInfo(), "Type");
+			enr->isStrong = true;
+
+			Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
+			enr->cases.push_back(std::make_pair("Type", num));
+
+			// note: Enumeration does nothing in codegen()
+			// fix this if that happens to change in the future.
+
+			enr->createType(cgi);
+		}
+		else
+		{
+			auto pair = cgi->getType("Type");
+			assert(pair);
+
+			assert(pair->second.second == ExprKind::Enum);
+
+			enr = dynamic_cast<Enumeration*>(pair->second.first);
+			assert(enr);
+		}
+
+
+		// create the Any type.
+		if(cgi->getType("Any") == nullptr)
+		{
+			Struct* any = new Struct(Parser::PosInfo(), "Any");
+			{
+				VarDecl* type = new VarDecl(Parser::PosInfo(), "type", false);
+				type->type.strType = "Type";
+
+				VarDecl* data = new VarDecl(Parser::PosInfo(), "value", false);
+				data->type.strType = "Int8*";
+
+				any->members.push_back(type);		any->nameMap["type"] = 0;
+				any->members.push_back(data);		any->nameMap["value"] = 1;
+			}
+
+			any->createType(cgi);
+			any->codegen(cgi);
+		}
+	}
+
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		Enumeration* enr = new Enumeration(Parser::PosInfo(), "Type");
-		enr->isStrong = true;
+		Enumeration* enr = dynamic_cast<Enumeration*>(cgi->getType("Type")->second.first);
+		assert(enr);
 
-		Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
+		// start at 2, we already have 1
+		Number* num = new Number(Parser::PosInfo(), (int64_t) 2);
 
 
 		bool done = false;
@@ -74,17 +134,37 @@ namespace TypeInfo
 		}
 
 
+
 		for(auto tup : cgi->rootNode->typeList)
 		{
+			bool skip = false;
+			for(auto c : enr->cases)
+			{
+				if(c.first == std::get<0>(tup))
+				{
+					skip = true;
+					break;
+				}
+			}
+
+			if(skip) continue;
+
+
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
 			num = new Number(Parser::PosInfo(), num->ival + 1);
 		}
 
-		enr->cases.push_back(std::make_pair("Type", num));
+		#if 0
+		printf("Final type list for module %s\n{\n", cgi->mainModule->getModuleIdentifier().c_str());
 
-		// note: Enumeration does nothing in codegen()
-		// fix this if that happens to change in the future.
-		enr->createType(cgi);
+		int i = 1;
+		for(auto c : enr->cases)
+		{
+			printf("\t%d: %s\n", i, c.first.c_str());
+			i++;
+		}
+		printf("}\n\n");
+		#endif
 	}
 }
 

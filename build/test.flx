@@ -85,13 +85,13 @@ extension Bar
 
 struct Qux
 {
-	var k: Int = 591
+	var k: Float64 = 591.4
 }
 
 typealias foo = Qux
 
 
-@private func testing() -> Int
+func testing() -> Int
 {
 	if true
 	{
@@ -114,12 +114,13 @@ func main(argc: Int32, argv: Int8**) -> Int
 	let a1 = "hello!"
 	let k: Type = typeof(0)
 	var m: foo
+	m.k = 500.1409
 
-	// let g = sizeof(Type)
+	var m1 = &m as Int8*
 
-	m.k = 51
+	var t: Any = 3.55
 
-	printf("%s, %d, %d, %d\n", "bye", k, 435, m.k)
+	printf("%d, %f\n", t.type, t as Float64)
 	return 0
 }
 
