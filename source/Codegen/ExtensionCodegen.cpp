@@ -19,7 +19,7 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 {
 	// generate initialiser
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(stype, 0), false), llvm::Function::ExternalLinkage,
-		"__automatic_init#" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->mainModule);
+		"__automatic_init__" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->mainModule);
 
 	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
@@ -34,9 +34,9 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 	int memberBeginOffset = stype->getNumElements() - this->members.size();
 	for(VarDecl* var : this->members)
 	{
-		assert(this->nameMap.find(var->name) != this->nameMap.end());
+		iceAssert(this->nameMap.find(var->name) != this->nameMap.end());
 		int i = memberBeginOffset + this->nameMap[var->name];
-		assert(i >= 0);
+		iceAssert(i >= 0);
 
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
@@ -60,7 +60,7 @@ void Extension::createType(CodegenInstance* cgi)
 
 	// grab the existing type
 	TypePair_t* existingtp = cgi->getType(this->mangledName);
-	assert(existingtp);
+	iceAssert(existingtp);
 
 	llvm::StructType* existing = llvm::cast<llvm::StructType>(existingtp->first);
 	Struct* str = (Struct*) existingtp->second.first;

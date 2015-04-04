@@ -13,7 +13,7 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	assert(this->didCreateType);
+	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->mangledName);
 	if(!_type)
 		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
@@ -28,7 +28,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init#" + this->mangledName, cgi->mainModule);
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init__" + this->mangledName, cgi->mainModule);
 
 	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
@@ -42,7 +42,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	for(VarDecl* var : this->members)
 	{
 		int i = this->nameMap[var->name];
-		assert(i >= 0);
+		iceAssert(i >= 0);
 
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
@@ -199,7 +199,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			for(auto extInit : extensionInitialisers)
 				f->block->statements.push_front(new FuncCall(this->posinfo, extInit->getName(), todeque));
 
-			f->block->statements.push_front(new FuncCall(this->posinfo, "__automatic_init#" + this->mangledName, todeque));
+			f->block->statements.push_front(new FuncCall(this->posinfo, "__automatic_init__" + this->mangledName, todeque));
 		}
 
 		f->codegen(cgi);
@@ -271,7 +271,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
 			int i = this->nameMap[var->name];
-			assert(i >= 0);
+			iceAssert(i >= 0);
 
 			types[i] = cgi->getLlvmType(var);
 		}

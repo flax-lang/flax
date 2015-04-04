@@ -40,7 +40,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 
 Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, llvm::Value* lhs,
-	llvm::Value* ref, llvm::Value* rhs)
+	llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr)
 {
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
@@ -57,7 +57,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			if(!vdecl) GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 			if(vdecl->immutable)
-				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+				error(this, user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
 		}
 
 		if(!rhs)
@@ -72,6 +72,36 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		if(!varptr)
 			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
+
+
+
+
+		// assigning something to Any
+		if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
+		{
+			// dealing with any.
+			iceAssert(ref);
+			return this->assignValueToAny(ref, rhs, rhsPtr);
+		}
+
+
+
+
+		// assigning Any to something
+		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
+		{
+			// todo: find some fucking way to unwrap this shit at compile time.
+			warn(this, left, "Assignment from 'Any' to typed variable is not checked, this is a forced cast.");
+
+			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
+			return Result_t(this->mainBuilder.CreateStore(res.result.first, ref), ref);
+		}
+
+
+
+
+
+
 
 		// try and see if we have operator overloads for bo thing
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
@@ -101,11 +131,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// so, use it
 
 		varptr = ref;
-		assert(varptr);
-		assert(rhs);
+		iceAssert(rhs);
 
 		// make sure the left side is a pointer
-		if(!varptr->getType()->isPointerTy())
+		if(!varptr)
+			error(this, user, "Cannot assign to immutable variable");
+
+		else if(!varptr->getType()->isPointerTy())
 			GenError::invalidAssignment(this, user, varptr, rhs);
 
 		// redo the number casting
@@ -232,7 +264,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value* _rhs)
 {
-	assert(this->left && this->right);
+	iceAssert(this->left && this->right);
 	ValPtr_t valptr;
 
 	llvm::Value* lhs;
@@ -255,9 +287,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		llvm::Value* rhsPtr = res.second;
 
 		cgi->autoCastType(lhs, rhs, rhsPtr);
-		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs);
+		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs, rhsPtr);
 	}
-	else if(this->op == ArithmeticOp::Cast)
+	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
 	{
 		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
@@ -265,83 +297,90 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		llvm::Type* rtype = cgi->getLlvmType(this->right);
 		if(!rtype)
 		{
-			// TypePair_t* tp = cgi->getType(ct->name);
-			// if(!tp)
-				GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
-
-			// rtype = tp->first;
+			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
 		}
 
 
-		// todo: cleanup?
-		assert(rtype);
+		iceAssert(rtype);
 		if(lhs->getType() == rtype)
 		{
 			warn(cgi, this, "Redundant cast");
 			return Result_t(lhs, 0);
 		}
 
-		if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+		if(this->op != ArithmeticOp::ForcedCast)
 		{
-			return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
-		}
-		else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
-		{
-			return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
-		{
-			printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
-			if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
-				return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
-
-			else
-				return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
-		}
-		else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
-		{
-			return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
-		}
-		else if(cgi->isEnum(rtype))
-		{
-			// dealing with enum
-			llvm::Type* insideType = rtype->getStructElementType(0);
-			if(lhs->getType() == insideType)
+			if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
 			{
-				llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
-
-				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
-				cgi->mainBuilder.CreateStore(lhs, gep);
-
-				return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+				return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 			}
-			else
+			else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
-					cgi->getReadableType(lhs).c_str());
+				return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
+			{
+				printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
+				if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
+					return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
+
+				else
+					return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+			}
+			else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
+			{
+				return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+			}
+			else if(cgi->isEnum(rtype))
+			{
+				// dealing with enum
+				llvm::Type* insideType = rtype->getStructElementType(0);
+				if(lhs->getType() == insideType)
+				{
+					llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
+
+					llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+					cgi->mainBuilder.CreateStore(lhs, gep);
+
+					return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+				}
+				else
+				{
+					error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
+						cgi->getReadableType(lhs).c_str());
+				}
+			}
+			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
+			{
+				iceAssert(valptr.second);
+				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+				llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
+
+				return Result_t(val, gep);
 			}
 		}
-		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
-		{
-			assert(valptr.second);
-			llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
-			llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
 
-			return Result_t(val, gep);
-		}
-		else
+
+
+		if(cgi->isAnyType(lhs->getType()))
 		{
-			warn(cgi, this, "Unknown cast, doing raw bitcast...");
-			return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+			iceAssert(valptr.second);
+			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
+		else if(this->op != ArithmeticOp::ForcedCast)
+		{
+			warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rtype).c_str());
+		}
+
+		return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
 	}
 	else
 	{
@@ -458,7 +497,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 
 				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
-				assert(func);
+				iceAssert(func);
 
 				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 
@@ -546,8 +585,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
 	{
-		assert(lhsPtr);
-		assert(rhsPtr);
+		iceAssert(lhsPtr);
+		iceAssert(rhsPtr);
 
 		llvm::Value* gepL = cgi->mainBuilder.CreateStructGEP(lhsPtr, 0);
 		llvm::Value* gepR = cgi->mainBuilder.CreateStructGEP(rhsPtr, 0);
