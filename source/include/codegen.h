@@ -163,6 +163,11 @@ namespace Codegen
 
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
 
+
+		Ast::Result_t assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr);
+		Ast::Result_t extractValueFromAny(llvm::Type* type, llvm::Value* ptr);
+
+
 		void evaluateDependencies(Ast::Expr* expr);
 
 

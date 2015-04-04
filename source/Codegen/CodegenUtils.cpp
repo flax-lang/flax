@@ -1471,7 +1471,75 @@ namespace Codegen
 	}
 
 
+	Result_t CodegenInstance::assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr)
+	{
+		llvm::Value* typegep = this->mainBuilder.CreateStructGEP(lhsPtr, 0);	// Any
+		typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
 
+		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
+		assert(index > 0);
+
+		llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
+		this->mainBuilder.CreateStore(constint, typegep);
+
+
+
+		llvm::Value* valgep = this->mainBuilder.CreateStructGEP(lhsPtr, 1, "value");
+		if(rhsPtr)
+		{
+			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
+			llvm::Value* casted = this->mainBuilder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
+			this->mainBuilder.CreateStore(casted, valgep);
+		}
+		else
+		{
+			llvm::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : llvm::IntegerType::getInt64Ty(this->getContext());
+
+
+			if(rhs->getType()->isIntegerTy())
+			{
+				llvm::Value* casted = this->mainBuilder.CreateIntToPtr(rhs, targetType);
+				this->mainBuilder.CreateStore(casted, valgep);
+			}
+			else
+			{
+				llvm::Value* casted = this->mainBuilder.CreateBitCast(rhs, targetType);
+				casted = this->mainBuilder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
+				this->mainBuilder.CreateStore(casted, valgep);
+			}
+		}
+
+		return Result_t(this->mainBuilder.CreateLoad(lhsPtr), lhsPtr);
+	}
+
+
+	Result_t CodegenInstance::extractValueFromAny(llvm::Type* type, llvm::Value* ptr)
+	{
+		llvm::Value* valgep = this->mainBuilder.CreateStructGEP(ptr, 1);
+		llvm::Value* loadedval = this->mainBuilder.CreateLoad(valgep);
+
+		if(type->isStructTy())
+		{
+			// use pointer stuff
+			llvm::Value* valptr = this->mainBuilder.CreatePointerCast(loadedval, type->getPointerTo());
+			llvm::Value* loaded = this->mainBuilder.CreateLoad(valptr);
+
+			return Result_t(loaded, valptr);
+		}
+		else
+		{
+			// the pointer is actually a literal
+			llvm::Type* targetType = type->isIntegerTy() ? type : llvm::IntegerType::getInt64Ty(this->getContext());
+			llvm::Value* val = this->mainBuilder.CreatePtrToInt(loadedval, targetType);
+
+			if(val->getType() != type)
+			{
+				val = this->mainBuilder.CreateBitCast(val, type);
+			}
+
+			return Result_t(val, 0);
+		}
+	}
 
 
 
@@ -1687,6 +1755,7 @@ namespace Codegen
 				dep.dep->codegen(this);
 		}
 	}
+
 }
 
 
