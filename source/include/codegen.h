@@ -11,6 +11,7 @@
 #include <vector>
 
 
+
 enum class SymbolType
 {
 	Generic,
@@ -121,6 +122,7 @@ namespace Codegen
 		bool isBuiltinType(llvm::Type* e);
 		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(llvm::Type* type);
+		bool isAnyType(llvm::Type* type);
 
 		bool isDuplicateType(std::string name);
 
@@ -160,6 +162,13 @@ namespace Codegen
 		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
 
 
+		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
+
+
+		Ast::Result_t assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr);
+		Ast::Result_t extractValueFromAny(llvm::Type* type, llvm::Value* ptr);
+
+
 		void evaluateDependencies(Ast::Expr* expr);
 
 
@@ -173,7 +182,6 @@ namespace Codegen
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
-		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs);
 		Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
 	};
 
@@ -192,7 +200,8 @@ void warn(Ast::Expr* e, const char* msg, ...);
 void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
 
 
-
+#define __nothing
+#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n%s", __FILE__, __LINE__, #x))
 
 
 

@@ -18,9 +18,9 @@ Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		error(cgi, this, "Break can only be used inside loop bodies");
 	}
 
-	assert(cs->first);
-	assert(cs->second.first);
-	assert(cs->second.second);
+	iceAssert(cs->first);
+	iceAssert(cs->second.first);
+	iceAssert(cs->second.second);
 
 	// for break, we go to the ending block
 	cgi->mainBuilder.CreateBr(cs->second.second);
@@ -35,9 +35,9 @@ Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		error(cgi, this, "Continue can only be used inside loop bodies");
 	}
 
-	assert(cs->first);
-	assert(cs->second.first);
-	assert(cs->second.second);
+	iceAssert(cs->first);
+	iceAssert(cs->second.first);
+	iceAssert(cs->second.second);
 
 	// for continue, we go to the beginning (loop) block
 	cgi->mainBuilder.CreateBr(cs->second.first);
@@ -52,7 +52,7 @@ Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Value* left = res.first;
 
 		auto f = cgi->mainBuilder.GetInsertBlock()->getParent();
-		assert(f);
+		iceAssert(f);
 
 		if(left->getType()->isIntegerTy() && f->getReturnType()->isIntegerTy())
 			left = cgi->mainBuilder.CreateIntCast(left, f->getReturnType(), false);
@@ -76,7 +76,7 @@ Result_t DeferredExpr::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
-	assert(parentFunc);
+	iceAssert(parentFunc);
 
 	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);
 	llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(cgi->getContext(), "loopBody", parentFunc);

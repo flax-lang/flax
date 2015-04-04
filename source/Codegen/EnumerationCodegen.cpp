@@ -15,17 +15,17 @@ namespace Codegen
 	{
 		VarRef* enumName = dynamic_cast<VarRef*>(lhs);
 		VarRef* caseName = dynamic_cast<VarRef*>(rhs);
-		assert(enumName);
+		iceAssert(enumName);
 
 		if(!caseName)
 			error(rhs, "Expected identifier after enumeration access");
 
 		TypePair_t* tp = cgi->getType(enumName->name);
-		assert(tp);
-		assert(tp->second.second == ExprKind::Enum);
+		iceAssert(tp);
+		iceAssert(tp->second.second == ExprKind::Enum);
 
 		Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
-		assert(enr);
+		iceAssert(enr);
 
 		Result_t res(0, 0);
 		bool found = false;
@@ -66,6 +66,10 @@ void Enumeration::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
+
+	if(cgi->isDuplicateType(this->name))
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
 
 	llvm::Type* prev = 0;
 	for(auto pair : this->cases)
