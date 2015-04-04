@@ -165,9 +165,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
 
-	TypePair_t* cmplxtype = cgi->getType(this->type.strType);
-	if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
-
 	llvm::Value* ai = nullptr;
 
 	if(this->type.strType == "Inferred")
@@ -176,8 +173,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		{
 			error(cgi, this, "Type inference requires an initial assignment to infer type");
 		}
-
-		assert(!cmplxtype);
 
 		if(!this->isGlobal)
 		{
@@ -218,6 +213,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		}
 	}
 
+
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
@@ -244,6 +240,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 	else
 	{
+		TypePair_t* cmplxtype = 0;
+		if(this->type.strType != "Inferred")
+		{
+			cmplxtype = cgi->getType(this->type.strType);
+			if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
+		}
+
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
 	return Result_t(val, ai);
