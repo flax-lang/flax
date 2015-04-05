@@ -1020,9 +1020,15 @@ namespace Codegen
 			}
 			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 			{
-				FuncPair_t* fp = getDeclaredFunc(fc);
+				FuncPair_t* fp = this->getDeclaredFunc(fc);
 				if(!fp)
+				{
+					TypePair_t* tp = this->getType(fc->name);
+					if(tp)
+						return tp->first;
+
 					error(this, expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+				}
 
 				return getLlvmType(fp->second);
 			}
@@ -1168,7 +1174,7 @@ namespace Codegen
 						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
 					}
 
-					return unwrapPointerType(alloc, alloc->type.strType);
+					return unwrapPointerType(alloc, alloc->type.strType)->getPointerTo();
 				}
 
 				return type->first->getPointerTo();

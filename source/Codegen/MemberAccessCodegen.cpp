@@ -70,13 +70,17 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::Value* selfPtr = p.second;
 
 
+	if(!self)
+		warn(cgi, this, "self is null! (%s)", (typeid(*this->target)).name());
 
+	if(!selfPtr)
+		warn(cgi, this, "selfptr is null! (%s)", (typeid(*this->target)).name());
 
 
 	bool isPtr = false;
 	bool isWrapped = false;
 
-	llvm::Type* type = p.first->getType();
+	llvm::Type* type = self->getType();
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
