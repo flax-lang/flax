@@ -183,13 +183,25 @@ namespace Compiler
 		system(llvmlink.c_str());
 
 		memset(inv, 0, 1024);
-		snprintf(inv, 1024, "clang++ %s %s %s %s -o '%s' '%s.bc'", getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel()).c_str(), getIsPositionIndependent() ? "-fPIC" : "", tgt.c_str(), Compiler::getIsCompileOnly() ? "-c" : "", oname.c_str(), oname.c_str());
+		{
+			int opt = Compiler::getOptimisationLevel();
+			const char* optLevel	= (Compiler::getOptimisationLevel() >= 0 ? ("-O" + std::to_string(opt)) : "").c_str();
+			const char* mcmodel		= (getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel())).c_str();
+			const char* isPic		= (getIsPositionIndependent() ? "-fPIC" : "");
+			const char* target		= (tgt).c_str();
+			const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
+
+			snprintf(inv, 1024, "clang++ %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target, isPic, outputMode, oname.c_str(), oname.c_str());
+		}
 		std::string final = inv;
 
 		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
 		// that warning is not affected by any flags I can pass
 		// besides, LLVM itself should have caught everything.
-		// final += " &>/dev/null";
+
+		if(!Compiler::getprintClangOutput())
+			final += " &>/dev/null";
+
 		system(final.c_str());
 
 		remove((oname + ".bc").c_str());
