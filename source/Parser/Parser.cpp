@@ -656,6 +656,7 @@ namespace Parser
 		while(tokens.size() > 0 && tokens.front().type != TType::RParen)
 		{
 			Token tok_id;
+			bool immutable = true;
 			if((tok_id = eat(tokens)).type != TType::Identifier)
 			{
 				if(tok_id.type == TType::Elipsis)
@@ -666,6 +667,17 @@ namespace Parser
 
 					break;
 				}
+				else if(tok_id.type == TType::Var)
+				{
+					immutable = false;
+					tok_id = eat(tokens);
+				}
+				else if(tok_id.type == TType::Val)
+				{
+					immutable = false;
+					tok_id = eat(tokens);
+					parserWarn("Function parameters are immutable by default, 'val' is redundant");
+				}
 				else
 				{
 					parserError("Expected identifier");
@@ -673,7 +685,7 @@ namespace Parser
 			}
 
 			std::string id = tok_id.text;
-			VarDecl* v = CreateAST(VarDecl, tok_id, id, true);
+			VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
 
 			// expect a colon
 			if(eat(tokens).type != TType::Colon)
@@ -1286,12 +1298,8 @@ namespace Parser
 		Token tok_dealloc = eat(tokens);
 		iceAssert(tok_dealloc.type == TType::Dealloc);
 
-		Token tok_id = eat(tokens);
-		if(tok_id.type != TType::Identifier)
-			parserError("Expected identifier after 'dealloc'");
-
-		VarRef* vr = CreateAST(VarRef, tok_dealloc, tok_id.text);
-		return CreateAST(Dealloc, tok_dealloc, vr);
+		Expr* expr = parseExpr(tokens);
+		return CreateAST(Dealloc, tok_dealloc, expr);
 	}
 
 	Number* parseNumber(TokenList& tokens)

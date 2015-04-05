@@ -85,7 +85,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->allocateInstanceInBlock(allocType->getPointerTo());
-	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo()), allocmemptr);
+
+	llvm::Value* amem = cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo());
+	// warn(cgi, this, "%s -> %s\n", cgi->getReadableType(amem).c_str(), cgi->getReadableType(allocmemptr).c_str());
+
+	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(amem, allocmemptr);
 
 	allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
 
@@ -191,11 +195,27 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	SymbolPair_t* sp = cgi->getSymPair(this, this->var->name);
-	if(!sp)
-		error(cgi, this, "Unknown symbol '%s'", this->var->name.c_str());
+	llvm::Value* freearg = 0;
+	if(dynamic_cast<VarRef*>(this->expr))
+	{
+		SymbolPair_t* sp = cgi->getSymPair(this, dynamic_cast<VarRef*>(this->expr)->name);
+		if(!sp)
+			error(cgi, this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
 
-	sp->first.second = SymbolValidity::UseAfterDealloc;
+		sp->first.second = SymbolValidity::UseAfterDealloc;
+
+
+		// this will be an alloca instance (aka pointer to whatever type it actually was)
+		llvm::Value* varval = sp->first.first;
+
+		// therefore, create a Load to get the actual value
+		varval = cgi->mainBuilder.CreateLoad(varval);
+		freearg = cgi->mainBuilder.CreatePointerCast(varval, llvm::IntegerType::getInt8PtrTy(cgi->getContext()));
+	}
+	else
+	{
+		freearg = this->expr->codegen(cgi).result.first;
+	}
 
 	// call 'free'
 	FuncPair_t* fp = cgi->getDeclaredFunc(FREE_FUNC);
@@ -214,12 +234,6 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		iceAssert((fp = cgi->getDeclaredFunc(FREE_FUNC)));
 	}
 
-	// this will be an alloca instance (aka pointer to whatever type it actually was)
-	llvm::Value* varval = sp->first.first;
-
-	// therefore, create a Load to get the actual value
-	varval = cgi->mainBuilder.CreateLoad(varval);
-	llvm::Value* freearg = cgi->mainBuilder.CreatePointerCast(varval, llvm::IntegerType::getInt8PtrTy(cgi->getContext()));
 
 	cgi->mainBuilder.CreateCall(fp->first, freearg);
 	return Result_t(0, 0);

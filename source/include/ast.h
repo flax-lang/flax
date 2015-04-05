@@ -601,10 +601,10 @@ namespace Ast
 	struct Dealloc : Expr
 	{
 		~Dealloc();
-		Dealloc(Parser::PosInfo pos, VarRef* _var) : Expr(pos), var(_var) { }
+		Dealloc(Parser::PosInfo pos, Expr* _expr) : Expr(pos), expr(_expr) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		VarRef* var;
+		Expr* expr;
 	};
 
 	struct Typeof : Expr

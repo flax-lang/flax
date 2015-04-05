@@ -3,9 +3,9 @@
 -- Licensed under the Apache License Version 2.0.
 
 import System.Exit
-import System.IO.Unsafe
-import Data.IORef
-import Data.Maybe
+import System.IO.Unsafe()
+import Data.IORef()
+import Data.Maybe()
 import Development.Shake
 import Development.Shake.Command
 import Development.Shake.FilePath
@@ -13,11 +13,11 @@ import Development.Shake.Util
 
 main :: IO()
 
-sysroot		= "build/sysroot"
-prefix		= "usr/local"
-outputBin	= "flaxc"
+sysroot		= "build/sysroot" :: [Char]
+prefix		= "usr/local" :: [Char]
+outputBin	= "flaxc" :: [Char]
 
-finalOutput	= sysroot </> prefix </> "bin" </> outputBin
+finalOutput	= sysroot </> prefix </> "bin" </> outputBin :: [Char]
 
 
 
@@ -42,9 +42,8 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		alwaysRerun
 		ls <- getDirectoryFiles "" ["libs//*.flx"]
 
-		let libs = [sysroot </> prefix </> "lib/flaxlibs" </> (takeFileName lib) | lib <- ls]
-		need libs
 
+		() <- cmd Shell "cp" ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 		Exit code <- cmd Shell finalOutput [flaxcFlags] testSource
 
 		putNormal "======================================="
@@ -56,9 +55,11 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 	"//*.flx" %> \out -> do
 		let fnp = "libs" </> (takeFileName out)
-		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs" </> (takeFileName out))
+		need [fnp]
 
-		quietly (cmd Shell "cp" [fnp] [ut])
+		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs/")
+
+		cmd Shell "cp" [fnp] [ut]
 
 		-- todo: Wtf? haskell plz
 		-- putNormal ("fnp: " ++ fnp)

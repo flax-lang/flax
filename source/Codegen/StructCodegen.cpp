@@ -104,6 +104,9 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->getter);
 
+			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
+				fakeDecl->attribs |= Attr_VisPublic;
+
 			this->funcs.push_back(fakeFunc);
 			c->generatedFunc = fakeDecl;
 		}
@@ -115,6 +118,9 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
 			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
+
+			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
+				fakeDecl->attribs |= Attr_VisPublic;
 
 			this->funcs.push_back(fakeFunc);
 			c->generatedFunc = fakeDecl;
@@ -250,7 +256,8 @@ void Struct::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
-			if(this->attribs & Attr_VisPublic)
+			// only override if we don't have one.
+			if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
 				func->decl->attribs |= Attr_VisPublic;
 
 			func->decl->parentStruct = this;
