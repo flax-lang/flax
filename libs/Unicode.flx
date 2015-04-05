@@ -57,12 +57,6 @@ func Utf8Index(_text: Int8*, var pos: Uint64) -> Int8*
 // 	*end = p ? p - s : -1;
 // }
 
-// appends the utf8 string at src to dest
-// char *utf8cat(char *dest, char *src)
-// {
-// 	return strcat(dest, src);
-// }
-
 
 
 
