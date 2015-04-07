@@ -331,8 +331,6 @@ namespace Parser
 	}
 
 
-
-
 	// this only handles the topmost level.
 	void parseAll(TokenList& tokens)
 	{
@@ -415,29 +413,6 @@ namespace Parser
 					parserError("Unknown token '%s'", tok.text.c_str());
 			}
 		}
-	}
-
-	Expr* parseUnary(TokenList& tokens)
-	{
-		Token front = tokens.front();
-
-		// check for unary shit
-		ArithmeticOp op = ArithmeticOp::Invalid;
-
-		if(front.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
-		else if(front.type == TType::Plus)			op = ArithmeticOp::Plus;
-		else if(front.type == TType::Minus)			op = ArithmeticOp::Minus;
-		else if(front.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
-		else if(front.type == TType::Pound)			op = ArithmeticOp::Deref;
-		else if(front.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
-
-		if(op != ArithmeticOp::Invalid)
-		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, op, parseUnary(tokens));
-		}
-
-		return parsePrimary(tokens);
 	}
 
 	Expr* parsePrimary(TokenList& tokens)
@@ -579,6 +554,29 @@ namespace Parser
 		}
 
 		return nullptr;
+	}
+
+	Expr* parseUnary(TokenList& tokens)
+	{
+		Token front = tokens.front();
+
+		// check for unary shit
+		ArithmeticOp op = ArithmeticOp::Invalid;
+
+		if(front.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
+		else if(front.type == TType::Plus)			op = ArithmeticOp::Plus;
+		else if(front.type == TType::Minus)			op = ArithmeticOp::Minus;
+		else if(front.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
+		else if(front.type == TType::Pound)			op = ArithmeticOp::Deref;
+		else if(front.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+
+		if(op != ArithmeticOp::Invalid)
+		{
+			eat(tokens);
+			return CreateAST(UnaryOp, front, op, parseUnary(tokens));
+		}
+
+		return parsePrimary(tokens);
 	}
 
 

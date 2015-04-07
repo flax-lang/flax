@@ -971,6 +971,9 @@ namespace Codegen
 			{
 				if(decl->type.strType == "Inferred")
 				{
+					if(!decl->inferredLType)		// todo: better error detection for this
+						return llvm::Type::getVoidTy(this->getContext());
+
 					iceAssert(decl->inferredLType);
 					return decl->inferredLType;
 				}
@@ -1440,9 +1443,23 @@ namespace Codegen
 		iceAssert(pair);
 		iceAssert(pair->first);
 		iceAssert(pair->second.first);
-		iceAssert(pair->second.second == ExprKind::Struct);
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+
+		if(pair->second.second != ExprKind::Struct)
+		{
+			iceAssert(pair->second.second == ExprKind::TypeAlias);
+			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
+			iceAssert(ta);
+
+			TypePair_t* tp = this->getType(ta->origType);
+			iceAssert(tp);
+
+			// todo: support typealiases of typealises.
+			str = dynamic_cast<Struct*>(tp->second.first);
+		}
+
+
 		iceAssert(str);
 
 		llvm::Function* initf = 0;
