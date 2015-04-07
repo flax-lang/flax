@@ -187,6 +187,15 @@ namespace GenError
 	{
 		error(cgi, e, "Expected %s", expect.c_str());
 	}
+
+	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument)
+	{
+		if(funcArgument >= 0)
+			error(cgi, e, "Invalid (void) value in argument %d of function call", funcArgument + 1);
+
+		else
+			error(cgi, e, "Invalid (void) value");
+	}
 }
 
 

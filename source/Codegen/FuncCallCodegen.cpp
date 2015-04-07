@@ -63,11 +63,16 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 
 
+	int argNum = 0;
 	for(Expr* e : this->params)
 	{
 		ValPtr_t res = e->codegen(cgi).result;
-
 		llvm::Value* arg = res.first;
+
+		if(arg == nullptr || arg->getType()->isVoidTy())
+			GenError::nullValue(cgi, this, argNum);
+
+
 		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
 		{
 			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
@@ -75,6 +80,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		args.push_back(arg);
 		argPtrs.push_back(res.second);
+		argNum++;
 	}
 
 
@@ -85,7 +91,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		if(arg_it->getType() != args[i]->getType())
 			cgi->autoCastType(arg_it, args[i], argPtrs[i]);
-
 
 		if(arg_it->getType() != args[i]->getType())
 		{

@@ -181,6 +181,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		if(!this->isGlobal)
 		{
 			llvm::Type* vartype = cgi->getLlvmType(this->initVal);
+			if(vartype == nullptr || vartype->isVoidTy())
+				GenError::nullValue(cgi, this->initVal);
+
+
+
 			if(cgi->isAnyType(vartype))
 			{
 				#if 0
