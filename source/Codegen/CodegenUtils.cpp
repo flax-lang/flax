@@ -697,23 +697,91 @@ namespace Codegen
 		return actualType;
 	}
 
-	llvm::Type* CodegenInstance::unwrapPointerType(Ast::Expr* user, std::string type)
+	static llvm::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str)
 	{
-		int indirections = 0;
+		iceAssert(str.length() > 0);
+		iceAssert(str[0] == '(');
 
-		std::string actualType = this->unwrapPointerType(type, &indirections);
-		llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
+		str = str.substr(1);
+		char front = str.front();
+		if(front == ')')
+			error(cgi, user, "Empty tuples are not supported");
 
-		if(ret)
+		std::vector<llvm::Type*> types;
+		while(front != ')')
 		{
-			while(indirections > 0)
+			std::string cur;
+			while(front != ',' && front != '(' && front != ')')
 			{
-				ret = ret->getPointerTo();
-				indirections--;
+				cur += front;
+
+				str.erase(str.begin());
+				front = str.front();
+			}
+
+			if(front == ',' || front == ')')
+			{
+				bool shouldBreak = (front == ')');
+				llvm::Type* ty = cgi->parseTypeFromString(user, cur);
+				iceAssert(ty);
+
+				types.push_back(ty);
+
+				str.erase(str.begin());
+				front = str.front();
+
+				if(shouldBreak)
+					break;
+			}
+			else if(front == '(')
+			{
+				iceAssert(str.front() == '(');
+				types.push_back(recursivelyParseTuple(cgi, user, str));
+
+				if(str.front() == ',')
+					str.erase(str.begin());
+
+				front = str.front();
 			}
 		}
 
-		return ret;
+		return llvm::StructType::get(cgi->getContext(), types);
+	}
+
+	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type)
+	{
+		if(type.length() > 0)
+		{
+			if(type[0] == '(')
+			{
+				// parse a tuple.
+				llvm::Type* parsed = recursivelyParseTuple(this, user, type);
+				// printf("parsed: %s\n", this->getReadableType(parsed).c_str());
+				return parsed;
+			}
+			else
+			{
+				int indirections = 0;
+
+				std::string actualType = this->unwrapPointerType(type, &indirections);
+				llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
+
+				if(ret)
+				{
+					while(indirections > 0)
+					{
+						ret = ret->getPointerTo();
+						indirections--;
+					}
+				}
+
+				return ret;
+			}
+		}
+		else
+		{
+			return nullptr;
+		}
 	}
 
 
@@ -853,7 +921,7 @@ namespace Codegen
 	{
 		if(type->isStructTy())
 		{
-			if(type->getStructName() == "Any")
+			if(llvm::cast<llvm::StructType>(type)->hasName() && type->getStructName() == "Any")
 			{
 				return true;
 			}
@@ -989,7 +1057,7 @@ namespace Codegen
 							return this->getLlvmType(decl);
 						}
 
-						return unwrapPointerType(decl, decl->type.strType);
+						return this->parseTypeFromString(decl, decl->type.strType);
 					}
 
 					return type->first;
@@ -1044,7 +1112,7 @@ namespace Codegen
 				TypePair_t* type = getType(fd->type.strType);
 				if(!type)
 				{
-					llvm::Type* ret = unwrapPointerType(fd, fd->type.strType);
+					llvm::Type* ret = this->parseTypeFromString(fd, fd->type.strType);
 
 					if(!ret)
 					{
@@ -1105,11 +1173,30 @@ namespace Codegen
 				llvm::Type* lhs = this->getLlvmType(ma->target);
 				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
 
-				if(!pair)
+				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
+
+				if(!pair && (!st || (st && !st->isLiteral())))
 					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
 
 
-				if(pair->second.second == TypeKind::Struct)
+
+				if((st && st->isLiteral()) || (pair->second.second == TypeKind::Tuple))
+				{
+					// values are 1, 2, 3 etc.
+					// for now, assert this.
+
+					Number* n = dynamic_cast<Number*>(ma->member);
+					iceAssert(n);
+
+					llvm::Type* ttype = pair ? pair->first : st;
+					iceAssert(ttype->isStructTy());
+
+					if(n->ival >= ttype->getStructNumElements())
+						error(this, expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
+
+					return ttype->getStructElementType(n->ival);
+				}
+				else if(pair->second.second == TypeKind::Struct)
 				{
 					Struct* str = dynamic_cast<Struct*>(pair->second.first);
 					iceAssert(str);
@@ -1140,22 +1227,6 @@ namespace Codegen
 					}
 
 					return this->getLlvmType(ma->member);
-				}
-				else if(pair->second.second == TypeKind::Tuple)
-				{
-					// values are 1, 2, 3 etc.
-					// for now, assert this.
-
-					Number* n = dynamic_cast<Number*>(ma->member);
-					iceAssert(n);
-
-					llvm::Type* ttype = pair->first;
-					iceAssert(ttype->isStructTy());
-
-					if(n->ival >= ttype->getStructNumElements())
-						error(this, expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
-
-					return ttype->getStructElementType(n->ival);
 				}
 				else
 				{
@@ -1201,7 +1272,7 @@ namespace Codegen
 						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
 					}
 
-					return unwrapPointerType(alloc, alloc->type.strType)->getPointerTo();
+					return this->parseTypeFromString(alloc, alloc->type.strType)->getPointerTo();
 				}
 
 				return type->first->getPointerTo();
@@ -1222,7 +1293,7 @@ namespace Codegen
 			{
 				if(dum->type.isLiteral)
 				{
-					return this->unwrapPointerType(expr, dum->type.strType);
+					return this->parseTypeFromString(expr, dum->type.strType);
 				}
 				else
 				{
