@@ -89,9 +89,18 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		if(this->initVal && (!cmplxtype || ((StructBase*) cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
+
+			// todo: make this work better, maybe as a parameter to doBinOpAssign
+			// it currently doesn't know (and maybe shouldn't) if we're doing first assign or not
+			// if we're an immutable var (ie. val or let), we first set immutable to false so we
+			// can store the value, then set it back to whatever it was.
+
+			bool wasImmut = this->immutable;
+			this->immutable = false;
 			auto res = cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal,
 				ArithmeticOp::Assign, cgi->mainBuilder.CreateLoad(ai), ai, val, valptr);
 
+			this->immutable = wasImmut;
 			return res.result.first;
 		}
 		else if(!cmplxtype && !this->initVal)
@@ -160,7 +169,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	return val;
 }
 
-Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
@@ -181,6 +190,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		if(!this->isGlobal)
 		{
 			llvm::Type* vartype = cgi->getLlvmType(this->initVal);
+			if(vartype == nullptr || vartype->isVoidTy())
+				GenError::nullValue(cgi, this->initVal);
+
+
+
 			if(cgi->isAnyType(vartype))
 			{
 				#if 0

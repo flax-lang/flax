@@ -49,25 +49,32 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-
-
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
-	if((target->arg_size() != this->params.size() && !target->isVarArg())
-		|| (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
+	bool checkVarArg = target->isVarArg();
+
+
+	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
 		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 	}
 
 
+	int argNum = 0;
 	for(Expr* e : this->params)
 	{
 		ValPtr_t res = e->codegen(cgi).result;
-
 		llvm::Value* arg = res.first;
+
+		if(arg == nullptr || arg->getType()->isVoidTy())
+			GenError::nullValue(cgi, this, argNum);
+
+		if(checkVarArg && arg->getType()->isStructTy() && arg->getType()->getStructName() != "String")
+			warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
+
 		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
 		{
 			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
@@ -75,6 +82,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		args.push_back(arg);
 		argPtrs.push_back(res.second);
+		argNum++;
 	}
 
 
@@ -85,7 +93,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		if(arg_it->getType() != args[i]->getType())
 			cgi->autoCastType(arg_it, args[i], argPtrs[i]);
-
 
 		if(arg_it->getType() != args[i]->getType())
 		{

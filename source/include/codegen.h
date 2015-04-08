@@ -28,6 +28,7 @@ namespace GenError
 	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
+	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument = -1) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Struct* str,
 		std::vector<llvm::Value*> args) __attribute__((noreturn));
@@ -90,7 +91,7 @@ namespace Codegen
 		bool isValidNamespace(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprKind e);
+		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 		bool isDuplicateFuncDecl(std::string name);
 
 		void removeType(std::string name);

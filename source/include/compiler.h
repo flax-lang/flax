@@ -21,6 +21,7 @@ namespace Compiler
 	bool getIsCompileOnly();
 	bool getIsPositionIndependent();
 	bool getDisableLowercaseBuiltinTypes();
+	bool getprintClangOutput();
 	std::string getMcModel();
 
 	enum class Flag

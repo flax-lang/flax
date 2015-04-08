@@ -44,13 +44,14 @@ namespace Parser
 
 namespace Codegen
 {
-	enum class ExprKind
+	enum class TypeKind
 	{
 		Struct,
 		Enum,
 		TypeAlias,
 		Func,
-		BuiltinType
+		BuiltinType,
+		Tuple,
 	};
 
 	enum class SymbolValidity
@@ -63,7 +64,7 @@ namespace Codegen
 	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
 
-	typedef std::pair<Ast::Expr*, ExprKind> TypedExpr_t;
+	typedef std::pair<Ast::Expr*, TypeKind> TypedExpr_t;
 	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 
@@ -126,6 +127,7 @@ namespace Ast
 		BitwiseXorEquals,
 		MemberAccess,
 		ScopeResolution,
+		TupleSeparator,
 	};
 
 	enum class FFIType
@@ -162,7 +164,7 @@ namespace Ast
 	};
 
 
-	// not to be confused with exprkind
+	// not to be confused with TypeKind
 	struct ExprType
 	{
 		bool isLiteral = true;
@@ -533,6 +535,21 @@ namespace Ast
 		bool isStrong = false;
 	};
 
+	struct Tuple : StructBase
+	{
+		~Tuple();
+		Tuple(Parser::PosInfo pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		llvm::StructType* getType(Codegen::CodegenInstance* cgi);
+
+		std::vector<Expr*> values;
+		std::vector<llvm::Type*> ltypes;
+
+		bool didCreateType = false;
+		llvm::StructType* cachedLlvmType = 0;
+	};
+
 	struct MemberAccess : Expr
 	{
 		~MemberAccess();
@@ -634,7 +651,7 @@ namespace Ast
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
 
-		std::vector<std::tuple<std::string, llvm::Type*, Codegen::ExprKind>> typeList;
+		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
 	};
 }
 
