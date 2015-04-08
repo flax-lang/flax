@@ -738,6 +738,7 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
+
 		return f;
 	}
 
@@ -981,6 +982,40 @@ namespace Parser
 			ct->type.type = parseExpr(tokens);
 			return ct;
 		}
+		else if(tmp.type == TType::LParen)
+		{
+			// tuple as a type.
+			int parens = 1;
+
+			std::string final = "(";
+			while(parens > 0)
+			{
+				Token front = eat(tokens);
+				while(front.type != TType::LParen && front.type != TType::RParen)
+				{
+					final += front.text;
+					front = eat(tokens);
+				}
+
+				if(front.type == TType::LParen)
+				{
+					final += "(";
+					parens++;
+				}
+
+				else if(front.type == TType::RParen)
+				{
+					final += ")";
+					parens--;
+				}
+			}
+
+			Expr* ct = CreateAST(DummyExpr, tmp);
+			ct->type.isLiteral = true;
+			ct->type.strType = final;
+
+			return ct;
+		}
 		else
 		{
 			parserError("Expected type for variable declaration, got %s", tmp.text.c_str());
@@ -1167,8 +1202,9 @@ namespace Parser
 			t = tokens.front();
 		}
 
+		// leave the last rparen
 		iceAssert(tokens.front().type == TType::RParen);
-		eat(tokens);
+		// eat(tokens);
 
 		return CreateAST(Tuple, first, values);
 	}
@@ -1179,8 +1215,8 @@ namespace Parser
 		didHaveLeftParen = true;
 		Expr* within = parseExpr(tokens);
 
-		if(tokens.front().type == TType::RParen)
-			eat(tokens);
+		iceAssert(tokens.front().type == TType::RParen);
+		eat(tokens);
 
 		didHaveLeftParen = false;
 		return within;
@@ -1377,6 +1413,7 @@ namespace Parser
 		iceAssert(front.type == TType::LParen);
 
 		std::deque<Expr*> args;
+
 		if(tokens.front().type != TType::RParen)
 		{
 			while(true)
