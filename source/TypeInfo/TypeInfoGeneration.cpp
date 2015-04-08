@@ -13,13 +13,22 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, TypeKind etype)
 	{
+		bool hasName = true;
 		for(auto k : cgi->rootNode->typeList)
 		{
-			if(std::get<0>(k) == stype->getStructName())
-				return;
+			if(stype->isStructTy())
+			{
+				llvm::StructType* strt = llvm::dyn_cast<llvm::StructType>(stype);
+				assert(strt);
+
+				hasName = strt->hasName();
+
+				if(hasName && std::get<0>(k) == strt->getStructName())
+					return;
+			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(stype->getStructName(), stype, etype));
+		cgi->rootNode->typeList.push_back(std::make_tuple(hasName ? stype->getStructName() : "", stype, etype));
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type)

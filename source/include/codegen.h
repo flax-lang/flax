@@ -155,7 +155,7 @@ namespace Codegen
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name = "");
 
 
-		llvm::Type* unwrapPointerType(Ast::Expr* user, std::string type);
+		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
