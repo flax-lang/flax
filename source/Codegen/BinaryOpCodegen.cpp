@@ -278,12 +278,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		// todo: somehow solve a circular dependency of lhs <> rhs
-		auto res = this->right->codegen(cgi).result;
+		valptr = this->left->codegen(cgi).result;
+
+		auto res = this->right->codegen(cgi, valptr.second).result;
 		rhs = res.first;
-
-		valptr = this->left->codegen(cgi, 0, rhs).result;
-
 		lhs = valptr.first;
+
 		llvm::Value* rhsPtr = res.second;
 
 		cgi->autoCastType(lhs, rhs, rhsPtr);

@@ -114,7 +114,7 @@ namespace Codegen
 			if(pair.first->name == "Any" || pair.first->name == "Type")
 				continue;
 
-			cgi->addNewType(str, pair.first, ExprKind::Struct);
+			cgi->addNewType(str, pair.first, TypeKind::Struct);
 		}
 
 		cgi->rootNode->codegen(cgi);
@@ -262,14 +262,14 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, ExprKind e)
+	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 		std::string mangled = this->mangleWithNamespace(atype->name, false);
 		if(atype->mangledName.empty())
 			atype->mangledName = mangled;
 
-		iceAssert(mangled == atype->mangledName);
+		// iceAssert(mangled == atype->mangledName);
 
 		if(this->typeMap.find(mangled) == this->typeMap.end())
 		{
@@ -875,7 +875,7 @@ namespace Codegen
 			TypePair_t* tp = 0;
 			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
 			{
-				if(tp->second.second == ExprKind::Enum)
+				if(tp->second.second == TypeKind::Enum)
 					return true;
 			}
 
@@ -897,7 +897,7 @@ namespace Codegen
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
-			return tp->second.second == ExprKind::Enum;
+			return tp->second.second == TypeKind::Enum;
 
 		return res;
 	}
@@ -909,7 +909,7 @@ namespace Codegen
 			TypePair_t* tp = 0;
 			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
 			{
-				if(tp->second.second == ExprKind::TypeAlias)
+				if(tp->second.second == TypeKind::TypeAlias)
 					return true;
 			}
 
@@ -931,7 +931,7 @@ namespace Codegen
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
-			return tp->second.second == ExprKind::TypeAlias;
+			return tp->second.second == TypeKind::TypeAlias;
 
 		return res;
 	}
@@ -947,7 +947,7 @@ namespace Codegen
 			if(!tp)
 				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
 
-			iceAssert(tp->second.second == ExprKind::Enum);
+			iceAssert(tp->second.second == TypeKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 
 			iceAssert(enr);
@@ -971,6 +971,9 @@ namespace Codegen
 			{
 				if(decl->type.strType == "Inferred")
 				{
+					if(!decl->inferredLType)		// todo: better error detection for this
+						return llvm::Type::getVoidTy(this->getContext());
+
 					iceAssert(decl->inferredLType);
 					return decl->inferredLType;
 				}
@@ -1077,12 +1080,12 @@ namespace Codegen
 					TypePair_t* tp = 0;
 					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
 					{
-						if(tp->second.second == ExprKind::Enum)
+						if(tp->second.second == TypeKind::Enum)
 						{
 							iceAssert(tp->first->isStructTy());
 							return tp->first;
 						}
-						else if(tp->second.second == ExprKind::Struct)
+						else if(tp->second.second == TypeKind::Struct)
 						{
 							Expr* rightmost = this->recursivelyResolveNested(ma);
 							return this->getLlvmType(rightmost);
@@ -1105,35 +1108,59 @@ namespace Codegen
 				if(!pair)
 					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
 
-				Struct* str = dynamic_cast<Struct*>(pair->second.first);
-				iceAssert(str);
 
-				VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
-				FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
-
-				if(memberVr)
+				if(pair->second.second == TypeKind::Struct)
 				{
-					for(VarDecl* mem : str->members)
+					Struct* str = dynamic_cast<Struct*>(pair->second.first);
+					iceAssert(str);
+
+					VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
+					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
+
+					if(memberVr)
 					{
-						if(mem->name == memberVr->name)
-							return this->getLlvmType(mem);
+						for(VarDecl* mem : str->members)
+						{
+							if(mem->name == memberVr->name)
+								return this->getLlvmType(mem);
+						}
+						for(ComputedProperty* c : str->cprops)
+						{
+							if(c->name == memberVr->name)
+								return this->getLlvmType(c, c->type);
+						}
 					}
-					for(ComputedProperty* c : str->cprops)
+					else if(memberFc)
 					{
-						if(c->name == memberVr->name)
-							return this->getLlvmType(c, c->type);
+						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
+					else
+					{
+						error(this, expr, "invalid");
+					}
+
+					return this->getLlvmType(ma->member);
 				}
-				else if(memberFc)
+				else if(pair->second.second == TypeKind::Tuple)
 				{
-					return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
+					// values are 1, 2, 3 etc.
+					// for now, assert this.
+
+					Number* n = dynamic_cast<Number*>(ma->member);
+					iceAssert(n);
+
+					llvm::Type* ttype = pair->first;
+					iceAssert(ttype->isStructTy());
+
+					if(n->ival >= ttype->getStructNumElements())
+						error(this, expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
+
+					return ttype->getStructElementType(n->ival);
 				}
 				else
 				{
-					error(expr, "invalid");
+					error(this, expr, "invalid");
 				}
-
-				return this->getLlvmType(ma->member);
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 			{
@@ -1212,6 +1239,16 @@ namespace Codegen
 				iceAssert(tp);
 
 				return tp->first;
+			}
+			else if(Tuple* tup = dynamic_cast<Tuple*>(expr))
+			{
+				llvm::Type* tp = tup->cachedLlvmType;
+				if(!tup->didCreateType)
+					tp = tup->getType(this);
+
+
+				iceAssert(tp);
+				return tp;
 			}
 		}
 
@@ -1387,7 +1424,7 @@ namespace Codegen
 		iceAssert(pair->first);
 		iceAssert(pair->second.first);
 
-		if(pair->second.second != ExprKind::Struct)
+		if(pair->second.second != TypeKind::Struct)
 		{
 			if(fail)	error("!!??!?!?!");
 			else		return Result_t(0, 0);
@@ -1440,9 +1477,23 @@ namespace Codegen
 		iceAssert(pair);
 		iceAssert(pair->first);
 		iceAssert(pair->second.first);
-		iceAssert(pair->second.second == ExprKind::Struct);
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+
+		if(pair->second.second != TypeKind::Struct)
+		{
+			iceAssert(pair->second.second == TypeKind::TypeAlias);
+			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
+			iceAssert(ta);
+
+			TypePair_t* tp = this->getType(ta->origType);
+			iceAssert(tp);
+
+			// todo: support typealiases of typealises.
+			str = dynamic_cast<Struct*>(tp->second.first);
+		}
+
+
 		iceAssert(str);
 
 		llvm::Function* initf = 0;

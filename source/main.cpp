@@ -91,6 +91,12 @@ namespace Compiler
 	{
 		return noLowercaseTypes;
 	}
+
+	static bool printClangOutput;
+	bool getprintClangOutput()
+	{
+		return printClangOutput;
+	}
 }
 
 int main(int argc, char* argv[])
@@ -193,6 +199,10 @@ int main(int argc, char* argv[])
 			else if(!strcmp(argv[i], "-c"))
 			{
 				Compiler::compileOnly = true;
+			}
+			else if(!strcmp(argv[i], "-show-clang"))
+			{
+				Compiler::printClangOutput = true;
 			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{
