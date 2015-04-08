@@ -215,9 +215,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else if(!var && !fc)
 		{
-			error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+			if(dynamic_cast<Number*>(rhs))
+			{
+				error(cgi, this, "Type '%s' is not a tuple", str->name.c_str());
+			}
+			else
+			{
+				error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+			}
 		}
-
 
 		if(fc)
 		{
