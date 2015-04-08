@@ -1176,7 +1176,7 @@ namespace Codegen
 				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
 
 				if(!pair && (!st || (st && !st->isLiteral())))
-					error(expr, "Invalid type '%s'", this->getReadableType(lhs).c_str());
+					error(this, expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
 
 
