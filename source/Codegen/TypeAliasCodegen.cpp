@@ -29,7 +29,7 @@ void TypeAlias::createType(CodegenInstance* cgi)
 		warn(this, "Strong type aliases are still iffy, use at your own risk");
 	}
 
-	cgi->addNewType(targetType, this, ExprKind::TypeAlias);
+	cgi->addNewType(targetType, this, TypeKind::TypeAlias);
 }
 
 

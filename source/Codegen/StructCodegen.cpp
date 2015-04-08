@@ -232,7 +232,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
-	cgi->addNewType(str, this, ExprKind::Struct);
+	cgi->addNewType(str, this, TypeKind::Struct);
 
 	if(!this->didCreateType)
 	{

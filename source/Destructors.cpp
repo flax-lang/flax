@@ -35,6 +35,10 @@ namespace Ast
 	{
 	}
 
+	Tuple::~Tuple()
+	{
+	}
+
 	BinOp::~BinOp()
 	{
 
