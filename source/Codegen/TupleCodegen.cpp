@@ -21,7 +21,7 @@ llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 			this->ltypes.push_back(cgi->getLlvmType(e));
 
 		this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
-		this->cachedLlvmType = llvm::StructType::create(cgi->getContext(), this->ltypes, this->name);
+		this->cachedLlvmType = llvm::StructType::get(cgi->getContext(), this->ltypes);
 		this->didCreateType = true;
 
 		// todo: debate, should we add this?
@@ -65,6 +65,13 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	{
 		llvm::Value* member = cgi->mainBuilder.CreateStructGEP(gep, i);
 		llvm::Value* val = this->values[i]->codegen(cgi).result.first;
+
+		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());
+		cgi->autoCastType(member->getType()->getPointerElementType(), val);
+
+		if(val->getType() != member->getType()->getPointerElementType())
+			error(cgi, this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
+				cgi->getReadableType(member->getType()->getPointerElementType()).c_str(), cgi->getReadableType(val).c_str());
 
 		cgi->mainBuilder.CreateStore(val, member);
 	}
