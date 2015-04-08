@@ -981,6 +981,40 @@ namespace Parser
 			ct->type.type = parseExpr(tokens);
 			return ct;
 		}
+		else if(tmp.type == TType::LParen)
+		{
+			// tuple as a type.
+			int parens = 1;
+
+			std::string final = "(";
+			while(parens > 0)
+			{
+				Token front = eat(tokens);
+				while(front.type != TType::LParen && front.type != TType::RParen)
+				{
+					final += front.text;
+					front = eat(tokens);
+				}
+
+				if(front.type == TType::LParen)
+				{
+					final += "(";
+					parens++;
+				}
+
+				else if(front.type == TType::RParen)
+				{
+					final += ")";
+					parens--;
+				}
+			}
+
+			Expr* ct = CreateAST(DummyExpr, tmp);
+			ct->type.isLiteral = true;
+			ct->type.strType = final;
+
+			return ct;
+		}
 		else
 		{
 			parserError("Expected type for variable declaration, got %s", tmp.text.c_str());
