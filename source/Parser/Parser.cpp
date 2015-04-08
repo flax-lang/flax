@@ -37,8 +37,10 @@ namespace Parser
 	#define ATTR_STR_RAW				"raw"
 
 
-	// todo: hack
+	// todo: hacks
 	static bool isParsingStruct;
+	static bool didHaveLeftParen;
+
 	static void parserError(Token token, const char* msg, va_list args)
 	{
 		char* alloc = nullptr;
@@ -139,6 +141,9 @@ namespace Parser
 	{
 		switch(tok.type)
 		{
+			case TType::Comma:
+				return didHaveLeftParen ? 2000 : -1;	// lol x3
+
 			case TType::DoubleColon:
 				return 1000;			// lol
 
@@ -243,6 +248,7 @@ namespace Parser
 			case ArithmeticOp::BitwiseXorEquals:	return "^=";
 			case ArithmeticOp::MemberAccess:		return ".";
 			case ArithmeticOp::ScopeResolution:		return "::";
+			case ArithmeticOp::TupleSeparator:		return ",";
 			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 		}
 	}
@@ -1138,17 +1144,45 @@ namespace Parser
 		return v;
 	}
 
+	Tuple* parseTuple(TokenList& tokens, Ast::Expr* lhs)
+	{
+		assert(lhs);
+
+		Token first = tokens.front();
+		std::vector<Expr*> values;
+
+
+		values.push_back(lhs);
+
+		Token t = tokens.front();
+		while(true)
+		{
+			values.push_back(parseExpr(tokens));
+			if(tokens.front().type == TType::RParen)
+				break;
+
+			else if(tokens.front().type == TType::Comma)
+				eat(tokens);
+
+			t = tokens.front();
+		}
+
+		iceAssert(tokens.front().type == TType::RParen);
+		eat(tokens);
+
+		return CreateAST(Tuple, first, values);
+	}
+
 	Expr* parseParenthesised(TokenList& tokens)
 	{
 		iceAssert(eat(tokens).type == TType::LParen);
+		didHaveLeftParen = true;
 		Expr* within = parseExpr(tokens);
 
 		if(tokens.front().type == TType::RParen)
 			eat(tokens);
 
-		// if(eat(tokens).type != TType::RParen)
-		// 	parserError("Expected ')'");
-
+		didHaveLeftParen = false;
 		return within;
 	}
 
@@ -1172,6 +1206,11 @@ namespace Parser
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token tok_op = eat(tokens);
+			if(tok_op.type == TType::Comma && didHaveLeftParen)
+			{
+				didHaveLeftParen = false;
+				return parseTuple(tokens, lhs);
+			}
 
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(tokens) : parseUnary(tokens);
 			if(!rhs)

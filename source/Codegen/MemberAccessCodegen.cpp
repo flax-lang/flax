@@ -47,11 +47,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		TypePair_t* tp = 0;
 		if((tp = cgi->getType(cgi->mangleWithNamespace(_vr->name, false))))
 		{
-			if(tp->second.second == ExprKind::Enum)
+			if(tp->second.second == TypeKind::Enum)
 			{
 				return enumerationAccessCodegen(cgi, this->target, this->member);
 			}
-			else if(tp->second.second == ExprKind::Struct)
+			else if(tp->second.second == TypeKind::Struct)
 			{
 				return doStaticAccess(cgi, this);
 			}
@@ -169,7 +169,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	}
 
 
-	if(pair->second.second == ExprKind::Struct)
+	if(pair->second.second == TypeKind::Struct)
 	{
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 
@@ -229,12 +229,39 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			error("(%s:%d) -> Internal check failed: not var or function?!", __FILE__, __LINE__);
+			iceAssert(!"Not var or function?!");
 		}
 	}
+	else if(pair->second.second == TypeKind::Tuple)
+	{
+		// todo: maybe move this to another file?
+		// like tuplecodegen.cpp
 
+		// quite simple, just get the number (make sure it's a Ast::Number)
+		// and do a structgep.
 
-	error("(%s:%d) -> Internal check failed: encountered invalid expression", __FILE__, __LINE__);
+		Number* n = dynamic_cast<Number*>(this->member);
+		iceAssert(n);
+
+		if(n->ival >= type->getStructNumElements())
+			error(cgi, this, "Tuple does not have %d elements, only %d", (int) n->ival + 1, type->getStructNumElements());
+
+		llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(selfPtr, n->ival);
+
+		// if the lhs is immutable, don't give a pointer.
+		bool immut = false;
+		if(VarRef* vr = dynamic_cast<VarRef*>(this->target))
+		{
+			VarDecl* vd = cgi->getSymDecl(this, vr->name);
+			iceAssert(vd);
+
+			immut = vd->immutable;
+		}
+
+		return Result_t(cgi->mainBuilder.CreateLoad(gep), immut ? 0 : gep);
+	}
+
+	iceAssert(!"Encountered invalid expression");
 }
 
 
