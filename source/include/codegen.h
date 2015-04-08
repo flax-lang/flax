@@ -91,7 +91,7 @@ namespace Codegen
 		bool isValidNamespace(std::string namespc);
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, ExprKind e);
+		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 		bool isDuplicateFuncDecl(std::string name);
 
 		void removeType(std::string name);
