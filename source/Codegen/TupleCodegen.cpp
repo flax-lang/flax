@@ -67,6 +67,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		llvm::Value* val = this->values[i]->codegen(cgi).result.first;
 
 		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());
+		cgi->autoCastType(member->getType()->getPointerElementType(), val);
 
 		if(val->getType() != member->getType()->getPointerElementType())
 			error(cgi, this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
