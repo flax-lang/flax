@@ -15,17 +15,18 @@ llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 {
 	if(this->ltypes.size() == 0)
 	{
+		iceAssert(!this->didCreateType);
+
 		for(Expr* e : this->values)
 			this->ltypes.push_back(cgi->getLlvmType(e));
-	}
 
-	this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
-	this->cachedLlvmType = llvm::StructType::create(cgi->getContext(), this->ltypes, this->name);
-	this->didCreateType = true;
+		this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
+		this->cachedLlvmType = llvm::StructType::create(cgi->getContext(), this->ltypes, this->name);
+		this->didCreateType = true;
 
-	// todo: debate, should we add this?
-	if(cgi->getType(this->cachedLlvmType) == nullptr)
+		// todo: debate, should we add this?
 		cgi->addNewType(this->cachedLlvmType, this, TypeKind::Tuple);
+	}
 
 	return this->cachedLlvmType;
 }
@@ -63,7 +64,9 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	for(unsigned int i = 0; i < strtype->getStructNumElements(); i++)
 	{
 		llvm::Value* member = cgi->mainBuilder.CreateStructGEP(gep, i);
-		cgi->mainBuilder.CreateStore(this->values[i]->codegen(cgi).result.first, member);
+		llvm::Value* val = this->values[i]->codegen(cgi).result.first;
+
+		cgi->mainBuilder.CreateStore(val, member);
 	}
 
 	return Result_t(cgi->mainBuilder.CreateLoad(gep), gep);
