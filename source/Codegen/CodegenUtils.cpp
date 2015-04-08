@@ -1098,7 +1098,7 @@ namespace Codegen
 					if(tp)
 						return tp->first;
 
-					error(this, expr, "(%s:%d) -> Internal check failed: invalid function call to '%s'", __FILE__, __LINE__, fc->name.c_str());
+					error(this, expr, "Invalid function call to '%s'", fc->name.c_str());
 				}
 
 				return getLlvmType(fp->second);
@@ -1445,6 +1445,10 @@ namespace Codegen
 				llvm::Value* ret = this->mainBuilder.CreateStructGEP(rhsPtr, 0);
 				right = this->mainBuilder.CreateLoad(ret);	// mutating
 			}
+		}
+		else if(target->isFloatingPointTy() && right->getType()->isIntegerTy())
+		{
+			right = this->mainBuilder.CreateSIToFP(right, target);
 		}
 	}
 
