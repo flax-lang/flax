@@ -49,15 +49,15 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-
-
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
 
 	llvm::Function* target = fp->first;
-	if((target->arg_size() != this->params.size() && !target->isVarArg())
-		|| (target->isVarArg() && target->arg_size() > 0 && this->params.size() == 0))
+	bool checkVarArg = target->isVarArg();
+
+
+	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
 		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 	}
@@ -72,6 +72,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		if(arg == nullptr || arg->getType()->isVoidTy())
 			GenError::nullValue(cgi, this, argNum);
 
+		if(checkVarArg && arg->getType()->isStructTy() && arg->getType()->getStructName() != "String")
+			warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
 
 		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
 		{
