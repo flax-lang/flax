@@ -191,7 +191,7 @@ namespace Compiler
 			const char* target		= (tgt).c_str();
 			const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
 
-			snprintf(inv, 1024, "clang++ %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target, isPic, outputMode, oname.c_str(), oname.c_str());
+			snprintf(inv, 1024, "clang++ -flto %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target, isPic, outputMode, oname.c_str(), oname.c_str());
 		}
 		std::string final = inv;
 
