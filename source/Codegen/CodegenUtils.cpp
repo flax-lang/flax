@@ -195,7 +195,7 @@ namespace Codegen
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
-		return this->funcScopeStack.back();
+		return this->funcScopeStack.size() > 0 ? this->funcScopeStack.back() : 0;
 	}
 
 	void CodegenInstance::setCurrentFunctionScope(Func* f)
@@ -446,7 +446,7 @@ namespace Codegen
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
-		return this->getDeclaredFunc(name) != nullptr;
+		return this->funcStack.back().find(name) != this->funcStack.back().end();
 	}
 
 	void CodegenInstance::popNamespaceScope()
