@@ -77,6 +77,8 @@ namespace Codegen
 			OurFPM.add(llvm::createAggressiveDCEPass());
 		}
 
+		// optimisation level -1 disables *everything*
+		// mostly for reading the IR to debug codegen.
 		if(Compiler::getOptimisationLevel() >= 0)
 		{
 			// always do the mem2reg pass, our generated code is too inefficient
@@ -1860,32 +1862,32 @@ namespace Codegen
 		return false;
 	}
 
-	static void checkCircularDependencies(CodegenInstance* cgi, Expr* expr, Expr* dep)
+	static void recursivelyResolveDependencies(Expr* expr, std::deque<Expr*>& resolved, std::deque<Expr*>& unresolved)
 	{
-		if(expr == dep)
-			error(cgi, expr, "Circular dependency detected");
-
-
-		VarRef* vrE = dynamic_cast<VarRef*>(expr);
-		VarRef* vrD = dynamic_cast<VarRef*>(dep);
-
-		if(vrE && vrD)
+		unresolved.push_back(expr);
+		for(auto m : expr->dependencies)
 		{
-			if(vrE->name == vrD->name)
-				error(cgi, expr, "Circular dependency detected");
+			if(std::find(resolved.begin(), resolved.end(), m.dep) == resolved.end())
+			{
+				if(std::find(unresolved.begin(), unresolved.end(), m.dep) != unresolved.end())
+					error(0, expr, "Circular dependency!");
+
+				recursivelyResolveDependencies(m.dep, resolved, unresolved);
+			}
 		}
+
+		resolved.push_back(expr);
+		unresolved.erase(std::find(unresolved.begin(), unresolved.end(), expr));
 	}
 
 	void CodegenInstance::evaluateDependencies(Expr* expr)
 	{
-		for(AstDependency dep : expr->dependencies)
-		{
-			checkCircularDependencies(this, expr, dep.dep);
-			this->evaluateDependencies(dep.dep);
+		std::deque<Expr*> resolved;
+		std::deque<Expr*> unresolved;
+		recursivelyResolveDependencies(expr, resolved, unresolved);
 
-			if(!dep.dep->didCodegen)
-				dep.dep->codegen(this);
-		}
+
+
 	}
 
 }

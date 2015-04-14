@@ -317,6 +317,7 @@ namespace Ast
 		std::string name;
 		std::string mangledName;
 		std::deque<VarDecl*> params;
+		std::deque<std::string> genericTypes;
 	};
 
 	struct BracedBlock : Expr
