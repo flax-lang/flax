@@ -49,14 +49,15 @@ namespace Codegen
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::Func*> funcStack;
 		std::deque<std::string> namespaceStack;
 		std::deque<std::deque<std::string>> importedNamespaces;
 
 		std::vector<std::string> rawLines;
 
 		TypeMap_t typeMap;
-		FuncMap_t funcMap;
+
+		std::deque<FuncMap_t> funcStack;
+		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
@@ -76,7 +77,6 @@ namespace Codegen
 
 		// normal scopes, ie. variable scopes within braces
 		void pushScope();
-		void pushScope(SymTab_t tab);
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
 		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);

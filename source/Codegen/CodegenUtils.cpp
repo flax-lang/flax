@@ -175,38 +175,37 @@ namespace Codegen
 
 	void CodegenInstance::popScope()
 	{
-		symTabStack.pop_back();
+		this->symTabStack.pop_back();
+		this->funcStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
-		symTabStack.clear();
-		this->clearNamespaceScope();
-	}
+		this->symTabStack.clear();
+		this->funcStack.clear();
 
-	void CodegenInstance::pushScope(SymTab_t tab)
-	{
-		this->symTabStack.push_back(tab);
+		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		this->pushScope(SymTab_t());
+		this->symTabStack.push_back(SymTab_t());
+		this->funcStack.push_back(FuncMap_t());
 	}
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
-		return this->funcStack.back();
+		return this->funcScopeStack.back();
 	}
 
 	void CodegenInstance::setCurrentFunctionScope(Func* f)
 	{
-		this->funcStack.push_back(f);
+		this->funcScopeStack.push_back(f);
 	}
 
 	void CodegenInstance::clearCurrentFunctionScope()
 	{
-		this->funcStack.pop_back();
+		this->funcScopeStack.pop_back();
 	}
 
 
@@ -385,45 +384,64 @@ namespace Codegen
 
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
-		this->funcMap[name] = func;
+		// this->funcMap[name] = func;
+		this->funcStack.back()[name] = func;
 	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
-		FuncMap_t& tab = this->funcMap;
+		for(ssize_t i = this->funcStack.size() - 1; i >= 0; i--)
+		{
+			FuncMap_t& tab = this->funcStack[i];
 
-		#if 0
-		printf("find %s:\n{\n", name.c_str());
-		for(auto p : tab) printf("\t%s\n", p.first.c_str());
-		printf("}\n");
-		#endif
+			#if 0
+			printf("find %s:\n{\n", name.c_str());
+			for(auto p : tab) printf("\t%s\n", p.first.c_str());
+			printf("}\n");
+			#endif
 
-		if(tab.find(name) != tab.end())
-			return &tab[name];
+			if(tab.find(name) != tab.end())
+				return &tab[name];
+		}
 
 		return nullptr;
 	}
+
+	static FuncPair_t* searchDeclaredFuncElsewhere(CodegenInstance* cgi, FuncCall* fc)
+	{
+		// mangled name
+		FuncPair_t* fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name), fc->params));
+		if(fp) return fp;
+
+		// search inside imported namespaces.
+		for(auto ns : cgi->importedNamespaces)
+		{
+			fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name, ns), fc->params));
+			if(fp) return fp;
+		}
+
+		return 0;
+	}
+
+
+
+
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{
 		// step one: unmangled name
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+		if(fp) return fp;
 
-		// step two: mangled name
-		if(!fp)
-		{
-			fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
-			if(!fp)
-			{
-				for(auto ns : this->importedNamespaces)
-				{
-					fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name, ns), fc->params));
-					if(fp) break;
-				}
-			}
-		}
+		fp = searchDeclaredFuncElsewhere(this, fc);
+		if(fp) return fp;
 
-		return fp;
+
+		// search for generic functions.
+
+
+
+		return 0;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
