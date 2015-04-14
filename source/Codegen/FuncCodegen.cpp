@@ -40,13 +40,6 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 
 Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	if(this->decl->genericTypes.size() > 0)
-	{
-		return Result_t(0, 0);
-	}
-
-
-
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
