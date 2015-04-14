@@ -646,10 +646,48 @@ namespace Parser
 		Token func_id = eat(tokens);
 		std::string id = func_id.text;
 
+		std::deque<std::string> genericTypes;
+
 		// expect a left bracket
 		Token paren = eat(tokens);
-		if(paren.type != TType::LParen)
+		if(paren.type != TType::LParen && paren.type != TType::LAngle)
+		{
 			parserError("Expected '(' in function declaration, got '%s'", paren.text.c_str());
+		}
+		else if(paren.type == TType::LAngle)
+		{
+			// todo: parse multiple types, eg.
+			// func foo<T, U>(a: T, b: U) -> T
+			// and such.
+
+			Expr* inner = parseType(tokens);
+			iceAssert(inner->type.isLiteral);
+
+			genericTypes.push_back(inner->type.strType);
+
+			Token angleOrComma = eat(tokens);
+			if(angleOrComma.type == TType::Comma)
+			{
+				// parse more.
+				Token tok;
+				while(true)
+				{
+					Expr* gtype = parseType(tokens);
+					iceAssert(gtype->type.isLiteral);
+
+					genericTypes.push_back(gtype->type.strType);
+
+					tok = eat(tokens);
+					if(tok.type == TType::Comma)		continue;
+					else if(tok.type == TType::RAngle)	break;
+					else								parserError("Expected '>' or ','");
+				}
+			}
+			else if(angleOrComma.type != TType::RAngle)
+				parserError("Expected '>' or ','");
+
+			eat(tokens);
+		}
 
 		bool isVA = false;
 		// get the parameter list
@@ -738,6 +776,7 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
 
 		f->hasVarArg = isVA;
+		f->genericTypes = genericTypes;
 
 		return f;
 	}

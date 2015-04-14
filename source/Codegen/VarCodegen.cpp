@@ -20,6 +20,14 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
 }
 
+
+
+
+
+
+
+
+
 llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr,
 	llvm::Value* storage, bool shouldAddToSymtab)
 {

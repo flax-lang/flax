@@ -12,6 +12,18 @@ using namespace Codegen;
 
 Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	// if we're a generic function, we can't generate anything
+	// wait until we get specific instances
+	// (where all the typenames, T, U etc. have been replaced with concrete types by callers)
+
+	if(this->genericTypes.size() > 0)
+	{
+		// defer generation, until all dependencies have been resolved.
+		return Result_t(0, 0);
+	}
+
+
+
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentStruct != nullptr);
 
