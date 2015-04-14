@@ -121,24 +121,24 @@ func lengthBetween(a: (Int, Int), b: (Int, Int)) -> Float64
 }
 
 
-
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	// let a1 = "hello!"
-	// let k: Type = typeof(0)
-	// var m: foo
-	// m.k = 500.1409
+	func doubleIt(k: Int) -> Int
+	{
+		return k * 2
+	}
 
-	// var m1 = &m as Int8*
+	func other()
+	{
+		printf("other: %d\n", doubleIt(10))
+	}
 
-	// var t: Any = 3.55
-	// var g: Float64 = t
-	// printf("%d, %f, %f\n", t.type, t as Float64, 0.55)
 
 	let k = doubleIt(6)
 	printf("k: %d\n", k);
 
 
+	other()
 	// let a: (Int, Int) = (0, 0)
 	// let b: (Int, Int) = (5, 6)
 
@@ -151,14 +151,6 @@ func main(argc: Int32, argv: Int8**) -> Int
 
 	return 0
 }
-
-
-
-func doubleIt(k: Int) -> Int
-{
-	return k * 2
-}
-
 
 
 
