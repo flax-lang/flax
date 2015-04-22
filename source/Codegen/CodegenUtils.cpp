@@ -101,7 +101,14 @@ namespace Codegen
 			auto func = pair.second;
 
 			// add to the func table
-			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
+			auto lf = cgi->mainModule->getFunction(func->getName());
+			if(!lf)
+			{
+				cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType());
+				lf = cgi->mainModule->getFunction(func->getName());
+			}
+
+			llvm::Function* f = llvm::cast<llvm::Function>(lf);
 
 			f->deleteBody();
 			cgi->addFunctionToScope(func->getName(), FuncPair_t(f, pair.first));
@@ -1118,7 +1125,7 @@ namespace Codegen
 					if(tp)
 						return tp->first;
 
-					error(this, expr, "Invalid function call to '%s'", fc->name.c_str());
+					GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
 				}
 
 				return getLlvmType(fp->second);
