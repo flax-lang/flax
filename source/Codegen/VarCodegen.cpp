@@ -234,6 +234,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 				r = this->initVal->codegen(cgi, ai).result;
 			}
 		}
+		else
+		{
+			r = this->initVal->codegen(cgi, 0).result;
+		}
 
 
 		val = r.first;
