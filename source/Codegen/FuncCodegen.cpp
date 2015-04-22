@@ -44,11 +44,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// so just fetch it.
 
 	llvm::Function* func = cgi->mainModule->getFunction(this->decl->mangledName);
-	if(!func)
-	{
-		this->decl->codegen(cgi);
-		return this->codegen(cgi);
-	}
+	iceAssert(func && "Function was not declared before being generated!");
 
 
 
