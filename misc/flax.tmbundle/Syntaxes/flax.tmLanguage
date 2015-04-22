@@ -473,7 +473,7 @@
 				<key>2</key>
 				<dict>
 					<key>name</key>
-					<string>entity.type.funciton.flax</string>
+					<string>entity.type.function.flax</string>
 				</dict>
 			</dict>
 			<key>comment</key>
@@ -987,7 +987,7 @@
 		<key>storage-type</key>
 		<dict>
 			<key>match</key>
-			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|public|private|internal)\b</string>
+			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|public|private|internal|ƒ|func)\b</string>
 			<key>name</key>
 			<string>storage.type.flax</string>
 		</dict>
