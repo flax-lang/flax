@@ -20,6 +20,21 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 
+	llvm::GlobalValue::LinkageTypes linkageType;
+	if(this->attribs & Attr_VisPublic)
+	{
+		linkageType = llvm::Function::ExternalLinkage;
+	}
+	else
+	{
+		linkageType = llvm::Function::InternalLinkage;
+	}
+
+
+
+
+
+
 	// see if we have nested types
 	for(Struct* nested : this->nestedTypes)
 		nested->codegen(cgi);
@@ -28,7 +43,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), llvm::Function::ExternalLinkage, "__automatic_init__" + this->mangledName, cgi->mainModule);
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->mainModule);
 
 	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
