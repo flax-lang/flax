@@ -202,7 +202,7 @@ void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
 
 
 #define __nothing
-#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n%s", __FILE__, __LINE__, #x))
+#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
 
 
 

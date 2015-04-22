@@ -120,7 +120,7 @@ func lengthBetween(a: (Int, Int), b: (Int, Int)) -> Float64
 	return sqrt((x * x) + (y * y))
 }
 
-func doubleIt<T>(k: Int) -> Int
+func doubleIt<T>(k: T) -> Int
 {
 	return k * 2
 }
