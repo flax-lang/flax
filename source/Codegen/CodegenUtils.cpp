@@ -1371,6 +1371,10 @@ namespace Codegen
 				iceAssert(tp);
 				return tp;
 			}
+			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
+			{
+				return this->getLlvmType(ai->var)->getPointerElementType();
+			}
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
