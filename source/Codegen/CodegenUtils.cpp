@@ -1207,8 +1207,6 @@ namespace Codegen
 							{
 								error(this, expr, "Unknown expression type %s on RHS of dot operator", typeid(*expr).name());
 							}
-
-							// return this->getLlvmType(rightmost);
 						}
 					}
 				}
