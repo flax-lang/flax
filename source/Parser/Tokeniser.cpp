@@ -7,6 +7,7 @@
 #include <cassert>
 #include <iostream>
 #include "../include/parser.h"
+// #include "../Utf8String/String.h"
 
 namespace Parser
 {
@@ -166,6 +167,47 @@ namespace Parser
 			tok.type = TType::DoubleColon;
 			read = 2;
 		}
+
+		// unicode stuff
+		else if(stream.find("ƒ") == 0)
+		{
+			tok.text = "func";
+			tok.type = TType::Func;
+			read = std::string("ƒ").length();
+		}
+		else if(stream.find("ﬁ") == 0)
+		{
+			tok.text = "ffi";
+			tok.type = TType::ForeignFunc;
+			read = std::string("ﬁ").length();
+		}
+		else if(stream.find("÷") == 0)
+		{
+			tok.text = "÷";
+			tok.type = TType::Divide;
+			read = std::string("÷").length();
+		}
+		else if(stream.find("≠") == 0)
+		{
+			tok.text = "≠";
+			tok.type = TType::NotEquals;
+			read = std::string("≠").length();
+		}
+		else if(stream.find("≤") == 0)
+		{
+			tok.text = "≤";
+			tok.type = TType::LessThanEquals;
+			read = std::string("≤").length();
+		}
+		else if(stream.find("≥") == 0)
+		{
+			tok.text = "≥";
+			tok.type = TType::GreaterEquals;
+			read = std::string("≥").length();
+		}
+
+
+
 		else if(isdigit(stream[0]))
 		{
 			// todo: handle hex
@@ -243,7 +285,7 @@ namespace Parser
 			read = 0;		// done above
 			tok.text = num;
 		}
-		else if(isalpha(stream[0]) || stream[0] == '_')
+		else if(isalpha(stream[0]) || stream[0] == '_' || !isascii(stream[0]))
 		{
 			std::string id;
 
@@ -253,7 +295,7 @@ namespace Parser
 
 
 			int tmp = 0;
-			while(tmp = str.get(), (isalnum(tmp) || tmp == '_'))
+			while(tmp = str.get(), (isascii(tmp) && (isalnum(tmp) || tmp == '_')) || !isascii(tmp))
 				id += (char) tmp;
 
 

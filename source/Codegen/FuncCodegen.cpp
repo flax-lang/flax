@@ -12,6 +12,7 @@ using namespace Codegen;
 Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	Result_t lastval(0, 0);
+	cgi->pushScope();
 
 	bool broke = false;
 	for(Expr* e : this->statements)
@@ -33,6 +34,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
 	}
 
+	cgi->popScope();
 	return lastval;
 }
 
@@ -42,11 +44,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// so just fetch it.
 
 	llvm::Function* func = cgi->mainModule->getFunction(this->decl->mangledName);
-	if(!func)
-	{
-		this->decl->codegen(cgi);
-		return this->codegen(cgi);
-	}
+	iceAssert(func && "Function was not declared before being generated!");
 
 
 

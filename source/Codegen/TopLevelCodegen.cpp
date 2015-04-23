@@ -17,7 +17,7 @@ using namespace Codegen;
 // pass 3: decls->codegen()
 // pass 4: all->codegen()
 
-static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions)
+static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace)
 {
 	if(pass == 0)
 	{
@@ -33,7 +33,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.
-		TypeInfo::initialiseTypeInfo(cgi);
+
+		if(!isInsideNamespace)
+			TypeInfo::initialiseTypeInfo(cgi);
 	}
 	else if(pass == 1)
 	{
@@ -126,7 +128,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 		cgi->importedNamespaces.push_back(cgi->namespaceStack);
 	}
 
-	codegenTopLevel(cgi, pass, this->innards->statements);
+	codegenTopLevel(cgi, pass, this->innards->statements, true);
 
 	for(std::string s : this->name)
 		cgi->popNamespaceScope();
@@ -136,11 +138,11 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	codegenTopLevel(cgi, 0, this->topLevelExpressions);
-	codegenTopLevel(cgi, 1, this->topLevelExpressions);
-	codegenTopLevel(cgi, 2, this->topLevelExpressions);
-	codegenTopLevel(cgi, 3, this->topLevelExpressions);
-	codegenTopLevel(cgi, 4, this->topLevelExpressions);
+	codegenTopLevel(cgi, 0, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 1, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 2, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 3, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 4, this->topLevelExpressions, false);
 
 	return Result_t(0, 0);
 }
