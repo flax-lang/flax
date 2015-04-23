@@ -77,6 +77,8 @@ namespace Codegen
 			OurFPM.add(llvm::createAggressiveDCEPass());
 		}
 
+		// optimisation level -1 disables *everything*
+		// mostly for reading the IR to debug codegen.
 		if(Compiler::getOptimisationLevel() >= 0)
 		{
 			// always do the mem2reg pass, our generated code is too inefficient
@@ -99,7 +101,14 @@ namespace Codegen
 			auto func = pair.second;
 
 			// add to the func table
-			llvm::Function* f = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType()));
+			auto lf = cgi->mainModule->getFunction(func->getName());
+			if(!lf)
+			{
+				cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType());
+				lf = cgi->mainModule->getFunction(func->getName());
+			}
+
+			llvm::Function* f = llvm::cast<llvm::Function>(lf);
 
 			f->deleteBody();
 			cgi->addFunctionToScope(func->getName(), FuncPair_t(f, pair.first));
@@ -173,38 +182,37 @@ namespace Codegen
 
 	void CodegenInstance::popScope()
 	{
-		symTabStack.pop_back();
+		this->symTabStack.pop_back();
+		this->funcStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
-		symTabStack.clear();
-		this->clearNamespaceScope();
-	}
+		this->symTabStack.clear();
+		this->funcStack.clear();
 
-	void CodegenInstance::pushScope(SymTab_t tab)
-	{
-		this->symTabStack.push_back(tab);
+		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
-		this->pushScope(SymTab_t());
+		this->symTabStack.push_back(SymTab_t());
+		this->funcStack.push_back(FuncMap_t());
 	}
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
-		return this->funcStack.back();
+		return this->funcScopeStack.size() > 0 ? this->funcScopeStack.back() : 0;
 	}
 
 	void CodegenInstance::setCurrentFunctionScope(Func* f)
 	{
-		this->funcStack.push_back(f);
+		this->funcScopeStack.push_back(f);
 	}
 
 	void CodegenInstance::clearCurrentFunctionScope()
 	{
-		this->funcStack.pop_back();
+		this->funcScopeStack.pop_back();
 	}
 
 
@@ -383,50 +391,69 @@ namespace Codegen
 
 	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
 	{
-		this->funcMap[name] = func;
+		// this->funcMap[name] = func;
+		this->funcStack.back()[name] = func;
 	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
 	{
-		FuncMap_t& tab = this->funcMap;
+		for(ssize_t i = this->funcStack.size() - 1; i >= 0; i--)
+		{
+			FuncMap_t& tab = this->funcStack[i];
 
-		#if 0
-		printf("find %s:\n{\n", name.c_str());
-		for(auto p : tab) printf("\t%s\n", p.first.c_str());
-		printf("}\n");
-		#endif
+			#if 0
+			printf("find %s:\n{\n", name.c_str());
+			for(auto p : tab) printf("\t%s\n", p.first.c_str());
+			printf("}\n");
+			#endif
 
-		if(tab.find(name) != tab.end())
-			return &tab[name];
+			if(tab.find(name) != tab.end())
+				return &tab[name];
+		}
 
 		return nullptr;
 	}
+
+	static FuncPair_t* searchDeclaredFuncElsewhere(CodegenInstance* cgi, FuncCall* fc)
+	{
+		// mangled name
+		FuncPair_t* fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name), fc->params));
+		if(fp) return fp;
+
+		// search inside imported namespaces.
+		for(auto ns : cgi->importedNamespaces)
+		{
+			fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name, ns), fc->params));
+			if(fp) return fp;
+		}
+
+		return 0;
+	}
+
+
+
+
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{
 		// step one: unmangled name
 		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+		if(fp) return fp;
 
-		// step two: mangled name
-		if(!fp)
-		{
-			fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name), fc->params));
-			if(!fp)
-			{
-				for(auto ns : this->importedNamespaces)
-				{
-					fp = this->getDeclaredFunc(this->mangleName(this->mangleWithNamespace(fc->name, ns), fc->params));
-					if(fp) break;
-				}
-			}
-		}
+		fp = searchDeclaredFuncElsewhere(this, fc);
+		if(fp) return fp;
 
-		return fp;
+
+		// search for generic functions.
+
+
+
+		return 0;
 	}
 
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
-		return this->getDeclaredFunc(name) != nullptr;
+		return this->funcStack.back().find(name) != this->funcStack.back().end();
 	}
 
 	void CodegenInstance::popNamespaceScope()
@@ -1098,7 +1125,7 @@ namespace Codegen
 					if(tp)
 						return tp->first;
 
-					error(this, expr, "Invalid function call to '%s'", fc->name.c_str());
+					GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
 				}
 
 				return getLlvmType(fp->second);
@@ -1144,7 +1171,7 @@ namespace Codegen
 				VarRef* _vr = dynamic_cast<VarRef*>(ma->target);
 				if(_vr)
 				{
-					// check for type function access
+					// check for type function access (static)
 					TypePair_t* tp = 0;
 					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
 					{
@@ -1156,7 +1183,30 @@ namespace Codegen
 						else if(tp->second.second == TypeKind::Struct)
 						{
 							Expr* rightmost = this->recursivelyResolveNested(ma);
-							return this->getLlvmType(rightmost);
+							if(FuncCall* rfc = dynamic_cast<FuncCall*>(rightmost))
+							{
+								Struct* str = dynamic_cast<Struct*>(tp->second.first);
+								iceAssert(str);
+
+								Func* callee = this->getFunctionFromStructFuncCall(str, rfc);
+
+								for(llvm::Function* lf : str->lfuncs)
+								{
+									if(lf->getName() == callee->decl->mangledName)
+									{
+										return lf->getReturnType();
+									}
+								}
+							}
+							else if(VarRef* rvr = dynamic_cast<VarRef*>(rightmost))
+							{
+								(void) rvr;
+								error(this, expr, "unknown.");
+							}
+							else
+							{
+								error(this, expr, "Unknown expression type %s on RHS of dot operator", typeid(*expr).name());
+							}
 						}
 					}
 				}
@@ -1860,32 +1910,32 @@ namespace Codegen
 		return false;
 	}
 
-	static void checkCircularDependencies(CodegenInstance* cgi, Expr* expr, Expr* dep)
+	static void recursivelyResolveDependencies(Expr* expr, std::deque<Expr*>& resolved, std::deque<Expr*>& unresolved)
 	{
-		if(expr == dep)
-			error(cgi, expr, "Circular dependency detected");
-
-
-		VarRef* vrE = dynamic_cast<VarRef*>(expr);
-		VarRef* vrD = dynamic_cast<VarRef*>(dep);
-
-		if(vrE && vrD)
+		unresolved.push_back(expr);
+		for(auto m : expr->dependencies)
 		{
-			if(vrE->name == vrD->name)
-				error(cgi, expr, "Circular dependency detected");
+			if(std::find(resolved.begin(), resolved.end(), m.dep) == resolved.end())
+			{
+				if(std::find(unresolved.begin(), unresolved.end(), m.dep) != unresolved.end())
+					error(0, expr, "Circular dependency!");
+
+				recursivelyResolveDependencies(m.dep, resolved, unresolved);
+			}
 		}
+
+		resolved.push_back(expr);
+		unresolved.erase(std::find(unresolved.begin(), unresolved.end(), expr));
 	}
 
 	void CodegenInstance::evaluateDependencies(Expr* expr)
 	{
-		for(AstDependency dep : expr->dependencies)
-		{
-			checkCircularDependencies(this, expr, dep.dep);
-			this->evaluateDependencies(dep.dep);
+		std::deque<Expr*> resolved;
+		std::deque<Expr*> unresolved;
+		recursivelyResolveDependencies(expr, resolved, unresolved);
 
-			if(!dep.dep->didCodegen)
-				dep.dep->codegen(this);
-		}
+
+
 	}
 
 }

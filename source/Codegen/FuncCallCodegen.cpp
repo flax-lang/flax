@@ -51,7 +51,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
+	{
+		// try and resolve.
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
+	}
 
 	llvm::Function* target = fp->first;
 	bool checkVarArg = target->isVarArg();
