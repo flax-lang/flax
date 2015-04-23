@@ -327,6 +327,8 @@ namespace Codegen
 
 	Struct* CodegenInstance::getNestedStructFromScopes(Expr* user, std::deque<std::string> scopes)
 	{
+		iceAssert(scopes.size() > 0);
+
 		std::string last = scopes.back();
 		scopes.pop_back();
 
@@ -382,6 +384,7 @@ namespace Codegen
 		MemberAccess* maR = dynamic_cast<MemberAccess*>(base->member);
 		FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
 
+		scopes.push_back(left->name);
 		if(maR)
 		{
 			// kinda hacky behaviour.
@@ -390,7 +393,6 @@ namespace Codegen
 
 			// if not, then we're only interested in the type.
 
-			scopes.push_back(left->name);
 
 			Expr* ret = _recursivelyResolveNested(maR, scopes);
 
@@ -435,6 +437,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 
 	// now we need to determine if it exists, and its params.
 	Func* callee = cgi->getFunctionFromStructFuncCall(str, fc);
+	iceAssert(callee);
 
 	if(callee->decl->isStatic)
 	{
