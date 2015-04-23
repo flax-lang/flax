@@ -112,7 +112,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			// ensure we can always store 0 to pointers without a cast
 			Number* n = 0;
-			if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
+			if(op == ArithmeticOp::Assign && rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
 			{
 				rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
 			}
