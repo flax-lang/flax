@@ -28,37 +28,36 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcFlags			= "-O3 -no-lowercase-builtin -run -o " ++ compiledTest
+flaxcNormFlags		= "-O3 -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-O3 -no-lowercase-builtin -run"
 
 
 main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
-	want [compiledTest]
+	want ["build"]
+
+	phony "build" $ do
+		need [finalOutput]
+		putNormal "======================================="
+		cmd Shell finalOutput [flaxcJitFlags] testSource
+
+
+	phony "compile" $ do
+		need [compiledTest]
+
 
 	phony "clean" $ do
 		putNormal "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
 
+
 	compiledTest %> \out -> do
 		orderOnly [finalOutput]
 		alwaysRerun
-		ls <- getDirectoryFiles "" ["libs//*.flx"]
 
-
-		() <- cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
-
-		--- copy the libs to the prefix.
-		() <- cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
-		() <- cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
-
-
-
-
-		Exit code <- cmd Shell finalOutput [flaxcFlags] testSource
+		Exit code <- cmd Shell finalOutput [flaxcNormFlags] testSource
 
 		putNormal "======================================="
-
-
-		cmd Shell (if code == ExitSuccess then ["echo Test passed"] else ["echo Test failed"])
+		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
 
 
 
@@ -67,14 +66,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		need [fnp]
 
 		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs/")
-
 		cmd Shell "cp" [fnp] [ut]
-
-		-- todo: Wtf? haskell plz
-		-- putNormal ("fnp: " ++ fnp)
-		-- putNormal ("out: " ++ out)
-		-- putNormal ("ut: " ++ ut)
-		-- copyFileChanged fnp ut
 
 
 
@@ -88,7 +80,15 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
-		cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
+		() <- cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
+
+
+
+		() <- cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+
+		--- copy the libs to the prefix.
+		() <- cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
+		cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
 
 
 
