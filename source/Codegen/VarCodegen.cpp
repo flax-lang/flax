@@ -158,14 +158,21 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
 		{
-			Number* n = 0;
-			if((n = dynamic_cast<Number*>(this->initVal)))
-			{
-				uint64_t max = pow(2, val->getType()->getIntegerBitWidth());
-				if(max == 0) max = UINT64_MAX;
-				if((uint64_t) n->ival < max)
-					val = cgi->mainBuilder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
-			}
+			// Number* n = 0;
+			// printf("assign num to var %s (%s)\n", this->name.c_str(), typeid(*this->initVal).name());
+			// if((n = dynamic_cast<Number*>(this->initVal)))
+			// {
+			// 	uint64_t max = pow(2, val->getType()->getIntegerBitWidth());
+			// 	if(max == 0) max = UINT64_MAX;
+
+			// 	printf("assign %lld to var: max: %lld\n", n->ival, max);
+			// if((uint64_t) n->ival < max)
+
+
+			val = cgi->mainBuilder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+
+
+			// }
 		}
 		else
 		{

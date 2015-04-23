@@ -51,7 +51,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 
 	compiledTest %> \out -> do
-		orderOnly [finalOutput]
+		need [finalOutput]
 		alwaysRerun
 
 		Exit code <- cmd Shell finalOutput [flaxcNormFlags] testSource
@@ -66,8 +66,15 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		need [fnp]
 
 		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs/")
-		cmd Shell "cp" [fnp] [ut]
+		quietly $ cmd Shell "cp" [fnp] [ut]
 
+
+	phony "copyLibraries" $ do
+		() <- quietly $ cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+
+		--- copy the libs to the prefix.
+		() <- quietly $ cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
+		quietly $ cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
 
 
 	finalOutput %> \out -> do
@@ -81,15 +88,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
 		() <- cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
-
-
-
-		() <- cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
-
-		--- copy the libs to the prefix.
-		() <- cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
-		cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
-
+		need ["copyLibraries"]
 
 
 	"source//*.cpp.o" %> \out -> do
