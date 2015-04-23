@@ -564,6 +564,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		// if one of them is an integer, cast it first
 		cgi->autoCastType(lhs, rhs, r.second);
 
+		if(lhs->getType() != rhs->getType())
+			error(cgi, this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+
 		// then they're floats.
 		switch(this->op)
 		{

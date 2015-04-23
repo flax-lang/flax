@@ -8,8 +8,12 @@
 
 public struct Math
 {
-	static ƒ π() -> Float64 { 3.14159265358979 }
-	static ƒ √(x: Float64) -> Float64 { sqrt(x) }
+	public static ƒ π() -> Float64 { 3.14159265358979 }
+	public static ƒ √(x: Float64) -> Float64 { sqrt(x) }
+	public static ƒ √(x: Int) -> Float64
+	{
+		sqrt(x)
+	}
 }
 
 extension Math
