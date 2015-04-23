@@ -140,6 +140,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		linkageType = llvm::Function::ExternalLinkage;
 	}
+	else if(this->parentStruct && (this->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
+	{
+		// default.
+		linkageType = (this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal) ? llvm::Function::InternalLinkage : llvm::Function::ExternalLinkage;
+	}
 	else
 	{
 		linkageType = llvm::Function::InternalLinkage;

@@ -12,7 +12,7 @@
 #include "include/codegen.h"
 #include "include/compiler.h"
 
-// #include "llvm/Support/Filesystem.h"
+#include "llvm/Linker/Linker.h"
 
 using namespace Ast;
 
@@ -49,6 +49,13 @@ namespace Compiler
 	{
 		return compileOnly;
 	}
+
+	#define DEFAULT_PREFIX		"/usr/local/lib/flaxlibs/"
+	std::string getPrefix()
+	{
+		return DEFAULT_PREFIX;
+	}
+
 
 	static std::string sysroot;
 	std::string getSysroot()
@@ -93,9 +100,15 @@ namespace Compiler
 	}
 
 	static bool printClangOutput;
-	bool getprintClangOutput()
+	bool getPrintClangOutput()
 	{
 		return printClangOutput;
+	}
+
+	static bool runProgramWithJit;
+	bool getRunProgramWithJit()
+	{
+		return runProgramWithJit;
 	}
 }
 
@@ -204,6 +217,10 @@ int main(int argc, char* argv[])
 			{
 				Compiler::printClangOutput = true;
 			}
+			else if(!strcmp(argv[i], "-jit") || !strcmp(argv[i], "-run"))
+			{
+				Compiler::runProgramWithJit = true;
+			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{
 				// make sure we have at least 3 chars
@@ -240,21 +257,45 @@ int main(int argc, char* argv[])
 		// compile the file.
 		// the file Compiler.cpp handles imports.
 		std::vector<std::string> filelist;
+		std::vector<llvm::Module*> modulelist;
 		std::map<std::string, Ast::Root*> rootmap;
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* r = Compiler::compileFile(filename, filelist, rootmap, cgi);
+		Root* r = Compiler::compileFile(filename, filelist, rootmap, modulelist, cgi);
 
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");
 		if(sep != std::string::npos)
 			foldername = filename.substr(0, sep);
 
-		Compiler::compileProgram(cgi, filelist, foldername, outname);
+
+
+		if(Compiler::runProgramWithJit)
+		{
+			llvm::Linker linker = llvm::Linker(cgi->mainModule);
+			for(auto mod : modulelist)
+				linker.linkInModule(mod, nullptr);
+
+			cgi->execEngine = llvm::EngineBuilder(cgi->mainModule).create();
+			if(llvm::Function* mainptr = cgi->mainModule->getFunction("main"))
+			{
+				void* func = cgi->execEngine->getPointerToFunction(mainptr);
+				auto rfn = (int (*)(int, const char**)) func;
+
+				const char* m[] = { "jit" };
+				rfn(1, m);
+			}
+		}
+		else
+		{
+			Compiler::compileProgram(cgi, filelist, foldername, outname);
+		}
+
 
 		// clean up the intermediate files (ie. .bitcode files)
 		for(auto s : filelist)
 			remove(s.c_str());
+
 
 		if(Compiler::printModule)
 			cgi->mainModule->dump();
