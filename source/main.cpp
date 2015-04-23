@@ -282,7 +282,7 @@ int main(int argc, char* argv[])
 				void* func = cgi->execEngine->getPointerToFunction(mainptr);
 				auto rfn = (int (*)(int, const char**)) func;
 
-				const char* m[] = { "jit" };
+				const char* m[] = { ("__llvmJIT_" + cgi->mainModule->getModuleIdentifier()).c_str() };
 				rfn(1, m);
 			}
 		}
