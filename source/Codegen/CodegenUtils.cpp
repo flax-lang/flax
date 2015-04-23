@@ -1305,8 +1305,13 @@ namespace Codegen
 					}
 					else
 					{
-						// usually the right
-						return this->getLlvmType(bo->right);
+						if(ltype->isPointerTy() && rtype->isIntegerTy())
+						{
+							// pointer arith?
+							return ltype;
+						}
+
+						return rtype;
 					}
 				}
 			}
@@ -1370,6 +1375,10 @@ namespace Codegen
 
 				iceAssert(tp);
 				return tp;
+			}
+			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
+			{
+				return this->getLlvmType(ai->var)->getPointerElementType();
 			}
 		}
 
@@ -1731,7 +1740,7 @@ namespace Codegen
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
-		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
+		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
 
 		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
 		iceAssert(lop);

@@ -112,11 +112,22 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			// ensure we can always store 0 to pointers without a cast
 			Number* n = 0;
-			if(rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
+			if(op == ArithmeticOp::Assign && rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
+			{
 				rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
+			}
+			else if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
+			{
+				// do pointer arithmetic.
+				auto res = this->doPointerArithmetic(op, lhs, ref, rhs).result;
+				this->mainBuilder.CreateStore(res.first, ref);
 
+				return Result_t(res.first, res.second);
+			}
 			else
+			{
 				GenError::invalidAssignment(this, user, lhs, rhs);
+			}
 		}
 		else if(this->isEnum(lhs->getType()))
 		{
@@ -563,6 +574,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	{
 		// if one of them is an integer, cast it first
 		cgi->autoCastType(lhs, rhs, r.second);
+
+		if(lhs->getType() != rhs->getType())
+			error(cgi, this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
 
 		// then they're floats.
 		switch(this->op)
