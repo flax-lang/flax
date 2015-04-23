@@ -39,7 +39,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + "/usr/local/lib/flaxlibs/" + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + getPrefix() + imp->module + ".flx";
 
 			struct stat buffer;
 			if(stat(builtinlib.c_str(), &buffer) == 0)
@@ -53,7 +53,7 @@ namespace Compiler
 		}
 	}
 
-	Root* compileFile(std::string filename, std::vector<std::string>& list, std::map<std::string, Ast::Root*>& rootmap, Codegen::CodegenInstance* cgi)
+	Root* compileFile(std::string filename, std::vector<std::string>& list, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi)
 	{
 		std::string curpath;
 		{
@@ -102,7 +102,9 @@ namespace Compiler
 				else
 				{
 					Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
-					r = compileFile(fname, list, rootmap, rcgi);
+					r = compileFile(fname, list, rootmap, modules, rcgi);
+
+					modules.push_back(rcgi->mainModule);
 					rootmap[imp->module] = r;
 					delete rcgi;
 				}
@@ -199,7 +201,7 @@ namespace Compiler
 		// that warning is not affected by any flags I can pass
 		// besides, LLVM itself should have caught everything.
 
-		if(!Compiler::getprintClangOutput())
+		if(!Compiler::getPrintClangOutput())
 			final += " &>/dev/null";
 
 		system(final.c_str());

@@ -10,18 +10,20 @@
 
 namespace Compiler
 {
-	Ast::Root* compileFile(std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, Codegen::CodegenInstance* cgi);
+	Ast::Root* compileFile(std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi);
 
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
 	std::string getTarget();
 	std::string getSysroot();
+	std::string getPrefix();
 	int getOptimisationLevel();
 	bool getIsCompileOnly();
 	bool getIsPositionIndependent();
 	bool getDisableLowercaseBuiltinTypes();
-	bool getprintClangOutput();
+	bool getPrintClangOutput();
+	bool getRunProgramWithJit();
 	std::string getMcModel();
 
 	enum class Flag
