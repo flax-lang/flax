@@ -66,15 +66,15 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		need [fnp]
 
 		let ut = (sysroot </> prefix </> "lib" </> "flaxLibs/")
-		cmd Shell "cp" [fnp] [ut]
+		quietly $ cmd Shell "cp" [fnp] [ut]
 
 
 	phony "copyLibraries" $ do
-		() <- cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+		() <- quietly $ cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
 		--- copy the libs to the prefix.
-		() <- cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
-		cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
+		() <- quietly $ cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
+		quietly $ cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
 
 
 	finalOutput %> \out -> do

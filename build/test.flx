@@ -10,8 +10,7 @@ func lengthBetween(a: (Int, Int), b: (Int, Int)) -> Float64
 	let x = a.0 - b.0
 	let y = a.1 - b.1
 
-	// return √((x * x) + (y * y) as Float64)
-	return 1.1
+	return Math.√(((x * x) + (y * y)) as Float64)
 }
 
 
@@ -19,23 +18,12 @@ func lengthBetween(a: (Int, Int), b: (Int, Int)) -> Float64
 func main(argc: Int32, argv: Int8**) -> Int
 {
 	var x = #argv
-	// x += 1
 
-	let åƒƒ: Int8 = 64 ÷ 4
+	let p: Int8 = 64 ÷ 4
 	let g = 50
 
 	let m = Math.√(41.5)
-	printf("åƒƒ: %d, g: %d, m: %f, argv[0]: %s, %.14f\n", åƒƒ, g, m, x, Math.π())
-
-	// let a: (Int, Int) = (0, 0)
-	// let b: (Int, Int) = (5, 6)
-
-	// let tuple = lengthBetween((0, 0), (5, 6))
-
-
-	// let i = "你好！你妈妈"
-	// printf("%d, %s, (%.2f)\n", i.length, i.data, tuple)
-
+	printf("p: %d, g: %d, m: %f, argv[0]: %s, %.14f\n", p, g, m, x, Math.π())
 
 	return 0
 }
