@@ -1731,7 +1731,7 @@ namespace Codegen
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
-		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract));
+		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
 
 		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
 		iceAssert(lop);
