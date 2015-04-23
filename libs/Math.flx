@@ -6,12 +6,13 @@
 ﬁ ƒ sqrt(x: Float64) -> Float64
 ﬁ ƒ sqrtf(x: Float32) -> Float32
 
-public ƒ π() -> Float64
+public struct Math
 {
-	3.14159265358979
+	static ƒ π() -> Float64 { 3.14159265358979 }
+	static ƒ √(x: Float64) -> Float64 { sqrt(x) }
 }
 
-public ƒ √(x: Float64) -> Float64
+extension Math
 {
-	sqrt(x)
+	static ƒ square(x: Float64) -> Float64 { x * x }
 }
