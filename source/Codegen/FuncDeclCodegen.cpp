@@ -12,6 +12,63 @@ using namespace Codegen;
 
 Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	// if we're a generic function, we can't generate anything
+	// wait until we get specific instances
+	// (where all the typenames, T, U etc. have been replaced with concrete types by callers)
+
+	if(this->genericTypes.size() > 0)
+	{
+		bool usedAny = false;
+		std::map<std::string, bool> usage;
+
+		for(auto gtype : this->genericTypes)
+		{
+			// check if we actually use it.
+
+			usage[gtype] = false;
+			for(auto v : this->params)
+			{
+				if(v->type.isLiteral && v->type.strType == gtype)
+				{
+					usage[gtype] = true;
+					usedAny = true;
+					break;
+				}
+			}
+
+			if(this->type.isLiteral && this->type.strType == gtype)
+			{
+				usage[gtype] = true;
+				usedAny = true;
+			}
+		}
+
+
+
+		for(auto pair : usage)
+		{
+			if(!pair.second)
+			{
+				warn(cgi, this, "Generic type '%s' is unused", pair.first.c_str());
+			}
+		}
+
+
+		if(usedAny)
+		{
+			// defer generation, until all dependencies have been resolved.
+			FuncPair_t fp;
+			fp.first = 0;
+			fp.second = this;
+
+			cgi->addFunctionToScope(cgi->mangleWithNamespace(this->name), fp);
+
+			return Result_t(0, 0);
+		}
+	}
+
+
+
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentStruct != nullptr);
 
@@ -42,8 +99,21 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		if((!this->isFFI && !(this->attribs & Attr_NoMangle)) || (this->isFFI && this->ffiType == FFIType::Cpp))
 		{
 			alreadyMangled = true;
+
+			bool isNested = false;
+			if(Func* cfs = cgi->getCurrentFunctionScope())
+			{
+				isNested = true;
+				cgi->pushNamespaceScope(cfs->decl->mangledName);
+			}
+
 			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
 			this->mangledName = cgi->mangleName(this->mangledName, this->params);
+
+			if(isNested)
+			{
+				cgi->popNamespaceScope();
+			}
 		}
 
 
@@ -70,6 +140,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		linkageType = llvm::Function::ExternalLinkage;
 	}
+	else if(this->parentStruct && (this->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
+	{
+		// default.
+		linkageType = (this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal) ? llvm::Function::InternalLinkage : llvm::Function::ExternalLinkage;
+	}
 	else
 	{
 		linkageType = llvm::Function::InternalLinkage;
@@ -83,7 +158,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		GenError::duplicateSymbol(cgi, this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(cgi->mainModule->getFunction(this->mangledName))
+	else if(cgi->isDuplicateFuncDecl(this->mangledName) /*cgi->mainModule->getFunction(this->mangledName)*/)
 	{
 		if(!this->isFFI)
 		{
