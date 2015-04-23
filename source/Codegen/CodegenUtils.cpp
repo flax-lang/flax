@@ -1171,7 +1171,7 @@ namespace Codegen
 				VarRef* _vr = dynamic_cast<VarRef*>(ma->target);
 				if(_vr)
 				{
-					// check for type function access
+					// check for type function access (static)
 					TypePair_t* tp = 0;
 					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
 					{
@@ -1183,7 +1183,32 @@ namespace Codegen
 						else if(tp->second.second == TypeKind::Struct)
 						{
 							Expr* rightmost = this->recursivelyResolveNested(ma);
-							return this->getLlvmType(rightmost);
+							if(FuncCall* rfc = dynamic_cast<FuncCall*>(rightmost))
+							{
+								Struct* str = dynamic_cast<Struct*>(tp->second.first);
+								iceAssert(str);
+
+								Func* callee = this->getFunctionFromStructFuncCall(str, rfc);
+
+								for(llvm::Function* lf : str->lfuncs)
+								{
+									if(lf->getName() == callee->decl->mangledName)
+									{
+										return lf->getReturnType();
+									}
+								}
+							}
+							else if(VarRef* rvr = dynamic_cast<VarRef*>(rightmost))
+							{
+								(void) rvr;
+								error(this, expr, "unknown.");
+							}
+							else
+							{
+								error(this, expr, "Unknown expression type %s on RHS of dot operator", typeid(*expr).name());
+							}
+
+							// return this->getLlvmType(rightmost);
 						}
 					}
 				}

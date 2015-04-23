@@ -28,7 +28,7 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcFlags			= "-O3 -no-lowercase-builtin -o " ++ compiledTest ++ " -sysroot '" ++ sysroot ++ "'"
+flaxcFlags			= "-O3 -no-lowercase-builtin -run -o " ++ compiledTest
 
 
 main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
@@ -38,20 +38,27 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		putNormal "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
 
-
 	compiledTest %> \out -> do
 		orderOnly [finalOutput]
 		alwaysRerun
 		ls <- getDirectoryFiles "" ["libs//*.flx"]
 
 
-		() <- cmd Shell "cp" ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+		() <- cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+
+		--- copy the libs to the prefix.
+		() <- cmd Shell "mkdir" "-p" ("/" </> prefix </> "lib" </> "flaxlibs")
+		() <- cmd Shell "cp" ("libs/*.flx") ("/" </> prefix </> "lib" </> "flaxlibs/")
+
+
+
+
 		Exit code <- cmd Shell finalOutput [flaxcFlags] testSource
 
 		putNormal "======================================="
 
 
-		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
+		cmd Shell (if code == ExitSuccess then ["echo Test passed"] else ["echo Test failed"])
 
 
 
@@ -79,7 +86,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core jit native bitwriter`"
+		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
 		cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
 
