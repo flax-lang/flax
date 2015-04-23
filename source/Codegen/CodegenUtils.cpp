@@ -1305,8 +1305,13 @@ namespace Codegen
 					}
 					else
 					{
-						// usually the right
-						return this->getLlvmType(bo->right);
+						if(ltype->isPointerTy() && rtype->isIntegerTy())
+						{
+							// pointer arith?
+							return ltype;
+						}
+
+						return rtype;
 					}
 				}
 			}
