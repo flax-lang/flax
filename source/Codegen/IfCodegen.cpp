@@ -146,7 +146,6 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	if(didMerge)
 	{
 		cgi->mainBuilder.SetInsertPoint(merge);
-		// func->getBasicBlockList().push_back(merge);
 	}
 	else
 	{
