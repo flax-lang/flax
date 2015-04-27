@@ -4,9 +4,9 @@
 
 
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/llvm_all.h"
+#include "ast.h"
+#include "codegen.h"
+#include "llvm_all.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -34,6 +34,13 @@ static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
 
 
 
+
+
+Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+{
+	// implemented fully in MemberAccessCodegen.cpp
+	return Result_t(0, 0);
+}
 
 
 
