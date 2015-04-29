@@ -1633,14 +1633,7 @@ namespace Parser
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
-			// check for top-level statements
-			VarDecl* var = dynamic_cast<VarDecl*>(stmt);
-			Func* func = dynamic_cast<Func*>(stmt);
-			OpOverload* oo = dynamic_cast<OpOverload*>(stmt);
-			Struct* nstr = dynamic_cast<Struct*>(stmt);
-			ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt);
-
-			if(cprop)
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
 			{
 				for(ComputedProperty* c : str->cprops)
 				{
@@ -1650,7 +1643,7 @@ namespace Parser
 
 				str->cprops.push_back(cprop);
 			}
-			else if(var)
+			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				if(str->nameMap.find(var->name) != str->nameMap.end())
 					parserError("Duplicate member '%s'", var->name.c_str());
@@ -1663,13 +1656,16 @@ namespace Parser
 					str->nameMap[var->name] = i;
 					i++;
 				}
+				else
+				{
+				}
 			}
-			else if(func)
+			else if(Func* func = dynamic_cast<Func*>(stmt))
 			{
 				str->funcs.push_back(func);
 				str->typeList.push_back(std::pair<Expr*, int>(func, i));
 			}
-			else if(oo)
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
 				oo->str = str;
 				str->opOverloads.push_back(oo);
@@ -1677,7 +1673,7 @@ namespace Parser
 				str->funcs.push_back(oo->func);
 				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
 			}
-			else if(nstr)
+			else if(Struct* nstr = dynamic_cast<Struct*>(stmt))
 			{
 				str->nestedTypes.push_back(nstr);
 			}
