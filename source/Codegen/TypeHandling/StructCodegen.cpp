@@ -317,6 +317,7 @@ void Struct::createType(CodegenInstance* cgi)
 				// generate a global variable (sorry!).
 				llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
 
+				iceAssert(var->initVal);
 				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
 				if(llvm::isa<llvm::Constant>(val))
 				{

@@ -4,10 +4,10 @@
 
 import Foundation
 
-struct Static
+struct Something
 {
-	var k = 0
-	static var too = 40
+	var oor = 400
+	static var Else = 41
 }
 
 func main(argc: Int32, argv: Int8**) -> Int
@@ -18,6 +18,11 @@ func main(argc: Int32, argv: Int8**) -> Int
 
 	let m = Math.√(41.5)
 	let global = 57
+
+	// Something.Else = 14
+
+	let foo: Something()
+	printf("[%d]\n", foo.Else)
 	printf("p: %f, g: %d, m: %f, argv[0]: %s, %.14f\n", p, global, m, x, Math.π())
 
 	return 0
