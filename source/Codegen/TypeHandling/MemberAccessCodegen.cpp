@@ -4,9 +4,9 @@
 
 
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/llvm_all.h"
+#include "ast.h"
+#include "codegen.h"
+#include "llvm_all.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -34,6 +34,13 @@ static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
 
 
 
+
+
+Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+{
+	// implemented fully in MemberAccessCodegen.cpp
+	return Result_t(0, 0);
+}
 
 
 
@@ -350,7 +357,7 @@ namespace Codegen
 		scopes.push_back(left->name);
 
 		MemberAccess* maR = dynamic_cast<MemberAccess*>(base->member);
-		FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
+		// FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
 
 		if(maR)
 		{
@@ -358,7 +365,7 @@ namespace Codegen
 		}
 		else
 		{
-			return fcR;
+			return base->member;
 		}
 	}
 
@@ -379,10 +386,7 @@ namespace Codegen
 
 
 		std::deque<std::string>& scopes = *_scopes;
-
-
 		MemberAccess* maR = dynamic_cast<MemberAccess*>(base->member);
-		FuncCall* fcR = dynamic_cast<FuncCall*>(base->member);
 
 		scopes.push_back(left->name);
 		if(maR)
@@ -396,23 +400,31 @@ namespace Codegen
 
 			Expr* ret = _recursivelyResolveNested(maR, scopes);
 
-			// todo: handle static vars
-			FuncCall* fc = dynamic_cast<FuncCall*>(ret);
-			iceAssert(fc);
+			// todo: static vars
+			// iceAssert(fc);
 
 			if(__scopes != nullptr)
 			{
-				return fc;
+				return ret;
 			}
 			else
 			{
 				Struct* str = this->getNestedStructFromScopes(base, scopes);
-				return this->getFunctionFromStructFuncCall(str, fc);
+				FuncCall* fc = dynamic_cast<FuncCall*>(ret);
+
+				if(fc)
+				{
+					return this->getFunctionFromStructFuncCall(str, fc);
+				}
+				else
+				{
+					return ret;
+				}
 			}
 		}
 		else
 		{
-			return fcR;
+			return base->member;
 		}
 	}
 }
@@ -565,13 +577,38 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma)
 {
 	std::deque<std::string> scopes;
 	Expr* rightmost = cgi->recursivelyResolveNested(ma, &scopes);
-	FuncCall* fc = dynamic_cast<FuncCall*>(rightmost);
-
-	// todo: static vars
-	iceAssert(fc);
+	iceAssert(rightmost);
 
 	Struct* str = cgi->getNestedStructFromScopes(ma, scopes);
-	return doFunctionCall(cgi, fc, 0, 0, false, str, true);
+
+
+	if(FuncCall* fc = dynamic_cast<FuncCall*>(rightmost))
+	{
+		return doFunctionCall(cgi, fc, 0, 0, false, str, true);
+	}
+	else if(VarRef* vr = dynamic_cast<VarRef*>(rightmost))
+	{
+		for(auto mem : str->members)
+		{
+			if(mem->isStatic && mem->name == vr->name)
+			{
+				std::string mangledName = cgi->mangleMemberFunction(str, mem->name, std::deque<Ast::Expr*>());
+				if(llvm::GlobalVariable* gv = cgi->mainModule->getGlobalVariable(mangledName))
+				{
+					// todo: another kinda hacky thing.
+					// this is present in some parts of the code, i don't know how many.
+					// basically, if the thing is supposed to be immutable, we're not going to return
+					// the ptr/ref value.
+
+					return Result_t(cgi->mainBuilder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+				}
+			}
+		}
+
+		error(cgi, ma, "Struct '%s' has no such static member '%s'", str->name.c_str(), vr->name.c_str());
+	}
+
+	error(cgi, ma, "Invalid static access (%s)", typeid(*rightmost).name());
 }
 
 
