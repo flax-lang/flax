@@ -184,6 +184,45 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	return val;
 }
 
+
+
+
+
+void VarDecl::inferType(CodegenInstance* cgi)
+{
+	if(this->inferredLType != 0)
+		return;
+
+
+	if(this->type.strType == "Inferred")
+	{
+		if(this->initVal == nullptr)
+			error(cgi, this, "Type inference requires an initial assignment to infer type");
+
+
+		llvm::Type* vartype = cgi->getLlvmType(this->initVal);
+		if(vartype == nullptr || vartype->isVoidTy())
+			GenError::nullValue(cgi, this->initVal);
+
+
+		if(cgi->isAnyType(vartype))
+		{
+			// todo: fix this shit
+			warn(cgi, this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
+		}
+
+		this->inferredLType = cgi->getLlvmType(this->initVal);
+
+		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
+			this->type = cgi->getReadableType(this->initVal);
+	}
+	else
+	{
+		this->inferredLType = cgi->getLlvmType(this);
+	}
+}
+
+
 Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))
@@ -194,97 +233,39 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 	llvm::Value* ai = nullptr;
 
-	if(this->type.strType == "Inferred")
+	if(this->inferredLType == nullptr)
+		this->inferType(cgi);
+
+
+	if(!this->isGlobal)
 	{
-		if(!this->initVal)
-		{
-			error(cgi, this, "Type inference requires an initial assignment to infer type");
-		}
-
-		ValPtr_t r;
-		if(!this->isGlobal)
-		{
-			llvm::Type* vartype = cgi->getLlvmType(this->initVal);
-			if(vartype == nullptr || vartype->isVoidTy())
-				GenError::nullValue(cgi, this->initVal);
-
-
-
-			if(cgi->isAnyType(vartype))
-			{
-				#if 0
-				// printf("aitype for %s: %s\n", this->name.c_str(), cgi->getReadableType(vartype).c_str());
-
-				// don't codegen with the allocainst, since we don't fucking have it
-				r = this->initVal->codegen(cgi).result;
-				iceAssert(r.first && cgi->isAnyType(r.first->getType()));
-				iceAssert(r.second);
-
-				llvm::Value* typegep = cgi->mainBuilder.CreateStructGEP(r.second, 0);
-				llvm::Value* typ = cgi->mainBuilder.CreateLoad(typegep);
-
-
-				size_t index = cint->getZExtValue();
-				vartype = TypeInfo::getTypeForIndex(cgi, index);
-				#endif
-
-
-				// todo: fix this shit
-				warn(cgi, this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
-			}
-
-			#if 0
-			else
-			#endif
-			{
-				ai = cgi->allocateInstanceInBlock(vartype, this->name);
-				r = this->initVal->codegen(cgi, ai).result;
-			}
-		}
-		else
-		{
-			r = this->initVal->codegen(cgi, 0).result;
-		}
-
-
-		val = r.first;
-		valptr = r.second;
-
-		this->inferredLType = cgi->getLlvmType(this->initVal);
-
-		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
-			this->type = cgi->getReadableType(this->initVal);
+		ai = cgi->allocateInstanceInBlock(this);
+		iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
 	}
-	else if(this->initVal)
-	{
-		if(!this->isGlobal)
-		{
-			ai = cgi->allocateInstanceInBlock(this);
-		}
 
+	if(this->initVal)
+	{
 		auto r = this->initVal->codegen(cgi, ai).result;
 
 		val = r.first;
 		valptr = r.second;
+	}
 
-		this->inferredLType = cgi->getLlvmType(this);
-	}
-	else
-	{
-		this->inferredLType = cgi->getLlvmType(this);
-		if(!this->isGlobal)
-		{
-			ai = cgi->allocateInstanceInBlock(this);
-			iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
-		}
-	}
+
 
 
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable,
-			this->attribs & Attr_VisPublic ? llvm::GlobalValue::ExternalLinkage : llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+		if(this->attribs & Attr_VisPublic)
+		{
+			// hmm.
+			error(cgi, this, "Public global variables are currently not supported.");
+		}
+		else
+		{
+			ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+		}
 
 		if(this->initVal)
 		{
@@ -297,7 +278,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			}
 			else
 			{
-				warn(this, "Global variables currently only support constant initialisers");
+				error(this, "Global variables currently only support constant initialisers");
 			}
 		}
 
@@ -315,6 +296,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
+
 	return Result_t(val, ai);
 }
 
