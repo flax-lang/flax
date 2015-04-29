@@ -98,7 +98,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=gnu++1y -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir`"
+		let cxxFlags = "-std=gnu++1y -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include"
 
 		() <- cmd Shell "clang++ -c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
 		needMakefileDependencies m

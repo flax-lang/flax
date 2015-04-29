@@ -3,9 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/llvm_all.h"
+#include "ast.h"
+#include "codegen.h"
+#include "llvm_all.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -56,13 +56,19 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	for(VarDecl* var : this->members)
 	{
-		int i = this->nameMap[var->name];
-		iceAssert(i >= 0);
+		if(!var->isStatic)
+		{
+			int i = this->nameMap[var->name];
+			iceAssert(i >= 0);
 
-		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+		}
+		else
+		{
+		}
 	}
 
 	// create all the other automatic init functions for our extensions
@@ -285,6 +291,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 		for(VarDecl* var : this->members)
 		{
+			var->inferType(cgi);
 			llvm::Type* type = cgi->getLlvmType(var);
 			if(type == str)
 			{
@@ -292,15 +299,40 @@ void Struct::createType(CodegenInstance* cgi)
 			}
 
 			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
-			int i = this->nameMap[var->name];
-			iceAssert(i >= 0);
+			if(!var->isStatic)
+			{
+				int i = this->nameMap[var->name];
+				iceAssert(i >= 0);
 
-			types[i] = cgi->getLlvmType(var);
+				types[i] = cgi->getLlvmType(var);
+			}
+			else
+			{
+				// generate some globals.
+				// mangle the variable name.
+
+				// a bit hacky, but still well-defined.
+				std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
+
+				// generate a global variable (sorry!).
+				llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+
+				iceAssert(var->initVal);
+				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
+				if(llvm::isa<llvm::Constant>(val))
+				{
+					llvm::cast<llvm::GlobalVariable>(gv)->setInitializer(llvm::cast<llvm::Constant>(val));
+				}
+				else
+				{
+					error(this, "Global variables currently only support constant initialisers");
+				}
+			}
 		}
 	}
 
 
-	std::vector<llvm::Type*> vec(types, types + this->members.size());
+	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
 	str->setBody(vec, this->packed);
 
 	this->didCreateType = true;
