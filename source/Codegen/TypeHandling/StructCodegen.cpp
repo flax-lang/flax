@@ -61,6 +61,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
+			printf("member: %s (%d)\n", var->name.c_str(), i);
 			printf("type: %s, %d\n", cgi->getReadableType(self->getType()->getPointerElementType()).c_str(), i);
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
@@ -305,7 +306,6 @@ void Struct::createType(CodegenInstance* cgi)
 				int i = this->nameMap[var->name];
 				iceAssert(i >= 0);
 
-				printf("type of member %s: %s\n", var->name.c_str(), var->type.strType.c_str());
 				types[i] = cgi->getLlvmType(var);
 			}
 			else
@@ -319,7 +319,7 @@ void Struct::createType(CodegenInstance* cgi)
 	}
 
 
-	std::vector<llvm::Type*> vec(types, types + this->members.size());
+	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
 	str->setBody(vec, this->packed);
 
 	this->didCreateType = true;

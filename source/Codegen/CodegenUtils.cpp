@@ -1419,9 +1419,13 @@ namespace Codegen
 
 	std::string CodegenInstance::getReadableType(llvm::Type* type)
 	{
+		if(type == 0)
+			return "(null)";
+
 		std::string thing;
 		llvm::raw_string_ostream rso(thing);
 
+		type->print(llvm::errs());
 		type->print(rso);
 
 
