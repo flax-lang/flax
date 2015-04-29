@@ -274,14 +274,14 @@ namespace Parser
 		{
 			"Invalid",
 			"NoMangle",
-			"VisPublic",
-			"VisInternal",
-			"VisPrivate",
+			"Public",
+			"Internal",
+			"Private",
 			"ForceMangle",
 			"NoAutoInit",
-			"PackedStruct",
-			"StrongType",
-			"RawValue",
+			"Packed",
+			"Strong",
+			"Raw",
 		};
 		uint32_t disallowed = ~allowed;
 
@@ -458,7 +458,7 @@ namespace Parser
 					return parseIdExpr(tokens);
 
 				case TType::Static:
-					return parseStaticFunc(tokens);
+					return parseStaticDecl(tokens);
 
 				case TType::Alloc:
 					return parseAlloc(tokens);
@@ -621,17 +621,30 @@ namespace Parser
 
 
 
-	Func* parseStaticFunc(TokenList& tokens)
+	Expr* parseStaticDecl(TokenList& tokens)
 	{
 		iceAssert(tokens.front().type == TType::Static);
 		if(!isParsingStruct)
-			parserError("Static functions are only allowed inside struct definitions");
+			parserError("Static declarations are only allowed inside struct definitions");
 
 		eat(tokens);
-		Func* ret = parseFunc(tokens);
-
-		ret->decl->isStatic = true;
-		return ret;
+		if(tokens.front().type == TType::Func)
+		{
+			Func* ret = parseFunc(tokens);
+			ret->decl->isStatic = true;
+			return ret;
+		}
+		else if(tokens.front().type == TType::Var || tokens.front().type == TType::Val)
+		{
+			// static var.
+			VarDecl* ret = parseVarDecl(tokens);
+			ret->isStatic = true;
+			return ret;
+		}
+		else
+		{
+			parserError("Invaild static expression '%s'", tokens.front().text.c_str());
+		}
 	}
 
 	FuncDecl* parseFuncDecl(TokenList& tokens)
@@ -1066,7 +1079,7 @@ namespace Parser
 		iceAssert(tokens.front().type == TType::Var || tokens.front().type == TType::Val);
 
 		bool immutable = tokens.front().type == TType::Val;
-		bool noautoinit = checkAndApplyAttributes(Attr_NoAutoInit) > 0;
+		uint32_t attribs = checkAndApplyAttributes(Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 
 		eat(tokens);
 
@@ -1077,7 +1090,8 @@ namespace Parser
 
 		std::string id = tok_id.text;
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
-		v->disableAutoInit = noautoinit;
+		v->disableAutoInit = attribs & Attr_NoAutoInit;
+		v->attribs = attribs;
 
 		// check the type.
 		// todo: type inference
@@ -1642,9 +1656,13 @@ namespace Parser
 					parserError("Duplicate member '%s'", var->name.c_str());
 
 				str->members.push_back(var);
-				str->nameMap[var->name] = i;
 
-				i++;
+				// don't take up space in the struct if it's static.
+				if(!var->isStatic)
+				{
+					str->nameMap[var->name] = i;
+					i++;
+				}
 			}
 			else if(func)
 			{
