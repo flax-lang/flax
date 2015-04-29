@@ -61,8 +61,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			printf("member: %s (%d)\n", var->name.c_str(), i);
-			printf("type: %s, %d\n", cgi->getReadableType(self->getType()->getPointerElementType()).c_str(), i);
 			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
@@ -312,8 +310,22 @@ void Struct::createType(CodegenInstance* cgi)
 			{
 				// generate some globals.
 				// mangle the variable name.
-				std::string varname = cgi->mangleWithNamespace(var->name);
-				printf("static variable %s has mangled name %s\n", var->name.c_str(), varname.c_str());
+
+				// a bit hacky, but still well-defined.
+				std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
+
+				// generate a global variable (sorry!).
+				llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+
+				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
+				if(llvm::isa<llvm::Constant>(val))
+				{
+					llvm::cast<llvm::GlobalVariable>(gv)->setInitializer(llvm::cast<llvm::Constant>(val));
+				}
+				else
+				{
+					error(this, "Global variables currently only support constant initialisers");
+				}
 			}
 		}
 	}
