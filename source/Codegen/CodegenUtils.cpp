@@ -1067,7 +1067,10 @@ namespace Codegen
 				if(decl->type.strType == "Inferred")
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
-						return llvm::Type::getVoidTy(this->getContext());
+					{
+						error(this, expr, "Invalid variable declaration for %s!", decl->name.c_str());
+						// return llvm::Type::getVoidTy(this->getContext());
+					}
 
 					iceAssert(decl->inferredLType);
 					return decl->inferredLType;

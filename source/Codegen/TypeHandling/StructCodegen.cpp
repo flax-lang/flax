@@ -56,13 +56,20 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	for(VarDecl* var : this->members)
 	{
-		int i = this->nameMap[var->name];
-		iceAssert(i >= 0);
+		if(!var->isStatic)
+		{
+			int i = this->nameMap[var->name];
+			iceAssert(i >= 0);
 
-		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+			printf("type: %s, %d\n", cgi->getReadableType(self->getType()->getPointerElementType()).c_str(), i);
+			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
-		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+		}
+		else
+		{
+		}
 	}
 
 	// create all the other automatic init functions for our extensions
@@ -285,6 +292,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 		for(VarDecl* var : this->members)
 		{
+			var->inferType(cgi);
 			llvm::Type* type = cgi->getLlvmType(var);
 			if(type == str)
 			{
@@ -292,10 +300,21 @@ void Struct::createType(CodegenInstance* cgi)
 			}
 
 			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
-			int i = this->nameMap[var->name];
-			iceAssert(i >= 0);
+			if(!var->isStatic)
+			{
+				int i = this->nameMap[var->name];
+				iceAssert(i >= 0);
 
-			types[i] = cgi->getLlvmType(var);
+				printf("type of member %s: %s\n", var->name.c_str(), var->type.strType.c_str());
+				types[i] = cgi->getLlvmType(var);
+			}
+			else
+			{
+				// generate some globals.
+				// mangle the variable name.
+				std::string varname = cgi->mangleWithNamespace(var->name);
+				printf("static variable %s has mangled name %s\n", var->name.c_str(), varname.c_str());
+			}
 		}
 	}
 

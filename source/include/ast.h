@@ -265,9 +265,12 @@ namespace Ast
 
 		llvm::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, llvm::Value* val, llvm::Value* valptr, llvm::Value* storage, bool shouldAddToSymtab);
 
+		void inferType(Codegen::CodegenInstance* cgi);
+
 		std::string name;
 		bool immutable;
 
+		bool isStatic = false;
 		bool isGlobal = false;
 		bool disableAutoInit = false;
 		Expr* initVal = 0;
