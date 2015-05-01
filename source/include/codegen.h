@@ -62,9 +62,9 @@ namespace Codegen
 		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 
-
-
-
+		std::map<llvm::GlobalVariable*, llvm::Function*> globalConstructors;
+		void addGlobalConstructor(std::string name, llvm::Function* constructor);
+		void finishGlobalConstructors();
 
 
 		// "block" scopes, ie. breakable bodies (loops)
