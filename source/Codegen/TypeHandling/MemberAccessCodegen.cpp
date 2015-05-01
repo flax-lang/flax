@@ -409,11 +409,9 @@ namespace Codegen
 			}
 			else
 			{
-				Struct* str = this->getNestedStructFromScopes(base, scopes);
-				FuncCall* fc = dynamic_cast<FuncCall*>(ret);
-
-				if(fc)
+				if(FuncCall* fc = dynamic_cast<FuncCall*>(ret))
 				{
+					Struct* str = this->getNestedStructFromScopes(base, scopes);
 					return this->getFunctionFromStructFuncCall(str, fc);
 				}
 				else

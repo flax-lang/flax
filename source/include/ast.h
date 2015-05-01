@@ -656,6 +656,11 @@ namespace Ast
 		std::deque<Expr*> topLevelExpressions;
 
 		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
+
+		// the module-level global constructor trampoline that initialises static and global variables
+		// that require init().
+		// this will be called by a top-level trampoline that calls everything when all the modules are linked together
+		llvm::Function* globalConstructorTrampoline;
 	};
 }
 
