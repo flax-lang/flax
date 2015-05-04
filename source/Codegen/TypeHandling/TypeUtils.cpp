@@ -311,16 +311,17 @@ namespace Codegen
 					{
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
-					else
-					{
-						error(this, expr, "invalid");
-					}
+
+					// else
+					// {
+					// 	error(this, expr, "Invalid expr type %s (%s)", typeid(*expr).name(), typeid(*ma->member).name());
+					// }
 
 					return this->getLlvmType(ma->member);
 				}
 				else
 				{
-					error(this, expr, "invalid");
+					error(this, expr, "Invalid expr type");
 				}
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))

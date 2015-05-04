@@ -38,7 +38,7 @@ static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	// implemented fully in MemberAccessCodegen.cpp
+	// handled elsewhere.
 	return Result_t(0, 0);
 }
 
@@ -217,7 +217,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		iceAssert(self);
 
 		// transform
-		// a.(b.(c.(d.e))) into (((a.b).c).d).e
 		Expr* rhs = this->member;
 
 
@@ -612,12 +611,144 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma)
 
 
 
+/*
 
+	I hate this stuff: A list of ideas on how to fix this mess.
+
+		  (1)				 (2)
+	A.(B.(C.(D.E))) vs (((A.B).C).D).E
+
+	1.	The parser at this point of time (#a869a94 on develop) gives us A.(B.(C.D))
+		This is useful for parsing static access. We can start at A, then progressively
+		unwrap (recursively) B, C and D to form the final static access chain.
+
+	2.	However, for actual codegeneration, it's bogus. The 'root' of the entire expression would
+		have A on the LHS and a bunch of stuff on the RHS, which is inconvenient and impractical
+		from a codegen perspective. The benefit of using (2), is that the root has E on the right and
+		stuff on the left. Recursively code-genning the LHS would result in an llvm::Value* at the end,
+		which can be used to access E on.
+
+	3.	For (1), there's no practical way to codegen it -- generating the RHS generally requires the LHS
+		to have been generated (to get the llvm::Value* pointer and do a StructGEP).
+
+
+
+	Solutions:
+
+	1.	The parser should just return form (2).
+
+	2.	Normal codegen is as-is. Static codegen needs to be changed.
+		Current possibilities include:
+
+		(a):	Recursively resolve, like normal codegen -- except exprs are pushed
+				onto a stack in reverse order: (((A.B).C).D).E -> [ A, B, C, D, E ]
+
+				Recursion stops when the LHS is not a Ast::MemberAccess.
+				Resolution then occurs iteratively, starting from A and ending at E.
+
+		(b):	Work-in-progress.
+
+
+	3.	Type resolution is somewhat problematic, and there's probably a bunch of duplicate code
+		lying around.
+
+		The good thing is, type resolution often only depends on the rightmost expression.
+		We can't limit everything around this though, or shit *will* break later on. Resolution would
+		happen similarly to (2a) above -- that function should probably take a Ast::MemberAccess* and return
+		A std::vector<Ast::MemberAccess*> in order.
+
+		A good thing is that typechecking does not need to involve itself with the static-ness of
+		members. All that needs to happen now, is to iteratively recurse / recursively iteraote (?!?!?)
+		through the list. Using [ A, B, C, D, E ] as an example:
+
+
+
+		(0):	ƒ(x, y) -> returns llvm::Type*
+				x -> lhs
+				y -> rhs
+
+				let U = x
+				let V = y
+
+					{ tree }					{ arr }
+				(((A.B).C).D).E		->		[ A, B, C, D, E ]
+
+				for statements below.
+
+		BEGIN
+			(a):	Resolve the type of U. If U is a static reference (ie. the VarRef is a typename), goto (e).
+					If U is a MemberAccess, goto (d). Else, continue to (b).
+
+			(b):	Retrieve the Ast::Struct* from U. For a function call, use the return type. Then,
+					Ensure that there exists a member V in U.
+
+			(c):	Return the type of V.
+
+			(d):	let type = ƒ(U.left, U.right)
+					Goto (b), using 'type' to obtain an Ast::Struct*.
+
+			(e):	Obtain the Ast::Struct* from the typename, and goto (b).
+		END
+
+
+
+		Sample call stack:
+
+
+
+		(0):	{ tree } -> (((A().B).C()).D).E -> ma
+				ƒ(ma.left, ma.right)		# ma.left = ((A().B).C()).D, ma.right = E
+
+				U <- ((A().B).C()).D
+				V <- E
+
+				(a):	U is a member access.
+				(d):	let ut = ƒ(U.left, U.right)			# U.left = (A().B).C(), U.right = D
+
+						(1):	U1 <- (A().B).C()
+								V1 <- D
+
+							(a):	U1 is a member access.
+							(d):	let ut1 = ƒ(U1.left, U1.right)		# U1.left = A().B, U1.right = C()
+
+									(2):	U2 <- A().B
+											V2 <- C()
+
+										(a):	U2 is a member access
+										(d):	let ut2 = ƒ(U2.left, U2.right)		# U2.left = A(), U2.right = B
+
+												(3):	U3 <- A()
+														V3 <- B
+
+													(a):	U3 is a function.
+													(b):	Ensure that the return type of U3 (# U3 = A()) is a struct,
+															and has a member V3.	# V3 = B
+
+													(c):	Return the type of V3.	# V3 = B
+
+										(b):	Ensure 'ut2' has a function V2. # V2 = C()
+										(c):	Return the return type of V2. # V2 = C()
+
+
+							(b):	Ensure 'ut1' has a member V1. # V1 = D
+							(c):	Return the type of V1. # V1 = D
+
+				(b):	Ensure 'ut' has a member V. # V = E
+				(c):	Return the type of V. # V = E
+
+				(FIN):	Type resolution complete.
+
+
+
+
+
+*/
 
 
 
 static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* base)
 {
+	warn(cgi, base, "rearranging.");
 	std::vector<Expr*> stack;
 	std::vector<MemberAccess*> mas;
 	Expr* expr = base;
@@ -643,6 +774,7 @@ static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* base)
 	// now that everything is in a nice list
 	// transform a.(b.(c.d)) into ((a.b).c).d
 	// start at the front of the list, and the last ma.
+
 
 	iceAssert(mas.size() == stack.size() - 1);
 	iceAssert(stack.size() > 1);
