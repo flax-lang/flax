@@ -154,9 +154,13 @@ namespace Codegen
 		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
 		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name = "");
 
+		std::string printAst(Ast::Expr*);
 
 		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type);
 		std::string unwrapPointerType(std::string type, int* indirections);
+
+		std::pair<llvm::Type*, llvm::Value*> resolveDotOperator(Ast::Expr* lhs, Ast::Expr* rhs, bool doAccess = false,
+			std::deque<std::string>* scp = 0);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
 		Ast::Expr* recursivelyResolveNested(Ast::MemberAccess* base, std::deque<std::string>* scopes = 0);

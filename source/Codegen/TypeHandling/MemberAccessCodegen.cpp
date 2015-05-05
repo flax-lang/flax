@@ -21,7 +21,6 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, llvm::Value* _rhs, llvm::Value* self, llvm::Value* selfPtr, bool isPtr, Struct* str);
 
 static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
-static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* ma);
 
 
 
@@ -66,8 +65,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	}
 
 
-	Expr* re = rearrangeNonStaticAccess(cgi, this);
-	(void) re;
+	// Expr* re = rearrangeNonStaticAccess(cgi, this);
+	// (void) re;
 
 	// gen the var ref on the left.
 	Result_t res = this->target->codegen(cgi);
@@ -77,13 +76,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::Value* selfPtr = p.second;
 
 
-	if(!self)
-		warn(cgi, this, "self is null! (%s)", (typeid(*this->target)).name());
-
-	if(!selfPtr)
-		warn(cgi, this, "selfptr is null! (%s)", (typeid(*this->target)).name());
-
-
 	bool isPtr = false;
 	bool isWrapped = false;
 
@@ -91,12 +83,24 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
+
+
+	// if(!self)
+	// 	warn(cgi, this, "self is null! (%s, %s)", (typeid(*this->target)).name(), cgi->getReadableType(type).c_str());
+
+	// if(!selfPtr)
+	// 	warn(cgi, this, "selfptr is null! (%s, %s)", (typeid(*this->target)).name(), cgi->getReadableType(type).c_str());
+
+
+
+
 	if(cgi->isTypeAlias(type))
 	{
 		iceAssert(type->isStructTy());
 		iceAssert(type->getStructNumElements() == 1);
 		type = type->getStructElementType(0);
 
+		warn(cgi, this, "typealias encountered");
 		isWrapped = true;
 	}
 
@@ -121,7 +125,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		// it's required for CreateStructGEP, so we'll have to make a temp variable
 		// then store the result of the LHS into it.
 
-		if(lhsPtr)
+		if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
 		{
 			selfPtr = lhsPtr;
 		}
@@ -558,6 +562,9 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* _rhs,
 		iceAssert(i >= 0);
 
 		// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
+		iceAssert(self || selfPtr);
+
+		// printf("*** self: %s\n*** selfptr: %s\n*** isPtr: %d\n", cgi->getReadableType(self).c_str(), cgi->getReadableType(selfPtr).c_str(), isPtr);
 		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(isPtr ? self : selfPtr, i, "memberPtr_" + var->name);
 		llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
 
@@ -746,55 +753,150 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma)
 
 
 
-static Expr* rearrangeNonStaticAccess(CodegenInstance* cgi, MemberAccess* base)
+
+
+
+
+/*
+	(0):	ƒ(x, y) -> returns llvm::Type*
+			x -> lhs
+			y -> rhs
+
+			let U = x
+			let V = y
+
+				{ tree }					{ arr }
+			(((A.B).C).D).E		->		[ A, B, C, D, E ]
+
+			for statements below.
+
+	BEGIN
+		(a):	Resolve the type of U. If U is a static reference (ie. the VarRef is a typename), goto (e).
+				If U is a MemberAccess, goto (d). Else, continue to (b).
+
+		(b):	Retrieve the Ast::Struct* from U. For a function call, use the return type. Then,
+				Ensure that there exists a member V in U.
+
+		(c):	Return the type of V.
+
+		(d):	let type = ƒ(U.left, U.right)
+				Goto (b), using 'type' to obtain an Ast::Struct*.
+
+		(e):	Obtain the Ast::Struct* from the typename, and goto (b).
+	END
+*/
+
+
+std::pair<llvm::Type*, llvm::Value*>
+CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::deque<std::string>* _scp)
 {
-	warn(cgi, base, "rearranging.");
-	std::vector<Expr*> stack;
-	std::vector<MemberAccess*> mas;
-	Expr* expr = base;
-	Expr* rightmost = base->member;
+	TypePair_t* tp = 0;
+	StructBase* sb = 0;
 
-	MemberAccess* curr = nullptr;
+	std::deque<std::string>* scp = 0;
+	if(_scp == 0)
+		scp = new std::deque<std::string>();		// todo: this will leak.
 
-	size_t i = 0;
-	while(dynamic_cast<MemberAccess*>(expr))
+	else
+		scp = _scp;
+
+
+	iceAssert(scp);
+	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(lhs))
 	{
-		MemberAccess* ma = dynamic_cast<MemberAccess*>(expr);
-		stack.push_back(ma->target);
-		mas.push_back(ma);
+		// (d)
+		auto ret = this->resolveDotOperator(ma->target, ma->member, false, scp);
+		tp = this->getType(ret.first);
 
-		expr = ma->member;
+		iceAssert(tp);
+	}
+	else if(VarRef* vr = dynamic_cast<VarRef*>(lhs))
+	{
+		// (e)
 
-		curr = ma;
-		i++;
+		std::string mname;
+		if(scp != 0)
+			mname = this->mangleWithNamespace(vr->name, *scp, false);
+
+		else
+			mname = this->mangleWithNamespace(vr->name, false);
+
+
+		tp = this->getType(mname);
+
+		if(!tp)
+		{
+			// (b)
+			llvm::Type* lt = this->getLlvmType(vr);
+			iceAssert(lt);
+
+			tp = this->getType(lt);
+			iceAssert(tp);
+		}
+	}
+	else if(FuncCall* fc = dynamic_cast<FuncCall*>(lhs))
+	{
+		llvm::Type* lt = this->getLlvmType(fc);
+		iceAssert(lt);
+
+		tp = this->getType(lt);
+		iceAssert(tp);
 	}
 
-	stack.push_back(expr);
-
-	// now that everything is in a nice list
-	// transform a.(b.(c.d)) into ((a.b).c).d
-	// start at the front of the list, and the last ma.
+	sb = dynamic_cast<StructBase*>(tp->second.first);
+	iceAssert(sb);
 
 
-	iceAssert(mas.size() == stack.size() - 1);
-	iceAssert(stack.size() > 1);
-	mas.back()->target = stack[0];
-	mas.back()->member = stack[1];
+	// (b)
+	scp->push_back(sb->name);
+	int i = -1;
 
-	i = 2;
-	while(mas.size() > 1)
+	VarRef* var = dynamic_cast<VarRef*>(rhs);
+	FuncCall* fc = dynamic_cast<FuncCall*>(rhs);
+
+	if(var)
 	{
-		MemberAccess* mbr = mas.back();
-		mas.pop_back();
+		if(sb->nameMap.find(var->name) != sb->nameMap.end())
+		{
+			i = sb->nameMap[var->name];
+		}
+		else
+		{
+			bool found = false;
+			for(auto c : sb->cprops)
+			{
+				if(c->name == var->name)
+				{
+					found = true;
+					break;
+				}
+			}
 
-		MemberAccess* newback = mas.back();
-		newback->target = mbr;
-		newback->member = stack[i];
-		i++;
+			if(!found)
+			{
+				error(this, rhs, "Type '%s' does not have a member '%s'", sb->name.c_str(), var->name.c_str());
+			}
+		}
+	}
+	else if(fc)
+	{
+		iceAssert(getFunctionFromStructFuncCall(sb, fc));
+	}
+	else
+	{
+		if(dynamic_cast<Number*>(rhs))
+		{
+			error(this, rhs, "Type '%s' is not a tuple", sb->name.c_str());
+		}
+		else
+		{
+			error(this, rhs, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+		}
 	}
 
 
-	return rightmost;
+	llvm::Type* type = this->getLlvmType(rhs);
+	return std::make_pair(type, (llvm::Value*) 0);
 }
 
 
