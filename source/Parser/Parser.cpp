@@ -131,8 +131,8 @@ namespace Parser
 
 	static bool isRightAssociativeOp(Token tok)
 	{
-		if(tok.type == TType::Period)
-			return true;
+		// if(tok.type == TType::Period)
+			// return true;
 
 		return false;
 	}
