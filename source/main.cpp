@@ -309,6 +309,19 @@ int main(int argc, char* argv[])
 				if(pair.second->globalConstructorTrampoline != 0)
 				{
 					llvm::Function* constr = cgi->mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
+					if(!constr)
+					{
+						if(Compiler::runProgramWithJit)
+						{
+							error(cgi, 0, "required global constructor %s was not found in the module!", pair.second->globalConstructorTrampoline->getName().str().c_str());
+						}
+						else
+						{
+							// declare it.
+							constr = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(pair.second->globalConstructorTrampoline->getName(), pair.second->globalConstructorTrampoline->getFunctionType()));
+						}
+					}
+
 					constructors.push_back(constr);
 				}
 			}

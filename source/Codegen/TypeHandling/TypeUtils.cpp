@@ -4,6 +4,7 @@
 
 
 #include "ast.h"
+#include "parser.h"
 #include "codegen.h"
 #include "llvm_all.h"
 #include "compiler.h"
@@ -317,7 +318,7 @@ namespace Codegen
 					// 	error(this, expr, "Invalid expr type %s (%s)", typeid(*expr).name(), typeid(*ma->member).name());
 					// }
 
-					return this->getLlvmType(ma->member);
+					return this->resolveDotOperator(ma->target, ma->member).first;
 				}
 				else
 				{
@@ -813,6 +814,31 @@ namespace Codegen
 	{
 		llvm::Type* ltype = this->getLlvmType(expr);
 		return this->isBuiltinType(ltype);
+	}
+
+
+
+
+	std::string CodegenInstance::printAst(Expr* expr)
+	{
+		if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
+		{
+			return "(" + this->printAst(ma->target) + "." + this->printAst(ma->member) + ")";
+		}
+		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
+		{
+			return fc->name + "()";
+		}
+		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))
+		{
+			return vr->name;
+		}
+		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
+		{
+			return "(" + this->printAst(bo->left) + Parser::arithmeticOpToString(bo->op) + this->printAst(bo->right) + ")";
+		}
+
+		error(this, expr, "Unknown shit.");
 	}
 }
 
