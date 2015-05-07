@@ -4,27 +4,47 @@
 
 import Foundation
 
+struct Orr
+{
+	static var Another = 76
+	var bar = 311
+}
+
 struct Something
 {
 	var oor = 400
-	static var Else = 41
-}
+	static var Or: Orr
 
+	ƒ foo() -> Orr
+	{
+		return Orr()
+	}
+
+	struct Inside
+	{
+		static var Another = 511
+	}
+}
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	var x = argv[0] + 1
+	var x = argv[0] + 3
 
 	let p = 64.4 ÷ 4.1
 
 	let m = Math.√(41.5)
-	let global = 57
 
-	// Something.Else = 14
-
+	let mmx = Something.Inside.Another
+	let another = 4
 	let foo: Something()
+
+	let mm = foo.foo().bar
+
+	let gg = (4, 100.39)
+	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
+
 	printf("[%d]\n", foo.oor)
-	printf("p: %f, g: %d, m: %f, argv[0]: %s, %.14f\n", p, global, m, x, Math.π())
+	printf("p: %f, g: %d, m: %f, argv[0]: %s, %.14f\n", p, another, m, x, Math.π())
 
 	return 0
 }
