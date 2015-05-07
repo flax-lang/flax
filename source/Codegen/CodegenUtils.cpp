@@ -276,7 +276,7 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-		std::string mangled = this->mangleWithNamespace(atype->name, false);
+		std::string mangled = this->mangleWithNamespace(atype->name, atype->scope, false);
 		if(atype->mangledName.empty())
 			atype->mangledName = mangled;
 
