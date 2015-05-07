@@ -557,12 +557,12 @@ namespace Ast
 	struct MemberAccess : Expr
 	{
 		~MemberAccess();
-		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
+		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), left(tgt), right(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 
-		Expr* target;
-		Expr* member;
+		Expr* left;
+		Expr* right;
 	};
 
 	struct NamespaceDecl : Expr
@@ -656,6 +656,11 @@ namespace Ast
 		std::deque<Expr*> topLevelExpressions;
 
 		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
+
+		// the module-level global constructor trampoline that initialises static and global variables
+		// that require init().
+		// this will be called by a top-level trampoline that calls everything when all the modules are linked together
+		llvm::Function* globalConstructorTrampoline;
 	};
 }
 
