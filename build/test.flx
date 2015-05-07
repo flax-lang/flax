@@ -19,6 +19,11 @@ struct Something
 	{
 		return Orr()
 	}
+
+	struct Inside
+	{
+		static var Another = 511
+	}
 }
 
 func main(argc: Int32, argv: Int8**) -> Int
@@ -29,11 +34,14 @@ func main(argc: Int32, argv: Int8**) -> Int
 
 	let m = Math.√(41.5)
 
-	let mmx = Something.Or.Another
+	let mmx = Something.Inside.Another
 	let another = 4
 	let foo: Something()
 
 	let mm = foo.foo().bar
+
+	let gg = (4, 100.39)
+	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
 
 	printf("[%d]\n", foo.oor)
 	printf("p: %f, g: %d, m: %f, argv[0]: %s, %.14f\n", p, another, m, x, Math.π())

@@ -557,12 +557,12 @@ namespace Ast
 	struct MemberAccess : Expr
 	{
 		~MemberAccess();
-		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), target(tgt), member(mem) { }
+		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), left(tgt), right(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 
-		Expr* target;
-		Expr* member;
+		Expr* left;
+		Expr* right;
 	};
 
 	struct NamespaceDecl : Expr

@@ -207,7 +207,7 @@ namespace Codegen
 			}
 			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
-				VarRef* _vr = dynamic_cast<VarRef*>(ma->target);
+				VarRef* _vr = dynamic_cast<VarRef*>(ma->left);
 				if(_vr)
 				{
 					// check for type function access (static)
@@ -221,7 +221,7 @@ namespace Codegen
 						}
 						else if(tp->second.second == TypeKind::Struct)
 						{
-							return std::get<0>(this->resolveDotOperator(ma->target, ma->member));
+							return std::get<0>(this->resolveDotOperator(ma));
 						}
 					}
 				}
@@ -230,12 +230,8 @@ namespace Codegen
 
 
 
-
-
-
-
 				// first, get the type of the lhs
-				llvm::Type* lhs = this->getLlvmType(ma->target);
+				llvm::Type* lhs = this->getLlvmType(ma->left);
 				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
 
 				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
@@ -250,7 +246,7 @@ namespace Codegen
 					// values are 1, 2, 3 etc.
 					// for now, assert this.
 
-					Number* n = dynamic_cast<Number*>(ma->member);
+					Number* n = dynamic_cast<Number*>(ma->right);
 					iceAssert(n);
 
 					llvm::Type* ttype = pair ? pair->first : st;
@@ -266,8 +262,8 @@ namespace Codegen
 					Struct* str = dynamic_cast<Struct*>(pair->second.first);
 					iceAssert(str);
 
-					VarRef* memberVr = dynamic_cast<VarRef*>(ma->member);
-					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->member);
+					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
+					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
 
 					if(memberVr)
 					{
@@ -287,7 +283,7 @@ namespace Codegen
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
 
-					return std::get<0>(this->resolveDotOperator(ma->target, ma->member));
+					return std::get<0>(this->resolveDotOperator(ma));
 				}
 				else
 				{
@@ -794,12 +790,12 @@ namespace Codegen
 		{
 			auto ret = this->flattenDotOperators(ma);
 
-			std::string s = "(";
+			std::string s;
 			for(Expr* e : ret)
-				s += this->printAst(e);
+				s += this->printAst(e) + ".";
 
-			return s + ")";
-			// return "(" + this->printAst(ma->target) + "." + this->printAst(ma->member) + ")";
+			s = s.substr(0, s.length() - 1);
+			return s;
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{

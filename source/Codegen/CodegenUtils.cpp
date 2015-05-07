@@ -291,6 +291,9 @@ namespace Codegen
 			error(this, atype, "Duplicate type %s", atype->name.c_str());
 		}
 
+		#if 0
+		printf("adding type %s, mangled %s\n", atype->name.c_str(), mangled.c_str());
+		#endif
 		TypeInfo::addNewType(this, ltype, atype, e);
 	}
 
