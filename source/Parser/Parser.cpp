@@ -20,7 +20,6 @@ namespace Parser
 {
 	static Token curtok;
 	static PosInfo currentPos;
-	static bool isInsideNamespace				= false;
 	static Root* rootNode						= nullptr;
 	static uint32_t curAttrib					= 0;
 
@@ -349,7 +348,7 @@ namespace Parser
 			switch(tok.type)
 			{
 				case TType::Func:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseFunc(tokens));
+					rootNode->topLevelExpressions.push_back(parseFunc(tokens));
 					break;
 
 				case TType::Import:
@@ -361,25 +360,20 @@ namespace Parser
 					break;
 
 				case TType::Struct:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
 					break;
 
 				case TType::Enum:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseEnum(tokens));
+					rootNode->topLevelExpressions.push_back(parseEnum(tokens));
 					break;
 
 				case TType::Extension:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseExtension(tokens));
+					rootNode->topLevelExpressions.push_back(parseExtension(tokens));
 					break;
 
 				case TType::Var:
 				case TType::Val:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
-					break;
-
-				// only at top level
-				case TType::Namespace:
-					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
+					rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
 					break;
 
 				// shit you just skip
@@ -393,7 +387,7 @@ namespace Parser
 					break;
 
 				case TType::TypeAlias:
-					if(!isInsideNamespace) rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
+					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
 					break;
 
 				case TType::Private:
@@ -437,10 +431,6 @@ namespace Parser
 
 				case TType::Func:
 					return parseFunc(tokens);
-
-				case TType::Namespace:
-					if(isInsideNamespace)		return parseNamespace(tokens);
-					else						parserError("Namespaces can only be declared at top level");
 
 				case TType::ForeignFunc:
 					return parseForeignFunc(tokens);
@@ -584,42 +574,6 @@ namespace Parser
 
 		return parsePrimary(tokens);
 	}
-
-
-	NamespaceDecl* parseNamespace(TokenList& tokens)
-	{
-		Token tok_ns = eat(tokens);
-		iceAssert(tok_ns.type == TType::Namespace);
-
-		// parse an identifier
-		Token front = tokens.front();
-		std::deque<std::string> scopes;
-
-		while((front = eat(tokens)).text.length() > 0 && front.type != TType::LBrace)
-		{
-			if(front.type == TType::Identifier)
-				scopes.push_back(front.text);
-
-			else if(front.type == TType::DoubleColon || front.type == TType::Period)
-				continue;
-
-			else
-				parserError("Unexpected token '%s'", front.text.c_str());
-		}
-
-		tokens.push_front(front);
-		iceAssert(tokens.front().type == TType::LBrace);
-
-		bool wasInsideNamespace = isInsideNamespace;
-
-		isInsideNamespace = true;
-		BracedBlock* inside = parseBracedBlock(tokens);
-		isInsideNamespace = wasInsideNamespace;
-
-		return CreateAST(NamespaceDecl, tok_ns, scopes, inside);
-	}
-
-
 
 	Expr* parseStaticDecl(TokenList& tokens)
 	{

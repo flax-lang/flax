@@ -287,8 +287,6 @@ void Struct::createType(CodegenInstance* cgi)
 
 	if(!this->didCreateType)
 	{
-		// printf("created type for %s\n", this->mangledName.c_str());
-
 		// see if we have nested types
 		for(Struct* nested : this->nestedTypes)
 		{
