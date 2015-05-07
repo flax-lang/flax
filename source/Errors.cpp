@@ -196,6 +196,11 @@ namespace GenError
 		else
 			error(cgi, e, "Invalid (void) value");
 	}
+
+	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member)
+	{
+		error(cgi, e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
+	}
 }
 
 

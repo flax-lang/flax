@@ -68,6 +68,36 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 		else
 		{
+			// generate some globals.
+			// mangle the variable name.
+
+			// a bit hacky, but still well-defined.
+			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
+
+			// generate a global variable (sorry!).
+			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+
+			if(var->inferredLType->isStructTy())
+			{
+				TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
+				iceAssert(cmplxtype);
+
+				llvm::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
+				cgi->addGlobalConstructor(varname, init);
+			}
+			else
+			{
+				iceAssert(var->initVal);
+				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
+				if(llvm::isa<llvm::Constant>(val))
+				{
+					llvm::cast<llvm::GlobalVariable>(gv)->setInitializer(llvm::cast<llvm::Constant>(val));
+				}
+				else
+				{
+					error(this, "Global variables currently only support constant initialisers");
+				}
+			}
 		}
 	}
 
@@ -253,12 +283,11 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
 
 	if(!this->didCreateType)
 	{
-		// printf("created type for %s\n", this->mangledName.c_str());
-
 		// see if we have nested types
 		for(Struct* nested : this->nestedTypes)
 		{
@@ -306,28 +335,6 @@ void Struct::createType(CodegenInstance* cgi)
 
 				types[i] = cgi->getLlvmType(var);
 			}
-			else
-			{
-				// generate some globals.
-				// mangle the variable name.
-
-				// a bit hacky, but still well-defined.
-				std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
-
-				// generate a global variable (sorry!).
-				llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
-
-				iceAssert(var->initVal);
-				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
-				if(llvm::isa<llvm::Constant>(val))
-				{
-					llvm::cast<llvm::GlobalVariable>(gv)->setInitializer(llvm::cast<llvm::Constant>(val));
-				}
-				else
-				{
-					error(this, "Global variables currently only support constant initialisers");
-				}
-			}
 		}
 	}
 
@@ -336,7 +343,6 @@ void Struct::createType(CodegenInstance* cgi)
 	str->setBody(vec, this->packed);
 
 	this->didCreateType = true;
-	this->scope = cgi->namespaceStack;
 
 	delete types;
 }

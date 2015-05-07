@@ -16,15 +16,17 @@ namespace Compiler
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
 	std::string getTarget();
-	std::string getSysroot();
 	std::string getPrefix();
-	int getOptimisationLevel();
+	std::string getMcModel();
+	std::string getSysroot();
+
 	bool getIsCompileOnly();
-	bool getIsPositionIndependent();
-	bool getDisableLowercaseBuiltinTypes();
+	int getOptimisationLevel();
 	bool getPrintClangOutput();
 	bool getRunProgramWithJit();
-	std::string getMcModel();
+	bool getIsPositionIndependent();
+	bool getNoAutoGlobalConstructor();
+	bool getDisableLowercaseBuiltinTypes();
 
 	enum class Flag
 	{
