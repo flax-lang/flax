@@ -110,6 +110,12 @@ namespace Compiler
 	{
 		return runProgramWithJit;
 	}
+
+	static bool noAutoGlobalConstructor = false;
+	bool getNoAutoGlobalConstructor()
+	{
+		return noAutoGlobalConstructor;
+	}
 }
 
 int main(int argc, char* argv[])
@@ -221,6 +227,10 @@ int main(int argc, char* argv[])
 			{
 				Compiler::runProgramWithJit = true;
 			}
+			else if(!strcmp(argv[i], "-no-auto-gconstr"))
+			{
+				Compiler::noAutoGlobalConstructor = true;
+			}
 			else if(strstr(argv[i], "-O") == argv[i])
 			{
 				// make sure we have at least 3 chars
@@ -263,6 +273,108 @@ int main(int argc, char* argv[])
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
 		Root* r = Compiler::compileFile(filename, filelist, rootmap, modulelist, cgi);
 
+
+
+
+
+		// needs to be done first, for the weird constructor fiddling below.
+		if(Compiler::runProgramWithJit)
+		{
+			llvm::Linker linker = llvm::Linker(cgi->mainModule);
+			for(auto mod : modulelist)
+				linker.linkInModule(mod, nullptr);
+		}
+
+
+
+
+
+		bool needGlobalConstructor = false;
+		for(auto pair : rootmap)
+		{
+			if(pair.second->globalConstructorTrampoline != 0)
+			{
+				needGlobalConstructor = true;
+				break;
+			}
+		}
+
+
+
+		if(needGlobalConstructor)
+		{
+			std::vector<llvm::Function*> constructors;
+			for(auto pair : rootmap)
+			{
+				if(pair.second->globalConstructorTrampoline != 0)
+				{
+					llvm::Function* constr = cgi->mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
+					if(!constr)
+					{
+						if(Compiler::runProgramWithJit)
+						{
+							error(cgi, 0, "required global constructor %s was not found in the module!", pair.second->globalConstructorTrampoline->getName().str().c_str());
+						}
+						else
+						{
+							// declare it.
+							constr = llvm::cast<llvm::Function>(cgi->mainModule->getOrInsertFunction(pair.second->globalConstructorTrampoline->getName(), pair.second->globalConstructorTrampoline->getFunctionType()));
+						}
+					}
+
+					constructors.push_back(constr);
+				}
+			}
+
+			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
+			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
+				"__global_constructor_top_level__", cgi->mainModule);
+
+			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
+			cgi->mainBuilder.SetInsertPoint(iblock);
+
+			for(auto f : constructors)
+			{
+				cgi->mainBuilder.CreateCall(f);
+			}
+
+			cgi->mainBuilder.CreateRetVoid();
+
+
+
+
+			if(!Compiler::getNoAutoGlobalConstructor())
+			{
+				// insert a call at the beginning of main().
+				llvm::Function* mainfunc = cgi->mainModule->getFunction("main");
+
+				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
+				llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "__main_entry", mainfunc);
+
+				f->moveBefore(entry);
+				cgi->mainBuilder.SetInsertPoint(f);
+				cgi->mainBuilder.CreateCall(gconstr);
+				cgi->mainBuilder.CreateBr(entry);
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		std::string foldername;
 		size_t sep = filename.find_last_of("\\/");
 		if(sep != std::string::npos)
@@ -272,18 +384,19 @@ int main(int argc, char* argv[])
 
 		if(Compiler::runProgramWithJit)
 		{
-			llvm::Linker linker = llvm::Linker(cgi->mainModule);
-			for(auto mod : modulelist)
-				linker.linkInModule(mod, nullptr);
+			// all linked already.
+			// dump here, before the output.
+			if(Compiler::printModule)
+				cgi->mainModule->dump();
 
 			cgi->execEngine = llvm::EngineBuilder(cgi->mainModule).create();
 			if(llvm::Function* mainptr = cgi->mainModule->getFunction("main"))
 			{
 				void* func = cgi->execEngine->getPointerToFunction(mainptr);
-				auto rfn = (int (*)(int, const char**)) func;
+				auto mainfunc = (int (*)(int, const char**)) func;
 
 				const char* m[] = { ("__llvmJIT_" + cgi->mainModule->getModuleIdentifier()).c_str() };
-				rfn(1, m);
+				mainfunc(1, m);
 			}
 		}
 		else
@@ -296,8 +409,7 @@ int main(int argc, char* argv[])
 		for(auto s : filelist)
 			remove(s.c_str());
 
-
-		if(Compiler::printModule)
+		if(Compiler::printModule && !Compiler::getRunProgramWithJit())
 			cgi->mainModule->dump();
 
 		if(Compiler::dumpModule)
