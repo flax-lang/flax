@@ -15,7 +15,7 @@ using namespace Codegen;
 static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs);
+static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
 
 
 
@@ -490,10 +490,23 @@ static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* 
 
 
 
-static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Value* ref, llvm::Value* rhs, std::deque<Expr*>& list)
+static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Value* ref,
+	llvm::Value* rhs, std::deque<Expr*>& list, bool actual)
 {
+	// for(auto e : list)
+	// {
+	// 	printf("[%s]\n", cgi->printAst(e).c_str());
+	// }
+
+	// printf("***\n");
+
 	// what is the next one?
 	Result_t res = Result_t(0, 0);
+	if(list.size() == 0)
+	{
+		if(ref)	return Result_t(llvm::Constant::getNullValue(ref->getType()->getPointerElementType()), ref);
+		else	return Result_t(0, 0);
+	}
 
 	if(VarRef* vr = dynamic_cast<VarRef*>(list.front()))
 	{
@@ -504,16 +517,24 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 			if(vd->name == vr->name)
 			{
 				found = true;
-				if(vd->isStatic)
+
+				if(actual)
 				{
-					res = getStaticVariable(cgi, vr, str, vd->name);
+					if(vd->isStatic)
+					{
+						res = getStaticVariable(cgi, vr, str, vd->name);
+					}
+					else
+					{
+						int i = str->nameMap[vd->name];
+						iceAssert(i >= 0);
+
+						res = doVariable(cgi, vr, ref, (Struct*) str, i);
+					}
 				}
 				else
 				{
-					int i = str->nameMap[vd->name];
-					iceAssert(i >= 0);
-
-					res = doVariable(cgi, vr, ref, (Struct*) str, i);
+					return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(vd)), 0);
 				}
 			}
 		}
@@ -523,13 +544,35 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 			if(cp->name == vr->name)
 			{
 				found = true;
-				res = doComputedProperty(cgi, vr, cp, rhs, ref, (Struct*) str);
+
+				if(actual)
+					res = doComputedProperty(cgi, vr, cp, rhs, ref, (Struct*) str);
+
+				else
+					return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(cp)), 0);
 			}
 		}
 
 		for(auto n : str->nestedTypes)
 		{
-			error(cgi, vr, "enosup %p", n);
+			if(n->name == vr->name)
+			{
+				// hack? maybe.
+				std::string mangled = cgi->mangleWithNamespace(n->name, n->scope, false);
+				TypePair_t* tp = cgi->getType(mangled);
+				iceAssert(tp);
+
+				// VarRef* fake = new VarRef(vr->posinfo, mangled);
+				// list.push_front(fake);
+
+				list.pop_front();
+
+				if(list.size() > 0)
+					return _doStaticAccess(cgi, (Struct*) tp->second.first, ref, rhs, list, actual);
+
+				else
+					return Result_t(llvm::Constant::getNullValue(tp->first), 0);
+			}
 		}
 
 		if(found)
@@ -544,31 +587,35 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 	else if(FuncCall* fc = dynamic_cast<FuncCall*>(list.front()))
 	{
 		list.pop_front();
-		res = doFunctionCall(cgi, fc, ref, (Struct*) str, true);
+
+		if(actual)
+			res = doFunctionCall(cgi, fc, ref, (Struct*) str, true);
+
+		else
+			res = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(cgi->getFunctionFromStructFuncCall(str, fc))), 0);
 	}
 	else
 	{
-		error(cgi, list.front(), "???!!!");
+		error(cgi, list.front(), "???!!! (%s)", typeid(*list.front()).name());
 	}
 
 
 
 	// use 'res' to call more stuff.
 	llvm::Value* newref = res.result.second;
-	if(!newref)
+	if(actual && !newref)
 	{
 		iceAssert(res.result.first);
 		llvm::Value* _ref = cgi->allocateInstanceInBlock(res.result.first->getType());
 
 		cgi->mainBuilder.CreateStore(res.result.first, _ref);
 		newref = _ref;
-
-
 	}
+
 
 	// change 'str' if we need to
 	// ie. when we go deeper, like if the current vr is a struct.
-	if(newref->getType()->getPointerElementType()->isStructTy())
+	if(actual && newref->getType()->getPointerElementType()->isStructTy())
 	{
 		TypePair_t* tp = cgi->getType(newref->getType()->getPointerElementType());
 		iceAssert(tp);
@@ -577,14 +624,15 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 		iceAssert(str);
 	}
 
+
 	if(list.size() > 0)
-		return _doStaticAccess(cgi, str, newref, rhs, list);
+		return _doStaticAccess(cgi, str, newref, rhs, list, actual);
 
 	return Result_t(res.result.first, newref);
 }
 
 
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs)
+static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual)
 {
 	std::deque<Expr*> flattened = cgi->flattenDotOperators(ma);
 
@@ -595,12 +643,20 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 	iceAssert(tp);
 
 	if(!tp) GenError::unknownSymbol(cgi, vl, vl->name, SymbolType::Type);
-	flattened.pop_front();
 
 	Struct* str = dynamic_cast<Struct*>(tp->second.first);
 	iceAssert(str);
 
-	return _doStaticAccess(cgi, str, ref, rhs, flattened);
+
+	// for(auto e : flattened)
+	// {
+	// 	printf("flat: [%s]\n", cgi->printAst(e).c_str());
+	// }
+
+	// printf("*** (%s)\n", cgi->printAst(ma).c_str());
+
+	flattened.pop_front();
+	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);
 }
 
 
@@ -610,8 +666,40 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 
 
 std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*>
-CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::deque<std::string>* _scp)
+CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque<std::string>* _scp)
 {
+	auto flat = this->flattenDotOperators(_ma);
+	if(VarRef* vr = dynamic_cast<VarRef*>(flat.front()))
+	{
+		// TODO: copy-pasta
+		// check for type function access
+		TypePair_t* tp = 0;
+		if((tp = this->getType(this->mangleWithNamespace(vr->name, false))))
+		{
+			if(tp->second.second == TypeKind::Enum)
+			{
+				error(this, _ma, "enosup");
+			}
+			else if(tp->second.second == TypeKind::Struct)
+			{
+				flat.pop_front();
+
+				Result_t res = doStaticAccess(this, _ma, 0, 0, false);
+				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+			}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
 	TypePair_t* tp = 0;
 	StructBase* sb = 0;
 
@@ -624,15 +712,15 @@ CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::de
 
 
 	iceAssert(scp);
-	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(lhs))
+	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(_ma->left))
 	{
 		// (d)
-		auto ret = this->resolveDotOperator(ma->left, ma->right, false, scp);
+		auto ret = this->resolveDotOperator(ma, false, scp);
 		tp = this->getType(std::get<0>(ret));
 
 		iceAssert(tp);
 	}
-	else if(VarRef* vr = dynamic_cast<VarRef*>(lhs))
+	else if(VarRef* vr = dynamic_cast<VarRef*>(_ma->left))
 	{
 		// (e)
 
@@ -656,9 +744,9 @@ CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::de
 			iceAssert(tp);
 		}
 	}
-	else if(FuncCall* fc = dynamic_cast<FuncCall*>(lhs))
+	else if(FuncCall* fc = dynamic_cast<FuncCall*>(_ma->left))
 	{
-		llvm::Type* lt = this->parseTypeFromString(lhs, fc->type.strType);
+		llvm::Type* lt = this->parseTypeFromString(_ma->left, fc->type.strType);
 		iceAssert(lt);
 
 		tp = this->getType(lt);
@@ -672,8 +760,8 @@ CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::de
 	// (b)
 	scp->push_back(sb->name);
 
-	VarRef* var = dynamic_cast<VarRef*>(rhs);
-	FuncCall* fc = dynamic_cast<FuncCall*>(rhs);
+	VarRef* var = dynamic_cast<VarRef*>(_ma->right);
+	FuncCall* fc = dynamic_cast<FuncCall*>(_ma->right);
 
 	if(var)
 	{
@@ -685,13 +773,13 @@ CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::de
 	}
 	else
 	{
-		if(dynamic_cast<Number*>(rhs))
+		if(dynamic_cast<Number*>(_ma->right))
 		{
-			error(this, rhs, "Type '%s' is not a tuple", sb->name.c_str());
+			error(this, _ma->right, "Type '%s' is not a tuple", sb->name.c_str());
 		}
 		else
 		{
-			error(this, rhs, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+			error(this, _ma->right, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*_ma->right).name());
 		}
 	}
 
@@ -703,20 +791,19 @@ CodegenInstance::resolveDotOperator(Expr* lhs, Expr* rhs, bool doAccess, std::de
 			if(var->name == vd->name)
 			{
 				type = this->getLlvmType(vd);
-				iceAssert(type);
 				break;
 			}
 		}
+		iceAssert(type);
 	}
 	else if(fc)
 	{
 		Func* fn = getFunctionFromStructFuncCall(sb, fc);
-		type = this->parseTypeFromString(lhs, fn->decl->type.strType);
+		type = this->parseTypeFromString(_ma->left, fn->decl->type.strType);
 		iceAssert(type);
 	}
 
-
-	return std::make_tuple(type, (llvm::Value*) 0, rhs);
+	return std::make_tuple(type, (llvm::Value*) 0, _ma->right);
 }
 
 
