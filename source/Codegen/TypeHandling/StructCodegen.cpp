@@ -283,6 +283,7 @@ void Struct::createType(CodegenInstance* cgi)
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
 
 	if(!this->didCreateType)
@@ -342,7 +343,6 @@ void Struct::createType(CodegenInstance* cgi)
 	str->setBody(vec, this->packed);
 
 	this->didCreateType = true;
-	this->scope = cgi->namespaceStack;
 
 	delete types;
 }
