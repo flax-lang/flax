@@ -221,14 +221,10 @@ namespace Codegen
 						}
 						else if(tp->second.second == TypeKind::Struct)
 						{
-							return std::get<0>(this->resolveDotOperator(ma->left, ma->right));
+							return std::get<0>(this->resolveDotOperator(ma));
 						}
 					}
 				}
-
-
-
-
 
 
 
@@ -287,7 +283,7 @@ namespace Codegen
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
 
-					return std::get<0>(this->resolveDotOperator(ma->left, ma->right));
+					return std::get<0>(this->resolveDotOperator(ma));
 				}
 				else
 				{

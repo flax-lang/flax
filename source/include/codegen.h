@@ -160,7 +160,7 @@ namespace Codegen
 		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
-		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::Expr* lhs, Ast::Expr* rhs, bool doAccess = false,
+		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::MemberAccess* ma, bool doAccess = false,
 			std::deque<std::string>* scp = 0);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
