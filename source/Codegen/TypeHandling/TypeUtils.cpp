@@ -221,33 +221,7 @@ namespace Codegen
 						}
 						else if(tp->second.second == TypeKind::Struct)
 						{
-							Expr* rightmost = this->recursivelyResolveNested(ma);
-							if(FuncCall* rfc = dynamic_cast<FuncCall*>(rightmost))
-							{
-								Struct* str = dynamic_cast<Struct*>(tp->second.first);
-								iceAssert(str);
-
-								Func* callee = this->getFunctionFromStructFuncCall(str, rfc);
-
-								for(llvm::Function* lf : str->lfuncs)
-								{
-									if(lf->getName() == callee->decl->mangledName)
-									{
-										return lf->getReturnType();
-									}
-								}
-							}
-							else if(VarRef* rvr = dynamic_cast<VarRef*>(rightmost))
-							{
-								StructBase* strb = dynamic_cast<StructBase*>(tp->second.first);
-								iceAssert(strb);
-
-								error(this, expr, "unknown. (%s, %s)", strb->name.c_str(), rvr->name.c_str());
-							}
-							else
-							{
-								error(this, expr, "Unknown expression type %s on RHS of dot operator", typeid(*expr).name());
-							}
+							return std::get<0>(this->resolveDotOperator(ma->target, ma->member));
 						}
 					}
 				}
@@ -313,12 +287,7 @@ namespace Codegen
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
 
-					// else
-					// {
-					// 	error(this, expr, "Invalid expr type %s (%s)", typeid(*expr).name(), typeid(*ma->member).name());
-					// }
-
-					return this->resolveDotOperator(ma->target, ma->member).first;
+					return std::get<0>(this->resolveDotOperator(ma->target, ma->member));
 				}
 				else
 				{
@@ -823,7 +792,14 @@ namespace Codegen
 	{
 		if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 		{
-			return "(" + this->printAst(ma->target) + "." + this->printAst(ma->member) + ")";
+			auto ret = this->flattenDotOperators(ma);
+
+			std::string s = "(";
+			for(Expr* e : ret)
+				s += this->printAst(e);
+
+			return s + ")";
+			// return "(" + this->printAst(ma->target) + "." + this->printAst(ma->member) + ")";
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{

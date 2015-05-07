@@ -34,6 +34,7 @@ namespace GenError
 		std::vector<llvm::Value*> args) __attribute__((noreturn));
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
+	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 }
 
 namespace Codegen
@@ -159,12 +160,13 @@ namespace Codegen
 		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
-		std::pair<llvm::Type*, llvm::Value*> resolveDotOperator(Ast::Expr* lhs, Ast::Expr* rhs, bool doAccess = false,
+		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::Expr* lhs, Ast::Expr* rhs, bool doAccess = false,
 			std::deque<std::string>* scp = 0);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
-		Ast::Expr* recursivelyResolveNested(Ast::MemberAccess* base, std::deque<std::string>* scopes = 0);
+		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
+		std::deque<Ast::Expr*> flattenDotOperators(Ast::MemberAccess* base);
 
 
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
