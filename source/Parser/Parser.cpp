@@ -1627,9 +1627,9 @@ namespace Parser
 				str->funcs.push_back(oo->func);
 				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
 			}
-			else if(Struct* nstr = dynamic_cast<Struct*>(stmt))
+			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
-				str->nestedTypes.push_back(nstr);
+				str->nestedTypes.push_back(sb);
 			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
@@ -1722,6 +1722,9 @@ namespace Parser
 
 		while(front = tokens.front(), tokens.size() > 0)
 		{
+			if(front.type == TType::RBrace && !isFirst)
+				break;
+
 			if(front.type != TType::Case)
 				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
 
@@ -1748,7 +1751,7 @@ namespace Parser
 				{
 					int64_t val = 0;
 					if(prevNumber)
-						val = prevNumber->dval + 1;
+						val = prevNumber->ival + 1;
 
 					// increment it.
 					prevNumber = CreateAST(Number, front, val);
@@ -1773,6 +1776,12 @@ namespace Parser
 			skipNewline(tokens);
 
 			front = tokens.front();
+
+			iceAssert(value);
+			enumer->cases.push_back(std::make_pair(eName, value));
+
+			isFirst = false;
+
 			if(front.type == TType::Case)
 			{
 				// ...
@@ -1787,9 +1796,6 @@ namespace Parser
 				break;
 			}
 
-			iceAssert(value);
-			enumer->cases.push_back(std::make_pair(eName, value));
-			isFirst = false;
 		}
 
 		return enumer;
