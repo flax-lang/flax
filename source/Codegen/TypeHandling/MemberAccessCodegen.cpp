@@ -283,6 +283,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			iceAssert(!"Not var or function?!");
 		}
 	}
+	else if(pair->second.second == TypeKind::Enum)
+	{
+		// return enumerationAccessCodegen(cgi, this->left, this->right);
+		return doStaticAccess(cgi, this, isPtr ? self : selfPtr, _rhs);
+	}
 
 	iceAssert(!"Encountered invalid expression");
 }
@@ -434,42 +439,6 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, 
 
 
 
-/*
-	// std::deque<std::string> scopes;
-	// Expr* rightmost = std::get<2>(cgi->resolveDotOperator(ma->target, ma->member, false, &scopes));
-	// iceAssert(rightmost);
-
-	// Struct* str = cgi->getNestedStructFromScopes(ma, scopes);
-
-
-	// if(FuncCall* fc = dynamic_cast<FuncCall*>(rightmost))
-	// {
-	// 	return doFunctionCall(cgi, fc, 0, 0, false, str, true);
-	// }
-	// else if(VarRef* vr = dynamic_cast<VarRef*>(rightmost))
-	// {
-	// 	for(auto mem : str->members)
-	// 	{
-	// 		if(mem->isStatic && mem->name == vr->name)
-	// 		{
-	// 			std::string mangledName = cgi->mangleMemberFunction(str, mem->name, std::deque<Ast::Expr*>());
-	// 			if(llvm::GlobalVariable* gv = cgi->mainModule->getGlobalVariable(mangledName))
-	// 			{
-	// 				// todo: another kinda hacky thing.
-	// 				// this is present in some parts of the code, i don't know how many.
-	// 				// basically, if the thing is supposed to be immutable, we're not going to return
-	// 				// the ptr/ref value.
-
-	// 				return Result_t(cgi->mainBuilder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
-	// 			}
-	// 		}
-	// 	}
-
-	// 	error(cgi, ma, "Struct '%s' has no such static member '%s'", str->name.c_str(), vr->name.c_str());
-	// }
-*/
-
-
 
 
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* str, std::string name)
@@ -572,6 +541,26 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 
 				else
 					return Result_t(llvm::Constant::getNullValue(tp->first), 0);
+			}
+		}
+
+		if(Enumeration* enr = dynamic_cast<Enumeration*>(str))
+		{
+			for(auto c : enr->cases)
+			{
+				if(c.first == vr->name)
+				{
+					found = true;
+
+					if(actual)
+					{
+						res = enumerationAccessCodegen(cgi, new VarRef(vr->posinfo, enr->name), vr);
+					}
+					else
+						res = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(enr)), 0);
+
+					break;
+				}
 			}
 		}
 

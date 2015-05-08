@@ -504,7 +504,7 @@ namespace Ast
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
-		std::deque<Struct*> nestedTypes;
+		std::deque<StructBase*> nestedTypes;
 	};
 
 	// extends struct, because it's basically a struct, except we need to apply it to an existing struct

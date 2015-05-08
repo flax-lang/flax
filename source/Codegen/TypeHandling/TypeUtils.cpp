@@ -285,9 +285,25 @@ namespace Codegen
 
 					return std::get<0>(this->resolveDotOperator(ma));
 				}
+				else if(pair->second.second == TypeKind::Enum)
+				{
+					Enumeration* enr = dynamic_cast<Enumeration*>(pair->second.first);
+					iceAssert(enr);
+
+					VarRef* enrcase = dynamic_cast<VarRef*>(ma->right);
+					iceAssert(enrcase);
+
+					for(auto c : enr->cases)
+					{
+						if(c.first == enrcase->name)
+							return this->getLlvmType(c.second);
+					}
+
+					error(this, expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+				}
 				else
 				{
-					error(this, expr, "Invalid expr type");
+					error(this, expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
 				}
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
