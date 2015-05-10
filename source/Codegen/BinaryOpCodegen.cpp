@@ -124,6 +124,19 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				return Result_t(res.first, res.second);
 			}
+			else if(lhs->getType()->isPointerTy() && rhs->getType()->isArrayTy()
+				&& (lhs->getType()->getPointerElementType() == rhs->getType()->getArrayElementType()))
+			{
+				// this GEP is needed to convert the "pointer-to-array" into a "pointer-to-element"
+				// ie. do what C does implicitly, where the array is really just a pointer to
+				// the first element.
+
+				// except llvm gives us nice checking.
+
+				llvm::Value* r = this->mainBuilder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
+				this->mainBuilder.CreateStore(r, ref);
+				return Result_t(r, ref);
+			}
 			else
 			{
 				GenError::invalidAssignment(this, user, lhs, rhs);

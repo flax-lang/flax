@@ -598,6 +598,15 @@ namespace Ast
 		std::string str;
 	};
 
+	struct ArrayLiteral : Expr
+	{
+		~ArrayLiteral();
+		ArrayLiteral(Parser::PosInfo pos, std::deque<Expr*> values) : Expr(pos), values(values) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		std::deque<Expr*> values;
+	};
+
 	struct TypeAlias : StructBase
 	{
 		~TypeAlias();

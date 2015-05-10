@@ -68,11 +68,53 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 }
 
 
+Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+{
+	llvm::Type* type = 0;
+	std::vector<llvm::Constant*> vals;
 
+	if(this->values.size() == 0)
+	{
+		if(!lhsPtr)
+		{
+			error(cgi, this, "Unable to infer type for empty array");
+		}
 
+		type = lhsPtr->getType()->getPointerElementType();
+	}
+	else
+	{
+		type = cgi->getLlvmType(this->values.front());
 
+		for(Expr* e : this->values)
+		{
+			llvm::Value* v = e->codegen(cgi).result.first;
 
+			if(llvm::isa<llvm::Constant>(v))
+			{
+				llvm::Constant* c = llvm::cast<llvm::Constant>(v);
 
+				vals.push_back(c);
+				if(vals.back()->getType() != type)
+				{
+					error(cgi, e, "Array members must have the same type, got %s and %s",
+						cgi->getReadableType(type).c_str(), cgi->getReadableType(vals.back()->getType()).c_str());
+				}
+			}
+			else
+			{
+				error(cgi, e, "Array literal members must be constant");
+			}
+		}
+	}
+
+	llvm::ArrayType* atype = llvm::ArrayType::get(type, this->values.size());
+	llvm::Value* alloc = cgi->mainBuilder.CreateAlloca(atype);
+	llvm::Value* val = llvm::ConstantArray::get(atype, vals);
+
+	cgi->mainBuilder.CreateStore(val, alloc);
+	return Result_t(val, alloc);
+}
 
 
 
