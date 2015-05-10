@@ -26,7 +26,14 @@ namespace Compiler
 	static std::string resolveImport(Import* imp, std::string curpath)
 	{
 		// first check the current directory.
-		std::string name = curpath + "/" + imp->module + ".flx";
+		std::string modname = imp->module;
+		for(size_t i = 0; i < modname.length(); i++)
+		{
+			if(modname[i] == '.')
+				modname[i] = '/';
+		}
+
+		std::string name = curpath + "/" + modname + ".flx";
 		char* fname = realpath(name.c_str(), 0);
 
 		// a file here
@@ -48,7 +55,7 @@ namespace Compiler
 			}
 			else
 			{
-				Parser::parserError("No module or library with the name '%s' could be found", imp->module.c_str());
+				Parser::parserError("No module or library with the name '%s' could be found", modname.c_str());
 			}
 		}
 	}

@@ -1859,11 +1859,36 @@ namespace Parser
 	{
 		iceAssert(eat(tokens).type == TType::Import);
 
-		Token tok_mod;
-		if((tok_mod = eat(tokens)).type != TType::Identifier)
-			parserError("Expected module name after 'import' statement.");
+		std::string s;
+		Token tok_mod = tokens.front();
+		if(tok_mod.type != TType::Identifier)
+			parserError("Expected identifier after import");
 
-		return CreateAST(Import, tok_mod, tok_mod.text);
+		Token t = tok_mod;
+		tokens.pop_front();
+
+		while(tokens.size() > 0)
+		{
+			if(t.type == TType::Period)
+			{
+				s += ".";
+			}
+			else if(t.type == TType::Identifier)
+			{
+				s += t.text;
+			}
+			else
+			{
+				break;
+			}
+
+			// whitespace handling fucks us up
+			t = tokens.front();
+			tokens.pop_front();
+		}
+
+		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
+		return CreateAST(Import, tok_mod, s);
 	}
 
 	StringLiteral* parseStringLiteral(TokenList& tokens)
