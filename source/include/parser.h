@@ -26,6 +26,7 @@ namespace Parser
 	enum class TType
 	{
 		// keywords
+		Invalid,
 		Func,
 		Class,
 		Import,
