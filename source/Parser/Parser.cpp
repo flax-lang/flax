@@ -482,6 +482,9 @@ namespace Parser
 				case TType::Decimal:
 					return parseNumber(tokens);
 
+				case TType::LSquare:
+					return parseArrayLiteral(tokens);
+
 				case TType::Return:
 					return parseReturn(tokens);
 
@@ -916,8 +919,6 @@ namespace Parser
 
 	Expr* parseType(TokenList& tokens)
 	{
-		bool isArr = false;
-		int arrsize = 0;
 		Token tmp = eat(tokens);
 
 		if(tmp.type == TType::Identifier)
@@ -951,28 +952,13 @@ namespace Parser
 			}
 
 			std::string ptrAppend = "";
-			if(tokens.size() > 0)
+			if(tokens.size() > 0 && (tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk))
 			{
-				if(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
-				{
-					while(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
-						eat(tokens), ptrAppend += "*";
-				}
-				else if(tokens.front().type == TType::LSquare)
-				{
-					isArr = true;
-					eat(tokens);
-
-					Token next = eat(tokens);
-					if(next.type == TType::Integer)
-						arrsize = getIntegerValue(next), next = eat(tokens);
-
-					if(next.type != TType::RSquare)
-						parserError("Expected either constant integer or ']' after array declaration and '['");
-				}
+				while(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
+					eat(tokens), ptrAppend += "*";
 			}
 
-			std::string ret = baseType + ptrAppend + (isArr ? "[" + std::to_string(arrsize) + "]" : "");
+			std::string ret = baseType + ptrAppend;
 			Expr* ct = CreateAST(DummyExpr, tmp);
 			ct->type.isLiteral = true;
 			ct->type.strType = ret;
@@ -1021,6 +1007,21 @@ namespace Parser
 			ct->type.strType = final;
 
 			return ct;
+		}
+		else if(tmp.type == TType::LSquare)
+		{
+			Expr* _dm = parseType(tokens);
+			iceAssert(_dm->type.isLiteral);
+
+			DummyExpr* dm = CreateAST(DummyExpr, tmp);
+			dm->type.isLiteral = true;
+			dm->type.strType = "[" + _dm->type.strType + "]";
+
+			Token next = eat(tokens);
+			if(next.type != TType::RSquare)
+				parserError("Expected ']' after array type declaration.");
+
+			return dm;
 		}
 		else
 		{
@@ -1920,7 +1921,35 @@ namespace Parser
 		return CreateAST(Typeof, eat(tokens), parseExpr(tokens));
 	}
 
+	ArrayLiteral* parseArrayLiteral(TokenList& tokens)
+	{
+		iceAssert(tokens.front().type == TType::LSquare);
+		Token front = eat(tokens);
 
+		std::deque<Expr*> values;
+		while(true)
+		{
+			Token tok = tokens.front();
+			if(tok.type == TType::Comma)
+			{
+				eat(tokens);
+				continue;
+			}
+			else if(tok.type == TType::RSquare)
+			{
+				break;
+			}
+			else
+			{
+				values.push_back(parseExpr(tokens));
+			}
+		}
+
+		iceAssert(tokens.front().type == TType::RSquare);
+		eat(tokens);
+
+		return CreateAST(ArrayLiteral, front, values);
+	}
 
 
 

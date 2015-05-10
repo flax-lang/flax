@@ -51,7 +51,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	// todo: verify for pointers
 	Result_t lhsp = this->var->codegen(cgi);
 
-	llvm::Value* lhs;
+	llvm::Value* lhs = 0;
 	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
 	else											lhs = lhsp.result.second;
 
