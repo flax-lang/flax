@@ -403,6 +403,10 @@ namespace Codegen
 			{
 				return this->getLlvmType(ai->var)->getPointerElementType();
 			}
+			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
+			{
+				return this->getLlvmType(al->values.front());
+			}
 		}
 
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
@@ -621,6 +625,37 @@ namespace Codegen
 		return llvm::StructType::get(cgi->getContext(), types);
 	}
 
+	static llvm::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type)
+	{
+		iceAssert(type.size() > 0);
+
+		llvm::Type* ret = 0;
+		if(type[0] != '[')
+		{
+			std::string t = "";
+			while(type[0] != ']')
+			{
+				t += type[0];
+				type.erase(type.begin());
+			}
+
+			ret = cgi->parseTypeFromString(user, t);
+		}
+		else
+		{
+			type = type.substr(1);
+			ret = recursivelyParseArray(cgi, user, type);
+
+			// todo: FIXME -- arrays, not pointers.
+			ret = ret->getPointerTo();
+
+			if(type[0] != ']')
+				error(cgi, user, "Expected closing '['");
+		}
+
+		return ret;
+	}
+
 	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type)
 	{
 		if(type.length() > 0)
@@ -629,7 +664,14 @@ namespace Codegen
 			{
 				// parse a tuple.
 				llvm::Type* parsed = recursivelyParseTuple(this, user, type);
-				// printf("parsed: %s\n", this->getReadableType(parsed).c_str());
+				return parsed;
+			}
+			else if(type[0] == '[')
+			{
+				// array.
+				std::string tp = type;
+				llvm::Type* parsed = recursivelyParseArray(this, user, tp);
+
 				return parsed;
 			}
 			else
