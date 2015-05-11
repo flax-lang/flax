@@ -41,40 +41,43 @@ namespace Codegen
 			exit(1);
 		}
 
-		llvm::FunctionPassManager OurFPM = llvm::FunctionPassManager(cgi->mainModule);
+		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(cgi->mainModule);
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
 			// Provide basic AliasAnalysis support for GVN.
-			OurFPM.add(llvm::createBasicAliasAnalysisPass());
+			functionPassManager.add(llvm::createBasicAliasAnalysisPass());
 
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			OurFPM.add(llvm::createInstructionCombiningPass());
+			functionPassManager.add(llvm::createInstructionCombiningPass());
 
 			// Reassociate expressions.
-			OurFPM.add(llvm::createReassociatePass());
+			functionPassManager.add(llvm::createReassociatePass());
 
 			// Eliminate Common SubExpressions.
-			OurFPM.add(llvm::createGVNPass());
+			functionPassManager.add(llvm::createGVNPass());
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			OurFPM.add(llvm::createCFGSimplificationPass());
+			functionPassManager.add(llvm::createCFGSimplificationPass());
 
 			// hmm.
-			OurFPM.add(llvm::createLoadCombinePass());
-			OurFPM.add(llvm::createConstantHoistingPass());
-			OurFPM.add(llvm::createDelinearizationPass());
-			OurFPM.add(llvm::createFlattenCFGPass());
-			OurFPM.add(llvm::createScalarizerPass());
-			OurFPM.add(llvm::createSinkingPass());
-			OurFPM.add(llvm::createStructurizeCFGPass());
-			OurFPM.add(llvm::createInstructionSimplifierPass());
-			OurFPM.add(llvm::createDeadStoreEliminationPass());
-			OurFPM.add(llvm::createDeadInstEliminationPass());
-			OurFPM.add(llvm::createMemCpyOptPass());
+			// fuck it, turn everything on.
+			functionPassManager.add(llvm::createLoadCombinePass());
+			functionPassManager.add(llvm::createConstantHoistingPass());
+			functionPassManager.add(llvm::createDelinearizationPass());
+			functionPassManager.add(llvm::createFlattenCFGPass());
+			functionPassManager.add(llvm::createScalarizerPass());
+			functionPassManager.add(llvm::createSinkingPass());
+			functionPassManager.add(llvm::createStructurizeCFGPass());
+			functionPassManager.add(llvm::createInstructionSimplifierPass());
+			functionPassManager.add(llvm::createDeadStoreEliminationPass());
+			functionPassManager.add(llvm::createDeadInstEliminationPass());
+			functionPassManager.add(llvm::createMemCpyOptPass());
 
-			OurFPM.add(llvm::createSCCPPass());
-			OurFPM.add(llvm::createAggressiveDCEPass());
+			functionPassManager.add(llvm::createSCCPPass());
+			functionPassManager.add(llvm::createAggressiveDCEPass());
+
+			functionPassManager.add(llvm::createTailCallEliminationPass());
 		}
 
 		// optimisation level -1 disables *everything*
@@ -82,18 +85,18 @@ namespace Codegen
 		if(Compiler::getOptimisationLevel() >= 0)
 		{
 			// always do the mem2reg pass, our generated code is too inefficient
-			OurFPM.add(llvm::createPromoteMemoryToRegisterPass());
-			OurFPM.add(llvm::createMergedLoadStoreMotionPass());
-			OurFPM.add(llvm::createScalarReplAggregatesPass());
-			OurFPM.add(llvm::createConstantPropagationPass());
-			OurFPM.add(llvm::createDeadCodeEliminationPass());
+			functionPassManager.add(llvm::createPromoteMemoryToRegisterPass());
+			functionPassManager.add(llvm::createMergedLoadStoreMotionPass());
+			functionPassManager.add(llvm::createScalarReplAggregatesPass());
+			functionPassManager.add(llvm::createConstantPropagationPass());
+			functionPassManager.add(llvm::createDeadCodeEliminationPass());
 		}
 
 
-		OurFPM.doInitialization();
+		functionPassManager.doInitialization();
 
 		// Set the global so the code gen can use this.
-		cgi->Fpm = &OurFPM;
+		cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
 		for(auto pair : cgi->rootNode->externalFuncs)
@@ -123,7 +126,10 @@ namespace Codegen
 			if(pair.first->name == "Any" || pair.first->name == "Type")
 				continue;
 
-			cgi->addNewType(str, pair.first, TypeKind::Struct);
+			if(cgi->getType(str) == 0)
+			{
+				cgi->addNewType(str, pair.first, TypeKind::Struct);
+			}
 		}
 
 		cgi->rootNode->codegen(cgi);
@@ -518,7 +524,12 @@ namespace Codegen
 		else if(r.find("Uint") == 0)	r = "m";
 
 		else if(r.find("Float32") == 0)	r = "f";
+		else if(r.find("Float") == 0)	r = "f";
+
 		else if(r.find("Float64") == 0)	r = "d";
+		else if(r.find("Double") == 0)	r = "d";
+
+
 		else if(r.find("Void") == 0)	r = "v";
 		else
 		{

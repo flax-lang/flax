@@ -504,7 +504,7 @@ namespace Ast
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
-		std::deque<Struct*> nestedTypes;
+		std::deque<StructBase*> nestedTypes;
 	};
 
 	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
@@ -581,10 +581,10 @@ namespace Ast
 	struct ArrayIndex : Expr
 	{
 		~ArrayIndex();
-		ArrayIndex(Parser::PosInfo pos, VarRef* v, Expr* index) : Expr(pos), var(v), index(index) { }
+		ArrayIndex(Parser::PosInfo pos, Expr* v, Expr* index) : Expr(pos), arr(v), index(index) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		VarRef* var;
+		Expr* arr;
 		Expr* index;
 	};
 
@@ -596,6 +596,15 @@ namespace Ast
 
 		bool isRaw = false;
 		std::string str;
+	};
+
+	struct ArrayLiteral : Expr
+	{
+		~ArrayLiteral();
+		ArrayLiteral(Parser::PosInfo pos, std::deque<Expr*> values) : Expr(pos), values(values) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		std::deque<Expr*> values;
 	};
 
 	struct TypeAlias : StructBase

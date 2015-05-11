@@ -26,6 +26,7 @@ namespace Parser
 	enum class TType
 	{
 		// keywords
+		Invalid,
 		Func,
 		Class,
 		Import,
@@ -162,42 +163,42 @@ namespace Parser
 	void parseAll(TokenList& tokens);
 	Ast::Expr* parsePrimary(TokenList& tokens);
 
-	Ast::Expr* parseIf(TokenList& tokens);
-	void parseAttribute(TokenList& tokens);
-	Ast::Expr* parseType(TokenList& tokens);
-	Ast::Func* parseFunc(TokenList& tokens);
-	Ast::Expr* parseExpr(TokenList& tokens);
-	Ast::Expr* parseUnary(TokenList& tokens);
-	Ast::Alloc* parseAlloc(TokenList& tokens);
-	Ast::ForLoop* parseFor(TokenList& tokens);
-	Ast::Expr* parseIdExpr(TokenList& tokens);
-	Ast::Break* parseBreak(TokenList& tokens);
-	Ast::Expr* parseInitFunc(TokenList& tokens);
-	Ast::Struct* parseStruct(TokenList& tokens);
-	Ast::Import* parseImport(TokenList& tokens);
-	Ast::Return* parseReturn(TokenList& tokens);
-	Ast::Typeof* parseTypeof(TokenList& tokens);
-	Ast::Number* parseNumber(TokenList& tokens);
-	Ast::VarDecl* parseVarDecl(TokenList& tokens);
-	Ast::WhileLoop* parseWhile(TokenList& tokens);
-	Ast::Dealloc* parseDealloc(TokenList& tokens);
-	Ast::Expr* parseStaticDecl(TokenList& tokens);
-	Ast::Enumeration* parseEnum(TokenList& tokens);
-	Ast::Continue* parseContinue(TokenList& tokens);
-	Ast::Func* parseTopLevelExpr(TokenList& tokens);
-	Ast::FuncDecl* parseFuncDecl(TokenList& tokens);
-	Ast::Expr* parseParenthesised(TokenList& tokens);
-	Ast::DeferredExpr* parseDefer(TokenList& tokens);
-	Ast::TypeAlias* parseTypeAlias(TokenList& tokens);
-	Ast::Extension* parseExtension(TokenList& tokens);
-	Ast::OpOverload* parseOpOverload(TokenList& tokens);
-	Ast::NamespaceDecl* parseNamespace(TokenList& tokens);
-	Ast::BracedBlock* parseBracedBlock(TokenList& tokens);
-	Ast::Tuple* parseTuple(TokenList& tokens, Ast::Expr* lhs);
-	Ast::StringLiteral* parseStringLiteral(TokenList& tokens);
-	Ast::ForeignFuncDecl* parseForeignFunc(TokenList& tokens);
-	Ast::FuncCall* parseFuncCall(TokenList& tokens, std::string id);
-	Ast::Expr* parseRhs(TokenList& tokens, Ast::Expr* expr, int prio);
+	Ast::Expr* 				parseIf(TokenList& tokens);
+	Ast::ForLoop*			parseFor(TokenList& tokens);
+	Ast::Expr*				parseType(TokenList& tokens);
+	Ast::Enumeration*		parseEnum(TokenList& tokens);
+	Ast::Func*				parseFunc(TokenList& tokens);
+	Ast::Expr*				parseExpr(TokenList& tokens);
+	Ast::Expr*				parseUnary(TokenList& tokens);
+	Ast::WhileLoop*			parseWhile(TokenList& tokens);
+	Ast::Alloc*				parseAlloc(TokenList& tokens);
+	Ast::Break*				parseBreak(TokenList& tokens);
+	Ast::DeferredExpr*		parseDefer(TokenList& tokens);
+	Ast::Expr*				parseIdExpr(TokenList& tokens);
+	Ast::Struct*			parseStruct(TokenList& tokens);
+	Ast::Import*			parseImport(TokenList& tokens);
+	Ast::Return*			parseReturn(TokenList& tokens);
+	Ast::Typeof*			parseTypeof(TokenList& tokens);
+	Ast::Number*			parseNumber(TokenList& tokens);
+	Ast::VarDecl*			parseVarDecl(TokenList& tokens);
+	Ast::Dealloc*			parseDealloc(TokenList& tokens);
+	Ast::Expr*				parseInitFunc(TokenList& tokens);
+	Ast::Continue*			parseContinue(TokenList& tokens);
+	Ast::FuncDecl*			parseFuncDecl(TokenList& tokens);
+	void					parseAttribute(TokenList& tokens);
+	Ast::TypeAlias*			parseTypeAlias(TokenList& tokens);
+	Ast::Extension*			parseExtension(TokenList& tokens);
+	Ast::Expr*				parseStaticDecl(TokenList& tokens);
+	Ast::OpOverload*		parseOpOverload(TokenList& tokens);
+	Ast::BracedBlock*		parseBracedBlock(TokenList& tokens);
+	Ast::ForeignFuncDecl*	parseForeignFunc(TokenList& tokens);
+	Ast::Func*				parseTopLevelExpr(TokenList& tokens);
+	Ast::ArrayLiteral*		parseArrayLiteral(TokenList& tokens);
+	Ast::Expr*				parseParenthesised(TokenList& tokens);
+	Ast::StringLiteral*		parseStringLiteral(TokenList& tokens);
+	Ast::Tuple*				parseTuple(TokenList& tokens, Ast::Expr* lhs);
+	Ast::FuncCall*			parseFuncCall(TokenList& tokens, std::string id);
+	Ast::Expr*				parseRhs(TokenList& tokens, Ast::Expr* expr, int prio);
 
 
 

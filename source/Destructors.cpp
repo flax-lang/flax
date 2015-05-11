@@ -168,6 +168,10 @@ namespace Ast
 	{
 	}
 
+	ArrayLiteral::~ArrayLiteral()
+	{
+	}
+
 	Root::~Root()
 	{
 		for(Expr* e : this->topLevelExpressions)
