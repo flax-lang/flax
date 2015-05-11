@@ -1361,13 +1361,27 @@ namespace Parser
 		if(tokens.front().type == TType::LSquare)
 		{
 			// array dereference
-			eat(tokens);
-			Expr* within = parseExpr(tokens);
 
-			if(eat(tokens).type != TType::RSquare)
-				parserError("Expected ']'");
+			ArrayIndex* prev_ai = 0;
+			while(tokens.front().type == TType::LSquare)
+			{
+				eat(tokens);
+				Expr* within = parseExpr(tokens);
 
-			return CreateAST(ArrayIndex, tok_id, idvr, within);
+				if(eat(tokens).type != TType::RSquare)
+					parserError("Expected ']'");
+
+				auto ai = CreateAST(ArrayIndex, tok_id, idvr, within);
+
+				if(prev_ai)
+					prev_ai->arr = ai;
+
+				else
+					prev_ai = ai;
+			}
+
+
+			return prev_ai;
 		}
 		else if(tokens.front().type == TType::LParen)
 		{

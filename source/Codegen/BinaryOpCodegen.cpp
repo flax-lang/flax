@@ -45,7 +45,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
 	ArrayIndex* ai	= nullptr;
-	BinOp* bo		= nullptr;
 
 	this->autoCastType(lhs, rhs);
 
@@ -154,12 +153,31 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// we know that the ptr lives in the second element
 		// so, use it
 
+		if(ai)
+		{
+			// check that the base is not a constant.
+			Expr* leftmost = ai;
+			while(auto a = dynamic_cast<ArrayIndex*>(leftmost))
+			{
+				leftmost = a->arr;
+			}
+
+			if(auto avr = dynamic_cast<VarRef*>(leftmost))
+			{
+				if(auto vd = this->getSymDecl(avr, avr->name))
+				{
+					if(vd->immutable)
+						error(this, user, "Cannot assign to immutable variable %s", vd->name.c_str());
+				}
+			}
+		}
+
 		varptr = ref;
 		iceAssert(rhs);
 
 		// make sure the left side is a pointer
 		if(!varptr)
-			error(this, user, "Cannot assign to immutable variable");
+			error(this, user, "Cannot assign to immutable or temporary value");
 
 		else if(!varptr->getType()->isPointerTy())
 			GenError::invalidAssignment(this, user, varptr, rhs);
@@ -170,20 +188,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
 			rhs = this->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
-	}
-	else if((bo = dynamic_cast<BinOp*>(left)) && bo->op == ArithmeticOp::MemberAccess)
-	{
-		// great job, folks
-		// printf("(%s:%lld): dot operator as LHS of op\n", bo->posinfo.file.c_str(), bo->posinfo.line);
-		MemberAccess* fakema = new MemberAccess(bo->posinfo, bo->left, bo->right);
-		BinOp* fakebo = new BinOp(bo->posinfo, fakema, op, right);
-
-		Result_t res = fakebo->codegen(this);
-
-		delete fakema;
-		delete fakebo;
-
-		return res;
 	}
 	else
 	{
