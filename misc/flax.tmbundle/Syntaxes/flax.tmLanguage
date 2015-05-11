@@ -905,7 +905,7 @@
 			<key>comment</key>
 			<string>Primitive types</string>
 			<key>match</key>
-			<string>\b((I|i)nt8|(I|i)nt16|(I|i)nt32|(I|i)nt64|(U|u)int8|(B|b)yte|(U|u)int16|(U|u)int32|(U|u)int64|(U|u)intPtr|(F|f)loat32|(F|f)loat64|(I|i)nt|(U|u)int|(S|s)tring|(B|b)ool|(C|c)haracter|(V|v)oid|Any|Type|ffi|ﬁ)\b</string>
+			<string>\b((I|i)nt8|(I|i)nt16|(I|i)nt32|(I|i)nt64|(U|u)int8|(B|b)yte|(U|u)int16|(U|u)int32|(U|u)int64|(U|u)intPtr|(F|f)loat(32|64)|(I|i)nt|(U|u)int|(F|f)loat|(D|d)ouble|(S|s)tring|(B|b)ool|(C|c)haracter|(V|v)oid|Any|Type|ffi|ﬁ)\b</string>
 			<key>name</key>
 			<string>support.type.flax</string>
 		</dict>

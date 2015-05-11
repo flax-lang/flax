@@ -1,0 +1,25 @@
+// fizzbuzz.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+public ƒ doFizzBuzz(var i: Int)
+{
+	while i > 0
+	{
+		printf("%d: ", i)
+
+		if i % 3 == 0
+		{
+			printf("Fizz")
+		}
+		if i % 5 == 0
+		{
+			printf("Buzz")
+		}
+
+		printf("\n")
+		i -= 1
+	}
+}

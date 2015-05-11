@@ -38,7 +38,11 @@ namespace Codegen
 		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float")	return llvm::Type::getFloatTy(this->getContext());
+
 		else if(type == "Float64")	return llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Double")	return llvm::Type::getDoubleTy(this->getContext());
+
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
 		else return nullptr;
@@ -285,9 +289,25 @@ namespace Codegen
 
 					return std::get<0>(this->resolveDotOperator(ma));
 				}
+				else if(pair->second.second == TypeKind::Enum)
+				{
+					Enumeration* enr = dynamic_cast<Enumeration*>(pair->second.first);
+					iceAssert(enr);
+
+					VarRef* enrcase = dynamic_cast<VarRef*>(ma->right);
+					iceAssert(enrcase);
+
+					for(auto c : enr->cases)
+					{
+						if(c.first == enrcase->name)
+							return this->getLlvmType(c.second);
+					}
+
+					error(this, expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+				}
 				else
 				{
-					error(this, expr, "Invalid expr type");
+					error(this, expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
 				}
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
@@ -385,7 +405,12 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getLlvmType(ai->var)->getPointerElementType();
+				return this->getLlvmType(ai->arr)->getPointerElementType();
+			}
+			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
+			{
+				// todo: make this not shit.
+				return llvm::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
 			}
 		}
 
@@ -605,6 +630,37 @@ namespace Codegen
 		return llvm::StructType::get(cgi->getContext(), types);
 	}
 
+	static llvm::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type)
+	{
+		iceAssert(type.size() > 0);
+
+		llvm::Type* ret = 0;
+		if(type[0] != '[')
+		{
+			std::string t = "";
+			while(type[0] != ']')
+			{
+				t += type[0];
+				type.erase(type.begin());
+			}
+
+			ret = cgi->parseTypeFromString(user, t);
+		}
+		else
+		{
+			type = type.substr(1);
+			ret = recursivelyParseArray(cgi, user, type);
+
+			// todo: FIXME -- arrays, not pointers.
+			ret = ret->getPointerTo();
+
+			if(type[0] != ']')
+				error(cgi, user, "Expected closing '['");
+		}
+
+		return ret;
+	}
+
 	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type)
 	{
 		if(type.length() > 0)
@@ -613,7 +669,14 @@ namespace Codegen
 			{
 				// parse a tuple.
 				llvm::Type* parsed = recursivelyParseTuple(this, user, type);
-				// printf("parsed: %s\n", this->getReadableType(parsed).c_str());
+				return parsed;
+			}
+			else if(type[0] == '[')
+			{
+				// array.
+				std::string tp = type;
+				llvm::Type* parsed = recursivelyParseArray(this, user, tp);
+
 				return parsed;
 			}
 			else
@@ -621,18 +684,64 @@ namespace Codegen
 				int indirections = 0;
 
 				std::string actualType = this->unwrapPointerType(type, &indirections);
-				llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
-
-				if(ret)
+				if(actualType.find("[") != (size_t) -1)
 				{
-					while(indirections > 0)
-					{
-						ret = ret->getPointerTo();
-						indirections--;
-					}
-				}
+					size_t k = actualType.find("[");
+					std::string base = actualType.substr(0, k);
 
-				return ret;
+					std::string arr = actualType.substr(k);
+					llvm::Type* btype = this->parseTypeFromString(user, base);
+
+
+					std::vector<int> sizes;
+					if(arr[0] == '[')
+					{
+						arr = arr.substr(1);
+						while(true)
+						{
+							const char* c = arr.c_str();
+							char* final = 0;
+
+							size_t asize = strtoll(c, &final, 0);
+							size_t numlen = final - c;
+
+							arr = arr.substr(numlen);
+							sizes.push_back(asize);
+
+							if(arr[0] == ',')
+							{
+								arr = arr.substr(1);
+							}
+							else if(arr[0] == ']')
+							{
+								arr = arr.substr(1);
+								break;
+							}
+						}
+					}
+
+					for(auto i : sizes)
+					{
+						btype = llvm::ArrayType::get(btype, i);
+					}
+
+					return btype;
+				}
+				else
+				{
+					llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
+
+					if(ret)
+					{
+						while(indirections > 0)
+						{
+							ret = ret->getPointerTo();
+							indirections--;
+						}
+					}
+
+					return ret;
+				}
 			}
 		}
 		else
@@ -809,8 +918,27 @@ namespace Codegen
 		{
 			return "(" + this->printAst(bo->left) + Parser::arithmeticOpToString(bo->op) + this->printAst(bo->right) + ")";
 		}
+		else if(Number* n = dynamic_cast<Number*>(expr))
+		{
+			return n->decimal ? std::to_string(n->dval) : std::to_string(n->ival);
+		}
+		else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
+		{
+			std::string s = "[ ";
+			for(auto v : al->values)
+				s += this->printAst(v) + ", ";
 
-		error(this, expr, "Unknown shit.");
+			s = s.substr(0, s.length() - 2);
+			s += " ]";
+
+			return s;
+		}
+		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
+		{
+			return this->printAst(ai->arr) + "[" + this->printAst(ai->index) + "]";
+		}
+
+		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
 }
 
