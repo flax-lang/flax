@@ -14,7 +14,7 @@ using namespace Codegen;
 Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// get our array type
-	llvm::Type* atype = cgi->getLlvmType(this->var);
+	llvm::Type* atype = cgi->getLlvmType(this->arr);
 	llvm::Type* etype = nullptr;
 
 	if(atype->isArrayTy())
@@ -42,14 +42,14 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 				iceAssert(!n->decimal);
 				if((uint64_t) n->ival >= at->getNumElements())
 				{
-					error(cgi, this, "Compile-time bounds checking detected index '%d' is out of bounds of %s[%d]", n->ival, this->var->name.c_str(), at->getNumElements());
+					error(cgi, this, "'%d' is out of bounds of array[%d]", n->ival, at->getNumElements());
 				}
 			}
 		}
 	}
 
 	// todo: verify for pointers
-	Result_t lhsp = this->var->codegen(cgi);
+	Result_t lhsp = this->arr->codegen(cgi);
 
 	llvm::Value* lhs = 0;
 	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
@@ -69,10 +69,8 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "arrayIndex");
 	}
 
-	printf("array index: (%s, %s)\n", cgi->getReadableType(gep->getType()->getPointerElementType()).c_str(),
-		cgi->getReadableType(gep).c_str());
-
-
+	// printf("array index: (%s, %s)\n", cgi->getReadableType(gep->getType()->getPointerElementType()).c_str(),
+		// cgi->getReadableType(gep).c_str());
 
 	return Result_t(cgi->mainBuilder.CreateLoad(gep), gep);
 }

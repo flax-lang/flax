@@ -405,7 +405,7 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getLlvmType(ai->var)->getPointerElementType();
+				return this->getLlvmType(ai->arr)->getPointerElementType();
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
@@ -922,16 +922,20 @@ namespace Codegen
 		{
 			return n->decimal ? std::to_string(n->dval) : std::to_string(n->ival);
 		}
-		else if(ArrayLiteral* ai = dynamic_cast<ArrayLiteral*>(expr))
+		else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 		{
 			std::string s = "[ ";
-			for(auto v : ai->values)
+			for(auto v : al->values)
 				s += this->printAst(v) + ", ";
 
 			s = s.substr(0, s.length() - 2);
 			s += " ]";
 
 			return s;
+		}
+		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
+		{
+			return this->printAst(ai->arr) + "[" + this->printAst(ai->index) + "]";
 		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());

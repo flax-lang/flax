@@ -581,10 +581,10 @@ namespace Ast
 	struct ArrayIndex : Expr
 	{
 		~ArrayIndex();
-		ArrayIndex(Parser::PosInfo pos, VarRef* v, Expr* index) : Expr(pos), var(v), index(index) { }
+		ArrayIndex(Parser::PosInfo pos, Expr* v, Expr* index) : Expr(pos), arr(v), index(index) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		VarRef* var;
+		Expr* arr;
 		Expr* index;
 	};
 
