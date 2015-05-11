@@ -38,7 +38,11 @@ namespace Codegen
 		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
 
 		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float")	return llvm::Type::getFloatTy(this->getContext());
+
 		else if(type == "Float64")	return llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Double")	return llvm::Type::getDoubleTy(this->getContext());
+
 		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
 		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
 		else return nullptr;
@@ -405,7 +409,8 @@ namespace Codegen
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
-				return this->getLlvmType(al->values.front());
+				// todo: make this not shit.
+				return llvm::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
 			}
 		}
 
@@ -679,18 +684,64 @@ namespace Codegen
 				int indirections = 0;
 
 				std::string actualType = this->unwrapPointerType(type, &indirections);
-				llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
-
-				if(ret)
+				if(actualType.find("[") != (size_t) -1)
 				{
-					while(indirections > 0)
-					{
-						ret = ret->getPointerTo();
-						indirections--;
-					}
-				}
+					size_t k = actualType.find("[");
+					std::string base = actualType.substr(0, k);
 
-				return ret;
+					std::string arr = actualType.substr(k);
+					llvm::Type* btype = this->parseTypeFromString(user, base);
+
+
+					std::vector<int> sizes;
+					if(arr[0] == '[')
+					{
+						arr = arr.substr(1);
+						while(true)
+						{
+							const char* c = arr.c_str();
+							char* final = 0;
+
+							size_t asize = strtoll(c, &final, 0);
+							size_t numlen = final - c;
+
+							arr = arr.substr(numlen);
+							sizes.push_back(asize);
+
+							if(arr[0] == ',')
+							{
+								arr = arr.substr(1);
+							}
+							else if(arr[0] == ']')
+							{
+								arr = arr.substr(1);
+								break;
+							}
+						}
+					}
+
+					for(auto i : sizes)
+					{
+						btype = llvm::ArrayType::get(btype, i);
+					}
+
+					return btype;
+				}
+				else
+				{
+					llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
+
+					if(ret)
+					{
+						while(indirections > 0)
+						{
+							ret = ret->getPointerTo();
+							indirections--;
+						}
+					}
+
+					return ret;
+				}
 			}
 		}
 		else
@@ -867,8 +918,23 @@ namespace Codegen
 		{
 			return "(" + this->printAst(bo->left) + Parser::arithmeticOpToString(bo->op) + this->printAst(bo->right) + ")";
 		}
+		else if(Number* n = dynamic_cast<Number*>(expr))
+		{
+			return n->decimal ? std::to_string(n->dval) : std::to_string(n->ival);
+		}
+		else if(ArrayLiteral* ai = dynamic_cast<ArrayLiteral*>(expr))
+		{
+			std::string s = "[ ";
+			for(auto v : ai->values)
+				s += this->printAst(v) + ", ";
 
-		error(this, expr, "Unknown shit.");
+			s = s.substr(0, s.length() - 2);
+			s += " ]";
+
+			return s;
+		}
+
+		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
 }
 
