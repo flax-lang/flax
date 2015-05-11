@@ -5,96 +5,46 @@
 import Foundation
 import tests.fizzbuzz
 import tests.recursiveFib
+import tests.scopes
+import tests.arraytest
 
-struct Orr
+ƒ runTests()
 {
-	static var Another = 76
-	var bar = 311
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
+
+	var n = 0
+	while n < 10
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
+
+
+	// fizzbuzz
+	printf("*** FIZZBUZZ TO 50 ***\n")
+	doFizzBuzz(50);
+	printf("\n\n");
+
+
+
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	doScopeTest(@raw "__llvm_jit__build/test")
+	printf("\n\n");
+
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	doArrayTest()
+
+	printf("\n\n");
 }
 
-struct Something
-{
-	var oor = 400
-	static var Or: Orr
-
-	ƒ foo() -> Orr
-	{
-		return Orr()
-	}
-
-	struct Inside
-	{
-		static var Another = 511
-	}
-
-	enum InsideEnum
-	{
-		case None
-		case Single
-		case Double
-		case Triple
-		case Quadruple
-		case Quintuple
-		case Hextuple
-	}
-}
-
-enum OutsideEnum
-{
-	case Zero
-	case One
-	case Two
-	case Three
-	case Four
-}
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	// var x = argv[0] + 3
-
-	// let p = 64.4 ÷ 4.1
-
-	// let m = Math.√(41.5)
-
-	// let mmx = Something.Inside.Another
-	// let another = 4
-	// let foo: Something()
-
-	// let mm = foo.foo().bar
-
-	// let gg = (4, 100.39)
-	// printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
-
-	// printf("[%d]\n", foo.oor)
-	// printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
-
-
-	// let x1: Int = OutsideEnum.Three
-	// let x2: Int = Something.InsideEnum.Quadruple
-	// printf("x1: %d, x2: %d\n", x1, x2)
-
-
-
-
-	// var m: Int* = [ 1, 3, 5, 7 ]
-	// printf("m[0]: %d, m[1]: %d, m[2]: %d, m[3]: %d\n", m[0], m[1], m[2], m[3]);
-
-	let arr = [ [ 1, 2 ], [ 5, 6 ] ]
-	arr[1][1] = 400
-
-	printf("a[0][0]: %d, a[0][1]: %d, a[1][0]: %d, a[1][1]: %d\n", arr[0][0], arr[0][1], arr[1][0], arr[1][1])
-
-	// var a: Double[4] = [ 1.0, 2.0, 4.0, 8.0 ]
-	// printf("a[0]: %f, a[1]: %f, a[2]: %f, a[3]: %f\n", a[0], a[1], a[2], a[3]);
-
-	// var n = 0
-	// while n < 10
-	// {
-	// 	printf("%d: %lld\n", n, doRecursiveFib(n))
-	// 	n += 1
-	// }
-
-
+	runTests()
 	return 0
 }
 
