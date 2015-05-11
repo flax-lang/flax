@@ -58,15 +58,14 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	llvm::Value* gep = nullptr;
 	llvm::Value* ind = this->index->codegen(cgi).result.first;
 
-	if(atype->isStructTy())
+	if(atype->isStructTy() || atype->isArrayTy())
 	{
 		llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
 		gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
 	}
 	else
 	{
-		llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
-		gep = cgi->mainBuilder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "arrayIndex");
+		gep = cgi->mainBuilder.CreateGEP(lhs, ind, "indexPtr");
 	}
 
 	// printf("array index: (%s, %s)\n", cgi->getReadableType(gep->getType()->getPointerElementType()).c_str(),

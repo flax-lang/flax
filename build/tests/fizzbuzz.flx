@@ -4,9 +4,8 @@
 
 import Foundation
 
-public ƒ doFizzBuzz()
+public ƒ doFizzBuzz(var i: Int)
 {
-	var i = 100
 	while i > 0
 	{
 		printf("%d: ", i)
