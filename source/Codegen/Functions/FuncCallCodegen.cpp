@@ -53,7 +53,16 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	if(!fp)
 	{
 		// try and resolve.
-		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
+		std::vector<std::string> argtypes;
+		for(auto a : this->params)
+			argtypes.push_back(cgi->getReadableType(a).c_str());
+
+		std::string argstr;
+		for(auto s : argtypes)
+			argstr += ", " + s;
+
+		argstr = argstr.substr(2);
+		error(cgi, this, "No such function '%s' taking parameters (%s)", this->name.c_str(), argstr.c_str());
 	}
 
 	llvm::Function* target = fp->first;

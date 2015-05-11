@@ -23,8 +23,8 @@ import tests.arraytest
 
 
 	// fizzbuzz
-	printf("*** FIZZBUZZ TO 50 ***\n")
-	doFizzBuzz(50);
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(20);
 	printf("\n\n");
 
 
