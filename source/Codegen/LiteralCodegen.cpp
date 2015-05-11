@@ -70,7 +70,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 
 Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	llvm::Type* type = 0;
+	llvm::Type* tp = 0;
 	std::vector<llvm::Constant*> vals;
 
 	if(this->values.size() == 0)
@@ -80,25 +80,24 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			error(cgi, this, "Unable to infer type for empty array");
 		}
 
-		type = lhsPtr->getType()->getPointerElementType();
+		tp = lhsPtr->getType()->getPointerElementType();
 	}
 	else
 	{
-		type = cgi->getLlvmType(this->values.front());
+		tp = cgi->getLlvmType(this->values.front());
 
 		for(Expr* e : this->values)
 		{
 			llvm::Value* v = e->codegen(cgi).result.first;
-
 			if(llvm::isa<llvm::Constant>(v))
 			{
 				llvm::Constant* c = llvm::cast<llvm::Constant>(v);
 
 				vals.push_back(c);
-				if(vals.back()->getType() != type)
+				if(vals.back()->getType() != tp)
 				{
 					error(cgi, e, "Array members must have the same type, got %s and %s",
-						cgi->getReadableType(type).c_str(), cgi->getReadableType(vals.back()->getType()).c_str());
+						cgi->getReadableType(tp).c_str(), cgi->getReadableType(vals.back()->getType()).c_str());
 				}
 			}
 			else
@@ -108,7 +107,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 	}
 
-	llvm::ArrayType* atype = llvm::ArrayType::get(type, this->values.size());
+	llvm::ArrayType* atype = llvm::ArrayType::get(tp, this->values.size());
 	llvm::Value* alloc = cgi->mainBuilder.CreateAlloca(atype);
 	llvm::Value* val = llvm::ConstantArray::get(atype, vals);
 

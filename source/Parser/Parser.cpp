@@ -958,6 +958,40 @@ namespace Parser
 					eat(tokens), ptrAppend += "*";
 			}
 
+			// check if the next token is a '['.
+			if(tokens.front().type == TType::LSquare)
+			{
+				eat(tokens);
+
+				// todo: multidimensional fixed-size arrays.
+				Token n = eat(tokens);
+				if(n.type != TType::Integer)
+					parserError("Expected integer size for fixed-length array");
+
+				std::string dims = n.text;
+				n = eat(tokens);
+				while(n.type == TType::Comma)
+				{
+					n = eat(tokens);
+					if(n.type == TType::Integer)
+					{
+						dims += "," + n.text;
+						n = eat(tokens);
+					}
+
+					else if(n.type == TType::RSquare)
+						break;
+
+					else
+						parserError("> Unexpected token %s", n.text.c_str());
+				}
+
+				ptrAppend += "[" + dims + "]";
+
+				if(n.type != TType::RSquare)
+					parserError("Expected ']', have %s", n.text.c_str());
+			}
+
 			std::string ret = baseType + ptrAppend;
 			Expr* ct = CreateAST(DummyExpr, tmp);
 			ct->type.isLiteral = true;
@@ -1010,6 +1044,9 @@ namespace Parser
 		}
 		else if(tmp.type == TType::LSquare)
 		{
+			// variable-sized array.
+			// declared as pointers, basically.
+
 			Expr* _dm = parseType(tokens);
 			iceAssert(_dm->type.isLiteral);
 
