@@ -524,7 +524,12 @@ namespace Codegen
 		else if(r.find("Uint") == 0)	r = "m";
 
 		else if(r.find("Float32") == 0)	r = "f";
+		else if(r.find("Float") == 0)	r = "f";
+
 		else if(r.find("Float64") == 0)	r = "d";
+		else if(r.find("Double") == 0)	r = "d";
+
+
 		else if(r.find("Void") == 0)	r = "v";
 		else
 		{
