@@ -36,7 +36,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	// see if we have nested types
-	for(Struct* nested : this->nestedTypes)
+	for(auto nested : this->nestedTypes)
 		nested->codegen(cgi);
 
 
@@ -289,7 +289,7 @@ void Struct::createType(CodegenInstance* cgi)
 	if(!this->didCreateType)
 	{
 		// see if we have nested types
-		for(Struct* nested : this->nestedTypes)
+		for(auto nested : this->nestedTypes)
 		{
 			cgi->pushNamespaceScope(this->name);
 			nested->createType(cgi);

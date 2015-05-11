@@ -1,0 +1,79 @@
+// scopes.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+struct Orr
+{
+	static var Another = 76
+	var bar = 311
+}
+
+struct Something
+{
+	var oor = 400
+	static var Or: Orr
+
+	ƒ foo() -> Orr
+	{
+		return Orr()
+	}
+
+	struct Inside
+	{
+		static var Another = 511
+	}
+
+	enum InsideEnum
+	{
+		case None
+		case Single
+		case Double
+		case Triple
+		case Quadruple
+		case Quintuple
+		case Hextuple
+	}
+}
+
+enum OutsideEnum
+{
+	case Zero
+	case One
+	case Two
+	case Three
+	case Four
+}
+
+public ƒ doScopeTest(argv: Int8*)
+{
+	var x = argv + 3
+
+	let p = 64.4 ÷ 4.1
+
+	let m = Math.√(41.5)
+
+	let mmx = Something.Inside.Another
+	let another = 4
+	let foo: Something()
+
+	let mm = foo.foo().bar
+
+	let gg = (4, 100.39)
+	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
+
+	printf("[%d]\n", foo.oor)
+	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
+
+
+	let x1: Int = OutsideEnum.Three
+	let x2: Int = Something.InsideEnum.Quadruple
+	printf("x1: %d, x2: %d\n", x1, x2)
+}
+
+
+
+
+
+
