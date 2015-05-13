@@ -46,9 +46,9 @@ enum OutsideEnum
 	case Four
 }
 
-public ƒ doScopeTest(argv: Int8*)
+public ƒ doScopeTest(argv: String)
 {
-	var x = argv + 3
+	var x = argv.data + 3
 
 	let p = 64.4 ÷ 4.1
 

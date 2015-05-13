@@ -475,6 +475,12 @@ namespace Codegen
 		if(ret.length() > 0 && ret[0] == '%')
 			ret = ret.substr(1);
 
+
+		if(ret.length() > 0 && ret.find("=") != (size_t) -1)
+		{
+			ret = ret.substr(0, ret.find("=") - 1);
+		}
+
 		return ret;
 	}
 
@@ -910,9 +916,25 @@ namespace Codegen
 		{
 			return fc->name + "()";
 		}
+		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
+		{
+			std::string str = "ƒ " + fd->name + "(";
+			for(auto p : fd->params)
+			{
+				str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
+			}
+
+			str = str.substr(0, str.length() - 2) + ") -> ";
+			str += this->getReadableType(fd);
+			return str;
+		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))
 		{
 			return vr->name;
+		}
+		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
+		{
+			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": " + this->getReadableType(vd);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
