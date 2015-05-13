@@ -62,7 +62,19 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			argstr += ", " + s;
 
 		argstr = argstr.substr(2);
-		error(cgi, this, "No such function '%s' taking parameters (%s)", this->name.c_str(), argstr.c_str());
+
+		std::string candidates;
+		for(auto fs : cgi->funcStack)
+		{
+			for(auto f : fs)
+			{
+				if(f.second.second && f.second.second->name == this->name)
+					candidates += cgi->printAst(f.second.second) + "\n";
+			}
+		}
+
+		error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
+			this->name.c_str(), argstr.c_str(), candidates.c_str());
 	}
 
 	llvm::Function* target = fp->first;

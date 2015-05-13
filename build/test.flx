@@ -8,6 +8,8 @@ import tests.recursiveFib
 import tests.scopes
 import tests.arraytest
 
+
+
 ƒ runTests()
 {
 	// fib
@@ -28,10 +30,9 @@ import tests.arraytest
 	printf("\n\n");
 
 
-
 	// scopes
 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest(@raw "__llvm_jit__build/test")
+	doScopeTest("__llvm_jit__build/test")
 	printf("\n\n");
 
 	// arrays
