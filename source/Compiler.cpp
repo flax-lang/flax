@@ -25,6 +25,11 @@ namespace Compiler
 {
 	static std::string resolveImport(Import* imp, std::string curpath)
 	{
+		if(imp->module.find("*") != (size_t) -1)
+		{
+			Parser::parserError("Wildcard imports are currently not supported (trying to import %s)", imp->module.c_str());
+		}
+
 		// first check the current directory.
 		std::string modname = imp->module;
 		for(size_t i = 0; i < modname.length(); i++)

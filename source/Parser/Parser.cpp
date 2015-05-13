@@ -1928,6 +1928,10 @@ namespace Parser
 			{
 				s += t.text;
 			}
+			else if(t.type == TType::Asterisk)
+			{
+				s += "*";
+			}
 			else
 			{
 				break;
