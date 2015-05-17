@@ -712,6 +712,28 @@ namespace Codegen
 	}
 
 
+	Result_t CodegenInstance::createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr)
+	{
+		// llvm::Value* alloca = this->allocateInstanceInBlock(stringType);
+
+		// // String layout:
+		// // var data: Int8*
+		// // var allocated: Uint64
+
+		// llvm::Value* stringPtr = this->mainBuilder.CreateStructGEP(alloca, 0);
+		// llvm::Value* allocdPtr = this->mainBuilder.CreateStructGEP(alloca, 1);
+
+		// llvm::Value* newstr = this->mainBuilder.CreateAlloca(int8ptr->getType(), );
+
+		// llvm::Value* stringVal = this->mainBuilder.CreateGlobalStringPtr(this->str);
+
+		// this->mainBuilder.CreateStore(stringVal, stringPtr);
+		// this->mainBuilder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
+
+		// llvm::Value* val = this->mainBuilder.CreateLoad(alloca);
+		// return Result_t(val, alloca);
+		return Result_t(0, 0);
+	}
 
 
 
@@ -782,7 +804,7 @@ namespace Codegen
 		return Parser::mangledStringToOperator(ch);
 	}
 
-	Result_t CodegenInstance::callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
+	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
 	{
 		iceAssert(pair);
 		iceAssert(pair->first);
@@ -809,7 +831,7 @@ namespace Codegen
 
 		if(!opov)
 		{
-			if(fail)	GenError::noOpOverload(this, str, str->name, op);
+			if(fail)	GenError::noOpOverload(this, user, str->name, op);
 			else		return Result_t(0, 0);
 		}
 
@@ -832,7 +854,7 @@ namespace Codegen
 			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
 		}
 
-		if(fail)	GenError::noOpOverload(this, str, str->name, op);
+		if(fail)	GenError::noOpOverload(this, user, str->name, op);
 		return Result_t(0, 0);
 	}
 
