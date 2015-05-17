@@ -1405,6 +1405,16 @@ namespace Parser
 		{
 			eat(tokens);
 			ret->count = parseExpr(tokens);
+
+			// check for comma, to allocate arrays on the heap
+			// ie. let arr = alloc [1, 2, 3].
+			// obviously, type is not necessary.
+			// probably. if we need to (for polymorphism, to specify the base type, for example)
+			// then either
+
+			// alloc: Type [1, 2, 3] or alloc [1, 2, 3]: Type will work.
+			// not too hard to implement either.
+
 			if(eat(tokens).type != TType::RSquare)
 				parserError("Expected ']' after alloc[num]");
 		}
