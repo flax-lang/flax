@@ -20,7 +20,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
-		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
+		Result_t ret = cgi->callOperatorOnStruct(user, tp, structRef, op, rhs, false);
 		if(ret.result.first != 0)
 		{
 			return ret;
@@ -403,9 +403,55 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			iceAssert(valptr.second);
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
+		else if(lhs->getType()->getStructName() == "String" && rtype == llvm::Type::getInt8PtrTy(cgi->getContext()))
+		{
+			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+			llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
+
+			// string to int8*.
+			// just access the data pointer.
+
+			llvm::Value* lhsref = valptr.second;
+			if(!lhsref)
+			{
+				// dammit.
+				lhsref = cgi->allocateInstanceInBlock(stringType);
+				cgi->mainBuilder.CreateStore(lhs, lhsref);
+			}
+
+			llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(lhsref, 0);
+			return Result_t(cgi->mainBuilder.CreateLoad(stringPtr), stringPtr);
+		}
+		else if(lhs->getType() == llvm::Type::getInt8PtrTy(cgi->getContext()) && rtype->getStructName() == "String")
+		{
+			error(cgi, this, "Automatic char* -> String casting not yet supported");
+			// auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+			// llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
+
+
+
+			// lhsref = cgi->allocateInstanceInBlock(stringType);
+			// cgi->mainBuilder.CreateStore(lhs, lhsref);
+
+			// llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(lhsref, 0);
+
+
+
+			// return Result_t(cgi->mainBuilder.CreateLoad(stringPtr), stringPtr);
+		}
 		else if(this->op != ArithmeticOp::ForcedCast)
 		{
-			warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rtype).c_str());
+			std::string lstr = cgi->getReadableType(lhs).c_str();
+			std::string rstr = cgi->getReadableType(rtype).c_str();
+
+			if(!llvm::CastInst::castIsValid(llvm::Instruction::BitCast, lhs, rtype))
+			{
+				error(cgi, this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			}
+			else
+			{
+				warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
+			}
 		}
 
 		return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
@@ -651,7 +697,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			error(cgi, this, "Invalid type");
 		}
 
-		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
+		return cgi->callOperatorOnStruct(this, p, valptr.second, op, rhs);
 	}
 
 	error(cgi, this, "Unsupported operator on type");
