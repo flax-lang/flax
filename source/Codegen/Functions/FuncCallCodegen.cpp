@@ -52,7 +52,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	FuncPair_t* fp = cgi->getDeclaredFunc(this);
 	if(!fp)
 	{
-		// try and resolve.
+		// print a better error message.
 		std::vector<std::string> argtypes;
 		for(auto a : this->params)
 			argtypes.push_back(cgi->getReadableType(a).c_str());
@@ -101,6 +101,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
 		{
+			// this function knows what to do.
 			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
 		}
 

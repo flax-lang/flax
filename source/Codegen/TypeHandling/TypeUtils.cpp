@@ -535,7 +535,8 @@ namespace Codegen
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerTy() && target->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
 		{
-			if(right->getType()->isStructTy() && right->getType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+			llvm::Type* rtype = right->getType();
+			if(rtype->isStructTy() && rtype->getStructName()== this->mangleWithNamespace("String", std::deque<std::string>()))
 			{
 				// get the struct gep:
 				// Layout of string:

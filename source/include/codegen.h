@@ -175,6 +175,8 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(llvm::Type* type, llvm::Value* ptr);
 
+		Ast::Result_t createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr);
+
 
 		void evaluateDependencies(Ast::Expr* expr);
 
@@ -189,7 +191,7 @@ namespace Codegen
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
-		Ast::Result_t callOperatorOnStruct(TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
+		Ast::Result_t callOperatorOnStruct(Ast::Expr* user, TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
 	};
 
 	Ast::Result_t enumerationAccessCodegen(CodegenInstance* cgi, Ast::Expr* lhs, Ast::Expr* rhs);
