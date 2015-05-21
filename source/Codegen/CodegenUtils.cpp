@@ -19,6 +19,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -28,12 +29,14 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		llvm::InitializeNativeTarget();
 		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
 		cgi->rootNode = root;
 
 		std::string err;
-		cgi->execEngine = llvm::EngineBuilder(cgi->mainModule).setErrorStr(&err).create();
+		cgi->execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(cgi->mainModule))
+							.setErrorStr(&err)
+							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+							.create();
 
 		if(!cgi->execEngine)
 		{
@@ -64,6 +67,7 @@ namespace Codegen
 			// fuck it, turn everything on.
 			functionPassManager.add(llvm::createLoadCombinePass());
 			functionPassManager.add(llvm::createConstantHoistingPass());
+			functionPassManager.add(llvm::createLICMPass());
 			functionPassManager.add(llvm::createDelinearizationPass());
 			functionPassManager.add(llvm::createFlattenCFGPass());
 			functionPassManager.add(llvm::createScalarizerPass());
@@ -102,6 +106,7 @@ namespace Codegen
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
 			auto func = pair.second;
+			iceAssert(func);
 
 			// add to the func table
 			auto lf = cgi->mainModule->getFunction(func->getName());
@@ -145,7 +150,7 @@ namespace Codegen
 
 	void writeBitcode(std::string filename, CodegenInstance* cgi)
 	{
-		std::string e;
+		std::error_code e;
 		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
 		size_t lastdot = filename.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
@@ -1001,8 +1006,11 @@ namespace Codegen
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
 		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
 
-		uint64_t ptrWidth = this->mainModule->getDataLayout()->getPointerSizeInBits();
-		uint64_t typesize = this->mainModule->getDataLayout()->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
+		const llvm::DataLayout* dl = this->execEngine->getDataLayout();
+		iceAssert(dl);
+
+		uint64_t ptrWidth = dl->getPointerSizeInBits();
+		uint64_t typesize = dl->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
 		llvm::APInt apint = llvm::APInt(ptrWidth, typesize);
 		llvm::Value* intval = llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), ptrWidth), apint);
 

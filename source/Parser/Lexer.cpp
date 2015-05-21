@@ -210,8 +210,6 @@ namespace Parser
 
 		else if(isdigit(stream[0]))
 		{
-			// todo: handle hex
-
 			std::string num;
 
 			// read until whitespace
@@ -223,12 +221,17 @@ namespace Parser
 				num += (char) tmp;
 
 			int base = 10;
-			if(num == "0" && tmp == 'x')
+			if(num == "0" && (tmp == 'x' || tmp == 'X' || tmp == 'b' || tmp == 'B'))
 			{
-				base = 16;
+				if(tmp == 'x' || tmp == 'X')
+					base = 16;
+
+				else if(tmp == 'b' || tmp == 'B')
+					base = 2;
+
 				num = "";
 
-				while(isxdigit(tmp = str.get()))
+				while(tmp = str.get(), (base == 16 ? isxdigit(tmp) : (tmp == '0' || tmp == '1')))
 					num += (char) tmp;
 			}
 
@@ -248,6 +251,9 @@ namespace Parser
 
 				if(base == 16)
 					num = "0x" + num;
+
+				else if(base == 2)
+					num = "0b" + num;
 			}
 			else if(base == 10)
 			{

@@ -130,7 +130,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	if(this->isFFI)
 	{
-		linkageType = llvm::Function::ExternalWeakLinkage;
+		linkageType = llvm::Function::ExternalLinkage;
 	}
 	else if((this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal))
 	{
