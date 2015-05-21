@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "include/ast.h"
+#include "include/codegen.h"
 
 namespace Ast
 {
@@ -178,6 +179,27 @@ namespace Ast
 			delete e;
 	}
 }
+
+Codegen::CodegenInstance::~CodegenInstance()
+{
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
