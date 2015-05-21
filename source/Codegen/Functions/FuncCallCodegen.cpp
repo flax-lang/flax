@@ -23,8 +23,8 @@ static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* 
 
 	llvm::Function* initfunc = cgi->getStructInitialiser(fc, tp, args);
 
-	cgi->mainBuilder.CreateCall(initfunc, args);
-	llvm::Value* val = cgi->mainBuilder.CreateLoad(ai);
+	cgi->builder.CreateCall(initfunc, args);
+	llvm::Value* val = cgi->builder.CreateLoad(ai);
 
 	return Result_t(val, ai);
 }
@@ -126,7 +126,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		}
 	}
 
-	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
+	return Result_t(cgi->builder.CreateCall(target, args), 0);
 }
 
 

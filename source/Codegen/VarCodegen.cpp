@@ -17,7 +17,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	if(!val)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
-	return Result_t(cgi->mainBuilder.CreateLoad(val, this->name), val);
+	return Result_t(cgi->builder.CreateLoad(val, this->name), val);
 }
 
 
@@ -82,7 +82,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 					std::vector<llvm::Value*> args { unwrappedAi };
 
 					llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
-					val = cgi->mainBuilder.CreateCall(initfunc, args);
+					val = cgi->builder.CreateCall(initfunc, args);
 				}
 			}
 		}
@@ -106,7 +106,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			bool wasImmut = this->immutable;
 			this->immutable = false;
 			auto res = cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal,
-				ArithmeticOp::Assign, cgi->mainBuilder.CreateLoad(ai), ai, val, valptr);
+				ArithmeticOp::Assign, cgi->builder.CreateLoad(ai), ai, val, valptr);
 
 			this->immutable = wasImmut;
 			return res.result.first;
@@ -116,7 +116,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			if(!val)
 				val = cgi->getDefaultValue(this);
 
-			cgi->mainBuilder.CreateStore(val, ai);
+			cgi->builder.CreateStore(val, ai);
 			return val;
 		}
 		else if(cmplxtype && this->initVal)
@@ -128,13 +128,13 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			if(ai->getType()->getPointerElementType() != val->getType())
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
-			cgi->mainBuilder.CreateStore(val, ai);
+			cgi->builder.CreateStore(val, ai);
 			return val;
 		}
 		else
 		{
 			if(valptr)
-				val = cgi->mainBuilder.CreateLoad(valptr);
+				val = cgi->builder.CreateLoad(valptr);
 
 			else
 				return val;
@@ -169,7 +169,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 			// if((uint64_t) n->ival < max)
 
 
-			val = cgi->mainBuilder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+			val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
 
 
 			// }
@@ -180,7 +180,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 	}
 
-	cgi->mainBuilder.CreateStore(val, ai);
+	cgi->builder.CreateStore(val, ai);
 	return val;
 }
 
@@ -264,7 +264,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		}
 		else
 		{
-			ai = new llvm::GlobalVariable(*cgi->mainModule, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+			ai = new llvm::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
 		}
 
 		if(this->initVal)

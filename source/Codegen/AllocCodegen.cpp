@@ -51,7 +51,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 	// call malloc
-	uint64_t typesize = cgi->mainModule->getDataLayout()->getTypeSizeInBits(allocType) / 8;
+	uint64_t typesize = cgi->module->getDataLayout()->getTypeSizeInBits(allocType) / 8;
 	llvm::Value* allocsize = llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), typesize);
 	llvm::Value* allocnum = oneValue;
 
@@ -63,8 +63,8 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		if(!allocnum->getType()->isIntegerTy())
 			error(cgi, this, "Expected integer type in alloc");
 
-		allocnum = cgi->mainBuilder.CreateIntCast(allocnum, allocsize->getType(), false);
-		allocsize = cgi->mainBuilder.CreateMul(allocsize, allocnum);
+		allocnum = cgi->builder.CreateIntCast(allocnum, allocsize->getType(), false);
+		allocsize = cgi->builder.CreateMul(allocsize, allocnum);
 
 
 		// compare to zero. first see what we can do at compile time, if the constant is zero.
@@ -80,25 +80,25 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		else
 		{
 			// do it at runtime.
-			isZero = cgi->mainBuilder.CreateICmpEQ(allocnum, llvm::ConstantInt::getNullValue(allocsize->getType()));
+			isZero = cgi->builder.CreateICmpEQ(allocnum, llvm::ConstantInt::getNullValue(allocsize->getType()));
 		}
 	}
 
 	llvm::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->allocateInstanceInBlock(allocType->getPointerTo());
 
-	llvm::Value* amem = cgi->mainBuilder.CreatePointerCast(cgi->mainBuilder.CreateCall(mallocf, allocsize), allocType->getPointerTo());
+	llvm::Value* amem = cgi->builder.CreatePointerCast(cgi->builder.CreateCall(mallocf, allocsize), allocType->getPointerTo());
 	// warn(cgi, this, "%s -> %s\n", cgi->getReadableType(amem).c_str(), cgi->getReadableType(allocmemptr).c_str());
 
-	llvm::Value* allocatedmem = cgi->mainBuilder.CreateStore(amem, allocmemptr);
+	llvm::Value* allocatedmem = cgi->builder.CreateStore(amem, allocmemptr);
 
-	allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+	allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 	// call the initialiser, if there is one
 	llvm::Value* defaultValue = 0;
 	if(allocType->isIntegerTy() || allocType->isPointerTy())
 	{
 		defaultValue = llvm::Constant::getNullValue(allocType);
-		cgi->mainBuilder.CreateMemSet(allocatedmem, defaultValue, allocsize, typesize);
+		cgi->builder.CreateMemSet(allocatedmem, defaultValue, allocsize, typesize);
 	}
 	else
 	{
@@ -112,7 +112,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		llvm::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
 
 		// we need to keep calling this... essentially looping.
-		llvm::BasicBlock* curbb = cgi->mainBuilder.GetInsertBlock();	// store the current bb
+		llvm::BasicBlock* curbb = cgi->builder.GetInsertBlock();	// store the current bb
 		llvm::BasicBlock* loopBegin = llvm::BasicBlock::Create(cgi->getContext(), "loopBegin", curbb->getParent());
 		llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", curbb->getParent());
 		llvm::BasicBlock* after = llvm::BasicBlock::Create(cgi->getContext(), "afterLoop", curbb->getParent());
@@ -124,14 +124,14 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		{
 			llvm::BasicBlock* notZero = llvm::BasicBlock::Create(cgi->getContext(), "notZero", curbb->getParent());
 			llvm::BasicBlock* setToZero = llvm::BasicBlock::Create(cgi->getContext(), "zeroAlloc", curbb->getParent());
-			cgi->mainBuilder.CreateCondBr(isZero, setToZero, notZero);
+			cgi->builder.CreateCondBr(isZero, setToZero, notZero);
 
-			cgi->mainBuilder.SetInsertPoint(setToZero);
-			cgi->mainBuilder.CreateStore(llvm::ConstantPointerNull::getNullValue(allocatedmem->getType()), allocmemptr);
-			allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
-			cgi->mainBuilder.CreateBr(after);
+			cgi->builder.SetInsertPoint(setToZero);
+			cgi->builder.CreateStore(llvm::ConstantPointerNull::getNullValue(allocatedmem->getType()), allocmemptr);
+			allocatedmem = cgi->builder.CreateLoad(allocmemptr);
+			cgi->builder.CreateBr(after);
 
-			cgi->mainBuilder.SetInsertPoint(notZero);
+			cgi->builder.SetInsertPoint(notZero);
 		}
 
 
@@ -144,49 +144,49 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// create the loop counter (initialise it with the value)
 		llvm::Value* counterptr = cgi->allocateInstanceInBlock(allocsize->getType());
-		cgi->mainBuilder.CreateStore(allocnum, counterptr);
-		llvm::Value* counter = cgi->mainBuilder.CreateLoad(counterptr);
+		cgi->builder.CreateStore(allocnum, counterptr);
+		llvm::Value* counter = cgi->builder.CreateLoad(counterptr);
 
 		// do { ...; num--; } while(num - 1 > 0)
-		cgi->mainBuilder.CreateBr(loopBegin);	// explicit branch
+		cgi->builder.CreateBr(loopBegin);	// explicit branch
 
 
 		// start in the loop
-		cgi->mainBuilder.SetInsertPoint(loopBegin);
+		cgi->builder.SetInsertPoint(loopBegin);
 
 		// call the constructor
-		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 		args[0] = allocatedmem;
-		cgi->mainBuilder.CreateCall(initfunc, args);
+		cgi->builder.CreateCall(initfunc, args);
 
 		// move the allocatedmem pointer by the type size
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
-		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 		// subtract the counter
-		counter = cgi->mainBuilder.CreateLoad(counterptr);
-		cgi->mainBuilder.CreateStore(cgi->mainBuilder.CreateSub(counter, oneValue), counterptr);
+		counter = cgi->builder.CreateLoad(counterptr);
+		cgi->builder.CreateStore(cgi->builder.CreateSub(counter, oneValue), counterptr);
 
 		// do the comparison
-		counter = cgi->mainBuilder.CreateLoad(counterptr);
+		counter = cgi->builder.CreateLoad(counterptr);
 
-		llvm::Value* brcond = cgi->mainBuilder.CreateICmpUGT(counter, zeroValue);
-		cgi->mainBuilder.CreateCondBr(brcond, loopBegin, loopEnd);
+		llvm::Value* brcond = cgi->builder.CreateICmpUGT(counter, zeroValue);
+		cgi->builder.CreateCondBr(brcond, loopBegin, loopEnd);
 
 		// at loopend:
-		cgi->mainBuilder.SetInsertPoint(loopEnd);
+		cgi->builder.SetInsertPoint(loopEnd);
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
 
-		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
 
 
-		cgi->mainBuilder.CreateBr(after);
-		cgi->mainBuilder.SetInsertPoint(after);
-		allocatedmem = cgi->mainBuilder.CreateLoad(allocmemptr);
+		cgi->builder.CreateBr(after);
+		cgi->builder.SetInsertPoint(after);
+		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 	}
 
 	return Result_t(allocatedmem, 0);
@@ -209,8 +209,8 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		llvm::Value* varval = sp->first.first;
 
 		// therefore, create a Load to get the actual value
-		varval = cgi->mainBuilder.CreateLoad(varval);
-		freearg = cgi->mainBuilder.CreatePointerCast(varval, llvm::IntegerType::getInt8PtrTy(cgi->getContext()));
+		varval = cgi->builder.CreateLoad(varval);
+		freearg = cgi->builder.CreatePointerCast(varval, llvm::IntegerType::getInt8PtrTy(cgi->getContext()));
 	}
 	else
 	{
@@ -235,7 +235,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 
 
-	cgi->mainBuilder.CreateCall(fp->first, freearg);
+	cgi->builder.CreateCall(fp->first, freearg);
 	return Result_t(0, 0);
 }
 
