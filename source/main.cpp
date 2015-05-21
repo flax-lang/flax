@@ -13,6 +13,9 @@
 #include "include/compiler.h"
 
 #include "llvm/Linker/Linker.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+
 
 using namespace Ast;
 
@@ -270,6 +273,10 @@ int main(int argc, char* argv[])
 		std::vector<llvm::Module*> modulelist;
 		std::map<std::string, Ast::Root*> rootmap;
 
+		iceAssert(llvm::InitializeNativeTarget() == 0);
+		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
+		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
+
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
 		Root* r = Compiler::compileFile(filename, filelist, rootmap, modulelist, cgi);
 
@@ -282,7 +289,7 @@ int main(int argc, char* argv[])
 		{
 			llvm::Linker linker = llvm::Linker(cgi->mainModule);
 			for(auto mod : modulelist)
-				linker.linkInModule(mod, nullptr);
+				linker.linkInModule(mod);
 		}
 
 
@@ -389,13 +396,27 @@ int main(int argc, char* argv[])
 			if(Compiler::printModule)
 				cgi->mainModule->dump();
 
-			cgi->execEngine = llvm::EngineBuilder(cgi->mainModule).create();
-			if(llvm::Function* mainptr = cgi->mainModule->getFunction("main"))
+			iceAssert(cgi->execEngine);
+
+			if(cgi->mainModule->getFunction("main") != 0)
 			{
-				void* func = cgi->execEngine->getPointerToFunction(mainptr);
+				std::string err;
+				llvm::Module* clone = llvm::CloneModule(cgi->mainModule);
+				llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
+							.setErrorStr(&err)
+							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+							.create();
+
+
+				void* func = ee->getPointerToFunction(clone->getFunction("main"));
+				iceAssert(func);
 				auto mainfunc = (int (*)(int, const char**)) func;
 
-				const char* m[] = { ("__llvmJIT_" + cgi->mainModule->getModuleIdentifier()).c_str() };
+				const char* m[] = { ("__llvmJIT_" + clone->getModuleIdentifier()).c_str() };
+
+				// finalise the object, which causes the memory to be executable
+				// fucking NX bit
+				ee->finalizeObject();
 				mainfunc(1, m);
 			}
 		}
