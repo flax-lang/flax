@@ -50,10 +50,10 @@ namespace Codegen
 		// strong enum.
 		// create a temp alloca, then use GEP to set the value, then return.
 		llvm::Value* alloca = cgi->allocateInstanceInBlock(tp->first);
-		llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(alloca, 0);
+		llvm::Value* gep = cgi->builder.CreateStructGEP(alloca, 0);
 
-		cgi->mainBuilder.CreateStore(res.result.first, gep);
-		return Result_t(cgi->mainBuilder.CreateLoad(alloca), alloca);
+		cgi->builder.CreateStore(res.result.first, gep);
+		return Result_t(cgi->builder.CreateLoad(alloca), alloca);
 	}
 }
 

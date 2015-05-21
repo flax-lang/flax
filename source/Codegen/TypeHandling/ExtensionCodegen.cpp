@@ -19,13 +19,13 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 {
 	// generate initialiser
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(stype, 0), false), llvm::Function::ExternalLinkage,
-		"__automatic_init__" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->mainModule);
+		"__automatic_init__" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->module);
 
 	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 
-	llvm::BasicBlock* oldIP = cgi->mainBuilder.GetInsertBlock();
-	cgi->mainBuilder.SetInsertPoint(iblock);
+	llvm::BasicBlock* oldIP = cgi->builder.GetInsertBlock();
+	cgi->builder.SetInsertPoint(iblock);
 
 	// create the local instance of reference to self
 	llvm::Value* self = defaultInitFunc->arg_begin();
@@ -38,16 +38,16 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 		int i = memberBeginOffset + this->nameMap[var->name];
 		iceAssert(i >= 0);
 
-		llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+		llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
 	}
 
-	cgi->mainBuilder.CreateRetVoid();
+	cgi->builder.CreateRetVoid();
 	llvm::verifyFunction(*defaultInitFunc);
 
-	cgi->mainBuilder.SetInsertPoint(oldIP);
+	cgi->builder.SetInsertPoint(oldIP);
 	return defaultInitFunc;
 }
 

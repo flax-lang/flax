@@ -63,7 +63,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 	for(unsigned int i = 0; i < strtype->getStructNumElements(); i++)
 	{
-		llvm::Value* member = cgi->mainBuilder.CreateStructGEP(gep, i);
+		llvm::Value* member = cgi->builder.CreateStructGEP(gep, i);
 		llvm::Value* val = this->values[i]->codegen(cgi).result.first;
 
 		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());
@@ -73,10 +73,10 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			error(cgi, this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
 				cgi->getReadableType(member->getType()->getPointerElementType()).c_str(), cgi->getReadableType(val).c_str());
 
-		cgi->mainBuilder.CreateStore(val, member);
+		cgi->builder.CreateStore(val, member);
 	}
 
-	return Result_t(cgi->mainBuilder.CreateLoad(gep), gep);
+	return Result_t(cgi->builder.CreateLoad(gep), gep);
 }
 
 

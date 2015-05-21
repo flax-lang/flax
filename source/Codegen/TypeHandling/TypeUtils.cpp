@@ -91,7 +91,7 @@ namespace Codegen
 				return alloca;		// fail.
 			}
 
-			return this->mainBuilder.CreateStructGEP(alloca, 0);
+			return this->builder.CreateStructGEP(alloca, 0);
 		}
 
 		return alloca;
@@ -419,7 +419,7 @@ namespace Codegen
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
 	{
-		return this->mainBuilder.CreateAlloca(type, 0, name == "" ? "" : name);
+		return this->builder.CreateAlloca(type, 0, name == "" ? "" : name);
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
@@ -529,7 +529,7 @@ namespace Codegen
 			}
 
 			if(shouldCast)
-				right = this->mainBuilder.CreateIntCast(right, target, false);
+				right = this->builder.CreateIntCast(right, target, false);
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
@@ -545,13 +545,13 @@ namespace Codegen
 
 				// cast the RHS to the LHS
 				iceAssert(rhsPtr);
-				llvm::Value* ret = this->mainBuilder.CreateStructGEP(rhsPtr, 0);
-				right = this->mainBuilder.CreateLoad(ret);	// mutating
+				llvm::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+				right = this->builder.CreateLoad(ret);	// mutating
 			}
 		}
 		else if(target->isFloatingPointTy() && right->getType()->isIntegerTy())
 		{
-			right = this->mainBuilder.CreateSIToFP(right, target);
+			right = this->builder.CreateSIToFP(right, target);
 		}
 	}
 

@@ -123,7 +123,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		else
 		{
 			selfPtr = cgi->allocateInstanceInBlock(type);
-			cgi->mainBuilder.CreateStore(self, selfPtr);
+			cgi->builder.CreateStore(self, selfPtr);
 		}
 	}
 
@@ -149,12 +149,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		if(wasSelfPtr)
 		{
 			if(selfPtr->getType()->isPointerTy() && selfPtr->getType()->getPointerElementType()->isPointerTy())
-				selfPtr = cgi->mainBuilder.CreateLoad(selfPtr);
+				selfPtr = cgi->builder.CreateLoad(selfPtr);
 		}
 		else
 		{
 			if(self->getType()->isPointerTy() && self->getType()->getPointerElementType()->isPointerTy())
-				self = cgi->mainBuilder.CreateLoad(self);
+				self = cgi->builder.CreateLoad(self);
 		}
 	}
 
@@ -190,7 +190,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		if(n->ival >= type->getStructNumElements())
 			error(cgi, this, "Tuple does not have %d elements, only %d", (int) n->ival + 1, type->getStructNumElements());
 
-		llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(selfPtr, n->ival);
+		llvm::Value* gep = cgi->builder.CreateStructGEP(selfPtr, n->ival);
 
 		// if the lhs is immutable, don't give a pointer.
 		bool immut = false;
@@ -202,7 +202,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			immut = vd->immutable;
 		}
 
-		return Result_t(cgi->mainBuilder.CreateLoad(gep), immut ? 0 : gep);
+		return Result_t(cgi->builder.CreateLoad(gep), immut ? 0 : gep);
 	}
 	else if(pair->second.second == TypeKind::Struct)
 	{
@@ -359,10 +359,10 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 	if(!lcallee)
 		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
 
-	lcallee = cgi->mainModule->getFunction(lcallee->getName());
+	lcallee = cgi->module->getFunction(lcallee->getName());
 	iceAssert(lcallee);
 
-	return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
+	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 }
 
 
@@ -397,8 +397,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		// to return something. We're still used in a binOp though, so...
 
 		// create a fake alloca to return to them.
-		lcallee = cgi->mainModule->getFunction(lcallee->getName());
-		return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), cgi->allocateInstanceInBlock(_rhs->getType()));
+		lcallee = cgi->module->getFunction(lcallee->getName());
+		return Result_t(cgi->builder.CreateCall(lcallee, args), cgi->allocateInstanceInBlock(_rhs->getType()));
 	}
 	else
 	{
@@ -415,9 +415,9 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		if(!lcallee)
 			error(var, "?!??!!");
 
-		lcallee = cgi->mainModule->getFunction(lcallee->getName());
+		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<llvm::Value*> args { ref };
-		return Result_t(cgi->mainBuilder.CreateCall(lcallee, args), 0);
+		return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 	}
 }
 
@@ -428,8 +428,8 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, 
 	// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 	iceAssert(ref);
 
-	llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(ref, i, "memberPtr_" + var->name);
-	llvm::Value* val = cgi->mainBuilder.CreateLoad(ptr);
+	llvm::Value* ptr = cgi->builder.CreateStructGEP(ref, i, "memberPtr_" + var->name);
+	llvm::Value* val = cgi->builder.CreateLoad(ptr);
 
 	if(str->members[i]->immutable)
 		ptr = 0;
@@ -444,14 +444,14 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, 
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* str, std::string name)
 {
 	std::string mangledName = cgi->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
-	if(llvm::GlobalVariable* gv = cgi->mainModule->getGlobalVariable(mangledName))
+	if(llvm::GlobalVariable* gv = cgi->module->getGlobalVariable(mangledName))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(cgi->mainBuilder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+		return Result_t(cgi->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
 	}
 
 	error(cgi, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
@@ -597,7 +597,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 		iceAssert(res.result.first);
 		llvm::Value* _ref = cgi->allocateInstanceInBlock(res.result.first->getType());
 
-		cgi->mainBuilder.CreateStore(res.result.first, _ref);
+		cgi->builder.CreateStore(res.result.first, _ref);
 		newref = _ref;
 	}
 

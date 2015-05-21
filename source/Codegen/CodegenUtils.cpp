@@ -29,11 +29,11 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		cgi->mainModule = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
+		cgi->module = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
 		cgi->rootNode = root;
 
 		std::string err;
-		cgi->execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(cgi->mainModule))
+		cgi->execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(cgi->module))
 							.setErrorStr(&err)
 							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
 							.create();
@@ -44,7 +44,7 @@ namespace Codegen
 			exit(1);
 		}
 
-		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(cgi->mainModule);
+		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(cgi->module);
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
@@ -109,11 +109,11 @@ namespace Codegen
 			iceAssert(func);
 
 			// add to the func table
-			auto lf = cgi->mainModule->getFunction(func->getName());
+			auto lf = cgi->module->getFunction(func->getName());
 			if(!lf)
 			{
-				cgi->mainModule->getOrInsertFunction(func->getName(), func->getFunctionType());
-				lf = cgi->mainModule->getFunction(func->getName());
+				cgi->module->getOrInsertFunction(func->getName(), func->getFunctionType());
+				lf = cgi->module->getFunction(func->getName());
 			}
 
 			llvm::Function* f = llvm::cast<llvm::Function>(lf);
@@ -158,7 +158,7 @@ namespace Codegen
 
 		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
-		llvm::WriteBitcodeToFile(cgi->mainModule, rso);
+		llvm::WriteBitcodeToFile(cgi->module, rso);
 		rso.close();
 	}
 
@@ -725,17 +725,17 @@ namespace Codegen
 		// // var data: Int8*
 		// // var allocated: Uint64
 
-		// llvm::Value* stringPtr = this->mainBuilder.CreateStructGEP(alloca, 0);
-		// llvm::Value* allocdPtr = this->mainBuilder.CreateStructGEP(alloca, 1);
+		// llvm::Value* stringPtr = this->builder.CreateStructGEP(alloca, 0);
+		// llvm::Value* allocdPtr = this->builder.CreateStructGEP(alloca, 1);
 
-		// llvm::Value* newstr = this->mainBuilder.CreateAlloca(int8ptr->getType(), );
+		// llvm::Value* newstr = this->builder.CreateAlloca(int8ptr->getType(), );
 
-		// llvm::Value* stringVal = this->mainBuilder.CreateGlobalStringPtr(this->str);
+		// llvm::Value* stringVal = this->builder.CreateGlobalStringPtr(this->str);
 
-		// this->mainBuilder.CreateStore(stringVal, stringPtr);
-		// this->mainBuilder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
+		// this->builder.CreateStore(stringVal, stringPtr);
+		// this->builder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
 
-		// llvm::Value* val = this->mainBuilder.CreateLoad(alloca);
+		// llvm::Value* val = this->builder.CreateLoad(alloca);
 		// return Result_t(val, alloca);
 		return Result_t(0, 0);
 	}
@@ -841,7 +841,7 @@ namespace Codegen
 		}
 
 		// get the function with the same name in the current module
-		opov = this->mainModule->getFunction(opov->getName());
+		opov = this->module->getFunction(opov->getName());
 		iceAssert(opov);
 
 		// try the assign op.
@@ -849,14 +849,14 @@ namespace Codegen
 		|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
 			// check args.
-			llvm::Value* ret = mainBuilder.CreateCall2(opov, self, val);
+			llvm::Value* ret = builder.CreateCall2(opov, self, val);
 			return Result_t(ret, self);
 		}
 		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::Multiply
 		|| op == ArithmeticOp::Divide)
 		{
 			// check that both types work
-			return Result_t(mainBuilder.CreateCall2(opov, self, val), 0);
+			return Result_t(builder.CreateCall2(opov, self, val), 0);
 		}
 
 		if(fail)	GenError::noOpOverload(this, user, str->name, op);
@@ -915,29 +915,29 @@ namespace Codegen
 		if(!initf)
 			GenError::invalidInitialiser(this, user, str, vals);
 
-		return this->mainModule->getFunction(initf->getName());
+		return this->module->getFunction(initf->getName());
 	}
 
 
 	Result_t CodegenInstance::assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr)
 	{
-		llvm::Value* typegep = this->mainBuilder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->mainBuilder.CreateStructGEP(typegep, 0, "type");		// Type
+		llvm::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
+		typegep = this->builder.CreateStructGEP(typegep, 0, "type");		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
 		llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
-		this->mainBuilder.CreateStore(constint, typegep);
+		this->builder.CreateStore(constint, typegep);
 
 
 
-		llvm::Value* valgep = this->mainBuilder.CreateStructGEP(lhsPtr, 1, "value");
+		llvm::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1, "value");
 		if(rhsPtr)
 		{
 			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
-			llvm::Value* casted = this->mainBuilder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
-			this->mainBuilder.CreateStore(casted, valgep);
+			llvm::Value* casted = this->builder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
+			this->builder.CreateStore(casted, valgep);
 		}
 		else
 		{
@@ -946,31 +946,31 @@ namespace Codegen
 
 			if(rhs->getType()->isIntegerTy())
 			{
-				llvm::Value* casted = this->mainBuilder.CreateIntToPtr(rhs, targetType);
-				this->mainBuilder.CreateStore(casted, valgep);
+				llvm::Value* casted = this->builder.CreateIntToPtr(rhs, targetType);
+				this->builder.CreateStore(casted, valgep);
 			}
 			else
 			{
-				llvm::Value* casted = this->mainBuilder.CreateBitCast(rhs, targetType);
-				casted = this->mainBuilder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
-				this->mainBuilder.CreateStore(casted, valgep);
+				llvm::Value* casted = this->builder.CreateBitCast(rhs, targetType);
+				casted = this->builder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
+				this->builder.CreateStore(casted, valgep);
 			}
 		}
 
-		return Result_t(this->mainBuilder.CreateLoad(lhsPtr), lhsPtr);
+		return Result_t(this->builder.CreateLoad(lhsPtr), lhsPtr);
 	}
 
 
 	Result_t CodegenInstance::extractValueFromAny(llvm::Type* type, llvm::Value* ptr)
 	{
-		llvm::Value* valgep = this->mainBuilder.CreateStructGEP(ptr, 1);
-		llvm::Value* loadedval = this->mainBuilder.CreateLoad(valgep);
+		llvm::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
+		llvm::Value* loadedval = this->builder.CreateLoad(valgep);
 
 		if(type->isStructTy())
 		{
 			// use pointer stuff
-			llvm::Value* valptr = this->mainBuilder.CreatePointerCast(loadedval, type->getPointerTo());
-			llvm::Value* loaded = this->mainBuilder.CreateLoad(valptr);
+			llvm::Value* valptr = this->builder.CreatePointerCast(loadedval, type->getPointerTo());
+			llvm::Value* loaded = this->builder.CreateLoad(valptr);
 
 			return Result_t(loaded, valptr);
 		}
@@ -978,11 +978,11 @@ namespace Codegen
 		{
 			// the pointer is actually a literal
 			llvm::Type* targetType = type->isIntegerTy() ? type : llvm::IntegerType::getInt64Ty(this->getContext());
-			llvm::Value* val = this->mainBuilder.CreatePtrToInt(loadedval, targetType);
+			llvm::Value* val = this->builder.CreatePtrToInt(loadedval, targetType);
 
 			if(val->getType() != type)
 			{
-				val = this->mainBuilder.CreateBitCast(val, type);
+				val = this->builder.CreateBitCast(val, type);
 			}
 
 			return Result_t(val, 0);
@@ -1015,23 +1015,23 @@ namespace Codegen
 		llvm::Value* intval = llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), ptrWidth), apint);
 
 		if(rhs->getType()->getIntegerBitWidth() != ptrWidth)
-			rhs = this->mainBuilder.CreateIntCast(rhs, intval->getType(), false);
+			rhs = this->builder.CreateIntCast(rhs, intval->getType(), false);
 
 
 		// this is the properly adjusted thing
-		llvm::Value* newrhs = this->mainBuilder.CreateMul(rhs, intval);
+		llvm::Value* newrhs = this->builder.CreateMul(rhs, intval);
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
-		llvm::Value* ptrval = this->mainBuilder.CreatePtrToInt(lhs, newrhs->getType());
+		llvm::Value* ptrval = this->builder.CreatePtrToInt(lhs, newrhs->getType());
 
 		// create the add/sub
-		llvm::Value* res = this->mainBuilder.CreateBinOp(lop, ptrval, newrhs);
+		llvm::Value* res = this->builder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
 		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->allocateInstanceInBlock(lhs->getType());
 
-		llvm::Value* properres = this->mainBuilder.CreateIntToPtr(res, lhs->getType());
-		this->mainBuilder.CreateStore(properres, tempRes);
+		llvm::Value* properres = this->builder.CreateIntToPtr(res, lhs->getType());
+		this->builder.CreateStore(properres, tempRes);
 		return Result_t(properres, tempRes);
 	}
 
