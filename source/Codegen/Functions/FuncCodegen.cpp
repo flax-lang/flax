@@ -43,7 +43,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
-	llvm::Function* func = cgi->mainModule->getFunction(this->decl->mangledName);
+	llvm::Function* func = cgi->module->getFunction(this->decl->mangledName);
 	iceAssert(func && "Function was not declared before being generated!");
 
 
@@ -63,10 +63,10 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
 	// and fuck shit up big time
-	llvm::BasicBlock* prevBlock = cgi->mainBuilder.GetInsertBlock();
+	llvm::BasicBlock* prevBlock = cgi->builder.GetInsertBlock();
 
 	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
-	cgi->mainBuilder.SetInsertPoint(block);
+	cgi->builder.SetInsertPoint(block);
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
@@ -78,7 +78,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 			it->setName(this->decl->params[i]->name);
 
 			llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
-			cgi->mainBuilder.CreateStore(it, ai);
+			cgi->builder.CreateStore(it, ai);
 
 			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
 		}
@@ -135,10 +135,10 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	cgi->verifyAllPathsReturn(this, nullptr, true);
 
 	if(doRetVoid)
-		cgi->mainBuilder.CreateRetVoid();
+		cgi->builder.CreateRetVoid();
 
 	else if(isImplicitReturn)
-		cgi->mainBuilder.CreateRet(lastval.result.first);
+		cgi->builder.CreateRet(lastval.result.first);
 
 
 	llvm::verifyFunction(*func, &llvm::errs());
@@ -148,7 +148,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	cgi->popScope();
 
 	if(prevBlock)
-		cgi->mainBuilder.SetInsertPoint(prevBlock);
+		cgi->builder.SetInsertPoint(prevBlock);
 
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);

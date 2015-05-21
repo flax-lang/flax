@@ -45,7 +45,7 @@ namespace Codegen
 		bool isStructCodegen = false;
 
 		Ast::Root* rootNode;
-		llvm::Module* mainModule;
+		llvm::Module* module;
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
@@ -60,7 +60,7 @@ namespace Codegen
 		std::deque<FuncMap_t> funcStack;
 		std::deque<Ast::Func*> funcScopeStack;
 
-		llvm::IRBuilder<> mainBuilder = llvm::IRBuilder<>(llvm::getGlobalContext());
+		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 
 		std::map<llvm::GlobalVariable*, llvm::Function*> globalConstructors;

@@ -43,11 +43,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->mainModule);
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
 	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
-	cgi->mainBuilder.SetInsertPoint(iblock);
+	cgi->builder.SetInsertPoint(iblock);
 
 	// create the local instance of reference to self
 	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
@@ -61,7 +61,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			llvm::Value* ptr = cgi->mainBuilder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+			llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
@@ -75,7 +75,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
 
 			// generate a global variable (sorry!).
-			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->mainModule, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->module, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
 
 			if(var->inferredLType->isStructTy())
 			{
@@ -132,12 +132,12 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	{
 		for(llvm::Function* f : extensionInitialisers)
 		{
-			llvm::Function* actual = cgi->mainModule->getFunction(f->getName());
-			cgi->mainBuilder.CreateCall(actual, self);
+			llvm::Function* actual = cgi->module->getFunction(f->getName());
+			cgi->builder.CreateCall(actual, self);
 		}
 	}
 
-	cgi->mainBuilder.CreateRetVoid();
+	cgi->builder.CreateRetVoid();
 	llvm::verifyFunction(*defaultInitFunc);
 
 
@@ -205,7 +205,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// pass 1
 	for(Func* f : this->funcs)
 	{
-		llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
 		bool isOpOverload = f->decl->name.find("operator#") == 0;
 		if(isOpOverload)
 			f->decl->name = f->decl->name.substr(strlen("operator#"));
@@ -228,7 +228,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
 
 
-		cgi->mainBuilder.SetInsertPoint(ob);
+		cgi->builder.SetInsertPoint(ob);
 		this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
 
 		if(isOpOverload)
@@ -244,7 +244,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// pass 2
 	for(Func* f : this->funcs)
 	{
-		llvm::BasicBlock* ob = cgi->mainBuilder.GetInsertBlock();
+		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
 
 		if(f->decl->name == "init")
 		{
@@ -260,7 +260,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 
 		f->codegen(cgi);
-		cgi->mainBuilder.SetInsertPoint(ob);
+		cgi->builder.SetInsertPoint(ob);
 	}
 
 	if(this->initFuncs.size() == 0)

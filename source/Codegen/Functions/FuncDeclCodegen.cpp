@@ -158,7 +158,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	{
 		GenError::duplicateSymbol(cgi, this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(cgi->isDuplicateFuncDecl(this->mangledName) /*cgi->mainModule->getFunction(this->mangledName)*/)
+	else if(cgi->isDuplicateFuncDecl(this->mangledName) /*cgi->module->getFunction(this->mangledName)*/)
 	{
 		if(!this->isFFI)
 		{
@@ -167,7 +167,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else
 	{
-		func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->mainModule);
+		func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->module);
 		cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
 	}
 

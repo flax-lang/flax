@@ -23,7 +23,7 @@ Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	iceAssert(cs->second.second);
 
 	// for break, we go to the ending block
-	cgi->mainBuilder.CreateBr(cs->second.second);
+	cgi->builder.CreateBr(cs->second.second);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
@@ -40,7 +40,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	iceAssert(cs->second.second);
 
 	// for continue, we go to the beginning (loop) block
-	cgi->mainBuilder.CreateBr(cs->second.first);
+	cgi->builder.CreateBr(cs->second.first);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
@@ -51,19 +51,19 @@ Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		auto res = this->val->codegen(cgi).result;
 		llvm::Value* left = res.first;
 
-		auto f = cgi->mainBuilder.GetInsertBlock()->getParent();
+		auto f = cgi->builder.GetInsertBlock()->getParent();
 		iceAssert(f);
 
 		if(left->getType()->isIntegerTy() && f->getReturnType()->isIntegerTy())
-			left = cgi->mainBuilder.CreateIntCast(left, f->getReturnType(), false);
+			left = cgi->builder.CreateIntCast(left, f->getReturnType(), false);
 
 		this->actualReturnValue = left;
 
-		return Result_t(cgi->mainBuilder.CreateRet(left), res.second, ResultType::BreakCodegen);
+		return Result_t(cgi->builder.CreateRet(left), res.second, ResultType::BreakCodegen);
 	}
 	else
 	{
-		return Result_t(cgi->mainBuilder.CreateRetVoid(), 0, ResultType::BreakCodegen);
+		return Result_t(cgi->builder.CreateRetVoid(), 0, ResultType::BreakCodegen);
 	}
 }
 
@@ -75,15 +75,15 @@ Result_t DeferredExpr::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	llvm::Function* parentFunc = cgi->mainBuilder.GetInsertBlock()->getParent();
+	llvm::Function* parentFunc = cgi->builder.GetInsertBlock()->getParent();
 	iceAssert(parentFunc);
 
 	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);
 	llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(cgi->getContext(), "loopBody", parentFunc);
 	llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", parentFunc);
 
-	cgi->mainBuilder.CreateBr(setupBlock);
-	cgi->mainBuilder.SetInsertPoint(setupBlock);
+	cgi->builder.CreateBr(setupBlock);
+	cgi->builder.SetInsertPoint(setupBlock);
 
 	llvm::Value* condOutside = this->cond->codegen(cgi).result.first;
 
@@ -91,13 +91,13 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Val
 	// if we're a do-while, don't check the condition the first time
 	// else we should
 	if(this->isDoWhileVariant)
-		cgi->mainBuilder.CreateBr(loopBody);
+		cgi->builder.CreateBr(loopBody);
 
 	else
-		cgi->mainBuilder.CreateCondBr(condOutside, loopBody, loopEnd);
+		cgi->builder.CreateCondBr(condOutside, loopBody, loopEnd);
 
 
-	cgi->mainBuilder.SetInsertPoint(loopBody);
+	cgi->builder.SetInsertPoint(loopBody);
 	cgi->pushBracedBlock(this, loopBody, loopEnd);
 
 	this->body->codegen(cgi);
@@ -106,11 +106,11 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Val
 
 	// put a branch to see if we will go back
 	llvm::Value* condInside = this->cond->codegen(cgi).result.first;
-	cgi->mainBuilder.CreateCondBr(condInside, loopBody, loopEnd);
+	cgi->builder.CreateCondBr(condInside, loopBody, loopEnd);
 
 
 	// parentFunc->getBasicBlockList().push_back(loopEnd);
-	cgi->mainBuilder.SetInsertPoint(loopEnd);
+	cgi->builder.SetInsertPoint(loopEnd);
 
 	return Result_t(0, 0);
 }

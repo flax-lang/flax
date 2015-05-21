@@ -24,11 +24,11 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 
 
 	llvm::Type* apprType = cgi->getLlvmType(pairs.front().first);
-	cond = cgi->mainBuilder.CreateICmpNE(cond, llvm::Constant::getNullValue(apprType), "ifCond");
+	cond = cgi->builder.CreateICmpNE(cond, llvm::Constant::getNullValue(apprType), "ifCond");
 
 
-	cgi->mainBuilder.CreateCondBr(cond, t, f);
-	cgi->mainBuilder.SetInsertPoint(t);
+	cgi->builder.CreateCondBr(cond, t, f);
+	cgi->builder.SetInsertPoint(t);
 
 	Result_t blockResult(0, 0);
 	llvm::Value* val = nullptr;
@@ -44,12 +44,12 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 
 	// check if the last expr of the block is a return
 	if(blockResult.type != ResultType::BreakCodegen)
-		cgi->mainBuilder.CreateBr(merge), *didCreateMerge = true;
+		cgi->builder.CreateBr(merge), *didCreateMerge = true;
 
 
 	// now the false case...
 	// set the insert point to the false case, then go again.
-	cgi->mainBuilder.SetInsertPoint(f);
+	cgi->builder.SetInsertPoint(f);
 
 	// recursively call ourselves
 	pairs.pop_front();
@@ -64,11 +64,11 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	iceAssert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
 	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
-	firstCond = cgi->mainBuilder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
+	firstCond = cgi->builder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
 
 
 
-	llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+	llvm::Function* func = cgi->builder.GetInsertBlock()->getParent();
 	iceAssert(func);
 
 	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
@@ -76,7 +76,7 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge", func);
 
 	// create the first conditional
-	cgi->mainBuilder.CreateCondBr(firstCond, trueb, falseb);
+	cgi->builder.CreateCondBr(firstCond, trueb, falseb);
 
 
 	bool didMerge = false;
@@ -84,7 +84,7 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	// emit code for the first block
 	llvm::Value* truev = nullptr;
 	{
-		cgi->mainBuilder.SetInsertPoint(trueb);
+		cgi->builder.SetInsertPoint(trueb);
 
 		// push a new symtab
 		cgi->pushScope();
@@ -95,7 +95,7 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 		cgi->popScope();
 
 		if(cresult.type != ResultType::BreakCodegen)
-			cgi->mainBuilder.CreateBr(merge), didMerge = true;
+			cgi->builder.CreateBr(merge), didMerge = true;
 	}
 
 
@@ -104,22 +104,22 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
 	// of the if statement.
 
-	cgi->mainBuilder.SetInsertPoint(falseb);
+	cgi->builder.SetInsertPoint(falseb);
 
 	auto c1 = this->cases.front();
 	this->cases.pop_front();
 
-	llvm::BasicBlock* curblk = cgi->mainBuilder.GetInsertBlock();
-	cgi->mainBuilder.SetInsertPoint(merge);
+	llvm::BasicBlock* curblk = cgi->builder.GetInsertBlock();
+	cgi->builder.SetInsertPoint(merge);
 
-	// llvm::PHINode* phi = mainBuilder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
+	// llvm::PHINode* phi = builder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
 	llvm::PHINode* phi = nullptr;
 
 	if(phi)
 		phi->addIncoming(truev, trueb);
 
-	cgi->mainBuilder.SetInsertPoint(curblk);
+	cgi->builder.SetInsertPoint(curblk);
 	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
 	// func->getBasicBlockList().push_back(falseb);
@@ -140,12 +140,12 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 
 
 	if(!this->final || elseResult.type != ResultType::BreakCodegen)
-		cgi->mainBuilder.CreateBr(merge), didMerge = true;
+		cgi->builder.CreateBr(merge), didMerge = true;
 
 
 	if(didMerge)
 	{
-		cgi->mainBuilder.SetInsertPoint(merge);
+		cgi->builder.SetInsertPoint(merge);
 	}
 	else
 	{
