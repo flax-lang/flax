@@ -173,6 +173,10 @@ namespace Ast
 	{
 	}
 
+	PostfixUnaryOp::~PostfixUnaryOp()
+	{
+	}
+
 	Root::~Root()
 	{
 		for(Expr* e : this->topLevelExpressions)

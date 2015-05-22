@@ -44,3 +44,35 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			error(cgi, this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
 	}
 }
+
+
+
+
+
+
+
+Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+{
+	if(this->kind == Kind::ArrayIndex)
+	{
+		ArrayIndex* fake = new ArrayIndex(this->posinfo, this->expr, this->args.front());
+		return fake->codegen(cgi, lhsPtr, rhs);
+	}
+	else
+	{
+		error(cgi, this, "enosup");
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

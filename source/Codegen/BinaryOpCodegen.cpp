@@ -191,7 +191,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	}
 	else
 	{
-		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
+		error(this, user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
 	if(varptr->getType()->getPointerElementType()->isStructTy())
@@ -403,7 +403,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			iceAssert(valptr.second);
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
-		else if(lhs->getType()->getStructName() == "String" && rtype == llvm::Type::getInt8PtrTy(cgi->getContext()))
+		else if(lhs->getType()->isStructTy() && lhs->getType()->getStructName() == "String"
+			&& rtype == llvm::Type::getInt8PtrTy(cgi->getContext()))
 		{
 			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
 			llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
@@ -422,22 +423,18 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			llvm::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == llvm::Type::getInt8PtrTy(cgi->getContext()) && rtype->getStructName() == "String")
+		else if(lhs->getType() == llvm::Type::getInt8PtrTy(cgi->getContext())
+			&& rtype->isStructTy() && rtype->getStructName() == "String")
 		{
-			error(cgi, this, "Automatic char* -> String casting not yet supported");
-			// auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
-			// llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
+			// support this shit.
+			// error(cgi, this, "Automatic char* -> String casting not yet supported");
 
+			// create a bogus func call.
+			TypePair_t* tp = cgi->getType("String");
+			iceAssert(tp);
 
-
-			// lhsref = cgi->allocateInstanceInBlock(stringType);
-			// cgi->builder.CreateStore(lhs, lhsref);
-
-			// llvm::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
-
-
-
-			// return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
+			std::vector<llvm::Value*> args { lhs };
+			return cgi->callTypeInitialiser(tp, this, args);
 		}
 		else if(this->op != ArithmeticOp::ForcedCast)
 		{

@@ -412,9 +412,30 @@ namespace Codegen
 				// todo: make this not shit.
 				return llvm::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
 			}
+			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
+			{
+				llvm::Type* targtype = this->getLlvmType(puo->expr);
+				iceAssert(targtype);
+
+				if(puo->kind == PostfixUnaryOp::Kind::ArrayIndex)
+				{
+					if(targtype->isPointerTy())
+						return targtype->getPointerElementType();
+
+					else if(targtype->isArrayTy())
+						return targtype->getArrayElementType();
+
+					else
+						error(this, expr, "Invalid???");
+				}
+				else
+				{
+					iceAssert(0);
+				}
+			}
 		}
 
-		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+		error(this, expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
@@ -939,7 +960,7 @@ namespace Codegen
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
-			return "(" + this->printAst(bo->left) + Parser::arithmeticOpToString(bo->op) + this->printAst(bo->right) + ")";
+			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(bo->op) + " " + this->printAst(bo->right) + ")";
 		}
 		else if(Number* n = dynamic_cast<Number*>(expr))
 		{

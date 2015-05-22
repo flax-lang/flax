@@ -87,10 +87,11 @@ public struct String
 
 		if self.allocated < len
 		{
-			self.grow(len)
+			self.grow(len + 1)
 		}
 
 		memcpy(self.data, str, len)
+		self.data[len] = 0
 	}
 
 	func append(str: Int8*)
