@@ -10,41 +10,41 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
+
+Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {
 	iceAssert(tp);
-	llvm::Value* ai = cgi->allocateInstanceInBlock(tp->first, "tmp");
+	llvm::Value* ai = this->allocateInstanceInBlock(tp->first, "tmp");
 
-	// TODO: constructor args
-	std::vector<llvm::Value*> args;
-	args.push_back(ai);
-	for(Expr* e : fc->params)
-		args.push_back(e->codegen(cgi).result.first);
+	args.insert(args.begin(), ai);
 
-	llvm::Function* initfunc = cgi->getStructInitialiser(fc, tp, args);
+	llvm::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
-	cgi->builder.CreateCall(initfunc, args);
-	llvm::Value* val = cgi->builder.CreateLoad(ai);
+	this->builder.CreateCall(initfunc, args);
+	llvm::Value* val = this->builder.CreateLoad(ai);
 
 	return Result_t(val, ai);
 }
-
-
-
-
-
-
-
-
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// always try the type first.
 	if(cgi->getType(this->name) != nullptr)
-		return callConstructor(cgi, cgi->getType(this->name), this);
+	{
+		std::vector<llvm::Value*> args;
+		for(Expr* e : this->params)
+			args.push_back(e->codegen(cgi).result.first);
 
+		return cgi->callTypeInitialiser(cgi->getType(this->name), this, args);
+	}
 	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
-		return callConstructor(cgi, cgi->getType(cgi->mangleRawNamespace(this->name)), this);
+	{
+		std::vector<llvm::Value*> args;
+		for(Expr* e : this->params)
+			args.push_back(e->codegen(cgi).result.first);
+
+		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
+	}
 
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;

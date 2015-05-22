@@ -100,6 +100,7 @@ namespace Codegen
 		TypePair_t* getType(llvm::Type* type);
 		FuncPair_t* getDeclaredFunc(std::string name);
 		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
+		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
 		void clearNamespaceScope();
 		void popNamespaceScope();
@@ -192,6 +193,7 @@ namespace Codegen
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 		Ast::Result_t callOperatorOnStruct(Ast::Expr* user, TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
+		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
 
 
 

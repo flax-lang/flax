@@ -19,21 +19,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	// if we haven't declared malloc() yet, then we need to do it here
 	// NOTE: this is the only place in the compiler where a hardcoded call is made to a non-provided function.
 
-	FuncPair_t* fp = cgi->getDeclaredFunc(MALLOC_FUNC);
-	if(!fp)
-	{
-		VarDecl* fakefdmvd = new VarDecl(this->posinfo, "size", false);
-		fakefdmvd->type = "Uint64";
-
-		std::deque<VarDecl*> params;
-		params.push_back(fakefdmvd);
-		FuncDecl* fakefm = new FuncDecl(this->posinfo, MALLOC_FUNC, params, "Int8*");
-		fakefm->isFFI = true;
-
-		fakefm->codegen(cgi);
-
-		iceAssert((fp = cgi->getDeclaredFunc(MALLOC_FUNC)));
-	}
+	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
 
 	llvm::Function* mallocf = fp->first;
 	iceAssert(mallocf);
@@ -218,23 +204,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	}
 
 	// call 'free'
-	FuncPair_t* fp = cgi->getDeclaredFunc(FREE_FUNC);
-	if(!fp)
-	{
-		VarDecl* fakefdmvd = new VarDecl(this->posinfo, "ptr", false);
-		fakefdmvd->type = "Int8*";
-
-		std::deque<VarDecl*> params;
-		params.push_back(fakefdmvd);
-		FuncDecl* fakefm = new FuncDecl(this->posinfo, MALLOC_FUNC, params, "Int8*");
-		fakefm->isFFI = true;
-
-		fakefm->codegen(cgi);
-
-		iceAssert((fp = cgi->getDeclaredFunc(FREE_FUNC)));
-	}
-
-
+	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
 	cgi->builder.CreateCall(fp->first, freearg);
 	return Result_t(0, 0);
 }

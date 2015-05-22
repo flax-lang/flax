@@ -646,6 +646,25 @@ namespace Ast
 		Expr* inside;
 	};
 
+	struct PostfixUnaryOp : Expr
+	{
+		enum class Kind
+		{
+			Invalid,
+			ArrayIndex,
+			Increment,
+			Decrement
+		};
+
+		~PostfixUnaryOp();
+		PostfixUnaryOp(Parser::PosInfo pos, Expr* e, Kind k) : Expr(pos), kind(k), expr(e) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		Kind kind;
+		Expr* expr;
+		std::deque<Expr*> args;
+	};
+
 	struct Root : Expr
 	{
 		Root() : Expr(Parser::PosInfo()) { }
