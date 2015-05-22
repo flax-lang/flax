@@ -450,6 +450,47 @@ namespace Codegen
 
 
 
+	FuncPair_t* CodegenInstance::getOrDeclareLibCFunc(std::string name)
+	{
+		FuncPair_t* fp = this->getDeclaredFunc(name);
+		if(!fp)
+		{
+			std::string retType;
+			std::deque<VarDecl*> params;
+			if(name == "malloc")
+			{
+				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "size", false);
+				fakefdmvd->type = "Uint64";
+				params.push_back(fakefdmvd);
+
+				retType = "Int8*";
+			}
+			else if(name == "free")
+			{
+				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "ptr", false);
+				fakefdmvd->type = "Int8*";
+				params.push_back(fakefdmvd);
+
+				retType = "Int8*";
+			}
+			else if(name == "strlen")
+			{
+				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "str", false);
+				fakefdmvd->type = "Int8*";
+				params.push_back(fakefdmvd);
+
+				retType = "Int64";
+			}
+
+			FuncDecl* fakefm = new FuncDecl(Parser::PosInfo(), name, params, retType);
+			fakefm->isFFI = true;
+			fakefm->codegen(this);
+
+			iceAssert((fp = this->getDeclaredFunc(name)));
+		}
+
+		return fp;
+	}
 
 	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
 	{

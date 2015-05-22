@@ -23,6 +23,10 @@ namespace Parser
 	static Root* rootNode						= nullptr;
 	static uint32_t curAttrib					= 0;
 
+	// todo: hacks
+	static bool isParsingStruct;
+	static bool didHaveLeftParen;
+	static int currentOperatorPrecedence;
 
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
 	#define CreateAST(name, tok, ...)		(new name (tok.posinfo, ##__VA_ARGS__))
@@ -36,9 +40,6 @@ namespace Parser
 	#define ATTR_STR_RAW				"raw"
 
 
-	// todo: hacks
-	static bool isParsingStruct;
-	static bool didHaveLeftParen;
 
 	static void parserError(Token token, const char* msg, va_list args)
 	{
@@ -136,6 +137,11 @@ namespace Parser
 		return false;
 	}
 
+	static bool isPostfixUnaryOperator(TType tt)
+	{
+		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
+	}
+
 	static int getOpPrec(Token tok)
 	{
 		switch(tok.type)
@@ -143,11 +149,12 @@ namespace Parser
 			case TType::Comma:
 				return didHaveLeftParen ? 2000 : -1;	// lol x3
 
-			case TType::DoubleColon:
-				return 1000;			// lol
-
 			case TType::As:
 			case TType::Period:
+				return 150;
+
+			// array index: 120
+			case TType::LSquare:
 				return 120;
 
 			case TType::DoublePlus:
@@ -309,6 +316,8 @@ namespace Parser
 		currentPos.col = 1;
 		curAttrib = 0;
 
+
+
 		TokenList tokens;
 
 		// split into lines
@@ -328,6 +337,14 @@ namespace Parser
 		currentPos.file = filename;
 		currentPos.line = 1;
 		currentPos.col = 1;
+
+
+		// todo: hacks
+		isParsingStruct = 0;
+		didHaveLeftParen = 0;
+		currentOperatorPrecedence = 0;
+
+
 
 		skipNewline(tokens);
 		parseAll(tokens);
@@ -1276,6 +1293,35 @@ namespace Parser
 		return parseRhs(tokens, lhs, 0);
 	}
 
+	static Expr* parsePostfixUnaryOp(TokenList& tokens, Token tok, Expr* curLhs)
+	{
+		// do something! quickly!
+
+		// get the type of op.
+		// prec: array index: 120
+
+		// std::deque<Expr*> args;
+		// PostfixUnaryOp::Kind k;
+
+		Token top = tok;
+		Expr* newlhs = 0;
+		if(top.type == TType::LSquare)
+		{
+			// parse the inside expression
+			Expr* inside = parseExpr(tokens);
+			if(eat(tokens).type != TType::RSquare)
+				parserError("Expected ']' after '[' for array index");
+
+			newlhs = CreateAST(ArrayIndex, top, curLhs, inside);
+		}
+		else
+		{
+			iceAssert(false);
+		}
+
+		return newlhs;
+	}
+
 	Expr* parseRhs(TokenList& tokens, Expr* lhs, int prio)
 	{
 		while(true)
@@ -1292,18 +1338,27 @@ namespace Parser
 				didHaveLeftParen = false;
 				return parseTuple(tokens, lhs);
 			}
+			else if(isPostfixUnaryOperator(tok_op.type))
+			{
+				lhs = parsePostfixUnaryOp(tokens, tok_op, lhs);
+				continue;
+			}
+
 
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(tokens) : parseUnary(tokens);
 			if(!rhs)
 				return nullptr;
 
 			int next = getOpPrec(tokens.front());
+
 			if(next > prec || isRightAssociativeOp(tokens.front()))
 			{
 				rhs = parseRhs(tokens, rhs, prec + 1);
 				if(!rhs)
 					return nullptr;
 			}
+
+			currentOperatorPrecedence = getOpPrec(tok_op);
 
 			ArithmeticOp op;
 			switch(tok_op.type)
@@ -1358,32 +1413,32 @@ namespace Parser
 		VarRef* idvr = CreateAST(VarRef, tok_id, id);
 
 		// check for dot syntax.
-		if(tokens.front().type == TType::LSquare)
-		{
-			// array dereference
+		// if(tokens.front().type == TType::LSquare /*&& (currentOperatorPrecedence <= 120)*/)
+		// {
+		// 	// array dereference
 
-			ArrayIndex* prev_ai = 0;
-			while(tokens.front().type == TType::LSquare)
-			{
-				eat(tokens);
-				Expr* within = parseExpr(tokens);
+		// 	ArrayIndex* prev_ai = 0;
+		// 	while(tokens.front().type == TType::LSquare)
+		// 	{
+		// 		eat(tokens);
+		// 		Expr* within = parseExpr(tokens);
 
-				if(eat(tokens).type != TType::RSquare)
-					parserError("Expected ']'");
+		// 		if(eat(tokens).type != TType::RSquare)
+		// 			parserError("Expected ']'");
 
-				auto ai = CreateAST(ArrayIndex, tok_id, idvr, within);
+		// 		auto ai = CreateAST(ArrayIndex, tok_id, idvr, within);
 
-				if(prev_ai)
-					prev_ai->arr = ai;
+		// 		if(prev_ai)
+		// 			prev_ai->arr = ai;
 
-				else
-					prev_ai = ai;
-			}
+		// 		else
+		// 			prev_ai = ai;
+		// 	}
 
 
-			return prev_ai;
-		}
-		else if(tokens.front().type == TType::LParen)
+		// 	return prev_ai;
+		// }
+		if(tokens.front().type == TType::LParen)
 		{
 			delete idvr;
 			return parseFuncCall(tokens, id);

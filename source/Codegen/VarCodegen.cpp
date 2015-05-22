@@ -31,7 +31,6 @@ Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, llvm::Value* val, llvm::Value* valptr,
 	llvm::Value* storage, bool shouldAddToSymtab)
 {
-
 	llvm::Value* ai = storage;
 	bool didAddToSymtab = false;
 
