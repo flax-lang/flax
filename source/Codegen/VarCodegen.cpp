@@ -221,7 +221,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 }
 
-
 Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	if(cgi->isDuplicateSymbol(this->name))

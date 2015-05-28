@@ -80,7 +80,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::Function* target = fp->first;
 	bool checkVarArg = target->isVarArg();
 
-
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
 		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
