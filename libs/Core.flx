@@ -5,6 +5,7 @@
 
 import Unicode
 import String
+import Array
 import Math
 
 

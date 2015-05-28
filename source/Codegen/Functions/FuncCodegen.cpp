@@ -48,10 +48,6 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 
 
-
-
-
-
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
 	// create a new 'table' for our own usage.

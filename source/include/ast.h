@@ -311,9 +311,12 @@ namespace Ast
 		{ this->type.strType = ret; }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
+		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, llvm::Type*> types);
+
 		bool hasVarArg = false;
 		bool isFFI = false;
 		bool isStatic = false;
+		bool wasCalled = false;
 
 		StructBase* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;
