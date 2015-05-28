@@ -549,13 +549,12 @@ namespace Codegen
 
 
 
-
-	static std::string convertToMangled(CodegenInstance* cgi, llvm::Type* type)
+	std::string CodegenInstance::mangleLlvmType(llvm::Type* type)
 	{
-		std::string r = cgi->getReadableType(type);
+		std::string r = this->getReadableType(type);
 
 		int ind = 0;
-		r = cgi->unwrapPointerType(r, &ind);
+		r = this->unwrapPointerType(r, &ind);
 
 		if(r.find("Int8") == 0)			r = "a";
 		else if(r.find("Int16") == 0)	r = "s";
@@ -672,14 +671,23 @@ namespace Codegen
 	}
 
 
-	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
+	std::string CodegenInstance::mangleName(std::string base, std::deque<std::string> args)
 	{
-		std::string mangled = "";
-
-		for(llvm::Type* e : args)
-			mangled += convertToMangled(this, e);
+		std::string mangled;
+		for(auto s : args)
+			mangled += s;
 
 		return base + (mangled.empty() ? "v" : (mangled));
+	}
+
+	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
+	{
+		std::deque<std::string> strings;
+
+		for(llvm::Type* e : args)
+			strings.push_back(this->mangleLlvmType(e));
+
+		return this->mangleName(base, strings);
 	}
 
 	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)

@@ -10,6 +10,73 @@
 using namespace Ast;
 using namespace Codegen;
 
+llvm::GlobalValue::LinkageTypes CodegenInstance::getFunctionDeclLinkage(FuncDecl* fd)
+{
+	llvm::GlobalValue::LinkageTypes linkageType;
+
+	if(fd->isFFI)
+	{
+		linkageType = llvm::Function::ExternalLinkage;
+	}
+	else if((fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal))
+	{
+		linkageType = llvm::Function::InternalLinkage;
+	}
+	else if(fd->attribs & Attr_VisPublic)
+	{
+		linkageType = llvm::Function::ExternalLinkage;
+	}
+	else if(fd->parentStruct && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
+	{
+		// default.
+		linkageType = (fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal) ?
+			llvm::Function::InternalLinkage : llvm::Function::ExternalLinkage;
+	}
+	else
+	{
+		linkageType = llvm::Function::InternalLinkage;
+	}
+
+
+	return linkageType;
+}
+
+
+Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::BasicBlock* block)
+{
+	llvm::FunctionType* ft = llvm::FunctionType::get(this->getLlvmType(fd), argtypes, fd->hasVarArg);
+	auto linkageType = this->getFunctionDeclLinkage(fd);
+
+	// check for redef
+	llvm::Function* func = nullptr;
+	if(this->getType(fd->mangledName) != nullptr)
+	{
+		GenError::duplicateSymbol(this, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
+	}
+	else if(this->isDuplicateFuncDecl(fd->mangledName))
+	{
+		if(!fd->isFFI)
+		{
+			GenError::duplicateSymbol(this, fd, fd->name, SymbolType::Function);
+		}
+	}
+	else
+	{
+		func = llvm::Function::Create(ft, linkageType, fd->mangledName, this->module);
+		this->addFunctionToScope(fd->mangledName, FuncPair_t(func, fd));
+	}
+
+	if(fd->attribs & Attr_VisPublic)
+		this->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(fd, func));
+
+	return Result_t(func, 0);
+}
+
+
+
+
+
+
 Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// if we're a generic function, we can't generate anything
@@ -43,8 +110,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			}
 		}
 
-
-
 		for(auto pair : usage)
 		{
 			if(!pair.second)
@@ -53,18 +118,17 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			}
 		}
 
+		// if(usedAny)
+		// {
+		// 	// defer generation, until all dependencies have been resolved.
+		// 	FuncPair_t fp;
+		// 	fp.first = 0;
+		// 	fp.second = this;
 
-		if(usedAny)
-		{
-			// defer generation, until all dependencies have been resolved.
-			FuncPair_t fp;
-			fp.first = 0;
-			fp.second = this;
+		// 	cgi->addFunctionToScope(cgi->mangleWithNamespace(this->name), fp);
 
-			cgi->addFunctionToScope(cgi->mangleWithNamespace(this->name), fp);
-
-			return Result_t(0, 0);
-		}
+		// 	return Result_t(0, 0);
+		// }
 	}
 
 
@@ -125,57 +189,84 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	for(VarDecl* v : this->params)
 		argtypes.push_back(cgi->getLlvmType(v));
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(cgi->getLlvmType(this), argtypes, this->hasVarArg);
-	llvm::GlobalValue::LinkageTypes linkageType;
+	return cgi->generateActualFuncDecl(this, argtypes);
+}
 
-	if(this->isFFI)
+
+Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
+{
+	std::deque<ExprType> originalParamTypes;
+	for(auto v : this->params)
+		originalParamTypes.push_back(v->type);
+
+	// change the VarDecl types to match.
+
+	if(types.size() != this->genericTypes.size())
 	{
-		linkageType = llvm::Function::ExternalLinkage;
-	}
-	else if((this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal))
-	{
-		linkageType = llvm::Function::InternalLinkage;
-	}
-	else if(this->attribs & Attr_VisPublic)
-	{
-		linkageType = llvm::Function::ExternalLinkage;
-	}
-	else if(this->parentStruct && (this->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
-	{
-		// default.
-		linkageType = (this->attribs & Attr_VisPrivate) || (this->attribs & Attr_VisInternal) ? llvm::Function::InternalLinkage : llvm::Function::ExternalLinkage;
-	}
-	else
-	{
-		linkageType = llvm::Function::InternalLinkage;
+		error(cgi, this, "Actual number of generic types provided (%d)"
+			"does not match with the number of generic type instantiates required (%d)", types.size(), this->genericTypes.size());
 	}
 
 
 
-	// check for redef
-	llvm::Function* func = nullptr;
-	if(cgi->getType(this->mangledName) != nullptr)
+	std::vector<llvm::Type*> argtypes;
+	for(size_t i = 0; i < types.size(); i++)
 	{
-		GenError::duplicateSymbol(cgi, this, this->name + " (symbol previously declared as a type)", SymbolType::Generic);
-	}
-	else if(cgi->isDuplicateFuncDecl(this->mangledName) /*cgi->module->getFunction(this->mangledName)*/)
-	{
-		if(!this->isFFI)
+		VarDecl* v = this->params[i];
+		if(types.find(v->type.strType) != types.end())
 		{
-			GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Function);
+			// provided.
+			llvm::Type* vt = types[v->type.strType];
+			argtypes.push_back(vt);
+		}
+		else
+		{
+			// either not a generic type, or not a legit type -- skip.
+			argtypes.push_back(cgi->getLlvmType(v));
+			continue;
 		}
 	}
-	else
-	{
-		func = llvm::Function::Create(ft, linkageType, this->mangledName, cgi->module);
-		cgi->addFunctionToScope(this->mangledName, FuncPair_t(func, this));
-	}
 
-	if(this->attribs & Attr_VisPublic)
-		cgi->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(this, func));
-
-	return Result_t(func, 0);
+	return cgi->generateActualFuncDecl(this, argtypes);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {

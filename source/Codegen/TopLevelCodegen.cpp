@@ -101,16 +101,24 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Struct* str				= dynamic_cast<Struct*>(e);
 			Enumeration* enr		= dynamic_cast<Enumeration*>(e);
 			Extension* ext			= dynamic_cast<Extension*>(e);
-			Func* func				= dynamic_cast<Func*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(enr)			enr->codegen(cgi);
 			else if(ext)			ext->codegen(cgi);
-			else if(func)			func->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
+		}
+	}
+	else if(pass == 5)
+	{
+		// pass 5: functions. for generic shit.
+		for(Expr* e : expressions)
+		{
+			Func* func				= dynamic_cast<Func*>(e);
+
+			if(func)				func->codegen(cgi);
 		}
 	}
 	else
@@ -143,6 +151,7 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	codegenTopLevel(cgi, 2, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 3, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 4, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 5, this->topLevelExpressions, false);
 
 	return Result_t(0, 0);
 }

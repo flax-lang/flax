@@ -131,6 +131,7 @@ namespace Codegen
 
 		llvm::Value* lastMinuteUnwrapType(Ast::Expr* user, llvm::Value* alloca);
 
+		std::string mangleLlvmType(llvm::Type* t);
 
 		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
@@ -143,8 +144,10 @@ namespace Codegen
 
 		std::string mangleName(Ast::StructBase* s, std::string orig);
 		std::string mangleName(Ast::StructBase* s, Ast::FuncCall* fc);
+
 		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
+		std::string mangleName(std::string base, std::deque<std::string> args);
 		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
 
 
@@ -181,6 +184,9 @@ namespace Codegen
 
 		void evaluateDependencies(Ast::Expr* expr);
 
+
+		llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(Ast::FuncDecl* fd);
+		Ast::Result_t generateActualFuncDecl(Ast::FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::BasicBlock* block = 0);
 
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
