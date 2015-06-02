@@ -48,7 +48,7 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, ExprType type)
+	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
 		{
@@ -60,7 +60,10 @@ namespace Codegen
 			if(!tp)
 				tp = this->getType(type.strType + "E");		// nested types. hack.
 
-			if(!tp)
+			if(!tp && allowFail)
+				return 0;
+
+			else if(!tp)
 				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
 
 			return tp->first;
@@ -98,7 +101,7 @@ namespace Codegen
 	}
 
 
-	llvm::Type* CodegenInstance::getLlvmType(Expr* expr)
+	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail)
 	{
 		iceAssert(expr);
 		{
@@ -117,6 +120,10 @@ namespace Codegen
 				}
 				else
 				{
+					// if we already "inferred" the type, don't bother doing it again.
+					if(decl->inferredLType)
+						return decl->inferredLType;
+
 					TypePair_t* type = this->getType(decl->type.strType);
 					if(!type)
 					{
@@ -124,13 +131,13 @@ namespace Codegen
 						if(decl->type.strType.find("::") != std::string::npos)
 						{
 							decl->type.strType = this->mangleRawNamespace(decl->type.strType);
-							return this->getLlvmType(decl);
+							return (decl->inferredLType = this->getLlvmType(decl, allowFail));
 						}
 
-						return this->parseTypeFromString(decl, decl->type.strType);
+						return (decl->inferredLType = this->parseTypeFromString(decl, decl->type.strType, allowFail));
 					}
 
-					return type->first;
+					return (decl->inferredLType = type->first);
 				}
 			}
 			else if(VarRef* ref = dynamic_cast<VarRef*>(expr))
@@ -139,7 +146,7 @@ namespace Codegen
 				if(!decl)
 					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 
-				auto x = getLlvmType(decl);
+				auto x = this->getLlvmType(decl, allowFail);
 				return x;
 			}
 			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
@@ -179,16 +186,10 @@ namespace Codegen
 			}
 			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
-				TypePair_t* type = getType(fd->type.strType);
+				TypePair_t* type = this->getType(fd->type.strType);
 				if(!type)
 				{
-					llvm::Type* ret = this->parseTypeFromString(fd, fd->type.strType);
-
-					if(!ret)
-					{
-						error(this, expr, "(%s:%d) -> Internal check failed: Unknown type '%s'",
-							__FILE__, __LINE__, expr->type.strType.c_str());
-					}
+					llvm::Type* ret = this->parseTypeFromString(fd, fd->type.strType, allowFail);
 					return ret;
 				}
 
@@ -279,7 +280,7 @@ namespace Codegen
 						for(ComputedProperty* c : str->cprops)
 						{
 							if(c->name == memberVr->name)
-								return this->getLlvmType(c, c->type);
+								return this->getLlvmType(c, c->type, allowFail);
 						}
 					}
 					else if(memberFc)
@@ -351,7 +352,7 @@ namespace Codegen
 					if(alloc->type.strType.find("::") != std::string::npos)
 					{
 						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getLlvmType(alloc, alloc->type)->getPointerTo();
+						return this->getLlvmType(alloc, alloc->type, allowFail)->getPointerTo();
 					}
 
 					return this->parseTypeFromString(alloc, alloc->type.strType)->getPointerTo();
@@ -607,7 +608,7 @@ namespace Codegen
 		return actualType;
 	}
 
-	static llvm::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str)
+	static llvm::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
 	{
 		iceAssert(str.length() > 0);
 		iceAssert(str[0] == '(');
@@ -632,7 +633,7 @@ namespace Codegen
 			if(front == ',' || front == ')')
 			{
 				bool shouldBreak = (front == ')');
-				llvm::Type* ty = cgi->parseTypeFromString(user, cur);
+				llvm::Type* ty = cgi->parseTypeFromString(user, cur, allowFail);
 				iceAssert(ty);
 
 				types.push_back(ty);
@@ -646,7 +647,7 @@ namespace Codegen
 			else if(front == '(')
 			{
 				iceAssert(str.front() == '(');
-				types.push_back(recursivelyParseTuple(cgi, user, str));
+				types.push_back(recursivelyParseTuple(cgi, user, str, allowFail));
 
 				if(str.front() == ',')
 					str.erase(str.begin());
@@ -658,7 +659,7 @@ namespace Codegen
 		return llvm::StructType::get(cgi->getContext(), types);
 	}
 
-	static llvm::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type)
+	static llvm::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type, bool allowFail)
 	{
 		iceAssert(type.size() > 0);
 
@@ -672,12 +673,12 @@ namespace Codegen
 				type.erase(type.begin());
 			}
 
-			ret = cgi->parseTypeFromString(user, t);
+			ret = cgi->parseTypeFromString(user, t, allowFail);
 		}
 		else
 		{
 			type = type.substr(1);
-			ret = recursivelyParseArray(cgi, user, type);
+			ret = recursivelyParseArray(cgi, user, type, allowFail);
 
 			// todo: FIXME -- arrays, not pointers.
 			ret = ret->getPointerTo();
@@ -689,21 +690,21 @@ namespace Codegen
 		return ret;
 	}
 
-	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type)
+	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type, bool allowFail)
 	{
 		if(type.length() > 0)
 		{
 			if(type[0] == '(')
 			{
 				// parse a tuple.
-				llvm::Type* parsed = recursivelyParseTuple(this, user, type);
+				llvm::Type* parsed = recursivelyParseTuple(this, user, type, allowFail);
 				return parsed;
 			}
 			else if(type[0] == '[')
 			{
 				// array.
 				std::string tp = type;
-				llvm::Type* parsed = recursivelyParseArray(this, user, tp);
+				llvm::Type* parsed = recursivelyParseArray(this, user, tp, allowFail);
 
 				return parsed;
 			}
@@ -718,7 +719,7 @@ namespace Codegen
 					std::string base = actualType.substr(0, k);
 
 					std::string arr = actualType.substr(k);
-					llvm::Type* btype = this->parseTypeFromString(user, base);
+					llvm::Type* btype = this->parseTypeFromString(user, base, allowFail);
 
 
 					std::vector<int> sizes;
@@ -757,7 +758,7 @@ namespace Codegen
 				}
 				else
 				{
-					llvm::Type* ret = this->getLlvmType(user, ExprType(actualType));
+					llvm::Type* ret = this->getLlvmType(user, ExprType(actualType), allowFail);
 
 					if(ret)
 					{
@@ -943,11 +944,13 @@ namespace Codegen
 			std::string str = "ƒ " + fd->name + "(";
 			for(auto p : fd->params)
 			{
-				str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
+				str += p->name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
+				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
 			}
 
 			str = str.substr(0, str.length() - 2) + ") -> ";
-			str += this->getReadableType(fd);
+			// str += this->getReadableType(fd);
+			str += fd->type.strType;
 			return str;
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))

@@ -322,8 +322,13 @@ namespace Ast
 		FFIType ffiType = FFIType::C;
 		std::string name;
 		std::string mangledName;
+		std::string mangledNamespaceOnly;
+
 		std::deque<VarDecl*> params;
 		std::deque<std::string> genericTypes;
+
+		llvm::Type* instantiatedGenericReturnType = 0;
+		std::deque<llvm::Type*> instantiatedGenericTypes;
 	};
 
 	struct BracedBlock : Expr
@@ -677,6 +682,17 @@ namespace Ast
 		// public functiondecls and type decls.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;
 		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
+
+		// list of all function calls. all.
+		std::deque<FuncCall*> allFunctionCalls;
+
+		// list of all functions. every single one.
+		std::deque<Func*> allFunctionBodies;
+
+		// list of all generic functions that we know about, as well as import + export.
+		std::deque<FuncDecl*> genericFunctions;
+		std::deque<FuncDecl*> externalGenericFunctions;
+		std::deque<FuncDecl*> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;

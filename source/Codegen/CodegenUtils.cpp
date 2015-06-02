@@ -103,6 +103,12 @@ namespace Codegen
 		cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
+		// add the generic functions from previous shits.
+		for(auto fd : cgi->rootNode->externalGenericFunctions)
+		{
+			cgi->rootNode->genericFunctions.push_back(fd);
+		}
+
 		for(auto pair : cgi->rootNode->externalFuncs)
 		{
 			auto func = pair.second;
@@ -434,19 +440,45 @@ namespace Codegen
 	static FuncPair_t* searchDeclaredFuncElsewhere(CodegenInstance* cgi, FuncCall* fc)
 	{
 		// mangled name
-		FuncPair_t* fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name), fc->params));
+		FuncPair_t* fp = cgi->getDeclaredFunc(cgi->mangleFunctionName(cgi->mangleWithNamespace(fc->name), fc->params));
 		if(fp) return fp;
 
 		// search inside imported namespaces.
 		for(auto ns : cgi->importedNamespaces)
 		{
-			fp = cgi->getDeclaredFunc(cgi->mangleName(cgi->mangleWithNamespace(fc->name, ns), fc->params));
+			fp = cgi->getDeclaredFunc(cgi->mangleFunctionName(cgi->mangleWithNamespace(fc->name, ns), fc->params));
 			if(fp) return fp;
 		}
 
 		return 0;
 	}
 
+	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
+	{
+		// step one: unmangled name
+		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
+		if(fp) return fp;
+
+		fp = searchDeclaredFuncElsewhere(this, fc);
+		if(fp) return fp;
+
+		return 0;
+	}
+
+	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
+	{
+		return this->funcStack.back().find(name) != this->funcStack.back().end();
+	}
+
+	void CodegenInstance::popNamespaceScope()
+	{
+		this->namespaceStack.pop_back();
+	}
+
+	void CodegenInstance::clearNamespaceScope()
+	{
+		this->namespaceStack.clear();
+	}
 
 
 
@@ -491,39 +523,6 @@ namespace Codegen
 
 		return fp;
 	}
-
-	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
-	{
-		// step one: unmangled name
-		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
-		if(fp) return fp;
-
-		fp = searchDeclaredFuncElsewhere(this, fc);
-		if(fp) return fp;
-
-
-		// search for generic functions.
-
-
-
-		return 0;
-	}
-
-	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
-	{
-		return this->funcStack.back().find(name) != this->funcStack.back().end();
-	}
-
-	void CodegenInstance::popNamespaceScope()
-	{
-		this->namespaceStack.pop_back();
-	}
-
-	void CodegenInstance::clearNamespaceScope()
-	{
-		this->namespaceStack.clear();
-	}
-
 
 
 	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
@@ -638,12 +637,12 @@ namespace Codegen
 		}
 
 		mangled += std::to_string(s->name.length()) + s->name;
-		mangled += this->mangleName(std::to_string(orig.length()) + orig + "E", args);
+		mangled += this->mangleFunctionName(std::to_string(orig.length()) + orig + "E", args);
 
 		return mangled;
 	}
 
-	std::string CodegenInstance::mangleName(StructBase* s, FuncCall* fc)
+	std::string CodegenInstance::mangleMemberName(StructBase* s, FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
 		iceAssert(this->getType(s->mangledName));
@@ -661,17 +660,32 @@ namespace Codegen
 		}
 
 		std::string basename = fc->name + "E";
-		std::string mangledFunc = this->mangleName(basename, largs);
+		std::string mangledFunc = this->mangleFunctionName(basename, largs);
 		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
-	std::string CodegenInstance::mangleName(StructBase* s, std::string orig)
+	std::string CodegenInstance::mangleMemberName(StructBase* s, std::string orig)
 	{
 		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
 	}
 
 
-	std::string CodegenInstance::mangleName(std::string base, std::deque<std::string> args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<std::string> args)
 	{
 		std::string mangled;
 		for(auto s : args)
@@ -680,33 +694,100 @@ namespace Codegen
 		return base + (mangled.empty() ? "v" : (mangled));
 	}
 
-	std::string CodegenInstance::mangleName(std::string base, std::deque<llvm::Type*> args)
+	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<llvm::Type*> args)
 	{
 		std::deque<std::string> strings;
 
 		for(llvm::Type* e : args)
 			strings.push_back(this->mangleLlvmType(e));
 
-		return this->mangleName(base, strings);
+		return this->mangleFunctionName(base, strings);
 	}
 
-	std::string CodegenInstance::mangleName(std::string base, std::deque<Expr*> args)
+	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<Expr*> args)
 	{
 		std::deque<llvm::Type*> a;
 		for(auto arg : args)
 			a.push_back(this->getLlvmType(arg));
 
-		return mangleName(base, a);
+		return this->mangleFunctionName(base, a);
 	}
 
-	std::string CodegenInstance::mangleName(std::string base, std::deque<VarDecl*> args)
+	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<VarDecl*> args)
 	{
 		std::deque<llvm::Type*> a;
 		for(auto arg : args)
 			a.push_back(this->getLlvmType(arg));
 
-		return mangleName(base, a);
+		return this->mangleFunctionName(base, a);
 	}
+
+
+
+
+
+
+
+
+
+
+	std::string CodegenInstance::mangleGenericFunctionName(std::string base, std::deque<VarDecl*> args)
+	{
+		std::deque<std::string> strs;
+		std::map<std::string, int> uniqueGenericTypes;	// only a map because it's easier to .find().
+
+		// TODO: this is very suboptimal
+		int runningTypeIndex = 0;
+		for(auto arg : args)
+		{
+			llvm::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+
+			// if there is no llvm type, go ahead with the raw type: T or U or something.
+			if(!atype)
+			{
+				std::string st = arg->type.strType;
+				if(uniqueGenericTypes.find(st) == uniqueGenericTypes.end())
+				{
+					uniqueGenericTypes[st] = runningTypeIndex;
+					runningTypeIndex++;
+				}
+			}
+		}
+
+		// very very suboptimal.
+
+		for(auto arg : args)
+		{
+			llvm::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+
+			// if there is no llvm type, go ahead with the raw type: T or U or something.
+			if(!atype)
+			{
+				std::string st = arg->type.strType;
+				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
+
+				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]) + "_";
+				strs.push_back(std::to_string(s.length()) + s);
+			}
+			else
+			{
+				strs.push_back(this->mangleLlvmType(atype));
+			}
+		}
+
+		return this->mangleFunctionName(base, strs);
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 	std::string CodegenInstance::mangleWithNamespace(std::string original, bool isFunction)
 	{
@@ -768,26 +849,197 @@ namespace Codegen
 
 	Result_t CodegenInstance::createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr)
 	{
-		// llvm::Value* alloca = this->allocateInstanceInBlock(stringType);
-
-		// // String layout:
-		// // var data: Int8*
-		// // var allocated: Uint64
-
-		// llvm::Value* stringPtr = this->builder.CreateStructGEP(alloca, 0);
-		// llvm::Value* allocdPtr = this->builder.CreateStructGEP(alloca, 1);
-
-		// llvm::Value* newstr = this->builder.CreateAlloca(int8ptr->getType(), );
-
-		// llvm::Value* stringVal = this->builder.CreateGlobalStringPtr(this->str);
-
-		// this->builder.CreateStore(stringVal, stringPtr);
-		// this->builder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
-
-		// llvm::Value* val = this->builder.CreateLoad(alloca);
-		// return Result_t(val, alloca);
 		return Result_t(0, 0);
 	}
+
+
+
+
+	void CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
+	{
+		// try and resolve shit???
+		// first, we need to get strings of every type.
+
+		// TODO: dupe code
+		std::deque<FuncDecl*> candidates;
+		std::map<std::string, llvm::Type*> tm;
+
+		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
+		for(FuncDecl* fd : this->rootNode->genericFunctions)
+		{
+			if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name))
+				candidates.push_back(fd);
+
+			for(auto ns : this->importedNamespaces)
+			{
+				if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name, ns))
+					candidates.push_back(fd);
+			}
+		}
+
+		if(candidates.size() == 0)
+		{
+			// printf("found no generic candidates for func call %s\n", fc->name.c_str());
+			return;	// do nothing.
+		}
+
+		auto it = candidates.begin();
+		for(auto candidate : candidates)
+		{
+			printf("found candidate function declaration to instantiate: %s, %s, %s\n", candidate->name.c_str(),
+				candidate->mangledNamespaceOnly.c_str(), candidate->mangledName.c_str());
+
+
+			// now check if we *can* instantiate it.
+			// first check the number of arguments.
+			if(candidate->params.size() != fc->params.size())
+			{
+				printf("candidate %s rejected (1)\n", candidate->mangledName.c_str());
+				it = candidates.erase(it);
+			}
+			else
+			{
+				// param count matches...
+				// do a similar thing as the actual mangling -- build a list of
+				// uniquely named types.
+
+				std::map<std::string, std::vector<int>> typePositions;
+				std::vector<int> nonGenericTypes;
+
+				int pos = 0;
+				for(auto p : candidate->params)
+				{
+					llvm::Type* ltype = this->getLlvmType(p, true);
+					if(!ltype)
+					{
+						std::string s = p->type.strType;
+						if(typePositions.find(s) == typePositions.end())
+							typePositions[s] = std::vector<int>();
+
+						typePositions[s].push_back(pos);
+					}
+					else
+					{
+						nonGenericTypes.push_back(pos);
+					}
+
+					pos++;
+				}
+
+
+				// this needs to be basically a fully manual check.
+				// 1. check that the generic types match.
+				for(auto pair : typePositions)
+				{
+					llvm::Type* ftype = this->getLlvmType(fc->params[0]);
+					for(int k : pair.second)
+					{
+						if(this->getLlvmType(fc->params[k]) != ftype)
+							goto fail;	// ew goto
+					}
+				}
+
+				// 2. check that the concrete types match.
+				for(int k : nonGenericTypes)
+				{
+					llvm::Type* a = this->getLlvmType(fc->params[k]);
+					llvm::Type* b = this->getLlvmType(candidate->params[k]);
+
+					if(a != b)
+						goto fail;
+				}
+
+
+
+				// fill in the typemap.
+				// note that it's okay if we just have one -- if we did this loop more
+				// than once and screwed up the tm, that means we have more than one
+				// candidate, and will error anyway.
+
+				for(auto pair : typePositions)
+				{
+					tm[pair.first] = this->getLlvmType(fc->params[pair.second[0]]);
+				}
+
+
+				goto success;
+				fail:
+				{
+					printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
+					it = candidates.erase(it);
+					continue;
+				}
+
+				success:
+				it++;
+			}
+		}
+
+		if(candidates.size() > 1)
+		{
+			std::string cands;
+			for(auto c : candidates)
+				cands += this->printAst(c) + "\n";
+
+			error(this, fc, "Ambiguous function call to function %s, have %d candidates:\n%s\n", fc->name.c_str(),
+				candidates.size(), cands.c_str());
+		}
+
+		FuncDecl* candidate = candidates[0];
+		Result_t res = candidate->generateDeclForGenericType(this, tm);
+		llvm::Function* ffunc = (llvm::Function*) res.result.first;
+
+		iceAssert(ffunc);
+
+
+		// TODO: this is really super fucking ugly and SUBOPTIMAL
+		Func* theFn = 0;
+		for(Func* f : this->rootNode->allFunctionBodies)
+		{
+			if(f->decl == candidate)
+			{
+				// we've got it.
+				theFn = f;
+				break;
+			}
+		}
+
+		iceAssert(theFn);
+		std::deque<llvm::Type*> instantiatedTypes;
+		for(auto p : fc->params)
+			instantiatedTypes.push_back(this->getLlvmType(p));
+
+		theFn->decl->instantiatedGenericTypes = instantiatedTypes;
+		theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
+		theFn->codegen(this);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1090,7 +1342,7 @@ namespace Codegen
 		error(e, "Not all code paths return a value");
 	}
 
-	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r)
+	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, llvm::Type* retType)
 	{
 		if(r)
 		{
@@ -1100,8 +1352,9 @@ namespace Codegen
 			if(r->actualReturnValue)
 				have = r->actualReturnValue->getType();
 
-			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = cgi->getLlvmType(f->decl)))
-				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead", cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
+			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = (retType == 0 ? cgi->getLlvmType(f->decl) : retType)))
+				error(cgi, r, "Function has return type '%s', but return statement returned value of type '%s' instead",
+					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 
 
 			return true;
@@ -1112,8 +1365,8 @@ namespace Codegen
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType);
-	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType, llvm::Type* retType);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, llvm::Type* retType)
 	{
 		if(bb->statements.size() == 0)
 			errorNoReturn(bb);
@@ -1124,7 +1377,7 @@ namespace Codegen
 			If* i = nullptr;
 			if((i = dynamic_cast<If*>(e)))
 			{
-				Return* tmp = recursiveVerifyBranch(cgi, f, i, checkType);
+				Return* tmp = recursiveVerifyBranch(cgi, f, i, checkType, retType);
 				if(tmp)
 				{
 					r = tmp;
@@ -1138,19 +1391,19 @@ namespace Codegen
 
 		if(checkType)
 		{
-			verifyReturnType(cgi, f, bb, r);
+			verifyReturnType(cgi, f, bb, r, retType);
 		}
 
 		return r;
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType, llvm::Type* retType)
 	{
 		Return* r = 0;
 		bool first = true;
 		for(std::pair<Expr*, BracedBlock*> pair : ib->_cases)	// use the preserved one
 		{
-			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType);
+			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType, retType);
 			if(first)
 				r = tmp;
 
@@ -1163,7 +1416,7 @@ namespace Codegen
 		if(ib->final)
 		{
 			if(r != nullptr)
-				r = recursiveVerifyBlock(cgi, f, ib->final, checkType);
+				r = recursiveVerifyBlock(cgi, f, ib->final, checkType, retType);
 		}
 		else
 		{
@@ -1176,13 +1429,13 @@ namespace Codegen
 	// if the function returns void, the return value of verifyAllPathsReturn indicates whether or not
 	// all code paths have explicit returns -- if true, Func::codegen is expected to insert a ret void at the end
 	// of the body.
-	bool CodegenInstance::verifyAllPathsReturn(Func* func, size_t* stmtCounter, bool checkType)
+	bool CodegenInstance::verifyAllPathsReturn(Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType)
 	{
 		if(stmtCounter)
 			*stmtCounter = 0;
 
 
-		bool isVoid = this->getLlvmType(func)->isVoidTy();
+		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidTy();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
@@ -1207,7 +1460,7 @@ namespace Codegen
 			final = e;
 
 			if(i)
-				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType);
+				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
 
 			// "top level" returns we will just accept.
 			if(ret || (ret = dynamic_cast<Return*>(e)))
@@ -1222,7 +1475,7 @@ namespace Codegen
 
 		if(checkType)
 		{
-			verifyReturnType(this, func, func->block, ret);
+			verifyReturnType(this, func, func->block, ret, retType);
 		}
 
 		return false;

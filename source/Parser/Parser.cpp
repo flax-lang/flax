@@ -852,7 +852,10 @@ namespace Parser
 		Token front = tokens.front();
 		FuncDecl* decl = parseFuncDecl(tokens);
 
-		return CreateAST(Func, front, decl, parseBracedBlock(tokens));
+		auto ret = CreateAST(Func, front, decl, parseBracedBlock(tokens));
+		rootNode->allFunctionBodies.push_back(ret);
+
+		return ret;
 	}
 
 
@@ -1563,7 +1566,10 @@ namespace Parser
 			eat(tokens);
 		}
 
-		return CreateAST(FuncCall, front, id, args);
+		auto ret = CreateAST(FuncCall, front, id, args);
+		rootNode->allFunctionCalls.push_back(ret);
+
+		return ret;
 	}
 
 	Return* parseReturn(TokenList& tokens)

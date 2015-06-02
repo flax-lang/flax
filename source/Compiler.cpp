@@ -133,6 +133,11 @@ namespace Compiler
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 				}
+				for(auto v : r->publicGenericFunctions)
+				{
+					root->externalGenericFunctions.push_back(v);
+					root->publicGenericFunctions.push_back(v);
+				}
 				for(auto v : r->typeList)
 				{
 					bool skip = false;
