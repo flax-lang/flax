@@ -49,35 +49,45 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-	FuncPair_t* fp = cgi->getDeclaredFunc(this);
-	if(!fp)
+
+	llvm::Function* target = 0;
+	if(this->cachedGenericFuncTarget == 0)
 	{
-		// print a better error message.
-		std::vector<std::string> argtypes;
-		for(auto a : this->params)
-			argtypes.push_back(cgi->getReadableType(a).c_str());
-
-		std::string argstr;
-		for(auto s : argtypes)
-			argstr += ", " + s;
-
-		argstr = argstr.substr(2);
-
-		std::string candidates;
-		for(auto fs : cgi->funcStack)
+		FuncPair_t* fp = cgi->getDeclaredFunc(this);
+		if(!fp)
 		{
-			for(auto f : fs)
+			// print a better error message.
+			std::vector<std::string> argtypes;
+			for(auto a : this->params)
+				argtypes.push_back(cgi->getReadableType(a).c_str());
+
+			std::string argstr;
+			for(auto s : argtypes)
+				argstr += ", " + s;
+
+			argstr = argstr.substr(2);
+
+			std::string candidates;
+			for(auto fs : cgi->funcStack)
 			{
-				if(f.second.second && f.second.second->name == this->name)
-					candidates += cgi->printAst(f.second.second) + "\n";
+				for(auto f : fs)
+				{
+					if(f.second.second && f.second.second->name == this->name)
+						candidates += cgi->printAst(f.second.second) + "\n";
+				}
 			}
+
+			error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
+				this->name.c_str(), argstr.c_str(), candidates.c_str());
 		}
 
-		error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
-			this->name.c_str(), argstr.c_str(), candidates.c_str());
+		target = fp->first;
+	}
+	else
+	{
+		target = this->cachedGenericFuncTarget;
 	}
 
-	llvm::Function* target = fp->first;
 	bool checkVarArg = target->isVarArg();
 
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
