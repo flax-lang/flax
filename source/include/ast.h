@@ -359,6 +359,8 @@ namespace Ast
 
 		std::string name;
 		std::deque<Expr*> params;
+
+		llvm::Function* cachedGenericFuncTarget = 0;
 	};
 
 	struct Return : Expr
