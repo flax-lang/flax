@@ -109,8 +109,8 @@ namespace Codegen
 		// llvm::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		llvm::Type* getLlvmType(Ast::Expr* expr);
-		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type);
+		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false);
+		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 
@@ -142,13 +142,14 @@ namespace Codegen
 		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
 			bool isStatic = false);
 
-		std::string mangleName(Ast::StructBase* s, std::string orig);
-		std::string mangleName(Ast::StructBase* s, Ast::FuncCall* fc);
+		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
+		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
 
-		std::string mangleName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleName(std::string base, std::deque<llvm::Type*> args);
-		std::string mangleName(std::string base, std::deque<std::string> args);
-		std::string mangleName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
+		std::string mangleFunctionName(std::string base, std::deque<llvm::Type*> args);
+		std::string mangleFunctionName(std::string base, std::deque<std::string> args);
+		std::string mangleFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleGenericFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
@@ -161,7 +162,7 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type);
+		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type, bool allowFail = false);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
 		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::MemberAccess* ma, bool doAccess = false,
@@ -181,17 +182,17 @@ namespace Codegen
 
 		Ast::Result_t createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr);
 
-
+		void tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 		void evaluateDependencies(Ast::Expr* expr);
 
 
 		llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(Ast::FuncDecl* fd);
-		Ast::Result_t generateActualFuncDecl(Ast::FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::BasicBlock* block = 0);
+		Ast::Result_t generateActualFuncDecl(Ast::FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype);
 
 		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
-		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType);
+		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType = 0);
 
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);

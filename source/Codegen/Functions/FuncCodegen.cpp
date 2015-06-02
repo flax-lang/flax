@@ -40,18 +40,36 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 
 Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	this->didCodegen = true;
+
+
+	bool isGeneric = this->decl->genericTypes.size() > 0;
+
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
 	llvm::Function* func = cgi->module->getFunction(this->decl->mangledName);
-	iceAssert(func && "Function was not declared before being generated!");
+	if(!func)
+	{
+		if(isGeneric)
+		{
+			warn(cgi, this, "Function %s is never called", this->decl->name.c_str());
+		}
+		else
+		{
+			warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
+		}
+
+		return Result_t(0, 0);
+	}
 
 
 
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
 	// create a new 'table' for our own usage.
-	// the reverse stack searching for symbols makes sure we can reference variables in outer scopes
+	// the reverse stack searching for symbols makes sure we can reference variables in outer scopes, but at the same time
+	// we can shadow outer variables with our own.
 	cgi->pushScope();
 	cgi->setCurrentFunctionScope(this);
 
@@ -64,7 +82,6 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
 	cgi->builder.SetInsertPoint(block);
 
-
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
 	if(func->arg_size() > 0)
 	{
@@ -73,7 +90,17 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		{
 			it->setName(this->decl->params[i]->name);
 
-			llvm::AllocaInst* ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+			llvm::AllocaInst* ai = 0;
+
+			if(isGeneric)
+			{
+				ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
+			}
+			else
+			{
+				ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+			}
+
 			cgi->builder.CreateStore(it, ai);
 
 			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
@@ -97,7 +124,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	if(this->decl->type.strType != "Void")
 	{
 		size_t counter = 0;
-		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false);
+		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
 
 
 		if(counter != this->block->statements.size())
@@ -128,7 +155,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 
 	// verify again, this type checking the types
-	cgi->verifyAllPathsReturn(this, nullptr, true);
+	cgi->verifyAllPathsReturn(this, nullptr, true, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
 
 	if(doRetVoid)
 		cgi->builder.CreateRetVoid();
