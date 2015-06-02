@@ -75,7 +75,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
 
 			// generate a global variable (sorry!).
-			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->module, var->inferredLType, var->immutable, llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->module, var->inferredLType, var->immutable,
+				llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
 
 			if(var->inferredLType->isStructTy())
 			{
@@ -311,7 +312,7 @@ void Struct::createType(CodegenInstance* cgi)
 				func->decl->attribs |= Attr_VisPublic;
 
 			func->decl->parentStruct = this;
-			std::string mangled = cgi->mangleName(func->decl->name, func->decl->params);
+			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
 			{
 				error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());

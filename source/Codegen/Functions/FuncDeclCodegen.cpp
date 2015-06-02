@@ -42,9 +42,9 @@ llvm::GlobalValue::LinkageTypes CodegenInstance::getFunctionDeclLinkage(FuncDecl
 }
 
 
-Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::BasicBlock* block)
+Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype)
 {
-	llvm::FunctionType* ft = llvm::FunctionType::get(this->getLlvmType(fd), argtypes, fd->hasVarArg);
+	llvm::FunctionType* ft = llvm::FunctionType::get(rettype, argtypes, fd->hasVarArg);
 	auto linkageType = this->getFunctionDeclLinkage(fd);
 
 	// check for redef
@@ -135,7 +135,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentStruct != nullptr);
-
+	bool isGeneric = this->genericTypes.size() > 0;
 
 	this->mangledName = this->name;
 	if(isMemberFunction)
@@ -160,6 +160,8 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		// if we're a normal function, or we're ffi and the type is c++, mangle it
 		// our mangling is compatible with c++ to reduce headache
+
+		// if [ (not ffi) AND (not @nomangle) ] OR [ (is ffi) AND (ffi is cpp) ]
 		if((!this->isFFI && !(this->attribs & Attr_NoMangle)) || (this->isFFI && this->ffiType == FFIType::Cpp))
 		{
 			alreadyMangled = true;
@@ -171,8 +173,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				cgi->pushNamespaceScope(cfs->decl->mangledName);
 			}
 
-			this->mangledName = cgi->mangleWithNamespace(this->mangledName);
-			this->mangledName = cgi->mangleName(this->mangledName, this->params);
+			this->mangledNamespaceOnly = cgi->mangleWithNamespace(this->mangledName);
+			this->mangledName = this->mangledNamespaceOnly;
+
+			if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->mangledName, this->params);
+			else			this->mangledName = cgi->mangleFunctionName(this->mangledName, this->params);
 
 			if(isNested)
 			{
@@ -180,27 +185,32 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			}
 		}
 
-
+		// if (not alreadyMangled) AND [ (not ffi) OR (@nomangle) ] AND (not @nomangle)
 		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
-			this->mangledName = cgi->mangleName(this->name, this->params);
+		{
+			if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
+			else			this->mangledName = cgi->mangleFunctionName(this->name, this->params);
+		}
 	}
 
-	std::vector<llvm::Type*> argtypes;
-	for(VarDecl* v : this->params)
-		argtypes.push_back(cgi->getLlvmType(v));
+	if(isGeneric)
+	{
+		cgi->rootNode->genericFunctions.push_back(this);
+		return Result_t(0, 0);
+	}
+	else
+	{
+		std::vector<llvm::Type*> argtypes;
+		for(VarDecl* v : this->params)
+			argtypes.push_back(cgi->getLlvmType(v));
 
-	return cgi->generateActualFuncDecl(this, argtypes);
+		return cgi->generateActualFuncDecl(this, argtypes, cgi->getLlvmType(this));
+	}
 }
 
 
 Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
 {
-	std::deque<ExprType> originalParamTypes;
-	for(auto v : this->params)
-		originalParamTypes.push_back(v->type);
-
-	// change the VarDecl types to match.
-
 	if(types.size() != this->genericTypes.size())
 	{
 		error(cgi, this, "Actual number of generic types provided (%d)"
@@ -208,12 +218,13 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 	}
 
 
-
 	std::vector<llvm::Type*> argtypes;
-	for(size_t i = 0; i < types.size(); i++)
+	for(size_t i = 0; i < this->params.size(); i++)
 	{
 		VarDecl* v = this->params[i];
-		if(types.find(v->type.strType) != types.end())
+		llvm::Type* ltype = cgi->getLlvmType(v, true);
+
+		if(!ltype && types.find(v->type.strType) != types.end())
 		{
 			// provided.
 			llvm::Type* vt = types[v->type.strType];
@@ -222,12 +233,17 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		else
 		{
 			// either not a generic type, or not a legit type -- skip.
-			argtypes.push_back(cgi->getLlvmType(v));
-			continue;
+			argtypes.push_back(ltype);
 		}
 	}
 
-	return cgi->generateActualFuncDecl(this, argtypes);
+	llvm::Type* lret = cgi->getLlvmType(this, true);
+	if(!lret && types.find(this->type.strType) != types.end())
+	{
+		lret = types[this->type.strType];
+	}
+
+	return cgi->generateActualFuncDecl(this, argtypes, lret);
 }
 
 

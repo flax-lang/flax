@@ -113,12 +113,21 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 5)
 	{
+		// first, look into all functions. check function calls, since everything should have already been declared.
+		// if we can resolve it into a generic function, then instantiate (monomorphise) the generic function
+		// with concrete types.
+
+		// fuck. super-suboptimal -- we're relying on the parser to create a list of *EVERY* function call.
+		for(auto fc : cgi->rootNode->allFunctionCalls)
+			cgi->tryResolveAndInstantiateGenericFunction(fc);
+	}
+	else if(pass == 6)
+	{
 		// pass 5: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
-			Func* func				= dynamic_cast<Func*>(e);
-
-			if(func)				func->codegen(cgi);
+			Func* func						= dynamic_cast<Func*>(e);
+			if(func && !func->didCodegen)	func->codegen(cgi);
 		}
 	}
 	else
@@ -146,12 +155,14 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	// this is getting quite out of hand.
 	codegenTopLevel(cgi, 0, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 1, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 2, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 3, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 4, this->topLevelExpressions, false);
 	codegenTopLevel(cgi, 5, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 6, this->topLevelExpressions, false);
 
 	return Result_t(0, 0);
 }
