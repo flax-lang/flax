@@ -1011,6 +1011,8 @@ namespace Codegen
 
 		theFn->decl->instantiatedGenericTypes = instantiatedTypes;
 		theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
+
+		fc->cachedGenericFuncTarget = ffunc;
 		theFn->codegen(this);
 	}
 
