@@ -10,55 +10,85 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callConstructor(CodegenInstance* cgi, TypePair_t* tp, FuncCall* fc)
+
+Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {
 	iceAssert(tp);
-	llvm::Value* ai = cgi->allocateInstanceInBlock(tp->first, "tmp");
+	llvm::Value* ai = this->allocateInstanceInBlock(tp->first, "tmp");
 
-	// TODO: constructor args
-	std::vector<llvm::Value*> args;
-	args.push_back(ai);
-	for(Expr* e : fc->params)
-		args.push_back(e->codegen(cgi).result.first);
+	args.insert(args.begin(), ai);
 
-	llvm::Function* initfunc = cgi->getStructInitialiser(fc, tp, args);
+	llvm::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
-	cgi->mainBuilder.CreateCall(initfunc, args);
-	llvm::Value* val = cgi->mainBuilder.CreateLoad(ai);
+	this->builder.CreateCall(initfunc, args);
+	llvm::Value* val = this->builder.CreateLoad(ai);
 
 	return Result_t(val, ai);
 }
-
-
-
-
-
-
-
-
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// always try the type first.
 	if(cgi->getType(this->name) != nullptr)
-		return callConstructor(cgi, cgi->getType(this->name), this);
+	{
+		std::vector<llvm::Value*> args;
+		for(Expr* e : this->params)
+			args.push_back(e->codegen(cgi).result.first);
 
+		return cgi->callTypeInitialiser(cgi->getType(this->name), this, args);
+	}
 	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
-		return callConstructor(cgi, cgi->getType(cgi->mangleRawNamespace(this->name)), this);
+	{
+		std::vector<llvm::Value*> args;
+		for(Expr* e : this->params)
+			args.push_back(e->codegen(cgi).result.first);
+
+		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
+	}
 
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-	FuncPair_t* fp = cgi->getDeclaredFunc(this);
-	if(!fp)
+
+	llvm::Function* target = 0;
+	if(this->cachedGenericFuncTarget == 0)
 	{
-		// try and resolve.
-		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Function);
+		FuncPair_t* fp = cgi->getDeclaredFunc(this);
+		if(!fp)
+		{
+			// print a better error message.
+			std::vector<std::string> argtypes;
+			for(auto a : this->params)
+				argtypes.push_back(cgi->getReadableType(a).c_str());
+
+			std::string argstr;
+			for(auto s : argtypes)
+				argstr += ", " + s;
+
+			argstr = argstr.substr(2);
+
+			std::string candidates;
+			for(auto fs : cgi->funcStack)
+			{
+				for(auto f : fs)
+				{
+					if(f.second.second && f.second.second->name == this->name)
+						candidates += cgi->printAst(f.second.second) + "\n";
+				}
+			}
+
+			error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
+				this->name.c_str(), argstr.c_str(), candidates.c_str());
+		}
+
+		target = fp->first;
+	}
+	else
+	{
+		target = this->cachedGenericFuncTarget;
 	}
 
-	llvm::Function* target = fp->first;
 	bool checkVarArg = target->isVarArg();
-
 
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
@@ -80,6 +110,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
 		{
+			// this function knows what to do.
 			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
 		}
 
@@ -104,7 +135,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		}
 	}
 
-	return Result_t(cgi->mainBuilder.CreateCall(target, args), 0);
+	return Result_t(cgi->builder.CreateCall(target, args), 0);
 }
 
 

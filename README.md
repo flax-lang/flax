@@ -1,4 +1,4 @@
-[Flax](https://flax-lang.github.io) [![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=master)](https://travis-ci.org/flax-lang/flax)
+[Flax](https://flax-lang.github.io)
 ============
 
 A low level language with high level syntax and expressibility, aimed at OSDev work.
@@ -18,7 +18,7 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 #### Current Features ####
 
 - User-defined types (structs, enums and typealiases)
-- Arrays (probably regressed and broken)
+- Arrays (small regressions, mostly complete)
 - Pointer syntax (C-like)
 - Operator overloading on structs
 - Function overloading (C++-ish)
@@ -58,4 +58,4 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 - Found a bug? Want a feature?
 - Just submit a pull request!
-- Requested help: Error catching, please! A lot of the time the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
+- Requested help: Error catching, please! Sometimes the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
