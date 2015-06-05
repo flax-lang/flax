@@ -855,7 +855,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
+	llvm::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
 		// try and resolve shit???
 		// first, we need to get strings of every type.
@@ -880,14 +880,14 @@ namespace Codegen
 		if(candidates.size() == 0)
 		{
 			// printf("found no generic candidates for func call %s\n", fc->name.c_str());
-			return;	// do nothing.
+			return 0;	// do nothing.
 		}
 
 		auto it = candidates.begin();
 		for(auto candidate : candidates)
 		{
-			printf("found candidate function declaration to instantiate: %s, %s, %s\n", candidate->name.c_str(),
-				candidate->mangledNamespaceOnly.c_str(), candidate->mangledName.c_str());
+			// printf("found candidate function declaration to instantiate: %s, %s, %s\n", candidate->name.c_str(),
+				// candidate->mangledNamespaceOnly.c_str(), candidate->mangledName.c_str());
 
 
 			// now check if we *can* instantiate it.
@@ -975,7 +975,11 @@ namespace Codegen
 			}
 		}
 
-		if(candidates.size() > 1)
+		if(candidates.size() == 0)
+		{
+			return 0;
+		}
+		else if(candidates.size() > 1)
 		{
 			std::string cands;
 			for(auto c : candidates)
@@ -986,11 +990,6 @@ namespace Codegen
 		}
 
 		FuncDecl* candidate = candidates[0];
-		Result_t res = candidate->generateDeclForGenericType(this, tm);
-		llvm::Function* ffunc = (llvm::Function*) res.result.first;
-
-		iceAssert(ffunc);
-
 
 		// TODO: this is really super fucking ugly and SUBOPTIMAL
 		Func* theFn = 0;
@@ -1009,11 +1008,45 @@ namespace Codegen
 		for(auto p : fc->params)
 			instantiatedTypes.push_back(this->getLlvmType(p));
 
+
+		llvm::Function* ffunc = nullptr;
+		if(theFn->didCodegen)
+		{
+			FuncPair_t* fp = this->getDeclaredFunc(candidate->mangledName);
+			iceAssert(fp);
+
+			ffunc = fp->first;
+			iceAssert(ffunc);
+		}
+		else
+		{
+			Result_t res = candidate->generateDeclForGenericType(this, tm);
+			ffunc = (llvm::Function*) res.result.first;
+		}
+
+		iceAssert(ffunc);
+
+
 		theFn->decl->instantiatedGenericTypes = instantiatedTypes;
 		theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
 
 		fc->cachedGenericFuncTarget = ffunc;
-		theFn->codegen(this);
+		// printf("Instantiated generic function %s (%s)\n", theFn->decl->name.c_str(), theFn->decl->mangledName.c_str());
+
+		// i've written this waaayyy too many times... but this. is. super. fucking.
+		// SUBOPTIMAL. SLOW. SHITTY. O(INFINITY) TIME COMPLEXITY.
+		// FUUUUCK THERE HAS GOT TO BE A BETTER WAY.
+
+		// basically, we can call this function multiple times during the course of codegeneration
+		// and typechecking (BOOOOO, EACH CALL IS LIKE 12812479 SECONDS???)
+
+		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
+		// resolve it into an llvm::Function* to do shit.
+		if(!theFn->didCodegen)
+			theFn->codegen(this);
+
+
+		return ffunc;
 	}
 
 
