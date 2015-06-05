@@ -173,9 +173,17 @@ namespace Codegen
 				{
 					TypePair_t* tp = this->getType(fc->name);
 					if(tp)
+					{
 						return tp->first;
+					}
+					else
+					{
+						llvm::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
+						if(genericMaybe)
+							return genericMaybe->getReturnType();
 
-					GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
+						GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
+					}
 				}
 
 				return getLlvmType(fp->second);

@@ -53,7 +53,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	{
 		if(isGeneric)
 		{
-			warn(cgi, this, "Function %s is never called", this->decl->name.c_str());
+			warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
 		}
 		else
 		{
