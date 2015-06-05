@@ -164,7 +164,7 @@ namespace TypeInfo
 		}
 
 		#if 0
-		printf("Final type list for module %s\n{\n", cgi->mainModule->getModuleIdentifier().c_str());
+		printf("Final type list for module %s\n{\n", cgi->module->getModuleIdentifier().c_str());
 
 		int i = 1;
 		for(auto c : enr->cases)

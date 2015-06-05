@@ -311,16 +311,24 @@ namespace Ast
 		{ this->type.strType = ret; }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
+		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, llvm::Type*> types);
+
 		bool hasVarArg = false;
 		bool isFFI = false;
 		bool isStatic = false;
+		bool wasCalled = false;
 
 		StructBase* parentStruct = nullptr;
 		FFIType ffiType = FFIType::C;
 		std::string name;
 		std::string mangledName;
+		std::string mangledNamespaceOnly;
+
 		std::deque<VarDecl*> params;
 		std::deque<std::string> genericTypes;
+
+		llvm::Type* instantiatedGenericReturnType = 0;
+		std::deque<llvm::Type*> instantiatedGenericTypes;
 	};
 
 	struct BracedBlock : Expr
@@ -351,6 +359,8 @@ namespace Ast
 
 		std::string name;
 		std::deque<Expr*> params;
+
+		llvm::Function* cachedGenericFuncTarget = 0;
 	};
 
 	struct Return : Expr
@@ -646,6 +656,25 @@ namespace Ast
 		Expr* inside;
 	};
 
+	struct PostfixUnaryOp : Expr
+	{
+		enum class Kind
+		{
+			Invalid,
+			ArrayIndex,
+			Increment,
+			Decrement
+		};
+
+		~PostfixUnaryOp();
+		PostfixUnaryOp(Parser::PosInfo pos, Expr* e, Kind k) : Expr(pos), kind(k), expr(e) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		Kind kind;
+		Expr* expr;
+		std::deque<Expr*> args;
+	};
+
 	struct Root : Expr
 	{
 		Root() : Expr(Parser::PosInfo()) { }
@@ -655,6 +684,17 @@ namespace Ast
 		// public functiondecls and type decls.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;
 		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
+
+		// list of all function calls. all.
+		std::deque<FuncCall*> allFunctionCalls;
+
+		// list of all functions. every single one.
+		std::deque<Func*> allFunctionBodies;
+
+		// list of all generic functions that we know about, as well as import + export.
+		std::deque<FuncDecl*> genericFunctions;
+		std::deque<FuncDecl*> externalGenericFunctions;
+		std::deque<FuncDecl*> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;
