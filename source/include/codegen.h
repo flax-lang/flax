@@ -182,7 +182,7 @@ namespace Codegen
 
 		Ast::Result_t createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr);
 
-		void tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
+		llvm::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 		void evaluateDependencies(Ast::Expr* expr);
 
 
