@@ -45,15 +45,15 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 		// var allocated: Uint64
 
 
-		llvm::Value* stringPtr = cgi->mainBuilder.CreateStructGEP(alloca, 0);
-		llvm::Value* allocdPtr = cgi->mainBuilder.CreateStructGEP(alloca, 1);
+		llvm::Value* stringPtr = cgi->builder.CreateStructGEP(alloca, 0);
+		llvm::Value* allocdPtr = cgi->builder.CreateStructGEP(alloca, 1);
 
-		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
+		llvm::Value* stringVal = cgi->builder.CreateGlobalStringPtr(this->str);
 
-		cgi->mainBuilder.CreateStore(stringVal, stringPtr);
-		cgi->mainBuilder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
+		cgi->builder.CreateStore(stringVal, stringPtr);
+		cgi->builder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
 
-		llvm::Value* val = cgi->mainBuilder.CreateLoad(alloca);
+		llvm::Value* val = cgi->builder.CreateLoad(alloca);
 		return Result_t(val, alloca);
 	}
 	else
@@ -62,7 +62,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 			warn(this, "String type not available, using Int8* for string literal");
 
 		// good old Int8*
-		llvm::Value* stringVal = cgi->mainBuilder.CreateGlobalStringPtr(this->str);
+		llvm::Value* stringVal = cgi->builder.CreateGlobalStringPtr(this->str);
 		return Result_t(stringVal, 0);
 	}
 }
@@ -108,10 +108,10 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	}
 
 	llvm::ArrayType* atype = llvm::ArrayType::get(tp, this->values.size());
-	llvm::Value* alloc = cgi->mainBuilder.CreateAlloca(atype);
+	llvm::Value* alloc = cgi->builder.CreateAlloca(atype);
 	llvm::Value* val = llvm::ConstantArray::get(atype, vals);
 
-	cgi->mainBuilder.CreateStore(val, alloc);
+	cgi->builder.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
 

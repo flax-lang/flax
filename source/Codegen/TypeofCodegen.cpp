@@ -48,10 +48,10 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	iceAssert(enr);
 
 	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
-	llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(wrapper, 0, "wrapped");
+	llvm::Value* gep = cgi->builder.CreateStructGEP(wrapper, 0, "wrapped");
 
-	cgi->mainBuilder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
-	return Result_t(cgi->mainBuilder.CreateLoad(wrapper), wrapper);
+	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
+	return Result_t(cgi->builder.CreateLoad(wrapper), wrapper);
 }
 
 

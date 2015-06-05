@@ -20,7 +20,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
-		Result_t ret = cgi->callOperatorOnStruct(tp, structRef, op, rhs, false);
+		Result_t ret = cgi->callOperatorOnStruct(user, tp, structRef, op, rhs, false);
 		if(ret.result.first != 0)
 		{
 			return ret;
@@ -93,7 +93,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			warn(this, left, "Unsigned assignment from 'Any' to typed variable (unfixable)");
 
 			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
-			return Result_t(this->mainBuilder.CreateStore(res.result.first, ref), ref);
+			return Result_t(this->builder.CreateStore(res.result.first, ref), ref);
 		}
 
 
@@ -119,7 +119,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			{
 				// do pointer arithmetic.
 				auto res = this->doPointerArithmetic(op, lhs, ref, rhs).result;
-				this->mainBuilder.CreateStore(res.first, ref);
+				this->builder.CreateStore(res.first, ref);
 
 				return Result_t(res.first, res.second);
 			}
@@ -132,8 +132,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				// except llvm gives us nice checking.
 
-				llvm::Value* r = this->mainBuilder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
-				this->mainBuilder.CreateStore(r, ref);
+				llvm::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
+				this->builder.CreateStore(r, ref);
 				return Result_t(r, ref);
 			}
 			else
@@ -184,14 +184,14 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		// redo the number casting
 		if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
-			rhs = this->mainBuilder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
+			rhs = this->builder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
 
 		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
-			rhs = this->mainBuilder.CreateIntToPtr(rhs, lhs->getType());
+			rhs = this->builder.CreateIntToPtr(rhs, lhs->getType());
 	}
 	else
 	{
-		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
+		error(this, user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
 	if(varptr->getType()->getPointerElementType()->isStructTy())
@@ -242,7 +242,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		// varptr = this->lastMinuteUnwrapType(varptr);
 
-		this->mainBuilder.CreateStore(rhs, varptr);
+		this->builder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}
 	else
@@ -250,8 +250,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// get the llvm op
 		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, this->isSignedType(left) || this->isSignedType(right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
 
-		llvm::Value* newrhs = this->mainBuilder.CreateBinOp(lop, lhs, rhs);
-		this->mainBuilder.CreateStore(newrhs, varptr);
+		llvm::Value* newrhs = this->builder.CreateBinOp(lop, lhs, rhs);
+		this->builder.CreateStore(newrhs, varptr);
 		return Result_t(newrhs, varptr);
 	}
 }
@@ -340,32 +340,32 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		{
 			if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
 			{
-				return Result_t(cgi->mainBuilder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
+				return Result_t(cgi->builder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
 			}
 			else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return Result_t(cgi->mainBuilder.CreateSIToFP(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreateSIToFP(lhs, rtype), 0);
 			}
 			else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
 			{
 				printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
 				if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
-					return Result_t(cgi->mainBuilder.CreateFPTrunc(lhs, rtype), 0);
+					return Result_t(cgi->builder.CreateFPTrunc(lhs, rtype), 0);
 
 				else
-					return Result_t(cgi->mainBuilder.CreateFPExt(lhs, rtype), 0);
+					return Result_t(cgi->builder.CreateFPExt(lhs, rtype), 0);
 			}
 			else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
 			{
-				return Result_t(cgi->mainBuilder.CreatePointerCast(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreatePointerCast(lhs, rtype), 0);
 			}
 			else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
 			{
-				return Result_t(cgi->mainBuilder.CreatePtrToInt(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreatePtrToInt(lhs, rtype), 0);
 			}
 			else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
 			{
-				return Result_t(cgi->mainBuilder.CreateIntToPtr(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreateIntToPtr(lhs, rtype), 0);
 			}
 			else if(cgi->isEnum(rtype))
 			{
@@ -375,10 +375,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 				{
 					llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
 
-					llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(tmp, 0, "castedAndWrapped");
-					cgi->mainBuilder.CreateStore(lhs, gep);
+					llvm::Value* gep = cgi->builder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+					cgi->builder.CreateStore(lhs, gep);
 
-					return Result_t(cgi->mainBuilder.CreateLoad(tmp), tmp);
+					return Result_t(cgi->builder.CreateLoad(tmp), tmp);
 				}
 				else
 				{
@@ -389,8 +389,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
 			{
 				iceAssert(valptr.second);
-				llvm::Value* gep = cgi->mainBuilder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
-				llvm::Value* val = cgi->mainBuilder.CreateLoad(gep);
+				llvm::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+				llvm::Value* val = cgi->builder.CreateLoad(gep);
 
 				return Result_t(val, gep);
 			}
@@ -403,12 +403,55 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			iceAssert(valptr.second);
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
+		else if(lhs->getType()->isStructTy() && lhs->getType()->getStructName() == "String"
+			&& rtype == llvm::Type::getInt8PtrTy(cgi->getContext()))
+		{
+			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+			llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
+
+			// string to int8*.
+			// just access the data pointer.
+
+			llvm::Value* lhsref = valptr.second;
+			if(!lhsref)
+			{
+				// dammit.
+				lhsref = cgi->allocateInstanceInBlock(stringType);
+				cgi->builder.CreateStore(lhs, lhsref);
+			}
+
+			llvm::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
+			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
+		}
+		else if(lhs->getType() == llvm::Type::getInt8PtrTy(cgi->getContext())
+			&& rtype->isStructTy() && rtype->getStructName() == "String")
+		{
+			// support this shit.
+			// error(cgi, this, "Automatic char* -> String casting not yet supported");
+
+			// create a bogus func call.
+			TypePair_t* tp = cgi->getType("String");
+			iceAssert(tp);
+
+			std::vector<llvm::Value*> args { lhs };
+			return cgi->callTypeInitialiser(tp, this, args);
+		}
 		else if(this->op != ArithmeticOp::ForcedCast)
 		{
-			warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", cgi->getReadableType(lhs->getType()).c_str(), cgi->getReadableType(rtype).c_str());
+			std::string lstr = cgi->getReadableType(lhs).c_str();
+			std::string rstr = cgi->getReadableType(rtype).c_str();
+
+			if(!llvm::CastInst::castIsValid(llvm::Instruction::BitCast, lhs, rtype))
+			{
+				error(cgi, this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			}
+			else
+			{
+				warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
+			}
 		}
 
-		return Result_t(cgi->mainBuilder.CreateBitCast(lhs, rtype), 0);
+		return Result_t(cgi->builder.CreateBitCast(lhs, rtype), 0);
 	}
 	else
 	{
@@ -450,12 +493,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			Number* n = dynamic_cast<Number*>(this->right);
 			if(n && !n->decimal && n->ival == 0)
 			{
-				llvm::Value* casted = cgi->mainBuilder.CreatePtrToInt(lhs, rhs->getType());
+				llvm::Value* casted = cgi->builder.CreatePtrToInt(lhs, rhs->getType());
 
 				if(this->op == ArithmeticOp::CmpEq)
-					return Result_t(cgi->mainBuilder.CreateICmpEQ(casted, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpEQ(casted, rhs), 0);
 				else
-					return Result_t(cgi->mainBuilder.CreateICmpNE(casted, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpNE(casted, rhs), 0);
 			}
 		}
 	}
@@ -475,45 +518,45 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 					cgi->getReadableType(rhs).c_str());
 			}
 
-			return Result_t(cgi->mainBuilder.CreateBinOp(lop, lhs, rhs), 0);
+			return Result_t(cgi->builder.CreateBinOp(lop, lhs, rhs), 0);
 		}
 
 		cgi->autoCastType(rhs, lhs);
 		switch(this->op)
 		{
 			// comparisons
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateICmpNE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNE(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLT:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateICmpSLT(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpSLT(lhs, rhs), 0);
 				else
-					return Result_t(cgi->mainBuilder.CreateICmpULT(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpULT(lhs, rhs), 0);
 
 
 
 			case ArithmeticOp::CmpGT:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateICmpSGT(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpSGT(lhs, rhs), 0);
 				else
-					return Result_t(cgi->mainBuilder.CreateICmpUGT(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpUGT(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLEq:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateICmpSLE(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpSLE(lhs, rhs), 0);
 				else
-					return Result_t(cgi->mainBuilder.CreateICmpULE(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpULE(lhs, rhs), 0);
 
 
 
 			case ArithmeticOp::CmpGEq:
 				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->mainBuilder.CreateICmpSGE(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpSGE(lhs, rhs), 0);
 				else
-					return Result_t(cgi->mainBuilder.CreateICmpUGE(lhs, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpUGE(lhs, rhs), 0);
 
 
 			case ArithmeticOp::LogicalOr:
@@ -524,60 +567,60 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 				llvm::Value* falseval = llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, 0, true));
 
 
-				llvm::Function* func = cgi->mainBuilder.GetInsertBlock()->getParent();
+				llvm::Function* func = cgi->builder.GetInsertBlock()->getParent();
 				iceAssert(func);
 
-				llvm::Value* res = cgi->mainBuilder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
+				llvm::Value* res = cgi->builder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
 
-				llvm::BasicBlock* entry = cgi->mainBuilder.GetInsertBlock();
+				llvm::BasicBlock* entry = cgi->builder.GetInsertBlock();
 				llvm::BasicBlock* lb = llvm::BasicBlock::Create(cgi->getContext(), "leftbl", func);
 				llvm::BasicBlock* rb = llvm::BasicBlock::Create(cgi->getContext(), "rightbl", func);
 				llvm::BasicBlock* mb = llvm::BasicBlock::Create(cgi->getContext(), "mergebl", func);
-				cgi->mainBuilder.CreateCondBr(res, lb, rb);
+				cgi->builder.CreateCondBr(res, lb, rb);
 
 
-				cgi->mainBuilder.SetInsertPoint(rb);
+				cgi->builder.SetInsertPoint(rb);
 				// this kinda works recursively
 				if(!this->phi)
-					this->phi = cgi->mainBuilder.CreatePHI(llvm::Type::getInt1Ty(cgi->getContext()), 2);
+					this->phi = cgi->builder.CreatePHI(llvm::Type::getInt1Ty(cgi->getContext()), 2);
 
 
 				// if this is a logical-or
 				if(theOp == 0)
 				{
 					// do the true case
-					cgi->mainBuilder.SetInsertPoint(lb);
+					cgi->builder.SetInsertPoint(lb);
 					this->phi->addIncoming(trueval, lb);
 
 					// if it succeeded (aka res is true), go to the merge block.
-					cgi->mainBuilder.CreateBr(rb);
+					cgi->builder.CreateBr(rb);
 
 
 
 					// do the false case
-					cgi->mainBuilder.SetInsertPoint(rb);
+					cgi->builder.SetInsertPoint(rb);
 
 					// do another compare.
-					llvm::Value* rres = cgi->mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
+					llvm::Value* rres = cgi->builder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, entry);
 				}
 				else
 				{
 					// do the true case
-					cgi->mainBuilder.SetInsertPoint(lb);
-					llvm::Value* rres = cgi->mainBuilder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
+					cgi->builder.SetInsertPoint(lb);
+					llvm::Value* rres = cgi->builder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, lb);
 
-					cgi->mainBuilder.CreateBr(rb);
+					cgi->builder.CreateBr(rb);
 
 
 					// do the false case
-					cgi->mainBuilder.SetInsertPoint(rb);
+					cgi->builder.SetInsertPoint(rb);
 					phi->addIncoming(falseval, entry);
 				}
 
-				cgi->mainBuilder.CreateBr(mb);
-				cgi->mainBuilder.SetInsertPoint(mb);
+				cgi->builder.CreateBr(mb);
+				cgi->builder.SetInsertPoint(mb);
 
 				return Result_t(this->phi, 0);
 			}
@@ -598,18 +641,18 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		// then they're floats.
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:			return Result_t(cgi->mainBuilder.CreateFAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:	return Result_t(cgi->mainBuilder.CreateFSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:	return Result_t(cgi->mainBuilder.CreateFMul(lhs, rhs), 0);
-			case ArithmeticOp::Divide:		return Result_t(cgi->mainBuilder.CreateFDiv(lhs, rhs), 0);
+			case ArithmeticOp::Add:			return Result_t(cgi->builder.CreateFAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:	return Result_t(cgi->builder.CreateFSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:	return Result_t(cgi->builder.CreateFMul(lhs, rhs), 0);
+			case ArithmeticOp::Divide:		return Result_t(cgi->builder.CreateFDiv(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->mainBuilder.CreateFCmpOEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->mainBuilder.CreateFCmpONE(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return Result_t(cgi->mainBuilder.CreateFCmpOLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return Result_t(cgi->mainBuilder.CreateFCmpOGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return Result_t(cgi->mainBuilder.CreateFCmpOLE(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return Result_t(cgi->mainBuilder.CreateFCmpOGE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpOEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpONE(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpOLT(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpOGT(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpOLE(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpOGE(lhs, rhs), 0);
 
 			default:						error(cgi, this, "Unsupported operator.");
 		}
@@ -619,21 +662,21 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		iceAssert(lhsPtr);
 		iceAssert(rhsPtr);
 
-		llvm::Value* gepL = cgi->mainBuilder.CreateStructGEP(lhsPtr, 0);
-		llvm::Value* gepR = cgi->mainBuilder.CreateStructGEP(rhsPtr, 0);
+		llvm::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
+		llvm::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
 
-		llvm::Value* l = cgi->mainBuilder.CreateLoad(gepL);
-		llvm::Value* r = cgi->mainBuilder.CreateLoad(gepR);
+		llvm::Value* l = cgi->builder.CreateLoad(gepL);
+		llvm::Value* r = cgi->builder.CreateLoad(gepR);
 
 		llvm::Value* res = 0;
 
 		if(this->op == ArithmeticOp::CmpEq)
 		{
-			res = cgi->mainBuilder.CreateICmpEQ(l, r);
+			res = cgi->builder.CreateICmpEQ(l, r);
 		}
 		else if(this->op == ArithmeticOp::CmpNEq)
 		{
-			res = cgi->mainBuilder.CreateICmpNE(l, r);
+			res = cgi->builder.CreateICmpNE(l, r);
 		}
 		else
 		{
@@ -651,7 +694,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			error(cgi, this, "Invalid type");
 		}
 
-		return cgi->callOperatorOnStruct(p, valptr.second, op, rhs);
+		return cgi->callOperatorOnStruct(this, p, valptr.second, op, rhs);
 	}
 
 	error(cgi, this, "Unsupported operator on type");

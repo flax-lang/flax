@@ -25,6 +25,11 @@ namespace Compiler
 {
 	static std::string resolveImport(Import* imp, std::string curpath)
 	{
+		if(imp->module.find("*") != (size_t) -1)
+		{
+			Parser::parserError("Wildcard imports are currently not supported (trying to import %s)", imp->module.c_str());
+		}
+
 		// first check the current directory.
 		std::string modname = imp->module;
 		for(size_t i = 0; i < modname.length(); i++)
@@ -111,7 +116,7 @@ namespace Compiler
 					Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
 					r = compileFile(fname, list, rootmap, modules, rcgi);
 
-					modules.push_back(rcgi->mainModule);
+					modules.push_back(rcgi->module);
 					rootmap[imp->module] = r;
 					delete rcgi;
 				}
@@ -127,6 +132,11 @@ namespace Compiler
 				{
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
 					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+				}
+				for(auto v : r->publicGenericFunctions)
+				{
+					root->externalGenericFunctions.push_back(v);
+					root->publicGenericFunctions.push_back(v);
 				}
 				for(auto v : r->typeList)
 				{
@@ -150,9 +160,9 @@ namespace Compiler
 
 		Codegen::doCodegen(filename, root, cgi);
 
-		// cgi->mainModule->dump();
+		// cgi->module->dump();
 
-		llvm::verifyModule(*cgi->mainModule, &llvm::errs());
+		llvm::verifyModule(*cgi->module, &llvm::errs());
 		Codegen::writeBitcode(filename, cgi);
 
 		size_t lastdot = filename.find_last_of(".");
@@ -174,14 +184,14 @@ namespace Compiler
 			tgt = "-target " + getTarget();
 
 
-		if(!Compiler::getIsCompileOnly() && !cgi->mainModule->getFunction("main"))
+		if(!Compiler::getIsCompileOnly() && !cgi->module->getFunction("main"))
 		{
 			error(0, "No main() function, a program cannot be compiled.");
 		}
 
 
 
-		std::string oname = outname.empty() ? (foldername + "/" + cgi->mainModule->getModuleIdentifier()).c_str() : outname.c_str();
+		std::string oname = outname.empty() ? (foldername + "/" + cgi->module->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
 		snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());
