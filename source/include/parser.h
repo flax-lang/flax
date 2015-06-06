@@ -143,9 +143,11 @@ namespace Parser
 
 	struct Token
 	{
+		Token() { }
+
 		PosInfo posinfo;
 		std::string text;
-		TType type;
+		TType type = TType::Invalid;
 	};
 
 
