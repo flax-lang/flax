@@ -19,19 +19,20 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 - User-defined types (structs, enums and typealiases)
 - Arrays (small regressions, mostly complete)
-- Pointer syntax (C-like)
+- Pointer manipulation (addrof/dereference, pointer arithmetic)
 - Operator overloading on structs
-- Function overloading (C++-ish)
+- Function overloading (therefore name mangling)
 - Type inference
 - Nested types
-- Static functions
-- Deferred statements (executes at end of current block scope)
+- Type-static functions
+- Deferred expressions (executes at end of current block scope)
 - Swift-like extensions to existing types
+- Generic Functions
 
 -------------------------
 
 #### Language Syntax ####
-- See https://flax-lang.github.io#syntax
+- See https://flax-lang.github.io#syntax (out of date)
 
 ----------------------
 
@@ -39,7 +40,8 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 - Rule the world
 - Generic Types
-- Type inheritance of some kind
+- Subtyping
+- Internal compiler optimisations
 
 ------------------------------------
 

@@ -864,6 +864,8 @@ namespace Codegen
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, llvm::Type*> tm;
 
+		// todo: cull these maybe? somehow.
+
 		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
 		for(FuncDecl* fd : this->rootNode->genericFunctions)
 		{

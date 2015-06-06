@@ -36,8 +36,10 @@ namespace Parser
 {
 	struct PosInfo
 	{
-		uint64_t line;
-		uint64_t col;
+		PosInfo() { }
+
+		uint64_t line = 0;
+		uint64_t col = 0;
 		std::string file;
 	};
 }

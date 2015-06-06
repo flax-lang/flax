@@ -90,7 +90,8 @@ namespace Compiler
 		}
 		else
 		{
-			throw(errno);
+			perror("There was an error reading the file");
+			exit(-1);
 		}
 
 		// parse

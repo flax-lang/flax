@@ -87,7 +87,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
-		() <- cmd Shell "clang++ -o" [out] [llvmConfigInvoke] os
+		() <- cmd Shell "clang++ -g -o" [out] [llvmConfigInvoke] os
 		need ["copyLibraries"]
 
 
