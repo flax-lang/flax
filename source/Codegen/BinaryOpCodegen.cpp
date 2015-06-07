@@ -694,6 +694,21 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			error(cgi, this, "Invalid type");
 		}
 
+
+		if(valptr.second == 0)
+		{
+			// we don't have a pointer-type ref, which is required for operators to work.
+			// create one.
+
+			llvm::Value* val = valptr.first;
+			iceAssert(val);
+
+			llvm::Value* ptr = cgi->builder.CreateAlloca(val->getType());
+			cgi->builder.CreateStore(val, ptr);
+
+			valptr.second = ptr;
+		}
+
 		return cgi->callOperatorOnStruct(this, p, valptr.second, op, rhs);
 	}
 

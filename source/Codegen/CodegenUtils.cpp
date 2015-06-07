@@ -896,7 +896,9 @@ namespace Codegen
 			// first check the number of arguments.
 			if(candidate->params.size() != fc->params.size())
 			{
-				printf("candidate %s rejected (1)\n", candidate->mangledName.c_str());
+				// warn(this, fc, "candidate %s rejected (1: %zu vs %zu)\n", candidate->mangledName.c_str(),
+				// 	candidate->params.size(), fc->params.size());
+
 				it = candidates.erase(it);
 			}
 			else
@@ -1010,20 +1012,40 @@ namespace Codegen
 		for(auto p : fc->params)
 			instantiatedTypes.push_back(this->getLlvmType(p));
 
+		// std::string tmp;
+		// for(llvm::Type* t : instantiatedTypes)
+		// 	tmp += ", " + this->getReadableType(t);
+
+		// tmp = tmp.substr(2);
+		// printf("instantiated types (%d): %s\n", theFn->instantiatedGenericVersions.size(), tmp.c_str());
+
+		bool needToCodegen = true;
+		for(std::deque<llvm::Type*> inst : theFn->instantiatedGenericVersions)
+		{
+			if(inst == instantiatedTypes)
+			{
+				needToCodegen = false;
+				break;
+			}
+		}
+
+
+
+
 
 		llvm::Function* ffunc = nullptr;
-		if(theFn->didCodegen)
+		if(needToCodegen)
+		{
+			Result_t res = candidate->generateDeclForGenericType(this, tm);
+			ffunc = (llvm::Function*) res.result.first;
+		}
+		else
 		{
 			FuncPair_t* fp = this->getDeclaredFunc(candidate->mangledName);
 			iceAssert(fp);
 
 			ffunc = fp->first;
 			iceAssert(ffunc);
-		}
-		else
-		{
-			Result_t res = candidate->generateDeclForGenericType(this, tm);
-			ffunc = (llvm::Function*) res.result.first;
 		}
 
 		iceAssert(ffunc);
@@ -1044,9 +1066,11 @@ namespace Codegen
 
 		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
 		// resolve it into an llvm::Function* to do shit.
-		if(!theFn->didCodegen)
+		if(needToCodegen)
+		{
 			theFn->codegen(this);
-
+			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
+		}
 
 		return ffunc;
 	}
@@ -1153,6 +1177,9 @@ namespace Codegen
 		iceAssert(pair->first);
 		iceAssert(pair->second.first);
 
+		iceAssert(self);
+		iceAssert(val);
+
 		if(pair->second.second != TypeKind::Struct)
 		{
 			if(fail)	error("!!??!?!?!");
@@ -1194,6 +1221,8 @@ namespace Codegen
 		|| op == ArithmeticOp::Divide)
 		{
 			// check that both types work
+			iceAssert(self);
+			iceAssert(val);
 			return Result_t(builder.CreateCall2(opov, self, val), 0);
 		}
 
@@ -1356,7 +1385,7 @@ namespace Codegen
 			rhs = this->builder.CreateIntCast(rhs, intval->getType(), false);
 
 
-		// this is the properly adjusted thing
+		// this is the properly adjusted int to add/sub by
 		llvm::Value* newrhs = this->builder.CreateMul(rhs, intval);
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
@@ -1366,7 +1395,9 @@ namespace Codegen
 		llvm::Value* res = this->builder.CreateBinOp(lop, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
-		llvm::Value* tempRes = lhsPtr ? lhsPtr : this->allocateInstanceInBlock(lhs->getType());
+		llvm::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
+			lhsPtr : this->allocateInstanceInBlock(lhs->getType());
+
 
 		llvm::Value* properres = this->builder.CreateIntToPtr(res, lhs->getType());
 		this->builder.CreateStore(properres, tempRes);
