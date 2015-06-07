@@ -948,7 +948,7 @@ namespace Parser
 			// parse until we get a non-identifier and non-scoperes
 			{
 				bool expectingScope = true;
-				Token& t = tokens.front();
+				Token t = tokens.front();
 				while(t.text.length() > 0)
 				{
 					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
