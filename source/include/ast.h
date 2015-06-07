@@ -351,6 +351,8 @@ namespace Ast
 
 		FuncDecl* decl;
 		BracedBlock* block;
+
+		std::deque<std::deque<llvm::Type*>> instantiatedGenericVersions;
 	};
 
 	struct FuncCall : Expr
