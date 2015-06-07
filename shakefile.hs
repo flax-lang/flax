@@ -29,7 +29,7 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
 flaxcNormFlags		= "-O3 -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-O3 -print-ir -no-lowercase-builtin -run"
+flaxcJitFlags		= "-O3 -no-lowercase-builtin -run"
 
 
 main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
