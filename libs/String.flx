@@ -66,8 +66,8 @@ public struct String
 
 		self.allocated = 32 * ((newSize + 31) / 32)
 
-		var newDat = malloc(self.allocated)
-		var moveCount = self.byteCount
+		let newDat = malloc(self.allocated)
+		let moveCount = self.byteCount
 
 		memcpy(newDat, self.data, moveCount)
 
@@ -84,7 +84,7 @@ public struct String
 	func setString(str: Int8*)
 	{
 		self.clear()
-		var len = strlen(str)
+		let len = strlen(str)
 
 		if self.allocated < len
 		{
@@ -100,7 +100,7 @@ public struct String
 
 	func append(str: Int8*)
 	{
-		var addlen = strlen(str)
+		let addlen = strlen(str)
 		if self.byteCount + addlen >= self.allocated
 		{
 			self.grow(self.byteCount + addlen + 1)

@@ -19,7 +19,7 @@ import tests.arraytest
 	printf("*** FIBONACII SEQUENCE ***\n")
 
 	var n = 0
-	while n < 10
+	while n < 20
 	{
 		printf("%d: %lld\n", n, doRecursiveFib(n))
 		n += 1
@@ -51,29 +51,26 @@ import tests.arraytest
 }
 
 
-// ƒ foo<T>(a: T, b: T) -> T
-// {
-// 	return a + b
-// }
+ƒ foo<T>(a: T, b: T) -> T
+{
+	return a + b
+}
 
-
-// ƒ foo<K>(something: K) -> K
-// {
-// 	return something
-// }
-
-ƒ foo(something: String) -> String { something }
+ƒ foo<K>(something: K) -> K
+{
+	return something
+}
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
 	runTests()
-	printf("========= TESTS COMPLETE =========\n")
+	printf("========= TESTS COMPLETE =========\n\n")
 
-	// let k = 70 + foo(40, 70)
+	let k = 70 + foo(40, 70)
 	var s = "HELLO" + foo(", WORLD")
-	// s += ", WORLD"
+	s += "! YOU'RE A POOP."
 
-	printf("%s, %d\n", s.data, 1)
+	printf("%s\nk: %d\n", s.data, k)
 
 
 	return 0
