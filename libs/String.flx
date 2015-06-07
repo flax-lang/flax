@@ -64,7 +64,7 @@ public struct String
 	{
 		var needFree = (self.allocated != 0)
 
-		self.allocated = (newSize + 31) / 32
+		self.allocated = 32 * ((newSize + 31) / 32)
 
 		var newDat = malloc(self.allocated)
 		var moveCount = self.byteCount
@@ -77,6 +77,7 @@ public struct String
 		}
 
 		self.data = newDat
+		self.data[self.byteCount] = 0
 	}
 
 
@@ -94,15 +95,20 @@ public struct String
 		self.data[len] = 0
 	}
 
+
+
+
 	func append(str: Int8*)
 	{
 		var addlen = strlen(str)
-		if strlen(self.data) + addlen >= self.allocated
+		if self.byteCount + addlen >= self.allocated
 		{
 			self.grow(self.byteCount + addlen + 1)
 		}
 
+		let prevBC = self.byteCount		// we need to fix a value on this, because byteCount is a computed property!!!
 		memcpy(self.data + self.byteCount, str, addlen)
+		self.data[prevBC + addlen] = 0
 	}
 
 
@@ -115,16 +121,16 @@ public struct String
 
 	operator+(other: String) -> String
 	{
-		var ret = #self
-		ret.append(other.data)
+		var ret: String(self.data)
+		ret += other
 
 		return ret
 	}
 
 	operator+(other: Int8*) -> String
 	{
-		var ret = #self
-		ret.append(other)
+		var ret: String(self.data)
+		ret += other
 
 		return ret
 	}
