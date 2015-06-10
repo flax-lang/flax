@@ -338,7 +338,33 @@ namespace Codegen
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
 
-		return nullptr;
+		// try generic types.
+		{
+			// this is somewhat complicated.
+			// resolveGenericType returns an llvm::Type*.
+			// we need to return a TypePair_t* here. So... we should be able to "reverse-find"
+			// the actual TypePair_t by calling the other version of getType(llvm::Type*).
+
+			// confused? source code explains better than I can.
+			llvm::Type* possibleGeneric = this->resolveGenericType(name);
+			if(possibleGeneric)
+			{
+				if(this->isBuiltinType(possibleGeneric))
+				{
+					// wtf? we can't return a typepair for this.
+					// it also has no constructor (this might change, TODO)
+
+					return 0;
+				}
+
+				TypePair_t* tp = this->getType(possibleGeneric);
+				iceAssert(tp);
+
+				return tp;
+			}
+		}
+
+		return 0;
 	}
 
 	TypePair_t* CodegenInstance::getType(llvm::Type* type)
@@ -379,6 +405,38 @@ namespace Codegen
 
 
 
+	// generic type stacks
+	void CodegenInstance::pushGenericTypeStack()
+	{
+		auto newPart = std::map<std::string, llvm::Type*>();
+		this->instantiatedGenericTypeStack.push_back(newPart);
+	}
+
+	void CodegenInstance::pushGenericType(std::string id, llvm::Type* type)
+	{
+		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+		if(this->resolveGenericType(id) != 0)
+			error(this, 0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
+
+		this->instantiatedGenericTypeStack.back()[id] = type;
+	}
+
+	llvm::Type* CodegenInstance::resolveGenericType(std::string id)
+	{
+		for(int i = this->instantiatedGenericTypeStack.size(); i-- > 0;)
+		{
+			auto& map = this->instantiatedGenericTypeStack[i];
+			if(map.find(id) != map.end())
+				return map[id];
+		}
+
+		return 0;
+	}
+
+	void CodegenInstance::popGenericTypeStack()
+	{
+		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+	}
 
 
 
@@ -939,10 +997,7 @@ namespace Codegen
 					for(int k : pair.second)
 					{
 						if(this->getLlvmType(fc->params[k]) != ftype)
-						{
-							printf("%s != %s\n", this->getReadableType(fc->params[k]).c_str(), this->getReadableType(ftype).c_str());
 							goto fail;	// ew goto
-						}
 					}
 				}
 
@@ -972,7 +1027,7 @@ namespace Codegen
 				goto success;
 				fail:
 				{
-					printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
+					// printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
 					it = candidates.erase(it);
 					continue;
 				}
@@ -1015,12 +1070,6 @@ namespace Codegen
 		for(auto p : fc->params)
 			instantiatedTypes.push_back(this->getLlvmType(p));
 
-		// std::string tmp;
-		// for(llvm::Type* t : instantiatedTypes)
-		// 	tmp += ", " + this->getReadableType(t);
-
-		// tmp = tmp.substr(2);
-		// printf("instantiated types (%d): %s\n", theFn->instantiatedGenericVersions.size(), tmp.c_str());
 
 		bool needToCodegen = true;
 		for(std::deque<llvm::Type*> inst : theFn->instantiatedGenericVersions)
@@ -1071,8 +1120,23 @@ namespace Codegen
 		// resolve it into an llvm::Function* to do shit.
 		if(needToCodegen)
 		{
+			// we need to push a new "generic type stack", and add the types that we resolved into it.
+			this->pushGenericTypeStack();
+
+			// todo: might be inefficient.
+			// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
+			// so we don't have to iterate etc etc.
+			// I don't want to access cgi->instantiatedGenericTypeStack directly.
+
+			for(auto pair : tm)
+			{
+				this->pushGenericType(pair.first, pair.second);
+			}
+
 			theFn->codegen(this);
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
+
+			this->popGenericTypeStack();
 		}
 
 		return ffunc;
