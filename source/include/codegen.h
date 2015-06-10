@@ -49,9 +49,11 @@ namespace Codegen
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
-		std::deque<BracedBlockScope> blockStack;
+
 		std::deque<std::string> namespaceStack;
+		std::deque<BracedBlockScope> blockStack;
 		std::deque<std::deque<std::string>> importedNamespaces;
+		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
 
 		std::vector<std::string> rawLines;
 
@@ -94,6 +96,22 @@ namespace Codegen
 		void addFunctionToScope(std::string name, FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 		bool isDuplicateFuncDecl(std::string name);
+
+
+
+		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
+		// legitimate, llvm::Type* things.
+
+		void pushGenericTypeStack();
+		void pushGenericType(std::string id, llvm::Type* type);
+		llvm::Type* resolveGenericType(std::string id);
+		void popGenericTypeStack();
+
+
+
+
+
+
 
 		void removeType(std::string name);
 		TypePair_t* getType(std::string name);

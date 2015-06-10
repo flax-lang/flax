@@ -61,7 +61,7 @@ import tests.arraytest
 	let ret = alloc[128] Int8
 	sprintf(ret, "%s, %d", a, b)
 
-	return ret
+	return K(ret)
 }
 
 func main(argc: Int32, argv: Int8**) -> Int
@@ -70,7 +70,8 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("========= TESTS COMPLETE =========\n\n")
 
 	let k = foo("HELLO", 70)
-	var s = "HELLO" + foo(", WORLD")
+	// var s = "HELLO" + foo(", WORLD")
+	var s = "HELLO, WORLD"
 	s += "! YOU'RE A POOP."
 
 	printf("%s\nk: %s\n", s.data, k)
