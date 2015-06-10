@@ -935,11 +935,14 @@ namespace Codegen
 				// 1. check that the generic types match.
 				for(auto pair : typePositions)
 				{
-					llvm::Type* ftype = this->getLlvmType(fc->params[0]);
+					llvm::Type* ftype = this->getLlvmType(fc->params[pair.second[0]]);
 					for(int k : pair.second)
 					{
 						if(this->getLlvmType(fc->params[k]) != ftype)
+						{
+							printf("%s != %s\n", this->getReadableType(fc->params[k]).c_str(), this->getReadableType(ftype).c_str());
 							goto fail;	// ew goto
+						}
 					}
 				}
 
