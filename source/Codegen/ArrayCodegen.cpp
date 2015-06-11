@@ -48,7 +48,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		}
 	}
 
-	// todo: verify for pointers
+	// todo: bounds-check for pointers, allocated with 'alloc'.
 	Result_t lhsp = this->arr->codegen(cgi);
 
 	llvm::Value* lhs = 0;

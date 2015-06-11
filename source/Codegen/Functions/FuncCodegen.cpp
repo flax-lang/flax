@@ -120,7 +120,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// check if we're not returning void
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
-	bool premature = false;
+	// bool premature = false;
 	if(this->decl->type.strType != "Void")
 	{
 		size_t counter = 0;
@@ -133,7 +133,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
-			premature = true;
+			// premature = true;
 		}
 	}
 	else
