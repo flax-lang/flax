@@ -85,7 +85,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	if(this->genericTypes.size() > 0)
 	{
-		bool usedAny = false;
 		std::map<std::string, bool> usage;
 
 		for(auto gtype : this->genericTypes)
@@ -98,7 +97,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				if(v->type.isLiteral && v->type.strType == gtype)
 				{
 					usage[gtype] = true;
-					usedAny = true;
 					break;
 				}
 			}
@@ -106,7 +104,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			if(this->type.isLiteral && this->type.strType == gtype)
 			{
 				usage[gtype] = true;
-				usedAny = true;
 			}
 		}
 
