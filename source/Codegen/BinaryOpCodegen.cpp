@@ -28,7 +28,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
-			GenError::noOpOverload(cgi, user, ((Struct*) tp->second.first)->name, op);
+			GenError::noOpOverload(cgi, user, reinterpret_cast<Struct*>(tp->second.first)->name, op);
 		}
 
 		// fail gracefully-ish
@@ -90,7 +90,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
-			warn(this, left, "Unsigned assignment from 'Any' to typed variable (unfixable)");
+			warn(this, left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
 
 			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
 			return Result_t(this->builder.CreateStore(res.result.first, ref), ref);

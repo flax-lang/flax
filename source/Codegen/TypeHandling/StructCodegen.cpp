@@ -209,7 +209,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
 		bool isOpOverload = f->decl->name.find("operator#") == 0;
 		if(isOpOverload)
-			f->decl->name = f->decl->name.substr(strlen("operator#"));
+			f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 
 		llvm::Value* val = nullptr;
 

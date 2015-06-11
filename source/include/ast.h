@@ -205,7 +205,7 @@ namespace Ast
 		virtual bool isBreaking() { return false; }
 
 		bool didCodegen = false;
-		uint32_t attribs;
+		uint32_t attribs = 0;
 		Parser::PosInfo posinfo;
 		std::deque<AstDependency> dependencies;
 		ExprType type;
@@ -489,9 +489,9 @@ namespace Ast
 		OpOverload(Parser::PosInfo pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Func* func;
+		Func* func = 0;
 		ArithmeticOp op;
-		Struct* str;
+		Struct* str = 0;
 	};
 
 	struct StructBase : Expr
@@ -564,7 +564,6 @@ namespace Ast
 		std::vector<Expr*> values;
 		std::vector<llvm::Type*> ltypes;
 
-		bool didCreateType = false;
 		llvm::StructType* cachedLlvmType = 0;
 	};
 
@@ -638,7 +637,7 @@ namespace Ast
 		Alloc(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Expr* count;
+		Expr* count = 0;
 		std::deque<Expr*> params;
 	};
 
@@ -713,7 +712,7 @@ namespace Ast
 		// the module-level global constructor trampoline that initialises static and global variables
 		// that require init().
 		// this will be called by a top-level trampoline that calls everything when all the modules are linked together
-		llvm::Function* globalConstructorTrampoline;
+		llvm::Function* globalConstructorTrampoline = 0;
 	};
 }
 

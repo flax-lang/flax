@@ -6,7 +6,6 @@
 #include "ast.h"
 #include "llvm_all.h"
 #include "typeinfo.h"
-#include "utf8rewind.h"
 
 #include <vector>
 

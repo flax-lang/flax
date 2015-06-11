@@ -333,7 +333,7 @@ namespace Codegen
 		printf("}\n");
 		#endif
 		if(name == "Inferred" || name == "_ZN8Inferred")
-			iceAssert(0);		// todo: see if this ever fires.
+			iceAssert(!"Tried to get type on inferred vardecl!");
 
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
@@ -1238,7 +1238,8 @@ namespace Codegen
 		return Parser::mangledStringToOperator(ch);
 	}
 
-	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
+	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self,
+		ArithmeticOp op, llvm::Value* val, bool fail)
 	{
 		iceAssert(pair);
 		iceAssert(pair->first);
