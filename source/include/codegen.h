@@ -6,7 +6,6 @@
 #include "ast.h"
 #include "llvm_all.h"
 #include "typeinfo.h"
-#include "utf8rewind.h"
 
 #include <vector>
 
@@ -30,7 +29,7 @@ namespace GenError
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
 	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument = -1) __attribute__((noreturn));
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Struct* str,
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<llvm::Value*> args) __attribute__((noreturn));
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
