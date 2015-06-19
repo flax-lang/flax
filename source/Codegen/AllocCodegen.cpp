@@ -25,7 +25,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	iceAssert(mallocf);
 
 	llvm::Type* allocType = 0;
-	TypePair_t* typePair = 0;
 
 	allocType = cgi->getLlvmType(this, this->type);
 	iceAssert(allocType);
@@ -75,19 +74,20 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::Value* amem = cgi->builder.CreatePointerCast(cgi->builder.CreateCall(mallocf, allocsize), allocType->getPointerTo());
 	// warn(cgi, this, "%s -> %s\n", cgi->getReadableType(amem).c_str(), cgi->getReadableType(allocmemptr).c_str());
 
-	llvm::Value* allocatedmem = cgi->builder.CreateStore(amem, allocmemptr);
-
-	allocatedmem = cgi->builder.CreateLoad(allocmemptr);
+	cgi->builder.CreateStore(amem, allocmemptr);
+	llvm::Value* allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 	// call the initialiser, if there is one
-	llvm::Value* defaultValue = 0;
 	if(allocType->isIntegerTy() || allocType->isPointerTy())
 	{
+		llvm::Value* defaultValue = 0;
 		defaultValue = llvm::Constant::getNullValue(allocType);
 		cgi->builder.CreateMemSet(allocatedmem, defaultValue, allocsize, typesize);
 	}
 	else
 	{
+		TypePair_t* typePair = 0;
+
 		std::vector<llvm::Value*> args;
 		args.push_back(allocatedmem);
 		for(Expr* e : this->params)
@@ -131,7 +131,6 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		// create the loop counter (initialise it with the value)
 		llvm::Value* counterptr = cgi->allocateInstanceInBlock(allocsize->getType());
 		cgi->builder.CreateStore(allocnum, counterptr);
-		llvm::Value* counter = cgi->builder.CreateLoad(counterptr);
 
 		// do { ...; num--; } while(num - 1 > 0)
 		cgi->builder.CreateBr(loopBegin);	// explicit branch
@@ -150,7 +149,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 		// subtract the counter
-		counter = cgi->builder.CreateLoad(counterptr);
+		llvm::Value* counter = cgi->builder.CreateLoad(counterptr);
 		cgi->builder.CreateStore(cgi->builder.CreateSub(counter, oneValue), counterptr);
 
 		// do the comparison

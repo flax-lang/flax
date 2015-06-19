@@ -51,6 +51,8 @@ static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const 
 	fprintf(stderr, "\n");
 
 	va_end(ap);
+	free(alloc);
+
 	if(ex)
 	{
 		fprintf(stderr, "There were errors, compilation cannot continue\n");
@@ -64,6 +66,7 @@ void error(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ..
 	va_start(ap, msg);
 
 	__error_gen(cgi, relevantast, msg, "Error", true, ap);
+	va_end(ap);
 	abort();
 }
 
@@ -73,6 +76,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_start(ap, msg);
 
 	__error_gen(nullptr, relevantast, msg, "Error", true, ap);
+	va_end(ap);
 	abort();
 }
 
@@ -81,6 +85,7 @@ void error(const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, nullptr, msg, "Error", true, ap);
+	va_end(ap);
 	abort();
 }
 
@@ -90,6 +95,7 @@ void warn(const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, nullptr, msg, "Warning", false, ap);
+	va_end(ap);
 
 	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
 		error("Treating warning as error because -Werror was passed");
@@ -100,6 +106,7 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(nullptr, relevantast, msg, "Warning", false, ap);
+	va_end(ap);
 
 
 	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
@@ -111,6 +118,7 @@ void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...
 	va_list ap;
 	va_start(ap, msg);
 	__error_gen(cgi, relevantast, msg, "Warning", false, ap);
+	va_end(ap);
 
 
 	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
@@ -165,7 +173,7 @@ namespace GenError
 		invalidAssignment(cgi, e, a->getType(), b->getType());
 	}
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args)
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::vector<llvm::Value*> args)
 	{
 		std::string args_str;
 		for(llvm::Value* v : args)
@@ -180,7 +188,7 @@ namespace GenError
 		if(args_str.length() > 2)
 			args_str = args_str.substr(2);
 
-		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", str->name.c_str(), args_str.c_str());
+		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", name.c_str(), args_str.c_str());
 	}
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string expect)

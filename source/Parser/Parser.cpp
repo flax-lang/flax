@@ -80,6 +80,7 @@ namespace Parser
 		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, curtok.posinfo.col, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
 
 		va_end(ap);
+		free(alloc);
 
 		if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
 			parserError("Treating warning as error because -Werror was passed");
@@ -274,25 +275,28 @@ namespace Parser
 		return std::stod(t.text);
 	}
 
+
+	static const char* ReadableAttrNames[] =
+	{
+		"Invalid",
+		"NoMangle",
+		"Public",
+		"Internal",
+		"Private",
+		"ForceMangle",
+		"NoAutoInit",
+		"Packed",
+		"Strong",
+		"Raw",
+	};
+
 	static uint32_t checkAndApplyAttributes(uint32_t allowed)
 	{
-		static const char* ReadableAttrNames[] =
-		{
-			"Invalid",
-			"NoMangle",
-			"Public",
-			"Internal",
-			"Private",
-			"ForceMangle",
-			"NoAutoInit",
-			"Packed",
-			"Strong",
-			"Raw",
-		};
 		uint32_t disallowed = ~allowed;
 
 		if(curAttrib & disallowed)
 		{
+
 			int shifts = 0;
 			while(((curAttrib & disallowed) & 1) == 0)
 				curAttrib >>= 1, disallowed >>= 1, shifts++;
@@ -643,10 +647,6 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			// todo: parse multiple types, eg.
-			// func foo<T, U>(a: T, b: U) -> T
-			// and such.
-
 			Expr* inner = parseType(tokens);
 			iceAssert(inner->type.isLiteral);
 
@@ -1106,7 +1106,6 @@ namespace Parser
 		v->attribs = attribs;
 
 		// check the type.
-		// todo: type inference
 		Token colon = eat(tokens);
 		if(colon.type == TType::Colon)
 		{
@@ -2108,8 +2107,6 @@ namespace Parser
 	ArithmeticOp mangledStringToOperator(std::string op)
 	{
 		if(op == "aS")		return ArithmeticOp::Assign;
-		else if(op == "pL")	return ArithmeticOp::PlusEquals;
-		else if(op == "aS") return ArithmeticOp::Assign;
 		else if(op == "pL") return ArithmeticOp::PlusEquals;
 		else if(op == "mI") return ArithmeticOp::MinusEquals;
 		else if(op == "mL") return ArithmeticOp::MultiplyEquals;
@@ -2120,6 +2117,7 @@ namespace Parser
 		else if(op == "eO") return ArithmeticOp::BitwiseXorEquals;
 		else if(op == "lS") return ArithmeticOp::ShiftLeftEquals;
 		else if(op == "rS") return ArithmeticOp::ShiftRightEquals;
+
 		else if(op == "ad") return ArithmeticOp::AddrOf;
 		else if(op == "de") return ArithmeticOp::Deref;
 		else if(op == "nt") return ArithmeticOp::LogicalNot;
