@@ -93,7 +93,8 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 
 
-		if(this->initVal && (!cmplxtype || ((StructBase*) cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || reinterpret_cast<StructBase*>(cmplxtype->second.first)->name == "Any"
+			|| cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
 
@@ -104,7 +105,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 
 			bool wasImmut = this->immutable;
 			this->immutable = false;
-			auto res = cgi->doBinOpAssign(this, new VarRef(this->posinfo, this->name), this->initVal,
+			auto res = cgi->doBinOpAssign(this, /* todo: this varref leaks */ new VarRef(this->posinfo, this->name), this->initVal,
 				ArithmeticOp::Assign, cgi->builder.CreateLoad(ai), ai, val, valptr);
 
 			this->immutable = wasImmut;

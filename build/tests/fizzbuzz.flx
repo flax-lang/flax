@@ -4,11 +4,12 @@
 
 import Foundation
 
-public ƒ doFizzBuzz(var i: Int)
+public ƒ doFizzBuzz(num: Int)
 {
-	while i > 0
+	var i = 0
+	while i < num
 	{
-		printf("%d: ", i)
+		printf("%02d:      ", i)
 
 		if i % 3 == 0
 		{
@@ -19,7 +20,12 @@ public ƒ doFizzBuzz(var i: Int)
 			printf("Buzz")
 		}
 
+		if i % 5 != 0 && i % 3 != 0
+		{
+			printf("%d", i)
+		}
+
 		printf("\n")
-		i -= 1
+		i += 1
 	}
 }

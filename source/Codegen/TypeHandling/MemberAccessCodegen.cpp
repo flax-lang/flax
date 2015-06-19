@@ -585,7 +585,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 	}
 	else
 	{
-		error(cgi, list.front(), "???!!! (%s)", typeid(*list.front()).name());
+		error(cgi, list.front(), "???!!!");
 	}
 
 

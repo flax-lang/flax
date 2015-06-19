@@ -106,7 +106,7 @@ namespace Codegen
 		// add the generic functions from previous shits.
 		for(auto fd : cgi->rootNode->externalGenericFunctions)
 		{
-			cgi->rootNode->genericFunctions.push_back(fd);
+			cgi->rootNode->genericFunctions.push_back(fd.first);
 		}
 
 		for(auto pair : cgi->rootNode->externalFuncs)
@@ -333,12 +333,39 @@ namespace Codegen
 		printf("}\n");
 		#endif
 		if(name == "Inferred" || name == "_ZN8Inferred")
-			iceAssert(0);		// todo: see if this ever fires.
+			iceAssert(!"Tried to get type on inferred vardecl!");
 
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
 
-		return nullptr;
+
+		// try generic types.
+		{
+			// this is somewhat complicated.
+			// resolveGenericType returns an llvm::Type*.
+			// we need to return a TypePair_t* here. So... we should be able to "reverse-find"
+			// the actual TypePair_t by calling the other version of getType(llvm::Type*).
+
+			// confused? source code explains better than I can.
+			llvm::Type* possibleGeneric = this->resolveGenericType(name);
+			if(possibleGeneric)
+			{
+				if(this->isBuiltinType(possibleGeneric))
+				{
+					// create a typepair. allows constructor syntax
+					// todo: this will leak...
+
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Struct));
+				}
+
+				TypePair_t* tp = this->getType(possibleGeneric);
+				iceAssert(tp);
+
+				return tp;
+			}
+		}
+
+		return 0;
 	}
 
 	TypePair_t* CodegenInstance::getType(llvm::Type* type)
@@ -379,6 +406,38 @@ namespace Codegen
 
 
 
+	// generic type stacks
+	void CodegenInstance::pushGenericTypeStack()
+	{
+		auto newPart = std::map<std::string, llvm::Type*>();
+		this->instantiatedGenericTypeStack.push_back(newPart);
+	}
+
+	void CodegenInstance::pushGenericType(std::string id, llvm::Type* type)
+	{
+		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+		if(this->resolveGenericType(id) != 0)
+			error(this, 0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
+
+		this->instantiatedGenericTypeStack.back()[id] = type;
+	}
+
+	llvm::Type* CodegenInstance::resolveGenericType(std::string id)
+	{
+		for(int i = this->instantiatedGenericTypeStack.size(); i-- > 0;)
+		{
+			auto& map = this->instantiatedGenericTypeStack[i];
+			if(map.find(id) != map.end())
+				return map[id];
+		}
+
+		return 0;
+	}
+
+	void CodegenInstance::popGenericTypeStack()
+	{
+		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+	}
 
 
 
@@ -860,6 +919,8 @@ namespace Codegen
 		// try and resolve shit???
 		// first, we need to get strings of every type.
 
+		// printf("called func %s in module %s\n", fc->name.c_str(), this->module->getName().bytes_begin());
+
 		// TODO: dupe code
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, llvm::Type*> tm;
@@ -869,6 +930,8 @@ namespace Codegen
 		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
 		for(FuncDecl* fd : this->rootNode->genericFunctions)
 		{
+			// printf("there is a generic function %s (%s)\n", fd->name.c_str(), this->module->getName().bytes_begin());
+
 			if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name))
 				candidates.push_back(fd);
 
@@ -935,7 +998,7 @@ namespace Codegen
 				// 1. check that the generic types match.
 				for(auto pair : typePositions)
 				{
-					llvm::Type* ftype = this->getLlvmType(fc->params[0]);
+					llvm::Type* ftype = this->getLlvmType(fc->params[pair.second[0]]);
 					for(int k : pair.second)
 					{
 						if(this->getLlvmType(fc->params[k]) != ftype)
@@ -969,7 +1032,7 @@ namespace Codegen
 				goto success;
 				fail:
 				{
-					printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
+					// printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
 					it = candidates.erase(it);
 					continue;
 				}
@@ -1007,17 +1070,30 @@ namespace Codegen
 			}
 		}
 
+		if(!theFn)
+		{
+			for(auto pair : this->rootNode->externalGenericFunctions)
+			{
+				if(pair.first == candidate)
+				{
+					theFn = pair.second;
+					break;
+				}
+			}
+		}
+
+
+
+
+
+
+
+
 		iceAssert(theFn);
 		std::deque<llvm::Type*> instantiatedTypes;
 		for(auto p : fc->params)
 			instantiatedTypes.push_back(this->getLlvmType(p));
 
-		// std::string tmp;
-		// for(llvm::Type* t : instantiatedTypes)
-		// 	tmp += ", " + this->getReadableType(t);
-
-		// tmp = tmp.substr(2);
-		// printf("instantiated types (%d): %s\n", theFn->instantiatedGenericVersions.size(), tmp.c_str());
 
 		bool needToCodegen = true;
 		for(std::deque<llvm::Type*> inst : theFn->instantiatedGenericVersions)
@@ -1068,8 +1144,23 @@ namespace Codegen
 		// resolve it into an llvm::Function* to do shit.
 		if(needToCodegen)
 		{
+			// we need to push a new "generic type stack", and add the types that we resolved into it.
+			this->pushGenericTypeStack();
+
+			// todo: might be inefficient.
+			// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
+			// so we don't have to iterate etc etc.
+			// I don't want to access cgi->instantiatedGenericTypeStack directly.
+
+			for(auto pair : tm)
+			{
+				this->pushGenericType(pair.first, pair.second);
+			}
+
 			theFn->codegen(this);
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
+
+			this->popGenericTypeStack();
 		}
 
 		return ffunc;
@@ -1171,7 +1262,8 @@ namespace Codegen
 		return Parser::mangledStringToOperator(ch);
 	}
 
-	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self, ArithmeticOp op, llvm::Value* val, bool fail)
+	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self,
+		ArithmeticOp op, llvm::Value* val, bool fail)
 	{
 		iceAssert(pair);
 		iceAssert(pair->first);
@@ -1232,9 +1324,52 @@ namespace Codegen
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
 	{
-		iceAssert(pair);
-		iceAssert(pair->first);
-		iceAssert(pair->second.first);
+		// check if this is a builtin type.
+		// allow constructor syntax for that
+		// eg. let x = Int64(100).
+		// sure, this is stupid, but allows for generic 'K' or 'T' that
+		// resolves to Int32 or something.
+
+		if(this->isBuiltinType(pair->first))
+		{
+			iceAssert(pair->second.first == 0);
+			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
+
+			std::vector<llvm::Type*> args { pair->first->getPointerTo(), pair->first };
+			llvm::FunctionType* ft = llvm::FunctionType::get(pair->first, args, false);
+
+			this->module->getOrInsertFunction(fnName, ft);
+			llvm::Function* fn = this->module->getFunction(fnName);
+
+			if(fn->getBasicBlockList().size() == 0)
+			{
+				llvm::BasicBlock* prevBlock = this->builder.GetInsertBlock();
+
+				llvm::BasicBlock* block = llvm::BasicBlock::Create(this->getContext(), "entry", fn);
+				this->builder.SetInsertPoint(block);
+
+				iceAssert(fn->arg_size() > 1);
+
+				llvm::Value* param = ++fn->arg_begin();
+				this->builder.CreateRet(param);
+
+				this->builder.SetInsertPoint(prevBlock);
+			}
+
+
+			int i = 0;
+			for(auto it = fn->arg_begin(); it != fn->arg_end(); it++, i++)
+			{
+				llvm::Value& arg = (*it);
+				if(vals[i]->getType() != arg.getType())
+					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+			}
+
+
+			return fn;
+		}
+
+
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 
@@ -1258,7 +1393,7 @@ namespace Codegen
 		for(llvm::Function* initers : str->initFuncs)
 		{
 			if(initers->arg_size() < 1)
-				error(user, "(%s:%d) -> Internal check failed: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+				error(this, user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
 			if(initers->arg_size() != vals.size())
 				continue;
@@ -1271,7 +1406,7 @@ namespace Codegen
 					goto breakout;
 			}
 
-			// fuuuuuuuuck this is ugly
+			// todo: fuuuuuuuuck this is ugly
 			initf = initers;
 			break;
 
@@ -1280,7 +1415,7 @@ namespace Codegen
 		}
 
 		if(!initf)
-			GenError::invalidInitialiser(this, user, str, vals);
+			GenError::invalidInitialiser(this, user, str->name, vals);
 
 		return this->module->getFunction(initf->getName());
 	}
