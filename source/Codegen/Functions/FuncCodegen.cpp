@@ -43,19 +43,25 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	this->didCodegen = true;
 
 
+	bool isPublic = this->decl->attribs & Attr_VisPublic;
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
 	// because the main code generator is two-pass, we expect all function declarations to have been generated
 	// so just fetch it.
 
+	if(isGeneric && isPublic)
+	{
+		cgi->rootNode->publicGenericFunctions.push_back(std::make_pair(this->decl, this));
+	}
+
 	llvm::Function* func = cgi->module->getFunction(this->decl->mangledName);
 	if(!func)
 	{
-		if(isGeneric)
+		if(isGeneric && !isPublic)
 		{
 			warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
 		}
-		else
+		else if(!isGeneric)
 		{
 			warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
 		}
