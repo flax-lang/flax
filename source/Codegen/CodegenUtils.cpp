@@ -106,7 +106,7 @@ namespace Codegen
 		// add the generic functions from previous shits.
 		for(auto fd : cgi->rootNode->externalGenericFunctions)
 		{
-			cgi->rootNode->genericFunctions.push_back(fd);
+			cgi->rootNode->genericFunctions.push_back(fd.first);
 		}
 
 		for(auto pair : cgi->rootNode->externalFuncs)
@@ -919,6 +919,8 @@ namespace Codegen
 		// try and resolve shit???
 		// first, we need to get strings of every type.
 
+		// printf("called func %s in module %s\n", fc->name.c_str(), this->module->getName().bytes_begin());
+
 		// TODO: dupe code
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, llvm::Type*> tm;
@@ -928,6 +930,8 @@ namespace Codegen
 		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
 		for(FuncDecl* fd : this->rootNode->genericFunctions)
 		{
+			// printf("there is a generic function %s (%s)\n", fd->name.c_str(), this->module->getName().bytes_begin());
+
 			if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name))
 				candidates.push_back(fd);
 
@@ -1065,6 +1069,25 @@ namespace Codegen
 				break;
 			}
 		}
+
+		if(!theFn)
+		{
+			for(auto pair : this->rootNode->externalGenericFunctions)
+			{
+				if(pair.first == candidate)
+				{
+					theFn = pair.second;
+					break;
+				}
+			}
+		}
+
+
+
+
+
+
+
 
 		iceAssert(theFn);
 		std::deque<llvm::Type*> instantiatedTypes;

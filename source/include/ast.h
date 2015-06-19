@@ -696,8 +696,8 @@ namespace Ast
 
 		// list of all generic functions that we know about, as well as import + export.
 		std::deque<FuncDecl*> genericFunctions;
-		std::deque<FuncDecl*> externalGenericFunctions;
-		std::deque<FuncDecl*> publicGenericFunctions;
+		std::deque<std::pair<FuncDecl*, Func*>> externalGenericFunctions;
+		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;

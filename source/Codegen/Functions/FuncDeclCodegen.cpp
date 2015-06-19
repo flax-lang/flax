@@ -114,18 +114,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				warn(cgi, this, "Generic type '%s' is unused", pair.first.c_str());
 			}
 		}
-
-		// if(usedAny)
-		// {
-		// 	// defer generation, until all dependencies have been resolved.
-		// 	FuncPair_t fp;
-		// 	fp.first = 0;
-		// 	fp.second = this;
-
-		// 	cgi->addFunctionToScope(cgi->mangleWithNamespace(this->name), fp);
-
-		// 	return Result_t(0, 0);
-		// }
 	}
 
 
