@@ -24,12 +24,12 @@ finalOutput	= sysroot </> prefix </> "bin" </> outputBin :: [Char]
 
 
 llvmConfig	= "llvm-config"
-disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi"
+disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro"
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
 flaxcNormFlags		= "-O3 -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-O3 -print-ir -no-lowercase-builtin -run"
+flaxcJitFlags		= "-O3 -no-lowercase-builtin -run"
 
 
 main = shakeArgs shakeOptions { shakeFiles = "build" } $ do

@@ -9,7 +9,7 @@
 
 using namespace Ast;
 using namespace Codegen;
-
+#include <iostream>
 
 Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {
@@ -65,7 +65,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			for(auto s : argtypes)
 				argstr += ", " + s;
 
-			argstr = argstr.substr(2);
+			if(argstr.length() > 0)
+				argstr = argstr.substr(2);
 
 			std::string candidates;
 			for(auto fs : cgi->funcStack)

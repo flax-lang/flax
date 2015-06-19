@@ -205,7 +205,7 @@ namespace Ast
 		virtual bool isBreaking() { return false; }
 
 		bool didCodegen = false;
-		uint32_t attribs;
+		uint32_t attribs = 0;
 		Parser::PosInfo posinfo;
 		std::deque<AstDependency> dependencies;
 		ExprType type;
@@ -489,9 +489,9 @@ namespace Ast
 		OpOverload(Parser::PosInfo pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Func* func;
+		Func* func = 0;
 		ArithmeticOp op;
-		Struct* str;
+		Struct* str = 0;
 	};
 
 	struct StructBase : Expr
@@ -564,7 +564,6 @@ namespace Ast
 		std::vector<Expr*> values;
 		std::vector<llvm::Type*> ltypes;
 
-		bool didCreateType = false;
 		llvm::StructType* cachedLlvmType = 0;
 	};
 
@@ -626,7 +625,7 @@ namespace Ast
 		~TypeAlias();
 		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		void createType(Codegen::CodegenInstance* cgi);
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		bool isStrong = false;
 		std::string origType;
@@ -638,7 +637,7 @@ namespace Ast
 		Alloc(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Expr* count;
+		Expr* count = 0;
 		std::deque<Expr*> params;
 	};
 
@@ -697,8 +696,8 @@ namespace Ast
 
 		// list of all generic functions that we know about, as well as import + export.
 		std::deque<FuncDecl*> genericFunctions;
-		std::deque<FuncDecl*> externalGenericFunctions;
-		std::deque<FuncDecl*> publicGenericFunctions;
+		std::deque<std::pair<FuncDecl*, Func*>> externalGenericFunctions;
+		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
 		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;
@@ -713,7 +712,7 @@ namespace Ast
 		// the module-level global constructor trampoline that initialises static and global variables
 		// that require init().
 		// this will be called by a top-level trampoline that calls everything when all the modules are linked together
-		llvm::Function* globalConstructorTrampoline;
+		llvm::Function* globalConstructorTrampoline = 0;
 	};
 }
 

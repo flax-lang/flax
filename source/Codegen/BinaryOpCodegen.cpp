@@ -28,7 +28,7 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 		else if(op != ArithmeticOp::Assign)
 		{
 			// only assign can conceivably be done automatically
-			GenError::noOpOverload(cgi, user, ((Struct*) tp->second.first)->name, op);
+			GenError::noOpOverload(cgi, user, reinterpret_cast<Struct*>(tp->second.first)->name, op);
 		}
 
 		// fail gracefully-ish
@@ -90,7 +90,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
-			warn(this, left, "Unsigned assignment from 'Any' to typed variable (unfixable)");
+			warn(this, left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
 
 			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
 			return Result_t(this->builder.CreateStore(res.result.first, ref), ref);
@@ -305,7 +305,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
-		// todo: somehow solve a circular dependency of lhs <> rhs
 		valptr = this->left->codegen(cgi).result;
 
 		auto res = this->right->codegen(cgi, valptr.second).result;
@@ -481,6 +480,52 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		error(cgi, this, "rhs null");
 	}
 
+
+
+	bool isBuiltinIntegerOp = false;
+	{
+		bool lhsInteger = false;
+		bool rhsInteger = false;
+
+		if(lhs->getType()->isIntegerTy())
+		{
+			lhsInteger = true;
+		}
+		else if(lhs->getType()->isStructTy())
+		{
+			if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
+				lhsInteger = true;
+		}
+
+
+		if(rhs->getType()->isIntegerTy())
+		{
+			rhsInteger = true;
+		}
+		else if(rhs->getType()->isStructTy())
+		{
+			if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
+				rhsInteger = true;
+		}
+
+		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 	{
 		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
@@ -502,7 +547,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			}
 		}
 	}
-	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
+	else if(isBuiltinIntegerOp)
 	{
 		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
