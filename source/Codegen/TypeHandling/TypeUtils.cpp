@@ -185,8 +185,10 @@ namespace Codegen
 						GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
 					}
 				}
-
-				return getLlvmType(fp->second);
+				else
+				{
+					return getLlvmType(fp->second);
+				}
 			}
 			else if(Func* f = dynamic_cast<Func*>(expr))
 			{
@@ -605,10 +607,11 @@ namespace Codegen
 		std::string sptr = std::string("*");
 		size_t ptrStrLength = sptr.length();
 
-		int& indirections = *_indirections;
 		std::string actualType = type;
 		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 		{
+			int& indirections = *_indirections;
+
 			while(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 				actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
 		}

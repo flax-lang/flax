@@ -44,3 +44,4 @@ build/test
 shakefile.hi
 shakefile
 .shake.database
+checker-276
