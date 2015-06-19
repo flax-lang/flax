@@ -9,7 +9,7 @@
 
 using namespace Ast;
 using namespace Codegen;
-
+#include <iostream>
 
 Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {

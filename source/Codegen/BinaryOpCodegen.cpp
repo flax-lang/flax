@@ -305,7 +305,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
-		// todo: somehow solve a circular dependency of lhs <> rhs
 		valptr = this->left->codegen(cgi).result;
 
 		auto res = this->right->codegen(cgi, valptr.second).result;
@@ -481,6 +480,52 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		error(cgi, this, "rhs null");
 	}
 
+
+
+	bool isBuiltinIntegerOp = false;
+	{
+		bool lhsInteger = false;
+		bool rhsInteger = false;
+
+		if(lhs->getType()->isIntegerTy())
+		{
+			lhsInteger = true;
+		}
+		else if(lhs->getType()->isStructTy())
+		{
+			if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
+				lhsInteger = true;
+		}
+
+
+		if(rhs->getType()->isIntegerTy())
+		{
+			rhsInteger = true;
+		}
+		else if(rhs->getType()->isStructTy())
+		{
+			if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
+				rhsInteger = true;
+		}
+
+		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 	{
 		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
@@ -502,7 +547,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			}
 		}
 	}
-	else if(lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy())
+	else if(isBuiltinIntegerOp)
 	{
 		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);

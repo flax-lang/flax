@@ -338,6 +338,7 @@ namespace Codegen
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
 
+
 		// try generic types.
 		{
 			// this is somewhat complicated.
@@ -351,10 +352,10 @@ namespace Codegen
 			{
 				if(this->isBuiltinType(possibleGeneric))
 				{
-					// wtf? we can't return a typepair for this.
-					// it also has no constructor (this might change, TODO)
+					// create a typepair. allows constructor syntax
+					// todo: this will leak...
 
-					return 0;
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Struct));
 				}
 
 				TypePair_t* tp = this->getType(possibleGeneric);
@@ -1300,9 +1301,52 @@ namespace Codegen
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
 	{
-		iceAssert(pair);
-		iceAssert(pair->first);
-		iceAssert(pair->second.first);
+		// check if this is a builtin type.
+		// allow constructor syntax for that
+		// eg. let x = Int64(100).
+		// sure, this is stupid, but allows for generic 'K' or 'T' that
+		// resolves to Int32 or something.
+
+		if(this->isBuiltinType(pair->first))
+		{
+			iceAssert(pair->second.first == 0);
+			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
+
+			std::vector<llvm::Type*> args { pair->first->getPointerTo(), pair->first };
+			llvm::FunctionType* ft = llvm::FunctionType::get(pair->first, args, false);
+
+			this->module->getOrInsertFunction(fnName, ft);
+			llvm::Function* fn = this->module->getFunction(fnName);
+
+			if(fn->getBasicBlockList().size() == 0)
+			{
+				llvm::BasicBlock* prevBlock = this->builder.GetInsertBlock();
+
+				llvm::BasicBlock* block = llvm::BasicBlock::Create(this->getContext(), "entry", fn);
+				this->builder.SetInsertPoint(block);
+
+				iceAssert(fn->arg_size() > 1);
+
+				llvm::Value* param = ++fn->arg_begin();
+				this->builder.CreateRet(param);
+
+				this->builder.SetInsertPoint(prevBlock);
+			}
+
+
+			int i = 0;
+			for(auto it = fn->arg_begin(); it != fn->arg_end(); it++, i++)
+			{
+				llvm::Value& arg = (*it);
+				if(vals[i]->getType() != arg.getType())
+					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+			}
+
+
+			return fn;
+		}
+
+
 
 		Struct* str = dynamic_cast<Struct*>(pair->second.first);
 
@@ -1326,7 +1370,7 @@ namespace Codegen
 		for(llvm::Function* initers : str->initFuncs)
 		{
 			if(initers->arg_size() < 1)
-				error(user, "(%s:%d) -> Internal check failed: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+				error(this, user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
 			if(initers->arg_size() != vals.size())
 				continue;
@@ -1339,7 +1383,7 @@ namespace Codegen
 					goto breakout;
 			}
 
-			// fuuuuuuuuck this is ugly
+			// todo: fuuuuuuuuck this is ugly
 			initf = initers;
 			break;
 
@@ -1348,7 +1392,7 @@ namespace Codegen
 		}
 
 		if(!initf)
-			GenError::invalidInitialiser(this, user, str, vals);
+			GenError::invalidInitialiser(this, user, str->name, vals);
 
 		return this->module->getFunction(initf->getName());
 	}

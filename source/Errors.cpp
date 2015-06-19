@@ -173,7 +173,7 @@ namespace GenError
 		invalidAssignment(cgi, e, a->getType(), b->getType());
 	}
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Struct* str, std::vector<llvm::Value*> args)
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::vector<llvm::Value*> args)
 	{
 		std::string args_str;
 		for(llvm::Value* v : args)
@@ -188,7 +188,7 @@ namespace GenError
 		if(args_str.length() > 2)
 			args_str = args_str.substr(2);
 
-		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", str->name.c_str(), args_str.c_str());
+		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", name.c_str(), args_str.c_str());
 	}
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string expect)

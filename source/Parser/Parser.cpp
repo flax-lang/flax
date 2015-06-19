@@ -647,10 +647,6 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			// todo: parse multiple types, eg.
-			// func foo<T, U>(a: T, b: U) -> T
-			// and such.
-
 			Expr* inner = parseType(tokens);
 			iceAssert(inner->type.isLiteral);
 
@@ -1110,7 +1106,6 @@ namespace Parser
 		v->attribs = attribs;
 
 		// check the type.
-		// todo: type inference
 		Token colon = eat(tokens);
 		if(colon.type == TType::Colon)
 		{
