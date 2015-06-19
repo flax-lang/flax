@@ -625,7 +625,7 @@ namespace Ast
 		~TypeAlias();
 		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		void createType(Codegen::CodegenInstance* cgi);
+		virtual void createType(Codegen::CodegenInstance* cgi) override;
 
 		bool isStrong = false;
 		std::string origType;
