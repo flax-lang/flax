@@ -198,8 +198,8 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 {
 	if(types.size() != this->genericTypes.size())
 	{
-		error(cgi, this, "Actual number of generic types provided (%d)"
-			"does not match with the number of generic type instantiates required (%d)", types.size(), this->genericTypes.size());
+		error(cgi, this, "Actual number of generic types provided (%zd)"
+			"does not match with the number of generic type instantiates required (%zd)", types.size(), this->genericTypes.size());
 	}
 
 

@@ -160,7 +160,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 				fakeDecl->attribs |= Attr_VisPublic;
 
 			this->funcs.push_back(fakeFunc);
-			c->generatedFunc = fakeDecl;
+			c->getterFunc = fakeDecl;
 		}
 		if(c->setter)
 		{
@@ -175,7 +175,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 				fakeDecl->attribs |= Attr_VisPublic;
 
 			this->funcs.push_back(fakeFunc);
-			c->generatedFunc = fakeDecl;
+			c->setterFunc = fakeDecl;
 		}
 	}
 
@@ -274,8 +274,74 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 void Struct::createType(CodegenInstance* cgi)
 {
+	if(this->didCreateType)
+		return;
+
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+
+
+
+
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNamespaceScope(this->name);
+		nested->createType(cgi);
+		cgi->popNamespaceScope();
+	}
+
+
+	// check our inheritances??
+	bool alreadyHaveSuperclass = false;
+	for(auto super : this->protocolstrs)
+	{
+		TypePair_t* type = cgi->getType(super);
+		if(type == 0)
+			error(cgi, this, "Type %s does not exist", super.c_str());
+
+		if(type->second.second == TypeKind::Struct)
+		{
+			if(alreadyHaveSuperclass)
+			{
+				error(cgi, this, "Multiple inheritance is not supported, only one superclass"
+					" can be inherited from. Consider using protocols instead");
+			}
+
+			alreadyHaveSuperclass = true;
+		}
+
+		else if(type->second.second != TypeKind::Protocol)
+			error(cgi, this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
+
+
+		StructBase* sb = dynamic_cast<StructBase*>(type->second.first);
+		assert(sb);
+
+		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
+		// by the time we see it.
+		sb->createType(cgi);
+
+
+		// if it's a struct, copy its members into ourselves.
+		if(type->second.second == TypeKind::Struct)
+		{
+			this->superclass = { sb, llvm::cast<llvm::StructType>(type->first) };
+
+			this->members = sb->members;
+			this->cprops = sb->cprops;
+		}
+		else
+		{
+			// protcols not supported yet.
+			error(cgi, this, "enotsup");
+		}
+	}
+
+
+
 
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
@@ -287,57 +353,60 @@ void Struct::createType(CodegenInstance* cgi)
 	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
 
-	if(!this->didCreateType)
+
+
+
+
+
+
+
+	// because we can't (and don't want to) mangle names in the parser,
+	// we could only build an incomplete name -> index map
+	// finish it here.
+
+	for(auto p : this->opOverloads)
+		p->codegen(cgi);
+
+	for(Func* func : this->funcs)
 	{
-		// see if we have nested types
-		for(auto nested : this->nestedTypes)
+		// only override if we don't have one.
+		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
+			func->decl->attribs |= Attr_VisPublic;
+
+		func->decl->parentStruct = this;
+		std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
+		if(this->nameMap.find(mangled) != this->nameMap.end())
 		{
-			cgi->pushNamespaceScope(this->name);
-			nested->createType(cgi);
-			cgi->popNamespaceScope();
-		}
-
-
-		// because we can't (and don't want to) mangle names in the parser,
-		// we could only build an incomplete name -> index map
-		// finish it here.
-
-		for(auto p : this->opOverloads)
-			p->codegen(cgi);
-
-		for(Func* func : this->funcs)
-		{
-			// only override if we don't have one.
-			if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
-				func->decl->attribs |= Attr_VisPublic;
-
-			func->decl->parentStruct = this;
-			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
-			if(this->nameMap.find(mangled) != this->nameMap.end())
-			{
-				error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
-			}
-		}
-
-		for(VarDecl* var : this->members)
-		{
-			var->inferType(cgi);
-			llvm::Type* type = cgi->getLlvmType(var);
-			if(type == str)
-			{
-				error(cgi, this, "Cannot have non-pointer member of type self");
-			}
-
-			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
-			if(!var->isStatic)
-			{
-				int i = this->nameMap[var->name];
-				iceAssert(i >= 0);
-
-				types[i] = cgi->getLlvmType(var);
-			}
+			error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
 		}
 	}
+
+	for(VarDecl* var : this->members)
+	{
+		var->inferType(cgi);
+		llvm::Type* type = cgi->getLlvmType(var);
+		if(type == str)
+		{
+			error(cgi, this, "Cannot have non-pointer member of type self");
+		}
+
+		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
+		if(!var->isStatic)
+		{
+			int i = this->nameMap[var->name];
+			iceAssert(i >= 0);
+
+			types[i] = cgi->getLlvmType(var);
+		}
+	}
+
+
+
+
+
+
+
+
 
 
 	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
@@ -368,7 +437,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	{
 		if(decl->params.size() != 1)
 		{
-			error(cgi, this, "Operator overload for '=' can only have one argument (have %d)", decl->params.size());
+			error(cgi, this, "Operator overload for '=' can only have one argument (have %zu)", decl->params.size());
 		}
 
 		// we can't actually do much, because they can assign to anything

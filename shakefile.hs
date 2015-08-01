@@ -32,7 +32,7 @@ flaxcNormFlags		= "-O3 -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
 flaxcJitFlags		= "-O3 -no-lowercase-builtin -run"
 
 
-main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
+main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $ do
 	want ["build"]
 
 	phony "build" $ do
@@ -46,7 +46,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 
 	phony "clean" $ do
-		putNormal "Cleaning files"
+		putQuiet "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
 
 
@@ -87,7 +87,9 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 
 		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
-		() <- cmd Shell "clang++ -g -o" [out] [llvmConfigInvoke] os
+		() <- cmd Shell "clang++ -Xclang -fcolor-diagnostics -g -o" [out] [llvmConfigInvoke] os
+		putQuiet ("\x1b[0m" ++ "# built " ++ out)
+
 		need ["copyLibraries"]
 
 
@@ -98,9 +100,11 @@ main = shakeArgs shakeOptions { shakeFiles = "build" } $ do
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=gnu++1y -O2 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include"
+		let cxxFlags = "-std=gnu++1y -O2 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 		() <- cmd Shell "clang++ -c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
+
 		needMakefileDependencies m
 
 
