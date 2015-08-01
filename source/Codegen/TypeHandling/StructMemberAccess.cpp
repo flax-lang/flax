@@ -379,7 +379,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		llvm::Function* lcallee = 0;
 		for(llvm::Function* lf : str->lfuncs)
 		{
-			if(lf->getName() == cprop->generatedFunc->mangledName)
+			printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
+			if(lf->getName() == cprop->setterFunc->mangledName)
 			{
 				lcallee = lf;
 				break;
@@ -387,7 +388,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		}
 
 		if(!lcallee)
-			error(var, "?!??!!");
+			error(cgi, var, "?!??!!");
 
 
 		std::vector<llvm::Value*> args { ref, _rhs };
@@ -405,7 +406,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		llvm::Function* lcallee = 0;
 		for(llvm::Function* lf : str->lfuncs)
 		{
-			if(lf->getName() == cprop->generatedFunc->mangledName)
+			if(lf->getName() == cprop->getterFunc->mangledName)
 			{
 				lcallee = lf;
 				break;
@@ -413,7 +414,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		}
 
 		if(!lcallee)
-			error(var, "?!??!!");
+			error(cgi, var, "?!??!!???");
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<llvm::Value*> args { ref };
@@ -636,13 +637,6 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 	Struct* str = dynamic_cast<Struct*>(tp->second.first);
 	iceAssert(str);
 
-
-	// for(auto e : flattened)
-	// {
-	// 	printf("flat: [%s]\n", cgi->printAst(e).c_str());
-	// }
-
-	// printf("*** (%s)\n", cgi->printAst(ma).c_str());
 
 	flattened.pop_front();
 	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);

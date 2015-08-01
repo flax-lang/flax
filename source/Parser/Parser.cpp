@@ -1691,11 +1691,10 @@ namespace Parser
 		isParsingStruct = true;
 		Token tok_id = eat(tokens);
 
-		std::string id;
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier");
 
-		id += tok_id.text;
+		std::string id = tok_id.text;
 		Struct* str = CreateAST(Struct, tok_id, id);
 
 		uint32_t attr = checkAndApplyAttributes(Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -1704,7 +1703,40 @@ namespace Parser
 
 		str->attribs = attr;
 
-		// parse a clousure.
+		// check for a colon.
+		skipNewline(tokens);
+		if(tokens.front().type == TType::Colon)
+		{
+			eat(tokens);
+			// parse an identifier.
+			while(true)
+			{
+				Token id = eat(tokens);
+				if(id.type != TType::Identifier)
+					parserError("Expected identifier after ':' in struct or class declaration");
+
+				if(std::find(str->protocolstrs.begin(), str->protocolstrs.end(), id.text) != str->protocolstrs.end())
+					parserError("Duplicate member %s in inheritance list", id.text.c_str());
+
+				if(str->name == id.text)
+					parserError("Self inheritance is illegal");
+
+				str->protocolstrs.push_back(id.text);
+				skipNewline(tokens);
+
+				if(tokens.front().type != TType::Comma)
+					break;
+
+				eat(tokens);
+			}
+		}
+
+
+
+
+
+
+		// parse a block.
 		BracedBlock* body = parseBracedBlock(tokens);
 		int i = 0;
 		for(Expr* stmt : body->statements)
@@ -1788,6 +1820,7 @@ namespace Parser
 		str->name			= sb->name;
 		str->nestedTypes	= sb->nestedTypes;
 		str->cprops			= sb->cprops;
+		str->protocolstrs	= sb->protocolstrs;
 
 		delete sb;
 		return str;
@@ -1809,6 +1842,7 @@ namespace Parser
 		ext->nameMap		= str->nameMap;
 		ext->name			= str->name;
 		ext->cprops			= str->cprops;
+		ext->protocolstrs	= str->protocolstrs;
 
 		delete str;
 		return ext;

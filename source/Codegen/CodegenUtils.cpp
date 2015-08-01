@@ -1052,7 +1052,7 @@ namespace Codegen
 			for(auto c : candidates)
 				cands += this->printAst(c) + "\n";
 
-			error(this, fc, "Ambiguous function call to function %s, have %d candidates:\n%s\n", fc->name.c_str(),
+			error(this, fc, "Ambiguous function call to function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
