@@ -231,13 +231,13 @@ namespace Codegen
 }
 
 
-void error(const char* msg, ...) __attribute__((noreturn));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
-void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
+void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
+void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
+void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
 
-void warn(const char* msg, ...);
-void warn(Ast::Expr* e, const char* msg, ...);
-void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
+void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 
 #define __nothing

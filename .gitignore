@@ -45,3 +45,4 @@ shakefile.hi
 shakefile
 .shake.database
 checker-276
+countloc

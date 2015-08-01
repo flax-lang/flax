@@ -54,6 +54,7 @@ namespace Codegen
 		Func,
 		BuiltinType,
 		Tuple,
+		Protocol,
 	};
 
 	enum class SymbolValidity
@@ -286,7 +287,8 @@ namespace Ast
 		ComputedProperty(Parser::PosInfo pos, std::string name) : VarDecl(pos, name, false) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		FuncDecl* generatedFunc = 0;
+		FuncDecl* getterFunc = 0;
+		FuncDecl* setterFunc = 0;
 		std::string setterArgName;
 		BracedBlock* getter = 0;
 		BracedBlock* setter = 0;
@@ -505,6 +507,8 @@ namespace Ast
 		bool didCreateType = false;
 		std::deque<llvm::Function*> initFuncs;
 
+		std::pair<StructBase*, llvm::StructType*> superclass;
+
 		std::string name;
 		std::string mangledName;
 
@@ -515,6 +519,7 @@ namespace Ast
 		std::deque<ComputedProperty*> cprops;
 		std::deque<Func*> funcs;
 		std::deque<llvm::Function*> lfuncs;
+		std::deque<std::string> protocolstrs;
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
