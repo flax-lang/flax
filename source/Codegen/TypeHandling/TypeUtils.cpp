@@ -1092,6 +1092,11 @@ namespace Codegen
 			ret += "}";
 			return ret;
 		}
+		else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
+		{
+			std::string ret = "\"" + sl->str + "\"";
+			return ret;
+		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
