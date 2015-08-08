@@ -115,10 +115,10 @@ namespace Codegen
 		void popGenericTypeStack();
 
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
-		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance);
+		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
-		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params);
+		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 		void addPublicFunc(FuncPair_t fp);
 
 
@@ -138,9 +138,9 @@ namespace Codegen
 
 		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false);
 		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
-		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-
+		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
+		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
+		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);
 
 		bool isPtr(Ast::Expr* e);
 		bool isEnum(Ast::ExprType type);

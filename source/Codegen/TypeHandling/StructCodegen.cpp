@@ -50,8 +50,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		fakeSelf->type = this->name + "*";
 
 		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
-
-		printf("added auto init: %s, %s\n", defaultInitFunc->getName().str().c_str(), fd->name.c_str());
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 

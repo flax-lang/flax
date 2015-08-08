@@ -530,11 +530,77 @@ namespace Codegen
 		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	void CodegenInstance::autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr)
+	int CodegenInstance::getAutoCastDistance(llvm::Type* from, llvm::Type* to)
+	{
+		if(!from || !to)
+			return -1;
+
+		if(from->isIntegerTy() && to->isIntegerTy() && from->getIntegerBitWidth() != to->getIntegerBitWidth())
+		{
+			unsigned int ab = from->getIntegerBitWidth();
+			unsigned int bb = to->getIntegerBitWidth();
+
+			// fk it
+			if(ab == 8)
+			{
+				if(bb == 8)			return 0;
+				else if(bb == 16)	return 1;
+				else if(bb == 32)	return 2;
+				else if(bb == 64)	return 3;
+			}
+			if(ab == 16)
+			{
+				if(bb == 8)			return 1;
+				else if(bb == 16)	return 0;
+				else if(bb == 32)	return 1;
+				else if(bb == 64)	return 2;
+			}
+			if(ab == 32)
+			{
+				if(bb == 8)			return 2;
+				else if(bb == 16)	return 1;
+				else if(bb == 32)	return 0;
+				else if(bb == 64)	return 1;
+			}
+			if(ab == 64)
+			{
+				if(bb == 8)			return 3;
+				else if(bb == 16)	return 2;
+				else if(bb == 32)	return 1;
+				else if(bb == 64)	return 0;
+			}
+		}
+		// check if we're passing a string to a function expecting an Int8*
+		else if(
+			(to->isPointerTy() && to->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
+			&& from->isStructTy() && from->getStructName() == this->mangleWithNamespace("String", { }))
+			|| ((from->isPointerTy() && from->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
+			&& to->isStructTy() && to->getStructName() == this->mangleWithNamespace("String", { }))))
+		{
+			return 2;
+		}
+		else if(to->isFloatingPointTy() && from->isIntegerTy())
+		{
+			// int-to-float is 10.
+			return 10;
+		}
+
+		return -1;
+	}
+
+	int CodegenInstance::autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
 		if(!target || !right)
-			return;
+			return -1;
 
+		// casting distance for size is determined by the number of "jumps"
+		// 8 -> 16 = 1
+		// 8 -> 32 = 2
+		// 8 -> 64 = 3
+		// 16 -> 64 = 2
+		// etc.
+
+		int dist = -1;
 		if(target->isIntegerTy() && right->getType()->isIntegerTy()
 			&& target->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
 		{
@@ -565,7 +631,10 @@ namespace Codegen
 			}
 
 			if(shouldCast)
+			{
+				dist = this->getAutoCastDistance(right->getType(), target);
 				right = this->builder.CreateIntCast(right, target, false);
+			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
@@ -583,17 +652,24 @@ namespace Codegen
 				iceAssert(rhsPtr);
 				llvm::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
 				right = this->builder.CreateLoad(ret);	// mutating
+
+				// string-to-int8* is 2.
+				dist = this->getAutoCastDistance(right->getType(), target);
 			}
 		}
 		else if(target->isFloatingPointTy() && right->getType()->isIntegerTy())
 		{
+			// int-to-float is 10.
 			right = this->builder.CreateSIToFP(right, target);
+			dist = this->getAutoCastDistance(right->getType(), target);
 		}
+
+		return dist;
 	}
 
-	void CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	int CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
 	{
-		this->autoCastType(left->getType(), right, rhsPtr);
+		return this->autoCastType(left->getType(), right, rhsPtr);
 	}
 
 
