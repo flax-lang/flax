@@ -540,6 +540,9 @@ namespace Codegen
 			unsigned int ab = from->getIntegerBitWidth();
 			unsigned int bb = to->getIntegerBitWidth();
 
+			// we only allow promotion, never truncation (implicitly anyway)
+			if(ab > bb) return -1;
+
 			// fk it
 			if(ab == 8)
 			{
