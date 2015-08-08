@@ -655,21 +655,43 @@ namespace Codegen
 		// with casting distance.
 		if(finals.size() > 1)
 		{
-			// parameters
-			std::string pstr;
-			for(auto e : params)
-				pstr += this->printAst(e) + ", ";
+			// go through each.
+			std::deque<std::pair<FuncPair_t, int>> mostViable;
+			for(auto f : finals)
+			{
+				if(mostViable.size() == 0 || mostViable.front().second > f.second)
+				{
+					mostViable.clear();
+					mostViable.push_back(f);
+				}
+				else if(mostViable.size() > 0 && mostViable.front().second == f.second)
+				{
+					mostViable.push_back(f);
+				}
+			}
 
-			if(params.size() > 0)
-				pstr = pstr.substr(0, pstr.size() - 2);
+			if(mostViable.size() == 1)
+			{
+				return Resolved_t(mostViable.front().first);
+			}
+			else
+			{
+				// parameters
+				std::string pstr;
+				for(auto e : params)
+					pstr += this->printAst(e) + ", ";
 
-			// candidates
-			std::string cstr;
-			for(auto c : finals)
-				cstr += this->printAst(c.first.second) + "\n";
+				if(params.size() > 0)
+					pstr = pstr.substr(0, pstr.size() - 2);
 
-			error(this, user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
-				basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
+				// candidates
+				std::string cstr;
+				for(auto c : finals)
+					cstr += this->printAst(c.first.second) + "\n";
+
+				error(this, user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
+					basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
+			}
 		}
 		else if(finals.size() == 0)
 		{
@@ -705,8 +727,10 @@ namespace Codegen
 					if(exactMatch) return false;
 
 					// try to cast.
-					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
-					if(*castingDistance == -1) return false;
+					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
+					if(dist == -1) return false;
+
+					*castingDistance += dist;
 				}
 			}
 
@@ -725,10 +749,10 @@ namespace Codegen
 					if(exactMatch) return false;
 
 					// try to cast.
-					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
-					if(*castingDistance == -1) return false;
+					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
+					if(dist == -1) return false;
 
-					return false;
+					*castingDistance += dist;
 				}
 			}
 
