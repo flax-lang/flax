@@ -524,6 +524,78 @@ namespace Codegen
 		return 0;
 	}
 
+
+	FuncPair_t* CodegenInstance::resolveFunctionOverload(std::string basename, std::deque<Expr*> params)
+	{
+		return 0;
+	}
+
+
+
+
+
+
+
+
+
+
+	static bool _searchNamespaces(std::string name, std::deque<NamespaceDecl*> list, std::deque<NamespaceDecl*>* path)
+	{
+		if(list.size() == 0)		return false;
+
+		for(auto ns : list)
+		{
+			// printf("ns: %s\n", ns->name.c_str());
+			path->push_back(ns);
+
+			if(ns->name == name) return true;
+
+			bool found = _searchNamespaces(name, ns->namespaces, path);
+			if(found) return true;
+
+			path->pop_back();
+		}
+
+		return false;
+	}
+
+	std::deque<NamespaceDecl*> CodegenInstance::resolveNamespace(std::string name)
+	{
+		// loop through all the namespaces.
+		std::deque<NamespaceDecl*> ret;
+
+		// do a "depth first search"
+		// printf("SEARCHING (%s):\n", name.c_str());
+		_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret);
+
+		// for(auto ns : ret)
+		// 	printf("%s.", ns->name.c_str());
+
+		// printf("\n\n");
+
+		return ret;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
 	{
 		return this->funcStack.back().find(name) != this->funcStack.back().end();
@@ -1643,7 +1715,8 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing", func->decl->name.c_str(), func->decl->type.strType.c_str());
+			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->name.c_str(),
+				func->decl->type.strType.c_str(), this->printAst(func->decl).c_str());
 		}
 		else if(isVoid)
 		{
@@ -1683,6 +1756,81 @@ namespace Codegen
 
 		return false;
 	}
+
+	Expr* CodegenInstance::cloneAST(Expr* expr)
+	{
+		if(expr == 0) return 0;
+
+		if(ComputedProperty* cp = dynamic_cast<ComputedProperty*>(expr))
+		{
+			ComputedProperty* clone = new ComputedProperty(cp->posinfo, cp->name);
+
+			// copy the rest.
+			clone->getterFunc		= (FuncDecl*) this->cloneAST(cp->getterFunc);
+			clone->setterFunc		= (FuncDecl*) this->cloneAST(cp->setterFunc);
+
+			// there's no need to actually clone the block.
+			clone->getter			= cp->getter;
+			clone->setter			= cp->setter;
+
+			clone->setterArgName	= cp->setterArgName;
+
+			clone->inferredLType	= cp->inferredLType;
+			clone->initVal			= cp->initVal;
+			clone->attribs			= cp->attribs;
+			clone->type				= cp->type;
+
+			return clone;
+		}
+		else if(Func* fn = dynamic_cast<Func*>(expr))
+		{
+			FuncDecl* cdecl = (FuncDecl*) this->cloneAST(fn->decl);
+			BracedBlock* cblock = fn->block;
+
+			Func* clone = new Func(fn->posinfo, cdecl, cblock);
+
+			clone->instantiatedGenericVersions = fn->instantiatedGenericVersions;
+			clone->type	= fn->type;
+
+			return clone;
+		}
+		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
+		{
+			FuncDecl* clone = new FuncDecl(fd->posinfo, fd->name, fd->params, fd->type.strType);
+
+			// copy the rest
+			clone->mangledName						= fd->mangledName;
+			clone->parentStruct						= fd->parentStruct;
+			clone->mangledNamespaceOnly				= fd->mangledNamespaceOnly;
+			clone->genericTypes						= fd->genericTypes;
+			clone->instantiatedGenericReturnType	= fd->instantiatedGenericReturnType;
+			clone->instantiatedGenericTypes			= fd->instantiatedGenericTypes;
+			clone->type								= fd->type;
+			clone->attribs							= fd->attribs;
+
+			return clone;
+		}
+		else
+		{
+			error(this, expr, "cannot clone, enosup (%s)", typeid(*expr).name());
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	static void recursivelyResolveDependencies(Expr* expr, std::deque<Expr*>& resolved, std::deque<Expr*>& unresolved)
 	{

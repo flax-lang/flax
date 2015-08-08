@@ -76,6 +76,7 @@ namespace Parser
 
 		Module,
 		Namespace,
+		Override,
 
 
 		// symbols
@@ -190,6 +191,7 @@ namespace Parser
 	void					parseAttribute(TokenList& tokens);
 	Ast::TypeAlias*			parseTypeAlias(TokenList& tokens);
 	Ast::Extension*			parseExtension(TokenList& tokens);
+	Ast::NamespaceDecl*		parseNamespace(TokenList& tokens);
 	Ast::Expr*				parseStaticDecl(TokenList& tokens);
 	Ast::OpOverload*		parseOpOverload(TokenList& tokens);
 	Ast::BracedBlock*		parseBracedBlock(TokenList& tokens);

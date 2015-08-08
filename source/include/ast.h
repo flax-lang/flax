@@ -72,7 +72,7 @@ namespace Codegen
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 
 	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
-	typedef std::map<std::string, FuncPair_t> FuncMap_t;
+	// typedef std::map<std::string, FuncPair_t> FuncMap_t;
 
 	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
 
@@ -149,6 +149,7 @@ namespace Ast
 	extern uint32_t Attr_PackedStruct;
 	extern uint32_t Attr_StrongTypeAlias;
 	extern uint32_t Attr_RawString;
+	extern uint32_t Attr_Override;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
@@ -335,6 +336,7 @@ namespace Ast
 		std::deque<llvm::Type*> instantiatedGenericTypes;
 	};
 
+	struct DeferredExpr;
 	struct BracedBlock : Expr
 	{
 		BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
@@ -342,7 +344,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::deque<Expr*> statements;
-		std::deque<Expr*> deferredStatements;
+		std::deque<DeferredExpr*> deferredStatements;
 	};
 
 	struct Func : Expr
@@ -586,14 +588,15 @@ namespace Ast
 	struct NamespaceDecl : Expr
 	{
 		~NamespaceDecl();
-		NamespaceDecl(Parser::PosInfo pos, std::deque<std::string> names, BracedBlock* inside) : Expr(pos), innards(inside), name(names)
+		NamespaceDecl(Parser::PosInfo pos, std::string _name, BracedBlock* inside) : Expr(pos), innards(inside), name(_name)
 		{ }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 
 		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
+		std::deque<NamespaceDecl*> namespaces;
 		BracedBlock* innards;
-		std::deque<std::string> name;
+		std::string name;
 	};
 
 	struct ArrayIndex : Expr
@@ -711,6 +714,8 @@ namespace Ast
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;
 		std::deque<Expr*> topLevelExpressions;
+
+		std::deque<NamespaceDecl*> topLevelNamespaces;
 
 		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
 
