@@ -63,7 +63,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		std::deque<NamespaceDecl*> nses = cgi->resolveNamespace(_vr->name);
 		if(nses.size() > 0)
 		{
-
+			printf("dolan iz namespace\n");
 		}
 	}
 
