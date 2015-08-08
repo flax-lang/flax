@@ -1020,14 +1020,16 @@ namespace Codegen
 	{
 		if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 		{
-			auto ret = this->flattenDotOperators(ma);
+			// auto ret = this->flattenDotOperators(ma);
 
-			std::string s;
-			for(Expr* e : ret)
-				s += this->printAst(e) + ".";
+			// std::string s;
+			// for(Expr* e : ret)
+			// 	s += this->printAst(e) + ".";
 
-			s = s.substr(0, s.length() - 1);
-			return s;
+			// s = s.substr(0, s.length() - 1);
+			// return s;
+
+			return this->printAst(ma->left) + "." + this->printAst(ma->right);
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{
@@ -1098,6 +1100,18 @@ namespace Codegen
 		else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
 		{
 			std::string ret = "\"" + sl->str + "\"";
+			return ret;
+		}
+		else if(Tuple* tp = dynamic_cast<Tuple*>(expr))
+		{
+			std::string ret = "(";
+			for(auto el : tp->values)
+				ret += this->printAst(el) + ", ";
+
+			if(tp->values.size() > 0)
+				ret = ret.substr(0, ret.size() - 2);
+
+			ret += ")";
 			return ret;
 		}
 

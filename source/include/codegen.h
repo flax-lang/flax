@@ -118,6 +118,9 @@ namespace Codegen
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+			std::deque<Ast::Expr*> params, bool exactMatch = false);
+
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 		void addPublicFunc(FuncPair_t fp);
 
