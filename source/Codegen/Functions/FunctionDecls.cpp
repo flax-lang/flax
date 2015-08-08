@@ -53,7 +53,7 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	{
 		GenError::duplicateSymbol(this, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(this->isDuplicateFuncDecl(fd->mangledName))
+	else if(this->isDuplicateFuncDecl(fd))
 	{
 		if(!fd->isFFI)
 		{
@@ -63,11 +63,13 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	else
 	{
 		func = llvm::Function::Create(ft, linkageType, fd->mangledName, this->module);
-		this->addFunctionToScope(fd->mangledName, FuncPair_t(func, fd));
+		this->addFunctionToScope(FuncPair_t(func, fd));
 	}
 
 	if(fd->attribs & Attr_VisPublic)
-		this->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(fd, func));
+		this->addPublicFunc({ func, fd });
+
+		// this->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(fd, func));
 
 	return Result_t(func, 0);
 }
@@ -198,8 +200,8 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 {
 	if(types.size() != this->genericTypes.size())
 	{
-		error(cgi, this, "Actual number of generic types provided (%d)"
-			"does not match with the number of generic type instantiates required (%d)", types.size(), this->genericTypes.size());
+		error(cgi, this, "Actual number of generic types provided (%zd)"
+			"does not match with the number of generic type instantiates required (%zd)", types.size(), this->genericTypes.size());
 	}
 
 

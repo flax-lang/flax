@@ -3,6 +3,10 @@
 
 A low level language with high level syntax and expressibility, aimed at OSDev work.
 
+#### Disclaimer ####
+I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
+
+
 #### Language Goals ####
 
 - This project grew out of my frustration with C/C++. I use C++ mainly for low level development, and its syntax is cumbersome, laden in C-derived K&R cruft... and the include files. Don't get me started on include files.

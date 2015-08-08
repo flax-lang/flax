@@ -288,6 +288,7 @@ namespace Parser
 		"Packed",
 		"Strong",
 		"Raw",
+		"Override",
 	};
 
 	static uint32_t checkAndApplyAttributes(uint32_t allowed)
@@ -411,6 +412,10 @@ namespace Parser
 					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
 					break;
 
+				case TType::Namespace:
+					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
+					break;
+
 				case TType::Private:
 					eat(tokens);
 					curAttrib |= Attr_VisPrivate;
@@ -424,6 +429,11 @@ namespace Parser
 				case TType::Public:
 					eat(tokens);
 					curAttrib |= Attr_VisPublic;
+					break;
+
+				case TType::Override:
+					eat(tokens);
+					curAttrib |= Attr_Override;
 					break;
 
 				case TType::At:
@@ -540,6 +550,10 @@ namespace Parser
 				case TType::TypeAlias:
 					return parseTypeAlias(tokens);
 
+				case TType::Namespace:
+					return parseNamespace(tokens);
+
+				// no point creating separate functions for these
 				case TType::True:
 					tokens.pop_front();
 					return CreateAST(BoolVal, tok, true);
@@ -548,6 +562,10 @@ namespace Parser
 					tokens.pop_front();
 					return CreateAST(BoolVal, tok, false);
 
+
+
+				// attributes-as-keywords
+				// stored as attributes in the AST, but parsed as keywords by the parser.
 				case TType::Private:
 					eat(tokens);
 					curAttrib |= Attr_VisPrivate;
@@ -561,6 +579,11 @@ namespace Parser
 				case TType::Public:
 					eat(tokens);
 					curAttrib |= Attr_VisPublic;
+					return parsePrimary(tokens);
+
+				case TType::Override:
+					eat(tokens);
+					curAttrib |= Attr_Override;
 					return parsePrimary(tokens);
 
 				case TType::LBrace:
@@ -760,7 +783,8 @@ namespace Parser
 
 		skipNewline(tokens);
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
-		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_NoMangle | Attr_ForceMangle);
+		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
+			Attr_NoMangle | Attr_ForceMangle | Attr_Override);
 
 		f->hasVarArg = isVA;
 		f->genericTypes = genericTypes;
@@ -1091,7 +1115,7 @@ namespace Parser
 		iceAssert(tokens.front().type == TType::Var || tokens.front().type == TType::Val);
 
 		bool immutable = tokens.front().type == TType::Val;
-		uint32_t attribs = checkAndApplyAttributes(Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		uint32_t attribs = checkAndApplyAttributes(Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
 		eat(tokens);
 
@@ -1131,8 +1155,11 @@ namespace Parser
 				// computed property, getting and setting
 
 				// eat the brace, skip whitespace
-				ComputedProperty* cprop = CreateAST(ComputedProperty, eat(tokens), id);
+				ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, id);
+				eat(tokens);
+
 				cprop->type = v->type;
+				cprop->attribs = v->attribs;
 				delete v;
 
 				bool didGetter = false;
@@ -1239,6 +1266,10 @@ namespace Parser
 				parserError("Constant variables require an initialiser at the declaration site");
 			}
 		}
+
+		// if we got here, we're a normal variable.
+		if(v->attribs & Attr_Override)
+			parserError("'override' can only be used with a variable inside a class declaration");
 
 		return v;
 	}
@@ -1691,11 +1722,10 @@ namespace Parser
 		isParsingStruct = true;
 		Token tok_id = eat(tokens);
 
-		std::string id;
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier");
 
-		id += tok_id.text;
+		std::string id = tok_id.text;
 		Struct* str = CreateAST(Struct, tok_id, id);
 
 		uint32_t attr = checkAndApplyAttributes(Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -1704,7 +1734,40 @@ namespace Parser
 
 		str->attribs = attr;
 
-		// parse a clousure.
+		// check for a colon.
+		skipNewline(tokens);
+		if(tokens.front().type == TType::Colon)
+		{
+			eat(tokens);
+			// parse an identifier.
+			while(true)
+			{
+				Token id = eat(tokens);
+				if(id.type != TType::Identifier)
+					parserError("Expected identifier after ':' in struct or class declaration");
+
+				if(std::find(str->protocolstrs.begin(), str->protocolstrs.end(), id.text) != str->protocolstrs.end())
+					parserError("Duplicate member %s in inheritance list", id.text.c_str());
+
+				if(str->name == id.text)
+					parserError("Self inheritance is illegal");
+
+				str->protocolstrs.push_back(id.text);
+				skipNewline(tokens);
+
+				if(tokens.front().type != TType::Comma)
+					break;
+
+				eat(tokens);
+			}
+		}
+
+
+
+
+
+
+		// parse a block.
 		BracedBlock* body = parseBracedBlock(tokens);
 		int i = 0;
 		for(Expr* stmt : body->statements)
@@ -1788,6 +1851,7 @@ namespace Parser
 		str->name			= sb->name;
 		str->nestedTypes	= sb->nestedTypes;
 		str->cprops			= sb->cprops;
+		str->protocolstrs	= sb->protocolstrs;
 
 		delete sb;
 		return str;
@@ -1809,6 +1873,7 @@ namespace Parser
 		ext->nameMap		= str->nameMap;
 		ext->name			= str->name;
 		ext->cprops			= str->cprops;
+		ext->protocolstrs	= str->protocolstrs;
 
 		delete str;
 		return ext;
@@ -2101,6 +2166,21 @@ namespace Parser
 		return CreateAST(ArrayLiteral, front, values);
 	}
 
+	NamespaceDecl* parseNamespace(TokenList& tokens)
+	{
+		iceAssert(eat(tokens).type == TType::Namespace);
+		Token tok_id = eat(tokens);
+
+		// todo: handle "namespace Foo.Bar.Baz { }", which c++ technically still doesn't have
+		// (still a c++1z thing)
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier after namespace declaration");
+
+		BracedBlock* bb = parseBracedBlock(tokens);
+		NamespaceDecl* ns = CreateAST(NamespaceDecl, tok_id, tok_id.text, bb);
+
+		return ns;
+	}
 
 
 
@@ -2238,6 +2318,7 @@ namespace Ast
 	uint32_t Attr_PackedStruct		= 0x40;
 	uint32_t Attr_StrongTypeAlias	= 0x80;
 	uint32_t Attr_RawString			= 0x100;
+	uint32_t Attr_Override			= 0x200;
 }
 
 

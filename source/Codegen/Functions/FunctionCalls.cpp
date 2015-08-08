@@ -46,6 +46,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
 	}
 
+
+
+
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
@@ -53,8 +56,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
 	{
-		FuncPair_t* fp = cgi->getDeclaredFunc(this);
-		if(!fp)
+		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+
+		if(!rt.resolved)
 		{
 			// print a better error message.
 			std::vector<std::string> argtypes;
@@ -69,26 +73,24 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				argstr = argstr.substr(2);
 
 			std::string candidates;
-			for(auto fs : cgi->funcStack)
+			for(auto fs : cgi->resolveFunctionName(this->name))
 			{
-				for(auto f : fs)
-				{
-					if(f.second.second && f.second.second->name == this->name)
-						candidates += cgi->printAst(f.second.second) + "\n";
-				}
+				if(fs.second)
+					candidates += cgi->printAst(fs.second) + "\n";
 			}
 
 			error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
 				this->name.c_str(), argstr.c_str(), candidates.c_str());
 		}
 
-		target = fp->first;
+		target = rt.t.first;
 	}
 	else
 	{
 		target = this->cachedGenericFuncTarget;
 	}
 
+	iceAssert(target);
 	bool checkVarArg = target->isVarArg();
 
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
