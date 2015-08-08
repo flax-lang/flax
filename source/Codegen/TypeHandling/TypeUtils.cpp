@@ -573,12 +573,14 @@ namespace Codegen
 				else if(bb == 64)	return 0;
 			}
 		}
-		// check if we're passing a string to a function expecting an Int8*
-		else if(
-			(to->isPointerTy() && to->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
-			&& from->isStructTy() && from->getStructName() == this->mangleWithNamespace("String", { }))
-			|| ((from->isPointerTy() && from->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
-			&& to->isStructTy() && to->getStructName() == this->mangleWithNamespace("String", { }))))
+		// check for string to int8*
+		else if(to->isPointerTy() && to->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
+			&& from->isStructTy() && from->getStructName() == this->mangleWithNamespace("String", { }, false))
+		{
+			return 2;
+		}
+		else if(from->isPointerTy() && from->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
+			&& to->isStructTy() && to->getStructName() == this->mangleWithNamespace("String", { }, false))
 		{
 			return 2;
 		}
