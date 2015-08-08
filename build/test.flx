@@ -111,11 +111,8 @@ struct Bar : Foo
 
 
 
-func overload(a: Int, b: Int)		{ printf("overload: (int, int)\n"); }
-func overload(a: Int8*, b: String)	{ printf("overload: (string, string)\n"); }
-func overload(a: String, b: Int8*)	{ printf("overload: (string, int8*)\n"); }
-func overload()						{ printf("overload: (void)\n"); }
-
+func overload(a: Int8)	{ printf("overload: (int8)\n"); }
+func overload(a: Int64)	{ printf("overload: (int64)\n"); }
 
 
 
@@ -133,13 +130,16 @@ func main(argc: Int32, argv: Int8**) -> Int
 	var uuu = Bar()
 	uuu.doBar()
 
+	let a: Int8 = 40
+	let b: Int16 = 60
+
+	overload(a)
+	overload(b)
+
 	// uuu.bar = 70
 
 	// n1.n2.nest()
 
-	overload(10, 10)
-	overload("hello", "world")
-	overload()
 
 
 	printf("uuu.bar: %d, uuu.foo: %d\n", uuu.bar, uuu.foo)
