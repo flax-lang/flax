@@ -1064,6 +1064,10 @@ namespace Codegen
 		{
 			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(bo->op) + " " + this->printAst(bo->right) + ")";
 		}
+		else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
+		{
+			return "(" + Parser::arithmeticOpToString(uo->op) + this->printAst(uo->expr) + ")";
+		}
 		else if(Number* n = dynamic_cast<Number*>(expr))
 		{
 			return n->decimal ? std::to_string(n->dval) : std::to_string(n->ival);
@@ -1103,6 +1107,10 @@ namespace Codegen
 		{
 			std::string ret = "\"" + sl->str + "\"";
 			return ret;
+		}
+		else if(BoolVal* bv = dynamic_cast<BoolVal*>(expr))
+		{
+			return bv->val ? "true" : "false";
 		}
 		else if(Tuple* tp = dynamic_cast<Tuple*>(expr))
 		{
