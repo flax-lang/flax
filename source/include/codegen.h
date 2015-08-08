@@ -9,8 +9,6 @@
 
 #include <vector>
 
-
-
 enum class SymbolType
 {
 	Generic,
@@ -38,6 +36,15 @@ namespace GenError
 
 namespace Codegen
 {
+	struct Resolved_t
+	{
+		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		Resolved_t() : resolved(false) { }
+
+		FuncPair_t t;
+		bool resolved;
+	};
+
 	struct CodegenInstance
 	{
 		// todo: hack
@@ -58,7 +65,7 @@ namespace Codegen
 
 		TypeMap_t typeMap;
 
-		std::deque<std::deque<FuncPair_t>> funcStack;
+		FunctionTree rootFuncStack = FunctionTree("__#root");
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
@@ -89,16 +96,15 @@ namespace Codegen
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		bool isValidNamespace(std::string namespc);
 		void pushNamespaceScope(std::string namespc);
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addFunctionToScope(std::string name, FuncPair_t func);
+		void addFunctionToScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
-		bool isDuplicateFuncDecl(std::string name);
 
-
+		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
+		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, llvm::Type* things.
@@ -108,15 +114,20 @@ namespace Codegen
 		llvm::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
-		FuncPair_t* resolveFunctionOverload(std::string basename, std::deque<Ast::Expr*> params);
+		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
+		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance);
+
+		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params);
+		void addPublicFunc(FuncPair_t fp);
+
+
 		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
 
 		void removeType(std::string name);
 		TypePair_t* getType(std::string name);
 		TypePair_t* getType(llvm::Type* type);
-		FuncPair_t* getDeclaredFunc(std::string name);
-		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
 

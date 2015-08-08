@@ -20,8 +20,15 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 	// generate initialiser
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(stype, 0), false), llvm::Function::ExternalLinkage,
 		"__automatic_init__" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->module);
+	{
+		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
+		fakeSelf->type = this->name + "*";
 
-	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
+		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
+
+		cgi->addFunctionToScope({ defaultInitFunc, fd });
+	}
+
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 
 	llvm::BasicBlock* oldIP = cgi->builder.GetInsertBlock();
