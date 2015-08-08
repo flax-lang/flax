@@ -20,63 +20,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
 
-
-
-
-
-namespace Ast
-{
-	struct Expr;
-	struct VarDecl;
-	struct FuncDecl;
-	struct BreakableBracedBlock;
-}
-
-namespace Parser
-{
-	struct PosInfo
-	{
-		PosInfo() { }
-
-		uint64_t line = 0;
-		uint64_t col = 0;
-		std::string file;
-	};
-}
-
-namespace Codegen
-{
-	enum class TypeKind
-	{
-		Struct,
-		Enum,
-		TypeAlias,
-		Func,
-		BuiltinType,
-		Tuple,
-	};
-
-	enum class SymbolValidity
-	{
-		Valid,
-		UseAfterDealloc
-	};
-
-	typedef std::pair<llvm::Value*, SymbolValidity> SymbolValidity_t;
-	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
-	typedef std::map<std::string, SymbolPair_t> SymTab_t;
-
-	typedef std::pair<Ast::Expr*, TypeKind> TypedExpr_t;
-	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
-	typedef std::map<std::string, TypePair_t> TypeMap_t;
-
-	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
-	typedef std::map<std::string, FuncPair_t> FuncMap_t;
-
-	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
-
-	struct CodegenInstance;
-}
+#include "defs.h"
 
 namespace Ast
 {
@@ -148,6 +92,7 @@ namespace Ast
 	extern uint32_t Attr_PackedStruct;
 	extern uint32_t Attr_StrongTypeAlias;
 	extern uint32_t Attr_RawString;
+	extern uint32_t Attr_Override;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
@@ -286,7 +231,8 @@ namespace Ast
 		ComputedProperty(Parser::PosInfo pos, std::string name) : VarDecl(pos, name, false) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		FuncDecl* generatedFunc = 0;
+		FuncDecl* getterFunc = 0;
+		FuncDecl* setterFunc = 0;
 		std::string setterArgName;
 		BracedBlock* getter = 0;
 		BracedBlock* setter = 0;
@@ -333,6 +279,7 @@ namespace Ast
 		std::deque<llvm::Type*> instantiatedGenericTypes;
 	};
 
+	struct DeferredExpr;
 	struct BracedBlock : Expr
 	{
 		BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
@@ -340,7 +287,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		std::deque<Expr*> statements;
-		std::deque<Expr*> deferredStatements;
+		std::deque<DeferredExpr*> deferredStatements;
 	};
 
 	struct Func : Expr
@@ -505,6 +452,8 @@ namespace Ast
 		bool didCreateType = false;
 		std::deque<llvm::Function*> initFuncs;
 
+		std::pair<StructBase*, llvm::StructType*> superclass;
+
 		std::string name;
 		std::string mangledName;
 
@@ -515,6 +464,7 @@ namespace Ast
 		std::deque<ComputedProperty*> cprops;
 		std::deque<Func*> funcs;
 		std::deque<llvm::Function*> lfuncs;
+		std::deque<std::string> protocolstrs;
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
@@ -581,14 +531,15 @@ namespace Ast
 	struct NamespaceDecl : Expr
 	{
 		~NamespaceDecl();
-		NamespaceDecl(Parser::PosInfo pos, std::deque<std::string> names, BracedBlock* inside) : Expr(pos), innards(inside), name(names)
+		NamespaceDecl(Parser::PosInfo pos, std::string _name, BracedBlock* inside) : Expr(pos), innards(inside), name(_name)
 		{ }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 
 		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
+		std::deque<NamespaceDecl*> namespaces;
 		BracedBlock* innards;
-		std::deque<std::string> name;
+		std::string name;
 	};
 
 	struct ArrayIndex : Expr
@@ -680,12 +631,12 @@ namespace Ast
 
 	struct Root : Expr
 	{
-		Root() : Expr(Parser::PosInfo()) { }
+		Root() : Expr(Parser::PosInfo()), publicFuncTree("__#root"), externalFuncTree("__#root") { }
 		~Root();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		// public functiondecls and type decls.
-		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;
+		Codegen::FunctionTree publicFuncTree;
 		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
 
 		// list of all function calls. all.
@@ -700,12 +651,15 @@ namespace Ast
 		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
-		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;
+		Codegen::FunctionTree externalFuncTree;
 		std::deque<std::pair<Struct*, llvm::Type*>> externalTypes;
 
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;
+
+		// top level stuff
 		std::deque<Expr*> topLevelExpressions;
+		std::deque<NamespaceDecl*> topLevelNamespaces;
 
 		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
 

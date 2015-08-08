@@ -45,7 +45,15 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// generate initialiser
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
-	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
+	{
+		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
+		fakeSelf->type = this->name + "*";
+
+		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
+		cgi->addFunctionToScope({ defaultInitFunc, fd });
+	}
+
+
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 	cgi->builder.SetInsertPoint(iblock);
 
@@ -160,7 +168,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 				fakeDecl->attribs |= Attr_VisPublic;
 
 			this->funcs.push_back(fakeFunc);
-			c->generatedFunc = fakeDecl;
+			c->getterFunc = fakeDecl;
 		}
 		if(c->setter)
 		{
@@ -168,14 +176,14 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 				fakeDecl->attribs |= Attr_VisPublic;
 
 			this->funcs.push_back(fakeFunc);
-			c->generatedFunc = fakeDecl;
+			c->setterFunc = fakeDecl;
 		}
 	}
 
@@ -221,6 +229,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		// 3. mangle the name
 		// 4. restore the parameter
 		// this makes sure that we don't get ridiculous mangled names for member functions
+		// also makes sure that we conform to the C++ ABI
+		// (using 'E' means we don't include the implicit first parameter in the mangled name)
 
 
 		val = f->decl->codegen(cgi).result.first;
@@ -239,7 +249,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 
 		// make the functions public as well
-		cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
+		cgi->addPublicFunc({ llvm::cast<llvm::Function>(val), f->decl });
+		// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
 	}
 
 	// pass 2
@@ -268,14 +279,178 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		this->initFuncs.push_back(defaultInitFunc);
 
 	cgi->rootNode->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
-	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
+	cgi->addPublicFunc({ defaultInitFunc, 0 });
+	// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
 	return Result_t(nullptr, nullptr);
 }
 
 void Struct::createType(CodegenInstance* cgi)
 {
+	if(this->didCreateType)
+		return;
+
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+
+
+
+
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNamespaceScope(this->name);
+		nested->createType(cgi);
+		cgi->popNamespaceScope();
+	}
+
+
+	// check our inheritances??
+	bool alreadyHaveSuperclass = false;
+	for(auto super : this->protocolstrs)
+	{
+		TypePair_t* type = cgi->getType(super);
+		if(type == 0)
+			error(cgi, this, "Type %s does not exist", super.c_str());
+
+		if(type->second.second == TypeKind::Struct)
+		{
+			if(alreadyHaveSuperclass)
+			{
+				error(cgi, this, "Multiple inheritance is not supported, only one superclass"
+					" can be inherited from. Consider using protocols instead");
+			}
+
+			alreadyHaveSuperclass = true;
+		}
+		else if(type->second.second != TypeKind::Protocol)
+		{
+			error(cgi, this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
+		}
+
+
+		StructBase* sb = dynamic_cast<StructBase*>(type->second.first);
+		assert(sb);
+
+		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
+		// by the time we see it.
+		sb->createType(cgi);
+
+
+		// if it's a struct, copy its members into ourselves.
+		if(type->second.second == TypeKind::Struct)
+		{
+			this->superclass = { sb, llvm::cast<llvm::StructType>(type->first) };
+
+			// normal members
+			for(auto mem : sb->members)
+			{
+				auto pred = [mem](VarDecl* v) -> bool {
+
+					return v->name == mem->name;
+				};
+
+				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
+				if(it != this->members.end())
+				{
+					error(cgi, *it, "Struct fields cannot be overriden, only computed properties can");
+				}
+
+				this->members.push_back(mem);
+			}
+
+			size_t nms = this->nameMap.size();
+			for(auto nm : sb->nameMap)
+			{
+				this->nameMap[nm.first] = nms;
+				nms++;
+			}
+
+			// functions
+			for(auto fn : sb->funcs)
+			{
+				auto pred = [fn, cgi](Func* f) -> bool {
+
+					if(fn->decl->params.size() != f->decl->params.size())
+						return false;
+
+					for(size_t i = 0; i < fn->decl->params.size(); i++)
+					{
+						if(cgi->getLlvmType(fn->decl->params[i]) != cgi->getLlvmType(f->decl->params[i]))
+							return false;
+					}
+
+					return fn->decl->name == f->decl->name;
+				};
+
+
+				auto it = std::find_if(this->funcs.begin(), this->funcs.end(), pred);
+				if(it != this->funcs.end())
+				{
+					// check for 'override'
+					Func* f = *it;
+					if(!(f->decl->attribs & Attr_Override))
+					{
+						error(cgi, f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
+							cgi->printAst(f->decl).c_str(), sb->name.c_str());
+					}
+					else
+					{
+						// don't add the superclass one.
+						continue;
+					}
+				}
+
+				this->funcs.push_back((Func*) cgi->cloneAST(fn));
+			}
+
+
+
+
+
+
+			// computed properties
+			for(auto cp : sb->cprops)
+			{
+				auto pred = [cp](ComputedProperty* cpr) -> bool {
+
+					return cp->name == cpr->name;
+				};
+
+				auto it = std::find_if(this->cprops.begin(), this->cprops.end(), pred);
+				if(it != this->cprops.end())
+				{
+					// this thing exists.
+					// check if ours has an override
+					ComputedProperty* ours = *it;
+					assert(ours->name == cp->name);
+
+					if(!(ours->attribs & Attr_Override))
+					{
+						error(cgi, ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
+							ours->name.c_str(), sb->name.c_str());
+					}
+					else
+					{
+						// we have 'override'.
+						// disable this property, don't add it.
+						continue;
+					}
+				}
+
+				this->cprops.push_back((ComputedProperty*) cgi->cloneAST(cp));
+			}
+		}
+		else
+		{
+			// protcols not supported yet.
+			error(cgi, this, "enotsup");
+		}
+	}
+
+
+
 
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
@@ -287,57 +462,60 @@ void Struct::createType(CodegenInstance* cgi)
 	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
 
-	if(!this->didCreateType)
+
+
+
+
+
+
+
+	// because we can't (and don't want to) mangle names in the parser,
+	// we could only build an incomplete name -> index map
+	// finish it here.
+
+	for(auto p : this->opOverloads)
+		p->codegen(cgi);
+
+	for(Func* func : this->funcs)
 	{
-		// see if we have nested types
-		for(auto nested : this->nestedTypes)
+		// only override if we don't have one.
+		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
+			func->decl->attribs |= Attr_VisPublic;
+
+		func->decl->parentStruct = this;
+		std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
+		if(this->nameMap.find(mangled) != this->nameMap.end())
 		{
-			cgi->pushNamespaceScope(this->name);
-			nested->createType(cgi);
-			cgi->popNamespaceScope();
-		}
-
-
-		// because we can't (and don't want to) mangle names in the parser,
-		// we could only build an incomplete name -> index map
-		// finish it here.
-
-		for(auto p : this->opOverloads)
-			p->codegen(cgi);
-
-		for(Func* func : this->funcs)
-		{
-			// only override if we don't have one.
-			if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
-				func->decl->attribs |= Attr_VisPublic;
-
-			func->decl->parentStruct = this;
-			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
-			if(this->nameMap.find(mangled) != this->nameMap.end())
-			{
-				error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
-			}
-		}
-
-		for(VarDecl* var : this->members)
-		{
-			var->inferType(cgi);
-			llvm::Type* type = cgi->getLlvmType(var);
-			if(type == str)
-			{
-				error(cgi, this, "Cannot have non-pointer member of type self");
-			}
-
-			cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
-			if(!var->isStatic)
-			{
-				int i = this->nameMap[var->name];
-				iceAssert(i >= 0);
-
-				types[i] = cgi->getLlvmType(var);
-			}
+			error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
 		}
 	}
+
+	for(VarDecl* var : this->members)
+	{
+		var->inferType(cgi);
+		llvm::Type* type = cgi->getLlvmType(var);
+		if(type == str)
+		{
+			error(cgi, this, "Cannot have non-pointer member of type self");
+		}
+
+		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
+		if(!var->isStatic)
+		{
+			int i = this->nameMap[var->name];
+			iceAssert(i >= 0);
+
+			types[i] = cgi->getLlvmType(var);
+		}
+	}
+
+
+
+
+
+
+
+
 
 
 	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
@@ -368,7 +546,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	{
 		if(decl->params.size() != 1)
 		{
-			error(cgi, this, "Operator overload for '=' can only have one argument (have %d)", decl->params.size());
+			error(cgi, this, "Operator overload for '=' can only have one argument (have %zu)", decl->params.size());
 		}
 
 		// we can't actually do much, because they can assign to anything

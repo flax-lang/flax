@@ -124,11 +124,27 @@ namespace Compiler
 
 
 				// add to both imported and exported lists
-				for(auto v : r->publicFuncs)
+				// for(auto v : r->publicFuncs)
+				// {
+				// 	root->externalFuncs.push_back(cgi->cloneFunctionTree(v, false));
+				// 	root->publicFuncs.push_back(cgi->cloneFunctionTree(v, false));
+
+				// 	root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+				// 	root->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+				// }
+
+				for(auto f : r->publicFuncTree.funcs)
 				{
-					root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
-					root->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
+					root->externalFuncTree.funcs.push_back(f);
+					root->publicFuncTree.funcs.push_back(f);
 				}
+
+				for(auto s : r->publicFuncTree.subs)
+				{
+					root->externalFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
+					root->publicFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
+				}
+
 				for(auto v : r->publicTypes)
 				{
 					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
