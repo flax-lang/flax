@@ -45,7 +45,17 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// generate initialiser
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
-	cgi->addFunctionToScope(defaultInitFunc->getName(), FuncPair_t(defaultInitFunc, 0));
+	{
+		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
+		fakeSelf->type = this->name + "*";
+
+		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
+
+		printf("added auto init: %s, %s\n", defaultInitFunc->getName().str().c_str(), fd->name.c_str());
+		cgi->addFunctionToScope({ defaultInitFunc, fd });
+	}
+
+
 	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
 	cgi->builder.SetInsertPoint(iblock);
 
@@ -241,7 +251,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 
 		// make the functions public as well
-		cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
+		cgi->addPublicFunc({ llvm::cast<llvm::Function>(val), f->decl });
+		// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
 	}
 
 	// pass 2
@@ -270,7 +281,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		this->initFuncs.push_back(defaultInitFunc);
 
 	cgi->rootNode->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
-	cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
+	cgi->addPublicFunc({ defaultInitFunc, 0 });
+	// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
 	return Result_t(nullptr, nullptr);
 }
 

@@ -51,7 +51,7 @@ public struct String
 	{
 		if self.allocated > 0
 		{
-			memset(self.data, 0, self.length)
+			memset(self.data, (0 as Int32), self.length)
 		}
 		else
 		{

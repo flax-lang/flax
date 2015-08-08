@@ -20,64 +20,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Instructions.h"
 
-
-
-
-
-namespace Ast
-{
-	struct Expr;
-	struct VarDecl;
-	struct FuncDecl;
-	struct BreakableBracedBlock;
-}
-
-namespace Parser
-{
-	struct PosInfo
-	{
-		PosInfo() { }
-
-		uint64_t line = 0;
-		uint64_t col = 0;
-		std::string file;
-	};
-}
-
-namespace Codegen
-{
-	enum class TypeKind
-	{
-		Struct,
-		Enum,
-		TypeAlias,
-		Func,
-		BuiltinType,
-		Tuple,
-		Protocol,
-	};
-
-	enum class SymbolValidity
-	{
-		Valid,
-		UseAfterDealloc
-	};
-
-	typedef std::pair<llvm::Value*, SymbolValidity> SymbolValidity_t;
-	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
-	typedef std::map<std::string, SymbolPair_t> SymTab_t;
-
-	typedef std::pair<Ast::Expr*, TypeKind> TypedExpr_t;
-	typedef std::pair<llvm::Type*, TypedExpr_t> TypePair_t;
-	typedef std::map<std::string, TypePair_t> TypeMap_t;
-
-	typedef std::pair<llvm::Function*, Ast::FuncDecl*> FuncPair_t;
-	// typedef std::map<std::string, FuncPair_t> FuncMap_t;
-
-	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> BracedBlockScope;
-
-	struct CodegenInstance;
-}
+#include "defs.h"
 
 namespace Ast
 {
@@ -688,12 +631,12 @@ namespace Ast
 
 	struct Root : Expr
 	{
-		Root() : Expr(Parser::PosInfo()) { }
+		Root() : Expr(Parser::PosInfo()), publicFuncTree("__#root"), externalFuncTree("__#root") { }
 		~Root();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		// public functiondecls and type decls.
-		std::deque<std::pair<FuncDecl*, llvm::Function*>> publicFuncs;
+		Codegen::FunctionTree publicFuncTree;
 		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
 
 		// list of all function calls. all.
@@ -708,13 +651,14 @@ namespace Ast
 		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
-		std::deque<std::pair<FuncDecl*, llvm::Function*>> externalFuncs;
+		Codegen::FunctionTree externalFuncTree;
 		std::deque<std::pair<Struct*, llvm::Type*>> externalTypes;
 
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;
-		std::deque<Expr*> topLevelExpressions;
 
+		// top level stuff
+		std::deque<Expr*> topLevelExpressions;
 		std::deque<NamespaceDecl*> topLevelNamespaces;
 
 		std::vector<std::tuple<std::string, llvm::Type*, Codegen::TypeKind>> typeList;
