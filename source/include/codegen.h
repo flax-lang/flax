@@ -9,8 +9,6 @@
 
 #include <vector>
 
-
-
 enum class SymbolType
 {
 	Generic,
@@ -38,6 +36,15 @@ namespace GenError
 
 namespace Codegen
 {
+	struct Resolved_t
+	{
+		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		Resolved_t() : resolved(false) { }
+
+		FuncPair_t t;
+		bool resolved;
+	};
+
 	struct CodegenInstance
 	{
 		// todo: hack
@@ -58,7 +65,7 @@ namespace Codegen
 
 		TypeMap_t typeMap;
 
-		std::deque<FuncMap_t> funcStack;
+		FunctionTree rootFuncStack = FunctionTree("__#root");
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
@@ -90,13 +97,14 @@ namespace Codegen
 
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc);
-		bool isValidNamespace(std::string namespc);
+		void clearNamespaceScope();
+		void popNamespaceScope();
 
-		void addFunctionToScope(std::string name, FuncPair_t func);
+		void addFunctionToScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
-		bool isDuplicateFuncDecl(std::string name);
 
-
+		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
+		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, llvm::Type* things.
@@ -106,21 +114,23 @@ namespace Codegen
 		llvm::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
+		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
+		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
+
+		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
+		void addPublicFunc(FuncPair_t fp);
 
 
-
-
+		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
 
 		void removeType(std::string name);
 		TypePair_t* getType(std::string name);
 		TypePair_t* getType(llvm::Type* type);
-		FuncPair_t* getDeclaredFunc(std::string name);
-		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
-		void clearNamespaceScope();
-		void popNamespaceScope();
+
 
 
 		// llvm::Types for non-primitive (POD) builtin types (string)
@@ -128,9 +138,9 @@ namespace Codegen
 
 		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false);
 		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
-		void autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-		void autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-
+		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
+		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
+		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);
 
 		bool isPtr(Ast::Expr* e);
 		bool isEnum(Ast::ExprType type);
@@ -220,6 +230,7 @@ namespace Codegen
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
 
 
+		Ast::Expr* cloneAST(Ast::Expr* e);
 
 
 		~CodegenInstance();
@@ -231,13 +242,13 @@ namespace Codegen
 }
 
 
-void error(const char* msg, ...) __attribute__((noreturn));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
-void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn));
+void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
+void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
+void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
 
-void warn(const char* msg, ...);
-void warn(Ast::Expr* e, const char* msg, ...);
-void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...);
+void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 
 #define __nothing

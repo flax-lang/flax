@@ -42,7 +42,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 				iceAssert(!n->decimal);
 				if((uint64_t) n->ival >= at->getNumElements())
 				{
-					error(cgi, this, "'%d' is out of bounds of array[%d]", n->ival, at->getNumElements());
+					error(cgi, this, "'%zd' is out of bounds of array[%zd]", n->ival, at->getNumElements());
 				}
 			}
 		}

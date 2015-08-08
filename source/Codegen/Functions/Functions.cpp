@@ -42,7 +42,6 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 {
 	this->didCodegen = true;
 
-
 	bool isPublic = this->decl->attribs & Attr_VisPublic;
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 

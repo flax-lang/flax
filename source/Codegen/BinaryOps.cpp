@@ -305,9 +305,16 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
-		valptr = this->left->codegen(cgi).result;
+		// uhh. we kinda need the rhs, but sometimes the rhs needs the lhs.
+		// todo: fix???
+		// was doing lhs without rhs, then rhs with lhs *before*.
+		// swapped order to fix computed property setters.
 
-		auto res = this->right->codegen(cgi, valptr.second).result;
+		auto res = this->right->codegen(cgi /*, valptr.second*/).result;
+
+		valptr = this->left->codegen(cgi, 0, res.first).result;
+
+
 		rhs = res.first;
 		lhs = valptr.first;
 
