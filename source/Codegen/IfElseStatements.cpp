@@ -64,6 +64,8 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 	iceAssert(this->cases.size() > 0);
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
 	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
+
+	// printf("if: %s\n%s\n", cgi->getReadableType(firstCond).c_str(), cgi->printAst(this->cases[0].first).c_str());
 	firstCond = cgi->builder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
 
 
