@@ -57,6 +57,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 				return doStaticAccess(cgi, this, lhsPtr, _rhs);
 			}
 		}
+
+		// todo: do something with this
+		std::deque<NamespaceDecl*> nses = cgi->resolveNamespace(_vr->name);
+		if(nses.size() > 0)
+		{
+
+		}
 	}
 
 	// gen the var ref on the left.
@@ -73,15 +80,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::Type* type = self->getType();
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
-
-
-
-	// if(!self)
-	// 	warn(cgi, this, "self is null! (%s, %s)", (typeid(*this->left)).name(), cgi->getReadableType(type).c_str());
-
-	// if(!selfPtr)
-	// 	warn(cgi, this, "selfptr is null! (%s, %s)", (typeid(*this->left)).name(), cgi->getReadableType(type).c_str());
-
 
 
 
@@ -379,7 +377,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		llvm::Function* lcallee = 0;
 		for(llvm::Function* lf : str->lfuncs)
 		{
-			printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
+			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
 			if(lf->getName() == cprop->setterFunc->mangledName)
 			{
 				lcallee = lf;

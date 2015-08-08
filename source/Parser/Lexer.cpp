@@ -353,6 +353,7 @@ namespace Parser
 			else if(id == "namespace")	tok.type = TType::Namespace;
 			else if(id == "extension")	tok.type = TType::Extension;
 			else if(id == "typealias")	tok.type = TType::TypeAlias;
+			else if(id == "override")	tok.type = TType::Override;
 			else						tok.type = TType::Identifier;
 		}
 		else if(stream[0] == '"')

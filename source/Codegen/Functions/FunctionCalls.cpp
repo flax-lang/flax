@@ -46,6 +46,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
 	}
 
+
+
+
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
