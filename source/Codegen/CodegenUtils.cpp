@@ -637,9 +637,10 @@ namespace Codegen
 		return candidates;
 	}
 
-	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		std::deque<Expr*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		std::deque<FuncPair_t> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
 
 		std::deque<std::pair<FuncPair_t, int>> finals;
@@ -702,6 +703,12 @@ namespace Codegen
 		// iceAssert(finals.front().first->first);
 
 		return Resolved_t(finals.front().first);
+	}
+
+	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
+	{
+		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
 	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance, bool exactMatch)
