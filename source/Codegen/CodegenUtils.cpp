@@ -109,24 +109,13 @@ namespace Codegen
 			cgi->rootNode->genericFunctions.push_back(fd.first);
 		}
 
-		for(auto pair : cgi->rootNode->externalFuncs)
-		{
-			auto func = pair.second;
-			iceAssert(func);
 
-			// add to the func table
-			auto lf = cgi->module->getFunction(func->getName());
-			if(!lf)
-			{
-				cgi->module->getOrInsertFunction(func->getName(), func->getFunctionType());
-				lf = cgi->module->getFunction(func->getName());
-			}
+		// 1. namespace level.
+		cgi->rootFuncStack = *cgi->cloneFunctionTree(&cgi->rootNode->externalFuncTree, true);
 
-			llvm::Function* f = llvm::cast<llvm::Function>(lf);
-
-			f->deleteBody();
-			cgi->addFunctionToScope(func->getName(), FuncPair_t(f, pair.first));
-		}
+		cgi->rootFuncStack.nsName = "__#root_" + cgi->module->getName().str();
+		cgi->rootNode->publicFuncTree.nsName = "__#rootPUB_" + cgi->module->getName().str();
+		cgi->rootNode->externalFuncTree.nsName = "__#rootEXT_" + cgi->module->getName().str();
 
 		for(auto pair : cgi->rootNode->externalTypes)
 		{
@@ -203,21 +192,17 @@ namespace Codegen
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
-		this->funcStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		this->symTabStack.clear();
-		this->funcStack.clear();
-
 		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
 		this->symTabStack.push_back(SymTab_t());
-		this->funcStack.push_back(FuncMap_t());
 	}
 
 	Func* CodegenInstance::getCurrentFunctionScope()
@@ -451,85 +436,330 @@ namespace Codegen
 
 
 	// funcs
-	void CodegenInstance::pushNamespaceScope(std::string namespc)
+	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
-		this->namespaceStack.push_back(namespc);
+		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, &this->rootNode->publicFuncTree);
+		printf("added func %s to %s\n", fp.first->getName().str().c_str(), cur->nsName.c_str());
+		iceAssert(cur);
+
+		cur->funcs.push_back(fp);
 	}
 
-	bool CodegenInstance::isValidNamespace(std::string namespc)
+	FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
 	{
-		// check if it's imported anywhere
-		for(auto nses : this->importedNamespaces)
+		FunctionTree* clone = new FunctionTree();
+		clone->nsName = ft->nsName;
+
+		for(auto pair : ft->funcs)
 		{
-			for(std::string ns : nses)
+			if(deep)
 			{
-				if(ns == namespc)
-					return true;
+				auto func = pair.first;
+				iceAssert(func);
+
+				// add to the func table
+				auto lf = this->module->getFunction(func->getName());
+				if(!lf)
+				{
+					this->module->getOrInsertFunction(func->getName(), func->getFunctionType());
+					lf = this->module->getFunction(func->getName());
+				}
+
+				llvm::Function* f = llvm::cast<llvm::Function>(lf);
+
+				f->deleteBody();
+				this->addFunctionToScope(FuncPair_t(f, pair.second));
+				pair.first = f;
+			}
+
+			clone->funcs.push_back(pair);
+		}
+
+		for(auto sub : ft->subs)
+			clone->subs.push_back(this->cloneFunctionTree(sub, deep));
+
+		return clone;
+	}
+
+
+	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
+	{
+		if(root == 0) root = &this->rootFuncStack;
+		if(nses == 0) nses = &this->namespaceStack;
+
+		std::deque<FunctionTree*>& ft = root->subs;
+
+		size_t max = this->namespaceStack.size();
+		size_t i = 0;
+
+		for(auto ns : *nses)
+		{
+			i++;
+			if(ft.size() == 0) break;
+
+			for(auto f : ft)
+			{
+				if(f->nsName == ns)
+				{
+					ft = f->subs;
+					if(i == max) return f;
+
+					break;
+				}
 			}
 		}
 
-		return false;
+		return root;
 	}
 
-	void CodegenInstance::addFunctionToScope(std::string name, FuncPair_t func)
+	void CodegenInstance::pushNamespaceScope(std::string namespc)
 	{
-		// this->funcMap[name] = func;
-		this->funcStack.back()[name] = func;
+		FunctionTree* ft = new FunctionTree();
+		ft->nsName = namespc;
+
+		FunctionTree* cur = this->getCurrentFuncTree();
+		cur->subs.push_back(ft);
+
+		this->namespaceStack.push_back(namespc);
 	}
 
-	FuncPair_t* CodegenInstance::getDeclaredFunc(std::string name)
+	void CodegenInstance::addFunctionToScope(FuncPair_t func)
 	{
-		for(ssize_t i = this->funcStack.size() - 1; i >= 0; i--)
+		FunctionTree* cur = this->getCurrentFuncTree();
+		iceAssert(cur);
+
+		printf("added function %s to ns %s\n", func.second ? func.second->name.c_str() : func.first->getName().str().c_str(),
+			cur->nsName.c_str());
+		cur->funcs.push_back(func);
+
+		// for(auto f : cur->funcs)
+		// {
+		// 	printf("%s has %s\n", cur->nsName.c_str(), f.second ? f.second->name.c_str() : f.first->getName().str().c_str());
+		// }
+	}
+
+	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
+	{
+		// todo: check if we actually imported the function.
+		// this might cause false matches.
+
+		// search in namespace scope.
+
+		std::deque<FuncPair_t> candidates;
+
+		// search
 		{
-			FuncMap_t& tab = this->funcStack[i];
+			// 1. search own namespace
+			// do a top-down search, ensuring we get everything.
+			std::deque<std::string> curDepth;
 
-			#if 0
-			printf("find %s:\n{\n", name.c_str());
-			for(auto p : tab) printf("\t%s\n", p.first.c_str());
-			printf("}\n");
-			#endif
+			// once with no namespace
+			{
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
 
-			if(tab.find(name) != tab.end())
-				return &tab[name];
+				for(auto f : ft->funcs)
+				{
+					auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					};
+
+
+					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					{
+						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							printf("added %s in search of %s (1)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
+								basename.c_str());
+
+							candidates.push_back(f);
+						}
+					}
+				}
+			}
+			for(auto ns : this->namespaceStack)
+			{
+				curDepth.push_back(ns);
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+
+				for(auto f : ft->funcs)
+				{
+					auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					};
+
+
+					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					{
+						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							printf("added %s in search of %s (2)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
+								basename.c_str());
+
+							candidates.push_back(f);
+						}
+					}
+				}
+			}
+
+
+
+
+
+
+			// 2. search our imported namespaces.
+			curDepth.clear();
+
+			// once with no namespace
+			{
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
+
+				for(auto f : ft->funcs)
+				{
+					auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					};
+
+
+					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					{
+						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							printf("added %s in search of %s (3)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
+								basename.c_str());
+
+							candidates.push_back(f);
+						}
+					}
+				}
+			}
+			for(auto ns : this->namespaceStack)
+			{
+				curDepth.push_back(ns);
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
+
+				for(auto f : ft->funcs)
+				{
+					auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					};
+
+
+					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					{
+						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							candidates.push_back(f);
+
+							printf("added %s in search of %s (4)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
+								basename.c_str());
+						}
+					}
+				}
+			}
+
+
+			printf("looking for %s: %zu candidates\n", basename.c_str(), candidates.size());
+			for(auto c : candidates)
+			{
+				printf("have %s\n", c.first->getName().str().c_str());
+			}
 		}
 
-		return nullptr;
+		return candidates;
 	}
 
-	static FuncPair_t* searchDeclaredFuncElsewhere(CodegenInstance* cgi, FuncCall* fc)
+	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params)
 	{
-		// mangled name
-		FuncPair_t* fp = cgi->getDeclaredFunc(cgi->mangleFunctionName(cgi->mangleWithNamespace(fc->name), fc->params));
-		if(fp) return fp;
+		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		if(candidates.size() == 0) { printf("func %s has 0 candidates\n", basename.c_str()); return Resolved_t(); }
 
-		// search inside imported namespaces.
-		for(auto ns : cgi->importedNamespaces)
+		std::deque<std::pair<FuncPair_t, int>> finals;
+		for(auto c : candidates)
 		{
-			fp = cgi->getDeclaredFunc(cgi->mangleFunctionName(cgi->mangleWithNamespace(fc->name, ns), fc->params));
-			if(fp) return fp;
+			int distance = 0;
+			if(this->isValidFuncOverload(c, params, &distance))
+				finals.push_back({ c, distance });
 		}
 
-		return 0;
+
+		// todo: disambiguate this.
+		// with casting distance.
+		if(finals.size() > 1)
+		{
+			// parameters
+			std::string pstr;
+			for(auto e : params)
+				pstr += this->printAst(e) + ", ";
+
+			if(params.size() > 0)
+				pstr = pstr.substr(0, pstr.size() - 2);
+
+			// candidates
+			std::string cstr;
+			for(auto c : finals)
+				cstr += this->printAst(c.first.second) + "\n";
+
+			error(this, user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
+				basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
+		}
+		else if(finals.size() == 0)
+		{
+			return Resolved_t();
+		}
+
+		// iceAssert(finals.front().first);
+		// iceAssert(finals.front().first->first);
+
+		return Resolved_t(finals.front().first);
 	}
 
-	FuncPair_t* CodegenInstance::getDeclaredFunc(FuncCall* fc)
+	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance)
 	{
-		// step one: unmangled name
-		FuncPair_t* fp = this->getDeclaredFunc(fc->name);
-		if(fp) return fp;
+		iceAssert(castingDistance);
+		*castingDistance = 0;
 
-		fp = searchDeclaredFuncElsewhere(this, fc);
-		if(fp) return fp;
+		if(fp.second)
+		{
+			FuncDecl* decl = fp.second;
 
-		return 0;
+			iceAssert(decl);
+
+			if(decl->params.size() != params.size() && !decl->hasVarArg) return false;
+			if(decl->params.size() == 0 && (params.size() == 0 || decl->hasVarArg)) return true;
+
+
+			#define __min(x, y) ((x) > (y) ? (y) : (x))
+			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
+			{
+				if(this->getLlvmType(decl->params[i]) != this->getLlvmType(params[i]))
+					return false;
+			}
+
+			return true;
+		}
+		else if(fp.first)
+		{
+			llvm::Function* lf = fp.first;
+			llvm::FunctionType* ft = lf->getFunctionType();
+
+			size_t i = 0;
+			for(auto it = ft->param_begin(); it != ft->param_end(); it++, i++)
+			{
+				if(this->getLlvmType(params[i]) != *it)
+					return false;
+			}
+
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
-
-
-	FuncPair_t* CodegenInstance::resolveFunctionOverload(std::string basename, std::deque<Expr*> params)
-	{
-		return 0;
-	}
-
 
 
 
@@ -564,14 +794,8 @@ namespace Codegen
 		// loop through all the namespaces.
 		std::deque<NamespaceDecl*> ret;
 
-		// do a "depth first search"
-		// printf("SEARCHING (%s):\n", name.c_str());
+		// do a depth first search
 		_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret);
-
-		// for(auto ns : ret)
-		// 	printf("%s.", ns->name.c_str());
-
-		// printf("\n\n");
 
 		return ret;
 	}
@@ -596,9 +820,15 @@ namespace Codegen
 
 
 
-	bool CodegenInstance::isDuplicateFuncDecl(std::string name)
+	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
 	{
-		return this->funcStack.back().find(name) != this->funcStack.back().end();
+		// return this->funcStack.back().find(name) != this->funcStack.back().end();
+		if(decl->isFFI) return false;
+
+		std::deque<Expr*> es;
+		for(auto p : decl->params) es.push_back(p);
+
+		return (this->resolveFunction(decl, decl->name, es).resolved != false);
 	}
 
 	void CodegenInstance::popNamespaceScope()
@@ -615,7 +845,19 @@ namespace Codegen
 
 	FuncPair_t* CodegenInstance::getOrDeclareLibCFunc(std::string name)
 	{
-		FuncPair_t* fp = this->getDeclaredFunc(name);
+		std::deque<FuncPair_t> fps = this->resolveFunctionName(name);
+		FuncPair_t* fp = 0;
+
+		for(auto f : fps)
+		{
+			iceAssert(f.second->name == name);
+			if(f.second->isFFI)
+			{
+				fp = &f;
+				break;
+			}
+		}
+
 		if(!fp)
 		{
 			std::string retType;
@@ -644,12 +886,14 @@ namespace Codegen
 
 				retType = "Int64";
 			}
+			else
+			{
+				error("enotsup: %s", name.c_str());
+			}
 
 			FuncDecl* fakefm = new FuncDecl(Parser::PosInfo(), name, params, retType);
 			fakefm->isFFI = true;
 			fakefm->codegen(this);
-
-			iceAssert((fp = this->getDeclaredFunc(name)));
 		}
 
 		return fp;
@@ -1189,10 +1433,15 @@ namespace Codegen
 		}
 		else
 		{
-			FuncPair_t* fp = this->getDeclaredFunc(candidate->mangledName);
-			iceAssert(fp);
+			std::deque<Expr*> es;
+			for(auto p : candidate->params) es.push_back(p);
 
-			ffunc = fp->first;
+			Resolved_t rt = this->resolveFunction(fc, candidate->name, es);
+			iceAssert(rt.resolved);
+
+			FuncPair_t fp = rt.t;
+
+			ffunc = fp.first;
 			iceAssert(ffunc);
 		}
 

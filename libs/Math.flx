@@ -12,7 +12,7 @@ public struct Math
 	public static ƒ √(x: Float64) -> Float64 { sqrt(x) }
 	public static ƒ √(x: Int) -> Float64
 	{
-		sqrt(x)
+		sqrt(x as Float64)
 	}
 }
 

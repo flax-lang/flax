@@ -168,8 +168,8 @@ namespace Codegen
 			}
 			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 			{
-				FuncPair_t* fp = this->getDeclaredFunc(fc);
-				if(!fp)
+				Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
+				if(!rt.resolved)
 				{
 					TypePair_t* tp = this->getType(fc->name);
 					if(tp)
@@ -187,7 +187,7 @@ namespace Codegen
 				}
 				else
 				{
-					return getLlvmType(fp->second);
+					return getLlvmType(rt.t.second);
 				}
 			}
 			else if(Func* f = dynamic_cast<Func*>(expr))
@@ -327,6 +327,10 @@ namespace Codegen
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
 				{
 					return llvm::IntegerType::getInt1Ty(this->getContext());
+				}
+				else if(bo->op == ArithmeticOp::Cast || bo->op == ArithmeticOp::ForcedCast)
+				{
+					return this->getLlvmType(bo->right);
 				}
 				else
 				{
