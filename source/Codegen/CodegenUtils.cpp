@@ -672,19 +672,21 @@ namespace Codegen
 		return candidates;
 	}
 
-	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params)
+	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
 	{
 		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
-		if(candidates.size() == 0) { printf("func %s has 0 candidates\n", basename.c_str()); return Resolved_t(); }
+		if(candidates.size() == 0) return Resolved_t();
 
 		std::deque<std::pair<FuncPair_t, int>> finals;
 		for(auto c : candidates)
 		{
 			int distance = 0;
-			if(this->isValidFuncOverload(c, params, &distance))
+			if(this->isValidFuncOverload(c, params, &distance, exactMatch))
 				finals.push_back({ c, distance });
 		}
 
+
+		printf("func %s has %zu remaining\n", basename.c_str(), finals.size());
 
 		// todo: disambiguate this.
 		// with casting distance.
@@ -717,7 +719,7 @@ namespace Codegen
 		return Resolved_t(finals.front().first);
 	}
 
-	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance)
+	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
 		*castingDistance = 0;
@@ -736,7 +738,15 @@ namespace Codegen
 			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 			{
 				if(this->getLlvmType(decl->params[i]) != this->getLlvmType(params[i]))
-					return false;
+				{
+					if(exactMatch) return false;
+
+					// try to cast.
+					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
+					printf("casting (1) from %s to %s: %d\n", this->getReadableType(params[i]).c_str(),
+						this->getReadableType(decl->params[i]).c_str(), *castingDistance);
+					if(*castingDistance == -1) return false;
+				}
 			}
 
 			return true;
@@ -750,7 +760,18 @@ namespace Codegen
 			for(auto it = ft->param_begin(); it != ft->param_end(); it++, i++)
 			{
 				if(this->getLlvmType(params[i]) != *it)
+				{
+					if(exactMatch) return false;
+
+					// try to cast.
+					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
+					printf("casting (2) from %s to %s: %d\n", this->getReadableType(params[i]).c_str(),
+						this->getReadableType(*it).c_str(), *castingDistance);
+
+					if(*castingDistance == -1) return false;
+
 					return false;
+				}
 			}
 
 			return true;
@@ -822,13 +843,12 @@ namespace Codegen
 
 	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
 	{
-		// return this->funcStack.back().find(name) != this->funcStack.back().end();
 		if(decl->isFFI) return false;
 
 		std::deque<Expr*> es;
 		for(auto p : decl->params) es.push_back(p);
 
-		return (this->resolveFunction(decl, decl->name, es).resolved != false);
+		return (this->resolveFunction(decl, decl->name, es, true).resolved != false);
 	}
 
 	void CodegenInstance::popNamespaceScope()
