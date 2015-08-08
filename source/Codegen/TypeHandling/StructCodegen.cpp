@@ -168,7 +168,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
+			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
 			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -221,6 +221,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		// 3. mangle the name
 		// 4. restore the parameter
 		// this makes sure that we don't get ridiculous mangled names for member functions
+		// also makes sure that we conform to the C++ ABI
+		// (using 'E' means we don't include the implicit first parameter in the mangled name)
 
 
 		val = f->decl->codegen(cgi).result.first;
@@ -312,9 +314,10 @@ void Struct::createType(CodegenInstance* cgi)
 
 			alreadyHaveSuperclass = true;
 		}
-
 		else if(type->second.second != TypeKind::Protocol)
+		{
 			error(cgi, this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
+		}
 
 
 		StructBase* sb = dynamic_cast<StructBase*>(type->second.first);
@@ -330,8 +333,104 @@ void Struct::createType(CodegenInstance* cgi)
 		{
 			this->superclass = { sb, llvm::cast<llvm::StructType>(type->first) };
 
-			this->members = sb->members;
-			this->cprops = sb->cprops;
+			// normal members
+			for(auto mem : sb->members)
+			{
+				auto pred = [mem](VarDecl* v) -> bool {
+
+					return v->name == mem->name;
+				};
+
+				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
+				if(it != this->members.end())
+				{
+					error(cgi, *it, "Struct fields cannot be overriden, only computed properties can");
+				}
+
+				this->members.push_back(mem);
+			}
+
+			size_t nms = this->nameMap.size();
+			for(auto nm : sb->nameMap)
+			{
+				this->nameMap[nm.first] = nms;
+				nms++;
+			}
+
+			// functions
+			for(auto fn : sb->funcs)
+			{
+				auto pred = [fn, cgi](Func* f) -> bool {
+
+					if(fn->decl->params.size() != f->decl->params.size())
+						return false;
+
+					for(size_t i = 0; i < fn->decl->params.size(); i++)
+					{
+						if(cgi->getLlvmType(fn->decl->params[i]) != cgi->getLlvmType(f->decl->params[i]))
+							return false;
+					}
+
+					return fn->decl->name == f->decl->name;
+				};
+
+
+				auto it = std::find_if(this->funcs.begin(), this->funcs.end(), pred);
+				if(it != this->funcs.end())
+				{
+					// check for 'override'
+					Func* f = *it;
+					if(!(f->decl->attribs & Attr_Override))
+					{
+						error(cgi, f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
+							cgi->printAst(f->decl).c_str(), sb->name.c_str());
+					}
+					else
+					{
+						// don't add the superclass one.
+						continue;
+					}
+				}
+
+				this->funcs.push_back((Func*) cgi->cloneAST(fn));
+			}
+
+
+
+
+
+
+			// computed properties
+			for(auto cp : sb->cprops)
+			{
+				auto pred = [cp](ComputedProperty* cpr) -> bool {
+
+					return cp->name == cpr->name;
+				};
+
+				auto it = std::find_if(this->cprops.begin(), this->cprops.end(), pred);
+				if(it != this->cprops.end())
+				{
+					// this thing exists.
+					// check if ours has an override
+					ComputedProperty* ours = *it;
+					assert(ours->name == cp->name);
+
+					if(!(ours->attribs & Attr_Override))
+					{
+						error(cgi, ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
+							ours->name.c_str(), sb->name.c_str());
+					}
+					else
+					{
+						// we have 'override'.
+						// disable this property, don't add it.
+						continue;
+					}
+				}
+
+				this->cprops.push_back((ComputedProperty*) cgi->cloneAST(cp));
+			}
 		}
 		else
 		{

@@ -58,7 +58,7 @@ namespace Codegen
 
 		TypeMap_t typeMap;
 
-		std::deque<FuncMap_t> funcStack;
+		std::deque<std::deque<FuncPair_t>> funcStack;
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
@@ -89,8 +89,10 @@ namespace Codegen
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		void pushNamespaceScope(std::string namespc);
 		bool isValidNamespace(std::string namespc);
+		void pushNamespaceScope(std::string namespc);
+		void clearNamespaceScope();
+		void popNamespaceScope();
 
 		void addFunctionToScope(std::string name, FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
@@ -106,10 +108,8 @@ namespace Codegen
 		llvm::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
-
-
-
-
+		FuncPair_t* resolveFunctionOverload(std::string basename, std::deque<Ast::Expr*> params);
+		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
 
 		void removeType(std::string name);
@@ -119,8 +119,7 @@ namespace Codegen
 		FuncPair_t* getDeclaredFunc(Ast::FuncCall* fc);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
-		void clearNamespaceScope();
-		void popNamespaceScope();
+
 
 
 		// llvm::Types for non-primitive (POD) builtin types (string)
@@ -220,6 +219,7 @@ namespace Codegen
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
 
 
+		Ast::Expr* cloneAST(Ast::Expr* e);
 
 
 		~CodegenInstance();

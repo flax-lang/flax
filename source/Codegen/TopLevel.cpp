@@ -10,18 +10,27 @@ using namespace Ast;
 using namespace Codegen;
 
 
-// 4-pass system.
-// pass 0: set up the mangled names for extensions so we can reference them later
-// pass 1: struct->createType()
-// pass 2: extensions->createType()		-- overrides struct bodies
-// pass 3: decls->codegen()
-// pass 4: all->codegen()
-
-static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace)
+// N-pass system.
+// there's no point counting at this stage.
+static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace,
+	std::deque<NamespaceDecl*>* nslist)
 {
 	if(pass == 0)
 	{
-		// pass 0: setup extensions
+		// pass 0: setup namespaces.
+		for(Expr* e : expressions)
+		{
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			if(ns)
+			{
+				nslist->push_back(ns);
+				ns->codegenPass(cgi, 0);
+			}
+		}
+	}
+	else if(pass == 1)
+	{
+		// pass 1: setup extensions
 		for(Expr* e : expressions)
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
@@ -37,9 +46,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		if(!isInsideNamespace)
 			TypeInfo::initialiseTypeInfo(cgi);
 	}
-	else if(pass == 1)
+	else if(pass == 2)
 	{
-		// pass 1: create types
+		// pass 2: create types
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
@@ -51,7 +60,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
-	else if(pass == 2)
+	else if(pass == 3)
 	{
 		// pass 2: override types with any extensions
 		for(Expr* e : expressions)
@@ -65,14 +74,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 
-		// step 2: generate the type info.
+		// step 3: generate the type info.
 		// now that we have all the types that we need, and they're all fully
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
 	}
-	else if(pass == 3)
+	else if(pass == 4)
 	{
-		// pass 3: create declarations
+		// pass 4: create declarations
 		for(Expr* e : expressions)
 		{
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
@@ -93,9 +102,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			}
 		}
 	}
-	else if(pass == 4)
+	else if(pass == 5)
 	{
-		// pass 4: everything else
+		// pass 5: everything else
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
@@ -111,7 +120,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
 		}
 	}
-	else if(pass == 5)
+	else if(pass == 6)
 	{
 		// first, look into all functions. check function calls, since everything should have already been declared.
 		// if we can resolve it into a generic function, then instantiate (monomorphise) the generic function
@@ -121,13 +130,16 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(auto fc : cgi->rootNode->allFunctionCalls)
 			cgi->tryResolveAndInstantiateGenericFunction(fc);
 	}
-	else if(pass == 6)
+	else if(pass == 7)
 	{
-		// pass 5: functions. for generic shit.
+		// pass 7: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
-			Func* func						= dynamic_cast<Func*>(e);
+			Func* func				= dynamic_cast<Func*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+
 			if(func && !func->didCodegen)	func->codegen(cgi);
+			if(ns)							ns->codegenPass(cgi, pass);
 		}
 	}
 	else
@@ -139,16 +151,13 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
 	auto before = cgi->importedNamespaces;
-	for(std::string s : this->name)
-	{
-		cgi->pushNamespaceScope(s);
-		cgi->importedNamespaces.push_back(cgi->namespaceStack);
-	}
 
-	codegenTopLevel(cgi, pass, this->innards->statements, true);
+	cgi->pushNamespaceScope(this->name);
+	cgi->importedNamespaces.push_back(cgi->namespaceStack);
 
-	for(std::string s : this->name)
-		cgi->popNamespaceScope();
+	codegenTopLevel(cgi, pass, this->innards->statements, true, &this->namespaces);
+
+	cgi->popNamespaceScope();
 
 	cgi->importedNamespaces = before;
 }
@@ -156,13 +165,25 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// this is getting quite out of hand.
-	codegenTopLevel(cgi, 0, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 1, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 2, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 3, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 4, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 5, this->topLevelExpressions, false);
-	codegenTopLevel(cgi, 6, this->topLevelExpressions, false);
+	codegenTopLevel(cgi, 0, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 1, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 2, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 3, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 4, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 5, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 6, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	codegenTopLevel(cgi, 7, this->topLevelExpressions, false, &this->topLevelNamespaces);
 
 	return Result_t(0, 0);
 }
+
+
+
+
+
+
+
+
+
+
+

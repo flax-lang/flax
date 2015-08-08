@@ -959,9 +959,10 @@ namespace Codegen
 				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
 			}
 
-			str = str.substr(0, str.length() - 2) + ") -> ";
-			// str += this->getReadableType(fd);
-			str += fd->type.strType;
+			if(fd->params.size() > 0)
+				str = str.substr(0, str.length() - 2);
+
+			str +=  ") -> " + fd->type.strType;
 			return str;
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))
@@ -994,6 +995,22 @@ namespace Codegen
 		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 		{
 			return this->printAst(ai->arr) + "[" + this->printAst(ai->index) + "]";
+		}
+		else if(Func* fn = dynamic_cast<Func*>(expr))
+		{
+			return this->printAst(fn->decl) + "\n" + this->printAst(fn->block);
+		}
+		else if(BracedBlock* blk = dynamic_cast<BracedBlock*>(expr))
+		{
+			std::string ret = "{\n";
+			for(auto e : blk->statements)
+				ret += "\t" + this->printAst(e) + "\n";
+
+			for(auto d : blk->deferredStatements)
+				ret += "\tdefer " + this->printAst(d->expr) + "\n";
+
+			ret += "}";
+			return ret;
 		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
