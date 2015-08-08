@@ -439,7 +439,6 @@ namespace Codegen
 	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
 		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, &this->rootNode->publicFuncTree);
-		printf("added func %s to %s\n", fp.first->getName().str().c_str(), cur->nsName.c_str());
 		iceAssert(cur);
 
 		cur->funcs.push_back(fp);
@@ -528,14 +527,7 @@ namespace Codegen
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
 
-		printf("added function %s to ns %s\n", func.second ? func.second->name.c_str() : func.first->getName().str().c_str(),
-			cur->nsName.c_str());
 		cur->funcs.push_back(func);
-
-		// for(auto f : cur->funcs)
-		// {
-		// 	printf("%s has %s\n", cur->nsName.c_str(), f.second ? f.second->name.c_str() : f.first->getName().str().c_str());
-		// }
 	}
 
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
@@ -568,12 +560,7 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							printf("added %s in search of %s (1)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
-								basename.c_str());
-
 							candidates.push_back(f);
-						}
 					}
 				}
 			}
@@ -593,12 +580,7 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							printf("added %s in search of %s (2)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
-								basename.c_str());
-
 							candidates.push_back(f);
-						}
 					}
 				}
 			}
@@ -626,12 +608,7 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							printf("added %s in search of %s (3)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
-								basename.c_str());
-
 							candidates.push_back(f);
-						}
 					}
 				}
 			}
@@ -651,21 +628,9 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
 							candidates.push_back(f);
-
-							printf("added %s in search of %s (4)\n", (f.second ? f.second->name : f.first->getName().str()).c_str(),
-								basename.c_str());
-						}
 					}
 				}
-			}
-
-
-			printf("looking for %s: %zu candidates\n", basename.c_str(), candidates.size());
-			for(auto c : candidates)
-			{
-				printf("have %s\n", c.first->getName().str().c_str());
 			}
 		}
 
@@ -685,8 +650,6 @@ namespace Codegen
 				finals.push_back({ c, distance });
 		}
 
-
-		printf("func %s has %zu remaining\n", basename.c_str(), finals.size());
 
 		// todo: disambiguate this.
 		// with casting distance.
@@ -743,8 +706,6 @@ namespace Codegen
 
 					// try to cast.
 					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
-					printf("casting (1) from %s to %s: %d\n", this->getReadableType(params[i]).c_str(),
-						this->getReadableType(decl->params[i]).c_str(), *castingDistance);
 					if(*castingDistance == -1) return false;
 				}
 			}
@@ -765,9 +726,6 @@ namespace Codegen
 
 					// try to cast.
 					*castingDistance = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
-					printf("casting (2) from %s to %s: %d\n", this->getReadableType(params[i]).c_str(),
-						this->getReadableType(*it).c_str(), *castingDistance);
-
 					if(*castingDistance == -1) return false;
 
 					return false;
