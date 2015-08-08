@@ -1,0 +1,41 @@
+// generics.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+func foo<T, K>(a: T, b: K)
+{
+	let ta = typeof(a)
+	let tb = typeof(b)
+
+
+	if(ta == Type.Int64)
+	{
+		printf("foo: (int) %d, ", a)
+	}
+	else if(ta == Type.String)
+	{
+		printf("foo: (str) %s, ", a)
+	}
+
+	if(tb == Type.Int64)
+	{
+		printf("(int) %d\n", b)
+	}
+	if(tb == Type.String)
+	{
+		printf("(str) %s, ", b)
+	}
+}
+
+
+struct Foo { var z = 149 }
+public func doGenericsTest()
+{
+	// var k: Foo
+
+	foo(7, 6)
+	foo(5, "asdf")
+	// foo(3.1, 4)
+}
