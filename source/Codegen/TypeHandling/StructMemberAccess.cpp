@@ -16,7 +16,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
 static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
-
+static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
 
 
 
@@ -36,12 +36,10 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
-
-
-Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, Expr* first, llvm::Value* lhsPtr,
+	llvm::Value* _rhs, bool actual = true)
 {
-	// check for special cases -- static calling and enums.
-	VarRef* _vr = dynamic_cast<VarRef*>(this->left);
+	VarRef* _vr = dynamic_cast<VarRef*>(first);
 
 	if(_vr)
 	{
@@ -51,21 +49,32 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		{
 			if(tp->second.second == TypeKind::Enum)
 			{
-				return enumerationAccessCodegen(cgi, this->left, this->right);
+				return enumerationAccessCodegen(cgi, ma->left, ma->right);
 			}
 			else if(tp->second.second == TypeKind::Struct)
 			{
-				return doStaticAccess(cgi, this, lhsPtr, _rhs);
+				return doStaticAccess(cgi, ma, lhsPtr, _rhs, actual);
 			}
 		}
 
 		// todo: do something with this
 		std::deque<NamespaceDecl*> nses = cgi->resolveNamespace(_vr->name);
 		if(nses.size() > 0)
-		{
-			printf("dolan iz namespace\n");
-		}
+			return doNamespaceAccess(cgi, ma, cgi->flattenDotOperators(ma), _rhs, actual);
 	}
+
+
+	return Result_t(0, 0);
+}
+
+
+Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+{
+	// check for special cases -- static calling and enums.
+	Result_t _res = checkForStaticAccess(cgi, this, this->left, lhsPtr, _rhs);
+	if(_res.result.first != 0 || _res.result.second != 0)
+		return _res;
+
 
 	// gen the var ref on the left.
 	Result_t res = this->left->codegen(cgi);
@@ -650,7 +659,13 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);
 }
 
+static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
+{
+	for(auto f : flat)
+		printf("%s\n", cgi->printAst(f).c_str());
 
+	return Result_t(0, 0);
+}
 
 
 
@@ -676,8 +691,16 @@ CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque
 				flat.pop_front();
 
 				Result_t res = doStaticAccess(this, _ma, 0, 0, false);
-				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+				return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
 			}
+		}
+
+		// todo: do something with this
+		std::deque<NamespaceDecl*> nses = this->resolveNamespace(vr->name);
+		if(nses.size() > 0)
+		{
+			auto res = doNamespaceAccess(this, _ma, flat, 0, false);
+			return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
 		}
 	}
 

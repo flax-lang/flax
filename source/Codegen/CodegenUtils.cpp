@@ -634,10 +634,6 @@ namespace Codegen
 			}
 		}
 
-		printf("%zu candidates\n", candidates.size());
-		for(auto c : candidates)
-			printf("candidate: %s\n", c.second->name.c_str());
-
 		return candidates;
 	}
 
@@ -652,18 +648,7 @@ namespace Codegen
 		{
 			int distance = 0;
 			if(this->isValidFuncOverload(c, params, &distance, exactMatch))
-			{
 				finals.push_back({ c, distance });
-			}
-			else
-			{
-				std::string args;
-				for(auto e : params) args += this->getReadableType(e) + ", ";
-
-				if(params.size() > 0) args = args.substr(0, args.length() - 2);
-
-				printf("candidate (%d) %s was a bad overload for args [ %s ]\n", exactMatch, this->printAst(c.second).c_str(), args.c_str());
-			}
 		}
 
 
@@ -750,9 +735,6 @@ namespace Codegen
 
 					// try to cast.
 					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
-					printf("distance from %s to %s is %d\n", this->getReadableType(params[i]).c_str(),
-						this->getReadableType(decl->params[i]).c_str(), dist);
-
 					if(dist == -1) return false;
 
 					*castingDistance += dist;
@@ -824,7 +806,6 @@ namespace Codegen
 
 		// do a depth first search
 		_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret);
-
 		return ret;
 	}
 
