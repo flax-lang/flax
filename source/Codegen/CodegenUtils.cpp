@@ -422,6 +422,7 @@ namespace Codegen
 	void CodegenInstance::popGenericTypeStack()
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+		this->instantiatedGenericTypeStack.pop_back();
 	}
 
 
@@ -836,7 +837,17 @@ namespace Codegen
 		std::deque<Expr*> es;
 		for(auto p : decl->params) es.push_back(p);
 
-		return (this->resolveFunction(decl, decl->name, es, true).resolved != false);
+		auto res = this->resolveFunction(decl, decl->name, es, true);
+		if(res.resolved)
+		{
+			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
+			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
+			{
+				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
+			}
+		}
+
+		return res.resolved == true;
 	}
 
 	void CodegenInstance::popNamespaceScope()
@@ -1243,7 +1254,7 @@ namespace Codegen
 		// try and resolve shit???
 		// first, we need to get strings of every type.
 
-		// printf("called func %s in module %s\n", fc->name.c_str(), this->module->getName().bytes_begin());
+		// printf("called func %s in module %s\n", this->printAst(fc).c_str(), this->module->getName().bytes_begin());
 
 		// TODO: dupe code
 		std::deque<FuncDecl*> candidates;
@@ -1275,9 +1286,6 @@ namespace Codegen
 		auto it = candidates.begin();
 		for(auto candidate : candidates)
 		{
-			// printf("found candidate function declaration to instantiate: %s, %s, %s\n", candidate->name.c_str(),
-				// candidate->mangledNamespaceOnly.c_str(), candidate->mangledName.c_str());
-
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
@@ -1300,13 +1308,10 @@ namespace Codegen
 				int pos = 0;
 				for(auto p : candidate->params)
 				{
-					llvm::Type* ltype = this->getLlvmType(p, true);
+					llvm::Type* ltype = this->getLlvmType(p, true, false);	// allowFail = true, setInferred = false
 					if(!ltype)
 					{
 						std::string s = p->type.strType;
-						if(typePositions.find(s) == typePositions.end())
-							typePositions[s] = std::vector<int>();
-
 						typePositions[s].push_back(pos);
 					}
 					else
@@ -1337,7 +1342,10 @@ namespace Codegen
 					llvm::Type* b = this->getLlvmType(candidate->params[k]);
 
 					if(a != b)
+					{
+						printf("failed here (%d), %s vs %s\n", k, this->getReadableType(a).c_str(), this->getReadableType(b).c_str());
 						goto fail;
+					}
 				}
 
 
@@ -1365,6 +1373,8 @@ namespace Codegen
 				it++;
 			}
 		}
+
+		printf("*** DONE\n");
 
 		if(candidates.size() == 0)
 		{
@@ -1433,10 +1443,24 @@ namespace Codegen
 
 
 
+		// we need to push a new "generic type stack", and add the types that we resolved into it.
+		// todo: might be inefficient.
+		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
+		// so we don't have to iterate etc etc.
+		// I don't want to access cgi->instantiatedGenericTypeStack directly.
+		this->pushGenericTypeStack();
+		for(auto pair : tm)
+			this->pushGenericType(pair.first, pair.second);
+
+
+
 		llvm::Function* ffunc = nullptr;
 		if(needToCodegen)
 		{
+			printf("needed to codegen: %s\n", this->printAst(candidate).c_str());
 			Result_t res = candidate->generateDeclForGenericType(this, tm);
+			printf("needed to codegen: %s\n", this->printAst(candidate).c_str());
+
 			ffunc = (llvm::Function*) res.result.first;
 		}
 		else
@@ -1473,25 +1497,13 @@ namespace Codegen
 		// resolve it into an llvm::Function* to do shit.
 		if(needToCodegen)
 		{
-			// we need to push a new "generic type stack", and add the types that we resolved into it.
-			this->pushGenericTypeStack();
-
-			// todo: might be inefficient.
-			// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
-			// so we don't have to iterate etc etc.
-			// I don't want to access cgi->instantiatedGenericTypeStack directly.
-
-			for(auto pair : tm)
-			{
-				this->pushGenericType(pair.first, pair.second);
-			}
-
 			theFn->codegen(this);
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
-
-			this->popGenericTypeStack();
 		}
 
+		this->popGenericTypeStack();
+
+		printf("*** ACTUALLY DONE\n");
 		return ffunc;
 	}
 

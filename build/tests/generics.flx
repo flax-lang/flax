@@ -30,7 +30,7 @@ func foo<T, K>(a: T, b: K)
 }
 
 
-struct Foo { var z = 149 }
+struct Fooo { var z = 149 }
 public func doGenericsTest()
 {
 	// var k: Foo
