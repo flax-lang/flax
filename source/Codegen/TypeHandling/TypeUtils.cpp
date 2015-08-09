@@ -48,7 +48,7 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(Ast::Expr* user, ExprType type, bool allowFail)
+	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
 		{
@@ -101,8 +101,9 @@ namespace Codegen
 	}
 
 
-	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail)
+	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail, bool setInferred)
 	{
+		setInferred = false;
 		iceAssert(expr);
 		{
 			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
@@ -131,13 +132,23 @@ namespace Codegen
 						if(decl->type.strType.find("::") != std::string::npos)
 						{
 							decl->type.strType = this->mangleRawNamespace(decl->type.strType);
-							return (decl->inferredLType = this->getLlvmType(decl, allowFail));
+
+							if(setInferred)
+								decl->inferredLType = this->getLlvmType(decl, allowFail);
+
+							return setInferred ? decl->inferredLType : this->getLlvmType(decl, allowFail);
 						}
 
-						return (decl->inferredLType = this->parseTypeFromString(decl, decl->type.strType, allowFail));
+						if(setInferred)
+							decl->inferredLType = this->parseTypeFromString(decl, decl->type.strType, allowFail);
+
+						return setInferred ? decl->inferredLType : this->parseTypeFromString(decl, decl->type.strType, allowFail);
 					}
 
-					return (decl->inferredLType = type->first);
+					if(setInferred)
+						decl->inferredLType = type->first;
+
+					return type->first;
 				}
 			}
 			else if(VarRef* ref = dynamic_cast<VarRef*>(expr))
@@ -290,7 +301,7 @@ namespace Codegen
 						for(ComputedProperty* c : str->cprops)
 						{
 							if(c->name == memberVr->name)
-								return this->getLlvmType(c, c->type, allowFail);
+								return this->getLlvmTypeFromString(c, c->type, allowFail);
 						}
 					}
 					else if(memberFc)
@@ -366,7 +377,7 @@ namespace Codegen
 					if(alloc->type.strType.find("::") != std::string::npos)
 					{
 						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getLlvmType(alloc, alloc->type, allowFail)->getPointerTo();
+						return this->getLlvmTypeFromString(alloc, alloc->type, allowFail)->getPointerTo();
 					}
 
 					return this->parseTypeFromString(alloc, alloc->type.strType)->getPointerTo();
@@ -854,7 +865,7 @@ namespace Codegen
 				}
 				else
 				{
-					llvm::Type* ret = this->getLlvmType(user, ExprType(actualType), allowFail);
+					llvm::Type* ret = this->getLlvmTypeFromString(user, ExprType(actualType), allowFail);
 
 					if(ret)
 					{
@@ -1035,7 +1046,17 @@ namespace Codegen
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{
-			return fc->name + "()";
+			std::string ret = fc->name + "(";
+
+			for(auto p : fc->params)
+				ret += this->printAst(p) + ", ";
+
+			if(fc->params.size() > 0)
+				ret = ret.substr(0, ret.length() - 2);
+
+
+			ret += ")";
+			return ret;
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
@@ -1123,6 +1144,10 @@ namespace Codegen
 
 			ret += ")";
 			return ret;
+		}
+		else if(dynamic_cast<DummyExpr*>(expr))
+		{
+			return "";
 		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
