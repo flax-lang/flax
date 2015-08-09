@@ -57,6 +57,7 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	{
 		if(!fd->isFFI)
 		{
+			printf("%s\n", this->printAst(fd).c_str());
 			GenError::duplicateSymbol(this, fd, fd->name, SymbolType::Function);
 		}
 	}
@@ -68,8 +69,6 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 
 	if(fd->attribs & Attr_VisPublic)
 		this->addPublicFunc({ func, fd });
-
-		// this->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(fd, func));
 
 	return Result_t(func, 0);
 }
@@ -209,7 +208,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 	for(size_t i = 0; i < this->params.size(); i++)
 	{
 		VarDecl* v = this->params[i];
-		llvm::Type* ltype = cgi->getLlvmType(v, true);
+		llvm::Type* ltype = cgi->getLlvmType(v, true, false);	// allowFail = true, setInferred = false
 
 		if(!ltype && types.find(v->type.strType) != types.end())
 		{

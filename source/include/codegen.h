@@ -139,8 +139,8 @@ namespace Codegen
 		// llvm::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false);
-		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		llvm::Type* getLlvmTypeFromString(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);
