@@ -830,26 +830,6 @@ namespace Codegen
 
 
 
-	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
-	{
-		if(decl->isFFI) return false;
-
-		std::deque<Expr*> es;
-		for(auto p : decl->params) es.push_back(p);
-
-		auto res = this->resolveFunction(decl, decl->name, es, true);
-		if(res.resolved)
-		{
-			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
-			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
-			{
-				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
-			}
-		}
-
-		return res.resolved == true;
-	}
-
 	void CodegenInstance::popNamespaceScope()
 	{
 		this->namespaceStack.pop_back();
@@ -1248,6 +1228,27 @@ namespace Codegen
 
 
 
+	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
+	{
+		if(decl->isFFI) return false;
+
+		std::deque<Expr*> es;
+		for(auto p : decl->params) es.push_back(p);
+
+		auto res = this->resolveFunction(decl, decl->name, es, true);
+		if(res.resolved)
+		{
+			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
+			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
+			{
+				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
+			}
+		}
+
+		return res.resolved == true;
+	}
+
+
 
 	llvm::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
@@ -1374,8 +1375,6 @@ namespace Codegen
 			}
 		}
 
-		printf("*** DONE\n");
-
 		if(candidates.size() == 0)
 		{
 			return 0;
@@ -1420,9 +1419,6 @@ namespace Codegen
 
 
 
-
-
-
 		iceAssert(theFn);
 		std::deque<llvm::Type*> instantiatedTypes;
 		for(auto p : fc->params)
@@ -1457,10 +1453,7 @@ namespace Codegen
 		llvm::Function* ffunc = nullptr;
 		if(needToCodegen)
 		{
-			printf("needed to codegen: %s\n", this->printAst(candidate).c_str());
 			Result_t res = candidate->generateDeclForGenericType(this, tm);
-			printf("needed to codegen: %s\n", this->printAst(candidate).c_str());
-
 			ffunc = (llvm::Function*) res.result.first;
 		}
 		else
@@ -1480,11 +1473,9 @@ namespace Codegen
 		iceAssert(ffunc);
 
 
-		theFn->decl->instantiatedGenericTypes = instantiatedTypes;
-		theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
 
 		fc->cachedGenericFuncTarget = ffunc;
-		// printf("Instantiated generic function %s (%s)\n", theFn->decl->name.c_str(), theFn->decl->mangledName.c_str());
+
 
 		// i've written this waaayyy too many times... but this. is. super. fucking.
 		// SUBOPTIMAL. SLOW. SHITTY. O(INFINITY) TIME COMPLEXITY.
@@ -1495,15 +1486,19 @@ namespace Codegen
 
 		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
 		// resolve it into an llvm::Function* to do shit.
+
 		if(needToCodegen)
 		{
-			theFn->codegen(this);
+			theFn->decl->instantiatedGenericTypes = instantiatedTypes;
+			theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
+
+			// dirty: use 'lhsPtr' to pass the version we want.
+			theFn->codegen(this, ffunc);
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
 		}
 
 		this->popGenericTypeStack();
 
-		printf("*** ACTUALLY DONE\n");
 		return ffunc;
 	}
 

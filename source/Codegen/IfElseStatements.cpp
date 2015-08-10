@@ -62,6 +62,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	iceAssert(this->cases.size() > 0);
+
 	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
 	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
 
@@ -154,6 +155,8 @@ Result_t If::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs
 		merge->eraseFromParent();
 	}
 
+	// restore.
+	this->cases = this->_cases;
 	return Result_t(0, 0);
 }
 
