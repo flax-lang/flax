@@ -69,4 +69,5 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 - Found a bug? Want a feature?
 - Just submit a pull request!
+- Alternatively, join the discussion at #flax-lang on Freenode IRC.
 - Requested help: Error catching, please! Sometimes the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
