@@ -10,22 +10,51 @@ func foo<T, K>(a: T, b: K)
 	let tb = typeof(b)
 
 
-	if(ta == Type.Int64)
+	if(ta == Type.Int8)
 	{
-		printf("foo: (int) %d, ", a)
+		printf("foo: (int8)   %d, ", a)
+	}
+	else if(ta == Type.Int16)
+	{
+		printf("foo: (int16)  %d, ", a)
+	}
+	else if(ta == Type.Int32)
+	{
+		printf("foo: (int32)  %d, ", a)
+	}
+	else if(ta == Type.Int64)
+	{
+		printf("foo: (int64)  %d, ", a)
 	}
 	else if(ta == Type.String)
 	{
-		printf("foo: (str) %s, ", a)
+		printf("foo: (string) %s, ", a)
 	}
 
-	if(tb == Type.Int64)
+
+	if(tb == Type.Int8)
 	{
-		printf("(int) %d\n", b)
+		printf("(int8)   %d\n", a)
 	}
-	if(tb == Type.String)
+	else if(tb == Type.Int16)
 	{
-		printf("(str) %s, ", b)
+		printf("(int16)  %d\n", a)
+	}
+	else if(tb == Type.Int32)
+	{
+		printf("(int32)  %d\n", a)
+	}
+	else if(tb == Type.Int64)
+	{
+		printf("(int64)  %d\n", a)
+	}
+	else if(tb == Type.Int64)
+	{
+		printf("(int64) %d\n", b)
+	}
+	else if(tb == Type.String)
+	{
+		printf("(string) %s\n", b)
 	}
 }
 
@@ -35,7 +64,24 @@ public func doGenericsTest()
 {
 	// var k: Foo
 
-	foo(7, 6)
+	foo(7, 6 as Int8)
+	foo(7, 6 as Int32)
+	foo(7, 6 as Int64)
+
 	foo(5, "asdf")
 	// foo(3.1, 4)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
