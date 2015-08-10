@@ -74,12 +74,7 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 
 Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
 {
-	if(types.size() != this->genericTypes.size())
-	{
-		error(cgi, this, "Actual number of generic types provided (%zd)"
-			"does not match with the number of generic type instantiations required (%zd)", types.size(), this->genericTypes.size());
-	}
-
+	iceAssert(types.size() == this->genericTypes.size());
 
 	std::vector<llvm::Type*> argtypes;
 	for(size_t i = 0; i < this->params.size(); i++)
@@ -217,6 +212,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	if(isGeneric)
 	{
 		cgi->rootNode->genericFunctions.push_back(this);
+		cgi->addFunctionToScope({ 0, this });
 		return Result_t(0, 0);
 	}
 	else
