@@ -531,6 +531,16 @@ namespace Codegen
 		cur->funcs.push_back(func);
 	}
 
+	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
+	{
+		FunctionTree* cur = this->getCurrentFuncTree();
+		iceAssert(cur);
+
+		auto it = std::find(cur->funcs.begin(), cur->funcs.end(), func);
+		if(it != cur->funcs.end())
+			cur->funcs.erase(it);
+	}
+
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		// todo: check if we actually imported the function.
@@ -554,7 +564,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -574,7 +604,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -602,7 +652,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -622,7 +692,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -1252,50 +1342,35 @@ namespace Codegen
 
 	llvm::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
-		// try and resolve shit???
-		// first, we need to get strings of every type.
-
-		// printf("called func %s in module %s\n", this->printAst(fc).c_str(), this->module->getName().bytes_begin());
-
-		// TODO: dupe code
+		// try and resolve shit
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, llvm::Type*> tm;
 
-		// todo: cull these maybe? somehow.
-
-		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
-		for(FuncDecl* fd : this->rootNode->genericFunctions)
+		auto fpcands = this->resolveFunctionName(fc->name);
+		for(FuncPair_t fp : fpcands)
 		{
-			// printf("there is a generic function %s (%s)\n", fd->name.c_str(), this->module->getName().bytes_begin());
-
-			if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name))
-				candidates.push_back(fd);
-
-			for(auto ns : this->importedNamespaces)
-			{
-				if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name, ns))
-					candidates.push_back(fd);
-			}
+			if(fp.second->genericTypes.size() > 0)
+				candidates.push_back(fp.second);
 		}
 
 		if(candidates.size() == 0)
 		{
-			// printf("found no generic candidates for func call %s\n", fc->name.c_str());
 			return 0;	// do nothing.
 		}
 
 		auto it = candidates.begin();
-		for(auto candidate : candidates)
+		while(it != candidates.end())
 		{
+			printf("in: size: %zu\n", candidates.size());
+			FuncDecl* candidate = *it;
+			printf("c: %p\n", candidate);
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
 			if(candidate->params.size() != fc->params.size())
 			{
-				// warn(this, fc, "candidate %s rejected (1: %zu vs %zu)\n", candidate->mangledName.c_str(),
-				// 	candidate->params.size(), fc->params.size());
-
 				it = candidates.erase(it);
+				continue;
 			}
 			else
 			{
@@ -1343,10 +1418,7 @@ namespace Codegen
 					llvm::Type* b = this->getLlvmType(candidate->params[k]);
 
 					if(a != b)
-					{
-						printf("failed here (%d), %s vs %s\n", k, this->getReadableType(a).c_str(), this->getReadableType(b).c_str());
 						goto fail;
-					}
 				}
 
 
@@ -1365,16 +1437,18 @@ namespace Codegen
 				goto success;
 				fail:
 				{
-					// printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
 					it = candidates.erase(it);
 					continue;
 				}
 
 				success:
-				it++;
+				{
+					it++;
+				}
 			}
 		}
 
+		printf("(%s) done: size: %zu\n", this->module->getName().bytes_begin(), candidates.size());
 		if(candidates.size() == 0)
 		{
 			return 0;
@@ -1385,7 +1459,7 @@ namespace Codegen
 			for(auto c : candidates)
 				cands += this->printAst(c) + "\n";
 
-			error(this, fc, "Ambiguous function call to function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
+			error(this, fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
@@ -1461,7 +1535,7 @@ namespace Codegen
 			std::deque<Expr*> es;
 			for(auto p : candidate->params) es.push_back(p);
 
-			Resolved_t rt = this->resolveFunction(fc, candidate->name, es);
+			Resolved_t rt = this->resolveFunction(fc, candidate->name, es, true); // exact match
 			iceAssert(rt.resolved);
 
 			FuncPair_t fp = rt.t;
@@ -1497,6 +1571,8 @@ namespace Codegen
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
 		}
 
+
+		this->removeFunctionFromScope({ 0, candidate });
 		this->popGenericTypeStack();
 
 		return ffunc;
