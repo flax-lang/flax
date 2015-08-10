@@ -498,22 +498,22 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		{
 			lhsInteger = true;
 		}
-		else if(lhs->getType()->isStructTy())
-		{
-			if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
-				lhsInteger = true;
-		}
+		// else if(lhs->getType()->isStructTy())
+		// {
+		// 	if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
+		// 		lhsInteger = true;
+		// }
 
 
 		if(rhs->getType()->isIntegerTy())
 		{
 			rhsInteger = true;
 		}
-		else if(rhs->getType()->isStructTy())
-		{
-			if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
-				rhsInteger = true;
-		}
+		// else if(rhs->getType()->isStructTy())
+		// {
+		// 	if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
+		// 		rhsInteger = true;
+		// }
 
 		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
 	}
@@ -743,7 +743,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
 		{
-			error(cgi, this, "Invalid type");
+			error(cgi, this, "Invalid type (%s)", lhs->getType()->getStructName().str().c_str());
 		}
 
 

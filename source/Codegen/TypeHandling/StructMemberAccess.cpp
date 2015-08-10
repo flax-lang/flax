@@ -16,7 +16,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
 static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
-
+static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
 
 
 
@@ -36,12 +36,11 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
-
-
-Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, Expr* first, llvm::Value* lhsPtr,
+	llvm::Value* _rhs, bool actual = true)
 {
-	// check for special cases -- static calling and enums.
-	VarRef* _vr = dynamic_cast<VarRef*>(this->left);
+	VarRef* _vr = dynamic_cast<VarRef*>(first);
+
 	if(_vr)
 	{
 		// check for type function access
@@ -50,21 +49,32 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		{
 			if(tp->second.second == TypeKind::Enum)
 			{
-				return enumerationAccessCodegen(cgi, this->left, this->right);
+				return enumerationAccessCodegen(cgi, ma->left, ma->right);
 			}
 			else if(tp->second.second == TypeKind::Struct)
 			{
-				return doStaticAccess(cgi, this, lhsPtr, _rhs);
+				return doStaticAccess(cgi, ma, lhsPtr, _rhs, actual);
 			}
 		}
 
 		// todo: do something with this
 		std::deque<NamespaceDecl*> nses = cgi->resolveNamespace(_vr->name);
 		if(nses.size() > 0)
-		{
-
-		}
+			return doNamespaceAccess(cgi, ma, cgi->flattenDotOperators(ma), _rhs, actual);
 	}
+
+
+	return Result_t(0, 0);
+}
+
+
+Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+{
+	// check for special cases -- static calling and enums.
+	Result_t _res = checkForStaticAccess(cgi, this, this->left, lhsPtr, _rhs);
+	if(_res.result.first != 0 || _res.result.second != 0)
+		return _res;
+
 
 	// gen the var ref on the left.
 	Result_t res = this->left->codegen(cgi);
@@ -246,6 +256,21 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 		if(fc)
 		{
+			size_t i = 0;
+			std::deque<FuncPair_t> candidates;
+			for(auto f : str->funcs)
+			{
+				FuncPair_t fp = { str->lfuncs[i], f->decl };
+				if(f->decl->name == fc->name && f->decl->isStatic)
+					candidates.push_back(fp);
+
+				i++;
+			}
+
+			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
+			if(res.resolved) return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, str, true);
+
+
 			return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, str, false);
 		}
 		else if(var)
@@ -461,13 +486,6 @@ static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* 
 static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Value* ref,
 	llvm::Value* rhs, std::deque<Expr*>& list, bool actual)
 {
-	// for(auto e : list)
-	// {
-	// 	printf("[%s]\n", cgi->printAst(e).c_str());
-	// }
-
-	// printf("***\n");
-
 	// what is the next one?
 	Result_t res = Result_t(0, 0);
 	if(list.size() == 0)
@@ -530,16 +548,17 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 				TypePair_t* tp = cgi->getType(mangled);
 				iceAssert(tp);
 
-				// VarRef* fake = new VarRef(vr->posinfo, mangled);
-				// list.push_front(fake);
 
 				list.pop_front();
 
 				if(list.size() > 0)
+				{
 					return _doStaticAccess(cgi, (Struct*) tp->second.first, ref, rhs, list, actual);
-
+				}
 				else
+				{
 					return Result_t(llvm::Constant::getNullValue(tp->first), 0);
+				}
 			}
 		}
 
@@ -591,7 +610,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 
 	// use 'res' to call more stuff.
 	llvm::Value* newref = res.result.second;
-	if(actual && !newref)
+	if(actual && !newref && !res.result.first->getType()->isVoidTy())
 	{
 		iceAssert(res.result.first);
 		llvm::Value* _ref = cgi->allocateInstanceInBlock(res.result.first->getType());
@@ -603,7 +622,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 
 	// change 'str' if we need to
 	// ie. when we go deeper, like if the current vr is a struct.
-	if(actual && newref->getType()->getPointerElementType()->isStructTy())
+	if(actual && newref && newref->getType()->getPointerElementType()->isStructTy())
 	{
 		TypePair_t* tp = cgi->getType(newref->getType()->getPointerElementType());
 		iceAssert(tp);
@@ -640,7 +659,13 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);
 }
 
+static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
+{
+	for(auto f : flat)
+		printf("%s\n", cgi->printAst(f).c_str());
 
+	return Result_t(0, 0);
+}
 
 
 
@@ -666,8 +691,16 @@ CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque
 				flat.pop_front();
 
 				Result_t res = doStaticAccess(this, _ma, 0, 0, false);
-				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+				return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
 			}
+		}
+
+		// todo: do something with this
+		std::deque<NamespaceDecl*> nses = this->resolveNamespace(vr->name);
+		if(nses.size() > 0)
+		{
+			auto res = doNamespaceAccess(this, _ma, flat, 0, false);
+			return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
 		}
 	}
 

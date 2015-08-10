@@ -53,7 +53,7 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	{
 		GenError::duplicateSymbol(this, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(this->isDuplicateFuncDecl(fd))
+	else if(fd->genericTypes.size() == 0 && this->isDuplicateFuncDecl(fd))
 	{
 		if(!fd->isFFI)
 		{
@@ -69,11 +69,40 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	if(fd->attribs & Attr_VisPublic)
 		this->addPublicFunc({ func, fd });
 
-		// this->getRootAST()->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(fd, func));
-
 	return Result_t(func, 0);
 }
 
+Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
+{
+	iceAssert(types.size() == this->genericTypes.size());
+
+	std::vector<llvm::Type*> argtypes;
+	for(size_t i = 0; i < this->params.size(); i++)
+	{
+		VarDecl* v = this->params[i];
+		llvm::Type* ltype = cgi->getLlvmType(v, true, false);	// allowFail = true, setInferred = false
+
+		if(!ltype && types.find(v->type.strType) != types.end())
+		{
+			// provided.
+			llvm::Type* vt = types[v->type.strType];
+			argtypes.push_back(vt);
+		}
+		else
+		{
+			// either not a generic type, or not a legit type -- skip.
+			argtypes.push_back(ltype);
+		}
+	}
+
+	llvm::Type* lret = cgi->getLlvmType(this, true);
+	if(!lret && types.find(this->type.strType) != types.end())
+	{
+		lret = types[this->type.strType];
+	}
+
+	return cgi->generateActualFuncDecl(this, argtypes, lret);
+}
 
 
 
@@ -183,6 +212,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	if(isGeneric)
 	{
 		cgi->rootNode->genericFunctions.push_back(this);
+		cgi->addFunctionToScope({ 0, this });
 		return Result_t(0, 0);
 	}
 	else
@@ -196,42 +226,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 }
 
 
-Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
-{
-	if(types.size() != this->genericTypes.size())
-	{
-		error(cgi, this, "Actual number of generic types provided (%zd)"
-			"does not match with the number of generic type instantiates required (%zd)", types.size(), this->genericTypes.size());
-	}
-
-
-	std::vector<llvm::Type*> argtypes;
-	for(size_t i = 0; i < this->params.size(); i++)
-	{
-		VarDecl* v = this->params[i];
-		llvm::Type* ltype = cgi->getLlvmType(v, true);
-
-		if(!ltype && types.find(v->type.strType) != types.end())
-		{
-			// provided.
-			llvm::Type* vt = types[v->type.strType];
-			argtypes.push_back(vt);
-		}
-		else
-		{
-			// either not a generic type, or not a legit type -- skip.
-			argtypes.push_back(ltype);
-		}
-	}
-
-	llvm::Type* lret = cgi->getLlvmType(this, true);
-	if(!lret && types.find(this->type.strType) != types.end())
-	{
-		lret = types[this->type.strType];
-	}
-
-	return cgi->generateActualFuncDecl(this, argtypes, lret);
-}
 
 
 

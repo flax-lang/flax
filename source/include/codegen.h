@@ -101,6 +101,7 @@ namespace Codegen
 		void popNamespaceScope();
 
 		void addFunctionToScope(FuncPair_t func);
+		void removeFunctionFromScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
@@ -118,6 +119,9 @@ namespace Codegen
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+			std::deque<Ast::Expr*> params, bool exactMatch = false);
+
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 		void addPublicFunc(FuncPair_t fp);
 
@@ -136,8 +140,8 @@ namespace Codegen
 		// llvm::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false);
-		llvm::Type* getLlvmType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		llvm::Type* getLlvmTypeFromString(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);

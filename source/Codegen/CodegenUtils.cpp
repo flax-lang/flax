@@ -422,6 +422,7 @@ namespace Codegen
 	void CodegenInstance::popGenericTypeStack()
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
+		this->instantiatedGenericTypeStack.pop_back();
 	}
 
 
@@ -530,6 +531,16 @@ namespace Codegen
 		cur->funcs.push_back(func);
 	}
 
+	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
+	{
+		FunctionTree* cur = this->getCurrentFuncTree();
+		iceAssert(cur);
+
+		auto it = std::find(cur->funcs.begin(), cur->funcs.end(), func);
+		if(it != cur->funcs.end())
+			cur->funcs.erase(it);
+	}
+
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		// todo: check if we actually imported the function.
@@ -553,7 +564,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -573,7 +604,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -601,7 +652,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -621,7 +692,27 @@ namespace Codegen
 				{
 					auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						if(f.first == fp.first || f.second == fp.second) return true;
+						if(f.first == 0 || fp.first == 0)
+						{
+							iceAssert(f.second);
+							iceAssert(fp.second);
+
+							if(f.second->params.size() != fp.second->params.size()) return false;
+
+							for(size_t i = 0; i < f.second->params.size(); i++)
+							{
+								// allowFail = true
+								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+									return false;
+							}
+
+							return true;
+						}
+						else
+						{
+							return f.first->getFunctionType() == fp.first->getFunctionType();
+						}
 					};
 
 
@@ -637,9 +728,10 @@ namespace Codegen
 		return candidates;
 	}
 
-	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		std::deque<Expr*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		std::deque<FuncPair_t> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
 
 		std::deque<std::pair<FuncPair_t, int>> finals;
@@ -702,6 +794,12 @@ namespace Codegen
 		// iceAssert(finals.front().first->first);
 
 		return Resolved_t(finals.front().first);
+	}
+
+	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
+	{
+		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
 	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance, bool exactMatch)
@@ -799,7 +897,6 @@ namespace Codegen
 
 		// do a depth first search
 		_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret);
-
 		return ret;
 	}
 
@@ -822,16 +919,6 @@ namespace Codegen
 
 
 
-
-	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
-	{
-		if(decl->isFFI) return false;
-
-		std::deque<Expr*> es;
-		for(auto p : decl->params) es.push_back(p);
-
-		return (this->resolveFunction(decl, decl->name, es, true).resolved != false);
-	}
 
 	void CodegenInstance::popNamespaceScope()
 	{
@@ -1231,56 +1318,59 @@ namespace Codegen
 
 
 
+	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
+	{
+		if(decl->isFFI) return false;
+
+		std::deque<Expr*> es;
+		for(auto p : decl->params) es.push_back(p);
+
+		auto res = this->resolveFunction(decl, decl->name, es, true);
+		if(res.resolved)
+		{
+			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
+			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
+			{
+				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
+			}
+		}
+
+		return res.resolved == true;
+	}
+
+
 
 	llvm::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
-		// try and resolve shit???
-		// first, we need to get strings of every type.
-
-		// printf("called func %s in module %s\n", fc->name.c_str(), this->module->getName().bytes_begin());
-
-		// TODO: dupe code
+		// try and resolve shit
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, llvm::Type*> tm;
 
-		// todo: cull these maybe? somehow.
-
-		// TODO: this is really fucking bad, this goes O(n^2)!!! increases with imported namespaces!!!
-		for(FuncDecl* fd : this->rootNode->genericFunctions)
+		auto fpcands = this->resolveFunctionName(fc->name);
+		for(FuncPair_t fp : fpcands)
 		{
-			// printf("there is a generic function %s (%s)\n", fd->name.c_str(), this->module->getName().bytes_begin());
-
-			if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name))
-				candidates.push_back(fd);
-
-			for(auto ns : this->importedNamespaces)
-			{
-				if(fd->mangledNamespaceOnly == this->mangleWithNamespace(fc->name, ns))
-					candidates.push_back(fd);
-			}
+			if(fp.second->genericTypes.size() > 0)
+				candidates.push_back(fp.second);
 		}
 
 		if(candidates.size() == 0)
 		{
-			// printf("found no generic candidates for func call %s\n", fc->name.c_str());
 			return 0;	// do nothing.
 		}
 
 		auto it = candidates.begin();
-		for(auto candidate : candidates)
+		while(it != candidates.end())
 		{
-			// printf("found candidate function declaration to instantiate: %s, %s, %s\n", candidate->name.c_str(),
-				// candidate->mangledNamespaceOnly.c_str(), candidate->mangledName.c_str());
-
+			printf("in: size: %zu\n", candidates.size());
+			FuncDecl* candidate = *it;
+			printf("c: %p\n", candidate);
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
 			if(candidate->params.size() != fc->params.size())
 			{
-				// warn(this, fc, "candidate %s rejected (1: %zu vs %zu)\n", candidate->mangledName.c_str(),
-				// 	candidate->params.size(), fc->params.size());
-
 				it = candidates.erase(it);
+				continue;
 			}
 			else
 			{
@@ -1294,13 +1384,10 @@ namespace Codegen
 				int pos = 0;
 				for(auto p : candidate->params)
 				{
-					llvm::Type* ltype = this->getLlvmType(p, true);
+					llvm::Type* ltype = this->getLlvmType(p, true, false);	// allowFail = true, setInferred = false
 					if(!ltype)
 					{
 						std::string s = p->type.strType;
-						if(typePositions.find(s) == typePositions.end())
-							typePositions[s] = std::vector<int>();
-
 						typePositions[s].push_back(pos);
 					}
 					else
@@ -1350,16 +1437,18 @@ namespace Codegen
 				goto success;
 				fail:
 				{
-					// printf("candidate %s rejected (2)\n", candidate->mangledName.c_str());
 					it = candidates.erase(it);
 					continue;
 				}
 
 				success:
-				it++;
+				{
+					it++;
+				}
 			}
 		}
 
+		printf("(%s) done: size: %zu\n", this->module->getName().bytes_begin(), candidates.size());
 		if(candidates.size() == 0)
 		{
 			return 0;
@@ -1370,7 +1459,7 @@ namespace Codegen
 			for(auto c : candidates)
 				cands += this->printAst(c) + "\n";
 
-			error(this, fc, "Ambiguous function call to function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
+			error(this, fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
@@ -1404,9 +1493,6 @@ namespace Codegen
 
 
 
-
-
-
 		iceAssert(theFn);
 		std::deque<llvm::Type*> instantiatedTypes;
 		for(auto p : fc->params)
@@ -1427,6 +1513,17 @@ namespace Codegen
 
 
 
+		// we need to push a new "generic type stack", and add the types that we resolved into it.
+		// todo: might be inefficient.
+		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
+		// so we don't have to iterate etc etc.
+		// I don't want to access cgi->instantiatedGenericTypeStack directly.
+		this->pushGenericTypeStack();
+		for(auto pair : tm)
+			this->pushGenericType(pair.first, pair.second);
+
+
+
 		llvm::Function* ffunc = nullptr;
 		if(needToCodegen)
 		{
@@ -1438,7 +1535,7 @@ namespace Codegen
 			std::deque<Expr*> es;
 			for(auto p : candidate->params) es.push_back(p);
 
-			Resolved_t rt = this->resolveFunction(fc, candidate->name, es);
+			Resolved_t rt = this->resolveFunction(fc, candidate->name, es, true); // exact match
 			iceAssert(rt.resolved);
 
 			FuncPair_t fp = rt.t;
@@ -1450,11 +1547,9 @@ namespace Codegen
 		iceAssert(ffunc);
 
 
-		theFn->decl->instantiatedGenericTypes = instantiatedTypes;
-		theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
 
 		fc->cachedGenericFuncTarget = ffunc;
-		// printf("Instantiated generic function %s (%s)\n", theFn->decl->name.c_str(), theFn->decl->mangledName.c_str());
+
 
 		// i've written this waaayyy too many times... but this. is. super. fucking.
 		// SUBOPTIMAL. SLOW. SHITTY. O(INFINITY) TIME COMPLEXITY.
@@ -1465,26 +1560,20 @@ namespace Codegen
 
 		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
 		// resolve it into an llvm::Function* to do shit.
+
 		if(needToCodegen)
 		{
-			// we need to push a new "generic type stack", and add the types that we resolved into it.
-			this->pushGenericTypeStack();
+			theFn->decl->instantiatedGenericTypes = instantiatedTypes;
+			theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
 
-			// todo: might be inefficient.
-			// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
-			// so we don't have to iterate etc etc.
-			// I don't want to access cgi->instantiatedGenericTypeStack directly.
-
-			for(auto pair : tm)
-			{
-				this->pushGenericType(pair.first, pair.second);
-			}
-
-			theFn->codegen(this);
+			// dirty: use 'lhsPtr' to pass the version we want.
+			theFn->codegen(this, ffunc);
 			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
-
-			this->popGenericTypeStack();
 		}
+
+
+		this->removeFunctionFromScope({ 0, candidate });
+		this->popGenericTypeStack();
 
 		return ffunc;
 	}
