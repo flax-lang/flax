@@ -4,7 +4,7 @@
 
 import Foundation
 
-func foo<T, K>(a: T, b: K)
+public func foo_generic<T, K>(a: T, b: K)
 {
 	let ta = typeof(a)
 	let tb = typeof(b)
@@ -64,11 +64,11 @@ public func doGenericsTest()
 {
 	// var k: Foo
 
-	foo(7, 6 as Int8)
-	foo(7, 6 as Int32)
-	foo(7, 6 as Int64)
+	foo_generic(7, 6 as Int8)
+	foo_generic(7, 6 as Int32)
+	foo_generic(7, 6 as Int64)
 
-	foo(5, "asdf")
+	foo_generic(5, "asdf")
 	// foo(3.1, 4)
 }
 

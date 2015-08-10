@@ -101,6 +101,7 @@ namespace Codegen
 		void popNamespaceScope();
 
 		void addFunctionToScope(FuncPair_t func);
+		void removeFunctionFromScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
