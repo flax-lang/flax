@@ -7,6 +7,7 @@ import tests.fizzbuzz
 import tests.recursiveFib
 import tests.scopes
 import tests.arraytest
+import tests.generics
 
 import Utilities
 
@@ -49,6 +50,12 @@ import Utilities
 
 	printf("*** STRING TEST ***\n")
 	someFunc(@raw "SOME STRING" as String)
+	printf("\n\n")
+
+
+
+	printf("*** GENERICS TEST ***\n")
+	doGenericsTest()
 	printf("\n\n")
 }
 
@@ -115,7 +122,14 @@ func overload(a: Int8)	{ printf("overload: (int8)\n"); }
 func overload(a: Int64)	{ printf("overload: (int64)\n"); }
 
 
-
+namespace n1
+{
+	func nest() -> Int
+	{
+		printf("nested\n");
+		return 591
+	}
+}
 
 
 
@@ -138,11 +152,11 @@ func main(argc: Int32, argv: Int8**) -> Int
 
 	// uuu.bar = 70
 
-	// n1.n2.nest()
-
-
-
-	printf("uuu.bar: %d, uuu.foo: %d\n", uuu.bar, uuu.foo)
+	// n1.nest()
+	// let m = n1.n2.k
+	let m = 6
+	printf("uuu.bar: %d, uuu.foo: %d, m = %d\n", uuu.bar, uuu.foo, m)
+	foo_generic(10, 4)
 
 	return 0
 }
