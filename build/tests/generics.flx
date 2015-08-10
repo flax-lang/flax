@@ -1,0 +1,87 @@
+// generics.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+public func foo_generic<T, K>(a: T, b: K)
+{
+	let ta = typeof(a)
+	let tb = typeof(b)
+
+
+	if(ta == Type.Int8)
+	{
+		printf("foo: (int8)   %d, ", a)
+	}
+	else if(ta == Type.Int16)
+	{
+		printf("foo: (int16)  %d, ", a)
+	}
+	else if(ta == Type.Int32)
+	{
+		printf("foo: (int32)  %d, ", a)
+	}
+	else if(ta == Type.Int64)
+	{
+		printf("foo: (int64)  %d, ", a)
+	}
+	else if(ta == Type.String)
+	{
+		printf("foo: (string) %s, ", a)
+	}
+
+
+	if(tb == Type.Int8)
+	{
+		printf("(int8)   %d\n", a)
+	}
+	else if(tb == Type.Int16)
+	{
+		printf("(int16)  %d\n", a)
+	}
+	else if(tb == Type.Int32)
+	{
+		printf("(int32)  %d\n", a)
+	}
+	else if(tb == Type.Int64)
+	{
+		printf("(int64)  %d\n", a)
+	}
+	else if(tb == Type.Int64)
+	{
+		printf("(int64) %d\n", b)
+	}
+	else if(tb == Type.String)
+	{
+		printf("(string) %s\n", b)
+	}
+}
+
+
+struct Fooo { var z = 149 }
+public func doGenericsTest()
+{
+	// var k: Foo
+
+	foo_generic(7, 6 as Int8)
+	foo_generic(7, 6 as Int32)
+	foo_generic(7, 6 as Int64)
+
+	foo_generic(5, "asdf")
+	// foo(3.1, 4)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

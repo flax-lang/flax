@@ -53,19 +53,28 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		cgi->rootNode->publicGenericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
-	llvm::Function* func = cgi->module->getFunction(this->decl->mangledName);
-	if(!func)
-	{
-		if(isGeneric && !isPublic)
-		{
-			warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
-		}
-		else if(!isGeneric)
-		{
-			warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
-		}
+	llvm::Function* func = 0;
 
-		return Result_t(0, 0);
+	if(isGeneric && lhsPtr != 0)
+	{
+		iceAssert(func = llvm::cast<llvm::Function>(lhsPtr));
+	}
+	else
+	{
+		func = cgi->module->getFunction(this->decl->mangledName);
+		if(!func)
+		{
+			if(isGeneric && !isPublic)
+			{
+				warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+			}
+			else if(!isGeneric)
+			{
+				warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
+			}
+
+			return Result_t(0, 0);
+		}
 	}
 
 
