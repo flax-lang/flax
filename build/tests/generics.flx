@@ -58,6 +58,10 @@ public func foo_generic<T, K>(a: T, b: K)
 	}
 }
 
+func foo_generic<T>(a: T, b: T, c: T)
+{
+	printf("foo: triple T\n")
+}
 
 struct Fooo { var z = 149 }
 public func doGenericsTest()
@@ -70,6 +74,8 @@ public func doGenericsTest()
 
 	foo_generic(5, "asdf")
 	// foo(3.1, 4)
+
+	foo_generic(1, 4, 9.1)
 }
 
 

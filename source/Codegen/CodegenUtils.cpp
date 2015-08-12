@@ -743,7 +743,7 @@ namespace Codegen
 		}
 
 
-		// todo: disambiguate this.
+		// disambiguate this.
 		// with casting distance.
 		if(finals.size() > 1)
 		{
@@ -790,9 +790,6 @@ namespace Codegen
 			return Resolved_t();
 		}
 
-		// iceAssert(finals.front().first);
-		// iceAssert(finals.front().first->first);
-
 		return Resolved_t(finals.front().first);
 	}
 
@@ -820,12 +817,15 @@ namespace Codegen
 			#define __min(x, y) ((x) > (y) ? (y) : (x))
 			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 			{
-				if(this->getLlvmType(decl->params[i]) != this->getLlvmType(params[i]))
+				auto t1 = this->getLlvmType(params[i], true);
+				auto t2 = this->getLlvmType(decl->params[i], true);
+
+				if(t1 != t2)
 				{
-					if(exactMatch) return false;
+					if(exactMatch || t1 == 0 || t2 == 0) return false;
 
 					// try to cast.
-					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
+					int dist = this->getAutoCastDistance(t1, t2);
 					if(dist == -1) return false;
 
 					*castingDistance += dist;
@@ -842,12 +842,15 @@ namespace Codegen
 			size_t i = 0;
 			for(auto it = ft->param_begin(); it != ft->param_end(); it++, i++)
 			{
-				if(this->getLlvmType(params[i]) != *it)
+				auto t1 = this->getLlvmType(params[i], true);
+				auto t2 = *it;
+
+				if(t1 != t2)
 				{
-					if(exactMatch) return false;
+					if(exactMatch || t1 == 0 || t2 == 0) return false;
 
 					// try to cast.
-					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
+					int dist = this->getAutoCastDistance(t1, t2);
 					if(dist == -1) return false;
 
 					*castingDistance += dist;
@@ -1361,9 +1364,7 @@ namespace Codegen
 		auto it = candidates.begin();
 		while(it != candidates.end())
 		{
-			printf("in: size: %zu\n", candidates.size());
 			FuncDecl* candidate = *it;
-			printf("c: %p\n", candidate);
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
@@ -1448,7 +1449,6 @@ namespace Codegen
 			}
 		}
 
-		printf("(%s) done: size: %zu\n", this->module->getName().bytes_begin(), candidates.size());
 		if(candidates.size() == 0)
 		{
 			return 0;
