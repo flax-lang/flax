@@ -69,13 +69,13 @@ public func doGenericsTest()
 	// var k: Foo
 
 	foo_generic(7, 6 as Int8)
+	foo_generic(7, 6 as Int16)
 	foo_generic(7, 6 as Int32)
-	foo_generic(7, 6 as Int64)
 
 	foo_generic(5, "asdf")
 	// foo(3.1, 4)
 
-	foo_generic(1, 4, 9.1)
+	foo_generic(1, 4, 9)
 }
 
 
