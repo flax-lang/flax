@@ -126,9 +126,10 @@ namespace Codegen
 			if(pair.first->name == "Any" || pair.first->name == "Type")
 				continue;
 
-			if(cgi->getType(str) == 0)
+			if(cgi->getType(str) == 0 && cgi->getType(pair.first->name) == 0)
 			{
-				cgi->addNewType(str, pair.first, TypeKind::Struct);
+				llvm::StructType* st = str;
+				cgi->addNewType(st, pair.first, TypeKind::Struct);
 			}
 		}
 
@@ -275,6 +276,32 @@ namespace Codegen
 	}
 
 
+	bool CodegenInstance::areEqualTypes(llvm::Type* a, llvm::Type* b)
+	{
+		if(a == b) return true;
+		else if(a->isStructTy() && b->isStructTy())
+		{
+			llvm::StructType* sa = llvm::cast<llvm::StructType>(a);
+			llvm::StructType* sb = llvm::cast<llvm::StructType>(b);
+
+			// get the first part of the name.
+			if(!sa->isLiteral() && !sb->isLiteral())
+			{
+				std::string an = sa->getName();
+				std::string bn = sb->getName();
+
+				std::string fan = an.substr(0, an.find_first_of('.'));
+				std::string fbn = bn.substr(0, bn.find_first_of('.'));
+
+				if(fan != fbn) return false;
+			}
+
+			return sa->isLayoutIdentical(sb);
+		}
+
+		return false;
+	}
+
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
@@ -361,7 +388,9 @@ namespace Codegen
 		for(auto pair : this->typeMap)
 		{
 			if(pair.second.first == type)
+			{
 				return &this->typeMap[pair.first];
+			}
 		}
 
 		return nullptr;
