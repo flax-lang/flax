@@ -970,6 +970,7 @@ namespace Parser
 			std::string baseType = tmp.text;
 
 			// parse until we get a non-identifier and non-scoperes
+			if (tokens.size() > 0)
 			{
 				bool expectingScope = true;
 				Token t = tokens.front();
