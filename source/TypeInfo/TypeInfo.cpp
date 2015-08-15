@@ -87,7 +87,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
-		if(cgi->getType("Any") == nullptr)
+		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::PosInfo(), "Any");
 			{
