@@ -691,7 +691,7 @@ CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque
 				flat.pop_front();
 
 				Result_t res = doStaticAccess(this, _ma, 0, 0, false);
-				return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
+				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
 			}
 		}
 
@@ -700,7 +700,7 @@ CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque
 		if(nses.size() > 0)
 		{
 			auto res = doNamespaceAccess(this, _ma, flat, 0, false);
-			return { res.result.first->getType(), (llvm::Value*) 0, flat.back() };
+			return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
 		}
 	}
 
