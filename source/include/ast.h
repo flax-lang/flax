@@ -312,6 +312,7 @@ namespace Ast
 		std::deque<Expr*> params;
 
 		llvm::Function* cachedGenericFuncTarget = 0;
+		Codegen::Resolved_t cachedResolveTarget;
 	};
 
 	struct Return : Expr

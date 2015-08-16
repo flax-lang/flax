@@ -75,6 +75,15 @@ namespace Codegen
 		std::deque<FunctionTree*> subs;
 		std::deque<FuncPair_t> funcs;
 	};
+
+	struct Resolved_t
+	{
+		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		Resolved_t() : resolved(false) { }
+
+		FuncPair_t t;
+		bool resolved;
+	};
 }
 
 
