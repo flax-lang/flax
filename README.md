@@ -9,7 +9,7 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 --------------------------
 
 #### Disclaimer ####
-I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](https://github.com/requimrar/mx). Expect stretches of active development, followed by stretches of inactivity.
+I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](https://github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
 
 
 #### Language Goals ####
