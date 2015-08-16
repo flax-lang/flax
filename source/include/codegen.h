@@ -36,15 +36,6 @@ namespace GenError
 
 namespace Codegen
 {
-	struct Resolved_t
-	{
-		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
-		Resolved_t() : resolved(false) { }
-
-		FuncPair_t t;
-		bool resolved;
-	};
-
 	struct CodegenInstance
 	{
 		// todo: hack
@@ -58,7 +49,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<std::deque<std::string>> importedNamespaces;
+		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
 
 		std::vector<std::string> rawLines;
@@ -141,6 +132,8 @@ namespace Codegen
 		void applyExtensionToStruct(std::string extName);
 
 		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		llvm::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+
 		llvm::Type* getLlvmTypeFromString(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);

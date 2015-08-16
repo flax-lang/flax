@@ -36,10 +36,16 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
-static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, Expr* first, llvm::Value* lhsPtr,
+static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* lhsPtr,
 	llvm::Value* _rhs, bool actual = true)
 {
-	VarRef* _vr = dynamic_cast<VarRef*>(first);
+	VarRef* _vr = 0;
+	MemberAccess* _ma = ma;
+	do
+	{
+		_vr = dynamic_cast<VarRef*>(_ma->left);
+	}
+	while((_ma = dynamic_cast<MemberAccess*>(_ma->left)));
 
 	if(_vr)
 	{
@@ -71,7 +77,7 @@ static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, Exp
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	// check for special cases -- static calling and enums.
-	Result_t _res = checkForStaticAccess(cgi, this, this->left, lhsPtr, _rhs);
+	Result_t _res = checkForStaticAccess(cgi, this, lhsPtr, _rhs);
 	if(_res.result.first != 0 || _res.result.second != 0)
 		return _res;
 
@@ -659,12 +665,76 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);
 }
 
+
+
+static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<NamespaceDecl*> nses, NamespaceDecl* last,
+	std::deque<Expr*> flat, bool actual, std::deque<std::string> nsstrs)
+{
+	if(last != 0 && nses.size() > 0) nses.pop_front();
+
+	iceAssert(flat.size() > 0);
+	Expr* fr = flat.front();
+
+	VarRef* vr = dynamic_cast<VarRef*>(fr);
+	FuncCall* fc = dynamic_cast<FuncCall*>(fr);
+
+	if(vr)
+	{
+		flat.pop_front();
+
+		if(flat.size() == 0)
+		{
+			warn(cgi, vr, "Unexpected end of namespace chain (last bit = %s)", vr->name.c_str());
+			return Result_t(0, 0);
+		}
+
+		nsstrs.push_back(vr->name);
+		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs);
+	}
+	else if(fc)
+	{
+		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
+		if(!ftree)
+		{
+			error(cgi, fc, "No such namespace %s", nsstrs.back().c_str());
+		}
+
+		Resolved_t rs = cgi->resolveFunctionFromList(fc, ftree->funcs, fc->name, fc->params);
+
+		if(!rs.resolved)
+		{
+			error(cgi, fc, "No such function %s in namespace %s", fc->name.c_str(), nsstrs.back().c_str());
+		}
+
+		// done.
+		if(!actual)
+		{
+			return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
+		}
+
+
+		fc->cachedResolveTarget = rs;
+		Result_t res = fc->codegen(cgi);
+		fc->cachedResolveTarget.resolved = false;	// clear it.
+
+		return res;
+	}
+	else
+	{
+		error(cgi, fr, "Unknown shit");
+	}
+}
+
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
 {
-	for(auto f : flat)
-		printf("%s\n", cgi->printAst(f).c_str());
+	iceAssert(flat.size() > 0);
+	// for(auto f : flat) printf("%s::", cgi->printAst(f).c_str());
+	// printf("%s\n", cgi->printAst(ma->right).c_str());
 
-	return Result_t(0, 0);
+	std::deque<NamespaceDecl*> decls = cgi->resolveNamespace(dynamic_cast<VarRef*>(flat.front())->name);
+	if(decls.size() == 0) return Result_t(0, 0);
+
+	return doRecursiveNSResolution(cgi, decls, 0, flat, actual, std::deque<std::string>());
 }
 
 
@@ -675,35 +745,37 @@ std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*>
 CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque<std::string>* _scp)
 {
 	auto flat = this->flattenDotOperators(_ma);
-	if(VarRef* vr = dynamic_cast<VarRef*>(flat.front()))
+	if(flat.size() > 0)
 	{
-		// TODO: copy-pasta
-		// check for type function access
-		TypePair_t* tp = 0;
-		if((tp = this->getType(this->mangleWithNamespace(vr->name, false))))
+		if(VarRef* vr = dynamic_cast<VarRef*>(flat.front()))
 		{
-			if(tp->second.second == TypeKind::Enum)
+			// TODO: copy-pasta
+			// check for type function access
+			TypePair_t* tp = 0;
+			if((tp = this->getType(this->mangleWithNamespace(vr->name, false))))
 			{
-				error(this, _ma, "enosup");
-			}
-			else if(tp->second.second == TypeKind::Struct)
-			{
-				flat.pop_front();
+				if(tp->second.second == TypeKind::Enum)
+				{
+					error(this, _ma, "enosup");
+				}
+				else if(tp->second.second == TypeKind::Struct)
+				{
+					flat.pop_front();
 
-				Result_t res = doStaticAccess(this, _ma, 0, 0, false);
+					Result_t res = doStaticAccess(this, _ma, 0, 0, false);
+					return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+				}
+			}
+
+			// todo: do something with this
+			std::deque<NamespaceDecl*> nses = this->resolveNamespace(vr->name);
+			if(nses.size() > 0)
+			{
+				auto res = doNamespaceAccess(this, _ma, flat, 0, false);
 				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
 			}
 		}
-
-		// todo: do something with this
-		std::deque<NamespaceDecl*> nses = this->resolveNamespace(vr->name);
-		if(nses.size() > 0)
-		{
-			auto res = doNamespaceAccess(this, _ma, flat, 0, false);
-			return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
-		}
 	}
-
 
 
 
