@@ -656,25 +656,25 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 
 
 
-static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<NamespaceDecl*> nses, NamespaceDecl* last,
-	std::deque<Expr*> flat, bool actual, std::deque<std::string> nsstrs, Result_t prevRes)
+static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<NamespaceDecl*> nses, std::deque<Expr*> flat,
+	bool actual, std::deque<std::string> nsstrs, Result_t prevRes, bool isFirst)
 {
-	if(last != 0 && nses.size() > 0) nses.pop_front();
+	if(!isFirst && nses.size() > 0) nses.pop_front();
 
 	if(flat.size() == 0)
 		return prevRes;
 
 
 	Expr* fr = flat.front();
+	flat.pop_front();
 
 	VarRef* vr = dynamic_cast<VarRef*>(fr);
 	FuncCall* fc = dynamic_cast<FuncCall*>(fr);
 	Number* num = dynamic_cast<Number*>(fr);
 
+
 	if(vr)
 	{
-		flat.pop_front();
-
 		if(flat.size() == 0)
 		{
 			warn(cgi, vr, "Unexpected end of namespace chain (last bit = %s)", vr->name.c_str());
@@ -682,12 +682,10 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 		}
 
 		nsstrs.push_back(vr->name);
-		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, Result_t(0, 0));
+		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, Result_t(0, 0), false);
 	}
 	else if(fc)
 	{
-		flat.pop_front();
-
 		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
 		if(!ftree)
 		{
@@ -702,21 +700,20 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 		}
 
 		// done.
-		Result_t res_t = Result_t(0, 0);
 		if(actual)
 		{
 			fc->cachedResolveTarget = rs;
-			res_t = fc->codegen(cgi);
+			prevRes = fc->codegen(cgi);
 			fc->cachedResolveTarget.resolved = false;	// clear it.
 
 			// return res;
 		}
 		else
 		{
-			res_t = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
+			prevRes = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
 		}
 
-		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, res_t);
+		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, prevRes, false);
 	}
 	else if(num)
 	{
@@ -724,24 +721,44 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 		llvm::Value* selfPtr = prevRes.result.second;
 		bool didHaveSelfPtr = (selfPtr != 0);
 
-		if(!selfPtr)
+
+		if(actual)
 		{
-			selfPtr = cgi->allocateInstanceInBlock(self->getType());
-			cgi->builder.CreateStore(self, selfPtr);
+			if(!selfPtr)
+			{
+				selfPtr = cgi->allocateInstanceInBlock(self->getType());
+				cgi->builder.CreateStore(self, selfPtr);
+			}
+
+			iceAssert(selfPtr->getType()->isPointerTy());
+			iceAssert(selfPtr->getType()->getPointerElementType()->isStructTy());
+
+			llvm::StructType* stype = llvm::cast<llvm::StructType>(selfPtr->getType()->getPointerElementType());
+			iceAssert(stype);
+
+			if(!stype->isLiteral())
+				error(cgi, num, "Attempted tuple access on non-tuple type");
+
+			prevRes = cgi->doTupleAccess(selfPtr, num, didHaveSelfPtr);
+		}
+		else
+		{
+			// not actual...
+			llvm::Type* t = (self ? self->getType() : selfPtr->getType()->getPointerElementType());
+			iceAssert(t->isStructTy());
+
+			llvm::StructType* st = llvm::cast<llvm::StructType>(t);
+			iceAssert(st);
+
+			if(!st->isLiteral())
+				error(cgi, num, "Attempted tuple access on non-tuple type");
+
+
+			prevRes = Result_t(llvm::Constant::getNullValue(st->getElementType(num->ival)), 0);
 		}
 
-		iceAssert(selfPtr->getType()->isPointerTy());
-		iceAssert(selfPtr->getType()->getPointerElementType()->isStructTy());
 
-		llvm::StructType* stype = llvm::cast<llvm::StructType>(selfPtr->getType()->getPointerElementType());
-		iceAssert(stype);
-
-		if(!stype->isLiteral())
-			error(cgi, num, "Attempted tuple access on non-tuple type");
-
-
-		prevRes = cgi->doTupleAccess(selfPtr, num, didHaveSelfPtr);
-		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, prevRes);
+		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, prevRes, true);
 	}
 	else
 	{
@@ -752,12 +769,11 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
 {
 	iceAssert(flat.size() > 0);
-	printf("** MA: %s\n", cgi->printAst(ma).c_str());
 
 	std::deque<NamespaceDecl*> decls = cgi->resolveNamespace(dynamic_cast<VarRef*>(flat.front())->name);
 	if(decls.size() == 0) return Result_t(0, 0);
 
-	return doRecursiveNSResolution(cgi, decls, 0, flat, actual, std::deque<std::string>(), Result_t(0, 0));
+	return doRecursiveNSResolution(cgi, decls, flat, actual, std::deque<std::string>(), Result_t(0, 0), true);
 }
 
 
