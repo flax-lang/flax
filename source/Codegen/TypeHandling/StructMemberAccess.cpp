@@ -192,22 +192,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 	if((st && st->isLiteral()) || (pair->second.second == TypeKind::Tuple))
 	{
-		// todo: maybe move this to another file?
-		// like tuplecodegen.cpp
-
-		// quite simple, just get the number (make sure it's a Ast::Number)
-		// and do a structgep.
-
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
 
-		if(n->ival >= type->getStructNumElements())
-			error(cgi, this, "Tuple does not have %d elements, only %d", (int) n->ival + 1, type->getStructNumElements());
-
-		llvm::Value* gep = cgi->builder.CreateStructGEP(selfPtr, n->ival);
-
 		// if the lhs is immutable, don't give a pointer.
-		bool immut = false;
+		bool immut = true;
 		if(VarRef* vr = dynamic_cast<VarRef*>(this->left))
 		{
 			VarDecl* vd = cgi->getSymDecl(this, vr->name);
@@ -216,7 +205,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			immut = vd->immutable;
 		}
 
-		return Result_t(cgi->builder.CreateLoad(gep), immut ? 0 : gep);
+		return cgi->doTupleAccess(selfPtr, n, !immut);
 	}
 	else if(pair->second.second == TypeKind::Struct)
 	{
@@ -668,15 +657,19 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 
 
 static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<NamespaceDecl*> nses, NamespaceDecl* last,
-	std::deque<Expr*> flat, bool actual, std::deque<std::string> nsstrs)
+	std::deque<Expr*> flat, bool actual, std::deque<std::string> nsstrs, Result_t prevRes)
 {
 	if(last != 0 && nses.size() > 0) nses.pop_front();
 
-	iceAssert(flat.size() > 0);
+	if(flat.size() == 0)
+		return prevRes;
+
+
 	Expr* fr = flat.front();
 
 	VarRef* vr = dynamic_cast<VarRef*>(fr);
 	FuncCall* fc = dynamic_cast<FuncCall*>(fr);
+	Number* num = dynamic_cast<Number*>(fr);
 
 	if(vr)
 	{
@@ -689,10 +682,12 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 		}
 
 		nsstrs.push_back(vr->name);
-		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs);
+		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, Result_t(0, 0));
 	}
 	else if(fc)
 	{
+		flat.pop_front();
+
 		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
 		if(!ftree)
 		{
@@ -707,17 +702,46 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 		}
 
 		// done.
-		if(!actual)
+		Result_t res_t = Result_t(0, 0);
+		if(actual)
 		{
-			return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
+			fc->cachedResolveTarget = rs;
+			res_t = fc->codegen(cgi);
+			fc->cachedResolveTarget.resolved = false;	// clear it.
+
+			// return res;
+		}
+		else
+		{
+			res_t = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
 		}
 
+		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, res_t);
+	}
+	else if(num)
+	{
+		llvm::Value* self = prevRes.result.first;
+		llvm::Value* selfPtr = prevRes.result.second;
+		bool didHaveSelfPtr = (selfPtr != 0);
 
-		fc->cachedResolveTarget = rs;
-		Result_t res = fc->codegen(cgi);
-		fc->cachedResolveTarget.resolved = false;	// clear it.
+		if(!selfPtr)
+		{
+			selfPtr = cgi->allocateInstanceInBlock(self->getType());
+			cgi->builder.CreateStore(self, selfPtr);
+		}
 
-		return res;
+		iceAssert(selfPtr->getType()->isPointerTy());
+		iceAssert(selfPtr->getType()->getPointerElementType()->isStructTy());
+
+		llvm::StructType* stype = llvm::cast<llvm::StructType>(selfPtr->getType()->getPointerElementType());
+		iceAssert(stype);
+
+		if(!stype->isLiteral())
+			error(cgi, num, "Attempted tuple access on non-tuple type");
+
+
+		prevRes = cgi->doTupleAccess(selfPtr, num, didHaveSelfPtr);
+		return doRecursiveNSResolution(cgi, nses, nses.back(), flat, actual, nsstrs, prevRes);
 	}
 	else
 	{
@@ -728,13 +752,12 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
 {
 	iceAssert(flat.size() > 0);
-	// for(auto f : flat) printf("%s::", cgi->printAst(f).c_str());
-	// printf("%s\n", cgi->printAst(ma->right).c_str());
+	printf("** MA: %s\n", cgi->printAst(ma).c_str());
 
 	std::deque<NamespaceDecl*> decls = cgi->resolveNamespace(dynamic_cast<VarRef*>(flat.front())->name);
 	if(decls.size() == 0) return Result_t(0, 0);
 
-	return doRecursiveNSResolution(cgi, decls, 0, flat, actual, std::deque<std::string>());
+	return doRecursiveNSResolution(cgi, decls, 0, flat, actual, std::deque<std::string>(), Result_t(0, 0));
 }
 
 
