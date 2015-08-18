@@ -37,6 +37,24 @@ void Tuple::createType(CodegenInstance* cgi)
 	return;
 }
 
+Result_t CodegenInstance::doTupleAccess(llvm::Value* selfPtr, Number* num, bool createPtr)
+{
+	iceAssert(selfPtr);
+	iceAssert(num);
+
+	llvm::Type* type = selfPtr->getType()->getPointerElementType();
+	iceAssert(type->isStructTy());
+
+	// quite simple, just get the number (make sure it's a Ast::Number)
+	// and do a structgep.
+
+	if(num->ival >= type->getStructNumElements())
+		error(this, num, "Tuple does not have %d elements, only %d", (int) num->ival + 1, type->getStructNumElements());
+
+	llvm::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
+	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
+}
+
 Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	(void) rhs;
