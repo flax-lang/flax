@@ -73,7 +73,10 @@ namespace Codegen
 
 		std::string nsName;
 		std::deque<FunctionTree*> subs;
+
+		// things within.
 		std::deque<FuncPair_t> funcs;
+		std::deque<SymbolPair_t> vars;
 	};
 
 	struct Resolved_t
