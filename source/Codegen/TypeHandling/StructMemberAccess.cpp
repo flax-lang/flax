@@ -656,11 +656,9 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 
 
 
-static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<NamespaceDecl*> nses, std::deque<Expr*> flat,
+static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> flat,
 	bool actual, std::deque<std::string> nsstrs, Result_t prevRes, bool isFirst)
 {
-	if(!isFirst && nses.size() > 0) nses.pop_front();
-
 	if(flat.size() == 0)
 		return prevRes;
 
@@ -675,14 +673,40 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 
 	if(vr)
 	{
+		// we need to try some stuff.
+		// variable declaration checker *SHOULD* have already checked for conflicts between
+		// namespaces and variable decls... so. if no var, should be namespace.
+
+		if(nsstrs.size() > 0)
+		{
+			FunctionTree* ft = cgi->getCurrentFuncTree(&nsstrs);
+			for(auto var : ft->vars)
+			{
+				if(var.second->name == vr->name)
+				{
+					// get it.
+					if(actual)
+					{
+						prevRes = Result_t(cgi->builder.CreateLoad(var.first.first), var.first.first);
+					}
+					else
+					{
+						prevRes = Result_t(llvm::Constant::getNullValue(var.first.first->getType()->getPointerElementType()), 0);
+					}
+
+					return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, false);
+				}
+			}
+		}
+
+
 		if(flat.size() == 0)
 		{
-			warn(cgi, vr, "Unexpected end of namespace chain (last bit = %s)", vr->name.c_str());
-			return Result_t(0, 0);
+			error(cgi, vr, "Unexpected end of namespace chain (last bit = %s)", vr->name.c_str());
 		}
 
 		nsstrs.push_back(vr->name);
-		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, Result_t(0, 0), false);
+		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, Result_t(0, 0), false);
 	}
 	else if(fc)
 	{
@@ -713,7 +737,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 			prevRes = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
 		}
 
-		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, prevRes, false);
+		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, false);
 	}
 	else if(num)
 	{
@@ -757,8 +781,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 			prevRes = Result_t(llvm::Constant::getNullValue(st->getElementType(num->ival)), 0);
 		}
 
-
-		return doRecursiveNSResolution(cgi, nses, flat, actual, nsstrs, prevRes, true);
+		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, true);
 	}
 	else
 	{
@@ -769,11 +792,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Namespa
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
 {
 	iceAssert(flat.size() > 0);
-
-	std::deque<NamespaceDecl*> decls = cgi->resolveNamespace(dynamic_cast<VarRef*>(flat.front())->name);
-	if(decls.size() == 0) return Result_t(0, 0);
-
-	return doRecursiveNSResolution(cgi, decls, flat, actual, std::deque<std::string>(), Result_t(0, 0), true);
+	return doRecursiveNSResolution(cgi, flat, actual, std::deque<std::string>(), Result_t(0, 0), true);
 }
 
 

@@ -118,11 +118,12 @@ func overload(a: Int8)	{ printf("overload: (int8)\n"); }
 func overload(a: Int64)	{ printf("overload: (int64)\n"); }
 
 
+struct Sheep { var thing = 43 }
 namespace n1
 {
 	namespace n2
 	{
-		var m = 40
+		var m: Sheep
 		func nest() -> (String, Int)
 		{
 			printf("nested\n");
@@ -132,7 +133,7 @@ namespace n1
 }
 
 
-
+let gv = 40
 func main(argc: Int32, argv: Int8**) -> Int
 {
 	runTests()
@@ -153,9 +154,7 @@ func main(argc: Int32, argv: Int8**) -> Int
 	let t1 = n1.n2.m
 	printf("t1 = %d\n", gv)
 
-	// let m = n1.n2.k
-	let m = 6
-	printf("uuu.bar: %d, uuu.foo: %d, m = %d\n", uuu.bar, uuu.foo, m)
+	printf("uuu.bar: %d, uuu.foo: %d, m = %d\n", uuu.bar, uuu.foo, t1.thing)
 	foo_generic(10, 4)
 
 	return 0

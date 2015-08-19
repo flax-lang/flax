@@ -227,6 +227,18 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
 
+	if(FunctionTree* ft = cgi->getCurrentFuncTree())
+	{
+		for(auto sub : ft->subs)
+		{
+			if(sub->nsName == this->name)
+			{
+				error(cgi, this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
+					this->name.c_str(), ft->nsName.c_str());
+			}
+		}
+	}
+
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
 
@@ -283,6 +295,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 
 		cgi->addSymbol(this->name, ai, this);
+
+		FunctionTree* ft = cgi->getCurrentFuncTree();
+		iceAssert(ft);
+
+		ft->vars.push_back(*cgi->getSymPair(this, this->name));
 	}
 	else
 	{

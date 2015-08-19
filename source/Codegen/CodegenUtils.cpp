@@ -24,7 +24,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-
 namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
