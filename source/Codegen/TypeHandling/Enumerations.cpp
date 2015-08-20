@@ -4,7 +4,6 @@
 
 #include "ast.h"
 #include "codegen.h"
-#include "llvm_all.h"
 
 using namespace Ast;
 using namespace Codegen;

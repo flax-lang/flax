@@ -5,11 +5,12 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/IR/GLobalVariable.h"
 
 using namespace Ast;
 using namespace Codegen;
-
 
 Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
