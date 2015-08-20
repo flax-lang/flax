@@ -6,8 +6,10 @@
 #include "ast.h"
 #include "parser.h"
 #include "codegen.h"
-#include "llvm_all.h"
 #include "compiler.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace Ast;
 using namespace Codegen;

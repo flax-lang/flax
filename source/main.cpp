@@ -13,8 +13,11 @@
 #include "include/compiler.h"
 
 #include "llvm/Linker/Linker.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 
 using namespace Ast;

@@ -2,11 +2,11 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-
-
 #include "ast.h"
 #include "codegen.h"
-#include "llvm_all.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -17,17 +17,6 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, 
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
 static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
-
-
-
-
-
-
-
-
-
-
-
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -656,7 +645,7 @@ static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Val
 
 
 
-static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> flat,
+static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> flat, MemberAccess* base,
 	bool actual, std::deque<std::string> nsstrs, Result_t prevRes, bool isFirst)
 {
 	if(flat.size() == 0)
@@ -694,7 +683,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> 
 						prevRes = Result_t(llvm::Constant::getNullValue(var.first.first->getType()->getPointerElementType()), 0);
 					}
 
-					return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, false);
+					return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, false);
 				}
 			}
 		}
@@ -706,7 +695,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> 
 		}
 
 		nsstrs.push_back(vr->name);
-		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, Result_t(0, 0), false);
+		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, Result_t(0, 0), false);
 	}
 	else if(fc)
 	{
@@ -737,7 +726,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> 
 			prevRes = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
 		}
 
-		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, false);
+		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, false);
 	}
 	else if(num)
 	{
@@ -781,7 +770,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> 
 			prevRes = Result_t(llvm::Constant::getNullValue(st->getElementType(num->ival)), 0);
 		}
 
-		return doRecursiveNSResolution(cgi, flat, actual, nsstrs, prevRes, true);
+		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, true);
 	}
 	else
 	{
@@ -792,7 +781,7 @@ static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> 
 static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
 {
 	iceAssert(flat.size() > 0);
-	return doRecursiveNSResolution(cgi, flat, actual, std::deque<std::string>(), Result_t(0, 0), true);
+	return doRecursiveNSResolution(cgi, flat, ma, actual, std::deque<std::string>(), Result_t(0, 0), true);
 }
 
 

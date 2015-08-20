@@ -8,6 +8,11 @@
 #include <map>
 #pragma once
 
+namespace llvm
+{
+	class Module;
+}
+
 namespace Compiler
 {
 	Ast::Root* compileFile(std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi);

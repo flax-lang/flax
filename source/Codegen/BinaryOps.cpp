@@ -3,9 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <cinttypes>
+
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
 #include "../include/parser.h"
 
 using namespace Ast;

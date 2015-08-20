@@ -4,10 +4,13 @@
 
 #pragma once
 #include "ast.h"
-#include "llvm_all.h"
 #include "typeinfo.h"
 
 #include <vector>
+
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/GlobalValue.h"
+#include "llvm/PassManager.h"
 
 enum class SymbolType
 {
@@ -16,6 +19,17 @@ enum class SymbolType
 	Variable,
 	Type
 };
+
+namespace llvm
+{
+	class Module;
+	class ExecutionEngine;
+	class GlobalVariable;
+	class AllocaInst;
+	class GlobalValue;
+	class LLVMContext;
+	class Instruction;
+}
 
 namespace GenError
 {
