@@ -17,10 +17,13 @@
 #include <deque>
 
 #include "typeinfo.h"
-#include "llvm/IR/Value.h"
-#include "llvm/IR/Instructions.h"
-
 #include "defs.h"
+
+namespace llvm
+{
+	class PHINode;
+	class StructType;
+}
 
 namespace Ast
 {

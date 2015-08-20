@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cassert>
 #include <cinttypes>
+
 #include "../include/ast.h"
 #include "../include/parser.h"
 #include "../include/compiler.h"

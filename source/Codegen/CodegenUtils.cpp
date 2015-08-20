@@ -14,11 +14,15 @@
 #include <cinttypes>
 #include "../include/parser.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
 #include "../include/compiler.h"
+
 #include "llvm/Support/Host.h"
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 using namespace Ast;

@@ -6,8 +6,16 @@
 #include <stddef.h>
 #include <string>
 #include <map>
+#include <deque>
 
-#include "llvm_all.h"
+// forward declarations.
+namespace llvm
+{
+	class Value;
+	class Type;
+	class Function;
+	class BasicBlock;
+}
 
 namespace Ast
 {

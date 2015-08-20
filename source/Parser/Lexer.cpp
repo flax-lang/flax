@@ -7,7 +7,6 @@
 #include <cassert>
 #include <iostream>
 #include "../include/parser.h"
-// #include "../Utf8String/String.h"
 
 namespace Parser
 {
