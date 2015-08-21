@@ -22,6 +22,12 @@ namespace Codegen
 		this->globalConstructors[gv] = constructor;
 	}
 
+	void CodegenInstance::addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor)
+	{
+		iceAssert(ptr);
+		this->globalConstructors[ptr] = constructor;
+	}
+
 	void CodegenInstance::finishGlobalConstructors()
 	{
 		// generate initialiser
@@ -40,3 +46,12 @@ namespace Codegen
 		this->rootNode->globalConstructorTrampoline = defaultInitFunc;
 	}
 }
+
+
+
+
+
+
+
+
+

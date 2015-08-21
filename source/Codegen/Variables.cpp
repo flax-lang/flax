@@ -276,8 +276,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		}
 		else
 		{
-			ai = new llvm::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+			ai = new llvm::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage,
+				llvm::Constant::getNullValue(this->inferredLType), this->name);
 		}
+
+		llvm::Type* ltype = ai->getType()->getPointerElementType();
 
 		if(this->initVal)
 		{
@@ -292,6 +295,32 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			{
 				error(this, "Global variables currently only support constant initialisers");
 			}
+		}
+		else if(ltype->isStructTy())
+		{
+			// oopsies. we got to call the struct constructor.
+			TypePair_t* tp = cgi->getType(ltype);
+			iceAssert(tp);
+
+			StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+			iceAssert(sb);
+
+			// check if we have a default constructor.
+			llvm::Function* candidate = 0;
+
+			for(llvm::Function* fn : sb->initFuncs)
+			{
+				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ai->getType())
+				{
+					candidate = fn;
+					break;
+				}
+			}
+
+			if(candidate == 0)
+				error(cgi, this, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
+
+			cgi->addGlobalConstructor(ai, candidate);
 		}
 
 
