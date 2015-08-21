@@ -527,7 +527,8 @@ namespace Ast
 		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), left(tgt), right(mem) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-
+		bool disableStaticChecking = false;
+		Result_t cachedCodegenResult = Result_t(0, 0);
 		Expr* left;
 		Expr* right;
 	};

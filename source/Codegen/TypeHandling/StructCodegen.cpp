@@ -80,7 +80,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 		else
 		{
-			// generate some globals.
+			// generate some globals for static variables.
 			// mangle the variable name.
 
 			// a bit hacky, but still well-defined.

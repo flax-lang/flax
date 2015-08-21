@@ -76,8 +76,9 @@ namespace Codegen
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 
-		std::map<llvm::GlobalVariable*, llvm::Function*> globalConstructors;
+		std::map<llvm::Value*, llvm::Function*> globalConstructors;
 		void addGlobalConstructor(std::string name, llvm::Function* constructor);
+		void addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor);
 		void finishGlobalConstructors();
 
 
