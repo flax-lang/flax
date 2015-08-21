@@ -256,8 +256,6 @@ namespace Codegen
 				}
 				while((_ma = dynamic_cast<MemberAccess*>(_ma->left)));
 
-
-				// VarRef* _vr = dynamic_cast<VarRef*>(ma->left);
 				if(_vr)
 				{
 					// check for type function access (static)
@@ -564,6 +562,7 @@ namespace Codegen
 
 	std::string CodegenInstance::getReadableType(llvm::Value* val)
 	{
+		if(val == 0) return "(null)";
 		return this->getReadableType(val->getType());
 	}
 

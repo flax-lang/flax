@@ -12,11 +12,12 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall);
-static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
-static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall);
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
+Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
+Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
+Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* lhsPtr, llvm::Value* _rhs, bool actual = true);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -25,54 +26,31 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
-static Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* lhsPtr,
-	llvm::Value* _rhs, bool actual = true)
-{
-	VarRef* _vr = 0;
-	MemberAccess* _ma = ma;
-	do
-	{
-		_vr = dynamic_cast<VarRef*>(_ma->left);
-	}
-	while((_ma = dynamic_cast<MemberAccess*>(_ma->left)));
-
-	if(_vr)
-	{
-		// check for type function access
-		TypePair_t* tp = 0;
-		if((tp = cgi->getType(cgi->mangleWithNamespace(_vr->name, false))))
-		{
-			if(tp->second.second == TypeKind::Enum)
-			{
-				return enumerationAccessCodegen(cgi, ma->left, ma->right);
-			}
-			else if(tp->second.second == TypeKind::Struct)
-			{
-				return doStaticAccess(cgi, ma, lhsPtr, _rhs, actual);
-			}
-		}
-
-		// todo: do something with this
-		std::deque<NamespaceDecl*> nses = cgi->resolveNamespace(_vr->name);
-		if(nses.size() > 0)
-			return doNamespaceAccess(cgi, ma, cgi->flattenDotOperators(ma), _rhs, actual);
-	}
-
-
-	return Result_t(0, 0);
-}
-
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	// check for special cases -- static calling and enums.
-	Result_t _res = checkForStaticAccess(cgi, this, lhsPtr, _rhs);
-	if(_res.result.first != 0 || _res.result.second != 0)
-		return _res;
+	// but don't do it if we have a cached result -- it means someone else already poked around.
+	if(this->disableStaticChecking == false)
+	{
+		Result_t _res = checkForStaticAccess(cgi, this, lhsPtr, _rhs);
+		if(_res.result.first != 0 || _res.result.second != 0)
+			return _res;
+	}
 
 
 	// gen the var ref on the left.
-	Result_t res = this->left->codegen(cgi);
+	Result_t res = this->cachedCodegenResult;
+	if(res.result.first == 0 && res.result.second == 0)
+	{
+		res = this->left->codegen(cgi);
+	}
+	else
+	{
+		// reset this?
+		// this->cachedCodegenResult = Result_t(0, 0);
+	}
+
 	ValPtr_t p = res.result;
 
 	llvm::Value* self = p.first;
@@ -85,7 +63,6 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::Type* type = self->getType();
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
-
 
 
 	if(cgi->isTypeAlias(type))
@@ -107,7 +84,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			error(cgi, this, "Cannot do member access on non-struct types");
+			error(cgi, this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
 		}
 	}
 
@@ -305,75 +282,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall)
-{
-	// make the args first.
-	// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
-	// we codegen first, then use the llvm version.
-	std::vector<llvm::Value*> args { ref };
-
-	for(Expr* e : fc->params)
-		args.push_back(e->codegen(cgi).result.first);
-
-
-	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromStructFuncCall(str, fc);
-	iceAssert(callee);
-
-	if(callee->decl->isStatic)
-	{
-		// remove the 'self' parameter
-		args.erase(args.begin());
-	}
-
-
-	if(callee->decl->isStatic != isStaticFunctionCall)
-	{
-		error(cgi, fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
-	}
-
-
-
-
-	llvm::Function* lcallee = 0;
-	for(llvm::Function* lf : str->lfuncs)
-	{
-		if(lf->getName() == callee->decl->mangledName)
-		{
-			lcallee = lf;
-			break;
-		}
-	}
-
-	if(!lcallee)
-		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
-
-	lcallee = cgi->module->getFunction(lcallee->getName());
-	iceAssert(lcallee);
-
-	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
-}
-
-
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop,
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop,
 	llvm::Value* _rhs, llvm::Value* ref, Struct* str)
 {
 	if(_rhs)
@@ -429,7 +338,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	}
 }
 
-static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i)
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i)
 {
 	iceAssert(i >= 0);
 
@@ -445,344 +354,57 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, 
 	return Result_t(val, ptr);
 }
 
-
-
-
-
-static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* str, std::string name)
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall)
 {
-	std::string mangledName = cgi->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
-	if(llvm::GlobalVariable* gv = cgi->module->getGlobalVariable(mangledName))
-	{
-		// todo: another kinda hacky thing.
-		// this is present in some parts of the code, i don't know how many.
-		// basically, if the thing is supposed to be immutable, we're not going to return
-		// the ptr/ref value.
+	// make the args first.
+	// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
+	// we codegen first, then use the llvm version.
+	std::vector<llvm::Value*> args { ref };
 
-		return Result_t(cgi->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+	for(Expr* e : fc->params)
+		args.push_back(e->codegen(cgi).result.first);
+
+
+	// now we need to determine if it exists, and its params.
+	Func* callee = cgi->getFunctionFromStructFuncCall(str, fc);
+	iceAssert(callee);
+
+	if(callee->decl->isStatic)
+	{
+		// remove the 'self' parameter
+		args.erase(args.begin());
 	}
 
-	error(cgi, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
+
+	if(callee->decl->isStatic != isStaticFunctionCall)
+	{
+		error(cgi, fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+	}
+
+
+
+
+	llvm::Function* lcallee = 0;
+	for(llvm::Function* lf : str->lfuncs)
+	{
+		if(lf->getName() == callee->decl->mangledName)
+		{
+			lcallee = lf;
+			break;
+		}
+	}
+
+	if(!lcallee)
+		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
+
+	lcallee = cgi->module->getFunction(lcallee->getName());
+	iceAssert(lcallee);
+
+	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 }
 
 
 
-static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Value* ref,
-	llvm::Value* rhs, std::deque<Expr*>& list, bool actual)
-{
-	// what is the next one?
-	Result_t res = Result_t(0, 0);
-	if(list.size() == 0)
-	{
-		if(ref)	return Result_t(llvm::Constant::getNullValue(ref->getType()->getPointerElementType()), ref);
-		else	return Result_t(0, 0);
-	}
-
-	if(VarRef* vr = dynamic_cast<VarRef*>(list.front()))
-	{
-		// check static members.
-		bool found = false;
-		for(auto vd : str->members)
-		{
-			if(vd->name == vr->name)
-			{
-				found = true;
-
-				if(actual)
-				{
-					if(vd->isStatic)
-					{
-						res = getStaticVariable(cgi, vr, str, vd->name);
-					}
-					else
-					{
-						int i = str->nameMap[vd->name];
-						iceAssert(i >= 0);
-
-						res = doVariable(cgi, vr, ref, (Struct*) str, i);
-					}
-				}
-				else
-				{
-					return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(vd)), 0);
-				}
-			}
-		}
-
-		for(auto cp : str->cprops)
-		{
-			if(cp->name == vr->name)
-			{
-				found = true;
-
-				if(actual)
-					res = doComputedProperty(cgi, vr, cp, rhs, ref, (Struct*) str);
-
-				else
-					return Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(cp)), 0);
-			}
-		}
-
-		for(auto n : str->nestedTypes)
-		{
-			if(n->name == vr->name)
-			{
-				// hack? maybe.
-				std::string mangled = cgi->mangleWithNamespace(n->name, n->scope, false);
-				TypePair_t* tp = cgi->getType(mangled);
-				iceAssert(tp);
-
-
-				list.pop_front();
-
-				if(list.size() > 0)
-				{
-					return _doStaticAccess(cgi, (Struct*) tp->second.first, ref, rhs, list, actual);
-				}
-				else
-				{
-					return Result_t(llvm::Constant::getNullValue(tp->first), 0);
-				}
-			}
-		}
-
-		if(Enumeration* enr = dynamic_cast<Enumeration*>(str))
-		{
-			for(auto c : enr->cases)
-			{
-				if(c.first == vr->name)
-				{
-					found = true;
-
-					if(actual)
-					{
-						res = enumerationAccessCodegen(cgi, new VarRef(vr->posinfo, enr->name), vr);
-					}
-					else
-						res = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(enr)), 0);
-
-					break;
-				}
-			}
-		}
-
-		if(found)
-		{
-			list.pop_front();
-		}
-		else
-		{
-			error(cgi, vr, "Struct '%s' has no such static member '%s'", str->name.c_str(), vr->name.c_str());
-		}
-	}
-	else if(FuncCall* fc = dynamic_cast<FuncCall*>(list.front()))
-	{
-		list.pop_front();
-
-		if(actual)
-			res = doFunctionCall(cgi, fc, ref, (Struct*) str, true);
-
-		else
-			res = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(cgi->getFunctionFromStructFuncCall(str, fc))), 0);
-	}
-	else
-	{
-		error(cgi, list.front(), "???!!!");
-	}
-
-
-
-	// use 'res' to call more stuff.
-	llvm::Value* newref = res.result.second;
-	if(actual && !newref && !res.result.first->getType()->isVoidTy())
-	{
-		iceAssert(res.result.first);
-		llvm::Value* _ref = cgi->allocateInstanceInBlock(res.result.first->getType());
-
-		cgi->builder.CreateStore(res.result.first, _ref);
-		newref = _ref;
-	}
-
-
-	// change 'str' if we need to
-	// ie. when we go deeper, like if the current vr is a struct.
-	if(actual && newref && newref->getType()->getPointerElementType()->isStructTy())
-	{
-		TypePair_t* tp = cgi->getType(newref->getType()->getPointerElementType());
-		iceAssert(tp);
-
-		str = dynamic_cast<StructBase*>(tp->second.first);
-		iceAssert(str);
-	}
-
-
-	if(list.size() > 0)
-		return _doStaticAccess(cgi, str, newref, rhs, list, actual);
-
-	return Result_t(res.result.first, newref);
-}
-
-
-static Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual)
-{
-	std::deque<Expr*> flattened = cgi->flattenDotOperators(ma);
-
-	VarRef* vl = dynamic_cast<VarRef*>(flattened.front());
-	iceAssert(vl);
-
-	TypePair_t* tp = cgi->getType(cgi->mangleWithNamespace(vl->name));
-	iceAssert(tp);
-
-	if(!tp) GenError::unknownSymbol(cgi, vl, vl->name, SymbolType::Type);
-
-	Struct* str = dynamic_cast<Struct*>(tp->second.first);
-	iceAssert(str);
-
-
-	flattened.pop_front();
-	return _doStaticAccess(cgi, str, ref, rhs, flattened, actual);
-}
-
-
-
-static Result_t doRecursiveNSResolution(CodegenInstance* cgi, std::deque<Expr*> flat, MemberAccess* base,
-	bool actual, std::deque<std::string> nsstrs, Result_t prevRes, bool isFirst)
-{
-	if(flat.size() == 0)
-		return prevRes;
-
-
-	Expr* fr = flat.front();
-	flat.pop_front();
-
-	VarRef* vr = dynamic_cast<VarRef*>(fr);
-	FuncCall* fc = dynamic_cast<FuncCall*>(fr);
-	Number* num = dynamic_cast<Number*>(fr);
-
-
-	if(vr)
-	{
-		// we need to try some stuff.
-		// variable declaration checker *SHOULD* have already checked for conflicts between
-		// namespaces and variable decls... so. if no var, should be namespace.
-
-		if(nsstrs.size() > 0)
-		{
-			FunctionTree* ft = cgi->getCurrentFuncTree(&nsstrs);
-			for(auto var : ft->vars)
-			{
-				if(var.second->name == vr->name)
-				{
-					// get it.
-					if(actual)
-					{
-						prevRes = Result_t(cgi->builder.CreateLoad(var.first.first), var.first.first);
-					}
-					else
-					{
-						prevRes = Result_t(llvm::Constant::getNullValue(var.first.first->getType()->getPointerElementType()), 0);
-					}
-
-					return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, false);
-				}
-			}
-		}
-
-
-		if(flat.size() == 0)
-		{
-			error(cgi, vr, "Unexpected end of namespace chain (last bit = %s)", vr->name.c_str());
-		}
-
-		nsstrs.push_back(vr->name);
-		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, Result_t(0, 0), false);
-	}
-	else if(fc)
-	{
-		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
-		if(!ftree)
-		{
-			error(cgi, fc, "No such namespace %s", nsstrs.back().c_str());
-		}
-
-		Resolved_t rs = cgi->resolveFunctionFromList(fc, ftree->funcs, fc->name, fc->params);
-
-		if(!rs.resolved)
-		{
-			error(cgi, fc, "No such function %s in namespace %s", fc->name.c_str(), nsstrs.back().c_str());
-		}
-
-		// done.
-		if(actual)
-		{
-			fc->cachedResolveTarget = rs;
-			prevRes = fc->codegen(cgi);
-			fc->cachedResolveTarget.resolved = false;	// clear it.
-
-			// return res;
-		}
-		else
-		{
-			prevRes = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(fc, rs)), 0);
-		}
-
-		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, false);
-	}
-	else if(num)
-	{
-		llvm::Value* self = prevRes.result.first;
-		llvm::Value* selfPtr = prevRes.result.second;
-		bool didHaveSelfPtr = (selfPtr != 0);
-
-
-		if(actual)
-		{
-			if(!selfPtr)
-			{
-				selfPtr = cgi->allocateInstanceInBlock(self->getType());
-				cgi->builder.CreateStore(self, selfPtr);
-			}
-
-			iceAssert(selfPtr->getType()->isPointerTy());
-			iceAssert(selfPtr->getType()->getPointerElementType()->isStructTy());
-
-			llvm::StructType* stype = llvm::cast<llvm::StructType>(selfPtr->getType()->getPointerElementType());
-			iceAssert(stype);
-
-			if(!stype->isLiteral())
-				error(cgi, num, "Attempted tuple access on non-tuple type");
-
-			prevRes = cgi->doTupleAccess(selfPtr, num, didHaveSelfPtr);
-		}
-		else
-		{
-			// not actual...
-			llvm::Type* t = (self ? self->getType() : selfPtr->getType()->getPointerElementType());
-			iceAssert(t->isStructTy());
-
-			llvm::StructType* st = llvm::cast<llvm::StructType>(t);
-			iceAssert(st);
-
-			if(!st->isLiteral())
-				error(cgi, num, "Attempted tuple access on non-tuple type");
-
-
-			prevRes = Result_t(llvm::Constant::getNullValue(st->getElementType(num->ival)), 0);
-		}
-
-		return doRecursiveNSResolution(cgi, flat, base, actual, nsstrs, prevRes, true);
-	}
-	else
-	{
-		error(cgi, fr, "Unknown shit");
-	}
-}
-
-static Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual)
-{
-	iceAssert(flat.size() > 0);
-	return doRecursiveNSResolution(cgi, flat, ma, actual, std::deque<std::string>(), Result_t(0, 0), true);
-}
 
 
 
