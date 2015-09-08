@@ -63,7 +63,7 @@ import Utilities
 
 struct Foo
 {
-	var _bar: Int = 9000
+	var _bar: Int = 537
 	var bar: Int
 	{
 		get
@@ -76,9 +76,11 @@ struct Foo
 		}
 	}
 
-	ƒ doBar()
+	ƒ doBar() -> Int
 	{
 		printf("in foo\n")
+
+		return self._bar
 	}
 }
 
@@ -109,6 +111,8 @@ struct Sheep
 {
 	var thing = 43
 	var foo: Foo
+
+	static var afoo: Foo
 }
 
 namespace n1
@@ -130,8 +134,11 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("========= TESTS COMPLETE =========\n\n")
 
 
-	var t1 = n1.n2.m.foo._bar
+	n1.n2.m.foo._bar = 968
+	var t1 = n1.n2.m.foo.doBar()
+
 	printf("t1 = %d\n", t1)
+	printf("afoo: %d\n", Sheep.afoo.doBar())
 
 	return 0
 }
