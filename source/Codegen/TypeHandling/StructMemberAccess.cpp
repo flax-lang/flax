@@ -315,7 +315,13 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 
 		// create a fake alloca to return to them.
 		lcallee = cgi->module->getFunction(lcallee->getName());
-		return Result_t(cgi->builder.CreateCall(lcallee, args), cgi->allocateInstanceInBlock(_rhs->getType()));
+
+		llvm::Value* val = cgi->builder.CreateCall(lcallee, args);
+		llvm::Value* fake = cgi->allocateInstanceInBlock(_rhs->getType());
+
+		cgi->builder.CreateStore(val, fake);
+
+		return Result_t(val, fake);
 	}
 	else
 	{
@@ -662,6 +668,23 @@ std::deque<Expr*> CodegenInstance::flattenDotOperators(MemberAccess* base)
 
 	return list;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
