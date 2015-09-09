@@ -524,6 +524,7 @@ namespace Ast
 
 	enum class MAType
 	{
+		Invalid,
 		LeftNamespace,
 		LeftVariable,
 		LeftFunctionCall,
@@ -541,7 +542,7 @@ namespace Ast
 		Expr* left;
 		Expr* right;
 
-		MAType matype;
+		MAType matype = MAType::Invalid;
 	};
 
 
