@@ -253,6 +253,8 @@ namespace Codegen
 	Ast::Result_t enumerationAccessCodegen(CodegenInstance* cgi, Ast::Expr* lhs, Ast::Expr* rhs);
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
+
+	void doSemanticAnalysis(CodegenInstance* cgi);
 }
 
 

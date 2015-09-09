@@ -521,17 +521,31 @@ namespace Ast
 		llvm::StructType* cachedLlvmType = 0;
 	};
 
+
+	enum class MAType
+	{
+		LeftNamespace,
+		LeftVariable,
+		LeftFunctionCall,
+		LeftTypename
+	};
+
 	struct MemberAccess : Expr
 	{
 		~MemberAccess();
-		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), left(tgt), right(mem) { }
+		MemberAccess(Parser::PosInfo pos, Expr* _left, Expr* _right) : Expr(pos), left(_left), right(_right) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		bool disableStaticChecking = false;
 		Result_t cachedCodegenResult = Result_t(0, 0);
 		Expr* left;
 		Expr* right;
+
+		MAType matype;
 	};
+
+
+
 
 	struct NamespaceDecl : Expr
 	{
