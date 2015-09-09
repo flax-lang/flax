@@ -20,6 +20,7 @@ struct GlobalState
 	std::map<MemberAccess*, bool> visitedMAs;
 
 	std::deque<std::string> nsstrs;
+	int MAWithinMASearchNesting = 0;
 };
 
 static GlobalState gstate;
@@ -61,8 +62,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 {
 	CodegenInstance* cgi = gstate.cgi;
 
-	warn("*** BEGIN: %s", cgi->printAst(ma).c_str());
-
 	// recurse first -- we need to know what the left side is before anything else.
 	if(MemberAccess* left = dynamic_cast<MemberAccess*>(ma->left))
 		rewriteDotOperator(left);
@@ -92,7 +91,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 				if(sub->nsName == vr->name)
 				{
 					ma->matype = MAType::LeftNamespace;
-					warn(cgi, ma, "%s is namespace", vr->name.c_str());
+					// warn(cgi, ma, "%s is namespace", vr->name.c_str());
 
 					return;
 				}
@@ -102,7 +101,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			if(cgi->getType(vr->name))
 			{
 				ma->matype = MAType::LeftTypename;
-				warn(cgi, ma, "%s is typename", vr->name.c_str());
+				// warn(cgi, ma, "%s is typename", vr->name.c_str());
 
 				return;
 			}
@@ -112,7 +111,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// not relevant to type checking.
 
 			ma->matype = MAType::LeftVariable;
-			warn(cgi, ma, "%s is a var", vr->name.c_str());
+			// warn(cgi, ma, "%s is a var", vr->name.c_str());
 			return;
 		}
 		else
@@ -138,7 +137,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			{
 				gstate.nsstrs.push_back(vr->name);
 
-				warn(cgi, ma, "%s is namespace", vr->name.c_str());
+				// warn(cgi, ma, "%s is namespace", vr->name.c_str());
 
 				ma->matype = MAType::LeftNamespace;
 				return;
@@ -148,16 +147,17 @@ static void rewriteDotOperator(MemberAccess* ma)
 		if(cgi->getType(vr->name))
 		{
 			ma->matype = MAType::LeftTypename;
-			warn(cgi, ma, "%s is a type", vr->name.c_str());
+			// warn(cgi, ma, "%s is a type", vr->name.c_str());
 			return;
 		}
 
 		ma->matype = MAType::LeftVariable;
+		// warn(cgi, ma, "%s is a var", vr->name.c_str());
 		return;
 	}
 	else
 	{
-		warn(cgi, ma, "????");
+		error(cgi, ma, "????");
 		return;
 	}
 }
@@ -212,8 +212,16 @@ static void findDotOperator(Expr* expr)
 	}
 	else if(FuncCall* fncall = dynamic_cast<FuncCall*>(expr))
 	{
+		// special case -- this can appear in a MA list
+		// and we must be able to find MAs within the parameter list
+
+		int old = gstate.MAWithinMASearchNesting;
+		gstate.MAWithinMASearchNesting = 0;
+
 		for(auto e : fncall->params)
 			findDotOperator(e);
+
+		gstate.MAWithinMASearchNesting = old;
 	}
 	else if(If* ifexpr = dynamic_cast<If*>(expr))
 	{
@@ -257,12 +265,30 @@ static void findDotOperator(Expr* expr)
 
 		for(auto s : sb->nestedTypes)
 			findDotOperator(s);
+
+		for(auto c : sb->cprops)
+		{
+			if(c->getter)
+				findDotOperator(c->getter);
+
+			if(c->setter)
+				findDotOperator(c->setter);
+		}
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 	{
+		gstate.MAWithinMASearchNesting++;
+		findDotOperator(ma->left);
+		findDotOperator(ma->right);
+		gstate.MAWithinMASearchNesting--;
+
+
 		// we never recursively do stuff to this -- we only ever want the topmost level.
-		if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
-			gstate.visitedMAs[ma] = true;
+		if(gstate.MAWithinMASearchNesting == 0)
+		{
+			if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
+				gstate.visitedMAs[ma] = true;
+		}
 	}
 	else
 	{

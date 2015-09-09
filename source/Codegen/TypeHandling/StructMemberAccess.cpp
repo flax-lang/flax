@@ -29,6 +29,130 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
+	// if a variable or function call.
+	if(this->matype == MAType::LeftVariable || this->matype == MAType::LeftFunctionCall)
+	{
+		// Result_t leftRes = this->left->codegen(cgi);
+		goto doNormal;
+	}
+	else
+	{
+		if(this->matype == MAType::Invalid) error(cgi, this, "invalid???");
+
+		// this makes the (valid and reasonable) assumption that all static access must happen before any non-static access.
+		// ie. there is no way to invoke static dot operator semantics after an instance is encountered.
+
+		// if we know the left side is some kind of static access,
+		// we completely ignore it (since we can't get a value out of codegen), and basically
+		// traverse it manually.
+
+		// move leftwards. everything left of us *must* be static access.
+		// this means varrefs only.
+
+		// another (valid and reasonable) assumption is that once we encounter a typename (ie. static member or
+		// nested type access), there will not be namespace access anymore.
+
+		std::deque<std::string> list;
+		std::deque<std::string> nsstrs;
+		StructBase* curType = 0;
+
+		MemberAccess* cur = this;
+		while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
+		{
+			cur = cleft;
+			iceAssert(cur);
+
+			VarRef* vr = dynamic_cast<VarRef*>(cur->right);
+			iceAssert(vr);
+
+			list.push_front(vr->name);
+		}
+
+		iceAssert(cur);
+		{
+			VarRef* vr = dynamic_cast<VarRef*>(cur->left);
+			iceAssert(vr);
+
+			list.push_front(vr->name);
+		}
+
+		printf("*** LIST: %zu\n", list.size());
+
+		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
+		while(list.size() > 0)
+		{
+			std::string front = list.front();
+			list.pop_front();
+
+			bool found = false;
+
+			if(curType == 0)
+			{
+				// check if it's a namespace.
+				for(auto sub : ftree->subs)
+				{
+					iceAssert(sub);
+					if(sub->nsName == front)
+					{
+						// yes.
+						nsstrs.push_back(front);
+						ftree = cgi->getCurrentFuncTree(&nsstrs);
+						iceAssert(ftree);
+
+						found = true;
+						break;
+					}
+				}
+
+				if(found) { printf("*** namespace %s\n", ftree->nsName.c_str()); continue; }
+
+
+				if(TypePair_t* tp = cgi->getType(front))
+				{
+					iceAssert(tp->second.first);
+					curType = dynamic_cast<StructBase*>(tp->second.first);
+					iceAssert(curType);
+
+					found = true;
+					printf("*** type %s\n", front.c_str());
+					continue;
+				}
+			}
+			else
+			{
+				for(auto sb : curType->nestedTypes)
+				{
+					if(sb->name == front)
+					{
+						curType = sb;
+
+						found = true;
+						printf("*** type %s\n", front.c_str());
+						break;
+					}
+				}
+
+				if(found) continue;
+			}
+
+			std::string lscope = this->matype == MAType::LeftNamespace ? "namespace" : "type";
+			error(cgi, this, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
+				lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
+		}
+
+		error("");
+	}
+
+
+
+	// todo: remove
+	return Result_t(0, 0);
+
+
+
+	doNormal:
+
+
 	// check for special cases -- static calling and enums.
 	// but don't do it if we have a cached result -- it means someone else already poked around.
 	if(this->disableStaticChecking == false)
