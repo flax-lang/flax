@@ -103,6 +103,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 5)
 	{
+		// start semantic analysis before any typechecking needs to happen.
+		doSemanticAnalysis(cgi);
+
 		// pass 5: everything else
 		for(Expr* e : expressions)
 		{
@@ -157,7 +160,6 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 	cgi->usingNamespaces.pop_back();
 	cgi->popNamespaceScope();
 }
-
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// this is getting quite out of hand.

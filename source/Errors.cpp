@@ -137,27 +137,27 @@ namespace GenError
 		"type"
 	};
 
-	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st)
+	void unknownSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
 		error(cgi, e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
-	void useAfterFree(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname)
+	void useAfterFree(Codegen::CodegenInstance* cgi, Expr* e, std::string symname)
 	{
 		warn(cgi, e, "Attempted to use variable %s after it was deallocated", symname.c_str());
 	}
 
-	void duplicateSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st)
+	void duplicateSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
 		error(cgi, e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
-	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op)
+	void noOpOverload(Codegen::CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
 	{
 		error(cgi, e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(op).c_str(), type.c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Type* a, llvm::Type* b)
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Type* a, llvm::Type* b)
 	{
 		// note: HACK
 		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
@@ -168,12 +168,12 @@ namespace GenError
 			cgi->getReadableType(a).c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b)
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Value* a, llvm::Value* b)
 	{
 		invalidAssignment(cgi, e, a->getType(), b->getType());
 	}
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::vector<llvm::Value*> args)
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Expr* e, std::string name, std::vector<llvm::Value*> args)
 	{
 		std::string args_str;
 		for(llvm::Value* v : args)
@@ -191,12 +191,12 @@ namespace GenError
 		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", name.c_str(), args_str.c_str());
 	}
 
-	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string expect)
+	void expected(Codegen::CodegenInstance* cgi, Expr* e, std::string expect)
 	{
 		error(cgi, e, "Expected %s", expect.c_str());
 	}
 
-	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument)
+	void nullValue(Codegen::CodegenInstance* cgi, Expr* e, int funcArgument)
 	{
 		if(funcArgument >= 0)
 			error(cgi, e, "Invalid (void) value in argument %d of function call", funcArgument + 1);
@@ -205,9 +205,20 @@ namespace GenError
 			error(cgi, e, "Invalid (void) value");
 	}
 
-	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member)
+	void noSuchMember(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string member)
 	{
 		error(cgi, e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
+	}
+
+	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
+	{
+		std::string prs = "";
+		for(auto p : ps)
+			prs += cgi->getReadableType(p) + ", ";
+
+		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
+
+		error(cgi, e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
 	}
 }
 
