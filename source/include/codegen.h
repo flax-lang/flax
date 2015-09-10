@@ -77,9 +77,23 @@ namespace Codegen
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 
-		std::map<llvm::Value*, llvm::Function*> globalConstructors;
+		struct
+		{
+			std::map<llvm::Value*, llvm::Function*> funcs;
+			std::map<llvm::Value*, llvm::Value*> values;
+
+			std::map<llvm::Value*, std::pair<int, llvm::Value*>> tupleInitVals;
+			std::map<llvm::Value*, std::pair<int, llvm::Function*>> tupleInitFuncs;
+
+		} globalConstructors;
+
 		void addGlobalConstructor(std::string name, llvm::Function* constructor);
 		void addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor);
+		void addGlobalConstructedValue(llvm::Value* ptr, llvm::Value* val);
+
+		void addGlobalTupleConstructedValue(llvm::Value* ptr, int index, llvm::Value* val);
+		void addGlobalTupleConstructor(llvm::Value* ptr, int index, llvm::Function* func);
+
 		void finishGlobalConstructors();
 
 
@@ -132,6 +146,7 @@ namespace Codegen
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 		void addPublicFunc(FuncPair_t fp);
 
+		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
 
 		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 

@@ -509,7 +509,25 @@ namespace Codegen
 		return llvm::Constant::getNullValue(getLlvmType(e));
 	}
 
+	llvm::Function* CodegenInstance::getDefaultConstructor(Expr* user, llvm::Type* ptrType, StructBase* sb)
+	{
+		// check if we have a default constructor.
+		llvm::Function* candidate = 0;
 
+		for(llvm::Function* fn : sb->initFuncs)
+		{
+			if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+			{
+				candidate = fn;
+				break;
+			}
+		}
+
+		if(candidate == 0)
+			error(this, user, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
+
+		return candidate;
+	}
 
 
 

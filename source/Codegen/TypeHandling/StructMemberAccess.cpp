@@ -339,13 +339,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	}
 
 
-	if((st && st->isLiteral()) || (pair->second.second == TypeKind::Tuple))
+	if((st && cgi->isTupleType(st)) || (pair->second.second == TypeKind::Tuple))
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
 
 		// if the lhs is immutable, don't give a pointer.
-		bool immut = true;
+		// todo: fix immutability (actually across the entire compiler)
+		bool immut = false;
+
 		if(VarRef* vr = dynamic_cast<VarRef*>(this->left))
 		{
 			VarDecl* vd = cgi->getSymDecl(this, vr->name);
