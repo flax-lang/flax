@@ -204,9 +204,6 @@ namespace Parser
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
 		}
-
-
-
 		else if(isdigit(stream[0]))
 		{
 			std::string num;
@@ -261,16 +258,32 @@ namespace Parser
 				while(isdigit(tmp = str.get()))
 					num += (char) tmp;
 
-				tok.type = TType::Decimal;
-
-				try
+				if(num.back() == '.')
 				{
-					// makes sure we get the right shit done
-					std::stod(num);
+					if(isalpha(tmp))
+					{
+						tok.type = TType::Integer;
+						num = num.substr(0, num.length() - 1);
+						str.put('.');
+					}
+					else
+					{
+						Parser::parserError("Expected more numbers after '.'");
+					}
 				}
-				catch(std::exception)
+				else
 				{
-					Parser::parserError("Invalid number\n");
+					tok.type = TType::Decimal;
+
+					try
+					{
+						// makes sure we get the right shit done
+						std::stod(num);
+					}
+					catch(std::exception)
+					{
+						Parser::parserError("Invalid number");
+					}
 				}
 			}
 			else

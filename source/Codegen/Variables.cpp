@@ -296,7 +296,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 				error(this, "Global variables currently only support constant initialisers");
 			}
 		}
-		else if(ltype->isStructTy())
+		else if(ltype->isStructTy() && !cgi->isTupleType(ltype))
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -305,22 +305,35 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 			iceAssert(sb);
 
-			// check if we have a default constructor.
-			llvm::Function* candidate = 0;
-
-			for(llvm::Function* fn : sb->initFuncs)
-			{
-				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ai->getType())
-				{
-					candidate = fn;
-					break;
-				}
-			}
-
-			if(candidate == 0)
-				error(cgi, this, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
-
+			llvm::Function* candidate = cgi->getDefaultConstructor(this, ai->getType(), sb);
 			cgi->addGlobalConstructor(ai, candidate);
+		}
+		else if(cgi->isTupleType(ltype))
+		{
+			llvm::StructType* stype = llvm::cast<llvm::StructType>(ltype);
+
+			int i = 0;
+			for(llvm::Type* t : stype->elements())
+			{
+				if(cgi->isTupleType(t))
+				{
+					error(cgi, this, "global nested tuples not supported yet");
+				}
+				else if(t->isStructTy())
+				{
+					TypePair_t* tp = cgi->getType(t);
+					iceAssert(tp);
+
+					cgi->addGlobalTupleConstructor(ai, i, cgi->getDefaultConstructor(this, t->getPointerTo(),
+						dynamic_cast<StructBase*>(tp->second.first)));
+				}
+				else
+				{
+					cgi->addGlobalTupleConstructedValue(ai, i, llvm::Constant::getNullValue(t));
+				}
+
+				i++;
+			}
 		}
 
 
