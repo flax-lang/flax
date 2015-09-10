@@ -3,9 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <cinttypes>
+
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
 #include "../include/parser.h"
 
 using namespace Ast;
@@ -44,7 +44,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 {
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
-	ArrayIndex* ai	= nullptr;
+	ArrayIndex* ari	= nullptr;
 
 	this->autoCastType(lhs, rhs);
 
@@ -107,7 +107,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 
-		if(lhs->getType() != rhs->getType())
+		if(!this->areEqualTypes(lhs->getType(), rhs->getType()))
 		{
 			// ensure we can always store 0 to pointers without a cast
 			Number* n = 0;
@@ -143,20 +143,88 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		}
 		else if(this->isEnum(lhs->getType()))
 		{
-			warn(this, left, "enum assign\n");
+			if(this->isEnum(rhs->getType()))
+			{
+				llvm::Value* rptr = rhsPtr;
+				if(!rptr)
+				{
+					// fuck it, create a temporary.
+					llvm::Value* temp = this->allocateInstanceInBlock(rhs->getType());
+					iceAssert(temp->getType()->getPointerElementType()->isStructTy());
+
+					this->builder.CreateStore(rhs, temp);
+					rptr = temp;
+				}
+
+				iceAssert(rptr);
+				iceAssert(this->areEqualTypes(lhs->getType(), rhs->getType()));
+
+				// put the rhs thingy into the lhs.
+				llvm::Value* lgep = this->builder.CreateStructGEP(ref, 0);
+				llvm::Value* rgep = this->builder.CreateStructGEP(rptr, 0);
+
+				iceAssert(lgep->getType() == rgep->getType());
+				llvm::Value* rval = this->builder.CreateLoad(rgep);
+
+				this->builder.CreateStore(rval, lgep);
+
+				return Result_t(rval, ref);
+			}
+			else if(TypePair_t* tp = this->getType(lhs->getType()))
+			{
+				if(!tp)
+					error(this, left, "??? error!");
+
+				if(tp->second.second != TypeKind::Enum)
+					error(this, left, "not an enum??? you lied!");
+
+
+				// todo: untested
+				Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+				iceAssert(enr);
+
+				if(enr->isStrong)
+				{
+					error(this, right, "Trying to assign non-enum value to an variable of type @strong enum");
+				}
+				else if(lhs->getType()->getStructElementType(0) != rhs->getType())
+				{
+					error(this, right, "Assigning to assign value with type %s to enumeration with base type %s",
+						this->getReadableType(rhs).c_str(), this->getReadableType(lhs).c_str());
+				}
+				else
+				{
+					// okay.
+					// create a wrapper value.
+
+					llvm::Value* ai = this->allocateInstanceInBlock(lhs->getType());
+					llvm::Value* gep = this->builder.CreateStructGEP(ai, 0);
+
+					this->builder.CreateStore(rhs, gep);
+
+					this->builder.CreateStore(this->builder.CreateLoad(ai), ref);
+
+					return Result_t(lhs, ref);
+				}
+			}
+			else
+			{
+				error(this, right, "Assignment between incomatible types lhs %s and rhs %s", this->getReadableType(lhs).c_str(),
+					this->getReadableType(rhs).c_str());
+			}
 		}
 	}
 	else if((dynamic_cast<MemberAccess*>(left))
 		|| ((uo = dynamic_cast<UnaryOp*>(left)) && uo->op == ArithmeticOp::Deref)
-		|| (ai = dynamic_cast<ArrayIndex*>(left)))
+		|| (ari = dynamic_cast<ArrayIndex*>(left)))
 	{
 		// we know that the ptr lives in the second element
 		// so, use it
 
-		if(ai)
+		if(ari)
 		{
 			// check that the base is not a constant.
-			Expr* leftmost = ai;
+			Expr* leftmost = ari;
 			while(auto a = dynamic_cast<ArrayIndex*>(leftmost))
 			{
 				leftmost = a->arr;

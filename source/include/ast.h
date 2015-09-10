@@ -17,10 +17,13 @@
 #include <deque>
 
 #include "typeinfo.h"
-#include "llvm/IR/Value.h"
-#include "llvm/IR/Instructions.h"
-
 #include "defs.h"
+
+namespace llvm
+{
+	class PHINode;
+	class StructType;
+}
 
 namespace Ast
 {
@@ -312,6 +315,7 @@ namespace Ast
 		std::deque<Expr*> params;
 
 		llvm::Function* cachedGenericFuncTarget = 0;
+		Codegen::Resolved_t cachedResolveTarget;
 	};
 
 	struct Return : Expr
@@ -517,16 +521,32 @@ namespace Ast
 		llvm::StructType* cachedLlvmType = 0;
 	};
 
+
+	enum class MAType
+	{
+		Invalid,
+		LeftNamespace,
+		LeftVariable,
+		LeftFunctionCall,
+		LeftTypename
+	};
+
 	struct MemberAccess : Expr
 	{
 		~MemberAccess();
-		MemberAccess(Parser::PosInfo pos, Expr* tgt, Expr* mem) : Expr(pos), left(tgt), right(mem) { }
+		MemberAccess(Parser::PosInfo pos, Expr* _left, Expr* _right) : Expr(pos), left(_left), right(_right) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-
+		bool disableStaticChecking = false;
+		Result_t cachedCodegenResult = Result_t(0, 0);
 		Expr* left;
 		Expr* right;
+
+		MAType matype = MAType::Invalid;
 	};
+
+
+
 
 	struct NamespaceDecl : Expr
 	{

@@ -4,7 +4,8 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
+
+
 
 using namespace Ast;
 using namespace Codegen;
@@ -58,8 +59,14 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 	}
 	else
 	{
-		if(!this->isRaw)
-			warn(this, "String type not available, using Int8* for string literal");
+		// todo: dirty.
+		static bool didWarn = false;
+
+		if(!this->isRaw && !didWarn)
+		{
+			warn(this, "String type not available, using Int8* for string literal (will not warn again)");
+			didWarn = true;
+		}
 
 		// good old Int8*
 		llvm::Value* stringVal = cgi->builder.CreateGlobalStringPtr(this->str);

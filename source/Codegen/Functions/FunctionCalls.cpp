@@ -5,7 +5,8 @@
 
 #include "ast.h"
 #include "codegen.h"
-#include "llvm_all.h"
+
+#include "llvm/IR/Function.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -56,34 +57,40 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	llvm::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
 	{
-		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
-
-		if(!rt.resolved)
+		if(!this->cachedResolveTarget.resolved)
 		{
-			// print a better error message.
-			std::vector<std::string> argtypes;
-			for(auto a : this->params)
-				argtypes.push_back(cgi->getReadableType(a).c_str());
+			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 
-			std::string argstr;
-			for(auto s : argtypes)
-				argstr += ", " + s;
-
-			if(argstr.length() > 0)
-				argstr = argstr.substr(2);
-
-			std::string candidates;
-			for(auto fs : cgi->resolveFunctionName(this->name))
+			if(!rt.resolved)
 			{
-				if(fs.second)
-					candidates += cgi->printAst(fs.second) + "\n";
+				// print a better error message.
+				std::vector<std::string> argtypes;
+				for(auto a : this->params)
+					argtypes.push_back(cgi->getReadableType(a).c_str());
+
+				std::string argstr;
+				for(auto s : argtypes)
+					argstr += ", " + s;
+
+				if(argstr.length() > 0)
+					argstr = argstr.substr(2);
+
+				std::string candidates;
+				for(auto fs : cgi->resolveFunctionName(this->name))
+				{
+					if(fs.second)
+						candidates += cgi->printAst(fs.second) + "\n";
+				}
+
+				error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
+					this->name.c_str(), argstr.c_str(), candidates.c_str());
 			}
 
-			error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
-				this->name.c_str(), argstr.c_str(), candidates.c_str());
+			this->cachedResolveTarget = rt;
 		}
 
-		target = rt.t.first;
+		target = this->cachedResolveTarget.t.first;
+		this->cachedResolveTarget.resolved = false;
 	}
 	else
 	{
@@ -108,13 +115,18 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		if(arg == nullptr || arg->getType()->isVoidTy())
 			GenError::nullValue(cgi, this, argNum);
 
-		if(checkVarArg && arg->getType()->isStructTy() && arg->getType()->getStructName() != "String")
-			warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
-
-		if(target->isVarArg() && res.first->getType()->isStructTy() && res.first->getType()->getStructName() == "String")
+		if(checkVarArg && arg->getType()->isStructTy())
 		{
-			// this function knows what to do.
-			cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
+			llvm::StructType* st = llvm::cast<llvm::StructType>(arg->getType());
+			if(!st->isLiteral() && st->getStructName() != "String")
+			{
+				warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
+			}
+			else if(!st->isLiteral() && st->getStructName() == "String")
+			{
+				// this function knows what to do.
+				cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
+			}
 		}
 
 		args.push_back(arg);

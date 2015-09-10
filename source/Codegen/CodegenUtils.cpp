@@ -14,16 +14,19 @@
 #include <cinttypes>
 #include "../include/parser.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
 #include "../include/compiler.h"
+
 #include "llvm/Support/Host.h"
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 using namespace Ast;
 using namespace Codegen;
-
 
 namespace Codegen
 {
@@ -126,9 +129,10 @@ namespace Codegen
 			if(pair.first->name == "Any" || pair.first->name == "Type")
 				continue;
 
-			if(cgi->getType(str) == 0)
+			if(cgi->getType(str) == 0 && cgi->getType(pair.first->name) == 0)
 			{
-				cgi->addNewType(str, pair.first, TypeKind::Struct);
+				llvm::StructType* st = str;
+				cgi->addNewType(st, pair.first, TypeKind::Struct);
 			}
 		}
 
@@ -275,6 +279,32 @@ namespace Codegen
 	}
 
 
+	bool CodegenInstance::areEqualTypes(llvm::Type* a, llvm::Type* b)
+	{
+		if(a == b) return true;
+		else if(a->isStructTy() && b->isStructTy())
+		{
+			llvm::StructType* sa = llvm::cast<llvm::StructType>(a);
+			llvm::StructType* sb = llvm::cast<llvm::StructType>(b);
+
+			// get the first part of the name.
+			if(!sa->isLiteral() && !sb->isLiteral())
+			{
+				std::string an = sa->getName();
+				std::string bn = sb->getName();
+
+				std::string fan = an.substr(0, an.find_first_of('.'));
+				std::string fbn = bn.substr(0, bn.find_first_of('.'));
+
+				if(fan != fbn) return false;
+			}
+
+			return sa->isLayoutIdentical(sb);
+		}
+
+		return false;
+	}
+
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
@@ -361,7 +391,9 @@ namespace Codegen
 		for(auto pair : this->typeMap)
 		{
 			if(pair.second.first == type)
+			{
 				return &this->typeMap[pair.first];
+			}
 		}
 
 		return nullptr;
@@ -487,29 +519,53 @@ namespace Codegen
 		if(root == 0) root = &this->rootFuncStack;
 		if(nses == 0) nses = &this->namespaceStack;
 
-		std::deque<FunctionTree*>& ft = root->subs;
+		std::deque<FunctionTree*> ft = root->subs;
 
-		size_t max = this->namespaceStack.size();
+		if(nses->size() == 0) return root;
+
 		size_t i = 0;
+		size_t max = nses->size();
 
+		// printf("root = %s, %p, %zu\n", root->nsName.c_str(), root, root->subs.size());
 		for(auto ns : *nses)
 		{
 			i++;
-			if(ft.size() == 0) break;
+			// printf("have %s (%zu/%zu)\n", ns.c_str(), nses->size(), ft.size());
 
+			bool found = false;
 			for(auto f : ft)
 			{
+				// printf("f: %s (%zu)\n", f->nsName.c_str(), ft.size());
 				if(f->nsName == ns)
 				{
 					ft = f->subs;
-					if(i == max) return f;
+					// printf("going up: (%zu), (%zu/%zu)\n", ft.size(), i, max);
 
+
+					if(i == max)
+					{
+						// printf("ret\n");
+						return f;
+					}
+
+					found = true;
 					break;
 				}
 			}
+
+			if(!found)
+			{
+				return 0;
+				// // make new.
+				// printf("creating new functree %s\n", ns.c_str());
+				// FunctionTree* f = new FunctionTree();
+				// f->nsName = ns;
+
+				// ft.push_back(f);
+			}
 		}
 
-		return root;
+		return 0;
 	}
 
 	void CodegenInstance::pushNamespaceScope(std::string namespc)
@@ -517,18 +573,38 @@ namespace Codegen
 		FunctionTree* ft = new FunctionTree();
 		ft->nsName = namespc;
 
+		// printf("pushed namespace %s\n", namespc.c_str());
+
 		FunctionTree* cur = this->getCurrentFuncTree();
+		// printf("cur = %s, %p\n", cur->nsName.c_str(), cur);
 		cur->subs.push_back(ft);
+
+		// printf("%p subs = %zu\n", cur, cur->subs.size());
 
 		this->namespaceStack.push_back(namespc);
 	}
 
+	void CodegenInstance::popNamespaceScope()
+	{
+		// printf("popped namespace %s\n", this->namespaceStack.back().c_str());
+		this->namespaceStack.pop_back();
+	}
+
 	void CodegenInstance::addFunctionToScope(FuncPair_t func)
 	{
+		// printf("** adding func %s\n", (func.second ? func.second->name : func.first->getName().str()).c_str());
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
 
-		cur->funcs.push_back(func);
+		// printf("** added func %s to scope %s (%p)\n", (func.second ? func.second->name : func.first->getName().str()).c_str(),
+		// 	cur->nsName.c_str(), cur);
+		// for(auto ns : this->namespaceStack)
+		// 	printf("%s::", ns.c_str());
+
+		// printf("\n");
+
+		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
+			cur->funcs.push_back(func);
 	}
 
 	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
@@ -559,39 +635,41 @@ namespace Codegen
 			// once with no namespace
 			{
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-
-				for(auto f : ft->funcs)
+				if(ft)
 				{
-					auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-						if(f.first == fp.first || f.second == fp.second) return true;
-						if(f.first == 0 || fp.first == 0)
-						{
-							iceAssert(f.second);
-							iceAssert(fp.second);
-
-							if(f.second->params.size() != fp.second->params.size()) return false;
-
-							for(size_t i = 0; i < f.second->params.size(); i++)
-							{
-								// allowFail = true
-								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-									return false;
-							}
-
-							return true;
-						}
-						else
-						{
-							return f.first->getFunctionType() == fp.first->getFunctionType();
-						}
-					};
-
-
-					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					for(auto f : ft->funcs)
 					{
-						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-							candidates.push_back(f);
+						auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+							if(f.first == fp.first || f.second == fp.second) return true;
+							if(f.first == 0 || fp.first == 0)
+							{
+								iceAssert(f.second);
+								iceAssert(fp.second);
+
+								if(f.second->params.size() != fp.second->params.size()) return false;
+
+								for(size_t i = 0; i < f.second->params.size(); i++)
+								{
+									// allowFail = true
+									if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+										return false;
+								}
+
+								return true;
+							}
+							else
+							{
+								return f.first->getFunctionType() == fp.first->getFunctionType();
+							}
+						};
+
+
+						if((f.second ? f.second->name : f.first->getName().str()) == basename)
+						{
+							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+								candidates.push_back(f);
+						}
 					}
 				}
 			}
@@ -599,6 +677,7 @@ namespace Codegen
 			{
 				curDepth.push_back(ns);
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+				if(!ft) break;
 
 				for(auto f : ft->funcs)
 				{
@@ -648,38 +727,41 @@ namespace Codegen
 			{
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
 
-				for(auto f : ft->funcs)
+				if(ft)
 				{
-					auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-						if(f.first == fp.first || f.second == fp.second) return true;
-						if(f.first == 0 || fp.first == 0)
-						{
-							iceAssert(f.second);
-							iceAssert(fp.second);
-
-							if(f.second->params.size() != fp.second->params.size()) return false;
-
-							for(size_t i = 0; i < f.second->params.size(); i++)
-							{
-								// allowFail = true
-								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-									return false;
-							}
-
-							return true;
-						}
-						else
-						{
-							return f.first->getFunctionType() == fp.first->getFunctionType();
-						}
-					};
-
-
-					if((f.second ? f.second->name : f.first->getName().str()) == basename)
+					for(auto f : ft->funcs)
 					{
-						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-							candidates.push_back(f);
+						auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+							if(f.first == fp.first || f.second == fp.second) return true;
+							if(f.first == 0 || fp.first == 0)
+							{
+								iceAssert(f.second);
+								iceAssert(fp.second);
+
+								if(f.second->params.size() != fp.second->params.size()) return false;
+
+								for(size_t i = 0; i < f.second->params.size(); i++)
+								{
+									// allowFail = true
+									if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+										return false;
+								}
+
+								return true;
+							}
+							else
+							{
+								return f.first->getFunctionType() == fp.first->getFunctionType();
+							}
+						};
+
+
+						if((f.second ? f.second->name : f.first->getName().str()) == basename)
+						{
+							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+								candidates.push_back(f);
+						}
 					}
 				}
 			}
@@ -687,6 +769,7 @@ namespace Codegen
 			{
 				curDepth.push_back(ns);
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
+				if(!ft) break;
 
 				for(auto f : ft->funcs)
 				{
@@ -738,12 +821,15 @@ namespace Codegen
 		for(auto c : candidates)
 		{
 			int distance = 0;
-			if(this->isValidFuncOverload(c, params, &distance, exactMatch))
+			if((c.second ? c.second->name : c.first->getName().str()) == basename
+				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
+			{
 				finals.push_back({ c, distance });
+			}
 		}
 
 
-		// todo: disambiguate this.
+		// disambiguate this.
 		// with casting distance.
 		if(finals.size() > 1)
 		{
@@ -779,7 +865,10 @@ namespace Codegen
 				// candidates
 				std::string cstr;
 				for(auto c : finals)
-					cstr += this->printAst(c.first.second) + "\n";
+				{
+					if(c.first.second)
+						cstr += this->printAst(c.first.second) + "\n";
+				}
 
 				error(this, user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
 					basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
@@ -789,9 +878,6 @@ namespace Codegen
 		{
 			return Resolved_t();
 		}
-
-		// iceAssert(finals.front().first);
-		// iceAssert(finals.front().first->first);
 
 		return Resolved_t(finals.front().first);
 	}
@@ -820,12 +906,15 @@ namespace Codegen
 			#define __min(x, y) ((x) > (y) ? (y) : (x))
 			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 			{
-				if(this->getLlvmType(decl->params[i]) != this->getLlvmType(params[i]))
+				auto t1 = this->getLlvmType(params[i], true);
+				auto t2 = this->getLlvmType(decl->params[i], true);
+
+				if(t1 != t2)
 				{
-					if(exactMatch) return false;
+					if(exactMatch || t1 == 0 || t2 == 0) return false;
 
 					// try to cast.
-					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), this->getLlvmType(decl->params[i]));
+					int dist = this->getAutoCastDistance(t1, t2);
 					if(dist == -1) return false;
 
 					*castingDistance += dist;
@@ -840,14 +929,17 @@ namespace Codegen
 			llvm::FunctionType* ft = lf->getFunctionType();
 
 			size_t i = 0;
-			for(auto it = ft->param_begin(); it != ft->param_end(); it++, i++)
+			for(auto it = ft->param_begin(); it != ft->param_end() && i < params.size(); it++, i++)
 			{
-				if(this->getLlvmType(params[i]) != *it)
+				auto t1 = this->getLlvmType(params[i], true);
+				auto t2 = *it;
+
+				if(t1 != t2)
 				{
-					if(exactMatch) return false;
+					if(exactMatch || t1 == 0 || t2 == 0) return false;
 
 					// try to cast.
-					int dist = this->getAutoCastDistance(this->getLlvmType(params[i]), *it);
+					int dist = this->getAutoCastDistance(t1, t2);
 					if(dist == -1) return false;
 
 					*castingDistance += dist;
@@ -892,11 +984,12 @@ namespace Codegen
 
 	std::deque<NamespaceDecl*> CodegenInstance::resolveNamespace(std::string name)
 	{
-		// loop through all the namespaces.
 		std::deque<NamespaceDecl*> ret;
 
 		// do a depth first search
-		_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret);
+		if(_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret) == false)
+			_searchNamespaces(name, this->usingNamespaces, &ret);
+
 		return ret;
 	}
 
@@ -919,11 +1012,6 @@ namespace Codegen
 
 
 
-
-	void CodegenInstance::popNamespaceScope()
-	{
-		this->namespaceStack.pop_back();
-	}
 
 	void CodegenInstance::clearNamespaceScope()
 	{
@@ -1361,9 +1449,7 @@ namespace Codegen
 		auto it = candidates.begin();
 		while(it != candidates.end())
 		{
-			printf("in: size: %zu\n", candidates.size());
 			FuncDecl* candidate = *it;
-			printf("c: %p\n", candidate);
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
@@ -1448,7 +1534,6 @@ namespace Codegen
 			}
 		}
 
-		printf("(%s) done: size: %zu\n", this->module->getName().bytes_begin(), candidates.size());
 		if(candidates.size() == 0)
 		{
 			return 0;
