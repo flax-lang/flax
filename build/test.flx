@@ -3,56 +3,56 @@
 // Licensed under the Apache License Version 2.0.
 
 import Foundation
-// import tests.fizzbuzz
-// import tests.recursiveFib
-// import tests.scopes
-// import tests.arraytest
-// import tests.generics
+import tests.fizzbuzz
+import tests.recursiveFib
+import tests.scopes
+import tests.arraytest
+import tests.generics
 
 import Utilities
 
-// ƒ runTests()
-// {
-// 	// fib
-// 	printf("*** FIBONACII SEQUENCE ***\n")
+ƒ runTests()
+{
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
 
-// 	var n = 0
-// 	while n < 20
-// 	{
-// 		printf("%d: %lld\n", n, doRecursiveFib(n))
-// 		n += 1
-// 	}
-// 	printf("\n\n");
-
-
-// 	// fizzbuzz
-// 	printf("*** FIZZBUZZ ***\n")
-// 	doFizzBuzz(20);
-// 	printf("\n\n");
+	var n = 0
+	while n < 20
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
 
 
-// 	// scopes
-// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-// 	doScopeTest("__llvm_jit__build/test")
-// 	printf("\n\n");
+	// fizzbuzz
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(20);
+	printf("\n\n");
 
 
-// 	// arrays
-// 	printf("*** ARRAY REGRESSION TEST ***\n")
-// 	doArrayTest()
-// 	printf("\n\n")
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
 
 
-// 	printf("*** STRING TEST ***\n")
-// 	someFunc(@raw "SOME STRING" as String)
-// 	printf("\n\n")
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	doArrayTest()
+	printf("\n\n")
+
+
+	printf("*** STRING TEST ***\n")
+	someFunc(@raw "SOME STRING" as String)
+	printf("\n\n")
 
 
 
-// 	printf("*** GENERICS TEST ***\n")
-// 	doGenericsTest()
-// 	printf("\n\n")
-// }
+	printf("*** GENERICS TEST ***\n")
+	doGenericsTest()
+	printf("\n\n")
+}
 
 
 
