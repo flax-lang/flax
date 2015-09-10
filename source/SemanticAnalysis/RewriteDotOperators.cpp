@@ -85,14 +85,13 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// grab the functree.
 			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
 
+
 			// is this a namespace?
 			for(auto sub : ft->subs)
 			{
 				if(sub->nsName == vr->name)
 				{
 					ma->matype = MAType::LeftNamespace;
-					// warn(cgi, ma, "%s is namespace", vr->name.c_str());
-
 					return;
 				}
 			}
@@ -101,8 +100,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 			if(cgi->getType(vr->name))
 			{
 				ma->matype = MAType::LeftTypename;
-				// warn(cgi, ma, "%s is typename", vr->name.c_str());
-
 				return;
 			}
 
@@ -111,7 +108,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// not relevant to type checking.
 
 			ma->matype = MAType::LeftVariable;
-			// warn(cgi, ma, "%s is a var", vr->name.c_str());
 			return;
 		}
 		else if(dynamic_cast<Number*>(leftma->right))
@@ -141,9 +137,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 			if(sub->nsName == vr->name)
 			{
 				gstate.nsstrs.push_back(vr->name);
-
-				// warn(cgi, ma, "%s is namespace", vr->name.c_str());
-
 				ma->matype = MAType::LeftNamespace;
 				return;
 			}
@@ -152,12 +145,15 @@ static void rewriteDotOperator(MemberAccess* ma)
 		if(cgi->getType(vr->name))
 		{
 			ma->matype = MAType::LeftTypename;
-			// warn(cgi, ma, "%s is a type", vr->name.c_str());
 			return;
 		}
 
 		ma->matype = MAType::LeftVariable;
-		// warn(cgi, ma, "%s is a var", vr->name.c_str());
+		return;
+	}
+	else if(dynamic_cast<Tuple*>(ma->left))
+	{
+		ma->matype = MAType::LeftVariable;
 		return;
 	}
 	else

@@ -491,12 +491,14 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 				}
 			}
 
+
+			printf("front (%s, %d) = %s\n", ftree->nsName.c_str(), found, front.c_str());
 			if(found)
 				continue;
 
-
 			if(TypePair_t* tp = this->getType(front))
 			{
+				printf("%s is a type (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<StructBase*>(tp->second.first);
 				curTPair = tp;
@@ -508,6 +510,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 		else
 		{
+			printf("front (%s) = %s\n", curType->name.c_str(), front.c_str());
 			for(auto sb : curType->nestedTypes)
 			{
 				if(sb->name == front)
@@ -526,6 +529,15 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		error(this, ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
 	}
+
+
+
+
+
+
+
+
+
 
 	// what is the right side?
 	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
@@ -546,7 +558,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			}
 		}
 
-		Resolved_t res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
+		Resolved_t res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
 		if(!res.resolved)
 			GenError::noFunctionTakingParams(this, fc, ftree->nsName, fc->name, fc->params);
 

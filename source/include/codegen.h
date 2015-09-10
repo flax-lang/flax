@@ -117,7 +117,7 @@ namespace Codegen
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		void pushNamespaceScope(std::string namespc);
+		void pushNamespaceScope(std::string namespc, bool doFuncTree = true);
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
