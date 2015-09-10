@@ -8,52 +8,55 @@
 using namespace Ast;
 using namespace Codegen;
 
-namespace Codegen
+Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName)
 {
-	Result_t enumerationAccessCodegen(CodegenInstance* cgi, Expr* lhs, Expr* rhs)
+	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+	iceAssert(enr);
+
+	Result_t res(0, 0);
+	bool found = false;
+	for(auto p : enr->cases)
 	{
-		VarRef* enumName = dynamic_cast<VarRef*>(lhs);
-		VarRef* caseName = dynamic_cast<VarRef*>(rhs);
-		iceAssert(enumName);
-
-		if(!caseName)
-			error(rhs, "Expected identifier after enumeration access");
-
-		TypePair_t* tp = cgi->getType(enumName->name);
-		iceAssert(tp);
-		iceAssert(tp->second.second == TypeKind::Enum);
-
-		Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
-		iceAssert(enr);
-
-		Result_t res(0, 0);
-		bool found = false;
-		for(auto p : enr->cases)
+		if(p.first == caseName)
 		{
-			if(p.first == caseName->name)
-			{
-				res = p.second->codegen(cgi);
-				found = true;
-				break;
-			}
+			res = p.second->codegen(this);
+			found = true;
+			break;
 		}
-
-
-		if(!found)
-			error(rhs, "Enum '%s' has no such case '%s'", enumName->name.c_str(), caseName->name.c_str());
-
-		if(!enr->isStrong)
-			return res;
-
-
-		// strong enum.
-		// create a temp alloca, then use GEP to set the value, then return.
-		llvm::Value* alloca = cgi->allocateInstanceInBlock(tp->first);
-		llvm::Value* gep = cgi->builder.CreateStructGEP(alloca, 0);
-
-		cgi->builder.CreateStore(res.result.first, gep);
-		return Result_t(cgi->builder.CreateLoad(alloca), alloca);
 	}
+
+
+	if(!found)
+		error(this, user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
+
+	if(!enr->isStrong)
+		return res;
+
+
+	// strong enum.
+	// create a temp alloca, then use GEP to set the value, then return.
+	llvm::Value* alloca = this->allocateInstanceInBlock(tp->first);
+	llvm::Value* gep = this->builder.CreateStructGEP(alloca, 0);
+
+	this->builder.CreateStore(res.result.first, gep);
+	return Result_t(this->builder.CreateLoad(alloca), alloca);
+}
+
+
+Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs)
+{
+	VarRef* enumName = dynamic_cast<VarRef*>(lhs);
+	VarRef* caseName = dynamic_cast<VarRef*>(rhs);
+	iceAssert(enumName);
+
+	if(!caseName)
+		error(rhs, "Expected identifier after enumeration access");
+
+	TypePair_t* tp = this->getType(enumName->name);
+	iceAssert(tp);
+	iceAssert(tp->second.second == TypeKind::Enum);
+
+	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
 }
 
 Result_t Enumeration::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)

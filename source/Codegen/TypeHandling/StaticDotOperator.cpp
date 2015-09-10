@@ -19,20 +19,20 @@ Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Valu
 Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop,	llvm::Value* _rhs, llvm::Value* ref, Struct* str);
 
 
-static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, StructBase* str, std::string name)
+Result_t CodegenInstance::getStaticVariable(Expr* user, StructBase* str, std::string name)
 {
-	std::string mangledName = cgi->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
-	if(llvm::GlobalVariable* gv = cgi->module->getGlobalVariable(mangledName))
+	std::string mangledName = this->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
+	if(llvm::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(cgi->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+		return Result_t(this->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
 	}
 
-	error(cgi, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
+	error(this, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
 }
 
 
@@ -62,7 +62,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 				{
 					if(vd->isStatic)
 					{
-						res = getStaticVariable(cgi, vr, str, vd->name);
+						res = cgi->getStaticVariable(vr, str, vd->name);
 					}
 					else
 					{
@@ -126,7 +126,7 @@ static Result_t _doStaticAccess(CodegenInstance* cgi, StructBase* str, llvm::Val
 
 					if(actual)
 					{
-						res = enumerationAccessCodegen(cgi, new VarRef(vr->posinfo, enr->name), vr);
+						res = cgi->getEnumerationCaseValue(new VarRef(vr->posinfo, enr->name), vr);
 					}
 					else
 						res = Result_t(llvm::Constant::getNullValue(cgi->getLlvmType(enr)), 0);
@@ -382,7 +382,7 @@ Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Valu
 		{
 			if(tp->second.second == TypeKind::Enum)
 			{
-				return enumerationAccessCodegen(cgi, ma->left, ma->right);
+				return cgi->getEnumerationCaseValue(ma->left, ma->right);
 			}
 			else if(tp->second.second == TypeKind::Struct)
 			{
