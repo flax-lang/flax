@@ -247,43 +247,9 @@ namespace Codegen
 			}
 			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
-				// hmm.
-				VarRef* _vr = 0;
-				MemberAccess* _ma = ma;
-				do
-				{
-					_vr = dynamic_cast<VarRef*>(_ma->left);
-				}
-				while((_ma = dynamic_cast<MemberAccess*>(_ma->left)));
+				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
+					return this->resolveStaticDotOperator(ma, false).first;
 
-				if(_vr)
-				{
-					// check for type function access (static)
-					TypePair_t* tp = 0;
-					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
-					{
-						if(tp->second.second == TypeKind::Enum)
-						{
-							iceAssert(tp->first->isStructTy());
-							return tp->first;
-						}
-						else if(tp->second.second == TypeKind::Struct)
-						{
-							return std::get<0>(this->resolveDotOperator(ma));
-						}
-					}
-
-					std::deque<NamespaceDecl*> nses = this->resolveNamespace(_vr->name);
-					if(nses.size() > 0)
-					{
-						return std::get<0>(this->resolveDotOperator(ma));
-					}
-					else if(this->getSymDecl(expr, _vr->name) == 0)
-					{
-						error(this, expr, "Expression '%s' is neither a namespace nor a variable, "
-							"and cannot be accessed with the dot-operator", _vr->name.c_str());
-					}
-				}
 
 				// first, get the type of the lhs
 				llvm::Type* lhs = this->getLlvmType(ma->left);
@@ -337,8 +303,6 @@ namespace Codegen
 					{
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
-
-					return std::get<0>(this->resolveDotOperator(ma));
 				}
 				else if(pair->second.second == TypeKind::Enum)
 				{

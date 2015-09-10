@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName)
+Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName, bool actual)
 {
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 	iceAssert(enr);
@@ -19,9 +19,16 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 	{
 		if(p.first == caseName)
 		{
-			res = p.second->codegen(this);
-			found = true;
-			break;
+			if(actual)
+			{
+				res = p.second->codegen(this);
+				found = true;
+				break;
+			}
+			else
+			{
+				return Result_t(llvm::Constant::getNullValue(this->getLlvmType(p.second)), 0);
+			}
 		}
 	}
 
@@ -43,7 +50,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 }
 
 
-Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs)
+Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool actual)
 {
 	VarRef* enumName = dynamic_cast<VarRef*>(lhs);
 	VarRef* caseName = dynamic_cast<VarRef*>(rhs);

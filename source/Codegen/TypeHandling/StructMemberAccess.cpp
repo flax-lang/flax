@@ -596,161 +596,240 @@ Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, St
 
 
 
-
-
-
-
-
-std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*>
-CodegenInstance::resolveDotOperator(MemberAccess* _ma, bool doAccess, std::deque<std::string>* _scp)
+std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
 {
-	auto flat = this->flattenDotOperators(_ma);
-	if(flat.size() > 0)
-	{
-		if(VarRef* vr = dynamic_cast<VarRef*>(flat.front()))
-		{
-			// TODO: copy-pasta
-			// check for type function access
-			TypePair_t* tp = 0;
-			if((tp = this->getType(this->mangleWithNamespace(vr->name, false))))
-			{
-				if(tp->second.second == TypeKind::Enum)
-				{
-					error(this, _ma, "enosup");
-				}
-				else if(tp->second.second == TypeKind::Struct)
-				{
-					flat.pop_front();
+	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
-					Result_t res = doStaticAccess(this, _ma, 0, 0, false);
-					return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+	// this makes the (valid and reasonable) assumption that all static access must happen before any non-static access.
+	// ie. there is no way to invoke static dot operator semantics after an instance is encountered.
+
+	// if we know the left side is some kind of static access,
+	// we completely ignore it (since we can't get a value out of codegen), and basically
+	// traverse it manually.
+
+	// move leftwards. everything left of us *must* be static access.
+	// this means varrefs only.
+
+	// another (valid and reasonable) assumption is that once we encounter a typename (ie. static member or
+	// nested type access), there will not be namespace access anymore.
+
+	std::deque<std::string> list;
+	std::deque<std::string> nsstrs;
+
+	StructBase* curType = 0;
+	TypePair_t* curTPair = 0;
+
+	MemberAccess* cur = ma;
+	while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
+	{
+		cur = cleft;
+		iceAssert(cur);
+
+		VarRef* vr = dynamic_cast<VarRef*>(cur->right);
+		iceAssert(vr);
+
+		list.push_front(vr->name);
+	}
+
+	iceAssert(cur);
+	{
+		VarRef* vr = dynamic_cast<VarRef*>(cur->left);
+		iceAssert(vr);
+
+		list.push_front(vr->name);
+	}
+
+	FunctionTree* ftree = this->getCurrentFuncTree(&nsstrs);
+	while(list.size() > 0)
+	{
+		std::string front = list.front();
+		list.pop_front();
+
+		bool found = false;
+
+		if(curType == 0)
+		{
+			// check if it's a namespace.
+			for(auto sub : ftree->subs)
+			{
+				iceAssert(sub);
+				if(sub->nsName == front)
+				{
+					// yes.
+					nsstrs.push_back(front);
+					ftree = this->getCurrentFuncTree(&nsstrs);
+					iceAssert(ftree);
+
+					found = true;
+					break;
 				}
 			}
 
-			// todo: do something with this
-			std::deque<NamespaceDecl*> nses = this->resolveNamespace(vr->name);
-			if(nses.size() > 0)
+			if(found)
+				continue;
+
+
+			if(TypePair_t* tp = this->getType(front))
 			{
-				auto res = doNamespaceAccess(this, _ma, flat, 0, false);
-				return std::make_tuple(res.result.first->getType(), (llvm::Value*) 0, flat.back());
+				iceAssert(tp->second.first);
+				curType = dynamic_cast<StructBase*>(tp->second.first);
+				curTPair = tp;
+				iceAssert(curType);
+
+				found = true;
+				continue;
 			}
-		}
-	}
-
-
-
-
-
-
-
-
-
-
-	TypePair_t* tp = 0;
-	StructBase* sb = 0;
-
-	std::deque<std::string>* scp = 0;
-	if(_scp == 0)
-		scp = new std::deque<std::string>();		// todo: this will leak.
-
-	else
-		scp = _scp;
-
-
-	iceAssert(scp);
-	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(_ma->left))
-	{
-		// (d)
-		auto ret = this->resolveDotOperator(ma, false, scp);
-		tp = this->getType(std::get<0>(ret));
-
-		iceAssert(tp);
-	}
-	else if(VarRef* vr = dynamic_cast<VarRef*>(_ma->left))
-	{
-		// (e)
-
-		std::string mname;
-		if(scp != 0)
-			mname = this->mangleWithNamespace(vr->name, *scp, false);
-
-		else
-			mname = this->mangleWithNamespace(vr->name, false);
-
-
-		tp = this->getType(mname);
-
-		if(!tp)
-		{
-			// (b)
-			llvm::Type* lt = this->getLlvmType(vr);
-			iceAssert(lt);
-
-			tp = this->getType(lt);
-			iceAssert(tp);
-		}
-	}
-	else if(FuncCall* fc = dynamic_cast<FuncCall*>(_ma->left))
-	{
-		llvm::Type* lt = this->parseTypeFromString(_ma->left, fc->type.strType);
-		iceAssert(lt);
-
-		tp = this->getType(lt);
-		iceAssert(tp);
-	}
-
-	sb = dynamic_cast<StructBase*>(tp->second.first);
-	iceAssert(sb);
-
-
-	// (b)
-	scp->push_back(sb->name);
-
-	VarRef* var = dynamic_cast<VarRef*>(_ma->right);
-	FuncCall* fc = dynamic_cast<FuncCall*>(_ma->right);
-
-	if(var)
-	{
-		iceAssert(this->getStructMemberByName(sb, var));
-	}
-	else if(fc)
-	{
-		iceAssert(this->getFunctionFromStructFuncCall(sb, fc));
-	}
-	else
-	{
-		if(dynamic_cast<Number*>(_ma->right))
-		{
-			error(this, _ma->right, "Type '%s' is not a tuple", sb->name.c_str());
 		}
 		else
 		{
-			error(this, _ma->right, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*_ma->right).name());
+			for(auto sb : curType->nestedTypes)
+			{
+				if(sb->name == front)
+				{
+					curType = sb;
+
+					found = true;
+					break;
+				}
+			}
+
+			if(found) continue;
 		}
+
+		std::string lscope = ma->matype == MAType::LeftNamespace ? "namespace" : "type";
+		error(this, ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
+			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
 	}
 
-	llvm::Type* type = 0;
-	if(var)
+	// what is the right side?
+	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
 	{
-		for(auto vd : sb->members)
+		std::deque<FuncPair_t> flist;
+		if(curType == 0)
 		{
-			if(var->name == vd->name)
+			flist = ftree->funcs;
+		}
+		else
+		{
+			iceAssert(curType->funcs.size() == curType->lfuncs.size());
+
+			for(size_t i = 0; i < curType->funcs.size(); i++)
 			{
-				type = this->getLlvmType(vd);
-				break;
+				if(curType->funcs[i]->decl->name == fc->name)
+					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
 			}
 		}
-		iceAssert(type);
-	}
-	else if(fc)
-	{
-		Func* fn = getFunctionFromStructFuncCall(sb, fc);
-		type = this->parseTypeFromString(_ma->left, fn->decl->type.strType);
-		iceAssert(type);
-	}
 
-	return std::make_tuple(type, (llvm::Value*) 0, _ma->right);
+		Resolved_t res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
+		if(!res.resolved)
+			GenError::noFunctionTakingParams(this, fc, ftree->nsName, fc->name, fc->params);
+
+		// call that sucker.
+		// but first set the cached target.
+
+		llvm::Type* ltype = this->getLlvmType(fc, res);
+		if(actual)
+		{
+			fc->cachedResolveTarget = res;
+			Result_t res = fc->codegen(this);
+
+			return { ltype, res };
+		}
+		else
+		{
+			return { ltype, Result_t(0, 0) };
+		}
+	}
+	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+	{
+		if(curType == 0)
+		{
+			llvm::Value* ptr = 0;
+			for(auto v : ftree->vars)
+			{
+				if(v.second->name == vr->name)
+				{
+					ptr = v.first.first;
+					break;
+				}
+			}
+
+			if(!ptr)
+			{
+				error(this, vr, "namespace %s does not contain a variable %s",
+					ftree->nsName.c_str(), vr->name.c_str());
+			}
+
+
+			return
+			{
+				ptr->getType()->getPointerElementType(),
+				actual ? Result_t(this->builder.CreateLoad(ptr), ptr) : Result_t(0, 0)
+			};
+		}
+		else
+		{
+			// check static members
+			if(dynamic_cast<Struct*>(curType))
+			{
+				for(auto v : curType->members)
+				{
+					if(v->isStatic && v->name == vr->name)
+					{
+						llvm::Type* ltype = this->getLlvmType(v);
+						return { ltype, actual ? this->getStaticVariable(vr, curType, v->name) : Result_t(0, 0) };
+					}
+				}
+			}
+			else if(dynamic_cast<Enumeration*>(curType))
+			{
+				Result_t res = this->getEnumerationCaseValue(vr, curTPair, vr->name, actual ? true : false);
+				return { res.result.first->getType(), res };
+			}
+
+			error(this, vr, "struct %s does not contain a static variable %s", curType->name.c_str(), vr->name.c_str());
+		}
+	}
+	else
+	{
+		error(this, ma, "Invalid expression type (%s) on right hand of dot operator", typeid(*ma->right).name());
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
