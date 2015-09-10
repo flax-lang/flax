@@ -568,18 +568,17 @@ namespace Codegen
 		return 0;
 	}
 
-	void CodegenInstance::pushNamespaceScope(std::string namespc)
+	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
 	{
-		FunctionTree* ft = new FunctionTree();
-		ft->nsName = namespc;
+		if(doFuncTree)
+		{
+			fprintf(stderr, "doing functree %s\n", namespc.c_str());
+			FunctionTree* ft = new FunctionTree();
+			ft->nsName = namespc;
 
-		// printf("pushed namespace %s\n", namespc.c_str());
-
-		FunctionTree* cur = this->getCurrentFuncTree();
-		// printf("cur = %s, %p\n", cur->nsName.c_str(), cur);
-		cur->subs.push_back(ft);
-
-		// printf("%p subs = %zu\n", cur, cur->subs.size());
+			FunctionTree* cur = this->getCurrentFuncTree();
+			cur->subs.push_back(ft);
+		}
 
 		this->namespaceStack.push_back(namespc);
 	}

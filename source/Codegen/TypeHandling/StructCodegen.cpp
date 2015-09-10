@@ -304,7 +304,7 @@ void Struct::createType(CodegenInstance* cgi)
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
-		cgi->pushNamespaceScope(this->name);
+		cgi->pushNamespaceScope(this->name, false);
 		nested->createType(cgi);
 		cgi->popNamespaceScope();
 	}
