@@ -296,7 +296,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 				error(this, "Global variables currently only support constant initialisers");
 			}
 		}
-		else if(ltype->isStructTy())
+		else if(ltype->isStructTy() && !cgi->isTupleType(ltype))
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -321,6 +321,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 				error(cgi, this, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
 
 			cgi->addGlobalConstructor(ai, candidate);
+		}
+		else if(cgi->isTupleType(ltype))
+		{
+			error(cgi, this, "global tuple not supported yet");
 		}
 
 

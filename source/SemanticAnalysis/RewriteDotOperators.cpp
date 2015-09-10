@@ -114,11 +114,16 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// warn(cgi, ma, "%s is a var", vr->name.c_str());
 			return;
 		}
+		else if(dynamic_cast<Number*>(leftma->right))
+		{
+			// tuple access.
+			ma->matype = MAType::LeftVariable;
+			return;
+		}
 		else
 		{
 			error(cgi, ma, "????");
 		}
-
 	}
 	else if(dynamic_cast<FuncCall*>(ma->left))
 	{
@@ -157,7 +162,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 	}
 	else
 	{
-		error(cgi, ma, "????");
+		error(cgi, ma, "?????");
 	}
 }
 
