@@ -115,6 +115,9 @@ namespace n1
 	namespace n2
 	{
 		var m: Sheep
+
+		// todo: not supported in compiler
+		// var tup: (String, Int)
 		func nest() -> (String, Int)
 		{
 			printf("nested\n");
@@ -132,7 +135,10 @@ func main(argc: Int32, argv: Int8**) -> Int
 	n1.n2.m.foo._bar = 968
 
 	var t1: Int = 0
-	t1 = n1.n2.m.foo.doBar()
+	// t1 = n1.n2.m.foo.doBar()
+	t1 = n1.n2.nest().0.length
+
+	// n1.n2.tup.0
 
 
 	printf("t1 = %d\n", t1)

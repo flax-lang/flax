@@ -1056,6 +1056,11 @@ namespace Codegen
 		return this->isBuiltinType(ltype);
 	}
 
+	bool CodegenInstance::isTupleType(llvm::Type* type)
+	{
+		return type->isStructTy() && llvm::cast<llvm::StructType>(type)->isLiteral();
+	}
+
 
 
 

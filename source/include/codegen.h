@@ -166,6 +166,7 @@ namespace Codegen
 		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(llvm::Type* type);
 		bool isAnyType(llvm::Type* type);
+		bool isTupleType(llvm::Type* type);
 		bool areEqualTypes(llvm::Type* a, llvm::Type* b);
 
 		bool isDuplicateType(std::string name);
