@@ -222,8 +222,7 @@ namespace Codegen
 		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type, bool allowFail = false);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
-		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::MemberAccess* ma, bool doAccess = false,
-			std::deque<std::string>* scp = 0);
+		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
@@ -233,8 +232,8 @@ namespace Codegen
 		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::StructBase* str, std::string name);
 
 
-		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename);
-		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs);
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
 
 
 
