@@ -46,6 +46,7 @@ namespace GenError
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
+	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 }
 
 namespace Codegen
@@ -213,6 +214,13 @@ namespace Codegen
 		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
 		std::deque<Ast::Expr*> flattenDotOperators(Ast::MemberAccess* base);
 
+		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::StructBase* str, std::string name);
+
+
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename);
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs);
+
+
 
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
 
@@ -250,7 +258,6 @@ namespace Codegen
 		~CodegenInstance();
 	};
 
-	Ast::Result_t enumerationAccessCodegen(CodegenInstance* cgi, Ast::Expr* lhs, Ast::Expr* rhs);
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
 

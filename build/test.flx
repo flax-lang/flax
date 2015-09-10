@@ -11,11 +11,6 @@ import Foundation
 
 import Utilities
 
-@nomangle ƒ someFunc(a: String)
-{
-	printf("some: %s\n\n", a)
-}
-
 // ƒ runTests()
 // {
 // 	// fib
@@ -134,11 +129,14 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("========= TESTS COMPLETE =========\n\n")
 
 
-	// n1.n2.m.foo._bar = 968
-	n1.n2.m.foo.doBar()
+	n1.n2.m.foo._bar = 968
 
-	// printf("t1 = %d\n", t1)
-	// printf("afoo: %d\n", Sheep.afoo.doBar())
+	var t1: Int = 0
+	t1 = n1.n2.m.foo.doBar()
+
+
+	printf("t1 = %d\n", t1)
+	printf("afoo: %d\n", Sheep.afoo.doBar())
 
 	return 0
 }

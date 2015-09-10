@@ -158,7 +158,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 	else
 	{
 		error(cgi, ma, "????");
-		return;
 	}
 }
 
