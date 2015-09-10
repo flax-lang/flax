@@ -15,9 +15,7 @@ using namespace Codegen;
 Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall);
 Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
 Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
-Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
-Result_t doNamespaceAccess(CodegenInstance* cgi, MemberAccess* ma, std::deque<Expr*> flat, llvm::Value* rhs, bool actual = true);
-Result_t checkForStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* lhsPtr, llvm::Value* _rhs, bool actual = true);
+// Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -26,195 +24,29 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
+Result_t CodegenInstance::getStaticVariable(Expr* user, StructBase* str, std::string name)
+{
+	std::string mangledName = this->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
+	if(llvm::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
+	{
+		// todo: another kinda hacky thing.
+		// this is present in some parts of the code, i don't know how many.
+		// basically, if the thing is supposed to be immutable, we're not going to return
+		// the ptr/ref value.
+
+		return Result_t(this->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+	}
+
+	error(this, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
+}
+
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
 		iceAssert(this->matype != MAType::Invalid);
-
-		// this makes the (valid and reasonable) assumption that all static access must happen before any non-static access.
-		// ie. there is no way to invoke static dot operator semantics after an instance is encountered.
-
-		// if we know the left side is some kind of static access,
-		// we completely ignore it (since we can't get a value out of codegen), and basically
-		// traverse it manually.
-
-		// move leftwards. everything left of us *must* be static access.
-		// this means varrefs only.
-
-		// another (valid and reasonable) assumption is that once we encounter a typename (ie. static member or
-		// nested type access), there will not be namespace access anymore.
-
-		std::deque<std::string> list;
-		std::deque<std::string> nsstrs;
-
-		StructBase* curType = 0;
-		TypePair_t* curTPair = 0;
-
-		MemberAccess* cur = this;
-		while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
-		{
-			cur = cleft;
-			iceAssert(cur);
-
-			VarRef* vr = dynamic_cast<VarRef*>(cur->right);
-			iceAssert(vr);
-
-			list.push_front(vr->name);
-		}
-
-		iceAssert(cur);
-		{
-			VarRef* vr = dynamic_cast<VarRef*>(cur->left);
-			iceAssert(vr);
-
-			list.push_front(vr->name);
-		}
-
-		FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
-		while(list.size() > 0)
-		{
-			std::string front = list.front();
-			list.pop_front();
-
-			bool found = false;
-
-			if(curType == 0)
-			{
-				// check if it's a namespace.
-				for(auto sub : ftree->subs)
-				{
-					iceAssert(sub);
-					if(sub->nsName == front)
-					{
-						// yes.
-						nsstrs.push_back(front);
-						ftree = cgi->getCurrentFuncTree(&nsstrs);
-						iceAssert(ftree);
-
-						found = true;
-						break;
-					}
-				}
-
-				if(found)
-					continue;
-
-
-				if(TypePair_t* tp = cgi->getType(front))
-				{
-					iceAssert(tp->second.first);
-					curType = dynamic_cast<StructBase*>(tp->second.first);
-					curTPair = tp;
-					iceAssert(curType);
-
-					found = true;
-					continue;
-				}
-			}
-			else
-			{
-				for(auto sb : curType->nestedTypes)
-				{
-					if(sb->name == front)
-					{
-						curType = sb;
-
-						found = true;
-						break;
-					}
-				}
-
-				if(found) continue;
-			}
-
-			std::string lscope = this->matype == MAType::LeftNamespace ? "namespace" : "type";
-			error(cgi, this, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
-				lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
-		}
-
-		// what is the right side?
-		if(FuncCall* fc = dynamic_cast<FuncCall*>(this->right))
-		{
-			if(curType == 0)
-			{
-				Resolved_t res = cgi->resolveFunctionFromList(this, ftree->funcs, fc->name, fc->params);
-				if(!res.resolved)
-					GenError::noFunctionTakingParams(cgi, fc, ftree->nsName, fc->name, fc->params);
-
-				// call that sucker.
-				// but first set the cached target.
-				fc->cachedResolveTarget = res;
-				return fc->codegen(cgi);
-			}
-			else
-			{
-				std::deque<FuncPair_t> flist;
-
-				iceAssert(curType->funcs.size() == curType->lfuncs.size());
-
-				for(size_t i = 0; i < curType->funcs.size(); i++)
-				{
-					if(curType->funcs[i]->decl->name == fc->name)
-						flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
-				}
-
-
-				Resolved_t res = cgi->resolveFunctionFromList(this, flist, fc->name, fc->params);
-				if(!res.resolved)
-					GenError::noFunctionTakingParams(cgi, fc, curType->name, fc->name, fc->params);
-
-
-				fc->cachedResolveTarget = res;
-				return fc->codegen(cgi);
-			}
-		}
-		else if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
-		{
-			if(curType == 0)
-			{
-				llvm::Value* ptr = 0;
-				for(auto v : ftree->vars)
-				{
-					if(v.second->name == vr->name)
-					{
-						ptr = v.first.first;
-						break;
-					}
-				}
-
-				if(!ptr)
-				{
-					error(cgi, vr, "namespace %s does not contain a variable %s",
-						ftree->nsName.c_str(), vr->name.c_str());
-				}
-
-				return Result_t(cgi->builder.CreateLoad(ptr), ptr);
-			}
-			else
-			{
-				// check static members
-				if(dynamic_cast<Struct*>(curType))
-				{
-					for(auto v : curType->members)
-					{
-						if(v->isStatic && v->name == vr->name)
-							return cgi->getStaticVariable(vr, curType, v->name);
-					}
-				}
-				else if(dynamic_cast<Enumeration*>(curType))
-				{
-					return cgi->getEnumerationCaseValue(vr, curTPair, vr->name);
-				}
-
-				error(cgi, vr, "struct %s does not contain a static variable %s", curType->name.c_str(), vr->name.c_str());
-			}
-		}
-		else
-		{
-			error(cgi, this, "Invalid expression type (%s) on right hand of dot operator", typeid(*this->right).name());
-		}
+		return cgi->resolveStaticDotOperator(this, true).second;
 	}
 
 
@@ -437,14 +269,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 					}
 				}
 
-				if(cprop)
-				{
-					return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, str);
-				}
-				else
-				{
-					return doStaticAccess(cgi, this, isPtr ? self : selfPtr, _rhs);
-				}
+				iceAssert(cprop);
+				return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, str);
 			}
 		}
 		else
@@ -455,7 +281,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	else if(pair->second.second == TypeKind::Enum)
 	{
 		// return enumerationAccessCodegen(cgi, this->left, this->right);
-		return doStaticAccess(cgi, this, isPtr ? self : selfPtr, _rhs);
+		return cgi->getEnumerationCaseValue(this->left, this->right);
 	}
 
 	iceAssert(!"Encountered invalid expression");
@@ -859,24 +685,6 @@ Func* CodegenInstance::getFunctionFromStructFuncCall(StructBase* str, FuncCall* 
 	return callee;
 }
 
-
-Struct* CodegenInstance::getNestedStructFromScopes(Expr* user, std::deque<std::string> scopes)
-{
-	iceAssert(scopes.size() > 0);
-
-	std::string last = scopes.back();
-	scopes.pop_back();
-
-	TypePair_t* tp = this->getType(this->mangleWithNamespace(last, scopes.size() > 0 ? scopes : this->namespaceStack, false));
-	if(!tp)
-		GenError::unknownSymbol(this, user, last, SymbolType::Type);
-
-	Struct* str = dynamic_cast<Struct*>(tp->second.first);
-	iceAssert(str);
-
-	return str;
-}
-
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 {
 	Expr* found = 0;
@@ -908,33 +716,6 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 
 	return found;
 }
-
-
-static void _flattenDotOperators(MemberAccess* base, std::deque<Expr*>& list)
-{
-	Expr* left = base->left;
-	Expr* right = base->right;
-
-	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(left))
-		_flattenDotOperators(ma, list);
-
-	else
-		list.push_back(left);
-
-
-	list.push_back(right);
-}
-
-std::deque<Expr*> CodegenInstance::flattenDotOperators(MemberAccess* base)
-{
-	std::deque<Expr*> list;
-	_flattenDotOperators(base, list);
-
-	return list;
-}
-
-
-
 
 
 

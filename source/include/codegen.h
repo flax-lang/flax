@@ -226,8 +226,6 @@ namespace Codegen
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
-		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
-		std::deque<Ast::Expr*> flattenDotOperators(Ast::MemberAccess* base);
 
 		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::StructBase* str, std::string name);
 
