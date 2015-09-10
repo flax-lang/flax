@@ -14,10 +14,12 @@
 #include "include/codegen.h"
 #include "include/compiler.h"
 
+#include "llvm/IR/Verifier.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/SourceMgr.h"
 
 using namespace Ast;
 

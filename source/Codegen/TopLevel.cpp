@@ -4,7 +4,6 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -104,6 +103,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 5)
 	{
+		// start semantic analysis before any typechecking needs to happen.
+		doSemanticAnalysis(cgi);
+
 		// pass 5: everything else
 		for(Expr* e : expressions)
 		{
@@ -150,18 +152,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
-	auto before = cgi->importedNamespaces;
-
 	cgi->pushNamespaceScope(this->name);
-	cgi->importedNamespaces.push_back(cgi->namespaceStack);
+	cgi->usingNamespaces.push_back(this);
 
 	codegenTopLevel(cgi, pass, this->innards->statements, true, &this->namespaces);
 
+	cgi->usingNamespaces.pop_back();
 	cgi->popNamespaceScope();
-
-	cgi->importedNamespaces = before;
 }
-
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// this is getting quite out of hand.

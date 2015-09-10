@@ -5,7 +5,11 @@
 
 #include "ast.h"
 #include "codegen.h"
-#include "llvm_all.h"
+
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalVariable.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -76,7 +80,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		}
 		else
 		{
-			// generate some globals.
+			// generate some globals for static variables.
 			// mangle the variable name.
 
 			// a bit hacky, but still well-defined.

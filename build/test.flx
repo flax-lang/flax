@@ -3,67 +3,62 @@
 // Licensed under the Apache License Version 2.0.
 
 import Foundation
-import tests.fizzbuzz
-import tests.recursiveFib
-import tests.scopes
-import tests.arraytest
-import tests.generics
+// import tests.fizzbuzz
+// import tests.recursiveFib
+// import tests.scopes
+// import tests.arraytest
+// import tests.generics
 
 import Utilities
 
-@nomangle ƒ someFunc(a: String)
-{
-	printf("some: %s\n\n", a)
-}
+// ƒ runTests()
+// {
+// 	// fib
+// 	printf("*** FIBONACII SEQUENCE ***\n")
 
-ƒ runTests()
-{
-	// fib
-	printf("*** FIBONACII SEQUENCE ***\n")
-
-	var n = 0
-	while n < 20
-	{
-		printf("%d: %lld\n", n, doRecursiveFib(n))
-		n += 1
-	}
-	printf("\n\n");
+// 	var n = 0
+// 	while n < 20
+// 	{
+// 		printf("%d: %lld\n", n, doRecursiveFib(n))
+// 		n += 1
+// 	}
+// 	printf("\n\n");
 
 
-	// fizzbuzz
-	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(20);
-	printf("\n\n");
+// 	// fizzbuzz
+// 	printf("*** FIZZBUZZ ***\n")
+// 	doFizzBuzz(20);
+// 	printf("\n\n");
 
 
-	// scopes
-	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest("__llvm_jit__build/test")
-	printf("\n\n");
+// 	// scopes
+// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+// 	doScopeTest("__llvm_jit__build/test")
+// 	printf("\n\n");
 
 
-	// arrays
-	printf("*** ARRAY REGRESSION TEST ***\n")
-	doArrayTest()
-	printf("\n\n")
+// 	// arrays
+// 	printf("*** ARRAY REGRESSION TEST ***\n")
+// 	doArrayTest()
+// 	printf("\n\n")
 
 
-	printf("*** STRING TEST ***\n")
-	someFunc(@raw "SOME STRING" as String)
-	printf("\n\n")
+// 	printf("*** STRING TEST ***\n")
+// 	someFunc(@raw "SOME STRING" as String)
+// 	printf("\n\n")
 
 
 
-	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
-	printf("\n\n")
-}
+// 	printf("*** GENERICS TEST ***\n")
+// 	doGenericsTest()
+// 	printf("\n\n")
+// }
 
 
 
 struct Foo
 {
-	var _bar: Int = 9000
+	var _bar: Int = 537
 	var bar: Int
 	{
 		get
@@ -76,9 +71,11 @@ struct Foo
 		}
 	}
 
-	ƒ doBar()
+	ƒ doBar() -> Int
 	{
 		printf("in foo\n")
+
+		return self._bar
 	}
 }
 
@@ -105,58 +102,47 @@ struct Bar : Foo
 }
 
 
+struct Sheep
+{
+	var thing = 43
+	var foo: Foo
 
-
-
-
-
-
-
-
-
-
-
-
-
-func overload(a: Int8)	{ printf("overload: (int8)\n"); }
-func overload(a: Int64)	{ printf("overload: (int64)\n"); }
-
+	static var afoo: Foo
+}
 
 namespace n1
 {
-	func nest() -> Int
+	namespace n2
 	{
-		printf("nested\n");
-		return 591
+		var m: Sheep
+
+		// todo: not supported in compiler
+		var tup: (String, Int)
+		func nest() -> (String, Int)
+		{
+			printf("nested\n");
+			return ("TUPLE ONE", 591)
+		}
 	}
 }
 
-
-
-
-
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	runTests()
+	// runTests()
 	printf("========= TESTS COMPLETE =========\n\n")
 
 
-	var uuu = Bar()
-	uuu.doBar()
+	n1.n2.m.foo._bar = 968
 
-	let a: Int8 = 40
-	let b: Int16 = 60
+	let t1 = n1.n2.m.foo.doBar()
+	let t2 = n1.n2.nest().0.length
 
-	overload(a)
-	overload(b)
+	n1.n2.tup.0 = "HELLO, WORLD"
+	printf("tup: %s\n", n1.n2.tup.0)
 
-	// uuu.bar = 70
 
-	// n1.nest()
-	// let m = n1.n2.k
-	let m = 6
-	printf("uuu.bar: %d, uuu.foo: %d, m = %d\n", uuu.bar, uuu.foo, m)
-	foo_generic(10, 4)
+	printf("t1 = %d, t2 = %d\n", t1, t2)
+	printf("afoo: %d\n", Sheep.afoo.doBar())
 
 	return 0
 }

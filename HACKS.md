@@ -22,3 +22,5 @@ This mostly applies to structs. This is the reason why the `lhsPtr` argument was
 1. There's a lot of duplicate, redundant, and messy code everywhere, particularly in `BinOpCodegen.cpp` and `CodegenUtils.cpp`
 
 2. `if` checks and workarounds are littered everywhere in the codebase.
+
+3. Generic function resolution is really suboptimal. There should be a way to prune the list of potential candidates before having to loop through each one.
