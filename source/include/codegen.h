@@ -46,6 +46,7 @@ namespace GenError
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
+	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 }
 
 namespace Codegen
@@ -76,9 +77,23 @@ namespace Codegen
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 
 
-		std::map<llvm::Value*, llvm::Function*> globalConstructors;
+		struct
+		{
+			std::map<llvm::Value*, llvm::Function*> funcs;
+			std::map<llvm::Value*, llvm::Value*> values;
+
+			std::map<llvm::Value*, std::pair<int, llvm::Value*>> tupleInitVals;
+			std::map<llvm::Value*, std::pair<int, llvm::Function*>> tupleInitFuncs;
+
+		} globalConstructors;
+
 		void addGlobalConstructor(std::string name, llvm::Function* constructor);
 		void addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor);
+		void addGlobalConstructedValue(llvm::Value* ptr, llvm::Value* val);
+
+		void addGlobalTupleConstructedValue(llvm::Value* ptr, int index, llvm::Value* val);
+		void addGlobalTupleConstructor(llvm::Value* ptr, int index, llvm::Function* func);
+
 		void finishGlobalConstructors();
 
 
@@ -131,6 +146,7 @@ namespace Codegen
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 		void addPublicFunc(FuncPair_t fp);
 
+		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
 
 		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
@@ -165,6 +181,7 @@ namespace Codegen
 		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(llvm::Type* type);
 		bool isAnyType(llvm::Type* type);
+		bool isTupleType(llvm::Type* type);
 		bool areEqualTypes(llvm::Type* a, llvm::Type* b);
 
 		bool isDuplicateType(std::string name);
@@ -205,13 +222,17 @@ namespace Codegen
 		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type, bool allowFail = false);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
-		std::tuple<llvm::Type*, llvm::Value*, Ast::Expr*> resolveDotOperator(Ast::MemberAccess* ma, bool doAccess = false,
-			std::deque<std::string>* scp = 0);
+		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
-		Ast::Struct* getNestedStructFromScopes(Ast::Expr* user, std::deque<std::string> scopes);
-		std::deque<Ast::Expr*> flattenDotOperators(Ast::MemberAccess* base);
+
+		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::StructBase* str, std::string name);
+
+
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
+		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
+
 
 
 		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
@@ -250,9 +271,10 @@ namespace Codegen
 		~CodegenInstance();
 	};
 
-	Ast::Result_t enumerationAccessCodegen(CodegenInstance* cgi, Ast::Expr* lhs, Ast::Expr* rhs);
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
+
+	void doSemanticAnalysis(CodegenInstance* cgi);
 }
 
 
