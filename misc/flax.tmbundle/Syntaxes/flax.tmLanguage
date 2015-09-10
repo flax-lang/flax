@@ -54,6 +54,10 @@
 			<key>include</key>
 			<string>#boolean</string>
 		</dict>
+		<dict>
+			<key>include</key>
+			<string>#access-modifier</string>
+		</dict>
 	</array>
 	<key>repository</key>
 	<dict>
@@ -987,9 +991,16 @@
 		<key>storage-type</key>
 		<dict>
 			<key>match</key>
-			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|public|private|internal|ƒ|func)\b</string>
+			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|ƒ|func)\b</string>
 			<key>name</key>
 			<string>storage.type.flax</string>
+		</dict>
+		<key>access-modifier</key>
+		<dict>
+			<key>match</key>
+			<string>\b(public|internal|private|global)\b</string>
+			<key>name</key>
+			<string>storage.modifier.attribute.flax</string>
 		</dict>
 		<key>string-literal</key>
 		<dict>

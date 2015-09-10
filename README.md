@@ -1,12 +1,12 @@
 # [Flax](https://flax-lang.github.io)
 
+A low level language with high level syntax and expressibility, aimed at OSDev work.
+
+
 [![forthebadge](http://forthebadge.com/images/badges/powered-by-electricity.svg)](http://forthebadge.com)
-[![forthebadge](http://forthebadge.com/images/badges/powered-by-oxygen.svg)](http://forthebadge.com)
 [![forthebadge](http://forthebadge.com/images/badges/fuck-it-ship-it.svg)](http://forthebadge.com)
 
-============
-
-A low level language with high level syntax and expressibility, aimed at OSDev work.
+--------------------------
 
 #### Disclaimer ####
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
@@ -69,4 +69,5 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 - Found a bug? Want a feature?
 - Just submit a pull request!
+- Alternatively, join the discussion at #flax-lang on Freenode IRC.
 - Requested help: Error catching, please! Sometimes the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)

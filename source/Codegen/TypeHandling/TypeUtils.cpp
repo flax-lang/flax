@@ -6,8 +6,10 @@
 #include "ast.h"
 #include "parser.h"
 #include "codegen.h"
-#include "llvm_all.h"
 #include "compiler.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -100,8 +102,12 @@ namespace Codegen
 		return alloca;
 	}
 
-
 	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail, bool setInferred)
+	{
+		return this->getLlvmType(expr, Resolved_t(), allowFail, setInferred);
+	}
+
+	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
 		setInferred = false;
 		iceAssert(expr);
@@ -155,7 +161,9 @@ namespace Codegen
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
+				{
 					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+				}
 
 				auto x = this->getLlvmType(decl, allowFail);
 				return x;
@@ -179,27 +187,33 @@ namespace Codegen
 			}
 			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 			{
-				Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
-				if(!rt.resolved)
+				Resolved_t& res = preResolvedFn;
+				if(!res.resolved)
 				{
-					TypePair_t* tp = this->getType(fc->name);
-					if(tp)
+					Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
+					if(!rt.resolved)
 					{
-						return tp->first;
+						TypePair_t* tp = this->getType(fc->name);
+						if(tp)
+						{
+							return tp->first;
+						}
+						else
+						{
+							llvm::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
+							if(genericMaybe)
+								return genericMaybe->getReturnType();
+
+							GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
+						}
 					}
 					else
 					{
-						llvm::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
-						if(genericMaybe)
-							return genericMaybe->getReturnType();
-
-						GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
+						res = rt;
 					}
 				}
-				else
-				{
-					return getLlvmType(rt.t.second);
-				}
+
+				return getLlvmType(res.t.second);
 			}
 			else if(Func* f = dynamic_cast<Func*>(expr))
 			{
@@ -233,27 +247,8 @@ namespace Codegen
 			}
 			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
-				VarRef* _vr = dynamic_cast<VarRef*>(ma->left);
-				if(_vr)
-				{
-					// check for type function access (static)
-					TypePair_t* tp = 0;
-					if((tp = this->getType(this->mangleWithNamespace(_vr->name))))
-					{
-						if(tp->second.second == TypeKind::Enum)
-						{
-							iceAssert(tp->first->isStructTy());
-							return tp->first;
-						}
-						else if(tp->second.second == TypeKind::Struct)
-						{
-							return std::get<0>(this->resolveDotOperator(ma));
-						}
-					}
-				}
-
-
-
+				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
+					return this->resolveStaticDotOperator(ma, false).first;
 
 
 				// first, get the type of the lhs
@@ -308,8 +303,6 @@ namespace Codegen
 					{
 						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
 					}
-
-					return std::get<0>(this->resolveDotOperator(ma));
 				}
 				else if(pair->second.second == TypeKind::Enum)
 				{
@@ -480,7 +473,25 @@ namespace Codegen
 		return llvm::Constant::getNullValue(getLlvmType(e));
 	}
 
+	llvm::Function* CodegenInstance::getDefaultConstructor(Expr* user, llvm::Type* ptrType, StructBase* sb)
+	{
+		// check if we have a default constructor.
+		llvm::Function* candidate = 0;
 
+		for(llvm::Function* fn : sb->initFuncs)
+		{
+			if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+			{
+				candidate = fn;
+				break;
+			}
+		}
+
+		if(candidate == 0)
+			error(this, user, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
+
+		return candidate;
+	}
 
 
 
@@ -533,6 +544,7 @@ namespace Codegen
 
 	std::string CodegenInstance::getReadableType(llvm::Value* val)
 	{
+		if(val == 0) return "(null)";
 		return this->getReadableType(val->getType());
 	}
 
@@ -1026,23 +1038,21 @@ namespace Codegen
 		return this->isBuiltinType(ltype);
 	}
 
+	bool CodegenInstance::isTupleType(llvm::Type* type)
+	{
+		return type->isStructTy() && llvm::cast<llvm::StructType>(type)->isLiteral();
+	}
+
 
 
 
 	std::string CodegenInstance::printAst(Expr* expr)
 	{
+		if(expr == 0) return "(null)";
+
 		if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 		{
-			// auto ret = this->flattenDotOperators(ma);
-
-			// std::string s;
-			// for(Expr* e : ret)
-			// 	s += this->printAst(e) + ".";
-
-			// s = s.substr(0, s.length() - 1);
-			// return s;
-
-			return this->printAst(ma->left) + "." + this->printAst(ma->right);
+			return "(" + this->printAst(ma->left) + "." + this->printAst(ma->right) + ")";
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{
@@ -1066,6 +1076,8 @@ namespace Codegen
 				str += p->name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
 				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
 			}
+
+			if(fd->hasVarArg) str += "..., ";
 
 			if(fd->params.size() > 0)
 				str = str.substr(0, str.length() - 2);
@@ -1148,6 +1160,10 @@ namespace Codegen
 		else if(dynamic_cast<DummyExpr*>(expr))
 		{
 			return "";
+		}
+		else if(Typeof* to = dynamic_cast<Typeof*>(expr))
+		{
+			return "typeof(" + this->printAst(to->inside) + ")";
 		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());

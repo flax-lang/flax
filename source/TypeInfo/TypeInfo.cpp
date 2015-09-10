@@ -4,7 +4,7 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
+
 
 using namespace Ast;
 using namespace Codegen;
@@ -87,7 +87,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
-		if(cgi->getType("Any") == nullptr)
+		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::PosInfo(), "Any");
 			{

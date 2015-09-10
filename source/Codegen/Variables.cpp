@@ -5,11 +5,12 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
-#include "../include/llvm_all.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/IR/GLobalVariable.h"
 
 using namespace Ast;
 using namespace Codegen;
-
 
 Result_t VarRef::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
@@ -227,6 +228,18 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
 
+	if(FunctionTree* ft = cgi->getCurrentFuncTree())
+	{
+		for(auto sub : ft->subs)
+		{
+			if(sub->nsName == this->name)
+			{
+				error(cgi, this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
+					this->name.c_str(), ft->nsName.c_str());
+			}
+		}
+	}
+
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
 
@@ -263,8 +276,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		}
 		else
 		{
-			ai = new llvm::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(this->inferredLType), this->name);
+			ai = new llvm::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, llvm::GlobalValue::InternalLinkage,
+				llvm::Constant::getNullValue(this->inferredLType), this->name);
 		}
+
+		llvm::Type* ltype = ai->getType()->getPointerElementType();
 
 		if(this->initVal)
 		{
@@ -280,9 +296,53 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 				error(this, "Global variables currently only support constant initialisers");
 			}
 		}
+		else if(ltype->isStructTy() && !cgi->isTupleType(ltype))
+		{
+			// oopsies. we got to call the struct constructor.
+			TypePair_t* tp = cgi->getType(ltype);
+			iceAssert(tp);
+
+			StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+			iceAssert(sb);
+
+			llvm::Function* candidate = cgi->getDefaultConstructor(this, ai->getType(), sb);
+			cgi->addGlobalConstructor(ai, candidate);
+		}
+		else if(cgi->isTupleType(ltype))
+		{
+			llvm::StructType* stype = llvm::cast<llvm::StructType>(ltype);
+
+			int i = 0;
+			for(llvm::Type* t : stype->elements())
+			{
+				if(cgi->isTupleType(t))
+				{
+					error(cgi, this, "global nested tuples not supported yet");
+				}
+				else if(t->isStructTy())
+				{
+					TypePair_t* tp = cgi->getType(t);
+					iceAssert(tp);
+
+					cgi->addGlobalTupleConstructor(ai, i, cgi->getDefaultConstructor(this, t->getPointerTo(),
+						dynamic_cast<StructBase*>(tp->second.first)));
+				}
+				else
+				{
+					cgi->addGlobalTupleConstructedValue(ai, i, llvm::Constant::getNullValue(t));
+				}
+
+				i++;
+			}
+		}
 
 
 		cgi->addSymbol(this->name, ai, this);
+
+		FunctionTree* ft = cgi->getCurrentFuncTree();
+		iceAssert(ft);
+
+		ft->vars.push_back(*cgi->getSymPair(this, this->name));
 	}
 	else
 	{

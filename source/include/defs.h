@@ -6,8 +6,16 @@
 #include <stddef.h>
 #include <string>
 #include <map>
+#include <deque>
 
-#include "llvm_all.h"
+// forward declarations.
+namespace llvm
+{
+	class Value;
+	class Type;
+	class Function;
+	class BasicBlock;
+}
 
 namespace Ast
 {
@@ -73,7 +81,19 @@ namespace Codegen
 
 		std::string nsName;
 		std::deque<FunctionTree*> subs;
+
+		// things within.
 		std::deque<FuncPair_t> funcs;
+		std::deque<SymbolPair_t> vars;
+	};
+
+	struct Resolved_t
+	{
+		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		Resolved_t() : resolved(false) { }
+
+		FuncPair_t t;
+		bool resolved;
 	};
 }
 

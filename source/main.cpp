@@ -13,8 +13,11 @@
 #include "include/compiler.h"
 
 #include "llvm/Linker/Linker.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 
 using namespace Ast;
@@ -294,9 +297,8 @@ int main(int argc, char* argv[])
 
 
 
-
-
 		bool needGlobalConstructor = false;
+		if(r->globalConstructorTrampoline != 0) needGlobalConstructor = true;
 		for(auto pair : rootmap)
 		{
 			if(pair.second->globalConstructorTrampoline != 0)
@@ -308,9 +310,12 @@ int main(int argc, char* argv[])
 
 
 
+
 		if(needGlobalConstructor)
 		{
 			std::vector<llvm::Function*> constructors;
+			rootmap[filename] = r;
+
 			for(auto pair : rootmap)
 			{
 				if(pair.second->globalConstructorTrampoline != 0)
@@ -320,18 +325,24 @@ int main(int argc, char* argv[])
 					{
 						if(Compiler::runProgramWithJit)
 						{
-							error(cgi, 0, "required global constructor %s was not found in the module!", pair.second->globalConstructorTrampoline->getName().str().c_str());
+							error(cgi, 0, "required global constructor %s was not found in the module!",
+								pair.second->globalConstructorTrampoline->getName().str().c_str());
 						}
 						else
 						{
 							// declare it.
-							constr = llvm::cast<llvm::Function>(cgi->module->getOrInsertFunction(pair.second->globalConstructorTrampoline->getName(), pair.second->globalConstructorTrampoline->getFunctionType()));
+							constr = llvm::cast<llvm::Function>(cgi->module->getOrInsertFunction(
+								pair.second->globalConstructorTrampoline->getName(),
+								pair.second->globalConstructorTrampoline->getFunctionType())
+							);
 						}
 					}
 
 					constructors.push_back(constr);
 				}
 			}
+
+			rootmap.erase(filename);
 
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
