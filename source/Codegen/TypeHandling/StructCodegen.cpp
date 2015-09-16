@@ -18,7 +18,10 @@ using namespace Codegen;
 Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	iceAssert(this->didCreateType);
-	TypePair_t* _type = cgi->getType(this->mangledName);
+	TypePair_t* _type = cgi->getType(this->name);
+	if(!_type)
+		_type = cgi->getType(this->mangledName);
+
 	if(!_type)
 		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
@@ -41,7 +44,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
-		nested->codegen(cgi);
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.first->codegen(cgi);
+		cgi->popNestedTypeScope();
+	}
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
@@ -284,14 +291,22 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 	cgi->rootNode->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(this, str));
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
-	// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(0, defaultInitFunc));
+
+
 	return Result_t(nullptr, nullptr);
 }
 
-void Struct::createType(CodegenInstance* cgi)
+
+
+
+
+
+
+
+llvm::Type* Struct::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
-		return;
+		return 0;
 
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -304,10 +319,16 @@ void Struct::createType(CodegenInstance* cgi)
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
-		cgi->pushNamespaceScope(this->name);
-		nested->createType(cgi);
-		cgi->popNamespaceScope();
+		// cgi->pushNamespaceScope(this->name, false);
+
+		cgi->pushNestedTypeScope(this);
+		nested.second = nested.first->createType(cgi);
+		cgi->popNestedTypeScope();
+
+		// cgi->popNamespaceScope();
 	}
+
+
 
 
 	// check our inheritances??
@@ -459,7 +480,7 @@ void Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	this->mangledName = cgi->mangleWithNamespace(this->name, false);
+	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getNestedTypeList(), false);
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
@@ -528,6 +549,8 @@ void Struct::createType(CodegenInstance* cgi)
 	this->didCreateType = true;
 
 	delete types;
+
+	return str;
 }
 
 

@@ -187,7 +187,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			if(Func* cfs = cgi->getCurrentFunctionScope())
 			{
 				isNested = true;
-				cgi->pushNamespaceScope(cfs->decl->mangledName);
+				cgi->pushNamespaceScope(cfs->decl->mangledName, false);
 			}
 
 			this->mangledNamespaceOnly = cgi->mangleWithNamespace(this->mangledName);

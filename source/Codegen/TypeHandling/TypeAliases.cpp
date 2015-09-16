@@ -14,7 +14,7 @@ Result_t TypeAlias::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Val
 	return Result_t(0, 0);
 }
 
-void TypeAlias::createType(CodegenInstance* cgi)
+llvm::Type* TypeAlias::createType(CodegenInstance* cgi)
 {
 	llvm::Type* targetType = 0;
 
@@ -29,6 +29,7 @@ void TypeAlias::createType(CodegenInstance* cgi)
 	}
 
 	cgi->addNewType(targetType, this, TypeKind::TypeAlias);
+	return targetType;
 }
 
 
