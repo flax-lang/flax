@@ -1816,7 +1816,7 @@ namespace Parser
 			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
-				str->nestedTypes.push_back(sb);
+				str->nestedTypes.push_back({ sb, 0 });
 			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{

@@ -30,10 +30,10 @@ llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 	return this->cachedLlvmType;
 }
 
-void Tuple::createType(CodegenInstance* cgi)
+llvm::Type* Tuple::createType(CodegenInstance* cgi)
 {
 	(void) cgi;
-	return;
+	return 0;
 }
 
 Result_t CodegenInstance::doTupleAccess(llvm::Value* selfPtr, Number* num, bool createPtr)
