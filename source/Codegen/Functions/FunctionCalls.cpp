@@ -7,6 +7,7 @@
 #include "codegen.h"
 
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -149,6 +150,13 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
 		}
 	}
+
+	// might not be a good thing to always to.
+	// TODO: check this.
+	// makes sure we call the function in our own module, because llvm only allows that.
+
+	target = cgi->module->getFunction(target->getName());
+	iceAssert(target);
 
 	return Result_t(cgi->builder.CreateCall(target, args), 0);
 }

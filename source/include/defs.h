@@ -84,7 +84,9 @@ namespace Codegen
 
 		// things within.
 		std::deque<FuncPair_t> funcs;
-		std::deque<SymbolPair_t> vars;
+
+		std::map<std::string, SymbolPair_t> vars;
+		std::map<std::string, TypePair_t> types;
 	};
 
 	struct Resolved_t
