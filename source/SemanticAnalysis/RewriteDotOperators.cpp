@@ -264,7 +264,7 @@ static void findDotOperator(Expr* expr)
 			findDotOperator(fn);
 
 		for(auto s : sb->nestedTypes)
-			findDotOperator(s);
+			findDotOperator(s.first);
 
 		for(auto c : sb->cprops)
 		{

@@ -342,7 +342,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		ft->vars.push_back(*cgi->getSymPair(this, this->name));
+		ft->vars[this->name] = *cgi->getSymPair(this, this->name);
 	}
 	else
 	{

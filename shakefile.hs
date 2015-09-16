@@ -28,7 +28,7 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-O3 -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcNormFlags		= "-Ox -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
 flaxcJitFlags		= "-Ox -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
@@ -38,7 +38,8 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 	phony "build" $ do
 		need [finalOutput]
 		putNormal "======================================="
-		cmd Shell finalOutput [flaxcJitFlags] testSource
+		Exit code <- cmd Shell finalOutput [flaxcJitFlags] testSource
+		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Compilation failed"])
 
 
 	phony "compile" $ do

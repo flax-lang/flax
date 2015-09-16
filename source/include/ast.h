@@ -450,7 +450,7 @@ namespace Ast
 		virtual ~StructBase();
 		StructBase(Parser::PosInfo pos, std::string name) : Expr(pos), name(name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override = 0;
-		virtual void createType(Codegen::CodegenInstance* cgi) = 0;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
 		bool packed = false;
 		bool didCreateType = false;
@@ -472,7 +472,7 @@ namespace Ast
 
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
-		std::deque<StructBase*> nestedTypes;
+		std::deque<std::pair<StructBase*, llvm::Type*>> nestedTypes;
 	};
 
 	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
@@ -481,7 +481,7 @@ namespace Ast
 		~Extension();
 		Extension(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
 	};
@@ -491,7 +491,7 @@ namespace Ast
 		~Struct();
 		Struct(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<Extension*> extensions;
 	};
@@ -501,7 +501,7 @@ namespace Ast
 		~Enumeration();
 		Enumeration(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
@@ -512,7 +512,7 @@ namespace Ast
 		~Tuple();
 		Tuple(Parser::PosInfo pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 		llvm::StructType* getType(Codegen::CodegenInstance* cgi);
 
 		std::vector<Expr*> values;
@@ -596,7 +596,7 @@ namespace Ast
 		~TypeAlias();
 		TypeAlias(Parser::PosInfo pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual void createType(Codegen::CodegenInstance* cgi) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool isStrong = false;
 		std::string origType;

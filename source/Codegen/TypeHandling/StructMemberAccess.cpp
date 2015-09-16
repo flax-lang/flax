@@ -491,14 +491,11 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 				}
 			}
 
-
-			printf("front (%s, %d) = %s\n", ftree->nsName.c_str(), found, front.c_str());
 			if(found)
 				continue;
 
 			if(TypePair_t* tp = this->getType(front))
 			{
-				printf("%s is a type (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<StructBase*>(tp->second.first);
 				curTPair = tp;
@@ -510,17 +507,19 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 		else
 		{
-			printf("front (%s) = %s\n", curType->name.c_str(), front.c_str());
+			this->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
-				if(sb->name == front)
+				if(sb.first->name == front)
 				{
-					curType = sb;
+					curType = sb.first;
+					curTPair = this->getType(sb.first->name);
 
 					found = true;
 					break;
 				}
 			}
+			this->popNestedTypeScope();
 
 			if(found) continue;
 		}
@@ -583,16 +582,13 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		if(curType == 0)
 		{
 			llvm::Value* ptr = 0;
-			for(auto v : ftree->vars)
-			{
-				if(v.second->name == vr->name)
-				{
-					ptr = v.first.first;
-					break;
-				}
-			}
 
-			if(!ptr)
+			try
+			{
+				SymbolPair_t sp = ftree->vars.at(vr->name);
+				ptr = sp.first.first;
+			}
+			catch(std::exception)
 			{
 				error(this, vr, "namespace %s does not contain a variable %s",
 					ftree->nsName.c_str(), vr->name.c_str());

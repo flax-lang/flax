@@ -64,6 +64,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
+		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
 
@@ -95,6 +96,10 @@ namespace Codegen
 		void addGlobalTupleConstructor(llvm::Value* ptr, int index, llvm::Function* func);
 
 		void finishGlobalConstructors();
+
+
+
+
 
 
 		// "block" scopes, ie. breakable bodies (loops)
@@ -135,6 +140,15 @@ namespace Codegen
 		void pushGenericType(std::string id, llvm::Type* type);
 		llvm::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
+
+
+		void pushNestedTypeScope(Ast::StructBase* nest);
+		std::deque<std::string> getNestedTypeList();
+		void popNestedTypeScope();
+
+
+
+
 
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
