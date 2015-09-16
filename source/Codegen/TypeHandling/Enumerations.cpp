@@ -11,6 +11,7 @@ using namespace Codegen;
 Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName, bool actual)
 {
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+	if(!enr) printf("wtf?? %s\n", typeid(*tp->second.first).name());
 	iceAssert(enr);
 
 	Result_t res(0, 0);
@@ -71,7 +72,7 @@ Result_t Enumeration::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 	return Result_t(0, 0);
 }
 
-void Enumeration::createType(CodegenInstance* cgi)
+llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
@@ -99,4 +100,21 @@ void Enumeration::createType(CodegenInstance* cgi)
 	// now that they're all the same type:
 	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
+	return wrapper;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

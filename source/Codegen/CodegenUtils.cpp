@@ -308,6 +308,17 @@ namespace Codegen
 	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
+
+		FunctionTree* ftree = this->getCurrentFuncTree();
+		iceAssert(ftree);
+
+		if(ftree->types.find(atype->name) != ftree->types.end())
+			error(this, atype, "Duplicate type %s", atype->name.c_str());
+
+
+		ftree->types[atype->name] = tpair;
+
+
 		std::string mangled = this->mangleWithNamespace(atype->name, atype->scope, false);
 		if(atype->mangledName.empty())
 			atype->mangledName = mangled;
@@ -352,6 +363,20 @@ namespace Codegen
 
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
+
+
+		// find nested types.
+		if(this->nestedTypeStack.size() > 0)
+		{
+			StructBase* sb = this->nestedTypeStack.back();
+
+			// only allow one level of implicit use
+			for(auto n : sb->nestedTypes)
+			{
+				if(n.first->name == name)
+					return this->getType(n.second);
+			}
+		}
 
 
 		// try generic types.
@@ -419,6 +444,33 @@ namespace Codegen
 		BracedBlockScope cs = std::make_pair(block, std::make_pair(body, after));
 		this->blockStack.push_back(cs);
 	}
+
+
+
+
+	void CodegenInstance::pushNestedTypeScope(StructBase* nest)
+	{
+		this->nestedTypeStack.push_back(nest);
+	}
+
+	std::deque<std::string> CodegenInstance::getNestedTypeList()
+	{
+		std::deque<std::string> ret;
+		for(auto t : this->nestedTypeStack)
+			ret.push_back(t->name);
+
+		return ret;
+	}
+
+	void CodegenInstance::popNestedTypeScope()
+	{
+		iceAssert(this->nestedTypeStack.size() > 0);
+		this->nestedTypeStack.pop_back();
+	}
+
+
+
+
 
 
 
@@ -568,18 +620,16 @@ namespace Codegen
 		return 0;
 	}
 
-	void CodegenInstance::pushNamespaceScope(std::string namespc)
+	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
 	{
-		FunctionTree* ft = new FunctionTree();
-		ft->nsName = namespc;
+		if(doFuncTree)
+		{
+			FunctionTree* ft = new FunctionTree();
+			ft->nsName = namespc;
 
-		// printf("pushed namespace %s\n", namespc.c_str());
-
-		FunctionTree* cur = this->getCurrentFuncTree();
-		// printf("cur = %s, %p\n", cur->nsName.c_str(), cur);
-		cur->subs.push_back(ft);
-
-		// printf("%p subs = %zu\n", cur, cur->subs.size());
+			FunctionTree* cur = this->getCurrentFuncTree();
+			cur->subs.push_back(ft);
+		}
 
 		this->namespaceStack.push_back(namespc);
 	}

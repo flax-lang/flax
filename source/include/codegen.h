@@ -64,6 +64,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
+		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
 
@@ -97,6 +98,10 @@ namespace Codegen
 		void finishGlobalConstructors();
 
 
+
+
+
+
 		// "block" scopes, ie. breakable bodies (loops)
 		void pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after);
 		BracedBlockScope* getCurrentBracedBlockScope();
@@ -117,7 +122,7 @@ namespace Codegen
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
-		void pushNamespaceScope(std::string namespc);
+		void pushNamespaceScope(std::string namespc, bool doFuncTree = true);
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
@@ -135,6 +140,15 @@ namespace Codegen
 		void pushGenericType(std::string id, llvm::Type* type);
 		llvm::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
+
+
+		void pushNestedTypeScope(Ast::StructBase* nest);
+		std::deque<std::string> getNestedTypeList();
+		void popNestedTypeScope();
+
+
+
+
 
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);

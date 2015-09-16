@@ -60,7 +60,7 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 	return defaultInitFunc;
 }
 
-void Extension::createType(CodegenInstance* cgi)
+llvm::Type* Extension::createType(CodegenInstance* cgi)
 {
 	if(!cgi->isDuplicateType(this->name))
 		error(cgi, this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
@@ -144,6 +144,8 @@ void Extension::createType(CodegenInstance* cgi)
 		str->extensions.push_back(this);
 		delete types;
 	}
+
+	return existingtp->first;
 }
 
 
