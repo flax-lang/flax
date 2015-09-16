@@ -494,7 +494,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			if(found)
 				continue;
 
-
 			if(TypePair_t* tp = this->getType(front))
 			{
 				iceAssert(tp->second.first);
@@ -508,16 +507,19 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 		else
 		{
+			this->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
-				if(sb->name == front)
+				if(sb.first->name == front)
 				{
-					curType = sb;
+					curType = sb.first;
+					curTPair = this->getType(sb.first->name);
 
 					found = true;
 					break;
 				}
 			}
+			this->popNestedTypeScope();
 
 			if(found) continue;
 		}
@@ -526,6 +528,15 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		error(this, ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
 	}
+
+
+
+
+
+
+
+
+
 
 	// what is the right side?
 	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
@@ -546,7 +557,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			}
 		}
 
-		Resolved_t res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
+		Resolved_t res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
 		if(!res.resolved)
 			GenError::noFunctionTakingParams(this, fc, ftree->nsName, fc->name, fc->params);
 
@@ -571,16 +582,13 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		if(curType == 0)
 		{
 			llvm::Value* ptr = 0;
-			for(auto v : ftree->vars)
-			{
-				if(v.second->name == vr->name)
-				{
-					ptr = v.first.first;
-					break;
-				}
-			}
 
-			if(!ptr)
+			try
+			{
+				SymbolPair_t sp = ftree->vars.at(vr->name);
+				ptr = sp.first.first;
+			}
+			catch(std::exception)
 			{
 				error(this, vr, "namespace %s does not contain a variable %s",
 					ftree->nsName.c_str(), vr->name.c_str());
