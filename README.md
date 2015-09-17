@@ -9,7 +9,7 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 --------------------------
 
 #### Disclaimer ####
-I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
+I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](https://github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
 
 
 #### Language Goals ####
@@ -19,7 +19,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - This language aims to have as little dependencies against userspace libraries as possible.
 - Therefore, only a small subset of libc functions will be required. While the language has not been finalised, I envision only basic functions (printf, malloc/free, memset/memcpy/memmove) being required.
 - The builtin standard library (tentatively 'Foundation') will be provided as a source-level library (written in Flax!), making it much easier to build against a freestanding target.
-- Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/requimrar/mx) in Flax, and if possible parts of the kernel or drivers.
+- Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/zhiayang/mx) in Flax, and if possible parts of the kernel or drivers.
 
 
 --------------------------
