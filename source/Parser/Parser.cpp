@@ -671,6 +671,7 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
+			// todo: handle parsing nested generics -- << >> would parse as '<<' and '>>', not '<' '<' and '>' '>'.
 			Expr* inner = parseType(tokens);
 			iceAssert(inner->type.isLiteral);
 
