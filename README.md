@@ -31,7 +31,8 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Pointer manipulation (addrof/dereference, pointer arithmetic)
 - Operator overloading on structs
 - Function overloading (therefore name mangling)
-- Type inference
+- Basic type inference (C++ auto-esque, not Haskell-esque)
+- Namespaces
 - Nested types
 - Type-static functions
 - Deferred expressions (executes at end of current block scope)
@@ -41,7 +42,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 -------------------------
 
 #### Language Syntax ####
-- See https://flax-lang.github.io#syntax (out of date)
+- See https://flax-lang.github.io#syntax (somewhat out of date)
 
 ----------------------
 
