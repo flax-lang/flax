@@ -13,6 +13,7 @@ using namespace Codegen;
 
 #define MALLOC_FUNC		"malloc"
 #define FREE_FUNC		"free"
+#define MEMSET_FUNC		"memset"
 
 
 Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -81,9 +82,13 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	// call the initialiser, if there is one
 	if(allocType->isIntegerTy() || allocType->isPointerTy())
 	{
-		llvm::Value* defaultValue = 0;
-		defaultValue = llvm::Constant::getNullValue(allocType);
-		cgi->builder.CreateMemSet(allocatedmem, defaultValue, allocsize, typesize);
+		llvm::Value* cs = cgi->builder.CreatePointerBitCastOrAddrSpaceCast(allocatedmem, llvm::PointerType::getInt8PtrTy(cgi->getContext()));
+		llvm::Value* dval = llvm::Constant::getNullValue(cs->getType()->getPointerElementType());
+
+		// printf("%s, %s, %s, %llu\n", cgi->getReadableType(cs).c_str(), cgi->getReadableType(dval).c_str(),
+			// cgi->getReadableType(allocsize).c_str(), typesize);
+
+		cgi->builder.CreateMemSet(cs, dval, allocsize, typesize);
 	}
 	else
 	{
@@ -188,11 +193,9 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		if(!sp)
 			error(cgi, this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
 
-		sp->first.second = SymbolValidity::UseAfterDealloc;
-
 
 		// this will be an alloca instance (aka pointer to whatever type it actually was)
-		llvm::Value* varval = sp->first.first;
+		llvm::Value* varval = sp->first;
 
 		// therefore, create a Load to get the actual value
 		varval = cgi->builder.CreateLoad(varval);

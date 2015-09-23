@@ -9,24 +9,37 @@
 
 using namespace Ast;
 
-static void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
+namespace GenError
 {
-	assert(cgi->rawLines.size() > line - 1);
-	std::string ln = cgi->rawLines[line - 1];
-
-	fprintf(stderr, "%s\n", ln.c_str());
-
-	for(uint64_t i = 1; i < col - 1; i++)
+	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
 	{
-		if(ln[i - 1] == '\t')
-			fprintf(stderr, "\t");		// 4-wide tabs
+		assert(cgi->rawLines.size() > line - 1);
+		std::string ln = cgi->rawLines[line - 1];
 
-		else
-			fprintf(stderr, " ");
+		fprintf(stderr, "%s\n", ln.c_str());
+
+		for(uint64_t i = 1; i < col - 1; i++)
+		{
+			if(ln[i - 1] == '\t')
+				fprintf(stderr, "\t");		// 4-wide tabs
+
+			else
+				fprintf(stderr, " ");
+		}
+
+		fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 	}
 
-	fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+
+	void printContext(Codegen::CodegenInstance* cgi, Expr* e)
+	{
+		if(e->posinfo.line > 0)
+		{
+			printContext(cgi, e->posinfo.line, e->posinfo.col);
+		}
+	}
 }
+
 
 static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap)
 {
@@ -46,7 +59,7 @@ static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const 
 	fprintf(stderr, "%s%s%s: %s\n", colour, type, COLOUR_RESET, alloc);
 
 	if(cgi && line > 0 && col > 0)
-		printContext(cgi, line, col);
+		GenError::printContext(cgi, line, col);
 
 	fprintf(stderr, "\n");
 
