@@ -122,6 +122,38 @@ namespace Compiler
 	{
 		return noAutoGlobalConstructor;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static std::vector<Warning> enabledWarnings {
+		Warning::UnusedVariable,
+		Warning::UseBeforeAssign,
+		Warning::UseAfterFree
+	};
+	bool getWarningEnabled(Warning warning)
+	{
+		return std::find(enabledWarnings.begin(), enabledWarnings.end(), warning) != enabledWarnings.end();
+	}
+
+	static void setWarning(Warning warning, bool enabled)
+	{
+		auto it = std::find(enabledWarnings.begin(), enabledWarnings.end(), warning);
+		if(it == enabledWarnings.end() && enabled == true)
+			enabledWarnings.push_back(warning);
+
+		else if(it != enabledWarnings.end() && enabled == false)
+			enabledWarnings.erase(it);
+	}
 }
 
 int main(int argc, char* argv[])
@@ -189,7 +221,7 @@ int main(int argc, char* argv[])
 					std::string mm = parseQuotedString(argv, i);
 					if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
 					{
-						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'. '%s' is invalid.\n", mm.c_str());
+						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'.\n");
 						exit(-1);
 					}
 
@@ -256,6 +288,52 @@ int main(int argc, char* argv[])
 					Compiler::optLevel = argv[i][2] - '0';
 				}
 			}
+
+			// warnings.
+			else if(!strcmp(argv[i], "-Wno-unused-variable"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
+			}
+			else if(!strcmp(argv[i], "-Wunused-variable"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
+			}
+
+			else if(!strcmp(argv[i], "-Wno-unused"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
+			}
+			else if(!strcmp(argv[i], "-Wunused"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
+			}
+
+
+			else if(!strcmp(argv[i], "-Wno-var-state-checker"))
+			{
+				Compiler::setWarning(Compiler::Warning::UseAfterFree, false);
+				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, false);
+			}
+			else if(!strcmp(argv[i], "-Wvar-state-checker"))
+			{
+				Compiler::setWarning(Compiler::Warning::UseAfterFree, true);
+				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, true);
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			else if(argv[i][0] == '-')
 			{
 				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
