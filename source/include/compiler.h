@@ -39,8 +39,15 @@ namespace Compiler
 		NoWarnings				= 0x2,
 	};
 
-	bool getFlag(Flag f);
+	enum class Warning
+	{
+		UnusedVariable,
+		UseBeforeAssign,
+		UseAfterFree,
+	};
 
+	bool getFlag(Flag f);
+	bool getWarningEnabled(Warning warning);
 
 	#define COLOUR_RESET			"\033[0m"
 	#define COLOUR_BLACK			"\033[30m"			// Black

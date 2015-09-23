@@ -16,6 +16,7 @@ namespace Ast
 {
 	struct Root;
 	struct Expr;
+	struct VarDecl;
 }
 
 enum class VarState
@@ -34,7 +35,9 @@ struct VarDef
 	std::string name;
 	VarState state;
 
-	Ast::Expr* expr;
+	Ast::Expr* expr = 0;
+	Ast::VarDecl* decl = 0;
+	bool visited = false;
 };
 
 

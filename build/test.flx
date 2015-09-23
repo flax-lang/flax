@@ -111,16 +111,6 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("foo.bar = %d, %d\n", f.bar)
 
 
-	var al = alloc[4] Int
-	al[2] = 43
-
-	al += 1
-
-	printf("k = %d, al[1] = %d\n", k, al[1])
-
-	al -= 1
-	dealloc al
-
 	b.doBar()
 	f.doBar()
 

@@ -83,6 +83,7 @@ public ƒ doScopeTest(argv: String)
 	let foo: Something()
 
 	let mm = foo.foo().bar
+	mm
 
 	let gg = (4, 100.39)
 	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
