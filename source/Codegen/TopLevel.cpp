@@ -4,6 +4,7 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
+#include "../include/semantic.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -104,7 +105,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	else if(pass == 5)
 	{
 		// start semantic analysis before any typechecking needs to happen.
-		doSemanticAnalysis(cgi);
+		SemAnalysis::rewriteDotOperators(cgi);
 
 		// pass 5: everything else
 		for(Expr* e : expressions)
@@ -171,6 +172,14 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	codegenTopLevel(cgi, 5, this->topLevelExpressions, false, &this->topLevelNamespaces);
 	codegenTopLevel(cgi, 6, this->topLevelExpressions, false, &this->topLevelNamespaces);
 	codegenTopLevel(cgi, 7, this->topLevelExpressions, false, &this->topLevelNamespaces);
+
+
+	// run the after-codegen checkers.
+	SemAnalysis::analyseVarUsage(cgi);
+
+
+
+
 
 	return Result_t(0, 0);
 }

@@ -671,6 +671,7 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
+			// todo: handle parsing nested generics -- << >> would parse as '<<' and '>>', not '<' '<' and '>' '>'.
 			Expr* inner = parseType(tokens);
 			iceAssert(inner->type.isLiteral);
 
@@ -1271,7 +1272,7 @@ namespace Parser
 
 		// if we got here, we're a normal variable.
 		if(v->attribs & Attr_Override)
-			parserError("'override' can only be used with a variable inside a class declaration");
+			parserError("'override' can only be used with a var inside a class, tried to override var in struct");
 
 		return v;
 	}
