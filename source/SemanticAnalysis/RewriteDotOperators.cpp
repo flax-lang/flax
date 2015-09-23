@@ -2,8 +2,9 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "ast.h"
-#include "codegen.h"
+#include "../include/ast.h"
+#include "../include/codegen.h"
+#include "../include/semantic.h"
 
 #include <map>
 
@@ -162,20 +163,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 	}
 }
 
-static void rewriteDotOperators(Root* rootNode)
-{
-	// find all the dot operators (recursive)
-	for(Expr* e : rootNode->topLevelExpressions)
-		findDotOperator(e);
-
-	for(auto pair : gstate.visitedMAs)
-	{
-		rewriteDotOperator(pair.first);
-		gstate.nsstrs.clear();
-	}
-}
-
-
 
 
 
@@ -292,69 +279,32 @@ static void findDotOperator(Expr* expr)
 	}
 	else
 	{
-		// if(!expr)
-		// 	printf("(null)\n");
 
-		// else
-		// 	printf("unknown: (%s)\n", typeid(*expr).name());
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-namespace Codegen
+namespace SemAnalysis
 {
-	void doSemanticAnalysis(CodegenInstance* cgi)
+	void rewriteDotOperators(CodegenInstance* cgi)
 	{
 		gstate.cgi = cgi;
-		rewriteDotOperators(cgi->rootNode);
 
-		// reset for the next go-around??
+		Root* rootNode = cgi->rootNode;
+
+		// find all the dot operators (recursive)
+		for(Expr* e : rootNode->topLevelExpressions)
+			findDotOperator(e);
+
+		for(auto pair : gstate.visitedMAs)
+		{
+			rewriteDotOperator(pair.first);
+			gstate.nsstrs.clear();
+		}
+
+
 		gstate = GlobalState();
 	}
+
 }
 
 
