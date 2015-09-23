@@ -12,6 +12,11 @@ using namespace Codegen;
 
 llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 {
+	// todo: handle named tuples.
+	// would probably just be handled as implicit anon structs
+	// (randomly generated name or something), with appropriate code to handle
+	// assignment to and from.
+
 	if(this->ltypes.size() == 0)
 	{
 		iceAssert(!this->didCreateType);

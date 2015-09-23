@@ -247,10 +247,7 @@ namespace Codegen
 		SymbolPair_t* pair = getSymPair(user, name);
 		if(pair)
 		{
-			if(pair->first.second != SymbolValidity::Valid)
-				GenError::useAfterFree(this, user, name);
-
-			return pair->first.first;
+			return pair->first;
 		}
 
 		return nullptr;
@@ -272,9 +269,7 @@ namespace Codegen
 
 	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, VarDecl* vardecl)
 	{
-		SymbolValidity_t sv(ai, SymbolValidity::Valid);
-		SymbolPair_t sp(sv, vardecl);
-
+		SymbolPair_t sp(ai, vardecl);
 		this->getSymTab()[name] = sp;
 	}
 
@@ -1112,6 +1107,22 @@ namespace Codegen
 				params.push_back(fakefdmvd);
 
 				retType = "Int64";
+			}
+			else if(name == "memset")
+			{
+				VarDecl* fakefdmvd1 = new VarDecl(Parser::PosInfo(), "ptr", false);
+				fakefdmvd1->type = "Int8*";
+				params.push_back(fakefdmvd1);
+
+				VarDecl* fakefdmvd2 = new VarDecl(Parser::PosInfo(), "val", false);
+				fakefdmvd2->type = "Int8";
+				params.push_back(fakefdmvd2);
+
+				VarDecl* fakefdmvd3 = new VarDecl(Parser::PosInfo(), "size", false);
+				fakefdmvd3->type = "Uint64";
+				params.push_back(fakefdmvd3);
+
+				retType = "Int8*";
 			}
 			else
 			{

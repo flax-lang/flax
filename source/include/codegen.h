@@ -47,6 +47,11 @@ namespace GenError
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
+
+
+
+	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col);
+	void printContext(Codegen::CodegenInstance* cgi, Ast::Expr* e);
 }
 
 namespace Codegen
@@ -287,8 +292,6 @@ namespace Codegen
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
-
-	void doSemanticAnalysis(CodegenInstance* cgi);
 }
 
 
