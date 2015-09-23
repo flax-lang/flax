@@ -62,15 +62,15 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(!rhs)
 			error(user, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
 
-		SymbolValidity_t sv = this->getSymPair(user, v->name)->first;
-		if(sv.second != SymbolValidity::Valid)
-			GenError::useAfterFree(this, user, v->name);
 
+		if(SymbolPair_t* sp = this->getSymPair(user, v->name))
+		{
+			varptr = sp->first;
+		}
 		else
-			varptr = sv.first;
-
-		if(!varptr)
+		{
 			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
+		}
 
 
 

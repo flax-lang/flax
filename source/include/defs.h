@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#pragma once
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
@@ -50,15 +51,7 @@ namespace Codegen
 		Protocol,
 	};
 
-	enum class SymbolValidity
-	{
-		Valid,
-		UseAfterDealloc
-	};
-
-
-	typedef std::pair<llvm::Value*, SymbolValidity> SymbolValidity_t;
-	typedef std::pair<SymbolValidity_t, Ast::VarDecl*> SymbolPair_t;
+	typedef std::pair<llvm::Value*, Ast::VarDecl*> SymbolPair_t;
 	typedef std::map<std::string, SymbolPair_t> SymTab_t;
 
 	typedef std::pair<Ast::Expr*, TypeKind> TypedExpr_t;
