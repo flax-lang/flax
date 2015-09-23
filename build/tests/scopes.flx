@@ -46,6 +46,30 @@ enum OutsideEnum
 	case Four
 }
 
+
+struct Sheep
+{
+	var thing = 43
+	var foo: Something
+
+	static var afoo: Something
+}
+
+namespace n1
+{
+	namespace n2
+	{
+		var m: Sheep
+
+		var tup: (String, Int)
+		func nest() -> (String, Int)
+		{
+			printf("nested\n");
+			return ("TUPLE ONE", 591)
+		}
+	}
+}
+
 public ƒ doScopeTest(argv: String)
 {
 	var x = argv.data + 3
@@ -70,6 +94,22 @@ public ƒ doScopeTest(argv: String)
 	let x1: Int = OutsideEnum.Three
 	let x2: Int = Something.InsideEnum.Quadruple
 	printf("x1: %d, x2: %d\n", x1, x2)
+
+
+
+
+
+	n1.n2.m.foo.oor = 968
+
+	let t1 = n1.n2.m.foo.foo().bar
+	let t2 = n1.n2.nest().0.length
+
+	n1.n2.tup.0 = "HELLO, WORLD" + "!"
+	printf("tup: %s\n", n1.n2.tup.0)
+
+
+	printf("t1 = %d, t2 = %d\n", t1, t2)
+	printf("afoo: %d\n", Sheep.afoo.foo().bar)
 }
 
 

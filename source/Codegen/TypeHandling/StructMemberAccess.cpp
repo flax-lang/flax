@@ -586,7 +586,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			try
 			{
 				SymbolPair_t sp = ftree->vars.at(vr->name);
-				ptr = sp.first.first;
+				ptr = sp.first;
 			}
 			catch(std::exception)
 			{
