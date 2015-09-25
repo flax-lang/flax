@@ -63,6 +63,7 @@ namespace Codegen
 			// Eliminate Common SubExpressions.
 			functionPassManager.add(llvm::createGVNPass());
 
+
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
 			functionPassManager.add(llvm::createCFGSimplificationPass());
 
@@ -2344,17 +2345,3 @@ namespace Codegen
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
