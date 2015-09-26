@@ -433,7 +433,7 @@ namespace Ast
 	};
 
 	// fuck
-	struct Struct;
+	struct StructBase;
 	struct OpOverload : Expr
 	{
 		~OpOverload();
@@ -442,7 +442,7 @@ namespace Ast
 
 		Func* func = 0;
 		ArithmeticOp op;
-		Struct* str = 0;
+		StructBase* str = 0;
 	};
 
 	struct StructBase : Expr
@@ -452,40 +452,19 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override = 0;
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
-		bool packed = false;
 		bool didCreateType = false;
-		std::deque<llvm::Function*> initFuncs;
-
-		std::pair<StructBase*, llvm::StructType*> superclass;
 
 		std::string name;
 		std::string mangledName;
 
-		std::deque<std::string> scope;
-		std::deque<std::pair<Expr*, int>> typeList;
-		std::map<std::string, int> nameMap;
 		std::deque<VarDecl*> members;
-		std::deque<ComputedProperty*> cprops;
-		std::deque<Func*> funcs;
-		std::deque<llvm::Function*> lfuncs;
-		std::deque<std::string> protocolstrs;
-
+		std::deque<std::string> scope;
+		std::map<std::string, int> nameMap;
 		std::deque<OpOverload*> opOverloads;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
-		std::deque<std::pair<StructBase*, llvm::Type*>> nestedTypes;
 	};
 
-	// extends struct, because it's basically a struct, except we need to apply it to an existing struct
-	struct Extension : StructBase
-	{
-		~Extension();
-		Extension(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
-		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
-
-		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
-	};
-
+	struct Extension;
 	struct Class : StructBase
 	{
 		~Class();
@@ -493,8 +472,29 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
+		std::deque<Func*> funcs;
 		std::deque<Extension*> extensions;
+		std::deque<llvm::Function*> lfuncs;
+		std::deque<ComputedProperty*> cprops;
+		std::deque<std::string> protocolstrs;
+		std::deque<llvm::Function*> initFuncs;
+		std::pair<Class*, llvm::StructType*> superclass;
+		std::deque<std::pair<Class*, llvm::Type*>> nestedTypes;
 	};
+
+	// extends class, because it's basically a class, except we need to apply it to an existing class
+	struct Extension : Class
+	{
+		~Extension();
+		Extension(Parser::PosInfo pos, std::string name) : Class(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
+
+		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
+	};
+
+
+
 
 	struct Struct : StructBase
 	{
@@ -503,14 +503,15 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		// std::deque<Extension*> extensions;
+		bool packed = false;
+		llvm::Function* initFunc;
 		std::deque<Struct*> imports;
 	};
 
-	struct Enumeration : StructBase
+	struct Enumeration : Class
 	{
 		~Enumeration();
-		Enumeration(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		Enumeration(Parser::PosInfo pos, std::string name) : Class(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 

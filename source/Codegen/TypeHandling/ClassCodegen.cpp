@@ -351,21 +351,21 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		}
 
 
-		StructBase* sb = dynamic_cast<StructBase*>(type->second.first);
-		assert(sb);
+		Class* supcls = dynamic_cast<Class*>(type->second.first);
+		assert(supcls);
 
 		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
 		// by the time we see it.
-		sb->createType(cgi);
+		supcls->createType(cgi);
 
 
 		// if it's a struct, copy its members into ourselves.
 		if(type->second.second == TypeKind::Class)
 		{
-			this->superclass = { sb, llvm::cast<llvm::StructType>(type->first) };
+			this->superclass = { supcls, llvm::cast<llvm::StructType>(type->first) };
 
 			// normal members
-			for(auto mem : sb->members)
+			for(auto mem : supcls->members)
 			{
 				auto pred = [mem](VarDecl* v) -> bool {
 
@@ -382,14 +382,14 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 			}
 
 			size_t nms = this->nameMap.size();
-			for(auto nm : sb->nameMap)
+			for(auto nm : supcls->nameMap)
 			{
 				this->nameMap[nm.first] = nms;
 				nms++;
 			}
 
 			// functions
-			for(auto fn : sb->funcs)
+			for(auto fn : supcls->funcs)
 			{
 				auto pred = [fn, cgi](Func* f) -> bool {
 
@@ -414,7 +414,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 					if(!(f->decl->attribs & Attr_Override))
 					{
 						error(cgi, f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
-							cgi->printAst(f->decl).c_str(), sb->name.c_str());
+							cgi->printAst(f->decl).c_str(), supcls->name.c_str());
 					}
 					else
 					{
@@ -432,7 +432,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 
 
 			// computed properties
-			for(auto cp : sb->cprops)
+			for(auto cp : supcls->cprops)
 			{
 				auto pred = [cp](ComputedProperty* cpr) -> bool {
 
@@ -450,7 +450,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 					if(!(ours->attribs & Attr_Override))
 					{
 						error(cgi, ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
-							ours->name.c_str(), sb->name.c_str());
+							ours->name.c_str(), supcls->name.c_str());
 					}
 					else
 					{
@@ -540,7 +540,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 
 
 	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
-	str->setBody(vec, this->packed);
+	str->setBody(vec);
 
 	this->didCreateType = true;
 

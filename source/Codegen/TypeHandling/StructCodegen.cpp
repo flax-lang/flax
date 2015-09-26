@@ -38,19 +38,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	}
 
 
-
-
-
-
-	// see if we have nested types
-	for(auto nested : this->nestedTypes)
-	{
-		cgi->pushNestedTypeScope(this);
-		nested.first->codegen(cgi);
-		cgi->popNestedTypeScope();
-	}
-
-
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
@@ -91,8 +78,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	cgi->builder.CreateRetVoid();
 	llvm::verifyFunction(*defaultInitFunc);
 
-	this->initFuncs.push_back(defaultInitFunc);
-
+	this->initFunc = defaultInitFunc;
 
 	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(this, str));
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
@@ -118,179 +104,16 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 
 
 
-
-
-
-	// see if we have nested types
-	for(auto nested : this->nestedTypes)
-	{
-		cgi->pushNestedTypeScope(this);
-		nested.second = nested.first->createType(cgi);
-		cgi->popNestedTypeScope();
-	}
-
-
-
-
 	// check our inheritances??
-	bool alreadyHaveSuperclass = false;
-	for(auto super : this->protocolstrs)
-	{
-		TypePair_t* type = cgi->getType(super);
-		if(type == 0)
-			error(cgi, this, "Type %s does not exist", super.c_str());
-
-		if(type->second.second == TypeKind::Struct)
-		{
-			if(alreadyHaveSuperclass)
-			{
-				error(cgi, this, "Multiple inheritance is not supported, only one superclass"
-					" can be inherited from. Consider using protocols instead");
-			}
-
-			alreadyHaveSuperclass = true;
-		}
-		else if(type->second.second != TypeKind::Protocol)
-		{
-			error(cgi, this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
-		}
-
-
-		StructBase* sb = dynamic_cast<StructBase*>(type->second.first);
-		assert(sb);
-
-		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
-		// by the time we see it.
-		sb->createType(cgi);
-
-
-		// if it's a struct, copy its members into ourselves.
-		if(type->second.second == TypeKind::Struct)
-		{
-			this->superclass = { sb, llvm::cast<llvm::StructType>(type->first) };
-
-			// normal members
-			for(auto mem : sb->members)
-			{
-				auto pred = [mem](VarDecl* v) -> bool {
-
-					return v->name == mem->name;
-				};
-
-				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
-				if(it != this->members.end())
-				{
-					error(cgi, *it, "Struct fields cannot be overriden, only computed properties can");
-				}
-
-				this->members.push_back(mem);
-			}
-
-			size_t nms = this->nameMap.size();
-			for(auto nm : sb->nameMap)
-			{
-				this->nameMap[nm.first] = nms;
-				nms++;
-			}
-
-			// functions
-			for(auto fn : sb->funcs)
-			{
-				auto pred = [fn, cgi](Func* f) -> bool {
-
-					if(fn->decl->params.size() != f->decl->params.size())
-						return false;
-
-					for(size_t i = 0; i < fn->decl->params.size(); i++)
-					{
-						if(cgi->getLlvmType(fn->decl->params[i]) != cgi->getLlvmType(f->decl->params[i]))
-							return false;
-					}
-
-					return fn->decl->name == f->decl->name;
-				};
-
-
-				auto it = std::find_if(this->funcs.begin(), this->funcs.end(), pred);
-				if(it != this->funcs.end())
-				{
-					// check for 'override'
-					Func* f = *it;
-					if(!(f->decl->attribs & Attr_Override))
-					{
-						error(cgi, f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
-							cgi->printAst(f->decl).c_str(), sb->name.c_str());
-					}
-					else
-					{
-						// don't add the superclass one.
-						continue;
-					}
-				}
-
-				this->funcs.push_back((Func*) cgi->cloneAST(fn));
-			}
-
-
-
-
-
-
-			// computed properties
-			for(auto cp : sb->cprops)
-			{
-				auto pred = [cp](ComputedProperty* cpr) -> bool {
-
-					return cp->name == cpr->name;
-				};
-
-				auto it = std::find_if(this->cprops.begin(), this->cprops.end(), pred);
-				if(it != this->cprops.end())
-				{
-					// this thing exists.
-					// check if ours has an override
-					ComputedProperty* ours = *it;
-					assert(ours->name == cp->name);
-
-					if(!(ours->attribs & Attr_Override))
-					{
-						error(cgi, ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
-							ours->name.c_str(), sb->name.c_str());
-					}
-					else
-					{
-						// we have 'override'.
-						// disable this property, don't add it.
-						continue;
-					}
-				}
-
-				this->cprops.push_back((ComputedProperty*) cgi->cloneAST(cp));
-			}
-		}
-		else
-		{
-			// protcols not supported yet.
-			error(cgi, this, "enotsup");
-		}
-	}
-
-
-
-
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getNestedTypeList(), false);
+	// this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getNestedTypeList(), false);
 
 
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
-
-
-
-
 
 
 
@@ -302,20 +125,6 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 	for(auto p : this->opOverloads)
 		p->codegen(cgi);
 
-	for(Func* func : this->funcs)
-	{
-		// only override if we don't have one.
-		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
-			func->decl->attribs |= Attr_VisPublic;
-
-		func->decl->parentClass = this;
-		std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
-		if(this->nameMap.find(mangled) != this->nameMap.end())
-		{
-			error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
-		}
-	}
-
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
@@ -325,7 +134,6 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 			error(cgi, this, "Cannot have non-pointer member of type self");
 		}
 
-		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
 		if(!var->isStatic)
 		{
 			int i = this->nameMap[var->name];

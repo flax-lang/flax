@@ -236,24 +236,24 @@ static void findDotOperator(Expr* expr)
 		findDotOperator(ari->arr);
 		findDotOperator(ari->index);
 	}
-	else if(StructBase* sb = dynamic_cast<StructBase*>(expr))
+	else if(Class* cls = dynamic_cast<Class*>(expr))
 	{
-		for(auto mem : sb->members)
+		for(auto mem : cls->members)
 		{
 			if(mem->initVal)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : sb->opOverloads)
+		for(auto op : cls->opOverloads)
 			findDotOperator(op->func);
 
-		for(auto fn : sb->funcs)
+		for(auto fn : cls->funcs)
 			findDotOperator(fn);
 
-		for(auto s : sb->nestedTypes)
+		for(auto s : cls->nestedTypes)
 			findDotOperator(s.first);
 
-		for(auto c : sb->cprops)
+		for(auto c : cls->cprops)
 		{
 			if(c->getter)
 				findDotOperator(c->getter);
@@ -261,6 +261,17 @@ static void findDotOperator(Expr* expr)
 			if(c->setter)
 				findDotOperator(c->setter);
 		}
+	}
+	else if(Struct* str = dynamic_cast<Struct*>(expr))
+	{
+		for(auto mem : str->members)
+		{
+			if(mem->initVal)
+				findDotOperator(mem->initVal);
+		}
+
+		for(auto op : str->opOverloads)
+			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 	{

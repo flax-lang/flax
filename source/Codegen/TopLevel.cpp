@@ -52,13 +52,11 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
-			Class* cls				= dynamic_cast<Class*>(e);
-			Enumeration* enr		= dynamic_cast<Enumeration*>(e);
+			Class* cls				= dynamic_cast<Class*>(e);	// enums are handled, since enum : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->createType(cgi);
 			if(cls)					cls->createType(cgi);
-			if(enr)					enr->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
@@ -113,15 +111,13 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
-			Class* cls				= dynamic_cast<Class*>(e);
-			Enumeration* enr		= dynamic_cast<Enumeration*>(e);
+			Class* cls				= dynamic_cast<Class*>(e);		// again, enums are handled since enum : class
 			Extension* ext			= dynamic_cast<Extension*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(cls)			cls->codegen(cgi);
-			else if(enr)			enr->codegen(cgi);
 			else if(ext)			ext->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
@@ -180,9 +176,6 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 	// run the after-codegen checkers.
 	SemAnalysis::analyseVarUsage(cgi);
-
-
-
 
 
 	return Result_t(0, 0);
