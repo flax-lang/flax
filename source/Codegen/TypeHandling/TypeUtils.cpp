@@ -319,16 +319,10 @@ namespace Codegen
 							if(mem->name == memberVr->name)
 								return this->getLlvmType(mem);
 						}
-						for(ComputedProperty* c : str->cprops)
-						{
-							if(c->name == memberVr->name)
-								return this->getLlvmTypeFromString(c, c->type, allowFail);
-						}
 					}
 					else if(memberFc)
 					{
 						error(this, memberFc, "Tried to call method on struct");
-						// return this->getLlvmType(this->getFunctionFromMemberFuncCall(str, memberFc));
 					}
 				}
 				else if(pair->second.second == TypeKind::Enum)
@@ -505,19 +499,32 @@ namespace Codegen
 		// check if we have a default constructor.
 		llvm::Function* candidate = 0;
 
-		for(llvm::Function* fn : sb->initFuncs)
+
+		if(Class* cls = dynamic_cast<Class*>(sb))
 		{
-			if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+			for(llvm::Function* fn : cls->initFuncs)
 			{
-				candidate = fn;
-				break;
+				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+				{
+					candidate = fn;
+					break;
+				}
 			}
+
+			if(candidate == 0)
+				error(this, user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
+
+			return candidate;
 		}
-
-		if(candidate == 0)
-			error(this, user, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
-
-		return candidate;
+		else if(Struct* str = dynamic_cast<Struct*>(sb))
+		{
+			iceAssert(str->initFunc);
+			return str->initFunc;
+		}
+		else
+		{
+			error(this, user, "Type '%s' cannot have initialisers", sb->name.c_str());
+		}
 	}
 
 

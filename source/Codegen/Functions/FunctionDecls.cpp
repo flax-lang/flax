@@ -64,11 +64,13 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	else
 	{
 		func = llvm::Function::Create(ft, linkageType, fd->mangledName, this->module);
-		this->addFunctionToScope(FuncPair_t(func, fd));
+
+		if(fd->attribs & Attr_VisPublic)
+			this->addPublicFunc({ func, fd });
+
+		this->addFunctionToScope({ func, fd });
 	}
 
-	if(fd->attribs & Attr_VisPublic)
-		this->addPublicFunc({ func, fd });
 
 	return Result_t(func, 0);
 }

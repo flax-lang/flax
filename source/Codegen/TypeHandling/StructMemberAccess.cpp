@@ -491,7 +491,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	std::deque<std::string> list;
 	std::deque<std::string> nsstrs;
 
-	StructBase* curType = 0;
+	Class* curType = 0;
 	TypePair_t* curTPair = 0;
 
 	MemberAccess* cur = ma;
@@ -546,7 +546,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			if(TypePair_t* tp = this->getType(front))
 			{
 				iceAssert(tp->second.first);
-				curType = dynamic_cast<StructBase*>(tp->second.first);
+				curType = dynamic_cast<Class*>(tp->second.first);
 				curTPair = tp;
 				iceAssert(curType);
 
@@ -590,26 +590,25 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	// what is the right side?
 	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
 	{
-		std::deque<FuncPair_t> flist;
+		Resolved_t res;
 		if(curType == 0)
 		{
-			flist = ftree->funcs;
+			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
 		}
 		else
 		{
-			if(curType->funcs.size() != curType->lfuncs.size())
-				error(this, ma, "wtf");
-
 			iceAssert(curType->funcs.size() == curType->lfuncs.size());
 
+			std::deque<FuncPair_t> flist;
 			for(size_t i = 0; i < curType->funcs.size(); i++)
 			{
 				if(curType->funcs[i]->decl->name == fc->name)
 					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
 			}
+
+			res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
 		}
 
-		Resolved_t res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
 		if(!res.resolved)
 			GenError::noFunctionTakingParams(this, fc, ftree->nsName, fc->name, fc->params);
 
@@ -646,7 +645,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 					ftree->nsName.c_str(), vr->name.c_str());
 			}
 
-
 			return
 			{
 				ptr->getType()->getPointerElementType(),
@@ -656,7 +654,13 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		else
 		{
 			// check static members
-			if(Class* cls = dynamic_cast<Class*>(curType))
+			// note: check for enum comes first since enum : class, so it's more specific.
+			if(dynamic_cast<Enumeration*>(curType))
+			{
+				Result_t res = this->getEnumerationCaseValue(vr, curTPair, vr->name, actual ? true : false);
+				return { res.result.first->getType(), res };
+			}
+			else if(Class* cls = dynamic_cast<Class*>(curType))
 			{
 				for(auto v : cls->members)
 				{
@@ -667,13 +671,8 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 					}
 				}
 			}
-			else if(dynamic_cast<Enumeration*>(curType))
-			{
-				Result_t res = this->getEnumerationCaseValue(vr, curTPair, vr->name, actual ? true : false);
-				return { res.result.first->getType(), res };
-			}
 
-			error(this, vr, "struct %s does not contain a static variable %s", curType->name.c_str(), vr->name.c_str());
+			error(this, vr, "Class '%s' does not contain a static variable or class named '%s'", curType->name.c_str(), vr->name.c_str());
 		}
 	}
 	else
@@ -748,12 +747,16 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 {
 	Expr* found = 0;
-	for(auto c : str->cprops)
+
+	if(Class* cls = dynamic_cast<Class*>(str))
 	{
-		if(c->name == var->name)
+		for(auto c : cls->cprops)
 		{
-			found = c;
-			break;
+			if(c->name == var->name)
+			{
+				found = c;
+				break;
+			}
 		}
 	}
 

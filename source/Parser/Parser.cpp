@@ -1738,8 +1738,11 @@ namespace Parser
 		return 0;
 	}
 
-	static StructBase* parseStructBody(TokenList& tokens)
+	Struct* parseStruct(TokenList& tokens)
 	{
+		Token tok_str = eat(tokens);
+		iceAssert(tok_str.type == TType::Struct);
+
 		isParsingStruct = true;
 		Token tok_id = eat(tokens);
 
@@ -1758,6 +1761,71 @@ namespace Parser
 		// check for a colon.
 		skipNewline(tokens);
 		if(tokens.front().type == TType::Colon)
+			parserError("Structs cannot inherit from anything");
+
+
+		// parse a block.
+		BracedBlock* body = parseBracedBlock(tokens);
+		int i = 0;
+		for(Expr* stmt : body->statements)
+		{
+			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			{
+				if(str->nameMap.find(var->name) != str->nameMap.end())
+					parserError("Duplicate member '%s'", var->name.c_str());
+
+				str->members.push_back(var);
+
+				// don't take up space in the struct if it's static.
+				if(!var->isStatic)
+				{
+					str->nameMap[var->name] = i;
+					i++;
+				}
+				else
+				{
+				}
+			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				oo->str = str;
+				str->opOverloads.push_back(oo);
+			}
+			else
+			{
+				parserError("Found invalid expression type %s", typeid(*stmt).name());
+			}
+		}
+
+		isParsingStruct = false;
+		delete body;
+		return str;
+	}
+
+
+
+
+
+	Class* parseClass(TokenList& tokens)
+	{
+		Token tok_cls = eat(tokens);
+		iceAssert(tok_cls.type == TType::Class || tok_cls.type == TType::Extension);
+
+		isParsingStruct = true;
+		Token tok_id = eat(tokens);
+
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier (got %s)", tok_id.text.c_str());
+
+		std::string id = tok_id.text;
+		Class* cls = CreateAST(Class, tok_id, id);
+
+		uint32_t attr = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		cls->attribs = attr;
+
+		// check for a colon.
+		skipNewline(tokens);
+		if(tokens.front().type == TType::Colon)
 		{
 			eat(tokens);
 			// parse an identifier.
@@ -1767,13 +1835,13 @@ namespace Parser
 				if(id.type != TType::Identifier)
 					parserError("Expected identifier after ':' in struct or class declaration");
 
-				if(std::find(str->protocolstrs.begin(), str->protocolstrs.end(), id.text) != str->protocolstrs.end())
+				if(std::find(cls->protocolstrs.begin(), cls->protocolstrs.end(), id.text) != cls->protocolstrs.end())
 					parserError("Duplicate member %s in inheritance list", id.text.c_str());
 
-				if(str->name == id.text)
+				if(cls->name == id.text)
 					parserError("Self inheritance is illegal");
 
-				str->protocolstrs.push_back(id.text);
+				cls->protocolstrs.push_back(id.text);
 				skipNewline(tokens);
 
 				if(tokens.front().type != TType::Comma)
@@ -1795,47 +1863,46 @@ namespace Parser
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
 			{
-				for(ComputedProperty* c : str->cprops)
+				for(ComputedProperty* c : cls->cprops)
 				{
 					if(c->name == cprop->name)
 						parserError("Duplicate member '%s'", cprop->name.c_str());
 				}
 
-				str->cprops.push_back(cprop);
+				cls->cprops.push_back(cprop);
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(str->nameMap.find(var->name) != str->nameMap.end())
+				if(cls->nameMap.find(var->name) != cls->nameMap.end())
 					parserError("Duplicate member '%s'", var->name.c_str());
 
-				str->members.push_back(var);
+				cls->members.push_back(var);
 
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					str->nameMap[var->name] = i;
+					cls->nameMap[var->name] = i;
 					i++;
-				}
-				else
-				{
 				}
 			}
 			else if(Func* func = dynamic_cast<Func*>(stmt))
 			{
-				str->funcs.push_back(func);
-				str->typeList.push_back(std::pair<Expr*, int>(func, i));
+				cls->funcs.push_back(func);
 			}
 			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
-				oo->str = str;
-				str->opOverloads.push_back(oo);
+				oo->str = cls;
+				cls->opOverloads.push_back(oo);
 
-				str->funcs.push_back(oo->func);
-				str->typeList.push_back(std::pair<Expr*, int>(oo, i));
+				cls->funcs.push_back(oo->func);
 			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
-				str->nestedTypes.push_back({ sb, 0 });
+				if(Class* nested = dynamic_cast<Class*>(sb))
+					cls->nestedTypes.push_back({ nested, 0 });
+
+				else
+					parserError("Only class definitions can be nested within other types");
 			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
@@ -1849,54 +1916,6 @@ namespace Parser
 
 		isParsingStruct = false;
 		delete body;
-		return str;
-	}
-
-
-
-
-	Struct* parseStruct(TokenList& tokens)
-	{
-		Token tok_struct = eat(tokens);
-		iceAssert(tok_struct.type == TType::Struct);
-
-		Struct* str = CreateAST(Struct, tok_struct, "");
-		StructBase* sb = parseStructBody(tokens);
-
-		str->attribs		= sb->attribs;
-		str->funcs			= sb->funcs;
-		str->opOverloads	= sb->opOverloads;
-		str->typeList		= sb->typeList;
-		str->members		= sb->members;
-		str->nameMap		= sb->nameMap;
-		str->name			= sb->name;
-		str->nestedTypes	= sb->nestedTypes;
-		str->cprops			= sb->cprops;
-		str->protocolstrs	= sb->protocolstrs;
-
-		delete sb;
-		return str;
-	}
-
-	Class* parseClass(TokenList& tokens)
-	{
-		Token tok_class = eat(tokens);
-		iceAssert(tok_class.type == TType::Class);
-
-		Class* cls = CreateAST(Class, tok_class, "");
-		StructBase* sb = parseStructBody(tokens);
-
-		cls->attribs		= sb->attribs;
-		cls->funcs			= sb->funcs;
-		cls->opOverloads	= sb->opOverloads;
-		cls->typeList		= sb->typeList;
-		cls->members		= sb->members;
-		cls->nameMap		= sb->nameMap;
-		cls->name			= sb->name;
-		cls->nestedTypes	= sb->nestedTypes;
-		cls->cprops			= sb->cprops;
-		cls->protocolstrs	= sb->protocolstrs;
-
 		return cls;
 	}
 
@@ -1906,21 +1925,26 @@ namespace Parser
 		iceAssert(tok_ext.type == TType::Extension);
 
 		Extension* ext = CreateAST(Extension, tok_ext, "");
-		StructBase* str = parseStructBody(tokens);
+		Class* cls = parseClass(tokens);
 
-		ext->attribs		= str->attribs;
-		ext->funcs			= str->funcs;
-		ext->opOverloads	= str->opOverloads;
-		ext->typeList		= str->typeList;
-		ext->members		= str->members;
-		ext->nameMap		= str->nameMap;
-		ext->name			= str->name;
-		ext->cprops			= str->cprops;
-		ext->protocolstrs	= str->protocolstrs;
+		ext->attribs		= cls->attribs;
+		ext->funcs			= cls->funcs;
+		ext->opOverloads	= cls->opOverloads;
+		ext->members		= cls->members;
+		ext->nameMap		= cls->nameMap;
+		ext->name			= cls->name;
+		ext->cprops			= cls->cprops;
+		ext->protocolstrs	= cls->protocolstrs;
 
-		delete str;
+		delete cls;
 		return ext;
 	}
+
+
+
+
+
+
 
 	Ast::Enumeration* parseEnum(TokenList& tokens)
 	{
