@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Math.Vector
+import Math.Vector
 
 ﬁ ƒ sqrt(x: Float64) -> Float64
 ﬁ ƒ sqrtf(x: Float32) -> Float32

@@ -1957,7 +1957,7 @@ namespace Codegen
 			Struct* str = dynamic_cast<Struct*>(pair->second.first);
 			iceAssert(str);
 
-			return str->initFunc;
+			return this->module->getFunction(str->initFunc->getName());
 		}
 		else if(pair->second.second == TypeKind::TypeAlias)
 		{
