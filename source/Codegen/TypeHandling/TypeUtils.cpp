@@ -278,6 +278,32 @@ namespace Codegen
 
 					return ttype->getStructElementType(n->ival);
 				}
+				else if(pair->second.second == TypeKind::Class)
+				{
+					Class* cls = dynamic_cast<Class*>(pair->second.first);
+					iceAssert(cls);
+
+					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
+					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
+
+					if(memberVr)
+					{
+						for(VarDecl* mem : cls->members)
+						{
+							if(mem->name == memberVr->name)
+								return this->getLlvmType(mem);
+						}
+						for(ComputedProperty* c : cls->cprops)
+						{
+							if(c->name == memberVr->name)
+								return this->getLlvmTypeFromString(c, c->type, allowFail);
+						}
+					}
+					else if(memberFc)
+					{
+						return this->getLlvmType(this->getFunctionFromMemberFuncCall(cls, memberFc));
+					}
+				}
 				else if(pair->second.second == TypeKind::Struct)
 				{
 					Struct* str = dynamic_cast<Struct*>(pair->second.first);
@@ -301,7 +327,8 @@ namespace Codegen
 					}
 					else if(memberFc)
 					{
-						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
+						error(this, memberFc, "Tried to call method on struct");
+						// return this->getLlvmType(this->getFunctionFromMemberFuncCall(str, memberFc));
 					}
 				}
 				else if(pair->second.second == TypeKind::Enum)

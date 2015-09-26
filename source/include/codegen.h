@@ -48,11 +48,28 @@ namespace GenError
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
-
-
+	void printContext(std::vector<std::string> lines, uint64_t line, uint64_t col);
 	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col);
 	void printContext(Codegen::CodegenInstance* cgi, Ast::Expr* e);
 }
+
+void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, const char* file, const char* msg, const char* type,
+	bool doExit, va_list ap);
+
+void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
+void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
+void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
+
+void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+
+
+#define __nothing
+#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
+
+
+
 
 namespace Codegen
 {
@@ -213,13 +230,13 @@ namespace Codegen
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
 
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
+		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::Expr*> args);
+		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
+		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
 			bool isStatic = false);
 
-		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
-		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
+		std::string mangleMemberName(Ast::Class* s, std::string orig);
+		std::string mangleMemberName(Ast::Class* s, Ast::FuncCall* fc);
 
 		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleFunctionName(std::string base, std::deque<llvm::Type*> args);
@@ -243,10 +260,10 @@ namespace Codegen
 
 		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		Ast::Func* getFunctionFromStructFuncCall(Ast::StructBase* str, Ast::FuncCall* fc);
+		Ast::Func* getFunctionFromMemberFuncCall(Ast::Class* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 
-		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::StructBase* str, std::string name);
+		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::Class* str, std::string name);
 
 
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
@@ -293,19 +310,6 @@ namespace Codegen
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);
 }
-
-
-void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
-
-void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-
-
-#define __nothing
-#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
 
 
 

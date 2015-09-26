@@ -5,7 +5,7 @@
 import Unicode
 import LibCInterface
 
-public struct String
+public class String
 {
 	var data: Int8* = 0
 	var allocated: Uint64 = 0

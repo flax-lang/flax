@@ -11,10 +11,10 @@ using namespace Ast;
 
 namespace GenError
 {
-	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
+	void printContext(std::vector<std::string> lines, uint64_t line, uint64_t col)
 	{
-		assert(cgi->rawLines.size() > line - 1);
-		std::string ln = cgi->rawLines[line - 1];
+		assert(lines.size() > line - 1);
+		std::string ln = lines[line - 1];
 
 		fprintf(stderr, "%s\n", ln.c_str());
 
@@ -30,6 +30,11 @@ namespace GenError
 		fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 	}
 
+	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
+	{
+		printContext(cgi->rawLines, line, col);
+	}
+
 
 	void printContext(Codegen::CodegenInstance* cgi, Expr* e)
 	{
@@ -41,8 +46,13 @@ namespace GenError
 }
 
 
-static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, const char* type, bool ex, va_list ap)
+void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, const char* file, const char* msg,
+	const char* type, bool doExit, va_list ap)
 {
+	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
+		return;
+
+
 	char* alloc = nullptr;
 	vasprintf(&alloc, msg, ap);
 
@@ -50,26 +60,27 @@ static void __error_gen(Codegen::CodegenInstance* cgi, Expr* relevantast, const 
 	if(strcmp(type, "Warning") == 0)
 		colour = COLOUR_MAGENTA_BOLD;
 
-	uint64_t line = relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col = relevantast ? relevantast->posinfo.col : 0;
-
-	if(line > 0 && col > 0 && relevantast)
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, relevantast->posinfo.file.c_str(), line, col);
+	if(line > 0 && col > 0)
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, file, line, col);
 
 	fprintf(stderr, "%s%s%s: %s\n", colour, type, COLOUR_RESET, alloc);
 
-	if(cgi && line > 0 && col > 0)
-		GenError::printContext(cgi, line, col);
+	if(line > 0 && col > 0)
+		GenError::printContext(lines, line, col);
 
 	fprintf(stderr, "\n");
 
 	va_end(ap);
 	free(alloc);
 
-	if(ex)
+	if(doExit)
 	{
 		fprintf(stderr, "There were errors, compilation cannot continue\n");
 		abort();
+	}
+	else if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
+	{
+		error("Treating warning as error because -Werror was passed");
 	}
 }
 
@@ -78,7 +89,11 @@ void error(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ..
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(cgi, relevantast, msg, "Error", true, ap);
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -88,7 +103,11 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(nullptr, relevantast, msg, "Error", true, ap);
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen(std::vector<std::string>(), line, col, file, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -97,7 +116,7 @@ void error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(nullptr, nullptr, msg, "Error", true, ap);
+	__error_gen({ }, 0, 0, "", msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -107,35 +126,35 @@ void warn(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(nullptr, nullptr, msg, "Warning", false, ap);
+	__error_gen({ }, 0, 0, "", msg, "Warning", false, ap);
 	va_end(ap);
-
-	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-		error("Treating warning as error because -Werror was passed");
 }
 
 void warn(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(nullptr, relevantast, msg, "Warning", false, ap);
+
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen({ }, line, col, file, msg, "Warning", false, ap);
 	va_end(ap);
-
-
-	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-		error("Treating warning as error because -Werror was passed");
 }
 
 void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(cgi, relevantast, msg, "Warning", false, ap);
+
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Warning", false, ap);
+
 	va_end(ap);
-
-
-	if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-		error("Treating warning as error because -Werror was passed");
 }
 
 
