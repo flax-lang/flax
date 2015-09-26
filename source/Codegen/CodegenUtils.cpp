@@ -134,6 +134,7 @@ namespace Codegen
 			{
 				llvm::StructType* st = str;
 
+				// enum comes first -- enum : class.
 				if(dynamic_cast<Enumeration*>(pair.first))
 					cgi->addNewType(st, pair.first, TypeKind::Enum);
 
@@ -372,10 +373,10 @@ namespace Codegen
 		// find nested types.
 		if(this->nestedTypeStack.size() > 0)
 		{
-			StructBase* sb = this->nestedTypeStack.back();
+			Class* cls = this->nestedTypeStack.back();
 
 			// only allow one level of implicit use
-			for(auto n : sb->nestedTypes)
+			for(auto n : cls->nestedTypes)
 			{
 				if(n.first->name == name)
 					return this->getType(n.second);
@@ -452,7 +453,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::pushNestedTypeScope(StructBase* nest)
+	void CodegenInstance::pushNestedTypeScope(Class* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
 	}
@@ -528,6 +529,9 @@ namespace Codegen
 	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
 		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, &this->rootNode->publicFuncTree);
+		// for(auto ns : this->namespaceStack)
+		// 	printf("(%s) <%s>\n", ns.c_str(), this->module->getName().str().c_str());
+
 		iceAssert(cur);
 
 		cur->funcs.push_back(fp);
@@ -633,6 +637,9 @@ namespace Codegen
 
 			FunctionTree* cur = this->getCurrentFuncTree();
 			cur->subs.push_back(ft);
+
+			FunctionTree* pub = this->getCurrentFuncTree(0, &this->rootNode->publicFuncTree);
+			pub->subs.push_back(ft);
 		}
 
 		this->namespaceStack.push_back(namespc);
@@ -646,16 +653,8 @@ namespace Codegen
 
 	void CodegenInstance::addFunctionToScope(FuncPair_t func)
 	{
-		// printf("** adding func %s\n", (func.second ? func.second->name : func.first->getName().str()).c_str());
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
-
-		// printf("** added func %s to scope %s (%p)\n", (func.second ? func.second->name : func.first->getName().str()).c_str(),
-		// 	cur->nsName.c_str(), cur);
-		// for(auto ns : this->namespaceStack)
-		// 	printf("%s::", ns.c_str());
-
-		// printf("\n");
 
 		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
 			cur->funcs.push_back(func);
@@ -722,7 +721,10 @@ namespace Codegen
 						if((f.second ? f.second->name : f.first->getName().str()) == basename)
 						{
 							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+							{
+								// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 								candidates.push_back(f);
+							}
 						}
 					}
 				}
@@ -764,7 +766,10 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 							candidates.push_back(f);
+						}
 					}
 				}
 			}
@@ -814,7 +819,10 @@ namespace Codegen
 						if((f.second ? f.second->name : f.first->getName().str()) == basename)
 						{
 							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+							{
+								// printf("FOUND (3) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 								candidates.push_back(f);
+							}
 						}
 					}
 				}
@@ -856,7 +864,10 @@ namespace Codegen
 					if((f.second ? f.second->name : f.first->getName().str()) == basename)
 					{
 						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+						{
+							// printf("FOUND (4) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 							candidates.push_back(f);
+						}
 					}
 				}
 			}
@@ -1873,14 +1884,14 @@ namespace Codegen
 
 		// try the assign op.
 		if(op == ArithmeticOp::Assign || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
-		|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
+			|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
 			// check args.
 			llvm::Value* ret = builder.CreateCall2(opov, self, val);
 			return Result_t(ret, self);
 		}
 		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::Multiply
-		|| op == ArithmeticOp::Divide)
+			|| op == ArithmeticOp::Divide)
 		{
 			// check that both types work
 			iceAssert(self);
@@ -1946,7 +1957,7 @@ namespace Codegen
 			Struct* str = dynamic_cast<Struct*>(pair->second.first);
 			iceAssert(str);
 
-			return str->initFuncs.front();
+			return str->initFunc;
 		}
 		else if(pair->second.second == TypeKind::TypeAlias)
 		{

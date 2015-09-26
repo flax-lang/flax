@@ -53,7 +53,7 @@ namespace Compiler
 		else
 		{
 			free(fname);
-			std::string builtinlib = getSysroot() + getPrefix() + imp->module + ".flx";
+			std::string builtinlib = getSysroot() + getPrefix() + modname + ".flx";
 
 			struct stat buffer;
 			if(stat(builtinlib.c_str(), &buffer) == 0)
@@ -62,7 +62,10 @@ namespace Compiler
 			}
 			else
 			{
-				Parser::parserError("No module or library with the name '%s' could be found", modname.c_str());
+				Parser::Token t;
+				t.posinfo = imp->posinfo;
+				Parser::parserError(t, "No module or library with the name '%s' could be found (no builtin library '%s' either)",
+					modname.c_str(), builtinlib.c_str());
 			}
 		}
 	}
@@ -123,17 +126,6 @@ namespace Compiler
 					rootmap[imp->module] = r;
 					delete rcgi;
 				}
-
-
-				// add to both imported and exported lists
-				// for(auto v : r->publicFuncs)
-				// {
-				// 	root->externalFuncs.push_back(cgi->cloneFunctionTree(v, false));
-				// 	root->publicFuncs.push_back(cgi->cloneFunctionTree(v, false));
-
-				// 	root->externalFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
-				// 	root->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(v.first, v.second));
-				// }
 
 				for(auto f : r->publicFuncTree.funcs)
 				{

@@ -86,7 +86,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::StructBase*> nestedTypeStack;
+		std::deque<Ast::Class*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
 
@@ -164,7 +164,7 @@ namespace Codegen
 		void popGenericTypeStack();
 
 
-		void pushNestedTypeScope(Ast::StructBase* nest);
+		void pushNestedTypeScope(Ast::Class* nest);
 		std::deque<std::string> getNestedTypeList();
 		void popNestedTypeScope();
 

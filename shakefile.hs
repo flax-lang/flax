@@ -73,7 +73,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 	phony "copyLibraries" $ do
 		--- copy the libs to the prefix.
 		() <- quietly $ cmd Shell "mkdir" "-p" (sysroot </> prefix </> "lib" </> "flaxlibs")
-		quietly $ cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+		quietly $ cmd Shell "cp" ("-R") ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
 
 	finalOutput %> \out -> do
