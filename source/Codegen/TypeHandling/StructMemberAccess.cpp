@@ -12,10 +12,9 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall);
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i);
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Struct* str);
-// Result_t doStaticAccess(CodegenInstance* cgi, MemberAccess* ma, llvm::Value* ref, llvm::Value* rhs, bool actual = true);
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Class* str, bool isStaticFunctionCall);
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructBase* str, int i);
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Class* str);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -24,7 +23,7 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 	return Result_t(0, 0);
 }
 
-Result_t CodegenInstance::getStaticVariable(Expr* user, StructBase* str, std::string name)
+Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string name)
 {
 	std::string mangledName = this->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
 	if(llvm::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
@@ -197,9 +196,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		iceAssert(str);
 		iceAssert(self);
 
+
 		// transform
 		Expr* rhs = this->right;
-
 
 		// get the index for the member
 		// Expr* rhs = this->right;
@@ -217,7 +216,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			}
 			else
 			{
-				iceAssert(cgi->getStructMemberByName(str, var));
+				error(cgi, var, "Struct '%s' has no such member '%s'", str->name.c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)
@@ -232,13 +231,64 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			}
 		}
 
+		if(var)
+		{
+			iceAssert(i >= 0);
+			return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
+		}
+		else
+		{
+			error(cgi, rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+		}
+	}
+	else if(pair->second.second == TypeKind::Class)
+	{
+		Class* cls = dynamic_cast<Class*>(pair->second.first);
+
+		iceAssert(cls);
+		iceAssert(self);
+
+		// transform
+		Expr* rhs = this->right;
+
+		// get the index for the member
+		// Expr* rhs = this->right;
+		int i = -1;
+
+		VarRef* var = dynamic_cast<VarRef*>(rhs);
+		FuncCall* fc = dynamic_cast<FuncCall*>(rhs);
+
+
+		if(var)
+		{
+			if(cls->nameMap.find(var->name) != cls->nameMap.end())
+			{
+				i = cls->nameMap[var->name];
+			}
+			else
+			{
+				iceAssert(cgi->getStructMemberByName(cls, var));
+			}
+		}
+		else if(!var && !fc)
+		{
+			if(dynamic_cast<Number*>(rhs))
+			{
+				error(cgi, this, "Type '%s' is not a tuple", cls->name.c_str());
+			}
+			else
+			{
+				error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+			}
+		}
+
 		if(fc)
 		{
 			size_t i = 0;
 			std::deque<FuncPair_t> candidates;
-			for(auto f : str->funcs)
+			for(auto f : cls->funcs)
 			{
-				FuncPair_t fp = { str->lfuncs[i], f->decl };
+				FuncPair_t fp = { cls->lfuncs[i], f->decl };
 				if(f->decl->name == fc->name && f->decl->isStatic)
 					candidates.push_back(fp);
 
@@ -246,21 +296,21 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			}
 
 			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
-			if(res.resolved) return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, str, true);
+			if(res.resolved) return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, true);
 
 
-			return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, str, false);
+			return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, false);
 		}
 		else if(var)
 		{
 			if(i >= 0)
 			{
-				return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
+				return doVariable(cgi, var, isPtr ? self : selfPtr, cls, i);
 			}
 			else
 			{
 				ComputedProperty* cprop = nullptr;
-				for(ComputedProperty* c : str->cprops)
+				for(ComputedProperty* c : cls->cprops)
 				{
 					if(c->name == var->name)
 					{
@@ -270,7 +320,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 				}
 
 				iceAssert(cprop);
-				return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, str);
+				return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, cls);
 			}
 		}
 		else
@@ -293,8 +343,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop,
-	llvm::Value* _rhs, llvm::Value* ref, Struct* str)
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, llvm::Value* _rhs, llvm::Value* ref, Class* str)
 {
 	if(_rhs)
 	{
@@ -355,7 +404,7 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 	}
 }
 
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct* str, int i)
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructBase* str, int i)
 {
 	iceAssert(i >= 0);
 
@@ -371,7 +420,7 @@ Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, Struct*
 	return Result_t(val, ptr);
 }
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Struct* str, bool isStaticFunctionCall)
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Class* str, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
@@ -383,7 +432,7 @@ Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, St
 
 
 	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromStructFuncCall(str, fc);
+	Func* callee = cgi->getFunctionFromMemberFuncCall(str, fc);
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -548,6 +597,9 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 		else
 		{
+			if(curType->funcs.size() != curType->lfuncs.size())
+				error(this, ma, "wtf");
+
 			iceAssert(curType->funcs.size() == curType->lfuncs.size());
 
 			for(size_t i = 0; i < curType->funcs.size(); i++)
@@ -604,14 +656,14 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		else
 		{
 			// check static members
-			if(dynamic_cast<Struct*>(curType))
+			if(Class* cls = dynamic_cast<Class*>(curType))
 			{
-				for(auto v : curType->members)
+				for(auto v : cls->members)
 				{
 					if(v->isStatic && v->name == vr->name)
 					{
 						llvm::Type* ltype = this->getLlvmType(v);
-						return { ltype, actual ? this->getStaticVariable(vr, curType, v->name) : Result_t(0, 0) };
+						return { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) };
 					}
 				}
 			}
@@ -667,7 +719,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 
 
-Func* CodegenInstance::getFunctionFromStructFuncCall(StructBase* str, FuncCall* fc)
+Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 {
 	// now we need to determine if it exists, and its params.
 	Func* callee = nullptr;

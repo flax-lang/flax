@@ -166,6 +166,56 @@ namespace Parser
 			tok.type = TType::DoubleColon;
 			read = 2;
 		}
+		// block comments
+		else if(stream.find("/*") == 0)
+		{
+			int currentNest = 1;
+			// support nested, so basically we have to loop until we find either a /* or a */
+			stream = stream.substr(2);
+			tok.posinfo.col += 2;
+
+			while(currentNest > 0)
+			{
+				size_t n = stream.find("/*");
+				if(n != std::string::npos)
+				{
+					std::string removed = stream.substr(0, n);
+
+					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+
+					stream = stream.substr(n + 2);	// include the '*' as well.
+
+					if(currentNest > 1)
+						currentNest++;
+				}
+
+
+
+				n = stream.find("*/");
+				if(n != std::string::npos)
+				{
+					std::string removed = stream.substr(0, n);
+
+					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+
+					stream = stream.substr(n + 2);	// include the '*' as well.
+
+					currentNest--;
+				}
+				else
+				{
+					parserError(tok, "Expected closing '*/'");
+				}
+			}
+
+			return getNextToken(stream, pos);
+		}
+		else if(stream.find("*/") == 0)
+		{
+			parserError("Unexpected '*/'");
+		}
 
 		// unicode stuff
 		else if(stream.find("ƒ") == 0)
@@ -323,6 +373,7 @@ namespace Parser
 
 			// check for keywords
 			if(id == "class")			tok.type = TType::Class;
+			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "func")		tok.type = TType::Func;
 			else if(id == "import")		tok.type = TType::Import;
 			else if(id == "var")		tok.type = TType::Var;
@@ -339,7 +390,6 @@ namespace Parser
 			else if(id == "case")		tok.type = TType::Case;
 			else if(id == "enum")		tok.type = TType::Enum;
 			else if(id == "ffi")		tok.type = TType::ForeignFunc;
-			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "true")		tok.type = TType::True;
 			else if(id == "false")		tok.type = TType::False;
 			else if(id == "static")		tok.type = TType::Static;

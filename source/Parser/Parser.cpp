@@ -23,6 +23,7 @@ namespace Parser
 	static PosInfo currentPos;
 	static Root* rootNode						= nullptr;
 	static uint32_t curAttrib					= 0;
+	static std::vector<std::string> lines;
 
 	// todo: hacks
 	static bool isParsingStruct;
@@ -42,14 +43,6 @@ namespace Parser
 
 
 
-	static void parserError(Token token, const char* msg, va_list args)
-	{
-		char* alloc = nullptr;
-		vasprintf(&alloc, msg, args);
-
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Error%s: %s\n\n", COLOUR_BLACK_BOLD, token.posinfo.file.c_str(), token.posinfo.line, token.posinfo.col, COLOUR_RED_BOLD, COLOUR_RESET, alloc);
-	}
-
 	// come on man
 	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 	void parserError(const char* msg, ...)
@@ -57,11 +50,9 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		parserError(curtok, msg, ap);
+		__error_gen(lines, curtok.posinfo.line, curtok.posinfo.col, curtok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
-
-		fprintf(stderr, "There were errors, compilation cannot continue\n");
 		abort();
 	}
 
@@ -69,23 +60,41 @@ namespace Parser
 	void parserWarn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 	void parserWarn(const char* msg, ...)
 	{
-		if(Compiler::getFlag(Compiler::Flag::NoWarnings))
-			return;
-
 		va_list ap;
 		va_start(ap, msg);
 
-		char* alloc = nullptr;
-		vasprintf(&alloc, msg, ap);
-
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ")%s Warning%s: %s\n\n", COLOUR_BLACK_BOLD, curtok.posinfo.file.c_str(), curtok.posinfo.line, curtok.posinfo.col, COLOUR_MAGENTA_BOLD, COLOUR_RESET, alloc);
+		__error_gen(lines, curtok.posinfo.line, curtok.posinfo.col, curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
-		free(alloc);
-
-		if(Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-			parserError("Treating warning as error because -Werror was passed");
 	}
+
+
+	void parserError(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserWarn(Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+
+
 
 
 	std::string getModuleName(std::string filename)
@@ -335,8 +344,10 @@ namespace Parser
 				cgi->rawLines.push_back(tmp);
 		}
 
+		lines = cgi->rawLines;
 
-		while((t = getNextToken(str, currentPos)).text.size() > 0)
+
+		while((curtok = t = getNextToken(str, currentPos)).text.size() > 0)
 			tokens.push_back(t);
 
 		rootNode = new Root();
@@ -384,6 +395,10 @@ namespace Parser
 
 				case TType::Struct:
 					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					break;
+
+				case TType::Class:
+					rootNode->topLevelExpressions.push_back(parseClass(tokens));
 					break;
 
 				case TType::Enum:
@@ -490,6 +505,9 @@ namespace Parser
 
 				case TType::Struct:
 					return parseStruct(tokens);
+
+				case TType::Class:
+					return parseClass(tokens);
 
 				case TType::Enum:
 					return parseEnum(tokens);
@@ -1860,6 +1878,28 @@ namespace Parser
 		return str;
 	}
 
+	Class* parseClass(TokenList& tokens)
+	{
+		Token tok_class = eat(tokens);
+		iceAssert(tok_class.type == TType::Class);
+
+		Class* cls = CreateAST(Class, tok_class, "");
+		StructBase* sb = parseStructBody(tokens);
+
+		cls->attribs		= sb->attribs;
+		cls->funcs			= sb->funcs;
+		cls->opOverloads	= sb->opOverloads;
+		cls->typeList		= sb->typeList;
+		cls->members		= sb->members;
+		cls->nameMap		= sb->nameMap;
+		cls->name			= sb->name;
+		cls->nestedTypes	= sb->nestedTypes;
+		cls->cprops			= sb->cprops;
+		cls->protocolstrs	= sb->protocolstrs;
+
+		return cls;
+	}
+
 	Extension* parseExtension(TokenList& tokens)
 	{
 		Token tok_ext = eat(tokens);
@@ -2323,19 +2363,3 @@ namespace Ast
 	uint32_t Attr_RawString			= 0x100;
 	uint32_t Attr_Override			= 0x200;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

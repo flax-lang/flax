@@ -156,6 +156,10 @@ namespace Parser
 	void parserWarn(const char* msg, ...);
 
 
+	void parserError(Token tok, const char* msg, ...) __attribute__((noreturn));
+	void parserWarn(Token tok, const char* msg, ...);
+
+
 
 	typedef std::deque<Token> TokenList;
 
@@ -177,6 +181,7 @@ namespace Parser
 	Ast::Alloc*				parseAlloc(TokenList& tokens);
 	Ast::Break*				parseBreak(TokenList& tokens);
 	Ast::DeferredExpr*		parseDefer(TokenList& tokens);
+	Ast::Class*				parseClass(TokenList& tokens);
 	Ast::Expr*				parseIdExpr(TokenList& tokens);
 	Ast::Struct*			parseStruct(TokenList& tokens);
 	Ast::Import*			parseImport(TokenList& tokens);
@@ -220,9 +225,3 @@ namespace Parser
 	Ast::ArithmeticOp mangledStringToOperator(std::string op);
 	std::string operatorToMangledString(Ast::ArithmeticOp op);
 }
-
-
-
-
-
-

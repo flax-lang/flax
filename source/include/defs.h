@@ -42,7 +42,9 @@ namespace Codegen
 {
 	enum class TypeKind
 	{
+		Invalid,
 		Struct,
+		Class,
 		Enum,
 		TypeAlias,
 		Func,
