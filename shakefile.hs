@@ -77,6 +77,8 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 
 
 	finalOutput %> \out -> do
+		need ["copyLibraries"]
+
 		cs <- getDirectoryFiles "" ["source//*.cpp"]
 		let os = [c ++ ".o" | c <- cs]
 		need os
@@ -89,8 +91,6 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 		() <- cmd Shell "clang++ -g -o" [out] os [llvmConfigInvoke]
 		putQuiet ("\x1b[0m" ++ "# built " ++ out)
 
-		need ["copyLibraries"]
-
 
 	"source//*.cpp.o" %> \out -> do
 		let c = dropExtension out
@@ -99,7 +99,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=c++11 -Ofast -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
+		let cxxFlags = "-std=c++11 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
 		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 		() <- cmd Shell "clang++ -c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]

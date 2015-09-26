@@ -269,7 +269,7 @@ namespace Ast
 		bool isStatic = false;
 		bool wasCalled = false;
 
-		StructBase* parentStruct = nullptr;
+		StructBase* parentClass = nullptr;
 		FFIType ffiType = FFIType::C;
 		std::string name;
 		std::string mangledName;
@@ -486,6 +486,16 @@ namespace Ast
 		llvm::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, llvm::StructType* stype, int extIndex);
 	};
 
+	struct Class : StructBase
+	{
+		~Class();
+		Class(Parser::PosInfo pos, std::string name) : StructBase(pos, name) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
+
+		std::deque<Extension*> extensions;
+	};
+
 	struct Struct : StructBase
 	{
 		~Struct();
@@ -493,7 +503,8 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		std::deque<Extension*> extensions;
+		// std::deque<Extension*> extensions;
+		std::deque<Struct*> imports;
 	};
 
 	struct Enumeration : StructBase
@@ -657,7 +668,7 @@ namespace Ast
 
 		// public functiondecls and type decls.
 		Codegen::FunctionTree publicFuncTree;
-		std::deque<std::pair<Struct*, llvm::Type*>> publicTypes;
+		std::deque<std::pair<StructBase*, llvm::Type*>> publicTypes;
 
 		// list of all function calls. all.
 		std::deque<FuncCall*> allFunctionCalls;
@@ -672,7 +683,7 @@ namespace Ast
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
 		Codegen::FunctionTree externalFuncTree;
-		std::deque<std::pair<Struct*, llvm::Type*>> externalTypes;
+		std::deque<std::pair<StructBase*, llvm::Type*>> externalTypes;
 
 		// libraries referenced by 'import'
 		std::deque<std::string> referencedLibraries;

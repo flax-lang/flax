@@ -121,23 +121,3 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	cgi->builder.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

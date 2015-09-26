@@ -131,6 +131,10 @@ namespace Ast
 	{
 	}
 
+	Class::~Class()
+	{
+	}
+
 	MemberAccess::~MemberAccess()
 	{
 	}

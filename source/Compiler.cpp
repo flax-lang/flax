@@ -149,8 +149,8 @@ namespace Compiler
 
 				for(auto v : r->publicTypes)
 				{
-					root->externalTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
-					root->publicTypes.push_back(std::pair<Struct*, llvm::Type*>(v.first, v.second));
+					root->externalTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
+					root->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
 				}
 				for(auto v : r->publicGenericFunctions)
 				{

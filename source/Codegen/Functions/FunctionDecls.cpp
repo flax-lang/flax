@@ -27,7 +27,7 @@ llvm::GlobalValue::LinkageTypes CodegenInstance::getFunctionDeclLinkage(FuncDecl
 	{
 		linkageType = llvm::Function::ExternalLinkage;
 	}
-	else if(fd->parentStruct && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
+	else if(fd->parentClass && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
 	{
 		// default.
 		linkageType = (fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal) ?
@@ -151,7 +151,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
-	bool isMemberFunction = (this->parentStruct != nullptr);
+	bool isMemberFunction = (this->parentClass != nullptr);
 	bool isGeneric = this->genericTypes.size() > 0;
 
 	this->mangledName = this->name;
@@ -162,12 +162,12 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		for(auto p : this->params)
 			es.push_back(p);
 
-		this->mangledName = cgi->mangleMemberFunction(this->parentStruct, this->name, es);
+		this->mangledName = cgi->mangleMemberFunction(dynamic_cast<Class*>(this->parentClass), this->name, es);
 
 		if(!this->isStatic)
 		{
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-			implicit_self->type = this->parentStruct->mangledName + "*";
+			implicit_self->type = this->parentClass->mangledName + "*";
 			this->params.push_front(implicit_self);
 		}
 	}

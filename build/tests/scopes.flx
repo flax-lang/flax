@@ -4,13 +4,13 @@
 
 import Foundation
 
-struct Orr
+class Orr
 {
 	static var Another = 76
 	var bar = 311
 }
 
-struct Something
+class Something
 {
 	var oor = 400
 	static var Or: Orr
@@ -20,7 +20,7 @@ struct Something
 		return Orr()
 	}
 
-	struct Inside
+	class Inside
 	{
 		static var Another = 511
 	}
@@ -47,7 +47,7 @@ enum OutsideEnum
 }
 
 
-struct Sheep
+class Sheep
 {
 	var thing = 43
 	var foo: Something

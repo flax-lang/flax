@@ -72,7 +72,11 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 	iceAssert(existingtp);
 
 	llvm::StructType* existing = llvm::cast<llvm::StructType>(existingtp->first);
-	Struct* str = (Struct*) existingtp->second.first;
+
+	if(!dynamic_cast<Class*>(existingtp->second.first))
+		error(cgi, this, "Extensions can only be applied onto classes");
+
+	Class* str = (Class*) existingtp->second.first;
 
 	llvm::Type** types = new llvm::Type*[str->members.size() + this->members.size()];
 
@@ -89,7 +93,7 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
-			func->decl->parentStruct = str;
+			func->decl->parentClass = str;
 
 			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())

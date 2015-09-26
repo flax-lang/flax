@@ -133,7 +133,15 @@ namespace Codegen
 			if(cgi->getType(str) == 0 && cgi->getType(pair.first->name) == 0)
 			{
 				llvm::StructType* st = str;
-				cgi->addNewType(st, pair.first, TypeKind::Struct);
+
+				if(dynamic_cast<Enumeration*>(pair.first))
+					cgi->addNewType(st, pair.first, TypeKind::Enum);
+
+				else if(dynamic_cast<Struct*>(pair.first))
+					cgi->addNewType(st, pair.first, TypeKind::Struct);
+
+				else if(dynamic_cast<Class*>(pair.first))
+					cgi->addNewType(st, pair.first, TypeKind::Class);
 			}
 		}
 
@@ -1211,7 +1219,7 @@ namespace Codegen
 	}
 
 
-	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
+	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
 		bool isStatic)
 	{
 		std::deque<Expr*> exprs;
@@ -1230,12 +1238,12 @@ namespace Codegen
 		return this->mangleMemberFunction(s, orig, exprs, ns);
 	}
 
-	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args)
+	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<Expr*> args)
 	{
 		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
 	}
 
-	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
 	{
 		std::string mangled;
 		mangled = (ns.size() > 0 ? "" : "_ZN") + this->mangleWithNamespace("", ns);
@@ -1256,7 +1264,7 @@ namespace Codegen
 		return mangled;
 	}
 
-	std::string CodegenInstance::mangleMemberName(StructBase* s, FuncCall* fc)
+	std::string CodegenInstance::mangleMemberName(Class* s, FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
 		iceAssert(this->getType(s->mangledName));
@@ -1278,7 +1286,7 @@ namespace Codegen
 		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
-	std::string CodegenInstance::mangleMemberName(StructBase* s, std::string orig)
+	std::string CodegenInstance::mangleMemberName(Class* s, std::string orig)
 	{
 		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
 	}
@@ -1831,17 +1839,20 @@ namespace Codegen
 		iceAssert(self);
 		iceAssert(val);
 
-		if(pair->second.second != TypeKind::Struct)
+		if(pair->second.second != TypeKind::Struct && pair->second.second != TypeKind::Class)
 		{
 			if(fail)	error("!!??!?!?!");
 			else		return Result_t(0, 0);
 		}
 
-		Struct* str = dynamic_cast<Struct*>(pair->second.first);
-		iceAssert(str);
+		Class* cls = dynamic_cast<Class*>(pair->second.first);
+		if(!cls)
+			error(this, user, "LHS of operator expression is not a class");
+
+		iceAssert(cls);
 
 		llvm::Function* opov = nullptr;
-		for(auto f : str->lOpOverloads)
+		for(auto f : cls->lOpOverloads)
 		{
 			if(f.first == op && (f.second->getArgumentList().back().getType() == val->getType()))
 			{
@@ -1852,7 +1863,7 @@ namespace Codegen
 
 		if(!opov)
 		{
-			if(fail)	GenError::noOpOverload(this, user, str->name, op);
+			if(fail)	GenError::noOpOverload(this, user, cls->name, op);
 			else		return Result_t(0, 0);
 		}
 
@@ -1877,7 +1888,7 @@ namespace Codegen
 			return Result_t(builder.CreateCall2(opov, self, val), 0);
 		}
 
-		if(fail)	GenError::noOpOverload(this, user, str->name, op);
+		if(fail)	GenError::noOpOverload(this, user, cls->name, op);
 		return Result_t(0, 0);
 	}
 
@@ -1930,9 +1941,14 @@ namespace Codegen
 
 
 
-		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		if(pair->second.second == TypeKind::Struct)
+		{
+			Struct* str = dynamic_cast<Struct*>(pair->second.first);
+			iceAssert(str);
 
-		if(pair->second.second != TypeKind::Struct)
+			return str->initFuncs.front();
+		}
+		else if(pair->second.second == TypeKind::TypeAlias)
 		{
 			iceAssert(pair->second.second == TypeKind::TypeAlias);
 			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
@@ -1941,42 +1957,47 @@ namespace Codegen
 			TypePair_t* tp = this->getType(ta->origType);
 			iceAssert(tp);
 
-			// todo: support typealiases of typealises.
-			str = dynamic_cast<Struct*>(tp->second.first);
+			return this->getStructInitialiser(user, tp, vals);
 		}
-
-
-		iceAssert(str);
-
-		llvm::Function* initf = 0;
-		for(llvm::Function* initers : str->initFuncs)
+		else if(pair->second.second == TypeKind::Class)
 		{
-			if(initers->arg_size() < 1)
-				error(this, user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+			Class* cls = dynamic_cast<Class*>(pair->second.first);
+			iceAssert(cls);
 
-			if(initers->arg_size() != vals.size())
-				continue;
-
-			int i = 0;
-			for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+			llvm::Function* initf = 0;
+			for(llvm::Function* initers : cls->initFuncs)
 			{
-				llvm::Value& arg = (*it);
-				if(vals[i]->getType() != arg.getType())
-					goto breakout;
+				if(initers->arg_size() < 1)
+					error(this, user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+
+				if(initers->arg_size() != vals.size())
+					continue;
+
+				int i = 0;
+				for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+				{
+					llvm::Value& arg = (*it);
+					if(vals[i]->getType() != arg.getType())
+						goto breakout;
+				}
+
+				// todo: fuuuuuuuuck this is ugly
+				initf = initers;
+				break;
+
+				breakout:
+				continue;
 			}
 
-			// todo: fuuuuuuuuck this is ugly
-			initf = initers;
-			break;
+			if(!initf)
+				GenError::invalidInitialiser(this, user, cls->name, vals);
 
-			breakout:
-			continue;
+			return this->module->getFunction(initf->getName());
 		}
-
-		if(!initf)
-			GenError::invalidInitialiser(this, user, str->name, vals);
-
-		return this->module->getFunction(initf->getName());
+		else
+		{
+			error(this, user, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+		}
 	}
 
 
@@ -2287,7 +2308,7 @@ namespace Codegen
 
 			// copy the rest
 			clone->mangledName						= fd->mangledName;
-			clone->parentStruct						= fd->parentStruct;
+			clone->parentClass						= fd->parentClass;
 			clone->mangledNamespaceOnly				= fd->mangledNamespaceOnly;
 			clone->genericTypes						= fd->genericTypes;
 			clone->instantiatedGenericReturnType	= fd->instantiatedGenericReturnType;
