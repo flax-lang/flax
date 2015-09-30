@@ -261,7 +261,6 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 		// make the functions public as well
 		cgi->addPublicFunc({ llvm::cast<llvm::Function>(val), f->decl });
-		// cgi->rootNode->publicFuncs.push_back(std::pair<FuncDecl*, llvm::Function*>(f->decl, llvm::cast<llvm::Function>(val)));
 	}
 
 	// pass 2
