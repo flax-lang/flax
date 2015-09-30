@@ -925,6 +925,9 @@ namespace Codegen
 			if(!tp)
 				tp = this->getType(type.strType + "E");		// nested types. hack.
 
+			if(!tp && type.strType.find("::") != std::string::npos)
+				tp = this->getType(this->mangleRawNamespace(type.strType));
+
 			if(!tp && allowFail)
 				return 0;
 
