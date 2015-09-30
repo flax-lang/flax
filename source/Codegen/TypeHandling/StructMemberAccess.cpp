@@ -610,7 +610,12 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 
 		if(!res.resolved)
-			GenError::noFunctionTakingParams(this, fc, ftree->nsName, fc->name, fc->params);
+		{
+			// todo: we might have a type on the RHS (and namespaces/classes on the left)
+			// check for this, and call the constructor, appropriately inserting the implicit self param.
+
+			GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+		}
 
 		// call that sucker.
 		// but first set the cached target.

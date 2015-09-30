@@ -824,7 +824,6 @@ namespace Codegen
 
 	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type, bool allowFail)
 	{
-		printf("parsing %s...\n", type.c_str());
 		if(type.length() > 0)
 		{
 			if(type[0] == '(')
@@ -891,7 +890,6 @@ namespace Codegen
 				}
 				else
 				{
-					printf("actualType = %s\n", actualType.c_str());
 					llvm::Type* ret = this->getLlvmTypeFromString(user, ExprType(actualType), allowFail);
 
 					if(ret)
