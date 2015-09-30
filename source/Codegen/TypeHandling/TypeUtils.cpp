@@ -50,31 +50,6 @@ namespace Codegen
 		else return nullptr;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
-	{
-		if(type.isLiteral)
-		{
-			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
-			if(ret) return ret;
-
-			// not so lucky
-			TypePair_t* tp = this->getType(type.strType);
-			if(!tp)
-				tp = this->getType(type.strType + "E");		// nested types. hack.
-
-			if(!tp && allowFail)
-				return 0;
-
-			else if(!tp)
-				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
-
-			return tp->first;
-		}
-		else
-		{
-			error(this, user, "enosup");
-		}
-	}
 
 	llvm::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, llvm::Value* alloca)
 	{
@@ -843,8 +818,13 @@ namespace Codegen
 		return ret;
 	}
 
+
+
+
+
 	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type, bool allowFail)
 	{
+		printf("parsing %s...\n", type.c_str());
 		if(type.length() > 0)
 		{
 			if(type[0] == '(')
@@ -866,7 +846,7 @@ namespace Codegen
 				int indirections = 0;
 
 				std::string actualType = this->unwrapPointerType(type, &indirections);
-				if(actualType.find("[") != (size_t) -1)
+				if(actualType.find("[") != std::string::npos)
 				{
 					size_t k = actualType.find("[");
 					std::string base = actualType.substr(0, k);
@@ -911,6 +891,7 @@ namespace Codegen
 				}
 				else
 				{
+					printf("actualType = %s\n", actualType.c_str());
 					llvm::Type* ret = this->getLlvmTypeFromString(user, ExprType(actualType), allowFail);
 
 					if(ret)
@@ -932,13 +913,31 @@ namespace Codegen
 		}
 	}
 
+	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
+	{
+		if(type.isLiteral)
+		{
+			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
+			if(ret) return ret;
 
+			// not so lucky
+			TypePair_t* tp = this->getType(type.strType);
+			if(!tp)
+				tp = this->getType(type.strType + "E");		// nested types. hack.
 
+			if(!tp && allowFail)
+				return 0;
 
+			else if(!tp)
+				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
 
-
-
-
+			return tp->first;
+		}
+		else
+		{
+			error(this, user, "enosup");
+		}
+	}
 
 
 
