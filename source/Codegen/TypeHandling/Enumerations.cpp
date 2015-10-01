@@ -92,14 +92,24 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 
 		llvm::Type* t = cgi->getLlvmType(pair.second);
 		if(t != prev)
-			error(pair.second, "Enumeration values must have the same type, have %s: %s and %s", pair.first.c_str(), cgi->getReadableType(pair.second).c_str(), cgi->getReadableType(prev).c_str());
+			error(cgi, pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
+				cgi->getReadableType(prev).c_str());
+
 
 		prev = t;
 	}
 
-	llvm::StructType* wrapper = llvm::StructType::create(this->name, prev, NULL);
+
+
+	std::deque<std::string> fullScope = cgi->getFullScope();
+	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
+
+
+	llvm::StructType* wrapper = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+	wrapper->setBody(std::vector<llvm::Type*>({ prev }));
 
 	// now that they're all the same type:
+	this->scope = fullScope;
 	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
 	return wrapper;

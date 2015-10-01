@@ -108,10 +108,9 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	// this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getNestedTypeList(), false);
-
-
+	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+
 	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);
 
