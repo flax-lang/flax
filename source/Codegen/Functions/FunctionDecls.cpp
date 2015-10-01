@@ -164,7 +164,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		for(auto p : this->params)
 			es.push_back(p);
 
-		this->mangledName = cgi->mangleMemberFunction(dynamic_cast<Class*>(this->parentClass), this->name, es);
+		this->mangledName = cgi->mangleMemberFunction(this->parentClass, this->name, es);
 
 		if(!this->isStatic)
 		{

@@ -8,6 +8,30 @@ namespace Math
 	{
 		var x: Double
 		var y: Double
+
+		operator + (other: Math.Vector2) -> Math.Vector2
+		{
+			var ret: Math.Vector2
+			ret.x = self.x + other.x
+			ret.y = self.y + other.y
+
+			return ret
+		}
+
+		operator - (other: Math.Vector2) -> Math.Vector2
+		{
+			var ret: Math.Vector2
+			ret.x = self.x - other.x
+			ret.y = self.y - other.y
+
+			return ret
+		}
+
+		@precedence[90]
+		operator • (other: Math.Vector2) -> Double
+		{
+			return self.x * other.x + self.y * other.y
+		}
 	}
 
 	public struct Vector3

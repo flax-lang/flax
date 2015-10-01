@@ -43,10 +43,14 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		if(decl->params.size() != 1)
 			error(cgi, this, "Operator overload can only have one argument");
 	}
-	else
-	{
-		error(cgi, this, "(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
-	}
+
+
+	// custom operator: can't check shit.
+
+	// else
+	// {
+	// 	error(cgi, this, "(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
+	// }
 
 	return Result_t(0, 0);
 }

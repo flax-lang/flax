@@ -57,7 +57,7 @@ namespace SemAnalysis
 				break;
 
 			case VarState::NoValue:
-				if(Compiler::getWarningEnabled(Compiler::Warning::UseBeforeAssign))
+				if(Compiler::getWarningEnabled(Compiler::Warning::UseBeforeAssign) && vd.decl->disableAutoInit)
 				{
 					warn(cgi, user, "Variable '%s' does not have a value when it is used here", vd.name.c_str());
 				}
