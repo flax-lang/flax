@@ -491,7 +491,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	std::deque<std::string> list;
 
 	Class* curType = 0;
-	TypePair_t* curTPair = 0;
 
 	MemberAccess* cur = ma;
 	while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
@@ -516,7 +515,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	std::deque<std::string> origList = list;
 
 
-
 	std::deque<std::string> nsstrs;
 	FunctionTree* ftree = this->getCurrentFuncTree(&nsstrs);
 	while(list.size() > 0)
@@ -526,6 +524,8 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 		bool found = false;
 
+
+		// printf("current: %s\n", front.c_str());
 		if(curType == 0)
 		{
 			// check if it's a namespace.
@@ -545,13 +545,16 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			}
 
 			if(found)
-				continue;
-
-			if(TypePair_t* tp = this->getType(front))
 			{
+				// printf("found (1)\n");
+				continue;
+			}
+
+			if(TypePair_t* tp = this->getType(this->mangleWithNamespace(front, nsstrs, false)))
+			{
+				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<Class*>(tp->second.first);
-				curTPair = tp;
 				iceAssert(curType);
 
 				found = true;
@@ -566,8 +569,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 				if(sb.first->name == front)
 				{
 					curType = sb.first;
-					curTPair = this->getType(sb.first->name);
-
 					found = true;
 					break;
 				}
@@ -689,7 +690,11 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			// note: check for enum comes first since enum : class, so it's more specific.
 			if(dynamic_cast<Enumeration*>(curType))
 			{
-				Result_t res = this->getEnumerationCaseValue(vr, curTPair, vr->name, actual ? true : false);
+				TypePair_t* tpair = this->getType(curType->mangledName);
+				if(!tpair)
+					error(this, vr, "Invalid class '%s'", vr->name.c_str());
+
+				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
 				return { res.result.first->getType(), res };
 			}
 			else if(Class* cls = dynamic_cast<Class*>(curType))

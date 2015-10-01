@@ -357,11 +357,11 @@ namespace Codegen
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
 		#if 0
-		printf("finding %s\n{\n", name.c_str());
+		fprintf(stderr, "finding %s\n{\n", name.c_str());
 		for(auto p : this->typeMap)
-			printf("\t%s\n", p.first.c_str());
+			fprintf(stderr, "\t%s\n", p.first.c_str());
 
-		printf("}\n");
+		fprintf(stderr, "}\n");
 		#endif
 		if(name == "Inferred" || name == "_ZN8Inferred")
 			iceAssert(!"Tried to get type on inferred vardecl!");
@@ -473,7 +473,14 @@ namespace Codegen
 		this->nestedTypeStack.pop_back();
 	}
 
+	std::deque<std::string> CodegenInstance::getFullScope()
+	{
+		std::deque<std::string> full = this->namespaceStack;
+		for(auto s : this->nestedTypeStack)
+			full.push_back(s->name);
 
+		return full;
+	}
 
 
 

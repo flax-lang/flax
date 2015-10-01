@@ -171,6 +171,9 @@ namespace Codegen
 		void popNestedTypeScope();
 
 
+		std::deque<std::string> getFullScope();
+
+
 
 
 

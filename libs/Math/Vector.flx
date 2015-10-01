@@ -17,9 +17,9 @@ namespace Math
 		var z: Double
 	}
 
-	namespace Complex
+	public class Complex
 	{
-		public struct Cmplx
+		public class Cmplx
 		{
 			var r: Double
 			var i: Double
