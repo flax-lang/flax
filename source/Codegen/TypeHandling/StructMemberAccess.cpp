@@ -15,6 +15,7 @@ using namespace Codegen;
 Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Class* str, bool isStaticFunctionCall);
 Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructBase* str, int i);
 Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Class* str);
+Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Class* str);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
@@ -44,11 +45,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
-		iceAssert(this->matype != MAType::Invalid);
+		if(this->matype == MAType::Invalid) error(cgi, this, "??");
 		return cgi->resolveStaticDotOperator(this, true).second;
 	}
-
-
 
 
 

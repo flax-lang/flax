@@ -235,13 +235,13 @@ namespace Codegen
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
 		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
 
-		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::Class* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
+		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
 			bool isStatic = false);
 
-		std::string mangleMemberName(Ast::Class* s, std::string orig);
-		std::string mangleMemberName(Ast::Class* s, Ast::FuncCall* fc);
+		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
+		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
 
 		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
 		std::string mangleFunctionName(std::string base, std::deque<llvm::Type*> args);

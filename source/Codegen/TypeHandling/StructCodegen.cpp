@@ -75,6 +75,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	}
 
 
+
+
 	cgi->builder.CreateRetVoid();
 	llvm::verifyFunction(*defaultInitFunc);
 
@@ -84,7 +86,33 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
 
-	return Result_t(nullptr, nullptr);
+
+	for(OpOverload* oo : this->opOverloads)
+	{
+		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
+		Func* f = oo->func;
+
+		f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
+		f->decl->parentClass = this;
+
+		llvm::Value* val = f->decl->codegen(cgi).result.first;
+
+		cgi->builder.SetInsertPoint(ob);
+		ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
+		this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
+
+		// make the functions public as well
+		cgi->addPublicFunc({ llvm::cast<llvm::Function>(val), f->decl });
+
+
+		ob = cgi->builder.GetInsertBlock();
+
+		oo->func->codegen(cgi);
+		cgi->builder.SetInsertPoint(ob);
+	}
+
+
+	return Result_t(0, 0);
 }
 
 

@@ -119,7 +119,7 @@ public class String
 
 
 
-	operator+(other: String) -> String
+	operator + (other: String) -> String
 	{
 		var ret: String(self.data)
 		ret += other
@@ -127,7 +127,7 @@ public class String
 		return ret
 	}
 
-	operator+(other: Int8*) -> String
+	operator + (other: Int8*) -> String
 	{
 		var ret: String(self.data)
 		ret += other
@@ -135,35 +135,35 @@ public class String
 		return ret
 	}
 
-	operator+=(other: String) -> String
+	operator += (other: String) -> String
 	{
 		self.append(other.data)
 		return #self
 	}
 
-	operator+=(other: Int8*) -> String
+	operator += (other: Int8*) -> String
 	{
 		self.append(other)
 		return #self
 	}
 
-	operator=(other: Int8*)
+	operator = (other: Int8*)
 	{
 		self.setString(other)
 	}
 
-	operator=(other: String)
+	operator = (other: String)
 	{
 		self.setString(other.data)
 	}
 
-	operator==(other: Int8*) -> Bool
+	operator == (other: Int8*) -> Bool
 	{
 		// return false
 		return strcmp(self.data, other) == 0
 	}
 
-	operator==(other: String) -> Bool
+	operator == (other: String) -> Bool
 	{
 		return strcmp(self.data, other.data) == 0
 	}

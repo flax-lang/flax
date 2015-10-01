@@ -377,7 +377,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
 				if(it != this->members.end())
 				{
-					error(cgi, *it, "Struct fields cannot be overriden, only computed properties can");
+					error(cgi, *it, "Fields cannot be overriden, only computed properties can");
 				}
 
 				this->members.push_back(mem);

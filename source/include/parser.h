@@ -78,7 +78,6 @@ namespace Parser
 		Namespace,
 		Override,
 
-
 		// symbols
 		LBrace,
 		RBrace,

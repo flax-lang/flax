@@ -210,6 +210,7 @@ static void findDotOperator(Expr* expr)
 	else if(Func* fn = dynamic_cast<Func*>(expr))
 	{
 		findDotOperator(fn->block);
+		for(auto v : fn->decl->params) findDotOperator(v);
 	}
 	else if(FuncCall* fncall = dynamic_cast<FuncCall*>(expr))
 	{
@@ -302,9 +303,13 @@ static void findDotOperator(Expr* expr)
 				gstate.visitedMAs[ma] = true;
 		}
 	}
+	else if(NamespaceDecl* ns = dynamic_cast<NamespaceDecl*>(expr))
+	{
+		findDotOperator(ns->innards);
+	}
 	else
 	{
-
+		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");
 	}
 }
 

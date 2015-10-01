@@ -1250,7 +1250,7 @@ namespace Codegen
 	}
 
 
-	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<VarDecl*> args, std::deque<std::string> ns,
 		bool isStatic)
 	{
 		std::deque<Expr*> exprs;
@@ -1269,12 +1269,12 @@ namespace Codegen
 		return this->mangleMemberFunction(s, orig, exprs, ns);
 	}
 
-	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<Expr*> args)
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args)
 	{
 		return this->mangleMemberFunction(s, orig, args, this->namespaceStack);
 	}
 
-	std::string CodegenInstance::mangleMemberFunction(Class* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
+	std::string CodegenInstance::mangleMemberFunction(StructBase* s, std::string orig, std::deque<Expr*> args, std::deque<std::string> ns)
 	{
 		std::string mangled;
 		mangled = (ns.size() > 0 ? "" : "_ZN") + this->mangleWithNamespace("", ns);
@@ -1295,7 +1295,7 @@ namespace Codegen
 		return mangled;
 	}
 
-	std::string CodegenInstance::mangleMemberName(Class* s, FuncCall* fc)
+	std::string CodegenInstance::mangleMemberName(StructBase* s, FuncCall* fc)
 	{
 		std::deque<llvm::Type*> largs;
 		iceAssert(this->getType(s->mangledName));
@@ -1317,7 +1317,7 @@ namespace Codegen
 		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
-	std::string CodegenInstance::mangleMemberName(Class* s, std::string orig)
+	std::string CodegenInstance::mangleMemberName(StructBase* s, std::string orig)
 	{
 		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
 	}
@@ -1876,7 +1876,7 @@ namespace Codegen
 			else		return Result_t(0, 0);
 		}
 
-		Class* cls = dynamic_cast<Class*>(pair->second.first);
+		StructBase* cls = dynamic_cast<StructBase*>(pair->second.first);
 		if(!cls)
 			error(this, user, "LHS of operator expression is not a class");
 
