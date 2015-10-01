@@ -127,9 +127,11 @@ namespace Codegen
 		// "block" scopes, ie. breakable bodies (loops)
 		void pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after);
 		BracedBlockScope* getCurrentBracedBlockScope();
+
 		Ast::Func* getCurrentFunctionScope();
 		void setCurrentFunctionScope(Ast::Func* f);
 		void clearCurrentFunctionScope();
+
 		void popBracedBlock();
 
 		// normal scopes, ie. variable scopes within braces

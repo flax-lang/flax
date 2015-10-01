@@ -169,6 +169,8 @@ namespace Parser
 		// block comments
 		else if(stream.find("/*") == 0)
 		{
+			// TODO: BLOCK COMMENTS ARE FUCKING BUGGY AND IFFY
+
 			int currentNest = 1;
 			// support nested, so basically we have to loop until we find either a /* or a */
 			stream = stream.substr(2);

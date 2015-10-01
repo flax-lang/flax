@@ -11,7 +11,6 @@
 
 using namespace Ast;
 using namespace Codegen;
-#include <iostream>
 
 Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {
@@ -31,21 +30,21 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// always try the type first.
-	if(cgi->getType(this->name) != nullptr)
+	if(TypePair_t* tp = cgi->getType(this->name))
 	{
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
-		return cgi->callTypeInitialiser(cgi->getType(this->name), this, args);
+		return cgi->callTypeInitialiser(tp, this, args);
 	}
-	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
+	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
 	{
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
-		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
+		return cgi->callTypeInitialiser(tp, this, args);
 	}
 
 

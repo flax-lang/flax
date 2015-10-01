@@ -489,7 +489,6 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	// nested type access), there will not be namespace access anymore.
 
 	std::deque<std::string> list;
-	std::deque<std::string> nsstrs;
 
 	Class* curType = 0;
 	TypePair_t* curTPair = 0;
@@ -514,6 +513,11 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		list.push_front(vr->name);
 	}
 
+	std::deque<std::string> origList = list;
+
+
+
+	std::deque<std::string> nsstrs;
 	FunctionTree* ftree = this->getCurrentFuncTree(&nsstrs);
 	while(list.size() > 0)
 	{
@@ -613,8 +617,29 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		{
 			// todo: we might have a type on the RHS (and namespaces/classes on the left)
 			// check for this, and call the constructor, appropriately inserting the implicit self param.
+			// try resolve it to a type.
 
-			GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+			std::string text;
+			for(auto s : origList)
+				text += (s + "::");
+
+			text += fc->name;
+
+			if(llvm::Type* ltype = this->getLlvmTypeFromString(ma, text))
+			{
+				TypePair_t* tp = this->getType(ltype);
+				iceAssert(tp);
+
+				std::vector<llvm::Value*> args;
+				for(Expr* e : fc->params)
+					args.push_back(e->codegen(this).result.first);
+
+				return { ltype, this->callTypeInitialiser(tp, ma, args) };
+			}
+			else
+			{
+				GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+			}
 		}
 
 		// call that sucker.
@@ -639,16 +664,18 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		{
 			llvm::Value* ptr = 0;
 
-			try
+			if(ftree->vars.find(vr->name) != ftree->vars.end())
 			{
 				SymbolPair_t sp = ftree->vars.at(vr->name);
 				ptr = sp.first;
 			}
-			catch(std::exception)
+			else
 			{
 				error(this, vr, "namespace %s does not contain a variable %s",
 					ftree->nsName.c_str(), vr->name.c_str());
 			}
+
+
 
 			return
 			{

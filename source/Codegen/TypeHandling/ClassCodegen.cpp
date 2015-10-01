@@ -17,6 +17,7 @@ using namespace Codegen;
 
 Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+
 	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->name);
 	if(!_type)
@@ -38,17 +39,14 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 
+	cgi->pushNestedTypeScope(this);
 
 
 
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
-	{
-		cgi->pushNestedTypeScope(this);
 		nested.first->codegen(cgi);
-		cgi->popNestedTypeScope();
-	}
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
@@ -275,6 +273,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			VarRef* svr = new VarRef(this->posinfo, "self");
 			todeque.push_back(svr);
 
+
 			for(auto extInit : extensionInitialisers)
 				f->block->statements.push_front(new FuncCall(this->posinfo, extInit->getName(), todeque));
 
@@ -292,6 +291,10 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
 
+
+
+
+	cgi->popNestedTypeScope();
 	return Result_t(nullptr, nullptr);
 }
 

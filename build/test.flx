@@ -55,7 +55,7 @@ class Foo
 	var v3: Math.Vector3
 	{
 		get {
-			var ret = Math.Vector3()
+			var ret: Math.Vector3
 
 			ret.x = 1
 			ret.y = 4
@@ -74,12 +74,10 @@ class Foo
 	var _bar: Int = 537
 	var bar: Int
 	{
-		get
-		{
+		get {
 			return self._bar
 		}
-		set
-		{
+		set {
 			self._bar = newValue
 		}
 	}
@@ -96,23 +94,60 @@ class Bar : Foo
 {
 	override var bar: Int
 	{
-		get
-		{
+		get {
 			return 73
 		}
 		set
 		{
 			// super.bar = newValue
-
-			self.v3.x = 1
-			self.v3.y = 3
-			self.v3.z = 5
 		}
 	}
 
+	override var v3: Math.Vector3
+	{
+		get {
+			var ret: Math.Vector3
+
+			//
+			// 	rules for super:
+
+			// 1. "super" will be trapped by StructMemberAccess if it's an LHS.
+			// 2. thus, you can call your variable "super" outside of classes.
+			// 3. however, compiler will warn you that you cannot access *your own variable* named
+			// super if you are in a class.
+
+			// 4. compiler will always prefer to use its own "definition" of super -- ie. the base class.
+
+
+			// 	rules for self:
+
+			// 1. "self" is treated as any other variable.
+			// 2. why does compiler prefer user-declared self? (see example in doBar below)
+			// 3. should we do this for super as well?
+			// 4. idk.
+
+			// ret.x = super.v3.x + 3
+			// ret.y = super.v3.y + 5
+			// ret.z = super.v3.z + 7
+
+			return ret
+		}
+		set {
+			let m = 0
+		}
+	}
+
+
+
+
+
+
+
+
+
 	override ƒ doBar()
 	{
-		printf("in bar\n")
+		printf("in bar: %f\n", self.v3.x)
 	}
 
 	var foo = 73
@@ -156,11 +191,11 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("%d\n", fb._bar)
 
 	printf("pi = %f\n", Math.π())
-	var v2: Math.Vector2
+	var dream = Math.Complex.Cmplx()
+	dream.r = 40
+	dream.i = 1.412
 
-
-
-	printf("bar.vector3 = (%f, %f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z)
+	printf("bar.vector3 = (%f, %f, %f), dream = (%f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z, dream.r, dream.i)
 
 
 	/*

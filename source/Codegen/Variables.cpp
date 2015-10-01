@@ -194,7 +194,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	if(this->inferredLType != 0)
 		return;
 
-
 	if(this->type.strType == "Inferred")
 	{
 		if(this->initVal == nullptr)
@@ -209,6 +208,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		if(cgi->isAnyType(vartype))
 		{
 			// todo: fix this shit
+			// but how?
 			warn(cgi, this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
@@ -239,6 +239,23 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			}
 		}
 	}
+
+	if(Func* fn = cgi->getCurrentFunctionScope())
+	{
+		if(fn->decl->parentClass != 0 && !fn->decl->isStatic)
+		{
+			// check.
+			if(this->name == "self")
+				error(cgi, this, "Cannot have a parameter named 'self' in a method declaration");
+
+			else if(this->name == "super")
+				error(cgi, this, "Cannot have a parameter named 'super' in a method declaration");
+		}
+	}
+
+
+
+
 
 	llvm::Value* val = nullptr;
 	llvm::Value* valptr = nullptr;
