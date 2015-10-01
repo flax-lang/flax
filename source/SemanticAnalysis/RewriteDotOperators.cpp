@@ -21,6 +21,7 @@ struct GlobalState
 	std::map<MemberAccess*, bool> visitedMAs;
 
 	std::deque<std::string> nsstrs;
+	std::deque<std::string> nestedTypeStrs;
 	int MAWithinMASearchNesting = 0;
 };
 
@@ -98,9 +99,16 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 
 			// type???
-			if(cgi->getType(vr->name))
+			std::deque<std::string> fullScope = gstate.nsstrs;
+			for(auto s : gstate.nestedTypeStrs)
+				fullScope.push_back(s);
+
+
+
+			if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
 			{
 				ma->matype = MAType::LeftTypename;
+				gstate.nestedTypeStrs.push_back(vr->name);
 				return;
 			}
 
@@ -143,9 +151,15 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 		}
 
-		if(cgi->getType(vr->name))
+
+		std::deque<std::string> fullScope = gstate.nsstrs;
+		for(auto s : gstate.nestedTypeStrs)
+			fullScope.push_back(s);
+
+		if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
 		{
 			ma->matype = MAType::LeftTypename;
+			gstate.nestedTypeStrs.push_back(vr->name);
 			return;
 		}
 
@@ -310,6 +324,7 @@ namespace SemAnalysis
 		{
 			rewriteDotOperator(pair.first);
 			gstate.nsstrs.clear();
+			gstate.nestedTypeStrs.clear();
 		}
 
 

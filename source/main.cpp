@@ -370,7 +370,9 @@ int main(int argc, char* argv[])
 		{
 			llvm::Linker linker = llvm::Linker(cgi->module);
 			for(auto mod : modulelist)
+			{
 				linker.linkInModule(mod);
+			}
 		}
 
 

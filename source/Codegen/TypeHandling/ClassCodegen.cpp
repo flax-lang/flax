@@ -17,7 +17,6 @@ using namespace Codegen;
 
 Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-
 	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->name);
 	if(!_type)
@@ -39,14 +38,17 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 
-	cgi->pushNestedTypeScope(this);
 
 
 
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
 		nested.first->codegen(cgi);
+		cgi->popNestedTypeScope();
+	}
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
@@ -294,7 +296,6 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 
-	cgi->popNestedTypeScope();
 	return Result_t(nullptr, nullptr);
 }
 
@@ -308,13 +309,12 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 llvm::Type* Class::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
+	{
 		return 0;
+	}
 
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
-
-
-
 
 
 
@@ -478,11 +478,11 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	llvm::Type** types = new llvm::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getNestedTypeList(), false);
-
-
+	std::deque<std::string> fullScope = cgi->getFullScope();
+	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
-	this->scope = cgi->namespaceStack;
+
+	this->scope = fullScope;
 	cgi->addNewType(str, this, TypeKind::Class);
 
 
