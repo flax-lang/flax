@@ -77,6 +77,8 @@ namespace Ast
 		MemberAccess,
 		ScopeResolution,
 		TupleSeparator,
+
+		UserDefined
 	};
 
 	enum class FFIType

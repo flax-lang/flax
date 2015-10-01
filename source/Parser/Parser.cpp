@@ -24,6 +24,8 @@ namespace Parser
 	static Root* rootNode						= nullptr;
 	static uint32_t curAttrib					= 0;
 	static std::vector<std::string> lines;
+	static std::map<ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
+	static std::map<std::string, ArithmeticOp> customOperatorMapRev;
 
 	// todo: hacks
 	static bool isParsingStruct;
@@ -40,6 +42,7 @@ namespace Parser
 	#define ATTR_STR_PACKEDSTRUCT		"packed"
 	#define ATTR_STR_STRONG				"strong"
 	#define ATTR_STR_RAW				"raw"
+	#define ATTR_STR_PRECEDENCE			"precedence"
 
 
 
@@ -217,6 +220,14 @@ namespace Parser
 			case TType::ShiftRightEq:
 				return 10;
 
+			case TType::Identifier:
+				if(customOperatorMapRev.find(tok.text) != customOperatorMapRev.end())
+				{
+					printf("FOUND\n");
+					return customOperatorMap[customOperatorMapRev[tok.text]].second;
+				}
+				return -1;
+
 			default:
 				return -1;
 		}
@@ -267,6 +278,8 @@ namespace Parser
 			case ArithmeticOp::ScopeResolution:		return "::";
 			case ArithmeticOp::TupleSeparator:		return ",";
 			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
+
+			default:								return customOperatorMap[op].first;
 		}
 	}
 
@@ -351,6 +364,7 @@ namespace Parser
 			tokens.push_back(t);
 
 		rootNode = new Root();
+
 		currentPos.file = filename;
 		currentPos.line = 1;
 		currentPos.col = 1;
@@ -361,9 +375,86 @@ namespace Parser
 		didHaveLeftParen = 0;
 		currentOperatorPrecedence = 0;
 
-
-
 		skipNewline(tokens);
+
+
+		// hackjob... kinda.
+		auto findOperators = [&](TokenList ts) {
+
+			int curPrec = 0;
+			while(ts.size() > 0)
+			{
+				Token t = ts.front();
+				ts.pop_front();
+
+
+
+
+				if(t.type == TType::At)
+				{
+					Token attr = ts.front();
+					ts.pop_front();
+
+					iceAssert(attr.type == TType::Identifier);
+					if(attr.text == ATTR_STR_PRECEDENCE)
+					{
+						skipNewline(ts);
+						if(ts.front().type != TType::LSquare)
+							parserError(ts.front(), "Expected '(' after @precedence");
+
+						ts.pop_front();
+						skipNewline(ts);
+
+						Token num = ts.front();
+						ts.pop_front();
+						skipNewline(ts);
+
+						if(num.type != TType::Integer)
+							parserError(num, "Expected integer within @precedence()");
+
+						curPrec = std::stod(num.text);
+						if(curPrec <= 0)
+							parserError(num, "Precedence must be greater than 0");
+
+						skipNewline(ts);
+						if(ts.front().type != TType::RSquare)
+							parserError(ts.front(), "Expected closing ')'");
+
+						ts.pop_front();
+						skipNewline(ts);
+					}
+				}
+				else if(t.type == TType::Identifier && t.text == "operator")
+				{
+					skipNewline(ts);
+
+					Token op = ts.front();
+
+					if(op.type == TType::Identifier)
+					{
+						size_t opNum = customOperatorMap.size();
+
+						if(curPrec == 0)
+							parserError(t, "Custom operators must have a precedence, use @precedence(x)");
+
+						customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { op.text, curPrec };
+						customOperatorMapRev[op.text] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
+
+						printf("found custom operator '%s'\n", op.text.c_str());
+
+						curPrec = 0;
+					}
+				}
+				else if(curPrec > 0)
+				{
+					parserError(ts.front(), "@precedence can only be applied to operators (%s)", ts.front().text.c_str());
+				}
+			}
+
+		};
+
+
+		findOperators(tokens);
 		parseAll(tokens);
 
 		return rootNode;
@@ -1381,12 +1472,18 @@ namespace Parser
 		while(true)
 		{
 			int prec = getOpPrec(tokens.front());
+			if(tokens.front().text == "•")
+			{
+				printf("PREC = %d\n", prec);
+			}
+
 			if(prec < prio && !isRightAssociativeOp(tokens.front()))
 				return lhs;
 
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 			Token tok_op = eat(tokens);
+
 			if(tok_op.type == TType::Comma && didHaveLeftParen)
 			{
 				didHaveLeftParen = false;
@@ -1466,32 +1563,6 @@ namespace Parser
 		std::string id = tok_id.text;
 		VarRef* idvr = CreateAST(VarRef, tok_id, id);
 
-		// check for dot syntax.
-		// if(tokens.front().type == TType::LSquare /*&& (currentOperatorPrecedence <= 120)*/)
-		// {
-		// 	// array dereference
-
-		// 	ArrayIndex* prev_ai = 0;
-		// 	while(tokens.front().type == TType::LSquare)
-		// 	{
-		// 		eat(tokens);
-		// 		Expr* within = parseExpr(tokens);
-
-		// 		if(eat(tokens).type != TType::RSquare)
-		// 			parserError("Expected ']'");
-
-		// 		auto ai = CreateAST(ArrayIndex, tok_id, idvr, within);
-
-		// 		if(prev_ai)
-		// 			prev_ai->arr = ai;
-
-		// 		else
-		// 			prev_ai = ai;
-		// 	}
-
-
-		// 	return prev_ai;
-		// }
 		if(tokens.front().type == TType::LParen)
 		{
 			delete idvr;
@@ -1609,7 +1680,7 @@ namespace Parser
 
 				Token t;
 				if((t = eat(tokens)).type != TType::Comma)
-					parserError("Expected either ',' or ')' in parameter list, got '%s'", t.text.c_str());
+					parserError("Expected either ',' or ')' in parameter list, got '%s' (id = %s)", t.text.c_str(), id.c_str());
 			}
 		}
 		else
@@ -2085,6 +2156,13 @@ namespace Parser
 			parserWarn("Attribute 'private' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisPrivate;
 		}
+		else if(id.text == "precedence")
+		{
+			// all handled.
+			iceAssert(eat(tokens).type == TType::LSquare);
+			iceAssert(eat(tokens).type == TType::Integer);
+			iceAssert(eat(tokens).type == TType::RSquare);
+		}
 		else										parserError("Unknown attribute '%s'", id.text.c_str());
 
 		curAttrib |= attr;
@@ -2287,7 +2365,13 @@ namespace Parser
 		else if(op == "gt") return ArithmeticOp::CmpGT;
 		else if(op == "le") return ArithmeticOp::CmpLEq;
 		else if(op == "ge") return ArithmeticOp::CmpGEq;
-		else				parserError("Invalid operator '%s'", op.c_str());
+		else
+		{
+			if(customOperatorMapRev.find(op) != customOperatorMapRev.end())
+				return customOperatorMapRev[op];
+
+			parserError("Invalid operator '%s'", op.c_str());
+		}
 	}
 
 	std::string operatorToMangledString(ArithmeticOp op)
@@ -2328,7 +2412,7 @@ namespace Parser
 			case ArithmeticOp::CmpGT:				return "gt";
 			case ArithmeticOp::CmpLEq:				return "le";
 			case ArithmeticOp::CmpGEq:				return "ge";
-			default:								parserError("Invalid operator");
+			default:								return customOperatorMap[op].first;
 		}
 	}
 
@@ -2353,7 +2437,15 @@ namespace Parser
 		else if(op.type == TType::MinusEq)		ao = ArithmeticOp::MinusEquals;
 		else if(op.type == TType::MultiplyEq)	ao = ArithmeticOp::MultiplyEquals;
 		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
-		else									parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
+		else
+		{
+			if(customOperatorMapRev.find(op.text) != customOperatorMapRev.end())
+				ao = customOperatorMapRev[op.text];
+
+			else
+				parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
+		}
+
 
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 

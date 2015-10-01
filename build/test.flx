@@ -108,23 +108,6 @@ class Bar : Foo
 		get {
 			var ret: Math.Vector3
 
-			//
-			// 	rules for super:
-
-			// 1. "super" will be trapped by StructMemberAccess if it's an LHS.
-			// 2. thus, you can call your variable "super" outside of classes.
-			// 3. however, compiler will warn you that you cannot access *your own variable* named
-			// super if you are in a class.
-
-			// 4. compiler will always prefer to use its own "definition" of super -- ie. the base class.
-
-
-			// 	rules for self:
-
-			// 1. "self" is treated as any other variable.
-			// 2. why does compiler prefer user-declared self? (see example in doBar below)
-			// 3. should we do this for super as well?
-			// 4. idk.
 
 			// ret.x = super.v3.x + 3
 			// ret.y = super.v3.y + 5
@@ -191,11 +174,63 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("%d\n", fb._bar)
 
 	printf("pi = %f\n", Math.π())
-	var dream = Math.Complex.Cmplx()
-	dream.r = 40
-	dream.i = 1.412
 
-	printf("bar.vector3 = (%f, %f, %f), dream = (%f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z, dream.r, dream.i)
+	var vec: Math.Vector2
+	vec.x = 3
+	vec.y = 2
+
+	var vec2: Math.Vector2
+	vec2.x = 1
+	vec2.y = 7
+
+
+	/*
+		todo: custom operator thoughts.
+
+		currently, having it implemented in the parser is **impossible** to do. the parser cannot know anything.
+
+		potential solution is to look for patterns like these:
+		IDENTIFIER IDENTIFIER or IDENTIFIER IDENTIFIER IDENTIFIER
+
+		ie. two or more identifier tokens in a row. i cannot think of a scenario where two or more identifiers will be consecutive
+		in any source text.
+
+		the parser can flag these groups as "potential custom operators".
+		** PROBLEM: how do we settle precedence? by the time we get into the codegen, all the binops etc. have
+		already been formed...
+
+
+		one more potential solution is to just do a "preliminary parse" of all files, that would also recursively scan imports,
+		looking only for 3 things:
+
+		1. imports
+		2. operators with custom identifiers
+		3. @precedence attributes
+
+		everything else will be ignored.
+		This presents a snag when we do incremental compilation in the future -- you can ever only call the compiler on the main file,
+		and every single import must be parsed to some degree...
+
+		I think this is the solution we will end up implementing until a better one is found. This allows us to cleanly keep all
+		precedence and parsing things in the parser as well.
+	*/
+
+
+
+
+
+	let m = vec + vec2
+	printf("m = (%f, %f)\n", m.x, m.y)
+
+
+
+
+
+	// var dream = Math.Complex.Cmplx()
+	// dream.r = 40
+	// dream.i = 1.412
+
+	// printf("bar.vector3 = (%f, %f, %f), dream = (%f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z, dream.r, dream.i)
 
 
 	/*
@@ -244,19 +279,6 @@ func main(argc: Int32, argv: Int8**) -> Int
 
 	return 0
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

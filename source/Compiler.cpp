@@ -204,12 +204,6 @@ namespace Compiler
 
 		llvm::verifyModule(*cgi->module, &llvm::errs());
 
-		for(auto s : cgi->rootFuncStack.subs)
-			printf("SUB: %s\n", s->nsName.c_str());
-
-		printf("DONE\n");
-
-
 		Codegen::writeBitcode(filename, cgi);
 
 		size_t lastdot = filename.find_last_of(".");
