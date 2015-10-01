@@ -211,6 +211,14 @@ func main(argc: Int32, argv: Int8**) -> Int
 		This presents a snag when we do incremental compilation in the future -- you can ever only call the compiler on the main file,
 		and every single import must be parsed to some degree...
 
+		EDIT: not necessarily. since an externally defined custom operator must also be imported, it would also be parsed. Theoretically
+		it shouldn't affect our ability to incrementally compile, although we still need to parse every file.
+
+		This is in a similarly gross vein to how we handle instantiating generic functions -- BY TRYING EVERYTHING.
+		It's sad, really.
+
+
+
 		I think this is the solution we will end up implementing until a better one is found. This allows us to cleanly keep all
 		precedence and parsing things in the parser as well.
 	*/
