@@ -639,14 +639,27 @@ namespace Codegen
 	{
 		if(doFuncTree)
 		{
-			FunctionTree* ft = new FunctionTree();
-			ft->nsName = namespc;
+			bool found = false;
+			FunctionTree* existing = this->getCurrentFuncTree();
+			for(auto s : existing->subs)
+			{
+				if(s->nsName == namespc)
+				{
+					found = true;
+					break;
+				}
+			}
 
-			FunctionTree* cur = this->getCurrentFuncTree();
-			cur->subs.push_back(ft);
+			if(!found)
+			{
+				FunctionTree* ft = new FunctionTree();
+				ft->nsName = namespc;
 
-			FunctionTree* pub = this->getCurrentFuncTree(0, &this->rootNode->publicFuncTree);
-			pub->subs.push_back(ft);
+				existing->subs.push_back(ft);
+
+				FunctionTree* pub = this->getCurrentFuncTree(0, &this->rootNode->publicFuncTree);
+				pub->subs.push_back(ft);
+			}
 		}
 
 		this->namespaceStack.push_back(namespc);

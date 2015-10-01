@@ -133,11 +133,40 @@ namespace Compiler
 					root->publicFuncTree.funcs.push_back(f);
 				}
 
+
+
+
+				using namespace Codegen;
+				std::function<void (FunctionTree*, FunctionTree*)> addSubs = [&](FunctionTree* root, FunctionTree* sub) {
+
+					for(auto s : root->subs)
+					{
+						if(s->nsName == sub->nsName)
+						{
+							// add subs of subs instead.
+							for(auto ss : sub->subs)
+								addSubs(s, ss);
+
+							return;
+						}
+					}
+
+					root->subs.push_back(cgi->cloneFunctionTree(sub, false));
+				};
+
 				for(auto s : r->publicFuncTree.subs)
 				{
-					root->externalFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
-					root->publicFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
+					addSubs(&root->externalFuncTree, s);
+					addSubs(&root->publicFuncTree, s);
+
+					// root->externalFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
+					// root->publicFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
 				}
+
+
+
+
+
 
 				for(auto v : r->publicTypes)
 				{
@@ -174,6 +203,13 @@ namespace Compiler
 		// cgi->module->dump();
 
 		llvm::verifyModule(*cgi->module, &llvm::errs());
+
+		for(auto s : cgi->rootFuncStack.subs)
+			printf("SUB: %s\n", s->nsName.c_str());
+
+		printf("DONE\n");
+
+
 		Codegen::writeBitcode(filename, cgi);
 
 		size_t lastdot = filename.find_last_of(".");
