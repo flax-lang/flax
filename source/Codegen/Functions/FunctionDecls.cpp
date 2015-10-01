@@ -168,6 +168,16 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(!this->isStatic)
 		{
+			// do a check.
+			for(auto p : this->params)
+			{
+				if(p->name == "self")
+					error(cgi, this, "Cannot have a parameter named 'self' in a method declaration");
+
+				else if(p->name == "super")
+					error(cgi, this, "Cannot have a parameter named 'super' in a method declaration");
+			}
+
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
 			implicit_self->type = this->parentClass->mangledName + "*";
 			this->params.push_front(implicit_self);

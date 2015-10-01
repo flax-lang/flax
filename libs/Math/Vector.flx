@@ -16,4 +16,13 @@ namespace Math
 		var y: Double
 		var z: Double
 	}
+
+	namespace Complex
+	{
+		public struct Cmplx
+		{
+			var r: Double
+			var i: Double
+		}
+	}
 }
