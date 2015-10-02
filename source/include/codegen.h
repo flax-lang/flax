@@ -7,6 +7,7 @@
 #include "typeinfo.h"
 
 #include <vector>
+#include <map>
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/GlobalValue.h"
@@ -93,6 +94,11 @@ namespace Codegen
 		std::vector<std::string> rawLines;
 
 		TypeMap_t typeMap;
+
+		// custom operator stuff
+		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
+		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
+
 
 		FunctionTree rootFuncStack = FunctionTree("__#root");
 		std::deque<Ast::Func*> funcScopeStack;
