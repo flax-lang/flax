@@ -27,11 +27,11 @@ namespace Math
 			return ret
 		}
 
-		@precedence[90]
-		operator • (other: Math.Vector2) -> Double
-		{
-			return self.x * other.x + self.y * other.y
-		}
+		// @precedence[90]
+		// operator • (other: Math.Vector2) -> Double
+		// {
+		// 	return self.x * other.x + self.y * other.y
+		// }
 	}
 
 	public struct Vector3

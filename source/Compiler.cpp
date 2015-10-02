@@ -25,7 +25,7 @@ using namespace Ast;
 
 namespace Compiler
 {
-	static std::string resolveImport(Import* imp, std::string curpath)
+	std::string resolveImport(Import* imp, std::string curpath)
 	{
 		if(imp->module.find("*") != (size_t) -1)
 		{
@@ -70,7 +70,8 @@ namespace Compiler
 		}
 	}
 
-	Root* compileFile(std::string filename, std::vector<std::string>& list, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi)
+	Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
+		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
 	{
 		std::string curpath;
 		{
@@ -81,17 +82,22 @@ namespace Compiler
 
 		std::ifstream file(filename);
 
-		// stream << file.rdbuf();
-		// std::string str = stream.str();
-		// file.close();
-
 		std::string str;
+		std::vector<std::string> rawlines;
+
 		if(file)
 		{
 			std::ostringstream contents;
 			contents << file.rdbuf();
 			file.close();
 			str = contents.str();
+
+
+			std::stringstream ss(str);
+
+			std::string tmp;
+			while(std::getline(ss, tmp, '\n'))
+				rawlines.push_back(tmp);
 		}
 		else
 		{
@@ -99,8 +105,10 @@ namespace Compiler
 			exit(-1);
 		}
 
+		pstate.cgi->rawLines = rawlines;
+
 		// parse
-		Root* root = Parser::Parse(filename, str, cgi);
+		Root* root = Parser::Parse(pstate, filename, str);
 
 		// get imports
 		for(Expr* e : root->topLevelExpressions)
@@ -120,10 +128,18 @@ namespace Compiler
 				else
 				{
 					Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
-					r = compileFile(fname, list, rootmap, modules, rcgi);
+					rcgi->customOperatorMap = pstate.cgi->customOperatorMap;
+					rcgi->customOperatorMapRev = pstate.cgi->customOperatorMapRev;
+
+					Parser::ParserState newPstate(rcgi);
+
+					r = compileFile(newPstate, fname, list, rootmap, modules);
 
 					modules.push_back(rcgi->module);
 					rootmap[imp->module] = r;
+
+					pstate.cgi->customOperatorMap = rcgi->customOperatorMap;
+					pstate.cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
 					delete rcgi;
 				}
 
@@ -151,7 +167,7 @@ namespace Compiler
 						}
 					}
 
-					root->subs.push_back(cgi->cloneFunctionTree(sub, false));
+					root->subs.push_back(pstate.cgi->cloneFunctionTree(sub, false));
 				};
 
 				for(auto s : r->publicFuncTree.subs)
@@ -198,13 +214,13 @@ namespace Compiler
 			}
 		}
 
-		Codegen::doCodegen(filename, root, cgi);
+		iceAssert(pstate.cgi);
+		Codegen::doCodegen(filename, root, pstate.cgi);
 
 		// cgi->module->dump();
 
-		llvm::verifyModule(*cgi->module, &llvm::errs());
-
-		Codegen::writeBitcode(filename, cgi);
+		llvm::verifyModule(*pstate.cgi->module, &llvm::errs());
+		Codegen::writeBitcode(filename, pstate.cgi);
 
 		size_t lastdot = filename.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));

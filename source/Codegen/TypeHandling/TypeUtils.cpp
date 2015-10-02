@@ -1129,11 +1129,11 @@ namespace Codegen
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
-			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(bo->op) + " " + this->printAst(bo->right) + ")";
+			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(this, bo->op) + " " + this->printAst(bo->right) + ")";
 		}
 		else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
 		{
-			return "(" + Parser::arithmeticOpToString(uo->op) + this->printAst(uo->expr) + ")";
+			return "(" + Parser::arithmeticOpToString(this, uo->op) + this->printAst(uo->expr) + ")";
 		}
 		else if(Number* n = dynamic_cast<Number*>(expr))
 		{

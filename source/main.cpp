@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include "include/ast.h"
+#include "include/parser.h"
 #include "include/codegen.h"
 #include "include/compiler.h"
 
@@ -359,7 +360,19 @@ int main(int argc, char* argv[])
 		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* r = Compiler::compileFile(filename, filelist, rootmap, modulelist, cgi);
+
+		std::string curpath;
+		{
+			size_t sep = filename.find_last_of("\\/");
+			if(sep != std::string::npos)
+				curpath = filename.substr(0, sep);
+		}
+
+		// parse and find all custom operators
+		Parser::ParserState pstate(cgi);
+
+		Parser::parseAllCustomOperators(pstate, filename, curpath);
+		Root* r = Compiler::compileFile(pstate, filename, filelist, rootmap, modulelist);
 
 
 

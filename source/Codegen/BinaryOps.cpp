@@ -800,7 +800,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		}
 		else
 		{
-			error(cgi, this, "Invalid comparison %s on Type!", Parser::arithmeticOpToString(this->op).c_str());
+			error(cgi, this, "Invalid comparison %s on Type!", Parser::arithmeticOpToString(cgi, this->op).c_str());
 		}
 
 

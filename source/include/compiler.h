@@ -13,12 +13,19 @@ namespace llvm
 	class Module;
 }
 
+namespace Parser
+{
+	struct ParserState;
+}
+
 namespace Compiler
 {
-	Ast::Root* compileFile(std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi);
+	Ast::Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules);
 
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
+
+	std::string resolveImport(Ast::Import* imp, std::string curpath);
 
 	std::string getTarget();
 	std::string getPrefix();

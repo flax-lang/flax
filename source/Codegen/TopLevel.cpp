@@ -161,18 +161,15 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 	cgi->usingNamespaces.pop_back();
 	cgi->popNamespaceScope();
 }
+
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// this is getting quite out of hand.
-	codegenTopLevel(cgi, 0, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 1, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 2, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 3, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 4, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 5, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 6, this->topLevelExpressions, false, &this->topLevelNamespaces);
-	codegenTopLevel(cgi, 7, this->topLevelExpressions, false, &this->topLevelNamespaces);
-
+	for(int pass = 0; pass <= 7; pass++)
+	{
+		printf("starting pass %d\n", pass);
+		codegenTopLevel(cgi, pass, this->topLevelExpressions, false, &this->topLevelNamespaces);
+	}
 
 	// run the after-codegen checkers.
 	SemAnalysis::analyseVarUsage(cgi);

@@ -41,22 +41,22 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
+	this->initFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
-		cgi->addFunctionToScope({ defaultInitFunc, fd });
+		FuncDecl* fd = new FuncDecl(this->posinfo, this->initFunc->getName(), { fakeSelf }, "Void");
+		cgi->addFunctionToScope({ this->initFunc, fd });
 	}
 
 
-	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
+	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", this->initFunc);
 	cgi->builder.SetInsertPoint(iblock);
 
 	// create the local instance of reference to self
-	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
+	llvm::Value* self = &this->initFunc->getArgumentList().front();
 
 
 
@@ -78,12 +78,10 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	cgi->builder.CreateRetVoid();
-	llvm::verifyFunction(*defaultInitFunc);
-
-	this->initFunc = defaultInitFunc;
+	llvm::verifyFunction(*this->initFunc);
 
 	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(this, str));
-	cgi->addPublicFunc({ defaultInitFunc, 0 });
+	cgi->addPublicFunc({ this->initFunc, 0 });
 
 
 

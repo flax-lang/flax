@@ -208,7 +208,7 @@ namespace Parser
 				}
 				else
 				{
-					parserError(tok, "Expected closing '*/'");
+					parserError("Expected closing '*/'");
 				}
 			}
 
