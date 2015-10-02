@@ -1982,7 +1982,6 @@ namespace Codegen
 			if(!str->initFunc)
 				error(this, user, "Struct '%s' has no intialiser???", str->name.c_str());
 
-			printf("%p\n", str->initFunc);
 			return this->module->getFunction(str->initFunc->getName());
 		}
 		else if(pair->second.second == TypeKind::TypeAlias)

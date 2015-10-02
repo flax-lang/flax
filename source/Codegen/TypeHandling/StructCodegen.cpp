@@ -125,9 +125,6 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return 0;
 
-	if(cgi->isDuplicateType(this->name))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
-
 
 
 	// check our inheritances??
@@ -135,6 +132,12 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 
 	// create a bodyless struct so we can use it
 	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
+
+	if(cgi->isDuplicateType(this->mangledName))
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+
+
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 
 	this->scope = cgi->namespaceStack;
