@@ -97,8 +97,7 @@ class Bar : Foo
 		get {
 			return 73
 		}
-		set
-		{
+		set {
 			// super.bar = newValue
 		}
 	}
@@ -182,48 +181,6 @@ func main(argc: Int32, argv: Int8**) -> Int
 	var vec2: Math.Vector2
 	vec2.x = 1
 	vec2.y = 7
-
-
-
-	// todo: custom operator thoughts.
-	//
-	// currently, having it implemented in the parser is **impossible** to do. the parser cannot know anything.
-	//
-	// potential solution is to look for patterns like these:
-	// IDENTIFIER IDENTIFIER or IDENTIFIER IDENTIFIER IDENTIFIER
-	//
-	// ie. two or more identifier tokens in a row. i cannot think of a scenario where two or more identifiers will be consecutive
-	// in any source text.
-	//
-	// the parser can flag these groups as "potential custom operators".
-	// ** PROBLEM: how do we settle precedence? by the time we get into the codegen, all the binops etc. have
-	// already been formed...
-	//
-	//
-	// one more potential solution is to just do a "preliminary parse" of all files, that would also recursively scan imports,
-	// looking only for 3 things:
-	//
-	// 1. imports
-	// 2. operators with custom identifiers
-	// 3. @precedence attributes
-	//
-	// everything else will be ignored.
-	// This presents a snag when we do incremental compilation in the future -- you can ever only call the compiler on the main file,
-	// and every single import must be parsed to some degree...
-	//
-	// EDIT: not necessarily. since an externally defined custom operator must also be imported, it would also be parsed. Theoretically
-	// it shouldn't affect our ability to incrementally compile, although we still need to parse every file.
-	//
-	// This is in a similarly gross vein to how we handle instantiating generic functions -- BY TRYING EVERYTHING.
-	// It's sad, really.
-	//
-	//
-	//
-	// I think this is the solution we will end up implementing until a better one is found. This allows us to cleanly keep all
-	// precedence and parsing things in the parser as well.
-
-
-
 
 
 

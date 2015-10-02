@@ -167,7 +167,7 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// this is getting quite out of hand.
 	for(int pass = 0; pass <= 7; pass++)
 	{
-		printf("starting pass %d\n", pass);
+		// printf("starting pass %d\n", pass);
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false, &this->topLevelNamespaces);
 	}
 
