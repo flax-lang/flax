@@ -11,27 +11,35 @@ using namespace Ast;
 
 namespace GenError
 {
+	static Codegen::CodegenInstance* scgi = 0;
 	void printContext(std::vector<std::string> lines, uint64_t line, uint64_t col)
 	{
-		assert(lines.size() > line - 1);
-		std::string ln = lines[line - 1];
-
-		fprintf(stderr, "%s\n", ln.c_str());
-
-		for(uint64_t i = 1; i < col - 1; i++)
+		if(lines.size() > line - 1)
 		{
-			if(ln[i - 1] == '\t')
-				fprintf(stderr, "\t");		// 4-wide tabs
+			std::string ln = lines[line - 1];
 
-			else
-				fprintf(stderr, " ");
+			fprintf(stderr, "%s\n", ln.c_str());
+
+			for(uint64_t i = 1; i < col - 1; i++)
+			{
+				if(ln[i - 1] == '\t')
+					fprintf(stderr, "\t");		// 4-wide tabs
+
+				else
+					fprintf(stderr, " ");
+			}
+
+			fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 		}
-
-		fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+		else
+		{
+			fprintf(stderr, "(no context)");
+		}
 	}
 
 	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
 	{
+		scgi = cgi;
 		printContext(cgi->rawLines, line, col);
 	}
 
@@ -86,6 +94,8 @@ void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, co
 
 void error(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
 {
+	GenError::scgi = cgi;
+
 	va_list ap;
 	va_start(ap, msg);
 
@@ -145,6 +155,8 @@ void warn(Expr* relevantast, const char* msg, ...)
 
 void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
 {
+	GenError::scgi = cgi;
+
 	va_list ap;
 	va_start(ap, msg);
 
@@ -186,7 +198,7 @@ namespace GenError
 
 	void noOpOverload(Codegen::CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
 	{
-		error(cgi, e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(op).c_str(), type.c_str());
+		error(cgi, e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
 	}
 
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Type* a, llvm::Type* b)

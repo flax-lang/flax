@@ -1857,7 +1857,7 @@ namespace Codegen
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
-		return Parser::mangledStringToOperator(ch);
+		return Parser::mangledStringToOperator(this, ch);
 	}
 
 	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self,
@@ -1977,7 +1977,12 @@ namespace Codegen
 		{
 			Struct* str = dynamic_cast<Struct*>(pair->second.first);
 			iceAssert(str);
+			iceAssert(str->initFunc);
 
+			if(!str->initFunc)
+				error(this, user, "Struct '%s' has no intialiser???", str->name.c_str());
+
+			printf("%p\n", str->initFunc);
 			return this->module->getFunction(str->initFunc->getName());
 		}
 		else if(pair->second.second == TypeKind::TypeAlias)

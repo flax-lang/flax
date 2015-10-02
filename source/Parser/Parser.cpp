@@ -19,19 +19,6 @@ using namespace Ast;
 
 namespace Parser
 {
-	static Token curtok;
-	static PosInfo currentPos;
-	static Root* rootNode						= nullptr;
-	static uint32_t curAttrib					= 0;
-	static std::vector<std::string> lines;
-	static std::map<ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
-	static std::map<std::string, ArithmeticOp> customOperatorMapRev;
-
-	// todo: hacks
-	static bool isParsingStruct;
-	static bool didHaveLeftParen;
-	static int currentOperatorPrecedence;
-
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
 	#define CreateAST(name, tok, ...)		(new name (tok.posinfo, ##__VA_ARGS__))
 
@@ -44,7 +31,7 @@ namespace Parser
 	#define ATTR_STR_RAW				"raw"
 	#define ATTR_STR_PRECEDENCE			"precedence"
 
-
+	static ParserState* staticState;
 
 	// come on man
 	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
@@ -53,7 +40,8 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(lines, curtok.posinfo.line, curtok.posinfo.col, curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
+			staticState->curtok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -66,10 +54,38 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(lines, curtok.posinfo.line, curtok.posinfo.col, curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
+			staticState->curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
+
+
+	void parserError(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(ParserState& ps, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserWarn(ParserState& ps, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+
 
 
 	void parserError(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
@@ -78,7 +94,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -90,10 +106,47 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
+
+
+
+
+
+
+
+
+	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+	void parserError(ParserState& ps, Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+	void parserWarn(ParserState& ps, Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+
+
+
+
+
 
 
 
@@ -112,35 +165,9 @@ namespace Parser
 		return modname;
 	}
 
-	// helpers
-	static void skipNewline(TokenList& tokens)
+	static bool checkHasMore(ParserState& ps)
 	{
-		// eat newlines AND comments
-		while(tokens.size() > 0 && (tokens.front().type == TType::NewLine || tokens.front().type == TType::Comment || tokens.front().type == TType::Semicolon))
-		{
-			tokens.pop_front();
-			currentPos.line++;
-		}
-	}
-
-	static Token eat(TokenList& tokens)
-	{
-		// returns the current front, then pops front.
-		if(tokens.size() == 0)
-			parserError("Unexpected end of input");
-
-		skipNewline(tokens);
-		Token t = tokens.front();
-		tokens.pop_front();
-		skipNewline(tokens);
-
-		curtok = t;
-		return t;
-	}
-
-	static bool checkHasMore(TokenList& tokens)
-	{
-		return tokens.size() > 0;
+		return ps.tokens.size() > 0;
 	}
 
 	static bool isRightAssociativeOp(Token tok)
@@ -156,12 +183,12 @@ namespace Parser
 		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
 	}
 
-	static int getOpPrec(Token tok)
+	static int getOpPrec(ParserState& ps, Token tok)
 	{
 		switch(tok.type)
 		{
 			case TType::Comma:
-				return didHaveLeftParen ? 2000 : -1;	// lol x3
+				return ps.didHaveLeftParen ? 2000 : -1;	// lol x3
 
 			case TType::As:
 			case TType::Period:
@@ -221,10 +248,10 @@ namespace Parser
 				return 10;
 
 			case TType::Identifier:
-				if(customOperatorMapRev.find(tok.text) != customOperatorMapRev.end())
+				if(ps.cgi->customOperatorMapRev.find(tok.text) != ps.cgi->customOperatorMapRev.end())
 				{
 					printf("FOUND\n");
-					return customOperatorMap[customOperatorMapRev[tok.text]].second;
+					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[tok.text]].second;
 				}
 				return -1;
 
@@ -233,7 +260,7 @@ namespace Parser
 		}
 	}
 
-	std::string arithmeticOpToString(Ast::ArithmeticOp op)
+	std::string arithmeticOpToString(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op)
 	{
 		switch(op)
 		{
@@ -279,7 +306,7 @@ namespace Parser
 			case ArithmeticOp::TupleSeparator:		return ",";
 			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 
-			default:								return customOperatorMap[op].first;
+			default:								return cgi->customOperatorMap[op].first;
 		}
 	}
 
@@ -298,7 +325,6 @@ namespace Parser
 		return std::stod(t.text);
 	}
 
-
 	static const char* ReadableAttrNames[] =
 	{
 		"Invalid",
@@ -314,237 +340,293 @@ namespace Parser
 		"Override",
 	};
 
-	static uint32_t checkAndApplyAttributes(uint32_t allowed)
+	static uint64_t checkAndApplyAttributes(ParserState& ps, uint64_t allowed)
 	{
-		uint32_t disallowed = ~allowed;
+		uint64_t disallowed = ~allowed;
 
-		if(curAttrib & disallowed)
+		if(ps.curAttrib & disallowed)
 		{
 
 			int shifts = 0;
-			while(((curAttrib & disallowed) & 1) == 0)
-				curAttrib >>= 1, disallowed >>= 1, shifts++;
+			while(((ps.curAttrib & disallowed) & 1) == 0)
+				ps.curAttrib >>= 1, disallowed >>= 1, shifts++;
 
 			if(shifts > 0)
 				parserError("Invalid attribute '%s' for expression", ReadableAttrNames[shifts + 1]);
 		}
 
-		uint32_t ret = curAttrib;
-		curAttrib = 0;
+		uint64_t ret = ps.curAttrib;
+		ps.curAttrib = 0;
 		return ret;
 	}
 
 
 
-	Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi)
+	void parseAllCustomOperators(ParserState& ps, std::string filename, std::string curpath)
 	{
-		Token t;
-		currentPos.file = filename;
-		currentPos.line = 1;
-		currentPos.col = 1;
-		curAttrib = 0;
+		staticState = &ps;
+		std::ifstream fstr(filename);
 
+		std::string fileContents;
+		if(fstr)
+		{
+			std::ostringstream contents;
+			contents << fstr.rdbuf();
+			fstr.close();
+			fileContents = contents.str();
+		}
+		else
+		{
+			perror("There was an error reading the file");
+			exit(-1);
+		}
 
-
-		TokenList tokens;
 
 		// split into lines
+		std::vector<std::string> rawlines;
 		{
-			std::stringstream ss(str);
+			std::stringstream ss(fileContents);
 
 			std::string tmp;
 			while(std::getline(ss, tmp, '\n'))
-				cgi->rawLines.push_back(tmp);
+				rawlines.push_back(tmp);
 		}
 
-		lines = cgi->rawLines;
+
+		ps.lines = rawlines;
 
 
-		while((curtok = t = getNextToken(str, currentPos)).text.size() > 0)
-			tokens.push_back(t);
+		while((ps.curtok = getNextToken(fileContents, ps.currentPos)).text.size() > 0)
+		{
+			ps.tokens.push_back(ps.curtok);
+			ps.origTokens.push_back(ps.curtok);
+		}
 
-		rootNode = new Root();
-
-		currentPos.file = filename;
-		currentPos.line = 1;
-		currentPos.col = 1;
+		ps.currentPos.file = filename;
+		ps.currentPos.line = 1;
+		ps.currentPos.col = 1;
 
 
 		// todo: hacks
-		isParsingStruct = 0;
-		didHaveLeftParen = 0;
-		currentOperatorPrecedence = 0;
+		ps.isParsingStruct = 0;
+		ps.didHaveLeftParen = 0;
+		ps.currentOpPrec = 0;
 
-		skipNewline(tokens);
+		ps.skipNewline();
 
 
 		// hackjob... kinda.
-		auto findOperators = [&](TokenList ts) {
+		auto findOperators = [&](ParserState& ps) {
 
 			int curPrec = 0;
-			while(ts.size() > 0)
+			while(ps.tokens.size() > 0)
 			{
-				Token t = ts.front();
-				ts.pop_front();
+				Token t = ps.front();
+				ps.pop_front();
 
-
-
-
-				if(t.type == TType::At)
+				if(t.type == TType::Import)
 				{
-					Token attr = ts.front();
-					ts.pop_front();
+					// hack: parseImport expects front token to be "import"
+					ps.tokens.push_front(t);
+
+					Import* imp = parseImport(ps);
+					std::string file = Compiler::resolveImport(imp, curpath);
+					const char* fullpath = realpath(file.c_str(), 0);
+
+					file = fullpath;
+					free((void*) fullpath);
+
+					if(!ps.visited[file])
+					{
+						ps.visited[file] = true;
+						parseAllCustomOperators(ps, file, curpath);
+					}
+				}
+				else if(t.type == TType::At)
+				{
+					Token attr = ps.front();
+					ps.pop_front();
 
 					iceAssert(attr.type == TType::Identifier);
 					if(attr.text == ATTR_STR_PRECEDENCE)
 					{
-						skipNewline(ts);
-						if(ts.front().type != TType::LSquare)
-							parserError(ts.front(), "Expected '(' after @precedence");
+						ps.skipNewline();
+						if(ps.front().type != TType::LSquare)
+							parserError(ps, ps.front(), "Expected '[' after @precedence");
 
-						ts.pop_front();
-						skipNewline(ts);
+						ps.pop_front();
+						ps.skipNewline();
 
-						Token num = ts.front();
-						ts.pop_front();
-						skipNewline(ts);
+						Token num = ps.front();
+						ps.pop_front();
+						ps.skipNewline();
 
 						if(num.type != TType::Integer)
-							parserError(num, "Expected integer within @precedence()");
+							parserError(ps, num, "Expected integer within @precedence[]");
 
 						curPrec = std::stod(num.text);
 						if(curPrec <= 0)
-							parserError(num, "Precedence must be greater than 0");
+							parserError(ps, num, "Precedence must be greater than 0");
 
-						skipNewline(ts);
-						if(ts.front().type != TType::RSquare)
-							parserError(ts.front(), "Expected closing ')'");
+						ps.skipNewline();
+						if(ps.front().type != TType::RSquare)
+							parserError(ps, ps.front(), "Expected closing ']'");
 
-						ts.pop_front();
-						skipNewline(ts);
+						ps.pop_front();
+						ps.skipNewline();
 					}
 				}
 				else if(t.type == TType::Identifier && t.text == "operator")
 				{
-					skipNewline(ts);
-
-					Token op = ts.front();
+					ps.skipNewline();
+					Token op = ps.front();
 
 					if(op.type == TType::Identifier)
 					{
-						size_t opNum = customOperatorMap.size();
+						size_t opNum = ps.cgi->customOperatorMap.size();
 
 						if(curPrec == 0)
-							parserError(t, "Custom operators must have a precedence, use @precedence(x)");
+							parserError(ps, t, "Custom operators must have a precedence, use @precedence(x)");
 
-						customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { op.text, curPrec };
-						customOperatorMapRev[op.text] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
-
-						printf("found custom operator '%s'\n", op.text.c_str());
+						// check if it exists.
+						if(ps.cgi->customOperatorMapRev.find(op.text) == ps.cgi->customOperatorMapRev.end())
+						{
+							ps.cgi->customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { op.text, curPrec };
+							ps.cgi->customOperatorMapRev[op.text] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
+						}
 
 						curPrec = 0;
 					}
 				}
 				else if(curPrec > 0)
 				{
-					parserError(ts.front(), "@precedence can only be applied to operators (%s)", ts.front().text.c_str());
+					parserError(ps, ps.front(), "@precedence can only be applied to operators (%s)", ps.front().text.c_str());
 				}
 			}
 
 		};
 
+		findOperators(ps);
+	}
 
-		findOperators(tokens);
-		parseAll(tokens);
 
-		return rootNode;
+
+	Root* Parse(ParserState& ps, std::string filename, std::string str)
+	{
+		Token t;
+		ps.currentPos.file = filename;
+		ps.currentPos.line = 1;
+		ps.currentPos.col = 1;
+		ps.curAttrib = 0;
+
+		ps.tokens = ps.origTokens;
+
+		ps.rootNode = new Root();
+
+		ps.currentPos.file = filename;
+		ps.currentPos.line = 1;
+		ps.currentPos.col = 1;
+
+
+		// todo: hacks
+		ps.isParsingStruct = 0;
+		ps.didHaveLeftParen = 0;
+		ps.currentOpPrec = 0;
+
+		ps.skipNewline();
+
+
+		staticState = &ps;
+
+		parseAll(ps);
+		return ps.rootNode;
 	}
 
 
 	// this only handles the topmost level.
-	void parseAll(TokenList& tokens)
+	void parseAll(ParserState& ps)
 	{
-		if(tokens.size() == 0)
+		if(ps.tokens.size() == 0)
 			return;
 
 		Token tok;
-		while(tokens.size() > 0 && (tok = tokens.front()).text.length() > 0)
+		while(ps.tokens.size() > 0 && (tok = ps.front()).text.length() > 0)
 		{
 			switch(tok.type)
 			{
 				case TType::Func:
-					rootNode->topLevelExpressions.push_back(parseFunc(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseFunc(ps));
 					break;
 
 				case TType::Import:
-					rootNode->topLevelExpressions.push_back(parseImport(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseImport(ps));
 					break;
 
 				case TType::ForeignFunc:
-					rootNode->topLevelExpressions.push_back(parseForeignFunc(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseForeignFunc(ps));
 					break;
 
 				case TType::Struct:
-					rootNode->topLevelExpressions.push_back(parseStruct(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseStruct(ps));
 					break;
 
 				case TType::Class:
-					rootNode->topLevelExpressions.push_back(parseClass(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseClass(ps));
 					break;
 
 				case TType::Enum:
-					rootNode->topLevelExpressions.push_back(parseEnum(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseEnum(ps));
 					break;
 
 				case TType::Extension:
-					rootNode->topLevelExpressions.push_back(parseExtension(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseExtension(ps));
 					break;
 
 				case TType::Var:
 				case TType::Val:
-					rootNode->topLevelExpressions.push_back(parseVarDecl(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseVarDecl(ps));
 					break;
 
 				// shit you just skip
 				case TType::NewLine:
-					currentPos.line++;
+					ps.currentPos.line++;
 					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
-					tokens.pop_front();
+					ps.pop_front();
 					break;
 
 				case TType::TypeAlias:
-					rootNode->topLevelExpressions.push_back(parseTypeAlias(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseTypeAlias(ps));
 					break;
 
 				case TType::Namespace:
-					rootNode->topLevelExpressions.push_back(parseNamespace(tokens));
+					ps.rootNode->topLevelExpressions.push_back(parseNamespace(ps));
 					break;
 
 				case TType::Private:
-					eat(tokens);
-					curAttrib |= Attr_VisPrivate;
+					ps.eat();
+					ps.curAttrib |= Attr_VisPrivate;
 					break;
 
 				case TType::Internal:
-					eat(tokens);
-					curAttrib |= Attr_VisInternal;
+					ps.eat();
+					ps.curAttrib |= Attr_VisInternal;
 					break;
 
 				case TType::Public:
-					eat(tokens);
-					curAttrib |= Attr_VisPublic;
+					ps.eat();
+					ps.curAttrib |= Attr_VisPublic;
 					break;
 
 				case TType::Override:
-					eat(tokens);
-					curAttrib |= Attr_Override;
+					ps.eat();
+					ps.curAttrib |= Attr_Override;
 					break;
 
 				case TType::At:
-					parseAttribute(tokens);
+					parseAttribute(ps);
 					break;
 
 				default:	// wip: skip shit we don't know/care about for now
@@ -553,123 +635,123 @@ namespace Parser
 		}
 	}
 
-	Expr* parsePrimary(TokenList& tokens)
+	Expr* parsePrimary(ParserState& ps)
 	{
-		if(tokens.size() == 0)
+		if(ps.tokens.size() == 0)
 			return nullptr;
 
 		Token tok;
-		while((tok = tokens.front()).text.length() > 0)
+		while((tok = ps.front()).text.length() > 0)
 		{
 			switch(tok.type)
 			{
 				case TType::Var:
 				case TType::Val:
-					return parseVarDecl(tokens);
+					return parseVarDecl(ps);
 
 				case TType::Func:
-					return parseFunc(tokens);
+					return parseFunc(ps);
 
 				case TType::ForeignFunc:
-					return parseForeignFunc(tokens);
+					return parseForeignFunc(ps);
 
 				case TType::LParen:
-					return parseParenthesised(tokens);
+					return parseParenthesised(ps);
 
 				case TType::Identifier:
 					if(tok.text == "init")
-						return parseInitFunc(tokens);
+						return parseInitFunc(ps);
 
 					else if(tok.text == "operator")
-						return parseOpOverload(tokens);
+						return parseOpOverload(ps);
 
-					return parseIdExpr(tokens);
+					return parseIdExpr(ps);
 
 				case TType::Static:
-					return parseStaticDecl(tokens);
+					return parseStaticDecl(ps);
 
 				case TType::Alloc:
-					return parseAlloc(tokens);
+					return parseAlloc(ps);
 
 				case TType::Dealloc:
-					return parseDealloc(tokens);
+					return parseDealloc(ps);
 
 				case TType::Struct:
-					return parseStruct(tokens);
+					return parseStruct(ps);
 
 				case TType::Class:
-					return parseClass(tokens);
+					return parseClass(ps);
 
 				case TType::Enum:
-					return parseEnum(tokens);
+					return parseEnum(ps);
 
 				case TType::Defer:
-					return parseDefer(tokens);
+					return parseDefer(ps);
 
 				case TType::Typeof:
-					return parseTypeof(tokens);
+					return parseTypeof(ps);
 
 				case TType::Extension:
-					return parseExtension(tokens);
+					return parseExtension(ps);
 
 				case TType::At:
-					parseAttribute(tokens);
-					return parsePrimary(tokens);
+					parseAttribute(ps);
+					return parsePrimary(ps);
 
 				case TType::StringLiteral:
-					return parseStringLiteral(tokens);
+					return parseStringLiteral(ps);
 
 				case TType::Integer:
 				case TType::Decimal:
-					return parseNumber(tokens);
+					return parseNumber(ps);
 
 				case TType::LSquare:
-					return parseArrayLiteral(tokens);
+					return parseArrayLiteral(ps);
 
 				case TType::Return:
-					return parseReturn(tokens);
+					return parseReturn(ps);
 
 				case TType::Break:
-					return parseBreak(tokens);
+					return parseBreak(ps);
 
 				case TType::Continue:
-					return parseContinue(tokens);
+					return parseContinue(ps);
 
 				case TType::If:
-					return parseIf(tokens);
+					return parseIf(ps);
 
 				// since both have the same kind of AST node, parseWhile can handle both
 				case TType::Do:
 				case TType::While:
 				case TType::Loop:
-					return parseWhile(tokens);
+					return parseWhile(ps);
 
 				case TType::For:
-					return parseFor(tokens);
+					return parseFor(ps);
 
 				// shit you just skip
 				case TType::NewLine:
-					currentPos.line++;
+					ps.currentPos.line++;
 					[[clang::fallthrough]];
 
 				case TType::Comment:
 				case TType::Semicolon:
-					eat(tokens);
+					ps.eat();
 					return CreateAST(DummyExpr, tok);
 
 				case TType::TypeAlias:
-					return parseTypeAlias(tokens);
+					return parseTypeAlias(ps);
 
 				case TType::Namespace:
-					return parseNamespace(tokens);
+					return parseNamespace(ps);
 
 				// no point creating separate functions for these
 				case TType::True:
-					tokens.pop_front();
+					ps.pop_front();
 					return CreateAST(BoolVal, tok, true);
 
 				case TType::False:
-					tokens.pop_front();
+					ps.pop_front();
 					return CreateAST(BoolVal, tok, false);
 
 
@@ -677,29 +759,29 @@ namespace Parser
 				// attributes-as-keywords
 				// stored as attributes in the AST, but parsed as keywords by the parser.
 				case TType::Private:
-					eat(tokens);
-					curAttrib |= Attr_VisPrivate;
-					return parsePrimary(tokens);
+					ps.eat();
+					ps.curAttrib |= Attr_VisPrivate;
+					return parsePrimary(ps);
 
 				case TType::Internal:
-					eat(tokens);
-					curAttrib |= Attr_VisInternal;
-					return parsePrimary(tokens);
+					ps.eat();
+					ps.curAttrib |= Attr_VisInternal;
+					return parsePrimary(ps);
 
 				case TType::Public:
-					eat(tokens);
-					curAttrib |= Attr_VisPublic;
-					return parsePrimary(tokens);
+					ps.eat();
+					ps.curAttrib |= Attr_VisPublic;
+					return parsePrimary(ps);
 
 				case TType::Override:
-					eat(tokens);
-					curAttrib |= Attr_Override;
-					return parsePrimary(tokens);
+					ps.eat();
+					ps.curAttrib |= Attr_Override;
+					return parsePrimary(ps);
 
 				case TType::LBrace:
 					parserWarn("Anonymous blocks are ignored; to run, preface with 'do'");
-					parseBracedBlock(tokens);		// parse it, but throw it away
-					return CreateAST(DummyExpr, tokens.front());
+					parseBracedBlock(ps);		// parse it, but throw it away
+					return CreateAST(DummyExpr, ps.front());
 
 				default:
 					parserError("Unexpected token '%s'\n", tok.text.c_str());
@@ -709,9 +791,9 @@ namespace Parser
 		return nullptr;
 	}
 
-	Expr* parseUnary(TokenList& tokens)
+	Expr* parseUnary(ParserState& ps)
 	{
-		Token front = tokens.front();
+		Token front = ps.front();
 
 		// check for unary shit
 		ArithmeticOp op = ArithmeticOp::Invalid;
@@ -725,55 +807,55 @@ namespace Parser
 
 		if(op != ArithmeticOp::Invalid)
 		{
-			eat(tokens);
-			return CreateAST(UnaryOp, front, op, parseUnary(tokens));
+			ps.eat();
+			return CreateAST(UnaryOp, front, op, parseUnary(ps));
 		}
 
-		return parsePrimary(tokens);
+		return parsePrimary(ps);
 	}
 
-	Expr* parseStaticDecl(TokenList& tokens)
+	Expr* parseStaticDecl(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::Static);
-		if(!isParsingStruct)
+		iceAssert(ps.front().type == TType::Static);
+		if(!ps.isParsingStruct)
 			parserError("Static declarations are only allowed inside struct definitions");
 
-		eat(tokens);
-		if(tokens.front().type == TType::Func)
+		ps.eat();
+		if(ps.front().type == TType::Func)
 		{
-			Func* ret = parseFunc(tokens);
+			Func* ret = parseFunc(ps);
 			ret->decl->isStatic = true;
 			return ret;
 		}
-		else if(tokens.front().type == TType::Var || tokens.front().type == TType::Val)
+		else if(ps.front().type == TType::Var || ps.front().type == TType::Val)
 		{
 			// static var.
-			VarDecl* ret = parseVarDecl(tokens);
+			VarDecl* ret = parseVarDecl(ps);
 			ret->isStatic = true;
 			return ret;
 		}
 		else
 		{
-			parserError("Invaild static expression '%s'", tokens.front().text.c_str());
+			parserError("Invaild static expression '%s'", ps.front().text.c_str());
 		}
 	}
 
-	FuncDecl* parseFuncDecl(TokenList& tokens)
+	FuncDecl* parseFuncDecl(ParserState& ps)
 	{
 		// todo: better things? it's right now mostly hacks.
-		if(tokens.front().text != "init" && tokens.front().text.find("operator") != 0)
-			iceAssert(eat(tokens).type == TType::Func);
+		if(ps.front().text != "init" && ps.front().text.find("operator") != 0)
+			iceAssert(ps.eat().type == TType::Func);
 
-		if(tokens.front().type != TType::Identifier)
-			parserError("Expected identifier, but got token of type %d", tokens.front().type);
+		if(ps.front().type != TType::Identifier)
+			parserError("Expected identifier, but got token of type %d", ps.front().type);
 
-		Token func_id = eat(tokens);
+		Token func_id = ps.eat();
 		std::string id = func_id.text;
 
 		std::deque<std::string> genericTypes;
 
 		// expect a left bracket
-		Token paren = eat(tokens);
+		Token paren = ps.eat();
 		if(paren.type != TType::LParen && paren.type != TType::LAngle)
 		{
 			parserError("Expected '(' in function declaration, got '%s'", paren.text.c_str());
@@ -781,24 +863,24 @@ namespace Parser
 		else if(paren.type == TType::LAngle)
 		{
 			// todo: handle parsing nested generics -- << >> would parse as '<<' and '>>', not '<' '<' and '>' '>'.
-			Expr* inner = parseType(tokens);
+			Expr* inner = parseType(ps);
 			iceAssert(inner->type.isLiteral);
 
 			genericTypes.push_back(inner->type.strType);
 
-			Token angleOrComma = eat(tokens);
+			Token angleOrComma = ps.eat();
 			if(angleOrComma.type == TType::Comma)
 			{
 				// parse more.
 				Token tok;
 				while(true)
 				{
-					Expr* gtype = parseType(tokens);
+					Expr* gtype = parseType(ps);
 					iceAssert(gtype->type.isLiteral);
 
 					genericTypes.push_back(gtype->type.strType);
 
-					tok = eat(tokens);
+					tok = ps.eat();
 					if(tok.type == TType::Comma)		continue;
 					else if(tok.type == TType::RAngle)	break;
 					else								parserError("Expected '>' or ','");
@@ -807,7 +889,7 @@ namespace Parser
 			else if(angleOrComma.type != TType::RAngle)
 				parserError("Expected '>' or ','");
 
-			eat(tokens);
+			ps.eat();
 		}
 
 		bool isVA = false;
@@ -816,16 +898,16 @@ namespace Parser
 		std::deque<VarDecl*> params;
 		std::map<std::string, VarDecl*> nameCheck;
 
-		while(tokens.size() > 0 && tokens.front().type != TType::RParen)
+		while(ps.tokens.size() > 0 && ps.front().type != TType::RParen)
 		{
 			Token tok_id;
 			bool immutable = true;
-			if((tok_id = eat(tokens)).type != TType::Identifier)
+			if((tok_id = ps.eat()).type != TType::Identifier)
 			{
 				if(tok_id.type == TType::Elipsis)
 				{
 					isVA = true;
-					if(tokens.front().type != TType::RParen)
+					if(ps.front().type != TType::RParen)
 						parserError("Vararg declaration must be last in the function declaration");
 
 					break;
@@ -833,12 +915,12 @@ namespace Parser
 				else if(tok_id.type == TType::Var)
 				{
 					immutable = false;
-					tok_id = eat(tokens);
+					tok_id = ps.eat();
 				}
 				else if(tok_id.type == TType::Val)
 				{
 					immutable = false;
-					tok_id = eat(tokens);
+					tok_id = ps.eat();
 					parserWarn("Function parameters are immutable by default, 'val' is redundant");
 				}
 				else
@@ -851,10 +933,10 @@ namespace Parser
 			VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
 
 			// expect a colon
-			if(eat(tokens).type != TType::Colon)
+			if(ps.eat().type != TType::Colon)
 				parserError("Expected ':' followed by a type");
 
-			Expr* ctype = parseType(tokens);
+			Expr* ctype = parseType(ps);
 			v->type = ctype->type;
 			delete ctype;		// cleanup
 
@@ -868,19 +950,19 @@ namespace Parser
 				parserError("Redeclared variable '%s' in argument list", v->name.c_str());
 			}
 
-			if(tokens.front().type == TType::Comma)
-				eat(tokens);
+			if(ps.front().type == TType::Comma)
+				ps.eat();
 		}
 
 		// consume the closing paren
-		eat(tokens);
+		ps.eat();
 
 		// get return type.
 		std::string ret;
-		if(checkHasMore(tokens) && tokens.front().type == TType::Arrow)
+		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
 		{
-			eat(tokens);
-			Expr* ctype = parseType(tokens);
+			ps.eat();
+			Expr* ctype = parseType(ps);
 			ret = ctype->type.strType;
 			delete ctype;
 
@@ -892,9 +974,9 @@ namespace Parser
 			ret = "Void";
 		}
 
-		skipNewline(tokens);
+		ps.skipNewline();
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
-		f->attribs = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
+		f->attribs = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
 			Attr_NoMangle | Attr_ForceMangle | Attr_Override);
 
 		f->hasVarArg = isVA;
@@ -903,22 +985,22 @@ namespace Parser
 		return f;
 	}
 
-	ForeignFuncDecl* parseForeignFunc(TokenList& tokens)
+	ForeignFuncDecl* parseForeignFunc(ParserState& ps)
 	{
-		Token func = tokens.front();
+		Token func = ps.front();
 		iceAssert(func.type == TType::ForeignFunc);
-		eat(tokens);
+		ps.eat();
 
 		FFIType ffitype = FFIType::C;
 
 		// check for specifying the type
-		if(tokens.front().type == TType::LParen)
+		if(ps.front().type == TType::LParen)
 		{
-			eat(tokens);
-			if(tokens.front().type != TType::Identifier)
+			ps.eat();
+			if(ps.front().type != TType::Identifier)
 				parserError("Expected type of external function, either C (default) or Cpp");
 
-			Token ftype = eat(tokens);
+			Token ftype = ps.eat();
 			std::string lftype = ftype.text;
 			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
 
@@ -926,22 +1008,22 @@ namespace Parser
 			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
 			else						parserError("Unknown FFI type '%s'", ftype.text.c_str());
 
-			if(eat(tokens).type != TType::RParen)
+			if(ps.eat().type != TType::RParen)
 				parserError("Expected ')'");
 		}
 
 
 
-		FuncDecl* decl = parseFuncDecl(tokens);
+		FuncDecl* decl = parseFuncDecl(ps);
 		decl->isFFI = true;
 		decl->ffiType = ffitype;
 
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}
 
-	BracedBlock* parseBracedBlock(TokenList& tokens)
+	BracedBlock* parseBracedBlock(ParserState& ps)
 	{
-		Token tok_cls = eat(tokens);
+		Token tok_cls = ps.eat();
 		BracedBlock* c = CreateAST(BracedBlock, tok_cls);
 
 		// make sure the first token is a left brace.
@@ -952,9 +1034,9 @@ namespace Parser
 		std::deque<DeferredExpr*> defers;
 
 		// get the stuff inside.
-		while(tokens.size() > 0 && tokens.front().type != TType::RBrace)
+		while(ps.tokens.size() > 0 && ps.front().type != TType::RBrace)
 		{
-			Expr* e = parseExpr(tokens);
+			Expr* e = parseExpr(ps);
 			DeferredExpr* d = nullptr;
 
 			if((d = dynamic_cast<DeferredExpr*>(e)))
@@ -966,10 +1048,10 @@ namespace Parser
 				c->statements.push_back(e);
 			}
 
-			skipNewline(tokens);
+			ps.skipNewline();
 		}
 
-		if(eat(tokens).type != TType::RBrace)
+		if(ps.eat().type != TType::RBrace)
 			parserError("Expected '}'");
 
 
@@ -982,53 +1064,53 @@ namespace Parser
 		return c;
 	}
 
-	Func* parseFunc(TokenList& tokens)
+	Func* parseFunc(ParserState& ps)
 	{
-		Token front = tokens.front();
-		FuncDecl* decl = parseFuncDecl(tokens);
+		Token front = ps.front();
+		FuncDecl* decl = parseFuncDecl(ps);
 
-		auto ret = CreateAST(Func, front, decl, parseBracedBlock(tokens));
-		rootNode->allFunctionBodies.push_back(ret);
+		auto ret = CreateAST(Func, front, decl, parseBracedBlock(ps));
+		ps.rootNode->allFunctionBodies.push_back(ret);
 
 		return ret;
 	}
 
 
-	Expr* parseInitFunc(TokenList& tokens)
+	Expr* parseInitFunc(ParserState& ps)
 	{
-		Token front = tokens.front();
+		Token front = ps.front();
 		iceAssert(front.text == "init");
 
 		// we need to disambiguate between calling the init() function, and defining an init() function
 		// to do this, we can loop through the tokens (without consuming) until we find the closing ')'
 		// then see if the token following that is a '{'. if so, it's a declaration, if not it's a call
 
-		if(tokens.size() < 3)
+		if(ps.tokens.size() < 3)
 			parserError("Unexpected end of input");
 
-		else if(tokens.size() > 3 && tokens[1].type != TType::LParen)
+		else if(ps.tokens.size() > 3 && ps.tokens[1].type != TType::LParen)
 			parserError("Expected '(' for either function call or declaration");
 
 		int parenLevel = 0;
 		bool foundBrace = false;
-		for(size_t i = 1; i < tokens.size(); i++)
+		for(size_t i = 1; i < ps.tokens.size(); i++)
 		{
-			if(tokens[i].type == TType::LParen)
+			if(ps.tokens[i].type == TType::LParen)
 			{
 				parenLevel++;
 			}
-			else if(tokens[i].type == TType::RParen)
+			else if(ps.tokens[i].type == TType::RParen)
 			{
 				parenLevel--;
 				if(parenLevel == 0)
 				{
 					// look through each until we find a brace
-					for(size_t k = i + 1; k < tokens.size() && !foundBrace; k++)
+					for(size_t k = i + 1; k < ps.tokens.size() && !foundBrace; k++)
 					{
-						if(tokens[k].type == TType::Comment || tokens[k].type == TType::NewLine)
+						if(ps.tokens[k].type == TType::Comment || ps.tokens[k].type == TType::NewLine)
 							continue;
 
-						else if(tokens[k].type == TType::LBrace)
+						else if(ps.tokens[k].type == TType::LBrace)
 							foundBrace = true;
 
 						else
@@ -1043,15 +1125,15 @@ namespace Parser
 		if(foundBrace)
 		{
 			// found a brace, it's a decl
-			FuncDecl* decl = parseFuncDecl(tokens);
-			return CreateAST(Func, front, decl, parseBracedBlock(tokens));
+			FuncDecl* decl = parseFuncDecl(ps);
+			return CreateAST(Func, front, decl, parseBracedBlock(ps));
 		}
 		else
 		{
 			// no brace, it's a call
 			// eat the "init" token
-			eat(tokens);
-			return parseFuncCall(tokens, "init");
+			ps.eat();
+			return parseFuncCall(ps, "init");
 		}
 	}
 
@@ -1072,19 +1154,19 @@ namespace Parser
 
 
 
-	Expr* parseType(TokenList& tokens)
+	Expr* parseType(ParserState& ps)
 	{
-		Token tmp = eat(tokens);
+		Token tmp = ps.eat();
 
 		if(tmp.type == TType::Identifier)
 		{
 			std::string baseType = tmp.text;
 
 			// parse until we get a non-identifier and non-scoperes
-			if (tokens.size() > 0)
+			if (ps.tokens.size() > 0)
 			{
 				bool expectingScope = true;
-				Token t = tokens.front();
+				Token t = ps.front();
 				while(t.text.length() > 0)
 				{
 					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
@@ -1102,37 +1184,37 @@ namespace Parser
 						break;
 					}
 
-					eat(tokens);
-					t = tokens.front();
+					ps.eat();
+					t = ps.front();
 				}
 			}
 
 			std::string ptrAppend = "";
-			if(tokens.size() > 0 && (tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk))
+			if(ps.tokens.size() > 0 && (ps.front().type == TType::Ptr || ps.front().type == TType::Asterisk))
 			{
-				while(tokens.front().type == TType::Ptr || tokens.front().type == TType::Asterisk)
-					eat(tokens), ptrAppend += "*";
+				while(ps.front().type == TType::Ptr || ps.front().type == TType::Asterisk)
+					ps.eat(), ptrAppend += "*";
 			}
 
 			// check if the next token is a '['.
-			if(tokens.front().type == TType::LSquare)
+			if(ps.front().type == TType::LSquare)
 			{
-				eat(tokens);
+				ps.eat();
 
 				// todo: multidimensional fixed-size arrays.
-				Token n = eat(tokens);
+				Token n = ps.eat();
 				if(n.type != TType::Integer)
 					parserError("Expected integer size for fixed-length array");
 
 				std::string dims = n.text;
-				n = eat(tokens);
+				n = ps.eat();
 				while(n.type == TType::Comma)
 				{
-					n = eat(tokens);
+					n = ps.eat();
 					if(n.type == TType::Integer)
 					{
 						dims += "," + n.text;
-						n = eat(tokens);
+						n = ps.eat();
 					}
 
 					else if(n.type == TType::RSquare)
@@ -1161,7 +1243,7 @@ namespace Parser
 			ct->type.isLiteral = false;
 			ct->type.strType = "__internal_error__";
 
-			ct->type.type = parseExpr(tokens);
+			ct->type.type = parseExpr(ps);
 			return ct;
 		}
 		else if(tmp.type == TType::LParen)
@@ -1172,11 +1254,11 @@ namespace Parser
 			std::string final = "(";
 			while(parens > 0)
 			{
-				Token front = eat(tokens);
+				Token front = ps.eat();
 				while(front.type != TType::LParen && front.type != TType::RParen)
 				{
 					final += front.text;
-					front = eat(tokens);
+					front = ps.eat();
 				}
 
 				if(front.type == TType::LParen)
@@ -1203,14 +1285,14 @@ namespace Parser
 			// variable-sized array.
 			// declared as pointers, basically.
 
-			Expr* _dm = parseType(tokens);
+			Expr* _dm = parseType(ps);
 			iceAssert(_dm->type.isLiteral);
 
 			DummyExpr* dm = CreateAST(DummyExpr, tmp);
 			dm->type.isLiteral = true;
 			dm->type.strType = "[" + _dm->type.strType + "]";
 
-			Token next = eat(tokens);
+			Token next = ps.eat();
 			if(next.type != TType::RSquare)
 				parserError("Expected ']' after array type declaration.");
 
@@ -1222,18 +1304,18 @@ namespace Parser
 		}
 	}
 
-	VarDecl* parseVarDecl(TokenList& tokens)
+	VarDecl* parseVarDecl(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::Var || tokens.front().type == TType::Val);
+		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 
-		bool immutable = tokens.front().type == TType::Val;
-		uint32_t attribs = checkAndApplyAttributes(Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
+		bool immutable = ps.front().type == TType::Val;
+		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
-		eat(tokens);
+		ps.eat();
 
 		// get the identifier.
 		Token tok_id;
-		if((tok_id = eat(tokens)).type != TType::Identifier)
+		if((tok_id = ps.eat()).type != TType::Identifier)
 			parserError("Expected identifier for variable declaration.");
 
 		std::string id = tok_id.text;
@@ -1242,33 +1324,33 @@ namespace Parser
 		v->attribs = attribs;
 
 		// check the type.
-		Token colon = eat(tokens);
+		Token colon = ps.eat();
 		if(colon.type == TType::Colon)
 		{
-			Expr* ctype = parseType(tokens);
+			Expr* ctype = parseType(ps);
 			v->type = ctype->type;
 
 			delete ctype;	// cleanup
 
-			if(tokens.front().type == TType::LParen)
+			if(ps.front().type == TType::LParen)
 			{
 				// this form:
 				// var foo: String("bla")
 
 				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
 				// it's easy.
-				v->initVal = parseFuncCall(tokens, v->type.strType);
+				v->initVal = parseFuncCall(ps, v->type.strType);
 			}
-			else if(tokens.front().type == TType::LBrace)
+			else if(ps.front().type == TType::LBrace)
 			{
-				if(!isParsingStruct)
+				if(!ps.isParsingStruct)
 					parserError("Computed properties can only be declared inside structs");
 
 				// computed property, getting and setting
 
 				// eat the brace, skip whitespace
 				ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, id);
-				eat(tokens);
+				ps.eat();
 
 				cprop->type = v->type;
 				cprop->attribs = v->attribs;
@@ -1278,7 +1360,7 @@ namespace Parser
 				bool didSetter = false;
 				for(int i = 0; i < 2; i++)
 				{
-					if(tokens.front().type == TType::Get)
+					if(ps.front().type == TType::Get)
 					{
 						if(didGetter)
 							parserError("Only one getter is allowed per computed property");
@@ -1286,39 +1368,39 @@ namespace Parser
 						didGetter = true;
 
 						// parse a braced block.
-						eat(tokens);
-						if(tokens.front().type != TType::LBrace)
+						ps.eat();
+						if(ps.front().type != TType::LBrace)
 							parserError("Expected '{' after 'get'");
 
-						cprop->getter = parseBracedBlock(tokens);
+						cprop->getter = parseBracedBlock(ps);
 					}
-					else if(tokens.front().type == TType::Set)
+					else if(ps.front().type == TType::Set)
 					{
 						if(didSetter)
 							parserError("Only one getter is allowed per computed property");
 
 						didSetter = true;
 
-						eat(tokens);
+						ps.eat();
 						std::string setValName = "newValue";
 
 						// see if we have parentheses
-						if(tokens.front().type == TType::LParen)
+						if(ps.front().type == TType::LParen)
 						{
-							eat(tokens);
-							if(tokens.front().type != TType::Identifier)
+							ps.eat();
+							if(ps.front().type != TType::Identifier)
 								parserError("Expected identifier for custom setter argument name");
 
-							setValName = eat(tokens).text;
+							setValName = ps.eat().text;
 
-							if(eat(tokens).type != TType::RParen)
+							if(ps.eat().type != TType::RParen)
 								parserError("Expected closing ')'");
 						}
 
-						cprop->setter = parseBracedBlock(tokens);
+						cprop->setter = parseBracedBlock(ps);
 						cprop->setterArgName = setValName;
 					}
-					else if(tokens.front().type == TType::RBrace)
+					else if(ps.front().type == TType::RBrace)
 					{
 						break;
 					}
@@ -1333,18 +1415,18 @@ namespace Parser
 						dummy.type = TType::LBrace;
 						dummy.text = "{";
 
-						tokens.push_front(dummy);
-						cprop->getter = parseBracedBlock(tokens);
+						ps.tokens.push_front(dummy);
+						cprop->getter = parseBracedBlock(ps);
 
 
 						// lol, another hack
 						dummy.type = TType::RBrace;
 						dummy.text = "}";
-						tokens.push_front(dummy);
+						ps.tokens.push_front(dummy);
 					}
 				}
 
-				if(eat(tokens).type != TType::RBrace)
+				if(ps.eat().type != TType::RBrace)
 					parserError("Expected closing '}'");
 
 				return cprop;
@@ -1355,7 +1437,7 @@ namespace Parser
 			v->type = "Inferred";
 
 			// make sure the init value parser below works, push the colon back onto the stack
-			tokens.push_front(colon);
+			ps.tokens.push_front(colon);
 		}
 		else
 		{
@@ -1364,12 +1446,12 @@ namespace Parser
 
 		if(!v->initVal)
 		{
-			if(tokens.front().type == TType::Equal)
+			if(ps.front().type == TType::Equal)
 			{
 				// we do
-				eat(tokens);
+				ps.eat();
 
-				v->initVal = parseExpr(tokens);
+				v->initVal = parseExpr(ps);
 				if(!v->initVal)
 					parserError("Invalid initialiser for variable '%s'", v->name.c_str());
 			}
@@ -1386,59 +1468,59 @@ namespace Parser
 		return v;
 	}
 
-	Tuple* parseTuple(TokenList& tokens, Ast::Expr* lhs)
+	Tuple* parseTuple(ParserState& ps, Ast::Expr* lhs)
 	{
 		assert(lhs);
 
-		Token first = tokens.front();
+		Token first = ps.front();
 		std::vector<Expr*> values;
 
 
 		values.push_back(lhs);
 
-		Token t = tokens.front();
+		Token t = ps.front();
 		while(true)
 		{
-			values.push_back(parseExpr(tokens));
-			if(tokens.front().type == TType::RParen)
+			values.push_back(parseExpr(ps));
+			if(ps.front().type == TType::RParen)
 				break;
 
-			else if(tokens.front().type == TType::Comma)
-				eat(tokens);
+			else if(ps.front().type == TType::Comma)
+				ps.eat();
 
-			t = tokens.front();
+			t = ps.front();
 		}
 
 		// leave the last rparen
-		iceAssert(tokens.front().type == TType::RParen);
-		// eat(tokens);
+		iceAssert(ps.front().type == TType::RParen);
+		// ps.eat();
 
 		return CreateAST(Tuple, first, values);
 	}
 
-	Expr* parseParenthesised(TokenList& tokens)
+	Expr* parseParenthesised(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::LParen);
-		didHaveLeftParen = true;
-		Expr* within = parseExpr(tokens);
+		iceAssert(ps.eat().type == TType::LParen);
+		ps.didHaveLeftParen = true;
+		Expr* within = parseExpr(ps);
 
-		iceAssert(tokens.front().type == TType::RParen);
-		eat(tokens);
+		iceAssert(ps.front().type == TType::RParen);
+		ps.eat();
 
-		didHaveLeftParen = false;
+		ps.didHaveLeftParen = false;
 		return within;
 	}
 
-	Expr* parseExpr(TokenList& tokens)
+	Expr* parseExpr(ParserState& ps)
 	{
-		Expr* lhs = parseUnary(tokens);
+		Expr* lhs = parseUnary(ps);
 		if(!lhs)
 			return nullptr;
 
-		return parseRhs(tokens, lhs, 0);
+		return parseRhs(ps, lhs, 0);
 	}
 
-	static Expr* parsePostfixUnaryOp(TokenList& tokens, Token tok, Expr* curLhs)
+	static Expr* parsePostfixUnaryOp(ParserState& ps, Token tok, Expr* curLhs)
 	{
 		// do something! quickly!
 
@@ -1453,8 +1535,8 @@ namespace Parser
 		if(top.type == TType::LSquare)
 		{
 			// parse the inside expression
-			Expr* inside = parseExpr(tokens);
-			if(eat(tokens).type != TType::RSquare)
+			Expr* inside = parseExpr(ps);
+			if(ps.eat().type != TType::RSquare)
 				parserError("Expected ']' after '[' for array index");
 
 			newlhs = CreateAST(ArrayIndex, top, curLhs, inside);
@@ -1467,49 +1549,49 @@ namespace Parser
 		return newlhs;
 	}
 
-	Expr* parseRhs(TokenList& tokens, Expr* lhs, int prio)
+	Expr* parseRhs(ParserState& ps, Expr* lhs, int prio)
 	{
 		while(true)
 		{
-			int prec = getOpPrec(tokens.front());
-			if(tokens.front().text == "•")
+			int prec = getOpPrec(ps, ps.front());
+			if(ps.front().text == "•")
 			{
 				printf("PREC = %d\n", prec);
 			}
 
-			if(prec < prio && !isRightAssociativeOp(tokens.front()))
+			if(prec < prio && !isRightAssociativeOp(ps.front()))
 				return lhs;
 
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
-			Token tok_op = eat(tokens);
+			Token tok_op = ps.eat();
 
-			if(tok_op.type == TType::Comma && didHaveLeftParen)
+			if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
 			{
-				didHaveLeftParen = false;
-				return parseTuple(tokens, lhs);
+				ps.didHaveLeftParen = false;
+				return parseTuple(ps, lhs);
 			}
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
-				lhs = parsePostfixUnaryOp(tokens, tok_op, lhs);
+				lhs = parsePostfixUnaryOp(ps, tok_op, lhs);
 				continue;
 			}
 
 
-			Expr* rhs = (tok_op.type == TType::As) ? parseType(tokens) : parseUnary(tokens);
+			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
 			if(!rhs)
 				return nullptr;
 
-			int next = getOpPrec(tokens.front());
+			int next = getOpPrec(ps, ps.front());
 
-			if(next > prec || isRightAssociativeOp(tokens.front()))
+			if(next > prec || isRightAssociativeOp(ps.front()))
 			{
-				rhs = parseRhs(tokens, rhs, prec + 1);
+				rhs = parseRhs(ps, rhs, prec + 1);
 				if(!rhs)
 					return nullptr;
 			}
 
-			currentOperatorPrecedence = getOpPrec(tok_op);
+			ps.currentOpPrec = getOpPrec(ps, tok_op);
 
 			ArithmeticOp op;
 			switch(tok_op.type)
@@ -1557,16 +1639,16 @@ namespace Parser
 		}
 	}
 
-	Expr* parseIdExpr(TokenList& tokens)
+	Expr* parseIdExpr(ParserState& ps)
 	{
-		Token tok_id = eat(tokens);
+		Token tok_id = ps.eat();
 		std::string id = tok_id.text;
 		VarRef* idvr = CreateAST(VarRef, tok_id, id);
 
-		if(tokens.front().type == TType::LParen)
+		if(ps.front().type == TType::LParen)
 		{
 			delete idvr;
-			return parseFuncCall(tokens, id);
+			return parseFuncCall(ps, id);
 		}
 		else
 		{
@@ -1574,17 +1656,17 @@ namespace Parser
 		}
 	}
 
-	Alloc* parseAlloc(TokenList& tokens)
+	Alloc* parseAlloc(ParserState& ps)
 	{
-		Token tok_alloc = eat(tokens);
+		Token tok_alloc = ps.eat();
 		iceAssert(tok_alloc.type == TType::Alloc);
 
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
-		if(tokens.front().type == TType::LSquare)
+		if(ps.front().type == TType::LSquare)
 		{
-			eat(tokens);
-			ret->count = parseExpr(tokens);
+			ps.eat();
+			ret->count = parseExpr(ps);
 
 			// check for comma, to allocate arrays on the heap
 			// ie. let arr = alloc [1, 2, 3].
@@ -1595,18 +1677,18 @@ namespace Parser
 			// alloc: Type [1, 2, 3] or alloc [1, 2, 3]: Type will work.
 			// not too hard to implement either.
 
-			if(eat(tokens).type != TType::RSquare)
+			if(ps.eat().type != TType::RSquare)
 				parserError("Expected ']' after alloc[num]");
 		}
 
-		auto ct = parseType(tokens);
+		auto ct = parseType(ps);
 		std::string type = ct->type.strType;
 		delete ct;
 
-		if(tokens.front().type == TType::LParen)
+		if(ps.front().type == TType::LParen)
 		{
 			// alloc[...] Foo(...)
-			FuncCall* fc = parseFuncCall(tokens, type);
+			FuncCall* fc = parseFuncCall(ps, type);
 			ret->params = fc->params;
 		}
 
@@ -1615,21 +1697,21 @@ namespace Parser
 		return ret;
 	}
 
-	Dealloc* parseDealloc(TokenList& tokens)
+	Dealloc* parseDealloc(ParserState& ps)
 	{
-		Token tok_dealloc = eat(tokens);
+		Token tok_dealloc = ps.eat();
 		iceAssert(tok_dealloc.type == TType::Dealloc);
 
-		Expr* expr = parseExpr(tokens);
+		Expr* expr = parseExpr(ps);
 		return CreateAST(Dealloc, tok_dealloc, expr);
 	}
 
-	Number* parseNumber(TokenList& tokens)
+	Number* parseNumber(ParserState& ps)
 	{
 		Number* n;
-		if(tokens.front().type == TType::Integer)
+		if(ps.front().type == TType::Integer)
 		{
-			Token tok = eat(tokens);
+			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getIntegerValue(tok));
 
 			// todo: handle integer suffixes
@@ -1638,9 +1720,9 @@ namespace Parser
 			// set the type.
 			// always used signed
 		}
-		else if(tokens.front().type == TType::Decimal)
+		else if(ps.front().type == TType::Decimal)
 		{
-			Token tok = eat(tokens);
+			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
 			if(n->dval < FLT_MAX)	n->type = "Float32";
@@ -1656,96 +1738,96 @@ namespace Parser
 		return n;
 	}
 
-	FuncCall* parseFuncCall(TokenList& tokens, std::string id)
+	FuncCall* parseFuncCall(ParserState& ps, std::string id)
 	{
-		Token front = eat(tokens);
+		Token front = ps.eat();
 		iceAssert(front.type == TType::LParen);
 
 		std::deque<Expr*> args;
 
-		if(tokens.front().type != TType::RParen)
+		if(ps.front().type != TType::RParen)
 		{
 			while(true)
 			{
-				Expr* arg = parseExpr(tokens);
+				Expr* arg = parseExpr(ps);
 				if(arg == nullptr)
 					return nullptr;
 
 				args.push_back(arg);
-				if(tokens.front().type == TType::RParen)
+				if(ps.front().type == TType::RParen)
 				{
-					eat(tokens);
+					ps.eat();
 					break;
 				}
 
 				Token t;
-				if((t = eat(tokens)).type != TType::Comma)
+				if((t = ps.eat()).type != TType::Comma)
 					parserError("Expected either ',' or ')' in parameter list, got '%s' (id = %s)", t.text.c_str(), id.c_str());
 			}
 		}
 		else
 		{
-			eat(tokens);
+			ps.eat();
 		}
 
 		auto ret = CreateAST(FuncCall, front, id, args);
-		rootNode->allFunctionCalls.push_back(ret);
+		ps.rootNode->allFunctionCalls.push_back(ret);
 
 		return ret;
 	}
 
-	Return* parseReturn(TokenList& tokens)
+	Return* parseReturn(ParserState& ps)
 	{
-		Token front = eat(tokens);
+		Token front = ps.eat();
 		iceAssert(front.type == TType::Return);
 
 		Expr* retval = nullptr;
 
 		// kinda hack: if the next token is a closing brace, then we don't expect an expression
 		// this works most of the time.
-		if(tokens.front().type != TType::RBrace)
-			retval = parseExpr(tokens);
+		if(ps.front().type != TType::RBrace)
+			retval = parseExpr(ps);
 
 		return CreateAST(Return, front, retval);
 	}
 
-	Expr* parseIf(TokenList& tokens)
+	Expr* parseIf(ParserState& ps)
 	{
-		Token tok_if = eat(tokens);
+		Token tok_if = ps.eat();
 		iceAssert(tok_if.type == TType::If);
 
 		typedef std::pair<Expr*, BracedBlock*> CCPair;
 		std::deque<CCPair> conds;
 
-		Expr* cond = parseExpr(tokens);
-		BracedBlock* tcase = parseBracedBlock(tokens);
+		Expr* cond = parseExpr(ps);
+		BracedBlock* tcase = parseBracedBlock(ps);
 
 		conds.push_back(CCPair(cond, tcase));
 
 		// check for else and else if
 		BracedBlock* ecase = nullptr;
 		bool parsedElse = false;
-		while(tokens.front().type == TType::Else)
+		while(ps.front().type == TType::Else)
 		{
-			eat(tokens);
-			if(tokens.front().type == TType::If && !parsedElse)
+			ps.eat();
+			if(ps.front().type == TType::If && !parsedElse)
 			{
-				eat(tokens);
+				ps.eat();
 
 				// parse an expr, then a block
-				Expr* c = parseExpr(tokens);
-				BracedBlock* cl = parseBracedBlock(tokens);
+				Expr* c = parseExpr(ps);
+				BracedBlock* cl = parseBracedBlock(ps);
 
 				conds.push_back(CCPair(c, cl));
 			}
 			else if(!parsedElse)
 			{
 				parsedElse = true;
-				ecase = parseBracedBlock(tokens);
+				ecase = parseBracedBlock(ps);
 			}
 			else
 			{
-				if(parsedElse && tokens.front().type != TType::If)
+				if(parsedElse && ps.front().type != TType::If)
 				{
 					parserError("Duplicate 'else' clause, only one else clause is permitted per if.");
 				}
@@ -1759,14 +1841,14 @@ namespace Parser
 		return CreateAST(If, tok_if, conds, ecase);
 	}
 
-	WhileLoop* parseWhile(TokenList& tokens)
+	WhileLoop* parseWhile(ParserState& ps)
 	{
-		Token tok_while = eat(tokens);
+		Token tok_while = ps.eat();
 
 		if(tok_while.type == TType::While)
 		{
-			Expr* cond = parseExpr(tokens);
-			BracedBlock* body = parseBracedBlock(tokens);
+			Expr* cond = parseExpr(ps);
+			BracedBlock* body = parseBracedBlock(ps);
 
 			return CreateAST(WhileLoop, tok_while, cond, body, false);
 		}
@@ -1775,7 +1857,7 @@ namespace Parser
 			iceAssert(tok_while.type == TType::Do || tok_while.type == TType::Loop);
 
 			// parse the block first
-			BracedBlock* body = parseBracedBlock(tokens);
+			BracedBlock* body = parseBracedBlock(ps);
 
 			// syntax treat: since a raw block is ignored (for good reason, how can we reference it?)
 			// we can use 'do' to run an anonymous block
@@ -1786,36 +1868,36 @@ namespace Parser
 			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
-			if(tokens.front().type == TType::While)
+			if(ps.front().type == TType::While)
 			{
-				eat(tokens);
-				cond = parseExpr(tokens);
+				ps.eat();
+				cond = parseExpr(ps);
 			}
 			else
 			{
 				// here's the magic: continue condition is 'false' for do, 'true' for loop
-				cond = CreateAST(BoolVal, tokens.front(), tok_while.type == TType::Do ? false : true);
+				cond = CreateAST(BoolVal, ps.front(), tok_while.type == TType::Do ? false : true);
 			}
 
 			return CreateAST(WhileLoop, tok_while, cond, body, true);
 		}
 	}
 
-	ForLoop* parseFor(TokenList& tokens)
+	ForLoop* parseFor(ParserState& ps)
 	{
-		Token tok_for = eat(tokens);
+		Token tok_for = ps.eat();
 		iceAssert(tok_for.type == TType::For);
 
 		return 0;
 	}
 
-	Struct* parseStruct(TokenList& tokens)
+	Struct* parseStruct(ParserState& ps)
 	{
-		Token tok_str = eat(tokens);
+		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Struct);
 
-		isParsingStruct = true;
-		Token tok_id = eat(tokens);
+		ps.isParsingStruct = true;
+		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier");
@@ -1823,20 +1905,20 @@ namespace Parser
 		std::string id = tok_id.text;
 		Struct* str = CreateAST(Struct, tok_id, id);
 
-		uint32_t attr = checkAndApplyAttributes(Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		if(attr & Attr_PackedStruct)
 			str->packed = true;
 
 		str->attribs = attr;
 
 		// check for a colon.
-		skipNewline(tokens);
-		if(tokens.front().type == TType::Colon)
+		ps.skipNewline();
+		if(ps.front().type == TType::Colon)
 			parserError("Structs cannot inherit from anything");
 
 
 		// parse a block.
-		BracedBlock* body = parseBracedBlock(tokens);
+		BracedBlock* body = parseBracedBlock(ps);
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
@@ -1868,7 +1950,7 @@ namespace Parser
 			}
 		}
 
-		isParsingStruct = false;
+		ps.isParsingStruct = false;
 		delete body;
 		return str;
 	}
@@ -1877,13 +1959,13 @@ namespace Parser
 
 
 
-	Class* parseClass(TokenList& tokens)
+	Class* parseClass(ParserState& ps)
 	{
-		Token tok_cls = eat(tokens);
+		Token tok_cls = ps.eat();
 		iceAssert(tok_cls.type == TType::Class || tok_cls.type == TType::Extension);
 
-		isParsingStruct = true;
-		Token tok_id = eat(tokens);
+		ps.isParsingStruct = true;
+		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier (got %s)", tok_id.text.c_str());
@@ -1891,18 +1973,18 @@ namespace Parser
 		std::string id = tok_id.text;
 		Class* cls = CreateAST(Class, tok_id, id);
 
-		uint32_t attr = checkAndApplyAttributes(Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		cls->attribs = attr;
 
 		// check for a colon.
-		skipNewline(tokens);
-		if(tokens.front().type == TType::Colon)
+		ps.skipNewline();
+		if(ps.front().type == TType::Colon)
 		{
-			eat(tokens);
+			ps.eat();
 			// parse an identifier.
 			while(true)
 			{
-				Token id = eat(tokens);
+				Token id = ps.eat();
 				if(id.type != TType::Identifier)
 					parserError("Expected identifier after ':' in struct or class declaration");
 
@@ -1913,12 +1995,12 @@ namespace Parser
 					parserError("Self inheritance is illegal");
 
 				cls->protocolstrs.push_back(id.text);
-				skipNewline(tokens);
+				ps.skipNewline();
 
-				if(tokens.front().type != TType::Comma)
+				if(ps.front().type != TType::Comma)
 					break;
 
-				eat(tokens);
+				ps.eat();
 			}
 		}
 
@@ -1928,7 +2010,7 @@ namespace Parser
 
 
 		// parse a block.
-		BracedBlock* body = parseBracedBlock(tokens);
+		BracedBlock* body = parseBracedBlock(ps);
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
@@ -1985,18 +2067,18 @@ namespace Parser
 			}
 		}
 
-		isParsingStruct = false;
+		ps.isParsingStruct = false;
 		delete body;
 		return cls;
 	}
 
-	Extension* parseExtension(TokenList& tokens)
+	Extension* parseExtension(ParserState& ps)
 	{
-		Token tok_ext = eat(tokens);
+		Token tok_ext = ps.eat();
 		iceAssert(tok_ext.type == TType::Extension);
 
 		Extension* ext = CreateAST(Extension, tok_ext, "");
-		Class* cls = parseClass(tokens);
+		Class* cls = parseClass(ps);
 
 		ext->attribs		= cls->attribs;
 		ext->funcs			= cls->funcs;
@@ -2017,26 +2099,26 @@ namespace Parser
 
 
 
-	Ast::Enumeration* parseEnum(TokenList& tokens)
+	Ast::Enumeration* parseEnum(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::Enum);
+		iceAssert(ps.eat().type == TType::Enum);
 
 		Token tok_id;
-		if((tok_id = eat(tokens)).type != TType::Identifier)
+		if((tok_id = ps.eat()).type != TType::Identifier)
 			parserError("Expected identifier after 'enum'");
 
-		if(eat(tokens).type != TType::LBrace)
+		if(ps.eat().type != TType::LBrace)
 			parserError("Expected body after 'enum'");
 
 
-		if(tokens.front().type == TType::RBrace)
+		if(ps.front().type == TType::RBrace)
 			parserError("Empty enumerations are not allowed");
 
 
 		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
-		Token front = tokens.front();
+		Token front = ps.front();
 
-		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		if(attr & Attr_StrongTypeAlias)
 			enumer->isStrong = true;
 
@@ -2045,7 +2127,7 @@ namespace Parser
 		bool isNumeric = false;
 		Number* prevNumber = nullptr;
 
-		while(front = tokens.front(), tokens.size() > 0)
+		while(front = ps.front(), ps.tokens.size() > 0)
 		{
 			if(front.type == TType::RBrace && !isFirst)
 				break;
@@ -2053,19 +2135,19 @@ namespace Parser
 			if(front.type != TType::Case)
 				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
 
-			eat(tokens);
-			if((front = eat(tokens)).type != TType::Identifier)
+			ps.eat();
+			if((front = ps.eat()).type != TType::Identifier)
 				parserError("Expected identifier after 'case', got '%s'", front.text.c_str());
 
 			std::string eName = front.text;
 			Expr* value = 0;
 
-			skipNewline(tokens);
-			front = tokens.front();
+			ps.skipNewline();
+			front = ps.front();
 			if(front.type == TType::Equal)
 			{
-				eat(tokens);
-				value = parseExpr(tokens);
+				ps.eat();
+				value = parseExpr(ps);
 
 				if((prevNumber = dynamic_cast<Number*>(value)))
 					isNumeric = true;
@@ -2098,9 +2180,9 @@ namespace Parser
 			}
 
 
-			skipNewline(tokens);
+			ps.skipNewline();
 
-			front = tokens.front();
+			front = ps.front();
 
 			iceAssert(value);
 			enumer->cases.push_back(std::make_pair(eName, value));
@@ -2117,7 +2199,7 @@ namespace Parser
 			}
 			else
 			{
-				eat(tokens);
+				ps.eat();
 				break;
 			}
 
@@ -2126,15 +2208,15 @@ namespace Parser
 		return enumer;
 	}
 
-	void parseAttribute(TokenList& tokens)
+	void parseAttribute(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::At);
-		Token id = eat(tokens);
+		iceAssert(ps.eat().type == TType::At);
+		Token id = ps.eat();
 
 		if(id.type != TType::Identifier && id.type != TType::Private && id.type != TType::Internal && id.type != TType::Public)
 			parserError("Expected attribute name after '@'");
 
-		uint32_t attr = 0;
+		uint64_t attr = 0;
 		if(id.text == ATTR_STR_NOMANGLE)			attr |= Attr_NoMangle;
 		else if(id.text == ATTR_STR_FORCEMANGLE)	attr |= Attr_ForceMangle;
 		else if(id.text == ATTR_STR_NOAUTOINIT)		attr |= Attr_NoAutoInit;
@@ -2159,46 +2241,46 @@ namespace Parser
 		else if(id.text == "precedence")
 		{
 			// all handled.
-			iceAssert(eat(tokens).type == TType::LSquare);
-			iceAssert(eat(tokens).type == TType::Integer);
-			iceAssert(eat(tokens).type == TType::RSquare);
+			iceAssert(ps.eat().type == TType::LSquare);
+			iceAssert(ps.eat().type == TType::Integer);
+			iceAssert(ps.eat().type == TType::RSquare);
 		}
 		else										parserError("Unknown attribute '%s'", id.text.c_str());
 
-		curAttrib |= attr;
+		ps.curAttrib |= attr;
 	}
 
-	Break* parseBreak(TokenList& tokens)
+	Break* parseBreak(ParserState& ps)
 	{
-		Token tok_br = eat(tokens);
+		Token tok_br = ps.eat();
 		iceAssert(tok_br.type == TType::Break);
 
 		Break* br = CreateAST(Break, tok_br);
 		return br;
 	}
 
-	Continue* parseContinue(TokenList& tokens)
+	Continue* parseContinue(ParserState& ps)
 	{
-		Token tok_cn = eat(tokens);
+		Token tok_cn = ps.eat();
 		iceAssert(tok_cn.type == TType::Continue);
 
 		Continue* cn = CreateAST(Continue, tok_cn);
 		return cn;
 	}
 
-	Import* parseImport(TokenList& tokens)
+	Import* parseImport(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::Import);
+		iceAssert(ps.eat().type == TType::Import);
 
 		std::string s;
-		Token tok_mod = tokens.front();
+		Token tok_mod = ps.front();
 		if(tok_mod.type != TType::Identifier)
 			parserError("Expected identifier after import");
 
 		Token t = tok_mod;
-		tokens.pop_front();
+		ps.pop_front();
 
-		while(tokens.size() > 0)
+		while(ps.tokens.size() > 0)
 		{
 			if(t.type == TType::Period)
 			{
@@ -2218,81 +2300,81 @@ namespace Parser
 			}
 
 			// whitespace handling fucks us up
-			t = tokens.front();
-			tokens.pop_front();
+			t = ps.front();
+			ps.pop_front();
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
 		return CreateAST(Import, tok_mod, s);
 	}
 
-	StringLiteral* parseStringLiteral(TokenList& tokens)
+	StringLiteral* parseStringLiteral(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::StringLiteral);
-		Token str = eat(tokens);
+		iceAssert(ps.front().type == TType::StringLiteral);
+		Token str = ps.eat();
 
 
 		// reference hack in tokeniser.cpp
 		str.text = str.text.substr(1);
 		auto ret = CreateAST(StringLiteral, str, str.text);
 
-		uint32_t attr = checkAndApplyAttributes(Attr_RawString);
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_RawString);
 		if(attr & Attr_RawString)
 			ret->isRaw = true;
 
 		return ret;
 	}
 
-	TypeAlias* parseTypeAlias(TokenList& tokens)
+	TypeAlias* parseTypeAlias(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::TypeAlias);
-		Token tok_name = eat(tokens);
+		iceAssert(ps.eat().type == TType::TypeAlias);
+		Token tok_name = ps.eat();
 		if(tok_name.type != TType::Identifier)
 			parserError("Expected identifier after 'typealias'");
 
-		if(eat(tokens).type != TType::Equal)
+		if(ps.eat().type != TType::Equal)
 			parserError("Expected '='");
 
 
 		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
 
-		Expr* ct = parseType(tokens);
+		Expr* ct = parseType(ps);
 		iceAssert(ct);
 
 		ret->origType = ct->type.strType;
 		delete ct;
 
-		uint32_t attr = checkAndApplyAttributes(Attr_StrongTypeAlias);
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)
 			ret->isStrong = true;
 
 		return ret;
 	}
 
-	DeferredExpr* parseDefer(TokenList& tokens)
+	DeferredExpr* parseDefer(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::Defer);
-		return CreateAST(DeferredExpr, eat(tokens), parseExpr(tokens));
+		iceAssert(ps.front().type == TType::Defer);
+		return CreateAST(DeferredExpr, ps.eat(), parseExpr(ps));
 	}
 
-	Typeof* parseTypeof(TokenList& tokens)
+	Typeof* parseTypeof(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::Typeof);
-		return CreateAST(Typeof, eat(tokens), parseExpr(tokens));
+		iceAssert(ps.front().type == TType::Typeof);
+		return CreateAST(Typeof, ps.eat(), parseExpr(ps));
 	}
 
-	ArrayLiteral* parseArrayLiteral(TokenList& tokens)
+	ArrayLiteral* parseArrayLiteral(ParserState& ps)
 	{
-		iceAssert(tokens.front().type == TType::LSquare);
-		Token front = eat(tokens);
+		iceAssert(ps.front().type == TType::LSquare);
+		Token front = ps.eat();
 
 		std::deque<Expr*> values;
 		while(true)
 		{
-			Token tok = tokens.front();
+			Token tok = ps.front();
 			if(tok.type == TType::Comma)
 			{
-				eat(tokens);
+				ps.eat();
 				continue;
 			}
 			else if(tok.type == TType::RSquare)
@@ -2301,27 +2383,27 @@ namespace Parser
 			}
 			else
 			{
-				values.push_back(parseExpr(tokens));
+				values.push_back(parseExpr(ps));
 			}
 		}
 
-		iceAssert(tokens.front().type == TType::RSquare);
-		eat(tokens);
+		iceAssert(ps.front().type == TType::RSquare);
+		ps.eat();
 
 		return CreateAST(ArrayLiteral, front, values);
 	}
 
-	NamespaceDecl* parseNamespace(TokenList& tokens)
+	NamespaceDecl* parseNamespace(ParserState& ps)
 	{
-		iceAssert(eat(tokens).type == TType::Namespace);
-		Token tok_id = eat(tokens);
+		iceAssert(ps.eat().type == TType::Namespace);
+		Token tok_id = ps.eat();
 
 		// todo: handle "namespace Foo.Bar.Baz { }", which c++ technically still doesn't have
 		// (still a c++1z thing)
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier after namespace declaration");
 
-		BracedBlock* bb = parseBracedBlock(tokens);
+		BracedBlock* bb = parseBracedBlock(ps);
 		NamespaceDecl* ns = CreateAST(NamespaceDecl, tok_id, tok_id.text, bb);
 
 		return ns;
@@ -2329,7 +2411,7 @@ namespace Parser
 
 
 
-	ArithmeticOp mangledStringToOperator(std::string op)
+	ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance* cgi, std::string op)
 	{
 		if(op == "aS")		return ArithmeticOp::Assign;
 		else if(op == "pL") return ArithmeticOp::PlusEquals;
@@ -2367,14 +2449,14 @@ namespace Parser
 		else if(op == "ge") return ArithmeticOp::CmpGEq;
 		else
 		{
-			if(customOperatorMapRev.find(op) != customOperatorMapRev.end())
-				return customOperatorMapRev[op];
+			if(cgi->customOperatorMapRev.find(op) != cgi->customOperatorMapRev.end())
+				return cgi->customOperatorMapRev[op];
 
 			parserError("Invalid operator '%s'", op.c_str());
 		}
 	}
 
-	std::string operatorToMangledString(ArithmeticOp op)
+	std::string operatorToMangledString(Codegen::CodegenInstance* cgi, ArithmeticOp op)
 	{
 		// see https://refspecs.linuxbase.org/cxxabi-1.75.html#mangling-operator
 		switch(op)
@@ -2412,17 +2494,17 @@ namespace Parser
 			case ArithmeticOp::CmpGT:				return "gt";
 			case ArithmeticOp::CmpLEq:				return "le";
 			case ArithmeticOp::CmpGEq:				return "ge";
-			default:								return customOperatorMap[op].first;
+			default:								return cgi->customOperatorMap[op].first;
 		}
 	}
 
-	OpOverload* parseOpOverload(TokenList& tokens)
+	OpOverload* parseOpOverload(ParserState& ps)
 	{
-		if(!isParsingStruct)
+		if(!ps.isParsingStruct)
 			parserError("Can only overload operators in the context of a named aggregate type");
 
-		iceAssert(eat(tokens).text == "operator");
-		Token op = eat(tokens);
+		iceAssert(ps.eat().text == "operator");
+		Token op = ps.eat();
 
 		ArithmeticOp ao;
 
@@ -2439,8 +2521,8 @@ namespace Parser
 		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
 		else
 		{
-			if(customOperatorMapRev.find(op.text) != customOperatorMapRev.end())
-				ao = customOperatorMapRev[op.text];
+			if(ps.cgi->customOperatorMapRev.find(op.text) != ps.cgi->customOperatorMapRev.end())
+				ao = ps.cgi->customOperatorMapRev[op.text];
 
 			else
 				parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
@@ -2450,14 +2532,14 @@ namespace Parser
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 
 		Token fake;
-		fake.posinfo = currentPos;
-		fake.text = "operator#" + operatorToMangledString(ao);
+		fake.posinfo = ps.currentPos;
+		fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
-		tokens.push_front(fake);
+		ps.tokens.push_front(fake);
 
 		// parse a func declaration.
-		oo->func = parseFunc(tokens);
+		oo->func = parseFunc(ps);
 		return oo;
 	}
 }
@@ -2467,15 +2549,15 @@ namespace Parser
 
 namespace Ast
 {
-	uint32_t Attr_Invalid			= 0x00;
-	uint32_t Attr_NoMangle			= 0x01;
-	uint32_t Attr_VisPublic			= 0x02;
-	uint32_t Attr_VisInternal		= 0x04;
-	uint32_t Attr_VisPrivate		= 0x08;
-	uint32_t Attr_ForceMangle		= 0x10;
-	uint32_t Attr_NoAutoInit		= 0x20;
-	uint32_t Attr_PackedStruct		= 0x40;
-	uint32_t Attr_StrongTypeAlias	= 0x80;
-	uint32_t Attr_RawString			= 0x100;
-	uint32_t Attr_Override			= 0x200;
+	uint64_t Attr_Invalid			= 0x00;
+	uint64_t Attr_NoMangle			= 0x01;
+	uint64_t Attr_VisPublic			= 0x02;
+	uint64_t Attr_VisInternal		= 0x04;
+	uint64_t Attr_VisPrivate		= 0x08;
+	uint64_t Attr_ForceMangle		= 0x10;
+	uint64_t Attr_NoAutoInit		= 0x20;
+	uint64_t Attr_PackedStruct		= 0x40;
+	uint64_t Attr_StrongTypeAlias	= 0x80;
+	uint64_t Attr_RawString			= 0x100;
+	uint64_t Attr_Override			= 0x200;
 }

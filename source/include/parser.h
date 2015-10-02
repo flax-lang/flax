@@ -4,10 +4,11 @@
 
 #pragma once
 
-
 #include "ast.h"
 #include <string>
 #include <sstream>
+#include <deque>
+#include <algorithm>
 
 namespace Codegen
 {
@@ -151,76 +152,163 @@ namespace Parser
 	};
 
 
+
+
 	void parserError(const char* msg, ...) __attribute__((noreturn));
 	void parserWarn(const char* msg, ...);
 
+
+	struct ParserState;
+	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((noreturn));
+	void parserWarn(ParserState& ps, Token tok, const char* msg, ...);
+
+	void parserError(ParserState& ps, const char* msg, ...) __attribute__((noreturn));
+	void parserWarn(ParserState& ps, const char* msg, ...);
 
 	void parserError(Token tok, const char* msg, ...) __attribute__((noreturn));
 	void parserWarn(Token tok, const char* msg, ...);
 
 
-
 	typedef std::deque<Token> TokenList;
+	struct ParserState
+	{
+		ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
+
+		TokenList tokens;
+		TokenList origTokens;
+
+		std::vector<std::string> lines;
+
+		std::map<std::string, bool> visited;
+
+		Token curtok;
+		PosInfo currentPos;
+		Ast::Root* rootNode;
+		uint64_t curAttrib;
+
+		Codegen::CodegenInstance* cgi;
+
+		bool isParsingStruct;
+		bool didHaveLeftParen;
+		int currentOpPrec;
+
+
+		Token front()
+		{
+			return this->tokens.front();
+		}
+
+		void pop_front()
+		{
+			this->tokens.pop_front();
+		}
+
+		Token eat()
+		{
+			// returns the current front, then pops front.
+			if(this->tokens.size() == 0)
+				parserError(*this, "Unexpected end of input");
+
+			this->skipNewline();
+			Token t = this->front();
+			this->pop_front();
+
+			this->skipNewline();
+
+			this->curtok = t;
+			return t;
+		}
+
+		void skipNewline()
+		{
+			// eat newlines AND comments
+			while(this->tokens.size() > 0 && (this->tokens.front().type == TType::NewLine
+				|| this->tokens.front().type == TType::Comment || this->tokens.front().type == TType::Semicolon))
+			{
+				this->tokens.pop_front();
+				this->currentPos.line++;
+			}
+		}
+	};
 
 
 
 
 
-	void parseAll(TokenList& tokens);
-	Ast::Expr* parsePrimary(TokenList& tokens);
-
-	Ast::Expr* 				parseIf(TokenList& tokens);
-	Ast::ForLoop*			parseFor(TokenList& tokens);
-	Ast::Expr*				parseType(TokenList& tokens);
-	Ast::Enumeration*		parseEnum(TokenList& tokens);
-	Ast::Func*				parseFunc(TokenList& tokens);
-	Ast::Expr*				parseExpr(TokenList& tokens);
-	Ast::Expr*				parseUnary(TokenList& tokens);
-	Ast::WhileLoop*			parseWhile(TokenList& tokens);
-	Ast::Alloc*				parseAlloc(TokenList& tokens);
-	Ast::Break*				parseBreak(TokenList& tokens);
-	Ast::DeferredExpr*		parseDefer(TokenList& tokens);
-	Ast::Class*				parseClass(TokenList& tokens);
-	Ast::Expr*				parseIdExpr(TokenList& tokens);
-	Ast::Struct*			parseStruct(TokenList& tokens);
-	Ast::Import*			parseImport(TokenList& tokens);
-	Ast::Return*			parseReturn(TokenList& tokens);
-	Ast::Typeof*			parseTypeof(TokenList& tokens);
-	Ast::Number*			parseNumber(TokenList& tokens);
-	Ast::VarDecl*			parseVarDecl(TokenList& tokens);
-	Ast::Dealloc*			parseDealloc(TokenList& tokens);
-	Ast::Expr*				parseInitFunc(TokenList& tokens);
-	Ast::Continue*			parseContinue(TokenList& tokens);
-	Ast::FuncDecl*			parseFuncDecl(TokenList& tokens);
-	void					parseAttribute(TokenList& tokens);
-	Ast::TypeAlias*			parseTypeAlias(TokenList& tokens);
-	Ast::Extension*			parseExtension(TokenList& tokens);
-	Ast::NamespaceDecl*		parseNamespace(TokenList& tokens);
-	Ast::Expr*				parseStaticDecl(TokenList& tokens);
-	Ast::OpOverload*		parseOpOverload(TokenList& tokens);
-	Ast::BracedBlock*		parseBracedBlock(TokenList& tokens);
-	Ast::ForeignFuncDecl*	parseForeignFunc(TokenList& tokens);
-	Ast::Func*				parseTopLevelExpr(TokenList& tokens);
-	Ast::ArrayLiteral*		parseArrayLiteral(TokenList& tokens);
-	Ast::Expr*				parseParenthesised(TokenList& tokens);
-	Ast::StringLiteral*		parseStringLiteral(TokenList& tokens);
-	Ast::Tuple*				parseTuple(TokenList& tokens, Ast::Expr* lhs);
-	Ast::FuncCall*			parseFuncCall(TokenList& tokens, std::string id);
-	Ast::Expr*				parseRhs(TokenList& tokens, Ast::Expr* expr, int prio);
 
 
 
+	void parseAll(ParserState& tokens);
+	Ast::Expr* parsePrimary(ParserState& tokens);
+
+	Ast::Expr* 				parseIf(ParserState& tokens);
+	Ast::ForLoop*			parseFor(ParserState& tokens);
+	Ast::Expr*				parseType(ParserState& tokens);
+	Ast::Enumeration*		parseEnum(ParserState& tokens);
+	Ast::Func*				parseFunc(ParserState& tokens);
+	Ast::Expr*				parseExpr(ParserState& tokens);
+	Ast::Expr*				parseUnary(ParserState& tokens);
+	Ast::WhileLoop*			parseWhile(ParserState& tokens);
+	Ast::Alloc*				parseAlloc(ParserState& tokens);
+	Ast::Break*				parseBreak(ParserState& tokens);
+	Ast::DeferredExpr*		parseDefer(ParserState& tokens);
+	Ast::Class*				parseClass(ParserState& tokens);
+	Ast::Expr*				parseIdExpr(ParserState& tokens);
+	Ast::Struct*			parseStruct(ParserState& tokens);
+	Ast::Import*			parseImport(ParserState& tokens);
+	Ast::Return*			parseReturn(ParserState& tokens);
+	Ast::Typeof*			parseTypeof(ParserState& tokens);
+	Ast::Number*			parseNumber(ParserState& tokens);
+	Ast::VarDecl*			parseVarDecl(ParserState& tokens);
+	Ast::Dealloc*			parseDealloc(ParserState& tokens);
+	Ast::Expr*				parseInitFunc(ParserState& tokens);
+	Ast::Continue*			parseContinue(ParserState& tokens);
+	Ast::FuncDecl*			parseFuncDecl(ParserState& tokens);
+	void					parseAttribute(ParserState& tokens);
+	Ast::TypeAlias*			parseTypeAlias(ParserState& tokens);
+	Ast::Extension*			parseExtension(ParserState& tokens);
+	Ast::NamespaceDecl*		parseNamespace(ParserState& tokens);
+	Ast::Expr*				parseStaticDecl(ParserState& tokens);
+	Ast::OpOverload*		parseOpOverload(ParserState& tokens);
+	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens);
+	Ast::ForeignFuncDecl*	parseForeignFunc(ParserState& tokens);
+	Ast::Func*				parseTopLevelExpr(ParserState& tokens);
+	Ast::ArrayLiteral*		parseArrayLiteral(ParserState& tokens);
+	Ast::Expr*				parseParenthesised(ParserState& tokens);
+	Ast::StringLiteral*		parseStringLiteral(ParserState& tokens);
+	Ast::Tuple*				parseTuple(ParserState& tokens, Ast::Expr* lhs);
+	Ast::FuncCall*			parseFuncCall(ParserState& tokens, std::string id);
+	Ast::Expr*				parseRhs(ParserState& tokens, Ast::Expr* expr, int prio);
 
 
+
+	Ast::Root* Parse(ParserState& pstate, std::string filename, std::string str);
+	void parseAllCustomOperators(ParserState& pstate, std::string filename, std::string curpath);
 
 
 
 
 	std::string getModuleName(std::string filename);
-	Ast::Root* Parse(std::string filename, std::string str, Codegen::CodegenInstance* cgi);
 	Token getNextToken(std::string& stream, PosInfo& pos);
-	std::string arithmeticOpToString(Ast::ArithmeticOp op);
 
-	Ast::ArithmeticOp mangledStringToOperator(std::string op);
-	std::string operatorToMangledString(Ast::ArithmeticOp op);
+	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
+	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
