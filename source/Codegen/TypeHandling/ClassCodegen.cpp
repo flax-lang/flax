@@ -309,14 +309,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 llvm::Type* Class::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
-	{
 		return 0;
-	}
-
-	if(cgi->isDuplicateType(this->name))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
-
-
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -480,6 +473,11 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	// create a bodyless struct so we can use it
 	std::deque<std::string> fullScope = cgi->getFullScope();
 	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
+
+	if(cgi->isDuplicateType(this->mangledName))
+		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+
 	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
 
 	this->scope = fullScope;
