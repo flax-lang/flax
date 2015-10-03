@@ -7,7 +7,7 @@ import tests.fizzbuzz
 import tests.recursiveFib
 import tests.scopes
 import tests.arraytest
-import tests.generics
+// import tests.generics
 
 import Utilities
 
@@ -44,7 +44,7 @@ import Utilities
 
 
 	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
+	// doGenericsTest()
 	printf("\n\n")
 }
 

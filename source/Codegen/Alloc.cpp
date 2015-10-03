@@ -26,6 +26,9 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::Function* mallocf = fp->first;
 	iceAssert(mallocf);
 
+	mallocf = cgi->module->getFunction(mallocf->getName());
+	iceAssert(mallocf);
+
 	llvm::Type* allocType = 0;
 
 	allocType = cgi->getLlvmTypeFromString(this, this->type);
@@ -208,7 +211,16 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 	// call 'free'
 	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
-	cgi->builder.CreateCall(fp->first, freearg);
+
+
+	llvm::Function* freef = fp->first;
+	iceAssert(freef);
+
+	freef = cgi->module->getFunction(freef->getName());
+	iceAssert(freef);
+
+
+	cgi->builder.CreateCall(freef, freearg);
 	return Result_t(0, 0);
 }
 

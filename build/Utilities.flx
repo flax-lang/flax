@@ -5,13 +5,13 @@
 
 import Foundation
 
-public ƒ foo<K, T>(a: T, b: K) -> K
-{
-	let ret = alloc[128] Int8
-	sprintf(ret, "%s, %d", b, a)
+// public ƒ foo<K, T>(a: T, b: K) -> K
+// {
+// 	let ret = alloc[128] Int8
+// 	sprintf(ret, "%s, %d", b, a)
 
-	return K(ret)
-}
+// 	return K(ret)
+// }
 
 
 
