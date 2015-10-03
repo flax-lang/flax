@@ -378,14 +378,25 @@ int main(int argc, char* argv[])
 
 		llvm::Module* mainModule = modulelist[filename];
 
-		printf("mod: %p\n", mainModule);
-
-		// bool b = llvm::verifyModule(*mainModule);
-		// printf("b: %d\n", b);
-
 
 		mainModule->dump();
-		exit(0);
+		for(auto m : modulelist)
+			m.second->dump();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// needs to be done first, for the weird constructor fiddling below.
 		if(Compiler::runProgramWithJit)

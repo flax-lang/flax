@@ -97,6 +97,8 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->module, var->inferredLType, var->immutable,
 				llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
 
+			printf("generating static var %s\n", varname.c_str());
+
 			if(var->inferredLType->isStructTy())
 			{
 				TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
@@ -107,6 +109,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			}
 			else
 			{
+				printf("is not struct\n");
 				iceAssert(var->initVal);
 				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
 				if(llvm::isa<llvm::Constant>(val))
