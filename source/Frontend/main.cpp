@@ -13,6 +13,7 @@
 #include "../include/codegen.h"
 #include "../include/compiler.h"
 
+#include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
@@ -359,39 +360,40 @@ int main(int argc, char* argv[])
 
 		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
 
-		std::string curpath;
-		{
-			size_t sep = filename.find_last_of("\\/");
-			if(sep != std::string::npos)
-				curpath = filename.substr(0, sep);
-		}
+		filename = Compiler::getFullPathOfFile(filename);
+		std::string curpath = Compiler::getPathFromFile(filename);
 
 		// parse and find all custom operators
 		Parser::ParserState pstate(cgi);
 
 		Parser::parseAllCustomOperators(pstate, filename, curpath);
 
-		// ret = std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::vector<llvm::Module*>>
+		// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
 		auto ret = Compiler::compileFile(filename);
 
 		Root* r = std::get<0>(ret);
 		std::vector<std::string> filelist = std::get<1>(ret);
 		std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
-		std::vector<llvm::Module*> modulelist = std::get<3>(ret);
+		std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
+
+		llvm::Module* mainModule = modulelist[filename];
+
+		printf("mod: %p\n", mainModule);
+
+		// bool b = llvm::verifyModule(*mainModule);
+		// printf("b: %d\n", b);
 
 
-
-
-		cgi->module->dump();
+		mainModule->dump();
 		exit(0);
 
 		// needs to be done first, for the weird constructor fiddling below.
 		if(Compiler::runProgramWithJit)
 		{
-			llvm::Linker linker = llvm::Linker(cgi->module);
+			llvm::Linker linker = llvm::Linker(mainModule);
 			for(auto mod : modulelist)
 			{
-				linker.linkInModule(mod);
+				linker.linkInModule(mod.second);
 			}
 		}
 
@@ -420,7 +422,7 @@ int main(int argc, char* argv[])
 			{
 				if(pair.second->globalConstructorTrampoline != 0)
 				{
-					llvm::Function* constr = cgi->module->getFunction(pair.second->globalConstructorTrampoline->getName());
+					llvm::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
 					if(!constr)
 					{
 						if(Compiler::runProgramWithJit)
@@ -431,7 +433,7 @@ int main(int argc, char* argv[])
 						else
 						{
 							// declare it.
-							constr = llvm::cast<llvm::Function>(cgi->module->getOrInsertFunction(
+							constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
 								pair.second->globalConstructorTrampoline->getName(),
 								pair.second->globalConstructorTrampoline->getFunctionType())
 							);
@@ -446,7 +448,7 @@ int main(int argc, char* argv[])
 
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
-				"__global_constructor_top_level__", cgi->module);
+				"__global_constructor_top_level__", mainModule);
 
 			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
 			cgi->builder.SetInsertPoint(iblock);
@@ -462,7 +464,7 @@ int main(int argc, char* argv[])
 			if(!Compiler::getNoAutoGlobalConstructor())
 			{
 				// insert a call at the beginning of main().
-				llvm::Function* mainfunc = cgi->module->getFunction("main");
+				llvm::Function* mainfunc = mainModule->getFunction("main");
 				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
@@ -504,14 +506,14 @@ int main(int argc, char* argv[])
 			// all linked already.
 			// dump here, before the output.
 			if(Compiler::printModule)
-				cgi->module->dump();
+				mainModule->dump();
 
 			iceAssert(cgi->execEngine);
 
-			if(cgi->module->getFunction("main") != 0)
+			if(mainModule->getFunction("main") != 0)
 			{
 				std::string err;
-				llvm::Module* clone = llvm::CloneModule(cgi->module);
+				llvm::Module* clone = llvm::CloneModule(mainModule);
 				llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
 							.setErrorStr(&err)
 							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
@@ -541,14 +543,14 @@ int main(int argc, char* argv[])
 			remove(s.c_str());
 
 		if(Compiler::printModule && !Compiler::getRunProgramWithJit())
-			cgi->module->dump();
+			mainModule->dump();
 
 		if(Compiler::dumpModule)
 		{
 			// std::string err_info;
 			// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
 
-			// out << *(cgi->module);
+			// out << *(mainModule);
 			// out.close();
 
 			fprintf(stderr, "enosup\n");
