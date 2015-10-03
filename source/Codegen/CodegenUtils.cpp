@@ -539,24 +539,30 @@ namespace Codegen
 			if(deep)
 			{
 				llvm::Function* func = pair.first;
-				if(!func)
-					error(this, pair.second, "!func (%s)", pair.second->mangledName.c_str());
-
-				iceAssert(func && func->hasName());
-
-				// add to the func table
-				auto lf = this->module->getFunction(func->getName());
-				if(!lf)
+				if(func)
 				{
-					this->module->getOrInsertFunction(func->getName(), func->getFunctionType());
-					lf = this->module->getFunction(func->getName());
+					iceAssert(func && func->hasName());
+
+					// add to the func table
+					auto lf = this->module->getFunction(func->getName());
+					if(!lf)
+					{
+						this->module->getOrInsertFunction(func->getName(), func->getFunctionType());
+						lf = this->module->getFunction(func->getName());
+					}
+
+					llvm::Function* f = llvm::cast<llvm::Function>(lf);
+
+					f->deleteBody();
+					this->addFunctionToScope(FuncPair_t(f, pair.second));
+					pair.first = f;
 				}
-
-				llvm::Function* f = llvm::cast<llvm::Function>(lf);
-
-				f->deleteBody();
-				this->addFunctionToScope(FuncPair_t(f, pair.second));
-				pair.first = f;
+				else
+				{
+					// generic functions are not instantiated
+					if(pair.second->genericTypes.size() == 0)
+						error(this, pair.second, "!func (%s)", pair.second->mangledName.c_str());
+				}
 			}
 
 			if(!existing)

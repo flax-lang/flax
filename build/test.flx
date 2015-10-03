@@ -7,7 +7,7 @@ import tests.fizzbuzz
 import tests.recursiveFib
 import tests.scopes
 import tests.arraytest
-// import tests.generics
+import tests.generics
 
 import Utilities
 
@@ -44,7 +44,7 @@ import Utilities
 
 
 	printf("*** GENERICS TEST ***\n")
-	// doGenericsTest()
+	doGenericsTest()
 	printf("\n\n")
 }
 
@@ -112,6 +112,8 @@ class Bar : Foo
 			// ret.y = super.v3.y + 5
 			// ret.z = super.v3.z + 7
 
+			ret.x = 33.1
+
 			return ret
 		}
 		set {
@@ -152,7 +154,7 @@ class FooBar : Bar
 
 func main(argc: Int32, argv: Int8**) -> Int
 {
-	// runTests()
+	runTests()
 	printf("========= TESTS COMPLETE =========\n\n")
 
 
@@ -188,8 +190,7 @@ func main(argc: Int32, argv: Int8**) -> Int
 	printf("m = (%f, %f)\n", m.x, m.y)
 
 
-
-
+	let g = foo(30, "bar ")
 
 	// var dream = Math.Complex.Cmplx()
 	// dream.r = 40
