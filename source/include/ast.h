@@ -654,14 +654,14 @@ namespace Ast
 
 	struct Root : Expr
 	{
-		Root() : Expr(Parser::PosInfo()), publicFuncTree("__#root"){ }
+		Root() : Expr(Parser::PosInfo()) { }
 		~Root();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Codegen::FunctionTree rootFuncStack = Codegen::FunctionTree("__#root");
+		Codegen::FunctionTree* rootFuncStack = new Codegen::FunctionTree("__#root");
 
 		// public functiondecls and type decls.
-		Codegen::FunctionTree publicFuncTree;
+		Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");
 		std::deque<std::pair<StructBase*, llvm::Type*>> publicTypes;
 
 		// list of all function calls. all.
