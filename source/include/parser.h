@@ -176,8 +176,6 @@ namespace Parser
 
 		TokenList tokens;
 
-		std::vector<std::string> lines;
-
 		std::map<std::string, bool> visited;
 
 		Token curtok;

@@ -23,7 +23,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	{
 		if(decl->params.size() != 1)
 		{
-			error(cgi, this, "Operator overload for '=' can only have one argument (have %zu)", decl->params.size());
+			error(this, "Operator overload for '=' can only have one argument (have %zu)", decl->params.size());
 		}
 
 		// we can't actually do much, because they can assign to anything
@@ -31,17 +31,17 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	else if(this->op == ArithmeticOp::CmpEq)
 	{
 		if(decl->params.size() != 1)
-			error(cgi, this, "Operator overload for '==' can only have one argument");
+			error(this, "Operator overload for '==' can only have one argument");
 
 		if(decl->type.strType != "Bool")
-			error(cgi, this, "Operator overload for '==' must return a boolean value");
+			error(this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
 		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
 		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
 	{
 		if(decl->params.size() != 1)
-			error(cgi, this, "Operator overload can only have one argument");
+			error(this, "Operator overload can only have one argument");
 	}
 
 

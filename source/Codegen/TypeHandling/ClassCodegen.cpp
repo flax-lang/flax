@@ -328,13 +328,13 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	{
 		TypePair_t* type = cgi->getType(super);
 		if(type == 0)
-			error(cgi, this, "Type %s does not exist", super.c_str());
+			error(this, "Type %s does not exist", super.c_str());
 
 		if(type->second.second == TypeKind::Class)
 		{
 			if(alreadyHaveSuperclass)
 			{
-				error(cgi, this, "Multiple inheritance is not supported, only one superclass"
+				error(this, "Multiple inheritance is not supported, only one superclass"
 					" can be inherited from. Consider using protocols instead");
 			}
 
@@ -342,7 +342,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		}
 		else if(type->second.second != TypeKind::Protocol)
 		{
-			error(cgi, this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
+			error(this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
 		}
 
 
@@ -370,7 +370,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
 				if(it != this->members.end())
 				{
-					error(cgi, *it, "Fields cannot be overriden, only computed properties can");
+					error(*it, "Fields cannot be overriden, only computed properties can");
 				}
 
 				this->members.push_back(mem);
@@ -408,7 +408,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 					Func* f = *it;
 					if(!(f->decl->attribs & Attr_Override))
 					{
-						error(cgi, f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
+						error(f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
 							cgi->printAst(f->decl).c_str(), supcls->name.c_str());
 					}
 					else
@@ -444,7 +444,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 
 					if(!(ours->attribs & Attr_Override))
 					{
-						error(cgi, ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
+						error(ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
 							ours->name.c_str(), supcls->name.c_str());
 					}
 					else
@@ -461,7 +461,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		else
 		{
 			// protcols not supported yet.
-			error(cgi, this, "enotsup");
+			error(this, "enotsup");
 		}
 	}
 
@@ -507,7 +507,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
 		if(this->nameMap.find(mangled) != this->nameMap.end())
 		{
-			error(cgi, this, "Duplicate member '%s'", func->decl->name.c_str());
+			error(this, "Duplicate member '%s'", func->decl->name.c_str());
 		}
 	}
 
@@ -517,7 +517,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		llvm::Type* type = cgi->getLlvmType(var);
 		if(type == str)
 		{
-			error(cgi, this, "Cannot have non-pointer member of type self");
+			error(this, "Cannot have non-pointer member of type self");
 		}
 
 		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));

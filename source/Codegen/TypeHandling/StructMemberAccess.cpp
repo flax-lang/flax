@@ -37,7 +37,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 		return Result_t(this->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
 	}
 
-	error(this, user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
+	error(user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
 }
 
 
@@ -45,7 +45,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
-		if(this->matype == MAType::Invalid) error(cgi, this, "??");
+		if(this->matype == MAType::Invalid) error(this, "??");
 		return cgi->resolveStaticDotOperator(this, true).second;
 	}
 
@@ -84,7 +84,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		iceAssert(type->getStructNumElements() == 1);
 		type = type->getStructElementType(0);
 
-		warn(cgi, this, "typealias encountered");
+		warn(this, "typealias encountered");
 		isWrapped = true;
 	}
 
@@ -97,7 +97,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			error(cgi, this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
+			error(this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
 		}
 	}
 
@@ -215,18 +215,18 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 			}
 			else
 			{
-				error(cgi, var, "Struct '%s' has no such member '%s'", str->name.c_str(), var->name.c_str());
+				error(var, "Struct '%s' has no such member '%s'", str->name.c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(cgi, this, "Type '%s' is not a tuple", str->name.c_str());
+				error(this, "Type '%s' is not a tuple", str->name.c_str());
 			}
 			else
 			{
-				error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+				error(this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
 			}
 		}
 
@@ -237,7 +237,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 		else
 		{
-			error(cgi, rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
 		}
 	}
 	else if(pair->second.second == TypeKind::Class)
@@ -273,11 +273,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(cgi, this, "Type '%s' is not a tuple", cls->name.c_str());
+				error(this, "Type '%s' is not a tuple", cls->name.c_str());
 			}
 			else
 			{
-				error(cgi, this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
+				error(this, "(%s:%d) -> Internal check failed: no comprehendo (%s)", __FILE__, __LINE__, typeid(*rhs).name());
 			}
 		}
 
@@ -363,7 +363,7 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 		}
 
 		if(!lcallee)
-			error(cgi, var, "?!??!!");
+			error(var, "?!??!!");
 
 
 		std::vector<llvm::Value*> args { ref, _rhs };
@@ -395,7 +395,7 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 		}
 
 		if(!lcallee)
-			error(cgi, var, "?!??!!???");
+			error(var, "?!??!!???");
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<llvm::Value*> args { ref };
@@ -443,7 +443,7 @@ Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Cl
 
 	if(callee->decl->isStatic != isStaticFunctionCall)
 	{
-		error(cgi, fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
 	}
 
 
@@ -578,7 +578,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		}
 
 		std::string lscope = ma->matype == MAType::LeftNamespace ? "namespace" : "type";
-		error(this, ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
+		error(ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
 	}
 
@@ -678,7 +678,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			}
 			else
 			{
-				error(this, vr, "namespace %s does not contain a variable %s",
+				error(vr, "namespace %s does not contain a variable %s",
 					ftree->nsName.c_str(), vr->name.c_str());
 			}
 
@@ -698,7 +698,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 			{
 				TypePair_t* tpair = this->getType(curType->mangledName);
 				if(!tpair)
-					error(this, vr, "Invalid class '%s'", vr->name.c_str());
+					error(vr, "Invalid class '%s'", vr->name.c_str());
 
 				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
 				return { res.result.first->getType(), res };
@@ -715,12 +715,12 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 				}
 			}
 
-			error(this, vr, "Class '%s' does not contain a static variable or class named '%s'", curType->name.c_str(), vr->name.c_str());
+			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->name.c_str(), vr->name.c_str());
 		}
 	}
 	else
 	{
-		error(this, ma, "Invalid expression type (%s) on right hand of dot operator", typeid(*ma->right).name());
+		error(ma, "Invalid expression type (%s) on right hand of dot operator", typeid(*ma->right).name());
 	}
 }
 
@@ -782,7 +782,7 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 	}
 
 	if(!callee)
-		error(this, fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
+		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
 	return callee;
 }

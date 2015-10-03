@@ -53,7 +53,7 @@ Result_t CodegenInstance::doTupleAccess(llvm::Value* selfPtr, Number* num, bool 
 	// and do a structgep.
 
 	if(num->ival >= type->getStructNumElements())
-		error(this, num, "Tuple does not have %d elements, only %d", (int) num->ival + 1, type->getStructNumElements());
+		error(num, "Tuple does not have %d elements, only %d", (int) num->ival + 1, type->getStructNumElements());
 
 	llvm::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
 	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
@@ -92,7 +92,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		cgi->autoCastType(member->getType()->getPointerElementType(), val);
 
 		if(val->getType() != member->getType()->getPointerElementType())
-			error(cgi, this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
+			error(this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
 				cgi->getReadableType(member->getType()->getPointerElementType()).c_str(), cgi->getReadableType(val).c_str());
 
 		cgi->builder.CreateStore(val, member);

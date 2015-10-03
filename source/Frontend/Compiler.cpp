@@ -68,7 +68,7 @@ namespace Compiler
 				std::string msg = "No module or library with the name '" + modname + "' could be found (no such builtin library either)";
 
 				va_list ap;
-				__error_gen(getFileLines(fullPath), imp->posinfo.line + 1 /* idk why */, imp->posinfo.col,
+				__error_gen(imp->posinfo.line + 1 /* idk why */, imp->posinfo.col,
 					getFilenameFromPath(fullPath).c_str(), msg.c_str(), "Error", true, ap);
 
 				abort();
@@ -168,14 +168,12 @@ namespace Compiler
 		CodegenInstance* cgi = new CodegenInstance();
 		cloneCGIInnards(rcgi, cgi);
 
-		cgi->rawLines = Compiler::getFileLines(fpath);
 		ParserState pstate(cgi);
 
 		cgi->customOperatorMap = rcgi->customOperatorMap;
 		cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
 
 		std::string curpath = Compiler::getPathFromFile(fpath);
-		pstate.cgi->rawLines = Compiler::getFileLines(fpath);
 
 		// parse
 		// printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
@@ -300,7 +298,7 @@ namespace Compiler
 					{
 						va_list ap;
 
-						__error_gen(getFileLines(u.first->name), u.second->posinfo.line + 1 /* idk why */, u.second->posinfo.col,
+						__error_gen(u.second->posinfo.line + 1 /* idk why */, u.second->posinfo.col,
 							getFilenameFromPath(u.first->name).c_str(), "", "Note", false, ap);
 					}
 				}

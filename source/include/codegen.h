@@ -49,25 +49,21 @@ namespace GenError
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
-	void printContext(std::vector<std::string> lines, uint64_t line, uint64_t col);
-	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col);
-	void printContext(Codegen::CodegenInstance* cgi, Ast::Expr* e);
+	void printContext(std::string file, uint64_t line, uint64_t col);
+	void printContext(Ast::Expr* e);
 }
 
-void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, const char* file, const char* msg, const char* type,
+void __error_gen(uint64_t line, uint64_t col, const char* file, const char* msg, const char* type,
 	bool doExit, va_list ap);
 
 void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
 void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-void error(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
 
 void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void info(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 
 
@@ -95,8 +91,6 @@ namespace Codegen
 		std::deque<Ast::Class*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
-
-		std::vector<std::string> rawLines;
 
 		TypeMap_t typeMap;
 

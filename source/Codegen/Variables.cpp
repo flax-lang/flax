@@ -144,7 +144,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 
 	if(!ai)
 	{
-		error(cgi, this, "ai is null");
+		error(this, "ai is null");
 	}
 
 	if(!didAddToSymtab && shouldAddToSymtab)
@@ -197,7 +197,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	if(this->type.strType == "Inferred")
 	{
 		if(this->initVal == nullptr)
-			error(cgi, this, "Type inference requires an initial assignment to infer type");
+			error(this, "Type inference requires an initial assignment to infer type");
 
 
 		llvm::Type* vartype = cgi->getLlvmType(this->initVal);
@@ -209,7 +209,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		{
 			// todo: fix this shit
 			// but how?
-			warn(cgi, this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
+			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
 		this->inferredLType = cgi->getLlvmType(this->initVal);
@@ -234,7 +234,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		{
 			if(sub->nsName == this->name)
 			{
-				error(cgi, this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
+				error(this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
 					this->name.c_str(), ft->nsName.c_str());
 			}
 		}
@@ -246,10 +246,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		{
 			// check.
 			if(this->name == "self")
-				error(cgi, this, "Cannot have a parameter named 'self' in a method declaration");
+				error(this, "Cannot have a parameter named 'self' in a method declaration");
 
 			else if(this->name == "super")
-				error(cgi, this, "Cannot have a parameter named 'super' in a method declaration");
+				error(this, "Cannot have a parameter named 'super' in a method declaration");
 		}
 	}
 
@@ -289,7 +289,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		if(this->attribs & Attr_VisPublic)
 		{
 			// hmm.
-			error(cgi, this, "Public global variables are currently not supported.");
+			error(this, "Public global variables are currently not supported.");
 		}
 		else
 		{
@@ -334,7 +334,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			{
 				if(cgi->isTupleType(t))
 				{
-					error(cgi, this, "global nested tuples not supported yet");
+					error(this, "global nested tuples not supported yet");
 				}
 				else if(t->isStructTy())
 				{
