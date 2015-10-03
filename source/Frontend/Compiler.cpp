@@ -268,7 +268,7 @@ namespace Compiler
 
 
 
-	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::vector<llvm::Module*>>
+	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, llvm::Module*>>
 	compileFile(std::string filename)
 	{
 		using namespace Codegen;
@@ -315,7 +315,7 @@ namespace Compiler
 
 		std::vector<std::string> outlist;
 		std::unordered_map<std::string, Root*> rootmap;
-		std::vector<llvm::Module*> modules;
+		std::unordered_map<std::string, llvm::Module*> modulemap;
 
 
 		Root* dummyRoot = new Root();
@@ -329,14 +329,16 @@ namespace Compiler
 			auto pair = _compileFile(name, rcgi, dummyRoot);
 			CodegenInstance* cgi = pair.first;
 
-			modules.push_back(cgi->module);
 			outlist.push_back(pair.second);
+
+			printf("adding mod %s, %p\n", name.c_str(), cgi->module);
+			modulemap[name] = cgi->module;
 			rootmap[name] = cgi->rootNode;
 
 			delete cgi;
 		}
 
-		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modules);
+		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modulemap);
 	}
 
 
