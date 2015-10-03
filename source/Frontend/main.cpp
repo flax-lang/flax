@@ -452,12 +452,11 @@ int main(int argc, char* argv[])
 			cgi->builder.CreateRetVoid();
 
 
-
-
 			if(!Compiler::getNoAutoGlobalConstructor())
 			{
 				// insert a call at the beginning of main().
 				llvm::Function* mainfunc = cgi->module->getFunction("main");
+				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
 				llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "__main_entry", mainfunc);

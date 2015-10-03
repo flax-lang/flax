@@ -256,42 +256,11 @@ namespace Parser
 	void parseAllCustomOperators(ParserState& ps, std::string filename, std::string curpath)
 	{
 		staticState = &ps;
-		std::ifstream fstr(filename);
-
-		std::string fileContents;
-		if(fstr)
-		{
-			std::ostringstream contents;
-			contents << fstr.rdbuf();
-			fstr.close();
-			fileContents = contents.str();
-		}
-		else
-		{
-			perror("There was an error reading the file");
-			exit(-1);
-		}
-
 
 		// split into lines
-		std::vector<std::string> rawlines;
-		{
-			std::stringstream ss(fileContents);
-
-			std::string tmp;
-			while(std::getline(ss, tmp, '\n'))
-				rawlines.push_back(tmp);
-		}
-
-
-		ps.lines = rawlines;
-
-
-		while((ps.curtok = getNextToken(fileContents, ps.currentPos)).text.size() > 0)
-		{
-			ps.tokens.push_back(ps.curtok);
-			ps.origTokens.push_back(ps.curtok);
-		}
+		std::string fullpath = Compiler::getFullPathOfFile(filename);
+		ps.lines = Compiler::getFileLines(fullpath);
+		ps.tokens = Compiler::getFileTokens(fullpath);
 
 		ps.currentPos.file = filename;
 		ps.currentPos.line = 1;
@@ -321,11 +290,7 @@ namespace Parser
 					ps.tokens.push_front(t);
 
 					Import* imp = parseImport(ps);
-					std::string file = Compiler::resolveImport(imp, curpath);
-					const char* fullpath = realpath(file.c_str(), 0);
-
-					file = fullpath;
-					free((void*) fullpath);
+					std::string file = Compiler::resolveImport(imp, Compiler::getFullPathOfFile(filename));
 
 					if(!ps.visited[file])
 					{
@@ -402,7 +367,7 @@ namespace Parser
 
 
 
-	Root* Parse(ParserState& ps, std::string filename, std::string str)
+	Root* Parse(ParserState& ps, std::string filename)
 	{
 		Token t;
 		ps.currentPos.file = filename;
@@ -411,7 +376,7 @@ namespace Parser
 		ps.curAttrib = 0;
 
 		// restore this, so we don't have to read the file again
-		ps.tokens = ps.origTokens;
+		ps.tokens = Compiler::getFileTokens(filename);
 
 		ps.rootNode = new Root();
 

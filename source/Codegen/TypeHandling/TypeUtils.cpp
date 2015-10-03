@@ -1199,6 +1199,14 @@ namespace Codegen
 		{
 			return "typeof(" + this->printAst(to->inside) + ")";
 		}
+		else if(ForeignFuncDecl* ffi = dynamic_cast<ForeignFuncDecl*>(expr))
+		{
+			return "ffi " + this->printAst(ffi->decl);
+		}
+		else if(Import* imp = dynamic_cast<Import*>(expr))
+		{
+			return "import " + imp->module;
+		}
 
 		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
