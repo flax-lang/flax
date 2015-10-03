@@ -362,7 +362,7 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
-		#if 1
+		#if 0
 		fprintf(stderr, "finding %s\n{\n", name.c_str());
 		for(auto p : this->typeMap)
 			fprintf(stderr, "\t%s\n", p.first.c_str());
