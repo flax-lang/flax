@@ -11,6 +11,8 @@ import tests.generics
 
 import Utilities
 
+import Foo
+
 ƒ runTests()
 {
 	// fib

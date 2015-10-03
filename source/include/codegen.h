@@ -65,6 +65,11 @@ void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
 void warn(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
+void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void info(Codegen::CodegenInstance* cgi, Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+
+
 
 #define __nothing
 #define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
@@ -292,7 +297,6 @@ namespace Codegen
 		Ast::Result_t createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr);
 
 		llvm::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
-		void evaluateDependencies(Ast::Expr* expr);
 
 
 		llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(Ast::FuncDecl* fd);
