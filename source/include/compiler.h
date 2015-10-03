@@ -27,7 +27,7 @@ namespace Compiler
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
-	std::string resolveImport(Ast::Import* imp, std::string curpath);
+	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
 	std::string getTarget();
 	std::string getPrefix();
@@ -40,6 +40,7 @@ namespace Compiler
 
 	std::string getPathFromFile(std::string path);
 	std::string getFilenameFromPath(std::string path);
+	std::string getFullPathOfFile(std::string partial);
 
 
 	bool getIsCompileOnly();

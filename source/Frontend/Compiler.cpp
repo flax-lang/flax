@@ -26,8 +26,10 @@ using namespace Ast;
 
 namespace Compiler
 {
-	std::string resolveImport(Import* imp, std::string curpath)
+	std::string resolveImport(Import* imp, std::string fullPath)
 	{
+		std::string curpath = getPathFromFile(fullPath);
+
 		if(imp->module.find("*") != (size_t) -1)
 		{
 			Parser::parserError("Wildcard imports are currently not supported (trying to import %s)", imp->module.c_str());
@@ -49,7 +51,7 @@ namespace Compiler
 		{
 			auto ret = std::string(fname);
 			free(fname);
-			return ret;
+			return getFullPathOfFile(ret);
 		}
 		else
 		{
@@ -59,14 +61,17 @@ namespace Compiler
 			struct stat buffer;
 			if(stat(builtinlib.c_str(), &buffer) == 0)
 			{
-				return builtinlib;
+				return getFullPathOfFile(builtinlib);
 			}
 			else
 			{
-				Parser::Token t;
-				t.posinfo = imp->posinfo;
-				Parser::parserError(t, "No module or library with the name '%s' could be found (no builtin library '%s' either)",
-					modname.c_str(), builtinlib.c_str());
+				std::string msg = "No module or library with the name '" + modname + "' could be found (no such builtin library either)";
+
+				va_list ap;
+				__error_gen(getFileLines(fullPath), imp->posinfo.line + 1 /* idk why */, imp->posinfo.col,
+					getFilenameFromPath(fullPath).c_str(), msg.c_str(), "Error", true, ap);
+
+				abort();
 			}
 		}
 	}
@@ -79,14 +84,16 @@ namespace Compiler
 	static Root* _compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
 		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
 	{
-		std::string curpath = Compiler::getPathFromFile(filename);
+		std::string fullpath = getFullPathOfFile(filename);
+		std::string curpath = Compiler::getPathFromFile(fullpath);
 
 
-		std::string str = Compiler::getFileContents(filename);
-		pstate.cgi->rawLines = Compiler::getFileLines(filename);
+		pstate.cgi->rawLines = Compiler::getFileLines(fullpath);
+
 
 		// parse
-		Root* root = Parser::Parse(pstate, filename, str);
+		printf("** COMPILING: %s\n", Compiler::getFilenameFromPath(fullpath).c_str());
+		Root* root = Parser::Parse(pstate, fullpath);
 
 		// get imports
 		for(Expr* e : root->topLevelExpressions)
@@ -96,7 +103,7 @@ namespace Compiler
 			if(imp)
 			{
 				Root* r = nullptr;
-				std::string fname = resolveImport(imp, curpath);
+				std::string fname = resolveImport(imp, Compiler::getFullPathOfFile(filename));
 
 				// if already compiled, don't do it again
 				if(rootmap.find(imp->module) != rootmap.end())
@@ -216,7 +223,6 @@ namespace Compiler
 		fakeps.currentPos.col = 1;
 
 		fakeps.tokens = Compiler::getFileTokens(currentMod);
-		fakeps.origTokens = fakeps.tokens;
 
 		while(fakeps.tokens.size() > 0)
 		{
@@ -230,11 +236,7 @@ namespace Compiler
 
 				Import* imp = parseImport(fakeps);
 
-				std::string file = Compiler::resolveImport(imp, curpath);
-				const char* fullpath = realpath(file.c_str(), 0);
-
-				file = fullpath;
-				free((void*) fullpath);
+				std::string file = Compiler::getFullPathOfFile(Compiler::resolveImport(imp, Compiler::getFullPathOfFile(currentMod)));
 
 				g->addModuleDependency(currentMod, file, imp);
 
@@ -262,18 +264,14 @@ namespace Compiler
 		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
 	{
 		using namespace Codegen;
-		const char* full = realpath(filename.c_str(), 0);
-		iceAssert(full);
-		filename = full;
 
-		free((void*) full);
-
-
+		filename = getFullPathOfFile(filename);
 		std::string curpath = getPathFromFile(filename);
 
 		DependencyGraph* g = resolveImportGraph(filename, curpath);
 
 		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
+
 		for(auto gr : groups)
 		{
 			if(gr.size() > 1)
@@ -429,6 +427,17 @@ namespace Compiler
 		size_t sep = path.find_last_of("\\/");
 		if(sep != std::string::npos)
 			ret = path.substr(sep + 1);
+
+		return ret;
+	}
+
+	std::string getFullPathOfFile(std::string partial)
+	{
+		const char* fullpath = realpath(partial.c_str(), 0);
+		iceAssert(fullpath);
+
+		std::string ret = fullpath;
+		free((void*) fullpath);
 
 		return ret;
 	}

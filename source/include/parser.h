@@ -175,7 +175,6 @@ namespace Parser
 		ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
 
 		TokenList tokens;
-		TokenList origTokens;
 
 		std::vector<std::string> lines;
 
@@ -282,7 +281,7 @@ namespace Parser
 
 
 
-	Ast::Root* Parse(ParserState& pstate, std::string filename, std::string str);
+	Ast::Root* Parse(ParserState& pstate, std::string filename);
 	void parseAllCustomOperators(ParserState& pstate, std::string filename, std::string curpath);
 
 
