@@ -362,7 +362,7 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
-		#if 0
+		#if 1
 		fprintf(stderr, "finding %s\n{\n", name.c_str());
 		for(auto p : this->typeMap)
 			fprintf(stderr, "\t%s\n", p.first.c_str());
@@ -568,6 +568,9 @@ namespace Codegen
 			if(deep)
 			{
 				llvm::Function* func = pair.first;
+				if(!func)
+					error(this, pair.second, "!func (%s)", pair.second->mangledName.c_str());
+
 				iceAssert(func && func->hasName());
 
 				// add to the func table
@@ -587,7 +590,7 @@ namespace Codegen
 
 			if(!existing)
 			{
-				printf("add func %s to clone %d\n", pair.first->getName().bytes_begin(), clone->id);
+				// printf("add func %s to clone %d\n", pair.first->getName().bytes_begin(), clone->id);
 				clone->funcs.push_back(pair);
 			}
 		}
@@ -609,13 +612,16 @@ namespace Codegen
 
 			if(!found && t.first != "Type" && t.first != "Any")
 			{
-				printf("adding type %s\n", t.first.c_str());
-				clone->types[t.first] = t.second;
-
-				if(deep)
+				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
 				{
-					printf("deep type: %s\n", t.first.c_str());
-					this->typeMap[t.first] = t.second;
+					printf("adding type %s\n", sb->mangledName.c_str());
+					clone->types[sb->mangledName] = t.second;
+
+					if(deep)
+					{
+						printf("deep type: %s\n", sb->mangledName.c_str());
+						this->typeMap[sb->mangledName] = t.second;
+					}
 				}
 			}
 		}
@@ -625,7 +631,8 @@ namespace Codegen
 			FunctionTree* found = 0;
 			for(auto s : clone->subs)
 			{
-				if(s->nsName == clone->nsName)
+				// printf("clone has: %s, looking for %s\n", s->nsName, );
+				if(s->nsName == sub->nsName)
 				{
 					found = s;
 					break;
@@ -636,7 +643,11 @@ namespace Codegen
 				this->cloneFunctionTree(sub, found, deep);
 
 			else
+			{
+				static int numclones = 0;
+				printf("new clone (%d)\n", numclones++);
 				clone->subs.push_back(this->cloneFunctionTree(sub, deep));
+			}
 		}
 	}
 
@@ -745,6 +756,8 @@ namespace Codegen
 	{
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
+
+		printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
 
 		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
 			cur->funcs.push_back(func);

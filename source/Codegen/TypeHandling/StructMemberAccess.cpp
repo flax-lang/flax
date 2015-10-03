@@ -599,7 +599,12 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		{
 			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
 			if(!res.resolved)
-				printf("search ftree %d, nothing\n", ftree->id);
+			{
+				FunctionTree* pubft = this->getCurrentFuncTree(&nsstrs, this->rootNode->publicFuncTree);
+				res = this->resolveFunctionFromList(ma, pubft->funcs, fc->name, fc->params);
+
+				// printf("search ftree %d, nothing\n", ftree->id);
+			}
 		}
 		else
 		{

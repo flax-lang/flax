@@ -141,6 +141,7 @@ namespace Compiler
 		Warning::UseBeforeAssign,
 		Warning::UseAfterFree
 	};
+
 	bool getWarningEnabled(Warning warning)
 	{
 		return std::find(enabledWarnings.begin(), enabledWarnings.end(), warning) != enabledWarnings.end();
@@ -380,6 +381,9 @@ int main(int argc, char* argv[])
 
 
 
+
+		cgi->module->dump();
+		exit(0);
 
 		// needs to be done first, for the weird constructor fiddling below.
 		if(Compiler::runProgramWithJit)

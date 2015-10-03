@@ -95,6 +95,15 @@ namespace Compiler
 	// 	rootft->subs.push_back(cgi->cloneFunctionTree(sub, false));
 	// };
 
+
+	static void cloneCGIInnards(Codegen::CodegenInstance* from, Codegen::CodegenInstance* to)
+	{
+		to->typeMap					= from->typeMap;
+		to->customOperatorMap		= from->customOperatorMap;
+		to->customOperatorMapRev	= from->customOperatorMapRev;
+		to->globalConstructors		= from->globalConstructors;
+	}
+
 	static void copyRootInnards(Codegen::CodegenInstance* cgi, Root* from, Root* to, bool doClone)
 	{
 		using namespace Codegen;
@@ -155,16 +164,6 @@ namespace Compiler
 			to->rootFuncStack->vars[v.first] = v.second;
 	}
 
-	static void cloneCGIInnards(Codegen::CodegenInstance* from, Codegen::CodegenInstance* to)
-	{
-		to->typeMap					= from->typeMap;
-		to->customOperatorMap		= from->customOperatorMap;
-		to->customOperatorMapRev	= from->customOperatorMapRev;
-		to->globalConstructors		= from->globalConstructors;
-	}
-
-
-
 	static std::pair<Codegen::CodegenInstance*, std::string> _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
 	{
 		using namespace Codegen;
@@ -201,11 +200,14 @@ namespace Compiler
 		oname += ".bc";
 
 
-		printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
+		printf("\n\n** COPYING BACK\n\n\n");
+
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
 		copyRootInnards(rcgi, root, dummyRoot, true);
+
+		printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
