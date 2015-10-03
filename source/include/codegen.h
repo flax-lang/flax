@@ -75,6 +75,8 @@ void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3
 
 namespace Codegen
 {
+	struct DependencyGraph;
+
 	struct CodegenInstance
 	{
 		// todo: hack
@@ -101,6 +103,8 @@ namespace Codegen
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
+
+		DependencyGraph* dependencyGraph = 0;
 
 
 		struct

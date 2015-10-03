@@ -57,50 +57,10 @@ namespace Codegen
 		std::stack<DepNode*> stack;
 
 
-		void addModuleDependency(std::string from, std::string to, Ast::Expr* imp)
-		{
-			// find existing node
-			DepNode* src = 0;
-			DepNode* dst = 0;
-			for(auto d : this->nodes)
-			{
-				if(!src && d->name == from)
-				{
-					src = d;
-				}
-				else if(!dst && d->name == to)
-				{
-					dst = d;
-				}
-			}
-
-			if(!src)
-			{
-				src = new DepNode();
-				src->name = from;
-
-				this->nodes.push_back(src);
-			}
-
-			if(!dst)
-			{
-				dst = new DepNode();
-				dst->name = to;
-
-				this->nodes.push_back(dst);
-			}
-
-			dst->users.push_back({ src, imp });
-
-			Dep* d = new Dep();
-			d->type = DepType::Module;
-			d->from = src;
-			d->to = dst;
-
-			this->edgesFrom[src].push_back(d);
-		}
-
+		void addModuleDependency(std::string from, std::string to, Ast::Expr* imp);
 		std::deque<std::deque<DepNode*>> findCyclicDependencies();
+
+		std::deque<DepNode*> findDependenciesOf(Ast::Expr* expr);
 	};
 }
 

@@ -5,6 +5,7 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
+#include "../include/dependency.h"
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GLobalVariable.h"
@@ -219,6 +220,13 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
+		std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
+		printf("HAVE %zu DEPS\n", deps.size());
+		for(auto d : deps)
+		{
+			printf("TYPE: %s / %s\n", d->name.c_str(), d->expr ? cgi->printAst(d->expr).c_str() : "");
+		}
+
 		this->inferredLType = cgi->getLlvmType(this);
 	}
 }
