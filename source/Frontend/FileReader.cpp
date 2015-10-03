@@ -58,6 +58,8 @@ namespace Compiler
 		Parser::PosInfo pos;
 		Parser::TokenList ts;
 
+		pos.file = fullPath;
+
 		while((curtok = getNextToken(fileContents, pos)).text.size() > 0)
 			ts.push_back(curtok);
 

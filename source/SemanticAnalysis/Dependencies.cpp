@@ -102,7 +102,7 @@ namespace SemAnalysis
 		for(std::deque<DepNode*> group : groups)
 		{
 			if(group.size() > 1)
-				error(cgi, group.front()->expr, "cycle");
+				error(group.front()->expr, "cycle");
 		}
 
 

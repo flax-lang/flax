@@ -159,7 +159,7 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 		llvm::Type* type = cgi->getLlvmType(var);
 		if(type == str)
 		{
-			error(cgi, this, "Cannot have non-pointer member of type self");
+			error(this, "Cannot have non-pointer member of type self");
 		}
 
 		if(!var->isStatic)

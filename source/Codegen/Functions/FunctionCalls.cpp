@@ -82,7 +82,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 						candidates += cgi->printAst(fs.second) + "\n";
 				}
 
-				error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
+				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
 					this->name.c_str(), argstr.c_str(), candidates.c_str());
 			}
 
@@ -102,7 +102,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
-		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 	}
 
 
@@ -120,7 +120,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			llvm::StructType* st = llvm::cast<llvm::StructType>(arg->getType());
 			if(!st->isLiteral() && st->getStructName() != "String")
 			{
-				warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
+				warn(e, "Passing structs to vararg functions can have unexpected results.");
 			}
 			else if(!st->isLiteral() && st->getStructName() == "String")
 			{
@@ -145,7 +145,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(arg_it->getType() != args[i]->getType())
 		{
-			error(cgi, this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 				cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
 		}
 	}

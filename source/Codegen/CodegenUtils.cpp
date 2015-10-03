@@ -295,7 +295,7 @@ namespace Codegen
 		iceAssert(ftree);
 
 		if(ftree->types.find(atype->name) != ftree->types.end())
-			error(this, atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+			error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
 
 
 		ftree->types[atype->name] = tpair;
@@ -313,7 +313,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(this, atype, "Duplicate type %s", atype->name.c_str());
+			error(atype, "Duplicate type %s", atype->name.c_str());
 		}
 
 		#if 0
@@ -475,7 +475,7 @@ namespace Codegen
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
 		if(this->resolveGenericType(id) != 0)
-			error(this, 0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
+			error(0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
 
 		this->instantiatedGenericTypeStack.back()[id] = type;
 	}
@@ -561,7 +561,7 @@ namespace Codegen
 				{
 					// generic functions are not instantiated
 					if(pair.second->genericTypes.size() == 0)
-						error(this, pair.second, "!func (%s)", pair.second->mangledName.c_str());
+						error(pair.second, "!func (%s)", pair.second->mangledName.c_str());
 				}
 			}
 
@@ -1015,7 +1015,7 @@ namespace Codegen
 						cstr += this->printAst(c.first.second) + "\n";
 				}
 
-				error(this, user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
+				error(user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
 					basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
 			}
 		}
@@ -1705,7 +1705,7 @@ namespace Codegen
 			for(auto c : candidates)
 				cands += this->printAst(c) + "\n";
 
-			error(this, fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
+			error(fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
@@ -1938,7 +1938,7 @@ namespace Codegen
 
 		StructBase* cls = dynamic_cast<StructBase*>(pair->second.first);
 		if(!cls)
-			error(this, user, "LHS of operator expression is not a class");
+			error(user, "LHS of operator expression is not a class");
 
 		iceAssert(cls);
 
@@ -2040,7 +2040,7 @@ namespace Codegen
 			iceAssert(str->initFunc);
 
 			if(!str->initFunc)
-				error(this, user, "Struct '%s' has no intialiser???", str->name.c_str());
+				error(user, "Struct '%s' has no intialiser???", str->name.c_str());
 
 			return this->module->getFunction(str->initFunc->getName());
 		}
@@ -2064,7 +2064,7 @@ namespace Codegen
 			for(llvm::Function* initers : cls->initFuncs)
 			{
 				if(initers->arg_size() < 1)
-					error(this, user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
 				if(initers->arg_size() != vals.size())
 					continue;
@@ -2092,7 +2092,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(this, user, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+			error(user, "Invalid expr type (%s)", typeid(*pair->second.first).name());
 		}
 	}
 
@@ -2232,7 +2232,7 @@ namespace Codegen
 				have = r->actualReturnValue->getType();
 
 			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = (retType == 0 ? cgi->getLlvmType(f->decl) : retType)))
-				error(cgi, r, "Function has return type '%s', but return statement returned value of type '%s' instead",
+				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
 					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 
 
@@ -2416,7 +2416,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(this, expr, "cannot clone, enosup (%s)", typeid(*expr).name());
+			error(expr, "cannot clone, enosup (%s)", typeid(*expr).name());
 		}
 	}
 

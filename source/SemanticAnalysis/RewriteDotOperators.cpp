@@ -127,7 +127,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		}
 		else
 		{
-			error(cgi, ma, "????");
+			error(ma, "????");
 		}
 	}
 	else if(dynamic_cast<FuncCall*>(ma->left))
@@ -173,7 +173,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 	}
 	else
 	{
-		error(cgi, ma, "?????");
+		error(ma, "?????");
 	}
 }
 

@@ -59,7 +59,7 @@ namespace SemAnalysis
 			case VarState::NoValue:
 				if(Compiler::getWarningEnabled(Compiler::Warning::UseBeforeAssign) && vd.decl->disableAutoInit)
 				{
-					warn(cgi, user, "Variable '%s' does not have a value when it is used here", vd.name.c_str());
+					warn(user, "Variable '%s' does not have a value when it is used here", vd.name.c_str());
 				}
 				break;
 
@@ -67,8 +67,8 @@ namespace SemAnalysis
 			case VarState::Deallocated:
 				if(Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 				{
-					warn(cgi, user, "Variable '%s' has since been deallocated", vd.name.c_str());
-					warn(cgi, vd.expr, "Deallocation was here");
+					warn(user, "Variable '%s' has since been deallocated", vd.name.c_str());
+					warn(vd.expr, "Deallocation was here");
 				}
 				break;
 		}
@@ -93,7 +93,7 @@ namespace SemAnalysis
 			for(auto v : gs.vars[i])
 			{
 				if(!v.visited && Compiler::getWarningEnabled(Compiler::Warning::UnusedVariable))
-					warn(cgi, v.decl, "Unused variable '%s'", v.name.c_str());
+					warn(v.decl, "Unused variable '%s'", v.name.c_str());
 			}
 
 			if(limit == 0) break;
@@ -133,7 +133,7 @@ namespace SemAnalysis
 			}
 			else if(FuncDecl* fn = dynamic_cast<FuncDecl*>(ex))
 			{
-				error(cgi, fn, "how?");
+				error(fn, "how?");
 			}
 			else if(Func* fn = dynamic_cast<Func*>(ex))
 			{
@@ -216,7 +216,7 @@ namespace SemAnalysis
 						{
 							if(vd.state == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 							{
-								warn(cgi, vr, "Modifying alloced variable prevents proper deallocation checking");
+								warn(vr, "Modifying alloced variable prevents proper deallocation checking");
 								vd.state = VarState::ModifiedAlloc;
 								vd.expr = bo;
 							}
@@ -234,7 +234,7 @@ namespace SemAnalysis
 					{
 						if(vd.state == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 						{
-							warn(cgi, vr, "Modifying alloced variable prevents proper deallocation checking");
+							warn(vr, "Modifying alloced variable prevents proper deallocation checking");
 							vd.state = VarState::ModifiedAlloc;
 							vd.expr = bo;
 						}
@@ -319,8 +319,8 @@ namespace SemAnalysis
 
 					if(vd.state == VarState::ModifiedAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 					{
-						warn(cgi, vr, "Variable '%s' has been modified since its allocation", vd.name.c_str());
-						warn(cgi, vd.expr, "First modified here");
+						warn(vr, "Variable '%s' has been modified since its allocation", vd.name.c_str());
+						warn(vd.expr, "First modified here");
 					}
 
 					vd.expr = da;
