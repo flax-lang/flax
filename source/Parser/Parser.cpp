@@ -365,8 +365,6 @@ namespace Parser
 		findOperators(ps);
 	}
 
-
-
 	Root* Parse(ParserState& ps, std::string filename)
 	{
 		Token t;
@@ -391,7 +389,6 @@ namespace Parser
 		ps.currentOpPrec = 0;
 
 		ps.skipNewline();
-
 
 		staticState = &ps;
 

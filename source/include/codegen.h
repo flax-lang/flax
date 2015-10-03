@@ -104,8 +104,6 @@ namespace Codegen
 		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
 
-
-		FunctionTree rootFuncStack = FunctionTree("__#root");
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
@@ -167,6 +165,7 @@ namespace Codegen
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
 		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
+		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, llvm::Type* things.
