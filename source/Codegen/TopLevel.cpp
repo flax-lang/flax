@@ -17,20 +17,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 {
 	if(pass == 0)
 	{
-		// pass 0: setup namespaces.
-		for(Expr* e : expressions)
-		{
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			if(ns)
-			{
-				nslist->push_back(ns);
-				ns->codegenPass(cgi, 0);
-			}
-		}
-	}
-	else if(pass == 1)
-	{
-		// pass 1: setup extensions
+		// pass 0: setup extensions
 		for(Expr* e : expressions)
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
@@ -46,9 +33,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		if(!isInsideNamespace)
 			TypeInfo::initialiseTypeInfo(cgi);
 	}
-	else if(pass == 2)
+	else if(pass == 1)
 	{
-		// pass 2: create types
+		// pass 1: create types
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
@@ -60,7 +47,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
-	else if(pass == 3)
+	else if(pass == 2)
 	{
 		// pass 2: override types with any extensions
 		for(Expr* e : expressions)
@@ -79,9 +66,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
 	}
-	else if(pass == 4)
+	else if(pass == 3)
 	{
-		// pass 4: create declarations
+		// pass 3: create declarations
 		for(Expr* e : expressions)
 		{
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
@@ -102,12 +89,12 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			}
 		}
 	}
-	else if(pass == 5)
+	else if(pass == 4)
 	{
 		// start semantic analysis before any typechecking needs to happen.
 		SemAnalysis::rewriteDotOperators(cgi);
 
-		// pass 5: everything else
+		// pass 4: everything else
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
@@ -123,7 +110,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
 		}
 	}
-	else if(pass == 6)
+	else if(pass == 5)
 	{
 		// first, look into all functions. check function calls, since everything should have already been declared.
 		// if we can resolve it into a generic function, then instantiate (monomorphise) the generic function
@@ -133,9 +120,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(auto fc : cgi->rootNode->allFunctionCalls)
 			cgi->tryResolveAndInstantiateGenericFunction(fc);
 	}
-	else if(pass == 7)
+	else if(pass == 6)
 	{
-		// pass 7: functions. for generic shit.
+		// pass 6: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -164,11 +151,10 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
-	// DependencyGraph* graph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
-	// (void) graph;
+	cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
 
 	// this is getting quite out of hand.
-	for(int pass = 0; pass <= 7; pass++)
+	for(int pass = 0; pass <= 6; pass++)
 	{
 		// printf("starting pass %d\n", pass);
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false, &this->topLevelNamespaces);
