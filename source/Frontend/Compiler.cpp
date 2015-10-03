@@ -158,10 +158,6 @@ namespace Compiler
 			cgi->cloneFunctionTree(from->rootFuncStack, to->rootFuncStack, false);
 			cgi->cloneFunctionTree(from->publicFuncTree, to->publicFuncTree, false);
 		}
-
-
-		for(auto v : from->rootFuncStack->vars)
-			to->rootFuncStack->vars[v.first] = v.second;
 	}
 
 	static std::pair<Codegen::CodegenInstance*, std::string> _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
@@ -182,7 +178,7 @@ namespace Compiler
 		pstate.cgi->rawLines = Compiler::getFileLines(fpath);
 
 		// parse
-		printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
+		// printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 
@@ -200,14 +196,14 @@ namespace Compiler
 		oname += ".bc";
 
 
-		printf("\n\n** COPYING BACK\n\n\n");
+		// printf("\n\n** COPYING BACK\n\n\n");
 
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
 		copyRootInnards(rcgi, root, dummyRoot, true);
 
-		printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
+		// printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -330,8 +326,6 @@ namespace Compiler
 			CodegenInstance* cgi = pair.first;
 
 			outlist.push_back(pair.second);
-
-			printf("adding mod %s, %p\n", name.c_str(), cgi->module);
 			modulemap[name] = cgi->module;
 			rootmap[name] = cgi->rootNode;
 

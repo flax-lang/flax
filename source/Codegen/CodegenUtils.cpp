@@ -122,7 +122,7 @@ namespace Codegen
 		// thus, solidify the insides of these, by adding the function to llvm::Module.
 
 		cgi->cloneFunctionTree(cgi->rootNode->rootFuncStack, cgi->rootNode->rootFuncStack, true);
-		printf("\n\n");
+		// printf("\n\n");
 
 
 		// for(auto pair : cgi->rootNode->externalTypes)
@@ -614,12 +614,12 @@ namespace Codegen
 			{
 				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
 				{
-					printf("adding type %s\n", sb->mangledName.c_str());
+					// printf("adding type %s\n", sb->mangledName.c_str());
 					clone->types[sb->mangledName] = t.second;
 
 					if(deep)
 					{
-						printf("deep type: %s\n", sb->mangledName.c_str());
+						// printf("deep type: %s\n", sb->mangledName.c_str());
 						this->typeMap[sb->mangledName] = t.second;
 					}
 				}
@@ -644,8 +644,8 @@ namespace Codegen
 
 			else
 			{
-				static int numclones = 0;
-				printf("new clone (%d)\n", numclones++);
+				// static int numclones = 0;
+				// printf("new clone (%d)\n", numclones++);
 				clone->subs.push_back(this->cloneFunctionTree(sub, deep));
 			}
 		}
@@ -757,7 +757,7 @@ namespace Codegen
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
 
-		printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
+		// printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
 
 		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
 			cur->funcs.push_back(func);
