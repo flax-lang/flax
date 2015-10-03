@@ -225,7 +225,7 @@ static void findDotOperator(Expr* expr)
 
 		gstate.MAWithinMASearchNesting = old;
 	}
-	else if(If* ifexpr = dynamic_cast<If*>(expr))
+	else if(IfStmt* ifexpr = dynamic_cast<IfStmt*>(expr))
 	{
 		for(auto e : ifexpr->cases)
 		{

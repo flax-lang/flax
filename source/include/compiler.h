@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+
 #pragma once
 
 namespace llvm
@@ -16,6 +17,7 @@ namespace llvm
 namespace Parser
 {
 	struct ParserState;
+	struct Token;
 }
 
 namespace Compiler
@@ -31,6 +33,14 @@ namespace Compiler
 	std::string getPrefix();
 	std::string getMcModel();
 	std::string getSysroot();
+
+	std::deque<Parser::Token> getFileTokens(std::string fullPath);
+	std::vector<std::string> getFileLines(std::string fullPath);
+	std::string getFileContents(std::string fullPath);
+
+	std::string getPathFromFile(std::string path);
+	std::string getFilenameFromPath(std::string path);
+
 
 	bool getIsCompileOnly();
 	int getOptimisationLevel();
@@ -65,7 +75,7 @@ namespace Compiler
 	#define COLOUR_MAGENTA			"\033[35m"			// Magenta
 	#define COLOUR_CYAN				"\033[36m"			// Cyan
 	#define COLOUR_WHITE			"\033[37m"			// White
-	#define COLOUR_BLACK_BOLD		"\033[1m"	// Bold Black
+	#define COLOUR_BLACK_BOLD		"\033[1m"			// Bold Black
 	#define COLOUR_RED_BOLD			"\033[1m\033[31m"	// Bold Red
 	#define COLOUR_GREEN_BOLD		"\033[1m\033[32m"	// Bold Green
 	#define COLOUR_YELLOW_BOLD		"\033[1m\033[33m"	// Bold Yellow
@@ -73,6 +83,7 @@ namespace Compiler
 	#define COLOUR_MAGENTA_BOLD		"\033[1m\033[35m"	// Bold Magenta
 	#define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
 	#define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
+	#define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
 }
 
 

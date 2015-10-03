@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <deque>
 
 // forward declarations.

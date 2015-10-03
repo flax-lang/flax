@@ -2184,7 +2184,7 @@ namespace Codegen
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ifbranch, bool checkType, llvm::Type* retType);
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ifbranch, bool checkType, llvm::Type* retType);
 	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, llvm::Type* retType)
 	{
 		if(bb->statements.size() == 0)
@@ -2193,8 +2193,8 @@ namespace Codegen
 		Return* r = nullptr;
 		for(Expr* e : bb->statements)
 		{
-			If* i = nullptr;
-			if((i = dynamic_cast<If*>(e)))
+			IfStmt* i = nullptr;
+			if((i = dynamic_cast<IfStmt*>(e)))
 			{
 				Return* tmp = recursiveVerifyBranch(cgi, f, i, checkType, retType);
 				if(tmp)
@@ -2216,7 +2216,7 @@ namespace Codegen
 		return r;
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, If* ib, bool checkType, llvm::Type* retType)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ib, bool checkType, llvm::Type* retType)
 	{
 		Return* r = 0;
 		bool first = true;
@@ -2276,7 +2276,7 @@ namespace Codegen
 			if(stmtCounter)
 				(*stmtCounter)++;
 
-			If* i = dynamic_cast<If*>(e);
+			IfStmt* i = dynamic_cast<IfStmt*>(e);
 			final = e;
 
 			if(i)
@@ -2372,33 +2372,5 @@ namespace Codegen
 
 
 
-
-
-
-
-	static void recursivelyResolveDependencies(Expr* expr, std::deque<Expr*>& resolved, std::deque<Expr*>& unresolved)
-	{
-		unresolved.push_back(expr);
-		for(auto m : expr->dependencies)
-		{
-			if(std::find(resolved.begin(), resolved.end(), m.dep) == resolved.end())
-			{
-				if(std::find(unresolved.begin(), unresolved.end(), m.dep) != unresolved.end())
-					error(0, expr, "Circular dependency!");
-
-				recursivelyResolveDependencies(m.dep, resolved, unresolved);
-			}
-		}
-
-		resolved.push_back(expr);
-		unresolved.erase(std::find(unresolved.begin(), unresolved.end(), expr));
-	}
-
-	void CodegenInstance::evaluateDependencies(Expr* expr)
-	{
-		std::deque<Expr*> resolved;
-		std::deque<Expr*> unresolved;
-		recursivelyResolveDependencies(expr, resolved, unresolved);
-	}
 
 }

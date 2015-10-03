@@ -83,7 +83,7 @@ namespace Ast
 
 	}
 
-	If::~If()
+	IfStmt::~IfStmt()
 	{
 	}
 

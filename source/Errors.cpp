@@ -68,6 +68,9 @@ void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, co
 	if(strcmp(type, "Warning") == 0)
 		colour = COLOUR_MAGENTA_BOLD;
 
+	else if(strcmp(type, "Note") == 0)
+		colour = COLOUR_GREY_BOLD;
+
 	if(line > 0 && col > 0)
 		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, file, line, col);
 
@@ -132,6 +135,11 @@ void error(const char* msg, ...)
 }
 
 
+
+
+
+
+
 void warn(const char* msg, ...)
 {
 	va_list ap;
@@ -168,6 +176,50 @@ void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...
 
 	va_end(ap);
 }
+
+
+
+
+
+
+void info(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen({ }, 0, 0, "", msg, "Note", false, ap);
+	va_end(ap);
+}
+
+void info(Expr* relevantast, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen({ }, line, col, file, msg, "Note", false, ap);
+	va_end(ap);
+}
+
+void info(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
+{
+	GenError::scgi = cgi;
+
+	va_list ap;
+	va_start(ap, msg);
+
+	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
+	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
+	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+
+	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Note", false, ap);
+
+	va_end(ap);
+}
+
+
 
 
 

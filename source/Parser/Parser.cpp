@@ -33,115 +33,6 @@ namespace Parser
 
 	static ParserState* staticState;
 
-	// come on man
-	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-	void parserError(const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
-			staticState->curtok.posinfo.file.c_str(), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	// grr
-	void parserWarn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-	void parserWarn(const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
-			staticState->curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-	void parserError(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(ParserState& ps, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserWarn(ParserState& ps, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-
-
-
-	void parserError(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserWarn(Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-
-
-
-
-
-
-	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-	void parserError(ParserState& ps, Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-	void parserWarn(ParserState& ps, Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
 
 
 
@@ -519,6 +410,7 @@ namespace Parser
 		ps.currentPos.col = 1;
 		ps.curAttrib = 0;
 
+		// restore this, so we don't have to read the file again
 		ps.tokens = ps.origTokens;
 
 		ps.rootNode = new Root();
@@ -1838,7 +1730,7 @@ namespace Parser
 			}
 		}
 
-		return CreateAST(If, tok_if, conds, ecase);
+		return CreateAST(IfStmt, tok_if, conds, ecase);
 	}
 
 	WhileLoop* parseWhile(ParserState& ps)
@@ -2541,6 +2433,137 @@ namespace Parser
 		// parse a func declaration.
 		oo->func = parseFunc(ps);
 		return oo;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// come on man
+	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+	void parserError(const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
+			staticState->curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	// grr
+	void parserWarn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+	void parserWarn(const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
+			staticState->curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+	void parserError(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(ParserState& ps, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserWarn(ParserState& ps, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+
+
+
+	void parserError(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserWarn(Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
+
+
+
+
+
+
+
+
+	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+	void parserError(ParserState& ps, Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+	void parserWarn(ParserState& ps, Token tok, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+
+		va_end(ap);
 	}
 }
 

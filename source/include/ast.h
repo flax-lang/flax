@@ -134,17 +134,6 @@ namespace Ast
 		}
 	};
 
-	struct AstDependency
-	{
-		std::string name;
-		Expr* dep;
-	};
-
-
-
-
-
-
 
 
 	struct Expr
@@ -157,7 +146,6 @@ namespace Ast
 		bool didCodegen = false;
 		uint64_t attribs = 0;
 		Parser::PosInfo posinfo;
-		std::deque<AstDependency> dependencies;
 		ExprType type;
 	};
 
@@ -366,10 +354,10 @@ namespace Ast
 		~BreakableBracedBlock();
 	};
 
-	struct If : Expr
+	struct IfStmt : Expr
 	{
-		~If();
-		If(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
+		~IfStmt();
+		IfStmt(Parser::PosInfo pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
 			final(ecase), cases(cases), _cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;

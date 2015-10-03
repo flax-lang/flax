@@ -8,10 +8,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "include/ast.h"
-#include "include/parser.h"
-#include "include/codegen.h"
-#include "include/compiler.h"
+#include "../include/ast.h"
+#include "../include/parser.h"
+#include "../include/codegen.h"
+#include "../include/compiler.h"
 
 #include "llvm/Linker/Linker.h"
 #include "llvm/Support/TargetSelect.h"

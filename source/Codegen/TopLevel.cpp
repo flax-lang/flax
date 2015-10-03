@@ -164,6 +164,9 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	// DependencyGraph* graph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
+	// (void) graph;
+
 	// this is getting quite out of hand.
 	for(int pass = 0; pass <= 7; pass++)
 	{
