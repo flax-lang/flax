@@ -70,11 +70,11 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		{
 			if(isGeneric && !isPublic)
 			{
-				warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+				warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
 			}
 			else if(!isGeneric)
 			{
-				warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
+				warn(this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
 			}
 
 			return Result_t(0, 0);
@@ -147,7 +147,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 		if(counter != this->block->statements.size())
 		{
-			warn(cgi, this->block->statements[counter], "Code will never be executed");
+			warn(this->block->statements[counter], "Code will never be executed");
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());

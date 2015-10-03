@@ -35,7 +35,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 
 
 	if(!found)
-		error(this, user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
+		error(user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
 
 	if(!enr->isStrong)
 		return res;
@@ -92,7 +92,7 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 
 		llvm::Type* t = cgi->getLlvmType(pair.second);
 		if(t != prev)
-			error(cgi, pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
+			error(pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
 				cgi->getReadableType(prev).c_str());
 
 

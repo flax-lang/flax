@@ -11,9 +11,9 @@ using namespace Ast;
 
 namespace GenError
 {
-	static Codegen::CodegenInstance* scgi = 0;
-	void printContext(std::vector<std::string> lines, uint64_t line, uint64_t col)
+	void printContext(std::string file, uint64_t line, uint64_t col)
 	{
+		std::vector<std::string> lines = Compiler::getFileLines(file);
 		if(lines.size() > line - 1)
 		{
 			std::string ln = lines[line - 1];
@@ -37,24 +37,15 @@ namespace GenError
 		}
 	}
 
-	void printContext(Codegen::CodegenInstance* cgi, uint64_t line, uint64_t col)
-	{
-		scgi = cgi;
-		printContext(cgi->rawLines, line, col);
-	}
-
-
-	void printContext(Codegen::CodegenInstance* cgi, Expr* e)
+	void printContext(Expr* e)
 	{
 		if(e->posinfo.line > 0)
-		{
-			printContext(cgi, e->posinfo.line, e->posinfo.col);
-		}
+			printContext(e->posinfo.file, e->posinfo.line, e->posinfo.col);
 	}
 }
 
 
-void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, const char* file, const char* msg,
+void __error_gen(uint64_t line, uint64_t col, const char* file, const char* msg,
 	const char* type, bool doExit, va_list ap)
 {
 	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
@@ -71,13 +62,24 @@ void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, co
 	else if(strcmp(type, "Note") == 0)
 		colour = COLOUR_GREY_BOLD;
 
+	// todo: do we want to truncate the file path?
+	// we're doing it now, might want to change (or use a flag)
+
+	std::string filename = Compiler::getFilenameFromPath(file);
+
 	if(line > 0 && col > 0)
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, file, line, col);
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), line, col);
 
 	fprintf(stderr, "%s%s%s: %s\n", colour, type, COLOUR_RESET, alloc);
 
 	if(line > 0 && col > 0)
-		GenError::printContext(lines, line, col);
+	{
+		std::vector<std::string> lines;
+		if(strcmp(file, "") != 0)
+		{
+			GenError::printContext(file, line, col);
+		}
+	}
 
 	fprintf(stderr, "\n");
 
@@ -95,22 +97,6 @@ void __error_gen(std::vector<std::string> lines, uint64_t line, uint64_t col, co
 	}
 }
 
-void error(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
-{
-	GenError::scgi = cgi;
-
-	va_list ap;
-	va_start(ap, msg);
-
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
-
-	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Error", true, ap);
-	va_end(ap);
-	abort();
-}
-
 void error(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
@@ -120,7 +106,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
 	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
 
-	__error_gen(std::vector<std::string>(), line, col, file, msg, "Error", true, ap);
+	__error_gen(line, col, file, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -129,7 +115,7 @@ void error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen({ }, 0, 0, "", msg, "Error", true, ap);
+	__error_gen(0, 0, "", msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -144,7 +130,7 @@ void warn(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen({ }, 0, 0, "", msg, "Warning", false, ap);
+	__error_gen(0, 0, "", msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -157,28 +143,9 @@ void warn(Expr* relevantast, const char* msg, ...)
 	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
 	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
 
-	__error_gen({ }, line, col, file, msg, "Warning", false, ap);
+	__error_gen(line, col, file, msg, "Warning", false, ap);
 	va_end(ap);
 }
-
-void warn(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
-{
-	GenError::scgi = cgi;
-
-	va_list ap;
-	va_start(ap, msg);
-
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
-
-	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Warning", false, ap);
-
-	va_end(ap);
-}
-
-
-
 
 
 
@@ -186,7 +153,7 @@ void info(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen({ }, 0, 0, "", msg, "Note", false, ap);
+	__error_gen(0, 0, "", msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -199,26 +166,9 @@ void info(Expr* relevantast, const char* msg, ...)
 	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
 	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
 
-	__error_gen({ }, line, col, file, msg, "Note", false, ap);
+	__error_gen(line, col, file, msg, "Note", false, ap);
 	va_end(ap);
 }
-
-void info(Codegen::CodegenInstance* cgi, Expr* relevantast, const char* msg, ...)
-{
-	GenError::scgi = cgi;
-
-	va_list ap;
-	va_start(ap, msg);
-
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
-
-	__error_gen(cgi ? cgi->rawLines : std::vector<std::string>(), line, col, file, msg, "Note", false, ap);
-
-	va_end(ap);
-}
-
 
 
 
@@ -235,22 +185,22 @@ namespace GenError
 
 	void unknownSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
-		error(cgi, e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void useAfterFree(Codegen::CodegenInstance* cgi, Expr* e, std::string symname)
 	{
-		warn(cgi, e, "Attempted to use variable %s after it was deallocated", symname.c_str());
+		warn(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
 	}
 
 	void duplicateSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
-		error(cgi, e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void noOpOverload(Codegen::CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
 	{
-		error(cgi, e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
+		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
 	}
 
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Type* a, llvm::Type* b)
@@ -260,7 +210,7 @@ namespace GenError
 		// the 'this' pointer (it doesn't) we'll be fine.
 		// thus, we don't check whether cgi is null.
 
-		error(cgi, e, "Invalid assignment from type %s to %s", cgi->getReadableType(b).c_str(),
+		error(e, "Invalid assignment from type %s to %s", cgi->getReadableType(b).c_str(),
 			cgi->getReadableType(a).c_str());
 	}
 
@@ -284,26 +234,26 @@ namespace GenError
 		if(args_str.length() > 2)
 			args_str = args_str.substr(2);
 
-		error(cgi, e, "No valid init() candidate for type %s taking parameters [%s]", name.c_str(), args_str.c_str());
+		error(e, "No valid init() candidate for type %s taking parameters [ %s ]", name.c_str(), args_str.c_str());
 	}
 
 	void expected(Codegen::CodegenInstance* cgi, Expr* e, std::string expect)
 	{
-		error(cgi, e, "Expected %s", expect.c_str());
+		error(e, "Expected %s", expect.c_str());
 	}
 
 	void nullValue(Codegen::CodegenInstance* cgi, Expr* e, int funcArgument)
 	{
 		if(funcArgument >= 0)
-			error(cgi, e, "Invalid (void) value in argument %d of function call", funcArgument + 1);
+			error(e, "Invalid (void) value in argument %d of function call", funcArgument + 1);
 
 		else
-			error(cgi, e, "Invalid (void) value");
+			error(e, "Invalid (void) value");
 	}
 
 	void noSuchMember(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string member)
 	{
-		error(cgi, e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
+		error(e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
 	}
 
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
@@ -314,7 +264,7 @@ namespace GenError
 
 		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
 
-		error(cgi, e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
+		error(e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
 	}
 }
 

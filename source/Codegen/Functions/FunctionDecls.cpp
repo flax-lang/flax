@@ -145,7 +145,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		{
 			if(!pair.second)
 			{
-				warn(cgi, this, "Generic type '%s' is unused", pair.first.c_str());
+				warn(this, "Generic type '%s' is unused", pair.first.c_str());
 			}
 		}
 	}
@@ -172,10 +172,10 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			for(auto p : this->params)
 			{
 				if(p->name == "self")
-					error(cgi, this, "Cannot have a parameter named 'self' in a method declaration");
+					error(this, "Cannot have a parameter named 'self' in a method declaration");
 
 				else if(p->name == "super")
-					error(cgi, this, "Cannot have a parameter named 'super' in a method declaration");
+					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 
 			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);

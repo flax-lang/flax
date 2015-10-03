@@ -37,7 +37,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	if(index == 0)
-		error(cgi, this, "invalid shit!");
+		error(this, "invalid shit!");
 
 
 	TypePair_t* tp = cgi->getType("Type");

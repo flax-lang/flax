@@ -33,17 +33,6 @@ namespace Parser
 
 	static ParserState* staticState;
 
-
-
-
-
-
-
-
-
-
-
-
 	std::string getModuleName(std::string filename)
 	{
 		size_t lastdot = filename.find_last_of(".");
@@ -259,7 +248,6 @@ namespace Parser
 
 		// split into lines
 		std::string fullpath = Compiler::getFullPathOfFile(filename);
-		ps.lines = Compiler::getFileLines(fullpath);
 		ps.tokens = Compiler::getFileTokens(fullpath);
 
 		ps.currentPos.file = filename;
@@ -2427,8 +2415,8 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
-			staticState->curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(staticState->curtok.posinfo.line, staticState->curtok.posinfo.col, staticState->curtok.posinfo.file.c_str(),
+			msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2441,8 +2429,8 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->lines, staticState->curtok.posinfo.line, staticState->curtok.posinfo.col,
-			staticState->curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(staticState->curtok.posinfo.line, staticState->curtok.posinfo.col, staticState->curtok.posinfo.file.c_str(),
+			msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2454,7 +2442,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2466,7 +2454,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.lines, ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2481,7 +2469,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2493,7 +2481,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2511,7 +2499,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2523,7 +2511,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.lines, tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}

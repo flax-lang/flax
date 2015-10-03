@@ -60,7 +60,7 @@ namespace Codegen
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
+				error(user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
@@ -93,7 +93,7 @@ namespace Codegen
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
-						error(this, expr, "Invalid variable declaration for %s!", decl->name.c_str());
+						error(expr, "Invalid variable declaration for %s!", decl->name.c_str());
 						// return llvm::Type::getVoidTy(this->getContext());
 					}
 
@@ -137,7 +137,7 @@ namespace Codegen
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
 				{
-					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 				}
 
 				auto x = this->getLlvmType(decl, allowFail);
@@ -149,7 +149,7 @@ namespace Codegen
 				{
 					llvm::Type* ltype = this->getLlvmType(uo->expr);
 					if(!ltype->isPointerTy())
-						error(this, expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
+						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
 
 					return this->getLlvmType(uo->expr)->getPointerElementType();
 				}
@@ -233,7 +233,7 @@ namespace Codegen
 				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
 
 				if(!pair && (!st || (st && !st->isLiteral())))
-					error(this, expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
+					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
 
 
@@ -249,7 +249,7 @@ namespace Codegen
 					iceAssert(ttype->isStructTy());
 
 					if(n->ival >= ttype->getStructNumElements())
-						error(this, expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
+						error(expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
 
 					return ttype->getStructElementType(n->ival);
 				}
@@ -297,7 +297,7 @@ namespace Codegen
 					}
 					else if(memberFc)
 					{
-						error(this, memberFc, "Tried to call method on struct");
+						error(memberFc, "Tried to call method on struct");
 					}
 				}
 				else if(pair->second.second == TypeKind::Enum)
@@ -314,11 +314,11 @@ namespace Codegen
 							return this->getLlvmType(c.second);
 					}
 
-					error(this, expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+					error(expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
 				}
 				else
 				{
-					error(this, expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+					error(expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
 				}
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
@@ -441,7 +441,7 @@ namespace Codegen
 						return targtype->getArrayElementType();
 
 					else
-						error(this, expr, "Invalid???");
+						error(expr, "Invalid???");
 				}
 				else
 				{
@@ -450,7 +450,7 @@ namespace Codegen
 			}
 		}
 
-		error(this, expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
@@ -487,7 +487,7 @@ namespace Codegen
 			}
 
 			if(candidate == 0)
-				error(this, user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
+				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
 
 			return candidate;
 		}
@@ -498,7 +498,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(this, user, "Type '%s' cannot have initialisers", sb->name.c_str());
+			error(user, "Type '%s' cannot have initialisers", sb->name.c_str());
 		}
 	}
 
@@ -744,7 +744,7 @@ namespace Codegen
 		str = str.substr(1);
 		char front = str.front();
 		if(front == ')')
-			error(cgi, user, "Empty tuples are not supported");
+			error(user, "Empty tuples are not supported");
 
 		std::vector<llvm::Type*> types;
 		while(front != ')')
@@ -812,7 +812,7 @@ namespace Codegen
 			ret = ret->getPointerTo();
 
 			if(type[0] != ']')
-				error(cgi, user, "Expected closing '['");
+				error(user, "Expected closing '['");
 		}
 
 		return ret;
@@ -936,7 +936,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(this, user, "enosup");
+			error(user, "enosup");
 		}
 	}
 
@@ -1208,7 +1208,7 @@ namespace Codegen
 			return "import " + imp->module;
 		}
 
-		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
+		error(expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
 }
 

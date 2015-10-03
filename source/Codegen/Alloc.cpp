@@ -51,7 +51,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	{
 		allocnum = this->count->codegen(cgi).result.first;
 		if(!allocnum->getType()->isIntegerTy())
-			error(cgi, this, "Expected integer type in alloc");
+			error(this, "Expected integer type in alloc");
 
 		allocnum = cgi->builder.CreateIntCast(allocnum, allocsize->getType(), false);
 		allocsize = cgi->builder.CreateMul(allocsize, allocnum);
@@ -194,7 +194,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	{
 		SymbolPair_t* sp = cgi->getSymPair(this, dynamic_cast<VarRef*>(this->expr)->name);
 		if(!sp)
-			error(cgi, this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
+			error(this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
 
 
 		// this will be an alloca instance (aka pointer to whatever type it actually was)
