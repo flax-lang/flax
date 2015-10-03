@@ -154,7 +154,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 
-	printf("target: %s\n", target->getName().bytes_begin());
 	target = cgi->module->getFunction(target->getName());
 	iceAssert(target);
 

@@ -598,6 +598,8 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		if(curType == 0)
 		{
 			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
+			if(!res.resolved)
+				printf("search ftree %d, nothing\n", ftree->id);
 		}
 		else
 		{

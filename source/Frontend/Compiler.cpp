@@ -79,40 +79,40 @@ namespace Compiler
 
 
 
-	static void addSubs(Codegen::CodegenInstance* cgi, Codegen::FunctionTree* rootft, Codegen::FunctionTree* sub)
-	{
-		for(auto s : rootft->subs)
-		{
-			if(s->nsName == sub->nsName)
-			{
-				printf("found %s, not cloning (has %zu subs)\n", s->nsName.c_str(), sub->subs.size());
-				// add subs of subs instead.
-				for(auto ss : sub->subs)
-					addSubs(cgi, s, ss);
-			}
-		}
+	// static void addSubs(Codegen::CodegenInstance* cgi, Codegen::FunctionTree* rootft, Codegen::FunctionTree* sub)
+	// {
+	// 	for(auto s : rootft->subs)
+	// 	{
+	// 		if(s->nsName == sub->nsName)
+	// 		{
+	// 			// printf("found %s, not cloning (has %zu subs)\n", s->nsName.c_str(), sub->subs.size());
+	// 			// add subs of subs instead.
+	// 			for(auto ss : sub->subs)
+	// 				addSubs(cgi, s, ss);
+	// 		}
+	// 	}
 
-		rootft->subs.push_back(cgi->cloneFunctionTree(sub, false));
-	};
+	// 	rootft->subs.push_back(cgi->cloneFunctionTree(sub, false));
+	// };
 
-	static void copyRootInnards(Codegen::CodegenInstance* cgi, Root* from, Root* to)
+	static void copyRootInnards(Codegen::CodegenInstance* cgi, Root* from, Root* to, bool doClone)
 	{
 		using namespace Codegen;
-		for(auto f : from->publicFuncTree.funcs)
-		{
-			printf("*** copying public func %s (%d -> %d)\n", f.first->getName().bytes_begin(), from->publicFuncTree.id,
-				to->publicFuncTree.id);
+		// for(auto f : from->publicFuncTree.funcs)
+		// {
+		// 	printf("*** copying public func %s (%d -> %d)\n", f.first->getName().bytes_begin(), from->publicFuncTree.id,
+		// 		to->publicFuncTree.id);
 
-			// to->.funcs.push_back(f);
-			to->publicFuncTree.funcs.push_back(f);
-		}
+		// 	// to->.funcs.push_back(f);
+		// 	to->publicFuncTree.funcs.push_back(f);
+		// }
 
 
-		for(auto s : from->publicFuncTree.subs)
-		{
-			// addSubs(&to->externalFuncTree, s);
-			addSubs(cgi, &to->publicFuncTree, s);
-		}
+		// for(auto s : from->publicFuncTree.subs)
+		// {
+		// 	// addSubs(&to->externalFuncTree, s);
+		// 	addSubs(cgi, &to->publicFuncTree, s);
+		// }
 
 		for(auto v : from->publicTypes)
 		{
@@ -144,18 +144,15 @@ namespace Compiler
 			to->typeList.push_back(v);
 		}
 
+		if(doClone)
+		{
+			cgi->cloneFunctionTree(from->rootFuncStack, to->rootFuncStack, false);
+			cgi->cloneFunctionTree(from->publicFuncTree, to->publicFuncTree, false);
+		}
 
 
-
-
-
-		cgi->cloneFunctionTree(&from->rootFuncStack, &to->rootFuncStack, true);
-
-		for(auto t : from->rootFuncStack.types)
-			to->rootFuncStack.types[t.first] = t.second;
-
-		for(auto v : from->rootFuncStack.vars)
-			to->rootFuncStack.vars[v.first] = v.second;
+		for(auto v : from->rootFuncStack->vars)
+			to->rootFuncStack->vars[v.first] = v.second;
 	}
 
 	static void cloneCGIInnards(Codegen::CodegenInstance* from, Codegen::CodegenInstance* to)
@@ -191,8 +188,7 @@ namespace Compiler
 		cgi->rootNode = root;
 
 		// add the previous stuff to our own root
-		copyRootInnards(cgi, dummyRoot, root);
-
+		copyRootInnards(cgi, dummyRoot, root, true);
 
 
 		Codegen::doCodegen(fpath, root, cgi);
@@ -209,7 +205,7 @@ namespace Compiler
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
-		copyRootInnards(rcgi, root, dummyRoot);
+		copyRootInnards(rcgi, root, dummyRoot, true);
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -320,15 +316,8 @@ namespace Compiler
 		std::vector<llvm::Module*> modules;
 
 
-		std::string modname = Compiler::getFilenameFromPath(filename);
-		modname = modname.substr(0, modname.find_last_of('.'));
-
-		llvm::Module* mod = new llvm::Module(modname, llvm::getGlobalContext());
 		Root* dummyRoot = new Root();
-
 		CodegenInstance* rcgi = new CodegenInstance();
-		rcgi->module = mod;
-		rcgi->rootNode = dummyRoot;
 
 		for(auto gr : groups)
 		{
@@ -345,7 +334,6 @@ namespace Compiler
 			delete cgi;
 		}
 
-		modules.push_back(mod);
 		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modules);
 	}
 
