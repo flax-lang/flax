@@ -358,13 +358,13 @@ int main(int argc, char* argv[])
 		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
 		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
-		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
+		Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
 
 		filename = Compiler::getFullPathOfFile(filename);
 		std::string curpath = Compiler::getPathFromFile(filename);
 
 		// parse and find all custom operators
-		Parser::ParserState pstate(cgi);
+		Parser::ParserState pstate(__cgi);
 
 		Parser::parseAllCustomOperators(pstate, filename, curpath);
 
@@ -377,11 +377,12 @@ int main(int argc, char* argv[])
 		std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
 
 		llvm::Module* mainModule = modulelist[filename];
+		llvm::IRBuilder<>& builder = __cgi->builder;
 
 
-		mainModule->dump();
-		for(auto m : modulelist)
-			m.second->dump();
+		// mainModule->dump();
+		// for(auto m : modulelist)
+		// 	m.second->dump();
 
 
 
@@ -404,7 +405,8 @@ int main(int argc, char* argv[])
 			llvm::Linker linker = llvm::Linker(mainModule);
 			for(auto mod : modulelist)
 			{
-				linker.linkInModule(mod.second);
+				if(mod.second != mainModule)
+					linker.linkInModule(mod.second);
 			}
 		}
 
@@ -438,7 +440,7 @@ int main(int argc, char* argv[])
 					{
 						if(Compiler::runProgramWithJit)
 						{
-							error(cgi, 0, "required global constructor %s was not found in the module!",
+							error("required global constructor %s was not found in the module!",
 								pair.second->globalConstructorTrampoline->getName().str().c_str());
 						}
 						else
@@ -462,14 +464,12 @@ int main(int argc, char* argv[])
 				"__global_constructor_top_level__", mainModule);
 
 			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
-			cgi->builder.SetInsertPoint(iblock);
+			builder.SetInsertPoint(iblock);
 
 			for(auto f : constructors)
-			{
-				cgi->builder.CreateCall(f);
-			}
+				builder.CreateCall(f);
 
-			cgi->builder.CreateRetVoid();
+			builder.CreateRetVoid();
 
 
 			if(!Compiler::getNoAutoGlobalConstructor())
@@ -479,12 +479,12 @@ int main(int argc, char* argv[])
 				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-				llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "__main_entry", mainfunc);
+				llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
 
 				f->moveBefore(entry);
-				cgi->builder.SetInsertPoint(f);
-				cgi->builder.CreateCall(gconstr);
-				cgi->builder.CreateBr(entry);
+				builder.SetInsertPoint(f);
+				builder.CreateCall(gconstr);
+				builder.CreateBr(entry);
 			}
 		}
 
@@ -519,8 +519,6 @@ int main(int argc, char* argv[])
 			if(Compiler::printModule)
 				mainModule->dump();
 
-			iceAssert(cgi->execEngine);
-
 			if(mainModule->getFunction("main") != 0)
 			{
 				std::string err;
@@ -542,10 +540,14 @@ int main(int argc, char* argv[])
 				ee->finalizeObject();
 				mainfunc(1, m);
 			}
+			else
+			{
+				error("no main() function!");
+			}
 		}
 		else
 		{
-			Compiler::compileProgram(cgi, filelist, foldername, outname);
+			Compiler::compileProgram(mainModule, filelist, foldername, outname);
 		}
 
 
@@ -568,7 +570,7 @@ int main(int argc, char* argv[])
 			exit(-1);
 		}
 
-		delete cgi;
+		delete __cgi;
 		for(auto p : rootmap)
 			delete p.second;
 

@@ -382,21 +382,21 @@ namespace Compiler
 
 
 
-	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname)
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)
 	{
 		std::string tgt;
 		if(!getTarget().empty())
 			tgt = "-target " + getTarget();
 
 
-		if(!Compiler::getIsCompileOnly() && !cgi->module->getFunction("main"))
+		if(!Compiler::getIsCompileOnly() && !module->getFunction("main"))
 		{
 			error(0, "No main() function, a program cannot be compiled.");
 		}
 
 
 
-		std::string oname = outname.empty() ? (foldername + "/" + cgi->module->getModuleIdentifier()).c_str() : outname.c_str();
+		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
 		snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());

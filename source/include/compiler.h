@@ -26,7 +26,7 @@ namespace Compiler
 	compileFile(std::string filename);
 
 	// final stages
-	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
