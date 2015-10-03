@@ -114,12 +114,8 @@ namespace Codegen
 		}
 
 
-		// 1. namespace level.
-		cgi->rootFuncStack = *cgi->cloneFunctionTree(&cgi->rootNode->externalFuncTree, true);
-
-		cgi->rootFuncStack.nsName = "__#root_" + cgi->module->getName().str();
+		cgi->rootNode->rootFuncStack.nsName = "__#root_" + cgi->module->getName().str();
 		cgi->rootNode->publicFuncTree.nsName = "__#rootPUB_" + cgi->module->getName().str();
-		cgi->rootNode->externalFuncTree.nsName = "__#rootEXT_" + cgi->module->getName().str();
 
 		for(auto pair : cgi->rootNode->externalTypes)
 		{
@@ -536,25 +532,30 @@ namespace Codegen
 	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
 		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, &this->rootNode->publicFuncTree);
-		// for(auto ns : this->namespaceStack)
-		// 	printf("(%s) <%s>\n", ns.c_str(), this->module->getName().str().c_str());
+		printf("adding public func %s to ftree %d (mod %d)\n", fp.first->getName().bytes_begin(), cur->id, this->rootNode->publicFuncTree.id);
 
 		iceAssert(cur);
 
 		cur->funcs.push_back(fp);
 	}
 
-	FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
+	void CodegenInstance::cloneFunctionTree(FunctionTree* ft, FunctionTree* clone, bool deep)
 	{
-		FunctionTree* clone = new FunctionTree();
 		clone->nsName = ft->nsName;
 
 		for(auto pair : ft->funcs)
 		{
 			if(deep)
 			{
-				auto func = pair.first;
+				llvm::Function* func = pair.first;
 				iceAssert(func);
+
+				printf("func -- %p (%s)\n", this->module, pair.second->name.c_str());
+				if(!func->hasName())
+				{
+					iceAssert(pair.second);
+					printf("no name, %s\n", pair.second->name.c_str());
+				}
 
 				// add to the func table
 				auto lf = this->module->getFunction(func->getName());
@@ -572,19 +573,30 @@ namespace Codegen
 			}
 
 			clone->funcs.push_back(pair);
+			// printf("cloned func %s (%d -> %d)\n", pair.first->getName().bytes_begin(), ft->id, clone->id);
 		}
 
 		for(auto sub : ft->subs)
 			clone->subs.push_back(this->cloneFunctionTree(sub, deep));
+	}
 
+	FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
+	{
+		FunctionTree* clone = new FunctionTree();
+		this->cloneFunctionTree(ft, clone, deep);
 		return clone;
 	}
 
 
 	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
 	{
-		if(root == 0) root = &this->rootFuncStack;
+		if(root == 0) root = &this->rootNode->rootFuncStack;
 		if(nses == 0) nses = &this->namespaceStack;
+
+		printf("root = %p\n", root);
+
+		iceAssert(root);
+		iceAssert(nses);
 
 		std::deque<FunctionTree*> ft = root->subs;
 
@@ -803,94 +815,94 @@ namespace Codegen
 			curDepth.clear();
 
 			// once with no namespace
-			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
+			// {
+			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
 
-				if(ft)
-				{
-					for(auto f : ft->funcs)
-					{
-						auto isDupe = [this, f](FuncPair_t fp) -> bool {
+			// 	if(ft)
+			// 	{
+			// 		for(auto f : ft->funcs)
+			// 		{
+			// 			auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-							if(f.first == fp.first || f.second == fp.second) return true;
-							if(f.first == 0 || fp.first == 0)
-							{
-								iceAssert(f.second);
-								iceAssert(fp.second);
+			// 				if(f.first == fp.first || f.second == fp.second) return true;
+			// 				if(f.first == 0 || fp.first == 0)
+			// 				{
+			// 					iceAssert(f.second);
+			// 					iceAssert(fp.second);
 
-								if(f.second->params.size() != fp.second->params.size()) return false;
+			// 					if(f.second->params.size() != fp.second->params.size()) return false;
 
-								for(size_t i = 0; i < f.second->params.size(); i++)
-								{
-									// allowFail = true
-									if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-										return false;
-								}
+			// 					for(size_t i = 0; i < f.second->params.size(); i++)
+			// 					{
+			// 						// allowFail = true
+			// 						if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+			// 							return false;
+			// 					}
 
-								return true;
-							}
-							else
-							{
-								return f.first->getFunctionType() == fp.first->getFunctionType();
-							}
-						};
-
-
-						if((f.second ? f.second->name : f.first->getName().str()) == basename)
-						{
-							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-							{
-								// printf("FOUND (3) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-								candidates.push_back(f);
-							}
-						}
-					}
-				}
-			}
-			for(auto ns : this->namespaceStack)
-			{
-				curDepth.push_back(ns);
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
-				if(!ft) break;
-
-				for(auto f : ft->funcs)
-				{
-					auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-						if(f.first == fp.first || f.second == fp.second) return true;
-						if(f.first == 0 || fp.first == 0)
-						{
-							iceAssert(f.second);
-							iceAssert(fp.second);
-
-							if(f.second->params.size() != fp.second->params.size()) return false;
-
-							for(size_t i = 0; i < f.second->params.size(); i++)
-							{
-								// allowFail = true
-								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-									return false;
-							}
-
-							return true;
-						}
-						else
-						{
-							return f.first->getFunctionType() == fp.first->getFunctionType();
-						}
-					};
+			// 					return true;
+			// 				}
+			// 				else
+			// 				{
+			// 					return f.first->getFunctionType() == fp.first->getFunctionType();
+			// 				}
+			// 			};
 
 
-					if((f.second ? f.second->name : f.first->getName().str()) == basename)
-					{
-						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							// printf("FOUND (4) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-							candidates.push_back(f);
-						}
-					}
-				}
-			}
+			// 			if((f.second ? f.second->name : f.first->getName().str()) == basename)
+			// 			{
+			// 				if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+			// 				{
+			// 					// printf("FOUND (3) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+			// 					candidates.push_back(f);
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
+			// for(auto ns : this->namespaceStack)
+			// {
+			// 	curDepth.push_back(ns);
+			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
+			// 	if(!ft) break;
+
+			// 	for(auto f : ft->funcs)
+			// 	{
+			// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+			// 			if(f.first == fp.first || f.second == fp.second) return true;
+			// 			if(f.first == 0 || fp.first == 0)
+			// 			{
+			// 				iceAssert(f.second);
+			// 				iceAssert(fp.second);
+
+			// 				if(f.second->params.size() != fp.second->params.size()) return false;
+
+			// 				for(size_t i = 0; i < f.second->params.size(); i++)
+			// 				{
+			// 					// allowFail = true
+			// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+			// 						return false;
+			// 				}
+
+			// 				return true;
+			// 			}
+			// 			else
+			// 			{
+			// 				return f.first->getFunctionType() == fp.first->getFunctionType();
+			// 			}
+			// 		};
+
+
+			// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
+			// 		{
+			// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+			// 			{
+			// 				// printf("FOUND (4) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+			// 				candidates.push_back(f);
+			// 			}
+			// 		}
+			// 	}
+			// }
 		}
 
 		return candidates;

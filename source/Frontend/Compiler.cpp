@@ -79,135 +79,142 @@ namespace Compiler
 
 
 
-
-
-	static Root* _compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
-		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
+	static void addSubs(Codegen::CodegenInstance* cgi, Codegen::FunctionTree* rootft, Codegen::FunctionTree* sub)
 	{
-		std::string fullpath = getFullPathOfFile(filename);
-		std::string curpath = Compiler::getPathFromFile(fullpath);
-
-
-		pstate.cgi->rawLines = Compiler::getFileLines(fullpath);
-
-
-		// parse
-		printf("** COMPILING: %s\n", Compiler::getFilenameFromPath(fullpath).c_str());
-		Root* root = Parser::Parse(pstate, fullpath);
-
-		// get imports
-		for(Expr* e : root->topLevelExpressions)
+		for(auto s : rootft->subs)
 		{
-			Import* imp = dynamic_cast<Import*>(e);
-
-			if(imp)
+			if(s->nsName == sub->nsName)
 			{
-				Root* r = nullptr;
-				std::string fname = resolveImport(imp, Compiler::getFullPathOfFile(filename));
-
-				// if already compiled, don't do it again
-				if(rootmap.find(imp->module) != rootmap.end())
-				{
-					r = rootmap[imp->module];
-				}
-				else
-				{
-					Codegen::CodegenInstance* rcgi = new Codegen::CodegenInstance();
-					rcgi->customOperatorMap = pstate.cgi->customOperatorMap;
-					rcgi->customOperatorMapRev = pstate.cgi->customOperatorMapRev;
-
-					Parser::ParserState newPstate(rcgi);
-
-					r = _compileFile(newPstate, fname, list, rootmap, modules);
-
-					modules.push_back(rcgi->module);
-					rootmap[imp->module] = r;
-
-					pstate.cgi->customOperatorMap = rcgi->customOperatorMap;
-					pstate.cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
-					delete rcgi;
-				}
-
-				for(auto f : r->publicFuncTree.funcs)
-				{
-					root->externalFuncTree.funcs.push_back(f);
-					root->publicFuncTree.funcs.push_back(f);
-				}
-
-
-
-
-				using namespace Codegen;
-				std::function<void (FunctionTree*, FunctionTree*)> addSubs = [&](FunctionTree* root, FunctionTree* sub) {
-
-					for(auto s : root->subs)
-					{
-						if(s->nsName == sub->nsName)
-						{
-							// add subs of subs instead.
-							for(auto ss : sub->subs)
-								addSubs(s, ss);
-
-							return;
-						}
-					}
-
-					root->subs.push_back(pstate.cgi->cloneFunctionTree(sub, false));
-				};
-
-				for(auto s : r->publicFuncTree.subs)
-				{
-					addSubs(&root->externalFuncTree, s);
-					addSubs(&root->publicFuncTree, s);
-				}
-
-
-
-
-
-
-				for(auto v : r->publicTypes)
-				{
-					root->externalTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
-					root->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
-				}
-				for(auto v : r->publicGenericFunctions)
-				{
-					root->externalGenericFunctions.push_back(v);
-					root->publicGenericFunctions.push_back(v);
-				}
-				for(auto v : r->typeList)
-				{
-					bool skip = false;
-					for(auto k : root->typeList)
-					{
-						if(std::get<0>(k) == std::get<0>(v))
-						{
-							skip = true;
-							break;
-						}
-					}
-
-					if(skip)
-						continue;
-
-					root->typeList.push_back(v);
-				}
+				printf("found %s, not cloning (has %zu subs)\n", s->nsName.c_str(), sub->subs.size());
+				// add subs of subs instead.
+				for(auto ss : sub->subs)
+					addSubs(cgi, s, ss);
 			}
 		}
 
-		iceAssert(pstate.cgi);
-		Codegen::doCodegen(filename, root, pstate.cgi);
+		rootft->subs.push_back(cgi->cloneFunctionTree(sub, false));
+	};
 
-		llvm::verifyModule(*pstate.cgi->module, &llvm::errs());
-		Codegen::writeBitcode(filename, pstate.cgi);
+	static void copyRootInnards(Codegen::CodegenInstance* cgi, Root* from, Root* to)
+	{
+		using namespace Codegen;
+		for(auto f : from->publicFuncTree.funcs)
+		{
+			printf("*** copying public func %s (%d -> %d)\n", f.first->getName().bytes_begin(), from->publicFuncTree.id,
+				to->publicFuncTree.id);
 
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+			// to->.funcs.push_back(f);
+			to->publicFuncTree.funcs.push_back(f);
+		}
+
+
+		for(auto s : from->publicFuncTree.subs)
+		{
+			// addSubs(&to->externalFuncTree, s);
+			addSubs(cgi, &to->publicFuncTree, s);
+		}
+
+		for(auto v : from->publicTypes)
+		{
+			to->externalTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
+			to->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
+		}
+
+		for(auto v : from->publicGenericFunctions)
+		{
+			to->externalGenericFunctions.push_back(v);
+			to->publicGenericFunctions.push_back(v);
+		}
+
+		for(auto v : from->typeList)
+		{
+			bool skip = false;
+			for(auto k : to->typeList)
+			{
+				if(std::get<0>(k) == std::get<0>(v))
+				{
+					skip = true;
+					break;
+				}
+			}
+
+			if(skip)
+				continue;
+
+			to->typeList.push_back(v);
+		}
+
+
+
+
+
+
+		cgi->cloneFunctionTree(&from->rootFuncStack, &to->rootFuncStack, true);
+
+		for(auto t : from->rootFuncStack.types)
+			to->rootFuncStack.types[t.first] = t.second;
+
+		for(auto v : from->rootFuncStack.vars)
+			to->rootFuncStack.vars[v.first] = v.second;
+	}
+
+	static void cloneCGIInnards(Codegen::CodegenInstance* from, Codegen::CodegenInstance* to)
+	{
+		to->typeMap					= from->typeMap;
+		to->customOperatorMap		= from->customOperatorMap;
+		to->customOperatorMapRev	= from->customOperatorMapRev;
+		to->globalConstructors		= from->globalConstructors;
+	}
+
+
+
+	static std::pair<Codegen::CodegenInstance*, std::string> _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
+	{
+		using namespace Codegen;
+		using namespace Parser;
+
+		CodegenInstance* cgi = new CodegenInstance();
+		cloneCGIInnards(rcgi, cgi);
+
+		cgi->rawLines = Compiler::getFileLines(fpath);
+		ParserState pstate(cgi);
+
+		cgi->customOperatorMap = rcgi->customOperatorMap;
+		cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
+
+		std::string curpath = Compiler::getPathFromFile(fpath);
+		pstate.cgi->rawLines = Compiler::getFileLines(fpath);
+
+		// parse
+		printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
+		Root* root = Parser::Parse(pstate, fpath);
+		cgi->rootNode = root;
+
+		// add the previous stuff to our own root
+		copyRootInnards(cgi, dummyRoot, root);
+
+
+
+		Codegen::doCodegen(fpath, root, cgi);
+
+		llvm::verifyModule(*cgi->module, &llvm::errs());
+		Codegen::writeBitcode(fpath, pstate.cgi);
+
+		size_t lastdot = fpath.find_last_of(".");
+		std::string oname = (lastdot == std::string::npos ? fpath : fpath.substr(0, lastdot));
 		oname += ".bc";
 
-		list.push_back(oname);
-		return root;
+
+		printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
+
+		// add the new stuff to the main root
+		// todo: check for duplicates
+		copyRootInnards(rcgi, root, dummyRoot);
+
+		rcgi->customOperatorMap = cgi->customOperatorMap;
+		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
+
+		return { cgi, oname };
 	}
 
 
@@ -260,8 +267,11 @@ namespace Compiler
 		return g;
 	}
 
-	Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
-		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
+
+
+
+	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::vector<llvm::Module*>>
+	compileFile(std::string filename)
 	{
 		using namespace Codegen;
 
@@ -305,8 +315,38 @@ namespace Compiler
 			}
 		}
 
+		std::vector<std::string> outlist;
+		std::unordered_map<std::string, Root*> rootmap;
+		std::vector<llvm::Module*> modules;
 
-		return _compileFile(pstate, filename, list, rootmap, modules);
+
+		std::string modname = Compiler::getFilenameFromPath(filename);
+		modname = modname.substr(0, modname.find_last_of('.'));
+
+		llvm::Module* mod = new llvm::Module(modname, llvm::getGlobalContext());
+		Root* dummyRoot = new Root();
+
+		CodegenInstance* rcgi = new CodegenInstance();
+		rcgi->module = mod;
+		rcgi->rootNode = dummyRoot;
+
+		for(auto gr : groups)
+		{
+			iceAssert(gr.size() == 1);
+			std::string name = Compiler::getFullPathOfFile(gr.front()->name);
+
+			auto pair = _compileFile(name, rcgi, dummyRoot);
+			CodegenInstance* cgi = pair.first;
+
+			modules.push_back(cgi->module);
+			outlist.push_back(pair.second);
+			rootmap[name] = cgi->rootNode;
+
+			delete cgi;
+		}
+
+		modules.push_back(mod);
+		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modules);
 	}
 
 
