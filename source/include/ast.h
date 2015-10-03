@@ -654,9 +654,11 @@ namespace Ast
 
 	struct Root : Expr
 	{
-		Root() : Expr(Parser::PosInfo()), publicFuncTree("__#root"), externalFuncTree("__#root") { }
+		Root() : Expr(Parser::PosInfo()), publicFuncTree("__#root"){ }
 		~Root();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
+
+		Codegen::FunctionTree rootFuncStack = Codegen::FunctionTree("__#root");
 
 		// public functiondecls and type decls.
 		Codegen::FunctionTree publicFuncTree;
@@ -674,7 +676,6 @@ namespace Ast
 		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
 
 		// imported types. these exist, but we need to declare them manually while code-generating.
-		Codegen::FunctionTree externalFuncTree;
 		std::deque<std::pair<StructBase*, llvm::Type*>> externalTypes;
 
 		// libraries referenced by 'import'

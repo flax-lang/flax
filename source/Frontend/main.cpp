@@ -351,9 +351,6 @@ int main(int argc, char* argv[])
 
 		// compile the file.
 		// the file Compiler.cpp handles imports.
-		std::vector<std::string> filelist;
-		std::vector<llvm::Module*> modulelist;
-		std::map<std::string, Ast::Root*> rootmap;
 
 		iceAssert(llvm::InitializeNativeTarget() == 0);
 		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
@@ -372,8 +369,14 @@ int main(int argc, char* argv[])
 		Parser::ParserState pstate(cgi);
 
 		Parser::parseAllCustomOperators(pstate, filename, curpath);
-		Root* r = Compiler::compileFile(pstate, filename, filelist, rootmap, modulelist);
 
+		// ret = std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::vector<llvm::Module*>>
+		auto ret = Compiler::compileFile(filename);
+
+		Root* r = std::get<0>(ret);
+		std::vector<std::string> filelist = std::get<1>(ret);
+		std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
+		std::vector<llvm::Module*> modulelist = std::get<3>(ret);
 
 
 

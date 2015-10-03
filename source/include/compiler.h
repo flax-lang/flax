@@ -22,7 +22,8 @@ namespace Parser
 
 namespace Compiler
 {
-	Ast::Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules);
+	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::vector<llvm::Module*>>
+	compileFile(std::string filename);
 
 	// final stages
 	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
