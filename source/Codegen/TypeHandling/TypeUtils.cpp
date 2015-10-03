@@ -397,7 +397,7 @@ namespace Codegen
 					return this->getLlvmType(dum->type.type);
 				}
 			}
-			else if(dynamic_cast<If*>(expr))
+			else if(dynamic_cast<IfStmt*>(expr))
 			{
 				return llvm::Type::getVoidTy(getContext());
 			}

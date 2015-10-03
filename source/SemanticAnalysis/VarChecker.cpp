@@ -253,7 +253,7 @@ namespace SemAnalysis
 				analyseBlock(cgi, { ai->arr });
 				analyseBlock(cgi, { ai->index });
 			}
-			else if(If* ifstmt = dynamic_cast<If*>(ex))
+			else if(IfStmt* ifstmt = dynamic_cast<IfStmt*>(ex))
 			{
 				for(auto cs : ifstmt->_cases)
 				{

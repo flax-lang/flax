@@ -10,9 +10,10 @@
 #include <cinttypes>
 
 #include <sys/stat.h>
-#include "include/parser.h"
-#include "include/codegen.h"
-#include "include/compiler.h"
+#include "../include/parser.h"
+#include "../include/codegen.h"
+#include "../include/compiler.h"
+#include "../include/dependency.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/SourceMgr.h"
@@ -70,42 +71,19 @@ namespace Compiler
 		}
 	}
 
-	Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
+
+
+
+
+
+	static Root* _compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
 		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
 	{
-		std::string curpath;
-		{
-			size_t sep = filename.find_last_of("\\/");
-			if(sep != std::string::npos)
-				curpath = filename.substr(0, sep);
-		}
-
-		std::ifstream file(filename);
-
-		std::string str;
-		std::vector<std::string> rawlines;
-
-		if(file)
-		{
-			std::ostringstream contents;
-			contents << file.rdbuf();
-			file.close();
-			str = contents.str();
+		std::string curpath = Compiler::getPathFromFile(filename);
 
 
-			std::stringstream ss(str);
-
-			std::string tmp;
-			while(std::getline(ss, tmp, '\n'))
-				rawlines.push_back(tmp);
-		}
-		else
-		{
-			perror("There was an error reading the file");
-			exit(-1);
-		}
-
-		pstate.cgi->rawLines = rawlines;
+		std::string str = Compiler::getFileContents(filename);
+		pstate.cgi->rawLines = Compiler::getFileLines(filename);
 
 		// parse
 		Root* root = Parser::Parse(pstate, filename, str);
@@ -113,11 +91,11 @@ namespace Compiler
 		// get imports
 		for(Expr* e : root->topLevelExpressions)
 		{
-			Root* r = nullptr;
 			Import* imp = dynamic_cast<Import*>(e);
 
 			if(imp)
 			{
+				Root* r = nullptr;
 				std::string fname = resolveImport(imp, curpath);
 
 				// if already compiled, don't do it again
@@ -133,7 +111,7 @@ namespace Compiler
 
 					Parser::ParserState newPstate(rcgi);
 
-					r = compileFile(newPstate, fname, list, rootmap, modules);
+					r = _compileFile(newPstate, fname, list, rootmap, modules);
 
 					modules.push_back(rcgi->module);
 					rootmap[imp->module] = r;
@@ -174,9 +152,6 @@ namespace Compiler
 				{
 					addSubs(&root->externalFuncTree, s);
 					addSubs(&root->publicFuncTree, s);
-
-					// root->externalFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
-					// root->publicFuncTree.subs.push_back(cgi->cloneFunctionTree(s, false));
 				}
 
 
@@ -217,8 +192,6 @@ namespace Compiler
 		iceAssert(pstate.cgi);
 		Codegen::doCodegen(filename, root, pstate.cgi);
 
-		// cgi->module->dump();
-
 		llvm::verifyModule(*pstate.cgi->module, &llvm::errs());
 		Codegen::writeBitcode(filename, pstate.cgi);
 
@@ -229,6 +202,157 @@ namespace Compiler
 		list.push_back(oname);
 		return root;
 	}
+
+
+	static void _resolveImportGraph(Codegen::DependencyGraph* g, std::unordered_map<std::string, bool>& visited, std::string currentMod,
+		std::string curpath)
+	{
+		using namespace Parser;
+
+		// NOTE: make sure resolveImport **DOES NOT** use codegeninstance, cuz it's 0.
+		ParserState fakeps(0);
+		fakeps.currentPos.file = currentMod;
+		fakeps.currentPos.line = 1;
+		fakeps.currentPos.col = 1;
+
+		fakeps.tokens = Compiler::getFileTokens(currentMod);
+		fakeps.origTokens = fakeps.tokens;
+
+		while(fakeps.tokens.size() > 0)
+		{
+			Token t = fakeps.front();
+			fakeps.pop_front();
+
+			if(t.type == TType::Import)
+			{
+				// hack: parseImport expects front token to be "import"
+				fakeps.tokens.push_front(t);
+
+				Import* imp = parseImport(fakeps);
+
+				std::string file = Compiler::resolveImport(imp, curpath);
+				const char* fullpath = realpath(file.c_str(), 0);
+
+				file = fullpath;
+				free((void*) fullpath);
+
+				g->addModuleDependency(currentMod, file, imp);
+
+				if(!visited[file])
+				{
+					visited[file] = true;
+					_resolveImportGraph(g, visited, file, curpath);
+				}
+			}
+		}
+	}
+
+	static Codegen::DependencyGraph* resolveImportGraph(std::string baseFullPath, std::string curpath)
+	{
+		using namespace Codegen;
+		DependencyGraph* g = new DependencyGraph();
+
+		std::unordered_map<std::string, bool> visited;
+		_resolveImportGraph(g, visited, baseFullPath, curpath);
+
+		return g;
+	}
+
+	Root* compileFile(Parser::ParserState& pstate, std::string filename, std::vector<std::string>& list,
+		std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules)
+	{
+		using namespace Codegen;
+		const char* full = realpath(filename.c_str(), 0);
+		iceAssert(full);
+		filename = full;
+
+		free((void*) full);
+
+
+		std::string curpath = getPathFromFile(filename);
+
+		DependencyGraph* g = resolveImportGraph(filename, curpath);
+
+		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
+		for(auto gr : groups)
+		{
+			if(gr.size() > 1)
+			{
+				std::string modlist;
+				std::deque<Expr*> imps;
+
+				for(auto m : gr)
+				{
+					std::string fn = getFilenameFromPath(m->name);
+					fn = fn.substr(0, fn.find_last_of('.'));
+
+					modlist += "\t" + fn + "\n";
+				}
+
+				info("Cyclic import dependencies between these modules:\n%s", modlist.c_str());
+				info("Offending import statements:");
+
+				for(auto m : gr)
+				{
+					for(auto u : m->users)
+					{
+						va_list ap;
+
+						__error_gen(getFileLines(u.first->name), u.second->posinfo.line + 1 /* idk why */, u.second->posinfo.col,
+							getFilenameFromPath(u.first->name).c_str(), "", "Note", false, ap);
+					}
+				}
+
+				error("Cyclic dependencies found, cannot continue");
+			}
+		}
+
+
+		return _compileFile(pstate, filename, list, rootmap, modules);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -282,6 +406,31 @@ namespace Compiler
 
 		remove((oname + ".bc").c_str());
 		delete[] inv;
+	}
+
+
+
+
+	std::string getPathFromFile(std::string path)
+	{
+		std::string ret;
+
+		size_t sep = path.find_last_of("\\/");
+		if(sep != std::string::npos)
+			ret = path.substr(0, sep);
+
+		return ret;
+	}
+
+	std::string getFilenameFromPath(std::string path)
+	{
+		std::string ret;
+
+		size_t sep = path.find_last_of("\\/");
+		if(sep != std::string::npos)
+			ret = path.substr(sep + 1);
+
+		return ret;
 	}
 }
 

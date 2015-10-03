@@ -32,7 +32,7 @@ flaxcNormFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-buil
 flaxcJitFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
-main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $ do
+main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
 	want ["build"]
 
 	phony "build" $ do

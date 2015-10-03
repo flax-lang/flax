@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <string>
 
+#include "dependency.h"
+
 namespace Codegen
 {
 	struct CodegenInstance;
