@@ -1125,7 +1125,8 @@ namespace Codegen
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
-			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": " + this->getReadableType(vd);
+			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": "
+				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
@@ -1206,6 +1207,95 @@ namespace Codegen
 		else if(Import* imp = dynamic_cast<Import*>(expr))
 		{
 			return "import " + imp->module;
+		}
+		else if(dynamic_cast<Root*>(expr))
+		{
+			return "(root)";
+		}
+		else if(Return* ret = dynamic_cast<Return*>(expr))
+		{
+			return "return " + this->printAst(ret->val);
+		}
+		else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(expr))
+		{
+			if(wl->isDoWhileVariant)
+			{
+				return "do {\n" + this->printAst(wl->body) + "\n} while(" + this->printAst(wl->cond) + ")";
+			}
+			else
+			{
+				return "while(" + this->printAst(wl->cond) + ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+			}
+		}
+		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
+		{
+			bool first = false;
+			std::string final;
+			for(auto c : ifst->cases)
+			{
+				std::string one;
+
+				if(!first)
+					one = "else ";
+
+				first = false;
+				one += "if(" + this->printAst(c.first) + ")" + "\n{\n" + this->printAst(c.second) + "\n}\n";
+
+				final += one;
+			}
+
+			if(ifst->final)
+				final += "else\n{\n" + this->printAst(ifst->final) + " \n}\n";
+
+			return final;
+		}
+		else if(Class* cls = dynamic_cast<Class*>(expr))
+		{
+			std::string s;
+			s = "class " + cls->name + "\n{\n";
+
+			for(auto m : cls->members)
+				s += this->printAst(m) + "\n";
+
+			for(auto f : cls->funcs)
+				s += this->printAst(f) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(Struct* str = dynamic_cast<Struct*>(expr))
+		{
+			std::string s;
+			s = "struct " + str->name + "\n{\n";
+
+			for(auto m : str->members)
+				s += this->printAst(m) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(Enumeration* enr = dynamic_cast<Enumeration*>(expr))
+		{
+			std::string s;
+			s = "enum " + enr->name + "\n{\n";
+
+			for(auto m : enr->cases)
+				s += m.first + " " + this->printAst(m.second) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(NamespaceDecl* nd = dynamic_cast<NamespaceDecl*>(expr))
+		{
+			return "namespace " + nd->name + "\n{\n" + this->printAst(nd->innards) + "\n}";
+		}
+		else if(Dealloc* da = dynamic_cast<Dealloc*>(expr))
+		{
+			return "dealloc " + this->printAst(da->expr);
+		}
+		else if(Alloc* al = dynamic_cast<Alloc*>(expr))
+		{
+			return "alloc[" + this->printAst(al->count) + "] " + al->type.strType;
 		}
 
 		error(expr, "Unknown shit (%s)", typeid(*expr).name());
