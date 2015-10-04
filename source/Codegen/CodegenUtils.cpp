@@ -295,9 +295,13 @@ namespace Codegen
 		iceAssert(ftree);
 
 		if(ftree->types.find(atype->name) != ftree->types.end())
-			error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+		{
+			// only if there's an actual, llvm::Type* there.
+			if(ftree->types[atype->name].first)
+				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+		}
 
-
+		// if there isn't one, replace it.
 		ftree->types[atype->name] = tpair;
 
 
@@ -375,6 +379,7 @@ namespace Codegen
 				if(this->isBuiltinType(possibleGeneric))
 				{
 					// create a typepair. allows constructor syntax
+					// only applicable in generic functions.
 					// todo: this will leak...
 
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Struct));
@@ -692,6 +697,45 @@ namespace Codegen
 
 		return 0;
 	}
+
+	std::pair<TypePair_t*, int> CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
+	{
+		// std::deque<std::string> curDepth = this->namespaceStack;
+		auto curDepth = scope;
+
+		int indirections = 0;
+		name = this->unwrapPointerType(name, &indirections);
+
+		if(this->getLlvmTypeOfBuiltin(name) != 0)
+			return { 0, indirections };
+
+		for(size_t i = 0; i <= curDepth.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto& f : ft->types)
+			{
+				if(f.first == name)
+					return { &f.second, indirections };
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		return { 0, 0 };
+	}
+
+
+
+
+
+
+
+
+
+
 
 	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
 	{
@@ -1107,43 +1151,6 @@ namespace Codegen
 
 
 
-	static bool _searchNamespaces(std::string name, std::deque<NamespaceDecl*> list, std::deque<NamespaceDecl*>* path)
-	{
-		if(list.size() == 0)		return false;
-
-		for(auto ns : list)
-		{
-			// printf("ns: %s\n", ns->name.c_str());
-			path->push_back(ns);
-
-			if(ns->name == name) return true;
-
-			bool found = _searchNamespaces(name, ns->namespaces, path);
-			if(found) return true;
-
-			path->pop_back();
-		}
-
-		return false;
-	}
-
-	std::deque<NamespaceDecl*> CodegenInstance::resolveNamespace(std::string name)
-	{
-		std::deque<NamespaceDecl*> ret;
-
-		// do a depth first search
-		if(_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret) == false)
-			_searchNamespaces(name, this->usingNamespaces, &ret);
-
-		return ret;
-	}
-
-
-
-
-
-
-
 
 
 
@@ -1256,6 +1263,54 @@ namespace Codegen
 	void CodegenInstance::applyExtensionToStruct(std::string ext)
 	{
 		searchForAndApplyExtension(this, this->rootNode->topLevelExpressions, ext);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::deque<std::string> CodegenInstance::unwrapNamespacedType(std::string raw)
+	{
+		iceAssert(raw.size() > 0);
+		if(raw.front() == '(')
+		{
+			error("enosup");
+		}
+		else if(raw.front() == '[')
+		{
+			error("enosup");
+		}
+		else if(raw.find("::") == std::string::npos)
+		{
+			return { raw };
+		}
+
+		// else
+		std::deque<std::string> nses;
+		while(true)
+		{
+			size_t pos = raw.find("::");
+			if(pos == std::string::npos) break;
+
+			std::string ns = raw.substr(0, pos);
+			nses.push_back(ns);
+
+			raw = raw.substr(pos + 2);
+		}
+
+		if(raw.size() > 0)
+			nses.push_back(raw);
+
+		return nses;
 	}
 
 
@@ -1542,7 +1597,7 @@ namespace Codegen
 
 		// we have a name now
 		size_t next = 0;
-		while((next = original.find_first_of("::")) != std::string::npos)
+		while((next = original.find("::")) != std::string::npos)
 		{
 			std::string ns = original.substr(0, next);
 			ret += std::to_string(ns.length()) + ns;
@@ -1586,6 +1641,18 @@ namespace Codegen
 
 		return res.resolved == true;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2172,6 +2239,20 @@ namespace Codegen
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
@@ -2216,7 +2297,7 @@ namespace Codegen
 	}
 
 
-	static void errorNoReturn(Expr* e)
+	static void _errorNoReturn(Expr* e)
 	{
 		error(e, "Not all code paths return a value");
 	}
@@ -2248,7 +2329,7 @@ namespace Codegen
 	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, llvm::Type* retType)
 	{
 		if(bb->statements.size() == 0)
-			errorNoReturn(bb);
+			_errorNoReturn(bb);
 
 		Return* r = nullptr;
 		for(Expr* e : bb->statements)

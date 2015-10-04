@@ -10,14 +10,45 @@ using namespace Ast;
 using namespace Codegen;
 
 
+static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
+{
+	FunctionTree* ftree = cgi->getCurrentFuncTree();
+	FunctionTree* pftree = cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree);
+
+	iceAssert(ftree);
+	iceAssert(pftree);
+
+	ftree->types[name] = { 0, { type, tk } };
+
+	if(type->attribs & Attr_VisPublic)
+	{
+		pftree->types[name] = { 0, { type, tk } };
+	}
+}
+
+
 // N-pass system.
 // there's no point counting at this stage.
-static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace,
-	std::deque<NamespaceDecl*>* nslist)
+static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace)
 {
 	if(pass == 0)
 	{
-		// pass 0: setup extensions
+		for(Expr* e : expressions)
+		{
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
+			Struct* str				= dynamic_cast<Struct*>(e);
+			Class* cls				= dynamic_cast<Class*>(e);		// enum : class, extension : class
+
+			if(ns)					ns->codegenPass(cgi, pass);
+			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
+			else if(str)			addTypeToFuncTree(cgi, str, str->name, TypeKind::Struct);
+			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
+		}
+	}
+	else if(pass == 1)
+	{
+		// pass 1: setup extensions
 		for(Expr* e : expressions)
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
@@ -33,9 +64,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		if(!isInsideNamespace)
 			TypeInfo::initialiseTypeInfo(cgi);
 	}
-	else if(pass == 1)
+	else if(pass == 2)
 	{
-		// pass 1: create types
+		// pass 2: create types
 		for(Expr* e : expressions)
 		{
 			Struct* str				= dynamic_cast<Struct*>(e);
@@ -47,9 +78,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
-	else if(pass == 2)
+	else if(pass == 3)
 	{
-		// pass 2: override types with any extensions
+		// pass 3: override types with any extensions
 		for(Expr* e : expressions)
 		{
 			Extension* ext			= dynamic_cast<Extension*>(e);
@@ -66,9 +97,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
 	}
-	else if(pass == 3)
+	else if(pass == 4)
 	{
-		// pass 3: create declarations
+		// pass 4: create declarations
 		for(Expr* e : expressions)
 		{
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
@@ -89,7 +120,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			}
 		}
 	}
-	else if(pass == 4)
+	else if(pass == 5)
 	{
 		// start semantic analysis before any typechecking needs to happen.
 		SemAnalysis::rewriteDotOperators(cgi);
@@ -110,7 +141,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
 		}
 	}
-	else if(pass == 5)
+	else if(pass == 6)
 	{
 		// first, look into all functions. check function calls, since everything should have already been declared.
 		// if we can resolve it into a generic function, then instantiate (monomorphise) the generic function
@@ -120,9 +151,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(auto fc : cgi->rootNode->allFunctionCalls)
 			cgi->tryResolveAndInstantiateGenericFunction(fc);
 	}
-	else if(pass == 6)
+	else if(pass == 7)
 	{
-		// pass 6: functions. for generic shit.
+		// pass 7: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -143,7 +174,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 	cgi->pushNamespaceScope(this->name);
 	cgi->usingNamespaces.push_back(this);
 
-	codegenTopLevel(cgi, pass, this->innards->statements, true, &this->namespaces);
+	codegenTopLevel(cgi, pass, this->innards->statements, true);
 
 	cgi->usingNamespaces.pop_back();
 	cgi->popNamespaceScope();
@@ -154,10 +185,10 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
 
 	// this is getting quite out of hand.
-	for(int pass = 0; pass <= 6; pass++)
+	for(int pass = 0; pass <= 7; pass++)
 	{
 		// printf("starting pass %d\n", pass);
-		codegenTopLevel(cgi, pass, this->topLevelExpressions, false, &this->topLevelNamespaces);
+		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 	}
 
 	// run the after-codegen checkers.
@@ -166,14 +197,3 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 	return Result_t(0, 0);
 }
-
-
-
-
-
-
-
-
-
-
-

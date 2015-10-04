@@ -50,6 +50,7 @@ namespace Codegen
 		Class,
 		Enum,
 		TypeAlias,
+		Extension,
 		Func,
 		BuiltinType,
 		Tuple,

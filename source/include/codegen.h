@@ -180,8 +180,9 @@ namespace Codegen
 
 
 		std::deque<std::string> getFullScope();
+		std::pair<TypePair_t*, int> findTypeInFuncTree(std::deque<std::string> scope, std::string name);
 
-
+		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
 
 
@@ -196,8 +197,6 @@ namespace Codegen
 		void addPublicFunc(FuncPair_t fp);
 
 		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
-
-		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
 
 		void removeType(std::string name);
