@@ -724,6 +724,10 @@ namespace Codegen
 		std::string sptr = std::string("*");
 		size_t ptrStrLength = sptr.length();
 
+		int tmp = 0;
+		if(!_indirections)
+			_indirections = &tmp;
+
 		std::string actualType = type;
 		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 		{
