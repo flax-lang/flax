@@ -22,6 +22,7 @@ class Bar
 	init()
 	{
 		printf("DID BAR\n");
+		var foo: some.Qux
 	}
 
 	// var foo: Foo

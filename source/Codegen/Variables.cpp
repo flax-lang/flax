@@ -437,8 +437,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		TypePair_t* cmplxtype = 0;
 		if(this->type.strType != "Inferred")
 		{
-			cmplxtype = cgi->getType(this->type.strType);
-			if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
+			// cmplxtype = cgi->getType(this->type.strType);
+			// if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
+			iceAssert(this->inferredLType);
+			cmplxtype = cgi->getType(this->inferredLType);
 		}
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
