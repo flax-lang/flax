@@ -171,15 +171,6 @@ namespace Codegen
 		return llvm::getGlobalContext();
 	}
 
-	Root* CodegenInstance::getRootAST()
-	{
-		return rootNode;
-	}
-
-
-
-
-
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
@@ -438,15 +429,6 @@ namespace Codegen
 	void CodegenInstance::pushNestedTypeScope(Class* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
-	}
-
-	std::deque<std::string> CodegenInstance::getNestedTypeList()
-	{
-		std::deque<std::string> ret;
-		for(auto t : this->nestedTypeStack)
-			ret.push_back(t->name);
-
-		return ret;
 	}
 
 	void CodegenInstance::popNestedTypeScope()
@@ -1323,26 +1305,26 @@ namespace Codegen
 		int ind = 0;
 		r = this->unwrapPointerType(r, &ind);
 
-		if(r.find("Int8") == 0)			r = "a";
-		else if(r.find("Int16") == 0)	r = "s";
-		else if(r.find("Int32") == 0)	r = "i";
-		else if(r.find("Int64") == 0)	r = "l";
-		else if(r.find("Int") == 0)		r = "l";
+		if(r == "Int8")			r = "a";
+		else if(r == "Int16")	r = "s";
+		else if(r == "Int32")	r = "i";
+		else if(r == "Int64")	r = "l";
+		else if(r == "Int")		r = "l";
 
-		else if(r.find("Uint8") == 0)	r = "h";
-		else if(r.find("Uint16") == 0)	r = "t";
-		else if(r.find("Uint32") == 0)	r = "j";
-		else if(r.find("Uint64") == 0)	r = "m";
-		else if(r.find("Uint") == 0)	r = "m";
+		else if(r == "Uint8")	r = "h";
+		else if(r == "Uint16")	r = "t";
+		else if(r == "Uint32")	r = "j";
+		else if(r == "Uint64")	r = "m";
+		else if(r == "Uint")	r = "m";
 
-		else if(r.find("Float32") == 0)	r = "f";
-		else if(r.find("Float") == 0)	r = "f";
+		else if(r == "Float32")	r = "f";
+		else if(r == "Float")	r = "f";
 
-		else if(r.find("Float64") == 0)	r = "d";
-		else if(r.find("Double") == 0)	r = "d";
+		else if(r == "Float64")	r = "d";
+		else if(r == "Double")	r = "d";
 
 
-		else if(r.find("Void") == 0)	r = "v";
+		else if(r == "Void")	r = "v";
 		else
 		{
 			if(r.size() > 0 && r.front() == '%')
@@ -1604,7 +1586,7 @@ namespace Codegen
 
 			original = original.substr(next, -1);
 
-			if(original.find("::") == 0)
+			if(original.compare(0, 2, "::") == 0)
 				original = original.substr(2);
 		}
 

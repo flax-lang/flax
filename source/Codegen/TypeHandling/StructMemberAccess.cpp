@@ -159,7 +159,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	llvm::StructType* st = llvm::cast<llvm::StructType>(type);
 
 	TypePair_t* pair = cgi->getType(type);
-	if(!pair && (!st || (st && !st->isLiteral())))
+	if(!pair && (!st || !st->isLiteral()))
 	{
 		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}

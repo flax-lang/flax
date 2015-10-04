@@ -232,7 +232,7 @@ namespace Codegen
 
 				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
 
-				if(!pair && (!st || (st && !st->isLiteral())))
+				if(!pair && (!st || !st->isLiteral()))
 					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
 
@@ -472,11 +472,10 @@ namespace Codegen
 	llvm::Function* CodegenInstance::getDefaultConstructor(Expr* user, llvm::Type* ptrType, StructBase* sb)
 	{
 		// check if we have a default constructor.
-		llvm::Function* candidate = 0;
-
 
 		if(Class* cls = dynamic_cast<Class*>(sb))
 		{
+			llvm::Function* candidate = 0;
 			for(llvm::Function* fn : cls->initFuncs)
 			{
 				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)

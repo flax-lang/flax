@@ -188,11 +188,6 @@ namespace GenError
 		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
-	void useAfterFree(Codegen::CodegenInstance* cgi, Expr* e, std::string symname)
-	{
-		warn(e, "Attempted to use variable %s after it was deallocated", symname.c_str());
-	}
-
 	void duplicateSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
 		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
