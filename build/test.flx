@@ -4,6 +4,7 @@
 
 import String
 
+
 func main() -> Int
 {
 	var foo: String
@@ -23,7 +24,15 @@ class Bar
 		printf("DID BAR\n");
 	}
 
-	var foo: Foo
+	// var foo: Foo
+	var qux: some.Qux
+}
+
+namespace some
+{
+	class Qux
+	{
+	}
 }
 
 
@@ -33,6 +42,18 @@ class Bar
 class Foo
 {
 }
+
+
+// one clear order-dependency is members in structs. need to find a way to create the type, from the Class* or Struct*,
+// by only having the name. Note that, at this point,
+//
+// there's 0 way to refer to it, since it hasn't been touched. perhaps one of the initial passes in TopLevel
+// would add the AST node to the functree, but not generate or touch it yet.
+// dependency resolver would have to trawl the functree (starting from current one down) to find the type.
+// NOTE: would need to note scopes/namespaces/nested types.
+// NOTE: the way shit is, it's gonna be hell when we implement using/namespace importing...
+//
+// if we do it this way, should we createType() and codegen() at the same time?
 
 
 

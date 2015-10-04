@@ -311,6 +311,8 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return 0;
 
+	printf("CREATING: %s\n", this->name.c_str());
+
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
@@ -514,7 +516,11 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		llvm::Type* type = cgi->getLlvmType(var);
+		// llvm::Type* type = cgi->getLlvmType(var);
+
+		iceAssert(var->inferredLType != 0);
+		llvm::Type* type = var->inferredLType;
+
 		if(type == str)
 		{
 			error(this, "Cannot have non-pointer member of type self");

@@ -224,10 +224,73 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		printf("HAVE %zu DEPS\n", deps.size());
 		for(auto d : deps)
 		{
-			printf("TYPE: %s / %s\n", d->name.c_str(), d->expr ? cgi->printAst(d->expr).c_str() : "");
+			printf("TYPE: %s\n", d->name.c_str());
 		}
 
-		this->inferredLType = cgi->getLlvmType(this);
+		std::deque<std::string> ns = cgi->unwrapNamespacedType(this->type.strType);
+		std::string atype = ns.back();
+		ns.pop_back();
+
+
+		printf("SCOPE: %s / NAME: %s\n", ns.front().c_str(), atype.c_str());
+
+		auto pair = cgi->findTypeInFuncTree(ns, atype);
+		TypePair_t* tp = pair.first;
+		int indirections = pair.second;
+
+		if(!tp && cgi->getLlvmTypeOfBuiltin(cgi->unwrapPointerType(atype, 0)))
+		{
+			llvm::Type* t = cgi->getLlvmTypeOfBuiltin(cgi->unwrapPointerType(atype, 0));
+			while(indirections > 0)
+			{
+				t = t->getPointerTo();
+				indirections--;
+			}
+
+			printf("%s: %s\n", this->name.c_str(), cgi->getReadableType(t).c_str());
+			this->inferredLType = t;
+		}
+		else if(tp)
+		{
+			printf("TYPE PAIR (%s): %p\n", this->name.c_str(), tp);
+
+			llvm::Type* concrete = cgi->getLlvmType(this, true);
+			if(!concrete)
+			{
+				// generate the type.
+				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+				iceAssert(sb);
+
+				// temporarily hijack the main scope
+				auto old = cgi->namespaceStack;
+				cgi->namespaceStack = ns;
+				sb->createType(cgi);
+				sb->codegen(cgi);
+				cgi->namespaceStack = old;
+
+
+				concrete = cgi->getLlvmType(this);
+				iceAssert(concrete);
+			}
+
+
+
+
+
+
+
+
+			this->inferredLType = tp->first;
+			while(indirections > 0)
+			{
+				this->inferredLType = this->inferredLType->getPointerTo();
+				indirections--;
+			}
+		}
+		else
+		{
+			error(this, "Unknown type '%s'", this->type.strType.c_str());
+		}
 	}
 }
 
