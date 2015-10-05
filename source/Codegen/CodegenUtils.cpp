@@ -499,10 +499,7 @@ namespace Codegen
 	// funcs
 	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, this->rootNode->publicFuncTree);
-		iceAssert(cur);
-
-		cur->funcs.push_back(fp);
+		this->addFunctionToScope(fp, this->rootNode->publicFuncTree);
 	}
 
 	void CodegenInstance::cloneFunctionTree(FunctionTree* ft, FunctionTree* clone, bool deep)
@@ -756,15 +753,30 @@ namespace Codegen
 		this->namespaceStack.pop_back();
 	}
 
-	void CodegenInstance::addFunctionToScope(FuncPair_t func)
+	void CodegenInstance::addFunctionToScope(FuncPair_t func, FunctionTree* root)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree();
+		FunctionTree* cur = root;
+		if(!cur)
+			cur = this->getCurrentFuncTree();
+
 		iceAssert(cur);
 
 		// printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
 
-		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
-			cur->funcs.push_back(func);
+		for(FuncPair_t& fp : cur->funcs)
+		{
+			if(fp.first == 0 && fp.second == func.second)
+			{
+				fp.first = func.first;
+				return;
+			}
+			else if(fp.first == func.first && fp.second == func.second)
+			{
+				return;
+			}
+		}
+
+		cur->funcs.push_back(func);
 	}
 
 	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
@@ -779,206 +791,130 @@ namespace Codegen
 
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
+		auto curDepth = this->namespaceStack;
+		std::deque<FuncPair_t> candidates;
+
+
+		for(size_t i = 0; i <= curDepth.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto f : ft->funcs)
+			{
+				auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+					if(f.first == fp.first || f.second == fp.second) return true;
+					if(f.first == 0 || fp.first == 0)
+					{
+						iceAssert(f.second);
+						iceAssert(fp.second);
+
+						if(f.second->params.size() != fp.second->params.size()) return false;
+
+						for(size_t i = 0; i < f.second->params.size(); i++)
+						{
+							// allowFail = true
+							if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+								return false;
+						}
+
+						return true;
+					}
+					else
+					{
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					}
+				};
+
+
+				if((f.second ? f.second->name : f.first->getName().str()) == basename)
+				{
+					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+					{
+						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+						candidates.push_back(f);
+					}
+				}
+			}
+
+
+
+
+
+
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+
+
+
 		// todo: check if we actually imported the function.
 		// this might cause false matches.
 
 		// search in namespace scope.
 
-		std::deque<FuncPair_t> candidates;
 
 		// search
-		{
-			// 1. search own namespace
-			// do a top-down search, ensuring we get everything.
-			std::deque<std::string> curDepth;
+		// 1. search own namespace
+		// do a top-down search, ensuring we get everything.
+		// std::deque<std::string> curDepth;
 
-			// once with no namespace
-			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-				if(ft)
-				{
-					for(auto f : ft->funcs)
-					{
-						auto isDupe = [this, f](FuncPair_t fp) -> bool {
+		// // once with no namespace
+		// {
+		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+		// 	if(ft)
+		// 	{
 
-							if(f.first == fp.first || f.second == fp.second) return true;
-							if(f.first == 0 || fp.first == 0)
-							{
-								iceAssert(f.second);
-								iceAssert(fp.second);
+		// 	}
+		// }
 
-								if(f.second->params.size() != fp.second->params.size()) return false;
+		// for(auto ns : this->namespaceStack)
+		// {
+		// 	curDepth.push_back(ns);
+		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+		// 	if(!ft) break;
 
-								for(size_t i = 0; i < f.second->params.size(); i++)
-								{
-									// allowFail = true
-									if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-										return false;
-								}
+		// 	for(auto f : ft->funcs)
+		// 	{
+		// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-								return true;
-							}
-							else
-							{
-								return f.first->getFunctionType() == fp.first->getFunctionType();
-							}
-						};
+		// 			if(f.first == fp.first || f.second == fp.second) return true;
+		// 			if(f.first == 0 || fp.first == 0)
+		// 			{
+		// 				iceAssert(f.second);
+		// 				iceAssert(fp.second);
 
+		// 				if(f.second->params.size() != fp.second->params.size()) return false;
 
-						if((f.second ? f.second->name : f.first->getName().str()) == basename)
-						{
-							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-							{
-								// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-								candidates.push_back(f);
-							}
-						}
-					}
-				}
-			}
-			for(auto ns : this->namespaceStack)
-			{
-				curDepth.push_back(ns);
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-				if(!ft) break;
+		// 				for(size_t i = 0; i < f.second->params.size(); i++)
+		// 				{
+		// 					// allowFail = true
+		// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+		// 						return false;
+		// 				}
 
-				for(auto f : ft->funcs)
-				{
-					auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-						if(f.first == fp.first || f.second == fp.second) return true;
-						if(f.first == 0 || fp.first == 0)
-						{
-							iceAssert(f.second);
-							iceAssert(fp.second);
-
-							if(f.second->params.size() != fp.second->params.size()) return false;
-
-							for(size_t i = 0; i < f.second->params.size(); i++)
-							{
-								// allowFail = true
-								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-									return false;
-							}
-
-							return true;
-						}
-						else
-						{
-							return f.first->getFunctionType() == fp.first->getFunctionType();
-						}
-					};
+		// 				return true;
+		// 			}
+		// 			else
+		// 			{
+		// 				return f.first->getFunctionType() == fp.first->getFunctionType();
+		// 			}
+		// 		};
 
 
-					if((f.second ? f.second->name : f.first->getName().str()) == basename)
-					{
-						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-							candidates.push_back(f);
-						}
-					}
-				}
-			}
-
-
-
-
-
-
-			// 2. search our imported namespaces.
-			curDepth.clear();
-
-			// once with no namespace
-			// {
-			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
-
-			// 	if(ft)
-			// 	{
-			// 		for(auto f : ft->funcs)
-			// 		{
-			// 			auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-			// 				if(f.first == fp.first || f.second == fp.second) return true;
-			// 				if(f.first == 0 || fp.first == 0)
-			// 				{
-			// 					iceAssert(f.second);
-			// 					iceAssert(fp.second);
-
-			// 					if(f.second->params.size() != fp.second->params.size()) return false;
-
-			// 					for(size_t i = 0; i < f.second->params.size(); i++)
-			// 					{
-			// 						// allowFail = true
-			// 						if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-			// 							return false;
-			// 					}
-
-			// 					return true;
-			// 				}
-			// 				else
-			// 				{
-			// 					return f.first->getFunctionType() == fp.first->getFunctionType();
-			// 				}
-			// 			};
-
-
-			// 			if((f.second ? f.second->name : f.first->getName().str()) == basename)
-			// 			{
-			// 				if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-			// 				{
-			// 					// printf("FOUND (3) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-			// 					candidates.push_back(f);
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// for(auto ns : this->namespaceStack)
-			// {
-			// 	curDepth.push_back(ns);
-			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
-			// 	if(!ft) break;
-
-			// 	for(auto f : ft->funcs)
-			// 	{
-			// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-			// 			if(f.first == fp.first || f.second == fp.second) return true;
-			// 			if(f.first == 0 || fp.first == 0)
-			// 			{
-			// 				iceAssert(f.second);
-			// 				iceAssert(fp.second);
-
-			// 				if(f.second->params.size() != fp.second->params.size()) return false;
-
-			// 				for(size_t i = 0; i < f.second->params.size(); i++)
-			// 				{
-			// 					// allowFail = true
-			// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-			// 						return false;
-			// 				}
-
-			// 				return true;
-			// 			}
-			// 			else
-			// 			{
-			// 				return f.first->getFunctionType() == fp.first->getFunctionType();
-			// 			}
-			// 		};
-
-
-			// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
-			// 		{
-			// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-			// 			{
-			// 				// printf("FOUND (4) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-			// 				candidates.push_back(f);
-			// 			}
-			// 		}
-			// 	}
-			// }
-		}
+		// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
+		// 		{
+		// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+		// 			{
+		// 				// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+		// 				candidates.push_back(f);
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		return candidates;
 	}
@@ -1612,17 +1548,21 @@ namespace Codegen
 		std::deque<Expr*> es;
 		for(auto p : decl->params) es.push_back(p);
 
-		auto res = this->resolveFunction(decl, decl->name, es, true);
-		if(res.resolved)
+		Resolved_t res = this->resolveFunction(decl, decl->name, es, true);
+		if(res.resolved && res.t.first != 0)
 		{
 			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
 			{
 				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
 			}
-		}
 
-		return res.resolved == true;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 
