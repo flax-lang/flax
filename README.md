@@ -14,7 +14,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Language Goals ####
 
-- This project grew out of my frustration with C/C++. I use C++ mainly for low level development, and its syntax is cumbersome, laden in C-derived K&R cruft... and the include files. Don't get me started on include files.
+- This project grew out of my frustration with C/C++. I use C++ mainly for low level development, and its syntax is cumbersome, laden in C-derived K&R cruft... and the header files. Don't get me started on header files.
 - Flax targets the LLVM backend, simply because it is widely ported, has an incredible amount of optimisation passes, and can target freestanding platforms.
 - This language aims to have as little dependencies against userspace libraries as possible.
 - Therefore, only a small subset of libc functions will be required. While the language has not been finalised, I envision only basic functions (printf, malloc/free, memset/memcpy/memmove) being required.
