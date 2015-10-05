@@ -4,23 +4,23 @@
 
 import Foundation
 
-struct Orr
+class Orr
 {
 	static var Another = 76
 	var bar = 311
 }
 
-struct Something
+class Something
 {
 	var oor = 400
 	static var Or: Orr
 
-	ƒ foo() -> Orr
+	ƒ somefoo() -> Orr
 	{
 		return Orr()
 	}
 
-	struct Inside
+	class Inside
 	{
 		static var Another = 511
 	}
@@ -47,7 +47,7 @@ enum OutsideEnum
 }
 
 
-struct Sheep
+class Sheep
 {
 	var thing = 43
 	var foo: Something
@@ -82,7 +82,8 @@ public ƒ doScopeTest(argv: String)
 	let another = 4
 	let foo: Something()
 
-	let mm = foo.foo().bar
+	let mm = foo.somefoo().bar
+
 
 	let gg = (4, 100.39)
 	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
@@ -101,7 +102,7 @@ public ƒ doScopeTest(argv: String)
 
 	n1.n2.m.foo.oor = 968
 
-	let t1 = n1.n2.m.foo.foo().bar
+	let t1 = n1.n2.m.foo.somefoo().bar
 	let t2 = n1.n2.nest().0.length
 
 	n1.n2.tup.0 = "HELLO, WORLD" + "!"
@@ -109,7 +110,7 @@ public ƒ doScopeTest(argv: String)
 
 
 	printf("t1 = %d, t2 = %d\n", t1, t2)
-	printf("afoo: %d\n", Sheep.afoo.foo().bar)
+	printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
 }
 
 

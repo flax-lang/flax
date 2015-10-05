@@ -47,16 +47,6 @@ namespace TypeInfo
 		return 0;
 	}
 
-	llvm::Type* getTypeForIndex(Codegen::CodegenInstance* cgi, size_t index)
-	{
-		// since 'index' is going to be from enum values.
-		index -= 1;
-		if(index >= cgi->rootNode->typeList.size())
-			return nullptr;
-
-		return std::get<1>(cgi->rootNode->typeList[index]);
-	}
-
 	void initialiseTypeInfo(CodegenInstance* cgi)
 	{
 		Enumeration* enr = 0;

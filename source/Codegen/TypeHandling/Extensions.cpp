@@ -63,7 +63,7 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 llvm::Type* Extension::createType(CodegenInstance* cgi)
 {
 	if(!cgi->isDuplicateType(this->name))
-		error(cgi, this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
+		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
 
 	this->mangledName = cgi->mangleWithNamespace(this->name);
 
@@ -72,7 +72,11 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 	iceAssert(existingtp);
 
 	llvm::StructType* existing = llvm::cast<llvm::StructType>(existingtp->first);
-	Struct* str = (Struct*) existingtp->second.first;
+
+	if(!dynamic_cast<Class*>(existingtp->second.first))
+		error(this, "Extensions can only be applied onto classes");
+
+	Class* str = (Class*) existingtp->second.first;
 
 	llvm::Type** types = new llvm::Type*[str->members.size() + this->members.size()];
 
@@ -89,7 +93,7 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 
 		for(Func* func : this->funcs)
 		{
-			func->decl->parentStruct = str;
+			func->decl->parentClass = str;
 
 			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
@@ -103,7 +107,7 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 		for(auto p : this->nameMap)
 		{
 			if(str->nameMap.find(p.first) != str->nameMap.end())
-				error(cgi, this, "Duplicate member '%s' in extension", p.first.c_str());
+				error(this, "Duplicate member '%s' in extension", p.first.c_str());
 
 			str->nameMap[p.first] = beginOffset + p.second;
 		}

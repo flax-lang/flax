@@ -8,10 +8,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "include/ast.h"
-#include "include/codegen.h"
-#include "include/compiler.h"
+#include "../include/ast.h"
+#include "../include/parser.h"
+#include "../include/codegen.h"
+#include "../include/compiler.h"
 
+#include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
@@ -122,6 +124,39 @@ namespace Compiler
 	{
 		return noAutoGlobalConstructor;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static std::vector<Warning> enabledWarnings {
+		Warning::UnusedVariable,
+		Warning::UseBeforeAssign,
+		Warning::UseAfterFree
+	};
+
+	bool getWarningEnabled(Warning warning)
+	{
+		return std::find(enabledWarnings.begin(), enabledWarnings.end(), warning) != enabledWarnings.end();
+	}
+
+	static void setWarning(Warning warning, bool enabled)
+	{
+		auto it = std::find(enabledWarnings.begin(), enabledWarnings.end(), warning);
+		if(it == enabledWarnings.end() && enabled == true)
+			enabledWarnings.push_back(warning);
+
+		else if(it != enabledWarnings.end() && enabled == false)
+			enabledWarnings.erase(it);
+	}
 }
 
 int main(int argc, char* argv[])
@@ -189,7 +224,7 @@ int main(int argc, char* argv[])
 					std::string mm = parseQuotedString(argv, i);
 					if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
 					{
-						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'. '%s' is invalid.\n", mm.c_str());
+						fprintf(stderr, "Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'.\n");
 						exit(-1);
 					}
 
@@ -256,6 +291,52 @@ int main(int argc, char* argv[])
 					Compiler::optLevel = argv[i][2] - '0';
 				}
 			}
+
+			// warnings.
+			else if(!strcmp(argv[i], "-Wno-unused-variable"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
+			}
+			else if(!strcmp(argv[i], "-Wunused-variable"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
+			}
+
+			else if(!strcmp(argv[i], "-Wno-unused"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
+			}
+			else if(!strcmp(argv[i], "-Wunused"))
+			{
+				Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
+			}
+
+
+			else if(!strcmp(argv[i], "-Wno-var-state-checker"))
+			{
+				Compiler::setWarning(Compiler::Warning::UseAfterFree, false);
+				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, false);
+			}
+			else if(!strcmp(argv[i], "-Wvar-state-checker"))
+			{
+				Compiler::setWarning(Compiler::Warning::UseAfterFree, true);
+				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, true);
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			else if(argv[i][0] == '-')
 			{
 				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
@@ -272,16 +353,47 @@ int main(int argc, char* argv[])
 
 		// compile the file.
 		// the file Compiler.cpp handles imports.
-		std::vector<std::string> filelist;
-		std::vector<llvm::Module*> modulelist;
-		std::map<std::string, Ast::Root*> rootmap;
 
 		iceAssert(llvm::InitializeNativeTarget() == 0);
 		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
 		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
-		Codegen::CodegenInstance* cgi = new Codegen::CodegenInstance();
-		Root* r = Compiler::compileFile(filename, filelist, rootmap, modulelist, cgi);
+		Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
+
+		filename = Compiler::getFullPathOfFile(filename);
+		std::string curpath = Compiler::getPathFromFile(filename);
+
+		// parse and find all custom operators
+		Parser::ParserState pstate(__cgi);
+
+		Parser::parseAllCustomOperators(pstate, filename, curpath);
+
+		// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
+		auto ret = Compiler::compileFile(filename);
+
+		Root* r = std::get<0>(ret);
+		std::vector<std::string> filelist = std::get<1>(ret);
+		std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
+		std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
+
+		llvm::Module* mainModule = modulelist[filename];
+		llvm::IRBuilder<>& builder = __cgi->builder;
+
+
+		// mainModule->dump();
+		// for(auto m : modulelist)
+		// 	m.second->dump();
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -290,9 +402,12 @@ int main(int argc, char* argv[])
 		// needs to be done first, for the weird constructor fiddling below.
 		if(Compiler::runProgramWithJit)
 		{
-			llvm::Linker linker = llvm::Linker(cgi->module);
+			llvm::Linker linker = llvm::Linker(mainModule);
 			for(auto mod : modulelist)
-				linker.linkInModule(mod);
+			{
+				if(mod.second != mainModule)
+					linker.linkInModule(mod.second);
+			}
 		}
 
 
@@ -320,18 +435,18 @@ int main(int argc, char* argv[])
 			{
 				if(pair.second->globalConstructorTrampoline != 0)
 				{
-					llvm::Function* constr = cgi->module->getFunction(pair.second->globalConstructorTrampoline->getName());
+					llvm::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
 					if(!constr)
 					{
 						if(Compiler::runProgramWithJit)
 						{
-							error(cgi, 0, "required global constructor %s was not found in the module!",
+							error("required global constructor %s was not found in the module!",
 								pair.second->globalConstructorTrampoline->getName().str().c_str());
 						}
 						else
 						{
 							// declare it.
-							constr = llvm::cast<llvm::Function>(cgi->module->getOrInsertFunction(
+							constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
 								pair.second->globalConstructorTrampoline->getName(),
 								pair.second->globalConstructorTrampoline->getFunctionType())
 							);
@@ -346,33 +461,30 @@ int main(int argc, char* argv[])
 
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
-				"__global_constructor_top_level__", cgi->module);
+				"__global_constructor_top_level__", mainModule);
 
 			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
-			cgi->builder.SetInsertPoint(iblock);
+			builder.SetInsertPoint(iblock);
 
 			for(auto f : constructors)
-			{
-				cgi->builder.CreateCall(f);
-			}
+				builder.CreateCall(f);
 
-			cgi->builder.CreateRetVoid();
-
-
+			builder.CreateRetVoid();
 
 
 			if(!Compiler::getNoAutoGlobalConstructor())
 			{
 				// insert a call at the beginning of main().
-				llvm::Function* mainfunc = cgi->module->getFunction("main");
+				llvm::Function* mainfunc = mainModule->getFunction("main");
+				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-				llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "__main_entry", mainfunc);
+				llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
 
 				f->moveBefore(entry);
-				cgi->builder.SetInsertPoint(f);
-				cgi->builder.CreateCall(gconstr);
-				cgi->builder.CreateBr(entry);
+				builder.SetInsertPoint(f);
+				builder.CreateCall(gconstr);
+				builder.CreateBr(entry);
 			}
 		}
 
@@ -405,14 +517,12 @@ int main(int argc, char* argv[])
 			// all linked already.
 			// dump here, before the output.
 			if(Compiler::printModule)
-				cgi->module->dump();
+				mainModule->dump();
 
-			iceAssert(cgi->execEngine);
-
-			if(cgi->module->getFunction("main") != 0)
+			if(mainModule->getFunction("main") != 0)
 			{
 				std::string err;
-				llvm::Module* clone = llvm::CloneModule(cgi->module);
+				llvm::Module* clone = llvm::CloneModule(mainModule);
 				llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
 							.setErrorStr(&err)
 							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
@@ -430,10 +540,14 @@ int main(int argc, char* argv[])
 				ee->finalizeObject();
 				mainfunc(1, m);
 			}
+			else
+			{
+				error("no main() function!");
+			}
 		}
 		else
 		{
-			Compiler::compileProgram(cgi, filelist, foldername, outname);
+			Compiler::compileProgram(mainModule, filelist, foldername, outname);
 		}
 
 
@@ -442,21 +556,21 @@ int main(int argc, char* argv[])
 			remove(s.c_str());
 
 		if(Compiler::printModule && !Compiler::getRunProgramWithJit())
-			cgi->module->dump();
+			mainModule->dump();
 
 		if(Compiler::dumpModule)
 		{
 			// std::string err_info;
 			// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
 
-			// out << *(cgi->module);
+			// out << *(mainModule);
 			// out.close();
 
 			fprintf(stderr, "enosup\n");
 			exit(-1);
 		}
 
-		delete cgi;
+		delete __cgi;
 		for(auto p : rootmap)
 			delete p.second;
 

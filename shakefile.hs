@@ -28,11 +28,11 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-Ox -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-Ox -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
+flaxcNormFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
-main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $ do
+main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
 	want ["build"]
 
 	phony "build" $ do
@@ -73,10 +73,12 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 	phony "copyLibraries" $ do
 		--- copy the libs to the prefix.
 		() <- quietly $ cmd Shell "mkdir" "-p" (sysroot </> prefix </> "lib" </> "flaxlibs")
-		quietly $ cmd Shell "cp" ("libs/*.flx") (sysroot </> prefix </> "lib" </> "flaxlibs/")
+		quietly $ cmd Shell "cp" ("-R") ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
 
 	finalOutput %> \out -> do
+		need ["copyLibraries"]
+
 		cs <- getDirectoryFiles "" ["source//*.cpp"]
 		let os = [c ++ ".o" | c <- cs]
 		need os
@@ -89,8 +91,6 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 		() <- cmd Shell "clang++ -g -o" [out] os [llvmConfigInvoke]
 		putQuiet ("\x1b[0m" ++ "# built " ++ out)
 
-		need ["copyLibraries"]
-
 
 	"source//*.cpp.o" %> \out -> do
 		let c = dropExtension out
@@ -99,7 +99,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet } $
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=c++11 -Ofast -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
+		let cxxFlags = "-std=c++11 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
 		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 		() <- cmd Shell "clang++ -c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]

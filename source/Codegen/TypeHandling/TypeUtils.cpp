@@ -19,6 +19,9 @@ namespace Codegen
 {
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
 	{
+		int indirections = 0;
+		type = this->unwrapPointerType(type, &indirections);
+
 		if(!Compiler::getDisableLowercaseBuiltinTypes())
 		{
 			if(type.length() > 0)
@@ -27,54 +30,40 @@ namespace Codegen
 			}
 		}
 
-		if(type == "Int8")			return llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Int")		return llvm::Type::getInt64Ty(this->getContext());
+		llvm::Type* real = 0;
 
-		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Uint32")	return llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Uint64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
+		if(type == "Int8")			real = llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Int16")	real = llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Int32")	real = llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Int64")	real = llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")		real = llvm::Type::getInt64Ty(this->getContext());
 
-		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
-		else if(type == "Float")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Uint8")	real = llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Uint16")	real = llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Uint32")	real = llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Uint64")	real = llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Uint")		real = llvm::Type::getInt64Ty(this->getContext());
 
-		else if(type == "Float64")	return llvm::Type::getDoubleTy(this->getContext());
-		else if(type == "Double")	return llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Float32")	real = llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float")	real = llvm::Type::getFloatTy(this->getContext());
 
-		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
-		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
-		else return nullptr;
+		else if(type == "Float64")	real = llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Double")	real = llvm::Type::getDoubleTy(this->getContext());
+
+		else if(type == "Bool")		real = llvm::Type::getInt1Ty(this->getContext());
+		else if(type == "Void")		real = llvm::Type::getVoidTy(this->getContext());
+		else return 0;
+
+		iceAssert(real);
+		while(indirections > 0)
+		{
+			real = real->getPointerTo();
+			indirections--;
+		}
+
+		return real;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
-	{
-		if(type.isLiteral)
-		{
-			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
-			if(ret) return ret;
-
-			// not so lucky
-			TypePair_t* tp = this->getType(type.strType);
-			if(!tp)
-				tp = this->getType(type.strType + "E");		// nested types. hack.
-
-			if(!tp && allowFail)
-				return 0;
-
-			else if(!tp)
-				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
-
-			return tp->first;
-		}
-		else
-		{
-			error(this, user, "enosup");
-		}
-	}
 
 	llvm::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, llvm::Value* alloca)
 	{
@@ -85,7 +74,7 @@ namespace Codegen
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(this, user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
+				error(user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
@@ -118,7 +107,7 @@ namespace Codegen
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
-						error(this, expr, "Invalid variable declaration for %s!", decl->name.c_str());
+						error(expr, "Invalid variable declaration for %s!", decl->name.c_str());
 						// return llvm::Type::getVoidTy(this->getContext());
 					}
 
@@ -162,7 +151,7 @@ namespace Codegen
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
 				{
-					error(this, expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
+					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 				}
 
 				auto x = this->getLlvmType(decl, allowFail);
@@ -174,7 +163,7 @@ namespace Codegen
 				{
 					llvm::Type* ltype = this->getLlvmType(uo->expr);
 					if(!ltype->isPointerTy())
-						error(this, expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
+						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
 
 					return this->getLlvmType(uo->expr)->getPointerElementType();
 				}
@@ -257,8 +246,8 @@ namespace Codegen
 
 				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
 
-				if(!pair && (!st || (st && !st->isLiteral())))
-					error(this, expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
+				if(!pair && (!st || !st->isLiteral()))
+					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
 
 
@@ -274,9 +263,35 @@ namespace Codegen
 					iceAssert(ttype->isStructTy());
 
 					if(n->ival >= ttype->getStructNumElements())
-						error(this, expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
+						error(expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
 
 					return ttype->getStructElementType(n->ival);
+				}
+				else if(pair->second.second == TypeKind::Class)
+				{
+					Class* cls = dynamic_cast<Class*>(pair->second.first);
+					iceAssert(cls);
+
+					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
+					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
+
+					if(memberVr)
+					{
+						for(VarDecl* mem : cls->members)
+						{
+							if(mem->name == memberVr->name)
+								return this->getLlvmType(mem);
+						}
+						for(ComputedProperty* c : cls->cprops)
+						{
+							if(c->name == memberVr->name)
+								return this->getLlvmTypeFromString(c, c->type, allowFail);
+						}
+					}
+					else if(memberFc)
+					{
+						return this->getLlvmType(this->getFunctionFromMemberFuncCall(cls, memberFc));
+					}
 				}
 				else if(pair->second.second == TypeKind::Struct)
 				{
@@ -293,15 +308,10 @@ namespace Codegen
 							if(mem->name == memberVr->name)
 								return this->getLlvmType(mem);
 						}
-						for(ComputedProperty* c : str->cprops)
-						{
-							if(c->name == memberVr->name)
-								return this->getLlvmTypeFromString(c, c->type, allowFail);
-						}
 					}
 					else if(memberFc)
 					{
-						return this->getLlvmType(this->getFunctionFromStructFuncCall(str, memberFc));
+						error(memberFc, "Tried to call method on struct");
 					}
 				}
 				else if(pair->second.second == TypeKind::Enum)
@@ -318,11 +328,11 @@ namespace Codegen
 							return this->getLlvmType(c.second);
 					}
 
-					error(this, expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+					error(expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
 				}
 				else
 				{
-					error(this, expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+					error(expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
 				}
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
@@ -401,7 +411,7 @@ namespace Codegen
 					return this->getLlvmType(dum->type.type);
 				}
 			}
-			else if(dynamic_cast<If*>(expr))
+			else if(dynamic_cast<IfStmt*>(expr))
 			{
 				return llvm::Type::getVoidTy(getContext());
 			}
@@ -445,7 +455,7 @@ namespace Codegen
 						return targtype->getArrayElementType();
 
 					else
-						error(this, expr, "Invalid???");
+						error(expr, "Invalid???");
 				}
 				else
 				{
@@ -454,7 +464,7 @@ namespace Codegen
 			}
 		}
 
-		error(this, expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
 	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
@@ -476,21 +486,33 @@ namespace Codegen
 	llvm::Function* CodegenInstance::getDefaultConstructor(Expr* user, llvm::Type* ptrType, StructBase* sb)
 	{
 		// check if we have a default constructor.
-		llvm::Function* candidate = 0;
 
-		for(llvm::Function* fn : sb->initFuncs)
+		if(Class* cls = dynamic_cast<Class*>(sb))
 		{
-			if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+			llvm::Function* candidate = 0;
+			for(llvm::Function* fn : cls->initFuncs)
 			{
-				candidate = fn;
-				break;
+				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+				{
+					candidate = fn;
+					break;
+				}
 			}
+
+			if(candidate == 0)
+				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
+
+			return candidate;
 		}
-
-		if(candidate == 0)
-			error(this, user, "Struct %s has no default initialiser taking 0 parameters", sb->name.c_str());
-
-		return candidate;
+		else if(Struct* str = dynamic_cast<Struct*>(sb))
+		{
+			iceAssert(str->initFunc);
+			return str->initFunc;
+		}
+		else
+		{
+			error(user, "Type '%s' cannot have initialisers", sb->name.c_str());
+		}
 	}
 
 
@@ -715,6 +737,10 @@ namespace Codegen
 		std::string sptr = std::string("*");
 		size_t ptrStrLength = sptr.length();
 
+		int tmp = 0;
+		if(!_indirections)
+			_indirections = &tmp;
+
 		std::string actualType = type;
 		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
 		{
@@ -735,7 +761,7 @@ namespace Codegen
 		str = str.substr(1);
 		char front = str.front();
 		if(front == ')')
-			error(cgi, user, "Empty tuples are not supported");
+			error(user, "Empty tuples are not supported");
 
 		std::vector<llvm::Type*> types;
 		while(front != ')')
@@ -803,11 +829,15 @@ namespace Codegen
 			ret = ret->getPointerTo();
 
 			if(type[0] != ']')
-				error(cgi, user, "Expected closing '['");
+				error(user, "Expected closing '['");
 		}
 
 		return ret;
 	}
+
+
+
+
 
 	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type, bool allowFail)
 	{
@@ -832,7 +862,7 @@ namespace Codegen
 				int indirections = 0;
 
 				std::string actualType = this->unwrapPointerType(type, &indirections);
-				if(actualType.find("[") != (size_t) -1)
+				if(actualType.find("[") != std::string::npos)
 				{
 					size_t k = actualType.find("[");
 					std::string base = actualType.substr(0, k);
@@ -898,13 +928,34 @@ namespace Codegen
 		}
 	}
 
+	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
+	{
+		if(type.isLiteral)
+		{
+			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
+			if(ret) return ret;
 
+			// not so lucky
+			TypePair_t* tp = this->getType(type.strType);
+			if(!tp)
+				tp = this->getType(type.strType + "E");		// nested types. hack.
 
+			if(!tp && type.strType.find("::") != std::string::npos)
+				tp = this->getType(this->mangleRawNamespace(type.strType));
 
+			if(!tp && allowFail)
+				return 0;
 
+			else if(!tp)
+				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
 
-
-
+			return tp->first;
+		}
+		else
+		{
+			error(user, "enosup");
+		}
+	}
 
 
 
@@ -1091,15 +1142,16 @@ namespace Codegen
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
-			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": " + this->getReadableType(vd);
+			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": "
+				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
-			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(bo->op) + " " + this->printAst(bo->right) + ")";
+			return "(" + this->printAst(bo->left) + " " + Parser::arithmeticOpToString(this, bo->op) + " " + this->printAst(bo->right) + ")";
 		}
 		else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
 		{
-			return "(" + Parser::arithmeticOpToString(uo->op) + this->printAst(uo->expr) + ")";
+			return "(" + Parser::arithmeticOpToString(this, uo->op) + this->printAst(uo->expr) + ")";
 		}
 		else if(Number* n = dynamic_cast<Number*>(expr))
 		{
@@ -1165,8 +1217,105 @@ namespace Codegen
 		{
 			return "typeof(" + this->printAst(to->inside) + ")";
 		}
+		else if(ForeignFuncDecl* ffi = dynamic_cast<ForeignFuncDecl*>(expr))
+		{
+			return "ffi " + this->printAst(ffi->decl);
+		}
+		else if(Import* imp = dynamic_cast<Import*>(expr))
+		{
+			return "import " + imp->module;
+		}
+		else if(dynamic_cast<Root*>(expr))
+		{
+			return "(root)";
+		}
+		else if(Return* ret = dynamic_cast<Return*>(expr))
+		{
+			return "return " + this->printAst(ret->val);
+		}
+		else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(expr))
+		{
+			if(wl->isDoWhileVariant)
+			{
+				return "do {\n" + this->printAst(wl->body) + "\n} while(" + this->printAst(wl->cond) + ")";
+			}
+			else
+			{
+				return "while(" + this->printAst(wl->cond) + ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+			}
+		}
+		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
+		{
+			bool first = false;
+			std::string final;
+			for(auto c : ifst->cases)
+			{
+				std::string one;
 
-		error(this, expr, "Unknown shit (%s)", typeid(*expr).name());
+				if(!first)
+					one = "else ";
+
+				first = false;
+				one += "if(" + this->printAst(c.first) + ")" + "\n{\n" + this->printAst(c.second) + "\n}\n";
+
+				final += one;
+			}
+
+			if(ifst->final)
+				final += "else\n{\n" + this->printAst(ifst->final) + " \n}\n";
+
+			return final;
+		}
+		else if(Class* cls = dynamic_cast<Class*>(expr))
+		{
+			std::string s;
+			s = "class " + cls->name + "\n{\n";
+
+			for(auto m : cls->members)
+				s += this->printAst(m) + "\n";
+
+			for(auto f : cls->funcs)
+				s += this->printAst(f) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(Struct* str = dynamic_cast<Struct*>(expr))
+		{
+			std::string s;
+			s = "struct " + str->name + "\n{\n";
+
+			for(auto m : str->members)
+				s += this->printAst(m) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(Enumeration* enr = dynamic_cast<Enumeration*>(expr))
+		{
+			std::string s;
+			s = "enum " + enr->name + "\n{\n";
+
+			for(auto m : enr->cases)
+				s += m.first + " " + this->printAst(m.second) + "\n";
+
+			s += "\n}";
+			return s;
+		}
+		else if(NamespaceDecl* nd = dynamic_cast<NamespaceDecl*>(expr))
+		{
+			return "namespace " + nd->name + "\n{\n" + this->printAst(nd->innards) + "\n}";
+		}
+		else if(Dealloc* da = dynamic_cast<Dealloc*>(expr))
+		{
+			return "dealloc " + this->printAst(da->expr);
+		}
+		else if(Alloc* al = dynamic_cast<Alloc*>(expr))
+		{
+			return "alloc[" + this->printAst(al->count) + "] " + al->type.strType;
+		}
+
+		error(expr, "Unknown shit (%s)", typeid(*expr).name());
 	}
 }
 

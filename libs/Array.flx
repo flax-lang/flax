@@ -4,6 +4,6 @@
 
 import LibCInterface
 
-public struct Array
+public class Array
 {
 }

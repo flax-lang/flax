@@ -44,6 +44,9 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 
 Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
+	if(this->didCodegen)
+		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
+
 	this->didCodegen = true;
 
 	bool isPublic = this->decl->attribs & Attr_VisPublic;
@@ -70,14 +73,24 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		{
 			if(isGeneric && !isPublic)
 			{
-				warn(cgi, this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+				warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+				return Result_t(0, 0);
 			}
-			else if(!isGeneric)
+			else if(!isGeneric && !isPublic)
 			{
-				warn(cgi, this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
+				// this should not happen
+				// warn(this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
+				warn(this, "Function %s is not public and is never called; it will not be emitted", this->decl->name.c_str());
+				return Result_t(0, 0);
 			}
+			else
+			{
+				// generate it.
+				this->decl->codegen(cgi);
+				this->didCodegen = false;
 
-			return Result_t(0, 0);
+				return this->codegen(cgi);	// recursively.
+			}
 		}
 	}
 
@@ -147,7 +160,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 		if(counter != this->block->statements.size())
 		{
-			warn(cgi, this->block->statements[counter], "Code will never be executed");
+			warn(this->block->statements[counter], "Code will never be executed");
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());

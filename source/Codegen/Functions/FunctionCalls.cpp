@@ -11,7 +11,6 @@
 
 using namespace Ast;
 using namespace Codegen;
-#include <iostream>
 
 Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
 {
@@ -31,39 +30,39 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
 {
 	// always try the type first.
-	if(cgi->getType(this->name) != nullptr)
+	if(TypePair_t* tp = cgi->getType(this->name))
 	{
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
-		return cgi->callTypeInitialiser(cgi->getType(this->name), this, args);
+		return cgi->callTypeInitialiser(tp, this, args);
 	}
-	else if(cgi->getType(cgi->mangleRawNamespace(this->name)) != nullptr)
+	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
 	{
+		assert(0);
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
-		return cgi->callTypeInitialiser(cgi->getType(cgi->mangleRawNamespace(this->name)), this, args);
+		return cgi->callTypeInitialiser(tp, this, args);
 	}
-
-
-
 
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
 
-
 	llvm::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
 	{
+		// we're not a generic function.
 		if(!this->cachedResolveTarget.resolved)
 		{
 			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 
 			if(!rt.resolved)
 			{
+				failedToFind:
+
 				// print a better error message.
 				std::vector<std::string> argtypes;
 				for(auto a : this->params)
@@ -83,8 +82,20 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 						candidates += cgi->printAst(fs.second) + "\n";
 				}
 
-				error(cgi, this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
-					this->name.c_str(), argstr.c_str(), candidates.c_str());
+				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
+					this->name.c_str(), argstr.c_str(), candidates.size(), candidates.c_str());
+			}
+
+			if(rt.t.first == 0)
+			{
+				// generate it.
+				rt.t.second->codegen(cgi);
+
+				// printf("expediting function call to %s\n", this->name.c_str());
+
+				rt = cgi->resolveFunction(this, this->name, this->params);
+				if(!rt.resolved) error("nani???");
+				if(rt.t.first == 0) goto failedToFind;
 			}
 
 			this->cachedResolveTarget = rt;
@@ -103,7 +114,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
 	{
-		error(cgi, this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
 	}
 
 
@@ -121,7 +132,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			llvm::StructType* st = llvm::cast<llvm::StructType>(arg->getType());
 			if(!st->isLiteral() && st->getStructName() != "String")
 			{
-				warn(cgi, e, "Passing structs to vararg functions can have unexpected results.");
+				warn(e, "Passing structs to vararg functions can have unexpected results.");
 			}
 			else if(!st->isLiteral() && st->getStructName() == "String")
 			{
@@ -146,12 +157,12 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 		if(arg_it->getType() != args[i]->getType())
 		{
-			error(cgi, this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 				cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
 		}
 	}
 
-	// might not be a good thing to always to.
+	// might not be a good thing to always do.
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 

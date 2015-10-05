@@ -84,7 +84,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	{
 		if(!lhsPtr)
 		{
-			error(cgi, this, "Unable to infer type for empty array");
+			error(this, "Unable to infer type for empty array");
 		}
 
 		tp = lhsPtr->getType()->getPointerElementType();
@@ -103,13 +103,13 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 				vals.push_back(c);
 				if(vals.back()->getType() != tp)
 				{
-					error(cgi, e, "Array members must have the same type, got %s and %s",
+					error(e, "Array members must have the same type, got %s and %s",
 						cgi->getReadableType(tp).c_str(), cgi->getReadableType(vals.back()->getType()).c_str());
 				}
 			}
 			else
 			{
-				error(cgi, e, "Array literal members must be constant");
+				error(e, "Array literal members must be constant");
 			}
 		}
 	}
@@ -121,23 +121,3 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 	cgi->builder.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
