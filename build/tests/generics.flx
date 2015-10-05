@@ -61,6 +61,7 @@ public func foo_generic<T, K>(a: T, b: K)
 func foo_generic<T>(a: T, b: T, c: T)
 {
 	printf("foo: triple T\n")
+	(a, b, c)
 }
 
 

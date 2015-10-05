@@ -35,7 +35,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 
 
 	if(!found)
-		error(this, user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
+		error(user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
 
 	if(!enr->isStrong)
 		return res;
@@ -76,6 +76,8 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
+	if(this->didCreateType)
+		return 0;
 
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -90,14 +92,24 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 
 		llvm::Type* t = cgi->getLlvmType(pair.second);
 		if(t != prev)
-			error(pair.second, "Enumeration values must have the same type, have %s: %s and %s", pair.first.c_str(), cgi->getReadableType(pair.second).c_str(), cgi->getReadableType(prev).c_str());
+			error(pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
+				cgi->getReadableType(prev).c_str());
+
 
 		prev = t;
 	}
 
-	llvm::StructType* wrapper = llvm::StructType::create(this->name, prev, NULL);
+
+
+	std::deque<std::string> fullScope = cgi->getFullScope();
+	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
+
+
+	llvm::StructType* wrapper = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+	wrapper->setBody(std::vector<llvm::Type*>({ prev }));
 
 	// now that they're all the same type:
+	this->scope = fullScope;
 	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
 	return wrapper;

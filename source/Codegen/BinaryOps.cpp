@@ -56,7 +56,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			if(!vdecl) GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 			if(vdecl->immutable)
-				error(this, user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
 		}
 
 		if(!rhs)
@@ -90,7 +90,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
-			warn(this, left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
+			warn(left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
 
 			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
 			return Result_t(this->builder.CreateStore(res.result.first, ref), ref);
@@ -173,10 +173,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			else if(TypePair_t* tp = this->getType(lhs->getType()))
 			{
 				if(!tp)
-					error(this, left, "??? error!");
+					error(left, "??? error!");
 
 				if(tp->second.second != TypeKind::Enum)
-					error(this, left, "not an enum??? you lied!");
+					error(left, "not an enum??? you lied!");
 
 
 				// todo: untested
@@ -185,11 +185,11 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				if(enr->isStrong)
 				{
-					error(this, right, "Trying to assign non-enum value to an variable of type @strong enum");
+					error(right, "Trying to assign non-enum value to an variable of type @strong enum");
 				}
 				else if(lhs->getType()->getStructElementType(0) != rhs->getType())
 				{
-					error(this, right, "Assigning to assign value with type %s to enumeration with base type %s",
+					error(right, "Assigning to assign value with type %s to enumeration with base type %s",
 						this->getReadableType(rhs).c_str(), this->getReadableType(lhs).c_str());
 				}
 				else
@@ -209,7 +209,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			}
 			else
 			{
-				error(this, right, "Assignment between incomatible types lhs %s and rhs %s", this->getReadableType(lhs).c_str(),
+				error(right, "Assignment between incomatible types lhs %s and rhs %s", this->getReadableType(lhs).c_str(),
 					this->getReadableType(rhs).c_str());
 			}
 		}
@@ -235,7 +235,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				if(auto vd = this->getSymDecl(avr, avr->name))
 				{
 					if(vd->immutable)
-						error(this, user, "Cannot assign to immutable variable %s", vd->name.c_str());
+						error(user, "Cannot assign to immutable variable %s", vd->name.c_str());
 				}
 			}
 		}
@@ -245,7 +245,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		// make sure the left side is a pointer
 		if(!varptr)
-			error(this, user, "Cannot assign to immutable or temporary value");
+			error(user, "Cannot assign to immutable or temporary value");
 
 		else if(!varptr->getType()->isPointerTy())
 			GenError::invalidAssignment(this, user, varptr, rhs);
@@ -259,7 +259,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	}
 	else
 	{
-		error(this, user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
+		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
 	if(varptr->getType()->getPointerElementType()->isStructTy())
@@ -310,6 +310,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		// varptr = this->lastMinuteUnwrapType(varptr);
 
+		// printf("%s -> %s\n", this->getReadableType(rhs).c_str(), this->getReadableType(varptr).c_str());
 		this->builder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}
@@ -406,7 +407,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		iceAssert(rtype);
 		if(lhs->getType() == rtype)
 		{
-			warn(cgi, this, "Redundant cast");
+			warn(this, "Redundant cast");
 			return Result_t(lhs, 0);
 		}
 
@@ -456,7 +457,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 				}
 				else
 				{
-					error(cgi, this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
+					error(this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
 						cgi->getReadableType(lhs).c_str());
 				}
 			}
@@ -517,11 +518,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 			if(!llvm::CastInst::castIsValid(llvm::Instruction::BitCast, lhs, rtype))
 			{
-				error(cgi, this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+				error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
 			}
 			else
 			{
-				warn(cgi, this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
+				warn(this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
 			}
 		}
 
@@ -547,12 +548,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 	// if adding integer to pointer
 	if(!lhs)
-		error(cgi, this, "lhs null");
+		error(this, "lhs null");
 
 	if(!rhs)
 	{
 		printf("rhs: %s\n", typeid(*this->right).name());
-		error(cgi, this, "rhs null");
+		error(this, "rhs null");
 	}
 
 
@@ -566,22 +567,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		{
 			lhsInteger = true;
 		}
-		// else if(lhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
-		// 		lhsInteger = true;
-		// }
-
 
 		if(rhs->getType()->isIntegerTy())
 		{
 			rhsInteger = true;
+
 		}
-		// else if(rhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
-		// 		rhsInteger = true;
-		// }
 
 		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
 	}
@@ -634,7 +625,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 			if(lhs->getType() != rhs->getType())
 			{
-				error(cgi, this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(),
+				error(this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(),
 					cgi->getReadableType(rhs).c_str());
 			}
 
@@ -756,7 +747,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		cgi->autoCastType(lhs, rhs, r.second);
 
 		if(lhs->getType() != rhs->getType())
-			error(cgi, this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+			error(this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
 
 		// then they're floats.
 		switch(this->op)
@@ -774,7 +765,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpOLE(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpOGE(lhs, rhs), 0);
 
-			default:						error(cgi, this, "Unsupported operator.");
+			default:						error(this, "Unsupported operator.");
 		}
 	}
 	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
@@ -800,7 +791,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		}
 		else
 		{
-			error(cgi, this, "Invalid comparison %s on Type!", Parser::arithmeticOpToString(this->op).c_str());
+			error(this, "Invalid comparison %s on Type!", Parser::arithmeticOpToString(cgi, this->op).c_str());
 		}
 
 
@@ -811,7 +802,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
 		{
-			error(cgi, this, "Invalid type (%s)", lhs->getType()->getStructName().str().c_str());
+			error(this, "Invalid type (%s)", lhs->getType()->getStructName().str().c_str());
 		}
 
 
@@ -832,7 +823,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		return cgi->callOperatorOnStruct(this, p, valptr.second, op, rhs);
 	}
 
-	error(cgi, this, "Unsupported operator on type");
+	error(this, "Unsupported operator on type");
 }
 
 

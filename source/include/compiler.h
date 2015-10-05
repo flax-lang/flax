@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+
 #pragma once
 
 namespace llvm
@@ -13,17 +14,35 @@ namespace llvm
 	class Module;
 }
 
+namespace Parser
+{
+	struct ParserState;
+	struct Token;
+}
+
 namespace Compiler
 {
-	Ast::Root* compileFile(std::string filename, std::vector<std::string>& filenames, std::map<std::string, Ast::Root*>& rootmap, std::vector<llvm::Module*>& modules, Codegen::CodegenInstance* cgi);
+	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, llvm::Module*>>
+	compileFile(std::string filename);
 
 	// final stages
-	void compileProgram(Codegen::CodegenInstance* cgi, std::vector<std::string> filelist, std::string foldername, std::string outname);
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
+
+	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
 	std::string getTarget();
 	std::string getPrefix();
 	std::string getMcModel();
 	std::string getSysroot();
+
+	std::deque<Parser::Token> getFileTokens(std::string fullPath);
+	std::vector<std::string> getFileLines(std::string fullPath);
+	std::string getFileContents(std::string fullPath);
+
+	std::string getPathFromFile(std::string path);
+	std::string getFilenameFromPath(std::string path);
+	std::string getFullPathOfFile(std::string partial);
+
 
 	bool getIsCompileOnly();
 	int getOptimisationLevel();
@@ -39,8 +58,15 @@ namespace Compiler
 		NoWarnings				= 0x2,
 	};
 
-	bool getFlag(Flag f);
+	enum class Warning
+	{
+		UnusedVariable,
+		UseBeforeAssign,
+		UseAfterFree,
+	};
 
+	bool getFlag(Flag f);
+	bool getWarningEnabled(Warning warning);
 
 	#define COLOUR_RESET			"\033[0m"
 	#define COLOUR_BLACK			"\033[30m"			// Black
@@ -51,7 +77,7 @@ namespace Compiler
 	#define COLOUR_MAGENTA			"\033[35m"			// Magenta
 	#define COLOUR_CYAN				"\033[36m"			// Cyan
 	#define COLOUR_WHITE			"\033[37m"			// White
-	#define COLOUR_BLACK_BOLD		"\033[1m"	// Bold Black
+	#define COLOUR_BLACK_BOLD		"\033[1m"			// Bold Black
 	#define COLOUR_RED_BOLD			"\033[1m\033[31m"	// Bold Red
 	#define COLOUR_GREEN_BOLD		"\033[1m\033[32m"	// Bold Green
 	#define COLOUR_YELLOW_BOLD		"\033[1m\033[33m"	// Bold Yellow
@@ -59,6 +85,7 @@ namespace Compiler
 	#define COLOUR_MAGENTA_BOLD		"\033[1m\033[35m"	// Bold Magenta
 	#define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
 	#define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
+	#define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
 }
 
 
