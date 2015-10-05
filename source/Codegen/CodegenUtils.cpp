@@ -682,14 +682,15 @@ namespace Codegen
 
 	std::pair<TypePair_t*, int> CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
 	{
-		// std::deque<std::string> curDepth = this->namespaceStack;
 		auto curDepth = scope;
 
+		// this thing handles pointers properly.
+		if(this->getLlvmTypeOfBuiltin(name) != 0)
+			return { 0, 0 };
+
+		// not this though.
 		int indirections = 0;
 		name = this->unwrapPointerType(name, &indirections);
-
-		if(this->getLlvmTypeOfBuiltin(name) != 0)
-			return { 0, indirections };
 
 		for(size_t i = 0; i <= curDepth.size(); i++)
 		{
@@ -706,7 +707,7 @@ namespace Codegen
 				curDepth.pop_back();
 		}
 
-		return { 0, 0 };
+		return { 0, -1 };
 	}
 
 

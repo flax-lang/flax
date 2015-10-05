@@ -11,6 +11,8 @@ func main() -> Int
 
 	printf("HELLO\n")
 
+	let g: Int8 = 100
+	printf("g is: %d\n", g)
 
 	let b: Bar()
 	return 0
@@ -23,6 +25,16 @@ class Bar
 	{
 		printf("DID BAR\n");
 		var foo: some.Qux
+	}
+
+	func fa()
+	{
+		// fb()
+	}
+
+	func fb()
+	{
+		printf("FB!!\n")
 	}
 
 	// var foo: Foo
