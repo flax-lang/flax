@@ -1200,17 +1200,17 @@ namespace Codegen
 	std::deque<std::string> CodegenInstance::unwrapNamespacedType(std::string raw)
 	{
 		iceAssert(raw.size() > 0);
-		if(raw.front() == '(')
+		if(raw.find("::") == std::string::npos)
+		{
+			return { raw };
+		}
+		else if(raw.front() == '(')
 		{
 			error("enosup");
 		}
 		else if(raw.front() == '[')
 		{
 			error("enosup");
-		}
-		else if(raw.find("::") == std::string::npos)
-		{
-			return { raw };
 		}
 
 		// else
