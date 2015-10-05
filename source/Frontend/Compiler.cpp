@@ -263,7 +263,7 @@ namespace Compiler
 
 
 	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, llvm::Module*>>
-	compileFile(std::string filename)
+	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		using namespace Codegen;
 
@@ -314,6 +314,9 @@ namespace Compiler
 
 		Root* dummyRoot = new Root();
 		CodegenInstance* rcgi = new CodegenInstance();
+
+		rcgi->customOperatorMap = foundOps;
+		rcgi->customOperatorMapRev = foundOpsRev;
 
 		for(auto gr : groups)
 		{

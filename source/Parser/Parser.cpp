@@ -130,7 +130,6 @@ namespace Parser
 			case TType::Identifier:
 				if(ps.cgi->customOperatorMapRev.find(tok.text) != ps.cgi->customOperatorMapRev.end())
 				{
-					printf("FOUND\n");
 					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[tok.text]].second;
 				}
 				return -1;
@@ -262,7 +261,6 @@ namespace Parser
 
 		ps.skipNewline();
 
-
 		// hackjob... kinda.
 		auto findOperators = [&](ParserState& ps) {
 
@@ -283,7 +281,9 @@ namespace Parser
 					if(!ps.visited[file])
 					{
 						ps.visited[file] = true;
-						parseAllCustomOperators(ps, file, curpath);
+
+						ParserState fakePs(ps.cgi);
+						parseAllCustomOperators(fakePs, file, curpath);
 					}
 				}
 				else if(t.type == TType::At)
@@ -1396,11 +1396,6 @@ namespace Parser
 		while(true)
 		{
 			int prec = getOpPrec(ps, ps.front());
-			if(ps.front().text == "•")
-			{
-				printf("PREC = %d\n", prec);
-			}
-
 			if(prec < prio && !isRightAssociativeOp(ps.front()))
 				return lhs;
 
@@ -1470,7 +1465,18 @@ namespace Parser
 				case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 				case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
 											break;
-				default:					parserError("Unknown operator '%s'", tok_op.text.c_str());
+				default:
+				{
+					if(ps.cgi->customOperatorMapRev.find(tok_op.text) != ps.cgi->customOperatorMapRev.end())
+					{
+						op = ps.cgi->customOperatorMapRev[tok_op.text];
+						break;
+					}
+					else
+					{
+						parserError("Unknown operator '%s'", tok_op.text.c_str());
+					}
+				}
 			}
 
 			if(op == ArithmeticOp::MemberAccess)

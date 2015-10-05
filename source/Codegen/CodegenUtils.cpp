@@ -1968,9 +1968,20 @@ namespace Codegen
 			iceAssert(val);
 			return Result_t(builder.CreateCall2(opov, self, val), 0);
 		}
+		else
+		{
+			// custom operator.
+			// get the function(s) that correspond to this operator.
+			iceAssert(opov);
 
-		if(fail)	GenError::noOpOverload(this, user, cls->name, op);
-		return Result_t(0, 0);
+			return Result_t(builder.CreateCall2(opov, self, val), 0);
+
+			// printf("have function: %s\n", opov->getName().bytes_begin());
+			// error("");
+		}
+
+		// if(fail)	GenError::noOpOverload(this, user, cls->name, op);
+		// return Result_t(0, 0);
 	}
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)

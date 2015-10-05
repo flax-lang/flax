@@ -43,14 +43,13 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		if(decl->params.size() != 1)
 			error(this, "Operator overload can only have one argument");
 	}
+	else if(decl->params.size() > 1)
+	{
+		// custom operator... but we have no way to handle 2 arguments
+		// todo: will change when we allow operator definitions outside of class bodies.
 
-
-	// custom operator: can't check shit.
-
-	// else
-	// {
-	// 	error(cgi, this, "(%s:%d) -> Internal check failed: invalid operator", __FILE__, __LINE__);
-	// }
+		error(this, "Cannot currently handle operator overloads with more than one argument (other than self)");
+	}
 
 	return Result_t(0, 0);
 }
