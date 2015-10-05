@@ -91,6 +91,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 				// generate it.
 				rt.t.second->codegen(cgi);
 
+				// printf("expediting function call to %s\n", this->name.c_str());
+
 				rt = cgi->resolveFunction(this, this->name, this->params);
 				if(!rt.resolved) error("nani???");
 				if(rt.t.first == 0) goto failedToFind;
