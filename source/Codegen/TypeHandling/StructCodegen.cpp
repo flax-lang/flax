@@ -26,6 +26,15 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
 
+	// if we're already done, don't.
+	if(this->didCodegen)
+		return Result_t(0, 0);
+
+	this->didCodegen = true;
+
+
+
+
 
 	llvm::GlobalValue::LinkageTypes linkageType;
 	if(this->attribs & Attr_VisPublic)
@@ -124,8 +133,6 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return 0;
-
-
 
 	// check our inheritances??
 	llvm::Type** types = new llvm::Type*[this->members.size()];

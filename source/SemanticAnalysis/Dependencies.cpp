@@ -7,12 +7,60 @@
 #include "../include/compiler.h"
 #include "../include/dependency.h"
 
+#include <fstream>
+#include <sstream>
+
 using namespace Codegen;
 using namespace Ast;
 
 namespace Codegen
 {
 	static void stronglyConnect(DependencyGraph* graph, int& index, std::deque<std::deque<DepNode*>>& connected, DepNode* node);
+
+	void DependencyGraph::addModuleDependency(std::string from, std::string to, Expr* imp)
+	{
+		// find existing node
+		DepNode* src = 0;
+		DepNode* dst = 0;
+		for(auto d : this->nodes)
+		{
+			if(!src && d->name == from)
+			{
+				src = d;
+			}
+			else if(!dst && d->name == to)
+			{
+				dst = d;
+			}
+		}
+
+		if(!src)
+		{
+			src = new DepNode();
+			src->name = from;
+
+			this->nodes.push_back(src);
+		}
+
+		if(!dst)
+		{
+			dst = new DepNode();
+			dst->name = to;
+
+			this->nodes.push_back(dst);
+		}
+
+		dst->users.push_back({ src, imp });
+
+		Dep* d = new Dep();
+		d->type = DepType::Module;
+		d->from = src;
+		d->to = dst;
+
+		this->edgesFrom[src].push_back(d);
+	}
+
+
 
 	std::deque<std::deque<DepNode*>> DependencyGraph::findCyclicDependencies()
 	{
@@ -85,26 +133,46 @@ namespace Codegen
 			connected.push_back(set);
 		}
 	}
+
+
+	std::deque<DepNode*> DependencyGraph::findDependenciesOf(Expr* expr)
+	{
+		std::deque<DepNode*> ret;
+		for(auto e : this->edgesFrom)
+		{
+			if(e.first->expr == expr)
+			{
+				for(auto d : e.second)
+					ret.push_back(d->to);
+			}
+		}
+
+		return ret;
+	}
 }
 
 namespace SemAnalysis
 {
-	static Dep* createDependencies(std::deque<DepNode*>& nodes, std::map<DepNode*, std::deque<Dep*>>& edges, Expr* from, Expr* expr);
+	static Dep* createDependencies(DependencyGraph* graph, Expr* from, Expr* expr);
 
 	DependencyGraph* resolveDependencyGraph(CodegenInstance* cgi, Root* root)
 	{
 		DependencyGraph* graph = new DependencyGraph();
 
 		for(auto top : root->topLevelExpressions)
-			createDependencies(graph->nodes, graph->edgesFrom, root, top);
+			createDependencies(graph, root, top);
 
-		std::deque<std::deque<DepNode*>> groups = graph->findCyclicDependencies();
+		// this is destructive for the graph, so.
+		DependencyGraph* tmp = new DependencyGraph();
+		tmp->edgesFrom = graph->edgesFrom;
+		tmp->nodes = graph->nodes;
+
+		std::deque<std::deque<DepNode*>> groups = tmp->findCyclicDependencies();
 		for(std::deque<DepNode*> group : groups)
 		{
 			if(group.size() > 1)
 				error(group.front()->expr, "cycle");
 		}
-
 
 		return graph;
 	}
@@ -113,197 +181,224 @@ namespace SemAnalysis
 
 
 
-	static void _createDep(std::deque<DepNode*>& nodes, std::map<DepNode*, std::deque<Dep*>>& edgesFrom, Dep* d, Expr* src, Expr* ex, std::string dest)
+	static void _createDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string dest)
 	{
-		DepNode* from = new DepNode();
-		DepNode* to = new DepNode();
+		// find existing node
+		DepNode* from = 0;
+		for(auto d : graph->nodes)
+		{
+			if(!from && d->expr == src)
+			{
+				from = d;
+			}
+		}
 
-		from->expr = src;
+		if(!from)
+		{
+			from = new DepNode();
+			from->expr = src;
+			graph->nodes.push_back(from);
+		}
+
+
+		DepNode* to = new DepNode();
 		to->name = dest;
+		graph->nodes.push_back(to);
+
 		to->users.push_back({ from, src });
 
 		d->from = from;
 		d->to = to;
 
-		nodes.push_back(from);
-		nodes.push_back(to);
-
-		edgesFrom[from].push_back(d);
+		graph->edgesFrom[from].push_back(d);
 	}
 
-	static void createIdentifierDep(std::deque<DepNode*>& nodes, std::map<DepNode*, std::deque<Dep*>>& edges, Dep* d, Expr* src,
-		Expr* ex, std::string name)
+	static void createFunctionDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string name)
 	{
-		_createDep(nodes, edges, d, src, ex, name);
-		d->type = DepType::Identifier;
+		_createDep(graph, d, src, ex, name);
+		d->type = DepType::Function;
 	}
 
-	static void createTypeDep(std::deque<DepNode*>& nodes, std::map<DepNode*, std::deque<Dep*>>& edges, Dep* d, Expr* src, std::string name)
+	static void createExprDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* dest)
 	{
-		_createDep(nodes, edges, d, src, 0, name);
+		// _createDep(graph, d, src, dest, "");
+		// d->type = DepType::Value;
+	}
+
+	static void createTypeDep(DependencyGraph* graph, Dep* d, Expr* src, std::string name)
+	{
+		_createDep(graph, d, src, 0, name);
 		d->type = DepType::Type;
 	}
 
 
 
-	static Dep* createDependencies(std::deque<DepNode*>& nodes, std::map<DepNode*, std::deque<Dep*>>& edges, Expr* from, Expr* expr)
+	static Dep* createDependencies(DependencyGraph* graph, Expr* from, Expr* expr)
 	{
+		createExprDep(graph, new Dep(), from, expr);
+
 		Dep* dep = new Dep();
 
 		if(VarRef* vr = dynamic_cast<VarRef*>(expr))
 		{
-			createIdentifierDep(nodes, edges, dep, from, vr, vr->name);
+			(void) vr;
+			// createIdentifierDep(graph, dep, from, vr, vr->name);
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
 			if(vd->type.strType != "Inferred")
 			{
-				createTypeDep(nodes, edges, dep, vd, vd->type.strType);
+				// info(vd, "creating type dep on %s (vardecl)\n", vd->type.strType.c_str());
+				createTypeDep(graph, dep, vd, vd->type.strType);
 			}
 
 			if(vd->initVal)
 			{
-				createDependencies(nodes, edges, vd, vd->initVal);
+				// info(vd, "init val dep\n");
+				createDependencies(graph, vd, vd->initVal);
 			}
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{
-			createIdentifierDep(nodes, edges, dep, from, fc, fc->name);
+			createFunctionDep(graph, dep, from, fc, fc->name);
 
 			for(auto p : fc->params)
-				createDependencies(nodes, edges, fc, p);
+				createDependencies(graph, fc, p);
 		}
 		else if(Func* fn = dynamic_cast<Func*>(expr))
 		{
-			createDependencies(nodes, edges, fn, fn->decl);
+			createDependencies(graph, fn, fn->decl);
 
 			for(auto ex : fn->block->statements)
-				createDependencies(nodes, edges, fn, ex);
+				createDependencies(graph, fn, ex);
 
 			for(auto ex : fn->block->deferredStatements)
-				createDependencies(nodes, edges, fn, ex);
+				createDependencies(graph, fn, ex);
 		}
 		else if(FuncDecl* decl = dynamic_cast<FuncDecl*>(expr))
 		{
 			if(decl->type.strType != "Void")
-				createTypeDep(nodes, edges, dep, decl, decl->type.strType);
+			{
+				// info(decl, "creating type dep on %s\n", decl->type.strType.c_str());
+				createTypeDep(graph, dep, decl, decl->type.strType);
+			}
 
 			for(auto p : decl->params)
-				createDependencies(nodes, edges, decl, p);
+				createDependencies(graph, decl, p);
 		}
 		else if(ForeignFuncDecl* ffi = dynamic_cast<ForeignFuncDecl*>(expr))
 		{
-			createDependencies(nodes, edges, ffi, ffi->decl);
+			createDependencies(graph, ffi, ffi->decl);
 		}
 		else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 		{
-			createDependencies(nodes, edges, ma, ma->left);
-			createDependencies(nodes, edges, ma, ma->right);
+			createDependencies(graph, ma, ma->left);
+			createDependencies(graph, ma, ma->right);
 		}
 		else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
 		{
-			createDependencies(nodes, edges, uo, uo->expr);
+			createDependencies(graph, uo, uo->expr);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
-			createDependencies(nodes, edges, bo, bo->left);
-			createDependencies(nodes, edges, bo, bo->right);
+			createDependencies(graph, bo, bo->left);
+			createDependencies(graph, bo, bo->right);
 
 			// todo: custom operators
 		}
 		else if(Alloc* al = dynamic_cast<Alloc*>(expr))
 		{
-			createDependencies(nodes, edges, al, al->count);
+			createDependencies(graph, al, al->count);
 
 			for(auto p : al->params)
-				createDependencies(nodes, edges, al, p);
+				createDependencies(graph, al, p);
 
-			createTypeDep(nodes, edges, dep, al, al->type.strType);
+			createTypeDep(graph, dep, al, al->type.strType);
 		}
 		else if(Dealloc* da = dynamic_cast<Dealloc*>(expr))
 		{
-			createDependencies(nodes, edges, da, da->expr);
+			createDependencies(graph, da, da->expr);
 		}
 		else if(Return* ret = dynamic_cast<Return*>(expr))
 		{
-			createDependencies(nodes, edges, ret, ret->val);
+			createDependencies(graph, ret, ret->val);
 		}
 		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
 		{
 			for(auto e : ifst->cases)
 			{
-				createDependencies(nodes, edges, ifst, e.first);
-				createDependencies(nodes, edges, ifst, e.second);
+				createDependencies(graph, ifst, e.first);
+				createDependencies(graph, ifst, e.second);
 			}
 
 			if(ifst->final)
-				createDependencies(nodes, edges, ifst, ifst->final);
+				createDependencies(graph, ifst, ifst->final);
 		}
 		else if(Tuple* tup = dynamic_cast<Tuple*>(expr))
 		{
 			for(auto e : tup->values)
-				createDependencies(nodes, edges, tup, e);
+				createDependencies(graph, tup, e);
 		}
 		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 		{
-			createDependencies(nodes, edges, ai, ai->arr);
-			createDependencies(nodes, edges, ai, ai->index);
+			createDependencies(graph, ai, ai->arr);
+			createDependencies(graph, ai, ai->index);
 		}
 		else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 		{
 			for(auto v : al->values)
-				createDependencies(nodes, edges, al, v);
+				createDependencies(graph, al, v);
 		}
 		else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
 		{
-			createDependencies(nodes, edges, puo, puo->expr);
+			createDependencies(graph, puo, puo->expr);
 
 			for(auto v : puo->args)
-				createDependencies(nodes, edges, puo, v);
+				createDependencies(graph, puo, v);
 		}
 		else if(Struct* str = dynamic_cast<Struct*>(expr))
 		{
 			for(auto m : str->members)
-				createDependencies(nodes, edges, str, m);
+				createDependencies(graph, str, m);
 
 			for(auto oo : str->opOverloads)
-				createDependencies(nodes, edges, str, oo->func);
+				createDependencies(graph, str, oo->func);
 		}
 		else if(Class* cls = dynamic_cast<Class*>(expr))
 		{
 			for(auto m : cls->members)
-				createDependencies(nodes, edges, cls, m);
+				createDependencies(graph, cls, m);
 
 			for(auto f : cls->funcs)
-				createDependencies(nodes, edges, cls, f);
+				createDependencies(graph, cls, f);
 
 			// todo: computed properties
 		}
 		else if(Enumeration* enr = dynamic_cast<Enumeration*>(expr))
 		{
 			for(auto c : enr->cases)
-				createDependencies(nodes, edges, enr, c.second);
+				createDependencies(graph, enr, c.second);
 		}
 		else if(BracedBlock* bb = dynamic_cast<BracedBlock*>(expr))
 		{
 			for(auto ex : bb->statements)
-				createDependencies(nodes, edges, bb, ex);
+				createDependencies(graph, bb, ex);
 
 			for(auto ex : bb->deferredStatements)
-				createDependencies(nodes, edges, bb, ex);
+				createDependencies(graph, bb, ex);
 		}
 		else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(expr))
 		{
-			createDependencies(nodes, edges, wl, wl->cond);
-			createDependencies(nodes, edges, wl, wl->body);
+			createDependencies(graph, wl, wl->cond);
+			createDependencies(graph, wl, wl->body);
 		}
 		else if(Typeof* to = dynamic_cast<Typeof*>(expr))
 		{
-			createDependencies(nodes, edges, to, to->inside);
+			createDependencies(graph, to, to->inside);
 		}
 		else if(NamespaceDecl* nd = dynamic_cast<NamespaceDecl*>(expr))
 		{
-			createDependencies(nodes, edges, nd, nd->innards);
+			createDependencies(graph, nd, nd->innards);
 		}
 		else if(dynamic_cast<Import*>(expr) || dynamic_cast<Number*>(expr)
 			|| dynamic_cast<StringLiteral*>(expr) || dynamic_cast<DummyExpr*>(expr))

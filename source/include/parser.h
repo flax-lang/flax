@@ -172,7 +172,7 @@ namespace Parser
 	typedef std::deque<Token> TokenList;
 	struct ParserState
 	{
-		ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
+		explicit ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
 
 		TokenList tokens;
 
@@ -180,14 +180,14 @@ namespace Parser
 
 		Token curtok;
 		PosInfo currentPos;
-		Ast::Root* rootNode;
-		uint64_t curAttrib;
+		Ast::Root* rootNode = 0;
+		uint64_t curAttrib = 0;
 
-		Codegen::CodegenInstance* cgi;
+		Codegen::CodegenInstance* cgi = 0;
 
-		bool isParsingStruct;
-		bool didHaveLeftParen;
-		int currentOpPrec;
+		bool isParsingStruct = false;
+		bool didHaveLeftParen = false;
+		int currentOpPrec = 0;
 
 
 		Token front()

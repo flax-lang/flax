@@ -310,6 +310,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		// varptr = this->lastMinuteUnwrapType(varptr);
 
+		// printf("%s -> %s\n", this->getReadableType(rhs).c_str(), this->getReadableType(varptr).c_str());
 		this->builder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}
@@ -566,22 +567,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		{
 			lhsInteger = true;
 		}
-		// else if(lhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
-		// 		lhsInteger = true;
-		// }
-
 
 		if(rhs->getType()->isIntegerTy())
 		{
 			rhsInteger = true;
+
 		}
-		// else if(rhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
-		// 		rhsInteger = true;
-		// }
 
 		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
 	}

@@ -40,6 +40,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
 	{
+		assert(0);
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
@@ -47,22 +48,21 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		return cgi->callTypeInitialiser(tp, this, args);
 	}
 
-
-
-
 	std::vector<llvm::Value*> args;
 	std::vector<llvm::Value*> argPtrs;
-
 
 	llvm::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
 	{
+		// we're not a generic function.
 		if(!this->cachedResolveTarget.resolved)
 		{
 			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 
 			if(!rt.resolved)
 			{
+				failedToFind:
+
 				// print a better error message.
 				std::vector<std::string> argtypes;
 				for(auto a : this->params)
@@ -82,8 +82,20 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 						candidates += cgi->printAst(fs.second) + "\n";
 				}
 
-				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates:\n%s",
-					this->name.c_str(), argstr.c_str(), candidates.c_str());
+				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
+					this->name.c_str(), argstr.c_str(), candidates.size(), candidates.c_str());
+			}
+
+			if(rt.t.first == 0)
+			{
+				// generate it.
+				rt.t.second->codegen(cgi);
+
+				// printf("expediting function call to %s\n", this->name.c_str());
+
+				rt = cgi->resolveFunction(this, this->name, this->params);
+				if(!rt.resolved) error("nani???");
+				if(rt.t.first == 0) goto failedToFind;
 			}
 
 			this->cachedResolveTarget = rt;

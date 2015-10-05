@@ -36,49 +36,49 @@ namespace Parser
 		tok.posinfo = pos;
 
 		// check compound symbols first.
-		if(stream.find("==") == 0)
+		if(stream.compare(0, 2, "==") == 0)
 		{
 			tok.text = "==";
 			tok.type = TType::EqualsTo;
 			read = 2;
 		}
-		else if(stream.find(">=") == 0)
+		else if(stream.compare(0, 2, ">=") == 0)
 		{
 			tok.text = ">=";
 			tok.type = TType::GreaterEquals;
 			read = 2;
 		}
-		else if(stream.find("<=") == 0)
+		else if(stream.compare(0, 2, "<=") == 0)
 		{
 			tok.text = "<=";
 			tok.type = TType::LessThanEquals;
 			read = 2;
 		}
-		else if(stream.find("!=") == 0)
+		else if(stream.compare(0, 2, "!=") == 0)
 		{
 			tok.text = "!=";
 			tok.type = TType::NotEquals;
 			read = 2;
 		}
-		else if(stream.find("||") == 0)
+		else if(stream.compare(0, 2, "||") == 0)
 		{
 			tok.text = "||";
 			tok.type = TType::LogicalOr;
 			read = 2;
 		}
-		else if(stream.find("&&") == 0)
+		else if(stream.compare(0, 2, "&&") == 0)
 		{
 			tok.text = "&&";
 			tok.type = TType::LogicalAnd;
 			read = 2;
 		}
-		else if(stream.find("->") == 0)
+		else if(stream.compare(0, 2, "->") == 0)
 		{
 			tok.text = "->";
 			tok.type = TType::Arrow;
 			read = 2;
 		}
-		else if(stream.find("//") == 0)
+		else if(stream.compare(0, 2, "//") == 0)
 		{
 			tok.text = "//";
 
@@ -89,85 +89,85 @@ namespace Parser
 
 			tok.type = TType::Comment;
 		}
-		else if(stream.find("<<") == 0)
+		else if(stream.compare(0, 2, "<<") == 0)
 		{
 			tok.text = "<<";
 			tok.type = TType::ShiftLeft;
 			read = 2;
 		}
-		else if(stream.find(">>") == 0)
+		else if(stream.compare(0, 2, ">>") == 0)
 		{
 			tok.text = ">>";
 			tok.type = TType::ShiftRight;
 		}
-		else if(stream.find("++") == 0)
+		else if(stream.compare(0, 2, "++") == 0)
 		{
 			tok.text = "++";
 			tok.type = TType::DoublePlus;
 			read = 2;
 		}
-		else if(stream.find("--") == 0)
+		else if(stream.compare(0, 2, "--") == 0)
 		{
 			tok.text = "--";
 			tok.type = TType::DoubleMinus;
 			read = 2;
 		}
-		else if(stream.find("+=") == 0)
+		else if(stream.compare(0, 2, "+=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::PlusEq;
 			read = 2;
 		}
-		else if(stream.find("-=") == 0)
+		else if(stream.compare(0, 2, "-=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MinusEq;
 			read = 2;
 		}
-		else if(stream.find("*=") == 0)
+		else if(stream.compare(0, 2, "*=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MultiplyEq;
 			read = 2;
 		}
-		else if(stream.find("/=") == 0)
+		else if(stream.compare(0, 2, "/=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::DivideEq;
 			read = 2;
 		}
-		else if(stream.find("%=") == 0)
+		else if(stream.compare(0, 2, "%=") == 0)
 		{
 			tok.text = "%=";
 			tok.type = TType::ModEq;
 			read = 2;
 		}
-		else if(stream.find("<<=") == 0)
+		else if(stream.compare(0, 3, "<<=") == 0)
 		{
 			tok.text = "<<=";
 			tok.type = TType::ShiftLeftEq;
 			read = 3;
 		}
-		else if(stream.find(">>=") == 0)
+		else if(stream.compare(0, 3, ">>=") == 0)
 		{
 			tok.text = ">>=";
 			tok.type = TType::ShiftRightEq;
 			read = 3;
 		}
-		else if(stream.find("...") == 0)
+		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";
 			tok.type = TType::Elipsis;
 			read = 3;
 		}
-		else if(stream.find("::") == 0)
+		else if(stream.compare(0, 2, "::") == 0)
 		{
 			tok.text = "::";
 			tok.type = TType::DoubleColon;
 			read = 2;
 		}
 		// block comments
-		else if(stream.find("/*") == 0)
+		else if(stream.compare(0, 2, "/*") == 0)
 		{
 			// TODO: BLOCK COMMENTS ARE FUCKING BUGGY AND IFFY
 
@@ -214,43 +214,43 @@ namespace Parser
 
 			return getNextToken(stream, pos);
 		}
-		else if(stream.find("*/") == 0)
+		else if(stream.compare(0, 2, "*/") == 0)
 		{
 			parserError("Unexpected '*/'");
 		}
 
 		// unicode stuff
-		else if(stream.find("ƒ") == 0)
+		else if(stream.compare(0, strlen("ƒ"), "ƒ") == 0)
 		{
 			tok.text = "func";
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
 		}
-		else if(stream.find("ﬁ") == 0)
+		else if(stream.compare(0, strlen("ﬁ"), "ﬁ") == 0)
 		{
 			tok.text = "ffi";
 			tok.type = TType::ForeignFunc;
 			read = std::string("ﬁ").length();
 		}
-		else if(stream.find("÷") == 0)
+		else if(stream.compare(0, strlen("÷"), "÷") == 0)
 		{
 			tok.text = "÷";
 			tok.type = TType::Divide;
 			read = std::string("÷").length();
 		}
-		else if(stream.find("≠") == 0)
+		else if(stream.compare(0, strlen("≠"), "≠") == 0)
 		{
 			tok.text = "≠";
 			tok.type = TType::NotEquals;
 			read = std::string("≠").length();
 		}
-		else if(stream.find("≤") == 0)
+		else if(stream.compare(0, strlen("≤"), "≤") == 0)
 		{
 			tok.text = "≤";
 			tok.type = TType::LessThanEquals;
 			read = std::string("≤").length();
 		}
-		else if(stream.find("≥") == 0)
+		else if(stream.compare(0, strlen("≥"), "≥") == 0)
 		{
 			tok.text = "≥";
 			tok.type = TType::GreaterEquals;
