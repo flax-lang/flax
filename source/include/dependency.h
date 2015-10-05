@@ -22,10 +22,9 @@ namespace Codegen
 	enum class DepType
 	{
 		Invalid,
-		Identifier,
-		Value,
-		Type,
+		Function,
 		Module,
+		Type,
 	};
 
 	struct DepNode

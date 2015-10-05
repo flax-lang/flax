@@ -5,7 +5,7 @@
 import String
 
 
-func main() -> Int
+public func main() -> Int
 {
 	var foo: String
 
@@ -15,6 +15,9 @@ func main() -> Int
 	printf("g is: %d\n", g)
 
 	let b: Bar()
+
+	fa()
+
 	return 0
 }
 
@@ -25,16 +28,6 @@ class Bar
 	{
 		printf("DID BAR\n");
 		var foo: some.Qux
-	}
-
-	func fa()
-	{
-		// fb()
-	}
-
-	func fb()
-	{
-		printf("FB!!\n")
 	}
 
 	// var foo: Foo
@@ -50,6 +43,15 @@ namespace some
 
 
 
+func fa()
+{
+	fb()
+}
+
+func fb()
+{
+	printf("FB!!\n")
+}
 
 
 class Foo
