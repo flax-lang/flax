@@ -213,10 +213,10 @@ namespace SemAnalysis
 		graph->edgesFrom[from].push_back(d);
 	}
 
-	static void createIdentifierDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string name)
+	static void createFunctionDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string name)
 	{
 		_createDep(graph, d, src, ex, name);
-		d->type = DepType::Identifier;
+		d->type = DepType::Function;
 	}
 
 	static void createExprDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* dest)
@@ -241,7 +241,8 @@ namespace SemAnalysis
 
 		if(VarRef* vr = dynamic_cast<VarRef*>(expr))
 		{
-			createIdentifierDep(graph, dep, from, vr, vr->name);
+			(void) vr;
+			// createIdentifierDep(graph, dep, from, vr, vr->name);
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
@@ -259,7 +260,7 @@ namespace SemAnalysis
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 		{
-			createIdentifierDep(graph, dep, from, fc, fc->name);
+			createFunctionDep(graph, dep, from, fc, fc->name);
 
 			for(auto p : fc->params)
 				createDependencies(graph, fc, p);

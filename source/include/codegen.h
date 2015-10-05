@@ -156,7 +156,8 @@ namespace Codegen
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addFunctionToScope(FuncPair_t func);
+		void addPublicFunc(FuncPair_t func);
+		void addFunctionToScope(FuncPair_t func, FunctionTree* root = 0);
 		void removeFunctionFromScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
@@ -192,7 +193,6 @@ namespace Codegen
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
-		void addPublicFunc(FuncPair_t fp);
 
 		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
 

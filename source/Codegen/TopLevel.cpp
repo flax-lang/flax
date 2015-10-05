@@ -21,9 +21,34 @@ static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name
 	ftree->types[name] = { 0, { type, tk } };
 
 	if(type->attribs & Attr_VisPublic)
-	{
 		pftree->types[name] = { 0, { type, tk } };
+}
+
+static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
+{
+	FunctionTree* ftree = cgi->getCurrentFuncTree();
+	FunctionTree* pftree = cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree);
+
+	iceAssert(ftree);
+	iceAssert(pftree);
+
+
+	if(decl->name == "main")
+	{
+		if(!(decl->attribs & Attr_VisPublic))
+			warn(decl, "main() function should be declared as public, forcing");
+
+		if(decl->attribs & Attr_ForceMangle)
+			warn(decl, "main() function should not be name mangled, disabling @forcemangle");
+
+		decl->attribs |= Attr_VisPublic;
+		decl->isFFI = true;
 	}
+
+	ftree->funcs.push_back({ 0, decl });
+
+	if(decl->attribs & Attr_VisPublic)
+		pftree->funcs.push_back({ 0, decl });
 }
 
 
@@ -39,11 +64,13 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
 			Struct* str				= dynamic_cast<Struct*>(e);
 			Class* cls				= dynamic_cast<Class*>(e);		// enum : class, extension : class
+			Func* fn				= dynamic_cast<Func*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->name, TypeKind::Struct);
 			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
+			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 		}
 	}
 	else if(pass == 1)
@@ -110,13 +137,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 			else if(func)
 			{
-				if(func->decl->name == "main")
-				{
-					func->decl->attribs |= Attr_VisPublic;
-					func->decl->isFFI = true;
-				}
 
-				func->decl->codegen(cgi);
+				// func->decl->codegen(cgi);
 			}
 		}
 	}
@@ -156,8 +178,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 7: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
-			Func* func				= dynamic_cast<Func*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			Func* func						= dynamic_cast<Func*>(e);
+			NamespaceDecl* ns				= dynamic_cast<NamespaceDecl*>(e);
 
 			if(func && !func->didCodegen)	func->codegen(cgi);
 			if(ns)							ns->codegenPass(cgi, pass);
@@ -171,7 +193,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
-	cgi->pushNamespaceScope(this->name);
+	cgi->pushNamespaceScope(this->name, true);
 	cgi->usingNamespaces.push_back(this);
 
 	codegenTopLevel(cgi, pass, this->innards->statements, true);
@@ -186,10 +208,7 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 	// this is getting quite out of hand.
 	for(int pass = 0; pass <= 7; pass++)
-	{
-		// printf("starting pass %d\n", pass);
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
-	}
 
 	// run the after-codegen checkers.
 	SemAnalysis::analyseVarUsage(cgi);
@@ -197,3 +216,31 @@ Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 
 	return Result_t(0, 0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
