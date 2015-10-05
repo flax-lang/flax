@@ -16,7 +16,8 @@ public func main() -> Int
 
 	let b: Bar()
 
-	let m: (Int, Int) = (3, 4)
+	let m = (fa(), fb())
+	printf("m is (%d, %d)\n", m.0, m.1)
 
 	return 0
 }
