@@ -224,8 +224,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
-		std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
-
+		// not actually needed??????
+		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
 
 		std::deque<std::string> ns = cgi->unwrapNamespacedType(this->type.strType);
 		std::string atype = ns.back();
