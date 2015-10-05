@@ -5,6 +5,7 @@
 
 #include "../include/ast.h"
 #include "../include/codegen.h"
+#include "../include/dependency.h"
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GLobalVariable.h"
@@ -150,6 +151,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
 
+
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
 		Number* n = 0;
@@ -159,21 +161,24 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
 		{
-			// Number* n = 0;
-			// printf("assign num to var %s (%s)\n", this->name.c_str(), typeid(*this->initVal).name());
-			// if((n = dynamic_cast<Number*>(this->initVal)))
-			// {
-			// 	uint64_t max = pow(2, val->getType()->getIntegerBitWidth());
-			// 	if(max == 0) max = UINT64_MAX;
+			Number* n = 0;
 
-			// 	printf("assign %lld to var: max: %lld\n", n->ival, max);
-			// if((uint64_t) n->ival < max)
+			if((n = dynamic_cast<Number*>(this->initVal)))
+			{
+				uint64_t max = pow(2, ai->getType()->getPointerElementType()->getIntegerBitWidth()) - 1;
+				if(max == 0)
+					max = UINT64_MAX;
 
-
-			val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
-
-
-			// }
+				if((uint64_t) n->ival < max)
+				{
+					val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+				}
+				else
+				{
+					error(this, "Trying to assign value of %s to variable with max value %s (int%d)", std::to_string(n->ival).c_str(),
+						std::to_string(max).c_str(), ai->getType()->getPointerElementType()->getIntegerBitWidth());
+				}
+			}
 		}
 		else
 		{
@@ -219,7 +224,55 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
-		this->inferredLType = cgi->getLlvmType(this);
+		// not actually needed??????
+		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
+
+		std::deque<std::string> ns = cgi->unwrapNamespacedType(this->type.strType);
+		std::string atype = ns.back();
+		ns.pop_back();
+
+		auto pair = cgi->findTypeInFuncTree(ns, atype);
+		TypePair_t* tp = pair.first;
+		int indirections = pair.second;
+
+		iceAssert(indirections >= 0);
+		if(!tp && cgi->getLlvmTypeOfBuiltin(atype))
+		{
+			this->inferredLType = cgi->getLlvmTypeOfBuiltin(atype);
+		}
+		else if(tp)
+		{
+			llvm::Type* concrete = cgi->getLlvmType(this, true);
+			if(!concrete)
+			{
+				// generate the type.
+				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+				iceAssert(sb);
+
+				// temporarily hijack the main scope
+				auto old = cgi->namespaceStack;
+				cgi->namespaceStack = ns;
+				sb->createType(cgi);
+				sb->codegen(cgi);
+				cgi->namespaceStack = old;
+
+
+				concrete = cgi->getLlvmType(this);
+				iceAssert(concrete);
+			}
+
+
+			this->inferredLType = tp->first;
+			while(indirections > 0)
+			{
+				this->inferredLType = this->inferredLType->getPointerTo();
+				indirections--;
+			}
+		}
+		else
+		{
+			error(this, "Unknown type '%s'", this->type.strType.c_str());
+		}
 	}
 }
 
@@ -366,8 +419,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		TypePair_t* cmplxtype = 0;
 		if(this->type.strType != "Inferred")
 		{
-			cmplxtype = cgi->getType(this->type.strType);
-			if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
+			// cmplxtype = cgi->getType(this->type.strType);
+			// if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
+			iceAssert(this->inferredLType);
+			cmplxtype = cgi->getType(this->inferredLType);
 		}
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);

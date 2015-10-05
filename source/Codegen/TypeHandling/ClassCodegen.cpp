@@ -26,6 +26,11 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
 
+	// if we're already done, don't.
+	if(this->didCodegen)
+		return Result_t(0, 0);
+
+	this->didCodegen = true;
 
 	llvm::GlobalValue::LinkageTypes linkageType;
 	if(this->attribs & Attr_VisPublic)
@@ -514,7 +519,11 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		llvm::Type* type = cgi->getLlvmType(var);
+		// llvm::Type* type = cgi->getLlvmType(var);
+
+		iceAssert(var->inferredLType != 0);
+		llvm::Type* type = var->inferredLType;
+
 		if(type == str)
 		{
 			error(this, "Cannot have non-pointer member of type self");

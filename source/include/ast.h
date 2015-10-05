@@ -138,7 +138,7 @@ namespace Ast
 
 	struct Expr
 	{
-		Expr(Parser::PosInfo pos) : posinfo(pos) { }
+		explicit Expr(Parser::PosInfo pos) : posinfo(pos) { }
 		virtual ~Expr() { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) = 0;
 		virtual bool isBreaking() { return false; }
@@ -151,7 +151,7 @@ namespace Ast
 
 	struct DummyExpr : Expr
 	{
-		DummyExpr(Parser::PosInfo pos) : Expr(pos) { }
+		explicit DummyExpr(Parser::PosInfo pos) : Expr(pos) { }
 		~DummyExpr();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override { return Result_t(0, 0); }
 	};
@@ -276,7 +276,7 @@ namespace Ast
 	struct DeferredExpr;
 	struct BracedBlock : Expr
 	{
-		BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
+		explicit BracedBlock(Parser::PosInfo pos) : Expr(pos) { }
 		~BracedBlock();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
@@ -350,7 +350,7 @@ namespace Ast
 
 	struct BreakableBracedBlock : Expr
 	{
-		BreakableBracedBlock(Parser::PosInfo pos) : Expr(pos) { }
+		explicit BreakableBracedBlock(Parser::PosInfo pos) : Expr(pos) { }
 		~BreakableBracedBlock();
 	};
 
@@ -400,7 +400,7 @@ namespace Ast
 	struct Break : Expr
 	{
 		~Break();
-		Break(Parser::PosInfo pos) : Expr(pos) { }
+		explicit Break(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual bool isBreaking() override { return true; }
 	};
@@ -408,7 +408,7 @@ namespace Ast
 	struct Continue : Expr
 	{
 		~Continue();
-		Continue(Parser::PosInfo pos) : Expr(pos) { }
+		explicit Continue(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 		virtual bool isBreaking() override { return true; }
 	};
@@ -608,7 +608,7 @@ namespace Ast
 	struct Alloc : Expr
 	{
 		~Alloc();
-		Alloc(Parser::PosInfo pos) : Expr(pos) { }
+		explicit Alloc(Parser::PosInfo pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
 		Expr* count = 0;

@@ -194,7 +194,7 @@ namespace Parser
 	{
 		iceAssert(t.type == TType::Integer);
 		int base = 10;
-		if(t.text.find("0x") == 0)
+		if(t.text.compare(0, 2, "0x") == 0)
 			base = 16;
 
 		return std::stoll(t.text, nullptr, base);

@@ -75,6 +75,10 @@ Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm:
 	return Result_t(func, 0);
 }
 
+
+
+
+
 Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
 {
 	iceAssert(types.size() == this->genericTypes.size());
@@ -149,7 +153,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			}
 		}
 	}
-
 
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
