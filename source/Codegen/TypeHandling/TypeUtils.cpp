@@ -19,6 +19,9 @@ namespace Codegen
 {
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
 	{
+		int indirections = 0;
+		type = this->unwrapPointerType(type, &indirections);
+
 		if(!Compiler::getDisableLowercaseBuiltinTypes())
 		{
 			if(type.length() > 0)
@@ -27,27 +30,38 @@ namespace Codegen
 			}
 		}
 
-		if(type == "Int8")			return llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Int16")	return llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Int32")	return llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Int64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Int")		return llvm::Type::getInt64Ty(this->getContext());
+		llvm::Type* real = 0;
 
-		else if(type == "Uint8")	return llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Uint16")	return llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Uint32")	return llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Uint64")	return llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Uint")		return llvm::Type::getInt64Ty(this->getContext());
+		if(type == "Int8")			real = llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Int16")	real = llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Int32")	real = llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Int64")	real = llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Int")		real = llvm::Type::getInt64Ty(this->getContext());
 
-		else if(type == "Float32")	return llvm::Type::getFloatTy(this->getContext());
-		else if(type == "Float")	return llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Uint8")	real = llvm::Type::getInt8Ty(this->getContext());
+		else if(type == "Uint16")	real = llvm::Type::getInt16Ty(this->getContext());
+		else if(type == "Uint32")	real = llvm::Type::getInt32Ty(this->getContext());
+		else if(type == "Uint64")	real = llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Uint")		real = llvm::Type::getInt64Ty(this->getContext());
 
-		else if(type == "Float64")	return llvm::Type::getDoubleTy(this->getContext());
-		else if(type == "Double")	return llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Float32")	real = llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float")	real = llvm::Type::getFloatTy(this->getContext());
 
-		else if(type == "Bool")		return llvm::Type::getInt1Ty(this->getContext());
-		else if(type == "Void")		return llvm::Type::getVoidTy(this->getContext());
-		else return nullptr;
+		else if(type == "Float64")	real = llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Double")	real = llvm::Type::getDoubleTy(this->getContext());
+
+		else if(type == "Bool")		real = llvm::Type::getInt1Ty(this->getContext());
+		else if(type == "Void")		real = llvm::Type::getVoidTy(this->getContext());
+		else return 0;
+
+		iceAssert(real);
+		while(indirections > 0)
+		{
+			real = real->getPointerTo();
+			indirections--;
+		}
+
+		return real;
 	}
 
 

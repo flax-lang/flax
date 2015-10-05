@@ -567,22 +567,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		{
 			lhsInteger = true;
 		}
-		// else if(lhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(lhs->getType()->getStructName())->isIntegerTy())
-		// 		lhsInteger = true;
-		// }
-
 
 		if(rhs->getType()->isIntegerTy())
 		{
 			rhsInteger = true;
+
 		}
-		// else if(rhs->getType()->isStructTy())
-		// {
-		// 	if(cgi->getLlvmTypeOfBuiltin(rhs->getType()->getStructName())->isIntegerTy())
-		// 		rhsInteger = true;
-		// }
 
 		isBuiltinIntegerOp = (lhsInteger && rhsInteger);
 	}

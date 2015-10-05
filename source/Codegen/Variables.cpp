@@ -151,6 +151,7 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
 
+
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
 		Number* n = 0;
@@ -160,21 +161,24 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 		}
 		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
 		{
-			// Number* n = 0;
-			// printf("assign num to var %s (%s)\n", this->name.c_str(), typeid(*this->initVal).name());
-			// if((n = dynamic_cast<Number*>(this->initVal)))
-			// {
-			// 	uint64_t max = pow(2, val->getType()->getIntegerBitWidth());
-			// 	if(max == 0) max = UINT64_MAX;
+			Number* n = 0;
 
-			// 	printf("assign %lld to var: max: %lld\n", n->ival, max);
-			// if((uint64_t) n->ival < max)
+			if((n = dynamic_cast<Number*>(this->initVal)))
+			{
+				uint64_t max = pow(2, ai->getType()->getPointerElementType()->getIntegerBitWidth()) - 1;
+				if(max == 0)
+					max = UINT64_MAX;
 
-
-			val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
-
-
-			// }
+				if((uint64_t) n->ival < max)
+				{
+					val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+				}
+				else
+				{
+					error(this, "Trying to assign value of %s to variable with max value %s (int%d)", std::to_string(n->ival).c_str(),
+						std::to_string(max).c_str(), ai->getType()->getPointerElementType()->getIntegerBitWidth());
+				}
+			}
 		}
 		else
 		{
@@ -221,39 +225,23 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	else
 	{
 		std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
-		printf("HAVE %zu DEPS\n", deps.size());
-		for(auto d : deps)
-		{
-			printf("TYPE: %s\n", d->name.c_str());
-		}
+
 
 		std::deque<std::string> ns = cgi->unwrapNamespacedType(this->type.strType);
 		std::string atype = ns.back();
 		ns.pop_back();
 
-
-		printf("SCOPE: %s / NAME: %s\n", ns.front().c_str(), atype.c_str());
-
 		auto pair = cgi->findTypeInFuncTree(ns, atype);
 		TypePair_t* tp = pair.first;
 		int indirections = pair.second;
 
-		if(!tp && cgi->getLlvmTypeOfBuiltin(cgi->unwrapPointerType(atype, 0)))
+		iceAssert(indirections >= 0);
+		if(!tp && cgi->getLlvmTypeOfBuiltin(atype))
 		{
-			llvm::Type* t = cgi->getLlvmTypeOfBuiltin(cgi->unwrapPointerType(atype, 0));
-			while(indirections > 0)
-			{
-				t = t->getPointerTo();
-				indirections--;
-			}
-
-			printf("%s: %s\n", this->name.c_str(), cgi->getReadableType(t).c_str());
-			this->inferredLType = t;
+			this->inferredLType = cgi->getLlvmTypeOfBuiltin(atype);
 		}
 		else if(tp)
 		{
-			printf("TYPE PAIR (%s): %p\n", this->name.c_str(), tp);
-
 			llvm::Type* concrete = cgi->getLlvmType(this, true);
 			if(!concrete)
 			{
@@ -272,12 +260,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 				concrete = cgi->getLlvmType(this);
 				iceAssert(concrete);
 			}
-
-
-
-
-
-
 
 
 			this->inferredLType = tp->first;
