@@ -16,7 +16,7 @@ public func main() -> Int
 
 	let b: Bar()
 
-	fa()
+	let m: (Int, Int) = (3, 4)
 
 	return 0
 }
@@ -43,14 +43,14 @@ namespace some
 
 
 
-func fa()
+func fa() -> Int
 {
-	fb()
+	return 3
 }
 
-func fb()
+func fb() -> Int
 {
-	printf("FB!!\n")
+	return 9
 }
 
 
