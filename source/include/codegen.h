@@ -35,7 +35,6 @@ namespace llvm
 namespace GenError
 {
 	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void useAfterFree(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname);
 	void duplicateSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
 	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
@@ -75,6 +74,8 @@ void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3
 
 namespace Codegen
 {
+	struct DependencyGraph;
+
 	struct CodegenInstance
 	{
 		// todo: hack
@@ -101,6 +102,8 @@ namespace Codegen
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
+
+		DependencyGraph* dependencyGraph = 0;
 
 
 		struct
@@ -153,7 +156,8 @@ namespace Codegen
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addFunctionToScope(FuncPair_t func);
+		void addPublicFunc(FuncPair_t func);
+		void addFunctionToScope(FuncPair_t func, FunctionTree* root = 0);
 		void removeFunctionFromScope(FuncPair_t func);
 		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
@@ -171,13 +175,13 @@ namespace Codegen
 
 
 		void pushNestedTypeScope(Ast::Class* nest);
-		std::deque<std::string> getNestedTypeList();
 		void popNestedTypeScope();
 
 
 		std::deque<std::string> getFullScope();
+		std::pair<TypePair_t*, int> findTypeInFuncTree(std::deque<std::string> scope, std::string name);
 
-
+		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
 
 
@@ -189,11 +193,8 @@ namespace Codegen
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
-		void addPublicFunc(FuncPair_t fp);
 
 		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
-
-		std::deque<Ast::NamespaceDecl*> resolveNamespace(std::string name);
 
 
 		void removeType(std::string name);
@@ -295,7 +296,6 @@ namespace Codegen
 		llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(Ast::FuncDecl* fd);
 		Ast::Result_t generateActualFuncDecl(Ast::FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype);
 
-		Ast::Root* getRootAST();
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType = 0);

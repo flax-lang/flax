@@ -50,6 +50,7 @@ namespace Codegen
 		Class,
 		Enum,
 		TypeAlias,
+		Extension,
 		Func,
 		BuiltinType,
 		Tuple,
@@ -75,7 +76,7 @@ namespace Codegen
 	struct FunctionTree
 	{
 		FunctionTree() { this->id = __getnewid(); }
-		FunctionTree(std::string n) : nsName(n) { this->id = __getnewid(); }
+		explicit FunctionTree(std::string n) : nsName(n) { this->id = __getnewid(); }
 
 		static id_t __getnewid()
 		{
@@ -97,7 +98,7 @@ namespace Codegen
 
 	struct Resolved_t
 	{
-		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		explicit Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
 		Resolved_t() : resolved(false) { }
 
 		FuncPair_t t;

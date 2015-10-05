@@ -171,15 +171,6 @@ namespace Codegen
 		return llvm::getGlobalContext();
 	}
 
-	Root* CodegenInstance::getRootAST()
-	{
-		return rootNode;
-	}
-
-
-
-
-
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
@@ -295,9 +286,13 @@ namespace Codegen
 		iceAssert(ftree);
 
 		if(ftree->types.find(atype->name) != ftree->types.end())
-			error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+		{
+			// only if there's an actual, llvm::Type* there.
+			if(ftree->types[atype->name].first)
+				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+		}
 
-
+		// if there isn't one, replace it.
 		ftree->types[atype->name] = tpair;
 
 
@@ -375,6 +370,7 @@ namespace Codegen
 				if(this->isBuiltinType(possibleGeneric))
 				{
 					// create a typepair. allows constructor syntax
+					// only applicable in generic functions.
 					// todo: this will leak...
 
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Struct));
@@ -433,15 +429,6 @@ namespace Codegen
 	void CodegenInstance::pushNestedTypeScope(Class* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
-	}
-
-	std::deque<std::string> CodegenInstance::getNestedTypeList()
-	{
-		std::deque<std::string> ret;
-		for(auto t : this->nestedTypeStack)
-			ret.push_back(t->name);
-
-		return ret;
 	}
 
 	void CodegenInstance::popNestedTypeScope()
@@ -512,10 +499,7 @@ namespace Codegen
 	// funcs
 	void CodegenInstance::addPublicFunc(FuncPair_t fp)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree(&this->namespaceStack, this->rootNode->publicFuncTree);
-		iceAssert(cur);
-
-		cur->funcs.push_back(fp);
+		this->addFunctionToScope(fp, this->rootNode->publicFuncTree);
 	}
 
 	void CodegenInstance::cloneFunctionTree(FunctionTree* ft, FunctionTree* clone, bool deep)
@@ -693,6 +677,46 @@ namespace Codegen
 		return 0;
 	}
 
+	std::pair<TypePair_t*, int> CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
+	{
+		auto curDepth = scope;
+
+		// this thing handles pointers properly.
+		if(this->getLlvmTypeOfBuiltin(name) != 0)
+			return { 0, 0 };
+
+		// not this though.
+		int indirections = 0;
+		name = this->unwrapPointerType(name, &indirections);
+
+		for(size_t i = 0; i <= curDepth.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto& f : ft->types)
+			{
+				if(f.first == name)
+					return { &f.second, indirections };
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		return { 0, -1 };
+	}
+
+
+
+
+
+
+
+
+
+
+
 	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
 	{
 		if(doFuncTree)
@@ -729,15 +753,30 @@ namespace Codegen
 		this->namespaceStack.pop_back();
 	}
 
-	void CodegenInstance::addFunctionToScope(FuncPair_t func)
+	void CodegenInstance::addFunctionToScope(FuncPair_t func, FunctionTree* root)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree();
+		FunctionTree* cur = root;
+		if(!cur)
+			cur = this->getCurrentFuncTree();
+
 		iceAssert(cur);
 
 		// printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
 
-		if(std::find(cur->funcs.begin(), cur->funcs.end(), func) == cur->funcs.end())
-			cur->funcs.push_back(func);
+		for(FuncPair_t& fp : cur->funcs)
+		{
+			if(fp.first == 0 && fp.second == func.second)
+			{
+				fp.first = func.first;
+				return;
+			}
+			else if(fp.first == func.first && fp.second == func.second)
+			{
+				return;
+			}
+		}
+
+		cur->funcs.push_back(func);
 	}
 
 	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
@@ -752,206 +791,130 @@ namespace Codegen
 
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
+		auto curDepth = this->namespaceStack;
+		std::deque<FuncPair_t> candidates;
+
+
+		for(size_t i = 0; i <= curDepth.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto f : ft->funcs)
+			{
+				auto isDupe = [this, f](FuncPair_t fp) -> bool {
+
+					if(f.first == fp.first || f.second == fp.second) return true;
+					if(f.first == 0 || fp.first == 0)
+					{
+						iceAssert(f.second);
+						iceAssert(fp.second);
+
+						if(f.second->params.size() != fp.second->params.size()) return false;
+
+						for(size_t i = 0; i < f.second->params.size(); i++)
+						{
+							// allowFail = true
+							if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+								return false;
+						}
+
+						return true;
+					}
+					else
+					{
+						return f.first->getFunctionType() == fp.first->getFunctionType();
+					}
+				};
+
+
+				if((f.second ? f.second->name : f.first->getName().str()) == basename)
+				{
+					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+					{
+						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+						candidates.push_back(f);
+					}
+				}
+			}
+
+
+
+
+
+
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+
+
+
 		// todo: check if we actually imported the function.
 		// this might cause false matches.
 
 		// search in namespace scope.
 
-		std::deque<FuncPair_t> candidates;
 
 		// search
-		{
-			// 1. search own namespace
-			// do a top-down search, ensuring we get everything.
-			std::deque<std::string> curDepth;
+		// 1. search own namespace
+		// do a top-down search, ensuring we get everything.
+		// std::deque<std::string> curDepth;
 
-			// once with no namespace
-			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-				if(ft)
-				{
-					for(auto f : ft->funcs)
-					{
-						auto isDupe = [this, f](FuncPair_t fp) -> bool {
+		// // once with no namespace
+		// {
+		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+		// 	if(ft)
+		// 	{
 
-							if(f.first == fp.first || f.second == fp.second) return true;
-							if(f.first == 0 || fp.first == 0)
-							{
-								iceAssert(f.second);
-								iceAssert(fp.second);
+		// 	}
+		// }
 
-								if(f.second->params.size() != fp.second->params.size()) return false;
+		// for(auto ns : this->namespaceStack)
+		// {
+		// 	curDepth.push_back(ns);
+		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
+		// 	if(!ft) break;
 
-								for(size_t i = 0; i < f.second->params.size(); i++)
-								{
-									// allowFail = true
-									if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-										return false;
-								}
+		// 	for(auto f : ft->funcs)
+		// 	{
+		// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
 
-								return true;
-							}
-							else
-							{
-								return f.first->getFunctionType() == fp.first->getFunctionType();
-							}
-						};
+		// 			if(f.first == fp.first || f.second == fp.second) return true;
+		// 			if(f.first == 0 || fp.first == 0)
+		// 			{
+		// 				iceAssert(f.second);
+		// 				iceAssert(fp.second);
 
+		// 				if(f.second->params.size() != fp.second->params.size()) return false;
 
-						if((f.second ? f.second->name : f.first->getName().str()) == basename)
-						{
-							if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-							{
-								// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-								candidates.push_back(f);
-							}
-						}
-					}
-				}
-			}
-			for(auto ns : this->namespaceStack)
-			{
-				curDepth.push_back(ns);
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-				if(!ft) break;
+		// 				for(size_t i = 0; i < f.second->params.size(); i++)
+		// 				{
+		// 					// allowFail = true
+		// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+		// 						return false;
+		// 				}
 
-				for(auto f : ft->funcs)
-				{
-					auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-						if(f.first == fp.first || f.second == fp.second) return true;
-						if(f.first == 0 || fp.first == 0)
-						{
-							iceAssert(f.second);
-							iceAssert(fp.second);
-
-							if(f.second->params.size() != fp.second->params.size()) return false;
-
-							for(size_t i = 0; i < f.second->params.size(); i++)
-							{
-								// allowFail = true
-								if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-									return false;
-							}
-
-							return true;
-						}
-						else
-						{
-							return f.first->getFunctionType() == fp.first->getFunctionType();
-						}
-					};
+		// 				return true;
+		// 			}
+		// 			else
+		// 			{
+		// 				return f.first->getFunctionType() == fp.first->getFunctionType();
+		// 			}
+		// 		};
 
 
-					if((f.second ? f.second->name : f.first->getName().str()) == basename)
-					{
-						if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-						{
-							// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-							candidates.push_back(f);
-						}
-					}
-				}
-			}
-
-
-
-
-
-
-			// 2. search our imported namespaces.
-			curDepth.clear();
-
-			// once with no namespace
-			// {
-			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
-
-			// 	if(ft)
-			// 	{
-			// 		for(auto f : ft->funcs)
-			// 		{
-			// 			auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-			// 				if(f.first == fp.first || f.second == fp.second) return true;
-			// 				if(f.first == 0 || fp.first == 0)
-			// 				{
-			// 					iceAssert(f.second);
-			// 					iceAssert(fp.second);
-
-			// 					if(f.second->params.size() != fp.second->params.size()) return false;
-
-			// 					for(size_t i = 0; i < f.second->params.size(); i++)
-			// 					{
-			// 						// allowFail = true
-			// 						if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-			// 							return false;
-			// 					}
-
-			// 					return true;
-			// 				}
-			// 				else
-			// 				{
-			// 					return f.first->getFunctionType() == fp.first->getFunctionType();
-			// 				}
-			// 			};
-
-
-			// 			if((f.second ? f.second->name : f.first->getName().str()) == basename)
-			// 			{
-			// 				if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-			// 				{
-			// 					// printf("FOUND (3) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-			// 					candidates.push_back(f);
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// for(auto ns : this->namespaceStack)
-			// {
-			// 	curDepth.push_back(ns);
-			// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth, &this->rootNode->externalFuncTree);
-			// 	if(!ft) break;
-
-			// 	for(auto f : ft->funcs)
-			// 	{
-			// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-			// 			if(f.first == fp.first || f.second == fp.second) return true;
-			// 			if(f.first == 0 || fp.first == 0)
-			// 			{
-			// 				iceAssert(f.second);
-			// 				iceAssert(fp.second);
-
-			// 				if(f.second->params.size() != fp.second->params.size()) return false;
-
-			// 				for(size_t i = 0; i < f.second->params.size(); i++)
-			// 				{
-			// 					// allowFail = true
-			// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-			// 						return false;
-			// 				}
-
-			// 				return true;
-			// 			}
-			// 			else
-			// 			{
-			// 				return f.first->getFunctionType() == fp.first->getFunctionType();
-			// 			}
-			// 		};
-
-
-			// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
-			// 		{
-			// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-			// 			{
-			// 				// printf("FOUND (4) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-			// 				candidates.push_back(f);
-			// 			}
-			// 		}
-			// 	}
-			// }
-		}
+		// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
+		// 		{
+		// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+		// 			{
+		// 				// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+		// 				candidates.push_back(f);
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		return candidates;
 	}
@@ -1107,43 +1070,6 @@ namespace Codegen
 
 
 
-	static bool _searchNamespaces(std::string name, std::deque<NamespaceDecl*> list, std::deque<NamespaceDecl*>* path)
-	{
-		if(list.size() == 0)		return false;
-
-		for(auto ns : list)
-		{
-			// printf("ns: %s\n", ns->name.c_str());
-			path->push_back(ns);
-
-			if(ns->name == name) return true;
-
-			bool found = _searchNamespaces(name, ns->namespaces, path);
-			if(found) return true;
-
-			path->pop_back();
-		}
-
-		return false;
-	}
-
-	std::deque<NamespaceDecl*> CodegenInstance::resolveNamespace(std::string name)
-	{
-		std::deque<NamespaceDecl*> ret;
-
-		// do a depth first search
-		if(_searchNamespaces(name, this->rootNode->topLevelNamespaces, &ret) == false)
-			_searchNamespaces(name, this->usingNamespaces, &ret);
-
-		return ret;
-	}
-
-
-
-
-
-
-
 
 
 
@@ -1261,6 +1187,54 @@ namespace Codegen
 
 
 
+
+
+
+
+
+
+
+
+
+
+	std::deque<std::string> CodegenInstance::unwrapNamespacedType(std::string raw)
+	{
+		iceAssert(raw.size() > 0);
+		if(raw.find("::") == std::string::npos)
+		{
+			return { raw };
+		}
+		else if(raw.front() == '(')
+		{
+			error("enosup");
+		}
+		else if(raw.front() == '[')
+		{
+			error("enosup");
+		}
+
+		// else
+		std::deque<std::string> nses;
+		while(true)
+		{
+			size_t pos = raw.find("::");
+			if(pos == std::string::npos) break;
+
+			std::string ns = raw.substr(0, pos);
+			nses.push_back(ns);
+
+			raw = raw.substr(pos + 2);
+		}
+
+		if(raw.size() > 0)
+			nses.push_back(raw);
+
+		return nses;
+	}
+
+
+
+
 	std::string CodegenInstance::mangleLlvmType(llvm::Type* type)
 	{
 		std::string r = this->getReadableType(type);
@@ -1268,26 +1242,26 @@ namespace Codegen
 		int ind = 0;
 		r = this->unwrapPointerType(r, &ind);
 
-		if(r.find("Int8") == 0)			r = "a";
-		else if(r.find("Int16") == 0)	r = "s";
-		else if(r.find("Int32") == 0)	r = "i";
-		else if(r.find("Int64") == 0)	r = "l";
-		else if(r.find("Int") == 0)		r = "l";
+		if(r == "Int8")			r = "a";
+		else if(r == "Int16")	r = "s";
+		else if(r == "Int32")	r = "i";
+		else if(r == "Int64")	r = "l";
+		else if(r == "Int")		r = "l";
 
-		else if(r.find("Uint8") == 0)	r = "h";
-		else if(r.find("Uint16") == 0)	r = "t";
-		else if(r.find("Uint32") == 0)	r = "j";
-		else if(r.find("Uint64") == 0)	r = "m";
-		else if(r.find("Uint") == 0)	r = "m";
+		else if(r == "Uint8")	r = "h";
+		else if(r == "Uint16")	r = "t";
+		else if(r == "Uint32")	r = "j";
+		else if(r == "Uint64")	r = "m";
+		else if(r == "Uint")	r = "m";
 
-		else if(r.find("Float32") == 0)	r = "f";
-		else if(r.find("Float") == 0)	r = "f";
+		else if(r == "Float32")	r = "f";
+		else if(r == "Float")	r = "f";
 
-		else if(r.find("Float64") == 0)	r = "d";
-		else if(r.find("Double") == 0)	r = "d";
+		else if(r == "Float64")	r = "d";
+		else if(r == "Double")	r = "d";
 
 
-		else if(r.find("Void") == 0)	r = "v";
+		else if(r == "Void")	r = "v";
 		else
 		{
 			if(r.size() > 0 && r.front() == '%')
@@ -1542,14 +1516,14 @@ namespace Codegen
 
 		// we have a name now
 		size_t next = 0;
-		while((next = original.find_first_of("::")) != std::string::npos)
+		while((next = original.find("::")) != std::string::npos)
 		{
 			std::string ns = original.substr(0, next);
 			ret += std::to_string(ns.length()) + ns;
 
 			original = original.substr(next, -1);
 
-			if(original.find("::") == 0)
+			if(original.compare(0, 2, "::") == 0)
 				original = original.substr(2);
 		}
 
@@ -1574,18 +1548,34 @@ namespace Codegen
 		std::deque<Expr*> es;
 		for(auto p : decl->params) es.push_back(p);
 
-		auto res = this->resolveFunction(decl, decl->name, es, true);
-		if(res.resolved)
+		Resolved_t res = this->resolveFunction(decl, decl->name, es, true);
+		if(res.resolved && res.t.first != 0)
 		{
 			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
 			{
 				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
 			}
-		}
 
-		return res.resolved == true;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2172,6 +2162,20 @@ namespace Codegen
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
 	{
 		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
@@ -2216,7 +2220,7 @@ namespace Codegen
 	}
 
 
-	static void errorNoReturn(Expr* e)
+	static void _errorNoReturn(Expr* e)
 	{
 		error(e, "Not all code paths return a value");
 	}
@@ -2248,7 +2252,7 @@ namespace Codegen
 	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, llvm::Type* retType)
 	{
 		if(bb->statements.size() == 0)
-			errorNoReturn(bb);
+			_errorNoReturn(bb);
 
 		Return* r = nullptr;
 		for(Expr* e : bb->statements)
