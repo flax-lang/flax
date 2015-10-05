@@ -36,49 +36,49 @@ namespace Parser
 		tok.posinfo = pos;
 
 		// check compound symbols first.
-		if(stream.find("==") == 0)
+		if(stream.compare(0, 2, "==") == 0)
 		{
 			tok.text = "==";
 			tok.type = TType::EqualsTo;
 			read = 2;
 		}
-		else if(stream.find(">=") == 0)
+		else if(stream.compare(0, 2, ">=") == 0)
 		{
 			tok.text = ">=";
 			tok.type = TType::GreaterEquals;
 			read = 2;
 		}
-		else if(stream.find("<=") == 0)
+		else if(stream.compare(0, 2, "<=") == 0)
 		{
 			tok.text = "<=";
 			tok.type = TType::LessThanEquals;
 			read = 2;
 		}
-		else if(stream.find("!=") == 0)
+		else if(stream.compare(0, 2, "!=") == 0)
 		{
 			tok.text = "!=";
 			tok.type = TType::NotEquals;
 			read = 2;
 		}
-		else if(stream.find("||") == 0)
+		else if(stream.compare(0, 2, "||") == 0)
 		{
 			tok.text = "||";
 			tok.type = TType::LogicalOr;
 			read = 2;
 		}
-		else if(stream.find("&&") == 0)
+		else if(stream.compare(0, 2, "&&") == 0)
 		{
 			tok.text = "&&";
 			tok.type = TType::LogicalAnd;
 			read = 2;
 		}
-		else if(stream.find("->") == 0)
+		else if(stream.compare(0, 2, "->") == 0)
 		{
 			tok.text = "->";
 			tok.type = TType::Arrow;
 			read = 2;
 		}
-		else if(stream.find("//") == 0)
+		else if(stream.compare(0, 2, "//") == 0)
 		{
 			tok.text = "//";
 
@@ -89,116 +89,168 @@ namespace Parser
 
 			tok.type = TType::Comment;
 		}
-		else if(stream.find("<<") == 0)
+		else if(stream.compare(0, 2, "<<") == 0)
 		{
 			tok.text = "<<";
 			tok.type = TType::ShiftLeft;
 			read = 2;
 		}
-		else if(stream.find(">>") == 0)
+		else if(stream.compare(0, 2, ">>") == 0)
 		{
 			tok.text = ">>";
 			tok.type = TType::ShiftRight;
 		}
-		else if(stream.find("++") == 0)
+		else if(stream.compare(0, 2, "++") == 0)
 		{
 			tok.text = "++";
 			tok.type = TType::DoublePlus;
 			read = 2;
 		}
-		else if(stream.find("--") == 0)
+		else if(stream.compare(0, 2, "--") == 0)
 		{
 			tok.text = "--";
 			tok.type = TType::DoubleMinus;
 			read = 2;
 		}
-		else if(stream.find("+=") == 0)
+		else if(stream.compare(0, 2, "+=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::PlusEq;
 			read = 2;
 		}
-		else if(stream.find("-=") == 0)
+		else if(stream.compare(0, 2, "-=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MinusEq;
 			read = 2;
 		}
-		else if(stream.find("*=") == 0)
+		else if(stream.compare(0, 2, "*=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::MultiplyEq;
 			read = 2;
 		}
-		else if(stream.find("/=") == 0)
+		else if(stream.compare(0, 2, "/=") == 0)
 		{
 			tok.text = "+=";
 			tok.type = TType::DivideEq;
 			read = 2;
 		}
-		else if(stream.find("%=") == 0)
+		else if(stream.compare(0, 2, "%=") == 0)
 		{
 			tok.text = "%=";
 			tok.type = TType::ModEq;
 			read = 2;
 		}
-		else if(stream.find("<<=") == 0)
+		else if(stream.compare(0, 3, "<<=") == 0)
 		{
 			tok.text = "<<=";
 			tok.type = TType::ShiftLeftEq;
 			read = 3;
 		}
-		else if(stream.find(">>=") == 0)
+		else if(stream.compare(0, 3, ">>=") == 0)
 		{
 			tok.text = ">>=";
 			tok.type = TType::ShiftRightEq;
 			read = 3;
 		}
-		else if(stream.find("...") == 0)
+		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";
 			tok.type = TType::Elipsis;
 			read = 3;
 		}
-		else if(stream.find("::") == 0)
+		else if(stream.compare(0, 2, "::") == 0)
 		{
 			tok.text = "::";
 			tok.type = TType::DoubleColon;
 			read = 2;
 		}
+		// block comments
+		else if(stream.compare(0, 2, "/*") == 0)
+		{
+			// TODO: BLOCK COMMENTS ARE FUCKING BUGGY AND IFFY
+
+			int currentNest = 1;
+			// support nested, so basically we have to loop until we find either a /* or a */
+			stream = stream.substr(2);
+			tok.posinfo.col += 2;
+
+			while(currentNest > 0)
+			{
+				size_t n = stream.find("/*");
+				if(n != std::string::npos)
+				{
+					std::string removed = stream.substr(0, n);
+
+					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+
+					stream = stream.substr(n + 2);	// include the '*' as well.
+
+					if(currentNest > 1)
+						currentNest++;
+				}
+
+
+
+				n = stream.find("*/");
+				if(n != std::string::npos)
+				{
+					std::string removed = stream.substr(0, n);
+
+					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+
+					stream = stream.substr(n + 2);	// include the '*' as well.
+
+					currentNest--;
+				}
+				else
+				{
+					parserError("Expected closing '*/'");
+				}
+			}
+
+			return getNextToken(stream, pos);
+		}
+		else if(stream.compare(0, 2, "*/") == 0)
+		{
+			parserError("Unexpected '*/'");
+		}
 
 		// unicode stuff
-		else if(stream.find("ƒ") == 0)
+		else if(stream.compare(0, strlen("ƒ"), "ƒ") == 0)
 		{
 			tok.text = "func";
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
 		}
-		else if(stream.find("ﬁ") == 0)
+		else if(stream.compare(0, strlen("ﬁ"), "ﬁ") == 0)
 		{
 			tok.text = "ffi";
 			tok.type = TType::ForeignFunc;
 			read = std::string("ﬁ").length();
 		}
-		else if(stream.find("÷") == 0)
+		else if(stream.compare(0, strlen("÷"), "÷") == 0)
 		{
 			tok.text = "÷";
 			tok.type = TType::Divide;
 			read = std::string("÷").length();
 		}
-		else if(stream.find("≠") == 0)
+		else if(stream.compare(0, strlen("≠"), "≠") == 0)
 		{
 			tok.text = "≠";
 			tok.type = TType::NotEquals;
 			read = std::string("≠").length();
 		}
-		else if(stream.find("≤") == 0)
+		else if(stream.compare(0, strlen("≤"), "≤") == 0)
 		{
 			tok.text = "≤";
 			tok.type = TType::LessThanEquals;
 			read = std::string("≤").length();
 		}
-		else if(stream.find("≥") == 0)
+		else if(stream.compare(0, strlen("≥"), "≥") == 0)
 		{
 			tok.text = "≥";
 			tok.type = TType::GreaterEquals;
@@ -323,6 +375,7 @@ namespace Parser
 
 			// check for keywords
 			if(id == "class")			tok.type = TType::Class;
+			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "func")		tok.type = TType::Func;
 			else if(id == "import")		tok.type = TType::Import;
 			else if(id == "var")		tok.type = TType::Var;
@@ -339,7 +392,6 @@ namespace Parser
 			else if(id == "case")		tok.type = TType::Case;
 			else if(id == "enum")		tok.type = TType::Enum;
 			else if(id == "ffi")		tok.type = TType::ForeignFunc;
-			else if(id == "struct")		tok.type = TType::Struct;
 			else if(id == "true")		tok.type = TType::True;
 			else if(id == "false")		tok.type = TType::False;
 			else if(id == "static")		tok.type = TType::Static;

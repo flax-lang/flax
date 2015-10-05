@@ -2,21 +2,19 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Math.Vector
 
 ﬁ ƒ sqrt(x: Float64) -> Float64
 ﬁ ƒ sqrtf(x: Float32) -> Float32
 
-public struct Math
+namespace Math
 {
-	public static ƒ π() -> Float64 { 3.14159265358979 }
-	public static ƒ √(x: Float64) -> Float64 { sqrt(x) }
-	public static ƒ √(x: Int) -> Float64
+	public ƒ π() -> Float64 { 3.14159265358979 }
+	public ƒ √(x: Float64) -> Float64 { sqrt(x) }
+	public ƒ √(x: Int) -> Float64
 	{
 		sqrt(x as Float64)
 	}
-}
 
-extension Math
-{
-	static ƒ square(x: Float64) -> Float64 { x * x }
+	public ƒ square(x: Float64) -> Float64 { x * x }
 }

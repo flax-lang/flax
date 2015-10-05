@@ -83,7 +83,7 @@ namespace Ast
 
 	}
 
-	If::~If()
+	IfStmt::~IfStmt()
 	{
 	}
 
@@ -128,6 +128,10 @@ namespace Ast
 	}
 
 	Struct::~Struct()
+	{
+	}
+
+	Class::~Class()
 	{
 	}
 

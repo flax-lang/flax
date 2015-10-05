@@ -7,7 +7,10 @@
 #include <stddef.h>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <deque>
+
+#include <sys/types.h>
 
 // forward declarations.
 namespace llvm
@@ -32,8 +35,8 @@ namespace Parser
 	{
 		PosInfo() { }
 
-		uint64_t line = 0;
-		uint64_t col = 0;
+		uint64_t line = 1;
+		uint64_t col = 1;
 		std::string file;
 	};
 }
@@ -42,9 +45,12 @@ namespace Codegen
 {
 	enum class TypeKind
 	{
+		Invalid,
 		Struct,
+		Class,
 		Enum,
 		TypeAlias,
+		Extension,
 		Func,
 		BuiltinType,
 		Tuple,
@@ -69,8 +75,16 @@ namespace Codegen
 
 	struct FunctionTree
 	{
-		FunctionTree() { }
-		FunctionTree(std::string n) : nsName(n) { }
+		FunctionTree() { this->id = __getnewid(); }
+		explicit FunctionTree(std::string n) : nsName(n) { this->id = __getnewid(); }
+
+		static id_t __getnewid()
+		{
+			static id_t curid = 0;
+			return curid++;
+		}
+
+		id_t id;
 
 		std::string nsName;
 		std::deque<FunctionTree*> subs;
@@ -84,7 +98,7 @@ namespace Codegen
 
 	struct Resolved_t
 	{
-		Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
+		explicit Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
 		Resolved_t() : resolved(false) { }
 
 		FuncPair_t t;

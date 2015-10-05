@@ -16,7 +16,7 @@ Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
 	{
-		error(cgi, this, "Break can only be used inside loop bodies");
+		error(this, "Break can only be used inside loop bodies");
 	}
 
 	iceAssert(cs->first);
@@ -33,7 +33,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
 	{
-		error(cgi, this, "Continue can only be used inside loop bodies");
+		error(this, "Continue can only be used inside loop bodies");
 	}
 
 	iceAssert(cs->first);

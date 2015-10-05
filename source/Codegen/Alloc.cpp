@@ -26,6 +26,9 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::Function* mallocf = fp->first;
 	iceAssert(mallocf);
 
+	mallocf = cgi->module->getFunction(mallocf->getName());
+	iceAssert(mallocf);
+
 	llvm::Type* allocType = 0;
 
 	allocType = cgi->getLlvmTypeFromString(this, this->type);
@@ -48,7 +51,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	{
 		allocnum = this->count->codegen(cgi).result.first;
 		if(!allocnum->getType()->isIntegerTy())
-			error(cgi, this, "Expected integer type in alloc");
+			error(this, "Expected integer type in alloc");
 
 		allocnum = cgi->builder.CreateIntCast(allocnum, allocsize->getType(), false);
 		allocsize = cgi->builder.CreateMul(allocsize, allocnum);
@@ -191,7 +194,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	{
 		SymbolPair_t* sp = cgi->getSymPair(this, dynamic_cast<VarRef*>(this->expr)->name);
 		if(!sp)
-			error(cgi, this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
+			error(this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
 
 
 		// this will be an alloca instance (aka pointer to whatever type it actually was)
@@ -208,7 +211,16 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 	// call 'free'
 	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
-	cgi->builder.CreateCall(fp->first, freearg);
+
+
+	llvm::Function* freef = fp->first;
+	iceAssert(freef);
+
+	freef = cgi->module->getFunction(freef->getName());
+	iceAssert(freef);
+
+
+	cgi->builder.CreateCall(freef, freearg);
 	return Result_t(0, 0);
 }
 

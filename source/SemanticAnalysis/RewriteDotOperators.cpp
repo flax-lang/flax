@@ -21,6 +21,7 @@ struct GlobalState
 	std::map<MemberAccess*, bool> visitedMAs;
 
 	std::deque<std::string> nsstrs;
+	std::deque<std::string> nestedTypeStrs;
 	int MAWithinMASearchNesting = 0;
 };
 
@@ -98,9 +99,16 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 
 			// type???
-			if(cgi->getType(vr->name))
+			std::deque<std::string> fullScope = gstate.nsstrs;
+			for(auto s : gstate.nestedTypeStrs)
+				fullScope.push_back(s);
+
+
+
+			if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
 			{
 				ma->matype = MAType::LeftTypename;
+				gstate.nestedTypeStrs.push_back(vr->name);
 				return;
 			}
 
@@ -119,7 +127,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		}
 		else
 		{
-			error(cgi, ma, "????");
+			error(ma, "????");
 		}
 	}
 	else if(dynamic_cast<FuncCall*>(ma->left))
@@ -143,9 +151,15 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 		}
 
-		if(cgi->getType(vr->name))
+
+		std::deque<std::string> fullScope = gstate.nsstrs;
+		for(auto s : gstate.nestedTypeStrs)
+			fullScope.push_back(s);
+
+		if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
 		{
 			ma->matype = MAType::LeftTypename;
+			gstate.nestedTypeStrs.push_back(vr->name);
 			return;
 		}
 
@@ -159,7 +173,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 	}
 	else
 	{
-		error(cgi, ma, "?????");
+		error(ma, "?????");
 	}
 }
 
@@ -196,6 +210,7 @@ static void findDotOperator(Expr* expr)
 	else if(Func* fn = dynamic_cast<Func*>(expr))
 	{
 		findDotOperator(fn->block);
+		for(auto v : fn->decl->params) findDotOperator(v);
 	}
 	else if(FuncCall* fncall = dynamic_cast<FuncCall*>(expr))
 	{
@@ -210,7 +225,7 @@ static void findDotOperator(Expr* expr)
 
 		gstate.MAWithinMASearchNesting = old;
 	}
-	else if(If* ifexpr = dynamic_cast<If*>(expr))
+	else if(IfStmt* ifexpr = dynamic_cast<IfStmt*>(expr))
 	{
 		for(auto e : ifexpr->cases)
 		{
@@ -236,24 +251,24 @@ static void findDotOperator(Expr* expr)
 		findDotOperator(ari->arr);
 		findDotOperator(ari->index);
 	}
-	else if(StructBase* sb = dynamic_cast<StructBase*>(expr))
+	else if(Class* cls = dynamic_cast<Class*>(expr))
 	{
-		for(auto mem : sb->members)
+		for(auto mem : cls->members)
 		{
 			if(mem->initVal)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : sb->opOverloads)
+		for(auto op : cls->opOverloads)
 			findDotOperator(op->func);
 
-		for(auto fn : sb->funcs)
+		for(auto fn : cls->funcs)
 			findDotOperator(fn);
 
-		for(auto s : sb->nestedTypes)
+		for(auto s : cls->nestedTypes)
 			findDotOperator(s.first);
 
-		for(auto c : sb->cprops)
+		for(auto c : cls->cprops)
 		{
 			if(c->getter)
 				findDotOperator(c->getter);
@@ -261,6 +276,17 @@ static void findDotOperator(Expr* expr)
 			if(c->setter)
 				findDotOperator(c->setter);
 		}
+	}
+	else if(Struct* str = dynamic_cast<Struct*>(expr))
+	{
+		for(auto mem : str->members)
+		{
+			if(mem->initVal)
+				findDotOperator(mem->initVal);
+		}
+
+		for(auto op : str->opOverloads)
+			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 	{
@@ -277,9 +303,13 @@ static void findDotOperator(Expr* expr)
 				gstate.visitedMAs[ma] = true;
 		}
 	}
+	else if(NamespaceDecl* ns = dynamic_cast<NamespaceDecl*>(expr))
+	{
+		findDotOperator(ns->innards);
+	}
 	else
 	{
-
+		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");
 	}
 }
 
@@ -299,6 +329,7 @@ namespace SemAnalysis
 		{
 			rewriteDotOperator(pair.first);
 			gstate.nsstrs.clear();
+			gstate.nestedTypeStrs.clear();
 		}
 
 
