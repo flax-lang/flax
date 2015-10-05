@@ -143,10 +143,7 @@ namespace Codegen
 			if(e.first->expr == expr)
 			{
 				for(auto d : e.second)
-				{
-					printf("type: %d\n", d->type);
 					ret.push_back(d->to);
-				}
 			}
 		}
 
@@ -176,15 +173,6 @@ namespace SemAnalysis
 			if(group.size() > 1)
 				error(group.front()->expr, "cycle");
 		}
-
-		// for(auto pair : graph->edgesFrom)
-		// {
-		// 	for(auto ty : pair.second)
-		// 	{
-		// 		if(ty->to->name.size() > 0)
-		// 			printf("[%s]\n", ty->to->name.c_str());
-		// 	}
-		// }
 
 		return graph;
 	}
@@ -225,13 +213,10 @@ namespace SemAnalysis
 		graph->edgesFrom[from].push_back(d);
 	}
 
-	static void createIdentifierDep(DependencyGraph* graph, Dep* d, Expr* src,
-		Expr* ex, std::string name)
+	static void createIdentifierDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string name)
 	{
-		// do nothing.
-
-		// _createDep(nodes, edges, d, src, ex, name);
-		// d->type = DepType::Identifier;
+		_createDep(graph, d, src, ex, name);
+		d->type = DepType::Identifier;
 	}
 
 	static void createExprDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* dest)
