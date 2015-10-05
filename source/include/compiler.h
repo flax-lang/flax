@@ -23,7 +23,7 @@ namespace Parser
 namespace Compiler
 {
 	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, llvm::Module*>>
-	compileFile(std::string filename);
+	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	// final stages
 	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
