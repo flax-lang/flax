@@ -2,22 +2,8 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Math
 import String
-
-struct Test
-{
-	var i: Int = 7
-
-	@precedence[140]
-	operator • (other: Test) -> Test
-	{
-		var ret: Test
-		ret.i = self.i * other.i
-
-		return ret
-	}
-}
-
 
 public func main() -> Int
 {
@@ -28,16 +14,12 @@ public func main() -> Int
 	let g: Int8 = 100
 	printf("g is: %d\n", g)
 
-	let b: Bar()
-
-	let m = (fa(), fb())
-	printf("m is (%d, %d)\n", m.0, m.1)
+	let m: (Math.Vector3, Math.Vector3) = (fa(), fb())
+	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
 
-	var test: Test
-	let t = test • test
-
-	printf("t = %d\n", t.i);
+	let dot: Double = m.0 • m.1
+	printf("dot = %f\n", dot);
 
 
 	return 0
@@ -65,14 +47,24 @@ namespace some
 
 
 
-func fa() -> Int
+func fa() -> Math.Vector3
 {
-	return 3
+	var ret: Math.Vector3
+	ret.x = 5
+	ret.y = 25
+	ret.z = 125
+
+	return ret
 }
 
-func fb() -> Int
+func fb() -> Math.Vector3
 {
-	return 9
+	var ret: Math.Vector3
+	ret.x = 3
+	ret.y = 9
+	ret.z = 27
+
+	return ret
 }
 
 

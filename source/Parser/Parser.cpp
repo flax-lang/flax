@@ -1081,6 +1081,8 @@ namespace Parser
 		}
 		else if(tmp.type == TType::Typeof)
 		{
+			parserError("enotsup");
+
 			Expr* ct = CreateAST(DummyExpr, tmp);
 			ct->type.isLiteral = false;
 			ct->type.strType = "__internal_error__";
@@ -1097,13 +1099,20 @@ namespace Parser
 			while(parens > 0)
 			{
 				Token front = ps.eat();
-				while(front.type != TType::LParen && front.type != TType::RParen)
+				if(front.type == TType::Identifier)
 				{
-					final += front.text;
-					front = ps.eat();
-				}
+					// another hack: re-insert.
+					ps.tokens.push_front(front);
 
-				if(front.type == TType::LParen)
+					Expr* de = parseType(ps);
+					final += de->type.strType;
+					delete de;
+				}
+				else if(front.type == TType::Comma)
+				{
+					final += ",";
+				}
+				else if(front.type == TType::LParen)
 				{
 					final += "(";
 					parens++;

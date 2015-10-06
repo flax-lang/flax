@@ -329,11 +329,13 @@ namespace Codegen
 	TypePair_t* CodegenInstance::getType(std::string name)
 	{
 		#if 0
-		fprintf(stderr, "finding %s\n{\n", name.c_str());
-		for(auto p : this->typeMap)
-			fprintf(stderr, "\t%s\n", p.first.c_str());
 
-		fprintf(stderr, "}\n");
+			fprintf(stderr, "finding %s\n{\n", name.c_str());
+			for(auto p : this->typeMap)
+				fprintf(stderr, "\t%s\n", p.first.c_str());
+
+			fprintf(stderr, "}\n");
+
 		#endif
 		if(name == "Inferred" || name == "_ZN8Inferred")
 			iceAssert(!"Tried to get type on inferred vardecl!");
@@ -543,7 +545,7 @@ namespace Codegen
 				}
 				else
 				{
-					// generic functions are not instantiated
+					// note: generic functions are not instantiated
 					if(pair.second->genericTypes.size() == 0)
 						error(pair.second, "!func (%s)", pair.second->mangledName.c_str());
 				}
@@ -551,7 +553,6 @@ namespace Codegen
 
 			if(!existing)
 			{
-				// printf("add func %s to clone %d\n", pair.first->getName().bytes_begin(), clone->id);
 				clone->funcs.push_back(pair);
 			}
 		}
@@ -575,13 +576,26 @@ namespace Codegen
 			{
 				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
 				{
-					// printf("adding type %s\n", sb->mangledName.c_str());
-					clone->types[sb->mangledName] = t.second;
+					clone->types[sb->name] = t.second;
 
 					if(deep)
 					{
-						// printf("deep type: %s\n", sb->mangledName.c_str());
 						this->typeMap[sb->mangledName] = t.second;
+
+						// check what kind of struct.
+						if(Struct* str = dynamic_cast<Struct*>(sb))
+						{
+							this->module->getOrInsertFunction(str->initFunc->getName(), str->initFunc->getFunctionType());
+						}
+						else if(Class* cls = dynamic_cast<Class*>(sb))
+						{
+							for(auto f : cls->initFuncs)
+								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
+						}
+						else
+						{
+							iceAssert(0);
+						}
 					}
 				}
 			}
@@ -592,7 +606,6 @@ namespace Codegen
 			FunctionTree* found = 0;
 			for(auto s : clone->subs)
 			{
-				// printf("clone has: %s, looking for %s\n", s->nsName, );
 				if(s->nsName == sub->nsName)
 				{
 					found = s;
@@ -601,12 +614,11 @@ namespace Codegen
 			}
 
 			if(found)
+			{
 				this->cloneFunctionTree(sub, found, deep);
-
+			}
 			else
 			{
-				// static int numclones = 0;
-				// printf("new clone (%d)\n", numclones++);
 				clone->subs.push_back(this->cloneFunctionTree(sub, deep));
 			}
 		}
@@ -635,27 +647,19 @@ namespace Codegen
 		size_t i = 0;
 		size_t max = nses->size();
 
-		// printf("root = %s, %p, %zu\n", root->nsName.c_str(), root, root->subs.size());
 		for(auto ns : *nses)
 		{
 			i++;
-			// printf("have %s (%zu/%zu)\n", ns.c_str(), nses->size(), ft.size());
 
 			bool found = false;
 			for(auto f : ft)
 			{
-				// printf("f: %s (%zu)\n", f->nsName.c_str(), ft.size());
 				if(f->nsName == ns)
 				{
 					ft = f->subs;
-					// printf("going up: (%zu), (%zu/%zu)\n", ft.size(), i, max);
-
 
 					if(i == max)
-					{
-						// printf("ret\n");
 						return f;
-					}
 
 					found = true;
 					break;
@@ -665,12 +669,6 @@ namespace Codegen
 			if(!found)
 			{
 				return 0;
-				// // make new.
-				// printf("creating new functree %s\n", ns.c_str());
-				// FunctionTree* f = new FunctionTree();
-				// f->nsName = ns;
-
-				// ft.push_back(f);
 			}
 		}
 
@@ -689,7 +687,7 @@ namespace Codegen
 		int indirections = 0;
 		name = this->unwrapPointerType(name, &indirections);
 
-		for(size_t i = 0; i <= curDepth.size(); i++)
+		for(size_t i = 0; i <= scope.size(); i++)
 		{
 			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
 			if(!ft) break;
@@ -749,7 +747,6 @@ namespace Codegen
 
 	void CodegenInstance::popNamespaceScope()
 	{
-		// printf("popped namespace %s\n", this->namespaceStack.back().c_str());
 		this->namespaceStack.pop_back();
 	}
 
@@ -760,8 +757,6 @@ namespace Codegen
 			cur = this->getCurrentFuncTree();
 
 		iceAssert(cur);
-
-		// printf("adding func: %s\n", func.second ? func.second->mangledName.c_str() : func.first->getName().str().c_str());
 
 		for(FuncPair_t& fp : cur->funcs)
 		{
@@ -791,11 +786,11 @@ namespace Codegen
 
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
-		auto curDepth = this->namespaceStack;
+		std::deque<std::string> curDepth = this->namespaceStack;
 		std::deque<FuncPair_t> candidates;
 
 
-		for(size_t i = 0; i <= curDepth.size(); i++)
+		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
 		{
 			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
 			if(!ft) break;
@@ -838,83 +833,9 @@ namespace Codegen
 				}
 			}
 
-
-
-
-
-
-
 			if(curDepth.size() > 0)
 				curDepth.pop_back();
 		}
-
-
-
-
-		// todo: check if we actually imported the function.
-		// this might cause false matches.
-
-		// search in namespace scope.
-
-
-		// search
-		// 1. search own namespace
-		// do a top-down search, ensuring we get everything.
-		// std::deque<std::string> curDepth;
-
-		// // once with no namespace
-		// {
-		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-		// 	if(ft)
-		// 	{
-
-		// 	}
-		// }
-
-		// for(auto ns : this->namespaceStack)
-		// {
-		// 	curDepth.push_back(ns);
-		// 	FunctionTree* ft = this->getCurrentFuncTree(&curDepth);
-		// 	if(!ft) break;
-
-		// 	for(auto f : ft->funcs)
-		// 	{
-		// 		auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-		// 			if(f.first == fp.first || f.second == fp.second) return true;
-		// 			if(f.first == 0 || fp.first == 0)
-		// 			{
-		// 				iceAssert(f.second);
-		// 				iceAssert(fp.second);
-
-		// 				if(f.second->params.size() != fp.second->params.size()) return false;
-
-		// 				for(size_t i = 0; i < f.second->params.size(); i++)
-		// 				{
-		// 					// allowFail = true
-		// 					if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
-		// 						return false;
-		// 				}
-
-		// 				return true;
-		// 			}
-		// 			else
-		// 			{
-		// 				return f.first->getFunctionType() == fp.first->getFunctionType();
-		// 			}
-		// 		};
-
-
-		// 		if((f.second ? f.second->name : f.first->getName().str()) == basename)
-		// 		{
-		// 			if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-		// 			{
-		// 				// printf("FOUND (2) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-		// 				candidates.push_back(f);
-		// 			}
-		// 		}
-		// 	}
-		// }
 
 		return candidates;
 	}
@@ -1928,7 +1849,7 @@ namespace Codegen
 
 		StructBase* cls = dynamic_cast<StructBase*>(pair->second.first);
 		if(!cls)
-			error(user, "LHS of operator expression is not a class");
+			error(user, "LHS of operator expression is not a struct or class");
 
 		iceAssert(cls);
 
@@ -1975,13 +1896,7 @@ namespace Codegen
 			iceAssert(opov);
 
 			return Result_t(builder.CreateCall2(opov, self, val), 0);
-
-			// printf("have function: %s\n", opov->getName().bytes_begin());
-			// error("");
 		}
-
-		// if(fail)	GenError::noOpOverload(this, user, cls->name, op);
-		// return Result_t(0, 0);
 	}
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
@@ -2043,7 +1958,11 @@ namespace Codegen
 			if(!str->initFunc)
 				error(user, "Struct '%s' has no intialiser???", str->name.c_str());
 
-			return this->module->getFunction(str->initFunc->getName());
+			llvm::Function* ret = this->module->getFunction(str->initFunc->getName());
+			if(!ret)
+				error(user, "what???");
+
+			return ret;
 		}
 		else if(pair->second.second == TypeKind::TypeAlias)
 		{

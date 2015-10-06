@@ -632,7 +632,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 			text += fc->name;
 
-			if(llvm::Type* ltype = this->getLlvmTypeFromString(ma, text))
+			if(llvm::Type* ltype = this->getLlvmTypeFromExprType(ma, text))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);
