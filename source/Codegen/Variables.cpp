@@ -83,6 +83,8 @@ llvm::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* 
 					std::vector<llvm::Value*> args { unwrappedAi };
 
 					llvm::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+					iceAssert(initfunc);
+
 					val = cgi->builder.CreateCall(initfunc, args);
 				}
 			}
@@ -227,54 +229,15 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		// not actually needed??????
 		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
 
-		std::deque<std::string> ns = cgi->unwrapNamespacedType(this->type.strType);
-		std::string atype = ns.back();
-		ns.pop_back();
-
-		auto pair = cgi->findTypeInFuncTree(ns, atype);
-		TypePair_t* tp = pair.first;
-		int indirections = pair.second;
-
-		iceAssert(indirections >= 0);
-		if(!tp && cgi->getLlvmTypeOfBuiltin(atype))
-		{
-			this->inferredLType = cgi->getLlvmTypeOfBuiltin(atype);
-		}
-		else if(tp)
-		{
-			llvm::Type* concrete = cgi->getLlvmType(this, true);
-			if(!concrete)
-			{
-				// generate the type.
-				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-				iceAssert(sb);
-
-				// temporarily hijack the main scope
-				auto old = cgi->namespaceStack;
-				cgi->namespaceStack = ns;
-				sb->createType(cgi);
-				sb->codegen(cgi);
-				cgi->namespaceStack = old;
-
-
-				concrete = cgi->getLlvmType(this);
-				iceAssert(concrete);
-			}
-
-
-			this->inferredLType = tp->first;
-			while(indirections > 0)
-			{
-				this->inferredLType = this->inferredLType->getPointerTo();
-				indirections--;
-			}
-		}
-		else
-		{
-			error(this, "Unknown type '%s'", this->type.strType.c_str());
-		}
+		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
+		iceAssert(this->inferredLType);
 	}
 }
+
+
+
+
+
 
 Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
 {
@@ -363,7 +326,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 			}
 			else
 			{
-				error(this, "Global variables currently only support constant initialisers");
+				cgi->addGlobalConstructedValue(ai, val);
 			}
 		}
 		else if(ltype->isStructTy() && !cgi->isTupleType(ltype))
@@ -419,8 +382,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 		TypePair_t* cmplxtype = 0;
 		if(this->type.strType != "Inferred")
 		{
-			// cmplxtype = cgi->getType(this->type.strType);
-			// if(!cmplxtype) cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
 			iceAssert(this->inferredLType);
 			cmplxtype = cgi->getType(this->inferredLType);
 		}
