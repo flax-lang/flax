@@ -52,9 +52,6 @@ namespace Parser
 
 	static bool isRightAssociativeOp(Token tok)
 	{
-		// if(tok.type == TType::Period)
-			// return true;
-
 		return false;
 	}
 
@@ -337,6 +334,18 @@ namespace Parser
 						{
 							ps.cgi->customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { op.text, curPrec };
 							ps.cgi->customOperatorMapRev[op.text] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
+						}
+						else
+						{
+							ArithmeticOp ao = ps.cgi->customOperatorMapRev[op.text];
+							auto pair = ps.cgi->customOperatorMap[ao];
+
+							if(pair.second != curPrec)
+							{
+								parserWarn("Operator '%s' was previously defined with a different infix precedence (%d). Due to the way the"
+									" flax compiler is engineered, all custom operators using the same identifier will be bound to the first"
+									" precedence defined.", pair.first.c_str(), pair.second);
+							}
 						}
 
 						curPrec = 0;
