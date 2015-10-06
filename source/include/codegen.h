@@ -48,11 +48,11 @@ namespace GenError
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
-	void printContext(std::string file, uint64_t line, uint64_t col);
+	void printContext(std::string file, uint64_t line, uint64_t col, uint64_t len);
 	void printContext(Ast::Expr* e);
 }
 
-void __error_gen(uint64_t line, uint64_t col, const char* file, const char* msg, const char* type,
+void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, const char* msg, const char* type,
 	bool doExit, va_list ap);
 
 void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));

@@ -53,10 +53,10 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	this->initFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
 	{
-		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->posinfo, this->initFunc->getName(), { fakeSelf }, "Void");
+		FuncDecl* fd = new FuncDecl(this->pin, this->initFunc->getName(), { fakeSelf }, "Void");
 		cgi->addFunctionToScope({ this->initFunc, fd });
 	}
 

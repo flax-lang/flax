@@ -146,7 +146,7 @@ namespace Parser
 	{
 		Token() { }
 
-		PosInfo posinfo;
+		pin pin;
 		std::string text;
 		TType type = TType::Invalid;
 	};
@@ -179,7 +179,7 @@ namespace Parser
 		std::map<std::string, bool> visited;
 
 		Token curtok;
-		PosInfo currentPos;
+		pin currentPos;
 		Ast::Root* rootNode = 0;
 		uint64_t curAttrib = 0;
 
@@ -286,7 +286,7 @@ namespace Parser
 
 
 	std::string getModuleName(std::string filename);
-	Token getNextToken(std::string& stream, PosInfo& pos);
+	Token getNextToken(std::string& stream, pin& pos);
 
 	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);

@@ -11,25 +11,40 @@ using namespace Ast;
 
 namespace GenError
 {
-	void printContext(std::string file, uint64_t line, uint64_t col)
+	void printContext(std::string file, uint64_t line, uint64_t col, uint64_t len)
 	{
 		std::vector<std::string> lines = Compiler::getFileLines(file);
 		if(lines.size() > line - 1)
 		{
-			std::string ln = lines[line - 1];
+			std::string orig = lines[line - 1];
+			std::string ln;
+
+			for(auto c : orig)
+			{
+				if(c == '\t')
+					ln += "    ";
+
+				else
+					ln += c;
+			}
+
 
 			fprintf(stderr, "%s\n", ln.c_str());
 
 			for(uint64_t i = 1; i < col - 1; i++)
 			{
 				if(ln[i - 1] == '\t')
-					fprintf(stderr, "\t");		// 4-wide tabs
+					fprintf(stderr, "    ");		// 4-wide tabs
 
 				else
 					fprintf(stderr, " ");
 			}
 
-			fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+			std::string tildes;
+			for(size_t i = 0; i < len; i++)
+				tildes += "~";
+
+			fprintf(stderr, "%s^%s%s", COLOUR_GREEN_BOLD, tildes.c_str(), COLOUR_RESET);
 		}
 		else
 		{
@@ -39,13 +54,13 @@ namespace GenError
 
 	void printContext(Expr* e)
 	{
-		if(e->posinfo.line > 0)
-			printContext(e->posinfo.file, e->posinfo.line, e->posinfo.col);
+		if(e->pin.line > 0)
+			printContext(e->pin.file, e->pin.line, e->pin.col, e->pin.len);
 	}
 }
 
 
-void __error_gen(uint64_t line, uint64_t col, const char* file, const char* msg,
+void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, const char* msg,
 	const char* type, bool doExit, va_list ap)
 {
 	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
@@ -77,7 +92,7 @@ void __error_gen(uint64_t line, uint64_t col, const char* file, const char* msg,
 		std::vector<std::string> lines;
 		if(strcmp(file, "") != 0)
 		{
-			GenError::printContext(file, line, col);
+			GenError::printContext(file, line, col, len);
 		}
 	}
 
@@ -102,11 +117,12 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+	const char* file	= relevantast ? relevantast->pin.file : "";
+	uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, file, msg, "Error", true, ap);
+	__error_gen(line, col, len, file, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -115,7 +131,7 @@ void error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, "", msg, "Error", true, ap);
+	__error_gen(0, 0, 0, "", msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -130,7 +146,7 @@ void warn(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, "", msg, "Warning", false, ap);
+	__error_gen(0, 0, 0, "", msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -139,11 +155,12 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+	const char* file	= relevantast ? relevantast->pin.file : "";
+	uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, file, msg, "Warning", false, ap);
+	__error_gen(line, col, len, file, msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -153,7 +170,7 @@ void info(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, "", msg, "Note", false, ap);
+	__error_gen(0, 0, 0, "", msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -162,11 +179,12 @@ void info(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->posinfo.file.c_str() : "";
-	uint64_t line		= relevantast ? relevantast->posinfo.line : 0;
-	uint64_t col		= relevantast ? relevantast->posinfo.col : 0;
+	const char* file	= relevantast ? relevantast->pin.file : "";
+	uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, file, msg, "Note", false, ap);
+	__error_gen(line, col, len, file, msg, "Note", false, ap);
 	va_end(ap);
 }
 
