@@ -927,7 +927,18 @@ namespace Codegen
 			int indirections = pair.second;
 
 
-			iceAssert(indirections >= 0);
+			if(indirections == -1)
+			{
+				std::string nsstr;
+				for(auto n : ns)
+					nsstr += n + ".";
+
+				if(ns.size() > 0) nsstr = nsstr.substr(1);
+
+				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
+			}
+
+
 			if(!tp && this->getLlvmTypeOfBuiltin(atype))
 			{
 				return this->getLlvmTypeOfBuiltin(atype);

@@ -176,7 +176,6 @@ namespace Compiler
 		std::string curpath = Compiler::getPathFromFile(fpath);
 
 		// parse
-		// printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 
@@ -194,14 +193,10 @@ namespace Compiler
 		oname += ".bc";
 
 
-		// printf("\n\n** COPYING BACK\n\n\n");
-
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
 		copyRootInnards(rcgi, root, dummyRoot, true);
-
-		// printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
