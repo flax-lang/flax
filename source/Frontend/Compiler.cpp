@@ -68,7 +68,7 @@ namespace Compiler
 				std::string msg = "No module or library with the name '" + modname + "' could be found (no such builtin library either)";
 
 				va_list ap;
-				__error_gen(imp->posinfo.line + 1 /* idk why */, imp->posinfo.col,
+				__error_gen(imp->pin.line + 1 /* idk why */, imp->pin.col, imp->pin.len,
 					getFilenameFromPath(fullPath).c_str(), msg.c_str(), "Error", true, ap);
 
 				abort();
@@ -78,22 +78,6 @@ namespace Compiler
 
 
 
-
-	// static void addSubs(Codegen::CodegenInstance* cgi, Codegen::FunctionTree* rootft, Codegen::FunctionTree* sub)
-	// {
-	// 	for(auto s : rootft->subs)
-	// 	{
-	// 		if(s->nsName == sub->nsName)
-	// 		{
-	// 			// printf("found %s, not cloning (has %zu subs)\n", s->nsName.c_str(), sub->subs.size());
-	// 			// add subs of subs instead.
-	// 			for(auto ss : sub->subs)
-	// 				addSubs(cgi, s, ss);
-	// 		}
-	// 	}
-
-	// 	rootft->subs.push_back(cgi->cloneFunctionTree(sub, false));
-	// };
 
 
 	static void cloneCGIInnards(Codegen::CodegenInstance* from, Codegen::CodegenInstance* to)
@@ -107,21 +91,6 @@ namespace Compiler
 	static void copyRootInnards(Codegen::CodegenInstance* cgi, Root* from, Root* to, bool doClone)
 	{
 		using namespace Codegen;
-		// for(auto f : from->publicFuncTree.funcs)
-		// {
-		// 	printf("*** copying public func %s (%d -> %d)\n", f.first->getName().bytes_begin(), from->publicFuncTree.id,
-		// 		to->publicFuncTree.id);
-
-		// 	// to->.funcs.push_back(f);
-		// 	to->publicFuncTree.funcs.push_back(f);
-		// }
-
-
-		// for(auto s : from->publicFuncTree.subs)
-		// {
-		// 	// addSubs(&to->externalFuncTree, s);
-		// 	addSubs(cgi, &to->publicFuncTree, s);
-		// }
 
 		for(auto v : from->publicTypes)
 		{
@@ -176,7 +145,6 @@ namespace Compiler
 		std::string curpath = Compiler::getPathFromFile(fpath);
 
 		// parse
-		// printf("\n\n** COMPILING: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 
@@ -194,14 +162,10 @@ namespace Compiler
 		oname += ".bc";
 
 
-		// printf("\n\n** COPYING BACK\n\n\n");
-
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
 		copyRootInnards(rcgi, root, dummyRoot, true);
-
-		// printf("\n\n** DONE WITH: %s\n\n\n", Compiler::getFilenameFromPath(fpath).c_str());
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -217,9 +181,15 @@ namespace Compiler
 
 		// NOTE: make sure resolveImport **DOES NOT** use codegeninstance, cuz it's 0.
 		ParserState fakeps(0);
-		fakeps.currentPos.file = currentMod;
+
+
+		fakeps.currentPos.file = new char[currentMod.length() + 1];
+		strcpy(fakeps.currentPos.file, currentMod.c_str());
+
+
 		fakeps.currentPos.line = 1;
 		fakeps.currentPos.col = 1;
+		fakeps.currentPos.len = 1;
 
 		fakeps.tokens = Compiler::getFileTokens(currentMod);
 
@@ -263,7 +233,7 @@ namespace Compiler
 
 
 	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, llvm::Module*>>
-	compileFile(std::string filename)
+	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		using namespace Codegen;
 
@@ -298,7 +268,7 @@ namespace Compiler
 					{
 						va_list ap;
 
-						__error_gen(u.second->posinfo.line + 1 /* idk why */, u.second->posinfo.col,
+						__error_gen(u.second->pin.line + 1 /* idk why */, u.second->pin.col, u.second->pin.len,
 							getFilenameFromPath(u.first->name).c_str(), "", "Note", false, ap);
 					}
 				}
@@ -314,6 +284,9 @@ namespace Compiler
 
 		Root* dummyRoot = new Root();
 		CodegenInstance* rcgi = new CodegenInstance();
+
+		rcgi->customOperatorMap = foundOps;
+		rcgi->customOperatorMapRev = foundOpsRev;
 
 		for(auto gr : groups)
 		{

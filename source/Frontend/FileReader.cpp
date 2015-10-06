@@ -55,10 +55,11 @@ namespace Compiler
 		}
 
 		Parser::Token curtok;
-		Parser::PosInfo pos;
+		Parser::pin pos;
 		Parser::TokenList ts;
 
-		pos.file = fullPath;
+		pos.file = new char[fullPath.length() + 1];
+		strcpy(pos.file, fullPath.c_str());
 
 		while((curtok = getNextToken(fileContents, pos)).text.size() > 0)
 			ts.push_back(curtok);

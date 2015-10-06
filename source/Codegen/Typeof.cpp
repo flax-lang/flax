@@ -17,7 +17,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Type* t = 0;
 		if(!decl)
 		{
-			t = cgi->parseTypeFromString(this, vr->name);
+			t = cgi->getLlvmTypeFromExprType(this, vr->name);
 
 			if(!t)
 				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);

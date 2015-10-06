@@ -53,10 +53,10 @@ namespace TypeInfo
 
 		if(cgi->getType("Type") == nullptr)
 		{
-			enr = new Enumeration(Parser::PosInfo(), "Type");
+			enr = new Enumeration(Parser::pin(), "Type");
 			enr->isStrong = true;
 
-			Number* num = new Number(Parser::PosInfo(), (int64_t) 1);
+			Number* num = new Number(Parser::pin(), (int64_t) 1);
 			enr->cases.push_back(std::make_pair("Type", num));
 
 			// note: Enumeration does nothing in codegen()
@@ -79,12 +79,12 @@ namespace TypeInfo
 		// create the Any type.
 		if(cgi->getType("Any") == 0)
 		{
-			Struct* any = new Struct(Parser::PosInfo(), "Any");
+			Struct* any = new Struct(Parser::pin(), "Any");
 			{
-				VarDecl* type = new VarDecl(Parser::PosInfo(), "type", false);
+				VarDecl* type = new VarDecl(Parser::pin(), "type", false);
 				type->type.strType = "Type";
 
-				VarDecl* data = new VarDecl(Parser::PosInfo(), "value", false);
+				VarDecl* data = new VarDecl(Parser::pin(), "value", false);
 				data->type.strType = "Int8*";
 
 				any->members.push_back(type);		any->nameMap["type"] = 0;
@@ -102,7 +102,7 @@ namespace TypeInfo
 		iceAssert(enr);
 
 		// start at 2, we already have 1
-		Number* num = new Number(Parser::PosInfo(), (int64_t) 2);
+		Number* num = new Number(Parser::pin(), (int64_t) 2);
 
 
 		bool done = false;
@@ -150,7 +150,7 @@ namespace TypeInfo
 
 
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
-			num = new Number(Parser::PosInfo(), num->ival + 1);
+			num = new Number(Parser::pin(), num->ival + 1);
 		}
 
 		#if 0

@@ -56,7 +56,7 @@ Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm
 {
 	if(this->kind == Kind::ArrayIndex)
 	{
-		ArrayIndex* fake = new ArrayIndex(this->posinfo, this->expr, this->args.front());
+		ArrayIndex* fake = new ArrayIndex(this->pin, this->expr, this->args.front());
 		return fake->codegen(cgi, lhsPtr, rhs);
 	}
 	else

@@ -108,7 +108,6 @@ namespace Codegen
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
 						error(expr, "Invalid variable declaration for %s!", decl->name.c_str());
-						// return llvm::Type::getVoidTy(this->getContext());
 					}
 
 					iceAssert(decl->inferredLType);
@@ -120,30 +119,10 @@ namespace Codegen
 					if(decl->inferredLType)
 						return decl->inferredLType;
 
-					TypePair_t* type = this->getType(decl->type.strType);
-					if(!type)
-					{
-						// check if it ends with pointer, and if we have a type that's un-pointered
-						if(decl->type.strType.find("::") != std::string::npos)
-						{
-							decl->type.strType = this->mangleRawNamespace(decl->type.strType);
+					llvm::Type* ret = this->parseAndGetOrInstantiateType(decl, decl->type.strType, allowFail);
+					if(setInferred) decl->inferredLType = ret;
 
-							if(setInferred)
-								decl->inferredLType = this->getLlvmType(decl, allowFail);
-
-							return setInferred ? decl->inferredLType : this->getLlvmType(decl, allowFail);
-						}
-
-						if(setInferred)
-							decl->inferredLType = this->parseTypeFromString(decl, decl->type.strType, allowFail);
-
-						return setInferred ? decl->inferredLType : this->parseTypeFromString(decl, decl->type.strType, allowFail);
-					}
-
-					if(setInferred)
-						decl->inferredLType = type->first;
-
-					return type->first;
+					return ret;
 				}
 			}
 			else if(VarRef* ref = dynamic_cast<VarRef*>(expr))
@@ -213,7 +192,7 @@ namespace Codegen
 				TypePair_t* type = this->getType(fd->type.strType);
 				if(!type)
 				{
-					llvm::Type* ret = this->parseTypeFromString(fd, fd->type.strType, allowFail);
+					llvm::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
 					return ret;
 				}
 
@@ -285,7 +264,7 @@ namespace Codegen
 						for(ComputedProperty* c : cls->cprops)
 						{
 							if(c->name == memberVr->name)
-								return this->getLlvmTypeFromString(c, c->type, allowFail);
+								return this->getLlvmTypeFromExprType(c, c->type, allowFail);
 						}
 					}
 					else if(memberFc)
@@ -346,6 +325,9 @@ namespace Codegen
 				{
 					return this->getLlvmType(bo->right);
 				}
+				else if(bo->op >= ArithmeticOp::UserDefined)
+				{
+				}
 				else
 				{
 					// check if both are integers
@@ -380,10 +362,10 @@ namespace Codegen
 					if(alloc->type.strType.find("::") != std::string::npos)
 					{
 						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getLlvmTypeFromString(alloc, alloc->type, allowFail)->getPointerTo();
+						return this->getLlvmTypeFromExprType(alloc, alloc->type, allowFail)->getPointerTo();
 					}
 
-					return this->parseTypeFromString(alloc, alloc->type.strType)->getPointerTo();
+					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
 				}
 
 				return type->first->getPointerTo();
@@ -404,7 +386,7 @@ namespace Codegen
 			{
 				if(dum->type.isLiteral)
 				{
-					return this->parseTypeFromString(expr, dum->type.strType);
+					return this->parseAndGetOrInstantiateType(expr, dum->type.strType);
 				}
 				else
 				{
@@ -778,7 +760,7 @@ namespace Codegen
 			if(front == ',' || front == ')')
 			{
 				bool shouldBreak = (front == ')');
-				llvm::Type* ty = cgi->parseTypeFromString(user, cur, allowFail);
+				llvm::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
 				iceAssert(ty);
 
 				types.push_back(ty);
@@ -818,7 +800,7 @@ namespace Codegen
 				type.erase(type.begin());
 			}
 
-			ret = cgi->parseTypeFromString(user, t, allowFail);
+			ret = cgi->parseAndGetOrInstantiateType(user, t, allowFail);
 		}
 		else
 		{
@@ -839,7 +821,7 @@ namespace Codegen
 
 
 
-	llvm::Type* CodegenInstance::parseTypeFromString(Expr* user, std::string type, bool allowFail)
+	llvm::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
 	{
 		if(type.length() > 0)
 		{
@@ -868,7 +850,7 @@ namespace Codegen
 					std::string base = actualType.substr(0, k);
 
 					std::string arr = actualType.substr(k);
-					llvm::Type* btype = this->parseTypeFromString(user, base, allowFail);
+					llvm::Type* btype = this->parseAndGetOrInstantiateType(user, base, allowFail);
 
 
 					std::vector<int> sizes;
@@ -907,7 +889,7 @@ namespace Codegen
 				}
 				else
 				{
-					llvm::Type* ret = this->getLlvmTypeFromString(user, ExprType(actualType), allowFail);
+					llvm::Type* ret = this->getLlvmTypeFromExprType(user, ExprType(actualType), allowFail);
 
 					if(ret)
 					{
@@ -928,7 +910,7 @@ namespace Codegen
 		}
 	}
 
-	llvm::Type* CodegenInstance::getLlvmTypeFromString(Ast::Expr* user, ExprType type, bool allowFail)
+	llvm::Type* CodegenInstance::getLlvmTypeFromExprType(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
 		{
@@ -936,20 +918,69 @@ namespace Codegen
 			if(ret) return ret;
 
 			// not so lucky
-			TypePair_t* tp = this->getType(type.strType);
-			if(!tp)
-				tp = this->getType(type.strType + "E");		// nested types. hack.
+			std::deque<std::string> ns = this->unwrapNamespacedType(type.strType);
+			std::string atype = ns.back();
+			ns.pop_back();
 
-			if(!tp && type.strType.find("::") != std::string::npos)
-				tp = this->getType(this->mangleRawNamespace(type.strType));
+			auto pair = this->findTypeInFuncTree(ns, atype);
+			TypePair_t* tp = pair.first;
+			int indirections = pair.second;
 
-			if(!tp && allowFail)
+
+			if(indirections == -1)
+			{
+				std::string nsstr;
+				for(auto n : ns)
+					nsstr += n + ".";
+
+				if(ns.size() > 0) nsstr = nsstr.substr(1);
+
+				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
+			}
+
+
+			if(!tp && this->getLlvmTypeOfBuiltin(atype))
+			{
+				return this->getLlvmTypeOfBuiltin(atype);
+			}
+			else if(tp)
+			{
+				llvm::Type* concrete = tp->first;
+				if(!concrete)
+				{
+					// generate the type.
+					StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+					iceAssert(sb);
+
+					// temporarily hijack the main scope
+					auto old = this->namespaceStack;
+					this->namespaceStack = ns;
+
+					concrete = sb->createType(this);
+
+					sb->codegen(this);
+					this->namespaceStack = old;
+
+					iceAssert(concrete);
+				}
+
+				llvm::Type* ret = tp->first;
+				while(indirections > 0)
+				{
+					ret = ret->getPointerTo();
+					indirections--;
+				}
+
+				return ret;
+			}
+			else if(!allowFail)
+			{
+				error(user, "Unknown type '%s'", type.strType.c_str());
+			}
+			else
+			{
 				return 0;
-
-			else if(!tp)
-				GenError::unknownSymbol(this, user, type.strType, SymbolType::Type);
-
-			return tp->first;
+			}
 		}
 		else
 		{
