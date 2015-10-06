@@ -5,6 +5,22 @@
 import Math
 import String
 
+
+struct Test
+{
+	var i: Int = 7
+
+	@precedence[140]
+	operator • (other: Test) -> Test
+	{
+		var ret: Test
+		ret.i = self.i * other.i
+
+		return ret
+	}
+}
+
+
 public func main() -> Int
 {
 	var foo: String
@@ -21,6 +37,13 @@ public func main() -> Int
 	let dot: Double = m.0 • m.1
 	printf("dot = %f\n", dot);
 
+
+
+	var t1: Test
+	var t2: Test
+
+	let test: Test = t1 • t2
+	printf("test = %d\n", test.i)
 
 	return 0
 }
