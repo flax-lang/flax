@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Math
 import String
 
 
@@ -14,10 +15,22 @@ public func main() -> Int
 	let g: Int8 = 100
 	printf("g is: %d\n", g)
 
-	let b: Bar()
+	let m: (Math.Vector2, Math.Vector2) = (fa(), fb())
+	printf("m is [(%f, %f), (%f, %f)]\n", m.0.x, m.0.y, m.1.x, m.1.y)
 
-	let m = (fa(), fb())
-	printf("m is (%d, %d)\n", m.0, m.1)
+
+	let dot: Double = m.0 • m.1
+	printf("dot = %f\n", dot);
+
+	#foobra
+
+	boofar()
+
+	var t1: Test
+	var t2: Test
+
+	let test: Test = t1 • t2
+	printf("test = %d\n", test.i)
 
 	return 0
 }
@@ -42,16 +55,30 @@ namespace some
 	}
 }
 
-
-
-func fa() -> Int
+func foobar()
 {
-	return 3
+	printf("foobar\n")
 }
 
-func fb() -> Int
+
+func fa() -> Math.Vector2
 {
-	return 9
+	var ret: Math.Vector2
+	ret.x = 5
+	ret.y = 25
+	ret.z = 125
+
+	return ret
+}
+
+func fb() -> Math.Vector2
+{
+	var ret: Math.Vector2
+	ret.x = 3
+	ret.y = 9
+	ret.z = 27
+
+	return ret
 }
 
 
