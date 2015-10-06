@@ -6,6 +6,8 @@
 #include "../include/codegen.h"
 #include "../include/semantic.h"
 
+#include "llvm/IR/Module.h"
+
 using namespace Ast;
 using namespace Codegen;
 
@@ -65,12 +67,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Struct* str				= dynamic_cast<Struct*>(e);
 			Class* cls				= dynamic_cast<Class*>(e);		// enum : class, extension : class
 			Func* fn				= dynamic_cast<Func*>(e);
+			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->name, TypeKind::Struct);
 			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
+			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 		}
 	}
 	else if(pass == 1)

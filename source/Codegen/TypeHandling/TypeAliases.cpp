@@ -20,11 +20,11 @@ llvm::Type* TypeAlias::createType(CodegenInstance* cgi)
 
 	if(!this->isStrong)
 	{
-		targetType = cgi->parseTypeFromString(this, this->origType);
+		targetType = cgi->getLlvmTypeFromExprType(this, this->origType);
 	}
 	else
 	{
-		targetType = llvm::StructType::create(this->name, cgi->parseTypeFromString(this, this->origType), NULL);
+		targetType = llvm::StructType::create(this->name, cgi->getLlvmTypeFromExprType(this, this->origType), NULL);
 		warn(this, "Strong type aliases are still iffy, use at your own risk");
 	}
 

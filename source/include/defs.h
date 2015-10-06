@@ -31,13 +31,15 @@ namespace Ast
 
 namespace Parser
 {
-	struct PosInfo
+	struct pin
 	{
-		PosInfo() { }
+		pin() { }
+		pin(char* f, uint64_t l, uint64_t c, uint64_t ln) : file(f), line(l), col(c), len(ln) { }
 
+		char* file = 0;
 		uint64_t line = 1;
 		uint64_t col = 1;
-		std::string file;
+		uint64_t len = 1;
 	};
 }
 

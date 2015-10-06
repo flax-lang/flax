@@ -11,10 +11,7 @@ namespace Math
 {
 	public ƒ π() -> Float64 { 3.14159265358979 }
 	public ƒ √(x: Float64) -> Float64 { sqrt(x) }
-	public ƒ √(x: Int) -> Float64
-	{
-		sqrt(x as Float64)
-	}
+	public ƒ √(x: Int) -> Float64 { sqrt(x as Float64) }
 
 	public ƒ square(x: Float64) -> Float64 { x * x }
 }

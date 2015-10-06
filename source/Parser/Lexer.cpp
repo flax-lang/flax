@@ -10,7 +10,7 @@
 
 namespace Parser
 {
-	static void skipWhitespace(std::string& line, PosInfo& pos)
+	static void skipWhitespace(std::string& line, pin& pos)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
 		if(startpos != std::string::npos)
@@ -22,7 +22,7 @@ namespace Parser
 
 
 	// warning: messy function
-	Token getNextToken(std::string& stream, PosInfo& pos)
+	Token getNextToken(std::string& stream, pin& pos)
 	{
 		if(stream.length() == 0)
 			return Token();
@@ -33,7 +33,7 @@ namespace Parser
 		skipWhitespace(stream, pos);
 
 		Token tok;
-		tok.posinfo = pos;
+		tok.pin = pos;
 
 		// check compound symbols first.
 		if(stream.compare(0, 2, "==") == 0)
@@ -174,7 +174,7 @@ namespace Parser
 			int currentNest = 1;
 			// support nested, so basically we have to loop until we find either a /* or a */
 			stream = stream.substr(2);
-			tok.posinfo.col += 2;
+			tok.pin.col += 2;
 
 			while(currentNest > 0)
 			{
@@ -183,8 +183,8 @@ namespace Parser
 				{
 					std::string removed = stream.substr(0, n);
 
-					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.pin.col += removed.length() - removed.find_last_of("\n");
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
 
@@ -199,8 +199,8 @@ namespace Parser
 				{
 					std::string removed = stream.substr(0, n);
 
-					tok.posinfo.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.posinfo.col += removed.length() - removed.find_last_of("\n");
+					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
+					tok.pin.col += removed.length() - removed.find_last_of("\n");
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
 
@@ -354,6 +354,7 @@ namespace Parser
 
 			read = 0;		// done above
 			tok.text = num;
+			pos.len = num.length();
 		}
 		else if(isalpha(stream[0]) || stream[0] == '_' || !isascii(stream[0]))
 		{
@@ -498,12 +499,15 @@ namespace Parser
 		stream = stream.substr(read);
 		if(tok.type != TType::NewLine)
 		{
-			tok.posinfo.col += read;
+			tok.pin.col += read;
 			pos.col += read;
+
+			if(read > 0)
+				pos.len = read;
 		}
 		else
 		{
-			tok.posinfo.col = 1;
+			tok.pin.col = 1;
 			pos.col = 1;
 		}
 

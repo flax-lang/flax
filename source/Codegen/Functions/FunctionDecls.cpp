@@ -181,8 +181,18 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 
-			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
-			implicit_self->type = this->parentClass->mangledName + "*";
+			VarDecl* implicit_self = new VarDecl(this->pin, "self", true);
+
+			// todo: this is *** moderately *** IFFY
+			// this is to handle generating the type when we need it
+			std::string finalns;
+			for(auto n : this->parentClass->scope)
+				finalns += n + "::";
+
+			finalns += this->parentClass->name + "*";
+			implicit_self->type = finalns;
+
+			// implicit_self->type = this->parentClass->name + "*";
 			this->params.push_front(implicit_self);
 		}
 	}

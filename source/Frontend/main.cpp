@@ -369,7 +369,7 @@ int main(int argc, char* argv[])
 		Parser::parseAllCustomOperators(pstate, filename, curpath);
 
 		// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
-		auto ret = Compiler::compileFile(filename);
+		auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
 		Root* r = std::get<0>(ret);
 		std::vector<std::string> filelist = std::get<1>(ret);
