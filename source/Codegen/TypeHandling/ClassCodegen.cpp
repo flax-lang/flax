@@ -62,10 +62,10 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
 
 	{
-		VarDecl* fakeSelf = new VarDecl(this->posinfo, "self", true);
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->posinfo, defaultInitFunc->getName(), { fakeSelf }, "Void");
+		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, "Void");
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
@@ -171,14 +171,14 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	// as functions to simplify our code
 	for(ComputedProperty* c : this->cprops)
 	{
-		VarDecl* fakeSelf = new VarDecl(c->posinfo, "self", true);
+		VarDecl* fakeSelf = new VarDecl(c->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
 		if(c->getter)
 		{
 			std::deque<VarDecl*> params { fakeSelf };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
-			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->getter);
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
+			Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 				fakeDecl->attribs |= Attr_VisPublic;
@@ -188,12 +188,12 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		}
 		if(c->setter)
 		{
-			VarDecl* setterArg = new VarDecl(c->posinfo, c->setterArgName, true);
+			VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->posinfo, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
-			Func* fakeFunc = new Func(c->posinfo, fakeDecl, c->setter);
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
+			Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 				fakeDecl->attribs |= Attr_VisPublic;
@@ -277,14 +277,14 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		{
 			std::deque<Expr*> todeque;
 
-			VarRef* svr = new VarRef(this->posinfo, "self");
+			VarRef* svr = new VarRef(this->pin, "self");
 			todeque.push_back(svr);
 
 
 			for(auto extInit : extensionInitialisers)
-				f->block->statements.push_front(new FuncCall(this->posinfo, extInit->getName(), todeque));
+				f->block->statements.push_front(new FuncCall(this->pin, extInit->getName(), todeque));
 
-			f->block->statements.push_front(new FuncCall(this->posinfo, "__automatic_init__" + this->mangledName, todeque));
+			f->block->statements.push_front(new FuncCall(this->pin, "__automatic_init__" + this->mangledName, todeque));
 		}
 
 		f->codegen(cgi);

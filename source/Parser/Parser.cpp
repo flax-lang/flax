@@ -20,7 +20,9 @@ using namespace Ast;
 namespace Parser
 {
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
-	#define CreateAST(name, tok, ...)		(new name (tok.posinfo, ##__VA_ARGS__))
+	#define CreateAST(name, tok, ...)		(new name (tok.pin, ##__VA_ARGS__))
+
+	#define CreateASTPos(name, f, l, c, len, ...)	(new name (Parser::pin(f, l, c, len), ##__VA_ARGS__))
 
 
 	#define ATTR_STR_NOMANGLE			"nomangle"
@@ -246,7 +248,9 @@ namespace Parser
 		std::string fullpath = Compiler::getFullPathOfFile(filename);
 		ps.tokens = Compiler::getFileTokens(fullpath);
 
-		ps.currentPos.file = filename;
+		ps.currentPos.file = new char[filename.length() + 1];
+		strcpy(ps.currentPos.file, filename.c_str());
+
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -342,9 +346,9 @@ namespace Parser
 
 							if(pair.second != curPrec)
 							{
-								parserWarn("Operator '%s' was previously defined with a different infix precedence (%d). Due to the way the"
-									" flax compiler is engineered, all custom operators using the same identifier will be bound to the first"
-									" precedence defined.", pair.first.c_str(), pair.second);
+								parserWarn(op, "Operator '%s' was previously defined with a different infix precedence (%d). Due to the way"
+									" the flax compiler is engineered, all custom operators using the same identifier will be bound to the"
+									" first precedence defined.", pair.first.c_str(), pair.second);
 							}
 						}
 
@@ -365,17 +369,15 @@ namespace Parser
 	Root* Parse(ParserState& ps, std::string filename)
 	{
 		Token t;
-		ps.currentPos.file = filename;
-		ps.currentPos.line = 1;
-		ps.currentPos.col = 1;
-		ps.curAttrib = 0;
 
 		// restore this, so we don't have to read the file again
 		ps.tokens = Compiler::getFileTokens(filename);
 
 		ps.rootNode = new Root();
 
-		ps.currentPos.file = filename;
+		ps.currentPos.file = new char[filename.length() + 1];
+		strcpy(ps.currentPos.file, filename.c_str());
+
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -642,28 +644,47 @@ namespace Parser
 		return nullptr;
 	}
 
+
+
+
+
+
+
+
+
+
+
 	Expr* parseUnary(ParserState& ps)
 	{
-		Token front = ps.front();
+		Token tk = ps.front();
 
 		// check for unary shit
 		ArithmeticOp op = ArithmeticOp::Invalid;
 
-		if(front.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
-		else if(front.type == TType::Plus)			op = ArithmeticOp::Plus;
-		else if(front.type == TType::Minus)			op = ArithmeticOp::Minus;
-		else if(front.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
-		else if(front.type == TType::Pound)			op = ArithmeticOp::Deref;
-		else if(front.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+		if(tk.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
+		else if(tk.type == TType::Plus)			op = ArithmeticOp::Plus;
+		else if(tk.type == TType::Minus)			op = ArithmeticOp::Minus;
+		else if(tk.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
+		else if(tk.type == TType::Pound)			op = ArithmeticOp::Deref;
+		else if(tk.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
 
 		if(op != ArithmeticOp::Invalid)
 		{
 			ps.eat();
-			return CreateAST(UnaryOp, front, op, parseUnary(ps));
+			Expr* un = parseUnary(ps);
+
+			return CreateASTPos(UnaryOp, tk.pin.file, tk.pin.line, tk.pin.col, tk.pin.len + un->pin.len, op, un);
 		}
 
 		return parsePrimary(ps);
 	}
+
+
+
+
+
+
+
 
 	Expr* parseStaticDecl(ParserState& ps)
 	{
@@ -690,6 +711,7 @@ namespace Parser
 			parserError("Invaild static expression '%s'", ps.front().text.c_str());
 		}
 	}
+
 
 	FuncDecl* parseFuncDecl(ParserState& ps)
 	{
@@ -1606,18 +1628,22 @@ namespace Parser
 
 	FuncCall* parseFuncCall(ParserState& ps, std::string id)
 	{
-		Token front = ps.eat();
-		iceAssert(front.type == TType::LParen);
+		Token tk = ps.eat();
+		iceAssert(tk.type == TType::LParen);
 
 		std::deque<Expr*> args;
 
+		size_t paramlen = 0;
 		if(ps.front().type != TType::RParen)
 		{
 			while(true)
 			{
 				Expr* arg = parseExpr(ps);
+
 				if(arg == nullptr)
 					return nullptr;
+
+				paramlen += arg->pin.len;
 
 				args.push_back(arg);
 				if(ps.front().type == TType::RParen)
@@ -1636,7 +1662,7 @@ namespace Parser
 			ps.eat();
 		}
 
-		auto ret = CreateAST(FuncCall, front, id, args);
+		auto ret = CreateASTPos(FuncCall, tk.pin.file, tk.pin.line, tk.pin.col - id.length() + 3, id.length() + 1 + paramlen, id, args);
 		ps.rootNode->allFunctionCalls.push_back(ret);
 
 		return ret;
@@ -2398,7 +2424,7 @@ namespace Parser
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 
 		Token fake;
-		fake.posinfo = ps.currentPos;
+		fake.pin = ps.currentPos;
 		fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
@@ -2439,7 +2465,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.posinfo.line, staticState->curtok.posinfo.col, staticState->curtok.posinfo.file.c_str(),
+		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
 			msg, "Error", true, ap);
 
 		va_end(ap);
@@ -2453,7 +2479,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.posinfo.line, staticState->curtok.posinfo.col, staticState->curtok.posinfo.file.c_str(),
+		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
 			msg, "Warning", false, ap);
 
 		va_end(ap);
@@ -2466,7 +2492,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2478,7 +2504,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.posinfo.line, ps.curtok.posinfo.col, ps.curtok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2493,7 +2519,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2505,7 +2531,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2523,7 +2549,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Error", true, ap);
+		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2535,7 +2561,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.posinfo.line, tok.posinfo.col, tok.posinfo.file.c_str(), msg, "Warning", false, ap);
+		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
