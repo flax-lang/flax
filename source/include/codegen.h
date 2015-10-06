@@ -211,7 +211,7 @@ namespace Codegen
 		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
 		llvm::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		llvm::Type* getLlvmTypeFromString(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		llvm::Type* getLlvmTypeFromExprType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
 		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);
@@ -265,7 +265,7 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		llvm::Type* parseTypeFromString(Ast::Expr* user, std::string type, bool allowFail = false);
+		llvm::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
 		std::string unwrapPointerType(std::string type, int* indirections);
 
 		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
@@ -299,6 +299,8 @@ namespace Codegen
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType = 0);
+
+		// llvm::Type* getOperatorReturnType(llvm::Type* lhs, llvm::Type* rhs, )
 
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);

@@ -27,11 +27,11 @@ namespace Math
 			return ret
 		}
 
-		// @precedence[90]
-		// operator • (other: Math.Vector2) -> Double
-		// {
-		// 	return self.x * other.x + self.y * other.y
-		// }
+		@precedence[90]
+		operator • (other: Math.Vector2) -> Double
+		{
+			return self.x * other.x + self.y * other.y
+		}
 	}
 
 	public struct Vector3
@@ -39,6 +39,12 @@ namespace Math
 		var x: Double
 		var y: Double
 		var z: Double
+
+		@precedence[90]
+		operator • (other: Math.Vector3) -> Double
+		{
+			return (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
+		}
 	}
 
 	public class Complex
