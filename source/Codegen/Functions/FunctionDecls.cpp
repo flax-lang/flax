@@ -181,7 +181,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 
-			VarDecl* implicit_self = new VarDecl(this->posinfo, "self", true);
+			VarDecl* implicit_self = new VarDecl(this->pin, "self", true);
 
 			// todo: this is *** moderately *** IFFY
 			// this is to handle generating the type when we need it

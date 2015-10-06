@@ -1033,7 +1033,7 @@ namespace Codegen
 			std::deque<VarDecl*> params;
 			if(name == "malloc")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "size", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "size", false);
 				fakefdmvd->type = "Uint64";
 				params.push_back(fakefdmvd);
 
@@ -1041,7 +1041,7 @@ namespace Codegen
 			}
 			else if(name == "free")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "ptr", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "ptr", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1049,7 +1049,7 @@ namespace Codegen
 			}
 			else if(name == "strlen")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::PosInfo(), "str", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "str", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1057,15 +1057,15 @@ namespace Codegen
 			}
 			else if(name == "memset")
 			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::PosInfo(), "ptr", false);
+				VarDecl* fakefdmvd1 = new VarDecl(Parser::pin(), "ptr", false);
 				fakefdmvd1->type = "Int8*";
 				params.push_back(fakefdmvd1);
 
-				VarDecl* fakefdmvd2 = new VarDecl(Parser::PosInfo(), "val", false);
+				VarDecl* fakefdmvd2 = new VarDecl(Parser::pin(), "val", false);
 				fakefdmvd2->type = "Int8";
 				params.push_back(fakefdmvd2);
 
-				VarDecl* fakefdmvd3 = new VarDecl(Parser::PosInfo(), "size", false);
+				VarDecl* fakefdmvd3 = new VarDecl(Parser::pin(), "size", false);
 				fakefdmvd3->type = "Uint64";
 				params.push_back(fakefdmvd3);
 
@@ -1076,7 +1076,7 @@ namespace Codegen
 				error("enotsup: %s", name.c_str());
 			}
 
-			FuncDecl* fakefm = new FuncDecl(Parser::PosInfo(), name, params, retType);
+			FuncDecl* fakefm = new FuncDecl(Parser::pin(), name, params, retType);
 			fakefm->isFFI = true;
 			fakefm->codegen(this);
 		}
@@ -2301,7 +2301,7 @@ namespace Codegen
 
 		if(ComputedProperty* cp = dynamic_cast<ComputedProperty*>(expr))
 		{
-			ComputedProperty* clone = new ComputedProperty(cp->posinfo, cp->name);
+			ComputedProperty* clone = new ComputedProperty(cp->pin, cp->name);
 
 			// copy the rest.
 			clone->getterFunc		= (FuncDecl*) this->cloneAST(cp->getterFunc);
@@ -2325,7 +2325,7 @@ namespace Codegen
 			FuncDecl* cdecl = (FuncDecl*) this->cloneAST(fn->decl);
 			BracedBlock* cblock = fn->block;
 
-			Func* clone = new Func(fn->posinfo, cdecl, cblock);
+			Func* clone = new Func(fn->pin, cdecl, cblock);
 
 			clone->instantiatedGenericVersions = fn->instantiatedGenericVersions;
 			clone->type	= fn->type;
@@ -2334,7 +2334,7 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			FuncDecl* clone = new FuncDecl(fd->posinfo, fd->name, fd->params, fd->type.strType);
+			FuncDecl* clone = new FuncDecl(fd->pin, fd->name, fd->params, fd->type.strType);
 
 			// copy the rest
 			clone->mangledName						= fd->mangledName;
