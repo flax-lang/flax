@@ -31,7 +31,7 @@ namespace Parser
 	#define ATTR_STR_PACKEDSTRUCT		"packed"
 	#define ATTR_STR_STRONG				"strong"
 	#define ATTR_STR_RAW				"raw"
-	#define ATTR_STR_PRECEDENCE			"precedence"
+	#define ATTR_STR_OPERATOR			"operator"
 
 	static ParserState* staticState;
 
@@ -293,11 +293,11 @@ namespace Parser
 					ps.pop_front();
 
 					iceAssert(attr.type == TType::Identifier);
-					if(attr.text == ATTR_STR_PRECEDENCE)
+					if(attr.text == ATTR_STR_OPERATOR)
 					{
 						ps.skipNewline();
 						if(ps.front().type != TType::LSquare)
-							parserError(ps, ps.front(), "Expected '[' after @precedence");
+							parserError(ps, ps.front(), "Expected '[' after @operator");
 
 						ps.pop_front();
 						ps.skipNewline();
@@ -307,7 +307,7 @@ namespace Parser
 						ps.skipNewline();
 
 						if(num.type != TType::Integer)
-							parserError(ps, num, "Expected integer within @precedence[]");
+							parserError(ps, num, "Expected integer within @operator[]");
 
 						curPrec = std::stod(num.text);
 						if(curPrec <= 0)
@@ -331,7 +331,7 @@ namespace Parser
 						size_t opNum = ps.cgi->customOperatorMap.size();
 
 						if(curPrec == 0)
-							parserError(ps, t, "Custom operators must have a precedence, use @precedence(x)");
+							parserError(ps, t, "Custom operators must have a precedence, use @operator[x]");
 
 						// check if it exists.
 						if(ps.cgi->customOperatorMapRev.find(op.text) == ps.cgi->customOperatorMapRev.end())
@@ -357,7 +357,7 @@ namespace Parser
 				}
 				else if(curPrec > 0)
 				{
-					parserError(ps, ps.front(), "@precedence can only be applied to operators (%s)", ps.front().text.c_str());
+					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
 				}
 			}
 
@@ -2130,7 +2130,7 @@ namespace Parser
 			parserWarn("Attribute 'private' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisPrivate;
 		}
-		else if(id.text == "precedence")
+		else if(id.text == "operator")
 		{
 			// all handled.
 			iceAssert(ps.eat().type == TType::LSquare);

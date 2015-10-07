@@ -149,49 +149,21 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 
-
-
-	// todo: create memberwise init function()
-	// ie. for some struct:
-	// struct Vector2
-	// {
-	//  	var x: Double
-	//  	var y: Double
-	// }
-	//
-	// the compiler should generate a constructor init(x: Double, y: Double), in addition
-	// to the init() that it currently does.
-
-	// ^^^ DONE ^^^
-
-
-
-
-
-	// todo: number 2.
-	//
-	// compiler should synthesise != from == (or vice versa), and these:
-	// +=, -=, *=, /=, given +, -, *, / and =.
-	// basically, don't be a c++.
-
-	// ^^^ PARTIALLY DONE ^^^
-	// !=/== works
-	// still need +=, etc.
-
-
-
-
-
 	// todo: number 3
 	//
 	// operators should be allowed to be defined outside of structs
 	// for infix binops these would take 2 parameters, and work exactly the same.
 
 
+
 	// todo: number 4
 	//
 	// @precedence should be changed to @operator[bla], to be able to specify more attributes
 	// (infix/prefix/postfix, precedence, options for compiler autogen)
+
+
+
+
 
 
 	// todo: number 5
