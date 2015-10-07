@@ -30,6 +30,13 @@ namespace Math
 						(self.z * other.x) - (self.x * other.z),
 						(self.x * other.y) - (self.y * other.x))
 		}
+
+		operator = (other: Math.Vector3)
+		{
+			self.x = other.x
+			self.y = other.y
+			self.z = other.z
+		}
 	}
 }
 

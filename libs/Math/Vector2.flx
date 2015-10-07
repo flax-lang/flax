@@ -24,6 +24,12 @@ namespace Math
 
 		@precedence[90] operator • (other: Math.Vector2) -> Double { self.x * other.x + self.y * other.y }
 		@precedence[100] operator x (other: Math.Vector2) -> Double { self.x * other.y - self.y * other.x }
+
+		operator = (other: Math.Vector2)
+		{
+			self.x = other.x
+			self.y = other.y
+		}
 	}
 }
 
