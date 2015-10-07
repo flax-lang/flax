@@ -40,7 +40,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
 	{
-		assert(0);
 		std::vector<llvm::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
