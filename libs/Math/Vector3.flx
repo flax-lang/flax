@@ -1,0 +1,58 @@
+// Vector3.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+namespace Math
+{
+	public struct Vector3
+	{
+		var x: Double
+		var y: Double
+		var z: Double
+
+
+		operator == (other: Math.Vector3) -> Bool { (self.x == other.x) && (self.y == other.y) && (self.z == other.z) }
+
+		operator * (other: Double) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
+		operator / (other: Double) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
+
+		operator * (other: Int) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
+		operator / (other: Int) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
+
+		operator + (other: Math.Vector3) -> Math.Vector3 { Math.Vector3(self.x + other.x, self.y + other.y, self.z + other.z) }
+		operator - (other: Math.Vector3) -> Math.Vector3 { Math.Vector3(self.x - other.x, self.y - other.y, self.z - other.z) }
+
+		@precedence[90]  operator • (other: Math.Vector3) -> Double { (self.x * other.x) + (self.y * other.y) + (self.z * other.z) }
+		@precedence[100] operator x (other: Math.Vector3) -> Math.Vector3
+		{
+			Math.Vector3(
+						(self.y * other.z) - (self.z * other.y),
+						(self.z * other.x) - (self.x * other.z),
+						(self.x * other.y) - (self.y * other.x))
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

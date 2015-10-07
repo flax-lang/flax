@@ -2402,6 +2402,7 @@ namespace Parser
 
 		if(op.type == TType::Equal)				ao = ArithmeticOp::Assign;
 		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
+		else if(op.type == TType::NotEquals)	ao = ArithmeticOp::CmpNEq;
 		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
 		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
 		else if(op.type == TType::Asterisk)		ao = ArithmeticOp::Multiply;

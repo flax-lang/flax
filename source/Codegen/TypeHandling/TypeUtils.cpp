@@ -488,8 +488,9 @@ namespace Codegen
 		}
 		else if(Struct* str = dynamic_cast<Struct*>(sb))
 		{
-			iceAssert(str->initFunc);
-			return str->initFunc;
+			// should be the front one.
+			iceAssert(str->initFuncs.size() > 0);
+			return str->initFuncs[0];
 		}
 		else
 		{
