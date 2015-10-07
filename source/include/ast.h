@@ -452,6 +452,7 @@ namespace Ast
 		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<OpOverload*> opOverloads;
+		std::deque<llvm::Function*> initFuncs;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
 	};
 
@@ -468,7 +469,6 @@ namespace Ast
 		std::deque<llvm::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::deque<llvm::Function*> initFuncs;
 		std::pair<Class*, llvm::StructType*> superclass;
 		std::deque<std::pair<Class*, llvm::Type*>> nestedTypes;
 	};
@@ -495,7 +495,6 @@ namespace Ast
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool packed = false;
-		llvm::Function* initFunc = 0;
 		std::deque<Struct*> imports;
 	};
 

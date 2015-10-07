@@ -59,7 +59,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__auto_init__" + this->mangledName, cgi->module);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
@@ -284,7 +284,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			for(auto extInit : extensionInitialisers)
 				f->block->statements.push_front(new FuncCall(this->pin, extInit->getName(), todeque));
 
-			f->block->statements.push_front(new FuncCall(this->pin, "__automatic_init__" + this->mangledName, todeque));
+			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
 		}
 
 		f->codegen(cgi);

@@ -585,7 +585,8 @@ namespace Codegen
 						// check what kind of struct.
 						if(Struct* str = dynamic_cast<Struct*>(sb))
 						{
-							this->module->getOrInsertFunction(str->initFunc->getName(), str->initFunc->getFunctionType());
+							for(auto f : str->initFuncs)
+								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
 						}
 						else if(Class* cls = dynamic_cast<Class*>(sb))
 						{
@@ -1854,12 +1855,28 @@ namespace Codegen
 		iceAssert(cls);
 
 		llvm::Function* opov = nullptr;
+		bool isAutoCast = false;
 		for(auto f : cls->lOpOverloads)
 		{
-			if(f.first == op && (f.second->getArgumentList().back().getType() == val->getType()))
+			if((f.second->getArgumentList().back().getType() == val->getType()))
 			{
-				opov = f.second;
-				break;
+				// don't break if we have the chance to find a better one
+				if(op == ArithmeticOp::CmpNEq && f.first == ArithmeticOp::CmpEq)
+				{
+					isAutoCast = true;
+					opov = f.second;
+				}
+				else if(op == ArithmeticOp::CmpEq && f.first == ArithmeticOp::CmpNEq)
+				{
+					isAutoCast = true;
+					opov = f.second;
+				}
+				else if(op == f.first)
+				{
+					isAutoCast = false;
+					opov = f.second;
+					break;
+				}
 			}
 		}
 
@@ -1881,13 +1898,18 @@ namespace Codegen
 			llvm::Value* ret = builder.CreateCall2(opov, self, val);
 			return Result_t(ret, self);
 		}
-		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::Multiply
-			|| op == ArithmeticOp::Divide)
+		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq || op == ArithmeticOp::Add
+			|| op == ArithmeticOp::Subtract|| op == ArithmeticOp::Multiply || op == ArithmeticOp::Divide)
 		{
 			// check that both types work
 			iceAssert(self);
 			iceAssert(val);
-			return Result_t(builder.CreateCall2(opov, self, val), 0);
+
+			llvm::Value* ret = builder.CreateCall2(opov, self, val);
+			if(isAutoCast)
+				ret = this->builder.CreateNot(ret);
+
+			return Result_t(ret, 0);
 		}
 		else
 		{
@@ -1949,22 +1971,22 @@ namespace Codegen
 
 		// else
 
-		if(pair->second.second == TypeKind::Struct)
-		{
-			Struct* str = dynamic_cast<Struct*>(pair->second.first);
-			iceAssert(str);
-			iceAssert(str->initFunc);
+		// if(pair->second.second == TypeKind::Struct)
+		// {
+		// 	Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		// 	iceAssert(str);
+		// 	iceAssert(str->initFunc);
 
-			if(!str->initFunc)
-				error(user, "Struct '%s' has no intialiser???", str->name.c_str());
+		// 	if(!str->initFunc)
+		// 		error(user, "Struct '%s' has no intialiser???", str->name.c_str());
 
-			llvm::Function* ret = this->module->getFunction(str->initFunc->getName());
-			if(!ret)
-				error(user, "what???");
+		// 	llvm::Function* ret = this->module->getFunction(str->initFunc->getName());
+		// 	if(!ret)
+		// 		error(user, "what???");
 
-			return ret;
-		}
-		else if(pair->second.second == TypeKind::TypeAlias)
+		// 	return ret;
+		// }
+		if(pair->second.second == TypeKind::TypeAlias)
 		{
 			iceAssert(pair->second.second == TypeKind::TypeAlias);
 			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
@@ -1975,13 +1997,13 @@ namespace Codegen
 
 			return this->getStructInitialiser(user, tp, vals);
 		}
-		else if(pair->second.second == TypeKind::Class)
+		else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 		{
-			Class* cls = dynamic_cast<Class*>(pair->second.first);
-			iceAssert(cls);
+			StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
+			iceAssert(sb);
 
 			llvm::Function* initf = 0;
-			for(llvm::Function* initers : cls->initFuncs)
+			for(llvm::Function* initers : sb->initFuncs)
 			{
 				if(initers->arg_size() < 1)
 					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
@@ -2006,7 +2028,7 @@ namespace Codegen
 			}
 
 			if(!initf)
-				GenError::invalidInitialiser(this, user, cls->name, vals);
+				GenError::invalidInitialiser(this, user, sb->name, vals);
 
 			return this->module->getFunction(initf->getName());
 		}

@@ -1,0 +1,52 @@
+// Vector2.flx
+// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+namespace Math
+{
+	public struct Vector2
+	{
+		var x: Double
+		var y: Double
+
+
+
+		operator == (other: Math.Vector2) -> Bool { (self.x == other.x) && (self.y == other.y) }
+
+		operator * (other: Double) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
+		operator / (other: Double) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
+
+		operator * (other: Int) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
+		operator / (other: Int) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
+
+		operator + (other: Math.Vector2) -> Math.Vector2 { Math.Vector2(self.x + other.x, self.y + other.y) }
+		operator - (other: Math.Vector2) -> Math.Vector2 { Math.Vector2(self.x - other.x, self.y - other.y) }
+
+		@precedence[90] operator • (other: Math.Vector2) -> Double { self.x * other.x + self.y * other.y }
+		@precedence[100] operator x (other: Math.Vector2) -> Double { self.x * other.y - self.y * other.x }
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
