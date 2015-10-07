@@ -174,7 +174,9 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// +=, -=, *=, /=, given +, -, *, / and =.
 	// basically, don't be a c++.
 
-
+	// ^^^ PARTIALLY DONE ^^^
+	// !=/== works
+	// still need +=, etc.
 
 
 

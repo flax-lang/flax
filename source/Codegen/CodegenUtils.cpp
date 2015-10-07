@@ -1842,6 +1842,7 @@ namespace Codegen
 		iceAssert(self);
 		iceAssert(val);
 
+
 		if(pair->second.second != TypeKind::Struct && pair->second.second != TypeKind::Class)
 		{
 			if(fail)	error("!!??!?!?!");
@@ -1854,71 +1855,159 @@ namespace Codegen
 
 		iceAssert(cls);
 
-		llvm::Function* opov = nullptr;
-		bool isAutoCast = false;
+		std::map<ArithmeticOp, llvm::Function*> candidates;
+
 		for(auto f : cls->lOpOverloads)
 		{
 			if((f.second->getArgumentList().back().getType() == val->getType()))
+				candidates[f.first] = f.second;
+		}
+
+
+		llvm::Function* final = 0;
+
+		if(candidates.size() == 0)
+			goto failure;
+
+
+		// see if we can fix it up
+		if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
+		{
+			bool reverse = false;
+			// check if we have the specific.
+			if(candidates.find(op) != candidates.end())
 			{
-				// don't break if we have the chance to find a better one
-				if(op == ArithmeticOp::CmpNEq && f.first == ArithmeticOp::CmpEq)
+				final = candidates[op];
+				if(!final) goto failure;
+			}
+			else
+			{
+				// try find the other one.
+				if(op == ArithmeticOp::CmpEq)
 				{
-					isAutoCast = true;
-					opov = f.second;
+					reverse = true;
+					final = candidates[ArithmeticOp::CmpNEq];
+					if(!final) goto failure;
 				}
-				else if(op == ArithmeticOp::CmpEq && f.first == ArithmeticOp::CmpNEq)
+				else
 				{
-					isAutoCast = true;
-					opov = f.second;
-				}
-				else if(op == f.first)
-				{
-					isAutoCast = false;
-					opov = f.second;
-					break;
+					reverse = true;
+					final = candidates[ArithmeticOp::CmpEq];
+					if(!final) goto failure;
 				}
 			}
+
+
+			final = this->module->getFunction(final->getName());
+			iceAssert(final);
+
+			llvm::Value* ret = builder.CreateCall2(final, self, val);
+			if(reverse)
+				ret = this->builder.CreateNot(ret);
+
+			return Result_t(ret, 0);
 		}
-
-		if(!opov)
-		{
-			if(fail)	GenError::noOpOverload(this, user, cls->name, op);
-			else		return Result_t(0, 0);
-		}
-
-		// get the function with the same name in the current module
-		opov = this->module->getFunction(opov->getName());
-		iceAssert(opov);
-
-		// try the assign op.
-		if(op == ArithmeticOp::Assign || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
+		else if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
 			|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
+			llvm::Function* assign = 0;
+			// check if we have the specific.
+			if(candidates.find(op) != candidates.end())
+			{
+				final = candidates[op];
+				if(!final) goto failure;
+			}
+			else
+			{
+				// try find the other one.
+				if(op == ArithmeticOp::PlusEquals)
+					final = candidates[ArithmeticOp::Add];
+
+				else if(op == ArithmeticOp::MinusEquals)
+					final = candidates[ArithmeticOp::Subtract];
+
+				else if(op == ArithmeticOp::MultiplyEquals)
+					final = candidates[ArithmeticOp::Multiply];
+
+				else
+					final = candidates[ArithmeticOp::Divide];
+
+				if(!final) goto failure;
+
+				// find the eq.
+				assign = candidates[ArithmeticOp::Assign];
+				if(!assign) goto failure;
+			}
+
+			final = this->module->getFunction(final->getName());
+			iceAssert(final);
+
+			llvm::Value* ret = builder.CreateCall2(final, self, val);
+			if(assign)
+			{
+				assign = this->module->getFunction(assign->getName());
+				ret = this->builder.CreateCall2(assign, self, ret);
+			}
+
+			return Result_t(ret, 0);
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+		// get the function with the same name in the current module
+		final = candidates[op];
+		if(!final) goto failure;
+
+		final = this->module->getFunction(final->getName());
+		iceAssert(final);
+
+		// try the assign op.
+		if(op == ArithmeticOp::Assign)
+		{
 			// check args.
-			llvm::Value* ret = builder.CreateCall2(opov, self, val);
+			llvm::Value* ret = builder.CreateCall2(final, self, val);
 			return Result_t(ret, self);
 		}
-		else if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq || op == ArithmeticOp::Add
-			|| op == ArithmeticOp::Subtract|| op == ArithmeticOp::Multiply || op == ArithmeticOp::Divide)
+		else if(op == ArithmeticOp::Add || op == ArithmeticOp::Subtract|| op == ArithmeticOp::Multiply || op == ArithmeticOp::Divide)
 		{
 			// check that both types work
 			iceAssert(self);
 			iceAssert(val);
 
-			llvm::Value* ret = builder.CreateCall2(opov, self, val);
-			if(isAutoCast)
-				ret = this->builder.CreateNot(ret);
-
+			llvm::Value* ret = builder.CreateCall2(final, self, val);
 			return Result_t(ret, 0);
 		}
 		else
 		{
 			// custom operator.
 			// get the function(s) that correspond to this operator.
-			iceAssert(opov);
+			iceAssert(final);
 
-			return Result_t(builder.CreateCall2(opov, self, val), 0);
+			return Result_t(builder.CreateCall2(final, self, val), 0);
 		}
+
+
+
+
+
+
+
+		failure:
+		{
+			if(fail)	GenError::noOpOverload(this, user, cls->name, op);
+			else		return Result_t(0, 0);
+		}
+
 	}
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
