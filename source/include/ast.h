@@ -98,6 +98,7 @@ namespace Ast
 	extern uint64_t Attr_StrongTypeAlias;
 	extern uint64_t Attr_RawString;
 	extern uint64_t Attr_Override;
+	extern uint64_t Attr_CommutativeOp;
 
 	typedef std::pair<llvm::Value*, llvm::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
