@@ -1,5 +1,5 @@
 // String.flx
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 import Unicode
@@ -147,14 +147,16 @@ public class String
 		return #self
 	}
 
-	operator = (other: Int8*)
+	operator = (other: Int8*) -> String*
 	{
 		self.setString(other)
+		return self
 	}
 
-	operator = (other: String)
+	operator = (other: String) -> String*
 	{
 		self.setString(other.data)
+		return self
 	}
 
 	operator == (other: Int8*) -> Bool

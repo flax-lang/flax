@@ -1,5 +1,5 @@
 // Vector2.flx
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 namespace Math
@@ -28,10 +28,12 @@ namespace Math
 		@operator[100]
 		operator x (other: Math.Vector2) -> Double { self.x * other.y - self.y * other.x }
 
-		operator = (other: Math.Vector2)
+		operator = (other: Math.Vector2) -> Math.Vector2*
 		{
 			self.x = other.x
 			self.y = other.y
+
+			return self
 		}
 	}
 }

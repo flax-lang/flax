@@ -1,5 +1,5 @@
 // ast.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -431,9 +431,14 @@ namespace Ast
 		OpOverload(Parser::pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Func* func = 0;
 		ArithmeticOp op;
-		StructBase* str = 0;
+		Func* func = 0;
+
+		bool isInType = 0;
+
+		bool isBinOp = 0;
+		bool isPrefixUnary = 0;	// assumes isBinOp == false
+		bool isCommutative = 0; // assumes isBinOp == true
 	};
 
 	struct StructBase : Expr

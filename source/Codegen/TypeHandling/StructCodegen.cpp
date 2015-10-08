@@ -1,5 +1,5 @@
 // StructCodegen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -128,15 +128,14 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		llvm::Value* self = &memifunc->getArgumentList().front();
 
 
-		size_t i = 0;
-		for(llvm::Function::arg_iterator it = memifunc->arg_begin(); it != memifunc->arg_end(); it++, i++)
+		for(size_t i = 0; i < this->members.size(); i++)
 		{
-			if(it == memifunc->arg_begin()) { i--; continue; }
+			llvm::Value* v = getArgumentNOfFunction(memifunc, i + 1);
 
-			it->setName("memberPtr_" + std::to_string(i));
+			v->setName("memberPtr_" + std::to_string(i));
 			llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + std::to_string(i));
 
-			cgi->builder.CreateStore(it, ptr);
+			cgi->builder.CreateStore(v, ptr);
 		}
 
 
@@ -255,7 +254,24 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 	// finish it here.
 
 	for(auto p : this->opOverloads)
+	{
+		// before calling codegen (that checks for valid overloads), insert the "self" parameter
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+
+		std::string fulltype;
+		for(auto s : cgi->getFullScope())
+			fulltype += s + "::";
+
+		fakeSelf->type = fulltype + this->name + "*";
+
+		p->func->decl->params.push_front(fakeSelf);
+
 		p->codegen(cgi);
+
+		// remove it after
+		iceAssert(p->func->decl->params.front() == fakeSelf);
+		p->func->decl->params.pop_front();
+	}
 
 	for(VarDecl* var : this->members)
 	{

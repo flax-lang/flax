@@ -1,5 +1,5 @@
 // LlvmCodeGen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
@@ -1825,190 +1825,332 @@ namespace Codegen
 
 
 
+	llvm::Value* getArgumentNOfFunction(llvm::Function* func, size_t n)
+	{
+		auto it = func->getArgumentList().begin();
+		for(size_t i = 0; i < n; i++, it++)
+			;
 
+		return it;
+	}
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
 		return Parser::mangledStringToOperator(this, ch);
 	}
 
-	Result_t CodegenInstance::callOperatorOnStruct(Expr* user, TypePair_t* pair, llvm::Value* self,
-		ArithmeticOp op, llvm::Value* val, bool fail)
+
+
+
+
+
+
+	Result_t CodegenInstance::findAndCallOperatorOverload(Expr* user, ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs)
 	{
-		iceAssert(pair);
-		iceAssert(pair->first);
-		iceAssert(pair->second.first);
-
-		iceAssert(self);
-		iceAssert(val);
-
-
-		if(pair->second.second != TypeKind::Struct && pair->second.second != TypeKind::Class)
+		struct Attribs
 		{
-			if(fail)	error("!!??!?!?!");
-			else		return Result_t(0, 0);
-		}
+			bool isInType = 0;
 
-		StructBase* cls = dynamic_cast<StructBase*>(pair->second.first);
-		if(!cls)
-			error(user, "LHS of operator expression is not a struct or class");
+			bool isBinOp = 0;
+			bool isPrefixUnary = 0;	// assumes isBinOp == false
+			bool isCommutative = 0; // assumes isBinOp == true
 
-		iceAssert(cls);
+			bool needsBooleanNOT = 0;
+			bool needsEqual = 0;
+		};
 
-		std::map<ArithmeticOp, llvm::Function*> candidates;
 
-		for(auto f : cls->lOpOverloads)
+		// <isBinOp, isPrefixUnary/isCommutative, Function>
+		std::deque<std::pair<Attribs, llvm::Function*>> candidates;
+
+		// 1. check non-member operator overloads
+		// todo.
+
+
+		std::deque<llvm::Function*> assignFuncs;
+		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
+			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
-			if((f.second->getArgumentList().back().getType() == val->getType()))
-				candidates[f.first] = f.second;
-		}
-
-
-		llvm::Function* final = 0;
-
-		if(candidates.size() == 0)
-			goto failure;
-
-
-		// see if we can fix it up
-		if(op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
-		{
-			bool reverse = false;
-			// check if we have the specific.
-			if(candidates.find(op) != candidates.end())
+			// we need one. but only on LHS.
+			if(TypePair_t* tp = this->getType(lhs->getType()))
 			{
-				final = candidates[op];
-				if(!final) goto failure;
+				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
+				{
+					size_t i = 0;
+					for(auto oo : sb->lOpOverloads)
+					{
+						if(oo.first == ArithmeticOp::Assign)
+							assignFuncs.push_back(oo.second);
+
+						i++;
+					}
+				}
+			}
+		}
+
+
+		auto findCandidatesPass1 = [this, assignFuncs](std::deque<std::pair<Attribs, llvm::Function*>>* cands,
+			llvm::Value* v, ArithmeticOp op)
+		{
+
+			if(TypePair_t* tp = this->getType(v->getType()))
+			{
+				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
+				{
+					size_t i = 0;
+					for(auto opov : sb->opOverloads)
+					{
+						llvm::Function* fop = sb->lOpOverloads[i].second;
+						iceAssert(sb->lOpOverloads[i].first == opov->op);
+
+						Attribs attr;
+
+						attr.isInType		= opov->isInType;
+						attr.isBinOp		= opov->isBinOp;
+						attr.isCommutative	= opov->isCommutative;
+						attr.isPrefixUnary	= opov->isPrefixUnary;
+
+
+						if(opov->op == op)
+						{
+							attr.needsEqual = false;
+							attr.needsBooleanNOT = false;
+
+							(*cands).push_back({ attr, fop });
+						}
+						else if((op == ArithmeticOp::CmpEq && opov->op == ArithmeticOp::CmpNEq)
+								|| (opov->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
+						{
+							attr.needsEqual = false;
+							attr.needsBooleanNOT = true;
+
+							op = opov->op;
+							(*cands).push_back({ attr, fop });
+						}
+						else if(opov->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
+						{
+							if(assignFuncs.size() > 0)
+							{
+								attr.needsEqual = true;
+								attr.needsBooleanNOT = false;
+
+								op = opov->op;
+								(*cands).push_back({ attr, fop });
+							}
+						}
+						else if(opov->op == ArithmeticOp::Subtract && op == ArithmeticOp::MinusEquals)
+						{
+							if(assignFuncs.size() > 0)
+							{
+								attr.needsEqual = true;
+								attr.needsBooleanNOT = false;
+
+								op = opov->op;
+								(*cands).push_back({ attr, fop });
+							}
+						}
+						else if(opov->op == ArithmeticOp::Multiply && op == ArithmeticOp::MultiplyEquals)
+						{
+							if(assignFuncs.size() > 0)
+							{
+								attr.needsEqual = true;
+								attr.needsBooleanNOT = false;
+
+								op = opov->op;
+								(*cands).push_back({ attr, fop });
+							}
+						}
+						else if(opov->op == ArithmeticOp::Divide && op == ArithmeticOp::DivideEquals)
+						{
+							if(assignFuncs.size() > 0)
+							{
+								attr.needsEqual = true;
+								attr.needsBooleanNOT = false;
+
+								op = opov->op;
+								(*cands).push_back({ attr, fop });
+							}
+						}
+
+						i++;
+					}
+				}
+			}
+		};
+
+		// 2. check member operators of the LHS type, if it exists.
+		findCandidatesPass1(&candidates, lhs, op);
+
+		// 3. check member operators of the RHS type
+		findCandidatesPass1(&candidates, rhs, op);
+
+		// pass 1.5: prune duplicates
+		auto set = candidates;
+		candidates.clear();
+
+
+		std::map<size_t, std::string> dupes;
+		for(size_t i = 0; i < set.size(); i++)
+		{
+			auto c = set[i];
+
+			for(size_t j = 0; j < set.size(); j++)
+			{
+				auto dupe = set[j];
+				if(i != j && c.second->getName() == dupe.second->getName())
+					dupes[j] = dupe.second->getName();
+			}
+
+			if(dupes.find(i) == dupes.end())
+				candidates.push_back(c);
+		}
+
+
+
+
+
+
+		// pass 2: prune based on number of parameters. (binop vs normal)
+		set = candidates;
+		candidates.clear();
+
+		for(auto cand : set)
+		{
+			if(cand.first.isBinOp && cand.second->arg_size() == 2)
+				candidates.push_back(cand);
+
+			else if(!cand.first.isBinOp && cand.second->arg_size() == 1)
+				candidates.push_back(cand);
+		}
+
+
+
+		// pass 3: prune based on operand type
+		set = candidates;
+		candidates.clear();
+
+		for(auto cand : set)
+		{
+			// if unary op, only LHS is used.
+			if(cand.first.isBinOp)
+			{
+				if((cand.first.isInType && getArgumentNOfFunction(cand.second, 0)->getType() == lhs->getType()->getPointerTo()
+						&& getArgumentNOfFunction(cand.second, 1)->getType() == rhs->getType())
+
+					|| (!cand.first.isInType && getArgumentNOfFunction(cand.second, 0)->getType() == lhs->getType()
+						&& getArgumentNOfFunction(cand.second, 1)->getType() == rhs->getType()))
+				{
+					candidates.push_back(cand);
+				}
 			}
 			else
 			{
-				// try find the other one.
-				if(op == ArithmeticOp::CmpEq)
+				if((cand.first.isInType && getArgumentNOfFunction(cand.second, 0)->getType() == lhs->getType()->getPointerTo())
+					|| (!cand.first.isInType && getArgumentNOfFunction(cand.second, 0)->getType() == lhs->getType()))
 				{
-					reverse = true;
-					final = candidates[ArithmeticOp::CmpNEq];
-					if(!final) goto failure;
-				}
-				else
-				{
-					reverse = true;
-					final = candidates[ArithmeticOp::CmpEq];
-					if(!final) goto failure;
+					candidates.push_back(cand);
 				}
 			}
-
-
-			final = this->module->getFunction(final->getName());
-			iceAssert(final);
-
-			llvm::Value* ret = builder.CreateCall2(final, self, val);
-			if(reverse)
-				ret = this->builder.CreateNot(ret);
-
-			return Result_t(ret, 0);
 		}
-		else if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
-			|| op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
+
+
+		// eliminate more.
+		set = candidates;
+		candidates.clear();
+
+
+		// deque [pair [<attr, operator func>, assign func]]
+		std::deque<std::pair<std::pair<Attribs, llvm::Function*>, llvm::Function*>> finals;
+		for(std::pair<Attribs, llvm::Function*> c : set)
 		{
-			llvm::Function* assign = 0;
-			// check if we have the specific.
-			if(candidates.find(op) != candidates.end())
+			// see if the appropriate assign exists.
+			if(c.first.needsEqual)
 			{
-				final = candidates[op];
-				if(!final) goto failure;
+				// check the return type.
+				llvm::Type* ret = c.second->getReturnType();
+
+				// check the assign funcs that take such a type as RHS
+				for(llvm::Function* af : assignFuncs)
+				{
+					iceAssert(af->arg_size() == 2);
+
+					llvm::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
+					llvm::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
+					if(afltype == (c.first.isInType ? ref : lhs)->getType() && afrtype == ret
+						&& af->getReturnType() == lhs->getType()->getPointerTo())
+					{
+						finals.push_back({ { c.first, c.second }, af });
+						break;
+					}
+				}
 			}
 			else
 			{
-				// try find the other one.
-				if(op == ArithmeticOp::PlusEquals)
-					final = candidates[ArithmeticOp::Add];
-
-				else if(op == ArithmeticOp::MinusEquals)
-					final = candidates[ArithmeticOp::Subtract];
-
-				else if(op == ArithmeticOp::MultiplyEquals)
-					final = candidates[ArithmeticOp::Multiply];
-
-				else
-					final = candidates[ArithmeticOp::Divide];
-
-				if(!final) goto failure;
-
-				// find the eq.
-				assign = candidates[ArithmeticOp::Assign];
-				if(!assign) goto failure;
+				finals.push_back({ { c.first, c.second }, 0 });
 			}
-
-			final = this->module->getFunction(final->getName());
-			iceAssert(final);
-
-			llvm::Value* ret = builder.CreateCall2(final, self, val);
-			if(assign)
-			{
-				assign = this->module->getFunction(assign->getName());
-				ret = this->builder.CreateCall2(assign, self, ret);
-			}
-
-			return Result_t(ret, 0);
 		}
 
 
 
+		if(finals.size() > 1)
+			error(user, "More than one possible operator overload candidate in this expression");
 
+		else if(finals.size() == 0)
+			return Result_t(0, 0);
 
+		auto cand = finals.front();
+		llvm::Value* ret = 0;
 
+		llvm::Function* func = this->module->getFunction(cand.first.second->getName());
+		iceAssert(func);
 
-
-
-
-
-
-
-		// get the function with the same name in the current module
-		final = candidates[op];
-		if(!final) goto failure;
-
-		final = this->module->getFunction(final->getName());
-		iceAssert(final);
-
-		// try the assign op.
-		if(op == ArithmeticOp::Assign)
+		if(cand.first.first.isBinOp)
 		{
-			// check args.
-			llvm::Value* ret = builder.CreateCall2(final, self, val);
-			return Result_t(ret, self);
-		}
-		else if(op == ArithmeticOp::Add || op == ArithmeticOp::Subtract|| op == ArithmeticOp::Multiply || op == ArithmeticOp::Divide)
-		{
-			// check that both types work
-			iceAssert(self);
-			iceAssert(val);
+			if(cand.first.first.isInType || op == ArithmeticOp::Assign)
+				ret = this->builder.CreateCall2(func, ref, rhs);
 
-			llvm::Value* ret = builder.CreateCall2(final, self, val);
-			return Result_t(ret, 0);
+			else
+				ret = this->builder.CreateCall2(func, lhs, rhs);
 		}
 		else
 		{
-			// custom operator.
-			// get the function(s) that correspond to this operator.
-			iceAssert(final);
+			if(cand.first.first.isInType)
+				ret = this->builder.CreateCall(func, ref);
 
-			return Result_t(builder.CreateCall2(final, self, val), 0);
+			else
+				ret = this->builder.CreateCall(func, lhs);
 		}
 
 
-
-
-
-
-
-		failure:
+		if(cand.first.first.needsBooleanNOT)
 		{
-			if(fail)	GenError::noOpOverload(this, user, cls->name, op);
-			else		return Result_t(0, 0);
+			ret = this->builder.CreateICmpEQ(ret, llvm::ConstantInt::getFalse(ret->getType()));
+		}
+		else if(cand.first.first.needsEqual)
+		{
+			llvm::Function* ass = this->module->getFunction(cand.second->getName());
+
+			iceAssert(ref);
+			iceAssert(ass);
+
+			ret = this->builder.CreateCall2(ass, ref, ret);
 		}
 
+		return Result_t(ret, 0);
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
 	{
@@ -2058,23 +2200,6 @@ namespace Codegen
 		}
 
 
-		// else
-
-		// if(pair->second.second == TypeKind::Struct)
-		// {
-		// 	Struct* str = dynamic_cast<Struct*>(pair->second.first);
-		// 	iceAssert(str);
-		// 	iceAssert(str->initFunc);
-
-		// 	if(!str->initFunc)
-		// 		error(user, "Struct '%s' has no intialiser???", str->name.c_str());
-
-		// 	llvm::Function* ret = this->module->getFunction(str->initFunc->getName());
-		// 	if(!ret)
-		// 		error(user, "what???");
-
-		// 	return ret;
-		// }
 		if(pair->second.second == TypeKind::TypeAlias)
 		{
 			iceAssert(pair->second.second == TypeKind::TypeAlias);

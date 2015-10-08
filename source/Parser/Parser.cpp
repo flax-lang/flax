@@ -1,5 +1,5 @@
 // Parser.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
@@ -1833,7 +1833,6 @@ namespace Parser
 			}
 			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
-				oo->str = str;
 				str->opOverloads.push_back(oo);
 			}
 			else
@@ -1936,7 +1935,6 @@ namespace Parser
 			}
 			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
-				oo->str = cls;
 				cls->opOverloads.push_back(oo);
 
 				cls->funcs.push_back(oo->func);
@@ -2392,8 +2390,8 @@ namespace Parser
 
 	OpOverload* parseOpOverload(ParserState& ps)
 	{
-		if(!ps.isParsingStruct)
-			parserError("Can only overload operators in the context of a named aggregate type");
+		// if(!ps.isParsingStruct)
+		// 	parserError("Can only overload operators in the context of a named aggregate type");
 
 		iceAssert(ps.eat().text == "operator");
 		Token op = ps.eat();
@@ -2433,6 +2431,48 @@ namespace Parser
 
 		// parse a func declaration.
 		oo->func = parseFunc(ps);
+
+		// check number of arguments
+		// note: this is without the "self" parameter, so args == 1 --> binop
+		// args == 0 --> unary op.
+
+		// if this is not in a struct, then 2 == binop, 1 == unaryop.
+
+		if(ps.isParsingStruct)
+		{
+			oo->isInType = true;
+			if(oo->func->decl->params.size() == 1)
+			{
+				oo->isBinOp = true;
+			}
+			else if(oo->func->decl->params.size() == 0)
+			{
+				oo->isBinOp = false;
+			}
+			else
+			{
+				parserError(ps, "Invalid number of parameters to operator overload; expected 0 or 1, got %zu",
+					oo->func->decl->params.size());
+			}
+		}
+		else
+		{
+			oo->isInType = false;
+			if(oo->func->decl->params.size() == 2)
+			{
+				oo->isBinOp = true;
+			}
+			else if(oo->func->decl->params.size() == 1)
+			{
+				oo->isBinOp = false;
+			}
+			else
+			{
+				parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
+					oo->func->decl->params.size());
+			}
+		}
+
 		return oo;
 	}
 
