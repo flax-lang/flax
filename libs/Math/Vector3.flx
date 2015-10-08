@@ -13,9 +13,11 @@ namespace Math
 
 		operator == (other: Math.Vector3) -> Bool { (self.x == other.x) && (self.y == other.y) && (self.z == other.z) }
 
+		@operator[Commutative]
 		operator * (other: Double) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
 		operator / (other: Double) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
 
+		@operator[Commutative]
 		operator * (other: Int) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
 		operator / (other: Int) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
 
