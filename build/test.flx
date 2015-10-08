@@ -1,5 +1,5 @@
 // test.flx
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 import Math
@@ -35,7 +35,7 @@ public func main() -> Int
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
 	var cross: Math.Vector3 = m.0 x m.1
-	cross = cross / 10
+	cross /= 10
 	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
 
