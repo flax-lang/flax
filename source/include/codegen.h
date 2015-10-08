@@ -1,5 +1,5 @@
 // codegen.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -307,8 +307,9 @@ namespace Codegen
 		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
-		Ast::Result_t callOperatorOnStruct(Ast::Expr* user, TypePair_t* pair, llvm::Value* self, Ast::ArithmeticOp op, llvm::Value* val, bool fail = true);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
+
+		Ast::Result_t findAndCallOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsRef, llvm::Value* rhs);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);
@@ -316,6 +317,8 @@ namespace Codegen
 
 		~CodegenInstance();
 	};
+
+	llvm::Value* getArgumentNOfFunction(llvm::Function* func, size_t n);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);

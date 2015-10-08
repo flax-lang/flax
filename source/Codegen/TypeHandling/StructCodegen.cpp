@@ -1,5 +1,5 @@
 // StructCodegen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -48,49 +48,145 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
+	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(this, str));
 
 	// generate initialiser
-	this->initFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
-
 	{
+		this->initFuncs.push_back(llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__auto_init__" + this->mangledName, cgi->module));
+
+		llvm::Function* defifunc = this->initFuncs.back();
+
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->pin, this->initFunc->getName(), { fakeSelf }, "Void");
-		cgi->addFunctionToScope({ this->initFunc, fd });
+		FuncDecl* fd = new FuncDecl(this->pin, defifunc->getName(), { fakeSelf }, "Void");
+		cgi->addFunctionToScope({ defifunc, fd });
+
+
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defifunc);
+		cgi->builder.SetInsertPoint(iblock);
+
+		// create the local instance of reference to self
+		llvm::Value* self = &defifunc->getArgumentList().front();
+
+		for(VarDecl* var : this->members)
+		{
+			// not supported in structs
+			iceAssert(!var->isStatic);
+
+			int i = this->nameMap[var->name];
+			iceAssert(i >= 0);
+
+			llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+
+			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+		}
+
+
+
+
+		cgi->builder.CreateRetVoid();
+		llvm::verifyFunction(*defifunc);
+
+		cgi->addPublicFunc({ defifunc, fd });
 	}
 
 
-	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", this->initFunc);
-	cgi->builder.SetInsertPoint(iblock);
-
-	// create the local instance of reference to self
-	llvm::Value* self = &this->initFunc->getArgumentList().front();
-
-
-
-	for(VarDecl* var : this->members)
+	// create memberwise initialiser
 	{
-		// not supported in structs
-		iceAssert(!var->isStatic);
+		std::vector<llvm::Type*> types;
+		types.push_back(str->getPointerTo());
+		for(auto e : str->elements())
+			types.push_back(e);
 
-		int i = this->nameMap[var->name];
-		iceAssert(i >= 0);
+		this->initFuncs.push_back(llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()),
+			types, false), linkageType, "__auto_mem_init__" + this->mangledName, cgi->module));
 
-		llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+		llvm::Function* memifunc = this->initFuncs.back();
 
-		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+		fakeSelf->type = this->name + "*";
+
+		std::deque<VarDecl*> args;
+		args.push_back(fakeSelf);
+
+		for(auto m : this->members)
+			args.push_back(m);
+
+		FuncDecl* fd = new FuncDecl(this->pin, memifunc->getName(), args, "Void");
+		cgi->addFunctionToScope({ memifunc, fd });
+
+
+
+
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", memifunc);
+		cgi->builder.SetInsertPoint(iblock);
+
+		// create the local instance of reference to self
+		llvm::Value* self = &memifunc->getArgumentList().front();
+
+
+		for(size_t i = 0; i < this->members.size(); i++)
+		{
+			llvm::Value* v = getArgumentNOfFunction(memifunc, i + 1);
+
+			v->setName("memberPtr_" + std::to_string(i));
+			llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + std::to_string(i));
+
+			cgi->builder.CreateStore(v, ptr);
+		}
+
+
+		cgi->builder.CreateRetVoid();
+		llvm::verifyFunction(*memifunc);
+
+		cgi->addPublicFunc({ memifunc, fd });
 	}
 
 
 
 
-	cgi->builder.CreateRetVoid();
-	llvm::verifyFunction(*this->initFunc);
+	// todo: number 3
+	//
+	// operators should be allowed to be defined outside of structs
+	// for infix binops these would take 2 parameters, and work exactly the same.
 
-	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(this, str));
-	cgi->addPublicFunc({ this->initFunc, 0 });
+
+
+	// todo: number 4
+	//
+	// @precedence should be changed to @operator[bla], to be able to specify more attributes
+	// (infix/prefix/postfix, precedence, options for compiler autogen)
+
+
+
+
+
+
+	// todo: number 5
+	//
+	// for any given operator(a, b), the compiler will assume that it is commutative, ie.
+	// a `op` b == b `op` a.
+	//
+	// this would obviously be disabled (by default) if overriding '-' or '/'.
+	// it can also be disabled/enabled for custom operators, and for overrides of normal ones
+	// can also change this (ie. cross product, a x b == -(b x a))
+	//
+	// assuming commutation means that, defining a given type Foo, it is enough to define
+	// operator*() and operator=(), to get *=, scalar * Foo, Foo * scalar and Foo *= scalar.
+	// scalar *= Foo will not work however, since you can't commutate that -- assuming Foo * scalar
+	// returns Foo.
+
+
+
+
+
+
+
+
+
 
 
 
@@ -158,7 +254,24 @@ llvm::Type* Struct::createType(CodegenInstance* cgi)
 	// finish it here.
 
 	for(auto p : this->opOverloads)
+	{
+		// before calling codegen (that checks for valid overloads), insert the "self" parameter
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+
+		std::string fulltype;
+		for(auto s : cgi->getFullScope())
+			fulltype += s + "::";
+
+		fakeSelf->type = fulltype + this->name + "*";
+
+		p->func->decl->params.push_front(fakeSelf);
+
 		p->codegen(cgi);
+
+		// remove it after
+		iceAssert(p->func->decl->params.front() == fakeSelf);
+		p->func->decl->params.pop_front();
+	}
 
 	for(VarDecl* var : this->members)
 	{
