@@ -1,5 +1,5 @@
 // ClassCodegen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -500,7 +500,24 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	// finish it here.
 
 	for(auto p : this->opOverloads)
+	{
+		// before calling codegen (that checks for valid overloads), insert the "self" parameter
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+
+		std::string fulltype;
+		for(auto s : cgi->getFullScope())
+			fulltype += s + "::";
+
+		fakeSelf->type = fulltype + this->name + "*";
+
+		p->func->decl->params.push_front(fakeSelf);
+
 		p->codegen(cgi);
+
+		// remove it after
+		iceAssert(p->func->decl->params.front() == fakeSelf);
+		p->func->decl->params.pop_front();
+	}
 
 	for(Func* func : this->funcs)
 	{
