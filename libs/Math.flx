@@ -1,8 +1,9 @@
 // Math.flx
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Math.Vector
+import Math.Vector2
+import Math.Vector3
 
 ﬁ ƒ sqrt(x: Float64) -> Float64
 ﬁ ƒ sqrtf(x: Float32) -> Float32

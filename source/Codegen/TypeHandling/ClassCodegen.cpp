@@ -1,5 +1,5 @@
 // ClassCodegen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -59,7 +59,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__automatic_init__" + this->mangledName, cgi->module);
+	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__auto_init__" + this->mangledName, cgi->module);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
@@ -284,7 +284,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			for(auto extInit : extensionInitialisers)
 				f->block->statements.push_front(new FuncCall(this->pin, extInit->getName(), todeque));
 
-			f->block->statements.push_front(new FuncCall(this->pin, "__automatic_init__" + this->mangledName, todeque));
+			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
 		}
 
 		f->codegen(cgi);
@@ -500,7 +500,24 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	// finish it here.
 
 	for(auto p : this->opOverloads)
+	{
+		// before calling codegen (that checks for valid overloads), insert the "self" parameter
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+
+		std::string fulltype;
+		for(auto s : cgi->getFullScope())
+			fulltype += s + "::";
+
+		fakeSelf->type = fulltype + this->name + "*";
+
+		p->func->decl->params.push_front(fakeSelf);
+
 		p->codegen(cgi);
+
+		// remove it after
+		iceAssert(p->func->decl->params.front() == fakeSelf);
+		p->func->decl->params.pop_front();
+	}
 
 	for(Func* func : this->funcs)
 	{

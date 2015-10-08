@@ -1,5 +1,5 @@
 // OperatorOverloads.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -21,34 +21,47 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	FuncDecl* decl = this->func->decl;
 	if(this->op == ArithmeticOp::Assign)
 	{
-		if(decl->params.size() != 1)
+		if(!this->isInType && decl->params.size() != 2)
 		{
-			error(this, "Operator overload for '=' can only have one argument (have %zu)", decl->params.size());
+			error(this, "Operator overload for '=' can only have one argument, have %zu", decl->params.size());
+		}
+
+		// needs to return pointer to self
+		llvm::Type* ret = cgi->getLlvmType(decl);
+		llvm::Type* front = cgi->getLlvmType(decl->params.front());
+		if(ret == llvm::Type::getVoidTy(cgi->getContext()))
+		{
+			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got void)");
+		}
+		else if(ret != (this->isInType ? front : front->getPointerTo()))
+		{
+			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got %s, need %s)",
+				cgi->getReadableType(ret).c_str(), cgi->getReadableType(front).c_str());
 		}
 
 		// we can't actually do much, because they can assign to anything
 	}
 	else if(this->op == ArithmeticOp::CmpEq)
 	{
-		if(decl->params.size() != 1)
-			error(this, "Operator overload for '==' can only have one argument");
+		if(decl->params.size() != 2)
+			error(this, "Operator overload for '==' can only have two arguments, have %zu", decl->params.size());
 
-		if(decl->type.strType != "Bool")
+		if(cgi->getLlvmType(decl) != llvm::Type::getInt1Ty(cgi->getContext()))
 			error(this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
 		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
 		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
 	{
-		if(decl->params.size() != 1)
-			error(this, "Operator overload can only have one argument");
+		if(decl->params.size() != 2)
+			error(this, "Operator overload can only have two arguments, have %zu", decl->params.size());
 	}
-	else if(decl->params.size() > 1)
+	else if(decl->params.size() > 2)
 	{
 		// custom operator... but we have no way to handle 2 arguments
 		// todo: will change when we allow operator definitions outside of class bodies.
 
-		error(this, "Cannot currently handle operator overloads with more than one argument (other than self)");
+		error(this, "Cannot currently handle operator overloads with more than two arguments");
 	}
 
 	return Result_t(0, 0);

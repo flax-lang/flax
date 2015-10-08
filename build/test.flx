@@ -1,5 +1,5 @@
 // test.flx
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 import Math
@@ -15,22 +15,32 @@ public func main() -> Int
 	let g: Int8 = 100
 	printf("g is: %d\n", g)
 
-	let m: (Math.Vector2, Math.Vector2) = (fa(), fb())
-	printf("m is [(%f, %f), (%f, %f)]\n", m.0.x, m.0.y, m.1.x, m.1.y)
+	let m: (Math.Vector3, Math.Vector3) = (fa(), fb())
+	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
 
 	let dot: Double = m.0 • m.1
 	printf("dot = %f\n", dot);
 
-	#foobra
 
-	boofar()
+	let v1: Math.Vector3(1.0, 2.0, 4.0)
+	let v2: Math.Vector3(3.0, 6.0, 9.0)
 
-	var t1: Test
-	var t2: Test
+	var v = v1 + v2
+	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+	v += v1
 
-	let test: Test = t1 • t2
-	printf("test = %d\n", test.i)
+	let vv: Math.Vector3 = v * 3
+	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
+
+	var cross: Math.Vector3 = m.0 x m.1
+	cross /= 10
+	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
+
+
+
+
 
 	return 0
 }
@@ -55,15 +65,9 @@ namespace some
 	}
 }
 
-func foobar()
+func fa() -> Math.Vector3
 {
-	printf("foobar\n")
-}
-
-
-func fa() -> Math.Vector2
-{
-	var ret: Math.Vector2
+	var ret: Math.Vector3
 	ret.x = 5
 	ret.y = 25
 	ret.z = 125
@@ -71,9 +75,9 @@ func fa() -> Math.Vector2
 	return ret
 }
 
-func fb() -> Math.Vector2
+func fb() -> Math.Vector3
 {
-	var ret: Math.Vector2
+	var ret: Math.Vector3
 	ret.x = 3
 	ret.y = 9
 	ret.z = 27
