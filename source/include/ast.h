@@ -1,5 +1,5 @@
 // ast.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -431,9 +431,14 @@ namespace Ast
 		OpOverload(Parser::pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, llvm::Value* lhsPtr = 0, llvm::Value* rhs = 0) override;
 
-		Func* func = 0;
 		ArithmeticOp op;
-		StructBase* str = 0;
+		Func* func = 0;
+
+		bool isInType = 0;
+
+		bool isBinOp = 0;
+		bool isPrefixUnary = 0;	// assumes isBinOp == false
+		bool isCommutative = 0; // assumes isBinOp == true
 	};
 
 	struct StructBase : Expr
@@ -452,6 +457,7 @@ namespace Ast
 		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<OpOverload*> opOverloads;
+		std::deque<llvm::Function*> initFuncs;
 		std::deque<std::pair<ArithmeticOp, llvm::Function*>> lOpOverloads;
 	};
 
@@ -468,7 +474,6 @@ namespace Ast
 		std::deque<llvm::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::deque<llvm::Function*> initFuncs;
 		std::pair<Class*, llvm::StructType*> superclass;
 		std::deque<std::pair<Class*, llvm::Type*>> nestedTypes;
 	};
@@ -495,7 +500,6 @@ namespace Ast
 		virtual llvm::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool packed = false;
-		llvm::Function* initFunc = 0;
 		std::deque<Struct*> imports;
 	};
 
