@@ -1,5 +1,5 @@
 // TypeUtils.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -488,8 +488,9 @@ namespace Codegen
 		}
 		else if(Struct* str = dynamic_cast<Struct*>(sb))
 		{
-			iceAssert(str->initFunc);
-			return str->initFunc;
+			// should be the front one.
+			iceAssert(str->initFuncs.size() > 0);
+			return str->initFuncs[0];
 		}
 		else
 		{

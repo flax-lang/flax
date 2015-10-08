@@ -1,5 +1,5 @@
 // ExprCodeGen.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include <cinttypes>
@@ -20,7 +20,9 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
-		Result_t ret = cgi->callOperatorOnStruct(user, tp, structRef, op, rhs, false);
+
+		Result_t ret = cgi->findAndCallOperatorOverload(user, op, cgi->builder.CreateLoad(structRef), structRef, rhs);
+
 		if(ret.result.first != 0)
 		{
 			return ret;
@@ -305,12 +307,12 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		}
 	}
 
+
 	// do it all together now
 	if(op == ArithmeticOp::Assign)
 	{
 		// varptr = this->lastMinuteUnwrapType(varptr);
 
-		// printf("%s -> %s\n", this->getReadableType(rhs).c_str(), this->getReadableType(varptr).c_str());
 		this->builder.CreateStore(rhs, varptr);
 		return Result_t(rhs, varptr);
 	}
@@ -534,6 +536,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 
 
+
+
+
+
 	// else case.
 	// no point being explicit about this and wasting indentation
 
@@ -546,15 +552,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	llvm::Value* rhsPtr = r.second;
 	cgi->autoCastType(lhs, rhs, r.second);
 
-	// if adding integer to pointer
-	if(!lhs)
-		error(this, "lhs null");
-
-	if(!rhs)
-	{
-		printf("rhs: %s\n", typeid(*this->right).name());
-		error(this, "rhs null");
-	}
+	iceAssert(lhs);
+	iceAssert(rhs);
 
 
 
@@ -797,14 +796,13 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 
 		return Result_t(res, 0);
 	}
-	else if(lhs->getType()->isStructTy())
+	else if(lhs->getType()->isStructTy() || rhs->getType()->isStructTy())
 	{
 		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
 		if(!p)
 		{
 			error(this, "Invalid type (%s)", lhs->getType()->getStructName().str().c_str());
 		}
-
 
 		if(valptr.second == 0)
 		{
@@ -820,7 +818,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			valptr.second = ptr;
 		}
 
-		return cgi->callOperatorOnStruct(this, p, valptr.second, op, rhs);
+		return cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs);
 	}
 
 	error(this, "Unsupported operator on type");

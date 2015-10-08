@@ -1,5 +1,5 @@
 // Parser.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
@@ -31,7 +31,7 @@ namespace Parser
 	#define ATTR_STR_PACKEDSTRUCT		"packed"
 	#define ATTR_STR_STRONG				"strong"
 	#define ATTR_STR_RAW				"raw"
-	#define ATTR_STR_PRECEDENCE			"precedence"
+	#define ATTR_STR_OPERATOR			"operator"
 
 	static ParserState* staticState;
 
@@ -293,11 +293,11 @@ namespace Parser
 					ps.pop_front();
 
 					iceAssert(attr.type == TType::Identifier);
-					if(attr.text == ATTR_STR_PRECEDENCE)
+					if(attr.text == ATTR_STR_OPERATOR)
 					{
 						ps.skipNewline();
 						if(ps.front().type != TType::LSquare)
-							parserError(ps, ps.front(), "Expected '[' after @precedence");
+							parserError(ps, ps.front(), "Expected '[' after @operator");
 
 						ps.pop_front();
 						ps.skipNewline();
@@ -307,7 +307,7 @@ namespace Parser
 						ps.skipNewline();
 
 						if(num.type != TType::Integer)
-							parserError(ps, num, "Expected integer within @precedence[]");
+							parserError(ps, num, "Expected integer within @operator[]");
 
 						curPrec = std::stod(num.text);
 						if(curPrec <= 0)
@@ -331,7 +331,7 @@ namespace Parser
 						size_t opNum = ps.cgi->customOperatorMap.size();
 
 						if(curPrec == 0)
-							parserError(ps, t, "Custom operators must have a precedence, use @precedence(x)");
+							parserError(ps, t, "Custom operators must have a precedence, use @operator[x]");
 
 						// check if it exists.
 						if(ps.cgi->customOperatorMapRev.find(op.text) == ps.cgi->customOperatorMapRev.end())
@@ -357,7 +357,7 @@ namespace Parser
 				}
 				else if(curPrec > 0)
 				{
-					parserError(ps, ps.front(), "@precedence can only be applied to operators (%s)", ps.front().text.c_str());
+					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
 				}
 			}
 
@@ -1833,7 +1833,6 @@ namespace Parser
 			}
 			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
-				oo->str = str;
 				str->opOverloads.push_back(oo);
 			}
 			else
@@ -1936,7 +1935,6 @@ namespace Parser
 			}
 			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
 			{
-				oo->str = cls;
 				cls->opOverloads.push_back(oo);
 
 				cls->funcs.push_back(oo->func);
@@ -2130,7 +2128,7 @@ namespace Parser
 			parserWarn("Attribute 'private' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisPrivate;
 		}
-		else if(id.text == "precedence")
+		else if(id.text == "operator")
 		{
 			// all handled.
 			iceAssert(ps.eat().type == TType::LSquare);
@@ -2392,8 +2390,8 @@ namespace Parser
 
 	OpOverload* parseOpOverload(ParserState& ps)
 	{
-		if(!ps.isParsingStruct)
-			parserError("Can only overload operators in the context of a named aggregate type");
+		// if(!ps.isParsingStruct)
+		// 	parserError("Can only overload operators in the context of a named aggregate type");
 
 		iceAssert(ps.eat().text == "operator");
 		Token op = ps.eat();
@@ -2402,6 +2400,7 @@ namespace Parser
 
 		if(op.type == TType::Equal)				ao = ArithmeticOp::Assign;
 		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
+		else if(op.type == TType::NotEquals)	ao = ArithmeticOp::CmpNEq;
 		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
 		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
 		else if(op.type == TType::Asterisk)		ao = ArithmeticOp::Multiply;
@@ -2432,6 +2431,48 @@ namespace Parser
 
 		// parse a func declaration.
 		oo->func = parseFunc(ps);
+
+		// check number of arguments
+		// note: this is without the "self" parameter, so args == 1 --> binop
+		// args == 0 --> unary op.
+
+		// if this is not in a struct, then 2 == binop, 1 == unaryop.
+
+		if(ps.isParsingStruct)
+		{
+			oo->isInType = true;
+			if(oo->func->decl->params.size() == 1)
+			{
+				oo->isBinOp = true;
+			}
+			else if(oo->func->decl->params.size() == 0)
+			{
+				oo->isBinOp = false;
+			}
+			else
+			{
+				parserError(ps, "Invalid number of parameters to operator overload; expected 0 or 1, got %zu",
+					oo->func->decl->params.size());
+			}
+		}
+		else
+		{
+			oo->isInType = false;
+			if(oo->func->decl->params.size() == 2)
+			{
+				oo->isBinOp = true;
+			}
+			else if(oo->func->decl->params.size() == 1)
+			{
+				oo->isBinOp = false;
+			}
+			else
+			{
+				parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
+					oo->func->decl->params.size());
+			}
+		}
+
 		return oo;
 	}
 
