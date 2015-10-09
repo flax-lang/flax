@@ -1867,19 +1867,13 @@ namespace Codegen
 
 
 
-	/**
-	 * @brief			Automatically finds and calls the appropriate operator overload, given values of LHS and RHS
-	 *
-	 * @param us		Function caller, for error reporting
-	 * @param op		The operator
-	 * @param lhs		LHS of the expression
-	 * @param lref		Pointer to LHS. Can be 0 if not available
-	 * @param rhs		RHS of the expression. Can be 0 if op is a unary operator
-	 * @param rref		Pointer to RHS. Can be 0 if not available
-	 * @return			Returns the result of calling the operator. Returns (0, 0) if operator was not found
-	 */
-	Result_t CodegenInstance::findAndCallOperatorOverload(Expr* us, ArithmeticOp op, llvm::Value* lhs, llvm::Value* lref,
-		llvm::Value* rhs, llvm::Value* rref)
+
+
+
+
+	// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
+	std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*>
+	CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, llvm::Type* lhs, llvm::Type* rhs)
 	{
 		struct Attribs
 		{
@@ -1905,7 +1899,7 @@ namespace Codegen
 			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
 			// we need one. but only on LHS.
-			if(TypePair_t* tp = this->getType(lhs->getType()))
+			if(TypePair_t* tp = this->getType(lhs))
 			{
 				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
 				{
@@ -2031,8 +2025,8 @@ namespace Codegen
 
 		// check member operators of the LHS and RHS types, if it exists.
 		{
-			checkType(lhs->getType(), &candidates);
-			checkType(rhs->getType(), &candidates);
+			checkType(lhs, &candidates);
+			checkType(rhs, &candidates);
 		}
 
 
@@ -2161,11 +2155,11 @@ namespace Codegen
 				if(intype)
 				{
 					// if operator+(int, foo) is defined, check both int + foo and foo + int.
-					if(targL == lhs->getType()->getPointerTo() && targR == rhs->getType())
+					if(targL == lhs->getPointerTo() && targR == rhs)
 					{
 						candidates.push_back(cand);
 					}
-					else if(cand.first.isCommutative && targR == lhs->getType() && targL == rhs->getType()->getPointerTo())
+					else if(cand.first.isCommutative && targR == lhs && targL == rhs->getPointerTo())
 					{
 						cand.first.needsSwap = true;
 						candidates.push_back(cand);
@@ -2173,11 +2167,11 @@ namespace Codegen
 				}
 				else
 				{
-					if(targL == lhs->getType() && targR == rhs->getType())
+					if(targL == lhs && targR == rhs)
 					{
 						candidates.push_back(cand);
 					}
-					else if(cand.first.isCommutative && targR == lhs->getType() && targL == rhs->getType())
+					else if(cand.first.isCommutative && targR == lhs && targL == rhs)
 					{
 						cand.first.needsSwap = true;
 						candidates.push_back(cand);
@@ -2186,7 +2180,7 @@ namespace Codegen
 			}
 			else
 			{
-				if((intype && targL == lhs->getType()->getPointerTo()) || (!intype && targL == lhs->getType()))
+				if((intype && targL == lhs->getPointerTo()) || (!intype && targL == lhs))
 				{
 					candidates.push_back(cand);
 				}
@@ -2222,8 +2216,10 @@ namespace Codegen
 					llvm::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
 					llvm::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
 
-					if(afltype == (intype ? lref : lhs)->getType() && afrtype == ret
-						&& af->getReturnType() == lhs->getType()->getPointerTo())
+					llvm::Type* apprtype = lhs;
+					if(intype) apprtype = apprtype->getPointerTo();
+
+					if(afltype == apprtype && afrtype == ret && af->getReturnType() == lhs->getPointerTo())
 					{
 						finals.push_back({ { c.first, c.second }, af });
 						break;
@@ -2242,14 +2238,39 @@ namespace Codegen
 			error(us, "More than one possible operator overload candidate in this expression");
 
 		else if(finals.size() == 0)
-			return Result_t(0, 0);
+			return { false, false, false, false, false, false, nullptr, nullptr };
 
 		auto cand = finals.front();
-		llvm::Value* ret = 0;
 
 		llvm::Function* func = this->module->getFunction(cand.first.second->getName());
 		iceAssert(func);
 
+
+
+		std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> ret;
+		ret = { cand.first.first.isBinOp,
+				cand.first.first.isInType,
+				cand.first.first.isPrefixUnary,
+				cand.first.first.needsSwap,
+				cand.first.first.needsBooleanNOT,
+				cand.first.first.needsEqual,
+
+				cand.first.second,
+				cand.second };
+
+
+
+
+		return ret;
+	}
+
+
+
+
+
+	Result_t CodegenInstance::callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> data,
+		llvm::Value* lhs, llvm::Value* lref, llvm::Value* rhs, llvm::Value* rref, ArithmeticOp op)
+	{
 		// check if we have a ref.
 		if(lref == 0)
 		{
@@ -2273,16 +2294,26 @@ namespace Codegen
 			rref = ptr;
 		}
 
+		bool isBinOp	= std::get<0>(data);
+		bool isInType	= std::get<1>(data);
+		// bool isPrefix	= std::get<2>(data);
+		bool needsSwap	= std::get<3>(data);
+		bool needsNot	= std::get<4>(data);
+		bool needsAss	= std::get<5>(data);
 
+		llvm::Function* opFunc = this->module->getFunction(std::get<6>(data)->getName());
+		llvm::Function* asFunc = std::get<7>(data) ? this->module->getFunction(std::get<7>(data)->getName()) : 0;
 
-		if(cand.first.first.isBinOp)
+		llvm::Value* ret = 0;
+
+		if(isBinOp)
 		{
 			llvm::Value* larg = 0;
 			llvm::Value* rarg = 0;
 
-			if(cand.first.first.isInType || op == ArithmeticOp::Assign)
+			if(isInType || op == ArithmeticOp::Assign)
 			{
-				if(cand.first.first.needsSwap)
+				if(needsSwap)
 				{
 					larg = rref;
 					rarg = lhs;
@@ -2300,7 +2331,7 @@ namespace Codegen
 			}
 
 
-			ret = this->builder.CreateCall2(func, larg, rarg);
+			ret = this->builder.CreateCall2(opFunc, larg, rarg);
 
 
 
@@ -2312,23 +2343,23 @@ namespace Codegen
 		}
 		else
 		{
-			if(cand.first.first.isInType)
-				ret = this->builder.CreateCall(func, lref);
+			if(isInType)
+				ret = this->builder.CreateCall(opFunc, lref);
 
 			else
-				ret = this->builder.CreateCall(func, lhs);
+				ret = this->builder.CreateCall(opFunc, lhs);
 		}
 
 
 
-		if(cand.first.first.needsBooleanNOT)
+		if(needsNot)
 		{
 			ret = this->builder.CreateICmpEQ(ret, llvm::ConstantInt::getFalse(ret->getType()));
 		}
-		else if(cand.first.first.needsEqual)
+		else if(needsAss)
 		{
-			iceAssert(!cand.first.first.needsSwap);
-			llvm::Function* ass = this->module->getFunction(cand.second->getName());
+			iceAssert(!needsSwap);
+			llvm::Function* ass = this->module->getFunction(asFunc->getName());
 
 			iceAssert(lref);
 			iceAssert(ass);
