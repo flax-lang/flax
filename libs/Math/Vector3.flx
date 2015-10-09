@@ -21,9 +21,6 @@ namespace Math
 		operator * (other: Int) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
 		operator / (other: Int) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
 
-		operator + (other: Math.Vector3) -> Math.Vector3 { Math.Vector3(self.x + other.x, self.y + other.y, self.z + other.z) }
-		operator - (other: Math.Vector3) -> Math.Vector3 { Math.Vector3(self.x - other.x, self.y - other.y, self.z - other.z) }
-
 		@operator[90]
 		operator • (other: Math.Vector3) -> Double { (self.x * other.x) + (self.y * other.y) + (self.z * other.z) }
 
@@ -46,6 +43,9 @@ namespace Math
 		}
 	}
 }
+
+operator + (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x + b.x, a.y + b.y, a.z + b.z) }
+operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x - b.x, a.y - b.y, a.z - b.z) }
 
 
 

@@ -155,33 +155,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 
-	// todo: number 4
-	//
-	// @precedence should be changed to @operator[bla], to be able to specify more attributes
-	// (infix/prefix/postfix, precedence, options for compiler autogen)
-
-
-
-
-
-
-	// todo: number 5
-	//
-	// for any given operator(a, b), the compiler will assume that it is commutative, ie.
-	// a `op` b == b `op` a.
-	//
-	// this would obviously be disabled (by default) if overriding '-' or '/'.
-	// it can also be disabled/enabled for custom operators, and for overrides of normal ones
-	// can also change this (ie. cross product, a x b == -(b x a))
-	//
-	// assuming commutation means that, defining a given type Foo, it is enough to define
-	// operator*() and operator=(), to get *=, scalar * Foo, Foo * scalar and Foo *= scalar.
-	// scalar *= Foo will not work however, since you can't commutate that -- assuming Foo * scalar
-	// returns Foo.
-
-
-
-
 
 
 
