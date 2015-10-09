@@ -307,6 +307,10 @@ static void findDotOperator(Expr* expr)
 	{
 		findDotOperator(ns->innards);
 	}
+	else if(OpOverload* oo = dynamic_cast<OpOverload*>(expr))
+	{
+		findDotOperator(oo->func);
+	}
 	else
 	{
 		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");

@@ -21,7 +21,8 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 
-		Result_t ret = cgi->findAndCallOperatorOverload(user, op, cgi->builder.CreateLoad(lhsRef), lhsRef, rhs, rhsRef);
+		auto data = cgi->getOperatorOverload(user, op, lhsRef->getType()->getPointerElementType(), rhs->getType());
+		Result_t ret = cgi->callOperatorOverload(data, cgi->builder.CreateLoad(lhsRef), lhsRef, rhs, rhsRef, op);
 
 		if(ret.result.first != 0)
 		{
@@ -804,7 +805,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(lhs->getType()->isStructTy() || rhs->getType()->isStructTy())
 	{
-		Result_t ret = cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs, r.second);
+		// Result_t ret = cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs, r.second);
+
+		auto data = cgi->getOperatorOverload(this, op, valptr.first->getType(), rhs->getType());
+		Result_t ret = cgi->callOperatorOverload(data, valptr.first, valptr.second, rhs, r.second, op);
+
+
 		if(ret.result.first == 0)
 		{
 			error(this, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),

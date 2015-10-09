@@ -309,7 +309,11 @@ namespace Codegen
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
 
-		Ast::Result_t findAndCallOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsRef, llvm::Value* rhs, llvm::Value* rhsRef);
+		// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
+		std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*>
+		getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, llvm::Type* lhs, llvm::Type* rhs);
+
+		Ast::Result_t callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> data, llvm::Value* lhs, llvm::Value* lhsRef, llvm::Value* rhs, llvm::Value* rhsRef, Ast::ArithmeticOp op);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);

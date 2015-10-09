@@ -19,15 +19,6 @@ namespace Math
 		operator * (other: Int) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
 		operator / (other: Int) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
 
-		operator + (other: Math.Vector2) -> Math.Vector2 { Math.Vector2(self.x + other.x, self.y + other.y) }
-		operator - (other: Math.Vector2) -> Math.Vector2 { Math.Vector2(self.x - other.x, self.y - other.y) }
-
-		@operator[90]
-		operator • (other: Math.Vector2) -> Double { self.x * other.x + self.y * other.y }
-
-		@operator[100]
-		operator x (other: Math.Vector2) -> Double { self.x * other.y - self.y * other.x }
-
 		operator = (other: Math.Vector2) -> Math.Vector2*
 		{
 			self.x = other.x
@@ -39,7 +30,14 @@ namespace Math
 }
 
 
+operator + (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x + b.x, a.y + b.y) }
+operator - (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x - b.x, a.y - b.y) }
 
+@operator[90]
+operator • (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.x + a.y * b.y }
+
+@operator[100]
+operator x (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.y - a.y * b.x }
 
 
 
