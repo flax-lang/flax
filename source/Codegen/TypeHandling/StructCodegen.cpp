@@ -148,17 +148,6 @@ Result_t Struct::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 
-	// todo: number 3
-	//
-	// operators should be allowed to be defined outside of structs
-	// for infix binops these would take 2 parameters, and work exactly the same.
-
-
-
-
-
-
-
 
 
 

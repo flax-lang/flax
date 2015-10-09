@@ -316,6 +316,9 @@ namespace Codegen
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 			{
+				llvm::Type* ltype = this->getLlvmType(bo->left);
+				llvm::Type* rtype = this->getLlvmType(bo->right);
+
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
 				{
@@ -327,13 +330,11 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
+					return std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype))->getReturnType();
 				}
 				else
 				{
 					// check if both are integers
-					llvm::Type* ltype = this->getLlvmType(bo->left);
-					llvm::Type* rtype = this->getLlvmType(bo->right);
-
 					if(ltype->isIntegerTy() && rtype->isIntegerTy())
 					{
 						if(ltype->getIntegerBitWidth() > rtype->getIntegerBitWidth())
@@ -341,15 +342,32 @@ namespace Codegen
 
 						return rtype;
 					}
+					else if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
+					{
+						return rtype;
+					}
+					else if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
+					{
+						return ltype;
+					}
+					else if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+					{
+						if(ltype->isDoubleTy()) return ltype;
+						return rtype;
+					}
 					else
 					{
 						if(ltype->isPointerTy() && rtype->isIntegerTy())
 						{
-							// pointer arith?
+							// pointer arith??
 							return ltype;
 						}
 
-						return rtype;
+						auto opfn = std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype));
+						if(opfn) return opfn->getReturnType();
+
+						error(expr, "??? // (%s %s %s)", this->getReadableType(ltype).c_str(),
+							Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(rtype).c_str());
 					}
 				}
 			}
