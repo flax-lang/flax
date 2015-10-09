@@ -19,7 +19,7 @@ public func main() -> Int
 	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
 
-	let dot: Double = m.0 • m.1
+	let dot = m.0 • m.1
 	printf("dot = %f\n", dot);
 
 
@@ -30,11 +30,11 @@ public func main() -> Int
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	v += v1
 
-	let vv: Math.Vector3 = v * 3
+	let vv = 3 * v
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
-	var cross: Math.Vector3 = m.0 x m.1
+	var cross = m.0 x m.1
 	cross /= 10
 	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
