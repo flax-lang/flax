@@ -21,18 +21,6 @@ namespace Math
 		operator * (other: Int) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
 		operator / (other: Int) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
 
-		@operator[90]
-		operator • (other: Math.Vector3) -> Double { (self.x * other.x) + (self.y * other.y) + (self.z * other.z) }
-
-		@operator[100]
-		operator x (other: Math.Vector3) -> Math.Vector3
-		{
-			Math.Vector3(
-						(self.y * other.z) - (self.z * other.y),
-						(self.z * other.x) - (self.x * other.z),
-						(self.x * other.y) - (self.y * other.x))
-		}
-
 		operator = (other: Math.Vector3) -> Math.Vector3*
 		{
 			self.x = other.x
@@ -44,12 +32,21 @@ namespace Math
 	}
 }
 
+
 operator + (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x + b.x, a.y + b.y, a.z + b.z) }
 operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x - b.x, a.y - b.y, a.z - b.z) }
 
+@operator[90]
+operator • (a: Math.Vector3, b: Math.Vector3) -> Double { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
 
-
-
+@operator[100]
+operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
+{
+	Math.Vector3(
+				(a.y * b.z) - (a.z * b.y),
+				(a.z * b.x) - (a.x * b.z),
+				(a.x * b.y) - (a.y * b.x))
+}
 
 
 
