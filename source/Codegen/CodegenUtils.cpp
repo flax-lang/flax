@@ -602,6 +602,28 @@ namespace Codegen
 			}
 		}
 
+		for(auto oo : ft->operators)
+		{
+			bool found = false;
+			for(auto ooc : clone->operators)
+			{
+				if(oo == ooc || oo.first->func == ooc.first->func)
+				{
+					if(!deep)
+					{
+						found = true;
+						break;
+					}
+				}
+			}
+
+			if(!found)
+			{
+				OpOverload* ooo = oo.first;
+				clone->operators.push_back(std::make_pair(ooo, (llvm::Function*) 0));
+			}
+		}
+
 		for(auto sub : ft->subs)
 		{
 			FunctionTree* found = 0;
@@ -1476,7 +1498,8 @@ namespace Codegen
 			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
 			{
-				printf("%zu: %s, %s\n", i, getReadableType(decl->params[i]).c_str(), getReadableType(res.t.second->params[i]).c_str());
+				info(res.t.second, "%zu: %s, %s", i, this->getReadableType(decl->params[i]).c_str(),
+					this->getReadableType(res.t.second->params[i]).c_str());
 			}
 
 			return true;
@@ -1836,7 +1859,6 @@ namespace Codegen
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
-
 		return Parser::mangledStringToOperator(this, ch);
 	}
 
@@ -1873,16 +1895,12 @@ namespace Codegen
 		};
 
 
-		// <isBinOp, isPrefixUnary/isCommutative, Function>
 		std::deque<std::pair<Attribs, llvm::Function*>> candidates;
-
-		// 1. check non-member operator overloads
-		// todo.
-
 
 
 		// get assignfuncs.
-		std::deque<llvm::Function*> assignFuncs;
+		std::deque<std::pair<bool, llvm::Function*>> assignFuncs;
+
 		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
 			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
@@ -1895,113 +1913,194 @@ namespace Codegen
 					for(auto oo : sb->lOpOverloads)
 					{
 						if(oo.first == ArithmeticOp::Assign)
-							assignFuncs.push_back(oo.second);
+							assignFuncs.push_back({ sb->opOverloads[i]->isInType, oo.second });
 
 						i++;
 					}
 				}
 			}
+
+			// todo: find assign operators outside structs
 		}
 
 
 
 		auto findCandidatesPass1 = [this, assignFuncs](std::deque<std::pair<Attribs, llvm::Function*>>* cands,
-			llvm::Value* v, ArithmeticOp op)
+			std::deque<std::pair<OpOverload*, llvm::Function*>> list, ArithmeticOp op)
 		{
-
-			if(TypePair_t* tp = this->getType(v->getType()))
+			for(auto oo : list)
 			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
+				llvm::Function* fop = oo.second;
+				OpOverload* opov = oo.first;
+
+				Attribs attr;
+
+				attr.isInType		= opov->isInType;
+				attr.isBinOp		= opov->isBinOp;
+				attr.isCommutative	= opov->isCommutative;
+				attr.isPrefixUnary	= opov->isPrefixUnary;
+
+				attr.needsSwap		= false;
+
+
+				if(opov->op == op)
 				{
-					size_t i = 0;
-					for(auto opov : sb->opOverloads)
+					attr.needsEqual = false;
+					attr.needsBooleanNOT = false;
+
+					(*cands).push_back({ attr, fop });
+				}
+				else if((op == ArithmeticOp::CmpEq && opov->op == ArithmeticOp::CmpNEq)
+						|| (opov->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
+				{
+					attr.needsEqual = false;
+					attr.needsBooleanNOT = true;
+
+					op = opov->op;
+					(*cands).push_back({ attr, fop });
+				}
+				else if(opov->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
+				{
+					if(assignFuncs.size() > 0)
 					{
-						llvm::Function* fop = sb->lOpOverloads[i].second;
-						iceAssert(sb->lOpOverloads[i].first == opov->op);
+						attr.needsEqual = true;
+						attr.needsBooleanNOT = false;
 
-						Attribs attr;
+						op = opov->op;
+						(*cands).push_back({ attr, fop });
+					}
+				}
+				else if(opov->op == ArithmeticOp::Subtract && op == ArithmeticOp::MinusEquals)
+				{
+					if(assignFuncs.size() > 0)
+					{
+						attr.needsEqual = true;
+						attr.needsBooleanNOT = false;
 
-						attr.isInType		= opov->isInType;
-						attr.isBinOp		= opov->isBinOp;
-						attr.isCommutative	= opov->isCommutative;
-						attr.isPrefixUnary	= opov->isPrefixUnary;
+						op = opov->op;
+						(*cands).push_back({ attr, fop });
+					}
+				}
+				else if(opov->op == ArithmeticOp::Multiply && op == ArithmeticOp::MultiplyEquals)
+				{
+					if(assignFuncs.size() > 0)
+					{
+						attr.needsEqual = true;
+						attr.needsBooleanNOT = false;
 
-						attr.needsSwap		= false;
+						op = opov->op;
+						(*cands).push_back({ attr, fop });
+					}
+				}
+				else if(opov->op == ArithmeticOp::Divide && op == ArithmeticOp::DivideEquals)
+				{
+					if(assignFuncs.size() > 0)
+					{
+						attr.needsEqual = true;
+						attr.needsBooleanNOT = false;
 
-
-						if(opov->op == op)
-						{
-							attr.needsEqual = false;
-							attr.needsBooleanNOT = false;
-
-							(*cands).push_back({ attr, fop });
-						}
-						else if((op == ArithmeticOp::CmpEq && opov->op == ArithmeticOp::CmpNEq)
-								|| (opov->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
-						{
-							attr.needsEqual = false;
-							attr.needsBooleanNOT = true;
-
-							op = opov->op;
-							(*cands).push_back({ attr, fop });
-						}
-						else if(opov->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
-						{
-							if(assignFuncs.size() > 0)
-							{
-								attr.needsEqual = true;
-								attr.needsBooleanNOT = false;
-
-								op = opov->op;
-								(*cands).push_back({ attr, fop });
-							}
-						}
-						else if(opov->op == ArithmeticOp::Subtract && op == ArithmeticOp::MinusEquals)
-						{
-							if(assignFuncs.size() > 0)
-							{
-								attr.needsEqual = true;
-								attr.needsBooleanNOT = false;
-
-								op = opov->op;
-								(*cands).push_back({ attr, fop });
-							}
-						}
-						else if(opov->op == ArithmeticOp::Multiply && op == ArithmeticOp::MultiplyEquals)
-						{
-							if(assignFuncs.size() > 0)
-							{
-								attr.needsEqual = true;
-								attr.needsBooleanNOT = false;
-
-								op = opov->op;
-								(*cands).push_back({ attr, fop });
-							}
-						}
-						else if(opov->op == ArithmeticOp::Divide && op == ArithmeticOp::DivideEquals)
-						{
-							if(assignFuncs.size() > 0)
-							{
-								attr.needsEqual = true;
-								attr.needsBooleanNOT = false;
-
-								op = opov->op;
-								(*cands).push_back({ attr, fop });
-							}
-						}
-
-						i++;
+						op = opov->op;
+						(*cands).push_back({ attr, fop });
 					}
 				}
 			}
 		};
 
-		// 2. check member operators of the LHS type, if it exists.
-		findCandidatesPass1(&candidates, lhs, op);
 
-		// 3. check member operators of the RHS type
-		findCandidatesPass1(&candidates, rhs, op);
 
+		auto checkType = [this, findCandidatesPass1, op](llvm::Type* type, std::deque<std::pair<Attribs, llvm::Function*>>* candidates)
+		{
+			// construct the list
+			if(TypePair_t* tp = this->getType(type))
+			{
+				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
+				{
+					std::deque<std::pair<OpOverload*, llvm::Function*>> list;
+					for(size_t i = 0; i < sb->opOverloads.size(); i++)
+					{
+						iceAssert(sb->lOpOverloads[i].first == sb->opOverloads[i]->op);
+						list.push_back({ sb->opOverloads[i], sb->lOpOverloads[i].second });
+					}
+
+					findCandidatesPass1(candidates, list, op);
+				}
+			}
+		};
+
+
+
+		// check member operators of the LHS and RHS types, if it exists.
+		{
+			checkType(lhs->getType(), &candidates);
+			checkType(rhs->getType(), &candidates);
+		}
+
+
+
+
+		// check non-member operator overloads
+		// get the functree, starting from here, up.
+		{
+			auto curDepth = this->namespaceStack;
+
+			std::deque<std::pair<OpOverload*, llvm::Function*>> list;
+			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			{
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+				if(!ft) break;
+
+				for(auto f : ft->operators)
+				{
+					Attribs attr;
+
+					attr.isInType		= f.first->isInType;
+					attr.isBinOp		= f.first->isBinOp;
+					attr.isCommutative	= f.first->isCommutative;
+					attr.isPrefixUnary	= f.first->isPrefixUnary;
+
+					attr.needsSwap		= false;
+
+					llvm::Function* fn = 0;
+
+					// todo: add to candidate list.
+					if(!f.first->func->didCodegen)
+					{
+						// hijack the namespaceStack
+						auto oldns = this->namespaceStack;
+						auto oldfs = this->getCurrentFunctionScope();
+
+						this->namespaceStack = curDepth;
+						this->clearCurrentFunctionScope();
+
+						// does some checks
+						f.first->codegen(this);
+
+						// generate the actual function
+						f.first->func->decl->name = Parser::operatorToMangledString(this, f.first->op);
+
+						f.first->func->decl->attribs |= Attr_VisPublic;
+						f.first->func->decl->codegen(this);
+
+						fn = llvm::cast<llvm::Function>(f.first->func->codegen(this).result.first);
+
+						this->namespaceStack = oldns;
+						this->setCurrentFunctionScope(oldfs);
+					}
+					else
+					{
+						fn = this->module->getFunction(f.first->func->decl->mangledName);
+					}
+
+					iceAssert(fn);
+					list.push_back(std::make_pair(f.first, fn));
+				}
+
+				if(curDepth.size() > 0)
+					curDepth.pop_back();
+			}
+
+			findCandidatesPass1(&candidates, list, op);
+		}
 
 
 		// pass 1.5: prune duplicates
@@ -2030,6 +2129,7 @@ namespace Codegen
 
 
 
+
 		// pass 2: prune based on number of parameters. (binop vs normal)
 		set = candidates;
 		candidates.clear();
@@ -2042,7 +2142,6 @@ namespace Codegen
 			else if(!cand.first.isBinOp && cand.second->arg_size() == 1)
 				candidates.push_back(cand);
 		}
-
 
 
 
@@ -2113,14 +2212,17 @@ namespace Codegen
 				llvm::Type* ret = c.second->getReturnType();
 
 				// check the assign funcs that take such a type as RHS
-				for(llvm::Function* af : assignFuncs)
+				for(auto pair : assignFuncs)
 				{
+					llvm::Function* af = pair.second;
+					bool intype = pair.first;
+
 					iceAssert(af->arg_size() == 2);
 
 					llvm::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
 					llvm::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
 
-					if(afltype == (c.first.isInType ? lref : lhs)->getType() && afrtype == ret
+					if(afltype == (intype ? lref : lhs)->getType() && afrtype == ret
 						&& af->getReturnType() == lhs->getType()->getPointerTo())
 					{
 						finals.push_back({ { c.first, c.second }, af });
@@ -2170,11 +2272,6 @@ namespace Codegen
 
 			rref = ptr;
 		}
-
-
-
-
-
 
 
 

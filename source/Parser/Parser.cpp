@@ -522,6 +522,14 @@ namespace Parser
 					parseAttribute(ps);
 					break;
 
+				case TType::Identifier:
+					if(tok.text == "operator")
+					{
+						ps.rootNode->topLevelExpressions.push_back(parseOpOverload(ps));
+						break;
+					}
+					[[clang::fallthrough]];
+
 				default:	// wip: skip shit we don't know/care about for now
 					parserError("Unknown token '%s'", tok.text.c_str());
 			}
@@ -2522,6 +2530,8 @@ namespace Parser
 		// parse a func declaration.
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
 		oo->func = parseFunc(ps);
+
+		oo->attribs = attr;
 
 		// check number of arguments
 		// note: this is without the "self" parameter, so args == 1 --> binop
