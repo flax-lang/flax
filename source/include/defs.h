@@ -26,6 +26,7 @@ namespace Ast
 	struct Expr;
 	struct VarDecl;
 	struct FuncDecl;
+	struct OpOverload;
 	struct BreakableBracedBlock;
 }
 
@@ -93,6 +94,7 @@ namespace Codegen
 
 		// things within.
 		std::deque<FuncPair_t> funcs;
+		std::deque<std::pair<Ast::OpOverload*, llvm::Function*>> operators;
 
 		std::map<std::string, SymbolPair_t> vars;
 		std::map<std::string, TypePair_t> types;

@@ -216,6 +216,7 @@ namespace Parser
 		"Strong",
 		"Raw",
 		"Override",
+		"Commutative"
 	};
 
 	static uint64_t checkAndApplyAttributes(ParserState& ps, uint64_t allowed)
@@ -306,16 +307,55 @@ namespace Parser
 						ps.pop_front();
 						ps.skipNewline();
 
+
+
+
+
+						// todo: a bit messy
+						if(num.type == TType::Identifier)
+						{
+							// skip.
+							if(ps.front().type == TType::RSquare)
+							{
+								ps.pop_front();
+								curPrec = 0;
+								continue; // break out of the loopy
+							}
+							else if(ps.front().type == TType::Comma)
+							{
+								ps.pop_front();
+								num = ps.front();
+							}
+							else
+							{
+								parserError(ps, ps.front(), "Expected either ']' or ',' after identifier in @operator");
+							}
+						}
+
+
+
 						if(num.type != TType::Integer)
-							parserError(ps, num, "Expected integer within @operator[]");
+							parserError(ps, num, "Expected integer as first attribute within @operator[]");
 
 						curPrec = std::stod(num.text);
 						if(curPrec <= 0)
 							parserError(ps, num, "Precedence must be greater than 0");
 
 						ps.skipNewline();
+
+
+						// Commutative
+						if(ps.front().type == TType::Comma)
+						{
+							ps.pop_front();
+							if(ps.eat().type != TType::Identifier)
+								parserError(ps, ps.front(), "Expected identifier after comma");
+						}
+
+
 						if(ps.front().type != TType::RSquare)
 							parserError(ps, ps.front(), "Expected closing ']'");
+
 
 						ps.pop_front();
 						ps.skipNewline();
@@ -330,7 +370,7 @@ namespace Parser
 					{
 						size_t opNum = ps.cgi->customOperatorMap.size();
 
-						if(curPrec == 0)
+						if(curPrec <= 0)
 							parserError(ps, t, "Custom operators must have a precedence, use @operator[x]");
 
 						// check if it exists.
@@ -346,7 +386,7 @@ namespace Parser
 
 							if(pair.second != curPrec)
 							{
-								parserWarn(op, "Operator '%s' was previously defined with a different infix precedence (%d). Due to the way"
+								parserWarn(op, "Operator '%s' was previously defined with a different precedence (%d). Due to the way"
 									" the flax compiler is engineered, all custom operators using the same identifier will be bound to the"
 									" first precedence defined.", pair.first.c_str(), pair.second);
 							}
@@ -481,6 +521,14 @@ namespace Parser
 				case TType::At:
 					parseAttribute(ps);
 					break;
+
+				case TType::Identifier:
+					if(tok.text == "operator")
+					{
+						ps.rootNode->topLevelExpressions.push_back(parseOpOverload(ps));
+						break;
+					}
+					[[clang::fallthrough]];
 
 				default:	// wip: skip shit we don't know/care about for now
 					parserError("Unknown token '%s'", tok.text.c_str());
@@ -2132,7 +2180,57 @@ namespace Parser
 		{
 			// all handled.
 			iceAssert(ps.eat().type == TType::LSquare);
-			iceAssert(ps.eat().type == TType::Integer);
+			// iceAssert(ps.eat().type == TType::Integer);
+
+			if(ps.front().type == TType::Integer)
+			{
+				ps.pop_front();
+				if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+					iceAssert(ps.front().type == TType::Identifier);
+
+					if(ps.front().text == "Commutative")
+						ps.curAttrib |= Attr_CommutativeOp;
+
+					else if(ps.front().text == "NotCommutative")
+						ps.curAttrib &= ~Attr_CommutativeOp;
+
+					else
+						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
+
+					ps.pop_front();
+				}
+				else if(ps.front().type == TType::RSquare)
+				{
+					// do nothing
+				}
+			}
+			else if(ps.front().type == TType::Identifier)
+			{
+				if(ps.front().text == "Commutative")
+					ps.curAttrib |= Attr_CommutativeOp;
+
+				else if(ps.front().text == "NotCommutative")
+					ps.curAttrib &= ~Attr_CommutativeOp;
+
+				else
+					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
+
+				ps.pop_front();
+
+
+
+				if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+					if(ps.front().type != TType::Integer)
+						parserError("Expected integer precedence in @operator");
+
+					ps.eat();
+				}
+			}
+
 			iceAssert(ps.eat().type == TType::RSquare);
 		}
 		else										parserError("Unknown attribute '%s'", id.text.c_str());
@@ -2430,13 +2528,21 @@ namespace Parser
 		ps.tokens.push_front(fake);
 
 		// parse a func declaration.
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
 		oo->func = parseFunc(ps);
+
+		oo->attribs = attr;
 
 		// check number of arguments
 		// note: this is without the "self" parameter, so args == 1 --> binop
 		// args == 0 --> unary op.
 
 		// if this is not in a struct, then 2 == binop, 1 == unaryop.
+
+		if(attr & Attr_CommutativeOp)
+		{
+			oo->isCommutative = true;
+		}
 
 		if(ps.isParsingStruct)
 		{
@@ -2624,4 +2730,5 @@ namespace Ast
 	uint64_t Attr_StrongTypeAlias	= 0x80;
 	uint64_t Attr_RawString			= 0x100;
 	uint64_t Attr_Override			= 0x200;
+	uint64_t Attr_CommutativeOp		= 0x400;
 }

@@ -12,13 +12,24 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
+static std::pair<FunctionTree*, FunctionTree*> getFuncTrees(CodegenInstance* cgi)
 {
 	FunctionTree* ftree = cgi->getCurrentFuncTree();
 	FunctionTree* pftree = cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree);
 
 	iceAssert(ftree);
 	iceAssert(pftree);
+
+	return { ftree, pftree };
+}
+
+
+
+static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
+{
+	auto p = getFuncTrees(cgi);
+	FunctionTree* ftree = p.first;
+	FunctionTree* pftree = p.second;
 
 	ftree->types[name] = { 0, { type, tk } };
 
@@ -26,13 +37,23 @@ static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name
 		pftree->types[name] = { 0, { type, tk } };
 }
 
+static void addOpOverloadToFuncTree(CodegenInstance* cgi, OpOverload* oo)
+{
+	auto p = getFuncTrees(cgi);
+	FunctionTree* ftree = p.first;
+	FunctionTree* pftree = p.second;
+
+	ftree->operators.push_back({ oo, 0 });
+
+	if(oo->attribs & Attr_VisPublic)
+		pftree->operators.push_back({ oo, 0 });
+}
+
 static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 {
-	FunctionTree* ftree = cgi->getCurrentFuncTree();
-	FunctionTree* pftree = cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree);
-
-	iceAssert(ftree);
-	iceAssert(pftree);
+	auto p = getFuncTrees(cgi);
+	FunctionTree* ftree = p.first;
+	FunctionTree* pftree = p.second;
 
 
 	if(decl->name == "main")
@@ -60,6 +81,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 {
 	if(pass == 0)
 	{
+		// add all the types for order-independence -- if we encounter a need, we can
+		// force codegen.
+
 		for(Expr* e : expressions)
 		{
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
@@ -68,6 +92,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Class* cls				= dynamic_cast<Class*>(e);		// enum : class, extension : class
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
+			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
@@ -75,6 +100,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
+			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
 		}
 	}
 	else if(pass == 1)
