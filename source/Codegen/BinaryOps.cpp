@@ -11,17 +11,18 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* structRef, llvm::Value* rhs, Ast::Expr* rhsExpr)
+static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* lhsRef, llvm::Value* rhs, llvm::Value* rhsRef)
 {
-	if(structRef->getType()->getPointerElementType()->isStructTy())
+	if(lhsRef->getType()->getPointerElementType()->isStructTy())
 	{
-		TypePair_t* tp = cgi->getType(structRef->getType()->getPointerElementType()->getStructName());
+		TypePair_t* tp = cgi->getType(lhsRef->getType()->getPointerElementType()->getStructName());
 		if(!tp)
 			return Result_t(0, 0);
 
 		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
 
-		Result_t ret = cgi->findAndCallOperatorOverload(user, op, cgi->builder.CreateLoad(structRef), structRef, rhs);
+		auto data = cgi->getOperatorOverload(user, op, lhsRef->getType()->getPointerElementType(), rhs->getType());
+		Result_t ret = cgi->callOperatorOverload(data, cgi->builder.CreateLoad(lhsRef), lhsRef, rhs, rhsRef, op);
 
 		if(ret.result.first != 0)
 		{
@@ -38,6 +39,10 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 	return Result_t(0, 0);
 }
+
+
+
+
 
 
 
@@ -105,7 +110,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 		// try and see if we have operator overloads for bo thing
-		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, right);
+		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, rhsPtr);
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 
@@ -264,9 +269,11 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		error(user, "Left-hand side of assignment must be assignable (type: %s)", typeid(*left).name());
 	}
 
+
+
 	if(varptr->getType()->getPointerElementType()->isStructTy())
 	{
-		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, right);
+		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, rhsPtr);
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 	}
@@ -798,27 +805,19 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(lhs->getType()->isStructTy() || rhs->getType()->isStructTy())
 	{
-		TypePair_t* p = cgi->getType(lhs->getType()->getStructName());
-		if(!p)
+		// Result_t ret = cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs, r.second);
+
+		auto data = cgi->getOperatorOverload(this, op, valptr.first->getType(), rhs->getType());
+		Result_t ret = cgi->callOperatorOverload(data, valptr.first, valptr.second, rhs, r.second, op);
+
+
+		if(ret.result.first == 0)
 		{
-			error(this, "Invalid type (%s)", lhs->getType()->getStructName().str().c_str());
+			error(this, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+				cgi->getReadableType(lhs).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), cgi->getReadableType(rhs).c_str());
 		}
 
-		if(valptr.second == 0)
-		{
-			// we don't have a pointer-type ref, which is required for operators to work.
-			// create one.
-
-			llvm::Value* val = valptr.first;
-			iceAssert(val);
-
-			llvm::Value* ptr = cgi->builder.CreateAlloca(val->getType());
-			cgi->builder.CreateStore(val, ptr);
-
-			valptr.second = ptr;
-		}
-
-		return cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs);
+		return ret;
 	}
 
 	error(this, "Unsupported operator on type");

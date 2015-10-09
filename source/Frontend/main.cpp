@@ -410,6 +410,8 @@ int main(int argc, char* argv[])
 			}
 		}
 
+		// mainModule->dump();
+		// exit(0);
 
 
 		bool needGlobalConstructor = false;
