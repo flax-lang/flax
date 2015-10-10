@@ -6,6 +6,8 @@
 #include "ast.h"
 #include "typeinfo.h"
 
+#include "errors.h"
+
 #include <vector>
 #include <map>
 
@@ -52,23 +54,6 @@ namespace GenError
 	void printContext(Ast::Expr* e);
 }
 
-void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, const char* msg, const char* type,
-	bool doExit, va_list ap);
-
-void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-
-void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-
-void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-
-
-
-#define __nothing
-#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
-
 
 
 
@@ -78,9 +63,6 @@ namespace Codegen
 
 	struct CodegenInstance
 	{
-		// todo: hack
-		bool isStructCodegen = false;
-
 		Ast::Root* rootNode;
 		llvm::Module* module;
 		llvm::FunctionPassManager* Fpm;
@@ -292,15 +274,9 @@ namespace Codegen
 
 		llvm::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
-
-		llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(Ast::FuncDecl* fd);
-		Ast::Result_t generateActualFuncDecl(Ast::FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype);
-
 		llvm::LLVMContext& getContext();
 		llvm::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType = 0);
-
-		// llvm::Type* getOperatorReturnType(llvm::Type* lhs, llvm::Type* rhs, )
 
 		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);

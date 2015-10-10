@@ -12,6 +12,7 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
+#include "../include/typechecking.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
@@ -161,12 +162,12 @@ namespace Compiler
 
 int main(int argc, char* argv[])
 {
+	// parse arguments
+	std::string filename;
+	std::string outname;
+
 	if(argc > 1)
 	{
-		// parse arguments
-		std::string filename;
-		std::string outname;
-
 		// parse the command line opts
 		for(int i = 1; i < argc; i++)
 		{
@@ -349,240 +350,246 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
-
-
-		// compile the file.
-		// the file Compiler.cpp handles imports.
-
-		iceAssert(llvm::InitializeNativeTarget() == 0);
-		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
-		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
-
-		Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
-
-		filename = Compiler::getFullPathOfFile(filename);
-		std::string curpath = Compiler::getPathFromFile(filename);
-
-		// parse and find all custom operators
-		Parser::ParserState pstate(__cgi);
-
-		Parser::parseAllCustomOperators(pstate, filename, curpath);
-
-		// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
-		auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
-
-		Root* r = std::get<0>(ret);
-		std::vector<std::string> filelist = std::get<1>(ret);
-		std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
-		std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
-
-		llvm::Module* mainModule = modulelist[filename];
-		llvm::IRBuilder<>& builder = __cgi->builder;
-
-
-		// mainModule->dump();
-		// for(auto m : modulelist)
-		// 	m.second->dump();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		// needs to be done first, for the weird constructor fiddling below.
-		if(Compiler::runProgramWithJit)
-		{
-			llvm::Linker linker = llvm::Linker(mainModule);
-			for(auto mod : modulelist)
-			{
-				if(mod.second != mainModule)
-					linker.linkInModule(mod.second);
-			}
-		}
-
-		// mainModule->dump();
-		// exit(0);
-
-
-		bool needGlobalConstructor = false;
-		if(r->globalConstructorTrampoline != 0) needGlobalConstructor = true;
-		for(auto pair : rootmap)
-		{
-			if(pair.second->globalConstructorTrampoline != 0)
-			{
-				needGlobalConstructor = true;
-				break;
-			}
-		}
-
-
-
-
-		if(needGlobalConstructor)
-		{
-			std::vector<llvm::Function*> constructors;
-			rootmap[filename] = r;
-
-			for(auto pair : rootmap)
-			{
-				if(pair.second->globalConstructorTrampoline != 0)
-				{
-					llvm::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
-					if(!constr)
-					{
-						if(Compiler::runProgramWithJit)
-						{
-							error("required global constructor %s was not found in the module!",
-								pair.second->globalConstructorTrampoline->getName().str().c_str());
-						}
-						else
-						{
-							// declare it.
-							constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
-								pair.second->globalConstructorTrampoline->getName(),
-								pair.second->globalConstructorTrampoline->getFunctionType())
-							);
-						}
-					}
-
-					constructors.push_back(constr);
-				}
-			}
-
-			rootmap.erase(filename);
-
-			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
-			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
-				"__global_constructor_top_level__", mainModule);
-
-			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
-			builder.SetInsertPoint(iblock);
-
-			for(auto f : constructors)
-				builder.CreateCall(f);
-
-			builder.CreateRetVoid();
-
-
-			if(!Compiler::getNoAutoGlobalConstructor())
-			{
-				// insert a call at the beginning of main().
-				llvm::Function* mainfunc = mainModule->getFunction("main");
-				iceAssert(mainfunc);
-
-				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-				llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
-
-				f->moveBefore(entry);
-				builder.SetInsertPoint(f);
-				builder.CreateCall(gconstr);
-				builder.CreateBr(entry);
-			}
-		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		std::string foldername;
-		size_t sep = filename.find_last_of("\\/");
-		if(sep != std::string::npos)
-			foldername = filename.substr(0, sep);
-
-
-
-		if(Compiler::runProgramWithJit)
-		{
-			// all linked already.
-			// dump here, before the output.
-			if(Compiler::printModule)
-				mainModule->dump();
-
-			if(mainModule->getFunction("main") != 0)
-			{
-				std::string err;
-				llvm::Module* clone = llvm::CloneModule(mainModule);
-				llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
-							.setErrorStr(&err)
-							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
-							.create();
-
-
-				void* func = ee->getPointerToFunction(clone->getFunction("main"));
-				iceAssert(func);
-				auto mainfunc = (int (*)(int, const char**)) func;
-
-				const char* m[] = { ("__llvmJIT_" + clone->getModuleIdentifier()).c_str() };
-
-				// finalise the object, which causes the memory to be executable
-				// fucking NX bit
-				ee->finalizeObject();
-				mainfunc(1, m);
-			}
-			else
-			{
-				error("no main() function!");
-			}
-		}
-		else
-		{
-			Compiler::compileProgram(mainModule, filelist, foldername, outname);
-		}
-
-
-		// clean up the intermediate files (ie. .bitcode files)
-		for(auto s : filelist)
-			remove(s.c_str());
-
-		if(Compiler::printModule && !Compiler::getRunProgramWithJit())
-			mainModule->dump();
-
-		if(Compiler::dumpModule)
-		{
-			// std::string err_info;
-			// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
-
-			// out << *(mainModule);
-			// out.close();
-
-			fprintf(stderr, "enosup\n");
-			exit(-1);
-		}
-
-		delete __cgi;
-		for(auto p : rootmap)
-			delete p.second;
-
-		delete r;
 	}
 	else
 	{
 		fprintf(stderr, "Expected at least one argument\n");
 		exit(-1);
 	}
+
+
+	// compile the file.
+	// the file Compiler.cpp handles imports.
+
+	iceAssert(llvm::InitializeNativeTarget() == 0);
+	iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
+	iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
+
+	Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
+
+	filename = Compiler::getFullPathOfFile(filename);
+	std::string curpath = Compiler::getPathFromFile(filename);
+
+	// parse and find all custom operators
+	Parser::ParserState pstate(__cgi);
+
+	Parser::parseAllCustomOperators(pstate, filename, curpath);
+
+	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
+	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
+
+	Root* r = std::get<0>(ret);
+	std::vector<std::string> filelist = std::get<1>(ret);
+	std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
+	std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
+
+	llvm::Module* mainModule = modulelist[filename];
+	llvm::IRBuilder<>& builder = __cgi->builder;
+
+
+
+
+
+
+
+
+
+	flax::Type* i8 = flax::Type::getInt8();
+	auto i8ptr = i8->getPointerTo();
+
+	iceAssert(i8ptr->getPointerElementType() == i8);
+
+	// i8	=
+	// new	=
+
+
+
+
+
+
+
+
+
+
+
+	// needs to be done first, for the weird constructor fiddling below.
+	if(Compiler::runProgramWithJit)
+	{
+		llvm::Linker linker = llvm::Linker(mainModule);
+		for(auto mod : modulelist)
+		{
+			if(mod.second != mainModule)
+				linker.linkInModule(mod.second);
+		}
+	}
+
+	// mainModule->dump();
+	// exit(0);
+
+
+	bool needGlobalConstructor = false;
+	if(r->globalConstructorTrampoline != 0) needGlobalConstructor = true;
+	for(auto pair : rootmap)
+	{
+		if(pair.second->globalConstructorTrampoline != 0)
+		{
+			needGlobalConstructor = true;
+			break;
+		}
+	}
+
+
+
+
+	if(needGlobalConstructor)
+	{
+		std::vector<llvm::Function*> constructors;
+		rootmap[filename] = r;
+
+		for(auto pair : rootmap)
+		{
+			if(pair.second->globalConstructorTrampoline != 0)
+			{
+				llvm::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
+				if(!constr)
+				{
+					if(Compiler::runProgramWithJit)
+					{
+						error("required global constructor %s was not found in the module!",
+							pair.second->globalConstructorTrampoline->getName().str().c_str());
+					}
+					else
+					{
+						// declare it.
+						constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
+							pair.second->globalConstructorTrampoline->getName(),
+							pair.second->globalConstructorTrampoline->getFunctionType())
+						);
+					}
+				}
+
+				constructors.push_back(constr);
+			}
+		}
+
+		rootmap.erase(filename);
+
+		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
+		llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
+			"__global_constructor_top_level__", mainModule);
+
+		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
+		builder.SetInsertPoint(iblock);
+
+		for(auto f : constructors)
+			builder.CreateCall(f);
+
+		builder.CreateRetVoid();
+
+
+		if(!Compiler::getNoAutoGlobalConstructor())
+		{
+			// insert a call at the beginning of main().
+			llvm::Function* mainfunc = mainModule->getFunction("main");
+			iceAssert(mainfunc);
+
+			llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
+			llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
+
+			f->moveBefore(entry);
+			builder.SetInsertPoint(f);
+			builder.CreateCall(gconstr);
+			builder.CreateBr(entry);
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::string foldername;
+	size_t sep = filename.find_last_of("\\/");
+	if(sep != std::string::npos)
+		foldername = filename.substr(0, sep);
+
+
+
+	if(Compiler::runProgramWithJit)
+	{
+		// all linked already.
+		// dump here, before the output.
+		if(Compiler::printModule)
+			mainModule->dump();
+
+		if(mainModule->getFunction("main") != 0)
+		{
+			std::string err;
+			llvm::Module* clone = llvm::CloneModule(mainModule);
+			llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
+						.setErrorStr(&err)
+						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+						.create();
+
+
+			void* func = ee->getPointerToFunction(clone->getFunction("main"));
+			iceAssert(func);
+			auto mainfunc = (int (*)(int, const char**)) func;
+
+			const char* m[] = { ("__llvmJIT_" + clone->getModuleIdentifier()).c_str() };
+
+			// finalise the object, which causes the memory to be executable
+			// fucking NX bit
+			ee->finalizeObject();
+			mainfunc(1, m);
+		}
+		else
+		{
+			error("no main() function!");
+		}
+	}
+	else
+	{
+		Compiler::compileProgram(mainModule, filelist, foldername, outname);
+	}
+
+
+	// clean up the intermediate files (ie. .bitcode files)
+	for(auto s : filelist)
+		remove(s.c_str());
+
+	if(Compiler::printModule && !Compiler::getRunProgramWithJit())
+		mainModule->dump();
+
+	if(Compiler::dumpModule)
+	{
+		// std::string err_info;
+		// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
+
+		// out << *(mainModule);
+		// out.close();
+
+		fprintf(stderr, "enosup\n");
+		exit(-1);
+	}
+
+	delete __cgi;
+	for(auto p : rootmap)
+		delete p.second;
+
+	delete r;
 }
 
 
