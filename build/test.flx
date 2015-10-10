@@ -34,11 +34,12 @@ public func main() -> Int
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
-	var cross = m.0 x m.1
-	cross /= 10
+	let cross = m.0 x m.1
 	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
 
+	let crossn = m.1 x m.0
+	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 
 
 
@@ -68,9 +69,9 @@ namespace some
 func fa() -> Math.Vector3
 {
 	var ret: Math.Vector3
-	ret.x = 5
-	ret.y = 25
-	ret.z = 125
+	ret.x = 1
+	ret.y = 2
+	ret.z = 3
 
 	return ret
 }
@@ -78,9 +79,9 @@ func fa() -> Math.Vector3
 func fb() -> Math.Vector3
 {
 	var ret: Math.Vector3
-	ret.x = 3
-	ret.y = 9
-	ret.z = 27
+	ret.x = 4
+	ret.y = 5
+	ret.z = 6
 
 	return ret
 }

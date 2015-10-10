@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-llvm::GlobalValue::LinkageTypes CodegenInstance::getFunctionDeclLinkage(FuncDecl* fd)
+static llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(FuncDecl* fd)
 {
 	llvm::GlobalValue::LinkageTypes linkageType;
 
@@ -43,32 +43,32 @@ llvm::GlobalValue::LinkageTypes CodegenInstance::getFunctionDeclLinkage(FuncDecl
 }
 
 
-Result_t CodegenInstance::generateActualFuncDecl(FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype)
+static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype)
 {
 	llvm::FunctionType* ft = llvm::FunctionType::get(rettype, argtypes, fd->hasVarArg);
-	auto linkageType = this->getFunctionDeclLinkage(fd);
+	auto linkageType = getFunctionDeclLinkage(fd);
 
 	// check for redef
 	llvm::Function* func = nullptr;
-	if(this->getType(fd->mangledName) != nullptr)
+	if(cgi->getType(fd->mangledName) != nullptr)
 	{
-		GenError::duplicateSymbol(this, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
+		GenError::duplicateSymbol(cgi, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(fd->genericTypes.size() == 0 && this->isDuplicateFuncDecl(fd))
+	else if(fd->genericTypes.size() == 0 && cgi->isDuplicateFuncDecl(fd))
 	{
 		if(!fd->isFFI)
 		{
-			GenError::duplicateSymbol(this, fd, fd->name, SymbolType::Function);
+			GenError::duplicateSymbol(cgi, fd, fd->name, SymbolType::Function);
 		}
 	}
 	else
 	{
-		func = llvm::Function::Create(ft, linkageType, fd->mangledName, this->module);
+		func = llvm::Function::Create(ft, linkageType, fd->mangledName, cgi->module);
 
 		if(fd->attribs & Attr_VisPublic)
-			this->addPublicFunc({ func, fd });
+			cgi->addPublicFunc({ func, fd });
 
-		this->addFunctionToScope({ func, fd });
+		cgi->addFunctionToScope({ func, fd });
 	}
 
 
@@ -108,7 +108,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		lret = types[this->type.strType];
 	}
 
-	return cgi->generateActualFuncDecl(this, argtypes, lret);
+	return generateActualFuncDecl(cgi, this, argtypes, lret);
 }
 
 
@@ -247,7 +247,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getLlvmType(v));
 
-		return cgi->generateActualFuncDecl(this, argtypes, cgi->getLlvmType(this));
+		return generateActualFuncDecl(cgi, this, argtypes, cgi->getLlvmType(this));
 	}
 }
 
