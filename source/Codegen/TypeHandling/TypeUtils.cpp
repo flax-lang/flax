@@ -20,7 +20,7 @@ namespace Codegen
 	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
 	{
 		int indirections = 0;
-		type = this->unwrapPointerType(type, &indirections);
+		type = unwrapPointerType(type, &indirections);
 
 		if(!Compiler::getDisableLowercaseBuiltinTypes())
 		{
@@ -733,7 +733,7 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::unwrapPointerType(std::string type, int* _indirections)
+	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = std::string("*");
 		size_t ptrStrLength = sptr.length();
@@ -862,7 +862,7 @@ namespace Codegen
 			{
 				int indirections = 0;
 
-				std::string actualType = this->unwrapPointerType(type, &indirections);
+				std::string actualType = unwrapPointerType(type, &indirections);
 				if(actualType.find("[") != std::string::npos)
 				{
 					size_t k = actualType.find("[");

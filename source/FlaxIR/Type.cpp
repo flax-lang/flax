@@ -1,11 +1,13 @@
-// FlaxType.cpp
+// Type.cpp
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
 #include <unordered_map>
 
-#include "../include/typechecking.h"
+#include "../include/codegen.h"
+#include "../include/compiler.h"
+#include "../include/flax/type.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
@@ -510,6 +512,18 @@ namespace flax
 	}
 
 
+	flax::Type* Type::getFunction(std::vector<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc)
+	{
+		std::deque<flax::Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return getFunction(dargs, ret, isVarArg, tc);
+	}
+
+
+
+
 	// primitives
 	flax::Type* Type::getBool(FTContext* tc)
 	{
@@ -577,6 +591,62 @@ namespace flax
 		iceAssert(false);
 		return 0;
 	}
+
+
+
+
+	flax::Type* Type::fromBuiltin(std::string builtin, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+
+		int indirections = 0;
+		builtin = Codegen::unwrapPointerType(builtin, &indirections);
+
+		if(!Compiler::getDisableLowercaseBuiltinTypes())
+		{
+			if(builtin.length() > 0)
+			{
+				builtin[0] = toupper(builtin[0]);
+			}
+		}
+
+		flax::Type* real = 0;
+
+		if(builtin == "Int8")			real = Type::getInt8(tc);
+		else if(builtin == "Int16")		real = Type::getInt16(tc);
+		else if(builtin == "Int32")		real = Type::getInt32(tc);
+		else if(builtin == "Int64")		real = Type::getInt64(tc);
+		else if(builtin == "Int")		real = Type::getInt64(tc);
+
+		else if(builtin == "Uint8")		real = Type::getInt8(tc);
+		else if(builtin == "Uint16")	real = Type::getInt16(tc);
+		else if(builtin == "Uint32")	real = Type::getInt32(tc);
+		else if(builtin == "Uint64")	real = Type::getInt64(tc);
+		else if(builtin == "Uint")		real = Type::getInt64(tc);
+
+		else if(builtin == "Float32")	real = Type::getFloat32(tc);
+		else if(builtin == "Float")		real = Type::getFloat32(tc);
+
+		else if(builtin == "Float64")	real = Type::getFloat64(tc);
+		else if(builtin == "Double")	real = Type::getFloat64(tc);
+
+		else if(builtin == "Bool")		real = Type::getBool(tc);
+		else if(builtin == "Void")		real = Type::getVoid(tc);
+		else return 0;
+
+		iceAssert(real);
+		while(indirections > 0)
+		{
+			real = real->getPointerTo();
+			indirections--;
+		}
+
+		return real;
+	}
+
+
 
 
 
