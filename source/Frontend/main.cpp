@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
 
 
 
-	flax::Type* i8 = flax::Type::getInt8();
+	flax::Type* i8 = flax::PrimitiveType::getInt8();
 	auto i8ptr = i8->getPointerTo();
 
 	iceAssert(i8ptr->getPointerElementType() == i8);
