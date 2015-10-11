@@ -708,7 +708,7 @@ namespace Codegen
 
 		// not this though.
 		int indirections = 0;
-		name = this->unwrapPointerType(name, &indirections);
+		name = unwrapPointerType(name, &indirections);
 
 		for(size_t i = 0; i <= scope.size(); i++)
 		{
@@ -1184,7 +1184,7 @@ namespace Codegen
 		std::string r = this->getReadableType(type);
 
 		int ind = 0;
-		r = this->unwrapPointerType(r, &ind);
+		r = unwrapPointerType(r, &ind);
 
 		if(r == "Int8")			r = "a";
 		else if(r == "Int16")	r = "s";

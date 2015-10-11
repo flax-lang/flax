@@ -248,7 +248,6 @@ namespace Codegen
 		std::string printAst(Ast::Expr*);
 
 		llvm::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
-		std::string unwrapPointerType(std::string type, int* indirections);
 
 		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
@@ -298,6 +297,7 @@ namespace Codegen
 		~CodegenInstance();
 	};
 
+	std::string unwrapPointerType(std::string type, int* indirections);
 	llvm::Value* getArgumentNOfFunction(llvm::Function* func, size_t n);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
