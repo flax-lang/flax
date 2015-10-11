@@ -12,7 +12,7 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
-#include "../include/typechecking.h"
+#include "../include/flax/type.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"

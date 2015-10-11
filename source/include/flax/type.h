@@ -73,6 +73,7 @@ namespace flax
 
 		// functions
 		static flax::Type* getFunction(std::deque<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc = 0);
+		static flax::Type* getFunction(std::vector<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc = 0);
 
 
 		// primitives
@@ -93,6 +94,8 @@ namespace flax
 
 		static flax::Type* getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned);
 		static flax::Type* getFloatWithBitWidth(FTContext* tc, size_t bits);
+
+		static flax::Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
 
 
 		// various
