@@ -1,4 +1,4 @@
-// typechecking.h
+// type.h
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -25,15 +25,40 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <unordered_map>
 
 
 namespace flax
 {
 	// NOTE: i don't really want to deal with inheritance stuff right now,
-	// so flax::Type will encapsulate everything.
+	// so Type will encapsulate everything.
 	// we shouldn't be making any copies anyway, so space/performance is a negligible concern
 
-	class FTContext;
+	struct Type;
+	struct PrimitiveType;
+	struct FunctionType;
+	struct PointerType;
+	struct StructType;
+	struct ArrayType;
+
+	struct FTContext
+	{
+		// primitives
+		// NOTE: map is ordered by bit width.
+		// floats + ints here too.
+		std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
+
+		// special little thing.
+		PrimitiveType* voidType = 0;
+
+		llvm::LLVMContext* llvmContext = 0;
+		llvm::Module* module = 0;
+
+		// keyed by number of indirections
+		std::unordered_map<size_t, std::vector<Type*>> typeCache;
+		Type* normaliseType(Type* type);
+	};
+
 	FTContext* createFTContext();
 	FTContext* getDefaultFTContext();
 	void setDefaultFTContext(FTContext* tc);
@@ -43,6 +68,7 @@ namespace flax
 		Invalid,
 
 		Void,
+		Pointer,
 
 		NamedStruct,
 		LiteralStruct,
@@ -54,157 +80,299 @@ namespace flax
 		Function,
 	};
 
+
+
+
 	struct Type
 	{
-		friend class FTContext;
+		// aquaintances
+		friend struct FTContext;
 		friend FTContext* createFTContext();
 
-		// structs
-		static flax::Type* getOrCreateNamedStruct(std::string name, std::deque<flax::Type*> members, FTContext* tc = 0);
-		static flax::Type* getOrCreateNamedStruct(std::string name, std::vector<flax::Type*> members, FTContext* tc = 0);
+		// stuff
+		static Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
+		static Type* fromLlvmType(llvm::Type* ltype, std::deque<bool> signage);
 
-		static flax::Type* getLiteralStruct(std::deque<flax::Type*> members, FTContext* tc = 0);
-		static flax::Type* getLiteralStruct(std::vector<flax::Type*> members, FTContext* tc = 0);
-
-
-		// arrays
-		static flax::Type* getArray(flax::Type* elementType, size_t num, FTContext* tc = 0);
-
-
-		// functions
-		static flax::Type* getFunction(std::deque<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc = 0);
-		static flax::Type* getFunction(std::vector<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc = 0);
-
-
-		// primitives
-		static flax::Type* getBool(FTContext* tc = 0);
-		static flax::Type* getVoid(FTContext* tc = 0);
-		static flax::Type* getInt8(FTContext* tc = 0);
-		static flax::Type* getInt16(FTContext* tc = 0);
-		static flax::Type* getInt32(FTContext* tc = 0);
-		static flax::Type* getInt64(FTContext* tc = 0);
-		static flax::Type* getUint8(FTContext* tc = 0);
-		static flax::Type* getUint16(FTContext* tc = 0);
-		static flax::Type* getUint32(FTContext* tc = 0);
-		static flax::Type* getUint64(FTContext* tc = 0);
-		static flax::Type* getFloat32(FTContext* tc = 0);
-		static flax::Type* getFloat64(FTContext* tc = 0);
-
-		static bool areTypesEqual(flax::Type* a, flax::Type* b);
-
-		static flax::Type* getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned);
-		static flax::Type* getFloatWithBitWidth(FTContext* tc, size_t bits);
-
-		static flax::Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
-
+		static bool areTypesEqual(Type* a, Type* b);
 
 		// various
-		std::string str();
+		virtual std::string str() = 0;
+		virtual bool isTypeEqual(Type* other) = 0;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) = 0;
 
-		flax::Type* getPointerTo(FTContext* tc = 0);
-		flax::Type* getPointerElementType(FTContext* tc = 0);
 
-		llvm::Type* getLlvmType();
 
-		bool isTypeEqual(flax::Type* other);
+		Type* getPointerTo(FTContext* tc = 0);
+		Type* getPointerElementType(FTContext* tc = 0);
 
-		bool isPointerTo(flax::Type* other);
-		bool isArrayElementOf(flax::Type* other);
-		bool isPointerElementOf(flax::Type* other);
 
-		bool isPointer() { return this->indirections > 0; }
-		bool isVoid() { return this->isTypeVoid; }
+		PrimitiveType* toPrimitiveType();
+		FunctionType* toFunctionType();
+		PointerType* toPointerType();
+		StructType* toStructType();
+		ArrayType* toArrayType();
 
+
+		// bool isPointerTo(Type* other, FTContext* tc = 0);
+		// bool isArrayElementOf(Type* other, FTContext* tc = 0);
+		// bool isPointerElementOf(Type* other, FTContext* tc = 0);
 
 
 		bool isStructType();
 		bool isNamedStruct();
 		bool isLiteralStruct();
+		bool isPackedStruct();
+
 
 		bool isArrayType();
 		bool isIntegerType();
 		bool isFloatingPointType();
 
+		bool isPointerType();
+		bool isVoid();
 
+		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
-
-
-		// general stuff
-		size_t getPointerIndirections() { return this->indirections; }
-
-		// int stuff
-		bool isSigned() { iceAssert(this->typeKind == FTypeKind::Integer); return this->isTypeSigned; }
-		size_t getIntegerBitWidth() { iceAssert(this->typeKind == FTypeKind::Integer); return this->bitWidth; }
-
-
-		// array stuff
-		flax::Type* getArrayElementType() { iceAssert(this->typeKind == FTypeKind::Array); return this->arrayElementType; }
-		size_t getArraySize() { iceAssert(this->typeKind == FTypeKind::Array); return this->arraySize; }
-
-
-		// struct stuff
-		std::string getStructName() { iceAssert(this->typeKind == FTypeKind::NamedStruct); return this->structName; }
-
-
-		private:
-
-		Type() :llvmType(nullptr), typeKind(FTypeKind::Invalid),
-				isTypeVoid(false), isTypeSigned(false),
-				bitWidth(0), arraySize(0), arrayElementType(nullptr)
+		protected:
+		Type(FTypeKind baseType)
 		{
 			static size_t __id = 0;
 			this->id = __id++;
+
+			this->typeKind = baseType;
 		}
 
-		~Type()
-		{
-			// nothing to delete, actually.
-		}
+		virtual ~Type() { }
 
 		// base things
-		llvm::Type* llvmType = 0;
 		size_t id = 0;
-		FTypeKind typeKind = FTypeKind::Invalid;
-		size_t indirections = 0;
+		llvm::Type* llvmType = 0;
 
-		// primitive things
+		FTypeKind typeKind = FTypeKind::Invalid;
+
 		bool isTypeVoid = 0;
+
+		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t inds, size_t bits);
+		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, size_t inds, bool issigned, size_t bits);
+		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t inds, size_t arrsize, Type* elm);
+		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, size_t inds, bool islit, std::string name,
+			std::deque<Type*> mems);
+
+		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, size_t inds, bool isva, std::deque<Type*> args,
+			Type* ret);
+
+		static std::string typeListToString(std::deque<Type*> types);
+		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
+	};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	struct PrimitiveType : Type
+	{
+		friend struct Type;
+
+		friend struct FTContext;
+		friend FTContext* createFTContext();
+
+		// methods
+		bool isSigned();
+		size_t getIntegerBitWidth();
+		size_t getFloatingPointBitWidth();
+
+		// protected constructor
+		protected:
+		PrimitiveType(size_t bits, FTypeKind kind);
+		virtual ~PrimitiveType() override { }
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+
+
+		// fields (protected)
 		bool isTypeSigned = 0;
 		size_t bitWidth = 0;
 
 
-		union
-		{
-			// array things
-			struct
-			{
-				size_t arraySize;
-				flax::Type* arrayElementType;
-			};
+		// static funcs
+		protected:
 
-			// struct things
-			struct
-			{
-				bool isTypeLiteralStruct;
-				std::string structName;
-				std::deque<flax::Type*> structMembers;
-			};
+		static PrimitiveType* getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned);
+		static PrimitiveType* getFloatWithBitWidth(FTContext* tc, size_t bits);
 
-			// function things
-			struct
-			{
-				bool isFnVarArg;
-				std::deque<flax::Type*> functionParams;
-				flax::Type* functionRetType;
-			};
-		};
 
-		static flax::Type* getOrCreateIntegerTypeWithConstraints(size_t inds, bool issigned, size_t bits);
-		static flax::Type* getOrCreateArrayTypeWithConstraints(size_t inds, size_t arrsize, flax::Type* elm);
-		static flax::Type* getOrCreateStructTypeWithConstraints(size_t inds, bool islit, std::string name, std::deque<flax::Type*> mems);
-		static flax::Type* getOrCreateFunctionTypeWithConstraints(size_t inds, bool isva, std::deque<flax::Type*> args, flax::Type* ret);
-		static flax::Type* cloneType(flax::Type* type);
+		public:
 
+		static PrimitiveType* getBool(FTContext* tc = 0);
+		static PrimitiveType* getVoid(FTContext* tc = 0);
+		static PrimitiveType* getInt8(FTContext* tc = 0);
+		static PrimitiveType* getInt16(FTContext* tc = 0);
+		static PrimitiveType* getInt32(FTContext* tc = 0);
+		static PrimitiveType* getInt64(FTContext* tc = 0);
+		static PrimitiveType* getUint8(FTContext* tc = 0);
+		static PrimitiveType* getUint16(FTContext* tc = 0);
+		static PrimitiveType* getUint32(FTContext* tc = 0);
+		static PrimitiveType* getUint64(FTContext* tc = 0);
+		static PrimitiveType* getFloat32(FTContext* tc = 0);
+		static PrimitiveType* getFloat64(FTContext* tc = 0);
+	};
+
+
+
+	struct PointerType : Type
+	{
+		friend struct Type;
+
+		friend struct FTContext;
+		friend FTContext* createFTContext();
+
+		// methods
+		size_t getIndirections();
+
+		// protected constructor
+		protected:
+		PointerType(size_t inds, Type* base);
+		virtual ~PointerType() override { }
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+
+
+		size_t indirections = 0;
+		Type* baseType = 0;
+
+		// static funcs
+		public:
+
+		static PointerType* getInt8Ptr(FTContext* tc = 0);
+		static PointerType* getInt16Ptr(FTContext* tc = 0);
+		static PointerType* getInt32Ptr(FTContext* tc = 0);
+		static PointerType* getInt64Ptr(FTContext* tc = 0);
+		static PointerType* getUint8Ptr(FTContext* tc = 0);
+		static PointerType* getUint16Ptr(FTContext* tc = 0);
+		static PointerType* getUint32Ptr(FTContext* tc = 0);
+		static PointerType* getUint64Ptr(FTContext* tc = 0);
+		static PointerType* getFloat32Ptr(FTContext* tc = 0);
+		static PointerType* getFloat64Ptr(FTContext* tc = 0);
+	};
+
+
+	struct StructType : Type
+	{
+		friend struct Type;
+
+		// methods
+		std::string getStructName();
+		size_t getElementCount();
+		Type* getElementN(size_t n);
+		std::vector<Type*> getElements();
+
+		void setBody(std::initializer_list<Type*> members);
+		void setBody(std::vector<Type*> members);
+		void setBody(std::deque<Type*> members);
+
+		void deleteType(FTContext* tc = 0);
+
+		// protected constructor
+		protected:
+		StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked);
+		virtual ~StructType() override { }
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+
+		// fields (protected)
+		bool isTypePacked;
+		std::string structName;
+		std::deque<Type*> structMembers;
+
+
+		// static funcs
+		public:
+		static StructType* getOrCreateNamedStruct(std::string name, std::initializer_list<Type*> members,
+			FTContext* tc = 0, bool isPacked = false);
+
+		static StructType* getOrCreateNamedStruct(std::string name, std::deque<Type*> members,
+			FTContext* tc = 0, bool isPacked = false);
+
+		static StructType* getOrCreateNamedStruct(std::string name, std::vector<Type*> members,
+			FTContext* tc = 0, bool isPacked = false);
+
+		static StructType* getLiteralStruct(std::initializer_list<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* getLiteralStruct(std::deque<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* getLiteralStruct(std::vector<Type*> members, FTContext* tc = 0, bool isPacked = false);
+	};
+
+	struct ArrayType : Type
+	{
+		friend struct Type;
+
+		// methods
+		Type* getElementType();
+		size_t getArraySize();
+
+		// protected constructor
+		protected:
+		ArrayType(Type* elmType, size_t sz);
+		virtual ~ArrayType() override { }
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+
+		// fields (protected)
+		size_t arraySize;
+		Type* arrayElementType;
+
+		// static funcs
+		public:
+		static ArrayType* getArray(Type* elementType, size_t num, FTContext* tc = 0);
+	};
+
+
+	struct FunctionType : Type
+	{
+		friend struct Type;
+
+		// methods
+		Type* getArgumentN(size_t n);
+		Type* getReturnType();
+		bool isVarArg();
+
+		// protected constructor
+		protected:
+		FunctionType(std::deque<Type*> args, Type* ret, bool isva);
+		virtual ~FunctionType() override { }
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+
+		// fields (protected)
+		bool isFnVarArg;
+		std::deque<Type*> functionParams;
+		Type* functionRetType;
+
+		// static funcs
+		public:
+		static FunctionType* getFunction(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* getFunction(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
 	};
 }
 

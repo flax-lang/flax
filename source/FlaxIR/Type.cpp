@@ -9,146 +9,45 @@
 #include "../include/compiler.h"
 #include "../include/flax/type.h"
 
+#include "llvm/IR/Module.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
+
+namespace Codegen
+{
+	std::string unwrapPointerType(std::string, int*);
+}
 
 namespace flax
 {
 	// NOTE: some global state.
 	// structs
 
-	class FTContext
+	Type* FTContext::normaliseType(Type* type)
 	{
-		public:
-		std::map<std::deque<flax::Type*>, flax::Type*> createdLiteralStructs;
-		std::map<std::string, flax::Type*> createdNamedStructs;
-
-		// arrays
-		std::map<std::pair<flax::Type*, size_t>, flax::Type*> createdArrays;
-
-		// functions
-		// key type: pair<pair<deque<args>, isVarArg>, returnType>
-		std::map<std::pair<std::pair<std::deque<flax::Type*>, bool>, flax::Type*>, flax::Type*> createdFunctions;
-
-		// primitives
-		// NOTE: multimap is ordered by bit width.
-		// floats + ints here too.
-		std::unordered_map<size_t, std::vector<flax::Type*>> primitiveTypes;
-
-		// special little thing.
-		flax::Type* voidType = 0;
-
-		llvm::LLVMContext* llvmContext = 0;
+		size_t ind = 0;
+		if(type->isPointerType())
+			ind = type->toPointerType()->getIndirections();
 
 
+		if(Type::areTypesEqual(type, this->voidType))
+			return this->voidType;
 
 
+		std::vector<Type*>& list = typeCache[ind];
 
-		struct TypeList
+		// find in the list.
+		// todo: make this more efficient
+		for(auto t : list)
 		{
-			std::vector<flax::Type*> primitives;
-			std::vector<flax::Type*> structs;
-			std::vector<flax::Type*> arrays;
-			std::vector<flax::Type*> funcs;
-		};
-
-
-		std::unordered_map<size_t, TypeList> typeCache;
-		void createOrGetType(flax::Type** type)
-		{
-			flax::Type*& ty = *type;
-
-			TypeList& list = typeCache[ty->indirections];
-
-			// find in the list.
-			if(ty->typeKind == FTypeKind::Integer || ty->typeKind == FTypeKind::Floating)
-			{
-				for(auto t : list.primitives)
-				{
-					if(Type::areTypesEqual(t, ty))
-					{
-						// todo: I really *don't know* how else to do this.
-						delete ty;
-
-						*type = t;
-						return;
-					}
-				}
-
-				// not existing.
-				list.primitives.push_back(ty);
-			}
-			else if(ty->typeKind == FTypeKind::NamedStruct || ty->typeKind == FTypeKind::LiteralStruct)
-			{
-				for(auto t : list.structs)
-				{
-					if(Type::areTypesEqual(t, ty))
-					{
-						// todo: I really *don't know* how else to do this.
-						delete ty;
-
-						*type = t;
-						return;
-					}
-				}
-
-				// not existing.
-				list.structs.push_back(ty);
-			}
-			else if(ty->typeKind == FTypeKind::Array)
-			{
-				for(auto t : list.arrays)
-				{
-					if(Type::areTypesEqual(t, ty))
-					{
-						// todo: I really *don't know* how else to do this.
-						delete ty;
-
-						*type = t;
-						return;
-					}
-				}
-
-				// not existing.
-				list.arrays.push_back(ty);
-			}
-			else if(ty->typeKind == FTypeKind::Function)
-			{
-				for(auto t : list.funcs)
-				{
-					if(Type::areTypesEqual(t, ty))
-					{
-						// todo: I really *don't know* how else to do this.
-						delete ty;
-
-						*type = t;
-						return;
-					}
-				}
-
-				// not existing.
-				list.funcs.push_back(ty);
-			}
-			else if(ty->typeKind == FTypeKind::Void)
-			{
-				if(this->voidType == 0)
-				{
-					this->voidType = ty;
-				}
-				else
-				{
-					delete ty;
-					*type = this->voidType;
-				}
-			}
-			else
-			{
-				iceAssert(0 && "invalid type kind");
-			}
+			if(Type::areTypesEqual(t, type))
+				return t;
 		}
-	};
 
 
+		list.push_back(type);
+		return type;
+	}
 
 
 	static FTContext* defaultFTContext = 0;
@@ -161,7 +60,10 @@ namespace flax
 	FTContext* getDefaultFTContext()
 	{
 		if(defaultFTContext == 0)
+		{
+			// iceAssert(0);
 			defaultFTContext = createFTContext();
+		}
 
 		return defaultFTContext;
 	}
@@ -175,22 +77,16 @@ namespace flax
 		// fill in primitives
 
 		// void.
-		tc->voidType = new Type();
-		tc->voidType->bitWidth = 0;
-		tc->voidType->typeKind = FTypeKind::Void;
-		tc->voidType->llvmType = llvm::Type::getVoidTy(*tc->llvmContext);
+		tc->voidType = new PrimitiveType(0, FTypeKind::Void);
 
 
 		// bool
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 1;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt1Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(1, FTypeKind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 
 
@@ -198,47 +94,35 @@ namespace flax
 
 		// int8
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 8;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt8Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// int16
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 16;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt16Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// int32
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 32;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt32Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// int64
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 64;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt64Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 
 
@@ -246,71 +130,53 @@ namespace flax
 
 		// uint8
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 8;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt8Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// uint16
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 16;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt16Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// uint32
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 32;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt32Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// uint64
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 64;
-			t->typeKind = FTypeKind::Integer;
-			t->llvmType = llvm::Type::getInt64Ty(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 
 
 		// float32
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 32;
-			t->typeKind = FTypeKind::Floating;
-			t->llvmType = llvm::Type::getFloatTy(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 		// float64
 		{
-			flax::Type* t = new Type();
-			t->bitWidth = 64;
-			t->typeKind = FTypeKind::Floating;
-			t->llvmType = llvm::Type::getDoubleTy(*tc->llvmContext);
+			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].primitives.push_back(t);
+			tc->typeCache[0].push_back(t);
 		}
 
 		return tc;
@@ -321,7 +187,7 @@ namespace flax
 
 
 
-	static std::string typeListToString(std::deque<flax::Type*> types)
+	std::string Type::typeListToString(std::deque<Type*> types)
 	{
 		// print types
 		std::string str = "{ ";
@@ -331,10 +197,10 @@ namespace flax
 		if(str.length() > 2)
 			str = str.substr(0, str.length() - 2);
 
-		return str + "}";
+		return str + " }";
 	}
 
-	static bool areTypeListsEqual(std::deque<flax::Type*> a, std::deque<flax::Type*> b)
+	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
 	{
 		if(a.size() != b.size()) return false;
 
@@ -347,255 +213,80 @@ namespace flax
 		return true;
 	}
 
-	// structs
-	flax::Type* Type::getOrCreateNamedStruct(std::string name, std::deque<flax::Type*> members, FTContext* tc)
+
+	Type* Type::getPointerTo(FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		flax::Type* existing = tc->createdNamedStructs[name];
-		if(!existing)
+		size_t inds = 0;
+		if(this->toPointerType())
+			inds = this->toPointerType()->indirections;
+
+		PointerType* newType = new PointerType(inds + 1, this);
+
+		// get or create.
+		newType = dynamic_cast<PointerType*>(tc->normaliseType(newType));
+		iceAssert(newType);
+		return newType;
+	}
+
+	Type* Type::getPointerElementType(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		if(!this->isPointerType())
+			iceAssert(!"type is not a pointer");
+
+
+		PointerType* ptrthis = dynamic_cast<PointerType*>(this);
+		iceAssert(ptrthis);
+
+		Type* newType = ptrthis->baseType;
+		newType = tc->normaliseType(newType);
+
+		// iceAssert(newType->indirections == this->indirections - 1);
+		// printf("POINTER ELM: %p\n", newType);
+		return newType;
+	}
+
+	bool Type::areTypesEqual(Type* a, Type* b)
+	{
+		if(a->typeKind != b->typeKind) return false;
+
+		return a->isTypeEqual(b);
+	}
+
+
+
+	Type* Type::getIndirectedType(ssize_t times, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		Type* ret = this;
+		if(times > 0)
 		{
-			existing = new flax::Type();
-
-			existing->typeKind = FTypeKind::NamedStruct;
-
-			existing->structName = name;
-			existing->structMembers = members;
-			existing->isTypeLiteralStruct = false;
-
-			std::vector<llvm::Type*> lmems;
-			for(auto m : members)
-				lmems.push_back(m->llvmType);
-
-			existing->llvmType = llvm::StructType::create(*tc->llvmContext, lmems, name);
-			tc->createdNamedStructs[name] = existing;
-		}
-		else
-		{
-			iceAssert(existing->typeKind == FTypeKind::NamedStruct && "wtf??");
-
-			// check members.
-			if(!areTypeListsEqual(members, existing->structMembers))
+			for(ssize_t i = 0; i < times; i++)
 			{
-				std::string mstr = typeListToString(members);
-				error("Conflicting types for named struct %s:\n%s vs %s", name.c_str(), existing->str().c_str(), mstr.c_str());
-			}
+				// auto old = ret;
+				ret = ret->getPointerTo();
 
-			// ok.
-		}
-
-		return existing;
-	}
-
-	flax::Type* Type::getOrCreateNamedStruct(std::string name, std::vector<flax::Type*> members, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		std::deque<flax::Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
-		return Type::getOrCreateNamedStruct(name, dmems, tc);
-	}
-
-
-
-
-	flax::Type* Type::getLiteralStruct(std::deque<flax::Type*> members, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-
-		for(auto litstr : tc->createdLiteralStructs)
-		{
-			if(areTypeListsEqual(litstr.first, members))
-				return litstr.second;
-		}
-
-		// nope. create.
-		flax::Type* type = new flax::Type();
-
-		type->typeKind = FTypeKind::LiteralStruct;
-
-		type->structName = "__LITERAL_STRUCT__";
-		type->structMembers = members;
-		type->isTypeLiteralStruct = true;
-
-		std::vector<llvm::Type*> lmems;
-		for(auto m : members)
-			lmems.push_back(m->llvmType);
-
-		type->llvmType = llvm::StructType::get(*tc->llvmContext, lmems);
-
-		tc->createdLiteralStructs[type->structMembers] = type;
-		return type;
-	}
-
-	flax::Type* Type::getLiteralStruct(std::vector<flax::Type*> members, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		std::deque<flax::Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
-		return Type::getLiteralStruct(dmems, tc);
-	}
-
-
-
-	// arrays
-	flax::Type* Type::getArray(flax::Type* elementType, size_t num, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		for(auto arr : tc->createdArrays)
-		{
-			if(Type::areTypesEqual(arr.first.first, elementType) && arr.first.second == num)
-				return arr.second;
-		}
-
-		// create.
-		flax::Type* type = new Type();
-
-		type->typeKind = FTypeKind::Array;
-
-		type->arraySize = num;
-		type->arrayElementType = elementType;
-		type->llvmType = llvm::ArrayType::get(type->arrayElementType->getLlvmType(), type->getArraySize());
-
-		tc->createdArrays[{ elementType, num }] = type;
-
-		return type;
-	}
-
-
-
-	// functions
-	flax::Type* Type::getFunction(std::deque<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// key type: pair<pair<deque<args>, isVarArg>, returnType>
-		for(auto fn : tc->createdFunctions)
-		{
-			if(areTypeListsEqual(fn.first.first.first, args) && Type::areTypesEqual(fn.first.second, ret)
-				&& (isVarArg == fn.first.first.second))
-			{
-				return fn.second;
+				// printf("ret: %s // %s\n", old->str().c_str(), ret->str().c_str());
 			}
 		}
-
-		// create.
-		flax::Type* type = new Type();
-		type->typeKind = FTypeKind::Function;
-
-		type->isFnVarArg = isVarArg;
-		type->functionParams = args;
-		type->functionRetType = ret;
-
-		std::vector<llvm::Type*> largs;
-		for(auto a : args)
-			largs.push_back(a->llvmType);
-
-		type->llvmType = llvm::FunctionType::get(ret->llvmType, largs, isVarArg);
-
-		tc->createdFunctions[{ { args, isVarArg }, ret }] = type;
-
-		return type;
-	}
-
-
-	flax::Type* Type::getFunction(std::vector<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc)
-	{
-		std::deque<flax::Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return getFunction(dargs, ret, isVarArg, tc);
-	}
-
-
-
-
-	// primitives
-	flax::Type* Type::getBool(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// bitwidth = 1
-		std::vector<flax::Type*> bools = tc->primitiveTypes[1];
-
-		// how do we have more than 1?
-		iceAssert(bools.size() == 1 && "???? more than 1 bool??");
-		iceAssert(bools.front()->bitWidth == 1 && "not bool purporting to be bool???");
-
-		return bools.front();
-	}
-
-	flax::Type* Type::getVoid(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-
-		iceAssert(tc->voidType && "FTContext was not initialised, no void type!");
-		return tc->voidType;
-	}
-
-
-
-
-
-
-
-
-
-	flax::Type* Type::getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned)
-	{
-		std::vector<flax::Type*> types = tc->primitiveTypes[bits];
-
-		iceAssert(types.size() > 0 && "no types of this kind??");
-
-		for(auto t : types)
+		else if(times < 0)
 		{
-			iceAssert(t->bitWidth == bits);
-			if((t->isSigned() == issigned) && !t->isFloatingPointType())
-				return t;
+			for(ssize_t i = 0; i < -times; i++)
+				ret = ret->getPointerElementType();
 		}
 
-		iceAssert(false);
-		return 0;
-	}
-
-	flax::Type* Type::getFloatWithBitWidth(FTContext* tc, size_t bits)
-	{
-		std::vector<flax::Type*> types = tc->primitiveTypes[bits];
-
-		iceAssert(types.size() > 0 && "no types of this kind??");
-
-		for(auto t : types)
-		{
-			iceAssert(t->bitWidth == bits);
-			if(t->isFloatingPointType())
-				return t;
-		}
-
-		iceAssert(false);
-		return 0;
+		return ret;
 	}
 
 
-
-
-	flax::Type* Type::fromBuiltin(std::string builtin, FTContext* tc)
+	Type* Type::fromBuiltin(std::string builtin, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -612,187 +303,177 @@ namespace flax
 			}
 		}
 
-		flax::Type* real = 0;
+		Type* real = 0;
 
-		if(builtin == "Int8")			real = Type::getInt8(tc);
-		else if(builtin == "Int16")		real = Type::getInt16(tc);
-		else if(builtin == "Int32")		real = Type::getInt32(tc);
-		else if(builtin == "Int64")		real = Type::getInt64(tc);
-		else if(builtin == "Int")		real = Type::getInt64(tc);
+		if(builtin == "Int8")			real = PrimitiveType::getInt8(tc);
+		else if(builtin == "Int16")		real = PrimitiveType::getInt16(tc);
+		else if(builtin == "Int32")		real = PrimitiveType::getInt32(tc);
+		else if(builtin == "Int64")		real = PrimitiveType::getInt64(tc);
+		else if(builtin == "Int")		real = PrimitiveType::getInt64(tc);
 
-		else if(builtin == "Uint8")		real = Type::getInt8(tc);
-		else if(builtin == "Uint16")	real = Type::getInt16(tc);
-		else if(builtin == "Uint32")	real = Type::getInt32(tc);
-		else if(builtin == "Uint64")	real = Type::getInt64(tc);
-		else if(builtin == "Uint")		real = Type::getInt64(tc);
+		else if(builtin == "Uint8")		real = PrimitiveType::getUint8(tc);
+		else if(builtin == "Uint16")	real = PrimitiveType::getUint16(tc);
+		else if(builtin == "Uint32")	real = PrimitiveType::getUint32(tc);
+		else if(builtin == "Uint64")	real = PrimitiveType::getUint64(tc);
+		else if(builtin == "Uint")		real = PrimitiveType::getUint64(tc);
 
-		else if(builtin == "Float32")	real = Type::getFloat32(tc);
-		else if(builtin == "Float")		real = Type::getFloat32(tc);
+		else if(builtin == "Float32")	real = PrimitiveType::getFloat32(tc);
+		else if(builtin == "Float")		real = PrimitiveType::getFloat32(tc);
 
-		else if(builtin == "Float64")	real = Type::getFloat64(tc);
-		else if(builtin == "Double")	real = Type::getFloat64(tc);
+		else if(builtin == "Float64")	real = PrimitiveType::getFloat64(tc);
+		else if(builtin == "Double")	real = PrimitiveType::getFloat64(tc);
 
-		else if(builtin == "Bool")		real = Type::getBool(tc);
-		else if(builtin == "Void")		real = Type::getVoid(tc);
+		else if(builtin == "Bool")		real = PrimitiveType::getBool(tc);
+		else if(builtin == "Void")		real = PrimitiveType::getVoid(tc);
 		else return 0;
 
 		iceAssert(real);
-		while(indirections > 0)
-		{
-			real = real->getPointerTo();
-			indirections--;
-		}
 
+		real = real->getIndirectedType(indirections);
 		return real;
 	}
 
 
-
-
-
-
-
-	flax::Type* Type::getInt8(FTContext* tc)
+	Type* Type::fromLlvmType(llvm::Type* ltype, std::deque<bool> signage)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		// Type* type = 0;
 
-		return Type::getIntWithBitWidthAndSignage(tc, 8, true);
+		// // printf("FROM LLVM: %s\n", ((Codegen::CodegenInstance*) 0)->getReadableType(ltype).c_str());
+
+		// if(ltype->isPointerTy())
+		// 	return fromLlvmType(ltype->getPointerElementType(), signage)->getPointerTo();
+
+
+		// if(!type) type = new Type();
+
+		// type->isTypeSigned = false;
+		// type->isTypeVoid = false;
+		// type->bitWidth = 0;
+
+
+		// // 1a. int types
+		// if(ltype->isIntegerTy())
+		// {
+		// 	type->typeKind = FTypeKind::Integer;
+		// 	type->ptrBaseTypeKind = FTypeKind::Integer;
+
+		// 	type->bitWidth = ltype->getIntegerBitWidth();
+		// 	type->isTypeSigned = (signage.size() > 0 ? signage.front() : false);
+		// }
+
+		// // 1b. float types
+		// else if(ltype->isFloatingPointTy())
+		// {
+		// 	type->typeKind = FTypeKind::Floating;
+		// 	type->ptrBaseTypeKind = FTypeKind::Floating;
+
+		// 	if(ltype->isFloatTy()) type->bitWidth = 32;
+		// 	else if(ltype->isDoubleTy()) type->bitWidth = 64;
+		// 	else iceAssert(0 && "??? unsupported floating type");
+		// }
+
+		// // 2a. named structs
+		// else if(ltype->isStructTy() && !llvm::cast<llvm::StructType>(ltype)->isLiteral())
+		// {
+		// 	if(ltype->getStructName() == "String")
+		// 		error("POOOP");
+
+		// 	llvm::StructType* lstype = llvm::cast<llvm::StructType>(ltype);
+
+		// 	type->typeKind = FTypeKind::NamedStruct;
+		// 	type->ptrBaseTypeKind = FTypeKind::NamedStruct;
+
+		// 	type->structName = lstype->getName();
+		// 	type->isTypeLiteralStruct = false;
+
+		// 	if(signage.size() != lstype->getNumElements())
+		// 	{
+		// 		printf("expected %d, got %zu\n", lstype->getNumElements(), signage.size());
+		// 		iceAssert(!"missing information (not enough signs)");
+		// 	}
+
+		// 	size_t i = 0;
+		// 	for(auto m : lstype->elements())
+		// 		type->structMembers.push_back(Type::fromLlvmType(m, { signage[i] })), i++;
+		// }
+
+		// // 2b. literal structs
+		// else if(ltype->isStructTy())
+		// {
+		// 	llvm::StructType* lstype = llvm::cast<llvm::StructType>(ltype);
+
+		// 	type->typeKind = FTypeKind::LiteralStruct;
+		// 	type->ptrBaseTypeKind = FTypeKind::LiteralStruct;
+
+		// 	type->structName = "__LITERAL_STRUCT__";
+		// 	type->isTypeLiteralStruct = true;
+
+		// 	if(signage.size() != lstype->getNumElements())
+		// 	{
+		// 		printf("expected %d, got %zu\n", lstype->getNumElements(), signage.size());
+		// 		iceAssert(!"missing information (not enough signs)");
+		// 	}
+
+		// 	size_t i = 0;
+		// 	for(auto m : lstype->elements())
+		// 		type->structMembers.push_back(Type::fromLlvmType(m, { signage[i] })), i++;
+		// }
+
+		// // 3. array types
+		// else if(ltype->isArrayTy())
+		// {
+		// 	iceAssert(0);
+		// }
+
+		// // 4. function types
+		// else if(ltype->isFunctionTy())
+		// {
+		// 	iceAssert(0);
+		// }
+
+		// if(type->indirections > 0)
+		// 	type->typeKind = FTypeKind::Pointer;
+
+		// type = getDefaultFTContext()->normaliseType(type);	// todo: proper.
+		// // printf("RETURNING: %p\n", type);
+
+		// return type;
+
+		// return llvm::Type::getVoidTy(llvm::getGlobalContext());
+		return flax::PrimitiveType::getVoid();
 	}
 
-	flax::Type* Type::getInt16(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
 
-		return Type::getIntWithBitWidthAndSignage(tc, 16, true);
+
+
+	PrimitiveType* Type::toPrimitiveType()
+	{
+		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) return 0;
+		return dynamic_cast<PrimitiveType*>(this);
 	}
 
-	flax::Type* Type::getInt32(FTContext* tc)
+	FunctionType* Type::toFunctionType()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 32, true);
+		if(this->typeKind != FTypeKind::Function) return 0;
+		return dynamic_cast<FunctionType*>(this);
 	}
 
-	flax::Type* Type::getInt64(FTContext* tc)
+	PointerType* Type::toPointerType()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 64, true);
+		if(this->typeKind != FTypeKind::Pointer) return 0;
+		return dynamic_cast<PointerType*>(this);
 	}
 
-
-
-
-
-	flax::Type* Type::getUint8(FTContext* tc)
+	StructType* Type::toStructType()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 8, false);
+		if(this->typeKind != FTypeKind::NamedStruct && this->typeKind != FTypeKind::LiteralStruct) return 0;
+		return dynamic_cast<StructType*>(this);
 	}
 
-	flax::Type* Type::getUint16(FTContext* tc)
+	ArrayType* Type::toArrayType()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 16, false);
-	}
-
-	flax::Type* Type::getUint32(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 32, false);
-	}
-
-	flax::Type* Type::getUint64(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getIntWithBitWidthAndSignage(tc, 64, false);
-	}
-
-
-
-
-	flax::Type* Type::getFloat32(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getFloatWithBitWidth(tc, 32);
-	}
-
-	flax::Type* Type::getFloat64(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return Type::getFloatWithBitWidth(tc, 64);
-	}
-
-
-
-
-
-
-
-	// various
-	std::string Type::str()
-	{
-		// is primitive.
-		std::string ret;
-		if(this->isIntegerType())
-		{
-			if(this->isSigned())	ret = "i";
-			else					ret = "u";
-
-			ret += std::to_string(this->getIntegerBitWidth());
-		}
-		else if(this->isFloatingPointType())
-		{
-			// todo: bitWidth is applicable to both floats and ints,
-			// but getIntegerBitWidth (obviously) works only for ints.
-			if(this->bitWidth == 32)
-				ret = "f32";
-
-			else if(this->bitWidth == 64)
-				ret = "f64";
-
-			else
-				iceAssert(!"????");
-		}
-		else if(this->isArrayType())
-		{
-			ret = this->arrayElementType->str();
-			ret += "[" + std::to_string(this->getArraySize()) + "]";
-		}
-		else if(this->isNamedStruct())
-		{
-			ret = this->structName;
-		}
-		else if(this->isLiteralStruct())
-		{
-			ret = typeListToString(this->structMembers);
-		}
-		else
-		{
-			iceAssert(!"???? no such type");
-		}
-
-
-		for(size_t ind = 0; ind < this->indirections; ind++)
-			ret += "*";
-
-		return ret;
+		if(this->typeKind != FTypeKind::Array) return 0;
+		return dynamic_cast<ArrayType*>(this);
 	}
 
 
@@ -813,190 +494,52 @@ namespace flax
 
 
 
-	flax::Type* Type::cloneType(flax::Type* type)
-	{
-		flax::Type* newType		= new Type();
-		newType->typeKind		= type->typeKind;
-		newType->indirections	= type->indirections;
-
-		if(type->typeKind == FTypeKind::Integer || type->typeKind == FTypeKind::Floating)
-		{
-			newType->bitWidth				= type->bitWidth;
-			newType->isTypeSigned			= type->isTypeSigned;
-		}
-		else if(type->typeKind == FTypeKind::Array)
-		{
-			newType->arrayElementType		= type->arrayElementType;
-			newType->arraySize				= type->arraySize;
-		}
-		else if(type->typeKind == FTypeKind::NamedStruct || type->typeKind == FTypeKind::LiteralStruct)
-		{
-			newType->structMembers			= type->structMembers;
-			newType->isTypeLiteralStruct	= type->isTypeLiteralStruct;
-
-			if(type->typeKind == FTypeKind::NamedStruct)
-				newType->structName = type->structName;
-		}
-		else if(type->typeKind == FTypeKind::Function)
-		{
-			newType->functionParams			= type->functionParams;
-			newType->functionRetType		= type->functionRetType;
-			newType->isFnVarArg				= type->isFnVarArg;
-		}
-		else if(type->typeKind == FTypeKind::Void)
-		{
-			iceAssert(!"pointers to void not supported");
-		}
-		else
-		{
-			iceAssert(!"invalid type");
-		}
-
-		return newType;
-	}
-
-
-	flax::Type* Type::getPointerTo(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-
-		flax::Type* newType = Type::cloneType(this);
-		newType->indirections += 1;
-
-		// get or create.
-		tc->createOrGetType(&newType);
-
-		// todo:
-		return newType;
-	}
-
-	flax::Type* Type::getPointerElementType(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		flax::Type* newType = Type::cloneType(this);
-		if(newType->indirections == 0)
-			iceAssert(!"type is not a pointer");
-
-		newType->indirections -= 1;
-
-		tc->createOrGetType(&newType);
-
-		// todo:
-		return newType;
-	}
-
-
-	bool Type::isTypeEqual(flax::Type* other)
-	{
-		return Type::areTypesEqual(this, other);
-	}
-
-	bool Type::areTypesEqual(flax::Type* a, flax::Type* b)
-	{
-		if(a->typeKind != b->typeKind) return false;
-		if(a->indirections != b->indirections) return false;
-
-		if(a->typeKind == FTypeKind::Integer)
-		{
-			return a->getIntegerBitWidth() == b->getIntegerBitWidth() && a->isSigned() == b->isSigned();
-		}
-		else if(a->typeKind == FTypeKind::Floating)
-		{
-			return a->bitWidth == b->bitWidth;
-		}
-		else if(a->typeKind == FTypeKind::Array)
-		{
-			return a->arraySize == b->arraySize && Type::areTypesEqual(a->getArrayElementType(), b->getArrayElementType());
-		}
-		else if(a->typeKind == FTypeKind::NamedStruct)
-		{
-			return a->getStructName() == b->getStructName();
-		}
-		else if(a->typeKind == FTypeKind::LiteralStruct)
-		{
-			return areTypeListsEqual(a->structMembers, b->structMembers);
-		}
-		else if(a->typeKind == FTypeKind::Function)
-		{
-			return areTypeListsEqual(a->functionParams, b->functionParams)
-				&& Type::areTypesEqual(a->functionRetType, b->functionRetType) && a->isFnVarArg == b->isFnVarArg;
-		}
-		else
-		{
-			iceAssert(!"invalid type");
-			return false;
-		}
-	}
-
-
-	llvm::Type* Type::getLlvmType()
-	{
-		return this->llvmType;
-	}
-
-
-
-
-
-
-
-
-
-
-	bool Type::isPointerTo(flax::Type* other)
-	{
-		return false;
-	}
-
-	bool Type::isArrayElementOf(flax::Type* other)
-	{
-		return false;
-	}
-
-	bool Type::isPointerElementOf(flax::Type* other)
-	{
-		return false;
-	}
 
 
 	bool Type::isStructType()
 	{
-		return this->indirections == 0
-			&& (this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct);
+		return this->toStructType() != 0;
 	}
 
 	bool Type::isNamedStruct()
 	{
-		return this->indirections == 0
-			&& this->typeKind == FTypeKind::NamedStruct;
+		return this->toStructType() != 0
+			&& (this->typeKind == FTypeKind::NamedStruct);
 	}
 
 	bool Type::isLiteralStruct()
 	{
-		return this->indirections == 0
-			&& this->typeKind == FTypeKind::LiteralStruct;
+		return this->toStructType() != 0
+			&& (this->typeKind == FTypeKind::LiteralStruct);
+	}
+
+	bool Type::isPackedStruct()
+	{
+		return this->toStructType() != 0
+			&& (this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct)
+			&& (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		return this->indirections == 0
-			&& this->typeKind == FTypeKind::Array;
+		return this->toArrayType() != 0;
 	}
 
 	bool Type::isFloatingPointType()
 	{
-		return this->indirections == 0
-			&& this->typeKind == FTypeKind::Floating;
+		return this->typeKind == FTypeKind::Floating
+			&& this->toPrimitiveType() != 0;
 	}
 
 	bool Type::isIntegerType()
 	{
-		return this->indirections == 0
-			&& this->typeKind == FTypeKind::Integer;
+		return this->typeKind == FTypeKind::Integer
+			&& this->toPrimitiveType() != 0;
+	}
+
+	bool Type::isPointerType()
+	{
+		return this->toPointerType() != 0;
 	}
 }
 
