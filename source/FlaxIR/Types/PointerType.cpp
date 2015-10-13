@@ -7,7 +7,7 @@
 
 #include "../include/codegen.h"
 #include "../include/compiler.h"
-#include "../include/flax/type.h"
+#include "../include/ir/type.h"
 
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
