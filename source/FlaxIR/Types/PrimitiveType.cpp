@@ -12,7 +12,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
 
-namespace flax
+namespace fir
 {
 	PrimitiveType::PrimitiveType(size_t bits, FTypeKind kind) : Type(kind)
 	{

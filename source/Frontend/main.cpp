@@ -12,7 +12,6 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
-#include "../include/ir/type.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
@@ -21,6 +20,15 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+
+
+
+
+
+#include "../include/ir/type.h"
+#include "../include/ir/value.h"
+#include "../include/ir/module.h"
+#include "../include/ir/irbuilder.h"
 
 
 using namespace Ast;
@@ -385,19 +393,6 @@ int main(int argc, char* argv[])
 
 	llvm::Module* mainModule = modulelist[filename];
 	llvm::IRBuilder<>& builder = __cgi->builder;
-
-
-
-
-
-
-
-
-
-	flax::Type* i8 = flax::PrimitiveType::getInt8();
-	auto i8ptr = i8->getPointerTo();
-
-	iceAssert(i8ptr->getPointerElementType() == i8);
 
 
 

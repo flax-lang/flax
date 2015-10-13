@@ -17,7 +17,7 @@ namespace Codegen
 	std::string unwrapPointerType(std::string, int*);
 }
 
-namespace flax
+namespace fir
 {
 	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isva) : Type(FTypeKind::Function)
 	{

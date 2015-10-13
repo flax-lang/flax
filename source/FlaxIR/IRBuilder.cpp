@@ -5,11 +5,11 @@
 #include "../include/ir/block.h"
 #include "../include/ir/irbuilder.h"
 
-namespace flax
+namespace fir
 {
-	IRBuilder::IRBuilder(Module* mod)
+	IRBuilder::IRBuilder(FTContext* c)
 	{
-		this->module = mod;
+		this->context = c;
 
 		this->currentBlock = 0;
 		this->previousBlock = 0;
@@ -43,15 +43,17 @@ namespace flax
 		return this->currentBlock;
 	}
 
-	Module* IRBuilder::getModule()
-	{
-		return this->module;
-	}
-
 
 	Value* IRBuilder::addInstruction(Instruction* instr)
 	{
-		return 0;
+		iceAssert(this->currentBlock && "no current block");
+
+		// add instruction to the end of the block
+		this->currentBlock->instructions.push_back(instr);
+		Value* v = new Value(instr->getType());
+
+		v->addUser(this->currentBlock);
+		return v;
 	}
 
 

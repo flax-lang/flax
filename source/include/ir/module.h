@@ -27,7 +27,7 @@
 #include "value.h"
 #include "function.h"
 
-namespace flax
+namespace fir
 {
 	struct Module
 	{

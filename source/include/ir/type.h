@@ -31,7 +31,7 @@ namespace llvm
 	class Module;
 }
 
-namespace flax
+namespace fir
 {
 	// NOTE: i don't really want to deal with inheritance stuff right now,
 	// so Type will encapsulate everything.
