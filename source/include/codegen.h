@@ -15,6 +15,8 @@
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/PassManager.h"
 
+#include "../include/ir/irbuilder.h"
+
 enum class SymbolType
 {
 	Generic,
@@ -65,6 +67,7 @@ namespace Codegen
 	{
 		Ast::Root* rootNode;
 		llvm::Module* module;
+		fir::Module* fmodule;
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
@@ -84,6 +87,7 @@ namespace Codegen
 		std::deque<Ast::Func*> funcScopeStack;
 
 		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
+		fir::IRBuilder fbuilder = fir::IRBuilder(fir::getDefaultFTContext());
 
 		DependencyGraph* dependencyGraph = 0;
 

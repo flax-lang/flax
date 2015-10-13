@@ -26,7 +26,7 @@
 #include "value.h"
 #include "instruction.h"
 
-namespace flax
+namespace fir
 {
 	struct Function;
 	struct IRBuilder;
@@ -37,6 +37,7 @@ namespace flax
 		IRBlock();
 		IRBlock(Function* parentFunc);
 
+		void setFunction(Function* fn);
 		void addInstruction(Instruction* inst);
 
 		private:

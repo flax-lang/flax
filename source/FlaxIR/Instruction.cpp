@@ -4,15 +4,18 @@
 
 #include "../include/ir/instruction.h"
 
-namespace flax
+namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, Type* out, std::deque<Value*> vals) : flax::Value(out)
+	Instruction::Instruction(OpKind kind, Type* out, std::deque<Value*> vals) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 
 		this->realOutput = 0;
+
+		for(auto v : vals)
+			v->addUser(this);
 	}
 
 	Value* Instruction::getResult()

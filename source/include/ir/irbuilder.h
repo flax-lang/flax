@@ -28,11 +28,11 @@
 #include "module.h"
 #include "function.h"
 
-namespace flax
+namespace fir
 {
 	struct IRBuilder
 	{
-		IRBuilder(Module* mod);
+		IRBuilder(FTContext* c);
 
 		Value* CreateAdd(Value* a, Value* b);
 		Value* CreateSub(Value* a, Value* b);
@@ -107,13 +107,10 @@ namespace flax
 		Function* getCurrentFunction();
 		IRBlock* getCurrentBlock();
 
-		Module* getModule();
-
-
 		private:
 		Value* addInstruction(Instruction* instr);
 
-		Module* module;
+		FTContext* context;
 
 		Function* currentFunction = 0;
 		IRBlock* currentBlock = 0;
