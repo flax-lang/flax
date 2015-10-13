@@ -386,6 +386,12 @@ int main(int argc, char* argv[])
 	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
 	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
+
+	printf("*** SUCCESS ***\n");
+	exit(0);
+
+
+	#if 0
 	Root* r = std::get<0>(ret);
 	std::vector<std::string> filelist = std::get<1>(ret);
 	std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
@@ -393,15 +399,6 @@ int main(int argc, char* argv[])
 
 	llvm::Module* mainModule = modulelist[filename];
 	llvm::IRBuilder<>& builder = __cgi->builder;
-
-
-
-
-
-
-
-
-
 
 
 
@@ -583,6 +580,8 @@ int main(int argc, char* argv[])
 		delete p.second;
 
 	delete r;
+
+	#endif
 }
 
 
