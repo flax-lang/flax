@@ -4,14 +4,17 @@
 
 #include "../include/ir/value.h"
 
-namespace flax
+namespace fir
 {
 	Value::Value(Type* t)
 	{
 		static size_t vnames = 0;
 		this->valueType = t;
 
-		this->valueName = "v#" + std::to_string(vnames++);
+		this->id = vnames;
+		this->valueName = "v#" + std::to_string(vnames);
+
+		vnames++;
 	}
 
 	Type* Value::getType()
@@ -31,7 +34,39 @@ namespace flax
 		return this->valueName;
 	}
 
+	void Value::addUser(Value* user)
+	{
+		for(auto v : this->users)
+			if(v == user) return;
 
+		this->users.push_back(user);
+	}
+
+	void Value::transferUsesTo(Value* other)
+	{
+		// check.
+		std::deque<Value*> culled;
+
+		// todo: O(N^2)
+		for(auto v : this->users)
+		{
+			bool found = false;
+			for(auto ov : other->users)
+			{
+				if(v == ov)
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if(!found)
+				culled.push_back(v);
+		}
+
+		for(auto c : culled)
+			other->users.push_back(c);
+	}
 
 
 
@@ -71,12 +106,12 @@ namespace flax
 		return ret;
 	}
 
-	ConstantInt::ConstantInt(Type* type, ssize_t val) : flax::ConstantValue(type)
+	ConstantInt::ConstantInt(Type* type, ssize_t val) : ConstantValue(type)
 	{
 		this->value = val;
 	}
 
-	ConstantInt::ConstantInt(Type* type, size_t val) : flax::ConstantValue(type)
+	ConstantInt::ConstantInt(Type* type, size_t val) : ConstantValue(type)
 	{
 		this->value = val;
 	}

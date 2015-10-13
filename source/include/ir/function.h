@@ -26,7 +26,7 @@
 #include "value.h"
 #include "block.h"
 
-namespace flax
+namespace fir
 {
 	struct Function;
 	struct IRBuilder;

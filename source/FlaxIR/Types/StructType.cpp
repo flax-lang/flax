@@ -13,7 +13,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
 
-namespace flax
+namespace fir
 {
 	// structs
 	StructType::StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked)

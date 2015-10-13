@@ -4,7 +4,7 @@
 
 #include "../include/ir/function.h"
 
-namespace flax
+namespace fir
 {
 	// argument stuff
 	Argument::Argument(Function* fn, Type* type) : Value(type)

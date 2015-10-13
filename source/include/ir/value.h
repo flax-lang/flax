@@ -29,7 +29,7 @@
 
 #include "type.h"
 
-namespace flax
+namespace fir
 {
 	enum class FValueKind
 	{
@@ -48,6 +48,7 @@ namespace flax
 	struct Value
 	{
 		friend struct ConstantValue;
+		friend struct IRBuilder;
 
 		// virtual funcs
 		virtual Type* getType();
@@ -61,6 +62,7 @@ namespace flax
 		void transferUsesTo(Value* other);
 
 		// protected shit
+		size_t id;
 		protected:
 		Value(Type* type);
 		virtual ~Value() { }

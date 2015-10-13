@@ -113,6 +113,16 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
 	cgi->builder.SetInsertPoint(block);
 
+
+
+
+
+
+
+
+
+
+
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
 	if(func->arg_size() > 0)
 	{

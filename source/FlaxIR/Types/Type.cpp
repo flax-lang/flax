@@ -18,7 +18,7 @@ namespace Codegen
 	std::string unwrapPointerType(std::string, int*);
 }
 
-namespace flax
+namespace fir
 {
 	// NOTE: some global state.
 	// structs
