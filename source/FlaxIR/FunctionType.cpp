@@ -27,19 +27,19 @@ namespace flax
 	}
 
 	// functions
-	flax::FunctionType* FunctionType::getFunction(std::deque<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc)
+	FunctionType* FunctionType::getFunction(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
 		// create.
-		flax::FunctionType* type = new FunctionType(args, ret, isVarArg);
+		FunctionType* type = new FunctionType(args, ret, isVarArg);
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	flax::FunctionType* FunctionType::getFunction(std::vector<flax::Type*> args, flax::Type* ret, bool isVarArg, FTContext* tc)
+	FunctionType* FunctionType::getFunction(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
-		std::deque<flax::Type*> dargs;
+		std::deque<Type*> dargs;
 		for(auto a : args)
 			dargs.push_back(a);
 
@@ -83,12 +83,17 @@ namespace flax
 	}
 
 	// function stuff
-	flax::Type* FunctionType::getArgumentN(size_t n)
+	std::deque<Type*> FunctionType::getArgumentTypes()
+	{
+		return this->functionParams;
+	}
+
+	Type* FunctionType::getArgumentN(size_t n)
 	{
 		return this->functionParams[n];
 	}
 
-	flax::Type* FunctionType::getReturnType()
+	Type* FunctionType::getReturnType()
 	{
 		return this->functionRetType;
 	}

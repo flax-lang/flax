@@ -14,7 +14,7 @@
 
 namespace flax
 {
-	PointerType::PointerType(size_t inds, flax::Type* base) : Type(FTypeKind::Pointer)
+	PointerType::PointerType(size_t inds, Type* base) : Type(FTypeKind::Pointer)
 	{
 		this->indirections = inds;
 		this->baseType = base;

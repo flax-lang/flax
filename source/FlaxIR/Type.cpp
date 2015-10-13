@@ -440,7 +440,7 @@ namespace flax
 		// return type;
 
 		// return llvm::Type::getVoidTy(llvm::getGlobalContext());
-		return flax::PrimitiveType::getVoid();
+		return PrimitiveType::getVoid();
 	}
 
 

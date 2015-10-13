@@ -17,9 +17,6 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Value.h"
-
 #include "errors.h"
 
 #include <string>
@@ -27,6 +24,12 @@
 #include <deque>
 #include <unordered_map>
 
+namespace llvm
+{
+	class Type;
+	class LLVMContext;
+	class Module;
+}
 
 namespace flax
 {
@@ -352,6 +355,7 @@ namespace flax
 		friend struct Type;
 
 		// methods
+		std::deque<Type*> getArgumentTypes();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
 		bool isVarArg();
