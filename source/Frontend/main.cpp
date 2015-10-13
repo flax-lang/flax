@@ -389,7 +389,8 @@ int main(int argc, char* argv[])
 
 
 
-
+	// llvm::Function* fn;
+	// fn->args
 
 
 
@@ -399,8 +400,6 @@ int main(int argc, char* argv[])
 
 	iceAssert(i8ptr->getPointerElementType() == i8);
 
-	// i8	=
-	// new	=
 
 
 

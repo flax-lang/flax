@@ -27,6 +27,7 @@
 #include <deque>
 #include <unordered_map>
 
+#include "type.h"
 
 namespace flax
 {
@@ -34,21 +35,43 @@ namespace flax
 	{
 		Invalid,
 
-		Void,
-		Pointer,
-
-		NamedStruct,
-		LiteralStruct,
-
-		Integer,
-		Floating,
-
-		Array,
-		Function,
+		Constant,
+		Normal
 	};
+
+	struct ConstantValue;
 
 	struct Value
 	{
+		// static stuff
+		static ConstantValue* getNullValue(Type* type);
+
+		friend struct ConstantValue;
+
+		// virtual funcs
+		virtual Type* getType() const;
+
+
+		// methods
+		void setName(std::string name);
+		std::string getName();
+
+
+		// protected shit
+		protected:
+		Value(Type* type);
+
+		// fields
+		Type* valueType;
+		std::string valueName;
+		FValueKind valueKind;
+	};
+
+	struct ConstantValue : Value
+	{
+
+		protected:
+		ConstantValue();
 	};
 }
 
