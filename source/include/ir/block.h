@@ -1,4 +1,4 @@
-// irbuilder.h
+// block.h
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -24,29 +24,26 @@
 #include <unordered_map>
 
 #include "value.h"
+#include "instruction.h"
 
 namespace flax
 {
-	struct IRBuilder
+	struct Function;
+	struct IRBuilder;
+
+	struct IRBlock : Value
 	{
-		IRBuilder();
+		friend struct IRBuilder;
+		IRBlock();
+		IRBlock(Function* parentFunc);
+
+		void addInstruction(Instruction* inst);
+
+		private:
+		Function* parentFunction = 0;
+		std::deque<Instruction*> instructions;
 	};
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

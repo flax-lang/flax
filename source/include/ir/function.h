@@ -24,6 +24,7 @@
 #include <unordered_map>
 
 #include "value.h"
+#include "block.h"
 
 namespace flax
 {
@@ -34,9 +35,8 @@ namespace flax
 		friend struct Function;
 		friend struct IRBuilder;
 
-		protected:
 		// virtual stuff
-		// default: virtual Type* getType() const
+		// default: virtual Type* getType()
 
 
 		// methods
@@ -44,6 +44,8 @@ namespace flax
 		Value* getActualValue();
 		Function* getParentFunction();
 
+
+		protected:
 		void setValue(Value* v);
 		void clearValue();
 
@@ -52,11 +54,12 @@ namespace flax
 		Value* realValue = 0;
 	};
 
+
 	struct Function : Value
 	{
 		friend struct Argument;
+		friend struct IRBuilder;
 
-		protected:
 		Function(std::string name, FunctionType* fnType);
 
 		std::string getName();
@@ -65,11 +68,13 @@ namespace flax
 
 
 		// overridden stuff
-		virtual FunctionType* getType() const override; // override because better (more specific) return type.
+		virtual FunctionType* getType() override; // override because better (more specific) return type.
 
 
 		// fields
+		protected:
 		std::deque<Argument*> fnArguments;
+		std::deque<IRBlock*> blocks;
 	};
 }
 

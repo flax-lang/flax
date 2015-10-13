@@ -12,7 +12,7 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
-#include "../include/flax/type.h"
+#include "../include/ir/type.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
@@ -389,8 +389,7 @@ int main(int argc, char* argv[])
 
 
 
-	// llvm::Function* fn;
-	// fn->args
+
 
 
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/flax/function.h"
+#include "../include/ir/function.h"
 
 namespace flax
 {
@@ -15,7 +15,6 @@ namespace flax
 	Value* Argument::getActualValue()
 	{
 		if(this->realValue) return this->realValue;
-
 		iceAssert(0 && "Calling getActualValue() when not in function! (no real value)");
 	}
 
@@ -58,7 +57,6 @@ namespace flax
 			this->fnArguments.push_back(new Argument(this, t));
 	}
 
-
 	std::string Function::getName()
 	{
 		return this->valueName;
@@ -75,7 +73,7 @@ namespace flax
 	}
 
 	// overridden stuff
-	FunctionType* Function::getType() const
+	FunctionType* Function::getType()
 	{
 		FunctionType* ft = dynamic_cast<FunctionType*>(this->valueType);
 		iceAssert(ft && "Function is impostor (not valid function type)");
