@@ -67,9 +67,19 @@ namespace fir
 		return this->getType()->getReturnType();
 	}
 
+	size_t Function::getArgumentCount()
+	{
+		return this->fnArguments.size();
+	}
+
 	std::deque<Argument*> Function::getArguments()
 	{
 		return this->fnArguments;
+	}
+
+	bool Function::isVarArg()
+	{
+		return this->getType()->isVarArg();
 	}
 
 	// overridden stuff

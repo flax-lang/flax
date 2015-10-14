@@ -232,7 +232,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 	cgi->popNamespaceScope();
 }
 
-Result_t Root::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Root::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
 

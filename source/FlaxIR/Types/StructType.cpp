@@ -161,14 +161,14 @@ namespace fir
 	}
 
 
-	llvm::Type* StructType::getLlvmType(FTContext* tc)
+	fir::Type* StructType::getLlvmType(FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
 		if(this->llvmType == 0)
 		{
-			std::vector<llvm::Type*> lmems;
+			std::vector<fir::Type*> lmems;
 
 			for(auto m : this->structMembers)
 				lmems.push_back(m->getLlvmType());
@@ -176,11 +176,11 @@ namespace fir
 			if(this->typeKind == FTypeKind::NamedStruct)
 			{
 				if(!(this->llvmType = tc->module->getTypeByName(this->structName)))
-					this->llvmType = llvm::StructType::create(*tc->llvmContext, lmems, this->structName, this->isTypePacked);
+					this->llvmType = fir::StructType::create(*tc->llvmContext, lmems, this->structName, this->isTypePacked);
 			}
 			else
 			{
-				this->llvmType = llvm::StructType::get(*tc->llvmContext, lmems, this->isTypePacked);
+				this->llvmType = fir::StructType::get(*tc->llvmContext, lmems, this->isTypePacked);
 			}
 		}
 
@@ -226,11 +226,11 @@ namespace fir
 
 		this->structMembers = members;
 
-		std::vector<llvm::Type*> lmems;
+		std::vector<fir::Type*> lmems;
 		for(auto m : this->structMembers)
 			lmems.push_back(m->getLlvmType());
 
-		llvm::cast<llvm::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
+		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 	void StructType::setBody(std::vector<Type*> members)
@@ -243,11 +243,11 @@ namespace fir
 
 		this->structMembers = dmems;
 
-		std::vector<llvm::Type*> lmems;
+		std::vector<fir::Type*> lmems;
 		for(auto m : this->structMembers)
 			lmems.push_back(m->getLlvmType());
 
-		llvm::cast<llvm::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
+		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 	void StructType::setBody(std::deque<Type*> members)
@@ -256,11 +256,11 @@ namespace fir
 
 		this->structMembers = members;
 
-		std::vector<llvm::Type*> lmems;
+		std::vector<fir::Type*> lmems;
 		for(auto m : this->structMembers)
 			lmems.push_back(m->getLlvmType());
 
-		llvm::cast<llvm::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
+		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 
@@ -281,7 +281,7 @@ namespace fir
 		}
 
 		// erase llvm.
-		llvm::StructType* st = llvm::cast<llvm::StructType>(this->getLlvmType());
+		fir::StructType* st = fir::cast<fir::StructType>(this->getLlvmType());
 		iceAssert(st);
 
 		// According to llvm source Type.cpp, doing this removes the struct def from the symbol table.

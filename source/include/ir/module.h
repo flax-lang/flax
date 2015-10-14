@@ -33,9 +33,11 @@ namespace fir
 	{
 		Module(std::string nm) : moduleName(nm) { }
 
-		GlobalValue* createGlobalValue(std::string name, Type* type, Value* initVal);
-		GlobalValue* createGlobalValue(std::string name, Type* type);
-		void deleteGlobalValue(std::string name);
+		GlobalVariable* createGlobalVariable(std::string name, Type* type, Value* initVal);
+		GlobalVariable* createGlobalVariable(std::string name, Type* type);
+		void deleteGlobalVariable(std::string name);
+
+		GlobalVariable* getGlobalVariable(std::string name);
 
 		std::deque<GlobalValue*> getGlobalVariables();
 		std::deque<StructType*> getNamedTypes();
@@ -47,6 +49,7 @@ namespace fir
 
 		void addFunction(Function* func);
 		void deleteFunction(std::string name);
+		Function* getFunction(std::string name);
 
 		std::string getModuleName();
 		void setModuleName(std::string name);
