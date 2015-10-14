@@ -216,7 +216,7 @@ namespace GenError
 		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Type* a, llvm::Type* b)
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
 		// note: HACK
 		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
@@ -227,15 +227,15 @@ namespace GenError
 			cgi->getReadableType(a).c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, llvm::Value* a, llvm::Value* b)
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
 	{
 		invalidAssignment(cgi, e, a->getType(), b->getType());
 	}
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Expr* e, std::string name, std::vector<llvm::Value*> args)
+	void invalidInitialiser(Codegen::CodegenInstance* cgi, Expr* e, std::string name, std::vector<fir::Value*> args)
 	{
 		std::string args_str;
-		for(llvm::Value* v : args)
+		for(fir::Value* v : args)
 		{
 			if(!v || args[0] == v)
 				continue;

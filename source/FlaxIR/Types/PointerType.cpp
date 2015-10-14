@@ -79,7 +79,7 @@ namespace fir
 		return this->baseType->isTypeEqual(po->baseType);
 	}
 
-	llvm::Type* PointerType::getLlvmType(FTContext* tc)
+	fir::Type* PointerType::getLlvmType(FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

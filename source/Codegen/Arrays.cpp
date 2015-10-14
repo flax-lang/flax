@@ -10,14 +10,14 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// get our array type
-	llvm::Type* atype = cgi->getLlvmType(this->arr);
-	llvm::Type* etype = nullptr;
+	fir::Type* atype = cgi->getLlvmType(this->arr);
+	fir::Type* etype = nullptr;
 
 	if(atype->isArrayTy())
-		etype = llvm::cast<llvm::ArrayType>(atype)->getArrayElementType();
+		etype = fir::cast<fir::ArrayType>(atype)->getArrayElementType();
 
 	else if(atype->isPointerTy())
 		etype = atype->getPointerElementType();
@@ -29,8 +29,8 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	// try and do compile-time bounds checking
 	if(atype->isArrayTy())
 	{
-		iceAssert(llvm::isa<llvm::ArrayType>(atype));
-		llvm::ArrayType* at = llvm::cast<llvm::ArrayType>(atype);
+		iceAssert(fir::isa<fir::ArrayType>(atype));
+		fir::ArrayType* at = fir::cast<fir::ArrayType>(atype);
 
 		// dynamic arrays don't get bounds checking
 		if(at->getNumElements() != 0)
@@ -50,17 +50,17 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 	// todo: bounds-check for pointers, allocated with 'alloc'.
 	Result_t lhsp = this->arr->codegen(cgi);
 
-	llvm::Value* lhs = 0;
+	fir::Value* lhs = 0;
 	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
 	else											lhs = lhsp.result.second;
 
-	llvm::Value* gep = nullptr;
-	llvm::Value* ind = this->index->codegen(cgi).result.first;
+	fir::Value* gep = nullptr;
+	fir::Value* ind = this->index->codegen(cgi).result.first;
 
 	if(atype->isStructTy() || atype->isArrayTy())
 	{
-		llvm::Value* indices[2] = { llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(llvm::getGlobalContext()), 0), ind };
-		gep = cgi->builder.CreateGEP(lhs, llvm::ArrayRef<llvm::Value*>(indices), "indexPtr");
+		fir::Value* indices[2] = { fir::ConstantInt::get(fir::IntegerType::getInt32Ty(fir::getGlobalContext()), 0), ind };
+		gep = cgi->builder.CreateGEP(lhs, fir::ArrayRef<fir::Value*>(indices), "indexPtr");
 	}
 	else
 	{

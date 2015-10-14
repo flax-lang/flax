@@ -72,7 +72,7 @@ namespace fir
 	{
 		FTContext* tc = new FTContext();
 
-		tc->llvmContext = &llvm::getGlobalContext();
+		// tc->llvmContext = &fir::getGlobalContext();
 
 		// fill in primitives
 
@@ -334,7 +334,7 @@ namespace fir
 	}
 
 
-	Type* Type::fromLlvmType(llvm::Type* ltype, std::deque<bool> signage)
+	Type* Type::fromLlvmType(fir::Type* ltype, std::deque<bool> signage)
 	{
 		// Type* type = 0;
 
@@ -373,12 +373,12 @@ namespace fir
 		// }
 
 		// // 2a. named structs
-		// else if(ltype->isStructTy() && !llvm::cast<llvm::StructType>(ltype)->isLiteral())
+		// else if(ltype->isStructTy() && !fir::cast<fir::StructType>(ltype)->isLiteral())
 		// {
 		// 	if(ltype->getStructName() == "String")
 		// 		error("POOOP");
 
-		// 	llvm::StructType* lstype = llvm::cast<llvm::StructType>(ltype);
+		// 	fir::StructType* lstype = fir::cast<fir::StructType>(ltype);
 
 		// 	type->typeKind = FTypeKind::NamedStruct;
 		// 	type->ptrBaseTypeKind = FTypeKind::NamedStruct;
@@ -400,7 +400,7 @@ namespace fir
 		// // 2b. literal structs
 		// else if(ltype->isStructTy())
 		// {
-		// 	llvm::StructType* lstype = llvm::cast<llvm::StructType>(ltype);
+		// 	fir::StructType* lstype = fir::cast<fir::StructType>(ltype);
 
 		// 	type->typeKind = FTypeKind::LiteralStruct;
 		// 	type->ptrBaseTypeKind = FTypeKind::LiteralStruct;
@@ -439,7 +439,7 @@ namespace fir
 
 		// return type;
 
-		// return llvm::Type::getVoidTy(llvm::getGlobalContext());
+		// return fir::Type::getVoidTy(fir::getGlobalContext());
 		return PrimitiveType::getVoid();
 	}
 

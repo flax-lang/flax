@@ -13,26 +13,26 @@ using namespace Codegen;
 
 
 
-static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
+static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, fir::BasicBlock* merge, fir::PHINode* phi, bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
 
-	llvm::BasicBlock* t = llvm::BasicBlock::Create(cgi->getContext(), "trueCaseR", func);
-	llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "falseCaseR");
+	fir::BasicBlock* t = fir::BasicBlock::Create(cgi->getContext(), "trueCaseR", func);
+	fir::BasicBlock* f = fir::BasicBlock::Create(cgi->getContext(), "falseCaseR");
 
-	llvm::Value* cond = pairs.front().first->codegen(cgi).result.first;
+	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;
 
 
-	llvm::Type* apprType = cgi->getLlvmType(pairs.front().first);
-	cond = cgi->builder.CreateICmpNE(cond, llvm::Constant::getNullValue(apprType), "ifCond");
+	fir::Type* apprType = cgi->getLlvmType(pairs.front().first);
+	cond = cgi->builder.CreateICmpNE(cond, fir::Constant::getNullValue(apprType), "ifCond");
 
 
 	cgi->builder.CreateCondBr(cond, t, f);
 	cgi->builder.SetInsertPoint(t);
 
 	Result_t blockResult(0, 0);
-	llvm::Value* val = nullptr;
+	fir::Value* val = nullptr;
 	{
 		cgi->pushScope();
 		blockResult = pairs.front().second->codegen(cgi);
@@ -60,24 +60,24 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 	func->getBasicBlockList().push_back(f);
 }
 
-Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	iceAssert(this->cases.size() > 0);
 
-	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
-	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
+	fir::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
+	fir::Type* apprType = cgi->getLlvmType(this->cases[0].first);
 
 	// printf("if: %s\n%s\n", cgi->getReadableType(firstCond).c_str(), cgi->printAst(this->cases[0].first).c_str());
-	firstCond = cgi->builder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
+	firstCond = cgi->builder.CreateICmpNE(firstCond, fir::Constant::getNullValue(apprType), "ifCond");
 
 
 
-	llvm::Function* func = cgi->builder.GetInsertBlock()->getParent();
+	fir::Function* func = cgi->builder.GetInsertBlock()->getParent();
 	iceAssert(func);
 
-	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
-	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase", func);
-	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge", func);
+	fir::BasicBlock* trueb = fir::BasicBlock::Create(cgi->getContext(), "trueCase", func);
+	fir::BasicBlock* falseb = fir::BasicBlock::Create(cgi->getContext(), "falseCase", func);
+	fir::BasicBlock* merge = fir::BasicBlock::Create(cgi->getContext(), "merge", func);
 
 	// create the first conditional
 	cgi->builder.CreateCondBr(firstCond, trueb, falseb);
@@ -86,7 +86,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	bool didMerge = false;
 
 	// emit code for the first block
-	llvm::Value* truev = nullptr;
+	fir::Value* truev = nullptr;
 	{
 		cgi->builder.SetInsertPoint(trueb);
 
@@ -113,12 +113,12 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	auto c1 = this->cases.front();
 	this->cases.pop_front();
 
-	llvm::BasicBlock* curblk = cgi->builder.GetInsertBlock();
+	fir::BasicBlock* curblk = cgi->builder.GetInsertBlock();
 	cgi->builder.SetInsertPoint(merge);
 
-	// llvm::PHINode* phi = builder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
+	// fir::PHINode* phi = builder.CreatePHI(fir::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
-	llvm::PHINode* phi = nullptr;
+	fir::PHINode* phi = nullptr;
 
 	if(phi)
 		phi->addIncoming(truev, trueb);
@@ -136,7 +136,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		elseResult = this->final->codegen(cgi);
 		cgi->popScope();
 
-		llvm::Value* v = elseResult.result.first;
+		fir::Value* v = elseResult.result.first;
 
 		if(phi)
 			phi->addIncoming(v, falseb);

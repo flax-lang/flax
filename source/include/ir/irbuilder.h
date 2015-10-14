@@ -76,6 +76,8 @@ namespace fir
 		Value* CreateCall2(Function* fn, Value* p1, Value* p2);
 		Value* CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3);
 		Value* CreateCall(Function* fn, std::deque<Value*> args);
+		Value* CreateCall(Function* fn, std::vector<Value*> args);
+		Value* CreateCall(Function* fn, std::initializer_list<Value*> args);
 
 		void CreateReturn(Value* v);
 		void CreateReturnVoid();
@@ -97,8 +99,8 @@ namespace fir
 		void CreateCondBranch(IRBlock* target, Value* condition);
 		void CreateUnCondBranch(IRBlock* target);
 
-		IRBlock* addNewBlockInFunction(Function* func);
-		IRBlock* addNewBlockAfter(IRBlock* block);
+		IRBlock* addNewBlockInFunction(std::string name, Function* func);
+		IRBlock* addNewBlockAfter(std::string name, IRBlock* block);
 
 
 		void setCurrentBlock(IRBlock* block);

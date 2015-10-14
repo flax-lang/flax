@@ -9,14 +9,14 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t TypeAlias::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t TypeAlias::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	return Result_t(0, 0);
 }
 
-llvm::Type* TypeAlias::createType(CodegenInstance* cgi)
+fir::Type* TypeAlias::createType(CodegenInstance* cgi)
 {
-	llvm::Type* targetType = 0;
+	fir::Type* targetType = 0;
 
 	if(!this->isStrong)
 	{
@@ -24,7 +24,7 @@ llvm::Type* TypeAlias::createType(CodegenInstance* cgi)
 	}
 	else
 	{
-		targetType = llvm::StructType::create(this->name, cgi->getLlvmTypeFromExprType(this, this->origType), NULL);
+		targetType = fir::StructType::getOrCreateNamedStruct(this->name, { cgi->getLlvmTypeFromExprType(this, this->origType) });
 		warn(this, "Strong type aliases are still iffy, use at your own risk");
 	}
 

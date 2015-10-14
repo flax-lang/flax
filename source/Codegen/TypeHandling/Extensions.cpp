@@ -12,16 +12,18 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Extension::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	return Result_t(0, 0);
 }
 
-llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm::StructType* stype, int extIndex)
+fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
 {
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(stype, 0), false), llvm::Function::ExternalLinkage,
-		"__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex), cgi->module);
+	fir::Function* defaultInitFunc = new fir::Function("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex),
+		fir::FunctionType::getFunction({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
+		cgi->module, fir::LinkageType::External);
+
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
@@ -31,36 +33,36 @@ llvm::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, llvm
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
-	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
+	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
 
-	llvm::BasicBlock* oldIP = cgi->builder.GetInsertBlock();
-	cgi->builder.SetInsertPoint(iblock);
+	fir::IRBlock* oldIP = cgi->builder.getCurrentBlock();
+	cgi->builder.setCurrentBlock(iblock);
 
 	// create the local instance of reference to self
-	llvm::Value* self = defaultInitFunc->arg_begin();
+	fir::Value* self = defaultInitFunc->getArguments().front();
 	self->setName("self");
 
-	int memberBeginOffset = stype->getNumElements() - this->members.size();
+	int memberBeginOffset = stype->getElementCount() - this->members.size();
 	for(VarDecl* var : this->members)
 	{
 		iceAssert(this->nameMap.find(var->name) != this->nameMap.end());
 		int i = memberBeginOffset + this->nameMap[var->name];
 		iceAssert(i >= 0);
 
-		llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+		fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
 	}
 
-	cgi->builder.CreateRetVoid();
-	llvm::verifyFunction(*defaultInitFunc);
+	cgi->builder.CreateReturnVoid();
+	// fir::verifyFunction(*defaultInitFunc);
 
-	cgi->builder.SetInsertPoint(oldIP);
+	cgi->builder.setCurrentBlock(oldIP);
 	return defaultInitFunc;
 }
 
-llvm::Type* Extension::createType(CodegenInstance* cgi)
+fir::Type* Extension::createType(CodegenInstance* cgi)
 {
 	if(!cgi->isDuplicateType(this->name))
 		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
@@ -71,14 +73,14 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 	TypePair_t* existingtp = cgi->getType(this->mangledName);
 	iceAssert(existingtp);
 
-	llvm::StructType* existing = llvm::cast<llvm::StructType>(existingtp->first);
+	fir::StructType* existing = dynamic_cast<fir::StructType*>(existingtp->first);
 
 	if(!dynamic_cast<Class*>(existingtp->second.first))
 		error(this, "Extensions can only be applied onto classes");
 
 	Class* str = (Class*) existingtp->second.first;
 
-	llvm::Type** types = new llvm::Type*[str->members.size() + this->members.size()];
+	fir::Type** types = new fir::Type*[str->members.size() + this->members.size()];
 
 	if(!this->didCreateType)
 	{
@@ -114,7 +116,7 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 
 		for(VarDecl* var : this->members)
 		{
-			llvm::Type* type = cgi->getLlvmType(var);
+			fir::Type* type = cgi->getLlvmType(var);
 			if(type == existing)
 				error(var, "Cannot have non-pointer member of type self");
 
@@ -124,20 +126,21 @@ llvm::Type* Extension::createType(CodegenInstance* cgi)
 		for(ComputedProperty* c : this->cprops)
 			str->cprops.push_back(c);
 
-		std::vector<llvm::Type*> vec;
-		for(unsigned int i = 0; i < existing->getStructNumElements(); i++)
-			vec.push_back(existing->getElementType(i));
+		std::vector<fir::Type*> vec;
+		for(unsigned int i = 0; i < existing->getElementCount(); i++)
+			vec.push_back(existing->getElementN(i));
 
 		for(size_t i = 0; i < this->members.size(); i++)
 			vec.push_back(types[i]);
 
 		// first, delete the existing struct. do this by calling setName(""). According to llvm source Type.cpp,
 		// doing this removes the struct def from the symbol table.
-		existing->setName("");
+
+		existing->deleteType();
+		// existing->setName("");
 
 		// then, create a new type with the old name.
-		llvm::StructType* newType = llvm::StructType::create(cgi->getContext(), this->mangledName);
-		newType->setBody(vec, existing->isPacked());
+		fir::StructType* newType = fir::StructType::getOrCreateNamedStruct(this->mangledName, vec, cgi->getContext(), true);
 
 		// finally, override the type here
 		existingtp->first = newType;

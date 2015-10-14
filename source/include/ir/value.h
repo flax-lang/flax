@@ -42,8 +42,15 @@ namespace fir
 		Global,
 	};
 
+	enum class LinkageType
+	{
+		Internal,
+		External
+	};
+
 	struct ConstantValue;
 	struct GlobalValue;
+	struct IRBlock;
 
 	struct Value
 	{
@@ -104,9 +111,23 @@ namespace fir
 
 	struct GlobalValue : Value
 	{
+		protected:
+		GlobalValue(Type* type, LinkageType linkage);
+		LinkageType linkageType;
+	};
+
+	struct GlobalVariable : GlobalValue
+	{
+		GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType linkage, Value* initValue);
+		void setInitialValue(ConstantValue* constVal);
+	};
+
+	struct PHINode : Value
+	{
+		void addIncoming(Value* v, IRBlock* block);
 
 		protected:
-		GlobalValue();
+		PHINode();
 	};
 }
 

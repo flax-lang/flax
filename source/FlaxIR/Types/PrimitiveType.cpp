@@ -231,7 +231,7 @@ namespace fir
 	}
 
 
-	llvm::Type* PrimitiveType::getLlvmType(FTContext* tc)
+	fir::Type* PrimitiveType::getLlvmType(FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -239,19 +239,19 @@ namespace fir
 		if(this->llvmType == 0)
 		{
 			// do it.
-			llvm::LLVMContext& context = *tc->llvmContext;
+			fir::LLVMContext& context = *tc->llvmContext;
 
 			if(this->typeKind == FTypeKind::Integer)
 			{
-				this->llvmType = llvm::IntegerType::getIntNTy(context, (unsigned int) this->bitWidth);
+				this->llvmType = fir::IntegerType::getIntNTy(context, (unsigned int) this->bitWidth);
 			}
 			else if(this->typeKind == FTypeKind::Floating)
 			{
 				if(this->bitWidth == 32)
-					this->llvmType = llvm::Type::getFloatTy(context);
+					this->llvmType = fir::Type::getFloatTy(context);
 
 				else if(this->bitWidth == 64)
-					this->llvmType = llvm::Type::getDoubleTy(context);
+					this->llvmType = fir::Type::getDoubleTy(context);
 
 				else
 					iceAssert(!"invalid bit width for float");

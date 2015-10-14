@@ -13,7 +13,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	Result_t lastval(0, 0);
 	cgi->pushScope();
@@ -42,7 +42,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	if(this->didCodegen)
 		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
@@ -60,11 +60,11 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 		cgi->rootNode->publicGenericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
-	llvm::Function* func = 0;
+	fir::Function* func = 0;
 
 	if(isGeneric && lhsPtr != 0)
 	{
-		iceAssert(func = llvm::cast<llvm::Function>(lhsPtr));
+		iceAssert(func = dynamic_cast<fir::Function*>(lhsPtr));
 	}
 	else
 	{
@@ -108,30 +108,21 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
 	// and fuck shit up big time
-	llvm::BasicBlock* prevBlock = cgi->builder.GetInsertBlock();
+	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
 
-	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
-	cgi->builder.SetInsertPoint(block);
-
-
-
-
-
-
-
-
+	fir::IRBlock* block = cgi->builder.addNewBlockInFunction(this->decl->name + "_entry", func);
+	cgi->builder.setCurrentBlock(block);
 
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
-	if(func->arg_size() > 0)
+	if(func->getArgumentCount() > 0)
 	{
-		int i = 0;
-		for(llvm::Function::arg_iterator it = func->arg_begin(); it != func->arg_end(); it++, i++)
+		for(size_t i = 0; i < func->getArgumentCount(); i++)
 		{
-			it->setName(this->decl->params[i]->name);
+			func->getArguments()[i]->setName(this->decl->params[i]->name);
 
-			llvm::AllocaInst* ai = 0;
+			fir::Value* ai = 0;
 
 			if(isGeneric)
 			{
@@ -142,7 +133,7 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 				ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
 			}
 
-			cgi->builder.CreateStore(it, ai);
+			cgi->builder.CreateStore(func->getArguments()[i], ai);
 
 			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
 		}
@@ -199,20 +190,21 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	cgi->verifyAllPathsReturn(this, nullptr, true, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
 
 	if(doRetVoid)
-		cgi->builder.CreateRetVoid();
+		cgi->builder.CreateReturnVoid();
 
 	else if(isImplicitReturn)
-		cgi->builder.CreateRet(lastval.result.first);
+		cgi->builder.CreateReturn(lastval.result.first);
 
 
-	llvm::verifyFunction(*func, &llvm::errs());
-	cgi->Fpm->run(*func);
+	// todo: optimise/run llvm passes
+	// fir::verifyFunction(*func, &fir::errs());
+	// cgi->Fpm->run(*func);
 
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();
 
 	if(prevBlock)
-		cgi->builder.SetInsertPoint(prevBlock);
+		cgi->builder.setCurrentBlock(prevBlock);
 
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);

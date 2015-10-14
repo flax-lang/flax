@@ -24,11 +24,10 @@
 #include <deque>
 #include <unordered_map>
 
-namespace llvm
+namespace fir
 {
-	class Type;
-	class LLVMContext;
-	class Module;
+	struct Type;
+	struct Module;
 }
 
 namespace fir
@@ -54,8 +53,8 @@ namespace fir
 		// special little thing.
 		PrimitiveType* voidType = 0;
 
-		llvm::LLVMContext* llvmContext = 0;
-		llvm::Module* module = 0;
+		// fir::LLVMContext* llvmContext = 0;
+		fir::Module* module = 0;
 
 		// keyed by number of indirections
 		std::unordered_map<size_t, std::vector<Type*>> typeCache;
@@ -94,14 +93,14 @@ namespace fir
 
 		// stuff
 		static Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
-		static Type* fromLlvmType(llvm::Type* ltype, std::deque<bool> signage);
+		static Type* fromLlvmType(fir::Type* ltype, std::deque<bool> signage);
 
 		static bool areTypesEqual(Type* a, Type* b);
 
 		// various
 		virtual std::string str() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) = 0;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) = 0;
 
 
 
@@ -149,7 +148,7 @@ namespace fir
 
 		// base things
 		size_t id = 0;
-		llvm::Type* llvmType = 0;
+		fir::Type* llvmType = 0;
 
 		FTypeKind typeKind = FTypeKind::Invalid;
 
@@ -207,7 +206,7 @@ namespace fir
 		virtual ~PrimitiveType() override { }
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 
 		// fields (protected)
@@ -256,7 +255,7 @@ namespace fir
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 
 		size_t indirections = 0;
@@ -300,7 +299,7 @@ namespace fir
 		virtual ~StructType() override { }
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		bool isTypePacked;
@@ -338,7 +337,7 @@ namespace fir
 		virtual ~ArrayType() override { }
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		size_t arraySize;
@@ -366,7 +365,7 @@ namespace fir
 		virtual ~FunctionType() override { }
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual llvm::Type* getLlvmType(FTContext* tc = 0) override;
+		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		bool isFnVarArg;
@@ -377,6 +376,7 @@ namespace fir
 		public:
 		static FunctionType* getFunction(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
 		static FunctionType* getFunction(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* getFunction(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
 	};
 }
 

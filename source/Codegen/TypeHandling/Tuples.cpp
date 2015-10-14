@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-llvm::StructType* Tuple::getType(CodegenInstance* cgi)
+fir::StructType* Tuple::getType(CodegenInstance* cgi)
 {
 	// todo: handle named tuples.
 	// would probably just be handled as implicit anon structs
@@ -25,7 +25,7 @@ llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 			this->ltypes.push_back(cgi->getLlvmType(e));
 
 		this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
-		this->cachedLlvmType = llvm::StructType::get(cgi->getContext(), this->ltypes);
+		this->cachedLlvmType = fir::StructType::getLiteralStruct(this->ltypes, cgi->getContext());
 		this->didCreateType = true;
 
 		// todo: debate, should we add this?
@@ -35,35 +35,35 @@ llvm::StructType* Tuple::getType(CodegenInstance* cgi)
 	return this->cachedLlvmType;
 }
 
-llvm::Type* Tuple::createType(CodegenInstance* cgi)
+fir::Type* Tuple::createType(CodegenInstance* cgi)
 {
 	(void) cgi;
 	return 0;
 }
 
-Result_t CodegenInstance::doTupleAccess(llvm::Value* selfPtr, Number* num, bool createPtr)
+Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool createPtr)
 {
 	iceAssert(selfPtr);
 	iceAssert(num);
 
-	llvm::Type* type = selfPtr->getType()->getPointerElementType();
-	iceAssert(type->isStructTy());
+	fir::Type* type = selfPtr->getType()->getPointerElementType();
+	iceAssert(type->isStructType());
 
 	// quite simple, just get the number (make sure it's a Ast::Number)
 	// and do a structgep.
 
-	if(num->ival >= type->getStructNumElements())
-		error(num, "Tuple does not have %d elements, only %d", (int) num->ival + 1, type->getStructNumElements());
+	if(num->ival >= type->toStructType()->getElementCount())
+		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toStructType()->getElementCount());
 
-	llvm::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
+	fir::Value* gep = this->builder.CreateGetConstStructMember(selfPtr, num->ival);
 	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
 }
 
-Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	(void) rhs;
 
-	llvm::Value* gep = 0;
+	fir::Value* gep = 0;
 	if(lhsPtr)
 	{
 		gep = lhsPtr;
@@ -73,20 +73,20 @@ Result_t Tuple::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		gep = cgi->allocateInstanceInBlock(this->getType(cgi));
 	}
 
-	llvm::Type* strtype = gep->getType()->getPointerElementType();
-
 	iceAssert(gep);
-	iceAssert(strtype->isStructTy());
+
+	fir::StructType* strtype = gep->getType()->getPointerElementType()->toStructType();;
+	iceAssert(strtype);
 
 	// set all the values.
 	// do the gep for each.
 
-	iceAssert(strtype->getStructNumElements() == this->values.size());
+	iceAssert(strtype->getElementCount() == this->values.size());
 
-	for(unsigned int i = 0; i < strtype->getStructNumElements(); i++)
+	for(unsigned int i = 0; i < strtype->getElementCount(); i++)
 	{
-		llvm::Value* member = cgi->builder.CreateStructGEP(gep, i);
-		llvm::Value* val = this->values[i]->codegen(cgi).result.first;
+		fir::Value* member = cgi->builder.CreateGetConstStructMember(gep, i);
+		fir::Value* val = this->values[i]->codegen(cgi).result.first;
 
 		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());
 		cgi->autoCastType(member->getType()->getPointerElementType(), val);

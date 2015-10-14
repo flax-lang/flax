@@ -11,14 +11,14 @@ using namespace Codegen;
 
 namespace TypeInfo
 {
-	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, TypeKind etype)
+	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
 		bool hasName = true;
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(stype->isStructTy())
 			{
-				llvm::StructType* strt = llvm::dyn_cast<llvm::StructType>(stype);
+				fir::StructType* strt = fir::dyn_cast<fir::StructType>(stype);
 				assert(strt);
 
 				hasName = strt->hasName();
@@ -31,7 +31,7 @@ namespace TypeInfo
 		cgi->rootNode->typeList.push_back(std::make_tuple(hasName ? stype->getStructName() : "", stype, etype));
 	}
 
-	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type)
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)
 	{
 		size_t i = 1;
 		for(auto k : cgi->rootNode->typeList)
