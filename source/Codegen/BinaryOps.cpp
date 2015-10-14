@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, llvm::Value* lhsRef, llvm::Value* rhs, llvm::Value* rhsRef)
+static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef)
 {
 	if(lhsRef->getType()->getPointerElementType()->isStructTy())
 	{
@@ -46,8 +46,8 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 
 
 
-Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, llvm::Value* lhs,
-	llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr)
+Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, fir::Value* lhs,
+	fir::Value* ref, fir::Value* rhs, fir::Value* rhsPtr)
 {
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
@@ -55,7 +55,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 	this->autoCastType(lhs, rhs);
 
-	llvm::Value* varptr = 0;
+	fir::Value* varptr = 0;
 	if((v = dynamic_cast<VarRef*>(left)))
 	{
 		{
@@ -120,7 +120,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			Number* n = 0;
 			if(op == ArithmeticOp::Assign && rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
 			{
-				rhs = llvm::Constant::getNullValue(varptr->getType()->getPointerElementType());
+				rhs = fir::Constant::getNullValue(varptr->getType()->getPointerElementType());
 			}
 			else if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
 			{
@@ -139,7 +139,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				// except llvm gives us nice checking.
 
-				llvm::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
+				fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
 				this->builder.CreateStore(r, ref);
 				return Result_t(r, ref);
 			}
@@ -152,11 +152,11 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			if(this->isEnum(rhs->getType()))
 			{
-				llvm::Value* rptr = rhsPtr;
+				fir::Value* rptr = rhsPtr;
 				if(!rptr)
 				{
 					// fuck it, create a temporary.
-					llvm::Value* temp = this->allocateInstanceInBlock(rhs->getType());
+					fir::Value* temp = this->allocateInstanceInBlock(rhs->getType());
 					iceAssert(temp->getType()->getPointerElementType()->isStructTy());
 
 					this->builder.CreateStore(rhs, temp);
@@ -167,11 +167,11 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				iceAssert(this->areEqualTypes(lhs->getType(), rhs->getType()));
 
 				// put the rhs thingy into the lhs.
-				llvm::Value* lgep = this->builder.CreateStructGEP(ref, 0);
-				llvm::Value* rgep = this->builder.CreateStructGEP(rptr, 0);
+				fir::Value* lgep = this->builder.CreateStructGEP(ref, 0);
+				fir::Value* rgep = this->builder.CreateStructGEP(rptr, 0);
 
 				iceAssert(lgep->getType() == rgep->getType());
-				llvm::Value* rval = this->builder.CreateLoad(rgep);
+				fir::Value* rval = this->builder.CreateLoad(rgep);
 
 				this->builder.CreateStore(rval, lgep);
 
@@ -204,8 +204,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					// okay.
 					// create a wrapper value.
 
-					llvm::Value* ai = this->allocateInstanceInBlock(lhs->getType());
-					llvm::Value* gep = this->builder.CreateStructGEP(ai, 0);
+					fir::Value* ai = this->allocateInstanceInBlock(lhs->getType());
+					fir::Value* gep = this->builder.CreateStructGEP(ai, 0);
 
 					this->builder.CreateStore(rhs, gep);
 
@@ -326,9 +326,9 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	else
 	{
 		// get the llvm op
-		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, this->isSignedType(left) || this->isSignedType(right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
+		fir::Instruction::BinaryOps lop = this->getBinaryOperator(op, this->isSignedType(left) || this->isSignedType(right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
 
-		llvm::Value* newrhs = this->builder.CreateBinOp(lop, lhs, rhs);
+		fir::Value* newrhs = this->builder.CreateBinOp(lop, lhs, rhs);
 		this->builder.CreateStore(newrhs, varptr);
 		return Result_t(newrhs, varptr);
 	}
@@ -368,13 +368,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value* _rhs)
+Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _rhs)
 {
 	iceAssert(this->left && this->right);
 	ValPtr_t valptr;
 
-	llvm::Value* lhs;
-	llvm::Value* rhs;
+	fir::Value* lhs;
+	fir::Value* rhs;
 
 	if(this->op == ArithmeticOp::Assign
 		|| this->op == ArithmeticOp::PlusEquals			|| this->op == ArithmeticOp::MinusEquals
@@ -396,7 +396,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		rhs = res.first;
 		lhs = valptr.first;
 
-		llvm::Value* rhsPtr = res.second;
+		fir::Value* rhsPtr = res.second;
 
 		cgi->autoCastType(lhs, rhs, rhsPtr);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs, rhsPtr);
@@ -406,7 +406,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
 
-		llvm::Type* rtype = cgi->getLlvmType(this->right);
+		fir::Type* rtype = cgi->getLlvmType(this->right);
 		if(!rtype)
 		{
 			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
@@ -454,12 +454,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			else if(cgi->isEnum(rtype))
 			{
 				// dealing with enum
-				llvm::Type* insideType = rtype->getStructElementType(0);
+				fir::Type* insideType = rtype->getStructElementType(0);
 				if(lhs->getType() == insideType)
 				{
-					llvm::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
+					fir::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
 
-					llvm::Value* gep = cgi->builder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+					fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0, "castedAndWrapped");
 					cgi->builder.CreateStore(lhs, gep);
 
 					return Result_t(cgi->builder.CreateLoad(tmp), tmp);
@@ -473,8 +473,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
 			{
 				iceAssert(valptr.second);
-				llvm::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
-				llvm::Value* val = cgi->builder.CreateLoad(gep);
+				fir::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+				fir::Value* val = cgi->builder.CreateLoad(gep);
 
 				return Result_t(val, gep);
 			}
@@ -488,15 +488,15 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
 		else if(lhs->getType()->isStructTy() && lhs->getType()->getStructName() == "String"
-			&& rtype == llvm::Type::getInt8PtrTy(cgi->getContext()))
+			&& rtype == fir::Type::getInt8PtrTy(cgi->getContext()))
 		{
 			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
-			llvm::StructType* stringType = llvm::cast<llvm::StructType>(strPair->first);
+			fir::StructType* stringType = fir::cast<fir::StructType>(strPair->first);
 
 			// string to int8*.
 			// just access the data pointer.
 
-			llvm::Value* lhsref = valptr.second;
+			fir::Value* lhsref = valptr.second;
 			if(!lhsref)
 			{
 				// dammit.
@@ -504,10 +504,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 				cgi->builder.CreateStore(lhs, lhsref);
 			}
 
-			llvm::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
+			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == llvm::Type::getInt8PtrTy(cgi->getContext())
+		else if(lhs->getType() == fir::Type::getInt8PtrTy(cgi->getContext())
 			&& rtype->isStructTy() && rtype->getStructName() == "String")
 		{
 			// support this shit.
@@ -517,7 +517,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			TypePair_t* tp = cgi->getType("String");
 			iceAssert(tp);
 
-			std::vector<llvm::Value*> args { lhs };
+			std::vector<fir::Value*> args { lhs };
 			return cgi->callTypeInitialiser(tp, this, args);
 		}
 		else if(this->op != ArithmeticOp::ForcedCast)
@@ -525,7 +525,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			std::string lstr = cgi->getReadableType(lhs).c_str();
 			std::string rstr = cgi->getReadableType(rtype).c_str();
 
-			if(!llvm::CastInst::castIsValid(llvm::Instruction::BitCast, lhs, rtype))
+			if(!fir::CastInst::castIsValid(fir::Instruction::BitCast, lhs, rtype))
 			{
 				error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
 			}
@@ -551,12 +551,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	// no point being explicit about this and wasting indentation
 
 	lhs = valptr.first;
-	llvm::Value* lhsPtr = valptr.second;
-	llvm::Value* lhsptr = valptr.second;
+	fir::Value* lhsPtr = valptr.second;
+	fir::Value* lhsptr = valptr.second;
 	auto r = this->right->codegen(cgi).result;
 
 	rhs = r.first;
-	llvm::Value* rhsPtr = r.second;
+	fir::Value* rhsPtr = r.second;
 	cgi->autoCastType(lhs, rhs, r.second);
 
 	iceAssert(lhs);
@@ -610,7 +610,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			Number* n = dynamic_cast<Number*>(this->right);
 			if(n && !n->decimal && n->ival == 0)
 			{
-				llvm::Value* casted = cgi->builder.CreatePtrToInt(lhs, rhs->getType());
+				fir::Value* casted = cgi->builder.CreatePtrToInt(lhs, rhs->getType());
 
 				if(this->op == ArithmeticOp::CmpEq)
 					return Result_t(cgi->builder.CreateICmpEQ(casted, rhs), 0);
@@ -621,10 +621,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 	}
 	else if(isBuiltinIntegerOp)
 	{
-		llvm::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
+		fir::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
 			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
-		if(lop != (llvm::Instruction::BinaryOps) 0)
+		if(lop != (fir::Instruction::BinaryOps) 0)
 		{
 			cgi->autoCastType(lhs, rhs);
 			cgi->autoCastType(rhs, lhs);
@@ -680,26 +680,26 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 			case ArithmeticOp::LogicalAnd:
 			{
 				int theOp = this->op == ArithmeticOp::LogicalOr ? 0 : 1;
-				llvm::Value* trueval = llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, 1, true));
-				llvm::Value* falseval = llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, 0, true));
+				fir::Value* trueval = fir::ConstantInt::get(cgi->getContext(), fir::APInt(1, 1, true));
+				fir::Value* falseval = fir::ConstantInt::get(cgi->getContext(), fir::APInt(1, 0, true));
 
 
-				llvm::Function* func = cgi->builder.GetInsertBlock()->getParent();
+				fir::Function* func = cgi->builder.GetInsertBlock()->getParent();
 				iceAssert(func);
 
-				llvm::Value* res = cgi->builder.CreateTrunc(lhs, llvm::Type::getInt1Ty(cgi->getContext()));
+				fir::Value* res = cgi->builder.CreateTrunc(lhs, fir::Type::getInt1Ty(cgi->getContext()));
 
-				llvm::BasicBlock* entry = cgi->builder.GetInsertBlock();
-				llvm::BasicBlock* lb = llvm::BasicBlock::Create(cgi->getContext(), "leftbl", func);
-				llvm::BasicBlock* rb = llvm::BasicBlock::Create(cgi->getContext(), "rightbl", func);
-				llvm::BasicBlock* mb = llvm::BasicBlock::Create(cgi->getContext(), "mergebl", func);
+				fir::BasicBlock* entry = cgi->builder.GetInsertBlock();
+				fir::BasicBlock* lb = fir::BasicBlock::Create(cgi->getContext(), "leftbl", func);
+				fir::BasicBlock* rb = fir::BasicBlock::Create(cgi->getContext(), "rightbl", func);
+				fir::BasicBlock* mb = fir::BasicBlock::Create(cgi->getContext(), "mergebl", func);
 				cgi->builder.CreateCondBr(res, lb, rb);
 
 
 				cgi->builder.SetInsertPoint(rb);
 				// this kinda works recursively
 				if(!this->phi)
-					this->phi = cgi->builder.CreatePHI(llvm::Type::getInt1Ty(cgi->getContext()), 2);
+					this->phi = cgi->builder.CreatePHI(fir::Type::getInt1Ty(cgi->getContext()), 2);
 
 
 				// if this is a logical-or
@@ -718,14 +718,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 					cgi->builder.SetInsertPoint(rb);
 
 					// do another compare.
-					llvm::Value* rres = cgi->builder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
+					fir::Value* rres = cgi->builder.CreateTrunc(rhs, fir::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, entry);
 				}
 				else
 				{
 					// do the true case
 					cgi->builder.SetInsertPoint(lb);
-					llvm::Value* rres = cgi->builder.CreateTrunc(rhs, llvm::Type::getInt1Ty(cgi->getContext()));
+					fir::Value* rres = cgi->builder.CreateTrunc(rhs, fir::Type::getInt1Ty(cgi->getContext()));
 					this->phi->addIncoming(rres, lb);
 
 					cgi->builder.CreateBr(rb);
@@ -779,13 +779,13 @@ Result_t BinOp::codegen(CodegenInstance* cgi, llvm::Value* _lhsPtr, llvm::Value*
 		iceAssert(lhsPtr);
 		iceAssert(rhsPtr);
 
-		llvm::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
-		llvm::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
+		fir::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
+		fir::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
 
-		llvm::Value* l = cgi->builder.CreateLoad(gepL);
-		llvm::Value* r = cgi->builder.CreateLoad(gepR);
+		fir::Value* l = cgi->builder.CreateLoad(gepL);
+		fir::Value* r = cgi->builder.CreateLoad(gepR);
 
-		llvm::Value* res = 0;
+		fir::Value* res = 0;
 
 		if(this->op == ArithmeticOp::CmpEq)
 		{

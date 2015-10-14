@@ -10,7 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	iceAssert(this->expr);
 	Result_t res = this->expr->codegen(cgi);
@@ -18,7 +18,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->builder.CreateICmpEQ(res.result.first, llvm::Constant::getNullValue(res.result.first->getType())), res.result.second);
+			return Result_t(cgi->builder.CreateICmpEQ(res.result.first, fir::Constant::getNullValue(res.result.first->getType())), res.result.second);
 
 		case ArithmeticOp::Minus:
 			return Result_t(cgi->builder.CreateNeg(res.result.first), res.result.second);
@@ -52,7 +52,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value
 
 
 
-Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	if(this->kind == Kind::ArrayIndex)
 	{

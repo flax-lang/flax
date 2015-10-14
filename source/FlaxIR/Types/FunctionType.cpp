@@ -64,7 +64,7 @@ namespace fir
 	}
 
 
-	llvm::Type* FunctionType::getLlvmType(FTContext* tc)
+	fir::Type* FunctionType::getLlvmType(FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -72,11 +72,11 @@ namespace fir
 		if(this->llvmType == 0)
 		{
 			// do it.
-			std::vector<llvm::Type*> fargs;
+			std::vector<fir::Type*> fargs;
 			for(auto a : this->functionParams)
 				fargs.push_back(a->getLlvmType());
 
-			this->llvmType = llvm::FunctionType::get(this->functionRetType->getLlvmType(), fargs, this->isFnVarArg);
+			this->llvmType = fir::FunctionType::get(this->functionRetType->getLlvmType(), fargs, this->isFnVarArg);
 		}
 
 		return this->llvmType;

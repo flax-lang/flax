@@ -331,21 +331,6 @@ int main(int argc, char* argv[])
 				Compiler::setWarning(Compiler::Warning::UseAfterFree, true);
 				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, true);
 			}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			else if(argv[i][0] == '-')
 			{
 				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
@@ -383,7 +368,7 @@ int main(int argc, char* argv[])
 
 	Parser::parseAllCustomOperators(pstate, filename, curpath);
 
-	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
+	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<fir::Module*>>
 	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
 
@@ -395,17 +380,17 @@ int main(int argc, char* argv[])
 	Root* r = std::get<0>(ret);
 	std::vector<std::string> filelist = std::get<1>(ret);
 	std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
-	std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
+	std::unordered_map<std::string, fir::Module*> modulelist = std::get<3>(ret);
 
-	llvm::Module* mainModule = modulelist[filename];
-	llvm::IRBuilder<>& builder = __cgi->builder;
+	fir::Module* mainModule = modulelist[filename];
+	fir::IRBuilder<>& builder = __cgi->builder;
 
 
 
 	// needs to be done first, for the weird constructor fiddling below.
 	if(Compiler::runProgramWithJit)
 	{
-		llvm::Linker linker = llvm::Linker(mainModule);
+		fir::Linker linker = fir::Linker(mainModule);
 		for(auto mod : modulelist)
 		{
 			if(mod.second != mainModule)
@@ -433,14 +418,14 @@ int main(int argc, char* argv[])
 
 	if(needGlobalConstructor)
 	{
-		std::vector<llvm::Function*> constructors;
+		std::vector<fir::Function*> constructors;
 		rootmap[filename] = r;
 
 		for(auto pair : rootmap)
 		{
 			if(pair.second->globalConstructorTrampoline != 0)
 			{
-				llvm::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
+				fir::Function* constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
 				if(!constr)
 				{
 					if(Compiler::runProgramWithJit)
@@ -451,7 +436,7 @@ int main(int argc, char* argv[])
 					else
 					{
 						// declare it.
-						constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
+						constr = fir::cast<fir::Function>(mainModule->getOrInsertFunction(
 							pair.second->globalConstructorTrampoline->getName(),
 							pair.second->globalConstructorTrampoline->getFunctionType())
 						);
@@ -464,11 +449,11 @@ int main(int argc, char* argv[])
 
 		rootmap.erase(filename);
 
-		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
-		llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
+		fir::FunctionType* ft = fir::FunctionType::get(fir::Type::getVoidTy(fir::getGlobalContext()), false);
+		fir::Function* gconstr = fir::Function::Create(ft, fir::GlobalValue::ExternalLinkage,
 			"__global_constructor_top_level__", mainModule);
 
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
+		fir::BasicBlock* iblock = fir::BasicBlock::Create(fir::getGlobalContext(), "initialiser", gconstr);
 		builder.SetInsertPoint(iblock);
 
 		for(auto f : constructors)
@@ -480,11 +465,11 @@ int main(int argc, char* argv[])
 		if(!Compiler::getNoAutoGlobalConstructor())
 		{
 			// insert a call at the beginning of main().
-			llvm::Function* mainfunc = mainModule->getFunction("main");
+			fir::Function* mainfunc = mainModule->getFunction("main");
 			iceAssert(mainfunc);
 
-			llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-			llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
+			fir::BasicBlock* entry = &mainfunc->getEntryBlock();
+			fir::BasicBlock* f = fir::BasicBlock::Create(fir::getGlobalContext(), "__main_entry", mainfunc);
 
 			f->moveBefore(entry);
 			builder.SetInsertPoint(f);
@@ -527,10 +512,10 @@ int main(int argc, char* argv[])
 		if(mainModule->getFunction("main") != 0)
 		{
 			std::string err;
-			llvm::Module* clone = llvm::CloneModule(mainModule);
-			llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
+			fir::Module* clone = fir::CloneModule(mainModule);
+			fir::ExecutionEngine* ee = fir::EngineBuilder(std::unique_ptr<fir::Module>(clone))
 						.setErrorStr(&err)
-						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+						.setMCJITMemoryManager(fir::make_unique<fir::SectionMemoryManager>())
 						.create();
 
 
@@ -566,7 +551,7 @@ int main(int argc, char* argv[])
 	if(Compiler::dumpModule)
 	{
 		// std::string err_info;
-		// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
+		// fir::raw_fd_ostream out((outname + ".ir").c_str(), err_info, fir::sys::fs::OpenFlags::F_None);
 
 		// out << *(mainModule);
 		// out.close();

@@ -55,15 +55,17 @@ namespace fir
 	};
 
 
-	struct Function : Value
+	struct Function : GlobalValue
 	{
 		friend struct Argument;
 		friend struct IRBuilder;
 
-		Function(std::string name, FunctionType* fnType);
+		Function(std::string name, FunctionType* fnType, Module* module, LinkageType linkage);
 
+		bool isVarArg();
 		std::string getName();
 		Type* getReturnType();
+		size_t getArgumentCount();
 		std::deque<Argument*> getArguments();
 
 

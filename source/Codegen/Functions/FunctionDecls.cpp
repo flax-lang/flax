@@ -11,31 +11,31 @@
 using namespace Ast;
 using namespace Codegen;
 
-static llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(FuncDecl* fd)
+static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 {
-	llvm::GlobalValue::LinkageTypes linkageType;
+	fir::LinkageType linkageType;
 
 	if(fd->isFFI)
 	{
-		linkageType = llvm::Function::ExternalLinkage;
+		linkageType = fir::LinkageType::External;
 	}
 	else if((fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal))
 	{
-		linkageType = llvm::Function::InternalLinkage;
+		linkageType = fir::LinkageType::Internal;
 	}
 	else if(fd->attribs & Attr_VisPublic)
 	{
-		linkageType = llvm::Function::ExternalLinkage;
+		linkageType = fir::LinkageType::External;
 	}
 	else if(fd->parentClass && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
 	{
 		// default.
 		linkageType = (fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal) ?
-			llvm::Function::InternalLinkage : llvm::Function::ExternalLinkage;
+			fir::LinkageType::Internal : fir::LinkageType::External;
 	}
 	else
 	{
-		linkageType = llvm::Function::InternalLinkage;
+		linkageType = fir::LinkageType::Internal;
 	}
 
 
@@ -43,13 +43,13 @@ static llvm::GlobalValue::LinkageTypes getFunctionDeclLinkage(FuncDecl* fd)
 }
 
 
-static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<llvm::Type*> argtypes, llvm::Type* rettype)
+static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype)
 {
-	llvm::FunctionType* ft = llvm::FunctionType::get(rettype, argtypes, fd->hasVarArg);
+	fir::FunctionType* ft = fir::FunctionType::getFunction(argtypes, rettype, fd->hasVarArg);
 	auto linkageType = getFunctionDeclLinkage(fd);
 
 	// check for redef
-	llvm::Function* func = nullptr;
+	fir::Function* func = nullptr;
 	if(cgi->getType(fd->mangledName) != nullptr)
 	{
 		GenError::duplicateSymbol(cgi, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
@@ -63,7 +63,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	}
 	else
 	{
-		func = llvm::Function::Create(ft, linkageType, fd->mangledName, cgi->module);
+		func = new fir::Function(fd->mangledName, ft, cgi->module, linkageType);
 
 		if(fd->attribs & Attr_VisPublic)
 			cgi->addPublicFunc({ func, fd });
@@ -79,20 +79,20 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 
-Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, llvm::Type*> types)
+Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
 {
 	iceAssert(types.size() == this->genericTypes.size());
 
-	std::vector<llvm::Type*> argtypes;
+	std::vector<fir::Type*> argtypes;
 	for(size_t i = 0; i < this->params.size(); i++)
 	{
 		VarDecl* v = this->params[i];
-		llvm::Type* ltype = cgi->getLlvmType(v, true, false);	// allowFail = true, setInferred = false
+		fir::Type* ltype = cgi->getLlvmType(v, true, false);	// allowFail = true, setInferred = false
 
 		if(!ltype && types.find(v->type.strType) != types.end())
 		{
 			// provided.
-			llvm::Type* vt = types[v->type.strType];
+			fir::Type* vt = types[v->type.strType];
 			argtypes.push_back(vt);
 		}
 		else
@@ -102,7 +102,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		}
 	}
 
-	llvm::Type* lret = cgi->getLlvmType(this, true);
+	fir::Type* lret = cgi->getLlvmType(this, true);
 	if(!lret && types.find(this->type.strType) != types.end())
 	{
 		lret = types[this->type.strType];
@@ -115,7 +115,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 
 
 
-Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// if we're a generic function, we can't generate anything
 	// wait until we get specific instances
@@ -243,7 +243,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else
 	{
-		std::vector<llvm::Type*> argtypes;
+		std::vector<fir::Type*> argtypes;
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getLlvmType(v));
 
@@ -291,7 +291,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 
 
-Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	return this->decl->codegen(cgi);
 }
