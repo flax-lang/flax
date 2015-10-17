@@ -52,8 +52,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 	// generate initialiser
 	{
-		fir::Function* defifunc = new fir::Function("__auto_init__" + this->mangledName,
-			fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(), false), cgi->module, linkageType);
+		fir::Function* defifunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+			fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(), false), linkageType);
 
 		this->initFuncs.push_back(defifunc);
 
@@ -103,8 +103,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 			types.push_back(e);
 
 
-		fir::Function* memifunc = new fir::Function("__auto_mem_init__" + this->mangledName,
-			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), cgi->module, linkageType);
+		fir::Function* memifunc = cgi->module->getOrCreateFunction("__auto_mem_init__" + this->mangledName,
+			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 		this->initFuncs.push_back(memifunc);
 
@@ -205,7 +205,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 
 
 
-	fir::StructType* str = fir::StructType::createNamed(this->mangledName, { }, cgi->getContext(), this->packed);
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext(), this->packed);
 
 	this->scope = cgi->namespaceStack;
 	cgi->addNewType(str, this, TypeKind::Struct);

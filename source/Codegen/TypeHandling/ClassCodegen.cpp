@@ -59,9 +59,8 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
 
 	// generate initialiser
-	fir::Function* defaultInitFunc = new fir::Function("__auto_init__" + this->mangledName,
-		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
-		cgi->module, linkageType);
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
@@ -483,7 +482,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
 
 
-	fir::StructType* str = fir::StructType::createNamed(this->mangledName, { }, cgi->getContext());
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext());
 
 	this->scope = fullScope;
 	cgi->addNewType(str, this, TypeKind::Class);

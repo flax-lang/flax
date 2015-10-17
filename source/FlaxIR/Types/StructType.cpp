@@ -40,7 +40,7 @@ namespace fir
 				if(!areTypeListsEqual(members, t->toStructType()->structMembers))
 				{
 					std::string mstr = typeListToString(members);
-					error("Conflicting types for named struct %s:\n%s vs %s", name.c_str(), type->str().c_str(), mstr.c_str());
+					error("Conflicting types for named struct %s:\n%s vs %s", name.c_str(), t->str().c_str(), mstr.c_str());
 				}
 
 				// ok.
@@ -49,6 +49,22 @@ namespace fir
 		}
 
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
+	}
+
+	StructType* StructType::createNamedWithoutBody(std::string name, FTContext* tc, bool isPacked)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// special case: if no body, just return a type of the existing name.
+		for(auto t : tc->typeCache[0])
+		{
+			if(t->isStructType() && t->toStructType()->isNamedStruct() && t->toStructType()->getStructName() == name)
+				return t->toStructType();
+		}
+
+		// if not, create a new one.
+		return createNamed(name, { }, tc, isPacked);
 	}
 
 	StructType* StructType::createNamed(std::string name, std::vector<Type*> members, FTContext* tc, bool packed)
@@ -68,10 +84,7 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		std::deque<Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
+		std::deque<Type*> dmems = members;
 		return StructType::createNamed(name, dmems, tc, packed);
 	}
 
@@ -109,10 +122,7 @@ namespace fir
 
 		iceAssert(members.size() > 0 && "literal struct must have body at init");
 
-		std::deque<Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
+		std::deque<Type*> dmems = members;
 		return StructType::getLiteral(dmems, tc, packed);
 	}
 

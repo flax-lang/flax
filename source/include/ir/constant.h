@@ -49,6 +49,9 @@ namespace fir
 		static ConstantInt* getSigned(Type* intType, ssize_t val);
 		static ConstantInt* getUnsigned(Type* intType, size_t val);
 
+		ssize_t getSignedValue();
+		size_t getUnsignedValue();
+
 		protected:
 		ConstantInt(Type* type, ssize_t val);
 		ConstantInt(Type* type, size_t val);
@@ -61,6 +64,8 @@ namespace fir
 	{
 		static ConstantFP* get(Type* intType, float val);
 		static ConstantFP* get(Type* intType, double val);
+
+		double getValue();
 
 		protected:
 		ConstantFP(Type* type, float val);

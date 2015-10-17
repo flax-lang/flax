@@ -79,6 +79,24 @@ namespace fir
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)
 	{
+		this->getOrCreateFunction(name, ftype, LinkageType::ExternalWeak);
+		// if(this->functions.find(name) != this->functions.end())
+		// {
+		// 	if(!this->functions[name]->getType()->isTypeEqual(ftype))
+		// 	{
+		// 		error("function %s redeclared with different type (have %s, new %s)", name.c_str(),
+		// 			this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
+		// 	}
+
+		// 	return;
+		// }
+
+		// Function* f = new Function(name, ftype, this, LinkageType::ExternalWeak);
+		// this->functions[name] = f;
+	}
+
+	Function* Module::getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage)
+	{
 		if(this->functions.find(name) != this->functions.end())
 		{
 			if(!this->functions[name]->getType()->isTypeEqual(ftype))
@@ -86,13 +104,24 @@ namespace fir
 				error("function %s redeclared with different type (have %s, new %s)", name.c_str(),
 					this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
 			}
-
-			return;
 		}
 
-		Function* f = new Function(name, ftype, this, LinkageType::ExternalWeak);
+		Function* f = new Function(name, ftype, this, linkage);
 		this->functions[name] = f;
+
+		return f;
 	}
+
+
+
+
+
+
+
+
+
+
+
 
 	void Module::addFunction(Function* func)
 	{
@@ -114,7 +143,10 @@ namespace fir
 	Function* Module::getFunction(std::string name)
 	{
 		if(this->functions.find(name) == this->functions.end())
-			error("function %s does not exist", name.c_str());
+		{
+			return 0;
+			// error("function %s does not exist", name.c_str());
+		}
 
 		return this->functions[name];
 	}

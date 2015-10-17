@@ -204,6 +204,7 @@ namespace fir
 	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
 	{
 		if(a.size() != b.size()) return false;
+		if(a.size() == 0 && b.size() == 0) return true;
 
 		for(size_t i = 0; i < a.size(); i++)
 		{

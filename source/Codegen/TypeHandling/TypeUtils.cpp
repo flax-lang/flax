@@ -38,11 +38,11 @@ namespace Codegen
 		else if(type == "Int64")	real = fir::PrimitiveType::getInt64(this->getContext());
 		else if(type == "Int")		real = fir::PrimitiveType::getInt64(this->getContext());
 
-		else if(type == "Uint8")	real = fir::PrimitiveType::getInt8(this->getContext());
-		else if(type == "Uint16")	real = fir::PrimitiveType::getInt16(this->getContext());
-		else if(type == "Uint32")	real = fir::PrimitiveType::getInt32(this->getContext());
-		else if(type == "Uint64")	real = fir::PrimitiveType::getInt64(this->getContext());
-		else if(type == "Uint")		real = fir::PrimitiveType::getInt64(this->getContext());
+		else if(type == "Uint8")	real = fir::PrimitiveType::getUint8(this->getContext());
+		else if(type == "Uint16")	real = fir::PrimitiveType::getUint16(this->getContext());
+		else if(type == "Uint32")	real = fir::PrimitiveType::getUint32(this->getContext());
+		else if(type == "Uint64")	real = fir::PrimitiveType::getUint64(this->getContext());
+		else if(type == "Uint")		real = fir::PrimitiveType::getUint64(this->getContext());
 
 		else if(type == "Float32")	real = fir::PrimitiveType::getFloat32(this->getContext());
 		else if(type == "Float")	real = fir::PrimitiveType::getFloat32(this->getContext());
@@ -565,8 +565,10 @@ namespace Codegen
 		if(!from || !to)
 			return -1;
 
+		int ret = 0;
 		if(from->isIntegerType() && to->isIntegerType()
-			&& from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth())
+			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
+				|| from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned()))
 		{
 			unsigned int ab = from->toPrimitiveType()->getIntegerBitWidth();
 			unsigned int bb = to->toPrimitiveType()->getIntegerBitWidth();
@@ -577,32 +579,40 @@ namespace Codegen
 			// fk it
 			if(ab == 8)
 			{
-				if(bb == 8)			return 0;
-				else if(bb == 16)	return 1;
-				else if(bb == 32)	return 2;
-				else if(bb == 64)	return 3;
+				if(bb == 8)			ret = 0;
+				else if(bb == 16)	ret = 1;
+				else if(bb == 32)	ret = 2;
+				else if(bb == 64)	ret = 3;
 			}
 			if(ab == 16)
 			{
-				if(bb == 8)			return 1;
-				else if(bb == 16)	return 0;
-				else if(bb == 32)	return 1;
-				else if(bb == 64)	return 2;
+				if(bb == 8)			ret = 1;
+				else if(bb == 16)	ret = 0;
+				else if(bb == 32)	ret = 1;
+				else if(bb == 64)	ret = 2;
 			}
 			if(ab == 32)
 			{
-				if(bb == 8)			return 2;
-				else if(bb == 16)	return 1;
-				else if(bb == 32)	return 0;
-				else if(bb == 64)	return 1;
+				if(bb == 8)			ret = 2;
+				else if(bb == 16)	ret = 1;
+				else if(bb == 32)	ret = 0;
+				else if(bb == 64)	ret = 1;
 			}
 			if(ab == 64)
 			{
-				if(bb == 8)			return 3;
-				else if(bb == 16)	return 2;
-				else if(bb == 32)	return 1;
-				else if(bb == 64)	return 0;
+				if(bb == 8)			ret = 3;
+				else if(bb == 16)	ret = 2;
+				else if(bb == 32)	ret = 1;
+				else if(bb == 64)	ret = 0;
 			}
+
+			// check for signed-ness cast.
+			if(from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned())
+			{
+				ret += 1;
+			}
+
+			return ret;
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
@@ -670,10 +680,48 @@ namespace Codegen
 
 			if(shouldCast)
 			{
-				dist = this->getAutoCastDistance(right->getType(), target);
-				llvm::IRBuilder<> b(llvm::getGlobalContext());
-
 				right = this->builder.CreateIntSizeCast(right, target);
+			}
+		}
+
+		// signed to unsigned conversion
+		else if(target->isIntegerType() && right->getType()->isIntegerType()
+			&& (right->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
+		{
+			if(!right->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
+			{
+				// only do it if it preserves all data.
+				// we cannot convert signed to unsigned, but unsigned to signed is okay if the
+				// signed bitwidth > unsigned bitwidth
+				// eg. u32 -> i32 >> not okay
+				//     u32 -> i64 >> okay
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
+					right = this->builder.CreateIntSizeCast(right, target);
+			}
+			else
+			{
+				// we can't "normally" do it without losing data
+				// but if the rhs is a constant, maybe we can.
+
+				if(fir::ConstantInt* cright = dynamic_cast<fir::ConstantInt*>(right))
+				{
+					// only if not negative, can we convert to unsigned.
+					if(cright->getSignedValue() >= 0)
+					{
+						// get bits of lhs
+						size_t lbits = target->toPrimitiveType()->getIntegerBitWidth();
+
+						// get max value.
+						size_t maxL = pow(2, lbits) - 1;
+						if(lbits == 64) maxL = UINT64_MAX;
+
+						if(cright->getUnsignedValue() <= maxL)
+						{
+							right = this->builder.CreateIntSizeCast(right, target);
+						}
+					}
+				}
 			}
 		}
 
@@ -693,18 +741,15 @@ namespace Codegen
 				iceAssert(rhsPtr);
 				fir::Value* ret = this->builder.CreateGetConstStructMember(rhsPtr, 0);
 				right = this->builder.CreateLoad(ret);	// mutating
-
-				// string-to-int8* is 2.
-				dist = this->getAutoCastDistance(right->getType(), target);
 			}
 		}
 		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
 			right = this->builder.CreateIntToFloatCast(right, target);
-			dist = this->getAutoCastDistance(right->getType(), target);
 		}
 
+		dist = this->getAutoCastDistance(right->getType(), target);
 		return dist;
 	}
 

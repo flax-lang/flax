@@ -13,31 +13,11 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	// check builtin type
 	if(!this->decimal)
 	{
-		int bits = 64;
-		if(this->type.strType == "Uint32" || this->type.strType == "Int32")
-			bits = 32;
-
-		// todo: better way
-		if(this->type.strType[0] == 'U' || this->type.strType[0] == 'u')
-		{
-			return Result_t(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(bits), this->ival), 0);
-		}
-		else
-		{
-			return Result_t(fir::ConstantInt::getSigned(fir::PrimitiveType::getIntN(bits), this->ival), 0);
-		}
+		return Result_t(fir::ConstantInt::getSigned(fir::PrimitiveType::getInt64(), this->ival), 0);
 	}
 	else
 	{
-		// todo: better way as well.
-		if((this->type.strType[0] == 'F' || this->type.strType[0] == 'f') && this->type.strType.find("32") != std::string::npos)
-		{
-			return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getFloat32(), this->dval), 0);
-		}
-		else
-		{
-			return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getFloat64(), this->dval), 0);
-		}
+		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getFloat64(), this->dval), 0);
 	}
 }
 

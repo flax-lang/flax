@@ -75,3 +75,12 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 
 	return Result_t(cgi->builder.CreateLoad(gep), gep);
 }
+
+
+
+
+
+
+
+
+

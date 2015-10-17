@@ -76,7 +76,7 @@ namespace fir
 		iceAssert(lpt && rpt && "not primitive types");
 
 		Type* out = 0;
-		if(ao == Ast::ArithmeticOp::Add)
+		if(ao == Ast::ArithmeticOp::Add || ao == Ast::ArithmeticOp::PlusEquals)
 		{
 			op = useFloating ? OpKind::Floating_Add : useSigned ? OpKind::Signed_Add : OpKind::Unsigned_Add;
 
@@ -104,7 +104,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Subtract)
+		else if(ao == Ast::ArithmeticOp::Subtract || ao == Ast::ArithmeticOp::MinusEquals)
 		{
 			op = useFloating ? OpKind::Floating_Sub : useSigned ? OpKind::Signed_Sub : OpKind::Unsigned_Sub;
 
@@ -132,7 +132,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Multiply)
+		else if(ao == Ast::ArithmeticOp::Multiply || ao == Ast::ArithmeticOp::MultiplyEquals)
 		{
 			op = useFloating ? OpKind::Floating_Mul : useSigned ? OpKind::Signed_Mul : OpKind::Unsigned_Mul;
 
@@ -160,7 +160,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Divide)
+		else if(ao == Ast::ArithmeticOp::Divide || ao == Ast::ArithmeticOp::DivideEquals)
 		{
 			op = useFloating ? OpKind::Floating_Div : useSigned ? OpKind::Signed_Div : OpKind::Unsigned_Div;
 
@@ -188,7 +188,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Modulo)
+		else if(ao == Ast::ArithmeticOp::Modulo || ao == Ast::ArithmeticOp::ModEquals)
 		{
 			op = useFloating ? OpKind::Floating_Mod : useSigned ? OpKind::Signed_Mod : OpKind::Unsigned_Mod;
 
@@ -220,31 +220,43 @@ namespace fir
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = OpKind::Bitwise_Shl;
+
+			out = lhs;
 		}
 		else if(ao == Ast::ArithmeticOp::ShiftRight)
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
+
+			out = lhs;
 		}
 		else if(ao == Ast::ArithmeticOp::BitwiseAnd)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_And;
+
+			out = lhs;
 		}
 		else if(ao == Ast::ArithmeticOp::BitwiseOr)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Or;
+
+			out = lhs;
 		}
 		else if(ao == Ast::ArithmeticOp::BitwiseXor)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Xor;
+
+			out = lhs;
 		}
 		else if(ao == Ast::ArithmeticOp::BitwiseNot)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Not;
+
+			out = lhs;
 		}
 		else
 		{
@@ -257,6 +269,8 @@ namespace fir
 	Value* IRBuilder::CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b)
 	{
 		Instruction* instr = Instruction::GetBinaryOpInstruction(ao, a, b);
+		if(instr == 0) return 0;
+
 		return this->addInstruction(instr);
 	}
 
@@ -303,35 +317,45 @@ namespace fir
 
 	Value* IRBuilder::CreateAdd(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating add instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating add instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::Signed_Add, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateSub(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating sub instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating sub instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::Signed_Sub, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateMul(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating mul instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating mul instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::Signed_Mul, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateDiv(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating div instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating div instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::Signed_Div, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateMod(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating mod instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating mod instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::Signed_Mod, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
@@ -360,7 +384,9 @@ namespace fir
 
 	Value* IRBuilder::CreateICmpNEQ(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating cmp neq instruction with non-equal types");
+		if(a->getType() != b->getType())
+			error("creating cmp neq instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
+
 		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
@@ -574,7 +600,8 @@ namespace fir
 
 	Value* IRBuilder::CreateLoad(Value* ptr)
 	{
-		iceAssert(ptr->getType()->isPointerType() && "ptr is not pointer type");
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not pointer type (got %s)", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_Load, ptr->getType()->getPointerElementType(), { ptr });
 		return this->addInstruction(instr);
@@ -582,8 +609,11 @@ namespace fir
 
 	Value* IRBuilder::CreateStore(Value* v, Value* ptr)
 	{
-		iceAssert(ptr->getType()->isPointerType() && "ptr is not pointer type");
-		iceAssert(v->getType()->getPointerTo() == ptr->getType() && "ptr is not a pointer to type of value");
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(v->getType()->getPointerTo() != ptr->getType())
+			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->str().c_str(), ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_Store, PrimitiveType::getVoid(), { v, ptr });
 		return this->addInstruction(instr);
@@ -702,9 +732,14 @@ namespace fir
 	// equivalent to GEP(ptr*, index)
 	Value* IRBuilder::CreateGetPointer(Value* ptr, Value* ptrIndex)
 	{
-		iceAssert(ptr->getType()->isPointerType() && "ptr is not a pointer type");
-		iceAssert(ptrIndex->getType()->isPointerType() && "ptrIndex is not an integer type");
-		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType()->getPointerElementType(), { ptr, ptrIndex });
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(!ptrIndex->getType()->isIntegerType())
+			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str().c_str());
+
+
+		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
 		return this->addInstruction(instr);
 	}
 
@@ -736,7 +771,7 @@ namespace fir
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
 		{
-			warn("changing current function in irbuilder");
+			// warn("changing current function in irbuilder");
 			this->currentFunction = block->parentFunction;
 		}
 

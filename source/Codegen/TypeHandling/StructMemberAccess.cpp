@@ -622,7 +622,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 		if(!res.resolved)
 		{
-			// todo: we might have a type on the RHS (and namespaces/classes on the left)
+			// note: we might have a type on the RHS (and namespaces/classes on the left)
 			// check for this, and call the constructor, appropriately inserting the implicit self param.
 			// try resolve it to a type.
 
@@ -763,28 +763,38 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 {
-	// now we need to determine if it exists, and its params.
-	Func* callee = nullptr;
-	for(Func* f : str->funcs)
+	std::string full;
+	std::deque<std::string> fs = this->getFullScope();
+	for(auto f : fs)
+		full += f + "::";
+
+	full += str->name;
+
+	std::deque<Expr*> params = fc->params;
+	VarRef* fake = new VarRef(fc->pin, "self");
+	fake->type = full;
+
+	params.push_front(fake);
+
+	std::deque<FuncPair_t> fns;
+	for(auto f : str->funcs)
+		fns.push_back({ 0, f->decl });
+
+	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
+
+	if(!res.resolved)
 	{
-		std::string match = this->mangleMemberFunction(str, fc->name, fc->params, str->scope);
-		std::string funcN = this->mangleMemberFunction(str, f->decl->name, f->decl->params, str->scope, f->decl->isStatic);
-
-		#if 0
-		printf("func %s vs %s, orig %s\n", match.c_str(), funcN.c_str(), f->decl->name.c_str());
-		#endif
-
-		if(funcN == match)
-		{
-			callee = f;
-			break;
-		}
+		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 	}
 
-	if(!callee)
-		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
-	return callee;
+	for(auto f : str->funcs)
+	{
+		if(f->decl == res.t.second)
+			return f;
+	}
+
+	iceAssert(0);
 }
 
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)

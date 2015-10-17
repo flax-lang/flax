@@ -13,7 +13,6 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
-		bool hasName = true;
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(stype->isStructType())
@@ -21,7 +20,7 @@ namespace TypeInfo
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				assert(strt);
 
-				if(hasName && std::get<0>(k) == strt->toStructType()->getStructName())
+				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName())
 					return;
 			}
 		}
