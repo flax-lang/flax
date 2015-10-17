@@ -675,73 +675,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				ret = cgi->builder.CreateLogicalAND(lhs, rhs);
 				break;
 
-
-			#if 0
-			{
-				int theOp = this->op == ArithmeticOp::LogicalOr ? 0 : 1;
-				fir::Value* trueval = fir::ConstantInt::get(cgi->getContext(), fir::APInt(1, 1, true));
-				fir::Value* falseval = fir::ConstantInt::get(cgi->getContext(), fir::APInt(1, 0, true));
-
-
-				fir::Function* func = cgi->builder.GetInsertBlock()->getParent();
-				iceAssert(func);
-
-				fir::Value* res = cgi->builder.CreateTrunc(lhs, fir::Type::getInt1Ty(cgi->getContext()));
-
-				fir::BasicBlock* entry = cgi->builder.GetInsertBlock();
-				fir::BasicBlock* lb = fir::BasicBlock::Create(cgi->getContext(), "leftbl", func);
-				fir::BasicBlock* rb = fir::BasicBlock::Create(cgi->getContext(), "rightbl", func);
-				fir::BasicBlock* mb = fir::BasicBlock::Create(cgi->getContext(), "mergebl", func);
-				cgi->builder.CreateCondBr(res, lb, rb);
-
-
-				cgi->builder.SetInsertPoint(rb);
-				// this kinda works recursively
-				if(!this->phi)
-					this->phi = cgi->builder.CreatePHI(fir::Type::getInt1Ty(cgi->getContext()), 2);
-
-
-				// if this is a logical-or
-				if(theOp == 0)
-				{
-					// do the true case
-					cgi->builder.SetInsertPoint(lb);
-					this->phi->addIncoming(trueval, lb);
-
-					// if it succeeded (aka res is true), go to the merge block.
-					cgi->builder.CreateBr(rb);
-
-
-
-					// do the false case
-					cgi->builder.SetInsertPoint(rb);
-
-					// do another compare.
-					fir::Value* rres = cgi->builder.CreateTrunc(rhs, fir::Type::getInt1Ty(cgi->getContext()));
-					this->phi->addIncoming(rres, entry);
-				}
-				else
-				{
-					// do the true case
-					cgi->builder.SetInsertPoint(lb);
-					fir::Value* rres = cgi->builder.CreateTrunc(rhs, fir::Type::getInt1Ty(cgi->getContext()));
-					this->phi->addIncoming(rres, lb);
-
-					cgi->builder.CreateBr(rb);
-
-
-					// do the false case
-					cgi->builder.SetInsertPoint(rb);
-					phi->addIncoming(falseval, entry);
-				}
-
-				cgi->builder.CreateBr(mb);
-				cgi->builder.SetInsertPoint(mb);
-
-				return Result_t(this->phi, 0);
-			}
-			#endif
-
 			default:
 				// should not be reached
 				error("what?!");
@@ -756,7 +689,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		cgi->autoCastType(lhs, rhs, r.second);
 
 		if(lhs->getType() != rhs->getType())
-			error(this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)", cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+		{
+			error(this, "Left and right-hand side of binary expression do not have have the same type! (%s vs %s)",
+				cgi->getReadableType(lhs).c_str(), cgi->getReadableType(rhs).c_str());
+		}
 
 		// then they're floats.
 		switch(this->op)
