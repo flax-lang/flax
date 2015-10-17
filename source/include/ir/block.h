@@ -8,14 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
 #include "errors.h"
 
 #include <string>
@@ -33,7 +25,9 @@ namespace fir
 
 	struct IRBlock : Value
 	{
+		friend struct Module;
 		friend struct IRBuilder;
+
 		IRBlock();
 		IRBlock(Function* parentFunc);
 

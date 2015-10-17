@@ -9,17 +9,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Value.h"
-
 #include "errors.h"
 
 #include <string>
@@ -36,6 +25,8 @@ namespace fir
 	// base class implicitly stores null
 	struct ConstantValue : Value
 	{
+		friend struct Module;
+
 		// static stuff
 		static ConstantValue* getNullValue(Type* type);
 
@@ -46,6 +37,8 @@ namespace fir
 
 	struct ConstantInt : ConstantValue
 	{
+		friend struct Module;
+
 		static ConstantInt* getSigned(Type* intType, ssize_t val);
 		static ConstantInt* getUnsigned(Type* intType, size_t val);
 
@@ -62,6 +55,8 @@ namespace fir
 
 	struct ConstantFP : ConstantValue
 	{
+		friend struct Module;
+
 		static ConstantFP* get(Type* intType, float val);
 		static ConstantFP* get(Type* intType, double val);
 
@@ -76,7 +71,11 @@ namespace fir
 
 	struct ConstantArray : ConstantValue
 	{
+		friend struct Module;
+
 		static ConstantArray* get(Type* type, std::vector<ConstantValue*> vals);
+
+		std::vector<ConstantValue*> getValues() { return this->values; }
 
 		protected:
 		ConstantArray(Type* type, std::vector<ConstantValue*> vals);

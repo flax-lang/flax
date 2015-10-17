@@ -116,27 +116,24 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
-	if(func->getArgumentCount() > 0)
+	for(size_t i = 0; i < func->getArgumentCount(); i++)
 	{
-		for(size_t i = 0; i < func->getArgumentCount(); i++)
+		func->getArguments()[i]->setName(this->decl->params[i]->name);
+
+		fir::Value* ai = 0;
+
+		if(isGeneric)
 		{
-			func->getArguments()[i]->setName(this->decl->params[i]->name);
-
-			fir::Value* ai = 0;
-
-			if(isGeneric)
-			{
-				ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
-			}
-			else
-			{
-				ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
-			}
-
-			cgi->builder.CreateStore(func->getArguments()[i], ai);
-
-			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+			ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
 		}
+		else
+		{
+			ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+		}
+
+		cgi->builder.CreateStore(func->getArguments()[i], ai);
+		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+		func->getArguments()[i]->setValue(ai);
 	}
 
 

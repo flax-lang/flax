@@ -629,6 +629,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		// 	cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		cgi->autoCastType(lhs, rhs);
+		cgi->autoCastType(rhs, lhs);
 
 		fir::Value* tryop = cgi->builder.CreateBinaryOp(this->op, lhs, rhs);
 		if(tryop)
@@ -768,10 +769,10 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			// comparisons
 			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
 			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
 
 			// logical shit.
 			case ArithmeticOp::LogicalAnd:	return Result_t(cgi->builder.CreateLogicalAND(lhs, rhs), 0);

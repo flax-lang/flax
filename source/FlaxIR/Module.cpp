@@ -28,7 +28,7 @@ namespace fir
 
 	GlobalVariable* Module::declareGlobalVariable(std::string name, Type* type, bool isImmut)
 	{
-		return this->createGlobalVariable(name, type, 0, isImmut, LinkageType::ExternalWeak);
+		return this->createGlobalVariable(name, type, 0, isImmut, LinkageType::External);
 	}
 
 	void Module::deleteGlobalVariable(std::string name)
@@ -79,20 +79,7 @@ namespace fir
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)
 	{
-		this->getOrCreateFunction(name, ftype, LinkageType::ExternalWeak);
-		// if(this->functions.find(name) != this->functions.end())
-		// {
-		// 	if(!this->functions[name]->getType()->isTypeEqual(ftype))
-		// 	{
-		// 		error("function %s redeclared with different type (have %s, new %s)", name.c_str(),
-		// 			this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
-		// 	}
-
-		// 	return;
-		// }
-
-		// Function* f = new Function(name, ftype, this, LinkageType::ExternalWeak);
-		// this->functions[name] = f;
+		this->getOrCreateFunction(name, ftype, LinkageType::External);
 	}
 
 	Function* Module::getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage)

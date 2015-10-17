@@ -2,44 +2,46 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Math
-import String
-
+// import Math
+// import String
+import LibCInterface
 
 public func main() -> Int
 {
-	var foo: String
+	printf("FUCK YOU\n")
 
-	printf("HELLO\n")
+	// var foo: String
 
-	let g: Int8 = 100
-	printf("g is: %d\n", g)
+	// printf("HELLO\n")
 
-	let m = (fa(), fb())
-	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
+	// let g: Int8 = 100
+	// printf("g is: %d\n", g)
 
-
-	let dot = m.0 • m.1
-	printf("dot = %f\n", dot);
+	// let m = (fa(), fb())
+	// printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
 
-	let v1: Math.Vector3(1.0, 2.0, 4.0)
-	let v2: Math.Vector3(3.0, 6.0, 9.0)
-
-	var v = v1 + v2
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	v += v1
-
-	let vv = 3 * v
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
-
-	let cross = m.0 x m.1
-	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
+	// let dot = m.0 • m.1
+	// printf("dot = %f\n", dot);
 
 
-	let crossn = m.1 x m.0
-	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
+	// let v1: Math.Vector3(1.0, 2.0, 4.0)
+	// let v2: Math.Vector3(3.0, 6.0, 9.0)
+
+	// var v = v1 + v2
+	// printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+	// v += v1
+
+	// let vv = 3 * v
+	// printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+	// printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
+
+	// let cross = m.0 x m.1
+	// printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
+
+
+	// let crossn = m.1 x m.0
+	// printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 
 
 
@@ -47,49 +49,49 @@ public func main() -> Int
 }
 
 
-class Bar
-{
-	init()
-	{
-		printf("DID BAR\n");
-		var foo: some.Qux
-	}
+// class Bar
+// {
+// 	init()
+// 	{
+// 		printf("DID BAR\n");
+// 		var foo: some.Qux
+// 	}
 
-	// var foo: Foo
-	var qux: some.Qux
-}
+// 	// var foo: Foo
+// 	var qux: some.Qux
+// }
 
-namespace some
-{
-	class Qux
-	{
-	}
-}
+// namespace some
+// {
+// 	class Qux
+// 	{
+// 	}
+// }
 
-func fa() -> Math.Vector3
-{
-	var ret: Math.Vector3
-	ret.x = 1
-	ret.y = 2
-	ret.z = 3
+// func fa() -> Math.Vector3
+// {
+// 	var ret: Math.Vector3
+// 	ret.x = 1
+// 	ret.y = 2
+// 	ret.z = 3
 
-	return ret
-}
+// 	return ret
+// }
 
-func fb() -> Math.Vector3
-{
-	var ret: Math.Vector3
-	ret.x = 4
-	ret.y = 5
-	ret.z = 6
+// func fb() -> Math.Vector3
+// {
+// 	var ret: Math.Vector3
+// 	ret.x = 4
+// 	ret.y = 5
+// 	ret.z = 6
 
-	return ret
-}
+// 	return ret
+// }
 
 
-class Foo
-{
-}
+// class Foo
+// {
+// }
 
 
 // one clear order-dependency is members in structs. need to find a way to create the type, from the Class* or Struct*,

@@ -52,7 +52,7 @@ namespace fir
 
 		// add instruction to the end of the block
 		this->currentBlock->instructions.push_back(instr);
-		Value* v = new Value(instr->getType());
+		Value* v = instr->realOutput;
 
 		v->addUser(this->currentBlock);
 		return v;
@@ -378,7 +378,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpEQ(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Equal, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_Equal, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -387,105 +387,134 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating cmp neq instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateICmpGT(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Greater, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_Greater, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateICmpLT(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Less, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_Less, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateICmpGEQ(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::IComapre_GreaterEqual, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateICmpLEQ(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateFCmpEQ_ORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_ord instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateFCmpEQ_UNORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_uord instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_UNORD, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_Equal_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateFCmpNEQ_ORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_ord instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_ORD, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateFCmpNEQ_UNORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_uord instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_UNORD, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateFCmpGT(Value* a, Value* b)
+	Value* IRBuilder::CreateFCmpGT_ORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Greater, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_Greater_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateFCmpLT(Value* a, Value* b)
+	Value* IRBuilder::CreateFCmpGT_UNORD(Value* a, Value* b)
+	{
+		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
+		Instruction* instr = new Instruction(OpKind::FCompare_Greater_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
+		return this->addInstruction(instr);
+	}
+
+	Value* IRBuilder::CreateFCmpLT_ORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Less, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_Less_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateFCmpGEQ(Value* a, Value* b)
+	Value* IRBuilder::CreateFCmpLT_UNORD(Value* a, Value* b)
+	{
+		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
+		Instruction* instr = new Instruction(OpKind::FCompare_Less_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
+		return this->addInstruction(instr);
+	}
+
+	Value* IRBuilder::CreateFCmpGEQ_ORD(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FComapre_GreaterEqual, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateFCmpLEQ(Value* a, Value* b)
+	Value* IRBuilder::CreateFCmpGEQ_UNORD(Value* a, Value* b)
 	{
-		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual, a->getType(), { a, b });
+		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
+		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
+
+	Value* IRBuilder::CreateFCmpLEQ_ORD(Value* a, Value* b)
+	{
+		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
+		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_ORD, fir::PrimitiveType::getBool(this->context), { a, b });
+		return this->addInstruction(instr);
+	}
+
+	Value* IRBuilder::CreateFCmpLEQ_UNORD(Value* a, Value* b)
+	{
+		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
+		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_UNORD, fir::PrimitiveType::getBool(this->context), { a, b });
+		return this->addInstruction(instr);
+	}
+
 
 	Value* IRBuilder::CreateLogicalAND(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating logical and instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_And, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::Logical_And, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateLogicalOR(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating logical or instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_Or, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::Logical_Or, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -621,37 +650,41 @@ namespace fir
 
 	Value* IRBuilder::CreateCall0(Function* fn)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { });
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateCall1(Function* fn, Value* p1)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { p1 });
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1 });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateCall2(Function* fn, Value* p1, Value* p2)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { p1, p2 });
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2 });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { p1, p2, p3 });
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2, p3 });
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), args);
+		auto v = args;
+		args.push_front(fn);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), v);
 		return this->addInstruction(instr);
 	}
 
 	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args)
 	{
 		std::deque<Value*> dargs;
+		dargs.push_back(fn);
 
 		for(auto a : args)
 			dargs.push_back(a);
@@ -662,7 +695,7 @@ namespace fir
 
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, v->getType(), { v });
+		Instruction* instr = new Instruction(OpKind::Value_Return, PrimitiveType::getVoid(), { v });
 		return this->addInstruction(instr);
 	}
 
@@ -681,7 +714,7 @@ namespace fir
 
 	Value* IRBuilder::CreateStackAlloc(Type* type)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, type->getPointerTo(), { ConstantValue::getNullValue(type) });
+		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, type->getPointerTo(), { ConstantValue::getNullValue(type) });
 		return this->addInstruction(instr);
 	}
 
