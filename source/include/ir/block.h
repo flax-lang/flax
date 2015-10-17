@@ -37,8 +37,11 @@ namespace fir
 		IRBlock();
 		IRBlock(Function* parentFunc);
 
+		Function* getParentFunction();
+
 		void setFunction(Function* fn);
 		void addInstruction(Instruction* inst);
+		void eraseFromParentFunction();
 
 		private:
 		Function* parentFunction = 0;

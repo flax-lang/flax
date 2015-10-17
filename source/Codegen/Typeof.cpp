@@ -47,7 +47,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	iceAssert(enr);
 
 	fir::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
-	fir::Value* gep = cgi->builder.CreateStructGEP(wrapper, 0, "wrapped");
+	fir::Value* gep = cgi->builder.CreateGetConstStructMember(wrapper, 0);
 
 	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
 	return Result_t(cgi->builder.CreateLoad(wrapper), wrapper);

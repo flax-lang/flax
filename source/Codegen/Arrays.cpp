@@ -16,10 +16,10 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 	fir::Type* atype = cgi->getLlvmType(this->arr);
 	fir::Type* etype = nullptr;
 
-	if(atype->isArrayTy())
-		etype = fir::cast<fir::ArrayType>(atype)->getArrayElementType();
+	if(atype->isArrayType())
+		etype = atype->toArrayType()->getElementType();
 
-	else if(atype->isPointerTy())
+	else if(atype->isPointerType())
 		etype = atype->getPointerElementType();
 
 	else
@@ -27,21 +27,21 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 
 
 	// try and do compile-time bounds checking
-	if(atype->isArrayTy())
+	if(atype->isArrayType())
 	{
-		iceAssert(fir::isa<fir::ArrayType>(atype));
-		fir::ArrayType* at = fir::cast<fir::ArrayType>(atype);
+		fir::ArrayType* at = atype->toArrayType();
 
 		// dynamic arrays don't get bounds checking
-		if(at->getNumElements() != 0)
+		if(at->getArraySize() != 0)
 		{
 			Number* n = nullptr;
+			// todo: more robust
 			if((n = dynamic_cast<Number*>(this->index)))
 			{
 				iceAssert(!n->decimal);
-				if((uint64_t) n->ival >= at->getNumElements())
+				if((uint64_t) n->ival >= at->getArraySize())
 				{
-					error(this, "'%zd' is out of bounds of array[%zd]", n->ival, at->getNumElements());
+					error(this, "'%zd' is out of bounds of array[%zd]", n->ival, at->getArraySize());
 				}
 			}
 		}
@@ -51,20 +51,23 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 	Result_t lhsp = this->arr->codegen(cgi);
 
 	fir::Value* lhs = 0;
-	if(lhsp.result.first->getType()->isPointerTy())	lhs = lhsp.result.first;
-	else											lhs = lhsp.result.second;
+	if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
+	else												lhs = lhsp.result.second;
 
 	fir::Value* gep = nullptr;
 	fir::Value* ind = this->index->codegen(cgi).result.first;
 
-	if(atype->isStructTy() || atype->isArrayTy())
+	if(atype->isStructType() || atype->isArrayType())
 	{
-		fir::Value* indices[2] = { fir::ConstantInt::get(fir::IntegerType::getInt32Ty(fir::getGlobalContext()), 0), ind };
-		gep = cgi->builder.CreateGEP(lhs, fir::ArrayRef<fir::Value*>(indices), "indexPtr");
+		// fir::Value* indices[2] = { fir::ConstantInt::get(fir::IntegerType::getInt32Ty(fir::getGlobalContext()), 0), ind };
+
+		gep = cgi->builder.CreateGetPointer(lhs, ind);
+		// gep = cgi->builder.CreateGEP(lhs, fir::ArrayRef<fir::Value*>(indices), "indexPtr");
 	}
 	else
 	{
-		gep = cgi->builder.CreateGEP(lhs, ind, "indexPtr");
+		// gep = cgi->builder.CreateGEP(lhs, ind, "indexPtr");
+		gep = cgi->builder.CreateGetPointer(lhs, ind);
 	}
 
 	// printf("array index: (%s, %s)\n", cgi->getReadableType(gep->getType()->getPointerElementType()).c_str(),

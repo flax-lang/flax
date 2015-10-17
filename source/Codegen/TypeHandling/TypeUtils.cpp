@@ -990,7 +990,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "enosup");
+			error(user, "enotsup");
 		}
 	}
 
@@ -1062,7 +1062,7 @@ namespace Codegen
 		}
 		else
 		{
-			error("enosup");
+			error("enotsup");
 		}
 	}
 
@@ -1096,7 +1096,7 @@ namespace Codegen
 		}
 		else
 		{
-			error("enosup");
+			error("enotsup");
 		}
 	}
 

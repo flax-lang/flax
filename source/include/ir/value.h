@@ -81,32 +81,6 @@ namespace fir
 		std::deque<Value*> users;
 	};
 
-	// base class implicitly stores null
-	struct ConstantValue : Value
-	{
-		// static stuff
-		static ConstantValue* getNullValue(Type* type);
-
-
-		protected:
-		ConstantValue(Type* type);
-	};
-
-	struct ConstantInt : ConstantValue
-	{
-		static ConstantInt* getConstantSIntValue(Type* intType, ssize_t val);
-		static ConstantInt* getConstantUIntValue(Type* intType, size_t val);
-
-		protected:
-		ConstantInt(Type* type, ssize_t val);
-		ConstantInt(Type* type, size_t val);
-
-		size_t value;
-	};
-
-
-
-
 
 
 	struct GlobalValue : Value
