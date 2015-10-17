@@ -445,7 +445,7 @@ namespace Codegen
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
 				// todo: make this not shit.
-				return fir::ArrayType::getArray(this->getLlvmType(al->values.front()), al->values.size());
+				return fir::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
 			}
 			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
 			{
@@ -789,7 +789,7 @@ namespace Codegen
 			}
 		}
 
-		return fir::StructType::getLiteralStruct(types, cgi->getContext());
+		return fir::StructType::getLiteral(types, cgi->getContext());
 	}
 
 	static fir::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type, bool allowFail)
@@ -888,7 +888,7 @@ namespace Codegen
 
 					for(auto i : sizes)
 					{
-						btype = fir::ArrayType::getArray(btype, i);
+						btype = fir::ArrayType::get(btype, i);
 					}
 
 					return btype;

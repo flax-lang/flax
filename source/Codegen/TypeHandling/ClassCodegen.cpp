@@ -60,7 +60,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	// generate initialiser
 	fir::Function* defaultInitFunc = new fir::Function("__auto_init__" + this->mangledName,
-		fir::FunctionType::getFunction({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
+		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
 		cgi->module, linkageType);
 
 	{
@@ -483,7 +483,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
 
 
-	fir::StructType* str = fir::StructType::getOrCreateNamedStruct(this->mangledName, { }, cgi->getContext());
+	fir::StructType* str = fir::StructType::createNamed(this->mangledName, { }, cgi->getContext());
 
 	this->scope = fullScope;
 	cgi->addNewType(str, this, TypeKind::Class);

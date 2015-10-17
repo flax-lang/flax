@@ -40,7 +40,6 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-
 		iceAssert(tc->voidType && "FTContext was not initialised, no void type!");
 		return tc->voidType;
 	}
@@ -85,6 +84,18 @@ namespace fir
 
 		iceAssert(false);
 		return 0;
+	}
+
+
+
+	PrimitiveType* PrimitiveType::getIntN(size_t bits, FTContext* tc)
+	{
+		return PrimitiveType::getIntWithBitWidthAndSignage(tc, bits, true);
+	}
+
+	PrimitiveType* PrimitiveType::getUintN(size_t bits, FTContext* tc)
+	{
+		return PrimitiveType::getIntWithBitWidthAndSignage(tc, bits, false);
 	}
 
 

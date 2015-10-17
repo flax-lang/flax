@@ -20,7 +20,7 @@ namespace fir
 		this->arraySize = num;
 	}
 
-	ArrayType* ArrayType::getArray(Type* elementType, size_t num, FTContext* tc)
+	ArrayType* ArrayType::get(Type* elementType, size_t num, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

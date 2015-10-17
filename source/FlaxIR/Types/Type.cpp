@@ -78,6 +78,7 @@ namespace fir
 
 		// void.
 		tc->voidType = new PrimitiveType(0, FTypeKind::Void);
+		tc->voidType->isTypeVoid = true;
 
 
 		// bool
@@ -540,6 +541,11 @@ namespace fir
 	bool Type::isPointerType()
 	{
 		return this->toPointerType() != 0;
+	}
+
+	bool Type::isVoidType()
+	{
+		return this->isTypeVoid;
 	}
 }
 

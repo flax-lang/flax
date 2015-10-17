@@ -68,54 +68,6 @@ namespace fir
 		for(auto c : culled)
 			other->users.push_back(c);
 	}
-
-
-
-	ConstantValue::ConstantValue(Type* t) : Value(t)
-	{
-		// nothing.
-	}
-
-	ConstantValue* ConstantValue::getNullValue(Type* type)
-	{
-		return new ConstantValue(type);
-	}
-
-
-
-
-
-
-
-
-
-
-	// todo: unique these values.
-	ConstantInt* ConstantInt::getConstantSIntValue(Type* intType, ssize_t val)
-	{
-		iceAssert(intType->isIntegerType() && "not integer type");
-		ConstantInt* ret = new ConstantInt(intType, val);
-
-		return ret;
-	}
-
-	ConstantInt* ConstantInt::getConstantUIntValue(Type* intType, size_t val)
-	{
-		iceAssert(intType->isIntegerType() && "not integer type");
-		ConstantInt* ret = new ConstantInt(intType, val);
-
-		return ret;
-	}
-
-	ConstantInt::ConstantInt(Type* type, ssize_t val) : ConstantValue(type)
-	{
-		this->value = val;
-	}
-
-	ConstantInt::ConstantInt(Type* type, size_t val) : ConstantValue(type)
-	{
-		this->value = val;
-	}
 }
 
 

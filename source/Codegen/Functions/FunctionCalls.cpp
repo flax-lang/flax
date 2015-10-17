@@ -124,7 +124,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 		ValPtr_t res = e->codegen(cgi).result;
 		fir::Value* arg = res.first;
 
-		if(arg == nullptr || arg->getType()->isVoid())
+		if(arg == nullptr || arg->getType()->isVoidType())
 			GenError::nullValue(cgi, this, argNum);
 
 		if(checkVarArg && arg->getType()->isStructType())
