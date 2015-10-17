@@ -16,19 +16,18 @@ namespace TypeInfo
 		bool hasName = true;
 		for(auto k : cgi->rootNode->typeList)
 		{
-			if(stype->isStructTy())
+			if(stype->isStructType())
 			{
-				fir::StructType* strt = fir::dyn_cast<fir::StructType>(stype);
+				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				assert(strt);
 
-				hasName = strt->hasName();
-
-				if(hasName && std::get<0>(k) == strt->getStructName())
+				if(hasName && std::get<0>(k) == strt->toStructType()->getStructName())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(hasName ? stype->getStructName() : "", stype, etype));
+		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName(),
+			stype, etype));
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)

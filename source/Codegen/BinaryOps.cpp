@@ -13,9 +13,9 @@ using namespace Codegen;
 
 static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef)
 {
-	if(lhsRef->getType()->getPointerElementType()->isStructTy())
+	if(lhsRef->getType()->getPointerElementType()->isStructType())
 	{
-		TypePair_t* tp = cgi->getType(lhsRef->getType()->getPointerElementType()->getStructName());
+		TypePair_t* tp = cgi->getType(lhsRef->getType()->getPointerElementType()->toStructType()->getStructName());
 		if(!tp)
 			return Result_t(0, 0);
 
@@ -118,11 +118,11 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			// ensure we can always store 0 to pointers without a cast
 			Number* n = 0;
-			if(op == ArithmeticOp::Assign && rhs->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
+			if(op == ArithmeticOp::Assign && rhs->getType()->isIntegerType() && (n = dynamic_cast<Number*>(right)) && n->ival == 0)
 			{
-				rhs = fir::Constant::getNullValue(varptr->getType()->getPointerElementType());
+				rhs = fir::ConstantValue::getNullValue(varptr->getType()->getPointerElementType());
 			}
-			else if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
+			else if(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType())
 			{
 				// do pointer arithmetic.
 				auto res = this->doPointerArithmetic(op, lhs, ref, rhs).result;
@@ -130,8 +130,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				return Result_t(res.first, res.second);
 			}
-			else if(lhs->getType()->isPointerTy() && rhs->getType()->isArrayTy()
-				&& (lhs->getType()->getPointerElementType() == rhs->getType()->getArrayElementType()))
+			else if(lhs->getType()->isPointerType() && rhs->getType()->isArrayType()
+				&& (lhs->getType()->getPointerElementType() == rhs->getType()->toArrayType()->getElementType()))
 			{
 				// this GEP is needed to convert the "pointer-to-array" into a "pointer-to-element"
 				// ie. do what C does implicitly, where the array is really just a pointer to
@@ -139,7 +139,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				// except llvm gives us nice checking.
 
-				fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
+				// fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
+				fir::Value* r = this->builder.CreateGetPointer(rhsPtr,
+					fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getUint64(this->getContext()), 0));
+
 				this->builder.CreateStore(r, ref);
 				return Result_t(r, ref);
 			}
@@ -157,7 +160,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				{
 					// fuck it, create a temporary.
 					fir::Value* temp = this->allocateInstanceInBlock(rhs->getType());
-					iceAssert(temp->getType()->getPointerElementType()->isStructTy());
+					iceAssert(temp->getType()->getPointerElementType()->isStructType());
 
 					this->builder.CreateStore(rhs, temp);
 					rptr = temp;
@@ -167,8 +170,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				iceAssert(this->areEqualTypes(lhs->getType(), rhs->getType()));
 
 				// put the rhs thingy into the lhs.
-				fir::Value* lgep = this->builder.CreateStructGEP(ref, 0);
-				fir::Value* rgep = this->builder.CreateStructGEP(rptr, 0);
+				fir::Value* lgep = this->builder.CreateGetConstStructMember(ref, 0);
+				fir::Value* rgep = this->builder.CreateGetConstStructMember(rptr, 0);
 
 				iceAssert(lgep->getType() == rgep->getType());
 				fir::Value* rval = this->builder.CreateLoad(rgep);
@@ -194,7 +197,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				{
 					error(right, "Trying to assign non-enum value to an variable of type @strong enum");
 				}
-				else if(lhs->getType()->getStructElementType(0) != rhs->getType())
+				else if(lhs->getType()->toStructType()->getElementN(0) != rhs->getType())
 				{
 					error(right, "Assigning to assign value with type %s to enumeration with base type %s",
 						this->getReadableType(rhs).c_str(), this->getReadableType(lhs).c_str());
@@ -205,7 +208,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					// create a wrapper value.
 
 					fir::Value* ai = this->allocateInstanceInBlock(lhs->getType());
-					fir::Value* gep = this->builder.CreateStructGEP(ai, 0);
+					fir::Value* gep = this->builder.CreateGetConstStructMember(ai, 0);
 
 					this->builder.CreateStore(rhs, gep);
 
@@ -254,15 +257,15 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(!varptr)
 			error(user, "Cannot assign to immutable or temporary value");
 
-		else if(!varptr->getType()->isPointerTy())
+		else if(!varptr->getType()->isPointerType())
 			GenError::invalidAssignment(this, user, varptr, rhs);
 
 		// redo the number casting
-		if(rhs->getType()->isIntegerTy() && lhs->getType()->isIntegerTy())
-			rhs = this->builder.CreateIntCast(rhs, varptr->getType()->getPointerElementType(), false);
+		if(rhs->getType()->isIntegerType() && lhs->getType()->isIntegerType())
+			rhs = this->builder.CreateIntSizeCast(rhs, varptr->getType()->getPointerElementType());
 
-		else if(rhs->getType()->isIntegerTy() && lhs->getType()->isPointerTy())
-			rhs = this->builder.CreateIntToPtr(rhs, lhs->getType());
+		else if(rhs->getType()->isIntegerType() && lhs->getType()->isPointerType())
+			rhs = this->builder.CreateIntToPointerCast(rhs, lhs->getType());
 	}
 	else
 	{
@@ -271,7 +274,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-	if(varptr->getType()->getPointerElementType()->isStructTy())
+	if(varptr->getType()->getPointerElementType()->isStructType())
 	{
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, varptr, rhs, rhsPtr);
 		if(tryOpOverload.result.first != 0)
@@ -279,14 +282,14 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	}
 
 	// check for overflow
-	if(lhs->getType()->isIntegerTy())
+	if(lhs->getType()->isIntegerType())
 	{
 		Number* n = 0;
 		uint64_t max = 1;
 
 		// why the fuck does c++ not have a uint64_t pow function
 		{
-			for(unsigned int i = 0; i < lhs->getType()->getIntegerBitWidth(); i++)
+			for(unsigned int i = 0; i < lhs->getType()->toPrimitiveType()->getIntegerBitWidth(); i++)
 				max *= 2;
 		}
 
@@ -326,9 +329,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	else
 	{
 		// get the llvm op
-		fir::Instruction::BinaryOps lop = this->getBinaryOperator(op, this->isSignedType(left) || this->isSignedType(right), lhs->getType()->isFloatingPointTy() || rhs->getType()->isFloatingPointTy());
-
-		fir::Value* newrhs = this->builder.CreateBinOp(lop, lhs, rhs);
+		fir::Value* newrhs = this->builder.CreateBinaryOp(op, lhs, rhs);
 		this->builder.CreateStore(newrhs, varptr);
 		return Result_t(newrhs, varptr);
 	}
@@ -422,58 +423,59 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 		if(this->op != ArithmeticOp::ForcedCast)
 		{
-			if(lhs->getType()->isIntegerTy() && rtype->isIntegerTy())
+			if(lhs->getType()->isIntegerType() && rtype->isIntegerType())
 			{
-				return Result_t(cgi->builder.CreateIntCast(lhs, rtype, cgi->isSignedType(this->left)), 0);
+				return Result_t(cgi->builder.CreateIntSizeCast(lhs, rtype), 0);
 			}
-			else if(lhs->getType()->isIntegerTy() && rtype->isFloatingPointTy())
+			else if(lhs->getType()->isIntegerType() && rtype->isFloatingPointType())
 			{
-				return Result_t(cgi->builder.CreateSIToFP(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreateIntToFloatCast(lhs, rtype), 0);
 			}
-			else if(lhs->getType()->isFloatingPointTy() && rtype->isFloatingPointTy())
+			else if(lhs->getType()->isFloatingPointType() && rtype->isFloatingPointType())
 			{
-				printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
-				if(lhs->getType()->getPrimitiveSizeInBits() > rtype->getPrimitiveSizeInBits())
-					return Result_t(cgi->builder.CreateFPTrunc(lhs, rtype), 0);
+				// printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
+
+				if(lhs->getType()->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
+					return Result_t(cgi->builder.CreateFTruncate(lhs, rtype), 0);
 
 				else
-					return Result_t(cgi->builder.CreateFPExt(lhs, rtype), 0);
+					return Result_t(cgi->builder.CreateFExtend(lhs, rtype), 0);
 			}
-			else if(lhs->getType()->isPointerTy() && rtype->isPointerTy())
+			else if(lhs->getType()->isPointerType() && rtype->isPointerType())
 			{
-				return Result_t(cgi->builder.CreatePointerCast(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreatePointerTypeCast(lhs, rtype), 0);
 			}
-			else if(lhs->getType()->isPointerTy() && rtype->isIntegerTy())
+			else if(lhs->getType()->isPointerType() && rtype->isIntegerType())
 			{
-				return Result_t(cgi->builder.CreatePtrToInt(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreatePointerToIntCast(lhs, rtype), 0);
 			}
-			else if(lhs->getType()->isIntegerTy() && rtype->isPointerTy())
+			else if(lhs->getType()->isIntegerType() && rtype->isPointerType())
 			{
-				return Result_t(cgi->builder.CreateIntToPtr(lhs, rtype), 0);
+				return Result_t(cgi->builder.CreateIntToPointerCast(lhs, rtype), 0);
 			}
 			else if(cgi->isEnum(rtype))
 			{
 				// dealing with enum
-				fir::Type* insideType = rtype->getStructElementType(0);
+				fir::Type* insideType = rtype->toStructType()->getElementN(0);
 				if(lhs->getType() == insideType)
 				{
 					fir::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
 
-					fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0, "castedAndWrapped");
+					fir::Value* gep = cgi->builder.CreateGetConstStructMember(tmp, 0);
 					cgi->builder.CreateStore(lhs, gep);
 
 					return Result_t(cgi->builder.CreateLoad(tmp), tmp);
 				}
 				else
 				{
-					error(this, "Enum '%s' does not have type '%s', invalid cast", rtype->getStructName().str().c_str(),
-						cgi->getReadableType(lhs).c_str());
+					error(this, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().c_str(),
+						lhs->getType()->str().c_str());
 				}
 			}
-			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->getStructElementType(0) == rtype)
+			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
 			{
 				iceAssert(valptr.second);
-				fir::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0, "castedAndWrapped");
+				fir::Value* gep = cgi->builder.CreateGetConstStructMember(valptr.second, 0);
 				fir::Value* val = cgi->builder.CreateLoad(gep);
 
 				return Result_t(val, gep);
@@ -487,11 +489,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			iceAssert(valptr.second);
 			return cgi->extractValueFromAny(rtype, valptr.second);
 		}
-		else if(lhs->getType()->isStructTy() && lhs->getType()->getStructName() == "String"
-			&& rtype == fir::Type::getInt8PtrTy(cgi->getContext()))
+		else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName() == "String"
+			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
 		{
 			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
-			fir::StructType* stringType = fir::cast<fir::StructType>(strPair->first);
+			fir::StructType* stringType = dynamic_cast<fir::StructType*>(strPair->first);
 
 			// string to int8*.
 			// just access the data pointer.
@@ -504,11 +506,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				cgi->builder.CreateStore(lhs, lhsref);
 			}
 
-			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
+			fir::Value* stringPtr = cgi->builder.CreateGetConstStructMember(lhsref, 0);
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == fir::Type::getInt8PtrTy(cgi->getContext())
-			&& rtype->isStructTy() && rtype->getStructName() == "String")
+		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
+			&& rtype->isStructType() && rtype->toStructType()->getStructName() == "String")
 		{
 			// support this shit.
 			// error(cgi, this, "Automatic char* -> String casting not yet supported");
@@ -525,17 +527,16 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			std::string lstr = cgi->getReadableType(lhs).c_str();
 			std::string rstr = cgi->getReadableType(rtype).c_str();
 
-			if(!fir::CastInst::castIsValid(fir::Instruction::BitCast, lhs, rtype))
-			{
-				error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
-			}
-			else
-			{
-				warn(this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
-			}
+			// if(!fir::CastInst::castIsValid(fir::Instruction::BitCast, lhs, rtype))
+			// {
+			// 	error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			// }
+			// else
+
+			warn(this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
 		}
 
-		return Result_t(cgi->builder.CreateBitCast(lhs, rtype), 0);
+		return Result_t(cgi->builder.CreateBitcast(lhs, rtype), 0);
 	}
 	else
 	{
@@ -569,12 +570,12 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		bool lhsInteger = false;
 		bool rhsInteger = false;
 
-		if(lhs->getType()->isIntegerTy())
+		if(lhs->getType()->isIntegerType())
 		{
 			lhsInteger = true;
 		}
 
-		if(rhs->getType()->isIntegerTy())
+		if(rhs->getType()->isIntegerType())
 		{
 			rhsInteger = true;
 
@@ -598,7 +599,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 
 
-	if(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
+	if(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType())
 	{
 		if((this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::PlusEquals
 			|| this->op == ArithmeticOp::MinusEquals))
@@ -610,32 +611,26 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			Number* n = dynamic_cast<Number*>(this->right);
 			if(n && !n->decimal && n->ival == 0)
 			{
-				fir::Value* casted = cgi->builder.CreatePtrToInt(lhs, rhs->getType());
+				fir::Value* casted = cgi->builder.CreatePointerToIntCast(lhs, rhs->getType());
 
 				if(this->op == ArithmeticOp::CmpEq)
 					return Result_t(cgi->builder.CreateICmpEQ(casted, rhs), 0);
 				else
-					return Result_t(cgi->builder.CreateICmpNE(casted, rhs), 0);
+					return Result_t(cgi->builder.CreateICmpNEQ(casted, rhs), 0);
 			}
 		}
 	}
 	else if(isBuiltinIntegerOp)
 	{
-		fir::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
-			cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
+		// fir::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
+		// 	cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
-		if(lop != (fir::Instruction::BinaryOps) 0)
+		cgi->autoCastType(lhs, rhs);
+
+		fir::Value* tryop = cgi->builder.CreateBinaryOp(this->op, lhs, rhs);
+		if(tryop)
 		{
-			cgi->autoCastType(lhs, rhs);
-			cgi->autoCastType(rhs, lhs);
-
-			if(lhs->getType() != rhs->getType())
-			{
-				error(this, "Invalid binary op between '%s' and '%s'", cgi->getReadableType(lhs).c_str(),
-					cgi->getReadableType(rhs).c_str());
-			}
-
-			return Result_t(cgi->builder.CreateBinOp(lop, lhs, rhs), 0);
+			return Result_t(tryop, 0);
 		}
 
 		cgi->autoCastType(rhs, lhs);
@@ -643,41 +638,29 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		{
 			// comparisons
 			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNE(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
 
 
 			case ArithmeticOp::CmpLT:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->builder.CreateICmpSLT(lhs, rhs), 0);
-				else
-					return Result_t(cgi->builder.CreateICmpULT(lhs, rhs), 0);
-
-
+				return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
 
 			case ArithmeticOp::CmpGT:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->builder.CreateICmpSGT(lhs, rhs), 0);
-				else
-					return Result_t(cgi->builder.CreateICmpUGT(lhs, rhs), 0);
-
+				return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
 
 			case ArithmeticOp::CmpLEq:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->builder.CreateICmpSLE(lhs, rhs), 0);
-				else
-					return Result_t(cgi->builder.CreateICmpULE(lhs, rhs), 0);
-
-
+				return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
 
 			case ArithmeticOp::CmpGEq:
-				if(cgi->isSignedType(this->left) || cgi->isSignedType(this->right))
-					return Result_t(cgi->builder.CreateICmpSGE(lhs, rhs), 0);
-				else
-					return Result_t(cgi->builder.CreateICmpUGE(lhs, rhs), 0);
-
+				return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
 
 			case ArithmeticOp::LogicalOr:
+				return Result_t(cgi->builder.CreateLogicalOR(lhs, rhs), 0);
+
 			case ArithmeticOp::LogicalAnd:
+				return Result_t(cgi->builder.CreateLogicalAND(lhs, rhs), 0);
+
+
+			#if 0
 			{
 				int theOp = this->op == ArithmeticOp::LogicalOr ? 0 : 1;
 				fir::Value* trueval = fir::ConstantInt::get(cgi->getContext(), fir::APInt(1, 1, true));
@@ -741,6 +724,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 				return Result_t(this->phi, 0);
 			}
+			#endif
 
 			default:
 				// should not be reached
@@ -758,18 +742,18 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		// then they're floats.
 		switch(this->op)
 		{
-			case ArithmeticOp::Add:			return Result_t(cgi->builder.CreateFAdd(lhs, rhs), 0);
-			case ArithmeticOp::Subtract:	return Result_t(cgi->builder.CreateFSub(lhs, rhs), 0);
-			case ArithmeticOp::Multiply:	return Result_t(cgi->builder.CreateFMul(lhs, rhs), 0);
-			case ArithmeticOp::Divide:		return Result_t(cgi->builder.CreateFDiv(lhs, rhs), 0);
+			case ArithmeticOp::Add:			return Result_t(cgi->builder.CreateAdd(lhs, rhs), 0);
+			case ArithmeticOp::Subtract:	return Result_t(cgi->builder.CreateSub(lhs, rhs), 0);
+			case ArithmeticOp::Multiply:	return Result_t(cgi->builder.CreateMul(lhs, rhs), 0);
+			case ArithmeticOp::Divide:		return Result_t(cgi->builder.CreateDiv(lhs, rhs), 0);
 
 			// comparisons
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpOEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpONE(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpOLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpOGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpOLE(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpOGE(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ(lhs, rhs), 0);
 
 			default:						error(this, "Unsupported operator.");
 		}
@@ -779,8 +763,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		iceAssert(lhsPtr);
 		iceAssert(rhsPtr);
 
-		fir::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
-		fir::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
+		fir::Value* gepL = cgi->builder.CreateGetConstStructMember(lhsPtr, 0);
+		fir::Value* gepR = cgi->builder.CreateGetConstStructMember(rhsPtr, 0);
 
 		fir::Value* l = cgi->builder.CreateLoad(gepL);
 		fir::Value* r = cgi->builder.CreateLoad(gepR);
@@ -793,7 +777,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		}
 		else if(this->op == ArithmeticOp::CmpNEq)
 		{
-			res = cgi->builder.CreateICmpNE(l, r);
+			res = cgi->builder.CreateICmpNEQ(l, r);
 		}
 		else
 		{
@@ -803,7 +787,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 		return Result_t(res, 0);
 	}
-	else if(lhs->getType()->isStructTy() || rhs->getType()->isStructTy())
+	else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
 	{
 		// Result_t ret = cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs, r.second);
 

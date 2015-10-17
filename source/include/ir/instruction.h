@@ -25,17 +25,25 @@
 
 #include "value.h"
 
+namespace Ast
+{
+	enum class ArithmeticOp;
+}
+
+
 namespace fir
 {
 	enum class OpKind
 	{
-		// binary
+		Invalid,
+
 		// signed
 		Signed_Add,
 		Signed_Sub,
 		Signed_Mul,
 		Signed_Div,
 		Signed_Mod,
+		Signed_Neg,
 
 		// unsigned
 		Unsigned_Add,
@@ -43,6 +51,17 @@ namespace fir
 		Unsigned_Mul,
 		Unsigned_Div,
 		Unsigned_Mod,
+
+		// floating point
+		Floating_Add,
+		Floating_Sub,
+		Floating_Mul,
+		Floating_Div,
+		Floating_Mod,
+		Floating_Neg,
+
+		Floating_Truncate,
+		Floating_Extend,
 
 		// comparison
 		ICompare_Equal,
@@ -66,10 +85,11 @@ namespace fir
 		Logical_Or,
 
 		// bitwise
+		Bitwise_Not,
 		Bitwise_Xor,
-		Bitwise_Arithmetic_Shl,
-		Bitwise_Logical_Shl,
-		Bitwise_Shr,
+		Bitwise_Arithmetic_Shr,
+		Bitwise_Logical_Shr,
+		Bitwise_Shl,
 		Bitwise_And,
 		Bitwise_Or,
 
@@ -117,6 +137,9 @@ namespace fir
 
 		void setValue(Value* v);
 		void clearValue();
+
+		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
+
 
 		protected:
 		OpKind opKind;

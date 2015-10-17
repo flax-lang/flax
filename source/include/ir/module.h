@@ -47,6 +47,7 @@ namespace fir
 		void addNamedType(std::string name, StructType* type);
 		void deleteNamedType(std::string name);
 
+		void declareFunction(std::string name, FunctionType* ftype);
 		void addFunction(Function* func);
 		void deleteFunction(std::string name);
 		Function* getFunction(std::string name);
@@ -59,6 +60,12 @@ namespace fir
 		std::map<std::string, GlobalValue*> globals;
 		std::map<std::string, StructType*> namedTypes;
 		std::map<std::string, Function*> functions;
+	};
+
+	struct ExecutionTarget
+	{
+		size_t getPointerWidthInBits();
+		size_t getTypeSizeInBits(Type* type);
 	};
 }
 

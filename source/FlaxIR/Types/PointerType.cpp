@@ -79,18 +79,6 @@ namespace fir
 		return this->baseType->isTypeEqual(po->baseType);
 	}
 
-	fir::Type* PointerType::getLlvmType(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		if(this->llvmType == 0)
-		{
-			this->llvmType = this->baseType->getLlvmType()->getPointerTo();
-		}
-
-		return this->llvmType;
-	}
 
 	size_t PointerType::getIndirections()
 	{

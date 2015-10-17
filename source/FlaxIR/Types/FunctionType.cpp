@@ -64,23 +64,7 @@ namespace fir
 	}
 
 
-	fir::Type* FunctionType::getLlvmType(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
 
-		if(this->llvmType == 0)
-		{
-			// do it.
-			std::vector<fir::Type*> fargs;
-			for(auto a : this->functionParams)
-				fargs.push_back(a->getLlvmType());
-
-			this->llvmType = fir::FunctionType::get(this->functionRetType->getLlvmType(), fargs, this->isFnVarArg);
-		}
-
-		return this->llvmType;
-	}
 
 	// function stuff
 	std::deque<Type*> FunctionType::getArgumentTypes()

@@ -68,6 +68,9 @@ namespace fir
 		size_t getArgumentCount();
 		std::deque<Argument*> getArguments();
 
+		std::deque<IRBlock*>& getBlockList();
+
+		void deleteBody();
 
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.

@@ -556,7 +556,7 @@ int main(int argc, char* argv[])
 		// out << *(mainModule);
 		// out.close();
 
-		fprintf(stderr, "enosup\n");
+		fprintf(stderr, "enotsup\n");
 		exit(-1);
 	}
 

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "../include/ir/value.h"
+#include "../include/ir/constant.h"
 
 namespace fir
 {

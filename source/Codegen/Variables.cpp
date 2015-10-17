@@ -19,7 +19,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	if(!val)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
-	return Result_t(cgi->builder.CreateLoad(val, this->name), val);
+	return Result_t(cgi->builder.CreateLoad(val), val);
 }
 
 
@@ -36,7 +36,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	fir::Value* ai = storage;
 	bool didAddToSymtab = false;
 
-	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayTy())
+	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
 	{
 		// ...
 	}
@@ -157,28 +157,28 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
 		Number* n = 0;
-		if(val->getType()->isIntegerTy() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
+		if(val->getType()->isIntegerType() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
 		{
-			val = fir::Constant::getNullValue(ai->getType()->getPointerElementType());
+			val = fir::ConstantValue::getNullValue(ai->getType()->getPointerElementType());
 		}
-		else if(val->getType()->isIntegerTy() && ai->getType()->getPointerElementType()->isIntegerTy())
+		else if(val->getType()->isIntegerType() && ai->getType()->getPointerElementType()->isIntegerType())
 		{
 			Number* n = 0;
 
 			if((n = dynamic_cast<Number*>(this->initVal)))
 			{
-				uint64_t max = pow(2, ai->getType()->getPointerElementType()->getIntegerBitWidth()) - 1;
+				uint64_t max = pow(2, ai->getType()->getPointerElementType()->toPrimitiveType()->getIntegerBitWidth()) - 1;
 				if(max == 0)
 					max = UINT64_MAX;
 
 				if((uint64_t) n->ival < max)
 				{
-					val = cgi->builder.CreateIntCast(val, ai->getType()->getPointerElementType(), false);
+					val = cgi->builder.CreateIntSizeCast(val, ai->getType()->getPointerElementType());
 				}
 				else
 				{
-					error(this, "Trying to assign value of %s to variable with max value %s (int%d)", std::to_string(n->ival).c_str(),
-						std::to_string(max).c_str(), ai->getType()->getPointerElementType()->getIntegerBitWidth());
+					error(this, "Trying to assign value of %s to variable with max value %s (int%zu)", std::to_string(n->ival).c_str(),
+						std::to_string(max).c_str(), ai->getType()->getPointerElementType()->toPrimitiveType()->getIntegerBitWidth());
 				}
 			}
 		}
@@ -208,7 +208,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 		fir::Type* vartype = cgi->getLlvmType(this->initVal);
-		if(vartype == nullptr || vartype->isVoidTy())
+		if(vartype == nullptr || vartype->isVoid())
 			GenError::nullValue(cgi, this->initVal);
 
 
@@ -221,7 +221,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		this->inferredLType = cgi->getLlvmType(this->initVal);
 
-		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructTy())
+		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructType())
 			this->type = cgi->getReadableType(this->initVal);
 	}
 	else
@@ -309,8 +309,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 		else
 		{
-			ai = new fir::GlobalVariable(*cgi->module, this->inferredLType, this->immutable, fir::GlobalValue::InternalLinkage,
-				fir::Constant::getNullValue(this->inferredLType), this->name);
+			ai = new fir::GlobalVariable(this->name, cgi->module, this->inferredLType, this->immutable, fir::LinkageType::Internal,
+				fir::ConstantValue::getNullValue(this->inferredLType));
 		}
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();
@@ -319,17 +319,17 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		{
 			iceAssert(val);
 
-			if(fir::cast<fir::Constant>(val))
+			if(dynamic_cast<fir::ConstantValue*>(val))
 			{
 				cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
-				fir::cast<fir::GlobalVariable>(ai)->setInitializer(fir::cast<fir::Constant>(val));
+				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
 			}
 			else
 			{
 				cgi->addGlobalConstructedValue(ai, val);
 			}
 		}
-		else if(ltype->isStructTy() && !cgi->isTupleType(ltype))
+		else if(ltype->isStructType() && !cgi->isTupleType(ltype))
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -343,16 +343,16 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 		else if(cgi->isTupleType(ltype))
 		{
-			fir::StructType* stype = fir::cast<fir::StructType>(ltype);
+			fir::StructType* stype = dynamic_cast<fir::StructType*>(ltype);
 
 			int i = 0;
-			for(fir::Type* t : stype->elements())
+			for(fir::Type* t : stype->getElements())
 			{
 				if(cgi->isTupleType(t))
 				{
 					error(this, "global nested tuples not supported yet");
 				}
-				else if(t->isStructTy())
+				else if(t->isStructType())
 				{
 					TypePair_t* tp = cgi->getType(t);
 					iceAssert(tp);
@@ -362,7 +362,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 				}
 				else
 				{
-					cgi->addGlobalTupleConstructedValue(ai, i, fir::Constant::getNullValue(t));
+					cgi->addGlobalTupleConstructedValue(ai, i, fir::ConstantValue::getNullValue(t));
 				}
 
 				i++;

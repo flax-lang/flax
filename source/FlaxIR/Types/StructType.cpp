@@ -161,31 +161,6 @@ namespace fir
 	}
 
 
-	fir::Type* StructType::getLlvmType(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		if(this->llvmType == 0)
-		{
-			std::vector<fir::Type*> lmems;
-
-			for(auto m : this->structMembers)
-				lmems.push_back(m->getLlvmType());
-
-			if(this->typeKind == FTypeKind::NamedStruct)
-			{
-				if(!(this->llvmType = tc->module->getTypeByName(this->structName)))
-					this->llvmType = fir::StructType::create(*tc->llvmContext, lmems, this->structName, this->isTypePacked);
-			}
-			else
-			{
-				this->llvmType = fir::StructType::get(*tc->llvmContext, lmems, this->isTypePacked);
-			}
-		}
-
-		return this->llvmType;
-	}
 
 	// struct stuff
 	std::string StructType::getStructName()
@@ -225,12 +200,6 @@ namespace fir
 		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
 
 		this->structMembers = members;
-
-		std::vector<fir::Type*> lmems;
-		for(auto m : this->structMembers)
-			lmems.push_back(m->getLlvmType());
-
-		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 	void StructType::setBody(std::vector<Type*> members)
@@ -242,12 +211,6 @@ namespace fir
 			dmems.push_back(m);
 
 		this->structMembers = dmems;
-
-		std::vector<fir::Type*> lmems;
-		for(auto m : this->structMembers)
-			lmems.push_back(m->getLlvmType());
-
-		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 	void StructType::setBody(std::deque<Type*> members)
@@ -255,12 +218,6 @@ namespace fir
 		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
 
 		this->structMembers = members;
-
-		std::vector<fir::Type*> lmems;
-		for(auto m : this->structMembers)
-			lmems.push_back(m->getLlvmType());
-
-		fir::cast<fir::StructType>(this->getLlvmType())->setBody(lmems, this->isPackedStruct());
 	}
 
 
@@ -280,12 +237,12 @@ namespace fir
 			}
 		}
 
-		// erase llvm.
-		fir::StructType* st = fir::cast<fir::StructType>(this->getLlvmType());
-		iceAssert(st);
+		// // erase llvm.
+		// fir::StructType* st = fir::cast<fir::StructType>(this->getLlvmType());
+		// iceAssert(st);
 
-		// According to llvm source Type.cpp, doing this removes the struct def from the symbol table.
-		st->setName("");
+		// // According to llvm source Type.cpp, doing this removes the struct def from the symbol table.
+		// st->setName("");
 
 		// todo: safe?
 		delete this;

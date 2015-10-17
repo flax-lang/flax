@@ -48,10 +48,11 @@ namespace fir
 
 
 	// function stuff
-	Function::Function(std::string name, FunctionType* fnType) : Value(fnType)
+	Function::Function(std::string name, FunctionType* fnType, Module* module, LinkageType linkage) : GlobalValue(fnType, linkage)
 	{
 		this->valueName = name;
 		this->valueType = fnType;
+		// this->
 
 		for(auto t : fnType->getArgumentTypes())
 			this->fnArguments.push_back(new Argument(this, t));
