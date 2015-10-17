@@ -152,6 +152,73 @@ namespace fir
 
 
 
+	std::string Module::print()
+	{
+		std::string ret;
+
+		for(auto string : this->globalStrings)
+		{
+			ret += "global string (%" + std::to_string(string.second->id);
+			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + string.first + "\"\n";
+		}
+
+		for(auto global : this->globals)
+		{
+		}
+
+		for(auto type : this->namedTypes)
+		{
+			// should just automatically create it.
+			ret += type.second->str() + "\n";
+		}
+
+		for(auto fp : this->functions)
+		{
+			Function* ffn = fp.second;
+
+			std::string decl;
+
+			decl += "func: " + ffn->getName() + "(";
+			for(auto a : ffn->getArguments())
+			{
+				decl += "%" + std::to_string(a->id);
+
+				if(a != ffn->getArguments().back())
+					decl += ", ";
+			}
+
+			if(ffn->blocks.size() == 0)
+			{
+				decl += ") -> ";
+				decl += "@" + ffn->getReturnType()->str();
+				decl += "\n";
+
+				ret += "declare " + decl;
+				continue;
+			}
+
+			ret += decl;
+
+			ret += ") -> ";
+			ret += "@" + ffn->getReturnType()->str();
+			ret += "\n{";
+
+
+			for(auto block : ffn->getBlockList())
+			{
+				ret += "\n    (%" + std::to_string(block->id) + ") " + block->getName() + ":\n";
+
+				for(auto inst : block->instructions)
+					ret += "        " + inst->str() + "\n";
+			}
+			ret += ("}\n\n");
+		}
+
+		return ret;
+	}
+
+
+
 
 
 

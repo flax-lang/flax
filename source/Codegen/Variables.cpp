@@ -309,8 +309,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 		else
 		{
-			ai = new fir::GlobalVariable(this->name, cgi->module, this->inferredLType, this->immutable, fir::LinkageType::Internal,
-				fir::ConstantValue::getNullValue(this->inferredLType));
+			ai = cgi->module->createGlobalVariable(this->name, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+				this->immutable, fir::LinkageType::Internal);
 		}
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();

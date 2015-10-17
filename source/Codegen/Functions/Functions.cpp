@@ -52,8 +52,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 	bool isPublic = this->decl->attribs & Attr_VisPublic;
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
-	// because the main code generator is two-pass, we expect all function declarations to have been generated
-	// so just fetch it.
 
 	if(isGeneric && isPublic)
 	{
@@ -71,16 +69,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 		func = cgi->module->getFunction(this->decl->mangledName);
 		if(!func)
 		{
-			if(isGeneric && !isPublic)
+			this->didCodegen = false;
+			if(isGeneric)
 			{
 				warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
-				return Result_t(0, 0);
-			}
-			else if(!isGeneric && !isPublic)
-			{
-				// this should not happen
-				// warn(this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
-				warn(this, "Function %s is not public and is never called; it will not be emitted", this->decl->name.c_str());
 				return Result_t(0, 0);
 			}
 			else

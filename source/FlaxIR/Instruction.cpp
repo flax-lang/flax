@@ -112,7 +112,7 @@ namespace fir
 		std::string ops;
 		for(auto op : this->operands)
 		{
-			ops += "(" + op->getType()->str() + " ";
+			ops += "(@" + op->getType()->str() + " ";
 			if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
 			{
 				ops += std::to_string(ci->getSignedValue());
@@ -138,10 +138,10 @@ namespace fir
 		}
 
 		if(ops.length() > 0) ops = ops.substr(0, ops.length() - 2);
-		std::string t = this->realOutput->getType()->str();
+		std::string t = "@" + this->realOutput->getType()->str();
 
 		std::string ret;
-		if(t == "void")
+		if(t == "@void")
 		{
 			ret = name + " " + ops;
 		}

@@ -126,6 +126,8 @@ namespace fir
 
 
 
+
+
 	llvm::Module* Module::translateToLlvm()
 	{
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
@@ -164,10 +166,6 @@ namespace fir
 
 		auto addValueToMap = [&valueMap](llvm::Value* v, Value* fv) {
 
-			if(fv->id == 595)
-			{
-				printf("");
-			}
 
 			if(valueMap.find(fv) != valueMap.end())
 				error("already have value of %p (id %zu)", fv, fv->id);
@@ -185,9 +183,6 @@ namespace fir
 				llvm::GlobalValue::LinkageTypes::PrivateLinkage, cstr);
 
 			valueMap[string.second] = gv;
-
-			printf("global str (%%%zu) [%zu] = \"%s\"\n", string.second->id, string.first.length(),
-				string.first.c_str());
 		}
 
 		for(auto global : this->globals)
@@ -245,29 +240,14 @@ namespace fir
 			llvm::Function* func = module->getFunction(fp.second->getName());
 			iceAssert(func);
 
-			printf("func: %s (", func->getName().bytes_begin());
-			for(auto a : ffn->getArguments())
-			{
-				printf("%%%zu", a->id);
-				if(a != ffn->getArguments().back())
-					printf(", ");
-			}
-
-			if(ffn->blocks.size() == 0) { printf(") { }\n"); continue; }
-
-
-			printf(")\n{");
 
 			for(auto block : ffn->getBlockList())
 			{
 				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
 				builder.SetInsertPoint(bb);
 
-				printf("\n    (%%%zu) %s:\n", block->id, block->getName().c_str());
 				for(auto inst : block->instructions)
 				{
-					printf("        %s\n", inst->str().c_str());
-
 					// good god.
 					switch(inst->opKind)
 					{
@@ -774,11 +754,6 @@ namespace fir
 							Type* ft = inst->operands[0]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
-							if(inst->operands[0]->id == 223)
-							{
-								printf("");
-							}
-
 							llvm::Value* ret = builder.CreateAlloca(t);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1088,11 +1063,8 @@ namespace fir
 						default:
 							iceAssert(0);
 					}
-
-					// printf("DID ONE\n");
 				}
 			}
-			printf("}\n\n");
 		}
 
 		return module;

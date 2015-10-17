@@ -239,7 +239,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(!this->isPointerType())
-			iceAssert(!"type is not a pointer");
+			error("type is not a pointer (%s)", this->str().c_str());
 
 
 		PointerType* ptrthis = dynamic_cast<PointerType*>(this);
