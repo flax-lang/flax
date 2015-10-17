@@ -32,13 +32,27 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		cgi->module = new llvm::Module(Parser::getModuleName(filename), llvm::getGlobalContext());
+		cgi->module = new fir::Module(Parser::getModuleName(filename));
 		cgi->rootNode = root;
 
+
+		// todo: proper.
+		if(sizeof(void*) == 8)
+			cgi->execTarget = fir::ExecutionTarget::getLP64();
+
+		else if(sizeof(void*) == 4)
+			cgi->execTarget = fir::ExecutionTarget::getILP32();
+
+		else
+			error("enotsup: ptrsize = %zu", sizeof(void*));
+
+
+
+		#if 0
 		std::string err;
-		cgi->execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(cgi->module))
+		cgi->execEngine = fir::EngineBuilder(std::unique_ptr<fir::Module>(cgi->module))
 							.setErrorStr(&err)
-							.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+							.setMCJITMemoryManager(fir::make_unique<fir::SectionMemoryManager>())
 							.create();
 
 		if(!cgi->execEngine)
@@ -47,45 +61,45 @@ namespace Codegen
 			exit(1);
 		}
 
-		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(cgi->module);
+		fir::FunctionPassManager functionPassManager = fir::FunctionPassManager(cgi->module);
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
 			// Provide basic AliasAnalysis support for GVN.
-			functionPassManager.add(llvm::createBasicAliasAnalysisPass());
+			functionPassManager.add(fir::createBasicAliasAnalysisPass());
 
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			functionPassManager.add(llvm::createInstructionCombiningPass());
+			functionPassManager.add(fir::createInstructionCombiningPass());
 
 			// Reassociate expressions.
-			functionPassManager.add(llvm::createReassociatePass());
+			functionPassManager.add(fir::createReassociatePass());
 
 			// Eliminate Common SubExpressions.
-			functionPassManager.add(llvm::createGVNPass());
+			functionPassManager.add(fir::createGVNPass());
 
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			functionPassManager.add(llvm::createCFGSimplificationPass());
+			functionPassManager.add(fir::createCFGSimplificationPass());
 
 			// hmm.
 			// fuck it, turn everything on.
-			functionPassManager.add(llvm::createLoadCombinePass());
-			functionPassManager.add(llvm::createConstantHoistingPass());
-			functionPassManager.add(llvm::createLICMPass());
-			functionPassManager.add(llvm::createDelinearizationPass());
-			functionPassManager.add(llvm::createFlattenCFGPass());
-			functionPassManager.add(llvm::createScalarizerPass());
-			functionPassManager.add(llvm::createSinkingPass());
-			functionPassManager.add(llvm::createStructurizeCFGPass());
-			functionPassManager.add(llvm::createInstructionSimplifierPass());
-			functionPassManager.add(llvm::createDeadStoreEliminationPass());
-			functionPassManager.add(llvm::createDeadInstEliminationPass());
-			functionPassManager.add(llvm::createMemCpyOptPass());
+			functionPassManager.add(fir::createLoadCombinePass());
+			functionPassManager.add(fir::createConstantHoistingPass());
+			functionPassManager.add(fir::createLICMPass());
+			functionPassManager.add(fir::createDelinearizationPass());
+			functionPassManager.add(fir::createFlattenCFGPass());
+			functionPassManager.add(fir::createScalarizerPass());
+			functionPassManager.add(fir::createSinkingPass());
+			functionPassManager.add(fir::createStructurizeCFGPass());
+			functionPassManager.add(fir::createInstructionSimplifierPass());
+			functionPassManager.add(fir::createDeadStoreEliminationPass());
+			functionPassManager.add(fir::createDeadInstEliminationPass());
+			functionPassManager.add(fir::createMemCpyOptPass());
 
-			functionPassManager.add(llvm::createSCCPPass());
-			functionPassManager.add(llvm::createAggressiveDCEPass());
+			functionPassManager.add(fir::createSCCPPass());
+			functionPassManager.add(fir::createAggressiveDCEPass());
 
-			functionPassManager.add(llvm::createTailCallEliminationPass());
+			functionPassManager.add(fir::createTailCallEliminationPass());
 		}
 
 		// optimisation level -1 disables *everything*
@@ -93,18 +107,19 @@ namespace Codegen
 		if(Compiler::getOptimisationLevel() >= 0)
 		{
 			// always do the mem2reg pass, our generated code is too inefficient
-			functionPassManager.add(llvm::createPromoteMemoryToRegisterPass());
-			functionPassManager.add(llvm::createMergedLoadStoreMotionPass());
-			functionPassManager.add(llvm::createScalarReplAggregatesPass());
-			functionPassManager.add(llvm::createConstantPropagationPass());
-			functionPassManager.add(llvm::createDeadCodeEliminationPass());
+			functionPassManager.add(fir::createPromoteMemoryToRegisterPass());
+			functionPassManager.add(fir::createMergedLoadStoreMotionPass());
+			functionPassManager.add(fir::createScalarReplAggregatesPass());
+			functionPassManager.add(fir::createConstantPropagationPass());
+			functionPassManager.add(fir::createDeadCodeEliminationPass());
 		}
 
 
 		functionPassManager.doInitialization();
+		#endif
 
 		// Set the global so the code gen can use this.
-		cgi->Fpm = &functionPassManager;
+		// cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
 		// add the generic functions from previous shits.
@@ -113,13 +128,13 @@ namespace Codegen
 			cgi->rootNode->genericFunctions.push_back(fd.first);
 		}
 
-		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getName().str();
-		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getName().str();
+		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getModuleName();
 
 
 		// rootFuncStack should really be empty, except we know that there should be
 		// stuff inside from imports.
-		// thus, solidify the insides of these, by adding the function to llvm::Module.
+		// thus, solidify the insides of these, by adding the function to fir::Module.
 
 		cgi->cloneFunctionTree(cgi->rootNode->rootFuncStack, cgi->rootNode->rootFuncStack, true);
 
@@ -136,16 +151,18 @@ namespace Codegen
 
 	void writeBitcode(std::string filename, CodegenInstance* cgi)
 	{
+		#if 0
 		std::error_code e;
-		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		fir::sys::fs::OpenFlags of = (fir::sys::fs::OpenFlags) 0;
 		size_t lastdot = filename.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
 		oname += ".bc";
 
-		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+		fir::raw_fd_ostream rso(oname.c_str(), e, of);
 
-		llvm::WriteBitcodeToFile(cgi->module, rso);
+		fir::WriteBitcodeToFile(cgi->module, rso);
 		rso.close();
+		#endif
 	}
 
 
@@ -166,9 +183,12 @@ namespace Codegen
 
 
 
-	llvm::LLVMContext& CodegenInstance::getContext()
+	fir::FTContext* CodegenInstance::getContext()
 	{
-		return llvm::getGlobalContext();
+		auto c = fir::getDefaultFTContext();
+		c->module = this->module;
+
+		return fir::getDefaultFTContext();
 	}
 
 	void CodegenInstance::popScope()
@@ -220,7 +240,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	llvm::Value* CodegenInstance::getSymInst(Expr* user, const std::string& name)
+	fir::Value* CodegenInstance::getSymInst(Expr* user, const std::string& name)
 	{
 		SymbolPair_t* pair = getSymPair(user, name);
 		if(pair)
@@ -245,26 +265,26 @@ namespace Codegen
 		return getSymTab().find(name) != getSymTab().end();
 	}
 
-	void CodegenInstance::addSymbol(std::string name, llvm::Value* ai, VarDecl* vardecl)
+	void CodegenInstance::addSymbol(std::string name, fir::Value* ai, VarDecl* vardecl)
 	{
 		SymbolPair_t sp(ai, vardecl);
 		this->getSymTab()[name] = sp;
 	}
 
 
-	bool CodegenInstance::areEqualTypes(llvm::Type* a, llvm::Type* b)
+	bool CodegenInstance::areEqualTypes(fir::Type* a, fir::Type* b)
 	{
 		if(a == b) return true;
-		else if(a->isStructTy() && b->isStructTy())
+		else if(a->isStructType() && b->isStructType())
 		{
-			llvm::StructType* sa = llvm::cast<llvm::StructType>(a);
-			llvm::StructType* sb = llvm::cast<llvm::StructType>(b);
+			fir::StructType* sa = a->toStructType();
+			fir::StructType* sb = b->toStructType();
 
 			// get the first part of the name.
-			if(!sa->isLiteral() && !sb->isLiteral())
+			if(!sa->isLiteralStruct() && !sb->isLiteralStruct())
 			{
-				std::string an = sa->getName();
-				std::string bn = sb->getName();
+				std::string an = sa->getStructName();
+				std::string bn = sb->getStructName();
 
 				std::string fan = an.substr(0, an.find_first_of('.'));
 				std::string fbn = bn.substr(0, bn.find_first_of('.'));
@@ -272,13 +292,14 @@ namespace Codegen
 				if(fan != fbn) return false;
 			}
 
-			return sa->isLayoutIdentical(sb);
+			// return sa->isLayoutIdentical(sb);
+			return sa->isTypeEqual(sb);
 		}
 
 		return false;
 	}
 
-	void CodegenInstance::addNewType(llvm::Type* ltype, StructBase* atype, TypeKind e)
+	void CodegenInstance::addNewType(fir::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 
@@ -287,7 +308,7 @@ namespace Codegen
 
 		if(ftree->types.find(atype->name) != ftree->types.end())
 		{
-			// only if there's an actual, llvm::Type* there.
+			// only if there's an actual, fir::Type* there.
 			if(ftree->types[atype->name].first)
 				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
@@ -361,12 +382,12 @@ namespace Codegen
 		// try generic types.
 		{
 			// this is somewhat complicated.
-			// resolveGenericType returns an llvm::Type*.
+			// resolveGenericType returns an fir::Type*.
 			// we need to return a TypePair_t* here. So... we should be able to "reverse-find"
-			// the actual TypePair_t by calling the other version of getType(llvm::Type*).
+			// the actual TypePair_t by calling the other version of getType(fir::Type*).
 
 			// confused? source code explains better than I can.
-			llvm::Type* possibleGeneric = this->resolveGenericType(name);
+			fir::Type* possibleGeneric = this->resolveGenericType(name);
 			if(possibleGeneric)
 			{
 				if(this->isBuiltinType(possibleGeneric))
@@ -388,7 +409,7 @@ namespace Codegen
 		return 0;
 	}
 
-	TypePair_t* CodegenInstance::getType(llvm::Type* type)
+	TypePair_t* CodegenInstance::getType(fir::Type* type)
 	{
 		if(!type)
 			return nullptr;
@@ -419,7 +440,7 @@ namespace Codegen
 		return this->blockStack.size() > 0 ? &this->blockStack.back() : 0;
 	}
 
-	void CodegenInstance::pushBracedBlock(BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after)
+	void CodegenInstance::pushBracedBlock(BreakableBracedBlock* block, fir::IRBlock* body, fir::IRBlock* after)
 	{
 		BracedBlockScope cs = std::make_pair(block, std::make_pair(body, after));
 		this->blockStack.push_back(cs);
@@ -456,11 +477,11 @@ namespace Codegen
 	// generic type stacks
 	void CodegenInstance::pushGenericTypeStack()
 	{
-		auto newPart = std::map<std::string, llvm::Type*>();
+		auto newPart = std::map<std::string, fir::Type*>();
 		this->instantiatedGenericTypeStack.push_back(newPart);
 	}
 
-	void CodegenInstance::pushGenericType(std::string id, llvm::Type* type)
+	void CodegenInstance::pushGenericType(std::string id, fir::Type* type)
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
 		if(this->resolveGenericType(id) != 0)
@@ -469,7 +490,7 @@ namespace Codegen
 		this->instantiatedGenericTypeStack.back()[id] = type;
 	}
 
-	llvm::Type* CodegenInstance::resolveGenericType(std::string id)
+	fir::Type* CodegenInstance::resolveGenericType(std::string id)
 	{
 		for(int i = this->instantiatedGenericTypeStack.size(); i-- > 0;)
 		{
@@ -524,20 +545,20 @@ namespace Codegen
 
 			if(deep)
 			{
-				llvm::Function* func = pair.first;
+				fir::Function* func = pair.first;
 				if(func)
 				{
-					iceAssert(func && func->hasName());
+					iceAssert(func);
 
 					// add to the func table
 					auto lf = this->module->getFunction(func->getName());
 					if(!lf)
 					{
-						this->module->getOrInsertFunction(func->getName(), func->getFunctionType());
+						this->module->declareFunction(func->getName(), func->getType());
 						lf = this->module->getFunction(func->getName());
 					}
 
-					llvm::Function* f = llvm::cast<llvm::Function>(lf);
+					fir::Function* f = dynamic_cast<fir::Function*>(lf);
 
 					f->deleteBody();
 					this->addFunctionToScope(FuncPair_t(f, pair.second));
@@ -586,12 +607,12 @@ namespace Codegen
 						if(Struct* str = dynamic_cast<Struct*>(sb))
 						{
 							for(auto f : str->initFuncs)
-								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
+								this->module->declareFunction(f->getName(), f->getType());
 						}
 						else if(Class* cls = dynamic_cast<Class*>(sb))
 						{
 							for(auto f : cls->initFuncs)
-								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
+								this->module->declareFunction(f->getName(), f->getType());
 						}
 						else
 						{
@@ -620,7 +641,7 @@ namespace Codegen
 			if(!found)
 			{
 				OpOverload* ooo = oo.first;
-				clone->operators.push_back(std::make_pair(ooo, (llvm::Function*) 0));
+				clone->operators.push_back(std::make_pair(ooo, (fir::Function*) 0));
 			}
 		}
 
@@ -708,7 +729,7 @@ namespace Codegen
 
 		// not this though.
 		int indirections = 0;
-		name = this->unwrapPointerType(name, &indirections);
+		name = unwrapPointerType(name, &indirections);
 
 		for(size_t i = 0; i <= scope.size(); i++)
 		{
@@ -841,12 +862,12 @@ namespace Codegen
 					}
 					else
 					{
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						return f.first->getType() == fp.first->getType();
 					}
 				};
 
 
-				if((f.second ? f.second->name : f.first->getName().str()) == basename)
+				if((f.second ? f.second->name : f.first->getName()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -873,7 +894,7 @@ namespace Codegen
 		for(auto c : candidates)
 		{
 			int distance = 0;
-			if((c.second ? c.second->name : c.first->getName().str()) == basename
+			if((c.second ? c.second->name : c.first->getName()) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
 				finals.push_back({ c, distance });
@@ -977,14 +998,13 @@ namespace Codegen
 		}
 		else if(fp.first)
 		{
-			llvm::Function* lf = fp.first;
-			llvm::FunctionType* ft = lf->getFunctionType();
+			fir::Function* lf = fp.first;
+			fir::FunctionType* ft = lf->getType();
 
-			size_t i = 0;
-			for(auto it = ft->param_begin(); it != ft->param_end() && i < params.size(); it++, i++)
+			for(size_t i = 0; i < ft->getArgumentTypes().size(); i++)
 			{
 				auto t1 = this->getLlvmType(params[i], true);
-				auto t2 = *it;
+				auto t2 = ft->getArgumentN(i);
 
 				if(t1 != t2)
 				{
@@ -1150,11 +1170,11 @@ namespace Codegen
 		}
 		else if(raw.front() == '(')
 		{
-			error("enosup");
+			error("enotsup");
 		}
 		else if(raw.front() == '[')
 		{
-			error("enosup");
+			error("enotsup");
 		}
 
 		// else
@@ -1179,12 +1199,12 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::mangleLlvmType(llvm::Type* type)
+	std::string CodegenInstance::mangleLlvmType(fir::Type* type)
 	{
 		std::string r = this->getReadableType(type);
 
 		int ind = 0;
-		r = this->unwrapPointerType(r, &ind);
+		r = unwrapPointerType(r, &ind);
 
 		if(r == "Int8")			r = "a";
 		else if(r == "Int16")	r = "s";
@@ -1275,7 +1295,7 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleMemberName(StructBase* s, FuncCall* fc)
 	{
-		std::deque<llvm::Type*> largs;
+		std::deque<fir::Type*> largs;
 		iceAssert(this->getType(s->mangledName));
 
 		bool first = true;
@@ -1325,11 +1345,11 @@ namespace Codegen
 		return base + (mangled.empty() ? "v" : (mangled));
 	}
 
-	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<llvm::Type*> args)
+	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<fir::Type*> args)
 	{
 		std::deque<std::string> strings;
 
-		for(llvm::Type* e : args)
+		for(fir::Type* e : args)
 			strings.push_back(this->mangleLlvmType(e));
 
 		return this->mangleFunctionName(base, strings);
@@ -1337,7 +1357,7 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<Expr*> args)
 	{
-		std::deque<llvm::Type*> a;
+		std::deque<fir::Type*> a;
 		for(auto arg : args)
 			a.push_back(this->getLlvmType(arg));
 
@@ -1346,7 +1366,7 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleFunctionName(std::string base, std::deque<VarDecl*> args)
 	{
-		std::deque<llvm::Type*> a;
+		std::deque<fir::Type*> a;
 		for(auto arg : args)
 			a.push_back(this->getLlvmType(arg));
 
@@ -1371,7 +1391,7 @@ namespace Codegen
 		int runningTypeIndex = 0;
 		for(auto arg : args)
 		{
-			llvm::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no llvm type, go ahead with the raw type: T or U or something.
 			if(!atype)
@@ -1389,7 +1409,7 @@ namespace Codegen
 
 		for(auto arg : args)
 		{
-			llvm::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no llvm type, go ahead with the raw type: T or U or something.
 			if(!atype)
@@ -1478,7 +1498,7 @@ namespace Codegen
 	}
 
 
-	Result_t CodegenInstance::createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr)
+	Result_t CodegenInstance::createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr)
 	{
 		return Result_t(0, 0);
 	}
@@ -1524,11 +1544,11 @@ namespace Codegen
 
 
 
-	llvm::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
+	fir::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
 		// try and resolve shit
 		std::deque<FuncDecl*> candidates;
-		std::map<std::string, llvm::Type*> tm;
+		std::map<std::string, fir::Type*> tm;
 
 		auto fpcands = this->resolveFunctionName(fc->name);
 		for(FuncPair_t fp : fpcands)
@@ -1566,7 +1586,7 @@ namespace Codegen
 				int pos = 0;
 				for(auto p : candidate->params)
 				{
-					llvm::Type* ltype = this->getLlvmType(p, true, false);	// allowFail = true, setInferred = false
+					fir::Type* ltype = this->getLlvmType(p, true, false);	// allowFail = true, setInferred = false
 					if(!ltype)
 					{
 						std::string s = p->type.strType;
@@ -1585,7 +1605,7 @@ namespace Codegen
 				// 1. check that the generic types match.
 				for(auto pair : typePositions)
 				{
-					llvm::Type* ftype = this->getLlvmType(fc->params[pair.second[0]]);
+					fir::Type* ftype = this->getLlvmType(fc->params[pair.second[0]]);
 					for(int k : pair.second)
 					{
 						if(this->getLlvmType(fc->params[k]) != ftype)
@@ -1596,8 +1616,8 @@ namespace Codegen
 				// 2. check that the concrete types match.
 				for(int k : nonGenericTypes)
 				{
-					llvm::Type* a = this->getLlvmType(fc->params[k]);
-					llvm::Type* b = this->getLlvmType(candidate->params[k]);
+					fir::Type* a = this->getLlvmType(fc->params[k]);
+					fir::Type* b = this->getLlvmType(candidate->params[k]);
 
 					if(a != b)
 						goto fail;
@@ -1675,13 +1695,13 @@ namespace Codegen
 
 
 		iceAssert(theFn);
-		std::deque<llvm::Type*> instantiatedTypes;
+		std::deque<fir::Type*> instantiatedTypes;
 		for(auto p : fc->params)
 			instantiatedTypes.push_back(this->getLlvmType(p));
 
 
 		bool needToCodegen = true;
-		for(std::deque<llvm::Type*> inst : theFn->instantiatedGenericVersions)
+		for(std::deque<fir::Type*> inst : theFn->instantiatedGenericVersions)
 		{
 			if(inst == instantiatedTypes)
 			{
@@ -1696,7 +1716,7 @@ namespace Codegen
 
 		// we need to push a new "generic type stack", and add the types that we resolved into it.
 		// todo: might be inefficient.
-		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, llvm::Type*>
+		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
 		// so we don't have to iterate etc etc.
 		// I don't want to access cgi->instantiatedGenericTypeStack directly.
 		this->pushGenericTypeStack();
@@ -1705,11 +1725,11 @@ namespace Codegen
 
 
 
-		llvm::Function* ffunc = nullptr;
+		fir::Function* ffunc = nullptr;
 		if(needToCodegen)
 		{
 			Result_t res = candidate->generateDeclForGenericType(this, tm);
-			ffunc = (llvm::Function*) res.result.first;
+			ffunc = (fir::Function*) res.result.first;
 		}
 		else
 		{
@@ -1740,7 +1760,7 @@ namespace Codegen
 		// and typechecking (BOOOOO, EACH CALL IS LIKE 12812479 SECONDS???)
 
 		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
-		// resolve it into an llvm::Function* to do shit.
+		// resolve it into an fir::Function* to do shit.
 
 		if(needToCodegen)
 		{
@@ -1796,66 +1816,66 @@ namespace Codegen
 
 
 
-	llvm::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
-	{
-		using llvm::Instruction;
-		switch(op)
-		{
-			case ArithmeticOp::Add:
-			case ArithmeticOp::PlusEquals:
-				return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
+	// fir::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
+	// {
+	// 	using fir::Instruction;
+	// 	switch(op)
+	// 	{
+	// 		case ArithmeticOp::Add:
+	// 		case ArithmeticOp::PlusEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
 
-			case ArithmeticOp::Subtract:
-			case ArithmeticOp::MinusEquals:
-				return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
+	// 		case ArithmeticOp::Subtract:
+	// 		case ArithmeticOp::MinusEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
 
-			case ArithmeticOp::Multiply:
-			case ArithmeticOp::MultiplyEquals:
-				return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
+	// 		case ArithmeticOp::Multiply:
+	// 		case ArithmeticOp::MultiplyEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
 
-			case ArithmeticOp::Divide:
-			case ArithmeticOp::DivideEquals:
-				return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
+	// 		case ArithmeticOp::Divide:
+	// 		case ArithmeticOp::DivideEquals:
+	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
 
-			case ArithmeticOp::Modulo:
-			case ArithmeticOp::ModEquals:
-				return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
+	// 		case ArithmeticOp::Modulo:
+	// 		case ArithmeticOp::ModEquals:
+	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
 
-			case ArithmeticOp::ShiftLeft:
-			case ArithmeticOp::ShiftLeftEquals:
-				return Instruction::BinaryOps::Shl;
+	// 		case ArithmeticOp::ShiftLeft:
+	// 		case ArithmeticOp::ShiftLeftEquals:
+	// 			return Instruction::BinaryOps::Shl;
 
-			case ArithmeticOp::ShiftRight:
-			case ArithmeticOp::ShiftRightEquals:
-				return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
+	// 		case ArithmeticOp::ShiftRight:
+	// 		case ArithmeticOp::ShiftRightEquals:
+	// 			return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
 
-			case ArithmeticOp::BitwiseAnd:
-			case ArithmeticOp::BitwiseAndEquals:
-				return Instruction::BinaryOps::And;
+	// 		case ArithmeticOp::BitwiseAnd:
+	// 		case ArithmeticOp::BitwiseAndEquals:
+	// 			return Instruction::BinaryOps::And;
 
-			case ArithmeticOp::BitwiseOr:
-			case ArithmeticOp::BitwiseOrEquals:
-				return Instruction::BinaryOps::Or;
+	// 		case ArithmeticOp::BitwiseOr:
+	// 		case ArithmeticOp::BitwiseOrEquals:
+	// 			return Instruction::BinaryOps::Or;
 
-			case ArithmeticOp::BitwiseXor:
-			case ArithmeticOp::BitwiseXorEquals:
-				return Instruction::BinaryOps::Xor;
+	// 		case ArithmeticOp::BitwiseXor:
+	// 		case ArithmeticOp::BitwiseXorEquals:
+	// 			return Instruction::BinaryOps::Xor;
 
-			default:
-				return (Instruction::BinaryOps) 0;
-		}
-	}
+	// 		default:
+	// 			return (Instruction::BinaryOps) 0;
+	// 	}
+	// }
 
 
 
-	llvm::Value* getArgumentNOfFunction(llvm::Function* func, size_t n)
-	{
-		auto it = func->getArgumentList().begin();
-		for(size_t i = 0; i < n; i++, it++)
-			;
+	// fir::Value* getArgumentNOfFunction(fir::Function* func, size_t n)
+	// {
+	// 	auto it = func->getargume().begin();
+	// 	for(size_t i = 0; i < n; i++, it++)
+	// 		;
 
-		return it;
-	}
+	// 	return it;
+	// }
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
@@ -1872,8 +1892,8 @@ namespace Codegen
 
 
 	// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-	std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*>
-	CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, llvm::Type* lhs, llvm::Type* rhs)
+	std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
+	CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
 	{
 		struct Attribs
 		{
@@ -1889,11 +1909,11 @@ namespace Codegen
 		};
 
 
-		std::deque<std::pair<Attribs, llvm::Function*>> candidates;
+		std::deque<std::pair<Attribs, fir::Function*>> candidates;
 
 
 		// get assignfuncs.
-		std::deque<std::pair<bool, llvm::Function*>> assignFuncs;
+		std::deque<std::pair<bool, fir::Function*>> assignFuncs;
 
 		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
 			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
@@ -1919,12 +1939,12 @@ namespace Codegen
 
 
 
-		auto findCandidatesPass1 = [this, assignFuncs](std::deque<std::pair<Attribs, llvm::Function*>>* cands,
-			std::deque<std::pair<OpOverload*, llvm::Function*>> list, ArithmeticOp op)
+		auto findCandidatesPass1 = [this, assignFuncs](std::deque<std::pair<Attribs, fir::Function*>>* cands,
+			std::deque<std::pair<OpOverload*, fir::Function*>> list, ArithmeticOp op)
 		{
 			for(auto oo : list)
 			{
-				llvm::Function* fop = oo.second;
+				fir::Function* fop = oo.second;
 				OpOverload* opov = oo.first;
 
 				Attribs attr;
@@ -2002,14 +2022,14 @@ namespace Codegen
 
 
 
-		auto checkType = [this, findCandidatesPass1, op](llvm::Type* type, std::deque<std::pair<Attribs, llvm::Function*>>* candidates)
+		auto checkType = [this, findCandidatesPass1, op](fir::Type* type, std::deque<std::pair<Attribs, fir::Function*>>* candidates)
 		{
 			// construct the list
 			if(TypePair_t* tp = this->getType(type))
 			{
 				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
 				{
-					std::deque<std::pair<OpOverload*, llvm::Function*>> list;
+					std::deque<std::pair<OpOverload*, fir::Function*>> list;
 					for(size_t i = 0; i < sb->opOverloads.size(); i++)
 					{
 						iceAssert(sb->lOpOverloads[i].first == sb->opOverloads[i]->op);
@@ -2037,7 +2057,7 @@ namespace Codegen
 		{
 			auto curDepth = this->namespaceStack;
 
-			std::deque<std::pair<OpOverload*, llvm::Function*>> list;
+			std::deque<std::pair<OpOverload*, fir::Function*>> list;
 			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
 			{
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
@@ -2054,7 +2074,7 @@ namespace Codegen
 
 					attr.needsSwap		= false;
 
-					llvm::Function* fn = 0;
+					fir::Function* fn = 0;
 
 					// todo: add to candidate list.
 					if(!f.first->func->didCodegen)
@@ -2075,7 +2095,7 @@ namespace Codegen
 						f.first->func->decl->attribs |= Attr_VisPublic;
 						f.first->func->decl->codegen(this);
 
-						fn = llvm::cast<llvm::Function>(f.first->func->codegen(this).result.first);
+						fn = dynamic_cast<fir::Function*>(f.first->func->codegen(this).result.first);
 
 						this->namespaceStack = oldns;
 						this->setCurrentFunctionScope(oldfs);
@@ -2130,10 +2150,10 @@ namespace Codegen
 
 		for(auto cand : set)
 		{
-			if(cand.first.isBinOp && cand.second->arg_size() == 2)
+			if(cand.first.isBinOp && cand.second->getArgumentCount() == 2)
 				candidates.push_back(cand);
 
-			else if(!cand.first.isBinOp && cand.second->arg_size() == 1)
+			else if(!cand.first.isBinOp && cand.second->getArgumentCount() == 1)
 				candidates.push_back(cand);
 		}
 
@@ -2146,8 +2166,8 @@ namespace Codegen
 		for(auto cand : set)
 		{
 			bool intype = cand.first.isInType;
-			llvm::Type* targL = getArgumentNOfFunction(cand.second, 0)->getType();
-			llvm::Type* targR = getArgumentNOfFunction(cand.second, 1)->getType();
+			fir::Type* targL = cand.second->getArguments()[0]->getType();
+			fir::Type* targR = cand.second->getArguments()[1]->getType();
 
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
@@ -2196,27 +2216,27 @@ namespace Codegen
 
 
 		// deque [pair [<attr, operator func>, assign func]]
-		std::deque<std::pair<std::pair<Attribs, llvm::Function*>, llvm::Function*>> finals;
-		for(std::pair<Attribs, llvm::Function*> c : set)
+		std::deque<std::pair<std::pair<Attribs, fir::Function*>, fir::Function*>> finals;
+		for(std::pair<Attribs, fir::Function*> c : set)
 		{
 			// see if the appropriate assign exists.
 			if(c.first.needsEqual)
 			{
 				// check the return type.
-				llvm::Type* ret = c.second->getReturnType();
+				fir::Type* ret = c.second->getReturnType();
 
 				// check the assign funcs that take such a type as RHS
 				for(auto pair : assignFuncs)
 				{
-					llvm::Function* af = pair.second;
+					fir::Function* af = pair.second;
 					bool intype = pair.first;
 
-					iceAssert(af->arg_size() == 2);
+					iceAssert(af->getArgumentCount() == 2);
 
-					llvm::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
-					llvm::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
+					fir::Type* afltype = af->getArguments()[0]->getType();
+					fir::Type* afrtype = af->getArguments()[1]->getType();
 
-					llvm::Type* apprtype = lhs;
+					fir::Type* apprtype = lhs;
 					if(intype) apprtype = apprtype->getPointerTo();
 
 					if(afltype == apprtype && afrtype == ret && af->getReturnType() == lhs->getPointerTo())
@@ -2242,12 +2262,12 @@ namespace Codegen
 
 		auto cand = finals.front();
 
-		llvm::Function* func = this->module->getFunction(cand.first.second->getName());
+		fir::Function* func = this->module->getFunction(cand.first.second->getName());
 		iceAssert(func);
 
 
 
-		std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> ret;
+		std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> ret;
 		ret = { cand.first.first.isBinOp,
 				cand.first.first.isInType,
 				cand.first.first.isPrefixUnary,
@@ -2268,8 +2288,8 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> data,
-		llvm::Value* lhs, llvm::Value* lref, llvm::Value* rhs, llvm::Value* rref, ArithmeticOp op)
+	Result_t CodegenInstance::callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data,
+		fir::Value* lhs, fir::Value* lref, fir::Value* rhs, fir::Value* rref, ArithmeticOp op)
 	{
 		// check if we have a ref.
 		if(lref == 0)
@@ -2279,7 +2299,7 @@ namespace Codegen
 
 			iceAssert(lhs);
 
-			llvm::Value* ptr = this->builder.CreateAlloca(lhs->getType());
+			fir::Value* ptr = this->builder.CreateStackAlloc(lhs->getType());
 			this->builder.CreateStore(lhs, ptr);
 
 			lref = ptr;
@@ -2288,7 +2308,7 @@ namespace Codegen
 		{
 			iceAssert(rhs);
 
-			llvm::Value* ptr = this->builder.CreateAlloca(rhs->getType());
+			fir::Value* ptr = this->builder.CreateStackAlloc(rhs->getType());
 			this->builder.CreateStore(rhs, ptr);
 
 			rref = ptr;
@@ -2301,15 +2321,15 @@ namespace Codegen
 		bool needsNot	= std::get<4>(data);
 		bool needsAss	= std::get<5>(data);
 
-		llvm::Function* opFunc = this->module->getFunction(std::get<6>(data)->getName());
-		llvm::Function* asFunc = std::get<7>(data) ? this->module->getFunction(std::get<7>(data)->getName()) : 0;
+		fir::Function* opFunc = this->module->getFunction(std::get<6>(data)->getName());
+		fir::Function* asFunc = std::get<7>(data) ? this->module->getFunction(std::get<7>(data)->getName()) : 0;
 
-		llvm::Value* ret = 0;
+		fir::Value* ret = 0;
 
 		if(isBinOp)
 		{
-			llvm::Value* larg = 0;
-			llvm::Value* rarg = 0;
+			fir::Value* larg = 0;
+			fir::Value* rarg = 0;
 
 			if(isInType || op == ArithmeticOp::Assign)
 			{
@@ -2344,22 +2364,22 @@ namespace Codegen
 		else
 		{
 			if(isInType)
-				ret = this->builder.CreateCall(opFunc, lref);
+				ret = this->builder.CreateCall1(opFunc, lref);
 
 			else
-				ret = this->builder.CreateCall(opFunc, lhs);
+				ret = this->builder.CreateCall1(opFunc, lhs);
 		}
 
 
 
 		if(needsNot)
 		{
-			ret = this->builder.CreateICmpEQ(ret, llvm::ConstantInt::getFalse(ret->getType()));
+			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
 		}
 		else if(needsAss)
 		{
 			iceAssert(!needsSwap);
-			llvm::Function* ass = this->module->getFunction(asFunc->getName());
+			fir::Function* ass = this->module->getFunction(asFunc->getName());
 
 			iceAssert(lref);
 			iceAssert(ass);
@@ -2383,7 +2403,7 @@ namespace Codegen
 
 
 
-	llvm::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<llvm::Value*> vals)
+	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals)
 	{
 		// check if this is a builtin type.
 		// allow constructor syntax for that
@@ -2396,33 +2416,34 @@ namespace Codegen
 			iceAssert(pair->second.first == 0);
 			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
 
-			std::vector<llvm::Type*> args { pair->first->getPointerTo(), pair->first };
-			llvm::FunctionType* ft = llvm::FunctionType::get(pair->first, args, false);
+			std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
+			fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
 
-			this->module->getOrInsertFunction(fnName, ft);
-			llvm::Function* fn = this->module->getFunction(fnName);
+			this->module->declareFunction(fnName, ft);
+			fir::Function* fn = this->module->getFunction(fnName);
 
-			if(fn->getBasicBlockList().size() == 0)
+			if(fn->getBlockList().size() == 0)
 			{
-				llvm::BasicBlock* prevBlock = this->builder.GetInsertBlock();
+				fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
 
-				llvm::BasicBlock* block = llvm::BasicBlock::Create(this->getContext(), "entry", fn);
-				this->builder.SetInsertPoint(block);
+				fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
+				this->builder.setCurrentBlock(block);
 
-				iceAssert(fn->arg_size() > 1);
+				iceAssert(fn->getArgumentCount() > 1);
 
-				llvm::Value* param = ++fn->arg_begin();
-				this->builder.CreateRet(param);
+				// fir::Value* param = ++fn->arg_begin();
+				this->builder.CreateReturn(fn->getArguments()[1]);
 
-				this->builder.SetInsertPoint(prevBlock);
+				this->builder.setCurrentBlock(prevBlock);
 			}
 
 
-			int i = 0;
-			for(auto it = fn->arg_begin(); it != fn->arg_end(); it++, i++)
+			if(vals.size() != fn->getArgumentCount())
+				GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+
+			for(size_t i = 0; i < fn->getArgumentCount(); i++)
 			{
-				llvm::Value& arg = (*it);
-				if(vals[i]->getType() != arg.getType())
+				if(vals[i]->getType() != fn->getArguments()[i]->getType())
 					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
 			}
 
@@ -2447,20 +2468,18 @@ namespace Codegen
 			StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
 			iceAssert(sb);
 
-			llvm::Function* initf = 0;
-			for(llvm::Function* initers : sb->initFuncs)
+			fir::Function* initf = 0;
+			for(fir::Function* initers : sb->initFuncs)
 			{
-				if(initers->arg_size() < 1)
+				if(initers->getArgumentCount() < 1)
 					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
-				if(initers->arg_size() != vals.size())
+				if(initers->getArgumentCount() != vals.size())
 					continue;
 
-				int i = 0;
-				for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+				for(size_t i = 0; i < initers->getArgumentCount(); i++)
 				{
-					llvm::Value& arg = (*it);
-					if(vals[i]->getType() != arg.getType())
+					if(vals[i]->getType() != initers->getArguments()[i]->getType())
 						goto breakout;
 				}
 
@@ -2484,40 +2503,41 @@ namespace Codegen
 	}
 
 
-	Result_t CodegenInstance::assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr)
+	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		llvm::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0, "type");		// Type
+		fir::Value* typegep = this->builder.CreateGetConstStructMember(lhsPtr, 0);	// Any
+		typegep = this->builder.CreateGetConstStructMember(typegep, 0);		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
-		llvm::Value* constint = llvm::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
+		fir::Value* constint = fir::ConstantInt::getUnsigned(typegep->getType()->getPointerElementType(), index);
 		this->builder.CreateStore(constint, typegep);
 
 
 
-		llvm::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1, "value");
+		fir::Value* valgep = this->builder.CreateGetConstStructMember(lhsPtr, 1);
 		if(rhsPtr)
 		{
 			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
-			llvm::Value* casted = this->builder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
+			fir::Value* casted = this->builder.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
 			this->builder.CreateStore(casted, valgep);
 		}
 		else
 		{
-			llvm::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : llvm::IntegerType::getInt64Ty(this->getContext());
+			fir::Type* targetType = rhs->getType()->isIntegerType() ? valgep->getType()->getPointerElementType() :
+				fir::PrimitiveType::getInt64(this->getContext());
 
 
-			if(rhs->getType()->isIntegerTy())
+			if(rhs->getType()->isIntegerType())
 			{
-				llvm::Value* casted = this->builder.CreateIntToPtr(rhs, targetType);
+				fir::Value* casted = this->builder.CreateIntToPointerCast(rhs, targetType);
 				this->builder.CreateStore(casted, valgep);
 			}
 			else
 			{
-				llvm::Value* casted = this->builder.CreateBitCast(rhs, targetType);
-				casted = this->builder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
+				fir::Value* casted = this->builder.CreateBitcast(rhs, targetType);
+				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
 				this->builder.CreateStore(casted, valgep);
 			}
 		}
@@ -2526,28 +2546,28 @@ namespace Codegen
 	}
 
 
-	Result_t CodegenInstance::extractValueFromAny(llvm::Type* type, llvm::Value* ptr)
+	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		llvm::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
-		llvm::Value* loadedval = this->builder.CreateLoad(valgep);
+		fir::Value* valgep = this->builder.CreateGetConstStructMember(ptr, 1);
+		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
-		if(type->isStructTy())
+		if(type->isStructType())
 		{
 			// use pointer stuff
-			llvm::Value* valptr = this->builder.CreatePointerCast(loadedval, type->getPointerTo());
-			llvm::Value* loaded = this->builder.CreateLoad(valptr);
+			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());
+			fir::Value* loaded = this->builder.CreateLoad(valptr);
 
 			return Result_t(loaded, valptr);
 		}
 		else
 		{
 			// the pointer is actually a literal
-			llvm::Type* targetType = type->isIntegerTy() ? type : llvm::IntegerType::getInt64Ty(this->getContext());
-			llvm::Value* val = this->builder.CreatePtrToInt(loadedval, targetType);
+			fir::Type* targetType = type->isIntegerType() ? type : fir::PrimitiveType::getInt64(this->getContext());
+			fir::Value* val = this->builder.CreatePointerToIntCast(loadedval, targetType);
 
 			if(val->getType() != type)
 			{
-				val = this->builder.CreateBitCast(val, type);
+				val = this->builder.CreateBitcast(val, type);
 			}
 
 			return Result_t(val, 0);
@@ -2573,45 +2593,41 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsPtr, llvm::Value* rhs)
+	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs)
 	{
-		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
-
-		llvm::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
-		iceAssert(lop);
-
 
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
 		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
 
-		const llvm::DataLayout* dl = this->execEngine->getDataLayout();
-		iceAssert(dl);
 
-		uint64_t ptrWidth = dl->getPointerSizeInBits();
-		uint64_t typesize = dl->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-		llvm::APInt apint = llvm::APInt(ptrWidth, typesize);
-		llvm::Value* intval = llvm::Constant::getIntegerValue(llvm::IntegerType::getIntNTy(this->getContext(), ptrWidth), apint);
+		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
+		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
 
-		if(rhs->getType()->getIntegerBitWidth() != ptrWidth)
-			rhs = this->builder.CreateIntCast(rhs, intval->getType(), false);
+		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
+
+		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
+		{
+			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
+		}
 
 
 		// this is the properly adjusted int to add/sub by
-		llvm::Value* newrhs = this->builder.CreateMul(rhs, intval);
+		fir::Value* newrhs = this->builder.CreateMul(rhs, intval);
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
-		llvm::Value* ptrval = this->builder.CreatePtrToInt(lhs, newrhs->getType());
+		fir::Value* ptrval = this->builder.CreatePointerToIntCast(lhs, newrhs->getType());
 
 		// create the add/sub
-		llvm::Value* res = this->builder.CreateBinOp(lop, ptrval, newrhs);
+		fir::Value* res = this->builder.CreateBinaryOp(op, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
-		llvm::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
+		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
 			lhsPtr : this->allocateInstanceInBlock(lhs->getType());
 
 
-		llvm::Value* properres = this->builder.CreateIntToPtr(res, lhs->getType());
+		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());
 		this->builder.CreateStore(properres, tempRes);
 		return Result_t(properres, tempRes);
 	}
@@ -2622,12 +2638,12 @@ namespace Codegen
 		error(e, "Not all code paths return a value");
 	}
 
-	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, llvm::Type* retType)
+	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, fir::Type* retType)
 	{
 		if(r)
 		{
-			llvm::Type* expected = 0;
-			llvm::Type* have = 0;
+			fir::Type* expected = 0;
+			fir::Type* have = 0;
 
 			if(r->actualReturnValue)
 				have = r->actualReturnValue->getType();
@@ -2645,8 +2661,8 @@ namespace Codegen
 		}
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ifbranch, bool checkType, llvm::Type* retType);
-	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, llvm::Type* retType)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ifbranch, bool checkType, fir::Type* retType);
+	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, fir::Type* retType)
 	{
 		if(bb->statements.size() == 0)
 			_errorNoReturn(bb);
@@ -2677,7 +2693,7 @@ namespace Codegen
 		return r;
 	}
 
-	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ib, bool checkType, llvm::Type* retType)
+	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ib, bool checkType, fir::Type* retType)
 	{
 		Return* r = 0;
 		bool first = true;
@@ -2709,13 +2725,13 @@ namespace Codegen
 	// if the function returns void, the return value of verifyAllPathsReturn indicates whether or not
 	// all code paths have explicit returns -- if true, Func::codegen is expected to insert a ret void at the end
 	// of the body.
-	bool CodegenInstance::verifyAllPathsReturn(Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType)
+	bool CodegenInstance::verifyAllPathsReturn(Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType)
 	{
 		if(stmtCounter)
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidTy();
+		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
@@ -2752,7 +2768,10 @@ namespace Codegen
 			return true;
 
 		if(!ret)
-			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
+		{
+			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->name.c_str(),
+				this->getLlvmType(func)->str().c_str(), this->getLlvmType(final)->str().c_str());
+		}
 
 		if(checkType)
 		{
@@ -2817,7 +2836,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(expr, "cannot clone, enosup (%s)", typeid(*expr).name());
+			error(expr, "cannot clone, enotsup (%s)", typeid(*expr).name());
 		}
 	}
 
