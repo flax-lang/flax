@@ -25,7 +25,7 @@ fir::StructType* Tuple::getType(CodegenInstance* cgi)
 			this->ltypes.push_back(cgi->getLlvmType(e));
 
 		this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
-		this->cachedLlvmType = fir::StructType::getLiteralStruct(this->ltypes, cgi->getContext());
+		this->cachedLlvmType = fir::StructType::getLiteral(this->ltypes, cgi->getContext());
 		this->didCreateType = true;
 
 		// todo: debate, should we add this?

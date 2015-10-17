@@ -24,7 +24,7 @@ namespace fir
 		this->isTypePacked = ispacked;
 	}
 
-	StructType* StructType::getOrCreateNamedStruct(std::string name, std::deque<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(std::string name, std::deque<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -51,7 +51,7 @@ namespace fir
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
-	StructType* StructType::getOrCreateNamedStruct(std::string name, std::vector<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(std::string name, std::vector<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -60,10 +60,10 @@ namespace fir
 		for(auto m : members)
 			dmems.push_back(m);
 
-		return StructType::getOrCreateNamedStruct(name, dmems, tc, packed);
+		return StructType::createNamed(name, dmems, tc, packed);
 	}
 
-	StructType* StructType::getOrCreateNamedStruct(std::string name, std::initializer_list<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(std::string name, std::initializer_list<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -72,12 +72,12 @@ namespace fir
 		for(auto m : members)
 			dmems.push_back(m);
 
-		return StructType::getOrCreateNamedStruct(name, dmems, tc, packed);
+		return StructType::createNamed(name, dmems, tc, packed);
 	}
 
 
 
-	StructType* StructType::getLiteralStruct(std::deque<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::getLiteral(std::deque<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -88,7 +88,7 @@ namespace fir
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
-	StructType* StructType::getLiteralStruct(std::vector<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::getLiteral(std::vector<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -99,10 +99,10 @@ namespace fir
 		for(auto m : members)
 			dmems.push_back(m);
 
-		return StructType::getLiteralStruct(dmems, tc, packed);
+		return StructType::getLiteral(dmems, tc, packed);
 	}
 
-	StructType* StructType::getLiteralStruct(std::initializer_list<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::getLiteral(std::initializer_list<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -113,7 +113,7 @@ namespace fir
 		for(auto m : members)
 			dmems.push_back(m);
 
-		return StructType::getLiteralStruct(dmems, tc, packed);
+		return StructType::getLiteral(dmems, tc, packed);
 	}
 
 

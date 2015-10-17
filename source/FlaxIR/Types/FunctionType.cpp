@@ -27,7 +27,7 @@ namespace fir
 	}
 
 	// functions
-	FunctionType* FunctionType::getFunction(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
+	FunctionType* FunctionType::get(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -37,14 +37,24 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::getFunction(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
+	FunctionType* FunctionType::get(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
 		std::deque<Type*> dargs;
 		for(auto a : args)
 			dargs.push_back(a);
 
-		return getFunction(dargs, ret, isVarArg, tc);
+		return get(dargs, ret, isVarArg, tc);
 	}
+
+	FunctionType* FunctionType::get(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
+	{
+		std::deque<Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return get(dargs, ret, isVarArg, tc);
+	}
+
 
 
 

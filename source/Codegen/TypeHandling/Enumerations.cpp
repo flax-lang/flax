@@ -105,7 +105,7 @@ fir::Type* Enumeration::createType(CodegenInstance* cgi)
 	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
 
 
-	fir::StructType* wrapper = fir::StructType::getOrCreateNamedStruct(this->mangledName, { prev }, cgi->getContext());
+	fir::StructType* wrapper = fir::StructType::createNamed(this->mangledName, { prev }, cgi->getContext());
 	// wrapper->setBody(std::vector<fir::Type*>({ prev }));
 
 	// now that they're all the same type:

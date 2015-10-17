@@ -124,7 +124,7 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isPointerType();
-		bool isVoid();
+		bool isVoidType();
 
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
@@ -305,18 +305,18 @@ namespace fir
 
 		// static funcs
 		public:
-		static StructType* getOrCreateNamedStruct(std::string name, std::initializer_list<Type*> members,
+		static StructType* createNamed(std::string name, std::initializer_list<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* getOrCreateNamedStruct(std::string name, std::deque<Type*> members,
+		static StructType* createNamed(std::string name, std::deque<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* getOrCreateNamedStruct(std::string name, std::vector<Type*> members,
+		static StructType* createNamed(std::string name, std::vector<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* getLiteralStruct(std::initializer_list<Type*> members, FTContext* tc = 0, bool isPacked = false);
-		static StructType* getLiteralStruct(std::deque<Type*> members, FTContext* tc = 0, bool isPacked = false);
-		static StructType* getLiteralStruct(std::vector<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* getLiteral(std::initializer_list<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* getLiteral(std::deque<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* getLiteral(std::vector<Type*> members, FTContext* tc = 0, bool isPacked = false);
 	};
 
 	struct ArrayType : Type
@@ -341,7 +341,7 @@ namespace fir
 
 		// static funcs
 		public:
-		static ArrayType* getArray(Type* elementType, size_t num, FTContext* tc = 0);
+		static ArrayType* get(Type* elementType, size_t num, FTContext* tc = 0);
 	};
 
 
@@ -371,9 +371,9 @@ namespace fir
 
 		// static funcs
 		public:
-		static FunctionType* getFunction(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
-		static FunctionType* getFunction(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
-		static FunctionType* getFunction(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* get(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
 	};
 }
 
