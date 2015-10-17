@@ -11,27 +11,25 @@ using namespace Codegen;
 
 namespace TypeInfo
 {
-	void addNewType(CodegenInstance* cgi, llvm::Type* stype, StructBase* str, TypeKind etype)
+	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
-		bool hasName = true;
 		for(auto k : cgi->rootNode->typeList)
 		{
-			if(stype->isStructTy())
+			if(stype->isStructType())
 			{
-				llvm::StructType* strt = llvm::dyn_cast<llvm::StructType>(stype);
+				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				assert(strt);
 
-				hasName = strt->hasName();
-
-				if(hasName && std::get<0>(k) == strt->getStructName())
+				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(hasName ? stype->getStructName() : "", stype, etype));
+		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName(),
+			stype, etype));
 	}
 
-	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type)
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)
 	{
 		size_t i = 1;
 		for(auto k : cgi->rootNode->typeList)
@@ -67,6 +65,8 @@ namespace TypeInfo
 		else
 		{
 			auto pair = cgi->getType("Type");
+			if(!pair) return;
+
 			iceAssert(pair);
 
 			iceAssert(pair->second.second == TypeKind::Enum);
@@ -77,6 +77,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
+		#if 0
 		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::pin(), "Any");
@@ -94,6 +95,7 @@ namespace TypeInfo
 			any->createType(cgi);
 			any->codegen(cgi);
 		}
+		#endif
 	}
 
 	void generateTypeInfo(CodegenInstance* cgi)

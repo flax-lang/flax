@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-namespace llvm
+namespace fir
 {
-	class Type;
+	struct Type;
 }
 
 namespace Ast
@@ -25,10 +25,10 @@ namespace Codegen
 
 namespace TypeInfo
 {
-	void addNewType(Codegen::CodegenInstance* cgi, llvm::Type* stype, Ast::StructBase* str, Codegen::TypeKind etype);
+	void addNewType(Codegen::CodegenInstance* cgi, fir::Type* stype, Ast::StructBase* str, Codegen::TypeKind etype);
 	void initialiseTypeInfo(Codegen::CodegenInstance* cgi);
 	void generateTypeInfo(Codegen::CodegenInstance* cgi);
-	size_t getIndexForType(Codegen::CodegenInstance* cgi, llvm::Type* type);
+	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type);
 }
 
 

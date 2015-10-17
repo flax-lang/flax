@@ -12,13 +12,13 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Class* str, bool isStaticFunctionCall);
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructBase* str, int i);
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Class* str);
-Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, llvm::Value* _rhs, llvm::Value* ref, Class* str);
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
+Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
 
 
-Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// handled elsewhere.
 	return Result_t(0, 0);
@@ -27,21 +27,21 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, ll
 Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string name)
 {
 	std::string mangledName = this->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
-	if(llvm::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
+	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(this->builder.CreateLoad(gv), gv->isConstant() ? 0 : gv);
+		return Result_t(this->builder.CreateLoad(gv), /*gv->isConstant() ? 0 : gv*/ gv);
 	}
 
 	error(user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
 }
 
 
-Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* _rhs)
+Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* _rhs)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
@@ -66,32 +66,32 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 	ValPtr_t p = res.result;
 
-	llvm::Value* self = p.first;
-	llvm::Value* selfPtr = p.second;
+	fir::Value* self = p.first;
+	fir::Value* selfPtr = p.second;
 
 
 	bool isPtr = false;
 	bool isWrapped = false;
 
-	llvm::Type* type = self->getType();
+	fir::Type* type = self->getType();
 	if(!type)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
 
 	if(cgi->isTypeAlias(type))
 	{
-		iceAssert(type->isStructTy());
-		iceAssert(type->getStructNumElements() == 1);
-		type = type->getStructElementType(0);
+		iceAssert(type->isStructType());
+		iceAssert(type->toStructType()->getElementCount() == 1);
+		type = type->toStructType()->getElementN(0);
 
 		warn(this, "typealias encountered");
 		isWrapped = true;
 	}
 
 
-	if(!type->isStructTy())
+	if(!type->isStructType())
 	{
-		if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+		if(type->isPointerType() && type->getPointerElementType()->isStructType())
 		{
 			type = type->getPointerElementType(), isPtr = true;
 		}
@@ -141,12 +141,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		// if we're faced with a double pointer, we need to load it once
 		if(wasSelfPtr)
 		{
-			if(selfPtr->getType()->isPointerTy() && selfPtr->getType()->getPointerElementType()->isPointerTy())
+			if(selfPtr->getType()->isPointerType() && selfPtr->getType()->getPointerElementType()->isPointerType())
 				selfPtr = cgi->builder.CreateLoad(selfPtr);
 		}
 		else
 		{
-			if(self->getType()->isPointerTy() && self->getType()->getPointerElementType()->isPointerTy())
+			if(self->getType()->isPointerType() && self->getType()->getPointerElementType()->isPointerType())
 				self = cgi->builder.CreateLoad(self);
 		}
 	}
@@ -156,14 +156,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
-	llvm::StructType* st = llvm::cast<llvm::StructType>(type);
+	fir::StructType* st = type->toStructType();
 
 	TypePair_t* pair = cgi->getType(type);
-	if(!pair && (!st || !st->isLiteral()))
+	if(!pair && (!st || !st->isLiteralStruct()))
 	{
 		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}
-	else if(st && st->isLiteral())
+	else if(st && st->isLiteralStruct())
 	{
 		type = st;
 	}
@@ -342,7 +342,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 
 
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, llvm::Value* _rhs, llvm::Value* ref, Class* str)
+Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, Class* str)
 {
 	if(_rhs)
 	{
@@ -351,8 +351,8 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 			error(var, "Property '%s' of type has no setter and is readonly", cprop->name.c_str());
 		}
 
-		llvm::Function* lcallee = 0;
-		for(llvm::Function* lf : str->lfuncs)
+		fir::Function* lcallee = 0;
+		for(fir::Function* lf : str->lfuncs)
 		{
 			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
 			if(lf->getName() == cprop->setterFunc->mangledName)
@@ -366,7 +366,7 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 			error(var, "?!??!!");
 
 
-		std::vector<llvm::Value*> args { ref, _rhs };
+		std::vector<fir::Value*> args { ref, _rhs };
 
 		// todo: rather large hack. since the nature of computed properties
 		// is that they don't have a backing storage in the struct itself, we need
@@ -375,8 +375,8 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 		// create a fake alloca to return to them.
 		lcallee = cgi->module->getFunction(lcallee->getName());
 
-		llvm::Value* val = cgi->builder.CreateCall(lcallee, args);
-		llvm::Value* fake = cgi->allocateInstanceInBlock(_rhs->getType());
+		fir::Value* val = cgi->builder.CreateCall(lcallee, args);
+		fir::Value* fake = cgi->allocateInstanceInBlock(_rhs->getType());
 
 		cgi->builder.CreateStore(val, fake);
 
@@ -384,8 +384,8 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 	}
 	else
 	{
-		llvm::Function* lcallee = 0;
-		for(llvm::Function* lf : str->lfuncs)
+		fir::Function* lcallee = 0;
+		for(fir::Function* lf : str->lfuncs)
 		{
 			if(lf->getName() == cprop->getterFunc->mangledName)
 			{
@@ -398,20 +398,20 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 			error(var, "?!??!!???");
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
-		std::vector<llvm::Value*> args { ref };
+		std::vector<fir::Value*> args { ref };
 		return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 	}
 }
 
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructBase* str, int i)
+Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
 {
 	iceAssert(i >= 0);
 
 	// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 	iceAssert(ref);
 
-	llvm::Value* ptr = cgi->builder.CreateStructGEP(ref, i, "memberPtr_" + var->name);
-	llvm::Value* val = cgi->builder.CreateLoad(ptr);
+	fir::Value* ptr = cgi->builder.CreateGetConstStructMember(ref, i);
+	fir::Value* val = cgi->builder.CreateLoad(ptr);
 
 	if(str->members[i]->immutable)
 		ptr = 0;
@@ -419,12 +419,12 @@ Result_t doVariable(CodegenInstance* cgi, VarRef* var, llvm::Value* ref, StructB
 	return Result_t(val, ptr);
 }
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Class* str, bool isStaticFunctionCall)
+Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
 	// we codegen first, then use the llvm version.
-	std::vector<llvm::Value*> args { ref };
+	std::vector<fir::Value*> args { ref };
 
 	for(Expr* e : fc->params)
 		args.push_back(e->codegen(cgi).result.first);
@@ -449,8 +449,8 @@ Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Cl
 
 
 
-	llvm::Function* lcallee = 0;
-	for(llvm::Function* lf : str->lfuncs)
+	fir::Function* lcallee = 0;
+	for(fir::Function* lf : str->lfuncs)
 	{
 		if(lf->getName() == callee->decl->mangledName)
 		{
@@ -470,7 +470,7 @@ Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, llvm::Value* ref, Cl
 
 
 
-std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
+std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
@@ -622,7 +622,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 		if(!res.resolved)
 		{
-			// todo: we might have a type on the RHS (and namespaces/classes on the left)
+			// note: we might have a type on the RHS (and namespaces/classes on the left)
 			// check for this, and call the constructor, appropriately inserting the implicit self param.
 			// try resolve it to a type.
 
@@ -632,12 +632,12 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 			text += fc->name;
 
-			if(llvm::Type* ltype = this->getLlvmTypeFromExprType(ma, text))
+			if(fir::Type* ltype = this->getLlvmTypeFromExprType(ma, text))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);
 
-				std::vector<llvm::Value*> args;
+				std::vector<fir::Value*> args;
 				for(Expr* e : fc->params)
 					args.push_back(e->codegen(this).result.first);
 
@@ -652,7 +652,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 		// call that sucker.
 		// but first set the cached target.
 
-		llvm::Type* ltype = this->getLlvmType(fc, res);
+		fir::Type* ltype = this->getLlvmType(fc, res);
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;
@@ -669,7 +669,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 	{
 		if(curType == 0)
 		{
-			llvm::Value* ptr = 0;
+			fir::Value* ptr = 0;
 
 			if(ftree->vars.find(vr->name) != ftree->vars.end())
 			{
@@ -709,7 +709,7 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 				{
 					if(v->isStatic && v->name == vr->name)
 					{
-						llvm::Type* ltype = this->getLlvmType(v);
+						fir::Type* ltype = this->getLlvmType(v);
 						return { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) };
 					}
 				}
@@ -763,28 +763,38 @@ std::pair<llvm::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Membe
 
 Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 {
-	// now we need to determine if it exists, and its params.
-	Func* callee = nullptr;
-	for(Func* f : str->funcs)
+	std::string full;
+	std::deque<std::string> fs = this->getFullScope();
+	for(auto f : fs)
+		full += f + "::";
+
+	full += str->name;
+
+	std::deque<Expr*> params = fc->params;
+	VarRef* fake = new VarRef(fc->pin, "self");
+	fake->type = full;
+
+	params.push_front(fake);
+
+	std::deque<FuncPair_t> fns;
+	for(auto f : str->funcs)
+		fns.push_back({ 0, f->decl });
+
+	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
+
+	if(!res.resolved)
 	{
-		std::string match = this->mangleMemberFunction(str, fc->name, fc->params, str->scope);
-		std::string funcN = this->mangleMemberFunction(str, f->decl->name, f->decl->params, str->scope, f->decl->isStatic);
-
-		#if 0
-		printf("func %s vs %s, orig %s\n", match.c_str(), funcN.c_str(), f->decl->name.c_str());
-		#endif
-
-		if(funcN == match)
-		{
-			callee = f;
-			break;
-		}
+		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 	}
 
-	if(!callee)
-		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
 
-	return callee;
+	for(auto f : str->funcs)
+	{
+		if(f->decl == res.t.second)
+			return f;
+	}
+
+	iceAssert(0);
 }
 
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)

@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Break::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -24,11 +24,11 @@ Result_t Break::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	iceAssert(cs->second.second);
 
 	// for break, we go to the ending block
-	cgi->builder.CreateBr(cs->second.second);
+	cgi->builder.CreateUnCondBranch(cs->second.second);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -41,64 +41,64 @@ Result_t Continue::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	iceAssert(cs->second.second);
 
 	// for continue, we go to the beginning (loop) block
-	cgi->builder.CreateBr(cs->second.first);
+	cgi->builder.CreateUnCondBranch(cs->second.first);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Return::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Return::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	if(this->val)
 	{
 		auto res = this->val->codegen(cgi).result;
-		llvm::Value* left = res.first;
+		fir::Value* left = res.first;
 
-		auto f = cgi->builder.GetInsertBlock()->getParent();
+		auto f = cgi->builder.getCurrentBlock()->getParentFunction();
 		iceAssert(f);
 
-		if(left->getType()->isIntegerTy() && f->getReturnType()->isIntegerTy())
-			left = cgi->builder.CreateIntCast(left, f->getReturnType(), false);
+		if(left->getType()->isIntegerType() && f->getReturnType()->isIntegerType())
+			left = cgi->builder.CreateIntSizeCast(left, f->getReturnType());
 
 		this->actualReturnValue = left;
 
-		return Result_t(cgi->builder.CreateRet(left), res.second, ResultType::BreakCodegen);
+		return Result_t(cgi->builder.CreateReturn(left), res.second, ResultType::BreakCodegen);
 	}
 	else
 	{
-		return Result_t(cgi->builder.CreateRetVoid(), 0, ResultType::BreakCodegen);
+		return Result_t(cgi->builder.CreateReturnVoid(), 0, ResultType::BreakCodegen);
 	}
 }
 
 
-Result_t DeferredExpr::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	return expr->codegen(cgi);
 }
 
-Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	llvm::Function* parentFunc = cgi->builder.GetInsertBlock()->getParent();
+	fir::Function* parentFunc = cgi->builder.getCurrentBlock()->getParentFunction();
 	iceAssert(parentFunc);
 
-	llvm::BasicBlock* setupBlock = llvm::BasicBlock::Create(cgi->getContext(), "loopSetup", parentFunc);
-	llvm::BasicBlock* loopBody = llvm::BasicBlock::Create(cgi->getContext(), "loopBody", parentFunc);
-	llvm::BasicBlock* loopEnd = llvm::BasicBlock::Create(cgi->getContext(), "loopEnd", parentFunc);
+	fir::IRBlock* setupBlock = cgi->builder.addNewBlockInFunction("loopSetup", parentFunc);
+	fir::IRBlock* loopBody = cgi->builder.addNewBlockInFunction("loopBody", parentFunc);
+	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", parentFunc);
 
-	cgi->builder.CreateBr(setupBlock);
-	cgi->builder.SetInsertPoint(setupBlock);
+	cgi->builder.CreateUnCondBranch(setupBlock);
+	cgi->builder.setCurrentBlock(setupBlock);
 
-	llvm::Value* condOutside = this->cond->codegen(cgi).result.first;
+	fir::Value* condOutside = this->cond->codegen(cgi).result.first;
 
 	// branch to the body, since llvm doesn't allow unforced fallthroughs
 	// if we're a do-while, don't check the condition the first time
 	// else we should
 	if(this->isDoWhileVariant)
-		cgi->builder.CreateBr(loopBody);
+		cgi->builder.CreateUnCondBranch(loopBody);
 
 	else
-		cgi->builder.CreateCondBr(condOutside, loopBody, loopEnd);
+		cgi->builder.CreateCondBranch(condOutside, loopBody, loopEnd);
 
 
-	cgi->builder.SetInsertPoint(loopBody);
+	cgi->builder.setCurrentBlock(loopBody);
 	cgi->pushBracedBlock(this, loopBody, loopEnd);
 
 	this->body->codegen(cgi);
@@ -106,12 +106,12 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Val
 	cgi->popBracedBlock();
 
 	// put a branch to see if we will go back
-	llvm::Value* condInside = this->cond->codegen(cgi).result.first;
-	cgi->builder.CreateCondBr(condInside, loopBody, loopEnd);
+	fir::Value* condInside = this->cond->codegen(cgi).result.first;
+	cgi->builder.CreateCondBranch(condInside, loopBody, loopEnd);
 
 
 	// parentFunc->getBasicBlockList().push_back(loopEnd);
-	cgi->builder.SetInsertPoint(loopEnd);
+	cgi->builder.setCurrentBlock(loopEnd);
 
 	return Result_t(0, 0);
 }
