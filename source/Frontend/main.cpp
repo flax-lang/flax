@@ -372,7 +372,7 @@ int main(int argc, char* argv[])
 	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
 
-	// Root* r = std::get<0>(ret);
+	Root* r = std::get<0>(ret);
 	std::vector<std::string> filelist = std::get<1>(ret);
 	std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
 	std::unordered_map<std::string, llvm::Module*> modulelist;
@@ -386,8 +386,6 @@ int main(int argc, char* argv[])
 	llvm::Module* mainModule = modulelist[filename];
 	llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-	mainModule->dump();
-	exit(0);
 
 	// needs to be done llvmst, for the weird constructor fiddling below.
 	if(Compiler::runProgramWithJit)
@@ -400,11 +398,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	mainModule->dump();
-	exit(0);
 
-
-	#if 0
 	bool needGlobalConstructor = false;
 	if(r->globalConstructorTrampoline != 0) needGlobalConstructor = true;
 	for(auto pair : rootmap)
@@ -434,15 +428,12 @@ int main(int argc, char* argv[])
 					if(Compiler::runProgramWithJit)
 					{
 						error("required global constructor %s was not found in the module!",
-							pair.second->globalConstructorTrampoline->getName().str().c_str());
+							pair.second->globalConstructorTrampoline->getName().c_str());
 					}
 					else
 					{
 						// declare it.
-						constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
-							pair.second->globalConstructorTrampoline->getName(),
-							pair.second->globalConstructorTrampoline->getFunctionType())
-						);
+						constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
 					}
 				}
 
@@ -515,7 +506,7 @@ int main(int argc, char* argv[])
 		if(mainModule->getFunction("main") != 0)
 		{
 			std::string err;
-			llvm::Module* clone = llvm::CloneModule(mainModule);
+			llvm::Module* clone = /*llvm::CloneModule(mainModule);*/ mainModule;
 			llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
 						.setErrorStr(&err)
 						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
@@ -568,7 +559,6 @@ int main(int argc, char* argv[])
 		delete p.second;
 
 	delete r;
-	#endif
 }
 
 

@@ -28,8 +28,18 @@ namespace fir
 		if(PrimitiveType* pt = type->toPrimitiveType())
 		{
 			// signed/unsigned is lost.
-			return llvm::IntegerType::getIntNTy(gc,
-				pt->isFloatingPointType() ? pt->getFloatingPointBitWidth() : pt->getIntegerBitWidth());
+			if(pt->isIntegerType())
+			{
+				return llvm::IntegerType::getIntNTy(gc, pt->getIntegerBitWidth());
+			}
+			else
+			{
+				if(pt->getFloatingPointBitWidth() == 32)
+					return llvm::Type::getFloatTy(gc);
+
+				else
+					return llvm::Type::getDoubleTy(gc);
+			}
 		}
 		else if(StructType* st = type->toStructType())
 		{
@@ -125,14 +135,17 @@ namespace fir
 
 
 
-		auto getOperand = [&valueMap, &module](Instruction* inst, size_t op) -> llvm::Value* {
 
-			iceAssert(inst->operands.size() > op);
-			Value* fv = inst->operands[op];
+		auto getValue = [&valueMap, &module, &builder](Value* fv) -> llvm::Value* {
 
 			if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
 			{
 				return constToLlvm(cv, module);
+			}
+			else if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
+			{
+				llvm::Value* lgv = valueMap[gv]; iceAssert(lgv);
+				return builder.CreateConstGEP2_32(lgv, 0, 0);
 			}
 			else
 			{
@@ -141,7 +154,20 @@ namespace fir
 			}
 		};
 
+		auto getOperand = [&valueMap, &module, &builder, &getValue](Instruction* inst, size_t op) -> llvm::Value* {
+
+			iceAssert(inst->operands.size() > op);
+			Value* fv = inst->operands[op];
+
+			return getValue(fv);
+		};
+
 		auto addValueToMap = [&valueMap](llvm::Value* v, Value* fv) {
+
+			if(fv->id == 595)
+			{
+				printf("");
+			}
 
 			if(valueMap.find(fv) != valueMap.end())
 				error("already have value of %p (id %zu)", fv, fv->id);
@@ -156,10 +182,9 @@ namespace fir
 		{
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr);
+				llvm::GlobalValue::LinkageTypes::PrivateLinkage, cstr);
 
-			llvm::Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
-			valueMap[string.second] = v;
+			valueMap[string.second] = gv;
 
 			printf("global str (%%%zu) [%zu] = \"%s\"\n", string.second->id, string.first.length(),
 				string.first.c_str());
@@ -738,11 +763,6 @@ namespace fir
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
 
-							if(inst->operands[0]->id == 245 || inst->operands[0]->id == 258)
-							{
-								printf("");
-							}
-
 							llvm::Value* ret = builder.CreateLoad(a);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -773,9 +793,13 @@ namespace fir
 							iceAssert(fn);
 
 							std::vector<llvm::Value*> args;
-							for(auto arg : fn->getArguments())
+
+							std::deque<Value*> fargs = inst->operands;
+							fargs.pop_front();
+
+							for(auto arg : fargs)
 							{
-								llvm::Value* larg = valueMap[arg]; iceAssert(larg);
+								llvm::Value* larg = getValue(arg);
 								args.push_back(larg);
 							}
 
@@ -856,7 +880,9 @@ namespace fir
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							valueMap[inst->realOutput] = a;
+
+							// no-op
+							addValueToMap(a, inst->realOutput);
 							break;
 						}
 

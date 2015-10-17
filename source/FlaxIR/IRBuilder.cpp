@@ -320,7 +320,12 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating add instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Signed_Add, a->getType(), { a, b });
+		OpKind ok = OpKind::Invalid;
+		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Add;
+		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Add;
+		else ok = OpKind::Floating_Add;
+
+		Instruction* instr = new Instruction(ok, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -329,7 +334,12 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating sub instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Signed_Sub, a->getType(), { a, b });
+		OpKind ok = OpKind::Invalid;
+		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Sub;
+		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Sub;
+		else ok = OpKind::Floating_Sub;
+
+		Instruction* instr = new Instruction(ok, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -338,7 +348,12 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating mul instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Signed_Mul, a->getType(), { a, b });
+		OpKind ok = OpKind::Invalid;
+		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mul;
+		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Mul;
+		else ok = OpKind::Floating_Mul;
+
+		Instruction* instr = new Instruction(ok, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -347,7 +362,13 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating div instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Signed_Div, a->getType(), { a, b });
+
+		OpKind ok = OpKind::Invalid;
+		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Div;
+		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Div;
+		else ok = OpKind::Floating_Div;
+
+		Instruction* instr = new Instruction(ok, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -356,7 +377,12 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating mod instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Signed_Mod, a->getType(), { a, b });
+		OpKind ok = OpKind::Invalid;
+		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mod;
+		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Mod;
+		else ok = OpKind::Floating_Mod;
+
+		Instruction* instr = new Instruction(ok, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -734,8 +760,8 @@ namespace fir
 		iceAssert(st && "ptr is not pointer to struct");
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember,
-			st->getElementN(memberIndex), { ptr, ptrIndex, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
+		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
+			{ ptr, ptrIndex, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
 
 		return this->addInstruction(instr);
 	}
