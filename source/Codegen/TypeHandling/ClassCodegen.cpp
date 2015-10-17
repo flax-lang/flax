@@ -57,6 +57,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
@@ -97,9 +98,9 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			// a bit hacky, but still well-defined.
 			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
 
-			// generate a global variable (sorry!).
-			fir::GlobalVariable* gv = new fir::GlobalVariable(varname, cgi->module, var->inferredLType, var->immutable,
-				fir::LinkageType::External, fir::ConstantValue::getNullValue(var->inferredLType));
+			// generate a global variable
+			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
+				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable, fir::LinkageType::External);
 
 			if(var->inferredLType->isStructType())
 			{

@@ -4,6 +4,7 @@
 
 
 #include "../include/ir/value.h"
+#include "../include/ir/module.h"
 #include "../include/ir/constant.h"
 
 namespace fir

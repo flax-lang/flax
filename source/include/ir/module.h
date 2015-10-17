@@ -60,6 +60,8 @@ namespace fir
 
 		llvm::Module* translateToLlvm();
 
+		std::string print();
+
 		private:
 		std::string moduleName;
 		std::map<std::string, GlobalVariable*> globalStrings;

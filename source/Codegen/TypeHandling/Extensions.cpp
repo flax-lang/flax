@@ -73,6 +73,7 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 	iceAssert(existingtp);
 
 	fir::StructType* existing = dynamic_cast<fir::StructType*>(existingtp->first);
+	cgi->module->deleteNamedType(existing->getStructName());
 
 	if(!dynamic_cast<Class*>(existingtp->second.first))
 		error(this, "Extensions can only be applied onto classes");
@@ -149,6 +150,9 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 
 		str->extensions.push_back(this);
 		delete types;
+
+
+		cgi->module->addNamedType(newType->getStructName(), newType);
 	}
 
 	return existingtp->first;

@@ -136,7 +136,7 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
-			return this->structName + " = " + typeListToString(this->structMembers);
+			return this->structName;
 		}
 		else if(this->isLiteralStruct())
 		{
@@ -246,13 +246,6 @@ namespace fir
 				break;
 			}
 		}
-
-		// // erase llvm.
-		// fir::StructType* st = fir::cast<fir::StructType>(this->getLlvmType());
-		// iceAssert(st);
-
-		// // According to llvm source Type.cpp, doing this removes the struct def from the symbol table.
-		// st->setName("");
 
 		// todo: safe?
 		delete this;

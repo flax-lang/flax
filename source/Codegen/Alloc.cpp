@@ -5,8 +5,6 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 
-#include "llvm/IR/Module.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -41,13 +39,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	// call malloc
 	// todo: all broken
 
-	#if 0
+	fir::Value* oneValue = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 1);
+	fir::Value* zeroValue = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0);
 
-	// fir::Value* oneValue = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getInt64(cgi->getContext()), 1);
-	// fir::Value* zeroValue = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getInt64(cgi->getContext()), 0);
-
-	uint64_t typesize = cgi->module->getDataLayout()->getTypeSizeInBits(allocType) / 8;
-	fir::Value* allocsize = fir::ConstantInt::get(fir::IntegerType::getInt64Ty(cgi->getContext()), typesize);
+	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(allocType) / 8;
+	fir::Value* allocsize = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), typesize);
 	fir::Value* allocnum = oneValue;
 
 
@@ -55,21 +51,21 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	if(this->count)
 	{
 		allocnum = this->count->codegen(cgi).result.first;
-		if(!allocnum->getType()->isIntegerTy())
+		if(!allocnum->getType()->isIntegerType())
 			error(this, "Expected integer type in alloc");
 
-		allocnum = cgi->builder.CreateIntCast(allocnum, allocsize->getType(), false);
+		allocnum = cgi->builder.CreateIntSizeCast(allocnum, allocsize->getType());
 		allocsize = cgi->builder.CreateMul(allocsize, allocnum);
 
 
 		// compare to zero. first see what we can do at compile time, if the constant is zero.
-		if(fir::isa<fir::ConstantInt>(allocnum))
+		if(dynamic_cast<fir::ConstantInt*>(allocnum))
 		{
-			fir::ConstantInt* ci = fir::cast<fir::ConstantInt>(allocnum);
-			if(ci->isZeroValue())
+			fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(allocnum);
+			if(ci->getSignedValue() == 0)
 			{
 				warn(this, "Allocating zero members with alloc[], will return null");
-				isZero = fir::ConstantInt::getTrue(cgi->getContext());
+				isZero = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getBool(), 1);
 			}
 		}
 		else
@@ -81,22 +77,21 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	fir::Value* allocmemptr = lhsPtr ? lhsPtr : cgi->allocateInstanceInBlock(allocType->getPointerTo());
 
-	fir::Value* amem = cgi->builder.CreatePointerCast(cgi->builder.CreateCall(mallocf, allocsize), allocType->getPointerTo());
-	// warn(cgi, this, "%s -> %s\n", cgi->getReadableType(amem).c_str(), cgi->getReadableType(allocmemptr).c_str());
+	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, allocsize), allocType->getPointerTo());
 
 	cgi->builder.CreateStore(amem, allocmemptr);
 	fir::Value* allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 	// call the initialiser, if there is one
-	if(allocType->isIntegerTy() || allocType->isPointerTy())
+	if(allocType->isIntegerType() || allocType->isPointerType())
 	{
-		fir::Value* cs = cgi->builder.CreatePointerBitCastOrAddrSpaceCast(allocatedmem, fir::PointerType::getInt8PtrTy(cgi->getContext()));
-		fir::Value* dval = fir::Constant::getNullValue(cs->getType()->getPointerElementType());
+		// fir::Value* cs = cgi->builder.CreateBitcast(allocatedmem, fir::PointerType::getInt8Ptr(cgi->getContext()));
+		// fir::Value* dval = fir::ConstantValue::getNullValue(cs->getType()->getPointerElementType());
 
 		// printf("%s, %s, %s, %llu\n", cgi->getReadableType(cs).c_str(), cgi->getReadableType(dval).c_str(),
 			// cgi->getReadableType(allocsize).c_str(), typesize);
 
-		cgi->builder.CreateMemSet(cs, dval, allocsize, typesize);
+		// cgi->builder.CreateMemSet(cs, dval, allocsize, typesize);
 	}
 	else
 	{
@@ -112,26 +107,26 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		fir::Function* initfunc = cgi->getStructInitialiser(this, typePair, args);
 
 		// we need to keep calling this... essentially looping.
-		fir::BasicBlock* curbb = cgi->builder.GetInsertBlock();	// store the current bb
-		fir::BasicBlock* loopBegin = fir::BasicBlock::Create(cgi->getContext(), "loopBegin", curbb->getParent());
-		fir::BasicBlock* loopEnd = fir::BasicBlock::Create(cgi->getContext(), "loopEnd", curbb->getParent());
-		fir::BasicBlock* after = fir::BasicBlock::Create(cgi->getContext(), "afterLoop", curbb->getParent());
+		fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
+		fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
+		fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
+		fir::IRBlock* after = cgi->builder.addNewBlockInFunction("afterLoop", curbb->getParentFunction());
 
 
 
 		// check for zero.
 		if(isZero)
 		{
-			fir::BasicBlock* notZero = fir::BasicBlock::Create(cgi->getContext(), "notZero", curbb->getParent());
-			fir::BasicBlock* setToZero = fir::BasicBlock::Create(cgi->getContext(), "zeroAlloc", curbb->getParent());
-			cgi->builder.CreateCondBr(isZero, setToZero, notZero);
+			fir::IRBlock* notZero = cgi->builder.addNewBlockInFunction("notZero", curbb->getParentFunction());
+			fir::IRBlock* setToZero = cgi->builder.addNewBlockInFunction("zeroAlloc", curbb->getParentFunction());
+			cgi->builder.CreateCondBranch(isZero, setToZero, notZero);
 
-			cgi->builder.SetInsertPoint(setToZero);
-			cgi->builder.CreateStore(fir::ConstantPointerNull::getNullValue(allocatedmem->getType()), allocmemptr);
+			cgi->builder.setCurrentBlock(setToZero);
+			cgi->builder.CreateStore(fir::ConstantValue::getNullValue(allocatedmem->getType()), allocmemptr);
 			allocatedmem = cgi->builder.CreateLoad(allocmemptr);
-			cgi->builder.CreateBr(after);
+			cgi->builder.CreateUnCondBranch(after);
 
-			cgi->builder.SetInsertPoint(notZero);
+			cgi->builder.setCurrentBlock(notZero);
 		}
 
 
@@ -147,11 +142,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.CreateStore(allocnum, counterptr);
 
 		// do { ...; num--; } while(num - 1 > 0)
-		cgi->builder.CreateBr(loopBegin);	// explicit branch
+		cgi->builder.CreateUnCondBranch(loopBegin);	// explicit branch
 
 
 		// start in the loop
-		cgi->builder.SetInsertPoint(loopBegin);
+		cgi->builder.setCurrentBlock(loopBegin);
 
 		// call the constructor
 		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
@@ -169,11 +164,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		// do the comparison
 		counter = cgi->builder.CreateLoad(counterptr);
 
-		fir::Value* brcond = cgi->builder.CreateICmpUGT(counter, zeroValue);
-		cgi->builder.CreateCondBr(brcond, loopBegin, loopEnd);
+		fir::Value* brcond = cgi->builder.CreateICmpGT(counter, zeroValue);
+		cgi->builder.CreateCondBranch(brcond, loopBegin, loopEnd);
 
 		// at loopend:
-		cgi->builder.SetInsertPoint(loopEnd);
+		cgi->builder.setCurrentBlock(loopEnd);
 
 		// undo the pointer additions we did above
 		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
@@ -183,15 +178,12 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
 
 
-		cgi->builder.CreateBr(after);
-		cgi->builder.SetInsertPoint(after);
+		cgi->builder.CreateUnCondBranch(after);
+		cgi->builder.setCurrentBlock(after);
 		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 	}
 
 	return Result_t(allocatedmem, 0);
-	#endif
-
-	return Result_t(0, 0);
 }
 
 

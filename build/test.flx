@@ -5,9 +5,19 @@
 import Math
 import String
 
+import tests.fizzbuzz
+import tests.recursiveFib
+// import tests.scopes
+// import tests.arraytest
+// import tests.generics
+
+// import Utilities
+
+
 public func main() -> Int
 {
 	var foo: String
+
 
 	printf("HELLO\n")
 
@@ -40,6 +50,8 @@ public func main() -> Int
 	let crossn = m.1 x m.0
 	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 
+
+	runTests()
 	return 0
 }
 
@@ -93,50 +105,42 @@ class Foo
 
 
 
-// import tests.fizzbuzz
-// import tests.recursiveFib
-// import tests.scopes
-// import tests.arraytest
-// import tests.generics
+ƒ runTests()
+{
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
 
-// import Utilities
-
-// ƒ runTests()
-// {
-// 	// fib
-// 	printf("*** FIBONACII SEQUENCE ***\n")
-
-// 	var n = 0
-// 	while n < 20
-// 	{
-// 		printf("%d: %lld\n", n, doRecursiveFib(n))
-// 		n += 1
-// 	}
-// 	printf("\n\n");
+	var n = 0
+	while n < 20
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
 
 
-// 	// fizzbuzz
-// 	printf("*** FIZZBUZZ ***\n")
-// 	doFizzBuzz(20);
-// 	printf("\n\n");
+	// fizzbuzz
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(20);
+	printf("\n\n");
 
 
-// 	// scopes
-// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-// 	doScopeTest("__llvm_jit__build/test")
-// 	printf("\n\n");
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	// doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
 
 
-// 	// arrays
-// 	printf("*** ARRAY REGRESSION TEST ***\n")
-// 	doArrayTest()
-// 	printf("\n\n")
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	// doArrayTest()
+	printf("\n\n")
 
 
-// 	printf("*** GENERICS TEST ***\n")
-// 	doGenericsTest()
-// 	printf("\n\n")
-// }
+	printf("*** GENERICS TEST ***\n")
+	// doGenericsTest()
+	printf("\n\n")
+}
 
 
 
