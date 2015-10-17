@@ -32,9 +32,11 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		cgi->module = new fir::Module(Parser::getModuleName(filename), fir::getGlobalContext());
+		cgi->module = new fir::Module(Parser::getModuleName(filename));
 		cgi->rootNode = root;
 
+
+		#if 0
 		std::string err;
 		cgi->execEngine = fir::EngineBuilder(std::unique_ptr<fir::Module>(cgi->module))
 							.setErrorStr(&err)
@@ -102,9 +104,10 @@ namespace Codegen
 
 
 		functionPassManager.doInitialization();
+		#endif
 
 		// Set the global so the code gen can use this.
-		cgi->Fpm = &functionPassManager;
+		// cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
 		// add the generic functions from previous shits.
@@ -113,8 +116,8 @@ namespace Codegen
 			cgi->rootNode->genericFunctions.push_back(fd.first);
 		}
 
-		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getName().str();
-		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getName().str();
+		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getModuleName();
 
 
 		// rootFuncStack should really be empty, except we know that there should be
@@ -136,6 +139,7 @@ namespace Codegen
 
 	void writeBitcode(std::string filename, CodegenInstance* cgi)
 	{
+		#if 0
 		std::error_code e;
 		fir::sys::fs::OpenFlags of = (fir::sys::fs::OpenFlags) 0;
 		size_t lastdot = filename.find_last_of(".");
@@ -146,6 +150,7 @@ namespace Codegen
 
 		fir::WriteBitcodeToFile(cgi->module, rso);
 		rso.close();
+		#endif
 	}
 
 
@@ -166,9 +171,12 @@ namespace Codegen
 
 
 
-	fir::LLVMContext& CodegenInstance::getContext()
+	fir::FTContext* CodegenInstance::getContext()
 	{
-		return fir::getGlobalContext();
+		auto c = fir::getDefaultFTContext();
+		c->module = this->module;
+
+		return fir::getDefaultFTContext();
 	}
 
 	void CodegenInstance::popScope()
@@ -255,16 +263,16 @@ namespace Codegen
 	bool CodegenInstance::areEqualTypes(fir::Type* a, fir::Type* b)
 	{
 		if(a == b) return true;
-		else if(a->isStructTy() && b->isStructTy())
+		else if(a->isStructType() && b->isStructType())
 		{
-			fir::StructType* sa = fir::cast<fir::StructType>(a);
-			fir::StructType* sb = fir::cast<fir::StructType>(b);
+			fir::StructType* sa = a->toStructType();
+			fir::StructType* sb = b->toStructType();
 
 			// get the first part of the name.
-			if(!sa->isLiteral() && !sb->isLiteral())
+			if(!sa->isLiteralStruct() && !sb->isLiteralStruct())
 			{
-				std::string an = sa->getName();
-				std::string bn = sb->getName();
+				std::string an = sa->getStructName();
+				std::string bn = sb->getStructName();
 
 				std::string fan = an.substr(0, an.find_first_of('.'));
 				std::string fbn = bn.substr(0, bn.find_first_of('.'));
@@ -272,7 +280,8 @@ namespace Codegen
 				if(fan != fbn) return false;
 			}
 
-			return sa->isLayoutIdentical(sb);
+			// return sa->isLayoutIdentical(sb);
+			return sa->isTypeEqual(sb);
 		}
 
 		return false;
@@ -419,7 +428,7 @@ namespace Codegen
 		return this->blockStack.size() > 0 ? &this->blockStack.back() : 0;
 	}
 
-	void CodegenInstance::pushBracedBlock(BreakableBracedBlock* block, fir::BasicBlock* body, fir::BasicBlock* after)
+	void CodegenInstance::pushBracedBlock(BreakableBracedBlock* block, fir::IRBlock* body, fir::IRBlock* after)
 	{
 		BracedBlockScope cs = std::make_pair(block, std::make_pair(body, after));
 		this->blockStack.push_back(cs);
@@ -527,17 +536,17 @@ namespace Codegen
 				fir::Function* func = pair.first;
 				if(func)
 				{
-					iceAssert(func && func->hasName());
+					iceAssert(func);
 
 					// add to the func table
 					auto lf = this->module->getFunction(func->getName());
 					if(!lf)
 					{
-						this->module->getOrInsertFunction(func->getName(), func->getFunctionType());
+						this->module->declareFunction(func->getName(), func->getType());
 						lf = this->module->getFunction(func->getName());
 					}
 
-					fir::Function* f = fir::cast<fir::Function>(lf);
+					fir::Function* f = dynamic_cast<fir::Function*>(lf);
 
 					f->deleteBody();
 					this->addFunctionToScope(FuncPair_t(f, pair.second));
@@ -586,12 +595,12 @@ namespace Codegen
 						if(Struct* str = dynamic_cast<Struct*>(sb))
 						{
 							for(auto f : str->initFuncs)
-								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
+								this->module->declareFunction(f->getName(), f->getType());
 						}
 						else if(Class* cls = dynamic_cast<Class*>(sb))
 						{
 							for(auto f : cls->initFuncs)
-								this->module->getOrInsertFunction(f->getName(), f->getFunctionType());
+								this->module->declareFunction(f->getName(), f->getType());
 						}
 						else
 						{
@@ -841,12 +850,12 @@ namespace Codegen
 					}
 					else
 					{
-						return f.first->getFunctionType() == fp.first->getFunctionType();
+						return f.first->getType() == fp.first->getType();
 					}
 				};
 
 
-				if((f.second ? f.second->name : f.first->getName().str()) == basename)
+				if((f.second ? f.second->name : f.first->getName()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -873,7 +882,7 @@ namespace Codegen
 		for(auto c : candidates)
 		{
 			int distance = 0;
-			if((c.second ? c.second->name : c.first->getName().str()) == basename
+			if((c.second ? c.second->name : c.first->getName()) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
 				finals.push_back({ c, distance });
@@ -978,13 +987,12 @@ namespace Codegen
 		else if(fp.first)
 		{
 			fir::Function* lf = fp.first;
-			fir::FunctionType* ft = lf->getFunctionType();
+			fir::FunctionType* ft = lf->getType();
 
-			size_t i = 0;
-			for(auto it = ft->param_begin(); it != ft->param_end() && i < params.size(); it++, i++)
+			for(size_t i = 0; i < ft->getArgumentTypes().size(); i++)
 			{
 				auto t1 = this->getLlvmType(params[i], true);
-				auto t2 = *it;
+				auto t2 = ft->getArgumentN(i);
 
 				if(t1 != t2)
 				{
@@ -1150,11 +1158,11 @@ namespace Codegen
 		}
 		else if(raw.front() == '(')
 		{
-			error("enosup");
+			error("enotsup");
 		}
 		else if(raw.front() == '[')
 		{
-			error("enosup");
+			error("enotsup");
 		}
 
 		// else
@@ -1796,66 +1804,66 @@ namespace Codegen
 
 
 
-	fir::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
-	{
-		using fir::Instruction;
-		switch(op)
-		{
-			case ArithmeticOp::Add:
-			case ArithmeticOp::PlusEquals:
-				return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
+	// fir::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
+	// {
+	// 	using fir::Instruction;
+	// 	switch(op)
+	// 	{
+	// 		case ArithmeticOp::Add:
+	// 		case ArithmeticOp::PlusEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
 
-			case ArithmeticOp::Subtract:
-			case ArithmeticOp::MinusEquals:
-				return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
+	// 		case ArithmeticOp::Subtract:
+	// 		case ArithmeticOp::MinusEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
 
-			case ArithmeticOp::Multiply:
-			case ArithmeticOp::MultiplyEquals:
-				return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
+	// 		case ArithmeticOp::Multiply:
+	// 		case ArithmeticOp::MultiplyEquals:
+	// 			return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
 
-			case ArithmeticOp::Divide:
-			case ArithmeticOp::DivideEquals:
-				return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
+	// 		case ArithmeticOp::Divide:
+	// 		case ArithmeticOp::DivideEquals:
+	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
 
-			case ArithmeticOp::Modulo:
-			case ArithmeticOp::ModEquals:
-				return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
+	// 		case ArithmeticOp::Modulo:
+	// 		case ArithmeticOp::ModEquals:
+	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
 
-			case ArithmeticOp::ShiftLeft:
-			case ArithmeticOp::ShiftLeftEquals:
-				return Instruction::BinaryOps::Shl;
+	// 		case ArithmeticOp::ShiftLeft:
+	// 		case ArithmeticOp::ShiftLeftEquals:
+	// 			return Instruction::BinaryOps::Shl;
 
-			case ArithmeticOp::ShiftRight:
-			case ArithmeticOp::ShiftRightEquals:
-				return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
+	// 		case ArithmeticOp::ShiftRight:
+	// 		case ArithmeticOp::ShiftRightEquals:
+	// 			return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
 
-			case ArithmeticOp::BitwiseAnd:
-			case ArithmeticOp::BitwiseAndEquals:
-				return Instruction::BinaryOps::And;
+	// 		case ArithmeticOp::BitwiseAnd:
+	// 		case ArithmeticOp::BitwiseAndEquals:
+	// 			return Instruction::BinaryOps::And;
 
-			case ArithmeticOp::BitwiseOr:
-			case ArithmeticOp::BitwiseOrEquals:
-				return Instruction::BinaryOps::Or;
+	// 		case ArithmeticOp::BitwiseOr:
+	// 		case ArithmeticOp::BitwiseOrEquals:
+	// 			return Instruction::BinaryOps::Or;
 
-			case ArithmeticOp::BitwiseXor:
-			case ArithmeticOp::BitwiseXorEquals:
-				return Instruction::BinaryOps::Xor;
+	// 		case ArithmeticOp::BitwiseXor:
+	// 		case ArithmeticOp::BitwiseXorEquals:
+	// 			return Instruction::BinaryOps::Xor;
 
-			default:
-				return (Instruction::BinaryOps) 0;
-		}
-	}
+	// 		default:
+	// 			return (Instruction::BinaryOps) 0;
+	// 	}
+	// }
 
 
 
-	fir::Value* getArgumentNOfFunction(fir::Function* func, size_t n)
-	{
-		auto it = func->getArgumentList().begin();
-		for(size_t i = 0; i < n; i++, it++)
-			;
+	// fir::Value* getArgumentNOfFunction(fir::Function* func, size_t n)
+	// {
+	// 	auto it = func->getargume().begin();
+	// 	for(size_t i = 0; i < n; i++, it++)
+	// 		;
 
-		return it;
-	}
+	// 	return it;
+	// }
 
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
@@ -2075,7 +2083,7 @@ namespace Codegen
 						f.first->func->decl->attribs |= Attr_VisPublic;
 						f.first->func->decl->codegen(this);
 
-						fn = fir::cast<fir::Function>(f.first->func->codegen(this).result.first);
+						fn = dynamic_cast<fir::Function*>(f.first->func->codegen(this).result.first);
 
 						this->namespaceStack = oldns;
 						this->setCurrentFunctionScope(oldfs);
@@ -2130,10 +2138,10 @@ namespace Codegen
 
 		for(auto cand : set)
 		{
-			if(cand.first.isBinOp && cand.second->arg_size() == 2)
+			if(cand.first.isBinOp && cand.second->getArgumentCount() == 2)
 				candidates.push_back(cand);
 
-			else if(!cand.first.isBinOp && cand.second->arg_size() == 1)
+			else if(!cand.first.isBinOp && cand.second->getArgumentCount() == 1)
 				candidates.push_back(cand);
 		}
 
@@ -2211,7 +2219,7 @@ namespace Codegen
 					fir::Function* af = pair.second;
 					bool intype = pair.first;
 
-					iceAssert(af->arg_size() == 2);
+					iceAssert(af->getArgumentCount() == 2);
 
 					fir::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
 					fir::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
@@ -2279,7 +2287,7 @@ namespace Codegen
 
 			iceAssert(lhs);
 
-			fir::Value* ptr = this->builder.CreateAlloca(lhs->getType());
+			fir::Value* ptr = this->builder.CreateStackAlloc(lhs->getType());
 			this->builder.CreateStore(lhs, ptr);
 
 			lref = ptr;
@@ -2288,7 +2296,7 @@ namespace Codegen
 		{
 			iceAssert(rhs);
 
-			fir::Value* ptr = this->builder.CreateAlloca(rhs->getType());
+			fir::Value* ptr = this->builder.CreateStackAlloc(rhs->getType());
 			this->builder.CreateStore(rhs, ptr);
 
 			rref = ptr;
@@ -2344,17 +2352,17 @@ namespace Codegen
 		else
 		{
 			if(isInType)
-				ret = this->builder.CreateCall(opFunc, lref);
+				ret = this->builder.CreateCall1(opFunc, lref);
 
 			else
-				ret = this->builder.CreateCall(opFunc, lhs);
+				ret = this->builder.CreateCall1(opFunc, lhs);
 		}
 
 
 
 		if(needsNot)
 		{
-			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getFalse(ret->getType()));
+			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
 		}
 		else if(needsAss)
 		{
@@ -2397,32 +2405,33 @@ namespace Codegen
 			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
 
 			std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
-			fir::FunctionType* ft = fir::FunctionType::get(pair->first, args, false);
+			fir::FunctionType* ft = fir::FunctionType::getFunction(args, pair->first, false);
 
-			this->module->getOrInsertFunction(fnName, ft);
+			this->module->declareFunction(fnName, ft);
 			fir::Function* fn = this->module->getFunction(fnName);
 
-			if(fn->getBasicBlockList().size() == 0)
+			if(fn->getBlockList().size() == 0)
 			{
-				fir::BasicBlock* prevBlock = this->builder.GetInsertBlock();
+				fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
 
-				fir::BasicBlock* block = fir::BasicBlock::Create(this->getContext(), "entry", fn);
-				this->builder.SetInsertPoint(block);
+				fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
+				this->builder.setCurrentBlock(block);
 
-				iceAssert(fn->arg_size() > 1);
+				iceAssert(fn->getArgumentCount() > 1);
 
-				fir::Value* param = ++fn->arg_begin();
-				this->builder.CreateRet(param);
+				// fir::Value* param = ++fn->arg_begin();
+				this->builder.CreateReturn(fn->getArguments()[1]);
 
-				this->builder.SetInsertPoint(prevBlock);
+				this->builder.setCurrentBlock(prevBlock);
 			}
 
 
-			int i = 0;
-			for(auto it = fn->arg_begin(); it != fn->arg_end(); it++, i++)
+			if(vals.size() != fn->getArgumentCount())
+				GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+
+			for(size_t i = 0; i < fn->getArgumentCount(); i++)
 			{
-				fir::Value& arg = (*it);
-				if(vals[i]->getType() != arg.getType())
+				if(vals[i]->getType() != fn->getArguments()[i]->getType())
 					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
 			}
 
@@ -2450,17 +2459,15 @@ namespace Codegen
 			fir::Function* initf = 0;
 			for(fir::Function* initers : sb->initFuncs)
 			{
-				if(initers->arg_size() < 1)
+				if(initers->getArgumentCount() < 1)
 					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
-				if(initers->arg_size() != vals.size())
+				if(initers->getArgumentCount() != vals.size())
 					continue;
 
-				int i = 0;
-				for(auto it = initers->arg_begin(); it != initers->arg_end(); it++, i++)
+				for(size_t i = 0; i < initers->getArgumentCount(); i++)
 				{
-					fir::Value& arg = (*it);
-					if(vals[i]->getType() != arg.getType())
+					if(vals[i]->getType() != initers->getArguments()[i]->getType())
 						goto breakout;
 				}
 
@@ -2486,38 +2493,39 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0, "type");		// Type
+		fir::Value* typegep = this->builder.CreateGetConstStructMember(lhsPtr, 0);	// Any
+		typegep = this->builder.CreateGetConstStructMember(typegep, 0);		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
-		fir::Value* constint = fir::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
+		fir::Value* constint = fir::ConstantInt::getConstantUIntValue(typegep->getType()->getPointerElementType(), index);
 		this->builder.CreateStore(constint, typegep);
 
 
 
-		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1, "value");
+		fir::Value* valgep = this->builder.CreateGetConstStructMember(lhsPtr, 1);
 		if(rhsPtr)
 		{
 			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
-			fir::Value* casted = this->builder.CreatePointerCast(rhsPtr, valgep->getType()->getPointerElementType(), "pcast");
+			fir::Value* casted = this->builder.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
 			this->builder.CreateStore(casted, valgep);
 		}
 		else
 		{
-			fir::Type* targetType = rhs->getType()->isIntegerTy() ? valgep->getType()->getPointerElementType() : fir::IntegerType::getInt64Ty(this->getContext());
+			fir::Type* targetType = rhs->getType()->isIntegerType() ? valgep->getType()->getPointerElementType() :
+				fir::PrimitiveType::getInt64(this->getContext());
 
 
-			if(rhs->getType()->isIntegerTy())
+			if(rhs->getType()->isIntegerType())
 			{
-				fir::Value* casted = this->builder.CreateIntToPtr(rhs, targetType);
+				fir::Value* casted = this->builder.CreateIntToPointerCast(rhs, targetType);
 				this->builder.CreateStore(casted, valgep);
 			}
 			else
 			{
-				fir::Value* casted = this->builder.CreateBitCast(rhs, targetType);
-				casted = this->builder.CreateIntToPtr(casted, valgep->getType()->getPointerElementType());
+				fir::Value* casted = this->builder.CreateBitcast(rhs, targetType);
+				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
 				this->builder.CreateStore(casted, valgep);
 			}
 		}
@@ -2528,13 +2536,13 @@ namespace Codegen
 
 	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
+		fir::Value* valgep = this->builder.CreateGetConstStructMember(ptr, 1);
 		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
-		if(type->isStructTy())
+		if(type->isStructType())
 		{
 			// use pointer stuff
-			fir::Value* valptr = this->builder.CreatePointerCast(loadedval, type->getPointerTo());
+			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());
 			fir::Value* loaded = this->builder.CreateLoad(valptr);
 
 			return Result_t(loaded, valptr);
@@ -2542,12 +2550,12 @@ namespace Codegen
 		else
 		{
 			// the pointer is actually a literal
-			fir::Type* targetType = type->isIntegerTy() ? type : fir::IntegerType::getInt64Ty(this->getContext());
-			fir::Value* val = this->builder.CreatePtrToInt(loadedval, targetType);
+			fir::Type* targetType = type->isIntegerType() ? type : fir::PrimitiveType::getInt64(this->getContext());
+			fir::Value* val = this->builder.CreatePointerToIntCast(loadedval, targetType);
 
 			if(val->getType() != type)
 			{
-				val = this->builder.CreateBitCast(val, type);
+				val = this->builder.CreateBitcast(val, type);
 			}
 
 			return Result_t(val, 0);
@@ -2575,43 +2583,44 @@ namespace Codegen
 
 	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs)
 	{
-		iceAssert(lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()
+		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
 
-		fir::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
-		iceAssert(lop);
+		// fir::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
+		// iceAssert(lop);
 
 
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
 		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
 
-		const fir::DataLayout* dl = this->execEngine->getDataLayout();
-		iceAssert(dl);
+		// todo: fix.
+		// const fir::DataLayout* dl = this->execEngine->getDataLayout();
+		// iceAssert(dl);
 
-		uint64_t ptrWidth = dl->getPointerSizeInBits();
-		uint64_t typesize = dl->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-		fir::APInt apint = fir::APInt(ptrWidth, typesize);
-		fir::Value* intval = fir::Constant::getIntegerValue(fir::IntegerType::getIntNTy(this->getContext(), ptrWidth), apint);
+		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
+		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
+		// fir::APInt apint = fir::APInt(ptrWidth, typesize);
+		fir::Value* intval = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
 
-		if(rhs->getType()->getIntegerBitWidth() != ptrWidth)
-			rhs = this->builder.CreateIntCast(rhs, intval->getType(), false);
+		if(rhs->getType()->toPrimitiveType()->getIntegerBitWidth() != ptrWidth)
+			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
 
 
 		// this is the properly adjusted int to add/sub by
 		fir::Value* newrhs = this->builder.CreateMul(rhs, intval);
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
-		fir::Value* ptrval = this->builder.CreatePtrToInt(lhs, newrhs->getType());
+		fir::Value* ptrval = this->builder.CreatePointerToIntCast(lhs, newrhs->getType());
 
 		// create the add/sub
-		fir::Value* res = this->builder.CreateBinOp(lop, ptrval, newrhs);
+		fir::Value* res = this->builder.CreateBinaryOp(op, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
 		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
 			lhsPtr : this->allocateInstanceInBlock(lhs->getType());
 
 
-		fir::Value* properres = this->builder.CreateIntToPtr(res, lhs->getType());
+		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());
 		this->builder.CreateStore(properres, tempRes);
 		return Result_t(properres, tempRes);
 	}
@@ -2715,7 +2724,7 @@ namespace Codegen
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidTy();
+		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoid();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
@@ -2817,7 +2826,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(expr, "cannot clone, enosup (%s)", typeid(*expr).name());
+			error(expr, "cannot clone, enotsup (%s)", typeid(*expr).name());
 		}
 	}
 

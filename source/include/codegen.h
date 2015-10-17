@@ -71,6 +71,7 @@ namespace Codegen
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
+		fir::ExecutionTarget* execTarget;
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;

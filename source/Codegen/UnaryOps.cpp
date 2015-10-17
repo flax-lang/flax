@@ -18,7 +18,8 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->builder.CreateICmpEQ(res.result.first, fir::Constant::getNullValue(res.result.first->getType())), res.result.second);
+			return Result_t(cgi->builder.CreateICmpEQ(res.result.first,
+				fir::ConstantValue::getNullValue(res.result.first->getType())), res.result.second);
 
 		case ArithmeticOp::Minus:
 			return Result_t(cgi->builder.CreateNeg(res.result.first), res.result.second);
@@ -27,7 +28,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 			return res;
 
 		case ArithmeticOp::Deref:
-			if(!res.result.first->getType()->isPointerTy())
+			if(!res.result.first->getType()->isPointerType())
 				error(this, "Cannot dereference non-pointer type!");
 
 			return Result_t(cgi->builder.CreateLoad(res.result.first), res.result.first);
@@ -39,7 +40,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 			return Result_t(res.result.second, 0);
 
 		case ArithmeticOp::BitwiseNot:
-			return Result_t(cgi->builder.CreateNot(res.result.first), res.result.second);
+			return Result_t(cgi->builder.CreateBitwiseNOT(res.result.first), res.result.second);
 
 		default:
 			error(this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
@@ -61,7 +62,7 @@ Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::
 	}
 	else
 	{
-		error(this, "enosup");
+		error(this, "enotsup");
 	}
 }
 

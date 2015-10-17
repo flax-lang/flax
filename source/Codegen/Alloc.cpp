@@ -35,12 +35,17 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	iceAssert(allocType);
 
 
-	fir::Value* oneValue = fir::ConstantInt::get(fir::IntegerType::getInt64Ty(cgi->getContext()), 1);
-	fir::Value* zeroValue = fir::ConstantInt::get(fir::IntegerType::getInt64Ty(cgi->getContext()), 0);
 
 
 
 	// call malloc
+	// todo: all broken
+
+	#if 0
+
+	// fir::Value* oneValue = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getInt64(cgi->getContext()), 1);
+	// fir::Value* zeroValue = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getInt64(cgi->getContext()), 0);
+
 	uint64_t typesize = cgi->module->getDataLayout()->getTypeSizeInBits(allocType) / 8;
 	fir::Value* allocsize = fir::ConstantInt::get(fir::IntegerType::getInt64Ty(cgi->getContext()), typesize);
 	fir::Value* allocnum = oneValue;
@@ -184,6 +189,9 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 
 	return Result_t(allocatedmem, 0);
+	#endif
+
+	return Result_t(0, 0);
 }
 
 
@@ -202,7 +210,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 		// therefore, create a Load to get the actual value
 		varval = cgi->builder.CreateLoad(varval);
-		freearg = cgi->builder.CreatePointerCast(varval, fir::IntegerType::getInt8PtrTy(cgi->getContext()));
+		freearg = cgi->builder.CreatePointerTypeCast(varval, fir::PointerType::getInt8Ptr(cgi->getContext()));
 	}
 	else
 	{
@@ -220,7 +228,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	iceAssert(freef);
 
 
-	cgi->builder.CreateCall(freef, freearg);
+	cgi->builder.CreateCall1(freef, freearg);
 	return Result_t(0, 0);
 }
 

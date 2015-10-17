@@ -51,19 +51,7 @@ namespace fir
 
 
 
-	fir::Type* ArrayType::getLlvmType(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
 
-		if(this->llvmType == 0)
-		{
-			// do it.
-			this->llvmType = fir::ArrayType::get(this->arrayElementType->getLlvmType(), this->arraySize);
-		}
-
-		return this->llvmType;
-	}
 
 
 	// array stuff

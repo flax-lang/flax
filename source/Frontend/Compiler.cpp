@@ -154,7 +154,7 @@ namespace Compiler
 
 		Codegen::doCodegen(fpath, root, cgi);
 
-		fir::verifyModule(*cgi->module, &fir::errs());
+		// fir::verifyModule(*cgi->module, &fir::errs());
 		Codegen::writeBitcode(fpath, pstate.cgi);
 
 		size_t lastdot = fpath.find_last_of(".");
@@ -367,7 +367,7 @@ namespace Compiler
 
 
 
-		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
+		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleName()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
 		snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());

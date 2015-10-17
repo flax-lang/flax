@@ -27,6 +27,7 @@
 #include "value.h"
 #include "module.h"
 #include "function.h"
+#include "constant.h"
 
 namespace fir
 {
@@ -34,6 +35,7 @@ namespace fir
 	{
 		IRBuilder(FTContext* c);
 
+		Value* CreateNeg(Value* a);
 		Value* CreateAdd(Value* a, Value* b);
 		Value* CreateSub(Value* a, Value* b);
 		Value* CreateMul(Value* a, Value* b);
@@ -56,11 +58,12 @@ namespace fir
 		Value* CreateLogicalAND(Value* a, Value* b);
 		Value* CreateLogicalOR(Value* a, Value* b);
 		Value* CreateBitwiseXOR(Value* a, Value* b);
-		Value* CreateBitwiseLogicalSHL(Value* a, Value* b);
-		Value* CreateBitwiseArithmeticSHL(Value* a, Value* b);
-		Value* CreateBitwiseSHR(Value* a, Value* b);
+		Value* CreateBitwiseLogicalSHR(Value* a, Value* b);
+		Value* CreateBitwiseArithmeticSHR(Value* a, Value* b);
+		Value* CreateBitwiseSHL(Value* a, Value* b);
 		Value* CreateBitwiseAND(Value* a, Value* b);
 		Value* CreateBitwiseOR(Value* a, Value* b);
+		Value* CreateBitwiseNOT(Value* a);
 		Value* CreateBitcast(Value* v, Type* targetType);
 		Value* CreateIntSizeCast(Value* v, Type* targetType);
 		Value* CreateFloatToIntCast(Value* v, Type* targetType);
@@ -68,6 +71,9 @@ namespace fir
 		Value* CreatePointerTypeCast(Value* v, Type* targetType);
 		Value* CreatePointerToIntCast(Value* v, Type* targetType);
 		Value* CreateIntToPointerCast(Value* v, Type* targetType);
+
+		Value* CreateFTruncate(Value* v, Type* targetType);
+		Value* CreateFExtend(Value* v, Type* targetType);
 
 		Value* CreateLoad(Value* ptr);
 		Value* CreateStore(Value* v, Value* ptr);
@@ -79,8 +85,8 @@ namespace fir
 		Value* CreateCall(Function* fn, std::vector<Value*> args);
 		Value* CreateCall(Function* fn, std::initializer_list<Value*> args);
 
-		void CreateReturn(Value* v);
-		void CreateReturnVoid();
+		Value* CreateReturn(Value* v);
+		Value* CreateReturnVoid();
 
 		Value* CreateLogicalNot(Value* v);
 		Value* CreateStackAlloc(Type* type);
@@ -96,8 +102,10 @@ namespace fir
 		// equivalent to GEP(ptr*, index)
 		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);
 
-		void CreateCondBranch(IRBlock* target, Value* condition);
+		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);
+
+		Value* CreateGlobalInt8Ptr(std::string str);
 
 		IRBlock* addNewBlockInFunction(std::string name, Function* func);
 		IRBlock* addNewBlockAfter(std::string name, IRBlock* block);
@@ -108,6 +116,8 @@ namespace fir
 
 		Function* getCurrentFunction();
 		IRBlock* getCurrentBlock();
+
+		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b);
 
 		private:
 		Value* addInstruction(Instruction* instr);

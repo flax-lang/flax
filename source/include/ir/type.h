@@ -24,11 +24,6 @@
 #include <deque>
 #include <unordered_map>
 
-namespace fir
-{
-	struct Type;
-	struct Module;
-}
 
 namespace fir
 {
@@ -37,6 +32,7 @@ namespace fir
 	// we shouldn't be making any copies anyway, so space/performance is a negligible concern
 
 	struct Type;
+	struct Module;
 	struct PrimitiveType;
 	struct FunctionType;
 	struct PointerType;
@@ -100,9 +96,6 @@ namespace fir
 		// various
 		virtual std::string str() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) = 0;
-
-
 
 		Type* getPointerTo(FTContext* tc = 0);
 		Type* getPointerElementType(FTContext* tc = 0);
@@ -148,7 +141,6 @@ namespace fir
 
 		// base things
 		size_t id = 0;
-		fir::Type* llvmType = 0;
 
 		FTypeKind typeKind = FTypeKind::Invalid;
 
@@ -200,13 +192,14 @@ namespace fir
 		size_t getIntegerBitWidth();
 		size_t getFloatingPointBitWidth();
 
+
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+
 		// protected constructor
 		protected:
 		PrimitiveType(size_t bits, FTypeKind kind);
 		virtual ~PrimitiveType() override { }
-		virtual std::string str() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 
 		// fields (protected)
@@ -222,6 +215,8 @@ namespace fir
 
 
 		public:
+		static PrimitiveType* getIntN(size_t bits, FTContext* tc = 0);
+		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
 		static PrimitiveType* getVoid(FTContext* tc = 0);
@@ -249,13 +244,14 @@ namespace fir
 		// methods
 		size_t getIndirections();
 
+
+		virtual bool isTypeEqual(Type* other) override;
+
 		// protected constructor
 		protected:
 		PointerType(size_t inds, Type* base);
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 
 		size_t indirections = 0;
@@ -293,13 +289,13 @@ namespace fir
 
 		void deleteType(FTContext* tc = 0);
 
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+
 		// protected constructor
 		protected:
 		StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked);
 		virtual ~StructType() override { }
-		virtual std::string str() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		bool isTypePacked;
@@ -331,13 +327,13 @@ namespace fir
 		Type* getElementType();
 		size_t getArraySize();
 
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+
 		// protected constructor
 		protected:
 		ArrayType(Type* elmType, size_t sz);
 		virtual ~ArrayType() override { }
-		virtual std::string str() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		size_t arraySize;
@@ -359,13 +355,14 @@ namespace fir
 		Type* getReturnType();
 		bool isVarArg();
 
+
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+
 		// protected constructor
 		protected:
 		FunctionType(std::deque<Type*> args, Type* ret, bool isva);
 		virtual ~FunctionType() override { }
-		virtual std::string str() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* getLlvmType(FTContext* tc = 0) override;
 
 		// fields (protected)
 		bool isFnVarArg;

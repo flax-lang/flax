@@ -2,8 +2,10 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "../include/ast.h"
 #include "../include/ir/block.h"
 #include "../include/ir/irbuilder.h"
+#include "../include/ir/instruction.h"
 
 namespace fir
 {
@@ -55,6 +57,213 @@ namespace fir
 		v->addUser(this->currentBlock);
 		return v;
 	}
+
+	Instruction* Instruction::GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* vlhs, Value* vrhs)
+	{
+		OpKind op = OpKind::Invalid;
+
+		Type* lhs = vlhs->getType();
+		Type* rhs = vrhs->getType();
+
+		bool useFloating = (lhs->isFloatingPointType() || rhs->isFloatingPointType());
+		bool useSigned = ((lhs->isIntegerType() && lhs->toPrimitiveType()->isSigned())
+			|| (rhs->isIntegerType() && rhs->toPrimitiveType()->isSigned()));
+
+
+		PrimitiveType* lpt = lhs->toPrimitiveType();
+		PrimitiveType* rpt = rhs->toPrimitiveType();
+
+		iceAssert(lpt && rpt && "not primitive types");
+
+		Type* out = 0;
+		if(ao == Ast::ArithmeticOp::Add)
+		{
+			op = useFloating ? OpKind::Floating_Add : useSigned ? OpKind::Signed_Add : OpKind::Unsigned_Add;
+
+			// use the larger type.
+			if(useFloating)
+			{
+				if(lpt->getFloatingPointBitWidth() > rpt->getFloatingPointBitWidth())
+					out = lpt;
+
+				else
+					out = rpt;
+			}
+			else
+			{
+				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
+				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+				else
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+			}
+		}
+		else if(ao == Ast::ArithmeticOp::Subtract)
+		{
+			op = useFloating ? OpKind::Floating_Sub : useSigned ? OpKind::Signed_Sub : OpKind::Unsigned_Sub;
+
+			// use the larger type.
+			if(useFloating)
+			{
+				if(lpt->getFloatingPointBitWidth() > rpt->getFloatingPointBitWidth())
+					out = lpt;
+
+				else
+					out = rpt;
+			}
+			else
+			{
+				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
+				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+				else
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+			}
+		}
+		else if(ao == Ast::ArithmeticOp::Multiply)
+		{
+			op = useFloating ? OpKind::Floating_Mul : useSigned ? OpKind::Signed_Mul : OpKind::Unsigned_Mul;
+
+			// use the larger type.
+			if(useFloating)
+			{
+				if(lpt->getFloatingPointBitWidth() > rpt->getFloatingPointBitWidth())
+					out = lpt;
+
+				else
+					out = rpt;
+			}
+			else
+			{
+				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
+				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+				else
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+			}
+		}
+		else if(ao == Ast::ArithmeticOp::Divide)
+		{
+			op = useFloating ? OpKind::Floating_Div : useSigned ? OpKind::Signed_Div : OpKind::Unsigned_Div;
+
+			// use the larger type.
+			if(useFloating)
+			{
+				if(lpt->getFloatingPointBitWidth() > rpt->getFloatingPointBitWidth())
+					out = lpt;
+
+				else
+					out = rpt;
+			}
+			else
+			{
+				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
+				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+				else
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+			}
+		}
+		else if(ao == Ast::ArithmeticOp::Modulo)
+		{
+			op = useFloating ? OpKind::Floating_Mod : useSigned ? OpKind::Signed_Mod : OpKind::Unsigned_Mod;
+
+			// use the larger type.
+			if(useFloating)
+			{
+				if(lpt->getFloatingPointBitWidth() > rpt->getFloatingPointBitWidth())
+					out = lpt;
+
+				else
+					out = rpt;
+			}
+			else
+			{
+				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
+				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+				else
+				{
+					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
+					out = (lpt->isSigned() ? rpt : lpt);
+				}
+			}
+		}
+		else if(ao == Ast::ArithmeticOp::ShiftLeft)
+		{
+			if(useFloating) iceAssert("shift operation can only be done with ints");
+			op = OpKind::Bitwise_Shl;
+		}
+		else if(ao == Ast::ArithmeticOp::ShiftRight)
+		{
+			if(useFloating) iceAssert("shift operation can only be done with ints");
+			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
+		}
+		else if(ao == Ast::ArithmeticOp::BitwiseAnd)
+		{
+			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
+			op = OpKind::Bitwise_And;
+		}
+		else if(ao == Ast::ArithmeticOp::BitwiseOr)
+		{
+			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
+			op = OpKind::Bitwise_Or;
+		}
+		else if(ao == Ast::ArithmeticOp::BitwiseXor)
+		{
+			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
+			op = OpKind::Bitwise_Xor;
+		}
+		else if(ao == Ast::ArithmeticOp::BitwiseNot)
+		{
+			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
+			op = OpKind::Bitwise_Not;
+		}
+		else
+		{
+			return 0;
+		}
+
+		return new Instruction(op, out, { vlhs, vrhs });
+	}
+
+	Value* IRBuilder::CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b)
+	{
+		Instruction* instr = Instruction::GetBinaryOpInstruction(ao, a, b);
+		return this->addInstruction(instr);
+	}
+
+
+
+
+
 
 
 
@@ -117,6 +326,21 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Signed_Mod, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
+
+	Value* IRBuilder::CreateFTruncate(Value* v, Type* targetType)
+	{
+		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
+		Instruction* instr = new Instruction(OpKind::Floating_Truncate, targetType, { v });
+		return instr;
+	}
+
+	Value* IRBuilder::CreateFExtend(Value* v, Type* targetType)
+	{
+		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
+		Instruction* instr = new Instruction(OpKind::Floating_Extend, targetType, { v });
+		return instr;
+	}
+
 
 	Value* IRBuilder::CreateICmpEQ(Value* a, Value* b)
 	{
@@ -237,24 +461,24 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateBitwiseLogicalSHL(Value* a, Value* b)
+	Value* IRBuilder::CreateBitwiseLogicalSHR(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise lshl instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Logical_Shl, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::Bitwise_Logical_Shr, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateBitwiseArithmeticSHL(Value* a, Value* b)
+	Value* IRBuilder::CreateBitwiseArithmeticSHR(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise ashl instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Arithmetic_Shl, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::Bitwise_Arithmetic_Shr, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
-	Value* IRBuilder::CreateBitwiseSHR(Value* a, Value* b)
+	Value* IRBuilder::CreateBitwiseSHL(Value* a, Value* b)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise shr instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Shr, a->getType(), { a, b });
+		Instruction* instr = new Instruction(OpKind::Bitwise_Shl, a->getType(), { a, b });
 		return this->addInstruction(instr);
 	}
 
@@ -269,6 +493,12 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise or instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Or, a->getType(), { a, b });
+		return this->addInstruction(instr);
+	}
+
+	Value* IRBuilder::CreateBitwiseNOT(Value* a)
+	{
+		Instruction* instr = new Instruction(OpKind::Bitwise_Not, a->getType(), { a });
 		return this->addInstruction(instr);
 	}
 
@@ -381,16 +611,16 @@ namespace fir
 	}
 
 
-	void IRBuilder::CreateReturn(Value* v)
+	Value* IRBuilder::CreateReturn(Value* v)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_Return, v->getType(), { v });
-		this->addInstruction(instr);
+		return this->addInstruction(instr);
 	}
 
-	void IRBuilder::CreateReturnVoid()
+	Value* IRBuilder::CreateReturnVoid()
 	{
 		Instruction* instr = new Instruction(OpKind::Value_Return, PrimitiveType::getVoid(), { });
-		this->addInstruction(instr);
+		return this->addInstruction(instr);
 	}
 
 
@@ -410,7 +640,7 @@ namespace fir
 	// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 	Value* IRBuilder::CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex)
 	{
-		error("enosup");
+		error("enotsup");
 	}
 
 	Value* IRBuilder::CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex)
@@ -432,7 +662,7 @@ namespace fir
 	// equivalent to GEP(ptr*, 0, memberIndex)
 	Value* IRBuilder::CreateGetStructMember(Value* structPtr, Value* memberIndex)
 	{
-		error("enosup");
+		error("enotsup");
 	}
 
 	Value* IRBuilder::CreateGetConstStructMember(Value* structPtr, size_t memberIndex)
@@ -459,9 +689,9 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
-	void IRBuilder::CreateCondBranch(IRBlock* target, Value* condition)
+	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
 	{
-		Instruction* instr = new Instruction(OpKind::Branch_Cond, PrimitiveType::getVoid(), { target, condition });
+		Instruction* instr = new Instruction(OpKind::Branch_Cond, PrimitiveType::getVoid(), { condition, trueB, falseB });
 		this->addInstruction(instr);
 	}
 
@@ -471,7 +701,7 @@ namespace fir
 		this->addInstruction(instr);
 	}
 
-	IRBlock* IRBuilder::addNewBlockInFunction(Function* func)
+	IRBlock* IRBuilder::addNewBlockInFunction(std::string name, Function* func)
 	{
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
@@ -480,11 +710,13 @@ namespace fir
 			this->currentFunction = block->parentFunction;
 		}
 
+
 		this->currentFunction->blocks.push_back(block);
+		block->setName(name);
 		return block;
 	}
 
-	IRBlock* IRBuilder::addNewBlockAfter(IRBlock* block)
+	IRBlock* IRBuilder::addNewBlockAfter(std::string name, IRBlock* block)
 	{
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
@@ -504,6 +736,7 @@ namespace fir
 		}
 
 		iceAssert(0 && "no such block to insert after");
+		nb->setName(name);
 		return nb;
 	}
 }
