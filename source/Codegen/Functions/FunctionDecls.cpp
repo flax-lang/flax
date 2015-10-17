@@ -63,7 +63,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	}
 	else
 	{
-		func = new fir::Function(fd->mangledName, ft, cgi->module, linkageType);
+		func = cgi->module->getOrCreateFunction(fd->mangledName, ft, linkageType);
 
 		if(fd->attribs & Attr_VisPublic)
 			cgi->addPublicFunc({ func, fd });

@@ -56,6 +56,8 @@ namespace fir
 		void deleteFunction(std::string name);
 		Function* getFunction(std::string name);
 
+		Function* getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage);
+
 		std::string getModuleName();
 		void setModuleName(std::string name);
 

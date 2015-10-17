@@ -41,6 +41,16 @@ namespace fir
 		this->value = val;
 	}
 
+	ssize_t ConstantInt::getSignedValue()
+	{
+		return (ssize_t) this->value;
+	}
+
+	size_t ConstantInt::getUnsignedValue()
+	{
+		return this->value;
+	}
+
 
 
 
@@ -64,6 +74,11 @@ namespace fir
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)
 	{
 		this->value = val;
+	}
+
+	double ConstantFP::getValue()
+	{
+		return this->value;
 	}
 
 

@@ -305,6 +305,8 @@ namespace fir
 
 		// static funcs
 		public:
+		static StructType* createNamedWithoutBody(std::string name, FTContext* tc = 0, bool isPacked = false);
+
 		static StructType* createNamed(std::string name, std::initializer_list<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 

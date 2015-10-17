@@ -20,9 +20,8 @@ Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value
 fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
 {
 	// generate initialiser
-	fir::Function* defaultInitFunc = new fir::Function("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex),
-		fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
-		cgi->module, fir::LinkageType::External);
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex), fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
+		fir::LinkageType::External);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);

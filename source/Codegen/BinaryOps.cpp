@@ -114,6 +114,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 
+		this->autoCastType(rhs, lhs);
 		if(!this->areEqualTypes(lhs->getType(), rhs->getType()))
 		{
 			// ensure we can always store 0 to pointers without a cast
@@ -330,6 +331,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		// get the llvm op
 		fir::Value* newrhs = this->builder.CreateBinaryOp(op, lhs, rhs);
+		iceAssert(newrhs);
+
 		this->builder.CreateStore(newrhs, varptr);
 		return Result_t(newrhs, varptr);
 	}
@@ -634,30 +637,42 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		}
 
 		cgi->autoCastType(rhs, lhs);
+
+		fir::Value* ret = 0;
 		switch(this->op)
 		{
 			// comparisons
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:
+				ret = cgi->builder.CreateICmpEQ(lhs, rhs);
+				break;
 
+			case ArithmeticOp::CmpNEq:
+				ret = cgi->builder.CreateICmpNEQ(lhs, rhs);
+				break;
 
 			case ArithmeticOp::CmpLT:
-				return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
+				ret = cgi->builder.CreateICmpLT(lhs, rhs);
+				break;
 
 			case ArithmeticOp::CmpGT:
-				return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
+				ret = cgi->builder.CreateICmpGT(lhs, rhs);
+				break;
 
 			case ArithmeticOp::CmpLEq:
-				return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
+				ret = cgi->builder.CreateICmpLEQ(lhs, rhs);
+				break;
 
 			case ArithmeticOp::CmpGEq:
-				return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
+				ret = cgi->builder.CreateICmpGEQ(lhs, rhs);
+				break;
 
 			case ArithmeticOp::LogicalOr:
-				return Result_t(cgi->builder.CreateLogicalOR(lhs, rhs), 0);
+				ret = cgi->builder.CreateLogicalOR(lhs, rhs);
+				break;
 
 			case ArithmeticOp::LogicalAnd:
-				return Result_t(cgi->builder.CreateLogicalAND(lhs, rhs), 0);
+				ret = cgi->builder.CreateLogicalAND(lhs, rhs);
+				break;
 
 
 			#if 0
@@ -730,6 +745,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				// should not be reached
 				error("what?!");
 		}
+
+		ret = cgi->builder.CreateIntSizeCast(ret, fir::PrimitiveType::getBool(cgi->getContext()));
+		return Result_t(ret, 0);
 	}
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
@@ -755,7 +773,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ(lhs, rhs), 0);
 
-			default:						error(this, "Unsupported operator.");
+			// logical shit.
+			case ArithmeticOp::LogicalAnd:	return Result_t(cgi->builder.CreateLogicalAND(lhs, rhs), 0);
+			case ArithmeticOp::LogicalOr:	return Result_t(cgi->builder.CreateLogicalOR(lhs, rhs), 0);
+
+			default:						error(this, "Unsupported operator. (%d)", this->op);
 		}
 	}
 	else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))

@@ -293,7 +293,9 @@ namespace Parser
 					Token attr = ps.front();
 					ps.pop_front();
 
-					iceAssert(attr.type == TType::Identifier);
+					iceAssert(attr.type == TType::Identifier || attr.text == "public"
+						|| attr.text == "private" || attr.text == "internal");
+
 					if(attr.text == ATTR_STR_OPERATOR)
 					{
 						ps.skipNewline();
@@ -2530,6 +2532,7 @@ namespace Parser
 		// parse a func declaration.
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
 		oo->func = parseFunc(ps);
+		oo->func->decl->attribs = attr & ~Attr_CommutativeOp;
 
 		oo->attribs = attr;
 

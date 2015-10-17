@@ -75,14 +75,16 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 					argstr = argstr.substr(2);
 
 				std::string candidates;
-				for(auto fs : cgi->resolveFunctionName(this->name))
+				std::deque<FuncPair_t> reses;
+
+				for(auto fs : reses = cgi->resolveFunctionName(this->name))
 				{
 					if(fs.second)
 						candidates += cgi->printAst(fs.second) + "\n";
 				}
 
 				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
-					this->name.c_str(), argstr.c_str(), candidates.size(), candidates.c_str());
+					this->name.c_str(), argstr.c_str(), reses.size(), candidates.c_str());
 			}
 
 			if(rt.t.first == 0)
@@ -148,7 +150,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 
 
-	for(size_t i = 0; i < args.size(); i++)
+	for(size_t i = 0; i < std::min(args.size(), target->getArgumentCount()); i++)
 	{
 		if(target->getArguments()[i]->getType() != args[i]->getType())
 			cgi->autoCastType(target->getArguments()[i], args[i], argPtrs[i]);

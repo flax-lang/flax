@@ -2598,24 +2598,19 @@ namespace Codegen
 		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
 		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
 
-		// fir::Instruction::BinaryOps lop = this->getBinaryOperator(op, false, false);
-		// iceAssert(lop);
-
-
 		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
 		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
 
-		// todo: fix.
-		// const fir::DataLayout* dl = this->execEngine->getDataLayout();
-		// iceAssert(dl);
 
 		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
 		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-		// fir::APInt apint = fir::APInt(ptrWidth, typesize);
+
 		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
 
-		if(rhs->getType()->toPrimitiveType()->getIntegerBitWidth() != ptrWidth)
+		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
+		{
 			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
+		}
 
 
 		// this is the properly adjusted int to add/sub by
@@ -2773,7 +2768,10 @@ namespace Codegen
 			return true;
 
 		if(!ret)
-			error(func, "Function '%s' missing return statement", func->decl->name.c_str());
+		{
+			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->name.c_str(),
+				this->getLlvmType(func)->str().c_str(), this->getLlvmType(final)->str().c_str());
+		}
 
 		if(checkType)
 		{
