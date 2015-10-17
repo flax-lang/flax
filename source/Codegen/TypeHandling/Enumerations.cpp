@@ -28,7 +28,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 			}
 			else
 			{
-				return Result_t(llvm::Constant::getNullValue(this->getLlvmType(p.second)), 0);
+				return Result_t(fir::ConstantValue::getNullValue(this->getLlvmType(p.second)), 0);
 			}
 		}
 	}
@@ -43,8 +43,8 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 
 	// strong enum.
 	// create a temp alloca, then use GEP to set the value, then return.
-	llvm::Value* alloca = this->allocateInstanceInBlock(tp->first);
-	llvm::Value* gep = this->builder.CreateStructGEP(alloca, 0);
+	fir::Value* alloca = this->allocateInstanceInBlock(tp->first);
+	fir::Value* gep = this->builder.CreateGetConstStructMember(alloca, 0);
 
 	this->builder.CreateStore(res.result.first, gep);
 	return Result_t(this->builder.CreateLoad(alloca), alloca);
@@ -67,12 +67,12 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
 }
 
-Result_t Enumeration::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Enumeration::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	return Result_t(0, 0);
 }
 
-llvm::Type* Enumeration::createType(CodegenInstance* cgi)
+fir::Type* Enumeration::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
@@ -83,14 +83,14 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
 
 
-	llvm::Type* prev = 0;
+	fir::Type* prev = 0;
 	for(auto pair : this->cases)
 	{
 		if(!prev)
 			prev = cgi->getLlvmType(pair.second);
 
 
-		llvm::Type* t = cgi->getLlvmType(pair.second);
+		fir::Type* t = cgi->getLlvmType(pair.second);
 		if(t != prev)
 			error(pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
 				cgi->getReadableType(prev).c_str());
@@ -105,8 +105,8 @@ llvm::Type* Enumeration::createType(CodegenInstance* cgi)
 	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
 
 
-	llvm::StructType* wrapper = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
-	wrapper->setBody(std::vector<llvm::Type*>({ prev }));
+	fir::StructType* wrapper = fir::StructType::createNamed(this->mangledName, { prev }, cgi->getContext());
+	// wrapper->setBody(std::vector<fir::Type*>({ prev }));
 
 	// now that they're all the same type:
 	this->scope = fullScope;

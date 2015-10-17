@@ -12,27 +12,27 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<llvm::Value*> args)
+Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args)
 {
 	iceAssert(tp);
-	llvm::Value* ai = this->allocateInstanceInBlock(tp->first, "tmp");
+	fir::Value* ai = this->allocateInstanceInBlock(tp->first, "tmp");
 
 	args.insert(args.begin(), ai);
 
-	llvm::Function* initfunc = this->getStructInitialiser(user, tp, args);
+	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
 	this->builder.CreateCall(initfunc, args);
-	llvm::Value* val = this->builder.CreateLoad(ai);
+	fir::Value* val = this->builder.CreateLoad(ai);
 
 	return Result_t(val, ai);
 }
 
-Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// always try the type first.
 	if(TypePair_t* tp = cgi->getType(this->name))
 	{
-		std::vector<llvm::Value*> args;
+		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
@@ -40,17 +40,17 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	}
 	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
 	{
-		std::vector<llvm::Value*> args;
+		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).result.first);
 
 		return cgi->callTypeInitialiser(tp, this, args);
 	}
 
-	std::vector<llvm::Value*> args;
-	std::vector<llvm::Value*> argPtrs;
+	std::vector<fir::Value*> args;
+	std::vector<fir::Value*> argPtrs;
 
-	llvm::Function* target = 0;
+	fir::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
 	{
 		// we're not a generic function.
@@ -59,6 +59,12 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 
 			if(!rt.resolved)
+			{
+				// todo. do generic.
+				// this->cachedGenericFuncTarget = cgi->tryResolveAndInstantiateGenericFunction(this);
+			}
+
+			if(!rt.resolved && !target)
 			{
 				failedToFind:
 
@@ -75,14 +81,16 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 					argstr = argstr.substr(2);
 
 				std::string candidates;
-				for(auto fs : cgi->resolveFunctionName(this->name))
+				std::deque<FuncPair_t> reses;
+
+				for(auto fs : reses = cgi->resolveFunctionName(this->name))
 				{
 					if(fs.second)
 						candidates += cgi->printAst(fs.second) + "\n";
 				}
 
 				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
-					this->name.c_str(), argstr.c_str(), candidates.size(), candidates.c_str());
+					this->name.c_str(), argstr.c_str(), reses.size(), candidates.c_str());
 			}
 
 			if(rt.t.first == 0)
@@ -111,9 +119,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	iceAssert(target);
 	bool checkVarArg = target->isVarArg();
 
-	if((target->arg_size() != this->params.size() && !checkVarArg) || (checkVarArg && target->arg_size() > 0 && this->params.size() == 0))
+	if((target->getArgumentCount() != this->params.size() && !checkVarArg)
+		|| (checkVarArg && target->getArgumentCount() > 0 && this->params.size() == 0))
 	{
-		error(this, "Expected %ld arguments, but got %ld arguments instead", target->arg_size(), this->params.size());
+		error(this, "Expected %ld arguments, but got %ld arguments instead", target->getArgumentCount(), this->params.size());
 	}
 
 
@@ -121,22 +130,22 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 	for(Expr* e : this->params)
 	{
 		ValPtr_t res = e->codegen(cgi).result;
-		llvm::Value* arg = res.first;
+		fir::Value* arg = res.first;
 
-		if(arg == nullptr || arg->getType()->isVoidTy())
+		if(arg == nullptr || arg->getType()->isVoidType())
 			GenError::nullValue(cgi, this, argNum);
 
-		if(checkVarArg && arg->getType()->isStructTy())
+		if(checkVarArg && arg->getType()->isStructType())
 		{
-			llvm::StructType* st = llvm::cast<llvm::StructType>(arg->getType());
-			if(!st->isLiteral() && st->getStructName() != "String")
+			fir::StructType* st = arg->getType()->toStructType();
+			if(!st->isLiteralStruct() && st->getStructName() != "String")
 			{
 				warn(e, "Passing structs to vararg functions can have unexpected results.");
 			}
-			else if(!st->isLiteral() && st->getStructName() == "String")
+			else if(!st->isLiteralStruct() && st->getStructName() == "String")
 			{
 				// this function knows what to do.
-				cgi->autoCastType(llvm::Type::getInt8PtrTy(cgi->getContext()), arg, res.second);
+				cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
 			}
 		}
 
@@ -147,17 +156,15 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Valu
 
 
 
-
-	auto arg_it = target->arg_begin();
-	for(size_t i = 0; i < args.size() && arg_it != target->arg_end(); i++, arg_it++)
+	for(size_t i = 0; i < std::min(args.size(), target->getArgumentCount()); i++)
 	{
-		if(arg_it->getType() != args[i]->getType())
-			cgi->autoCastType(arg_it, args[i], argPtrs[i]);
+		if(target->getArguments()[i]->getType() != args[i]->getType())
+			cgi->autoCastType(target->getArguments()[i], args[i], argPtrs[i]);
 
-		if(arg_it->getType() != args[i]->getType())
+		if(target->getArguments()[i]->getType() != args[i]->getType())
 		{
 			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
-				cgi->getReadableType(arg_it).c_str(), cgi->getReadableType(args[i]).c_str());
+				target->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 		}
 	}
 

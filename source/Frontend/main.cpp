@@ -12,7 +12,6 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
-#include "../include/typechecking.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Linker/Linker.h"
@@ -21,6 +20,15 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+
+
+
+
+
+#include "../include/ir/type.h"
+#include "../include/ir/value.h"
+#include "../include/ir/module.h"
+#include "../include/ir/irbuilder.h"
 
 
 using namespace Ast;
@@ -51,8 +59,10 @@ static std::string parseQuotedString(char** argv, int& i)
 
 namespace Compiler
 {
-	static bool dumpModule = false;
 	static bool printModule = false;
+	static bool printFIR = false;
+
+
 	static bool compileOnly = false;
 	bool getIsCompileOnly()
 	{
@@ -245,13 +255,13 @@ int main(int argc, char* argv[])
 			{
 				Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 			}
-			else if(!strcmp(argv[i], "-dump-ir"))
-			{
-				Compiler::dumpModule = true;
-			}
 			else if(!strcmp(argv[i], "-print-ir"))
 			{
 				Compiler::printModule = true;
+			}
+			else if(!strcmp(argv[i], "-print-fir"))
+			{
+				Compiler::printFIR = true;
 			}
 			else if(!strcmp(argv[i], "-no-lowercase-builtin"))
 			{
@@ -323,21 +333,6 @@ int main(int argc, char* argv[])
 				Compiler::setWarning(Compiler::Warning::UseAfterFree, true);
 				Compiler::setWarning(Compiler::Warning::UseBeforeAssign, true);
 			}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			else if(argv[i][0] == '-')
 			{
 				fprintf(stderr, "Error: Unrecognised option '%s'\n", argv[i]);
@@ -375,44 +370,28 @@ int main(int argc, char* argv[])
 
 	Parser::parseAllCustomOperators(pstate, filename, curpath);
 
-	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<llvm::Module*>>
+	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<fir::Module*>>
 	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
+
 
 	Root* r = std::get<0>(ret);
 	std::vector<std::string> filelist = std::get<1>(ret);
 	std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(ret);
-	std::unordered_map<std::string, llvm::Module*> modulelist = std::get<3>(ret);
+	std::unordered_map<std::string, llvm::Module*> modulelist;
+
+	for(auto mod : std::get<3>(ret))
+	{
+		modulelist[mod.first] = mod.second->translateToLlvm();
+		if(Compiler::printFIR)
+			printf("%s\n", mod.second->print().c_str());
+	}
+
 
 	llvm::Module* mainModule = modulelist[filename];
-	llvm::IRBuilder<>& builder = __cgi->builder;
+	llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 
-
-
-
-
-
-
-
-	flax::Type* i8 = flax::Type::getInt8();
-	auto i8ptr = i8->getPointerTo();
-
-	iceAssert(i8ptr->getPointerElementType() == i8);
-
-	// i8	=
-	// new	=
-
-
-
-
-
-
-
-
-
-
-
-	// needs to be done first, for the weird constructor fiddling below.
+	// needs to be done llvmst, for the weird constructor fiddling below.
 	if(Compiler::runProgramWithJit)
 	{
 		llvm::Linker linker = llvm::Linker(mainModule);
@@ -422,9 +401,6 @@ int main(int argc, char* argv[])
 				linker.linkInModule(mod.second);
 		}
 	}
-
-	// mainModule->dump();
-	// exit(0);
 
 
 	bool needGlobalConstructor = false;
@@ -456,15 +432,12 @@ int main(int argc, char* argv[])
 					if(Compiler::runProgramWithJit)
 					{
 						error("required global constructor %s was not found in the module!",
-							pair.second->globalConstructorTrampoline->getName().str().c_str());
+							pair.second->globalConstructorTrampoline->getName().c_str());
 					}
 					else
 					{
 						// declare it.
-						constr = llvm::cast<llvm::Function>(mainModule->getOrInsertFunction(
-							pair.second->globalConstructorTrampoline->getName(),
-							pair.second->globalConstructorTrampoline->getFunctionType())
-						);
+						constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
 					}
 				}
 
@@ -537,7 +510,7 @@ int main(int argc, char* argv[])
 		if(mainModule->getFunction("main") != 0)
 		{
 			std::string err;
-			llvm::Module* clone = llvm::CloneModule(mainModule);
+			llvm::Module* clone = /*llvm::CloneModule(mainModule);*/ mainModule;
 			llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(clone))
 						.setErrorStr(&err)
 						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
@@ -572,18 +545,6 @@ int main(int argc, char* argv[])
 
 	if(Compiler::printModule && !Compiler::getRunProgramWithJit())
 		mainModule->dump();
-
-	if(Compiler::dumpModule)
-	{
-		// std::string err_info;
-		// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
-
-		// out << *(mainModule);
-		// out.close();
-
-		fprintf(stderr, "enosup\n");
-		exit(-1);
-	}
 
 	delete __cgi;
 	for(auto p : rootmap)

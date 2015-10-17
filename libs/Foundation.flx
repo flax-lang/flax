@@ -5,7 +5,7 @@
 import Core
 import LibCInterface
 
-func min(a: Uint64, b: Uint64) -> Uint64
+public func min(a: Uint64, b: Uint64) -> Uint64
 {
 	if a < b
 	{
@@ -15,7 +15,7 @@ func min(a: Uint64, b: Uint64) -> Uint64
 	return b
 }
 
-func max(a: Uint64, b: Uint64) -> Uint64
+public func max(a: Uint64, b: Uint64) -> Uint64
 {
 	if a > b
 	{
