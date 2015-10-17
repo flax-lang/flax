@@ -57,10 +57,9 @@ namespace fir
 
 	struct Function : GlobalValue
 	{
+		friend struct Module;
 		friend struct Argument;
 		friend struct IRBuilder;
-
-		Function(std::string name, FunctionType* fnType, Module* module, LinkageType linkage);
 
 		bool isVarArg();
 		std::string getName();
@@ -77,6 +76,7 @@ namespace fir
 
 		// fields
 		protected:
+		Function(std::string name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
 	};

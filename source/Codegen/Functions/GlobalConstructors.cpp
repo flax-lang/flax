@@ -60,8 +60,8 @@ namespace Codegen
 	{
 		// generate initialiser
 		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
-		fir::Function* defaultInitFunc = new fir::Function("__global_constructor__" + this->module->getModuleName(), ft,
-			this->module, fir::LinkageType::External);
+		fir::Function* defaultInitFunc = this->module->getOrCreateFunction("__global_constructor__" + this->module->getModuleName(), ft,
+			fir::LinkageType::External);
 
 		fir::IRBlock* iblock = this->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
 		this->builder.setCurrentBlock(iblock);
