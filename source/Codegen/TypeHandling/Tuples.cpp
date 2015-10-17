@@ -52,7 +52,7 @@ Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool c
 	// quite simple, just get the number (make sure it's a Ast::Number)
 	// and do a structgep.
 
-	if(num->ival >= type->toStructType()->getElementCount())
+	if((size_t) num->ival >= type->toStructType()->getElementCount())
 		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toStructType()->getElementCount());
 
 	fir::Value* gep = this->builder.CreateGetConstStructMember(selfPtr, num->ival);

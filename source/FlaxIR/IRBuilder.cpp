@@ -290,7 +290,16 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateNeg(Value* a)
+	{
+		iceAssert(a->getType()->toPrimitiveType() && "cannot negate non-primitive type");
+		iceAssert((a->getType()->isFloatingPointType() || a->getType()->toPrimitiveType()->isSigned()) && "cannot negate unsigned type");
 
+		Instruction* instr = new Instruction(a->getType()->isFloatingPointType() ? OpKind::Floating_Neg : OpKind::Signed_Neg,
+			a->getType(), { a });
+
+		return instr;
+	}
 
 	Value* IRBuilder::CreateAdd(Value* a, Value* b)
 	{
@@ -574,7 +583,7 @@ namespace fir
 	Value* IRBuilder::CreateStore(Value* v, Value* ptr)
 	{
 		iceAssert(ptr->getType()->isPointerType() && "ptr is not pointer type");
-		iceAssert(v->getType()->getPointerTo() == v->getType() && "ptr is not a pointer to type of value");
+		iceAssert(v->getType()->getPointerTo() == ptr->getType() && "ptr is not a pointer to type of value");
 
 		Instruction* instr = new Instruction(OpKind::Value_Store, PrimitiveType::getVoid(), { v, ptr });
 		return this->addInstruction(instr);
@@ -610,6 +619,16 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
+	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args)
+	{
+		std::deque<Value*> dargs;
+
+		for(auto a : args)
+			dargs.push_back(a);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), dargs);
+		return this->addInstruction(instr);
+	}
 
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
@@ -673,8 +692,8 @@ namespace fir
 		iceAssert(st && "ptr is not pointer to struct");
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember,
-			st->getElementN(memberIndex), { structPtr, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
+		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
+			{ structPtr, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
 
 		return this->addInstruction(instr);
 	}
@@ -700,6 +719,17 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Branch_UnCond, PrimitiveType::getVoid(), { target });
 		this->addInstruction(instr);
 	}
+
+
+
+
+
+
+
+
+
+
+
 
 	IRBlock* IRBuilder::addNewBlockInFunction(std::string name, Function* func)
 	{

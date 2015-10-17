@@ -63,7 +63,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 		fir::Value* stringPtr = cgi->builder.CreateGetConstStructMember(alloca, 0);
 		fir::Value* allocdPtr = cgi->builder.CreateGetConstStructMember(alloca, 1);
 
-		fir::Value* stringVal = cgi->builder.CreateGlobalInt8Ptr(this->str);
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 
 		cgi->builder.CreateStore(stringVal, stringPtr);
 		cgi->builder.CreateStore(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0), allocdPtr);
@@ -83,7 +83,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 		}
 
 		// good old Int8*
-		fir::Value* stringVal = cgi->builder.CreateGlobalInt8Ptr(this->str);
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 		return Result_t(stringVal, 0);
 	}
 }

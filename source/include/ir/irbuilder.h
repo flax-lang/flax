@@ -105,8 +105,6 @@ namespace fir
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);
 
-		Value* CreateGlobalInt8Ptr(std::string str);
-
 		IRBlock* addNewBlockInFunction(std::string name, Function* func);
 		IRBlock* addNewBlockAfter(std::string name, IRBlock* block);
 

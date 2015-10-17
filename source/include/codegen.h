@@ -303,7 +303,6 @@ namespace Codegen
 	};
 
 	std::string unwrapPointerType(std::string type, int* indirections);
-	fir::Value* getArgumentNOfFunction(fir::Function* func, size_t n);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);

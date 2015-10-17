@@ -132,7 +132,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 		for(size_t i = 0; i < this->members.size(); i++)
 		{
-			fir::Value* v = getArgumentNOfFunction(memifunc, i + 1);
+			fir::Value* v = memifunc->getArguments()[i + 1];
 
 			v->setName("memberPtr_" + std::to_string(i));
 			fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
