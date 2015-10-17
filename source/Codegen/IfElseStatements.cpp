@@ -13,26 +13,26 @@ using namespace Codegen;
 
 
 
-static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs, llvm::BasicBlock* merge, llvm::PHINode* phi, bool* didCreateMerge)
+static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs,
+	fir::IRBlock* merge, fir::PHINode* phi, bool* didCreateMerge)
 {
 	if(pairs.size() == 0)
 		return;
 
-	llvm::BasicBlock* t = llvm::BasicBlock::Create(cgi->getContext(), "trueCaseR", func);
-	llvm::BasicBlock* f = llvm::BasicBlock::Create(cgi->getContext(), "falseCaseR");
-
-	llvm::Value* cond = pairs.front().first->codegen(cgi).result.first;
-
-
-	llvm::Type* apprType = cgi->getLlvmType(pairs.front().first);
-	cond = cgi->builder.CreateICmpNE(cond, llvm::Constant::getNullValue(apprType), "ifCond");
+	fir::IRBlock* t = cgi->builder.addNewBlockInFunction("trueCaseR", func);
+	fir::IRBlock* f = new fir::IRBlock();
+	f->setName("falseCaseR");
 
 
-	cgi->builder.CreateCondBr(cond, t, f);
-	cgi->builder.SetInsertPoint(t);
+	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;
+	cond = cgi->builder.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
+
+
+	cgi->builder.CreateCondBranch(cond, t, f);
+	cgi->builder.setCurrentBlock(t);
 
 	Result_t blockResult(0, 0);
-	llvm::Value* val = nullptr;
+	fir::Value* val = nullptr;
 	{
 		cgi->pushScope();
 		blockResult = pairs.front().second->codegen(cgi);
@@ -45,50 +45,47 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, llvm::Function* func, std::
 
 	// check if the last expr of the block is a return
 	if(blockResult.type != ResultType::BreakCodegen)
-		cgi->builder.CreateBr(merge), *didCreateMerge = true;
+		cgi->builder.CreateUnCondBranch(merge), *didCreateMerge = true;
 
 
 	// now the false case...
 	// set the insert point to the false case, then go again.
-	cgi->builder.SetInsertPoint(f);
+	cgi->builder.setCurrentBlock(f);
 
 	// recursively call ourselves
 	pairs.pop_front();
 	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge);
 
 	// once that's done, we can add the false-case block to the func
-	func->getBasicBlockList().push_back(f);
+	func->getBlockList().push_back(f);
 }
 
-Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	iceAssert(this->cases.size() > 0);
 
-	llvm::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
-	llvm::Type* apprType = cgi->getLlvmType(this->cases[0].first);
-
-	// printf("if: %s\n%s\n", cgi->getReadableType(firstCond).c_str(), cgi->printAst(this->cases[0].first).c_str());
-	firstCond = cgi->builder.CreateICmpNE(firstCond, llvm::Constant::getNullValue(apprType), "ifCond");
+	fir::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
+	firstCond = cgi->builder.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
 
 
 
-	llvm::Function* func = cgi->builder.GetInsertBlock()->getParent();
+	fir::Function* func = cgi->builder.getCurrentBlock()->getParentFunction();
 	iceAssert(func);
 
-	llvm::BasicBlock* trueb = llvm::BasicBlock::Create(cgi->getContext(), "trueCase", func);
-	llvm::BasicBlock* falseb = llvm::BasicBlock::Create(cgi->getContext(), "falseCase", func);
-	llvm::BasicBlock* merge = llvm::BasicBlock::Create(cgi->getContext(), "merge", func);
+	fir::IRBlock* trueb = cgi->builder.addNewBlockInFunction("trueCase", func);
+	fir::IRBlock* falseb = cgi->builder.addNewBlockInFunction("falseCase", func);
+	fir::IRBlock* merge = cgi->builder.addNewBlockInFunction("merge", func);
 
 	// create the first conditional
-	cgi->builder.CreateCondBr(firstCond, trueb, falseb);
+	cgi->builder.CreateCondBranch(firstCond, trueb, falseb);
 
 
 	bool didMerge = false;
 
 	// emit code for the first block
-	llvm::Value* truev = nullptr;
+	fir::Value* truev = nullptr;
 	{
-		cgi->builder.SetInsertPoint(trueb);
+		cgi->builder.setCurrentBlock(trueb);
 
 		// push a new symtab
 		cgi->pushScope();
@@ -99,7 +96,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		cgi->popScope();
 
 		if(cresult.type != ResultType::BreakCodegen)
-			cgi->builder.CreateBr(merge), didMerge = true;
+			cgi->builder.CreateUnCondBranch(merge), didMerge = true;
 	}
 
 
@@ -108,22 +105,22 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
 	// of the if statement.
 
-	cgi->builder.SetInsertPoint(falseb);
+	cgi->builder.setCurrentBlock(falseb);
 
 	auto c1 = this->cases.front();
 	this->cases.pop_front();
 
-	llvm::BasicBlock* curblk = cgi->builder.GetInsertBlock();
-	cgi->builder.SetInsertPoint(merge);
+	fir::IRBlock* curblk = cgi->builder.getCurrentBlock();
+	cgi->builder.setCurrentBlock(merge);
 
-	// llvm::PHINode* phi = builder.CreatePHI(llvm::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
+	// fir::PHINode* phi = builder.CreatePHI(fir::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
-	llvm::PHINode* phi = nullptr;
+	fir::PHINode* phi = nullptr;
 
 	if(phi)
 		phi->addIncoming(truev, trueb);
 
-	cgi->builder.SetInsertPoint(curblk);
+	cgi->builder.setCurrentBlock(curblk);
 	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
 	// func->getBasicBlockList().push_back(falseb);
@@ -136,7 +133,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 		elseResult = this->final->codegen(cgi);
 		cgi->popScope();
 
-		llvm::Value* v = elseResult.result.first;
+		fir::Value* v = elseResult.result.first;
 
 		if(phi)
 			phi->addIncoming(v, falseb);
@@ -144,16 +141,16 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 
 
 	if(!this->final || elseResult.type != ResultType::BreakCodegen)
-		cgi->builder.CreateBr(merge), didMerge = true;
+		cgi->builder.CreateUnCondBranch(merge), didMerge = true;
 
 
 	if(didMerge)
 	{
-		cgi->builder.SetInsertPoint(merge);
+		cgi->builder.setCurrentBlock(merge);
 	}
 	else
 	{
-		merge->eraseFromParent();
+		merge->eraseFromParentFunction();
 	}
 
 	// restore.

@@ -94,8 +94,8 @@ namespace Compiler
 
 		for(auto v : from->publicTypes)
 		{
-			to->externalTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
-			to->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(v.first, v.second));
+			to->externalTypes.push_back(std::pair<StructBase*, fir::Type*>(v.first, v.second));
+			to->publicTypes.push_back(std::pair<StructBase*, fir::Type*>(v.first, v.second));
 		}
 
 		for(auto v : from->publicGenericFunctions)
@@ -154,7 +154,7 @@ namespace Compiler
 
 		Codegen::doCodegen(fpath, root, cgi);
 
-		llvm::verifyModule(*cgi->module, &llvm::errs());
+		// fir::verifyModule(*cgi->module, &fir::errs());
 		Codegen::writeBitcode(fpath, pstate.cgi);
 
 		size_t lastdot = fpath.find_last_of(".");
@@ -232,7 +232,7 @@ namespace Compiler
 
 
 
-	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, llvm::Module*>>
+	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, fir::Module*>>
 	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		using namespace Codegen;
@@ -279,7 +279,7 @@ namespace Compiler
 
 		std::vector<std::string> outlist;
 		std::unordered_map<std::string, Root*> rootmap;
-		std::unordered_map<std::string, llvm::Module*> modulemap;
+		std::unordered_map<std::string, fir::Module*> modulemap;
 
 
 		Root* dummyRoot = new Root();
