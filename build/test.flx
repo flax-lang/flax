@@ -5,17 +5,26 @@
 import Math
 import String
 
+import tests.fizzbuzz
+import tests.recursiveFib
+// import tests.scopes
+// import tests.arraytest
+// import tests.generics
+
+// import Utilities
+
 
 public func main() -> Int
 {
 	var foo: String
+
 
 	printf("HELLO\n")
 
 	let g: Int8 = 100
 	printf("g is: %d\n", g)
 
-	let m: (Math.Vector3, Math.Vector3) = (fa(), fb())
+	let m = (fa(), fb())
 	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
 
@@ -34,14 +43,15 @@ public func main() -> Int
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
-	var cross = m.0 x m.1
-	cross /= 10
+	let cross = m.0 x m.1
 	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
 
+	let crossn = m.1 x m.0
+	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 
 
-
+	runTests()
 	return 0
 }
 
@@ -68,9 +78,9 @@ namespace some
 func fa() -> Math.Vector3
 {
 	var ret: Math.Vector3
-	ret.x = 5
-	ret.y = 25
-	ret.z = 125
+	ret.x = 1
+	ret.y = 2
+	ret.z = 3
 
 	return ret
 }
@@ -78,9 +88,9 @@ func fa() -> Math.Vector3
 func fb() -> Math.Vector3
 {
 	var ret: Math.Vector3
-	ret.x = 3
-	ret.y = 9
-	ret.z = 27
+	ret.x = 4
+	ret.y = 5
+	ret.z = 6
 
 	return ret
 }
@@ -91,66 +101,46 @@ class Foo
 }
 
 
-// one clear order-dependency is members in structs. need to find a way to create the type, from the Class* or Struct*,
-// by only having the name. Note that, at this point,
-//
-// there's 0 way to refer to it, since it hasn't been touched. perhaps one of the initial passes in TopLevel
-// would add the AST node to the functree, but not generate or touch it yet.
-// dependency resolver would have to trawl the functree (starting from current one down) to find the type.
-// NOTE: would need to note scopes/namespaces/nested types.
-// NOTE: the way shit is, it's gonna be hell when we implement using/namespace importing...
-//
-// if we do it this way, should we createType() and codegen() at the same time?
 
 
 
 
+ƒ runTests()
+{
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
+
+	var n = 0
+	while n < 20
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
 
 
-// import tests.fizzbuzz
-// import tests.recursiveFib
-// import tests.scopes
-// import tests.arraytest
-// import tests.generics
-
-// import Utilities
-
-// ƒ runTests()
-// {
-// 	// fib
-// 	printf("*** FIBONACII SEQUENCE ***\n")
-
-// 	var n = 0
-// 	while n < 20
-// 	{
-// 		printf("%d: %lld\n", n, doRecursiveFib(n))
-// 		n += 1
-// 	}
-// 	printf("\n\n");
+	// fizzbuzz
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(20);
+	printf("\n\n");
 
 
-// 	// fizzbuzz
-// 	printf("*** FIZZBUZZ ***\n")
-// 	doFizzBuzz(20);
-// 	printf("\n\n");
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	// doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
 
 
-// 	// scopes
-// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-// 	doScopeTest("__llvm_jit__build/test")
-// 	printf("\n\n");
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	// doArrayTest()
+	printf("\n\n")
 
 
-// 	// arrays
-// 	printf("*** ARRAY REGRESSION TEST ***\n")
-// 	doArrayTest()
-// 	printf("\n\n")
-
-
-// 	printf("*** GENERICS TEST ***\n")
-// 	doGenericsTest()
-// 	printf("\n\n")
-// }
+	printf("*** GENERICS TEST ***\n")
+	// doGenericsTest()
+	printf("\n\n")
+}
 
 
 
