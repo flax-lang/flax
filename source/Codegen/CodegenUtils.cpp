@@ -36,6 +36,18 @@ namespace Codegen
 		cgi->rootNode = root;
 
 
+		// todo: proper.
+		if(sizeof(void*) == 8)
+			cgi->execTarget = fir::ExecutionTarget::getLP64();
+
+		else if(sizeof(void*) == 4)
+			cgi->execTarget = fir::ExecutionTarget::getILP32();
+
+		else
+			error("enotsup: ptrsize = %zu", sizeof(void*));
+
+
+
 		#if 0
 		std::string err;
 		cgi->execEngine = fir::EngineBuilder(std::unique_ptr<fir::Module>(cgi->module))
@@ -2154,8 +2166,8 @@ namespace Codegen
 		for(auto cand : set)
 		{
 			bool intype = cand.first.isInType;
-			fir::Type* targL = getArgumentNOfFunction(cand.second, 0)->getType();
-			fir::Type* targR = getArgumentNOfFunction(cand.second, 1)->getType();
+			fir::Type* targL = cand.second->getArguments()[0]->getType();
+			fir::Type* targR = cand.second->getArguments()[1]->getType();
 
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
@@ -2221,8 +2233,8 @@ namespace Codegen
 
 					iceAssert(af->getArgumentCount() == 2);
 
-					fir::Type* afltype = getArgumentNOfFunction(af, 0)->getType();
-					fir::Type* afrtype = getArgumentNOfFunction(af, 1)->getType();
+					fir::Type* afltype = af->getArguments()[0]->getType();
+					fir::Type* afrtype = af->getArguments()[1]->getType();
 
 					fir::Type* apprtype = lhs;
 					if(intype) apprtype = apprtype->getPointerTo();

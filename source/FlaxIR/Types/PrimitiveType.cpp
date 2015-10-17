@@ -54,6 +54,9 @@ namespace fir
 
 	PrimitiveType* PrimitiveType::getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned)
 	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
 		std::vector<PrimitiveType*> types = tc->primitiveTypes[bits];
 
 		iceAssert(types.size() > 0 && "no types of this kind??");
@@ -71,6 +74,10 @@ namespace fir
 
 	PrimitiveType* PrimitiveType::getFloatWithBitWidth(FTContext* tc, size_t bits)
 	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+
 		std::vector<PrimitiveType*> types = tc->primitiveTypes[bits];
 
 		iceAssert(types.size() > 0 && "no types of this kind??");

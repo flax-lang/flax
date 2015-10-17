@@ -22,9 +22,10 @@
 
 #include "errors.h"
 
+#include <map>
+#include <deque>
 #include <string>
 #include <vector>
-#include <deque>
 #include <unordered_map>
 
 #include "type.h"
@@ -45,7 +46,8 @@ namespace fir
 	enum class LinkageType
 	{
 		Internal,
-		External
+		External,
+		ExternalWeak,
 	};
 
 	struct ConstantValue;
@@ -92,16 +94,25 @@ namespace fir
 
 	struct GlobalVariable : GlobalValue
 	{
-		GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType linkage, Value* initValue);
+		GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
+
+		protected:
+		bool isImmutable;
+		Module* parentModule;
+
+		ConstantValue* initValue = 0;
 	};
 
 	struct PHINode : Value
 	{
+		friend struct IRBuilder;
 		void addIncoming(Value* v, IRBlock* block);
 
 		protected:
-		PHINode();
+		PHINode(Type* type);
+
+		std::map<IRBlock*, Value*> incoming;
 	};
 }
 

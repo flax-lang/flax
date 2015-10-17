@@ -65,7 +65,7 @@ namespace fir
 	// various
 	std::string PointerType::str()
 	{
-		return this->baseType->str() + " *";
+		return this->baseType->str() + "*";
 	}
 
 

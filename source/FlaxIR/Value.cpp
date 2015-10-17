@@ -68,6 +68,25 @@ namespace fir
 		for(auto c : culled)
 			other->users.push_back(c);
 	}
+
+
+
+
+
+
+
+	void PHINode::addIncoming(Value* v, IRBlock* block)
+	{
+		iceAssert(v->getType() == this->valueType && "types not identical");
+		if(this->incoming.find(block) != this->incoming.end())
+			iceAssert(0 && "block already has incoming value");
+
+		this->incoming[block] = v;
+	}
+
+	PHINode::PHINode(Type* t) : fir::Value(t)
+	{
+	}
 }
 
 
