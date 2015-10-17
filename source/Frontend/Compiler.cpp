@@ -353,7 +353,7 @@ namespace Compiler
 
 
 
-	void compileProgram(fir::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)
 	{
 		std::string tgt;
 		if(!getTarget().empty())
@@ -367,7 +367,7 @@ namespace Compiler
 
 
 
-		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleName()).c_str() : outname.c_str();
+		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
 		snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());

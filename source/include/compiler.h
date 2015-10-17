@@ -9,6 +9,11 @@
 
 #pragma once
 
+namespace llvm
+{
+	class Module;
+}
+
 namespace fir
 {
 	struct Module;
@@ -26,7 +31,7 @@ namespace Compiler
 	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	// final stages
-	void compileProgram(fir::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
 
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
