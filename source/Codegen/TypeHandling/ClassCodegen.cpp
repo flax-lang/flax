@@ -71,7 +71,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 
 
-	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
+	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
 	cgi->builder.setCurrentBlock(iblock);
 
 	// create the local instance of reference to self

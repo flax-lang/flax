@@ -9,17 +9,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Value.h"
-
 #include "errors.h"
 
 #include <map>
@@ -56,8 +45,11 @@ namespace fir
 
 	struct Value
 	{
-		friend struct ConstantValue;
+		friend struct Module;
+		friend struct Argument;
 		friend struct IRBuilder;
+		friend struct Instruction;
+		friend struct ConstantValue;
 
 		// virtual funcs
 		virtual Type* getType();
@@ -87,6 +79,8 @@ namespace fir
 
 	struct GlobalValue : Value
 	{
+		friend struct Module;
+
 		protected:
 		GlobalValue(Type* type, LinkageType linkage);
 		LinkageType linkageType;
@@ -94,6 +88,8 @@ namespace fir
 
 	struct GlobalVariable : GlobalValue
 	{
+		friend struct Module;
+
 		GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 

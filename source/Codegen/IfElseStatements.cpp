@@ -25,10 +25,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 
 
 	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;
-
-
-	fir::Type* apprType = cgi->getLlvmType(pairs.front().first);
-	cond = cgi->builder.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(apprType));
+	cond = cgi->builder.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
 
 
 	cgi->builder.CreateCondBranch(cond, t, f);
@@ -68,10 +65,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	iceAssert(this->cases.size() > 0);
 
 	fir::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
-	// fir::Type* apprType = cgi->getLlvmType(this->cases[0].first);
-	fir::Type* apprType = firstCond->getType();
-
-	firstCond = cgi->builder.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(apprType));
+	firstCond = cgi->builder.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
 
 
 

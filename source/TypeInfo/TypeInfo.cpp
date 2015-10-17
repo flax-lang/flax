@@ -65,6 +65,8 @@ namespace TypeInfo
 		else
 		{
 			auto pair = cgi->getType("Type");
+			if(!pair) return;
+
 			iceAssert(pair);
 
 			iceAssert(pair->second.second == TypeKind::Enum);
@@ -75,6 +77,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
+		#if 0
 		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::pin(), "Any");
@@ -92,6 +95,7 @@ namespace TypeInfo
 			any->createType(cgi);
 			any->codegen(cgi);
 		}
+		#endif
 	}
 
 	void generateTypeInfo(CodegenInstance* cgi)

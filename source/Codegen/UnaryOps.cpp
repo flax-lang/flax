@@ -18,8 +18,7 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	switch(this->op)
 	{
 		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->builder.CreateICmpEQ(res.result.first,
-				fir::ConstantValue::getNullValue(res.result.first->getType())), res.result.second);
+			return Result_t(cgi->builder.CreateLogicalNot(res.result.first), res.result.second);
 
 		case ArithmeticOp::Minus:
 			return Result_t(cgi->builder.CreateNeg(res.result.first), res.result.second);
@@ -29,13 +28,13 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 		case ArithmeticOp::Deref:
 			if(!res.result.first->getType()->isPointerType())
-				error(this, "Cannot dereference non-pointer type!");
+				error(this, "Cannot dereference non-pointer type");
 
 			return Result_t(cgi->builder.CreateLoad(res.result.first), res.result.first);
 
 		case ArithmeticOp::AddrOf:
 			if(!res.result.second)
-				error(this, "Cannot take address of literal or whatever it is you're trying to take the address of!");
+				error(this, "Cannot take the address of literal");
 
 			return Result_t(res.result.second, 0);
 

@@ -1086,7 +1086,8 @@ namespace Codegen
 			}
 
 			TypePair_t* pair = this->getType("Any");
-			iceAssert(pair);
+			if(!pair) return false;
+			// iceAssert(pair);
 
 			if(pair->first == type)
 				return true;
