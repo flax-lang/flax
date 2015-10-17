@@ -67,6 +67,9 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, fir::Value* alloca)
 	{
+		if(!alloca->getType()->isPointerType())
+			error("expected pointer, got %s", alloca->getType()->str().c_str());
+
 		iceAssert(alloca->getType()->isPointerType());
 		fir::Type* baseType = alloca->getType()->getPointerElementType();
 
@@ -242,7 +245,7 @@ namespace Codegen
 					fir::Type* ttype = pair ? pair->first : st;
 					iceAssert(ttype->isStructType());
 
-					if(n->ival >= ttype->toStructType()->getElementCount())
+					if((size_t) n->ival >= ttype->toStructType()->getElementCount())
 					{
 						error(expr, "Tuple does not have %d elements, only %zd", (int) n->ival + 1,
 							ttype->toStructType()->getElementCount());

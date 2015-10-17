@@ -283,6 +283,7 @@ namespace fir
 				ret = ret->getPointerElementType();
 		}
 
+		ret = tc->normaliseType(ret);
 		return ret;
 	}
 

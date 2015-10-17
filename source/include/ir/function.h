@@ -69,7 +69,6 @@ namespace fir
 		std::deque<Argument*> getArguments();
 
 		std::deque<IRBlock*>& getBlockList();
-
 		void deleteBody();
 
 		// overridden stuff

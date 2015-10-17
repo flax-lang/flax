@@ -23,4 +23,26 @@ namespace fir
 		this->parentFunction = fn;
 		this->addUser(fn);
 	}
+
+	Function* IRBlock::getParentFunction()
+	{
+		return this->parentFunction;
+	}
+
+	void IRBlock::eraseFromParentFunction()
+	{
+		iceAssert(this->parentFunction && "no function");
+		std::deque<IRBlock*>& blist = this->parentFunction->getBlockList();
+
+		for(auto it = blist.begin(); it != blist.end(); it++)
+		{
+			if(*it == this)
+			{
+				blist.erase(it);
+				return;
+			}
+		}
+
+		iceAssert(0 && "not in function");
+	}
 }

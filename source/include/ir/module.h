@@ -31,15 +31,19 @@ namespace fir
 {
 	struct Module
 	{
-		Module(std::string nm) : moduleName(nm) { }
+		Module(std::string nm);
 
-		GlobalVariable* createGlobalVariable(std::string name, Type* type, Value* initVal);
-		GlobalVariable* createGlobalVariable(std::string name, Type* type);
+		GlobalVariable* createGlobalVariable(std::string name, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
+		GlobalVariable* createGlobalVariable(std::string name, Type* type, bool isImmut, LinkageType linkage);
+		GlobalVariable* declareGlobalVariable(std::string name, Type* type, bool isImmut);
+
+		GlobalVariable* createGlobalString(std::string str);
+
 		void deleteGlobalVariable(std::string name);
 
 		GlobalVariable* getGlobalVariable(std::string name);
 
-		std::deque<GlobalValue*> getGlobalVariables();
+		std::deque<GlobalVariable*> getGlobalVariables();
 		std::deque<StructType*> getNamedTypes();
 		std::deque<Function*> getAllFunctions();
 
@@ -57,15 +61,30 @@ namespace fir
 
 		private:
 		std::string moduleName;
-		std::map<std::string, GlobalValue*> globals;
+		std::map<std::string, GlobalVariable*> globalStrings;
+		std::map<std::string, GlobalVariable*> globals;
 		std::map<std::string, StructType*> namedTypes;
 		std::map<std::string, Function*> functions;
 	};
 
+
 	struct ExecutionTarget
 	{
+		size_t getBitsPerByte();
 		size_t getPointerWidthInBits();
 		size_t getTypeSizeInBits(Type* type);
+
+		static ExecutionTarget* getLP64();
+		static ExecutionTarget* getILP32();
+
+		private:
+		ExecutionTarget(size_t ptrSize, size_t byteSize, size_t shortSize, size_t intSize, size_t longSize);
+
+		size_t psize;
+		size_t bsize;
+		size_t ssize;
+		size_t isize;
+		size_t lsize;
 	};
 }
 

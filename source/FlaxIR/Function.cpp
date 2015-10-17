@@ -83,6 +83,20 @@ namespace fir
 		return this->getType()->isVarArg();
 	}
 
+
+	std::deque<IRBlock*>& Function::getBlockList()
+	{
+		return this->blocks;
+	}
+
+	void Function::deleteBody()
+	{
+		this->blocks.clear();
+	}
+
+
+
+
 	// overridden stuff
 	FunctionType* Function::getType()
 	{

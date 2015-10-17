@@ -65,6 +65,18 @@ namespace fir
 	{
 		this->value = val;
 	}
+
+
+
+	ConstantArray* ConstantArray::get(Type* type, std::vector<ConstantValue*> vals)
+	{
+		return new ConstantArray(type, vals);
+	}
+
+	ConstantArray::ConstantArray(Type* type, std::vector<ConstantValue*> vals) : fir::ConstantValue(type)
+	{
+		this->values = vals;
+	}
 }
 
 

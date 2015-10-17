@@ -74,7 +74,7 @@ namespace fir
 		static ConstantArray* get(Type* type, std::vector<ConstantValue*> vals);
 
 		protected:
-		ConstantArray(Type* type, size_t sz);
+		ConstantArray(Type* type, std::vector<ConstantValue*> vals);
 
 		std::vector<ConstantValue*> values;
 	};
