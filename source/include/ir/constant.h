@@ -46,8 +46,8 @@ namespace fir
 
 	struct ConstantInt : ConstantValue
 	{
-		static ConstantInt* getConstantSIntValue(Type* intType, ssize_t val);
-		static ConstantInt* getConstantUIntValue(Type* intType, size_t val);
+		static ConstantInt* getSigned(Type* intType, ssize_t val);
+		static ConstantInt* getUnsigned(Type* intType, size_t val);
 
 		protected:
 		ConstantInt(Type* type, ssize_t val);
@@ -59,8 +59,8 @@ namespace fir
 
 	struct ConstantFP : ConstantValue
 	{
-		static ConstantFP* getConstantFP(Type* intType, float val);
-		static ConstantFP* getConstantFP(Type* intType, double val);
+		static ConstantFP* get(Type* intType, float val);
+		static ConstantFP* get(Type* intType, double val);
 
 		protected:
 		ConstantFP(Type* type, float val);
@@ -69,16 +69,14 @@ namespace fir
 		double value;
 	};
 
-
-
 	struct ConstantArray : ConstantValue
 	{
-		static ConstantArray* get(Type* type, std::vector<ConstantValue*> values);
+		static ConstantArray* get(Type* type, std::vector<ConstantValue*> vals);
 
 		protected:
 		ConstantArray(Type* type, size_t sz);
 
-		double value;
+		std::vector<ConstantValue*> values;
 	};
 }
 

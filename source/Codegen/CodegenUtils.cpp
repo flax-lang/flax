@@ -2405,7 +2405,7 @@ namespace Codegen
 			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
 
 			std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
-			fir::FunctionType* ft = fir::FunctionType::getFunction(args, pair->first, false);
+			fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
 
 			this->module->declareFunction(fnName, ft);
 			fir::Function* fn = this->module->getFunction(fnName);
@@ -2499,7 +2499,7 @@ namespace Codegen
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
-		fir::Value* constint = fir::ConstantInt::getConstantUIntValue(typegep->getType()->getPointerElementType(), index);
+		fir::Value* constint = fir::ConstantInt::getUnsigned(typegep->getType()->getPointerElementType(), index);
 		this->builder.CreateStore(constint, typegep);
 
 
@@ -2600,7 +2600,7 @@ namespace Codegen
 		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
 		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
 		// fir::APInt apint = fir::APInt(ptrWidth, typesize);
-		fir::Value* intval = fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
+		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
 
 		if(rhs->getType()->toPrimitiveType()->getIntegerBitWidth() != ptrWidth)
 			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
@@ -2724,7 +2724,7 @@ namespace Codegen
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoid();
+		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)

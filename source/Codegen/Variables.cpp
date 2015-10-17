@@ -208,7 +208,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 		fir::Type* vartype = cgi->getLlvmType(this->initVal);
-		if(vartype == nullptr || vartype->isVoid())
+		if(vartype == nullptr || vartype->isVoidType())
 			GenError::nullValue(cgi, this->initVal);
 
 

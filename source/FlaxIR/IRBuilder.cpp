@@ -653,7 +653,7 @@ namespace fir
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember,
-			st->getElementN(memberIndex), { ptr, ptrIndex, ConstantInt::getConstantUIntValue(PrimitiveType::getUint64(), memberIndex) });
+			st->getElementN(memberIndex), { ptr, ptrIndex, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
 
 		return this->addInstruction(instr);
 	}
@@ -674,7 +674,7 @@ namespace fir
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetStructMember,
-			st->getElementN(memberIndex), { structPtr, ConstantInt::getConstantUIntValue(PrimitiveType::getUint64(), memberIndex) });
+			st->getElementN(memberIndex), { structPtr, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
 
 		return this->addInstruction(instr);
 	}

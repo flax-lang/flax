@@ -141,7 +141,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 				// fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
 				fir::Value* r = this->builder.CreateGetPointer(rhsPtr,
-					fir::ConstantInt::getConstantUIntValue(fir::PrimitiveType::getUint64(this->getContext()), 0));
+					fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(this->getContext()), 0));
 
 				this->builder.CreateStore(r, ref);
 				return Result_t(r, ref);

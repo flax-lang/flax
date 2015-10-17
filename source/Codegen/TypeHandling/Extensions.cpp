@@ -21,7 +21,7 @@ fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::
 {
 	// generate initialiser
 	fir::Function* defaultInitFunc = new fir::Function("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex),
-		fir::FunctionType::getFunction({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
+		fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
 		cgi->module, fir::LinkageType::External);
 
 	{
@@ -140,7 +140,7 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 		// existing->setName("");
 
 		// then, create a new type with the old name.
-		fir::StructType* newType = fir::StructType::getOrCreateNamedStruct(this->mangledName, vec, cgi->getContext(), true);
+		fir::StructType* newType = fir::StructType::createNamed(this->mangledName, vec, cgi->getContext(), true);
 
 		// finally, override the type here
 		existingtp->first = newType;

@@ -59,7 +59,7 @@ namespace Codegen
 	void CodegenInstance::finishGlobalConstructors()
 	{
 		// generate initialiser
-		fir::FunctionType* ft = fir::FunctionType::getFunction({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
+		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
 		fir::Function* defaultInitFunc = new fir::Function("__global_constructor__" + this->module->getModuleName(), ft,
 			this->module, fir::LinkageType::External);
 
