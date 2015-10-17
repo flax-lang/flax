@@ -14,6 +14,11 @@ namespace llvm
 	class Module;
 }
 
+namespace fir
+{
+	struct Module;
+}
+
 namespace Parser
 {
 	struct ParserState;
@@ -22,7 +27,7 @@ namespace Parser
 
 namespace Compiler
 {
-	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, llvm::Module*>>
+	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>>
 	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	// final stages

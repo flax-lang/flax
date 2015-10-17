@@ -27,7 +27,8 @@ namespace Math
 			self.y = other.y
 			self.z = other.z
 
-			return self
+			let m: Math.Vector3* = 0
+			return m
 		}
 	}
 }

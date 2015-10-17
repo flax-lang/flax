@@ -15,7 +15,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->name);
@@ -32,14 +32,14 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 	this->didCodegen = true;
 
-	llvm::GlobalValue::LinkageTypes linkageType;
+	fir::LinkageType linkageType;
 	if(this->attribs & Attr_VisPublic)
 	{
-		linkageType = llvm::Function::ExternalLinkage;
+		linkageType = fir::LinkageType::External;
 	}
 	else
 	{
-		linkageType = llvm::Function::InternalLinkage;
+		linkageType = fir::LinkageType::Internal;
 	}
 
 
@@ -56,10 +56,12 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 
-	llvm::StructType* str = llvm::cast<llvm::StructType>(_type->first);
+	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
-	llvm::Function* defaultInitFunc = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), llvm::PointerType::get(str, 0), false), linkageType, "__auto_init__" + this->mangledName, cgi->module);
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
@@ -70,13 +72,11 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 
-	llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
-	cgi->builder.SetInsertPoint(iblock);
+	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
+	cgi->builder.setCurrentBlock(iblock);
 
 	// create the local instance of reference to self
-	llvm::Value* self = &defaultInitFunc->getArgumentList().front();
-
-
+	fir::Value* self = defaultInitFunc->getArguments().front();
 
 	for(VarDecl* var : this->members)
 	{
@@ -85,7 +85,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			llvm::Value* ptr = cgi->builder.CreateStructGEP(self, i, "memberPtr_" + var->name);
+			fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
@@ -98,25 +98,25 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 			// a bit hacky, but still well-defined.
 			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
 
-			// generate a global variable (sorry!).
-			llvm::GlobalValue* gv = new llvm::GlobalVariable(*cgi->module, var->inferredLType, var->immutable,
-				llvm::GlobalValue::ExternalLinkage, llvm::Constant::getNullValue(var->inferredLType), varname);
+			// generate a global variable
+			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
+				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable, fir::LinkageType::External);
 
-			if(var->inferredLType->isStructTy())
+			if(var->inferredLType->isStructType())
 			{
 				TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
 				iceAssert(cmplxtype);
 
-				llvm::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
+				fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
 				cgi->addGlobalConstructor(varname, init);
 			}
 			else
 			{
 				iceAssert(var->initVal);
-				llvm::Value* val = var->initVal->codegen(cgi, gv).result.first;
-				if(llvm::isa<llvm::Constant>(val))
+				fir::Value* val = var->initVal->codegen(cgi, gv).result.first;
+				if(dynamic_cast<fir::ConstantValue*>(val))
 				{
-					llvm::cast<llvm::GlobalVariable>(gv)->setInitializer(llvm::cast<llvm::Constant>(val));
+					gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
 				}
 				else
 				{
@@ -127,7 +127,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 	}
 
 	// create all the other automatic init functions for our extensions
-	std::deque<llvm::Function*> extensionInitialisers;
+	std::deque<fir::Function*> extensionInitialisers;
 	{
 		int i = 0;
 		for(auto ext : this->extensions)
@@ -155,15 +155,15 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 	if(!didFindInit)
 	{
-		for(llvm::Function* f : extensionInitialisers)
+		for(fir::Function* f : extensionInitialisers)
 		{
-			llvm::Function* actual = cgi->module->getFunction(f->getName());
-			cgi->builder.CreateCall(actual, self);
+			fir::Function* actual = cgi->module->getFunction(f->getName());
+			cgi->builder.CreateCall1(actual, self);
 		}
 	}
 
-	cgi->builder.CreateRetVoid();
-	llvm::verifyFunction(*defaultInitFunc);
+	cgi->builder.CreateReturnVoid();
+	// fir::verifyFunction(*defaultInitFunc);
 
 
 
@@ -224,18 +224,18 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 
-	// issue here is that functions aren't codegened (ie. don't have the llvm::Function*)
+	// issue here is that functions aren't codegened (ie. don't have the fir::Function*)
 	// before their bodies are codegened, so this makes functions in structs order-dependent.
 
 	// pass 1
 	for(Func* f : this->funcs)
 	{
-		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
+		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 		bool isOpOverload = f->decl->name.find("operator#") == 0;
 		if(isOpOverload)
 			f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 
-		llvm::Value* val = nullptr;
+		fir::Value* val = nullptr;
 
 
 
@@ -252,26 +252,26 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		val = f->decl->codegen(cgi).result.first;
 
 		if(f->decl->name == "init")
-			this->initFuncs.push_back(llvm::cast<llvm::Function>(val));
+			this->initFuncs.push_back(dynamic_cast<fir::Function*>(val));
 
 
-		cgi->builder.SetInsertPoint(ob);
-		this->lfuncs.push_back(llvm::cast<llvm::Function>(val));
+		cgi->builder.setCurrentBlock(ob);
+		this->lfuncs.push_back(dynamic_cast<fir::Function*>(val));
 
 		if(isOpOverload)
 		{
 			ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
-			this->lOpOverloads.push_back(std::make_pair(ao, llvm::cast<llvm::Function>(val)));
+			this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
 		}
 
 		// make the functions public as well
-		cgi->addPublicFunc({ llvm::cast<llvm::Function>(val), f->decl });
+		cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
 	}
 
 	// pass 2
 	for(Func* f : this->funcs)
 	{
-		llvm::BasicBlock* ob = cgi->builder.GetInsertBlock();
+		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
 		if(f->decl->name == "init")
 		{
@@ -288,13 +288,13 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 		}
 
 		f->codegen(cgi);
-		cgi->builder.SetInsertPoint(ob);
+		cgi->builder.setCurrentBlock(ob);
 	}
 
 	if(this->initFuncs.size() == 0)
 		this->initFuncs.push_back(defaultInitFunc);
 
-	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, llvm::Type*>(this, str));
+	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, fir::Type*>(this, str));
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
 
@@ -311,7 +311,7 @@ Result_t Class::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* 
 
 
 
-llvm::Type* Class::createType(CodegenInstance* cgi)
+fir::Type* Class::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return 0;
@@ -362,7 +362,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		// if it's a struct, copy its members into ourselves.
 		if(type->second.second == TypeKind::Class)
 		{
-			this->superclass = { supcls, llvm::cast<llvm::StructType>(type->first) };
+			this->superclass = { supcls, type->first->toStructType() };
 
 			// normal members
 			for(auto mem : supcls->members)
@@ -473,7 +473,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 
 
 
-	llvm::Type** types = new llvm::Type*[this->members.size()];
+	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
 	std::deque<std::string> fullScope = cgi->getFullScope();
@@ -483,7 +483,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
 
 
-	llvm::StructType* str = llvm::StructType::create(llvm::getGlobalContext(), this->mangledName);
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext());
 
 	this->scope = fullScope;
 	cgi->addNewType(str, this, TypeKind::Class);
@@ -536,10 +536,10 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		// llvm::Type* type = cgi->getLlvmType(var);
+		// fir::Type* type = cgi->getLlvmType(var);
 
 		iceAssert(var->inferredLType != 0);
-		llvm::Type* type = var->inferredLType;
+		fir::Type* type = var->inferredLType;
 
 		if(type == str)
 		{
@@ -565,7 +565,7 @@ llvm::Type* Class::createType(CodegenInstance* cgi)
 
 
 
-	std::vector<llvm::Type*> vec(types, types + this->nameMap.size());
+	std::vector<fir::Type*> vec(types, types + this->nameMap.size());
 	str->setBody(vec);
 
 	this->didCreateType = true;

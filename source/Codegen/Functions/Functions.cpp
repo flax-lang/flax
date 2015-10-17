@@ -13,7 +13,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	Result_t lastval(0, 0);
 	cgi->pushScope();
@@ -42,7 +42,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::V
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	if(this->didCodegen)
 		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
@@ -52,35 +52,27 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	bool isPublic = this->decl->attribs & Attr_VisPublic;
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
-	// because the main code generator is two-pass, we expect all function declarations to have been generated
-	// so just fetch it.
 
 	if(isGeneric && isPublic)
 	{
 		cgi->rootNode->publicGenericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
-	llvm::Function* func = 0;
+	fir::Function* func = 0;
 
 	if(isGeneric && lhsPtr != 0)
 	{
-		iceAssert(func = llvm::cast<llvm::Function>(lhsPtr));
+		iceAssert(func = dynamic_cast<fir::Function*>(lhsPtr));
 	}
 	else
 	{
 		func = cgi->module->getFunction(this->decl->mangledName);
 		if(!func)
 		{
-			if(isGeneric && !isPublic)
+			this->didCodegen = false;
+			if(isGeneric)
 			{
 				warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
-				return Result_t(0, 0);
-			}
-			else if(!isGeneric && !isPublic)
-			{
-				// this should not happen
-				// warn(this, "Function %s did not have a declaration, skipping...", this->decl->name.c_str());
-				warn(this, "Function %s is not public and is never called; it will not be emitted", this->decl->name.c_str());
 				return Result_t(0, 0);
 			}
 			else
@@ -108,34 +100,32 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
 	// and fuck shit up big time
-	llvm::BasicBlock* prevBlock = cgi->builder.GetInsertBlock();
+	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
 
-	llvm::BasicBlock* block = llvm::BasicBlock::Create(cgi->getContext(), this->decl->name + "_entry", func);
-	cgi->builder.SetInsertPoint(block);
+	fir::IRBlock* block = cgi->builder.addNewBlockInFunction(this->decl->name + "_entry", func);
+	cgi->builder.setCurrentBlock(block);
+
+
 
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
-	if(func->arg_size() > 0)
+	for(size_t i = 0; i < func->getArgumentCount(); i++)
 	{
-		int i = 0;
-		for(llvm::Function::arg_iterator it = func->arg_begin(); it != func->arg_end(); it++, i++)
+		func->getArguments()[i]->setName(this->decl->params[i]->name);
+
+		fir::Value* ai = 0;
+
+		if(isGeneric)
 		{
-			it->setName(this->decl->params[i]->name);
-
-			llvm::AllocaInst* ai = 0;
-
-			if(isGeneric)
-			{
-				ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
-			}
-			else
-			{
-				ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
-			}
-
-			cgi->builder.CreateStore(it, ai);
-
-			cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+			ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
 		}
+		else
+		{
+			ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+		}
+
+		cgi->builder.CreateStore(func->getArguments()[i], ai);
+		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+		func->getArguments()[i]->setValue(ai);
 	}
 
 
@@ -189,20 +179,21 @@ Result_t Func::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* r
 	cgi->verifyAllPathsReturn(this, nullptr, true, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
 
 	if(doRetVoid)
-		cgi->builder.CreateRetVoid();
+		cgi->builder.CreateReturnVoid();
 
 	else if(isImplicitReturn)
-		cgi->builder.CreateRet(lastval.result.first);
+		cgi->builder.CreateReturn(lastval.result.first);
 
 
-	llvm::verifyFunction(*func, &llvm::errs());
-	cgi->Fpm->run(*func);
+	// todo: optimise/run llvm passes
+	// fir::verifyFunction(*func, &fir::errs());
+	// cgi->Fpm->run(*func);
 
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();
 
 	if(prevBlock)
-		cgi->builder.SetInsertPoint(prevBlock);
+		cgi->builder.setCurrentBlock(prevBlock);
 
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);

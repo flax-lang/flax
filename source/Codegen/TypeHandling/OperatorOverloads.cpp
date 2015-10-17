@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// this is never really called for actual codegen. operators are handled as functions,
 	// so we just put them into the structs' funcs.
@@ -27,9 +27,9 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		}
 
 		// needs to return pointer to self
-		llvm::Type* ret = cgi->getLlvmType(decl);
-		llvm::Type* front = cgi->getLlvmType(decl->params.front());
-		if(ret == llvm::Type::getVoidTy(cgi->getContext()))
+		fir::Type* ret = cgi->getLlvmType(decl);
+		fir::Type* front = cgi->getLlvmType(decl->params.front());
+		if(ret == fir::PrimitiveType::getVoid(cgi->getContext()))
 		{
 			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got void)");
 		}
@@ -46,7 +46,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Va
 		if(decl->params.size() != 2)
 			error(this, "Operator overload for '==' can only have two arguments, have %zu", decl->params.size());
 
-		if(cgi->getLlvmType(decl) != llvm::Type::getInt1Ty(cgi->getContext()))
+		if(cgi->getLlvmType(decl) != fir::PrimitiveType::getBool(cgi->getContext()))
 			error(this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply

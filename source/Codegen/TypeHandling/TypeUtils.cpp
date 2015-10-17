@@ -17,10 +17,10 @@ using namespace Codegen;
 
 namespace Codegen
 {
-	llvm::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
+	fir::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
 	{
 		int indirections = 0;
-		type = this->unwrapPointerType(type, &indirections);
+		type = unwrapPointerType(type, &indirections);
 
 		if(!Compiler::getDisableLowercaseBuiltinTypes())
 		{
@@ -30,28 +30,28 @@ namespace Codegen
 			}
 		}
 
-		llvm::Type* real = 0;
+		fir::Type* real = 0;
 
-		if(type == "Int8")			real = llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Int16")	real = llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Int32")	real = llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Int64")	real = llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Int")		real = llvm::Type::getInt64Ty(this->getContext());
+		if(type == "Int8")			real = fir::PrimitiveType::getInt8(this->getContext());
+		else if(type == "Int16")	real = fir::PrimitiveType::getInt16(this->getContext());
+		else if(type == "Int32")	real = fir::PrimitiveType::getInt32(this->getContext());
+		else if(type == "Int64")	real = fir::PrimitiveType::getInt64(this->getContext());
+		else if(type == "Int")		real = fir::PrimitiveType::getInt64(this->getContext());
 
-		else if(type == "Uint8")	real = llvm::Type::getInt8Ty(this->getContext());
-		else if(type == "Uint16")	real = llvm::Type::getInt16Ty(this->getContext());
-		else if(type == "Uint32")	real = llvm::Type::getInt32Ty(this->getContext());
-		else if(type == "Uint64")	real = llvm::Type::getInt64Ty(this->getContext());
-		else if(type == "Uint")		real = llvm::Type::getInt64Ty(this->getContext());
+		else if(type == "Uint8")	real = fir::PrimitiveType::getUint8(this->getContext());
+		else if(type == "Uint16")	real = fir::PrimitiveType::getUint16(this->getContext());
+		else if(type == "Uint32")	real = fir::PrimitiveType::getUint32(this->getContext());
+		else if(type == "Uint64")	real = fir::PrimitiveType::getUint64(this->getContext());
+		else if(type == "Uint")		real = fir::PrimitiveType::getUint64(this->getContext());
 
-		else if(type == "Float32")	real = llvm::Type::getFloatTy(this->getContext());
-		else if(type == "Float")	real = llvm::Type::getFloatTy(this->getContext());
+		else if(type == "Float32")	real = fir::PrimitiveType::getFloat32(this->getContext());
+		else if(type == "Float")	real = fir::PrimitiveType::getFloat32(this->getContext());
 
-		else if(type == "Float64")	real = llvm::Type::getDoubleTy(this->getContext());
-		else if(type == "Double")	real = llvm::Type::getDoubleTy(this->getContext());
+		else if(type == "Float64")	real = fir::PrimitiveType::getFloat64(this->getContext());
+		else if(type == "Double")	real = fir::PrimitiveType::getFloat64(this->getContext());
 
-		else if(type == "Bool")		real = llvm::Type::getInt1Ty(this->getContext());
-		else if(type == "Void")		real = llvm::Type::getVoidTy(this->getContext());
+		else if(type == "Bool")		real = fir::PrimitiveType::getBool(this->getContext());
+		else if(type == "Void")		real = fir::PrimitiveType::getVoid(this->getContext());
 		else return 0;
 
 		iceAssert(real);
@@ -65,16 +65,21 @@ namespace Codegen
 	}
 
 
-	llvm::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, llvm::Value* alloca)
+	fir::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, fir::Value* alloca)
 	{
-		iceAssert(alloca->getType()->isPointerTy());
-		llvm::Type* baseType = alloca->getType()->getPointerElementType();
+		if(!alloca->getType()->isPointerType())
+			error("expected pointer, got %s", alloca->getType()->str().c_str());
 
-		if(this->isEnum(baseType) || this->isTypeAlias(baseType))
+		iceAssert(alloca->getType()->isPointerType());
+		fir::Type* baseType = alloca->getType()->getPointerElementType();
+
+		fir::StructType* bst = baseType->toStructType();
+
+		if(bst && (this->isEnum(baseType) || this->isTypeAlias(baseType)))
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(user, "Invalid type '%s'!", baseType->getStructName().str().c_str());
+				error(user, "Invalid type '%s'!", bst->getStructName().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
@@ -85,18 +90,18 @@ namespace Codegen
 				return alloca;		// fail.
 			}
 
-			return this->builder.CreateStructGEP(alloca, 0);
+			return this->builder.CreateGetConstStructMember(alloca, 0);
 		}
 
 		return alloca;
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail, bool setInferred)
+	fir::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail, bool setInferred)
 	{
 		return this->getLlvmType(expr, Resolved_t(), allowFail, setInferred);
 	}
 
-	llvm::Type* CodegenInstance::getLlvmType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
+	fir::Type* CodegenInstance::getLlvmType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
 		setInferred = false;
 		iceAssert(expr);
@@ -119,7 +124,7 @@ namespace Codegen
 					if(decl->inferredLType)
 						return decl->inferredLType;
 
-					llvm::Type* ret = this->parseAndGetOrInstantiateType(decl, decl->type.strType, allowFail);
+					fir::Type* ret = this->parseAndGetOrInstantiateType(decl, decl->type.strType, allowFail);
 					if(setInferred) decl->inferredLType = ret;
 
 					return ret;
@@ -140,8 +145,8 @@ namespace Codegen
 			{
 				if(uo->op == ArithmeticOp::Deref)
 				{
-					llvm::Type* ltype = this->getLlvmType(uo->expr);
-					if(!ltype->isPointerTy())
+					fir::Type* ltype = this->getLlvmType(uo->expr);
+					if(!ltype->isPointerType())
 						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
 
 					return this->getLlvmType(uo->expr)->getPointerElementType();
@@ -168,7 +173,7 @@ namespace Codegen
 						}
 						else
 						{
-							llvm::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
+							fir::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
 							if(genericMaybe)
 								return genericMaybe->getReturnType();
 
@@ -192,7 +197,7 @@ namespace Codegen
 				TypePair_t* type = this->getType(fd->type.strType);
 				if(!type)
 				{
-					llvm::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
+					fir::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
 					return ret;
 				}
 
@@ -201,13 +206,13 @@ namespace Codegen
 			else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
 			{
 				if(sl->isRaw)
-					return llvm::Type::getInt8PtrTy(this->getContext());
+					return fir::PointerType::getInt8Ptr(this->getContext());
 
 				else
 				{
 					auto tp = this->getType("String");
 					if(!tp)
-						return llvm::Type::getInt8PtrTy(this->getContext());
+						return fir::PointerType::getInt8Ptr(this->getContext());
 
 
 					return tp->first;
@@ -220,17 +225,16 @@ namespace Codegen
 
 
 				// first, get the type of the lhs
-				llvm::Type* lhs = this->getLlvmType(ma->left);
-				TypePair_t* pair = this->getType(lhs->isPointerTy() ? lhs->getPointerElementType() : lhs);
+				fir::Type* lhs = this->getLlvmType(ma->left);
+				TypePair_t* pair = this->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 
-				llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(lhs);
+				fir::StructType* st = dynamic_cast<fir::StructType*>(lhs);
 
-				if(!pair && (!st || !st->isLiteral()))
+				if(!pair && (!st || !st->isLiteralStruct()))
 					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
 
-
-				if((st && st->isLiteral()) || (pair->second.second == TypeKind::Tuple))
+				if((st && st->isLiteralStruct()) || (pair->second.second == TypeKind::Tuple))
 				{
 					// values are 1, 2, 3 etc.
 					// for now, assert this.
@@ -238,13 +242,16 @@ namespace Codegen
 					Number* n = dynamic_cast<Number*>(ma->right);
 					iceAssert(n);
 
-					llvm::Type* ttype = pair ? pair->first : st;
-					iceAssert(ttype->isStructTy());
+					fir::Type* ttype = pair ? pair->first : st;
+					iceAssert(ttype->isStructType());
 
-					if(n->ival >= ttype->getStructNumElements())
-						error(expr, "Tuple does not have %d elements, only %d", (int) n->ival + 1, ttype->getStructNumElements());
+					if((size_t) n->ival >= ttype->toStructType()->getElementCount())
+					{
+						error(expr, "Tuple does not have %d elements, only %zd", (int) n->ival + 1,
+							ttype->toStructType()->getElementCount());
+					}
 
-					return ttype->getStructElementType(n->ival);
+					return ttype->toStructType()->getElementN(n->ival);
 				}
 				else if(pair->second.second == TypeKind::Class)
 				{
@@ -316,13 +323,13 @@ namespace Codegen
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 			{
-				llvm::Type* ltype = this->getLlvmType(bo->left);
-				llvm::Type* rtype = this->getLlvmType(bo->right);
+				fir::Type* ltype = this->getLlvmType(bo->left);
+				fir::Type* rtype = this->getLlvmType(bo->right);
 
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
 				{
-					return llvm::IntegerType::getInt1Ty(this->getContext());
+					return fir::PrimitiveType::getBool(this->getContext());
 				}
 				else if(bo->op == ArithmeticOp::Cast || bo->op == ArithmeticOp::ForcedCast)
 				{
@@ -335,29 +342,31 @@ namespace Codegen
 				else
 				{
 					// check if both are integers
-					if(ltype->isIntegerTy() && rtype->isIntegerTy())
+					if(ltype->isIntegerType() && rtype->isIntegerType())
 					{
-						if(ltype->getIntegerBitWidth() > rtype->getIntegerBitWidth())
+						if(ltype->toPrimitiveType()->getIntegerBitWidth() > rtype->toPrimitiveType()->getIntegerBitWidth())
 							return ltype;
 
 						return rtype;
 					}
-					else if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
+					else if(ltype->isIntegerType() && rtype->isFloatingPointType())
 					{
 						return rtype;
 					}
-					else if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
+					else if(ltype->isFloatingPointType() && rtype->isIntegerType())
 					{
 						return ltype;
 					}
-					else if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+					else if(ltype->isFloatingPointType() && rtype->isFloatingPointType())
 					{
-						if(ltype->isDoubleTy()) return ltype;
+						if(ltype->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
+							return ltype;
+
 						return rtype;
 					}
 					else
 					{
-						if(ltype->isPointerTy() && rtype->isIntegerTy())
+						if(ltype->isPointerType() && rtype->isIntegerType())
 						{
 							// pointer arith??
 							return ltype;
@@ -394,7 +403,7 @@ namespace Codegen
 			}
 			else if(dynamic_cast<BoolVal*>(expr))
 			{
-				return llvm::Type::getInt1Ty(getContext());
+				return fir::PrimitiveType::getBool(getContext());
 			}
 			else if(Return* retr = dynamic_cast<Return*>(expr))
 			{
@@ -413,7 +422,7 @@ namespace Codegen
 			}
 			else if(dynamic_cast<IfStmt*>(expr))
 			{
-				return llvm::Type::getVoidTy(getContext());
+				return fir::PrimitiveType::getVoid(getContext());
 			}
 			else if(dynamic_cast<Typeof*>(expr))
 			{
@@ -424,7 +433,7 @@ namespace Codegen
 			}
 			else if(Tuple* tup = dynamic_cast<Tuple*>(expr))
 			{
-				llvm::Type* tp = tup->cachedLlvmType;
+				fir::Type* tp = tup->cachedLlvmType;
 				if(!tup->didCreateType)
 					tp = tup->getType(this);
 
@@ -434,25 +443,25 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getLlvmType(ai->arr)->getPointerElementType();
+				return this->getLlvmType(ai->arr)->toArrayType()->getElementType();
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
 				// todo: make this not shit.
-				return llvm::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
+				return fir::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
 			}
 			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
 			{
-				llvm::Type* targtype = this->getLlvmType(puo->expr);
+				fir::Type* targtype = this->getLlvmType(puo->expr);
 				iceAssert(targtype);
 
 				if(puo->kind == PostfixUnaryOp::Kind::ArrayIndex)
 				{
-					if(targtype->isPointerTy())
+					if(targtype->isPointerType())
 						return targtype->getPointerElementType();
 
-					else if(targtype->isArrayTy())
-						return targtype->getArrayElementType();
+					else if(targtype->isArrayType())
+						return targtype->toArrayType()->getElementType();
 
 					else
 						error(expr, "Invalid???");
@@ -467,32 +476,35 @@ namespace Codegen
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(llvm::Type* type, std::string name)
+	fir::Value* CodegenInstance::allocateInstanceInBlock(fir::Type* type, std::string name)
 	{
-		return this->builder.CreateAlloca(type, 0, name == "" ? "" : name);
+		auto ret = this->builder.CreateStackAlloc(type);
+		ret->setName(name);
+
+		return ret;
 	}
 
-	llvm::AllocaInst* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
+	fir::Value* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
 	{
 		return allocateInstanceInBlock(this->getLlvmType(var), var->name);
 	}
 
 
-	llvm::Value* CodegenInstance::getDefaultValue(Expr* e)
+	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
-		return llvm::Constant::getNullValue(getLlvmType(e));
+		return fir::ConstantValue::getNullValue(this->getLlvmType(e));
 	}
 
-	llvm::Function* CodegenInstance::getDefaultConstructor(Expr* user, llvm::Type* ptrType, StructBase* sb)
+	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)
 	{
 		// check if we have a default constructor.
 
 		if(Class* cls = dynamic_cast<Class*>(sb))
 		{
-			llvm::Function* candidate = 0;
-			for(llvm::Function* fn : cls->initFuncs)
+			fir::Function* candidate = 0;
+			for(fir::Function* fn : cls->initFuncs)
 			{
-				if(fn->arg_size() == 1 && (*fn->arg_begin()).getType() == ptrType)
+				if(fn->getArgumentCount() == 1 && (fn->getArguments()[0]->getType() == ptrType))
 				{
 					candidate = fn;
 					break;
@@ -519,53 +531,25 @@ namespace Codegen
 
 
 
-	static void StringReplace(std::string& str, const std::string& from, const std::string& to)
-	{
-		size_t start_pos = 0;
-		while((start_pos = str.find(from, start_pos)) != std::string::npos)
-		{
-			str.replace(start_pos, from.length(), to);
-			start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
-		}
-	}
+	// static void StringReplace(std::string& str, const std::string& from, const std::string& to)
+	// {
+	// 	size_t start_pos = 0;
+	// 	while((start_pos = str.find(from, start_pos)) != std::string::npos)
+	// 	{
+	// 		str.replace(start_pos, from.length(), to);
+	// 		start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+	// 	}
+	// }
 
-	std::string CodegenInstance::getReadableType(llvm::Type* type)
+	std::string CodegenInstance::getReadableType(fir::Type* type)
 	{
 		if(type == 0)
 			return "(null)";
 
-		std::string thing;
-		llvm::raw_string_ostream rso(thing);
-
-		type->print(rso);
-
-
-		// turn it into Flax types.
-		std::string ret = rso.str();
-
-		StringReplace(ret, "void", "Void");
-		StringReplace(ret, "i8", "Int8");
-		StringReplace(ret, "i16", "Int16");
-		StringReplace(ret, "i32", "Int32");
-		StringReplace(ret, "i64", "Int64");
-		StringReplace(ret, "float", "Float32");
-		StringReplace(ret, "double", "Float64");
-
-		StringReplace(ret, "i1", "Bool");
-
-		if(ret.length() > 0 && ret[0] == '%')
-			ret = ret.substr(1);
-
-
-		if(ret.length() > 0 && ret.find("=") != (size_t) -1)
-		{
-			ret = ret.substr(0, ret.find("=") - 1);
-		}
-
-		return ret;
+		return type->str();
 	}
 
-	std::string CodegenInstance::getReadableType(llvm::Value* val)
+	std::string CodegenInstance::getReadableType(fir::Value* val)
 	{
 		if(val == 0) return "(null)";
 		return this->getReadableType(val->getType());
@@ -576,15 +560,18 @@ namespace Codegen
 		return this->getReadableType(this->getLlvmType(expr));
 	}
 
-	int CodegenInstance::getAutoCastDistance(llvm::Type* from, llvm::Type* to)
+	int CodegenInstance::getAutoCastDistance(fir::Type* from, fir::Type* to)
 	{
 		if(!from || !to)
 			return -1;
 
-		if(from->isIntegerTy() && to->isIntegerTy() && from->getIntegerBitWidth() != to->getIntegerBitWidth())
+		int ret = 0;
+		if(from->isIntegerType() && to->isIntegerType()
+			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
+				|| from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned()))
 		{
-			unsigned int ab = from->getIntegerBitWidth();
-			unsigned int bb = to->getIntegerBitWidth();
+			unsigned int ab = from->toPrimitiveType()->getIntegerBitWidth();
+			unsigned int bb = to->toPrimitiveType()->getIntegerBitWidth();
 
 			// we only allow promotion, never truncation (implicitly anyway)
 			if(ab > bb) return -1;
@@ -592,45 +579,53 @@ namespace Codegen
 			// fk it
 			if(ab == 8)
 			{
-				if(bb == 8)			return 0;
-				else if(bb == 16)	return 1;
-				else if(bb == 32)	return 2;
-				else if(bb == 64)	return 3;
+				if(bb == 8)			ret = 0;
+				else if(bb == 16)	ret = 1;
+				else if(bb == 32)	ret = 2;
+				else if(bb == 64)	ret = 3;
 			}
 			if(ab == 16)
 			{
-				if(bb == 8)			return 1;
-				else if(bb == 16)	return 0;
-				else if(bb == 32)	return 1;
-				else if(bb == 64)	return 2;
+				if(bb == 8)			ret = 1;
+				else if(bb == 16)	ret = 0;
+				else if(bb == 32)	ret = 1;
+				else if(bb == 64)	ret = 2;
 			}
 			if(ab == 32)
 			{
-				if(bb == 8)			return 2;
-				else if(bb == 16)	return 1;
-				else if(bb == 32)	return 0;
-				else if(bb == 64)	return 1;
+				if(bb == 8)			ret = 2;
+				else if(bb == 16)	ret = 1;
+				else if(bb == 32)	ret = 0;
+				else if(bb == 64)	ret = 1;
 			}
 			if(ab == 64)
 			{
-				if(bb == 8)			return 3;
-				else if(bb == 16)	return 2;
-				else if(bb == 32)	return 1;
-				else if(bb == 64)	return 0;
+				if(bb == 8)			ret = 3;
+				else if(bb == 16)	ret = 2;
+				else if(bb == 32)	ret = 1;
+				else if(bb == 64)	ret = 0;
 			}
+
+			// check for signed-ness cast.
+			if(from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned())
+			{
+				ret += 1;
+			}
+
+			return ret;
 		}
 		// check for string to int8*
-		else if(to->isPointerTy() && to->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
-			&& from->isStructTy() && from->getStructName() == this->mangleWithNamespace("String", { }, false))
+		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+			&& from->isStructType() && from->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
 		{
 			return 2;
 		}
-		else if(from->isPointerTy() && from->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext())
-			&& to->isStructTy() && to->getStructName() == this->mangleWithNamespace("String", { }, false))
+		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+			&& to->isStructType() && to->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
 		{
 			return 2;
 		}
-		else if(to->isFloatingPointTy() && from->isIntegerTy())
+		else if(to->isFloatingPointType() && from->isIntegerType())
 		{
 			// int-to-float is 10.
 			return 10;
@@ -639,7 +634,7 @@ namespace Codegen
 		return -1;
 	}
 
-	int CodegenInstance::autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr)
+	int CodegenInstance::autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr)
 	{
 		if(!target || !right)
 			return -1;
@@ -652,47 +647,90 @@ namespace Codegen
 		// etc.
 
 		int dist = -1;
-		if(target->isIntegerTy() && right->getType()->isIntegerTy()
-			&& target->getIntegerBitWidth() != right->getType()->getIntegerBitWidth())
+		if(target->isIntegerType() && right->getType()->isIntegerType()
+			&& target->toPrimitiveType()->getIntegerBitWidth() != right->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
-			unsigned int lBits = target->getIntegerBitWidth();
-			unsigned int rBits = right->getType()->getIntegerBitWidth();
+			unsigned int lBits = target->toPrimitiveType()->getIntegerBitWidth();
+			unsigned int rBits = right->getType()->toPrimitiveType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
 			// check if the RHS is a constant value
-			llvm::ConstantInt* constVal = llvm::dyn_cast<llvm::ConstantInt>(right);
+			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(right);
 			if(constVal)
 			{
 				// check if the number fits in the LHS type
-				if(lBits < 64)	// 64 is the max
-				{
-					if(constVal->getSExtValue() < 0)
-					{
-						int64_t max = -1 * powl(2, lBits - 1);
-						if(constVal->getSExtValue() > max)
-							shouldCast = true;
-					}
-					else
-					{
-						uint64_t max = powl(2, lBits) - 1;
-						if(constVal->getZExtValue() <= max)
-							shouldCast = true;
-					}
-				}
+
+				// todo: commented
+				// if(lBits < 64)	// 64 is the max
+				// {
+				// 	if(constVal->getSExtValue() < 0)
+				// 	{
+				// 		int64_t max = -1 * powl(2, lBits - 1);
+				// 		if(constVal->getSExtValue() > max)
+				// 			shouldCast = true;
+				// 	}
+				// 	else
+				// 	{
+				// 		uint64_t max = powl(2, lBits) - 1;
+				// 		if(constVal->getZExtValue() <= max)
+				// 			shouldCast = true;
+				// 	}
+				// }
 			}
 
 			if(shouldCast)
 			{
-				dist = this->getAutoCastDistance(right->getType(), target);
-				right = this->builder.CreateIntCast(right, target, false);
+				right = this->builder.CreateIntSizeCast(right, target);
+			}
+		}
+
+		// signed to unsigned conversion
+		else if(target->isIntegerType() && right->getType()->isIntegerType()
+			&& (right->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
+		{
+			if(!right->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
+			{
+				// only do it if it preserves all data.
+				// we cannot convert signed to unsigned, but unsigned to signed is okay if the
+				// signed bitwidth > unsigned bitwidth
+				// eg. u32 -> i32 >> not okay
+				//     u32 -> i64 >> okay
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
+					right = this->builder.CreateIntSizeCast(right, target);
+			}
+			else
+			{
+				// we can't "normally" do it without losing data
+				// but if the rhs is a constant, maybe we can.
+
+				if(fir::ConstantInt* cright = dynamic_cast<fir::ConstantInt*>(right))
+				{
+					// only if not negative, can we convert to unsigned.
+					if(cright->getSignedValue() >= 0)
+					{
+						// get bits of lhs
+						size_t lbits = target->toPrimitiveType()->getIntegerBitWidth();
+
+						// get max value.
+						size_t maxL = pow(2, lbits) - 1;
+						if(lbits == 64) maxL = UINT64_MAX;
+
+						if(cright->getUnsignedValue() <= maxL)
+						{
+							right = this->builder.CreateIntSizeCast(right, target);
+						}
+					}
+				}
 			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(target->isPointerTy() && target->getPointerElementType() == llvm::Type::getInt8Ty(this->getContext()))
+		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext()))
 		{
-			llvm::Type* rtype = right->getType();
-			if(rtype->isStructTy() && rtype->getStructName()== this->mangleWithNamespace("String", std::deque<std::string>()))
+			fir::Type* rtype = right->getType();
+			if(rtype->isStructType()
+				&& rtype->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 			{
 				// get the struct gep:
 				// Layout of string:
@@ -701,24 +739,21 @@ namespace Codegen
 
 				// cast the RHS to the LHS
 				iceAssert(rhsPtr);
-				llvm::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+				fir::Value* ret = this->builder.CreateGetConstStructMember(rhsPtr, 0);
 				right = this->builder.CreateLoad(ret);	// mutating
-
-				// string-to-int8* is 2.
-				dist = this->getAutoCastDistance(right->getType(), target);
 			}
 		}
-		else if(target->isFloatingPointTy() && right->getType()->isIntegerTy())
+		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			right = this->builder.CreateSIToFP(right, target);
-			dist = this->getAutoCastDistance(right->getType(), target);
+			right = this->builder.CreateIntToFloatCast(right, target);
 		}
 
+		dist = this->getAutoCastDistance(right->getType(), target);
 		return dist;
 	}
 
-	int CodegenInstance::autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr)
+	int CodegenInstance::autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr)
 	{
 		return this->autoCastType(left->getType(), right, rhsPtr);
 	}
@@ -733,7 +768,7 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::unwrapPointerType(std::string type, int* _indirections)
+	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = std::string("*");
 		size_t ptrStrLength = sptr.length();
@@ -754,7 +789,7 @@ namespace Codegen
 		return actualType;
 	}
 
-	static llvm::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
+	static fir::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
 	{
 		iceAssert(str.length() > 0);
 		iceAssert(str[0] == '(');
@@ -764,7 +799,7 @@ namespace Codegen
 		if(front == ')')
 			error(user, "Empty tuples are not supported");
 
-		std::vector<llvm::Type*> types;
+		std::vector<fir::Type*> types;
 		while(front != ')')
 		{
 			std::string cur;
@@ -779,7 +814,7 @@ namespace Codegen
 			if(front == ',' || front == ')')
 			{
 				bool shouldBreak = (front == ')');
-				llvm::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
+				fir::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
 				iceAssert(ty);
 
 				types.push_back(ty);
@@ -802,14 +837,14 @@ namespace Codegen
 			}
 		}
 
-		return llvm::StructType::get(cgi->getContext(), types);
+		return fir::StructType::getLiteral(types, cgi->getContext());
 	}
 
-	static llvm::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type, bool allowFail)
+	static fir::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type, bool allowFail)
 	{
 		iceAssert(type.size() > 0);
 
-		llvm::Type* ret = 0;
+		fir::Type* ret = 0;
 		if(type[0] != '[')
 		{
 			std::string t = "";
@@ -840,21 +875,21 @@ namespace Codegen
 
 
 
-	llvm::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
+	fir::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
 	{
 		if(type.length() > 0)
 		{
 			if(type[0] == '(')
 			{
 				// parse a tuple.
-				llvm::Type* parsed = recursivelyParseTuple(this, user, type, allowFail);
+				fir::Type* parsed = recursivelyParseTuple(this, user, type, allowFail);
 				return parsed;
 			}
 			else if(type[0] == '[')
 			{
 				// array.
 				std::string tp = type;
-				llvm::Type* parsed = recursivelyParseArray(this, user, tp, allowFail);
+				fir::Type* parsed = recursivelyParseArray(this, user, tp, allowFail);
 
 				return parsed;
 			}
@@ -862,14 +897,14 @@ namespace Codegen
 			{
 				int indirections = 0;
 
-				std::string actualType = this->unwrapPointerType(type, &indirections);
+				std::string actualType = unwrapPointerType(type, &indirections);
 				if(actualType.find("[") != std::string::npos)
 				{
 					size_t k = actualType.find("[");
 					std::string base = actualType.substr(0, k);
 
 					std::string arr = actualType.substr(k);
-					llvm::Type* btype = this->parseAndGetOrInstantiateType(user, base, allowFail);
+					fir::Type* btype = this->parseAndGetOrInstantiateType(user, base, allowFail);
 
 
 					std::vector<int> sizes;
@@ -901,14 +936,14 @@ namespace Codegen
 
 					for(auto i : sizes)
 					{
-						btype = llvm::ArrayType::get(btype, i);
+						btype = fir::ArrayType::get(btype, i);
 					}
 
 					return btype;
 				}
 				else
 				{
-					llvm::Type* ret = this->getLlvmTypeFromExprType(user, ExprType(actualType), allowFail);
+					fir::Type* ret = this->getLlvmTypeFromExprType(user, ExprType(actualType), allowFail);
 
 					if(ret)
 					{
@@ -929,11 +964,11 @@ namespace Codegen
 		}
 	}
 
-	llvm::Type* CodegenInstance::getLlvmTypeFromExprType(Ast::Expr* user, ExprType type, bool allowFail)
+	fir::Type* CodegenInstance::getLlvmTypeFromExprType(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
 		{
-			llvm::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
+			fir::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
 			if(ret) return ret;
 
 			// not so lucky
@@ -954,6 +989,7 @@ namespace Codegen
 
 				if(ns.size() > 0) nsstr = nsstr.substr(1);
 
+				if(allowFail) return 0;
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
 			}
 
@@ -964,7 +1000,7 @@ namespace Codegen
 			}
 			else if(tp)
 			{
-				llvm::Type* concrete = tp->first;
+				fir::Type* concrete = tp->first;
 				if(!concrete)
 				{
 					// generate the type.
@@ -983,7 +1019,7 @@ namespace Codegen
 					iceAssert(concrete);
 				}
 
-				llvm::Type* ret = tp->first;
+				fir::Type* ret = tp->first;
 				while(indirections > 0)
 				{
 					ret = ret->getPointerTo();
@@ -1003,7 +1039,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "enosup");
+			error(user, "enotsup");
 		}
 	}
 
@@ -1019,15 +1055,15 @@ namespace Codegen
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		iceAssert(e);
-		llvm::Type* ltype = this->getLlvmType(e);
-		return ltype && ltype->isArrayTy();
+		fir::Type* ltype = this->getLlvmType(e);
+		return ltype && ltype->isArrayType();
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)
 	{
 		iceAssert(e);
-		llvm::Type* ltype = this->getLlvmType(e);
-		return ltype && ltype->isIntegerTy();
+		fir::Type* ltype = this->getLlvmType(e);
+		return ltype && ltype->isIntegerType();
 	}
 
 	bool CodegenInstance::isSignedType(Expr* e)
@@ -1037,21 +1073,22 @@ namespace Codegen
 
 	bool CodegenInstance::isPtr(Expr* expr)
 	{
-		llvm::Type* ltype = this->getLlvmType(expr);
-		return ltype && ltype->isPointerTy();
+		fir::Type* ltype = this->getLlvmType(expr);
+		return ltype && ltype->isPointerType();
 	}
 
-	bool CodegenInstance::isAnyType(llvm::Type* type)
+	bool CodegenInstance::isAnyType(fir::Type* type)
 	{
-		if(type->isStructTy())
+		if(type->isStructType())
 		{
-			if(llvm::cast<llvm::StructType>(type)->hasName() && type->getStructName() == "Any")
+			if(!type->toStructType()->isLiteralStruct() && type->toStructType()->getStructName() == "Any")
 			{
 				return true;
 			}
 
 			TypePair_t* pair = this->getType("Any");
-			iceAssert(pair);
+			if(!pair) return false;
+			// iceAssert(pair);
 
 			if(pair->first == type)
 				return true;
@@ -1075,17 +1112,17 @@ namespace Codegen
 		}
 		else
 		{
-			error("enosup");
+			error("enotsup");
 		}
 	}
 
-	bool CodegenInstance::isEnum(llvm::Type* type)
+	bool CodegenInstance::isEnum(fir::Type* type)
 	{
 		if(!type) return false;
 
 		bool res = true;
-		if(!type->isStructTy())							res = false;
-		if(res && type->getStructNumElements() != 1)	res = false;
+		if(!type->isStructType())								res = false;
+		if(res && type->toStructType()->getElementCount() != 1)	res = false;
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
@@ -1109,17 +1146,17 @@ namespace Codegen
 		}
 		else
 		{
-			error("enosup");
+			error("enotsup");
 		}
 	}
 
-	bool CodegenInstance::isTypeAlias(llvm::Type* type)
+	bool CodegenInstance::isTypeAlias(fir::Type* type)
 	{
 		if(!type) return false;
 
 		bool res = true;
-		if(!type->isStructTy())							res = false;
-		if(res && type->getStructNumElements() != 1)	res = false;
+		if(!type->isStructType())								res = false;
+		if(res && type->toStructType()->getElementCount() != 1)	res = false;
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
@@ -1128,20 +1165,20 @@ namespace Codegen
 		return res;
 	}
 
-	bool CodegenInstance::isBuiltinType(llvm::Type* ltype)
+	bool CodegenInstance::isBuiltinType(fir::Type* ltype)
 	{
-		return (ltype && (ltype->isIntegerTy() || ltype->isFloatingPointTy()));
+		return (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
 	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
-		llvm::Type* ltype = this->getLlvmType(expr);
+		fir::Type* ltype = this->getLlvmType(expr);
 		return this->isBuiltinType(ltype);
 	}
 
-	bool CodegenInstance::isTupleType(llvm::Type* type)
+	bool CodegenInstance::isTupleType(fir::Type* type)
 	{
-		return type->isStructTy() && llvm::cast<llvm::StructType>(type)->isLiteral();
+		return type->isStructType() && type->isLiteralStruct();
 	}
 
 

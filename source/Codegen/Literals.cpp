@@ -5,56 +5,50 @@
 #include "../include/ast.h"
 #include "../include/codegen.h"
 
-
-
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Number::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// check builtin type
 	if(!this->decimal)
 	{
-		int bits = 64;
-		if(this->type.strType == "Uint32" || this->type.strType == "Int32")
-			bits = 32;
-
-		return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(bits, this->ival, !(this->type.strType[0] == 'U'))), 0);
+		return Result_t(fir::ConstantInt::getSigned(fir::PrimitiveType::getInt64(), this->ival), 0);
 	}
 	else
 	{
-		return Result_t(llvm::ConstantFP::get(cgi->getContext(), llvm::APFloat(this->dval)), 0);
+		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getFloat64(), this->dval), 0);
 	}
 }
 
-Result_t BoolVal::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	return Result_t(llvm::ConstantInt::get(cgi->getContext(), llvm::APInt(1, this->val, false)), 0);
+	return Result_t(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getBool(), this->val), 0);
 }
 
-Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
 	if(pair && !this->isRaw)
 	{
-		llvm::StructType* stringType = llvm::cast<llvm::StructType>(pair->first);
+		fir::StructType* stringType = dynamic_cast<fir::StructType*>(pair->first);
 
-		llvm::Value* alloca = cgi->allocateInstanceInBlock(stringType);
+		fir::Value* alloca = cgi->allocateInstanceInBlock(stringType);
 
 		// String layout:
 		// var data: Int8*
 		// var allocated: Uint64
 
 
-		llvm::Value* stringPtr = cgi->builder.CreateStructGEP(alloca, 0);
-		llvm::Value* allocdPtr = cgi->builder.CreateStructGEP(alloca, 1);
+		fir::Value* stringPtr = cgi->builder.CreateGetConstStructMember(alloca, 0);
+		fir::Value* allocdPtr = cgi->builder.CreateGetConstStructMember(alloca, 1);
 
-		llvm::Value* stringVal = cgi->builder.CreateGlobalStringPtr(this->str);
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 
 		cgi->builder.CreateStore(stringVal, stringPtr);
-		cgi->builder.CreateStore(llvm::ConstantInt::get(llvm::IntegerType::getInt64Ty(cgi->getContext()), 0), allocdPtr);
+		cgi->builder.CreateStore(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0), allocdPtr);
 
-		llvm::Value* val = cgi->builder.CreateLoad(alloca);
+		fir::Value* val = cgi->builder.CreateLoad(alloca);
 		return Result_t(val, alloca);
 	}
 	else
@@ -69,16 +63,16 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm:
 		}
 
 		// good old Int8*
-		llvm::Value* stringVal = cgi->builder.CreateGlobalStringPtr(this->str);
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 		return Result_t(stringVal, 0);
 	}
 }
 
 
-Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	llvm::Type* tp = 0;
-	std::vector<llvm::Constant*> vals;
+	fir::Type* tp = 0;
+	std::vector<fir::ConstantValue*> vals;
 
 	if(this->values.size() == 0)
 	{
@@ -95,10 +89,10 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 
 		for(Expr* e : this->values)
 		{
-			llvm::Value* v = e->codegen(cgi).result.first;
-			if(llvm::isa<llvm::Constant>(v))
+			fir::Value* v = e->codegen(cgi).result.first;
+			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
-				llvm::Constant* c = llvm::cast<llvm::Constant>(v);
+				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
 
 				vals.push_back(c);
 				if(vals.back()->getType() != tp)
@@ -114,10 +108,24 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::
 		}
 	}
 
-	llvm::ArrayType* atype = llvm::ArrayType::get(tp, this->values.size());
-	llvm::Value* alloc = cgi->builder.CreateAlloca(atype);
-	llvm::Value* val = llvm::ConstantArray::get(atype, vals);
+	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
+	fir::Value* alloc = cgi->builder.CreateStackAlloc(atype);
+	fir::Value* val = fir::ConstantArray::get(atype, vals);
 
 	cgi->builder.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

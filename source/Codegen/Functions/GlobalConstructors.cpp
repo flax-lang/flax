@@ -14,22 +14,22 @@ using namespace Codegen;
 
 namespace Codegen
 {
-	void CodegenInstance::addGlobalConstructor(std::string name, llvm::Function* constructor)
+	void CodegenInstance::addGlobalConstructor(std::string name, fir::Function* constructor)
 	{
-		llvm::GlobalVariable* gv = this->module->getGlobalVariable(name);
+		fir::GlobalVariable* gv = this->module->getGlobalVariable(name);
 		iceAssert(gv);
 
 		this->globalConstructors.funcs[gv] = constructor;
 	}
 
-	void CodegenInstance::addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor)
+	void CodegenInstance::addGlobalConstructor(fir::Value* ptr, fir::Function* constructor)
 	{
 		iceAssert(ptr);
-		llvm::Function* inhere = this->module->getFunction(constructor->getName());
+		fir::Function* inhere = this->module->getFunction(constructor->getName());
 		this->globalConstructors.funcs[ptr] = inhere;
 	}
 
-	void CodegenInstance::addGlobalConstructedValue(llvm::Value* ptr, llvm::Value* val)
+	void CodegenInstance::addGlobalConstructedValue(fir::Value* ptr, fir::Value* val)
 	{
 		iceAssert(ptr);
 		iceAssert(val);
@@ -37,7 +37,7 @@ namespace Codegen
 		this->globalConstructors.values[ptr] = val;
 	}
 
-	void CodegenInstance::addGlobalTupleConstructedValue(llvm::Value* ptr, int index, llvm::Value* val)
+	void CodegenInstance::addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val)
 	{
 		iceAssert(ptr);
 		iceAssert(val);
@@ -46,48 +46,51 @@ namespace Codegen
 		this->globalConstructors.tupleInitVals[ptr] = { index, val };
 	}
 
-	void CodegenInstance::addGlobalTupleConstructor(llvm::Value* ptr, int index, llvm::Function* func)
+	void CodegenInstance::addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func)
 	{
 		iceAssert(ptr);
 		iceAssert(func);
 		iceAssert(index >= 0);
 
-		llvm::Function* inhere = this->module->getFunction(func->getName());
+		fir::Function* inhere = this->module->getFunction(func->getName());
 		this->globalConstructors.tupleInitFuncs[ptr] = { index, inhere };
 	}
 
 	void CodegenInstance::finishGlobalConstructors()
 	{
 		// generate initialiser
-		llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
-		llvm::Function* defaultInitFunc = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage, "__global_constructor__" + this->module->getModuleIdentifier(), this->module);
+		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
+		fir::Function* defaultInitFunc = this->module->getOrCreateFunction("__global_constructor__" + this->module->getModuleName(), ft,
+			fir::LinkageType::External);
 
-		llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", defaultInitFunc);
-		this->builder.SetInsertPoint(iblock);
+		fir::IRBlock* iblock = this->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
+		this->builder.setCurrentBlock(iblock);
 
 		for(auto pair : this->globalConstructors.funcs)
-			this->builder.CreateCall(pair.second, pair.first);
+			this->builder.CreateCall1(pair.second, pair.first);
 
 		for(auto pair : this->globalConstructors.values)
 			this->builder.CreateStore(pair.second, pair.first);
 
 		for(auto pair : this->globalConstructors.tupleInitFuncs)
 		{
-			std::pair<int, llvm::Function*> ivp = pair.second;
+			std::pair<int, fir::Function*> ivp = pair.second;
 
-			llvm::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
-			this->builder.CreateCall(ivp.second, gep);
+			fir::Value* gep = this->builder.CreateGetConstStructMember(pair.first, ivp.first);
+			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
+			this->builder.CreateCall1(ivp.second, gep);
 		}
 
 		for(auto pair : this->globalConstructors.tupleInitVals)
 		{
-			std::pair<int, llvm::Value*> ivp = pair.second;
+			std::pair<int, fir::Value*> ivp = pair.second;
 
-			llvm::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
+			fir::Value* gep = this->builder.CreateGetConstStructMember(pair.first, ivp.first);
+			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			this->builder.CreateStore(ivp.second, gep);
 		}
 
-		this->builder.CreateRetVoid();
+		this->builder.CreateReturnVoid();
 		this->rootNode->globalConstructorTrampoline = defaultInitFunc;
 	}
 }

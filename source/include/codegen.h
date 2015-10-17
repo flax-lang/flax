@@ -15,6 +15,8 @@
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/PassManager.h"
 
+#include "../include/ir/irbuilder.h"
+
 enum class SymbolType
 {
 	Generic,
@@ -39,12 +41,12 @@ namespace GenError
 	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
 	void duplicateSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
 	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Value* a, llvm::Value* b) __attribute__((noreturn));
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, llvm::Type* a, llvm::Type* b) __attribute__((noreturn));
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Value* a, fir::Value* b) __attribute__((noreturn));
+	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
 	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument = -1) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
-		std::vector<llvm::Value*> args) __attribute__((noreturn));
+		std::vector<fir::Value*> args) __attribute__((noreturn));
 
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
@@ -64,16 +66,18 @@ namespace Codegen
 	struct CodegenInstance
 	{
 		Ast::Root* rootNode;
-		llvm::Module* module;
+		// llvm::Module* module;
+		fir::Module* module;
 		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
 		llvm::ExecutionEngine* execEngine;
+		fir::ExecutionTarget* execTarget;
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<Ast::Class*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
-		std::deque<std::map<std::string, llvm::Type*>> instantiatedGenericTypeStack;
+		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 
 		TypeMap_t typeMap;
 
@@ -83,27 +87,28 @@ namespace Codegen
 
 		std::deque<Ast::Func*> funcScopeStack;
 
-		llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
+		// llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
+		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
 
 		DependencyGraph* dependencyGraph = 0;
 
 
 		struct
 		{
-			std::map<llvm::Value*, llvm::Function*> funcs;
-			std::map<llvm::Value*, llvm::Value*> values;
+			std::map<fir::Value*, fir::Function*> funcs;
+			std::map<fir::Value*, fir::Value*> values;
 
-			std::map<llvm::Value*, std::pair<int, llvm::Value*>> tupleInitVals;
-			std::map<llvm::Value*, std::pair<int, llvm::Function*>> tupleInitFuncs;
+			std::map<fir::Value*, std::pair<int, fir::Value*>> tupleInitVals;
+			std::map<fir::Value*, std::pair<int, fir::Function*>> tupleInitFuncs;
 
 		} globalConstructors;
 
-		void addGlobalConstructor(std::string name, llvm::Function* constructor);
-		void addGlobalConstructor(llvm::Value* ptr, llvm::Function* constructor);
-		void addGlobalConstructedValue(llvm::Value* ptr, llvm::Value* val);
+		void addGlobalConstructor(std::string name, fir::Function* constructor);
+		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
+		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
-		void addGlobalTupleConstructedValue(llvm::Value* ptr, int index, llvm::Value* val);
-		void addGlobalTupleConstructor(llvm::Value* ptr, int index, llvm::Function* func);
+		void addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val);
+		void addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func);
 
 		void finishGlobalConstructors();
 
@@ -113,7 +118,7 @@ namespace Codegen
 
 
 		// "block" scopes, ie. breakable bodies (loops)
-		void pushBracedBlock(Ast::BreakableBracedBlock* block, llvm::BasicBlock* body, llvm::BasicBlock* after);
+		void pushBracedBlock(Ast::BreakableBracedBlock* block, fir::IRBlock* body, fir::IRBlock* after);
 		BracedBlockScope* getCurrentBracedBlockScope();
 
 		Ast::Func* getCurrentFunctionScope();
@@ -126,10 +131,10 @@ namespace Codegen
 		void pushScope();
 		SymTab_t& getSymTab();
 		bool isDuplicateSymbol(const std::string& name);
-		llvm::Value* getSymInst(Ast::Expr* user, const std::string& name);
+		fir::Value* getSymInst(Ast::Expr* user, const std::string& name);
 		SymbolPair_t* getSymPair(Ast::Expr* user, const std::string& name);
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
-		void addSymbol(std::string name, llvm::Value* ai, Ast::VarDecl* vardecl);
+		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
 		void clearScope();
 
@@ -141,18 +146,18 @@ namespace Codegen
 		void addPublicFunc(FuncPair_t func);
 		void addFunctionToScope(FuncPair_t func, FunctionTree* root = 0);
 		void removeFunctionFromScope(FuncPair_t func);
-		void addNewType(llvm::Type* ltype, Ast::StructBase* atype, TypeKind e);
+		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
 		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
 		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
-		// legitimate, llvm::Type* things.
+		// legitimate, fir::Type* things.
 
 		void pushGenericTypeStack();
-		void pushGenericType(std::string id, llvm::Type* type);
-		llvm::Type* resolveGenericType(std::string id);
+		void pushGenericType(std::string id, fir::Type* type);
+		fir::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
 
@@ -176,47 +181,47 @@ namespace Codegen
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 
-		llvm::Function* getDefaultConstructor(Ast::Expr* user, llvm::Type* ptrType, Ast::StructBase* sb);
+		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
 
 		void removeType(std::string name);
 		TypePair_t* getType(std::string name);
-		TypePair_t* getType(llvm::Type* type);
+		TypePair_t* getType(fir::Type* type);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
 
 
 
-		// llvm::Types for non-primitive (POD) builtin types (string)
+		// fir::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		llvm::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		llvm::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+		fir::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		fir::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		llvm::Type* getLlvmTypeFromExprType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
-		int autoCastType(llvm::Type* target, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-		int autoCastType(llvm::Value* left, llvm::Value*& right, llvm::Value* rhsPtr = 0);
-		int getAutoCastDistance(llvm::Type* from, llvm::Type* to);
+		fir::Type* getLlvmTypeFromExprType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		int autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr = 0);
+		int autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr = 0);
+		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
 		bool isPtr(Ast::Expr* e);
 		bool isEnum(Ast::ExprType type);
-		bool isEnum(llvm::Type* type);
+		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
-		bool isBuiltinType(llvm::Type* e);
+		bool isBuiltinType(fir::Type* e);
 		bool isTypeAlias(Ast::ExprType type);
-		bool isTypeAlias(llvm::Type* type);
-		bool isAnyType(llvm::Type* type);
-		bool isTupleType(llvm::Type* type);
-		bool areEqualTypes(llvm::Type* a, llvm::Type* b);
+		bool isTypeAlias(fir::Type* type);
+		bool isAnyType(fir::Type* type);
+		bool isTupleType(fir::Type* type);
+		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
 		bool isDuplicateType(std::string name);
 
-		llvm::Value* lastMinuteUnwrapType(Ast::Expr* user, llvm::Value* alloca);
+		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleLlvmType(llvm::Type* t);
+		std::string mangleLlvmType(fir::Type* t);
 
 		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
@@ -231,26 +236,25 @@ namespace Codegen
 		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
 
 		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleFunctionName(std::string base, std::deque<llvm::Type*> args);
+		std::string mangleFunctionName(std::string base, std::deque<fir::Type*> args);
 		std::string mangleFunctionName(std::string base, std::deque<std::string> args);
 		std::string mangleFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
 		std::string mangleGenericFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
-		std::string getReadableType(llvm::Type* type);
-		std::string getReadableType(llvm::Value* val);
+		std::string getReadableType(fir::Type* type);
+		std::string getReadableType(fir::Value* val);
 
 
-		llvm::AllocaInst* allocateInstanceInBlock(Ast::VarDecl* var);
-		llvm::AllocaInst* allocateInstanceInBlock(llvm::Type* type, std::string name = "");
+		fir::Value* allocateInstanceInBlock(Ast::VarDecl* var);
+		fir::Value* allocateInstanceInBlock(fir::Type* type, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 
-		llvm::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
-		std::string unwrapPointerType(std::string type, int* indirections);
+		fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
 
-		std::pair<llvm::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
+		std::pair<fir::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Func* getFunctionFromMemberFuncCall(Ast::Class* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
@@ -263,33 +267,33 @@ namespace Codegen
 
 
 
-		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* ref, llvm::Value* rhs, llvm::Value* rhsPtr);
+		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* ref, fir::Value* rhs, fir::Value* rhsPtr);
 
-		Ast::Result_t doTupleAccess(llvm::Value* selfPtr, Ast::Number* num, bool createPtr);
+		Ast::Result_t doTupleAccess(fir::Value* selfPtr, Ast::Number* num, bool createPtr);
 
-		Ast::Result_t assignValueToAny(llvm::Value* lhsPtr, llvm::Value* rhs, llvm::Value* rhsPtr);
-		Ast::Result_t extractValueFromAny(llvm::Type* type, llvm::Value* ptr);
+		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
+		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 
-		Ast::Result_t createStringFromInt8Ptr(llvm::StructType* stringType, llvm::Value* int8ptr);
+		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
-		llvm::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
+		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
-		llvm::LLVMContext& getContext();
-		llvm::Value* getDefaultValue(Ast::Expr* e);
-		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, llvm::Type* retType = 0);
+		fir::FTContext* getContext();
+		fir::Value* getDefaultValue(Ast::Expr* e);
+		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
 
-		llvm::Type* getLlvmTypeOfBuiltin(std::string type);
+		fir::Type* getLlvmTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
-		llvm::Instruction::BinaryOps getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
-		llvm::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<llvm::Value*> args);
-		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, llvm::Value* lhs, llvm::Value* lhsptr, llvm::Value* rhs);
-		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<llvm::Value*> args);
+		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
+		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
+		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
+		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
 		// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-		std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*>
-		getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, llvm::Type* lhs, llvm::Type* rhs);
+		std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
+		getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
-		Ast::Result_t callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, llvm::Function*, llvm::Function*> data, llvm::Value* lhs, llvm::Value* lhsRef, llvm::Value* rhs, llvm::Value* rhsRef, Ast::ArithmeticOp op);
+		Ast::Result_t callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);
@@ -298,7 +302,7 @@ namespace Codegen
 		~CodegenInstance();
 	};
 
-	llvm::Value* getArgumentNOfFunction(llvm::Function* func, size_t n);
+	std::string unwrapPointerType(std::string type, int* indirections);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 	void writeBitcode(std::string filename, CodegenInstance* cgi);

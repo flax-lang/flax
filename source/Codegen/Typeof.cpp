@@ -8,13 +8,13 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value* rhs)
+Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	size_t index = 0;
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))
 	{
 		VarDecl* decl = cgi->getSymDecl(this, vr->name);
-		llvm::Type* t = 0;
+		fir::Type* t = 0;
 		if(!decl)
 		{
 			t = cgi->getLlvmTypeFromExprType(this, vr->name);
@@ -31,7 +31,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	}
 	else
 	{
-		llvm::Type* t = cgi->getLlvmType(this->inside);
+		fir::Type* t = cgi->getLlvmType(this->inside);
 		index = TypeInfo::getIndexForType(cgi, t);
 	}
 
@@ -46,8 +46,8 @@ Result_t Typeof::codegen(CodegenInstance* cgi, llvm::Value* lhsPtr, llvm::Value*
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 	iceAssert(enr);
 
-	llvm::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
-	llvm::Value* gep = cgi->builder.CreateStructGEP(wrapper, 0, "wrapped");
+	fir::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
+	fir::Value* gep = cgi->builder.CreateGetConstStructMember(wrapper, 0);
 
 	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
 	return Result_t(cgi->builder.CreateLoad(wrapper), wrapper);
