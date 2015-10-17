@@ -11,6 +11,7 @@ namespace fir
 	Argument::Argument(Function* fn, Type* type) : Value(type)
 	{
 		this->parentFunction = fn;
+		this->realValue = new Value(type);
 	}
 
 	Value* Argument::getActualValue()

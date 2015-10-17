@@ -8,14 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
 #include "errors.h"
 
 #include <string>
@@ -68,17 +60,21 @@ namespace fir
 		ICompare_NotEqual,
 		ICompare_Greater,
 		ICompare_Less,
-		IComapre_GreaterEqual,
+		ICompare_GreaterEqual,
 		ICompare_LessEqual,
 
 		FCompare_Equal_ORD,
 		FCompare_Equal_UNORD,
 		FCompare_NotEqual_ORD,
 		FCompare_NotEqual_UNORD,
-		FCompare_Greater,
-		FCompare_Less,
-		FComapre_GreaterEqual,
-		FCompare_LessEqual,
+		FCompare_Greater_ORD,
+		FCompare_Greater_UNORD,
+		FCompare_Less_ORD,
+		FCompare_Less_UNORD,
+		FCompare_GreaterEqual_ORD,
+		FCompare_GreaterEqual_UNORD,
+		FCompare_LessEqual_ORD,
+		FCompare_LessEqual_UNORD,
 
 		// logical
 		Logical_And,
@@ -129,9 +125,11 @@ namespace fir
 	struct IRBuilder;
 	struct Instruction : Value
 	{
+		friend struct Module;
 		friend struct IRBuilder;
 
 		Instruction(OpKind kind, Type* out, std::deque<Value*> vals);
+		std::string str();
 
 		Value* getResult();
 

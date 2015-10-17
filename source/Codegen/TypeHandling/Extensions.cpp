@@ -32,7 +32,7 @@ fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
-	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
+	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
 
 	fir::IRBlock* oldIP = cgi->builder.getCurrentBlock();
 	cgi->builder.setCurrentBlock(iblock);

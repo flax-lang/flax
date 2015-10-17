@@ -540,6 +540,19 @@ namespace fir
 			&& this->toPrimitiveType() != 0;
 	}
 
+	bool Type::isSignedIntType()
+	{
+		return this->typeKind == FTypeKind::Integer
+			&& this->toPrimitiveType() != 0
+			&& this->toPrimitiveType()->isSigned();
+	}
+
+	bool Type::isFunctionType()
+	{
+		return this->typeKind == FTypeKind::Function
+			&& this->toFunctionType() != 0;
+	}
+
 	bool Type::isPointerType()
 	{
 		return this->toPointerType() != 0;

@@ -9,14 +9,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
 #include "errors.h"
 
 #include <string>
@@ -121,6 +113,8 @@ namespace fir
 
 		bool isArrayType();
 		bool isIntegerType();
+		bool isFunctionType();
+		bool isSignedIntType();
 		bool isFloatingPointType();
 
 		bool isPointerType();

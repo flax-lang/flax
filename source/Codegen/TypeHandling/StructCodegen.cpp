@@ -65,7 +65,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		cgi->addFunctionToScope({ defifunc, fd });
 
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser", defifunc);
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defifunc);
 		cgi->builder.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
@@ -123,7 +123,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser", memifunc);
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, memifunc);
 		cgi->builder.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self

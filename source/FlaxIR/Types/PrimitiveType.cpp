@@ -230,7 +230,8 @@ namespace fir
 		}
 		else
 		{
-			iceAssert(0);
+			// iceAssert(0);
+			ret = "void";
 		}
 
 		return ret;
