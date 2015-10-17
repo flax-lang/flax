@@ -59,8 +59,10 @@ static std::string parseQuotedString(char** argv, int& i)
 
 namespace Compiler
 {
-	static bool dumpModule = false;
 	static bool printModule = false;
+	static bool printFIR = false;
+
+
 	static bool compileOnly = false;
 	bool getIsCompileOnly()
 	{
@@ -253,13 +255,13 @@ int main(int argc, char* argv[])
 			{
 				Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 			}
-			else if(!strcmp(argv[i], "-dump-ir"))
-			{
-				Compiler::dumpModule = true;
-			}
 			else if(!strcmp(argv[i], "-print-ir"))
 			{
 				Compiler::printModule = true;
+			}
+			else if(!strcmp(argv[i], "-print-fir"))
+			{
+				Compiler::printFIR = true;
 			}
 			else if(!strcmp(argv[i], "-no-lowercase-builtin"))
 			{
@@ -380,6 +382,8 @@ int main(int argc, char* argv[])
 	for(auto mod : std::get<3>(ret))
 	{
 		modulelist[mod.first] = mod.second->translateToLlvm();
+		if(Compiler::printFIR)
+			printf("%s\n", mod.second->print().c_str());
 	}
 
 
@@ -541,18 +545,6 @@ int main(int argc, char* argv[])
 
 	if(Compiler::printModule && !Compiler::getRunProgramWithJit())
 		mainModule->dump();
-
-	if(Compiler::dumpModule)
-	{
-		// std::string err_info;
-		// llvm::raw_fd_ostream out((outname + ".ir").c_str(), err_info, llvm::sys::fs::OpenFlags::F_None);
-
-		// out << *(mainModule);
-		// out.close();
-
-		fprintf(stderr, "enotsup\n");
-		exit(-1);
-	}
 
 	delete __cgi;
 	for(auto p : rootmap)

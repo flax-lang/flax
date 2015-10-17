@@ -443,7 +443,7 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getLlvmType(ai->arr)->getPointerElementType();
+				return this->getLlvmType(ai->arr)->toArrayType()->getElementType();
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
@@ -989,6 +989,7 @@ namespace Codegen
 
 				if(ns.size() > 0) nsstr = nsstr.substr(1);
 
+				if(allowFail) return 0;
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
 			}
 

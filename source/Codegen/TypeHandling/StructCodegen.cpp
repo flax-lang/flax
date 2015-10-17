@@ -48,6 +48,8 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 
 	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	cgi->module->addNamedType(str->getStructName(), str);
+
 	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, fir::Type*>(this, str));
 
 	// generate initialiser
