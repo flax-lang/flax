@@ -16,15 +16,6 @@
 #include "../include/codegen.h"
 #include "../include/compiler.h"
 
-#include "llvm/Support/Host.h"
-#include "llvm/Analysis/Passes.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Transforms/Instrumentation.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -149,21 +140,6 @@ namespace Codegen
 		cgi->finishGlobalConstructors();
 	}
 
-	void writeBitcode(std::string filename, CodegenInstance* cgi)
-	{
-		#if 0
-		std::error_code e;
-		fir::sys::fs::OpenFlags of = (fir::sys::fs::OpenFlags) 0;
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-		oname += ".bc";
-
-		fir::raw_fd_ostream rso(oname.c_str(), e, of);
-
-		fir::WriteBitcodeToFile(cgi->module, rso);
-		rso.close();
-		#endif
-	}
 
 
 

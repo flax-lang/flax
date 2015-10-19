@@ -1402,7 +1402,7 @@ namespace Parser
 
 	Tuple* parseTuple(ParserState& ps, Ast::Expr* lhs)
 	{
-		assert(lhs);
+		iceAssert(lhs);
 
 		Token first = ps.front();
 		std::vector<Expr*> values;

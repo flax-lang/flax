@@ -18,7 +18,7 @@ namespace TypeInfo
 			if(stype->isStructType())
 			{
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
-				assert(strt);
+				iceAssert(strt);
 
 				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName())
 					return;

@@ -30,6 +30,8 @@ namespace Compiler
 	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>>
 	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
+	void writeBitcode(std::string filename, llvm::Module* cgi);
+
 	// final stages
 	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
 

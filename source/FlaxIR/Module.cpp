@@ -91,6 +91,8 @@ namespace fir
 				error("function %s redeclared with different type (have %s, new %s)", name.c_str(),
 					this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
 			}
+
+			return this->functions[name];
 		}
 
 		Function* f = new Function(name, ftype, this, linkage);

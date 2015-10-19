@@ -11,10 +11,6 @@
 #include <vector>
 #include <map>
 
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/PassManager.h"
-
 #include "../include/ir/irbuilder.h"
 
 enum class SymbolType
@@ -68,9 +64,7 @@ namespace Codegen
 		Ast::Root* rootNode;
 		// llvm::Module* module;
 		fir::Module* module;
-		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
-		llvm::ExecutionEngine* execEngine;
 		fir::ExecutionTarget* execTarget;
 
 		std::deque<std::string> namespaceStack;
@@ -305,7 +299,6 @@ namespace Codegen
 	std::string unwrapPointerType(std::string type, int* indirections);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
-	void writeBitcode(std::string filename, CodegenInstance* cgi);
 }
 
 
