@@ -216,7 +216,6 @@ namespace fir
 			llvm::Function* func = llvm::Function::Create(llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)), link,
 				ffn->getName(), module);
 
-
 			valueMap[ffn] = func;
 
 			size_t i = 0;

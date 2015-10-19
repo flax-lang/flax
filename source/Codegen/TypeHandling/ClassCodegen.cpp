@@ -6,11 +6,6 @@
 #include "ast.h"
 #include "codegen.h"
 
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalVariable.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -352,7 +347,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 
 		Class* supcls = dynamic_cast<Class*>(type->second.first);
-		assert(supcls);
+		iceAssert(supcls);
 
 		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
 		// by the time we see it.
@@ -445,7 +440,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 					// this thing exists.
 					// check if ours has an override
 					ComputedProperty* ours = *it;
-					assert(ours->name == cp->name);
+					iceAssert(ours->name == cp->name);
 
 					if(!(ours->attribs & Attr_Override))
 					{

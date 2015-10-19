@@ -9,9 +9,6 @@
 #include "../include/compiler.h"
 #include "../include/ir/type.h"
 
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/LLVMContext.h"
-
 namespace fir
 {
 	ArrayType::ArrayType(Type* elm, size_t num) : Type(FTypeKind::Array)

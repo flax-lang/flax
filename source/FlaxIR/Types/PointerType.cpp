@@ -9,9 +9,6 @@
 #include "../include/compiler.h"
 #include "../include/ir/type.h"
 
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/LLVMContext.h"
-
 namespace fir
 {
 	PointerType::PointerType(size_t inds, Type* base) : Type(FTypeKind::Pointer)

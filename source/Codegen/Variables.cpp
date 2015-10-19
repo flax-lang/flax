@@ -7,8 +7,6 @@
 #include "../include/codegen.h"
 #include "../include/dependency.h"
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GLobalVariable.h"
 
 using namespace Ast;
 using namespace Codegen;
