@@ -85,7 +85,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	}
 	else
 	{
-		tp = cgi->getLlvmType(this->values.front());
+		tp = cgi->getExprType(this->values.front());
 
 		for(Expr* e : this->values)
 		{

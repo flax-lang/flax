@@ -237,7 +237,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		fir::Type* type = cgi->getLlvmType(var);
+		fir::Type* type = cgi->getExprType(var);
 		if(type == str)
 		{
 			error(this, "Cannot have non-pointer member of type self");
@@ -248,7 +248,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			types[i] = cgi->getLlvmType(var);
+			types[i] = cgi->getExprType(var);
 		}
 	}
 

@@ -13,7 +13,7 @@ using namespace Codegen;
 Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// get our array type
-	fir::Type* atype = cgi->getLlvmType(this->arr);
+	fir::Type* atype = cgi->getExprType(this->arr);
 	fir::Type* etype = nullptr;
 
 	if(atype->isArrayType())

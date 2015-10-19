@@ -419,8 +419,8 @@ Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBa
 Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall)
 {
 	// make the args first.
-	// since getting the llvm type of a MemberAccess can't be done without codegening the Ast itself,
-	// we codegen first, then use the llvm version.
+	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
+	// we codegen first, then use the codegen value to get the type.
 	std::vector<fir::Value*> args { ref };
 
 	for(Expr* e : fc->params)
@@ -629,7 +629,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 			text += fc->name;
 
-			if(fir::Type* ltype = this->getLlvmTypeFromExprType(ma, text))
+			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);
@@ -649,7 +649,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = this->getLlvmType(fc, res);
+		fir::Type* ltype = this->getExprType(fc, res);
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;
@@ -706,7 +706,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				{
 					if(v->isStatic && v->name == vr->name)
 					{
-						fir::Type* ltype = this->getLlvmType(v);
+						fir::Type* ltype = this->getExprType(v);
 						return { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) };
 					}
 				}

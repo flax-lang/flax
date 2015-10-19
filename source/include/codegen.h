@@ -21,17 +21,6 @@ enum class SymbolType
 	Type
 };
 
-namespace llvm
-{
-	class Module;
-	class ExecutionEngine;
-	class GlobalVariable;
-	class AllocaInst;
-	class GlobalValue;
-	class LLVMContext;
-	class Instruction;
-}
-
 namespace GenError
 {
 	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
@@ -62,7 +51,6 @@ namespace Codegen
 	struct CodegenInstance
 	{
 		Ast::Root* rootNode;
-		// llvm::Module* module;
 		fir::Module* module;
 		std::deque<SymTab_t> symTabStack;
 		fir::ExecutionTarget* execTarget;
@@ -81,7 +69,6 @@ namespace Codegen
 
 		std::deque<Ast::Func*> funcScopeStack;
 
-		// llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
 
 		DependencyGraph* dependencyGraph = 0;
@@ -189,10 +176,10 @@ namespace Codegen
 		// fir::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		fir::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		fir::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		fir::Type* getLlvmTypeFromExprType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr = 0);
 		int autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr = 0);
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
@@ -276,7 +263,7 @@ namespace Codegen
 		fir::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
 
-		fir::Type* getLlvmTypeOfBuiltin(std::string type);
+		fir::Type* getExprTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);

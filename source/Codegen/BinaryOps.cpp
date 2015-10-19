@@ -138,7 +138,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				// ie. do what C does implicitly, where the array is really just a pointer to
 				// the first element.
 
-				// except llvm gives us nice checking.
+				// except we get nice checking with this.
 
 				// fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
 				fir::Value* r = this->builder.CreateGetPointer(rhsPtr,
@@ -329,7 +329,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	}
 	else
 	{
-		// get the llvm op
+		// get the op
 		fir::Value* newrhs = this->builder.CreateBinaryOp(op, lhs, rhs);
 		iceAssert(newrhs);
 
@@ -410,7 +410,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		valptr = this->left->codegen(cgi).result;
 		lhs = valptr.first;
 
-		fir::Type* rtype = cgi->getLlvmType(this->right);
+		fir::Type* rtype = cgi->getExprType(this->right);
 		if(!rtype)
 		{
 			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);

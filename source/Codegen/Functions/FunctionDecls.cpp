@@ -85,7 +85,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 	for(size_t i = 0; i < this->params.size(); i++)
 	{
 		VarDecl* v = this->params[i];
-		fir::Type* ltype = cgi->getLlvmType(v, true, false);	// allowFail = true, setInferred = false
+		fir::Type* ltype = cgi->getExprType(v, true, false);	// allowFail = true, setInferred = false
 
 		if(!ltype && types.find(v->type.strType) != types.end())
 		{
@@ -100,7 +100,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		}
 	}
 
-	fir::Type* lret = cgi->getLlvmType(this, true);
+	fir::Type* lret = cgi->getExprType(this, true);
 	if(!lret && types.find(this->type.strType) != types.end())
 	{
 		lret = types[this->type.strType];
@@ -243,9 +243,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	{
 		std::vector<fir::Type*> argtypes;
 		for(VarDecl* v : this->params)
-			argtypes.push_back(cgi->getLlvmType(v));
+			argtypes.push_back(cgi->getExprType(v));
 
-		return generateActualFuncDecl(cgi, this, argtypes, cgi->getLlvmType(this));
+		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this));
 	}
 }
 
