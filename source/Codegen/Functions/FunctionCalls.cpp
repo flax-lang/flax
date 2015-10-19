@@ -6,9 +6,6 @@
 #include "ast.h"
 #include "codegen.h"
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Module.h"
-
 using namespace Ast;
 using namespace Codegen;
 

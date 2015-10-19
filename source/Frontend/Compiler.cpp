@@ -154,8 +154,6 @@ namespace Compiler
 
 		Codegen::doCodegen(fpath, root, cgi);
 
-		// fir::verifyModule(*cgi->module, &fir::errs());
-		Codegen::writeBitcode(fpath, pstate.cgi);
 
 		size_t lastdot = fpath.find_last_of(".");
 		std::string oname = (lastdot == std::string::npos ? fpath : fpath.substr(0, lastdot));
@@ -229,6 +227,27 @@ namespace Compiler
 		return g;
 	}
 
+
+
+
+
+
+
+
+
+	void writeBitcode(std::string filename, llvm::Module* module)
+	{
+		std::error_code e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		size_t lastdot = filename.find_last_of(".");
+		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+		oname += ".bc";
+
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+		llvm::WriteBitcodeToFile(module, rso);
+		rso.close();
+	}
 
 
 
@@ -370,12 +389,15 @@ namespace Compiler
 		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
 		// compile it by invoking clang on the bitcode
 		char* inv = new char[1024];
-		snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());
-		std::string llvmlink = inv;
-		for(auto s : filelist)
-			llvmlink += " '" + s + "'";
+		// snprintf(inv, 1024, "llvm-link -o '%s.bc'", oname.c_str());
+		// std::string llvmlink = inv;
+		// for(auto s : filelist)
+		// 	llvmlink += " '" + s + "'";
 
-		system(llvmlink.c_str());
+		// system(llvmlink.c_str());
+
+		llvm::verifyModule(*module, &llvm::errs());
+		Compiler::writeBitcode(oname + ".bc", module);
 
 		memset(inv, 0, 1024);
 		{
@@ -386,7 +408,8 @@ namespace Compiler
 			const char* target		= (tgt).c_str();
 			const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
 
-			snprintf(inv, 1024, "clang++ -flto %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target, isPic, outputMode, oname.c_str(), oname.c_str());
+			snprintf(inv, 1024, "clang++ -Wno-override-module -flto %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
+				isPic, outputMode, oname.c_str(), oname.c_str());
 		}
 		std::string final = inv;
 
@@ -394,8 +417,12 @@ namespace Compiler
 		// that warning is not affected by any flags I can pass
 		// besides, LLVM itself should have caught everything.
 
-		if(!Compiler::getPrintClangOutput())
-			final += " &>/dev/null";
+		// edit: fixed now with -Wno-override-module
+		// clang shouldn't output anything when it shouldn't,
+		// but we should still get linking errors etc.
+
+		// if(!Compiler::getPrintClangOutput())
+			// final += " &>/dev/null";
 
 		system(final.c_str());
 
