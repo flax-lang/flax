@@ -29,7 +29,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	fir::Type* allocType = 0;
 
-	allocType = cgi->getLlvmTypeFromExprType(this, this->type);
+	allocType = cgi->getExprTypeFromStringType(this, this->type);
 	iceAssert(allocType);
 
 

@@ -28,7 +28,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 			}
 			else
 			{
-				return Result_t(fir::ConstantValue::getNullValue(this->getLlvmType(p.second)), 0);
+				return Result_t(fir::ConstantValue::getNullValue(this->getExprType(p.second)), 0);
 			}
 		}
 	}
@@ -87,10 +87,10 @@ fir::Type* Enumeration::createType(CodegenInstance* cgi)
 	for(auto pair : this->cases)
 	{
 		if(!prev)
-			prev = cgi->getLlvmType(pair.second);
+			prev = cgi->getExprType(pair.second);
 
 
-		fir::Type* t = cgi->getLlvmType(pair.second);
+		fir::Type* t = cgi->getExprType(pair.second);
 		if(t != prev)
 			error(pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
 				cgi->getReadableType(prev).c_str());

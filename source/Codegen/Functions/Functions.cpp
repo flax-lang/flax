@@ -180,10 +180,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 		cgi->builder.CreateReturn(lastval.result.first);
 
 
-	// todo: optimise/run llvm passes
-	// fir::verifyFunction(*func, &fir::errs());
-	// cgi->Fpm->run(*func);
-
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();
 
