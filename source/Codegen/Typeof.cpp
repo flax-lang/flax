@@ -17,21 +17,21 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		fir::Type* t = 0;
 		if(!decl)
 		{
-			t = cgi->getLlvmTypeFromExprType(this, vr->name);
+			t = cgi->getExprTypeFromStringType(this, vr->name);
 
 			if(!t)
 				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
 		}
 		else
 		{
-			t = cgi->getLlvmType(decl);
+			t = cgi->getExprType(decl);
 		}
 
 		index = TypeInfo::getIndexForType(cgi, t);
 	}
 	else
 	{
-		fir::Type* t = cgi->getLlvmType(this->inside);
+		fir::Type* t = cgi->getExprType(this->inside);
 		index = TypeInfo::getIndexForType(cgi, t);
 	}
 

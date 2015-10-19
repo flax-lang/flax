@@ -393,7 +393,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 					for(size_t i = 0; i < fn->decl->params.size(); i++)
 					{
-						if(cgi->getLlvmType(fn->decl->params[i]) != cgi->getLlvmType(f->decl->params[i]))
+						if(cgi->getExprType(fn->decl->params[i]) != cgi->getExprType(f->decl->params[i]))
 							return false;
 					}
 
@@ -531,7 +531,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		// fir::Type* type = cgi->getLlvmType(var);
+		// fir::Type* type = cgi->getExprType(var);
 
 		iceAssert(var->inferredLType != 0);
 		fir::Type* type = var->inferredLType;
@@ -547,7 +547,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			types[i] = cgi->getLlvmType(var);
+			types[i] = cgi->getExprType(var);
 		}
 	}
 
