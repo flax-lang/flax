@@ -10,10 +10,10 @@
 #include <cinttypes>
 
 #include <sys/stat.h>
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/compiler.h"
-#include "../include/dependency.h"
+#include "parser.h"
+#include "codegen.h"
+#include "compiler.h"
+#include "dependency.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/SourceMgr.h"

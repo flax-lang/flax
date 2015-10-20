@@ -28,10 +28,10 @@
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 
-#include "../include/ir/type.h"
-#include "../include/ir/value.h"
-#include "../include/ir/module.h"
-#include "../include/ir/irbuilder.h"
+#include "ir/type.h"
+#include "ir/value.h"
+#include "ir/module.h"
+#include "ir/irbuilder.h"
 
 
 using namespace Ast;
