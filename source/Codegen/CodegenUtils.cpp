@@ -12,9 +12,9 @@
 #include <typeinfo>
 #include <iostream>
 #include <cinttypes>
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/compiler.h"
+#include "parser.h"
+#include "codegen.h"
+#include "compiler.h"
 
 using namespace Ast;
 using namespace Codegen;

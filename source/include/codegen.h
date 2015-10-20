@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 
-#include "../include/ir/irbuilder.h"
+#include "ir/irbuilder.h"
 
 enum class SymbolType
 {

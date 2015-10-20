@@ -3,9 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 
-#include "../include/ir/value.h"
-#include "../include/ir/module.h"
-#include "../include/ir/constant.h"
+#include "ir/value.h"
+#include "ir/module.h"
+#include "ir/constant.h"
 
 namespace fir
 {

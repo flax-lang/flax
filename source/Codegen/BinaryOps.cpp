@@ -4,9 +4,9 @@
 
 #include <cinttypes>
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/parser.h"
+#include "ast.h"
+#include "codegen.h"
+#include "parser.h"
 
 using namespace Ast;
 using namespace Codegen;

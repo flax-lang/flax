@@ -2,9 +2,9 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ir/block.h"
-#include "../include/ir/constant.h"
-#include "../include/ir/instruction.h"
+#include "ir/block.h"
+#include "ir/constant.h"
+#include "ir/instruction.h"
 
 namespace fir
 {

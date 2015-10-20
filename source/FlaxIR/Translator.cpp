@@ -17,8 +17,8 @@
 #include "llvm/IR/LLVMContext.h"
 
 
-#include "../include/ir/module.h"
-#include "../include/ir/constant.h"
+#include "ir/module.h"
+#include "ir/constant.h"
 
 namespace fir
 {
