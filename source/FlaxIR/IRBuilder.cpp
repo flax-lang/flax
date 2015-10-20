@@ -2,10 +2,10 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/ir/block.h"
-#include "../include/ir/irbuilder.h"
-#include "../include/ir/instruction.h"
+#include "ast.h"
+#include "ir/block.h"
+#include "ir/irbuilder.h"
+#include "ir/instruction.h"
 
 namespace fir
 {

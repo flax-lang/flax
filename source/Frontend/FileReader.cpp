@@ -8,8 +8,8 @@
 
 #include <assert.h>
 
-#include "../include/parser.h"
-#include "../include/compiler.h"
+#include "parser.h"
+#include "compiler.h"
 
 namespace Compiler
 {
