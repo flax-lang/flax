@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ir/function.h"
-#include "../include/ir/block.h"
+#include "ir/function.h"
+#include "ir/block.h"
 
 namespace fir
 {

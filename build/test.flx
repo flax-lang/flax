@@ -7,7 +7,7 @@ import String
 
 import tests.fizzbuzz
 import tests.recursiveFib
-// import tests.scopes
+import tests.scopes
 // import tests.arraytest
 // import tests.generics
 
@@ -127,7 +127,7 @@ class Foo
 
 	// scopes
 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	// doScopeTest("__llvm_jit__build/test")
+	doScopeTest("__llvm_jit__build/test")
 	printf("\n\n");
 
 

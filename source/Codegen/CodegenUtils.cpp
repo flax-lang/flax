@@ -12,18 +12,9 @@
 #include <typeinfo>
 #include <iostream>
 #include <cinttypes>
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/compiler.h"
-
-#include "llvm/Support/Host.h"
-#include "llvm/Analysis/Passes.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Transforms/Instrumentation.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "parser.h"
+#include "codegen.h"
+#include "compiler.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -145,25 +136,10 @@ namespace Codegen
 		// free the memory
 		cgi->clearScope();
 
-		// this is all in llvm-space. no scopes needed.
+		// this is all in ir-space. no scopes needed.
 		cgi->finishGlobalConstructors();
 	}
 
-	void writeBitcode(std::string filename, CodegenInstance* cgi)
-	{
-		#if 0
-		std::error_code e;
-		fir::sys::fs::OpenFlags of = (fir::sys::fs::OpenFlags) 0;
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-		oname += ".bc";
-
-		fir::raw_fd_ostream rso(oname.c_str(), e, of);
-
-		fir::WriteBitcodeToFile(cgi->module, rso);
-		rso.close();
-		#endif
-	}
 
 
 
@@ -614,6 +590,10 @@ namespace Codegen
 							for(auto f : cls->initFuncs)
 								this->module->declareFunction(f->getName(), f->getType());
 						}
+						else if(dynamic_cast<Tuple*>(sb))
+						{
+							// ignore
+						}
 						else
 						{
 							iceAssert(0);
@@ -724,7 +704,7 @@ namespace Codegen
 		auto curDepth = scope;
 
 		// this thing handles pointers properly.
-		if(this->getLlvmTypeOfBuiltin(name) != 0)
+		if(this->getExprTypeOfBuiltin(name) != 0)
 			return { 0, 0 };
 
 		// not this though.
@@ -854,7 +834,7 @@ namespace Codegen
 						for(size_t i = 0; i < f.second->params.size(); i++)
 						{
 							// allowFail = true
-							if(this->getLlvmType(f.second->params[i], true) != this->getLlvmType(fp.second->params[i], true))
+							if(this->getExprType(f.second->params[i], true) != this->getExprType(fp.second->params[i], true))
 								return false;
 						}
 
@@ -979,8 +959,8 @@ namespace Codegen
 			#define __min(x, y) ((x) > (y) ? (y) : (x))
 			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 			{
-				auto t1 = this->getLlvmType(params[i], true);
-				auto t2 = this->getLlvmType(decl->params[i], true);
+				auto t1 = this->getExprType(params[i], true);
+				auto t2 = this->getExprType(decl->params[i], true);
 
 				if(t1 != t2)
 				{
@@ -1003,7 +983,7 @@ namespace Codegen
 
 			for(size_t i = 0; i < ft->getArgumentTypes().size(); i++)
 			{
-				auto t1 = this->getLlvmType(params[i], true);
+				auto t1 = this->getExprType(params[i], true);
 				auto t2 = ft->getArgumentN(i);
 
 				if(t1 != t2)
@@ -1206,26 +1186,20 @@ namespace Codegen
 		int ind = 0;
 		r = unwrapPointerType(r, &ind);
 
-		if(r == "Int8")			r = "a";
-		else if(r == "Int16")	r = "s";
-		else if(r == "Int32")	r = "i";
-		else if(r == "Int64")	r = "l";
-		else if(r == "Int")		r = "l";
+		if(r == "i8")		r = "a";
+		else if(r == "i16")	r = "s";
+		else if(r == "i32")	r = "i";
+		else if(r == "i64")	r = "l";
 
-		else if(r == "Uint8")	r = "h";
-		else if(r == "Uint16")	r = "t";
-		else if(r == "Uint32")	r = "j";
-		else if(r == "Uint64")	r = "m";
-		else if(r == "Uint")	r = "m";
+		else if(r == "u8")	r = "h";
+		else if(r == "u16")	r = "t";
+		else if(r == "u32")	r = "j";
+		else if(r == "u64")	r = "m";
 
-		else if(r == "Float32")	r = "f";
-		else if(r == "Float")	r = "f";
+		else if(r == "f32")	r = "f";
+		else if(r == "f64")	r = "d";
 
-		else if(r == "Float64")	r = "d";
-		else if(r == "Double")	r = "d";
-
-
-		else if(r == "Void")	r = "v";
+		else if(r == "void")r = "v";
 		else
 		{
 			if(r.size() > 0 && r.front() == '%')
@@ -1304,7 +1278,7 @@ namespace Codegen
 			if(!first)
 			{
 				// we have an implicit self, don't push that
-				largs.push_back(this->getLlvmType(e));
+				largs.push_back(this->getExprType(e));
 			}
 
 			first = false;
@@ -1359,7 +1333,7 @@ namespace Codegen
 	{
 		std::deque<fir::Type*> a;
 		for(auto arg : args)
-			a.push_back(this->getLlvmType(arg));
+			a.push_back(this->getExprType(arg));
 
 		return this->mangleFunctionName(base, a);
 	}
@@ -1368,7 +1342,7 @@ namespace Codegen
 	{
 		std::deque<fir::Type*> a;
 		for(auto arg : args)
-			a.push_back(this->getLlvmType(arg));
+			a.push_back(this->getExprType(arg));
 
 		return this->mangleFunctionName(base, a);
 	}
@@ -1391,9 +1365,9 @@ namespace Codegen
 		int runningTypeIndex = 0;
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
 
-			// if there is no llvm type, go ahead with the raw type: T or U or something.
+			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
 				std::string st = arg->type.strType;
@@ -1409,9 +1383,9 @@ namespace Codegen
 
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getLlvmType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
 
-			// if there is no llvm type, go ahead with the raw type: T or U or something.
+			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
 				std::string st = arg->type.strType;
@@ -1586,7 +1560,7 @@ namespace Codegen
 				int pos = 0;
 				for(auto p : candidate->params)
 				{
-					fir::Type* ltype = this->getLlvmType(p, true, false);	// allowFail = true, setInferred = false
+					fir::Type* ltype = this->getExprType(p, true, false);	// allowFail = true, setInferred = false
 					if(!ltype)
 					{
 						std::string s = p->type.strType;
@@ -1605,10 +1579,10 @@ namespace Codegen
 				// 1. check that the generic types match.
 				for(auto pair : typePositions)
 				{
-					fir::Type* ftype = this->getLlvmType(fc->params[pair.second[0]]);
+					fir::Type* ftype = this->getExprType(fc->params[pair.second[0]]);
 					for(int k : pair.second)
 					{
-						if(this->getLlvmType(fc->params[k]) != ftype)
+						if(this->getExprType(fc->params[k]) != ftype)
 							goto fail;	// ew goto
 					}
 				}
@@ -1616,8 +1590,8 @@ namespace Codegen
 				// 2. check that the concrete types match.
 				for(int k : nonGenericTypes)
 				{
-					fir::Type* a = this->getLlvmType(fc->params[k]);
-					fir::Type* b = this->getLlvmType(candidate->params[k]);
+					fir::Type* a = this->getExprType(fc->params[k]);
+					fir::Type* b = this->getExprType(candidate->params[k]);
 
 					if(a != b)
 						goto fail;
@@ -1632,7 +1606,7 @@ namespace Codegen
 
 				for(auto pair : typePositions)
 				{
-					tm[pair.first] = this->getLlvmType(fc->params[pair.second[0]]);
+					tm[pair.first] = this->getExprType(fc->params[pair.second[0]]);
 				}
 
 
@@ -1697,7 +1671,7 @@ namespace Codegen
 		iceAssert(theFn);
 		std::deque<fir::Type*> instantiatedTypes;
 		for(auto p : fc->params)
-			instantiatedTypes.push_back(this->getLlvmType(p));
+			instantiatedTypes.push_back(this->getExprType(p));
 
 
 		bool needToCodegen = true;
@@ -2480,7 +2454,11 @@ namespace Codegen
 				for(size_t i = 0; i < initers->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != initers->getArguments()[i]->getType())
+					{
+						printf(">> candidate failed: %s vs %s\n", vals[i]->getType()->str().c_str(),
+							initers->getArguments()[i]->getType()->str().c_str());
 						goto breakout;
+					}
 				}
 
 				// todo: fuuuuuuuuck this is ugly
@@ -2648,7 +2626,7 @@ namespace Codegen
 			if(r->actualReturnValue)
 				have = r->actualReturnValue->getType();
 
-			if((have ? have : have = cgi->getLlvmType(r->val)) != (expected = (retType == 0 ? cgi->getLlvmType(f->decl) : retType)))
+			if((have ? have : have = cgi->getExprType(r->val)) != (expected = (retType == 0 ? cgi->getExprType(f->decl) : retType)))
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
 					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 
@@ -2731,7 +2709,7 @@ namespace Codegen
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getLlvmType(func) : retType)->isVoidType();
+		bool isVoid = (retType == 0 ? this->getExprType(func) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
@@ -2764,13 +2742,13 @@ namespace Codegen
 				break;
 		}
 
-		if(!ret && (isVoid || !checkType || this->getLlvmType(final) == this->getLlvmType(func)))
+		if(!ret && (isVoid || !checkType || this->getExprType(final) == this->getExprType(func)))
 			return true;
 
 		if(!ret)
 		{
 			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->name.c_str(),
-				this->getLlvmType(func)->str().c_str(), this->getLlvmType(final)->str().c_str());
+				this->getExprType(func)->str().c_str(), this->getExprType(final)->str().c_str());
 		}
 
 		if(checkType)

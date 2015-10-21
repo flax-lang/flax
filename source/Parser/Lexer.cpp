@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <cassert>
 #include <iostream>
-#include "../include/parser.h"
+#include "parser.h"
 
 namespace Parser
 {

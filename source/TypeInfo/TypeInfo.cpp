@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
+#include "ast.h"
+#include "codegen.h"
 
 
 using namespace Ast;
@@ -18,7 +18,7 @@ namespace TypeInfo
 			if(stype->isStructType())
 			{
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
-				assert(strt);
+				iceAssert(strt);
 
 				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName())
 					return;
@@ -119,19 +119,19 @@ namespace TypeInfo
 
 		if(!done)
 		{
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getLlvmTypeOfBuiltin("Int8"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getLlvmTypeOfBuiltin("Int16"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getLlvmTypeOfBuiltin("Int32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getLlvmTypeOfBuiltin("Int64"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getExprTypeOfBuiltin("Int8"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getExprTypeOfBuiltin("Int16"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getExprTypeOfBuiltin("Int32"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getExprTypeOfBuiltin("Int64"), TypeKind::BuiltinType));
 
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getLlvmTypeOfBuiltin("Uint8"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getLlvmTypeOfBuiltin("Uint16"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getLlvmTypeOfBuiltin("Uint32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getLlvmTypeOfBuiltin("Uint64"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getExprTypeOfBuiltin("Uint8"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getExprTypeOfBuiltin("Uint16"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getExprTypeOfBuiltin("Uint32"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getExprTypeOfBuiltin("Uint64"), TypeKind::BuiltinType));
 
-			cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getLlvmTypeOfBuiltin("Float32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getLlvmTypeOfBuiltin("Float64"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getLlvmTypeOfBuiltin("Bool"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getExprTypeOfBuiltin("Float32"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getExprTypeOfBuiltin("Float64"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getExprTypeOfBuiltin("Bool"), TypeKind::BuiltinType));
 		}
 
 

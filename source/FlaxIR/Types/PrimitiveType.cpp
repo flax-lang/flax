@@ -5,12 +5,10 @@
 #include <map>
 #include <unordered_map>
 
-#include "../include/codegen.h"
-#include "../include/compiler.h"
-#include "../include/ir/type.h"
+#include "codegen.h"
+#include "compiler.h"
+#include "ir/type.h"
 
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/LLVMContext.h"
 
 namespace fir
 {

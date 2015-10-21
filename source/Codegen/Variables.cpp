@@ -3,12 +3,10 @@
 // Licensed under the Apache License Version 2.0.
 
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/dependency.h"
+#include "ast.h"
+#include "codegen.h"
+#include "dependency.h"
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GLobalVariable.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -207,7 +205,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			error(this, "Type inference requires an initial assignment to infer type");
 
 
-		fir::Type* vartype = cgi->getLlvmType(this->initVal);
+		fir::Type* vartype = cgi->getExprType(this->initVal);
 		if(vartype == nullptr || vartype->isVoidType())
 			GenError::nullValue(cgi, this->initVal);
 
@@ -219,7 +217,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
-		this->inferredLType = cgi->getLlvmType(this->initVal);
+		this->inferredLType = cgi->getExprType(this->initVal);
 
 		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructType())
 			this->type = cgi->getReadableType(this->initVal);

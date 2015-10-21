@@ -3,13 +3,13 @@
 // Licensed under the Apache License Version 2.0.
 
 
-#include "../include/ir/value.h"
-#include "../include/ir/module.h"
-#include "../include/ir/constant.h"
+#include "ir/value.h"
+#include "ir/module.h"
+#include "ir/constant.h"
 
 namespace fir
 {
-	GlobalValue::GlobalValue(Type* type, LinkageType linkage) : Value(type)
+	GlobalValue::GlobalValue(Type* type, LinkageType linkage) : Value(type->getPointerTo())
 	{
 		this->linkageType = linkage;
 	}
@@ -26,6 +26,7 @@ namespace fir
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)
 	{
+		iceAssert((!constVal || constVal->getType() == this->getType()->getPointerElementType()) && "invalid type");
 		this->initValue = constVal;
 	}
 }
