@@ -104,9 +104,10 @@ namespace fir
 			case OpKind::Value_GetPointerToStructMember: 	name = "gep"; break;
 			case OpKind::Value_GetStructMember: 			name = "gep"; break;
 			case OpKind::Value_GetPointer: 					name = "gep"; break;
+			case OpKind::Value_GetGEP2: 					name = "gep"; break;
 			case OpKind::Branch_UnCond: 					name = "jump"; break;
 			case OpKind::Branch_Cond: 						name = "branch"; break;
-			default:										name = "unknown"; break;
+			case OpKind::Invalid:							name = "unknown"; break;
 		}
 
 		std::string ops;

@@ -9,7 +9,7 @@
 
 namespace fir
 {
-	GlobalValue::GlobalValue(Type* type, LinkageType linkage) : Value(type)
+	GlobalValue::GlobalValue(Type* type, LinkageType linkage) : Value(type->getPointerTo())
 	{
 		this->linkageType = linkage;
 	}
@@ -26,6 +26,7 @@ namespace fir
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)
 	{
+		iceAssert((!constVal || constVal->getType() == this->getType()->getPointerElementType()) && "invalid type");
 		this->initValue = constVal;
 	}
 }
