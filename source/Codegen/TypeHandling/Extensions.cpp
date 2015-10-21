@@ -6,9 +6,6 @@
 #include "ast.h"
 #include "codegen.h"
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Verifier.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -116,11 +113,11 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 
 		for(VarDecl* var : this->members)
 		{
-			fir::Type* type = cgi->getLlvmType(var);
+			fir::Type* type = cgi->getExprType(var);
 			if(type == existing)
 				error(var, "Cannot have non-pointer member of type self");
 
-			types[this->nameMap[var->name]] = cgi->getLlvmType(var);
+			types[this->nameMap[var->name]] = cgi->getExprType(var);
 		}
 
 		for(ComputedProperty* c : this->cprops)
@@ -133,11 +130,8 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 		for(size_t i = 0; i < this->members.size(); i++)
 			vec.push_back(types[i]);
 
-		// first, delete the existing struct. do this by calling setName(""). According to llvm source Type.cpp,
-		// doing this removes the struct def from the symbol table.
-
+		// first, delete the existing struct.
 		existing->deleteType();
-		// existing->setName("");
 
 		// then, create a new type with the old name.
 		fir::StructType* newType = fir::StructType::createNamed(this->mangledName, vec, cgi->getContext(), true);

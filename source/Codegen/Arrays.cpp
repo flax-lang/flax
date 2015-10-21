@@ -3,8 +3,8 @@
 // Licensed under the Apache License Version 2.0.
 
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
+#include "ast.h"
+#include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -13,7 +13,7 @@ using namespace Codegen;
 Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// get our array type
-	fir::Type* atype = cgi->getLlvmType(this->arr);
+	fir::Type* atype = cgi->getExprType(this->arr);
 	fir::Type* etype = nullptr;
 
 	if(atype->isArrayType())

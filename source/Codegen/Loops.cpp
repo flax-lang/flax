@@ -2,10 +2,8 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-
-#include "llvm/IR/Function.h"
+#include "ast.h"
+#include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -88,7 +86,7 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value
 
 	fir::Value* condOutside = this->cond->codegen(cgi).result.first;
 
-	// branch to the body, since llvm doesn't allow unforced fallthroughs
+	// branch to the body, since we don't allow unforced fallthroughs in the ir
 	// if we're a do-while, don't check the condition the first time
 	// else we should
 	if(this->isDoWhileVariant)

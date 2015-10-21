@@ -9,10 +9,10 @@
 #include <cassert>
 #include <cinttypes>
 
-#include "../include/ast.h"
-#include "../include/parser.h"
-#include "../include/compiler.h"
-#include "../include/codegen.h"
+#include "ast.h"
+#include "parser.h"
+#include "compiler.h"
+#include "codegen.h"
 
 using namespace Ast;
 
@@ -1402,7 +1402,7 @@ namespace Parser
 
 	Tuple* parseTuple(ParserState& ps, Ast::Expr* lhs)
 	{
-		assert(lhs);
+		iceAssert(lhs);
 
 		Token first = ps.front();
 		std::vector<Expr*> values;

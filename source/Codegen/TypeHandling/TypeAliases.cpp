@@ -20,11 +20,11 @@ fir::Type* TypeAlias::createType(CodegenInstance* cgi)
 
 	if(!this->isStrong)
 	{
-		targetType = cgi->getLlvmTypeFromExprType(this, this->origType);
+		targetType = cgi->getExprTypeFromStringType(this, this->origType);
 	}
 	else
 	{
-		targetType = fir::StructType::createNamed(this->name, { cgi->getLlvmTypeFromExprType(this, this->origType) });
+		targetType = fir::StructType::createNamed(this->name, { cgi->getExprTypeFromStringType(this, this->origType) });
 		warn(this, "Strong type aliases are still iffy, use at your own risk");
 	}
 

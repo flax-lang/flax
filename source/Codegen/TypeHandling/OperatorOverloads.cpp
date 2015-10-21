@@ -27,8 +27,8 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 		}
 
 		// needs to return pointer to self
-		fir::Type* ret = cgi->getLlvmType(decl);
-		fir::Type* front = cgi->getLlvmType(decl->params.front());
+		fir::Type* ret = cgi->getExprType(decl);
+		fir::Type* front = cgi->getExprType(decl->params.front());
 		if(ret == fir::PrimitiveType::getVoid(cgi->getContext()))
 		{
 			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got void)");
@@ -46,7 +46,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 		if(decl->params.size() != 2)
 			error(this, "Operator overload for '==' can only have two arguments, have %zu", decl->params.size());
 
-		if(cgi->getLlvmType(decl) != fir::PrimitiveType::getBool(cgi->getContext()))
+		if(cgi->getExprType(decl) != fir::PrimitiveType::getBool(cgi->getContext()))
 			error(this, "Operator overload for '==' must return a boolean value");
 	}
 	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
