@@ -127,7 +127,7 @@ class Foo
 
 	// scopes
 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	// doScopeTest("__llvm_jit__build/test")
+	doScopeTest("__llvm_jit__build/test")
 	printf("\n\n");
 
 
