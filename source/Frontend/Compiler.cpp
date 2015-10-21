@@ -235,20 +235,6 @@ namespace Compiler
 
 
 
-	void writeBitcode(std::string filename, llvm::Module* module)
-	{
-		std::error_code e;
-		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-		oname += ".bc";
-
-		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
-
-		llvm::WriteBitcodeToFile(module, rso);
-		rso.close();
-	}
-
 
 
 	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, fir::Module*>>
@@ -370,6 +356,20 @@ namespace Compiler
 
 
 
+
+	void writeBitcode(std::string filename, llvm::Module* module)
+	{
+		std::error_code e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		size_t lastdot = filename.find_last_of(".");
+		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
+		oname += ".bc";
+
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+		llvm::WriteBitcodeToFile(module, rso);
+		rso.close();
+	}
 
 
 	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)

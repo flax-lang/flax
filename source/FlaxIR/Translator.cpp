@@ -246,11 +246,11 @@ namespace fir
 				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
 				builder.SetInsertPoint(bb);
 
-				printf("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
+				// printf("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
 
 				for(auto inst : block->instructions)
 				{
-					printf("%s\n", ("        " + inst->str()).c_str());
+					// printf("%s\n", ("        " + inst->str()).c_str());
 
 					// good god.
 					switch(inst->opKind)

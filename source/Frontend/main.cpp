@@ -13,6 +13,7 @@
 #include "../include/codegen.h"
 #include "../include/compiler.h"
 
+
 #include "llvm/PassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
@@ -20,6 +21,7 @@
 #include "llvm/Linker/Linker.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -630,6 +632,7 @@ int main(int argc, char* argv[])
 
 
 
+	// mainModule->dump();
 	if(Compiler::runProgramWithJit)
 	{
 		// all linked already.
@@ -637,6 +640,7 @@ int main(int argc, char* argv[])
 		if(Compiler::printModule)
 			mainModule->dump();
 
+		llvm::verifyModule(*mainModule, &llvm::errs());
 		if(mainModule->getFunction("main") != 0)
 		{
 			std::string err;
@@ -659,11 +663,12 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			error("no main() function!");
+			error("no main() function, cannot JIT");
 		}
 	}
 	else
 	{
+		llvm::verifyModule(*mainModule, &llvm::errs());
 		Compiler::compileProgram(mainModule, filelist, foldername, outname);
 	}
 
