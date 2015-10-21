@@ -590,6 +590,10 @@ namespace Codegen
 							for(auto f : cls->initFuncs)
 								this->module->declareFunction(f->getName(), f->getType());
 						}
+						else if(dynamic_cast<Tuple*>(sb))
+						{
+							// ignore
+						}
 						else
 						{
 							iceAssert(0);
@@ -1182,26 +1186,20 @@ namespace Codegen
 		int ind = 0;
 		r = unwrapPointerType(r, &ind);
 
-		if(r == "Int8")			r = "a";
-		else if(r == "Int16")	r = "s";
-		else if(r == "Int32")	r = "i";
-		else if(r == "Int64")	r = "l";
-		else if(r == "Int")		r = "l";
+		if(r == "i8")		r = "a";
+		else if(r == "i16")	r = "s";
+		else if(r == "i32")	r = "i";
+		else if(r == "i64")	r = "l";
 
-		else if(r == "Uint8")	r = "h";
-		else if(r == "Uint16")	r = "t";
-		else if(r == "Uint32")	r = "j";
-		else if(r == "Uint64")	r = "m";
-		else if(r == "Uint")	r = "m";
+		else if(r == "u8")	r = "h";
+		else if(r == "u16")	r = "t";
+		else if(r == "u32")	r = "j";
+		else if(r == "u64")	r = "m";
 
-		else if(r == "Float32")	r = "f";
-		else if(r == "Float")	r = "f";
+		else if(r == "f32")	r = "f";
+		else if(r == "f64")	r = "d";
 
-		else if(r == "Float64")	r = "d";
-		else if(r == "Double")	r = "d";
-
-
-		else if(r == "Void")	r = "v";
+		else if(r == "void")r = "v";
 		else
 		{
 			if(r.size() > 0 && r.front() == '%')
@@ -2456,7 +2454,11 @@ namespace Codegen
 				for(size_t i = 0; i < initers->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != initers->getArguments()[i]->getType())
+					{
+						printf(">> candidate failed: %s vs %s\n", vals[i]->getType()->str().c_str(),
+							initers->getArguments()[i]->getType()->str().c_str());
 						goto breakout;
+					}
 				}
 
 				// todo: fuuuuuuuuck this is ugly

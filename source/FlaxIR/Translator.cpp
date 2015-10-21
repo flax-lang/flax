@@ -147,7 +147,8 @@ namespace fir
 			else if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv]; iceAssert(lgv);
-				return builder.CreateConstGEP2_32(lgv, 0, 0);
+				return lgv;
+				// return builder.CreateConstGEP2_32(lgv, 0, 0);
 			}
 			else
 			{
@@ -187,7 +188,8 @@ namespace fir
 
 		for(auto global : this->globals)
 		{
-			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType(), module), true,
+			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module,
+				typeToLlvm(global.second->getType()->getPointerElementType(), module), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, constToLlvm(global.second->initValue, module));
 
 			valueMap[global.second] = gv;
@@ -239,14 +241,17 @@ namespace fir
 			llvm::Function* func = module->getFunction(fp.second->getName());
 			iceAssert(func);
 
-
 			for(auto block : ffn->getBlockList())
 			{
 				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
 				builder.SetInsertPoint(bb);
 
+				printf("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
+
 				for(auto inst : block->instructions)
 				{
+					printf("%s\n", ("        " + inst->str()).c_str());
+
 					// good god.
 					switch(inst->opKind)
 					{
@@ -974,6 +979,25 @@ namespace fir
 							llvm::Value* b = getOperand(inst, 1);
 
 							llvm::Value* ret = builder.CreateGEP(a, b);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_GetGEP2:
+						{
+							// equivalent to GEP(ptr*, index)
+							iceAssert(inst->operands.size() == 3);
+							llvm::Value* a = getOperand(inst, 0);
+
+
+							ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
+							ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
+
+							iceAssert(cb);
+							iceAssert(cc);
+
+
+							llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

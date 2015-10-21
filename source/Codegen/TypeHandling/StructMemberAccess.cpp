@@ -768,8 +768,8 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
 	full += str->name;
 
 	std::deque<Expr*> params = fc->params;
-	VarRef* fake = new VarRef(fc->pin, "self");
-	fake->type = full;
+	DummyExpr* fake = new DummyExpr(fc->pin);
+	fake->type = full + "*";
 
 	params.push_front(fake);
 
