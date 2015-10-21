@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
+#include "ast.h"
+#include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -44,6 +44,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 		fir::Value* allocdPtr = cgi->builder.CreateGetConstStructMember(alloca, 1);
 
 		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
+		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
 
 		cgi->builder.CreateStore(stringVal, stringPtr);
 		cgi->builder.CreateStore(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0), allocdPtr);
@@ -64,6 +65,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 
 		// good old Int8*
 		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
+		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
+
 		return Result_t(stringVal, 0);
 	}
 }
@@ -85,7 +88,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	}
 	else
 	{
-		tp = cgi->getLlvmType(this->values.front());
+		tp = cgi->getExprType(this->values.front());
 
 		for(Expr* e : this->values)
 		{

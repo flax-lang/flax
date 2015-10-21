@@ -13,22 +13,27 @@
 #include "../include/codegen.h"
 #include "../include/compiler.h"
 
+
+#include "llvm/PassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Linker/Linker.h"
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Instrumentation.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
 
-
-
-
-#include "../include/ir/type.h"
-#include "../include/ir/value.h"
-#include "../include/ir/module.h"
-#include "../include/ir/irbuilder.h"
+#include "ir/type.h"
+#include "ir/value.h"
+#include "ir/module.h"
+#include "ir/irbuilder.h"
 
 
 using namespace Ast;
@@ -360,6 +365,31 @@ int main(int argc, char* argv[])
 	iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
 	iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
 
 	filename = Compiler::getFullPathOfFile(filename);
@@ -384,23 +414,41 @@ int main(int argc, char* argv[])
 		modulelist[mod.first] = mod.second->translateToLlvm();
 		if(Compiler::printFIR)
 			printf("%s\n", mod.second->print().c_str());
+
+
+		// modulelist[mod.first]->dump();
 	}
 
 
 	llvm::Module* mainModule = modulelist[filename];
 	llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-
-	// needs to be done llvmst, for the weird constructor fiddling below.
-	if(Compiler::runProgramWithJit)
+	llvm::Linker linker = llvm::Linker(mainModule);
+	for(auto mod : modulelist)
 	{
-		llvm::Linker linker = llvm::Linker(mainModule);
-		for(auto mod : modulelist)
-		{
-			if(mod.second != mainModule)
-				linker.linkInModule(mod.second);
-		}
+		if(mod.second != mainModule)
+			linker.linkInModule(mod.second);
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	bool needGlobalConstructor = false;
@@ -437,11 +485,15 @@ int main(int argc, char* argv[])
 					else
 					{
 						// declare it.
-						constr = mainModule->getFunction(pair.second->globalConstructorTrampoline->getName());
+						// printf("do not have %s\n", pair.second->globalConstructorTrampoline->getName().c_str());
+						// constr = mainModule->getOrInsertFunction(pair.second->globalConstructorTrampoline->getName(),
+						// 	pair.second->globalConstructorTrampoline->getType());
 					}
 				}
-
-				constructors.push_back(constr);
+				else
+				{
+					constructors.push_back(constr);
+				}
 			}
 		}
 
@@ -455,7 +507,10 @@ int main(int argc, char* argv[])
 		builder.SetInsertPoint(iblock);
 
 		for(auto f : constructors)
+		{
+			iceAssert(f);
 			builder.CreateCall(f);
+		}
 
 		builder.CreateRetVoid();
 
@@ -500,6 +555,84 @@ int main(int argc, char* argv[])
 
 
 
+	// apply optimisations
+	{
+		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(mainModule);
+
+		if(Compiler::getOptimisationLevel() > 0)
+		{
+			// Provide basic AliasAnalysis support for GVN.
+			functionPassManager.add(llvm::createBasicAliasAnalysisPass());
+
+			// Do simple "peephole" optimisations and bit-twiddling optzns.
+			functionPassManager.add(llvm::createInstructionCombiningPass());
+
+			// Reassociate expressions.
+			functionPassManager.add(llvm::createReassociatePass());
+
+			// Eliminate Common SubExpressions.
+			functionPassManager.add(llvm::createGVNPass());
+
+
+			// Simplify the control flow graph (deleting unreachable blocks, etc).
+			functionPassManager.add(llvm::createCFGSimplificationPass());
+
+			// hmm.
+			// fuck it, turn everything on.
+			functionPassManager.add(llvm::createLoadCombinePass());
+			functionPassManager.add(llvm::createConstantHoistingPass());
+			functionPassManager.add(llvm::createLICMPass());
+			functionPassManager.add(llvm::createDelinearizationPass());
+			functionPassManager.add(llvm::createFlattenCFGPass());
+			functionPassManager.add(llvm::createScalarizerPass());
+			functionPassManager.add(llvm::createSinkingPass());
+			functionPassManager.add(llvm::createStructurizeCFGPass());
+			functionPassManager.add(llvm::createInstructionSimplifierPass());
+			functionPassManager.add(llvm::createDeadStoreEliminationPass());
+			functionPassManager.add(llvm::createDeadInstEliminationPass());
+			functionPassManager.add(llvm::createMemCpyOptPass());
+
+			functionPassManager.add(llvm::createSCCPPass());
+			functionPassManager.add(llvm::createAggressiveDCEPass());
+
+			functionPassManager.add(llvm::createTailCallEliminationPass());
+		}
+
+		// optimisation level -1 disables *everything*
+		// mostly for reading the IR to debug codegen.
+		if(Compiler::getOptimisationLevel() >= 0)
+		{
+			// always do the mem2reg pass, our generated code is too inefficient
+			functionPassManager.add(llvm::createPromoteMemoryToRegisterPass());
+			functionPassManager.add(llvm::createMergedLoadStoreMotionPass());
+			functionPassManager.add(llvm::createScalarReplAggregatesPass());
+			functionPassManager.add(llvm::createConstantPropagationPass());
+			functionPassManager.add(llvm::createDeadCodeEliminationPass());
+		}
+
+
+
+		for(auto& f : mainModule->getFunctionList())
+			functionPassManager.run(f);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// mainModule->dump();
 	if(Compiler::runProgramWithJit)
 	{
 		// all linked already.
@@ -507,6 +640,7 @@ int main(int argc, char* argv[])
 		if(Compiler::printModule)
 			mainModule->dump();
 
+		llvm::verifyModule(*mainModule, &llvm::errs());
 		if(mainModule->getFunction("main") != 0)
 		{
 			std::string err;
@@ -515,7 +649,6 @@ int main(int argc, char* argv[])
 						.setErrorStr(&err)
 						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
 						.create();
-
 
 			void* func = ee->getPointerToFunction(clone->getFunction("main"));
 			iceAssert(func);
@@ -530,11 +663,12 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			error("no main() function!");
+			error("no main() function, cannot JIT");
 		}
 	}
 	else
 	{
+		llvm::verifyModule(*mainModule, &llvm::errs());
 		Compiler::compileProgram(mainModule, filelist, foldername, outname);
 	}
 

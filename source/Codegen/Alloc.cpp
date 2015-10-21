@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
+#include "ast.h"
+#include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -29,7 +29,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	fir::Type* allocType = 0;
 
-	allocType = cgi->getLlvmTypeFromExprType(this, this->type);
+	allocType = cgi->getExprTypeFromStringType(this, this->type);
 	iceAssert(allocType);
 
 

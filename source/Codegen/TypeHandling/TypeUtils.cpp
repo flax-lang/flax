@@ -8,16 +8,13 @@
 #include "codegen.h"
 #include "compiler.h"
 
-#include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
-
 using namespace Ast;
 using namespace Codegen;
 
 
 namespace Codegen
 {
-	fir::Type* CodegenInstance::getLlvmTypeOfBuiltin(std::string type)
+	fir::Type* CodegenInstance::getExprTypeOfBuiltin(std::string type)
 	{
 		int indirections = 0;
 		type = unwrapPointerType(type, &indirections);
@@ -96,12 +93,12 @@ namespace Codegen
 		return alloca;
 	}
 
-	fir::Type* CodegenInstance::getLlvmType(Expr* expr, bool allowFail, bool setInferred)
+	fir::Type* CodegenInstance::getExprType(Expr* expr, bool allowFail, bool setInferred)
 	{
-		return this->getLlvmType(expr, Resolved_t(), allowFail, setInferred);
+		return this->getExprType(expr, Resolved_t(), allowFail, setInferred);
 	}
 
-	fir::Type* CodegenInstance::getLlvmType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
+	fir::Type* CodegenInstance::getExprType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
 		setInferred = false;
 		iceAssert(expr);
@@ -138,25 +135,25 @@ namespace Codegen
 					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
 				}
 
-				auto x = this->getLlvmType(decl, allowFail);
+				auto x = this->getExprType(decl, allowFail);
 				return x;
 			}
 			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
 			{
 				if(uo->op == ArithmeticOp::Deref)
 				{
-					fir::Type* ltype = this->getLlvmType(uo->expr);
+					fir::Type* ltype = this->getExprType(uo->expr);
 					if(!ltype->isPointerType())
 						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
 
-					return this->getLlvmType(uo->expr)->getPointerElementType();
+					return this->getExprType(uo->expr)->getPointerElementType();
 				}
 
 				else if(uo->op == ArithmeticOp::AddrOf)
-					return this->getLlvmType(uo->expr)->getPointerTo();
+					return this->getExprType(uo->expr)->getPointerTo();
 
 				else
-					return this->getLlvmType(uo->expr);
+					return this->getExprType(uo->expr);
 			}
 			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
 			{
@@ -186,11 +183,11 @@ namespace Codegen
 					}
 				}
 
-				return getLlvmType(res.t.second);
+				return getExprType(res.t.second);
 			}
 			else if(Func* f = dynamic_cast<Func*>(expr))
 			{
-				return getLlvmType(f->decl);
+				return getExprType(f->decl);
 			}
 			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
@@ -225,7 +222,7 @@ namespace Codegen
 
 
 				// first, get the type of the lhs
-				fir::Type* lhs = this->getLlvmType(ma->left);
+				fir::Type* lhs = this->getExprType(ma->left);
 				TypePair_t* pair = this->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 
 				fir::StructType* st = dynamic_cast<fir::StructType*>(lhs);
@@ -266,17 +263,17 @@ namespace Codegen
 						for(VarDecl* mem : cls->members)
 						{
 							if(mem->name == memberVr->name)
-								return this->getLlvmType(mem);
+								return this->getExprType(mem);
 						}
 						for(ComputedProperty* c : cls->cprops)
 						{
 							if(c->name == memberVr->name)
-								return this->getLlvmTypeFromExprType(c, c->type, allowFail);
+								return this->getExprTypeFromStringType(c, c->type, allowFail);
 						}
 					}
 					else if(memberFc)
 					{
-						return this->getLlvmType(this->getFunctionFromMemberFuncCall(cls, memberFc));
+						return this->getExprType(this->getFunctionFromMemberFuncCall(cls, memberFc));
 					}
 				}
 				else if(pair->second.second == TypeKind::Struct)
@@ -292,7 +289,7 @@ namespace Codegen
 						for(VarDecl* mem : str->members)
 						{
 							if(mem->name == memberVr->name)
-								return this->getLlvmType(mem);
+								return this->getExprType(mem);
 						}
 					}
 					else if(memberFc)
@@ -311,7 +308,7 @@ namespace Codegen
 					for(auto c : enr->cases)
 					{
 						if(c.first == enrcase->name)
-							return this->getLlvmType(c.second);
+							return this->getExprType(c.second);
 					}
 
 					error(expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
@@ -323,8 +320,8 @@ namespace Codegen
 			}
 			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 			{
-				fir::Type* ltype = this->getLlvmType(bo->left);
-				fir::Type* rtype = this->getLlvmType(bo->right);
+				fir::Type* ltype = this->getExprType(bo->left);
+				fir::Type* rtype = this->getExprType(bo->right);
 
 				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
 				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
@@ -333,7 +330,7 @@ namespace Codegen
 				}
 				else if(bo->op == ArithmeticOp::Cast || bo->op == ArithmeticOp::ForcedCast)
 				{
-					return this->getLlvmType(bo->right);
+					return this->getExprType(bo->right);
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
@@ -389,7 +386,7 @@ namespace Codegen
 					if(alloc->type.strType.find("::") != std::string::npos)
 					{
 						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getLlvmTypeFromExprType(alloc, alloc->type, allowFail)->getPointerTo();
+						return this->getExprTypeFromStringType(alloc, alloc->type, allowFail)->getPointerTo();
 					}
 
 					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
@@ -407,7 +404,7 @@ namespace Codegen
 			}
 			else if(Return* retr = dynamic_cast<Return*>(expr))
 			{
-				return this->getLlvmType(retr->val);
+				return this->getExprType(retr->val);
 			}
 			else if(DummyExpr* dum = dynamic_cast<DummyExpr*>(expr))
 			{
@@ -417,7 +414,7 @@ namespace Codegen
 				}
 				else
 				{
-					return this->getLlvmType(dum->type.type);
+					return this->getExprType(dum->type.type);
 				}
 			}
 			else if(dynamic_cast<IfStmt*>(expr))
@@ -443,16 +440,16 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getLlvmType(ai->arr)->toArrayType()->getElementType();
+				return this->getExprType(ai->arr)->toArrayType()->getElementType();
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
 				// todo: make this not shit.
-				return fir::ArrayType::get(this->getLlvmType(al->values.front()), al->values.size());
+				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
 			}
 			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
 			{
-				fir::Type* targtype = this->getLlvmType(puo->expr);
+				fir::Type* targtype = this->getExprType(puo->expr);
 				iceAssert(targtype);
 
 				if(puo->kind == PostfixUnaryOp::Kind::ArrayIndex)
@@ -486,13 +483,13 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
 	{
-		return allocateInstanceInBlock(this->getLlvmType(var), var->name);
+		return allocateInstanceInBlock(this->getExprType(var), var->name);
 	}
 
 
 	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
-		return fir::ConstantValue::getNullValue(this->getLlvmType(e));
+		return fir::ConstantValue::getNullValue(this->getExprType(e));
 	}
 
 	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)
@@ -557,7 +554,7 @@ namespace Codegen
 
 	std::string CodegenInstance::getReadableType(Expr* expr)
 	{
-		return this->getReadableType(this->getLlvmType(expr));
+		return this->getReadableType(this->getExprType(expr));
 	}
 
 	int CodegenInstance::getAutoCastDistance(fir::Type* from, fir::Type* to)
@@ -943,7 +940,7 @@ namespace Codegen
 				}
 				else
 				{
-					fir::Type* ret = this->getLlvmTypeFromExprType(user, ExprType(actualType), allowFail);
+					fir::Type* ret = this->getExprTypeFromStringType(user, ExprType(actualType), allowFail);
 
 					if(ret)
 					{
@@ -964,11 +961,11 @@ namespace Codegen
 		}
 	}
 
-	fir::Type* CodegenInstance::getLlvmTypeFromExprType(Ast::Expr* user, ExprType type, bool allowFail)
+	fir::Type* CodegenInstance::getExprTypeFromStringType(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
 		{
-			fir::Type* ret = this->getLlvmTypeOfBuiltin(type.strType);
+			fir::Type* ret = this->getExprTypeOfBuiltin(type.strType);
 			if(ret) return ret;
 
 			// not so lucky
@@ -994,9 +991,9 @@ namespace Codegen
 			}
 
 
-			if(!tp && this->getLlvmTypeOfBuiltin(atype))
+			if(!tp && this->getExprTypeOfBuiltin(atype))
 			{
-				return this->getLlvmTypeOfBuiltin(atype);
+				return this->getExprTypeOfBuiltin(atype);
 			}
 			else if(tp)
 			{
@@ -1055,14 +1052,14 @@ namespace Codegen
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getLlvmType(e);
+		fir::Type* ltype = this->getExprType(e);
 		return ltype && ltype->isArrayType();
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getLlvmType(e);
+		fir::Type* ltype = this->getExprType(e);
 		return ltype && ltype->isIntegerType();
 	}
 
@@ -1073,7 +1070,7 @@ namespace Codegen
 
 	bool CodegenInstance::isPtr(Expr* expr)
 	{
-		fir::Type* ltype = this->getLlvmType(expr);
+		fir::Type* ltype = this->getExprType(expr);
 		return ltype && ltype->isPointerType();
 	}
 
@@ -1172,7 +1169,7 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
-		fir::Type* ltype = this->getLlvmType(expr);
+		fir::Type* ltype = this->getExprType(expr);
 		return this->isBuiltinType(ltype);
 	}
 

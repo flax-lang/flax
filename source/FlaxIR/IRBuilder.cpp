@@ -2,10 +2,10 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/ir/block.h"
-#include "../include/ir/irbuilder.h"
-#include "../include/ir/instruction.h"
+#include "ast.h"
+#include "ir/block.h"
+#include "ir/irbuilder.h"
+#include "ir/instruction.h"
 
 namespace fir
 {
@@ -787,6 +787,19 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
+	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
+	Value* IRBuilder::CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+
+		auto ptri = ConstantInt::getUnsigned(PrimitiveType::getUint64(), ptrIndex);
+		auto elmi = ConstantInt::getUnsigned(PrimitiveType::getUint64(), elmIndex);
+
+		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, ptr->getType()->getPointerElementType(), { ptr, ptri, elmi });
+		return this->addInstruction(instr);
+	}
 
 	// equivalent to GEP(ptr*, index)
 	Value* IRBuilder::CreateGetPointer(Value* ptr, Value* ptrIndex)
