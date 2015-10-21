@@ -105,12 +105,15 @@ public ƒ doScopeTest(argv: String)
 	let t1 = n1.n2.m.foo.somefoo().bar
 	let t2 = n1.n2.nest().0.length
 
-	n1.n2.tup.0 = "HELLO, WORLD" + "!"
-	printf("tup: %s\n", n1.n2.tup.0)
+	// n1.n2.tup.0 = "HELLO, WORLD" + "!"
+	// printf("tup: %s\n", n1.n2.tup.0)
+
+	let s = "HELLO, WORLD" + "!"
+	printf("tup: %s\n", s)
 
 
-	printf("t1 = %d, t2 = %d\n", t1, t2)
-	printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
+	// printf("t1 = %d, t2 = %d\n", t1, t2)
+	// printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
 }
 
 

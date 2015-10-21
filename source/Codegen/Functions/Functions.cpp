@@ -5,11 +5,6 @@
 #include "ast.h"
 #include "codegen.h"
 
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/Function.h"
-#include "llvm/Support/raw_ostream.h"
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -184,10 +179,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 	else if(isImplicitReturn)
 		cgi->builder.CreateReturn(lastval.result.first);
 
-
-	// todo: optimise/run llvm passes
-	// fir::verifyFunction(*func, &fir::errs());
-	// cgi->Fpm->run(*func);
 
 	// we've codegen'ed that stuff, pop the symbol table
 	cgi->popScope();

@@ -11,11 +11,7 @@
 #include <vector>
 #include <map>
 
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/PassManager.h"
-
-#include "../include/ir/irbuilder.h"
+#include "ir/irbuilder.h"
 
 enum class SymbolType
 {
@@ -24,17 +20,6 @@ enum class SymbolType
 	Variable,
 	Type
 };
-
-namespace llvm
-{
-	class Module;
-	class ExecutionEngine;
-	class GlobalVariable;
-	class AllocaInst;
-	class GlobalValue;
-	class LLVMContext;
-	class Instruction;
-}
 
 namespace GenError
 {
@@ -66,11 +51,8 @@ namespace Codegen
 	struct CodegenInstance
 	{
 		Ast::Root* rootNode;
-		// llvm::Module* module;
 		fir::Module* module;
-		llvm::FunctionPassManager* Fpm;
 		std::deque<SymTab_t> symTabStack;
-		llvm::ExecutionEngine* execEngine;
 		fir::ExecutionTarget* execTarget;
 
 		std::deque<std::string> namespaceStack;
@@ -87,7 +69,6 @@ namespace Codegen
 
 		std::deque<Ast::Func*> funcScopeStack;
 
-		// llvm::IRBuilder<> builder = llvm::IRBuilder<>(llvm::getGlobalContext());
 		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
 
 		DependencyGraph* dependencyGraph = 0;
@@ -195,10 +176,10 @@ namespace Codegen
 		// fir::Types for non-primitive (POD) builtin types (string)
 		void applyExtensionToStruct(std::string extName);
 
-		fir::Type* getLlvmType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		fir::Type* getLlvmType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		fir::Type* getLlvmTypeFromExprType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
 		int autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr = 0);
 		int autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr = 0);
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
@@ -282,7 +263,7 @@ namespace Codegen
 		fir::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
 
-		fir::Type* getLlvmTypeOfBuiltin(std::string type);
+		fir::Type* getExprTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
@@ -305,7 +286,6 @@ namespace Codegen
 	std::string unwrapPointerType(std::string type, int* indirections);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
-	void writeBitcode(std::string filename, CodegenInstance* cgi);
 }
 
 

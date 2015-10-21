@@ -2,9 +2,9 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ast.h"
-#include "../include/codegen.h"
-#include "../include/semantic.h"
+#include "ast.h"
+#include "codegen.h"
+#include "semantic.h"
 
 #include <map>
 
@@ -17,7 +17,7 @@ using namespace Codegen;
 
 struct GlobalState
 {
-	CodegenInstance* cgi;
+	CodegenInstance* cgi = 0;
 	std::map<MemberAccess*, bool> visitedMAs;
 
 	std::deque<std::string> nsstrs;
@@ -337,7 +337,7 @@ namespace SemAnalysis
 		}
 
 
-		gstate = GlobalState();
+		gstate = ::GlobalState();
 	}
 
 }
