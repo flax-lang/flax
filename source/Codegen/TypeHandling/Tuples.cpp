@@ -22,7 +22,7 @@ fir::StructType* Tuple::getType(CodegenInstance* cgi)
 		iceAssert(!this->didCreateType);
 
 		for(Expr* e : this->values)
-			this->ltypes.push_back(cgi->getLlvmType(e));
+			this->ltypes.push_back(cgi->getExprType(e));
 
 		this->name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
 		this->cachedLlvmType = fir::StructType::getLiteral(this->ltypes, cgi->getContext());
