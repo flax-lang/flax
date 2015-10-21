@@ -2,9 +2,9 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "../include/ir/block.h"
-#include "../include/ir/constant.h"
-#include "../include/ir/instruction.h"
+#include "ir/block.h"
+#include "ir/constant.h"
+#include "ir/instruction.h"
 
 namespace fir
 {
@@ -104,9 +104,10 @@ namespace fir
 			case OpKind::Value_GetPointerToStructMember: 	name = "gep"; break;
 			case OpKind::Value_GetStructMember: 			name = "gep"; break;
 			case OpKind::Value_GetPointer: 					name = "gep"; break;
+			case OpKind::Value_GetGEP2: 					name = "gep"; break;
 			case OpKind::Branch_UnCond: 					name = "jump"; break;
 			case OpKind::Branch_Cond: 						name = "branch"; break;
-			default:										name = "unknown"; break;
+			case OpKind::Invalid:							name = "unknown"; break;
 		}
 
 		std::string ops;

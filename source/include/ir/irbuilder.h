@@ -90,7 +90,7 @@ namespace fir
 		Value* CreateLogicalNot(Value* v);
 		Value* CreateStackAlloc(Type* type);
 
-		// equivalent to llvm's GEP(ptr*, ptrIndex,
+		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex);
 		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex);
 
@@ -100,6 +100,9 @@ namespace fir
 
 		// equivalent to GEP(ptr*, index)
 		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);
+
+		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
+		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex);
 
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);
