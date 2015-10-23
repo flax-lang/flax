@@ -414,9 +414,6 @@ int main(int argc, char* argv[])
 		modulelist[mod.first] = mod.second->translateToLlvm();
 		if(Compiler::printFIR)
 			printf("%s\n", mod.second->print().c_str());
-
-
-		// modulelist[mod.first]->dump();
 	}
 
 
