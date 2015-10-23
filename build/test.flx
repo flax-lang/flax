@@ -8,6 +8,7 @@ import String
 import tests.fizzbuzz
 import tests.recursiveFib
 import tests.scopes
+import tests.operators
 // import tests.arraytest
 // import tests.generics
 
@@ -20,35 +21,6 @@ public func main() -> Int
 
 
 	printf("HELLO\n")
-
-	let g: Int8 = 100
-	printf("g is: %d\n", g)
-
-	let m = (fa(), fb())
-	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
-
-
-	let dot = m.0 • m.1
-	printf("dot = %f\n", dot);
-
-
-	let v1: Math.Vector3(1.0, 2.0, 4.0)
-	let v2: Math.Vector3(3.0, 6.0, 9.0)
-
-	var v = v1 + v2
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	v += v1
-
-	let vv = 3 * v
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
-
-	let cross = m.0 x m.1
-	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
-
-
-	let crossn = m.1 x m.0
-	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 
 
 	runTests()
@@ -74,27 +46,6 @@ namespace some
 	{
 	}
 }
-
-func fa() -> Math.Vector3
-{
-	var ret: Math.Vector3
-	ret.x = 1
-	ret.y = 2
-	ret.z = 3
-
-	return ret
-}
-
-func fb() -> Math.Vector3
-{
-	var ret: Math.Vector3
-	ret.x = 4
-	ret.y = 5
-	ret.z = 6
-
-	return ret
-}
-
 
 class Foo
 {
@@ -128,6 +79,12 @@ class Foo
 	// scopes
 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
 	doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
+
+
+
+	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+	doOperatorTupleTest()
 	printf("\n\n");
 
 
