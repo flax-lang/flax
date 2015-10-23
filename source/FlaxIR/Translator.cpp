@@ -177,20 +177,23 @@ namespace fir
 
 
 
+		size_t strn = 0;
 		for(auto string : this->globalStrings)
 		{
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
-				llvm::GlobalValue::LinkageTypes::PrivateLinkage, cstr);
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "global_string_" + std::to_string(strn));
 
 			valueMap[string.second] = gv;
+
+			strn++;
 		}
 
 		for(auto global : this->globals)
 		{
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module,
-				typeToLlvm(global.second->getType()->getPointerElementType(), module), true,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, constToLlvm(global.second->initValue, module));
+				typeToLlvm(global.second->getType()->getPointerElementType(), module), global.second->isImmutable,
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, constToLlvm(global.second->initValue, module), global.first);
 
 			valueMap[global.second] = gv;
 		}
