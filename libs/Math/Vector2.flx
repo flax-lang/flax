@@ -9,30 +9,15 @@ namespace Math
 		var x: Double
 		var y: Double
 
-		public operator == (other: Math.Vector2) -> Bool
-		{
-			(self.x == other.x) && (self.y == other.y)
-		}
+		public operator == (other: Math.Vector2) -> Bool { (self.x == other.x) && (self.y == other.y) }
 
-		public operator * (other: Double) -> Math.Vector2
-		{
-			Math.Vector2(self.x * other, self.y * other)
-		}
-		public operator / (other: Double) -> Math.Vector2
-		{
-			Math.Vector2(self.x / other, self.y / other)
-		}
+		@operator[Commutative]
+		public operator * (other: Double) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
+		public operator / (other: Double) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
 
-		public operator * (other: Int) -> Math.Vector2
-		{
-			Math.Vector2(self.x * other, self.y * other)
-		}
-
-		public operator / (other: Int) -> Math.Vector2
-		{
-			Math.Vector2(self.x / other, self.y / other)
-		}
-
+		@operator[Commutative]
+		public operator * (other: Int) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
+		public operator / (other: Int) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
 
 		public operator = (other: Math.Vector2) -> Math.Vector2*
 		{
