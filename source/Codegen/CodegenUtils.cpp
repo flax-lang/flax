@@ -37,80 +37,6 @@ namespace Codegen
 		else
 			error("enotsup: ptrsize = %zu", sizeof(void*));
 
-
-
-		#if 0
-		std::string err;
-		cgi->execEngine = fir::EngineBuilder(std::unique_ptr<fir::Module>(cgi->module))
-							.setErrorStr(&err)
-							.setMCJITMemoryManager(fir::make_unique<fir::SectionMemoryManager>())
-							.create();
-
-		if(!cgi->execEngine)
-		{
-			fprintf(stderr, "%s", err.c_str());
-			exit(1);
-		}
-
-		fir::FunctionPassManager functionPassManager = fir::FunctionPassManager(cgi->module);
-
-		if(Compiler::getOptimisationLevel() > 0)
-		{
-			// Provide basic AliasAnalysis support for GVN.
-			functionPassManager.add(fir::createBasicAliasAnalysisPass());
-
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			functionPassManager.add(fir::createInstructionCombiningPass());
-
-			// Reassociate expressions.
-			functionPassManager.add(fir::createReassociatePass());
-
-			// Eliminate Common SubExpressions.
-			functionPassManager.add(fir::createGVNPass());
-
-
-			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			functionPassManager.add(fir::createCFGSimplificationPass());
-
-			// hmm.
-			// fuck it, turn everything on.
-			functionPassManager.add(fir::createLoadCombinePass());
-			functionPassManager.add(fir::createConstantHoistingPass());
-			functionPassManager.add(fir::createLICMPass());
-			functionPassManager.add(fir::createDelinearizationPass());
-			functionPassManager.add(fir::createFlattenCFGPass());
-			functionPassManager.add(fir::createScalarizerPass());
-			functionPassManager.add(fir::createSinkingPass());
-			functionPassManager.add(fir::createStructurizeCFGPass());
-			functionPassManager.add(fir::createInstructionSimplifierPass());
-			functionPassManager.add(fir::createDeadStoreEliminationPass());
-			functionPassManager.add(fir::createDeadInstEliminationPass());
-			functionPassManager.add(fir::createMemCpyOptPass());
-
-			functionPassManager.add(fir::createSCCPPass());
-			functionPassManager.add(fir::createAggressiveDCEPass());
-
-			functionPassManager.add(fir::createTailCallEliminationPass());
-		}
-
-		// optimisation level -1 disables *everything*
-		// mostly for reading the IR to debug codegen.
-		if(Compiler::getOptimisationLevel() >= 0)
-		{
-			// always do the mem2reg pass, our generated code is too inefficient
-			functionPassManager.add(fir::createPromoteMemoryToRegisterPass());
-			functionPassManager.add(fir::createMergedLoadStoreMotionPass());
-			functionPassManager.add(fir::createScalarReplAggregatesPass());
-			functionPassManager.add(fir::createConstantPropagationPass());
-			functionPassManager.add(fir::createDeadCodeEliminationPass());
-		}
-
-
-		functionPassManager.doInitialization();
-		#endif
-
-		// Set the global so the code gen can use this.
-		// cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
 		// add the generic functions from previous shits.
@@ -1789,68 +1715,6 @@ namespace Codegen
 
 
 
-
-	// fir::Instruction::BinaryOps CodegenInstance::getBinaryOperator(ArithmeticOp op, bool isSigned, bool isFP)
-	// {
-	// 	using fir::Instruction;
-	// 	switch(op)
-	// 	{
-	// 		case ArithmeticOp::Add:
-	// 		case ArithmeticOp::PlusEquals:
-	// 			return !isFP ? Instruction::BinaryOps::Add : Instruction::BinaryOps::FAdd;
-
-	// 		case ArithmeticOp::Subtract:
-	// 		case ArithmeticOp::MinusEquals:
-	// 			return !isFP ? Instruction::BinaryOps::Sub : Instruction::BinaryOps::FSub;
-
-	// 		case ArithmeticOp::Multiply:
-	// 		case ArithmeticOp::MultiplyEquals:
-	// 			return !isFP ? Instruction::BinaryOps::Mul : Instruction::BinaryOps::FMul;
-
-	// 		case ArithmeticOp::Divide:
-	// 		case ArithmeticOp::DivideEquals:
-	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SDiv : Instruction::BinaryOps::UDiv) : Instruction::BinaryOps::FDiv;
-
-	// 		case ArithmeticOp::Modulo:
-	// 		case ArithmeticOp::ModEquals:
-	// 			return !isFP ? (isSigned ? Instruction::BinaryOps::SRem : Instruction::BinaryOps::URem) : Instruction::BinaryOps::FRem;
-
-	// 		case ArithmeticOp::ShiftLeft:
-	// 		case ArithmeticOp::ShiftLeftEquals:
-	// 			return Instruction::BinaryOps::Shl;
-
-	// 		case ArithmeticOp::ShiftRight:
-	// 		case ArithmeticOp::ShiftRightEquals:
-	// 			return isSigned ? Instruction::BinaryOps::AShr : Instruction::BinaryOps::LShr;
-
-	// 		case ArithmeticOp::BitwiseAnd:
-	// 		case ArithmeticOp::BitwiseAndEquals:
-	// 			return Instruction::BinaryOps::And;
-
-	// 		case ArithmeticOp::BitwiseOr:
-	// 		case ArithmeticOp::BitwiseOrEquals:
-	// 			return Instruction::BinaryOps::Or;
-
-	// 		case ArithmeticOp::BitwiseXor:
-	// 		case ArithmeticOp::BitwiseXorEquals:
-	// 			return Instruction::BinaryOps::Xor;
-
-	// 		default:
-	// 			return (Instruction::BinaryOps) 0;
-	// 	}
-	// }
-
-
-
-	// fir::Value* getArgumentNOfFunction(fir::Function* func, size_t n)
-	// {
-	// 	auto it = func->getargume().begin();
-	// 	for(size_t i = 0; i < n; i++, it++)
-	// 		;
-
-	// 	return it;
-	// }
-
 	ArithmeticOp CodegenInstance::determineArithmeticOp(std::string ch)
 	{
 		return Parser::mangledStringToOperator(this, ch);
@@ -1871,6 +1735,7 @@ namespace Codegen
 	{
 		struct Attribs
 		{
+			ArithmeticOp op;
 			bool isInType = 0;
 
 			bool isBinOp = 0;
@@ -1923,13 +1788,13 @@ namespace Codegen
 
 				Attribs attr;
 
+				attr.op				= opov->op;
 				attr.isInType		= opov->isInType;
 				attr.isBinOp		= opov->isBinOp;
 				attr.isCommutative	= opov->isCommutative;
 				attr.isPrefixUnary	= opov->isPrefixUnary;
 
 				attr.needsSwap		= false;
-
 
 				if(opov->op == op)
 				{
@@ -1944,7 +1809,7 @@ namespace Codegen
 					attr.needsEqual = false;
 					attr.needsBooleanNOT = true;
 
-					op = opov->op;
+					// op = opov->op;
 					(*cands).push_back({ attr, fop });
 				}
 				else if(opov->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
@@ -1954,7 +1819,7 @@ namespace Codegen
 						attr.needsEqual = true;
 						attr.needsBooleanNOT = false;
 
-						op = opov->op;
+						// op = opov->op;
 						(*cands).push_back({ attr, fop });
 					}
 				}
@@ -1965,7 +1830,7 @@ namespace Codegen
 						attr.needsEqual = true;
 						attr.needsBooleanNOT = false;
 
-						op = opov->op;
+						// op = opov->op;
 						(*cands).push_back({ attr, fop });
 					}
 				}
@@ -1976,7 +1841,7 @@ namespace Codegen
 						attr.needsEqual = true;
 						attr.needsBooleanNOT = false;
 
-						op = opov->op;
+						// op = opov->op;
 						(*cands).push_back({ attr, fop });
 					}
 				}
@@ -1987,7 +1852,7 @@ namespace Codegen
 						attr.needsEqual = true;
 						attr.needsBooleanNOT = false;
 
-						op = opov->op;
+						// op = opov->op;
 						(*cands).push_back({ attr, fop });
 					}
 				}
@@ -2041,6 +1906,7 @@ namespace Codegen
 				{
 					Attribs attr;
 
+					attr.op				= f.first->op;
 					attr.isInType		= f.first->isInType;
 					attr.isBinOp		= f.first->isBinOp;
 					attr.isCommutative	= f.first->isCommutative;
@@ -2090,26 +1956,17 @@ namespace Codegen
 			findCandidatesPass1(&candidates, list, op);
 		}
 
-
 		// pass 1.5: prune duplicates
 		auto set = candidates;
 		candidates.clear();
 
-
-		std::map<size_t, std::string> dupes;
-		for(size_t i = 0; i < set.size(); i++)
+		for(auto s : set)
 		{
-			auto c = set[i];
-
-			for(size_t j = 0; j < set.size(); j++)
+			if(std::find_if(candidates.begin(), candidates.end(), [s](std::pair<Attribs, fir::Function*> other) -> bool {
+				return other.second->getName() == s.second->getName(); }) == candidates.end())
 			{
-				auto dupe = set[j];
-				if(i != j && c.second->getName() == dupe.second->getName())
-					dupes[j] = dupe.second->getName();
+				candidates.push_back(s);
 			}
-
-			if(dupes.find(i) == dupes.end())
-				candidates.push_back(c);
 		}
 
 
@@ -2188,7 +2045,6 @@ namespace Codegen
 		candidates.clear();
 
 
-
 		// deque [pair [<attr, operator func>, assign func]]
 		std::deque<std::pair<std::pair<Attribs, fir::Function*>, fir::Function*>> finals;
 		for(std::pair<Attribs, fir::Function*> c : set)
@@ -2225,6 +2081,32 @@ namespace Codegen
 				finals.push_back({ { c.first, c.second }, 0 });
 			}
 		}
+
+		// final step: disambiguate using the more specific op.
+		if(finals.size() > 1)
+		{
+			auto fset = finals;
+			finals.clear();
+
+			for(auto f : fset)
+			{
+				if(f.first.first.op == op)
+				{
+					for(auto fs : fset)
+					{
+						if(fs.first.first.op != op)
+						{
+							fset.clear();
+							fset.push_back(f);
+							break;
+						}
+					}
+				}
+			}
+
+			finals = fset;
+		}
+
 
 
 
@@ -2326,14 +2208,6 @@ namespace Codegen
 
 
 			ret = this->builder.CreateCall2(opFunc, larg, rarg);
-
-
-
-			// if(cand.first.first.isInType || op == ArithmeticOp::Assign)
-			// 	ret = this->builder.CreateCall2(func, lref, rhs);
-
-			// else
-			// 	ret = this->builder.CreateCall2(func, lhs, rhs);
 		}
 		else
 		{
@@ -2455,8 +2329,6 @@ namespace Codegen
 				{
 					if(vals[i]->getType() != initers->getArguments()[i]->getType())
 					{
-						printf(">> candidate failed: %s vs %s\n", vals[i]->getType()->str().c_str(),
-							initers->getArguments()[i]->getType()->str().c_str());
 						goto breakout;
 					}
 				}
@@ -2483,8 +2355,8 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateGetConstStructMember(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateGetConstStructMember(typegep, 0);		// Type
+		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
+		typegep = this->builder.CreateStructGEP(typegep, 0);		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
@@ -2494,7 +2366,7 @@ namespace Codegen
 
 
 
-		fir::Value* valgep = this->builder.CreateGetConstStructMember(lhsPtr, 1);
+		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1);
 		if(rhsPtr)
 		{
 			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
@@ -2526,7 +2398,7 @@ namespace Codegen
 
 	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		fir::Value* valgep = this->builder.CreateGetConstStructMember(ptr, 1);
+		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
 		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
 		if(type->isStructType())

@@ -407,7 +407,7 @@ Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBa
 	// if we are a Struct* instead of just a Struct, we can just use pair.first since it's already a pointer.
 	iceAssert(ref);
 
-	fir::Value* ptr = cgi->builder.CreateGetConstStructMember(ref, i);
+	fir::Value* ptr = cgi->builder.CreateStructGEP(ref, i);
 	fir::Value* val = cgi->builder.CreateLoad(ptr);
 
 	if(str->members[i]->immutable)

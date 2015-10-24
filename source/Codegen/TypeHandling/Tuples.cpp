@@ -55,7 +55,7 @@ Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool c
 	if((size_t) num->ival >= type->toStructType()->getElementCount())
 		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toStructType()->getElementCount());
 
-	fir::Value* gep = this->builder.CreateGetConstStructMember(selfPtr, num->ival);
+	fir::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
 	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
 }
 
@@ -85,7 +85,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	for(unsigned int i = 0; i < strtype->getElementCount(); i++)
 	{
-		fir::Value* member = cgi->builder.CreateGetConstStructMember(gep, i);
+		fir::Value* member = cgi->builder.CreateStructGEP(gep, i);
 		fir::Value* val = this->values[i]->codegen(cgi).result.first;
 
 		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());

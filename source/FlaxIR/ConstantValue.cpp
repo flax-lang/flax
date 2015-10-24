@@ -51,6 +51,85 @@ namespace fir
 		return this->value;
 	}
 
+	ConstantInt* ConstantInt::getBool(bool value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getBool(tc);
+		return ConstantInt::getSigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getInt8(int8_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getInt8(tc);
+		return ConstantInt::getSigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getInt16(int16_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getInt16(tc);
+		return ConstantInt::getSigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getInt32(int32_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getInt32(tc);
+		return ConstantInt::getSigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getInt64(int64_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getInt64(tc);
+		return ConstantInt::getSigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getUint8(uint8_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getUint8(tc);
+		return ConstantInt::getUnsigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getUint16(uint16_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getUint16(tc);
+		return ConstantInt::getUnsigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getUint32(uint32_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getUint32(tc);
+		return ConstantInt::getUnsigned(t, value);
+	}
+
+	ConstantInt* ConstantInt::getUint64(uint64_t value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getUint64(tc);
+		return ConstantInt::getUnsigned(t, value);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -80,6 +159,25 @@ namespace fir
 	{
 		return this->value;
 	}
+
+	ConstantFP* ConstantFP::getFloat32(float value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getFloat32(tc);
+		return ConstantFP::get(t, value);
+	}
+
+	ConstantFP* ConstantFP::getFloat64(double value, FTContext* tc)
+	{
+		Type* t = PrimitiveType::getFloat64(tc);
+		return ConstantFP::get(t, value);
+	}
+
+
+
+
+
+
+
 
 
 
