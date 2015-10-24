@@ -15,7 +15,12 @@ namespace Parser
 		size_t startpos = line.find_first_not_of(" \t");
 		if(startpos != std::string::npos)
 		{
-			pos.col += startpos;
+			for(size_t i = 0; i < startpos; i++)
+			{
+				if(line[i] == ' ')			pos.col++;
+				else if(line[i] == '\t')	pos.col += TAB_WIDTH;
+			}
+
 			line = line.substr(startpos);
 		}
 	}

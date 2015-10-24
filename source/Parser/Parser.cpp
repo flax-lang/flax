@@ -1599,6 +1599,7 @@ namespace Parser
 		Token tok_alloc = ps.eat();
 		iceAssert(tok_alloc.type == TType::Alloc);
 
+		// todo: alloc multidimensional arrays
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
 		if(ps.front().type == TType::LSquare)
