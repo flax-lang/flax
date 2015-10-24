@@ -392,7 +392,13 @@ namespace Codegen
 					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
 				}
 
-				return type->first->getPointerTo();
+				fir::Type* ret = type->first;
+				if(alloc->counts.size() == 0) return ret->getPointerTo();
+
+				for(size_t i = 0; i < alloc->counts.size(); i++)
+					 ret = ret->getPointerTo();
+
+				return ret;
 			}
 			else if(Number* nm = dynamic_cast<Number*>(expr))
 			{
@@ -440,7 +446,12 @@ namespace Codegen
 			}
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
-				return this->getExprType(ai->arr)->toArrayType()->getElementType();
+				fir::Type* t = this->getExprType(ai->arr);
+				if(!t->isArrayType() && !t->isPointerType())
+					error(expr, "Not array or pointer type: %s", t->str().c_str());
+
+				if(t->isPointerType()) return t->getPointerElementType();
+				else return t->toArrayType()->getElementType();
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
@@ -475,10 +486,7 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::allocateInstanceInBlock(fir::Type* type, std::string name)
 	{
-		auto ret = this->builder.CreateStackAlloc(type);
-		ret->setName(name);
-
-		return ret;
+		return this->builder.CreateStackAlloc(type, name);
 	}
 
 	fir::Value* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
@@ -527,16 +535,6 @@ namespace Codegen
 
 
 
-
-	// static void StringReplace(std::string& str, const std::string& from, const std::string& to)
-	// {
-	// 	size_t start_pos = 0;
-	// 	while((start_pos = str.find(from, start_pos)) != std::string::npos)
-	// 	{
-	// 		str.replace(start_pos, from.length(), to);
-	// 		start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
-	// 	}
-	// }
 
 	std::string CodegenInstance::getReadableType(fir::Type* type)
 	{
@@ -905,30 +903,24 @@ namespace Codegen
 
 
 					std::vector<int> sizes;
-					if(arr[0] == '[')
+					while(arr.length() > 0 && arr.front() == '[')
 					{
 						arr = arr.substr(1);
-						while(true)
-						{
-							const char* c = arr.c_str();
-							char* final = 0;
 
-							size_t asize = strtoll(c, &final, 0);
-							size_t numlen = final - c;
+						// get the size
+						const char* c = arr.c_str();
+						char* final = 0;
 
-							arr = arr.substr(numlen);
-							sizes.push_back(asize);
+						size_t asize = strtoll(c, &final, 0);
+						size_t numlen = final - c;
 
-							if(arr[0] == ',')
-							{
-								arr = arr.substr(1);
-							}
-							else if(arr[0] == ']')
-							{
-								arr = arr.substr(1);
-								break;
-							}
-						}
+						arr = arr.substr(numlen);
+						sizes.push_back(asize);
+
+
+						// get the closing.
+						iceAssert(arr.length() > 0 && arr.front() == ']');
+						arr = arr.substr(1);
 					}
 
 					for(auto i : sizes)
@@ -1396,7 +1388,11 @@ namespace Codegen
 		}
 		else if(Alloc* al = dynamic_cast<Alloc*>(expr))
 		{
-			return "alloc[" + this->printAst(al->count) + "] " + al->type.strType;
+			std::string ret = "alloc";
+			for(auto c : al->counts)
+				ret += "[" + this->printAst(c) + "]";
+
+			return ret + al->type.strType;
 		}
 
 		error(expr, "Unknown shit (%s)", typeid(*expr).name());
