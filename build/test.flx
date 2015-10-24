@@ -9,7 +9,7 @@ import tests.fizzbuzz
 import tests.recursiveFib
 import tests.scopes
 import tests.operators
-// import tests.arraytest
+import tests.arraytest
 // import tests.generics
 
 // import Utilities
@@ -90,7 +90,7 @@ class Foo
 
 	// arrays
 	printf("*** ARRAY REGRESSION TEST ***\n")
-	// doArrayTest()
+	doArrayTest()
 	printf("\n\n")
 
 

@@ -59,10 +59,13 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 
 	if(atype->isStructType() || atype->isArrayType())
 	{
-		// fir::Value* indices[2] = { fir::ConstantInt::get(fir::IntegerType::getInt32Ty(fir::getGlobalContext()), 0), ind };
+		// fir::Value* indices[2] = { fir::ConstantInt::getUnsigned(fir::PrimitiveType::getInt32(fir::getDefaultFTContext()), 0), ind };
 
-		gep = cgi->builder.CreateGetPointer(lhs, ind);
+		gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
 		// gep = cgi->builder.CreateGEP(lhs, fir::ArrayRef<fir::Value*>(indices), "indexPtr");
+
+		info(this, "lhs type: %s, gep type: %s\n", lhs->getType()->str().c_str(), gep->getType()->str().c_str());
+
 	}
 	else
 	{

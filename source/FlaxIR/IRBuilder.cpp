@@ -744,6 +744,23 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
+	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
+	{
+		Instruction* instr = new Instruction(OpKind::Branch_Cond, PrimitiveType::getVoid(), { condition, trueB, falseB });
+		this->addInstruction(instr);
+	}
+
+	void IRBuilder::CreateUnCondBranch(IRBlock* target)
+	{
+		Instruction* instr = new Instruction(OpKind::Branch_UnCond, PrimitiveType::getVoid(), { target });
+		this->addInstruction(instr);
+	}
+
+
+
+
+	// gep stuff
+
 
 	// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 	Value* IRBuilder::CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex)
@@ -761,7 +778,7 @@ namespace fir
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
-			{ ptr, ptrIndex, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
+			{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
 
 		return this->addInstruction(instr);
 	}
@@ -782,7 +799,7 @@ namespace fir
 		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
-			{ structPtr, ConstantInt::getUnsigned(PrimitiveType::getUint64(), memberIndex) });
+			{ structPtr, ConstantInt::getUint64(memberIndex) });
 
 		return this->addInstruction(instr);
 	}
@@ -793,11 +810,28 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
+		auto ptri = ConstantInt::getUint64(ptrIndex);
+		auto elmi = ConstantInt::getUint64(elmIndex);
 
-		auto ptri = ConstantInt::getUnsigned(PrimitiveType::getUint64(), ptrIndex);
-		auto elmi = ConstantInt::getUnsigned(PrimitiveType::getUint64(), elmIndex);
+		return this->CreateGEP2(ptr, ptri, elmi);
+	}
 
-		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, ptr->getType()->getPointerElementType(), { ptr, ptri, elmi });
+	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
+	Value* IRBuilder::CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
+		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
+
+
+
+		Type* retType = ptr->getType()->getPointerElementType();
+		if(retType->isArrayType())
+			retType = retType->toArrayType()->getElementType()->getPointerTo();
+
+		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, retType, { ptr, ptrIndex, elmIndex });
 		return this->addInstruction(instr);
 	}
 
@@ -815,17 +849,29 @@ namespace fir
 		return this->addInstruction(instr);
 	}
 
-	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
-	{
-		Instruction* instr = new Instruction(OpKind::Branch_Cond, PrimitiveType::getVoid(), { condition, trueB, falseB });
-		this->addInstruction(instr);
-	}
 
-	void IRBuilder::CreateUnCondBranch(IRBlock* target)
-	{
-		Instruction* instr = new Instruction(OpKind::Branch_UnCond, PrimitiveType::getVoid(), { target });
-		this->addInstruction(instr);
-	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -42,6 +42,17 @@ namespace fir
 		static ConstantInt* getSigned(Type* intType, ssize_t val);
 		static ConstantInt* getUnsigned(Type* intType, size_t val);
 
+		static ConstantInt* getBool(bool value, FTContext* tc = 0);
+		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);
+		static ConstantInt* getInt16(int16_t value, FTContext* tc = 0);
+		static ConstantInt* getInt32(int32_t value, FTContext* tc = 0);
+		static ConstantInt* getInt64(int64_t value, FTContext* tc = 0);
+		static ConstantInt* getUint8(uint8_t value, FTContext* tc = 0);
+		static ConstantInt* getUint16(uint16_t value, FTContext* tc = 0);
+		static ConstantInt* getUint32(uint32_t value, FTContext* tc = 0);
+		static ConstantInt* getUint64(uint64_t value, FTContext* tc = 0);
+
+
 		ssize_t getSignedValue();
 		size_t getUnsignedValue();
 
@@ -59,6 +70,9 @@ namespace fir
 
 		static ConstantFP* get(Type* intType, float val);
 		static ConstantFP* get(Type* intType, double val);
+
+		static ConstantFP* getFloat32(float value, FTContext* tc = 0);
+		static ConstantFP* getFloat64(double value, FTContext* tc = 0);
 
 		double getValue();
 
