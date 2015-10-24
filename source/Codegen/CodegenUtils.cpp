@@ -37,80 +37,6 @@ namespace Codegen
 		else
 			error("enotsup: ptrsize = %zu", sizeof(void*));
 
-
-
-		#if 0
-		std::string err;
-		cgi->execEngine = fir::EngineBuilder(std::unique_ptr<fir::Module>(cgi->module))
-							.setErrorStr(&err)
-							.setMCJITMemoryManager(fir::make_unique<fir::SectionMemoryManager>())
-							.create();
-
-		if(!cgi->execEngine)
-		{
-			fprintf(stderr, "%s", err.c_str());
-			exit(1);
-		}
-
-		fir::FunctionPassManager functionPassManager = fir::FunctionPassManager(cgi->module);
-
-		if(Compiler::getOptimisationLevel() > 0)
-		{
-			// Provide basic AliasAnalysis support for GVN.
-			functionPassManager.add(fir::createBasicAliasAnalysisPass());
-
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			functionPassManager.add(fir::createInstructionCombiningPass());
-
-			// Reassociate expressions.
-			functionPassManager.add(fir::createReassociatePass());
-
-			// Eliminate Common SubExpressions.
-			functionPassManager.add(fir::createGVNPass());
-
-
-			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			functionPassManager.add(fir::createCFGSimplificationPass());
-
-			// hmm.
-			// fuck it, turn everything on.
-			functionPassManager.add(fir::createLoadCombinePass());
-			functionPassManager.add(fir::createConstantHoistingPass());
-			functionPassManager.add(fir::createLICMPass());
-			functionPassManager.add(fir::createDelinearizationPass());
-			functionPassManager.add(fir::createFlattenCFGPass());
-			functionPassManager.add(fir::createScalarizerPass());
-			functionPassManager.add(fir::createSinkingPass());
-			functionPassManager.add(fir::createStructurizeCFGPass());
-			functionPassManager.add(fir::createInstructionSimplifierPass());
-			functionPassManager.add(fir::createDeadStoreEliminationPass());
-			functionPassManager.add(fir::createDeadInstEliminationPass());
-			functionPassManager.add(fir::createMemCpyOptPass());
-
-			functionPassManager.add(fir::createSCCPPass());
-			functionPassManager.add(fir::createAggressiveDCEPass());
-
-			functionPassManager.add(fir::createTailCallEliminationPass());
-		}
-
-		// optimisation level -1 disables *everything*
-		// mostly for reading the IR to debug codegen.
-		if(Compiler::getOptimisationLevel() >= 0)
-		{
-			// always do the mem2reg pass, our generated code is too inefficient
-			functionPassManager.add(fir::createPromoteMemoryToRegisterPass());
-			functionPassManager.add(fir::createMergedLoadStoreMotionPass());
-			functionPassManager.add(fir::createScalarReplAggregatesPass());
-			functionPassManager.add(fir::createConstantPropagationPass());
-			functionPassManager.add(fir::createDeadCodeEliminationPass());
-		}
-
-
-		functionPassManager.doInitialization();
-		#endif
-
-		// Set the global so the code gen can use this.
-		// cgi->Fpm = &functionPassManager;
 		cgi->pushScope();
 
 		// add the generic functions from previous shits.
@@ -2403,8 +2329,6 @@ namespace Codegen
 				{
 					if(vals[i]->getType() != initers->getArguments()[i]->getType())
 					{
-						printf(">> candidate failed: %s vs %s\n", vals[i]->getType()->str().c_str(),
-							initers->getArguments()[i]->getType()->str().c_str());
 						goto breakout;
 					}
 				}
@@ -2431,8 +2355,8 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateGetConstStructMember(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateGetConstStructMember(typegep, 0);		// Type
+		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
+		typegep = this->builder.CreateStructGEP(typegep, 0);		// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
@@ -2442,7 +2366,7 @@ namespace Codegen
 
 
 
-		fir::Value* valgep = this->builder.CreateGetConstStructMember(lhsPtr, 1);
+		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1);
 		if(rhsPtr)
 		{
 			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
@@ -2474,7 +2398,7 @@ namespace Codegen
 
 	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		fir::Value* valgep = this->builder.CreateGetConstStructMember(ptr, 1);
+		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
 		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
 		if(type->isStructType())

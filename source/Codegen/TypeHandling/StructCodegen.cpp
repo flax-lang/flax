@@ -76,7 +76,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 			int i = this->nameMap[var->name];
 			iceAssert(i >= 0);
 
-			fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
+			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
@@ -132,7 +132,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 			fir::Value* v = memifunc->getArguments()[i + 1];
 
 			v->setName("memberPtr_" + std::to_string(i));
-			fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
+			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
 
 			cgi->builder.CreateStore(v, ptr);
 		}

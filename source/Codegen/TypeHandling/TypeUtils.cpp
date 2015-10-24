@@ -87,7 +87,7 @@ namespace Codegen
 				return alloca;		// fail.
 			}
 
-			return this->builder.CreateGetConstStructMember(alloca, 0);
+			return this->builder.CreateStructGEP(alloca, 0);
 		}
 
 		return alloca;
@@ -736,7 +736,7 @@ namespace Codegen
 
 				// cast the RHS to the LHS
 				iceAssert(rhsPtr);
-				fir::Value* ret = this->builder.CreateGetConstStructMember(rhsPtr, 0);
+				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
 				right = this->builder.CreateLoad(ret);	// mutating
 			}
 		}
