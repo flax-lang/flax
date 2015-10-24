@@ -95,13 +95,13 @@ namespace fir
 		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex);
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
-		Value* CreateGetStructMember(Value* structPtr, Value* memberIndex);
-		Value* CreateGetConstStructMember(Value* structPtr, size_t memberIndex);
+		Value* CreateStructGEP(Value* structPtr, size_t memberIndex);
 
 		// equivalent to GEP(ptr*, index)
 		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);
 
 		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
+		Value* CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex);
 		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex);
 
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);

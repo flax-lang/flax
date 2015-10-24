@@ -73,7 +73,7 @@ namespace Codegen
 		{
 			std::pair<int, fir::Function*> ivp = pair.second;
 
-			fir::Value* gep = this->builder.CreateGetConstStructMember(pair.first, ivp.first);
+			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			this->builder.CreateCall1(ivp.second, gep);
 		}
@@ -82,7 +82,7 @@ namespace Codegen
 		{
 			std::pair<int, fir::Value*> ivp = pair.second;
 
-			fir::Value* gep = this->builder.CreateGetConstStructMember(pair.first, ivp.first);
+			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			this->builder.CreateStore(ivp.second, gep);
 		}

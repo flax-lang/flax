@@ -44,7 +44,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 	// strong enum.
 	// create a temp alloca, then use GEP to set the value, then return.
 	fir::Value* alloca = this->allocateInstanceInBlock(tp->first);
-	fir::Value* gep = this->builder.CreateGetConstStructMember(alloca, 0);
+	fir::Value* gep = this->builder.CreateStructGEP(alloca, 0);
 
 	this->builder.CreateStore(res.result.first, gep);
 	return Result_t(this->builder.CreateLoad(alloca), alloca);

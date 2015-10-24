@@ -22,10 +22,14 @@ namespace GenError
 			for(auto c : orig)
 			{
 				if(c == '\t')
-					ln += "    ";
-
+				{
+					for(size_t i = 0; i < TAB_WIDTH; i++)
+						ln += " ";
+				}
 				else
+				{
 					ln += c;
+				}
 			}
 
 
@@ -34,15 +38,19 @@ namespace GenError
 			for(uint64_t i = 1; i < col - 1; i++)
 			{
 				if(ln[i - 1] == '\t')
-					fprintf(stderr, "    ");		// 4-wide tabs
-
+				{
+					for(size_t i = 0; i < TAB_WIDTH; i++)
+						fprintf(stderr, " ");
+				}
 				else
+				{
 					fprintf(stderr, " ");
+				}
 			}
 
 			std::string tildes;
-			for(size_t i = 0; i < len; i++)
-				tildes += "~";
+			// for(size_t i = 0; i < len; i++)
+			// 	tildes += "~";
 
 			fprintf(stderr, "%s^%s%s", COLOUR_GREEN_BOLD, tildes.c_str(), COLOUR_RESET);
 		}
