@@ -102,6 +102,7 @@ namespace fir
 		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);
 
 		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
+		Value* CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex);
 		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex);
 
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
