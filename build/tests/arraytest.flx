@@ -6,23 +6,25 @@ import Foundation
 
 public ƒ doArrayTest()
 {
-	var arr = [ [ 1, 2 ], [ 5, 6 ] ]
-	arr[1][1] = 400
+	// var arr: Int[2][2] = [ [ 1, 2 ], [ 5, 6 ] ]
+	// arr[1][1] = 400
 
-	printf("a[0][0]: %d, a[0][1]: %d, a[1][0]: %d, a[1][1]: %d\n", arr[0][0], arr[0][1], arr[1][0], arr[1][1])
+	// printf("a[0][0]: %d, a[0][1]: %d, a[1][0]: %d, a[1][1]: %d\n", arr[0][0], arr[0][1], arr[1][0], arr[1][1])
 
-	var d: Double[4] = [ 1.0, 2.0, 4.0, 8.0 ]
-	printf("d[0]: %f, d[1]: %f, d[2]: %f, d[3]: %f\n", d[0], d[1], d[2], d[3]);
-
-
-	var arr1 = alloc[4] Int
-	arr1[2] = 43
-
-	printf("arr[1] = %d\n", (arr1 + 1)[1])
-	dealloc arr1
+	// var d: Double[4] = [ 1.0, 2.0, 4.0, 8.0 ]
+	// printf("d[0]: %f, d[1]: %f, d[2]: %f, d[3]: %f\n", d[0], d[1], d[2], d[3]);
 
 
-	var s = alloc[16] String("array of strings test")
-	printf("s[1] = %s, s[1].length = %ld\n", s[1], s[1].length)
+	// var arr1 = alloc[4] Int
+	// arr1[2] = 43
+
+	// printf("arr[1] = %d\n", (arr1 + 1)[1])
+	// dealloc arr1
+
+
+	var s = alloc[4][4] String("array of array of strings test")
+	s[1][1] = "BOO YOU STRING"
+
+	printf("s[1][1] = %s, s[1][1].length = %ld\n", s[1][1], s[1][1].length)
 }
 
