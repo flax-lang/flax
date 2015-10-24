@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/block.h"
+#include "ir/function.h"
 #include "ir/constant.h"
 #include "ir/instruction.h"
 
@@ -113,7 +114,17 @@ namespace fir
 		std::string ops;
 		for(auto op : this->operands)
 		{
-			ops += "(@" + op->getType()->str() + " ";
+			if(op->getType()->isFunctionType())
+			{
+				ops += "(@" + dynamic_cast<Function*>(op)->getName() + " = " + op->getType()->str() + " ";
+			}
+			else
+			{
+				ops += "(@" + op->getType()->str() + " ";
+			}
+
+
+
 			if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
 			{
 				ops += std::to_string(ci->getSignedValue());
@@ -124,7 +135,7 @@ namespace fir
 			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{
-				ops += "(null: " + std::to_string(op->id) + ")";
+				ops += "(null: %" + std::to_string(op->id) + ")";
 			}
 			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
 			{

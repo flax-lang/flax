@@ -45,7 +45,7 @@ fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::
 		int i = memberBeginOffset + this->nameMap[var->name];
 		iceAssert(i >= 0);
 
-		fir::Value* ptr = cgi->builder.CreateGetConstStructMember(self, i);
+		fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
 
 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
