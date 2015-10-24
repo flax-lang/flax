@@ -1071,12 +1071,6 @@ namespace Parser
 
 
 
-
-
-
-
-
-
 	Expr* parseType(ParserState& ps)
 	{
 		Token tmp = ps.eat();
@@ -1120,37 +1114,22 @@ namespace Parser
 			}
 
 			// check if the next token is a '['.
-			if(ps.front().type == TType::LSquare)
+			while(ps.front().type == TType::LSquare)
 			{
 				ps.eat();
 
-				// todo: multidimensional fixed-size arrays.
+				// this parses multi-dim array types.
 				Token n = ps.eat();
 				if(n.type != TType::Integer)
 					parserError("Expected integer size for fixed-length array");
 
-				std::string dims = n.text;
+				std::string dims = "[" + n.text + "]";
+
 				n = ps.eat();
-				while(n.type == TType::Comma)
-				{
-					n = ps.eat();
-					if(n.type == TType::Integer)
-					{
-						dims += "," + n.text;
-						n = ps.eat();
-					}
-
-					else if(n.type == TType::RSquare)
-						break;
-
-					else
-						parserError("> Unexpected token %s", n.text.c_str());
-				}
-
-				ptrAppend += "[" + dims + "]";
-
 				if(n.type != TType::RSquare)
 					parserError("Expected ']', have %s", n.text.c_str());
+
+				ptrAppend += dims;
 			}
 
 			std::string ret = baseType + ptrAppend;
@@ -1602,23 +1581,31 @@ namespace Parser
 		// todo: alloc multidimensional arrays
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
-		if(ps.front().type == TType::LSquare)
+
+		// todo:
+		// check for comma, to allocate arrays on the heap
+		// ie. let arr = alloc [1, 2, 3].
+		// obviously, type is not necessary.
+		// probably. if we need to (for polymorphism, to specify the base type, for example)
+		// then either
+
+		// alloc: Type [1, 2, 3] or alloc [1, 2, 3]: Type will work.
+		// not too hard to implement either.
+
+
+
+		while(ps.front().type == TType::LSquare)
 		{
 			ps.eat();
-			ret->count = parseExpr(ps);
 
-			// check for comma, to allocate arrays on the heap
-			// ie. let arr = alloc [1, 2, 3].
-			// obviously, type is not necessary.
-			// probably. if we need to (for polymorphism, to specify the base type, for example)
-			// then either
+			// this parses multi-dim array types.
+			ret->counts.push_back(parseExpr(ps));
 
-			// alloc: Type [1, 2, 3] or alloc [1, 2, 3]: Type will work.
-			// not too hard to implement either.
-
-			if(ps.eat().type != TType::RSquare)
-				parserError("Expected ']' after alloc[num]");
+			Token n = ps.eat();
+			if(n.type != TType::RSquare)
+				parserError("Expected ']', have %s", n.text.c_str());
 		}
+
 
 		auto ct = parseType(ps);
 		std::string type = ct->type.strType;

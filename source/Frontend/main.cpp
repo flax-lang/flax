@@ -415,8 +415,8 @@ int main(int argc, char* argv[])
 		if(Compiler::printFIR)
 			printf("%s\n\n\n\n", mod.second->print().c_str());
 
-		// if(modulelist[mod.first]->getModuleIdentifier() == "arraytest")
-		// 	modulelist[mod.first]->dump();
+		if(modulelist[mod.first]->getModuleIdentifier() == "arraytest")
+			modulelist[mod.first]->dump();
 	}
 
 
