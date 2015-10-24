@@ -177,7 +177,7 @@ namespace fir
 
 
 
-		size_t strn = 0;
+		static size_t strn = 0;
 		for(auto string : this->globalStrings)
 		{
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
@@ -249,11 +249,11 @@ namespace fir
 				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
 				builder.SetInsertPoint(bb);
 
-				// printf("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
+				// fprintf(stderr, "\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
 
 				for(auto inst : block->instructions)
 				{
-					// printf("%s\n", ("        " + inst->str()).c_str());
+					// fprintf(stderr, "%s\n", ("        " + inst->str()).c_str());
 
 					// good god.
 					switch(inst->opKind)

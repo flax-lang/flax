@@ -95,8 +95,7 @@ namespace fir
 		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex);
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
-		Value* CreateGetStructMember(Value* structPtr, Value* memberIndex);
-		Value* CreateGetConstStructMember(Value* structPtr, size_t memberIndex);
+		Value* CreateStructGEP(Value* structPtr, size_t memberIndex);
 
 		// equivalent to GEP(ptr*, index)
 		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);

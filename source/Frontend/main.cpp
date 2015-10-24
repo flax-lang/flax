@@ -413,7 +413,10 @@ int main(int argc, char* argv[])
 	{
 		modulelist[mod.first] = mod.second->translateToLlvm();
 		if(Compiler::printFIR)
-			printf("%s\n", mod.second->print().c_str());
+			printf("%s\n\n\n\n", mod.second->print().c_str());
+
+		// if(modulelist[mod.first]->getModuleIdentifier() == "arraytest")
+		// 	modulelist[mod.first]->dump();
 	}
 
 
@@ -427,7 +430,7 @@ int main(int argc, char* argv[])
 			linker.linkInModule(mod.second);
 	}
 
-
+	mainModule = linker.getModule();
 
 
 
@@ -607,13 +610,15 @@ int main(int argc, char* argv[])
 			functionPassManager.add(llvm::createDeadCodeEliminationPass());
 		}
 
-
+		functionPassManager.doInitialization();
 
 		for(auto& f : mainModule->getFunctionList())
 			functionPassManager.run(f);
 	}
 
 
+	if(Compiler::printModule)
+		mainModule->dump();
 
 
 
@@ -626,16 +631,10 @@ int main(int argc, char* argv[])
 
 
 
-
-
-
-	// mainModule->dump();
 	if(Compiler::runProgramWithJit)
 	{
 		// all linked already.
 		// dump here, before the output.
-		if(Compiler::printModule)
-			mainModule->dump();
 
 		llvm::verifyModule(*mainModule, &llvm::errs());
 		if(mainModule->getFunction("main") != 0)
@@ -673,9 +672,6 @@ int main(int argc, char* argv[])
 	// clean up the intermediate files (ie. .bitcode files)
 	for(auto s : filelist)
 		remove(s.c_str());
-
-	if(Compiler::printModule && !Compiler::getRunProgramWithJit())
-		mainModule->dump();
 
 	delete __cgi;
 	for(auto p : rootmap)

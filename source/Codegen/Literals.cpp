@@ -40,8 +40,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 		// var allocated: Uint64
 
 
-		fir::Value* stringPtr = cgi->builder.CreateGetConstStructMember(alloca, 0);
-		fir::Value* allocdPtr = cgi->builder.CreateGetConstStructMember(alloca, 1);
+		fir::Value* stringPtr = cgi->builder.CreateStructGEP(alloca, 0);
+		fir::Value* allocdPtr = cgi->builder.CreateStructGEP(alloca, 1);
 
 		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
