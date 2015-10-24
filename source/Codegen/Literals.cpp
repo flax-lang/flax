@@ -13,17 +13,17 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	// check builtin type
 	if(!this->decimal)
 	{
-		return Result_t(fir::ConstantInt::getSigned(fir::PrimitiveType::getInt64(), this->ival), 0);
+		return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
 	}
 	else
 	{
-		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getFloat64(), this->dval), 0);
+		return Result_t(fir::ConstantFP::getFloat64(this->dval), 0);
 	}
 }
 
 Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	return Result_t(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getBool(), this->val), 0);
+	return Result_t(fir::ConstantInt::getBool(this->val), 0);
 }
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
@@ -47,7 +47,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
 
 		cgi->builder.CreateStore(stringVal, stringPtr);
-		cgi->builder.CreateStore(fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0), allocdPtr);
+		cgi->builder.CreateStore(fir::ConstantInt::getUint64(0, cgi->getContext()), allocdPtr);
 
 		fir::Value* val = cgi->builder.CreateLoad(alloca);
 		return Result_t(val, alloca);

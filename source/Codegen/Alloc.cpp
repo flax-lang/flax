@@ -39,11 +39,11 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	// call malloc
 	// todo: all broken
 
-	fir::Value* oneValue = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 1);
-	fir::Value* zeroValue = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), 0);
+	fir::Value* oneValue = fir::ConstantInt::getUint64(1, cgi->getContext());
+	fir::Value* zeroValue = fir::ConstantInt::getUint64(0, cgi->getContext());
 
 	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(allocType) / 8;
-	fir::Value* allocsize = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(cgi->getContext()), typesize);
+	fir::Value* allocsize = fir::ConstantInt::getUint64(typesize, cgi->getContext());
 	fir::Value* allocnum = oneValue;
 
 
@@ -65,7 +65,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			if(ci->getSignedValue() == 0)
 			{
 				warn(this, "Allocating zero members with alloc[], will return null");
-				isZero = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getBool(), 1);
+				isZero = fir::ConstantInt::getBool(true);
 			}
 		}
 		else
