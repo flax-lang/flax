@@ -44,7 +44,10 @@ public class String
 
 	init(str: String)
 	{
-		self.init(str.data)
+		let l = strlen(str.data)
+
+		self.grow(l + 1)
+		self.setString(str.data)
 	}
 
 	func clear()

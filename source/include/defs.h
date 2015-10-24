@@ -12,6 +12,8 @@
 
 #include <sys/types.h>
 
+#define TAB_WIDTH	4
+
 // forward declarations.
 namespace fir
 {

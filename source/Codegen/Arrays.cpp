@@ -59,22 +59,45 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 
 	if(atype->isStructType() || atype->isArrayType())
 	{
-		// fir::Value* indices[2] = { fir::ConstantInt::get(fir::IntegerType::getInt32Ty(fir::getGlobalContext()), 0), ind };
-
-		gep = cgi->builder.CreateGetPointer(lhs, ind);
-		// gep = cgi->builder.CreateGEP(lhs, fir::ArrayRef<fir::Value*>(indices), "indexPtr");
+		gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+		// info(this, "lhs type: %s, gep type: %s\n", lhs->getType()->str().c_str(), gep->getType()->str().c_str());
 	}
 	else
 	{
-		// gep = cgi->builder.CreateGEP(lhs, ind, "indexPtr");
 		gep = cgi->builder.CreateGetPointer(lhs, ind);
 	}
 
-	// printf("array index: (%s, %s)\n", cgi->getReadableType(gep->getType()->getPointerElementType()).c_str(),
-		// cgi->getReadableType(gep).c_str());
-
 	return Result_t(cgi->builder.CreateLoad(gep), gep);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

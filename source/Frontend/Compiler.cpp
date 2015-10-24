@@ -357,14 +357,10 @@ namespace Compiler
 
 
 
-	void writeBitcode(std::string filename, llvm::Module* module)
+	void writeBitcode(std::string oname, llvm::Module* module)
 	{
 		std::error_code e;
 		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
-		size_t lastdot = filename.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? filename : filename.substr(0, lastdot));
-		oname += ".bc";
-
 		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
 		llvm::WriteBitcodeToFile(module, rso);
@@ -408,9 +404,10 @@ namespace Compiler
 			const char* target		= (tgt).c_str();
 			const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
 
-			snprintf(inv, 1024, "clang++ -Wno-override-module -flto %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
+			snprintf(inv, 1024, "clang++ -Wno-override-module %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
 				isPic, outputMode, oname.c_str(), oname.c_str());
 		}
+
 		std::string final = inv;
 
 		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
@@ -425,8 +422,6 @@ namespace Compiler
 			// final += " &>/dev/null";
 
 		system(final.c_str());
-
-		remove((oname + ".bc").c_str());
 		delete[] inv;
 	}
 

@@ -141,8 +141,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				// except we get nice checking with this.
 
 				// fir::Value* r = this->builder.CreateConstGEP2_32(rhsPtr, 0, 0, "doStuff");
-				fir::Value* r = this->builder.CreateGetPointer(rhsPtr,
-					fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUint64(this->getContext()), 0));
+				fir::Value* r = this->builder.CreateGetPointer(rhsPtr, fir::ConstantInt::getUint64(0, this->getContext()));
 
 				this->builder.CreateStore(r, ref);
 				return Result_t(r, ref);
@@ -171,8 +170,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				iceAssert(this->areEqualTypes(lhs->getType(), rhs->getType()));
 
 				// put the rhs thingy into the lhs.
-				fir::Value* lgep = this->builder.CreateGetConstStructMember(ref, 0);
-				fir::Value* rgep = this->builder.CreateGetConstStructMember(rptr, 0);
+				fir::Value* lgep = this->builder.CreateStructGEP(ref, 0);
+				fir::Value* rgep = this->builder.CreateStructGEP(rptr, 0);
 
 				iceAssert(lgep->getType() == rgep->getType());
 				fir::Value* rval = this->builder.CreateLoad(rgep);
@@ -209,7 +208,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					// create a wrapper value.
 
 					fir::Value* ai = this->allocateInstanceInBlock(lhs->getType());
-					fir::Value* gep = this->builder.CreateGetConstStructMember(ai, 0);
+					fir::Value* gep = this->builder.CreateStructGEP(ai, 0);
 
 					this->builder.CreateStore(rhs, gep);
 
@@ -464,7 +463,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				{
 					fir::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
 
-					fir::Value* gep = cgi->builder.CreateGetConstStructMember(tmp, 0);
+					fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
 					cgi->builder.CreateStore(lhs, gep);
 
 					return Result_t(cgi->builder.CreateLoad(tmp), tmp);
@@ -478,7 +477,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
 			{
 				iceAssert(valptr.second);
-				fir::Value* gep = cgi->builder.CreateGetConstStructMember(valptr.second, 0);
+				fir::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0);
 				fir::Value* val = cgi->builder.CreateLoad(gep);
 
 				return Result_t(val, gep);
@@ -509,7 +508,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				cgi->builder.CreateStore(lhs, lhsref);
 			}
 
-			fir::Value* stringPtr = cgi->builder.CreateGetConstStructMember(lhsref, 0);
+			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
 		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
@@ -722,8 +721,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		iceAssert(lhsPtr);
 		iceAssert(rhsPtr);
 
-		fir::Value* gepL = cgi->builder.CreateGetConstStructMember(lhsPtr, 0);
-		fir::Value* gepR = cgi->builder.CreateGetConstStructMember(rhsPtr, 0);
+		fir::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
+		fir::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
 
 		fir::Value* l = cgi->builder.CreateLoad(gepL);
 		fir::Value* r = cgi->builder.CreateLoad(gepR);

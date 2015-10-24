@@ -171,6 +171,11 @@ static void rewriteDotOperator(MemberAccess* ma)
 		ma->matype = MAType::LeftVariable;
 		return;
 	}
+	else if(dynamic_cast<ArrayIndex*>(ma->left))
+	{
+		ma->matype = MAType::LeftVariable;
+		return;
+	}
 	else
 	{
 		error(ma, "?????");
