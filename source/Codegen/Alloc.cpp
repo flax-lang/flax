@@ -108,10 +108,18 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 		// we need to keep calling this... essentially looping.
 		fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
-		fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
-		fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
 		fir::IRBlock* after = cgi->builder.addNewBlockInFunction("afterLoop", curbb->getParentFunction());
 
+		// note: this strange ordering is due to a limitation in our IR engine (which llvm does not have)
+		// all values must be seen before they are used. as such, blocks that use values from other blocks
+		// must ensure that the block from which the value originates is seen FIRST, before this one.
+
+		// here, counterptr is created either in (notZero) or the current block.
+		// hence, notzero must be declared *first* (ie. added to the function) before it is used below.
+		// thus we declare notZero before declaring loopBegin, since the latter uses values from the former.
+
+		// this is a potential TODO, we might want to have the IRBuilder automatically resolve this issue when
+		// translating to llvm, by checking the getUses() of values, and ordering the blocks appropriately.
 
 
 		// check for zero.
@@ -119,6 +127,8 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		{
 			fir::IRBlock* notZero = cgi->builder.addNewBlockInFunction("notZero", curbb->getParentFunction());
 			fir::IRBlock* setToZero = cgi->builder.addNewBlockInFunction("zeroAlloc", curbb->getParentFunction());
+
+			cgi->builder.setCurrentBlock(curbb);
 			cgi->builder.CreateCondBranch(isZero, setToZero, notZero);
 
 			cgi->builder.setCurrentBlock(setToZero);
@@ -127,14 +137,13 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			cgi->builder.CreateUnCondBranch(after);
 
 			cgi->builder.setCurrentBlock(notZero);
+			curbb = notZero;
 		}
 
+		fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
+		fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
 
-
-
-
-
-
+		cgi->builder.setCurrentBlock(curbb);
 
 
 		// create the loop counter (initialise it with the value)
@@ -154,7 +163,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.CreateCall(initfunc, args);
 
 		// move the allocatedmem pointer by the type size
-		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
+		cgi->doPointerArithmetic(ArithmeticOp::PlusEquals, allocatedmem, allocmemptr, oneValue);
 		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
 		// subtract the counter
@@ -167,15 +176,23 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		fir::Value* brcond = cgi->builder.CreateICmpGT(counter, zeroValue);
 		cgi->builder.CreateCondBranch(brcond, loopBegin, loopEnd);
 
+
+
+
+
+
+
+
+
 		// at loopend:
 		cgi->builder.setCurrentBlock(loopEnd);
 
 		// undo the pointer additions we did above
-		cgi->doPointerArithmetic(ArithmeticOp::Subtract, allocatedmem, allocmemptr, allocnum);
+		cgi->doPointerArithmetic(ArithmeticOp::MinusEquals, allocatedmem, allocmemptr, allocnum);
 
 		allocatedmem = cgi->builder.CreateLoad(allocmemptr);
 
-		cgi->doPointerArithmetic(ArithmeticOp::Add, allocatedmem, allocmemptr, oneValue);
+		cgi->doPointerArithmetic(ArithmeticOp::PlusEquals, allocatedmem, allocmemptr, oneValue);
 
 
 		cgi->builder.CreateUnCondBranch(after);

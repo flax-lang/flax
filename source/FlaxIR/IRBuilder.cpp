@@ -784,13 +784,8 @@ namespace fir
 	}
 
 
-	// equivalent to GEP(ptr*, 0, memberIndex)
-	Value* IRBuilder::CreateGetStructMember(Value* structPtr, Value* memberIndex)
-	{
-		error("enotsup");
-	}
-
-	Value* IRBuilder::CreateGetConstStructMember(Value* structPtr, size_t memberIndex)
+	// equivalent to CreateStructGEP()
+	Value* IRBuilder::CreateStructGEP(Value* structPtr, size_t memberIndex)
 	{
 		iceAssert(structPtr->getType()->isPointerType() && "ptr is not a pointer");
 
@@ -825,8 +820,6 @@ namespace fir
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
 		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
 
-
-
 		Type* retType = ptr->getType()->getPointerElementType();
 		if(retType->isArrayType())
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
@@ -843,7 +836,6 @@ namespace fir
 
 		if(!ptrIndex->getType()->isIntegerType())
 			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str().c_str());
-
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
 		return this->addInstruction(instr);
