@@ -30,10 +30,7 @@ namespace fir
 	// various
 	std::string ArrayType::str()
 	{
-		std::string ret = this->arrayElementType->str();
-		ret += "[" + std::to_string(this->getArraySize()) + "]";
-
-		return ret;
+		return "[" + std::to_string(this->getArraySize()) + " x " + this->arrayElementType->str() + "]";
 	}
 
 
