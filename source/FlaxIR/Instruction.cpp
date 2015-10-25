@@ -79,8 +79,8 @@ namespace fir
 			case OpKind::FCompare_GreaterEqual_UNORD: 		name = "fcmp unord ge"; break;
 			case OpKind::FCompare_LessEqual_ORD: 			name = "fcmp ord le"; break;
 			case OpKind::FCompare_LessEqual_UNORD: 			name = "fcmp unord le"; break;
-			case OpKind::Logical_And: 						name = "logic_and"; break;
-			case OpKind::Logical_Or: 						name = "logic_not"; break;
+			case OpKind::Logical_And: 						name = "logicalAnd"; break;
+			case OpKind::Logical_Or: 						name = "logicalOr"; break;
 			case OpKind::Bitwise_Not: 						name = "not"; break;
 			case OpKind::Bitwise_Xor: 						name = "xor"; break;
 			case OpKind::Bitwise_Arithmetic_Shr: 			name = "ashr"; break;
@@ -97,9 +97,9 @@ namespace fir
 			case OpKind::Cast_PointerToInt: 				name = "ptrtoint"; break;
 			case OpKind::Cast_IntToPointer: 				name = "inttoptr"; break;
 			case OpKind::Value_Store: 						name = "store"; break;
-			case OpKind::Logical_Not: 						name = "logic_not"; break;
+			case OpKind::Logical_Not: 						name = "logicalNot"; break;
 			case OpKind::Value_Load: 						name = "load"; break;
-			case OpKind::Value_StackAlloc: 					name = "salloc"; break;
+			case OpKind::Value_StackAlloc: 					name = "stackAlloc"; break;
 			case OpKind::Value_CallFunction: 				name = "call"; break;
 			case OpKind::Value_Return: 						name = "ret"; break;
 			case OpKind::Value_GetPointerToStructMember: 	name = "gep"; break;
