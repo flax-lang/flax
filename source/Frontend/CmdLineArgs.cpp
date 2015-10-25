@@ -227,7 +227,7 @@ namespace Compiler
 				{
 					Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 				}
-				else if(!strcmp(argv[i], "-print-ir"))
+				else if(!strcmp(argv[i], "-print-lir"))
 				{
 					Compiler::printModule = true;
 				}
