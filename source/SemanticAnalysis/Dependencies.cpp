@@ -308,7 +308,8 @@ namespace SemAnalysis
 		}
 		else if(Alloc* al = dynamic_cast<Alloc*>(expr))
 		{
-			createDependencies(graph, al, al->count);
+			for(auto c : al->counts)
+				createDependencies(graph, al, c);
 
 			for(auto p : al->params)
 				createDependencies(graph, al, p);
