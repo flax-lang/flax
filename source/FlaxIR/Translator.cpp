@@ -152,7 +152,8 @@ namespace fir
 			}
 			else
 			{
-				llvm::Value* ret = valueMap[fv]; iceAssert(ret);
+				llvm::Value* ret = valueMap[fv];
+				if(!ret) error("!ret (id = %zu)", fv->id);
 				return ret;
 			}
 		};
@@ -172,6 +173,7 @@ namespace fir
 				error("already have value of %p (id %zu)", fv, fv->id);
 
 			valueMap[fv] = v;
+			v->setName(fv->getName());
 		};
 
 
