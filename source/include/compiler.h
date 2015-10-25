@@ -27,8 +27,20 @@ namespace Parser
 
 namespace Compiler
 {
-	std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>>
-	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
+	typedef std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>> CompiledData;
+
+	CompiledData compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps,
+		std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
+
+	void compileToLlvm(std::string filename, std::string outname, CompiledData data);
+
+
+
+
+
+
+
+
 
 	void writeBitcode(std::string filename, llvm::Module* cgi);
 
@@ -37,10 +49,6 @@ namespace Compiler
 
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
-	std::string getTarget();
-	std::string getPrefix();
-	std::string getMcModel();
-	std::string getSysroot();
 
 	std::deque<Parser::Token> getFileTokens(std::string fullPath);
 	std::vector<std::string> getFileLines(std::string fullPath);
@@ -51,6 +59,17 @@ namespace Compiler
 	std::string getFullPathOfFile(std::string partial);
 
 
+
+	std::pair<std::string, std::string> parseCmdLineArgs(int argc, char** argv);
+
+
+	bool getDumpFir();
+	bool getDumpLlvm();
+	std::string getTarget();
+	std::string getPrefix();
+	std::string getMcModel();
+	std::string getSysroot();
+
 	bool getIsCompileOnly();
 	int getOptimisationLevel();
 	bool getPrintClangOutput();
@@ -58,6 +77,7 @@ namespace Compiler
 	bool getIsPositionIndependent();
 	bool getNoAutoGlobalConstructor();
 	bool getDisableLowercaseBuiltinTypes();
+
 
 	enum class Flag
 	{
