@@ -616,7 +616,7 @@ namespace Ast
 		explicit Alloc(Parser::pin pos) : Expr(pos) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
 
-		Expr* count = 0;
+		std::deque<Expr*> counts;
 		std::deque<Expr*> params;
 	};
 
