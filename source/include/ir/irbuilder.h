@@ -28,81 +28,81 @@ namespace fir
 	{
 		IRBuilder(FTContext* c);
 
-		Value* CreateNeg(Value* a);
-		Value* CreateAdd(Value* a, Value* b);
-		Value* CreateSub(Value* a, Value* b);
-		Value* CreateMul(Value* a, Value* b);
-		Value* CreateDiv(Value* a, Value* b);
-		Value* CreateMod(Value* a, Value* b);
-		Value* CreateICmpEQ(Value* a, Value* b);
-		Value* CreateICmpNEQ(Value* a, Value* b);
-		Value* CreateICmpGT(Value* a, Value* b);
-		Value* CreateICmpLT(Value* a, Value* b);
-		Value* CreateICmpGEQ(Value* a, Value* b);
-		Value* CreateICmpLEQ(Value* a, Value* b);
-		Value* CreateFCmpEQ_ORD(Value* a, Value* b);
-		Value* CreateFCmpEQ_UNORD(Value* a, Value* b);
-		Value* CreateFCmpNEQ_ORD(Value* a, Value* b);
-		Value* CreateFCmpNEQ_UNORD(Value* a, Value* b);
+		Value* CreateNeg(Value* a, std::string vname = "");
+		Value* CreateAdd(Value* a, Value* b, std::string vname = "");
+		Value* CreateSub(Value* a, Value* b, std::string vname = "");
+		Value* CreateMul(Value* a, Value* b, std::string vname = "");
+		Value* CreateDiv(Value* a, Value* b, std::string vname = "");
+		Value* CreateMod(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpEQ(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpNEQ(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpGT(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpLT(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpGEQ(Value* a, Value* b, std::string vname = "");
+		Value* CreateICmpLEQ(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpEQ_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpEQ_UNORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpNEQ_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpNEQ_UNORD(Value* a, Value* b, std::string vname = "");
 
-		Value* CreateFCmpGT_ORD(Value* a, Value* b);
-		Value* CreateFCmpGT_UNORD(Value* a, Value* b);
-		Value* CreateFCmpLT_ORD(Value* a, Value* b);
-		Value* CreateFCmpLT_UNORD(Value* a, Value* b);
-		Value* CreateFCmpGEQ_ORD(Value* a, Value* b);
-		Value* CreateFCmpGEQ_UNORD(Value* a, Value* b);
-		Value* CreateFCmpLEQ_ORD(Value* a, Value* b);
-		Value* CreateFCmpLEQ_UNORD(Value* a, Value* b);
+		Value* CreateFCmpGT_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpGT_UNORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpLT_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpLT_UNORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpGEQ_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpGEQ_UNORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpLEQ_ORD(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpLEQ_UNORD(Value* a, Value* b, std::string vname = "");
 
-		Value* CreateLogicalAND(Value* a, Value* b);
-		Value* CreateLogicalOR(Value* a, Value* b);
-		Value* CreateBitwiseXOR(Value* a, Value* b);
-		Value* CreateBitwiseLogicalSHR(Value* a, Value* b);
-		Value* CreateBitwiseArithmeticSHR(Value* a, Value* b);
-		Value* CreateBitwiseSHL(Value* a, Value* b);
-		Value* CreateBitwiseAND(Value* a, Value* b);
-		Value* CreateBitwiseOR(Value* a, Value* b);
-		Value* CreateBitwiseNOT(Value* a);
-		Value* CreateBitcast(Value* v, Type* targetType);
-		Value* CreateIntSizeCast(Value* v, Type* targetType);
-		Value* CreateFloatToIntCast(Value* v, Type* targetType);
-		Value* CreateIntToFloatCast(Value* v, Type* targetType);
-		Value* CreatePointerTypeCast(Value* v, Type* targetType);
-		Value* CreatePointerToIntCast(Value* v, Type* targetType);
-		Value* CreateIntToPointerCast(Value* v, Type* targetType);
+		Value* CreateLogicalAND(Value* a, Value* b, std::string vname = "");
+		Value* CreateLogicalOR(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseXOR(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseLogicalSHR(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseArithmeticSHR(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseSHL(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseAND(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseOR(Value* a, Value* b, std::string vname = "");
+		Value* CreateBitwiseNOT(Value* a, std::string vname = "");
+		Value* CreateBitcast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateIntSizeCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateFloatToIntCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateIntToFloatCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreatePointerTypeCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreatePointerToIntCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateIntToPointerCast(Value* v, Type* targetType, std::string vname = "");
 
-		Value* CreateFTruncate(Value* v, Type* targetType);
-		Value* CreateFExtend(Value* v, Type* targetType);
+		Value* CreateFTruncate(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateFExtend(Value* v, Type* targetType, std::string vname = "");
 
-		Value* CreateLoad(Value* ptr);
+		Value* CreateLoad(Value* ptr, std::string vname = "");
 		Value* CreateStore(Value* v, Value* ptr);
-		Value* CreateCall0(Function* fn);
-		Value* CreateCall1(Function* fn, Value* p1);
-		Value* CreateCall2(Function* fn, Value* p1, Value* p2);
-		Value* CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3);
-		Value* CreateCall(Function* fn, std::deque<Value*> args);
-		Value* CreateCall(Function* fn, std::vector<Value*> args);
-		Value* CreateCall(Function* fn, std::initializer_list<Value*> args);
+		Value* CreateCall0(Function* fn, std::string vname = "");
+		Value* CreateCall1(Function* fn, Value* p1, std::string vname = "");
+		Value* CreateCall2(Function* fn, Value* p1, Value* p2, std::string vname = "");
+		Value* CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname = "");
+		Value* CreateCall(Function* fn, std::deque<Value*> args, std::string vname = "");
+		Value* CreateCall(Function* fn, std::vector<Value*> args, std::string vname = "");
+		Value* CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname = "");
 
 		Value* CreateReturn(Value* v);
 		Value* CreateReturnVoid();
 
-		Value* CreateLogicalNot(Value* v);
-		Value* CreateStackAlloc(Type* type);
+		Value* CreateLogicalNot(Value* v, std::string vname = "");
+		Value* CreateStackAlloc(Type* type, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex);
-		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex);
+		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex, std::string vname = "");
+		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
-		Value* CreateStructGEP(Value* structPtr, size_t memberIndex);
+		Value* CreateStructGEP(Value* structPtr, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, index)
-		Value* CreateGetPointer(Value* ptr, Value* ptrIndex);
+		Value* CreateGetPointer(Value* ptr, Value* ptrIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
-		Value* CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex);
-		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex);
+		Value* CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname = "");
+		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname = "");
 
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);
@@ -117,10 +117,10 @@ namespace fir
 		Function* getCurrentFunction();
 		IRBlock* getCurrentBlock();
 
-		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b);
+		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 		private:
-		Value* addInstruction(Instruction* instr);
+		Value* addInstruction(Instruction* instr, std::string vname);
 
 		FTContext* context;
 
