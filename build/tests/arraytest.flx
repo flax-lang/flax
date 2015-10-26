@@ -26,4 +26,3 @@ public ƒ doArrayTest()
 
 	printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
 }
-
