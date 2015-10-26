@@ -88,7 +88,11 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 
 		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
 
-		() <- cmd Shell "clang++ -g -o" [out] os [llvmConfigInvoke]
+
+		maybeCXX <- getEnvWithDefault "clang++" "CXX"
+		let cxx = maybeCXX
+
+		() <- cmd Shell cxx "-g -o" [out] os [llvmConfigInvoke]
 		putQuiet ("\x1b[0m" ++ "# built " ++ out)
 
 
@@ -101,8 +105,12 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 
 		let cxxFlags = "-std=c++11 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
+		maybeCXX <- getEnvWithDefault "clang++" "CXX"
+		let cxx = maybeCXX
+
 		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
-		() <- cmd Shell "clang++ -c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
+
+		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
 
 		needMakefileDependencies m
 
