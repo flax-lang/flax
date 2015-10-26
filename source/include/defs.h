@@ -26,6 +26,7 @@ namespace fir
 namespace Ast
 {
 	struct Expr;
+	struct Func;
 	struct VarDecl;
 	struct FuncDecl;
 	struct OpOverload;
@@ -97,6 +98,7 @@ namespace Codegen
 		// things within.
 		std::deque<FuncPair_t> funcs;
 		std::deque<std::pair<Ast::OpOverload*, fir::Function*>> operators;
+		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
 		std::map<std::string, SymbolPair_t> vars;
 		std::map<std::string, TypePair_t> types;

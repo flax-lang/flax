@@ -50,7 +50,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 
 	if(isGeneric && isPublic)
 	{
-		cgi->rootNode->publicGenericFunctions.push_back(std::make_pair(this->decl, this));
+		FunctionTree* cft = cgi->getCurrentFuncTree();
+		iceAssert(cft);
+
+		cft->genericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
 	fir::Function* func = 0;
@@ -67,7 +70,11 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 			this->didCodegen = false;
 			if(isGeneric)
 			{
-				warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+				if(!(this->decl->attribs & Attr_VisPublic))
+				{
+					warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+				}
+
 				return Result_t(0, 0);
 			}
 			else

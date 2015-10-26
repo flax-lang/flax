@@ -12,7 +12,7 @@ import tests.operators
 import tests.arraytest
 // import tests.generics
 
-// import Utilities
+import Utilities
 
 
 
@@ -25,6 +25,8 @@ public func main() -> Int
 
 	printf("HELLO\n")
 
+	let s = generic_test(5, "WORLD #")
+	printf("S = %s\n", s)
 
 	runTests()
 	return 0
