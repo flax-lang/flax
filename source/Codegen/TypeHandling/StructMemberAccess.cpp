@@ -31,7 +31,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(this->builder.CreateLoad(gv), /*gv->isConstant() ? 0 : gv*/ gv);
+		return Result_t(this->builder.CreateLoad(gv), gv);
 	}
 
 	error(user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());

@@ -39,11 +39,6 @@ namespace Codegen
 
 		cgi->pushScope();
 
-		// add the generic functions from previous shits.
-		for(auto fd : cgi->rootNode->externalGenericFunctions)
-		{
-			cgi->rootNode->genericFunctions.push_back(fd.first);
-		}
 
 		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
 		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getModuleName();
@@ -551,6 +546,23 @@ namespace Codegen
 			}
 		}
 
+		for(auto gf : ft->genericFunctions)
+		{
+			bool found = false;
+			for(auto cgf : clone->genericFunctions)
+			{
+				if(cgf.first == gf.first || cgf.second == gf.second)
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if(!found/* && gf.first->attribs & Attr_VisPublic*/)
+				clone->genericFunctions.push_back(gf);
+		}
+
+
 		for(auto sub : ft->subs)
 		{
 			FunctionTree* found = 0;
@@ -734,10 +746,37 @@ namespace Codegen
 			cur->funcs.erase(it);
 	}
 
-	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
+	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename, std::deque<Func*>* bodiesFound)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
 		std::deque<FuncPair_t> candidates;
+
+
+		auto _isDupe = [this](FuncPair_t a, FuncPair_t b) -> bool {
+
+			if(a.first == b.first || a.second == b.second) return true;
+			if(a.first == 0 || b.first == 0)
+			{
+				iceAssert(a.second);
+				iceAssert(b.second);
+
+				if(a.second->params.size() != b.second->params.size()) return false;
+
+				for(size_t i = 0; i < a.second->params.size(); i++)
+				{
+					// allowFail = true
+					if(this->getExprType(a.second->params[i], true) != this->getExprType(b.second->params[i], true))
+						return false;
+				}
+
+				return true;
+			}
+			else
+			{
+				return a.first->getType() == b.first->getType();
+			}
+		};
+
 
 
 		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
@@ -747,31 +786,9 @@ namespace Codegen
 
 			for(auto f : ft->funcs)
 			{
-				auto isDupe = [this, f](FuncPair_t fp) -> bool {
-
-					if(f.first == fp.first || f.second == fp.second) return true;
-					if(f.first == 0 || fp.first == 0)
-					{
-						iceAssert(f.second);
-						iceAssert(fp.second);
-
-						if(f.second->params.size() != fp.second->params.size()) return false;
-
-						for(size_t i = 0; i < f.second->params.size(); i++)
-						{
-							// allowFail = true
-							if(this->getExprType(f.second->params[i], true) != this->getExprType(fp.second->params[i], true))
-								return false;
-						}
-
-						return true;
-					}
-					else
-					{
-						return f.first->getType() == fp.first->getType();
-					}
+				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
+					return _isDupe(f, fp);
 				};
-
 
 				if((f.second ? f.second->name : f.first->getName()) == basename)
 				{
@@ -783,12 +800,53 @@ namespace Codegen
 				}
 			}
 
+
+
+			for(auto f : ft->genericFunctions)
+			{
+				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
+					return _isDupe({ 0, f.first }, fp);
+				};
+
+				if(f.first->name == basename)
+				{
+					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
+					{
+						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
+						candidates.push_back({ 0, f.first });
+						if(bodiesFound) bodiesFound->push_back(f.second);
+					}
+
+					if(bodiesFound)
+					{
+						bool found = false;
+						for(auto b : *bodiesFound)
+						{
+							if(b == f.second)
+							{
+								found = true;
+								break;
+							}
+						}
+
+						if(!found)
+						{
+							bodiesFound->push_back(f.second);
+						}
+					}
+				}
+			}
+
+
 			if(curDepth.size() > 0)
 				curDepth.pop_back();
 		}
 
 		return candidates;
 	}
+
+
+
 
 	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
 		std::deque<Expr*> params, bool exactMatch)
@@ -1450,12 +1508,18 @@ namespace Codegen
 		std::deque<FuncDecl*> candidates;
 		std::map<std::string, fir::Type*> tm;
 
-		auto fpcands = this->resolveFunctionName(fc->name);
+		std::deque<Func*> bodiesFound;
+		auto fpcands = this->resolveFunctionName(fc->name, &bodiesFound);
+		// printf("trying to resolve and instantiate: %s // %zu\n", fc->name.c_str(), fpcands.size());
+
+
 		for(FuncPair_t fp : fpcands)
 		{
 			if(fp.second->genericTypes.size() > 0)
 				candidates.push_back(fp.second);
 		}
+
+		// printf("phase 1: %zu cands // %zu\n", candidates.size(), bodiesFound.size());
 
 		if(candidates.size() == 0)
 		{
@@ -1566,30 +1630,16 @@ namespace Codegen
 
 		FuncDecl* candidate = candidates[0];
 
-		// TODO: this is really super fucking ugly and SUBOPTIMAL
 		Func* theFn = 0;
-		for(Func* f : this->rootNode->allFunctionBodies)
+		for(auto body : bodiesFound)
 		{
-			if(f->decl == candidate)
+			if(body->decl == candidate)
 			{
 				// we've got it.
-				theFn = f;
+				theFn = body;
 				break;
 			}
 		}
-
-		if(!theFn)
-		{
-			for(auto pair : this->rootNode->externalGenericFunctions)
-			{
-				if(pair.first == candidate)
-				{
-					theFn = pair.second;
-					break;
-				}
-			}
-		}
-
 
 
 
@@ -1630,6 +1680,8 @@ namespace Codegen
 		{
 			Result_t res = candidate->generateDeclForGenericType(this, tm);
 			ffunc = (fir::Function*) res.result.first;
+
+			printf("generated decl for %s\n", ffunc->getName().c_str());
 		}
 		else
 		{
