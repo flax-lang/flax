@@ -22,7 +22,7 @@ namespace Parser
 	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
 	#define CreateAST(name, tok, ...)		(new name (tok.pin, ##__VA_ARGS__))
 
-	#define CreateASTPos(name, f, l, c, len, ...)	(new name (Parser::pin(f, l, c, len), ##__VA_ARGS__))
+	#define CreateASTPos(name, f, l, c, len, ...)	(new name (Parser::Pin(f, l, c, len), ##__VA_ARGS__))
 
 
 	#define ATTR_STR_NOMANGLE			"nomangle"
@@ -1871,6 +1871,10 @@ namespace Parser
 			{
 				str->opOverloads.push_back(oo);
 			}
+			else if(Func* fn = dynamic_cast<Func*>(stmt))
+			{
+				parserError(fn->pin, "structs cannot contain functions");
+			}
 			else
 			{
 				parserError("Found invalid expression type %s", typeid(*stmt).name());
@@ -2674,6 +2678,29 @@ namespace Parser
 
 
 
+
+	void parserError(Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserError(Pin pin, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Error", true, ap);
+
+		va_end(ap);
+		abort();
+	}
+
+	void parserWarn(Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	void parserWarn(Pin pin, const char* msg, ...)
+	{
+		va_list ap;
+		va_start(ap, msg);
+
+		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Warning", false, ap);
+
+		va_end(ap);
+	}
 
 
 

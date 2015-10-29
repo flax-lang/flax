@@ -10,7 +10,7 @@
 
 namespace Parser
 {
-	static void skipWhitespace(std::string& line, pin& pos)
+	static void skipWhitespace(std::string& line, Pin& pos)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
 		if(startpos != std::string::npos)
@@ -27,7 +27,7 @@ namespace Parser
 
 
 	// warning: messy function
-	Token getNextToken(std::string& stream, pin& pos)
+	Token getNextToken(std::string& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
 			return Token();
