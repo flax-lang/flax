@@ -106,6 +106,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		lret = types[this->type.strType];
 	}
 
+	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
 	return generateActualFuncDecl(cgi, this, argtypes, lret);
 }
 
@@ -233,19 +234,17 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 		}
 	}
 
-	if(isGeneric)
-	{
-		cgi->rootNode->genericFunctions.push_back(this);
-		cgi->addFunctionToScope({ 0, this });
-		return Result_t(0, 0);
-	}
-	else
+	if(!isGeneric)
 	{
 		std::vector<fir::Type*> argtypes;
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getExprType(v));
 
 		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this));
+	}
+	else
+	{
+		return Result_t(0, 0);
 	}
 }
 
