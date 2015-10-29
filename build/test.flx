@@ -10,10 +10,13 @@ import tests.recursiveFib
 import tests.scopes
 import tests.operators
 import tests.arraytest
-// import tests.generics
+import tests.generics
 
-// import Utilities
+import Utilities
 
+
+
+// name idea: mill
 
 public func main() -> Int
 {
@@ -22,6 +25,8 @@ public func main() -> Int
 
 	printf("HELLO\n")
 
+	let s = generic_test(5, "WORLD #")
+	printf("S = %s\n", s)
 
 	runTests()
 	return 0
@@ -82,7 +87,7 @@ class Foo
 	printf("\n\n");
 
 
-
+	// operators and tuples (vectors type, mainly)
 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
 	doOperatorTupleTest()
 	printf("\n\n");
@@ -94,9 +99,14 @@ class Foo
 	printf("\n\n")
 
 
+	// generics
 	printf("*** GENERICS TEST ***\n")
-	// doGenericsTest()
+	doGenericsTest()
 	printf("\n\n")
+
+
+	// fin.
+	printf("*** TESTS FINISHED ***\n");
 }
 
 

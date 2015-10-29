@@ -993,7 +993,6 @@ namespace Parser
 		FuncDecl* decl = parseFuncDecl(ps);
 
 		auto ret = CreateAST(Func, front, decl, parseBracedBlock(ps));
-		ps.rootNode->allFunctionBodies.push_back(ret);
 
 		return ret;
 	}
@@ -1701,7 +1700,6 @@ namespace Parser
 		}
 
 		auto ret = CreateASTPos(FuncCall, tk.pin.file, tk.pin.line, tk.pin.col - id.length() + 3, id.length() + 1 + paramlen, id, args);
-		ps.rootNode->allFunctionCalls.push_back(ret);
 
 		return ret;
 	}
