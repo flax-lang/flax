@@ -25,7 +25,7 @@ public func main() -> Int
 
 	printf("HELLO\n")
 
-	let s = generic_test(5, "WORLD #")
+	let s = generic_test(5, "HELLO WORLD #")
 	printf("S = %s\n", s)
 
 	runTests()
