@@ -14,17 +14,18 @@ import tests.generics
 
 import Utilities
 
+struct tstruct
+{
+	func foo()
+	{
+	}
+}
 
 
 // name idea: mill
 
 public func main() -> Int
 {
-	var foo: String
-
-
-	printf("HELLO\n")
-
 	let s = generic_test(5, "HELLO WORLD #")
 	printf("S = %s\n", s)
 
