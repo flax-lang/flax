@@ -289,7 +289,6 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	if(this->initFuncs.size() == 0)
 		this->initFuncs.push_back(defaultInitFunc);
 
-	cgi->rootNode->publicTypes.push_back(std::pair<StructBase*, fir::Type*>(this, str));
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
 

@@ -9,10 +9,10 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
-Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
+static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
+static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
+// static Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
@@ -31,7 +31,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(this->builder.CreateLoad(gv), /*gv->isConstant() ? 0 : gv*/ gv);
+		return Result_t(this->builder.CreateLoad(gv), gv);
 	}
 
 	error(user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
@@ -339,7 +339,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 
 
 
-Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, Class* str)
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, Class* str)
 {
 	if(_rhs)
 	{
@@ -400,7 +400,7 @@ Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty*
 	}
 }
 
-Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
+static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
 {
 	iceAssert(i >= 0);
 
@@ -416,7 +416,7 @@ Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBa
 	return Result_t(val, ptr);
 }
 
-Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall)
+static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,

@@ -92,18 +92,6 @@ namespace Compiler
 	{
 		using namespace Codegen;
 
-		for(auto v : from->publicTypes)
-		{
-			to->externalTypes.push_back(std::pair<StructBase*, fir::Type*>(v.first, v.second));
-			to->publicTypes.push_back(std::pair<StructBase*, fir::Type*>(v.first, v.second));
-		}
-
-		for(auto v : from->publicGenericFunctions)
-		{
-			to->externalGenericFunctions.push_back(v);
-			to->publicGenericFunctions.push_back(v);
-		}
-
 		for(auto v : from->typeList)
 		{
 			bool skip = false;
@@ -121,6 +109,7 @@ namespace Compiler
 
 			to->typeList.push_back(v);
 		}
+
 
 		if(doClone)
 		{
@@ -145,6 +134,7 @@ namespace Compiler
 		std::string curpath = Compiler::getPathFromFile(fpath);
 
 		// parse
+		// printf("*** start module %s\n", Compiler::getFilenameFromPath(fpath).c_str());
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 

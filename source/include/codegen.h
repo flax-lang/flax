@@ -156,7 +156,7 @@ namespace Codegen
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
 
-		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
+		std::deque<FuncPair_t> resolveFunctionName(std::string basename, std::deque<Ast::Func*>* bodiesFound = 0);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
 

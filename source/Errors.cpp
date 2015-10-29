@@ -2,7 +2,9 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include <cinttypes>
+#include <inttypes.h>
+
+#include "errors.h"
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
