@@ -667,30 +667,14 @@ namespace Ast
 
 		// public functiondecls and type decls.
 		Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");
-		std::deque<std::pair<StructBase*, fir::Type*>> publicTypes;
-
-		// list of all function calls. all.
-		std::deque<FuncCall*> allFunctionCalls;
-
-		// list of all functions. every single one.
-		std::deque<Func*> allFunctionBodies;
-
-		// list of all generic functions that we know about, as well as import + export.
-		std::deque<FuncDecl*> genericFunctions;
-		std::deque<std::pair<FuncDecl*, Func*>> externalGenericFunctions;
-		std::deque<std::pair<FuncDecl*, Func*>> publicGenericFunctions;
-
-		// imported types. these exist, but we need to declare them manually while code-generating.
-		std::deque<std::pair<StructBase*, fir::Type*>> externalTypes;
-
-		// libraries referenced by 'import'
-		std::deque<std::string> referencedLibraries;
 
 		// top level stuff
 		std::deque<Expr*> topLevelExpressions;
 		std::deque<NamespaceDecl*> topLevelNamespaces;
 
+		// for typeinfo, not codegen.
 		std::vector<std::tuple<std::string, fir::Type*, Codegen::TypeKind>> typeList;
+
 
 		// the module-level global constructor trampoline that initialises static and global variables
 		// that require init().

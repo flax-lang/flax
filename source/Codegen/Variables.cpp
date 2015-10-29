@@ -217,7 +217,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
-		this->inferredLType = cgi->getExprType(this->initVal);
+		this->inferredLType = vartype;
 
 		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructType())
 			this->type = cgi->getReadableType(this->initVal);

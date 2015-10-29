@@ -169,6 +169,7 @@ namespace fir
 	std::string Module::print()
 	{
 		std::string ret;
+		ret = "# MODULE = " + this->getModuleName() + "\n";
 
 		for(auto string : this->globalStrings)
 		{
