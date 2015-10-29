@@ -933,7 +933,6 @@ namespace Codegen
 				else
 				{
 					fir::Type* ret = this->getExprTypeFromStringType(user, ExprType(actualType), allowFail);
-
 					if(ret)
 					{
 						while(indirections > 0)
@@ -972,6 +971,11 @@ namespace Codegen
 
 			if(indirections == -1)
 			{
+				// try generic.
+				fir::Type* ret = this->resolveGenericType(type.strType);
+				if(ret) return ret;
+
+
 				std::string nsstr;
 				for(auto n : ns)
 					nsstr += n + ".";

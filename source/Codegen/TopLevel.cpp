@@ -165,7 +165,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 			else if(func)
 			{
-
 				// func->decl->codegen(cgi);
 			}
 		}
@@ -192,16 +191,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		}
 	}
 	else if(pass == 6)
-	{
-		// first, look into all functions. check function calls, since everything should have already been declared.
-		// if we can resolve it into a generic function, then instantiate (monomorphise) the generic function
-		// with concrete types.
-
-		// fuck. super-suboptimal -- we're relying on the parser to create a list of *EVERY* function call.
-		for(auto fc : cgi->rootNode->allFunctionCalls)
-			cgi->tryResolveAndInstantiateGenericFunction(fc);
-	}
-	else if(pass == 7)
 	{
 		// pass 7: functions. for generic shit.
 		for(Expr* e : expressions)
@@ -235,7 +224,9 @@ Result_t Root::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 	cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
 
 	// this is getting quite out of hand.
-	for(int pass = 0; pass <= 7; pass++)
+	// note: we're using <= to show that there are 6 passes.
+	// don't usually do this.
+	for(int pass = 0; pass <= 6; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 
 	// run the after-codegen checkers.

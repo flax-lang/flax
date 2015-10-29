@@ -58,7 +58,13 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			if(!rt.resolved)
 			{
 				// todo. do generic.
-				// this->cachedGenericFuncTarget = cgi->tryResolveAndInstantiateGenericFunction(this);
+				this->cachedGenericFuncTarget = cgi->tryResolveAndInstantiateGenericFunction(this);
+				if(this->cachedGenericFuncTarget != 0)
+				{
+					rt.resolved = true;
+					rt.t.first = this->cachedGenericFuncTarget;
+					target = this->cachedGenericFuncTarget;
+				}
 			}
 
 			if(!rt.resolved && !target)
