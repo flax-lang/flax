@@ -8,7 +8,7 @@ import Foundation
 public ƒ generic_test<K, T>(a: T, b: K) -> K
 {
 	let ret = alloc[128] Int8
-	sprintf(ret, "%s, %d", b, a)
+	sprintf(ret, "%s%d", b, a)
 
 	return K(ret)
 }
