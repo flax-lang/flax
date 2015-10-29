@@ -858,13 +858,13 @@ namespace Codegen
 		for(auto c : candidates)
 		{
 			int distance = 0;
+
 			if((c.second ? c.second->name : c.first->getName()) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
 				finals.push_back({ c, distance });
 			}
 		}
-
 
 		// disambiguate this.
 		// with casting distance.
@@ -1375,7 +1375,7 @@ namespace Codegen
 				std::string st = arg->type.strType;
 				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
 
-				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]) + "_";
+				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]);
 				strs.push_back(std::to_string(s.length()) + s);
 			}
 			else
@@ -1680,8 +1680,6 @@ namespace Codegen
 		{
 			Result_t res = candidate->generateDeclForGenericType(this, tm);
 			ffunc = (fir::Function*) res.result.first;
-
-			printf("generated decl for %s\n", ffunc->getName().c_str());
 		}
 		else
 		{
@@ -1698,8 +1696,6 @@ namespace Codegen
 		}
 
 		iceAssert(ffunc);
-
-
 
 		fc->cachedGenericFuncTarget = ffunc;
 
