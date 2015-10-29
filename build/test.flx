@@ -10,7 +10,7 @@ import tests.recursiveFib
 import tests.scopes
 import tests.operators
 import tests.arraytest
-// import tests.generics
+import tests.generics
 
 import Utilities
 
@@ -87,7 +87,7 @@ class Foo
 	printf("\n\n");
 
 
-
+	// operators and tuples (vectors type, mainly)
 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
 	doOperatorTupleTest()
 	printf("\n\n");
@@ -99,9 +99,14 @@ class Foo
 	printf("\n\n")
 
 
+	// generics
 	printf("*** GENERICS TEST ***\n")
-	// doGenericsTest()
+	doGenericsTest()
 	printf("\n\n")
+
+
+	// fin.
+	printf("*** TESTS FINISHED ***\n");
 }
 
 

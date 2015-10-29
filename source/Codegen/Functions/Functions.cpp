@@ -39,16 +39,16 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Val
 
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	if(this->didCodegen)
+	if(this->didCodegen & !lhsPtr)
 		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
 
 	this->didCodegen = true;
 
-	bool isPublic = this->decl->attribs & Attr_VisPublic;
+	// bool isPublic = this->decl->attribs & Attr_VisPublic;
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
 
-	if(isGeneric && isPublic)
+	if(isGeneric)
 	{
 		FunctionTree* cft = cgi->getCurrentFuncTree();
 		iceAssert(cft);
@@ -72,7 +72,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 			{
 				if(!(this->decl->attribs & Attr_VisPublic))
 				{
-					warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
+					// warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
 				}
 
 				return Result_t(0, 0);
