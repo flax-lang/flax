@@ -1040,7 +1040,7 @@ namespace Codegen
 			std::deque<VarDecl*> params;
 			if(name == "malloc")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "size", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
 				fakefdmvd->type = "Uint64";
 				params.push_back(fakefdmvd);
 
@@ -1048,7 +1048,7 @@ namespace Codegen
 			}
 			else if(name == "free")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "ptr", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1056,7 +1056,7 @@ namespace Codegen
 			}
 			else if(name == "strlen")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "str", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1064,15 +1064,15 @@ namespace Codegen
 			}
 			else if(name == "memset")
 			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::pin(), "ptr", false);
+				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
 				fakefdmvd1->type = "Int8*";
 				params.push_back(fakefdmvd1);
 
-				VarDecl* fakefdmvd2 = new VarDecl(Parser::pin(), "val", false);
+				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
 				fakefdmvd2->type = "Int8";
 				params.push_back(fakefdmvd2);
 
-				VarDecl* fakefdmvd3 = new VarDecl(Parser::pin(), "size", false);
+				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
 				fakefdmvd3->type = "Uint64";
 				params.push_back(fakefdmvd3);
 
@@ -1083,7 +1083,7 @@ namespace Codegen
 				error("enotsup: %s", name.c_str());
 			}
 
-			FuncDecl* fakefm = new FuncDecl(Parser::pin(), name, params, retType);
+			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
 			fakefm->isFFI = true;
 			fakefm->codegen(this);
 		}
