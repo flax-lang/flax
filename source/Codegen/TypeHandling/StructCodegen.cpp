@@ -187,7 +187,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 fir::Type* Struct::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
-		return 0;
+		return this->createdType;
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];
@@ -262,6 +262,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 
 	delete types;
 
+	this->createdType = str;
 	return str;
 }
 

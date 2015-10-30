@@ -72,107 +72,36 @@ import Utilities
 
 class Foo
 {
-	var v3: Math.Vector3
-	{
-		get {
-			var ret: Math.Vector3
-
-			ret.x = 1
-			ret.y = 4
-			ret.z = 9
-
-			return ret
-		}
-		set {
-			printf("set v3\n")
-		}
-	}
-
-
-
-
-	var _bar: Int = 537
-	var bar: Int
-	{
-		get {
-			return self._bar
-		}
-		set {
-			self._bar = newValue
-		}
-	}
-
-	ƒ doBar() -> Int
+	ƒ doBar()
 	{
 		printf("in foo\n")
-
-		return self._bar
 	}
 }
 
 class Bar : Foo
 {
-	override var bar: Int
-	{
-		get {
-			return 73
-		}
-		set {
-			// super.bar = newValue
-		}
-	}
-
-	override var v3: Math.Vector3
-	{
-		get {
-			var ret: Math.Vector3
-
-
-			// ret.x = super.v3.x + 3
-			// ret.y = super.v3.y + 5
-			// ret.z = super.v3.z + 7
-
-			ret.x = 33.1
-
-			return ret
-		}
-		set {
-			let m = 0
-		}
-	}
-
-
-
-
-
-
-
-
-
 	override ƒ doBar()
 	{
-		printf("in bar: %f\n", self.v3.x)
-	}
-
-	var foo = 73
-}
-
-class FooBar : Bar
-{
-	override ƒ doBar()
-	{
-		printf("in foobar\n")
+		printf("in bar\n")
 	}
 }
 
+// class FooBar : Bar
+// {
+// 	override ƒ doBar()
+// 	{
+// 		printf("in foobar\n")
+// 	}
+// }
 
 
 
 
 
-func acceptBar(b: Bar)
+
+func acceptFoo(f: Foo)
 {
-	printf("got bar\n")
+	printf("got foo\n")
 }
 
 
@@ -180,40 +109,17 @@ public func main(argc: Int32, argv: Int8**) -> Int
 {
 	runTests()
 
-
-	var k: Int
-
-
 	let bar: Bar()
 	let foo: Foo()
-	printf("bar.bar = %d\n", bar._bar)
-	printf("foo.bar = %d\n", foo.bar)
-
 
 	bar.doBar()
 	foo.doBar()
 
-	let fb: FooBar()
-	fb.doBar()
-	printf("%d\n", fb._bar)
+	let b: Bar()
 
 	printf("pi = %f\n", Math.π())
 
-
-	acceptBar(fb)
-
-
-	// let g = foo(30, 1)
-
-	// var dream = Math.Complex.Cmplx()
-	// dream.r = 40
-	// dream.i = 1.412
-
-	// printf("bar.vector3 = (%f, %f, %f), dream = (%f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z, dream.r, dream.i)
-
-
-
-
+	acceptFoo(b)
 
 
 
