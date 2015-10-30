@@ -166,8 +166,51 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 		if(target->getArguments()[i]->getType() != args[i]->getType())
 		{
-			error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
-				target->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+			if(cgi->getAutoCastDistance(args[i]->getType(), target->getArguments()[i]->getType()) < 0)
+			{
+				fail:
+				error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+					target->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+			}
+			else
+			{
+				// create a bitcast or something.
+				fir::StructType* fst = target->getArguments()[i]->getType()->toStructType();
+				fir::StructType* ast = args[i]->getType()->toStructType();
+
+				if(fst && ast)
+				{
+					if(fst->isABaseTypeOf(ast))
+					{
+						// create alloca, which gets us a pointer.
+						fir::Value* alloca = cgi->builder.CreateStackAlloc(ast);
+
+						// store the value into the pointer.
+						cgi->builder.CreateStore(args[i], alloca);
+
+						// do a pointer type cast.
+						fir::Value* ptr = cgi->builder.CreatePointerTypeCast(alloca, fst->getPointerTo());
+
+						// load it.
+						fir::Value* arg = cgi->builder.CreateLoad(ptr);
+
+						// use
+						args[i] = arg;
+
+						// args[i] = cgi->builder.CreateBitcast(args[i], fst);
+					}
+					else
+					{
+						// hehe (2).
+						goto fail;
+					}
+				}
+				else
+				{
+					// hehe.
+					goto fail;
+				}
+			}
 		}
 	}
 

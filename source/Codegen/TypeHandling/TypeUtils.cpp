@@ -560,6 +560,9 @@ namespace Codegen
 		if(!from || !to)
 			return -1;
 
+		if(from->isTypeEqual(to))
+			return 0;
+
 		int ret = 0;
 		if(from->isIntegerType() && to->isIntegerType()
 			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
@@ -624,6 +627,16 @@ namespace Codegen
 		{
 			// int-to-float is 10.
 			return 10;
+		}
+		else if(to->isStructType() && from->isStructType())
+		{
+			fir::StructType* sto = to->toStructType();
+			fir::StructType* sfr = from->toStructType();
+
+			if(sto->isABaseTypeOf(sfr))
+			{
+				return 20;
+			}
 		}
 
 		return -1;

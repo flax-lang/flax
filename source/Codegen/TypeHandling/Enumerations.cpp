@@ -77,7 +77,7 @@ fir::Type* Enumeration::createType(CodegenInstance* cgi)
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
 	if(this->didCreateType)
-		return 0;
+		return this->createdType;;
 
 	if(cgi->isDuplicateType(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -112,6 +112,8 @@ fir::Type* Enumeration::createType(CodegenInstance* cgi)
 	this->scope = fullScope;
 	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
+
+	this->createdType = wrapper;
 	return wrapper;
 }
 

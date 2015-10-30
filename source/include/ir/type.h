@@ -286,12 +286,20 @@ namespace fir
 		virtual std::string str() override;
 		virtual bool isTypeEqual(Type* other) override;
 
+		void setBaseType(StructType* base);
+		bool isABaseTypeOf(Type* other);
+		bool isADerivedTypeOf(Type* other);
+
+		void clearBaseType();
+		StructType* getBaseType();
+
 		// protected constructor
 		protected:
 		StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
+		StructType* baseType = 0;
 		bool isTypePacked;
 		std::string structName;
 		std::deque<Type*> structMembers;

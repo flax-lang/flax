@@ -308,7 +308,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 fir::Type* Class::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
-		return 0;
+		return this->createdType;
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -319,7 +319,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	}
 
 
-
+	fir::StructType* superClassType = 0;
 
 	// check our inheritances??
 	bool alreadyHaveSuperclass = false;
@@ -350,7 +350,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
 		// by the time we see it.
-		supcls->createType(cgi);
+		superClassType = supcls->createType(cgi)->toStructType();
 
 
 		// if it's a struct, copy its members into ourselves.
@@ -465,8 +465,6 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	}
 
 
-
-
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
@@ -483,6 +481,9 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	cgi->addNewType(str, this, TypeKind::Class);
 
 
+
+	if(superClassType != 0)
+		str->setBaseType(superClassType);
 
 
 
@@ -566,6 +567,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 	delete types;
 
+	this->createdType = str;
 	return str;
 }
 
