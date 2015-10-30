@@ -450,6 +450,7 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
 		bool didCreateType = false;
+		fir::StructType* createdType = 0;
 
 		std::string name;
 		std::string mangledName;
