@@ -28,8 +28,8 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-Ox -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
+flaxcNormFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
 main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
@@ -86,7 +86,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter`"
+		let llvmConfigInvoke = "`" ++ lconf ++ " --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize`"
 
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
