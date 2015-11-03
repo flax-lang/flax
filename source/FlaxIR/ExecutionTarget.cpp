@@ -87,6 +87,9 @@ namespace fir
 				}
 			}
 
+			// note: follow c++, sizeof(empty struct) == 1.
+			if(first == 0) return 1;
+
 			// do stride checking.
 			if(total % first != 0)
 				total += (total % first);
