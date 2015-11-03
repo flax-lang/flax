@@ -652,10 +652,10 @@ namespace Codegen
 		return -1;
 	}
 
-	int CodegenInstance::autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr)
+	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr, int* distance)
 	{
 		if(!target || !right)
-			return -1;
+			return right;
 
 		// casting distance for size is determined by the number of "jumps"
 		// 8 -> 16 = 1
@@ -663,6 +663,8 @@ namespace Codegen
 		// 8 -> 64 = 3
 		// 16 -> 64 = 2
 		// etc.
+
+		fir::Value* retval = right;
 
 		int dist = -1;
 		if(target->isIntegerType() && right->getType()->isIntegerType()
@@ -683,7 +685,7 @@ namespace Codegen
 					if(constVal->getSignedValue() < 0)
 					{
 						int64_t max = -1 * powl(2, lBits - 1);
-						if(constVal->getSignedValue() > max)
+						if(constVal->getSignedValue() >= max)
 							shouldCast = true;
 					}
 					else
@@ -695,9 +697,18 @@ namespace Codegen
 				}
 			}
 
-			if(shouldCast)
+			if(shouldCast && !constVal)
 			{
-				right = this->builder.CreateIntSizeCast(right, target);
+				retval = this->builder.CreateIntSizeCast(right, target);
+			}
+			else if(shouldCast)
+			{
+				// return a const, please.
+				if(constVal->getType()->isSignedIntType())
+					retval = fir::ConstantInt::getSigned(target, constVal->getSignedValue());
+
+				else
+					retval = fir::ConstantInt::getUnsigned(target, constVal->getUnsignedValue());
 			}
 		}
 
@@ -714,7 +725,7 @@ namespace Codegen
 				//     u32 -> i64 >> okay
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					right = this->builder.CreateIntSizeCast(right, target);
+					retval = this->builder.CreateIntSizeCast(right, target);
 			}
 			else
 			{
@@ -735,7 +746,7 @@ namespace Codegen
 
 						if(cright->getUnsignedValue() <= maxL)
 						{
-							right = this->builder.CreateIntSizeCast(right, target);
+							retval = this->builder.CreateIntSizeCast(right, target);
 						}
 					}
 				}
@@ -757,13 +768,13 @@ namespace Codegen
 				// cast the RHS to the LHS
 				iceAssert(rhsPtr);
 				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
-				right = this->builder.CreateLoad(ret);	// mutating
+				retval = this->builder.CreateLoad(ret);
 			}
 		}
 		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			right = this->builder.CreateIntToFloatCast(right, target);
+			retval = this->builder.CreateIntToFloatCast(right, target);
 		}
 		else if(target->isStructType() && right->getType()->isStructType())
 		{
@@ -782,10 +793,7 @@ namespace Codegen
 				fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
 
 				// load it.
-				fir::Value* casted = this->builder.CreateLoad(ptr);
-
-				// use
-				right = casted;
+				retval = this->builder.CreateLoad(ptr);
 			}
 		}
 		else if(target->isPointerType() && right->getType()->isPointerType())
@@ -795,19 +803,22 @@ namespace Codegen
 
 			if(sfr && sto && sto->isABaseTypeOf(sfr))
 			{
-				right = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
+				retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
 			}
 		}
 
 
 		dist = this->getAutoCastDistance(right->getType(), target);
-		return dist;
+		if(distance != 0)
+			*distance = dist;
+
+		return retval;
 	}
 
 
-	int CodegenInstance::autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr)
+	fir::Value* CodegenInstance::autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr, int* distance)
 	{
-		return this->autoCastType(left->getType(), right, rhsPtr);
+		return this->autoCastType(left->getType(), right, rhsPtr, distance);
 	}
 
 
