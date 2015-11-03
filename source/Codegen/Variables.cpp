@@ -39,7 +39,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val != 0)
 	{
 		// cast.
-		cgi->autoCastType(this->inferredLType, val);
+		val = cgi->autoCastType(this->inferredLType, val);
 	}
 
 
@@ -334,8 +334,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 			if(dynamic_cast<fir::ConstantValue*>(val))
 			{
-				cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
-				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
+				if(val->getType() != ltype)
+					val = cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
+
+				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
+				iceAssert(cv);
+
+				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
 			}
 			else
 			{

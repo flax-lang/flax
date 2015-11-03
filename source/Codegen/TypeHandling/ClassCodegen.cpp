@@ -115,7 +115,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 				}
 				else
 				{
-					error(this, "Global variables currently only support constant initialisers");
+					error(this, "Static variables currently only support constant initialisers");
 				}
 			}
 		}

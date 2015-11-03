@@ -67,7 +67,15 @@ namespace Codegen
 			this->builder.CreateCall1(pair.second, pair.first);
 
 		for(auto pair : this->globalConstructors.values)
-			this->builder.CreateStore(pair.second, pair.first);
+		{
+			fir::Value* gv = pair.first;
+			fir::Value* val = pair.second;
+			auto d = dynamic_cast<fir::ConstantValue*>(pair.second);
+			(void) d;
+
+			val = this->autoCastType(gv->getType()->getPointerElementType(), val);
+			this->builder.CreateStore(val, gv);
+		}
 
 		for(auto pair : this->globalConstructors.tupleInitFuncs)
 		{

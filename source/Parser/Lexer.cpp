@@ -261,13 +261,16 @@ namespace Parser
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
 		}
-		else if(isdigit(stream[0]))
+		else if(isdigit(stream[0]) || (stream.length() > 2 && ((stream[0] == '-') || (stream[0] == '+')) && isdigit(stream[1])))
 		{
 			std::string num;
 
 			// read until whitespace
 			std::stringstream str;
 			str << stream;
+
+			if(stream[0] == '+' || stream[0] == '-')
+				num = str.get();
 
 			int tmp = 0;
 			while(isdigit(tmp = str.get()))

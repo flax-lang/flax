@@ -53,7 +53,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	UnaryOp* uo		= nullptr;
 	ArrayIndex* ari	= nullptr;
 
-	this->autoCastType(lhs, rhs);
+	rhs = this->autoCastType(lhs, rhs);
 
 	fir::Value* varptr = 0;
 	if((v = dynamic_cast<VarRef*>(left)))
@@ -114,7 +114,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 
-		this->autoCastType(rhs, lhs);
+		lhs = this->autoCastType(rhs, lhs);
 		if(!this->areEqualTypes(lhs->getType(), rhs->getType()))
 		{
 			// ensure we can always store 0 to pointers without a cast
@@ -401,7 +401,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 		fir::Value* rhsPtr = res.second;
 
-		cgi->autoCastType(lhs, rhs, rhsPtr);
+		rhs = cgi->autoCastType(lhs, rhs, rhsPtr);
 		return cgi->doBinOpAssign(this, this->left, this->right, this->op, lhs, valptr.second, rhs, rhsPtr);
 	}
 	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
@@ -560,7 +560,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 	rhs = r.first;
 	fir::Value* rhsPtr = r.second;
-	cgi->autoCastType(lhs, rhs, r.second);
+	rhs = cgi->autoCastType(lhs, rhs, r.second);
 
 	iceAssert(lhs);
 	iceAssert(rhs);
@@ -627,16 +627,14 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		// fir::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
 		// 	cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
-		cgi->autoCastType(lhs, rhs);
-		cgi->autoCastType(rhs, lhs);
+		rhs = cgi->autoCastType(lhs, rhs);
+		lhs = cgi->autoCastType(rhs, lhs);
 
 		fir::Value* tryop = cgi->builder.CreateBinaryOp(this->op, lhs, rhs);
 		if(tryop)
 		{
 			return Result_t(tryop, 0);
 		}
-
-		cgi->autoCastType(rhs, lhs);
 
 		fir::Value* ret = 0;
 		switch(this->op)
@@ -685,7 +683,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 	else if(cgi->isBuiltinType(this->left) && cgi->isBuiltinType(this->right))
 	{
 		// if one of them is an integer, cast it first
-		cgi->autoCastType(lhs, rhs, r.second);
+		rhs = cgi->autoCastType(lhs, rhs, r.second);
 
 		if(lhs->getType() != rhs->getType())
 		{
