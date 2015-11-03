@@ -638,6 +638,16 @@ namespace Codegen
 				return 20;
 			}
 		}
+		else if(to->isPointerType() && from->isPointerType())
+		{
+			fir::StructType* sfr = from->getPointerElementType()->toStructType();
+			fir::StructType* sto = to->getPointerElementType()->toStructType();
+
+			if(sfr && sto && sto->isABaseTypeOf(sfr))
+			{
+				return 20;
+			}
+		}
 
 		return -1;
 	}
@@ -668,22 +678,21 @@ namespace Codegen
 			{
 				// check if the number fits in the LHS type
 
-				// todo: commented
-				// if(lBits < 64)	// 64 is the max
-				// {
-				// 	if(constVal->getSExtValue() < 0)
-				// 	{
-				// 		int64_t max = -1 * powl(2, lBits - 1);
-				// 		if(constVal->getSExtValue() > max)
-				// 			shouldCast = true;
-				// 	}
-				// 	else
-				// 	{
-				// 		uint64_t max = powl(2, lBits) - 1;
-				// 		if(constVal->getZExtValue() <= max)
-				// 			shouldCast = true;
-				// 	}
-				// }
+				if(lBits < 64)	// todo: 64 is the max
+				{
+					if(constVal->getSignedValue() < 0)
+					{
+						int64_t max = -1 * powl(2, lBits - 1);
+						if(constVal->getSignedValue() > max)
+							shouldCast = true;
+					}
+					else
+					{
+						uint64_t max = powl(2, lBits) - 1;
+						if(constVal->getUnsignedValue() <= max)
+							shouldCast = true;
+					}
+				}
 			}
 
 			if(shouldCast)
@@ -756,10 +765,45 @@ namespace Codegen
 			// int-to-float is 10.
 			right = this->builder.CreateIntToFloatCast(right, target);
 		}
+		else if(target->isStructType() && right->getType()->isStructType())
+		{
+			fir::StructType* sto = target->toStructType();
+			fir::StructType* sfr = right->getType()->toStructType();
+
+			if(sto->isABaseTypeOf(sfr))
+			{
+				// create alloca, which gets us a pointer.
+				fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
+
+				// store the value into the pointer.
+				this->builder.CreateStore(right, alloca);
+
+				// do a pointer type cast.
+				fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+
+				// load it.
+				fir::Value* casted = this->builder.CreateLoad(ptr);
+
+				// use
+				right = casted;
+			}
+		}
+		else if(target->isPointerType() && right->getType()->isPointerType())
+		{
+			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
+			fir::StructType* sto = target->getPointerElementType()->toStructType();
+
+			if(sfr && sto && sto->isABaseTypeOf(sfr))
+			{
+				right = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
+			}
+		}
+
 
 		dist = this->getAutoCastDistance(right->getType(), target);
 		return dist;
 	}
+
 
 	int CodegenInstance::autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr)
 	{
