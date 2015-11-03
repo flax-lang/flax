@@ -33,7 +33,8 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
 	fir::Value* allocsize = fir::ConstantInt::getUint64(typesize, cgi->getContext());
 
-	cgi->autoCastType(allocsize->getType(), size);
+	size = cgi->autoCastType(allocsize->getType(), size);
+
 	fir::Value* totalAlloc = cgi->builder.CreateMul(allocsize, size, "totalalloc");
 	fir::Value* allocmemptr = cgi->allocateInstanceInBlock(type->getPointerTo(), "allocmemptr");
 
