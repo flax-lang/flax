@@ -94,8 +94,8 @@ class Bar : Foo
 
 namespace Int32
 {
-	val min: Int64 = -400
-	val max: Int32 = 591
+	val min: Int8 = -12
+	val max: Int8 = 100
 }
 
 // class FooBar : Bar
