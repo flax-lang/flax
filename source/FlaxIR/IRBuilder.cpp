@@ -26,11 +26,17 @@ namespace fir
 		this->previousBlock = this->currentBlock;
 		this->currentBlock = block;
 
-		if(this->currentBlock->parentFunction != 0)
-			this->currentFunction = this->currentBlock->parentFunction;
-
+		if(this->currentBlock != 0)
+		{
+			if(this->currentBlock->parentFunction != 0)
+				this->currentFunction = this->currentBlock->parentFunction;
+			else
+				this->currentFunction = 0;
+		}
 		else
+		{
 			this->currentFunction = 0;
+		}
 	}
 
 	void IRBuilder::restorePreviousBlock()
