@@ -447,10 +447,9 @@ namespace Ast
 		virtual ~StructBase();
 		StructBase(Parser::Pin pos, std::string name) : Expr(pos), name(name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override = 0;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
 
 		std::deque<std::string> genericTypes;
-		std::map<std::string, fir::Type*> instantiatedGenericTypes;
 
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
@@ -472,7 +471,7 @@ namespace Ast
 		~Class();
 		Class(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
 		std::deque<Extension*> extensions;
@@ -489,7 +488,7 @@ namespace Ast
 		~Extension();
 		Extension(Parser::Pin pos, std::string name) : Class(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		fir::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, fir::StructType* stype, int extIndex);
 	};
@@ -502,7 +501,7 @@ namespace Ast
 		~Struct();
 		Struct(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool packed = false;
 		std::deque<Struct*> imports;
@@ -513,7 +512,7 @@ namespace Ast
 		~Enumeration();
 		Enumeration(Parser::Pin pos, std::string name) : Class(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
@@ -524,7 +523,7 @@ namespace Ast
 		~Tuple();
 		Tuple(Parser::Pin pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 		fir::StructType* getType(Codegen::CodegenInstance* cgi);
 
 		std::vector<Expr*> values;
@@ -608,7 +607,7 @@ namespace Ast
 		~TypeAlias();
 		TypeAlias(Parser::Pin pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool isStrong = false;
 		std::string origType;

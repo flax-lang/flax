@@ -72,7 +72,7 @@ Result_t Enumeration::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Val
 	return Result_t(0, 0);
 }
 
-fir::Type* Enumeration::createType(CodegenInstance* cgi)
+fir::Type* Enumeration::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
