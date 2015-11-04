@@ -4,6 +4,7 @@
 
 import LibCInterface
 
-public class Array
+public class Array<T>
 {
+	var data: T* = 0
 }

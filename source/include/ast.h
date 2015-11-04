@@ -449,6 +449,9 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
+		std::deque<std::string> genericTypes;
+		std::map<std::string, fir::Type*> instantiatedGenericTypes;
+
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
 

@@ -1819,6 +1819,59 @@ namespace Parser
 		return 0;
 	}
 
+
+	static void parseInheritanceList(ParserState& ps, Class* cls)
+	{
+		while(true)
+		{
+			Token id = ps.eat();
+			if(id.type != TType::Identifier)
+				parserError("Expected identifier after ':' in struct or class declaration");
+
+			if(std::find(cls->protocolstrs.begin(), cls->protocolstrs.end(), id.text) != cls->protocolstrs.end())
+				parserError("Duplicate member %s in inheritance list", id.text.c_str());
+
+			if(cls->name == id.text)
+				parserError("Self inheritance is illegal");
+
+			cls->protocolstrs.push_back(id.text);
+			ps.skipNewline();
+
+			if(ps.front().type != TType::Comma)
+				break;
+
+			ps.eat();
+		}
+	}
+
+	static void parseGenericTypeList(ParserState& ps, StructBase* sb)
+	{
+		while(true)
+		{
+			Token type = ps.eat();
+			if(std::find(sb->genericTypes.begin(), sb->genericTypes.end(), type.text) != sb->genericTypes.end())
+				parserError("Duplicate generic type %s", type.text.c_str());
+
+			sb->genericTypes.push_back(type.text);
+
+			if(ps.front().type == TType::Comma)
+				ps.eat();
+
+			else if(ps.front().type == TType::RAngle)
+				break;
+
+			else
+				parserError("Unexpected token %s in generic type list", ps.front().text.c_str());
+		}
+
+		iceAssert(ps.eat().type == TType::RAngle);
+	}
+
+
+
+
+
+
 	Struct* parseStruct(ParserState& ps)
 	{
 		Token tok_str = ps.eat();
@@ -1841,8 +1894,18 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			parseGenericTypeList(ps, str);
+		}
 		if(ps.front().type == TType::Colon)
+		{
 			parserError("Structs cannot inherit from anything");
+		}
+
+
+
 
 
 		// parse a block.
@@ -1909,30 +1972,15 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			parseGenericTypeList(ps, cls);
+		}
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
-			// parse an identifier.
-			while(true)
-			{
-				Token id = ps.eat();
-				if(id.type != TType::Identifier)
-					parserError("Expected identifier after ':' in struct or class declaration");
-
-				if(std::find(cls->protocolstrs.begin(), cls->protocolstrs.end(), id.text) != cls->protocolstrs.end())
-					parserError("Duplicate member %s in inheritance list", id.text.c_str());
-
-				if(cls->name == id.text)
-					parserError("Self inheritance is illegal");
-
-				cls->protocolstrs.push_back(id.text);
-				ps.skipNewline();
-
-				if(ps.front().type != TType::Comma)
-					break;
-
-				ps.eat();
-			}
+			parseInheritanceList(ps, cls);
 		}
 
 
