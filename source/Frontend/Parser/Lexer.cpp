@@ -94,17 +94,17 @@ namespace Parser
 
 			tok.type = TType::Comment;
 		}
-		else if(stream.compare(0, 2, "<<") == 0)
-		{
-			tok.text = "<<";
-			tok.type = TType::ShiftLeft;
-			read = 2;
-		}
-		else if(stream.compare(0, 2, ">>") == 0)
-		{
-			tok.text = ">>";
-			tok.type = TType::ShiftRight;
-		}
+		// else if(stream.compare(0, 2, "<<") == 0)
+		// {
+		// 	tok.text = "<<";
+		// 	tok.type = TType::ShiftLeft;
+		// 	read = 2;
+		// }
+		// else if(stream.compare(0, 2, ">>") == 0)
+		// {
+		// 	tok.text = ">>";
+		// 	tok.type = TType::ShiftRight;
+		// }
 		else if(stream.compare(0, 2, "++") == 0)
 		{
 			tok.text = "++";
@@ -147,18 +147,18 @@ namespace Parser
 			tok.type = TType::ModEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 3, "<<=") == 0)
-		{
-			tok.text = "<<=";
-			tok.type = TType::ShiftLeftEq;
-			read = 3;
-		}
-		else if(stream.compare(0, 3, ">>=") == 0)
-		{
-			tok.text = ">>=";
-			tok.type = TType::ShiftRightEq;
-			read = 3;
-		}
+		// else if(stream.compare(0, 3, "<<=") == 0)
+		// {
+		// 	tok.text = "<<=";
+		// 	tok.type = TType::ShiftLeftEq;
+		// 	read = 3;
+		// }
+		// else if(stream.compare(0, 3, ">>=") == 0)
+		// {
+		// 	tok.text = ">>=";
+		// 	tok.type = TType::ShiftRightEq;
+		// 	read = 3;
+		// }
 		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";

@@ -12,6 +12,10 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
+	if(this->genericTypes.size() > 0 && !this->didCreateType)
+		return Result_t(0, 0);
+
+
 	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->name);
 	if(!_type)
@@ -184,10 +188,21 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 
 
-fir::Type* Struct::createType(CodegenInstance* cgi)
+fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
+	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
+		return 0;
+
 	if(this->didCreateType)
 		return this->createdType;
+
+
+	if(instantiatedGenericTypes.size() > 0)
+		error("woots");
+
+
+
+
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];

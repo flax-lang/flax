@@ -62,59 +62,73 @@ namespace Parser
 		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
 	}
 
-	static int getOpPrec(ParserState& ps, Token tok)
+	static int getCurOpPrec(ParserState& ps)
 	{
-		switch(tok.type)
+		// handle >>, >>=, <<, <<=.
+		if(ps.tokens.size() > 1 && (ps.front().type == TType::LAngle || ps.front().type == TType::RAngle))
+		{
+			// check if the next one matches.
+			if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LAngle)
+				return 160;
+
+			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::RAngle)
+				return 160;
+
+
+			else if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LessThanEquals)
+				return 90;
+
+			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::GreaterEquals)
+				return 90;
+		}
+
+		switch(ps.front().type)
 		{
 			case TType::Comma:
-				return ps.didHaveLeftParen ? 2000 : -1;	// lol x3
+				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
 
 			case TType::As:
 			case TType::Period:
-				return 150;
+				return 400;
 
 			// array index: 120
 			case TType::LSquare:
-				return 120;
+				return 310;
 
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
-				return 110;
+				return 300;
+
+			case TType::ShiftLeft:
+			case TType::ShiftRight:
+				iceAssert(0);	// note: handled above
+				break;
+				// return 160;
 
 			case TType::Asterisk:
 			case TType::Divide:
 			case TType::Percent:
-				return 100;
+			case TType::Ampersand:
+				return 160;
 
 			case TType::Plus:
 			case TType::Minus:
-				return 90;
-
-			case TType::ShiftLeft:
-			case TType::ShiftRight:
-				return 80;
+			case TType::Pipe:
+				return 140;
 
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
-				return 70;
-
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 60;
-
-			case TType::Ampersand:
-				return 50;
-
-			case TType::Pipe:
-				return 40;
+				return 130;
 
 			case TType::LogicalAnd:
-				return 30;
+				return 120;
 
 			case TType::LogicalOr:
-				return 20;
+				return 110;
 
 			case TType::Equal:
 			case TType::PlusEq:
@@ -122,14 +136,19 @@ namespace Parser
 			case TType::MultiplyEq:
 			case TType::DivideEq:
 			case TType::ModEq:
+				return 90;
+
+
 			case TType::ShiftLeftEq:
 			case TType::ShiftRightEq:
-				return 10;
+				iceAssert(0);	// note: handled above.
+				break;
+
 
 			case TType::Identifier:
-				if(ps.cgi->customOperatorMapRev.find(tok.text) != ps.cgi->customOperatorMapRev.end())
+				if(ps.cgi->customOperatorMapRev.find(ps.front().text) != ps.cgi->customOperatorMapRev.end())
 				{
-					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[tok.text]].second;
+					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[ps.front().text]].second;
 				}
 				return -1;
 
@@ -1079,7 +1098,7 @@ namespace Parser
 			std::string baseType = tmp.text;
 
 			// parse until we get a non-identifier and non-scoperes
-			if (ps.tokens.size() > 0)
+			if(ps.tokens.size() > 0)
 			{
 				bool expectingScope = true;
 				Token t = ps.front();
@@ -1104,6 +1123,43 @@ namespace Parser
 					t = ps.front();
 				}
 			}
+
+
+			if(ps.front().type == TType::LAngle)
+			{
+				ps.eat();
+				baseType += "<";
+
+				while(true)
+				{
+					Expr* e = parseType(ps);
+					baseType += e->type.strType;
+
+					if(ps.front().type == TType::Comma)
+					{
+						baseType += ",";
+						ps.eat();
+					}
+					else if(ps.front().type == TType::RAngle)
+					{
+						break;
+					}
+					else
+					{
+						parserError("Unexpected token %s in generic type list", ps.front().text.c_str());
+					}
+				}
+
+				iceAssert(ps.eat().type == TType::RAngle);
+				baseType += ">";
+			}
+
+
+
+
+
+
+
 
 			std::string ptrAppend = "";
 			if(ps.tokens.size() > 0 && (ps.front().type == TType::Ptr || ps.front().type == TType::Asterisk))
@@ -1463,15 +1519,52 @@ namespace Parser
 	{
 		while(true)
 		{
-			int prec = getOpPrec(ps, ps.front());
+			int prec = getCurOpPrec(ps);
 			if(prec < prio && !isRightAssociativeOp(ps.front()))
 				return lhs;
 
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
-			Token tok_op = ps.eat();
 
-			if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
+			Token tok_op = ps.eat();
+			Token next1 = ps.front();
+
+			ArithmeticOp op = ArithmeticOp::Invalid;
+			if(tok_op.type == TType::LAngle || tok_op.type == TType::RAngle)
+			{
+				// check if the next one matches.
+				if(tok_op.type == TType::LAngle)
+				{
+					if(next1.type == TType::LAngle)
+					{
+						// < <
+						op = ArithmeticOp::ShiftLeft;
+						ps.eat();
+					}
+					else if(next1.type == TType::LessThanEquals)
+					{
+						// < <=
+						op = ArithmeticOp::ShiftLeftEquals;
+						ps.eat();
+					}
+				}
+				else if(tok_op.type == TType::RAngle)
+				{
+					if(next1.type == TType::RAngle)
+					{
+						// > >
+						op = ArithmeticOp::ShiftRight;
+						ps.eat();
+					}
+					else if(next1.type == TType::GreaterEquals)
+					{
+						// > >=
+						op = ArithmeticOp::ShiftRightEquals;
+						ps.eat();
+					}
+				}
+			}
+			else if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
 			{
 				ps.didHaveLeftParen = false;
 				return parseTuple(ps, lhs);
@@ -1483,11 +1576,78 @@ namespace Parser
 			}
 
 
+
+			if(op == ArithmeticOp::Invalid)
+			{
+				switch(tok_op.type)
+				{
+					case TType::Plus:			op = ArithmeticOp::Add;					break;
+					case TType::Minus:			op = ArithmeticOp::Subtract;			break;
+					case TType::Asterisk:		op = ArithmeticOp::Multiply;			break;
+					case TType::Divide:			op = ArithmeticOp::Divide;				break;
+					case TType::Percent:		op = ArithmeticOp::Modulo;				break;
+					case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;			break;
+					case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;			break;
+					case TType::Equal:			op = ArithmeticOp::Assign;				break;
+
+					case TType::LAngle:			op = ArithmeticOp::CmpLT;				break;
+					case TType::RAngle:			op = ArithmeticOp::CmpGT;				break;
+					case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;				break;
+					case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;				break;
+					case TType::EqualsTo:		op = ArithmeticOp::CmpEq;				break;
+					case TType::NotEquals:		op = ArithmeticOp::CmpNEq;				break;
+
+					case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
+					case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
+					case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
+					case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
+
+					case TType::PlusEq:			op = ArithmeticOp::PlusEquals;			break;
+					case TType::MinusEq:		op = ArithmeticOp::MinusEquals;			break;
+					case TType::MultiplyEq:		op = ArithmeticOp::MultiplyEquals;		break;
+					case TType::DivideEq:		op = ArithmeticOp::DivideEquals;		break;
+					case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
+					case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
+					case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
+					case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
+					case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
+					case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
+												break;
+					default:
+					{
+						if(ps.cgi->customOperatorMapRev.find(tok_op.text) != ps.cgi->customOperatorMapRev.end())
+						{
+							op = ps.cgi->customOperatorMapRev[tok_op.text];
+							break;
+						}
+						else
+						{
+							parserError("Unknown operator '%s'", tok_op.text.c_str());
+						}
+					}
+				}
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
 			if(!rhs)
 				return nullptr;
 
-			int next = getOpPrec(ps, ps.front());
+			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
 			{
@@ -1496,56 +1656,11 @@ namespace Parser
 					return nullptr;
 			}
 
-			ps.currentOpPrec = getOpPrec(ps, tok_op);
+			ps.currentOpPrec = prec;
 
-			ArithmeticOp op;
-			switch(tok_op.type)
-			{
-				case TType::Plus:			op = ArithmeticOp::Add;					break;
-				case TType::Minus:			op = ArithmeticOp::Subtract;			break;
-				case TType::Asterisk:		op = ArithmeticOp::Multiply;			break;
-				case TType::Divide:			op = ArithmeticOp::Divide;				break;
-				case TType::Percent:		op = ArithmeticOp::Modulo;				break;
-				case TType::ShiftLeft:		op = ArithmeticOp::ShiftLeft;			break;
-				case TType::ShiftRight:		op = ArithmeticOp::ShiftRight;			break;
-				case TType::Equal:			op = ArithmeticOp::Assign;				break;
 
-				case TType::LAngle:			op = ArithmeticOp::CmpLT;				break;
-				case TType::RAngle:			op = ArithmeticOp::CmpGT;				break;
-				case TType::LessThanEquals:	op = ArithmeticOp::CmpLEq;				break;
-				case TType::GreaterEquals:	op = ArithmeticOp::CmpGEq;				break;
-				case TType::EqualsTo:		op = ArithmeticOp::CmpEq;				break;
-				case TType::NotEquals:		op = ArithmeticOp::CmpNEq;				break;
 
-				case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
-				case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
-				case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
-				case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
 
-				case TType::PlusEq:			op = ArithmeticOp::PlusEquals;			break;
-				case TType::MinusEq:		op = ArithmeticOp::MinusEquals;			break;
-				case TType::MultiplyEq:		op = ArithmeticOp::MultiplyEquals;		break;
-				case TType::DivideEq:		op = ArithmeticOp::DivideEquals;		break;
-				case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
-				case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
-				case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
-				case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
-				case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
-				case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
-											break;
-				default:
-				{
-					if(ps.cgi->customOperatorMapRev.find(tok_op.text) != ps.cgi->customOperatorMapRev.end())
-					{
-						op = ps.cgi->customOperatorMapRev[tok_op.text];
-						break;
-					}
-					else
-					{
-						parserError("Unknown operator '%s'", tok_op.text.c_str());
-					}
-				}
-			}
 
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);

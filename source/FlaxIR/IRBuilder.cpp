@@ -220,14 +220,14 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::ShiftLeft)
+		else if(ao == Ast::ArithmeticOp::ShiftLeft || ao == Ast::ArithmeticOp::ShiftLeftEquals)
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = OpKind::Bitwise_Shl;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::ShiftRight)
+		else if(ao == Ast::ArithmeticOp::ShiftRight || ao == Ast::ArithmeticOp::ShiftRightEquals)
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;

@@ -4,7 +4,7 @@
 
 import LibCInterface
 
-public class Array<T>
+public struct Array<T>
 {
 	var data: T* = 0
 }
