@@ -61,12 +61,10 @@ namespace Compiler
 		for(auto mod : std::get<3>(data))
 		{
 			modulelist[mod.first] = mod.second->translateToLlvm();
-			optimiseLlvmModule(modulelist[mod.first]);
 
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
 		}
-
 
 
 		// link together

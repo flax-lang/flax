@@ -49,6 +49,9 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
 	cgi->module->addNamedType(str->getStructName(), str);
 
+
+	fir::IRBlock* curblock = cgi->builder.getCurrentBlock();
+
 	// generate initialiser
 	{
 		fir::Function* defifunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
@@ -146,6 +149,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		cgi->addPublicFunc({ memifunc, fd });
 	}
 
+	cgi->builder.setCurrentBlock(curblock);
 
 
 
@@ -198,9 +202,11 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 
 
 	if(instantiatedGenericTypes.size() > 0)
-		error("woots");
-
-
+	{
+		cgi->pushGenericTypeStack();
+		for(auto t : instantiatedGenericTypes)
+			cgi->pushGenericType(t.first, t.second);
+	}
 
 
 
@@ -278,6 +284,13 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 	delete types;
 
 	this->createdType = str;
+
+
+	if(instantiatedGenericTypes.size() > 0)
+		cgi->popGenericTypeStack();
+
+
+
 	return str;
 }
 
