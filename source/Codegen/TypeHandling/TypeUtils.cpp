@@ -1109,18 +1109,18 @@ namespace Codegen
 							}
 							types.push_back(curtype);
 
-							for(auto t : types)
-							{
-								printf("type: %s\n", t.c_str());
-							}
 
-							printf("glist = %s\n", glist.c_str());
+							if(types.size() != sb->genericTypes.size())
+								error(user, "Expected %zu type parameters, got %zu", sb->genericTypes.size(), types.size());
+
+							// ok.
+							for(size_t i = 0; i < types.size(); i++)
+							{
+								fir::Type* inst = this->parseAndGetOrInstantiateType(user, types[i]);
+								instantiatedGenericTypes[sb->genericTypes[i]] = inst;
+							}
 						}
 
-
-
-
-						error("fubar");
 						// todo: ew, goto
 						goto foundType;
 					}
@@ -1158,7 +1158,23 @@ namespace Codegen
 
 					concrete = sb->createType(this, instantiatedGenericTypes);
 
+
+					if(instantiatedGenericTypes.size() > 0)
+					{
+						this->pushGenericTypeStack();
+						for(auto t : instantiatedGenericTypes)
+							this->pushGenericType(t.first, t.second);
+					}
+
 					sb->codegen(this);
+
+					if(instantiatedGenericTypes.size() > 0)
+						this->popGenericTypeStack();
+
+
+
+
+
 					this->namespaceStack = old;
 
 					iceAssert(concrete);
