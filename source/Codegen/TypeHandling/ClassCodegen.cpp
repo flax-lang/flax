@@ -305,7 +305,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 
-fir::Type* Class::createType(CodegenInstance* cgi)
+fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(this->didCreateType)
 		return this->createdType;

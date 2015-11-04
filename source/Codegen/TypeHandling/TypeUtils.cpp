@@ -1036,13 +1036,95 @@ namespace Codegen
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
 
-
+			std::map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
 				fir::Type* ret = this->resolveGenericType(type.strType);
 				if(ret) return ret;
 
+				if(atype.find("<") != std::string::npos)
+				{
+					size_t k = atype.find("<");
+					std::string base = atype.substr(0, k);
+
+					pair = this->findTypeInFuncTree(ns, base);
+					tp = pair.first;
+					indirections = pair.second;
+
+					if(tp && indirections >= 0)
+					{
+						// parse that shit.
+						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+						iceAssert(sb);
+
+						if(sb->genericTypes.size() == 0)
+							error(user, "Type %s does not have type parameters, is not generic", sb->name.c_str());
+
+
+						// parse the list of types.
+						std::string glist = atype.substr(k);
+						{
+							iceAssert(glist.size() > 0 && glist[0] == '<');
+							glist = glist.substr(1);
+
+							iceAssert(glist.back() == '>');
+							glist.pop_back();
+
+
+							// to allow for nesting generic types in generic types,
+							// eg. Foo<Bar<Int>,Qux<Double,Int>>, we need to be smart
+							// iterate through the string manually.
+							// if we encounter a '<', increase nesting.
+							// if we encounter a '>', decrease nesting.
+							// if we encounter a ',' while nesting > 0, ignore.
+							// if we encounter a ',' while nesting == 0, split the string there.
+
+							int nesting = 0;
+							std::deque<std::string> types;
+
+							std::string curtype;
+							for(size_t i = 0; i < glist.length(); i++)
+							{
+								if(glist[i] == '<')
+								{
+									nesting++;
+									curtype += glist[i];
+								}
+								else if(glist[i] == '>')
+								{
+									if(nesting == 0) error(user, "mismatched angle brackets in generic type parameter list");
+									nesting--;
+									curtype += glist[i];
+								}
+								else if(glist[i] == ',' && nesting == 0)
+								{
+									types.push_back(curtype);
+									curtype = "";
+								}
+								else
+								{
+									curtype += glist[i];
+								}
+							}
+							types.push_back(curtype);
+
+							for(auto t : types)
+							{
+								printf("type: %s\n", t.c_str());
+							}
+
+							printf("glist = %s\n", glist.c_str());
+						}
+
+
+
+
+						error("fubar");
+						// todo: ew, goto
+						goto foundType;
+					}
+				}
 
 				std::string nsstr;
 				for(auto n : ns)
@@ -1061,6 +1143,8 @@ namespace Codegen
 			}
 			else if(tp)
 			{
+				foundType:
+
 				fir::Type* concrete = tp->first;
 				if(!concrete)
 				{
@@ -1072,7 +1156,7 @@ namespace Codegen
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
-					concrete = sb->createType(this);
+					concrete = sb->createType(this, instantiatedGenericTypes);
 
 					sb->codegen(this);
 					this->namespaceStack = old;
