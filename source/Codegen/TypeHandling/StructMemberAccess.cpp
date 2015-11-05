@@ -66,6 +66,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	fir::Value* self = p.first;
 	fir::Value* selfPtr = p.second;
 
+	// info(this, "self type = %s, self ptr type = %s", self->getType()->str().c_str(), selfPtr ? selfPtr->getType()->str().c_str() : "");
+
 
 	bool isPtr = false;
 	bool isWrapped = false;

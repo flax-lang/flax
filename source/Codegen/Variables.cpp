@@ -211,8 +211,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 void VarDecl::inferType(CodegenInstance* cgi)
 {
-	if(this->inferredLType != 0)
-		return;
+	// if(this->inferredLType != 0)
+	// 	return;
 
 	if(this->type.strType == "Inferred")
 	{
@@ -243,6 +243,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
 
 		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
+		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
+
 		iceAssert(this->inferredLType);
 	}
 }

@@ -127,7 +127,7 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
-			return this->structName;
+			return this->structName + " { " + typeListToString(this->structMembers) + " } ";
 		}
 		else if(this->isLiteralStruct())
 		{
