@@ -1058,7 +1058,6 @@ namespace Codegen
 						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 						iceAssert(sb);
 
-
 						// todo: need to mangle name of struct, then find. currently fucks up.
 						// todo: need some way to give less shitty error messages
 
@@ -1128,6 +1127,11 @@ namespace Codegen
 						// todo: ew, goto
 						goto foundType;
 					}
+					else
+					{
+						if(allowFail) return 0;
+						else error(user, "Invaild type '%s'", base.c_str());
+					}
 				}
 
 				std::string nsstr;
@@ -1171,6 +1175,13 @@ namespace Codegen
 					// generate the type.
 					iceAssert(oldSB);
 
+					if(oldSB->genericTypes.size() > 0 && instantiatedGenericTypes.size() == 0)
+					{
+						error(user, "Type '%s' needs %zu type parameter%s, but none were provided",
+							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
+					}
+
+
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
@@ -1196,10 +1207,11 @@ namespace Codegen
 
 					this->namespaceStack = old;
 
+					if(!concrete) error(user, "!!!");
 					iceAssert(concrete);
 
-					if(!tp)
-						tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					iceAssert(tp);
 				}
 				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
