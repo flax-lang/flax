@@ -46,7 +46,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	}
 
 
-	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	fir::StructType* str = this->createdType;
 	cgi->module->addNamedType(str->getStructName(), str);
 
 
@@ -197,7 +197,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
 		return 0;
 
-	if(this->didCreateType)
+	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
 		return this->createdType;
 
 
@@ -214,7 +214,16 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
+	std::string genericTypeMangle;
+
 	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
+	if(instantiatedGenericTypes.size() > 0)
+	{
+		for(auto t : instantiatedGenericTypes)
+			genericTypeMangle += "_" + t.first + ":" + t.second->str();
+	}
+
+	this->mangledName += genericTypeMangle;
 
 	if(cgi->isDuplicateType(this->mangledName))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -224,7 +233,21 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext(), this->packed);
 
 	this->scope = cgi->namespaceStack;
-	cgi->addNewType(str, this, TypeKind::Struct);
+
+	{
+		std::string oldname = this->name;
+
+		// only add the base type if we haven't *ever* created it
+		if(this->createdType == 0)
+			cgi->addNewType(str, this, TypeKind::Struct);
+
+		this->name += genericTypeMangle;
+
+		if(genericTypeMangle.length() > 0)
+			cgi->addNewType(str, this, TypeKind::Struct);
+
+		this->name = oldname;
+	}
 
 
 
