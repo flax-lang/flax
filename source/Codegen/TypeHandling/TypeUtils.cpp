@@ -1058,6 +1058,10 @@ namespace Codegen
 						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 						iceAssert(sb);
 
+
+						// todo: need to mangle name of struct, then find. currently fucks up.
+						// todo: need some way to give less shitty error messages
+
 						if(sb->genericTypes.size() == 0)
 							error(user, "Type %s does not have type parameters, is not generic", sb->name.c_str());
 
@@ -1145,19 +1149,33 @@ namespace Codegen
 			{
 				foundType:
 
-				fir::Type* concrete = tp->first;
+				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
+				std::string mangledGeneric = oldSB->name;
+
+				// mangle properly, and find it.
+				{
+					iceAssert(tp);
+					iceAssert(tp->second.first);
+
+					for(auto pair : instantiatedGenericTypes)
+						mangledGeneric += "_" + pair.first + ":" + pair.second->str();
+
+					tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					// fprintf(stderr, "mangled: %s // tp: %p\n", mangledGeneric.c_str(), tp);
+				}
+
+
+				fir::Type* concrete = tp ? tp->first : 0;
 				if(!concrete)
 				{
 					// generate the type.
-					StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-					iceAssert(sb);
+					iceAssert(oldSB);
 
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
-					concrete = sb->createType(this, instantiatedGenericTypes);
-
+					concrete = oldSB->createType(this, instantiatedGenericTypes);
 
 					if(instantiatedGenericTypes.size() > 0)
 					{
@@ -1166,19 +1184,24 @@ namespace Codegen
 							this->pushGenericType(t.first, t.second);
 					}
 
-					sb->codegen(this);
+					// note: codegen() uses str->createdType. since we only *recently* called
+					// createType, it should be set properly.
+
+					// set codegen = 0
+					oldSB->didCodegen = false;
+					oldSB->codegen(this); // this sets it to true
 
 					if(instantiatedGenericTypes.size() > 0)
 						this->popGenericTypeStack();
 
-
-
-
-
 					this->namespaceStack = old;
 
 					iceAssert(concrete);
+
+					if(!tp)
+						tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
 				}
+				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
 				fir::Type* ret = tp->first;
 				while(indirections > 0)
