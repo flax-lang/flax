@@ -2367,6 +2367,8 @@ namespace Codegen
 			fir::Function* initf = 0;
 			for(fir::Function* initers : sb->initFuncs)
 			{
+				printf("init cand for %s -- %s :: %s\n", sb->name.c_str(), initers->getName().c_str(), initers->getType()->str().c_str());
+
 				if(initers->getArgumentCount() < 1)
 					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 
