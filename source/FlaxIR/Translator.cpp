@@ -239,6 +239,16 @@ namespace fir
 			}
 		}
 
+
+		#define DO_DUMP 0
+
+		#if DO_DUMP
+		#define DUMP_INSTR(fmt, ...)		(fprintf(stderr, fmt, ##__VA_ARGS__))
+		#else
+		#define DUMP_INSTR(...)
+		#endif
+
+
 		for(auto fp : this->functions)
 		{
 			Function* ffn = fp.second;
@@ -246,16 +256,42 @@ namespace fir
 			llvm::Function* func = module->getFunction(fp.second->getName());
 			iceAssert(func);
 
+			DUMP_INSTR("%s%s", ffn->getBlockList().size() == 0 ? "declare " : "", ffn->getName().c_str());
+
+			if(ffn->getBlockList().size() > 0)
+			{
+				// print args
+				DUMP_INSTR(" :: (");
+
+				size_t i = 0;
+				for(auto arg : ffn->getArguments())
+				{
+					DUMP_INSTR("%%%zu :: %s", arg->id, arg->getType()->str().c_str());
+					i++;
+
+					(void) arg;
+
+					if(i != ffn->getArgumentCount())
+						DUMP_INSTR(",");
+				}
+
+				DUMP_INSTR(")");
+			}
+			else
+			{
+				DUMP_INSTR(" :: %s\n", ffn->getType()->str().c_str());
+			}
+
 			for(auto block : ffn->getBlockList())
 			{
 				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
 				builder.SetInsertPoint(bb);
 
-				// fprintf(stderr, "\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
+				DUMP_INSTR("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
 
 				for(auto inst : block->instructions)
 				{
-					// fprintf(stderr, "%s\n", ("        " + inst->str()).c_str());
+					DUMP_INSTR("        %s\n", inst->str().c_str());
 
 					// good god.
 					switch(inst->opKind)

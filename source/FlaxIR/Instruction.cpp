@@ -116,16 +116,11 @@ namespace fir
 		{
 			if(op->getType()->isFunctionType())
 			{
-				ops += "(@" + dynamic_cast<Function*>(op)->getName() + " = " + op->getType()->str() + " ";
+				ops += "@" + op->getName();
+				if(this->opKind == OpKind::Value_CallFunction)
+					ops += ", (";
 			}
-			else
-			{
-				ops += "(@" + op->getType()->str() + " ";
-			}
-
-
-
-			if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
+			else if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
 			{
 				ops += std::to_string(ci->getSignedValue());
 			}
@@ -135,7 +130,7 @@ namespace fir
 			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{
-				ops += "(null: %" + std::to_string(op->id) + ")";
+				ops += "(null %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
 			}
 			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
 			{
@@ -143,23 +138,29 @@ namespace fir
 			}
 			else
 			{
-				ops += "%" + std::to_string(op->id);
+				ops += "%" + std::to_string(op->id) + " :: " + op->getType()->str();
 			}
 
-			ops += "), ";
+			if(this->opKind != OpKind::Value_CallFunction)
+				ops += ", ";
 		}
 
-		if(ops.length() > 0) ops = ops.substr(0, ops.length() - 2);
-		std::string t = "@" + this->realOutput->getType()->str();
+		if(ops.length() > 0 && this->opKind != OpKind::Value_CallFunction)
+			ops = ops.substr(0, ops.length() - 2);
 
-		std::string ret;
-		if(t == "@void")
+
+		if(this->opKind == OpKind::Value_CallFunction)
+			ops += ")";
+
+
+		std::string ret = "";
+		if(this->realOutput->getType()->isVoidType())
 		{
 			ret = name + " " + ops;
 		}
 		else
 		{
-			ret = t + " %" + std::to_string(this->realOutput->id) + " = " + name + " " + ops;
+			ret = "%" + std::to_string(this->realOutput->id) + " :: " + this->realOutput->getType()->str() + " = " + name + " " + ops;
 		}
 
 		return ret;
