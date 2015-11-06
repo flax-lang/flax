@@ -58,9 +58,11 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
-	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
 		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
+	printf("created init func for %s -- %s :: %s\n", this->name.c_str(), defaultInitFunc->getName().c_str(),
+		defaultInitFunc->getType()->str().c_str());
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
@@ -69,6 +71,8 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
+
+	fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
 
 	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
 	cgi->builder.setCurrentBlock(iblock);
@@ -161,7 +165,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 
 	cgi->builder.CreateReturnVoid();
-	// fir::verifyFunction(*defaultInitFunc);
+	cgi->builder.setCurrentBlock(currentblock);
 
 
 
@@ -289,8 +293,29 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.setCurrentBlock(ob);
 	}
 
-	if(this->initFuncs.size() == 0)
+
+	if(initFuncs.size() == 0)
+	{
 		this->initFuncs.push_back(defaultInitFunc);
+	}
+	else
+	{
+		// handles generic types making more default initialisers
+
+		bool found = false;
+		for(auto f : initFuncs)
+		{
+			if(f->getType()->isTypeEqual(defaultInitFunc->getType()))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if(!found)
+			this->initFuncs.push_back(defaultInitFunc);
+	}
+
 
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
