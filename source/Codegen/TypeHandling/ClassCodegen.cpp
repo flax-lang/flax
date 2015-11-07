@@ -61,8 +61,8 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
 		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
-	printf("created init func for %s -- %s :: %s\n", this->name.c_str(), defaultInitFunc->getName().c_str(),
-		defaultInitFunc->getType()->str().c_str());
+	// printf("created init func for %s -- %s :: %s\n", this->name.c_str(), defaultInitFunc->getName().c_str(),
+	// 	defaultInitFunc->getType()->str().c_str());
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
@@ -249,6 +249,12 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		// this makes sure that we don't get ridiculous mangled names for member functions
 		// also makes sure that we conform to the C++ ABI
 		// (using 'E' means we don't include the implicit first parameter in the mangled name)
+
+
+
+		// todo for generics:
+		// function expects first parameter not to be there
+		// but since we've already been through this, it'll be there.
 
 
 		val = f->decl->codegen(cgi).result.first;

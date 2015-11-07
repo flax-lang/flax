@@ -1,4 +1,4 @@
-// ast.h
+// tcn.h
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -17,7 +17,7 @@ namespace fir
 	struct StructType;
 }
 
-namespace Ast
+namespace Tcn
 {
 	enum class ArithmeticOp
 	{
