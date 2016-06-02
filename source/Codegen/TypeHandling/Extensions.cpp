@@ -143,7 +143,7 @@ fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir
 		this->scope = cgi->namespaceStack;
 
 		str->extensions.push_back(this);
-		delete types;
+		delete[] types;
 
 
 		cgi->module->addNamedType(newType->getStructName(), newType);
