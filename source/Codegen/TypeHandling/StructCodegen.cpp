@@ -304,7 +304,7 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 
 	this->didCreateType = true;
 
-	delete types;
+	delete[] types;
 
 	this->createdType = str;
 

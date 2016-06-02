@@ -312,7 +312,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	}
 
 
-
+	std::string mangledName = cgi->mangleWithNamespace(this->name);
 
 	// TODO: call global constructors
 	if(this->isGlobal)
@@ -324,7 +324,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 		else
 		{
-			ai = cgi->module->createGlobalVariable(this->name, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
 				this->immutable, fir::LinkageType::Internal);
 		}
 
@@ -341,6 +341,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
 				iceAssert(cv);
+
+				if(cv->getType() != ai->getType())
+				{
+					error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
+						this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());
+				}
 
 				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
 			}
@@ -390,12 +396,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 
 
-		cgi->addSymbol(this->name, ai, this);
+		cgi->addSymbol(mangledName, ai, this);
 
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		ft->vars[this->name] = *cgi->getSymPair(this, this->name);
+		ft->vars[this->name] = *cgi->getSymPair(this, mangledName);
 	}
 	else
 	{
@@ -409,7 +415,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
 
-	return Result_t(cgi->builder.CreateLoad(ai), ai);
+	if(!this->isGlobal)
+		return Result_t(cgi->builder.CreateLoad(ai), ai);
+
+	else
+		return Result_t(0, ai);
 }
 
 
