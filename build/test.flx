@@ -122,6 +122,40 @@
 }
 
 
+// syntax thingy
+// do we follow swift, in doing this:
+// ƒ foo(fmt: String, args: Any...)
+//
+// or, something like this (since it is conceptually an array-like structure)
+// ƒ foo(fmt: String, args: Any[...])
+//
+// both require some amount of parsing patches, but should be equally doable.
+// i'm personally a fan of the secound.
+//
+// it should be possible, theoretically, to implement this as a kind of array??
+// with a whole "length" and "data" thing. possibly.
+// not entirely sure how that will work...
+// we don't even have a length property, i don't think, for arrays right now.
+// we can statically type check indexes into fixed-length arrays at compile time.
+
+// but i don't think it will be possible to do that for vararg functions
+// so we def. need a length property or something.
+// i kinda want varargs first,
+// although it would be possibel to move the slipshod array system into a generic Array<> thing, once it's implemented
+// (if ever)
+
+// that has a lot more friction though, so i'm more keen to get the non-generic varargs thing working first.
+// first, the Any[...] implementation.
+// theoretically it should also be possible not to restrict it to Any, and have Int[...], String[...] and so on.
+// the array mechanics should work, and typeof() isn't necessary.
+
+
+func printer(fmt: String, args: Any[...])
+{
+}
+
+
+
 
 import LibCInterface
 import String
