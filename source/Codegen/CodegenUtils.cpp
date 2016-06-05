@@ -443,7 +443,7 @@ namespace Codegen
 			if(deep)
 			{
 				fir::Function* func = pair.first;
-				if(func)
+				if(func && func->linkageType == fir::LinkageType::External)
 				{
 					iceAssert(func);
 
@@ -461,7 +461,7 @@ namespace Codegen
 					this->addFunctionToScope(FuncPair_t(f, pair.second));
 					pair.first = f;
 				}
-				else
+				else if(!func)
 				{
 					// note: generic functions are not instantiated
 					if(pair.second->genericTypes.size() == 0)
@@ -503,13 +503,19 @@ namespace Codegen
 						// check what kind of struct.
 						if(Struct* str = dynamic_cast<Struct*>(sb))
 						{
-							for(auto f : str->initFuncs)
-								this->module->declareFunction(f->getName(), f->getType());
+							if(str->attribs & Attr_VisPublic)
+							{
+								for(auto f : str->initFuncs)
+									this->module->declareFunction(f->getName(), f->getType());
+							}
 						}
 						else if(Class* cls = dynamic_cast<Class*>(sb))
 						{
-							for(auto f : cls->initFuncs)
-								this->module->declareFunction(f->getName(), f->getType());
+							if(cls->attribs & Attr_VisPublic)
+							{
+								for(auto f : cls->initFuncs)
+									this->module->declareFunction(f->getName(), f->getType());
+							}
 						}
 						else if(dynamic_cast<Tuple*>(sb))
 						{
