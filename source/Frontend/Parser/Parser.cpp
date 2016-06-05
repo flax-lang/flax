@@ -1764,8 +1764,8 @@ namespace Parser
 			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
-			if(n->dval < FLT_MAX)	n->type = "Float32";
-			else					n->type = "Float64";
+			if(n->dval < (double) FLT_MAX)	n->type = "Float32";
+			else							n->type = "Float64";
 		}
 		else
 		{
