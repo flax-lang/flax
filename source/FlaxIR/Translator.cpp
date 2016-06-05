@@ -128,17 +128,18 @@ namespace fir
 
 
 
+
+
 	llvm::Module* Module::translateToLlvm()
 	{
+		fprintf(stderr, "MODULE NAME %s\n", this->moduleName.c_str());
+
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-		std::map<Value*, llvm::Value*> valueMap;
+		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
 
-
-
-
-		auto getValue = [&valueMap, &module, &builder](Value* fv) -> llvm::Value* {
+		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
 			if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
 			{
@@ -146,19 +147,22 @@ namespace fir
 			}
 			else if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
 			{
-				llvm::Value* lgv = valueMap[gv]; iceAssert(lgv);
+				llvm::Value* lgv = valueMap[gv->id];
+				if(!lgv)
+					fprintf(stderr, "failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+				iceAssert(lgv);
 				return lgv;
 				// return builder.CreateConstGEP2_32(lgv, 0, 0);
 			}
 			else
 			{
-				llvm::Value* ret = valueMap[fv];
+				llvm::Value* ret = valueMap[fv->id];
 				if(!ret) error("!ret (id = %zu)", fv->id);
 				return ret;
 			}
 		};
 
-		auto getOperand = [&valueMap, &module, &builder, &getValue](Instruction* inst, size_t op) -> llvm::Value* {
+		auto getOperand = [&module, &builder, &getValue](Instruction* inst, size_t op) -> llvm::Value* {
 
 			iceAssert(inst->operands.size() > op);
 			Value* fv = inst->operands[op];
@@ -168,11 +172,14 @@ namespace fir
 
 		auto addValueToMap = [&valueMap](llvm::Value* v, Value* fv) {
 
+			iceAssert(v);
 
-			if(valueMap.find(fv) != valueMap.end())
+			if(valueMap.find(fv->id) != valueMap.end())
 				error("already have value of %p (id %zu)", fv, fv->id);
 
-			valueMap[fv] = v;
+			valueMap[fv->id] = v;
+			// printf("adding value %zu\n", fv->id);
+
 			v->setName(fv->getName());
 		};
 
@@ -186,18 +193,32 @@ namespace fir
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "global_string_" + std::to_string(strn));
 
-			valueMap[string.second] = gv;
+			valueMap[string.second->id] = gv;
+			// fprintf(stderr, "adding string %zu\n", string.second->id);
 
 			strn++;
 		}
 
 		for(auto global : this->globals)
 		{
-			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module,
-				typeToLlvm(global.second->getType()->getPointerElementType(), module), global.second->isImmutable,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, constToLlvm(global.second->initValue, module), global.first);
+			llvm::Constant* initval = 0;
+			if(global.second->initValue != 0)
+			{
+				initval = constToLlvm(global.second->initValue, module);
+			}
+			else
+			{
+				// initval = constToLlvm(fir::ConstantValue::getNullValue(global.second->getType()->getPointerElementType()), module);
+				// initval = 0;
+			}
 
-			valueMap[global.second] = gv;
+			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
+				module), global.second->isImmutable, llvm::GlobalValue::LinkageTypes::ExternalLinkage, initval, global.first);
+
+			valueMap[global.second->id] = gv;
+
+			fprintf(stderr, "found global %s (%zu, %p) in module %s (gv = %p)\n", global.first.c_str(), global.second->id, global.second,
+				this->moduleName.c_str(), gv);
 		}
 
 		for(auto type : this->namedTypes)
@@ -223,19 +244,24 @@ namespace fir
 			llvm::Function* func = llvm::Function::Create(llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)), link,
 				ffn->getName(), module);
 
-			valueMap[ffn] = func;
+			valueMap[ffn->id] = func;
+			// fprintf(stderr, "adding func %zu\n", ffn->id);
 
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
 			{
-				valueMap[ffn->getArguments()[i]] = it;
+				valueMap[ffn->getArguments()[i]->id] = it;
+
+				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
 
 
 			for(auto b : ffn->blocks)
 			{
 				llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), b->getName(), func);
-				valueMap[b] = bb;
+				valueMap[b->id] = bb;
+
+				// fprintf(stderr, "adding block %zu\n", b->id);
 			}
 		}
 
@@ -284,7 +310,7 @@ namespace fir
 
 			for(auto block : ffn->getBlockList())
 			{
-				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block]);
+				llvm::BasicBlock* bb = llvm::cast<llvm::BasicBlock>(valueMap[block->id]);
 				builder.SetInsertPoint(bb);
 
 				DUMP_INSTR("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());

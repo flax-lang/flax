@@ -18,6 +18,7 @@ namespace fir
 			error("ICE: Already have a global with name %s", name.c_str());
 
 		this->globals[name] = gv;
+		printf("creating global var %s in module %s\n", name.c_str(), this->moduleName.c_str());
 		return gv;
 	}
 
@@ -40,6 +41,14 @@ namespace fir
 		this->globals.erase(name);
 
 		// delete gv;
+	}
+
+	GlobalVariable* Module::tryGetGlobalVariable(std::string name)
+	{
+		if(this->globals.find(name) == this->globals.end())
+			return 0;
+
+		return this->globals[name];
 	}
 
 	GlobalVariable* Module::getGlobalVariable(std::string name)

@@ -244,7 +244,6 @@ namespace Parser
 
 		if(ps.curAttrib & disallowed)
 		{
-
 			int shifts = 0;
 			while(((ps.curAttrib & disallowed) & 1) == 0)
 				ps.curAttrib >>= 1, disallowed >>= 1, shifts++;
@@ -2538,6 +2537,12 @@ namespace Parser
 
 	NamespaceDecl* parseNamespace(ParserState& ps)
 	{
+		// todo: investigate if this is the best way.
+		// this applies the visibility modifier for the namespace to all statements within.
+		// (1 level deep only)
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+
+
 		iceAssert(ps.eat().type == TType::Namespace);
 		Token tok_id = ps.eat();
 
@@ -2548,6 +2553,21 @@ namespace Parser
 
 		BracedBlock* bb = parseBracedBlock(ps);
 		NamespaceDecl* ns = CreateAST(NamespaceDecl, tok_id, tok_id.text, bb);
+
+
+		// do the thing.
+		for(auto stmt : bb->statements)
+		{
+			// make sure the statement doesn't already have its own specifier.
+			if(!(stmt->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)))
+				stmt->attribs |= attr;
+		}
+		for(auto stmt : bb->deferredStatements)
+		{
+			// make sure the statement doesn't already have its own specifier.
+			if(!(stmt->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)))
+				stmt->attribs |= attr;
+		}
 
 		return ns;
 	}

@@ -141,9 +141,9 @@ namespace Compiler
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 
+
 		// add the previous stuff to our own root
 		copyRootInnards(cgi, dummyRoot, root, true);
-
 
 		Codegen::doCodegen(fpath, root, cgi);
 
