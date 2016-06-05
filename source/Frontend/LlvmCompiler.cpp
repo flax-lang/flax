@@ -64,8 +64,6 @@ namespace Compiler
 
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
-
-			modulelist[mod.first]->dump();
 		}
 
 
