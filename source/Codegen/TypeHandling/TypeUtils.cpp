@@ -904,39 +904,6 @@ namespace Codegen
 		return fir::StructType::getLiteral(types, cgi->getContext());
 	}
 
-	static fir::Type* recursivelyParseArray(CodegenInstance* cgi, Expr* user, std::string& type, bool allowFail)
-	{
-		iceAssert(type.size() > 0);
-
-		fir::Type* ret = 0;
-		if(type[0] != '[')
-		{
-			std::string t = "";
-			while(type[0] != ']')
-			{
-				t += type[0];
-				type.erase(type.begin());
-			}
-
-			ret = cgi->parseAndGetOrInstantiateType(user, t, allowFail);
-		}
-		else
-		{
-			type = type.substr(1);
-			ret = recursivelyParseArray(cgi, user, type, allowFail);
-
-			// todo: FIXME -- arrays, not pointers.
-			ret = ret->getPointerTo();
-
-			if(type[0] != ']')
-				error(user, "Expected closing '['");
-		}
-
-		return ret;
-	}
-
-
-
 
 
 	fir::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
@@ -947,14 +914,6 @@ namespace Codegen
 			{
 				// parse a tuple.
 				fir::Type* parsed = recursivelyParseTuple(this, user, type, allowFail);
-				return parsed;
-			}
-			else if(type[0] == '[')
-			{
-				// array.
-				std::string tp = type;
-				fir::Type* parsed = recursivelyParseArray(this, user, tp, allowFail);
-
 				return parsed;
 			}
 			else
@@ -980,21 +939,44 @@ namespace Codegen
 						const char* c = arr.c_str();
 						char* final = 0;
 
-						size_t asize = strtoll(c, &final, 0);
-						size_t numlen = final - c;
 
-						arr = arr.substr(numlen);
-						sizes.push_back(asize);
+						if(arr.find("]") == 0)
+						{
+							// variable array.
+							sizes.push_back(0);
+							iceAssert(arr.find("]") == 1);
+
+							arr = arr.substr(1);
+						}
+						else if(arr.find("...") == 0)
+						{
+							sizes.push_back(0);
+							iceAssert(arr.find("]") == 3);
+
+							arr = arr.substr(3);
+						}
+						else
+						{
+							size_t asize = strtoll(c, &final, 0);
+							size_t numlen = final - c;
+
+							arr = arr.substr(numlen);
+							sizes.push_back(asize);
 
 
-						// get the closing.
-						iceAssert(arr.length() > 0 && arr.front() == ']');
-						arr = arr.substr(1);
+							// get the closing.
+							iceAssert(arr.length() > 0 && arr.front() == ']');
+							arr = arr.substr(1);
+						}
 					}
 
 					for(auto i : sizes)
 					{
-						btype = fir::ArrayType::get(btype, i);
+						if(i != 0)
+							btype = fir::ArrayType::get(btype, i);
+
+						else
+							btype = btype->getPointerTo();
 					}
 
 					return btype;
@@ -1412,7 +1394,7 @@ namespace Codegen
 				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
 			}
 
-			if(fd->hasVarArg) str += "..., ";
+			if(fd->isCStyleVarArg) str += "..., ";
 
 			if(fd->params.size() > 0)
 				str = str.substr(0, str.length() - 2);

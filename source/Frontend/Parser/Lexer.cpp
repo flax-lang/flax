@@ -139,7 +139,7 @@ namespace Parser
 		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";
-			tok.type = TType::Elipsis;
+			tok.type = TType::Ellipsis;
 			read = 3;
 		}
 		else if(stream.compare(0, 2, "::") == 0)

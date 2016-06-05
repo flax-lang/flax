@@ -992,8 +992,8 @@ namespace Codegen
 
 			iceAssert(decl);
 
-			if(decl->params.size() != params.size() && !decl->hasVarArg) return false;
-			if(decl->params.size() == 0 && (params.size() == 0 || decl->hasVarArg)) return true;
+			if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
+			if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
 
 
 			#define __min(x, y) ((x) > (y) ? (y) : (x))
