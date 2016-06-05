@@ -39,6 +39,7 @@ namespace fir
 		void deleteGlobalVariable(std::string name);
 
 		GlobalVariable* getGlobalVariable(std::string name);
+		GlobalVariable* tryGetGlobalVariable(std::string name);
 
 		std::deque<GlobalVariable*> getGlobalVariables();
 		std::deque<StructType*> getNamedTypes();

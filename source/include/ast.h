@@ -202,6 +202,7 @@ namespace Ast
 		void inferType(Codegen::CodegenInstance* cgi);
 
 		std::string name;
+		std::string mangledName;
 		bool immutable = false;
 
 		bool isStatic = false;

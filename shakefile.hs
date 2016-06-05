@@ -28,7 +28,7 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcNormFlags		= "-O3 -print-fir -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
 flaxcJitFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 

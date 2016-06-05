@@ -23,8 +23,8 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		cgi->module = new fir::Module(Parser::getModuleName(filename));
 		cgi->rootNode = root;
+		cgi->module = new fir::Module(Parser::getModuleName(filename));
 
 
 		// todo: proper.
@@ -543,6 +543,62 @@ namespace Codegen
 			{
 				OpOverload* ooo = oo.first;
 				clone->operators.push_back(std::make_pair(ooo, (fir::Function*) 0));
+			}
+		}
+
+		for(auto var : ft->vars)
+		{
+			if(var.second.second->attribs & Attr_VisPublic)
+			{
+				bool found = false;
+				for(auto v : clone->vars)
+				{
+					if(v.second.second->mangledName == var.second.second->mangledName)
+					{
+						// printf("found %s::%s\n", ft->nsName.c_str(), var.first.c_str());
+						found = true;
+						break;
+					}
+				}
+
+				if(!found && !deep)
+				{
+					clone->vars[var.first] = var.second;
+					fprintf(stderr, "cloning var %s\n", var.second.second->mangledName.c_str());
+				}
+
+				if(deep)
+				{
+					// add to the module list
+					// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
+
+					fprintf(stderr, ">> deep copy var %s <<\n", var.second.second->mangledName.c_str());
+
+					iceAssert(this->module);
+					iceAssert(clone->vars.find(var.first) != clone->vars.end());
+
+					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->mangledName);
+
+					if(potentialGV == 0)
+					{
+						auto gv = this->module->declareGlobalVariable(var.second.second->mangledName,
+							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
+
+						fprintf(stderr, "creating var (id %zu)\n", gv->id);
+						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
+					}
+					else
+					{
+						if(potentialGV->getType() != var.second.first->getType())
+						{
+							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
+								var.second.second->mangledName.c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
+								potentialGV->getType()->getPointerElementType()->str().c_str());
+						}
+
+						fprintf(stderr, "var exists.\n");
+					}
+				}
 			}
 		}
 
