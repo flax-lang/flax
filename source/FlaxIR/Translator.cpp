@@ -132,8 +132,6 @@ namespace fir
 
 	llvm::Module* Module::translateToLlvm()
 	{
-		fprintf(stderr, "MODULE NAME %s\n", this->moduleName.c_str());
-
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
@@ -175,7 +173,7 @@ namespace fir
 			iceAssert(v);
 
 			if(valueMap.find(fv->id) != valueMap.end())
-				error("already have value of %p (id %zu)", fv, fv->id);
+				error("already have value with id %zu", fv->id);
 
 			valueMap[fv->id] = v;
 			// printf("adding value %zu\n", fv->id);
@@ -194,7 +192,6 @@ namespace fir
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "global_string_" + std::to_string(strn));
 
 			valueMap[string.second->id] = gv;
-			// fprintf(stderr, "adding string %zu\n", string.second->id);
 
 			strn++;
 		}
@@ -206,19 +203,11 @@ namespace fir
 			{
 				initval = constToLlvm(global.second->initValue, module);
 			}
-			else
-			{
-				// initval = constToLlvm(fir::ConstantValue::getNullValue(global.second->getType()->getPointerElementType()), module);
-				// initval = 0;
-			}
 
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
 				module), global.second->isImmutable, llvm::GlobalValue::LinkageTypes::ExternalLinkage, initval, global.first);
 
 			valueMap[global.second->id] = gv;
-
-			fprintf(stderr, "found global %s (%zu, %p) in module %s (gv = %p)\n", global.first.c_str(), global.second->id, global.second,
-				this->moduleName.c_str(), gv);
 		}
 
 		for(auto type : this->namedTypes)

@@ -102,7 +102,9 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 			// generate a global variable
 			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
-				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable, fir::LinkageType::External);
+				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
+				this->attribs & Attr_VisPublic ? fir::LinkageType::External : fir::LinkageType::Internal);
+
 
 			if(var->inferredLType->isStructType())
 			{
@@ -645,7 +647,7 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 
 	this->didCreateType = true;
 
-	delete types;
+	delete[] types;
 
 	this->createdType = str;
 

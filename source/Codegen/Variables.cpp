@@ -303,9 +303,21 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
 	}
 
+
 	if(this->initVal)
 	{
-		auto r = this->initVal->codegen(cgi, ai).result;
+		ValPtr_t r;
+
+		if(isGlobal && this->inferredLType->isStructType())
+		{
+			// can't call directly for globals, since we cannot call the function directly.
+			// todo: if it's a struct, and we need to call a constructor...
+			error(this, "enotsup");
+		}
+		else
+		{
+			r = this->initVal->codegen(cgi, ai).result;
+		}
 
 		val = r.first;
 		valptr = r.second;
@@ -320,7 +332,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		if(this->attribs & Attr_VisPublic)
 		{
 			// hmm.
-			// warn(this, "Public global variables are currently iffy");
 			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
 				this->immutable, fir::LinkageType::External);
 		}
