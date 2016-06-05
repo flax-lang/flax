@@ -12,6 +12,10 @@ using namespace Codegen;
 
 Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
+	if(this->genericTypes.size() > 0 && !this->didCreateType)
+		return Result_t(0, 0);
+
+
 	iceAssert(this->didCreateType);
 	TypePair_t* _type = cgi->getType(this->name);
 	if(!_type)
@@ -42,8 +46,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	}
 
 
-	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	fir::StructType* str = this->createdType;
 	cgi->module->addNamedType(str->getStructName(), str);
+
+
+	fir::IRBlock* curblock = cgi->builder.getCurrentBlock();
 
 	// generate initialiser
 	{
@@ -142,6 +149,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		cgi->addPublicFunc({ memifunc, fd });
 	}
 
+	cgi->builder.setCurrentBlock(curblock);
 
 
 
@@ -157,6 +165,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 		f->decl->parentClass = this;
 
+		if(this->attribs & Attr_VisPublic && !(f->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+		{
+			f->decl->attribs |= Attr_VisPublic;
+		}
+
 		fir::Value* val = f->decl->codegen(cgi).result.first;
 
 		cgi->builder.setCurrentBlock(ob);
@@ -164,7 +177,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
 
 		// make the functions public as well
-		cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+
+		if(f->decl->attribs & Attr_VisPublic)
+		{
+			cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		}
 
 
 		ob = cgi->builder.getCurrentBlock();
@@ -184,16 +201,38 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 
 
-fir::Type* Struct::createType(CodegenInstance* cgi)
+fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
-	if(this->didCreateType)
+	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
 		return 0;
+
+	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
+		return this->createdType;
+
+
+	if(instantiatedGenericTypes.size() > 0)
+	{
+		cgi->pushGenericTypeStack();
+		for(auto t : instantiatedGenericTypes)
+			cgi->pushGenericType(t.first, t.second);
+	}
+
+
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
+	std::string genericTypeMangle;
+
 	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
+	if(instantiatedGenericTypes.size() > 0)
+	{
+		for(auto t : instantiatedGenericTypes)
+			genericTypeMangle += "_" + t.first + ":" + t.second->str();
+	}
+
+	this->mangledName += genericTypeMangle;
 
 	if(cgi->isDuplicateType(this->mangledName))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -203,7 +242,21 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext(), this->packed);
 
 	this->scope = cgi->namespaceStack;
-	cgi->addNewType(str, this, TypeKind::Struct);
+
+	{
+		std::string oldname = this->name;
+
+		// only add the base type if we haven't *ever* created it
+		if(this->createdType == 0)
+			cgi->addNewType(str, this, TypeKind::Struct);
+
+		this->name += genericTypeMangle;
+
+		if(genericTypeMangle.length() > 0)
+			cgi->addNewType(str, this, TypeKind::Struct);
+
+		this->name = oldname;
+	}
 
 
 
@@ -260,7 +313,15 @@ fir::Type* Struct::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 
-	delete types;
+	delete[] types;
+
+	this->createdType = str;
+
+
+	if(instantiatedGenericTypes.size() > 0)
+		cgi->popGenericTypeStack();
+
+
 
 	return str;
 }

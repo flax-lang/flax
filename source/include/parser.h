@@ -146,7 +146,7 @@ namespace Parser
 	{
 		Token() { }
 
-		pin pin;
+		Pin pin;
 		std::string text;
 		TType type = TType::Invalid;
 	};
@@ -168,6 +168,9 @@ namespace Parser
 	void parserError(Token tok, const char* msg, ...) __attribute__((noreturn));
 	void parserWarn(Token tok, const char* msg, ...);
 
+	void parserError(Pin po, const char* msg, ...) __attribute__((noreturn));
+	void parserWarn(Pin po, const char* msg, ...);
+
 
 	typedef std::deque<Token> TokenList;
 	struct ParserState
@@ -179,7 +182,7 @@ namespace Parser
 		std::map<std::string, bool> visited;
 
 		Token curtok;
-		pin currentPos;
+		Pin currentPos;
 		Ast::Root* rootNode = 0;
 		uint64_t curAttrib = 0;
 
@@ -286,7 +289,7 @@ namespace Parser
 
 
 	std::string getModuleName(std::string filename);
-	Token getNextToken(std::string& stream, pin& pos);
+	Token getNextToken(std::string& stream, Pin& pos);
 
 	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);

@@ -10,7 +10,7 @@
 
 namespace Parser
 {
-	static void skipWhitespace(std::string& line, pin& pos)
+	static void skipWhitespace(std::string& line, Pin& pos)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
 		if(startpos != std::string::npos)
@@ -27,7 +27,7 @@ namespace Parser
 
 
 	// warning: messy function
-	Token getNextToken(std::string& stream, pin& pos)
+	Token getNextToken(std::string& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
 			return Token();
@@ -94,17 +94,6 @@ namespace Parser
 
 			tok.type = TType::Comment;
 		}
-		else if(stream.compare(0, 2, "<<") == 0)
-		{
-			tok.text = "<<";
-			tok.type = TType::ShiftLeft;
-			read = 2;
-		}
-		else if(stream.compare(0, 2, ">>") == 0)
-		{
-			tok.text = ">>";
-			tok.type = TType::ShiftRight;
-		}
 		else if(stream.compare(0, 2, "++") == 0)
 		{
 			tok.text = "++";
@@ -146,18 +135,6 @@ namespace Parser
 			tok.text = "%=";
 			tok.type = TType::ModEq;
 			read = 2;
-		}
-		else if(stream.compare(0, 3, "<<=") == 0)
-		{
-			tok.text = "<<=";
-			tok.type = TType::ShiftLeftEq;
-			read = 3;
-		}
-		else if(stream.compare(0, 3, ">>=") == 0)
-		{
-			tok.text = ">>=";
-			tok.type = TType::ShiftRightEq;
-			read = 3;
 		}
 		else if(stream.compare(0, 3, "...") == 0)
 		{
@@ -261,13 +238,16 @@ namespace Parser
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
 		}
-		else if(isdigit(stream[0]))
+		else if(isdigit(stream[0]) || (stream.length() > 2 && ((stream[0] == '-') || (stream[0] == '+')) && isdigit(stream[1])))
 		{
 			std::string num;
 
 			// read until whitespace
 			std::stringstream str;
 			str << stream;
+
+			if(stream[0] == '+' || stream[0] == '-')
+				num = str.get();
 
 			int tmp = 0;
 			while(isdigit(tmp = str.get()))

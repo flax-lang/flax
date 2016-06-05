@@ -20,6 +20,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Linker/Linker.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
@@ -60,12 +61,12 @@ namespace Compiler
 		for(auto mod : std::get<3>(data))
 		{
 			modulelist[mod.first] = mod.second->translateToLlvm();
-			optimiseLlvmModule(modulelist[mod.first]);
 
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
-		}
 
+			modulelist[mod.first]->dump();
+		}
 
 
 		// link together
@@ -265,45 +266,50 @@ namespace Compiler
 
 	static void optimiseLlvmModule(llvm::Module* mod)
 	{
-		llvm::FunctionPassManager functionPassManager = llvm::FunctionPassManager(mod);
+		// llvm::FunctionPassManager fpm = llvm::FunctionPassManager(mod);
+		llvm::PassManager fpm = llvm::PassManager();
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
 			// Provide basic AliasAnalysis support for GVN.
-			functionPassManager.add(llvm::createBasicAliasAnalysisPass());
+			fpm.add(llvm::createBasicAliasAnalysisPass());
 
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			functionPassManager.add(llvm::createInstructionCombiningPass());
+			fpm.add(llvm::createInstructionCombiningPass());
 
 			// Reassociate expressions.
-			functionPassManager.add(llvm::createReassociatePass());
+			fpm.add(llvm::createReassociatePass());
 
 			// Eliminate Common SubExpressions.
-			functionPassManager.add(llvm::createGVNPass());
+			fpm.add(llvm::createGVNPass());
 
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			functionPassManager.add(llvm::createCFGSimplificationPass());
+			fpm.add(llvm::createCFGSimplificationPass());
 
 			// hmm.
 			// fuck it, turn everything on.
-			functionPassManager.add(llvm::createLoadCombinePass());
-			functionPassManager.add(llvm::createConstantHoistingPass());
-			functionPassManager.add(llvm::createLICMPass());
-			functionPassManager.add(llvm::createDelinearizationPass());
-			functionPassManager.add(llvm::createFlattenCFGPass());
-			functionPassManager.add(llvm::createScalarizerPass());
-			functionPassManager.add(llvm::createSinkingPass());
-			functionPassManager.add(llvm::createStructurizeCFGPass());
-			functionPassManager.add(llvm::createInstructionSimplifierPass());
-			functionPassManager.add(llvm::createDeadStoreEliminationPass());
-			functionPassManager.add(llvm::createDeadInstEliminationPass());
-			functionPassManager.add(llvm::createMemCpyOptPass());
+			fpm.add(llvm::createConstantHoistingPass());
+			fpm.add(llvm::createLICMPass());
+			fpm.add(llvm::createDelinearizationPass());
+			fpm.add(llvm::createFlattenCFGPass());
+			fpm.add(llvm::createScalarizerPass());
+			fpm.add(llvm::createSinkingPass());
+			fpm.add(llvm::createStructurizeCFGPass());
+			fpm.add(llvm::createInstructionSimplifierPass());
+			fpm.add(llvm::createDeadStoreEliminationPass());
+			fpm.add(llvm::createDeadInstEliminationPass());
+			fpm.add(llvm::createMemCpyOptPass());
 
-			functionPassManager.add(llvm::createSCCPPass());
-			functionPassManager.add(llvm::createAggressiveDCEPass());
+			fpm.add(llvm::createSCCPPass());
 
-			functionPassManager.add(llvm::createTailCallEliminationPass());
+			fpm.add(llvm::createTailCallEliminationPass());
+			fpm.add(llvm::createAggressiveDCEPass());
+
+
+			// module-level stuff
+			fpm.add(llvm::createMergeFunctionsPass());
+			fpm.add(llvm::createLoopSimplifyPass());
 		}
 
 		// optimisation level -1 disables *everything*
@@ -311,17 +317,15 @@ namespace Compiler
 		if(Compiler::getOptimisationLevel() >= 0)
 		{
 			// always do the mem2reg pass, our generated code is too inefficient
-			functionPassManager.add(llvm::createPromoteMemoryToRegisterPass());
-			functionPassManager.add(llvm::createMergedLoadStoreMotionPass());
-			functionPassManager.add(llvm::createScalarReplAggregatesPass());
-			functionPassManager.add(llvm::createConstantPropagationPass());
-			functionPassManager.add(llvm::createDeadCodeEliminationPass());
+			fpm.add(llvm::createPromoteMemoryToRegisterPass());
+			fpm.add(llvm::createMergedLoadStoreMotionPass());
+			fpm.add(llvm::createScalarReplAggregatesPass());
+			fpm.add(llvm::createConstantPropagationPass());
+			fpm.add(llvm::createDeadCodeEliminationPass());
+			fpm.add(llvm::createLoadCombinePass());
 		}
 
-		functionPassManager.doInitialization();
-
-		for(auto& f : mod->getFunctionList())
-			functionPassManager.run(f);
+		fpm.run(*mod);
 	}
 }
 

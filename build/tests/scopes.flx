@@ -12,8 +12,8 @@ class Orr
 
 class Something
 {
-	var oor = 400
 	static var Or: Orr
+	var oor = 400
 
 	ƒ somefoo() -> Orr
 	{

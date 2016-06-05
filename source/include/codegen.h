@@ -180,8 +180,14 @@ namespace Codegen
 		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
 		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
-		int autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr = 0);
-		int autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr = 0);
+
+		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
+		__attribute__ ((warn_unused_result));
+
+		fir::Value* autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
+		__attribute__ ((warn_unused_result));
+
+
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
 		bool isPtr(Ast::Expr* e);
