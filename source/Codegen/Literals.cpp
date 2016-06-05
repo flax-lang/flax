@@ -13,7 +13,11 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	// check builtin type
 	if(!this->decimal)
 	{
-		return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
+		if(this->needUnsigned)
+			return Result_t(fir::ConstantInt::getUint64((uint64_t) this->ival), 0);
+
+		else
+			return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
 	}
 	else
 	{

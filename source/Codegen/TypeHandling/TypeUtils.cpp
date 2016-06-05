@@ -746,7 +746,8 @@ namespace Codegen
 
 						if(cright->getUnsignedValue() <= maxL)
 						{
-							retval = this->builder.CreateIntSizeCast(right, target);
+							// retval = this->builder.CreateIntSizeCast(right, target);
+							retval = fir::ConstantInt::getUnsigned(target, cright->getUnsignedValue());
 						}
 					}
 				}

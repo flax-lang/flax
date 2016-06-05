@@ -275,11 +275,19 @@ namespace Parser
 				try
 				{
 					// makes sure we get the right shit done
-					std::stoll(num, nullptr, base);
+					if(num[0] == '-')
+						std::stoll(num, nullptr, base);
+
+					else
+						std::stoull(num, nullptr, base);
 				}
-				catch(std::exception)
+				catch(const std::out_of_range&)
 				{
-					Parser::parserError("Invalid number '%s'\n", num.c_str());
+					Parser::parserError("Number '%s' is out of range (of even uint64)", num.c_str());
+				}
+				catch(const std::exception&)
+				{
+					Parser::parserError("Invalid number '%s' (%s)\n", num.c_str());
 				}
 
 				if(base == 16)
