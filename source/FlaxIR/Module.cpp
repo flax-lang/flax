@@ -87,7 +87,6 @@ namespace fir
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)
 	{
-		fprintf(stderr, "declaring func %s in mod %s\n", name.c_str(), this->moduleName.c_str());
 		this->getOrCreateFunction(name, ftype, LinkageType::External);
 	}
 
