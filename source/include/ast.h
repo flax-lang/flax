@@ -163,6 +163,7 @@ namespace Ast
 		Number(Parser::Pin pos, int64_t val) : Expr(pos), ival(val) { this->decimal = false; }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
 
+		bool needUnsigned = false;
 		bool decimal = false;
 		fir::Type* properLlvmType = 0;
 

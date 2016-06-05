@@ -90,7 +90,7 @@ void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, co
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = Compiler::getFilenameFromPath(file);
+	std::string filename = Compiler::getFilenameFromPath(file ? file : "(unknown)");
 
 	if(line > 0 && col > 0)
 		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), line, col);

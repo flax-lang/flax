@@ -1,0 +1,56 @@
+// IntegerLimits.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public namespace Int8
+{
+	val min: Int8 = -128
+	val max: Int8 = +127
+}
+public namespace Int16
+{
+	val min: Int16 = -32768
+	val max: Int16 = +32767
+}
+public namespace Int32
+{
+	val min: Int32 = -2147483648
+	val max: Int32 = +2147483647
+}
+public namespace Int64
+{
+	val min: Int64 = -9223372036854775808
+	val max: Int64 = +9223372036854775807
+}
+
+public namespace Uint8
+{
+	val min: Uint8 = 0
+	val max: Uint8 = 255
+}
+public namespace Uint16
+{
+	val min: Uint16 = 0
+	val max: Uint16 = 65535
+}
+public namespace Uint32
+{
+	val min: Uint32 = 0
+	val max: Uint32 = 4294967295
+}
+public namespace Uint64
+{
+	val min: Uint64 = 0
+	val max: Uint64 = 18446744073709551615
+}
+
+
+
+
+
+
+
+
+
+
+

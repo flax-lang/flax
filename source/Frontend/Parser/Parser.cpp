@@ -207,14 +207,21 @@ namespace Parser
 		}
 	}
 
-	static int64_t getIntegerValue(Token t)
+	static std::pair<int64_t, bool> getIntegerValue(Token t)
 	{
 		iceAssert(t.type == TType::Integer);
 		int base = 10;
 		if(t.text.compare(0, 2, "0x") == 0)
 			base = 16;
 
-		return std::stoll(t.text, nullptr, base);
+		try
+		{
+			return { std::stoll(t.text, nullptr, base), false };
+		}
+		catch(std::out_of_range)
+		{
+			return { std::stoull(t.text, nullptr, base), true };
+		}
 	}
 
 	static double getDecimalValue(Token t)
@@ -1750,14 +1757,21 @@ namespace Parser
 		Number* n;
 		if(ps.front().type == TType::Integer)
 		{
-			Token tok = ps.eat();
-			n = CreateAST(Number, tok, getIntegerValue(tok));
-
 			// todo: handle integer suffixes
-			n->type = "Int64";
 
-			// set the type.
-			// always used signed
+			Token tok = ps.eat();
+			auto iv = getIntegerValue(tok);
+
+			n = CreateAST(Number, tok, iv.first);
+			if(iv.second)
+			{
+				n->needUnsigned = true;
+				n->type = "Uint64";
+			}
+			else
+			{
+				n->type = "Int64";
+			}
 		}
 		else if(ps.front().type == TType::Decimal)
 		{
