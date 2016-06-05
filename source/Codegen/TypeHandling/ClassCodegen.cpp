@@ -274,8 +274,11 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
 		}
 
-		// make the functions public as well
-		cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		if(f->decl->attribs & Attr_VisPublic)
+		{
+			// make the functions public as well
+			cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		}
 	}
 
 	// pass 2

@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Foundation
+import Foundation
 
 class Orr
 {
@@ -15,10 +15,10 @@ class Something
 	static var Or: Orr
 	var oor = 400
 
-	// ƒ somefoo() -> Orr
-	// {
-	// 	return Orr()
-	// }
+	ƒ somefoo() -> Orr
+	{
+		return Orr()
+	}
 
 	class Inside
 	{
@@ -50,7 +50,7 @@ enum OutsideEnum
 class Sheep
 {
 	var thing = 43
-	var foo: Something = Something()
+	var foo: Something
 
 	static var afoo: Something
 }
@@ -59,58 +59,58 @@ namespace n1
 {
 	namespace n2
 	{
-		// var m: Sheep = Sheep()
+		var m: Sheep
 
-		// var tup: (String, Int)
-		// func nest() -> (String, Int)
-		// {
-		// 	printf("nested\n");
-		// 	return ("TUPLE ONE", 591)
-		// }
+		var tup: (String, Int)
+		func nest() -> (String, Int)
+		{
+			printf("nested\n");
+			return ("TUPLE ONE", 591)
+		}
 	}
 }
 
-// public ƒ doScopeTest(argv: String)
-// {
-	// var x = argv.data + 3
+public ƒ doScopeTest(argv: String)
+{
+	var x = argv.data + 3
 
-	// let p = 64.4 ÷ 4.1
+	let p = 64.4 ÷ 4.1
 
-	// let m = Math.√(41.5)
+	let m = Math.√(41.5)
 
-	// let mmx = Something.Inside.Another
-	// let another = 4
-	// let foo: Something()
+	let mmx = Something.Inside.Another
+	let another = 4
+	let foo: Something()
 
-	// let mm = foo.somefoo().bar
-
-
-	// let gg = (4, 100.39)
-	// printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
-
-	// printf("[%d]\n", foo.oor)
-	// printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
+	let mm = foo.somefoo().bar
 
 
-	// let x1: Int = OutsideEnum.Three
-	// let x2: Int = Something.InsideEnum.Quadruple
-	// printf("x1: %d, x2: %d\n", x1, x2)
+	let gg = (4, 100.39)
+	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
+
+	printf("[%d]\n", foo.oor)
+	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
 
 
+	let x1: Int = OutsideEnum.Three
+	let x2: Int = Something.InsideEnum.Quadruple
+	printf("x1: %d, x2: %d\n", x1, x2)
 
 
 
-	// n1.n2.m.foo.oor = 968
 
-	// let t1 = n1.n2.m.foo.somefoo().bar
-	// let t2 = n1.n2.nest().0.length
 
-	// n1.n2.tup.0 = "HELLO, WORLD" + "!"
-	// printf("tup: %s\n", n1.n2.tup.0)
+	n1.n2.m.foo.oor = 968
 
-	// printf("t1 = %d, t2 = %d\n", t1, t2)
-	// printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
-// }
+	let t1 = n1.n2.m.foo.somefoo().bar
+	let t2 = n1.n2.nest().0.length
+
+	n1.n2.tup.0 = "HELLO, WORLD" + "!"
+	printf("tup: %s\n", n1.n2.tup.0)
+
+	printf("t1 = %d, t2 = %d\n", t1, t2)
+	printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
+}
 
 
 

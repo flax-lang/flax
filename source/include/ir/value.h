@@ -34,6 +34,8 @@ namespace fir
 
 	enum class LinkageType
 	{
+		Invalid,
+
 		Internal,
 		External,
 		ExternalWeak,
@@ -81,9 +83,10 @@ namespace fir
 	{
 		friend struct Module;
 
+		LinkageType linkageType;
+
 		protected:
 		GlobalValue(Type* type, LinkageType linkage);
-		LinkageType linkageType;
 	};
 
 	struct GlobalVariable : GlobalValue

@@ -165,6 +165,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 		f->decl->parentClass = this;
 
+		if(this->attribs & Attr_VisPublic && !(f->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+		{
+			f->decl->attribs |= Attr_VisPublic;
+		}
+
 		fir::Value* val = f->decl->codegen(cgi).result.first;
 
 		cgi->builder.setCurrentBlock(ob);
@@ -172,7 +177,11 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
 
 		// make the functions public as well
-		cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+
+		if(f->decl->attribs & Attr_VisPublic)
+		{
+			cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		}
 
 
 		ob = cgi->builder.getCurrentBlock();
