@@ -76,7 +76,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
-		#if 0
+		#if 1
 		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::Pin(), "Any");
@@ -155,7 +155,7 @@ namespace TypeInfo
 		}
 
 		#if 0
-		printf("Final type list for module %s\n{\n", cgi->module->getModuleIdentifier().c_str());
+		printf("Final type list for module %s\n{\n", cgi->module->getModuleName().c_str());
 
 		int i = 1;
 		for(auto c : enr->cases)

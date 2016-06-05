@@ -32,7 +32,25 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	else
 	{
 		fir::Type* t = cgi->getExprType(this->inside);
-		index = TypeInfo::getIndexForType(cgi, t);
+		if(cgi->isAnyType(t))
+		{
+			ValPtr_t vp = this->inside->codegen(cgi).result;
+			fir::Value* ptr = vp.second;
+
+			if(ptr)
+			{
+				// make one
+				ptr = cgi->allocateInstanceInBlock(vp.first->getType());
+				cgi->builder.CreateStore(vp.first, ptr);
+			}
+
+			fir::Value* gep = cgi->builder.CreateStructGEP(ptr, 0);
+			return Result_t(cgi->builder.CreateLoad(gep), gep);
+		}
+		else
+		{
+			index = TypeInfo::getIndexForType(cgi, t);
+		}
 	}
 
 

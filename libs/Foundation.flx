@@ -31,6 +31,11 @@ public func println(a: String)
 	printf(@raw "%s\n", a)
 }
 
+public func println()
+{
+	printf(@raw "\n");
+}
+
 
 
 
