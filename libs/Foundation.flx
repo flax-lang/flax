@@ -4,6 +4,7 @@
 
 import Core
 import LibCInterface
+import IntegerLimits
 
 public func min(a: Uint64, b: Uint64) -> Uint64
 {
@@ -33,33 +34,3 @@ public func println(a: String)
 
 
 
-public namespace Int8
-{
-	val min: Int8 = -128
-	val max: Int8 = 127
-}
-public namespace Uint8
-{
-	val min: Uint8 = 0
-	val max: Uint8 = 255
-}
-public namespace Int16
-{
-	val min: Int16 = -32768
-	val max: Int16 = 32767
-}
-public namespace Uint16
-{
-	val min: Uint16 = 0
-	val max: Uint16 = 65535
-}
-public namespace Int32
-{
-	val min: Int32 = -2147483648
-	val max: Int32 = 2147483647
-}
-public namespace Uint32
-{
-	val min: Uint32 = 0
-	val max: Uint32 = 4294967295
-}
