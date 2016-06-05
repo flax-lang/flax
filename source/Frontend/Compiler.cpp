@@ -286,6 +286,15 @@ namespace Compiler
 		rcgi->customOperatorMap = foundOps;
 		rcgi->customOperatorMapRev = foundOpsRev;
 
+		// fprintf(stderr, "%zu groups (%zu)\n", groups.size(), g->nodes.size());
+
+		if(groups.size() == 0)
+		{
+			DepNode* dn = new DepNode();
+			dn->name = filename;
+			groups.push_front({ dn });
+		}
+
 		for(auto gr : groups)
 		{
 			iceAssert(gr.size() == 1);

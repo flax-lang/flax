@@ -555,7 +555,6 @@ namespace Codegen
 				{
 					if(v.second.second->mangledName == var.second.second->mangledName)
 					{
-						// printf("found %s::%s\n", ft->nsName.c_str(), var.first.c_str());
 						found = true;
 						break;
 					}
@@ -564,15 +563,11 @@ namespace Codegen
 				if(!found && !deep)
 				{
 					clone->vars[var.first] = var.second;
-					fprintf(stderr, "cloning var %s\n", var.second.second->mangledName.c_str());
 				}
-
-				if(deep)
+				else if(deep)
 				{
 					// add to the module list
 					// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
-
-					fprintf(stderr, ">> deep copy var %s <<\n", var.second.second->mangledName.c_str());
 
 					iceAssert(this->module);
 					iceAssert(clone->vars.find(var.first) != clone->vars.end());
@@ -584,7 +579,6 @@ namespace Codegen
 						auto gv = this->module->declareGlobalVariable(var.second.second->mangledName,
 							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
 
-						fprintf(stderr, "creating var (id %zu)\n", gv->id);
 						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
 					}
 					else
@@ -596,7 +590,7 @@ namespace Codegen
 								potentialGV->getType()->getPointerElementType()->str().c_str());
 						}
 
-						fprintf(stderr, "var exists.\n");
+						clone->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
 					}
 				}
 			}
