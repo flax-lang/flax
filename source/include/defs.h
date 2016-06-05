@@ -35,10 +35,10 @@ namespace Ast
 
 namespace Parser
 {
-	struct pin
+	struct Pin
 	{
-		pin() { }
-		pin(char* f, uint64_t l, uint64_t c, uint64_t ln) : file(f), line(l), col(c), len(ln) { }
+		Pin() { }
+		Pin(char* f, uint64_t l, uint64_t c, uint64_t ln) : file(f), line(l), col(c), len(ln) { }
 
 		char* file = 0;
 		uint64_t line = 1;

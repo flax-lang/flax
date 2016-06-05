@@ -15,6 +15,9 @@
 #include "compiler.h"
 #include "dependency.h"
 
+#define __STDC_LIMIT_MACROS
+#define __STDC_CONSTANT_MACROS
+
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IRReader/IRReader.h"
@@ -138,9 +141,9 @@ namespace Compiler
 		Root* root = Parser::Parse(pstate, fpath);
 		cgi->rootNode = root;
 
+
 		// add the previous stuff to our own root
 		copyRootInnards(cgi, dummyRoot, root, true);
-
 
 		Codegen::doCodegen(fpath, root, cgi);
 
@@ -282,6 +285,15 @@ namespace Compiler
 
 		rcgi->customOperatorMap = foundOps;
 		rcgi->customOperatorMapRev = foundOpsRev;
+
+		// fprintf(stderr, "%zu groups (%zu)\n", groups.size(), g->nodes.size());
+
+		if(groups.size() == 0)
+		{
+			DepNode* dn = new DepNode();
+			dn->name = filename;
+			groups.push_front({ dn });
+		}
 
 		for(auto gr : groups)
 		{

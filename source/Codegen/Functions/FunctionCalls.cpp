@@ -148,7 +148,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			else if(!st->isLiteralStruct() && st->getStructName() == "String")
 			{
 				// this function knows what to do.
-				cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
+				arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
 			}
 		}
 
@@ -162,7 +162,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	for(size_t i = 0; i < std::min(args.size(), target->getArgumentCount()); i++)
 	{
 		if(target->getArguments()[i]->getType() != args[i]->getType())
-			cgi->autoCastType(target->getArguments()[i], args[i], argPtrs[i]);
+			args[i] = cgi->autoCastType(target->getArguments()[i], args[i], argPtrs[i]);
 
 		if(target->getArguments()[i]->getType() != args[i]->getType())
 		{

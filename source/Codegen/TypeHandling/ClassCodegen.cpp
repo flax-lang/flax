@@ -12,7 +12,10 @@ using namespace Codegen;
 
 Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	iceAssert(this->didCreateType);
+	if(this->genericTypes.size() > 0 && !this->didCreateType)
+		return Result_t(0, 0);
+
+
 	TypePair_t* _type = cgi->getType(this->name);
 	if(!_type)
 		_type = cgi->getType(this->mangledName);
@@ -51,13 +54,15 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 
 
-	fir::StructType* str = dynamic_cast<fir::StructType*>(_type->first);
+	fir::StructType* str = this->createdType;
 	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
-	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
 		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
+	// printf("created init func for %s -- %s :: %s\n", this->name.c_str(), defaultInitFunc->getName().c_str(),
+	// 	defaultInitFunc->getType()->str().c_str());
 	{
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
@@ -66,6 +71,8 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
+
+	fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
 
 	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
 	cgi->builder.setCurrentBlock(iblock);
@@ -95,7 +102,9 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 			// generate a global variable
 			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
-				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable, fir::LinkageType::External);
+				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
+				this->attribs & Attr_VisPublic ? fir::LinkageType::External : fir::LinkageType::Internal);
+
 
 			if(var->inferredLType->isStructType())
 			{
@@ -115,7 +124,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 				}
 				else
 				{
-					error(this, "Global variables currently only support constant initialisers");
+					error(this, "Static variables currently only support constant initialisers");
 				}
 			}
 		}
@@ -158,7 +167,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 
 	cgi->builder.CreateReturnVoid();
-	// fir::verifyFunction(*defaultInitFunc);
+	cgi->builder.setCurrentBlock(currentblock);
 
 
 
@@ -244,6 +253,12 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		// (using 'E' means we don't include the implicit first parameter in the mangled name)
 
 
+
+		// todo for generics:
+		// function expects first parameter not to be there
+		// but since we've already been through this, it'll be there.
+
+
 		val = f->decl->codegen(cgi).result.first;
 
 		if(f->decl->name == "init")
@@ -259,8 +274,11 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
 		}
 
-		// make the functions public as well
-		cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		if(f->decl->attribs & Attr_VisPublic)
+		{
+			// make the functions public as well
+			cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+		}
 	}
 
 	// pass 2
@@ -286,8 +304,29 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.setCurrentBlock(ob);
 	}
 
-	if(this->initFuncs.size() == 0)
+
+	if(initFuncs.size() == 0)
+	{
 		this->initFuncs.push_back(defaultInitFunc);
+	}
+	else
+	{
+		// handles generic types making more default initialisers
+
+		bool found = false;
+		for(auto f : initFuncs)
+		{
+			if(f->getType()->isTypeEqual(defaultInitFunc->getType()))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if(!found)
+			this->initFuncs.push_back(defaultInitFunc);
+	}
+
 
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
@@ -305,10 +344,30 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 
-fir::Type* Class::createType(CodegenInstance* cgi)
+
+
+
+fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
-	if(this->didCreateType)
+	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
 		return 0;
+
+	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
+		return this->createdType;
+
+
+
+
+
+	if(instantiatedGenericTypes.size() > 0)
+	{
+		cgi->pushGenericTypeStack();
+		for(auto t : instantiatedGenericTypes)
+			cgi->pushGenericType(t.first, t.second);
+	}
+
+
+
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -319,7 +378,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	}
 
 
-
+	fir::StructType* superClassType = 0;
 
 	// check our inheritances??
 	bool alreadyHaveSuperclass = false;
@@ -350,7 +409,7 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
 		// by the time we see it.
-		supcls->createType(cgi);
+		superClassType = supcls->createType(cgi)->toStructType();
 
 
 		// if it's a struct, copy its members into ourselves.
@@ -465,13 +524,21 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 	}
 
 
-
-
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
 	std::deque<std::string> fullScope = cgi->getFullScope();
 	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
+	std::string genericTypeMangle;
+
+	if(instantiatedGenericTypes.size() > 0)
+	{
+		for(auto t : instantiatedGenericTypes)
+			genericTypeMangle += "_" + t.first + ":" + t.second->str();
+	}
+
+	this->mangledName += genericTypeMangle;
+
 
 	if(cgi->isDuplicateType(this->mangledName))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
@@ -479,10 +546,29 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext());
 
+
 	this->scope = fullScope;
-	cgi->addNewType(str, this, TypeKind::Class);
+	{
+		std::string oldname = this->name;
+
+		// only add the base type if we haven't *ever* created it
+		if(this->createdType == 0)
+			cgi->addNewType(str, this, TypeKind::Class);
+
+		this->name += genericTypeMangle;
+
+		if(genericTypeMangle.length() > 0)
+			cgi->addNewType(str, this, TypeKind::Class);
+
+		this->name = oldname;
+	}
+
+	// cgi->addNewType(str, this, TypeKind::Class);
 
 
+
+	if(superClassType != 0)
+		str->setBaseType(superClassType);
 
 
 
@@ -564,7 +650,14 @@ fir::Type* Class::createType(CodegenInstance* cgi)
 
 	this->didCreateType = true;
 
-	delete types;
+	delete[] types;
+
+	this->createdType = str;
+
+	if(instantiatedGenericTypes.size() > 0)
+		cgi->popGenericTypeStack();
+
+
 
 	return str;
 }
