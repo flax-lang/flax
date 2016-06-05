@@ -40,7 +40,7 @@ namespace Compiler
 		return printModule;
 	}
 
-	static bool printFIR = true;
+	static bool printFIR = false;
 	bool getDumpFir()
 	{
 		return printFIR;
