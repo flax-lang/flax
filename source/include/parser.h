@@ -128,7 +128,7 @@ namespace Parser
 		ModEq,
 		ShiftLeftEq,
 		ShiftRightEq,
-		Elipsis,
+		Ellipsis,
 		DoubleColon,
 
 		// other stuff.

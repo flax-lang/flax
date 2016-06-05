@@ -56,7 +56,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	}
 	else
 	{
-		error("");
+		error("wtf");
 		// reset this?
 		// this->cachedCodegenResult = Result_t(0, 0);
 	}
