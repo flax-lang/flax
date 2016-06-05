@@ -2515,8 +2515,19 @@ namespace Parser
 
 	Typeof* parseTypeof(ParserState& ps)
 	{
-		iceAssert(ps.front().type == TType::Typeof);
-		return CreateAST(Typeof, ps.eat(), parseExpr(ps));
+		Token t;
+		iceAssert((t = ps.eat()).type == TType::Typeof);
+
+		// require parens
+		if(ps.eat().type != TType::LParen)
+			parserError("typeof() requires parentheses");
+
+		Expr* inside = parseExpr(ps);
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')'");
+
+		return CreateAST(Typeof, t, inside);
 	}
 
 	ArrayLiteral* parseArrayLiteral(ParserState& ps)

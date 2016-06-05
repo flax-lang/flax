@@ -430,6 +430,7 @@ namespace Parser
 						case 'n':	ss << "\n";	break;
 						case 'b':	ss << "\b";	break;
 						case 'r':	ss << "\r";	break;
+						case 't':	ss << "\t";	break;
 						case '\\':	ss << "\\"; break;
 					}
 

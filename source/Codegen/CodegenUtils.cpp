@@ -2281,7 +2281,8 @@ namespace Codegen
 		bool needsNot	= std::get<4>(data);
 		bool needsAss	= std::get<5>(data);
 
-		fir::Function* opFunc = this->module->getFunction(std::get<6>(data)->getName());
+
+		fir::Function* opFunc = std::get<6>(data) ? this->module->getFunction(std::get<6>(data)->getName()) : 0;
 		fir::Function* asFunc = std::get<7>(data) ? this->module->getFunction(std::get<7>(data)->getName()) : 0;
 
 		fir::Value* ret = 0;
