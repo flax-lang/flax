@@ -312,7 +312,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	}
 
 
-	std::string mangledName = cgi->mangleWithNamespace(this->name);
+	mangledName = cgi->mangleWithNamespace(this->name);
 
 	// TODO: call global constructors
 	if(this->isGlobal)
@@ -320,7 +320,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		if(this->attribs & Attr_VisPublic)
 		{
 			// hmm.
-			error(this, "Public global variables are currently not supported.");
+			// warn(this, "Public global variables are currently iffy");
+			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+				this->immutable, fir::LinkageType::External);
 		}
 		else
 		{
@@ -342,7 +344,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
 				iceAssert(cv);
 
-				if(cv->getType() != ai->getType())
+				if(cv->getType() != ai->getType()->getPointerElementType())
 				{
 					error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
 						this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());

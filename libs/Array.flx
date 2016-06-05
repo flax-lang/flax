@@ -8,7 +8,7 @@ public class Array<T>
 {
 	var data: Int8* = 0
 
-	init()
-	{
-	}
+	// init()
+	// {
+	// }
 }
