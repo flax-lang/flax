@@ -2,100 +2,125 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-import Utilities
+// import Foundation
+// import Utilities
 
-import tests.fizzbuzz
-import tests.recursiveFib
-import tests.scopes
-import tests.operators
-import tests.arraytest
-import tests.generics
+// import tests.fizzbuzz
+// import tests.recursiveFib
+// import tests.scopes
+// import tests.operators
+// import tests.arraytest
+// import tests.generics
+// import tests.limits
 
 
 // name idea: mill
 
 
-ƒ runTests()
-{
-	// fib
-	printf("*** FIBONACII SEQUENCE ***\n")
+// ƒ runTests()
+// {
+// 	// fib
+// 	printf("*** FIBONACII SEQUENCE ***\n")
 
-	var n = 0
-	while n < 20
-	{
-		printf("%d: %lld\n", n, doRecursiveFib(n))
-		n += 1
-	}
-	printf("\n\n");
-
-
-	// fizzbuzz
-	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(10);
-	printf("\n\n");
+// 	var n = 0
+// 	while n < 20
+// 	{
+// 		printf("%d: %lld\n", n, doRecursiveFib(n))
+// 		n += 1
+// 	}
+// 	printf("\n\n");
 
 
-	// scopes
-	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest("__llvm_jit__build/test")
-	printf("\n\n");
+// 	// fizzbuzz
+// 	printf("*** FIZZBUZZ ***\n")
+// 	doFizzBuzz(15);
+// 	printf("\n\n");
 
 
-	// operators and tuples (vectors type, mainly)
-	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-	doOperatorTupleTest()
-	printf("\n\n");
+// 	// scopes
+// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+// 	doScopeTest("__llvm_jit__build/test")
+// 	printf("\n\n");
 
 
-	// arrays
-	printf("*** ARRAY REGRESSION TEST ***\n")
-	doArrayTest()
-	printf("\n\n")
+// 	// operators and tuples (vectors type, mainly)
+// 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+// 	doOperatorTupleTest()
+// 	printf("\n\n");
 
 
-	// generics
-	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
-	printf("\n\n")
+// 	// arrays
+// 	printf("*** ARRAY REGRESSION TEST ***\n")
+// 	doArrayTest()
+// 	printf("\n\n")
 
 
-	// fin.
-	printf("========= TESTS COMPLETE =========\n\n")
-}
+// 	// generics
+// 	printf("*** GENERICS TEST ***\n")
+// 	doGenericsTest()
+// 	let s = generic_test(5, "HELLO WORLD #")
+// 	printf("s = %s\n", s)
+// 	printf("\n\n")
 
 
+// 	// int limits
+// 	printf("*** PRINTING INT LIMITS ***\n")
+// 	printIntegerLimits()
+// 	printf("\n\n")
+
+
+// 	// fin.
+// 	printf("========= TESTS COMPLETE =========\n\n")
+// }
+
+// ƒ randomTest(fmt: String, argn: Int32, args: Any*)
+// {
+
+// }
+
+
+
+import LibCInterface
+import String
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
-	runTests()
+	// runTests()
 
-	printf("pi = %f\n", Math.π())
-
-
-	printf("Int8.min = %hhd, Int8.max = %hhd\n", Int8.min, Int8.max);
-	printf("Int16.min = %hd, Int16.max = %hd\n", Int16.min, Int16.max);
-	printf("Int32.min = %d, Int32.max = %d\n", Int32.min, Int32.max);
-	printf("Int64.min = %lld, Int64.max = %lld\n", Int64.min, Int64.max);
+	// printf("pi = %.16lf\n", Math.π())
 
 
-	printf("Uint8.min = %hhu, Uint8.max = %hhu\n", Uint8.min, Uint8.max);
-	printf("Uint16.min = %hu, Uint16.max = %hu\n", Uint16.min, Uint16.max);
-	printf("Uint32.min = %u, Uint32.max = %u\n", Uint32.min, Uint32.max);
-	printf("Uint64.min = %llu, Uint64.max = %llu\n", Uint64.min, Uint64.max);
+
+	// var arr8: Array<Int8>
+	// var arr32: Array<Int32>
+
+	// arr8.data = alloc[3] Int8
+	// arr32.data = alloc[30] Int8
+	// printf("data8  = %p\n", arr8.data);
+	// printf("data32 = %p\n", arr32.data);
 
 
-	var arr8: Array<Int8>
-	var arr32: Array<Int32>
-
-	arr8.data = alloc[3] Int8
-	arr32.data = alloc[30] Int8
-	printf("data8  = %p\n", arr8.data);
-	printf("data32 = %p\n", arr32.data);
+	var args = alloc[10] Any
+	args[0] = "HELLO"
+	args[1] = 40
 
 
+	printf(":: %d\n", typeof(args[0]))
+	printf(":: %d\n", typeof(String))
+
+	if typeof(args[0]) == typeof(String)
+	{
+		var s: String = args[0]
+		printf("-- %s --\n", s)
+	}
+
+
+	// var i = 0
+	// while true
+	// {
+	// 	printf("%lld\n", i += 1)
+	// 	usleep((10 * 1000) as Uint32)
+	// }
 
 
 
@@ -112,7 +137,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// >>> multiple, dynamic dispatch
 
 
-	printf("\n<< done >>\n");
+	// printf("\n<< done >>\n");
 	return 0
 }
 

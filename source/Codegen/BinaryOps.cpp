@@ -55,6 +55,28 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 	rhs = this->autoCastType(lhs, rhs);
 
+
+	// assigning something to Any
+	if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
+	{
+		// dealing with any.
+		iceAssert(ref);
+		return this->assignValueToAny(ref, rhs, rhsPtr);
+	}
+
+	// assigning Any to something
+	if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
+	{
+		// todo: find some fucking way to unwrap this shit at compile time.
+		warn(left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
+
+		Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
+		return Result_t(this->builder.CreateStore(res.result.first, ref), ref);
+	}
+
+
+
+
 	fir::Value* varptr = 0;
 	if((v = dynamic_cast<VarRef*>(left)))
 	{
@@ -78,34 +100,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		{
 			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 		}
-
-
-
-
-		// assigning something to Any
-		if(this->isAnyType(lhs->getType()) || this->isAnyType(ref->getType()->getPointerElementType()))
-		{
-			// dealing with any.
-			iceAssert(ref);
-			return this->assignValueToAny(ref, rhs, rhsPtr);
-		}
-
-
-
-
-		// assigning Any to something
-		if(rhsPtr && this->isAnyType(rhsPtr->getType()->getPointerElementType()))
-		{
-			// todo: find some fucking way to unwrap this shit at compile time.
-			warn(left, "Unchecked assignment from 'Any' to typed variable (unfixable)");
-
-			Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
-			return Result_t(this->builder.CreateStore(res.result.first, ref), ref);
-		}
-
-
-
-
 
 
 
