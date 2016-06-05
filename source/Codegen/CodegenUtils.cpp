@@ -23,8 +23,8 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
-		cgi->module = new fir::Module(Parser::getModuleName(filename));
 		cgi->rootNode = root;
+		cgi->module = new fir::Module(Parser::getModuleName(filename));
 
 
 		// todo: proper.
@@ -443,7 +443,7 @@ namespace Codegen
 			if(deep)
 			{
 				fir::Function* func = pair.first;
-				if(func)
+				if(func && func->linkageType == fir::LinkageType::External)
 				{
 					iceAssert(func);
 
@@ -461,7 +461,7 @@ namespace Codegen
 					this->addFunctionToScope(FuncPair_t(f, pair.second));
 					pair.first = f;
 				}
-				else
+				else if(!func)
 				{
 					// note: generic functions are not instantiated
 					if(pair.second->genericTypes.size() == 0)
@@ -503,13 +503,19 @@ namespace Codegen
 						// check what kind of struct.
 						if(Struct* str = dynamic_cast<Struct*>(sb))
 						{
-							for(auto f : str->initFuncs)
-								this->module->declareFunction(f->getName(), f->getType());
+							if(str->attribs & Attr_VisPublic)
+							{
+								for(auto f : str->initFuncs)
+									this->module->declareFunction(f->getName(), f->getType());
+							}
 						}
 						else if(Class* cls = dynamic_cast<Class*>(sb))
 						{
-							for(auto f : cls->initFuncs)
-								this->module->declareFunction(f->getName(), f->getType());
+							if(cls->attribs & Attr_VisPublic)
+							{
+								for(auto f : cls->initFuncs)
+									this->module->declareFunction(f->getName(), f->getType());
+							}
 						}
 						else if(dynamic_cast<Tuple*>(sb))
 						{
@@ -543,6 +549,56 @@ namespace Codegen
 			{
 				OpOverload* ooo = oo.first;
 				clone->operators.push_back(std::make_pair(ooo, (fir::Function*) 0));
+			}
+		}
+
+		for(auto var : ft->vars)
+		{
+			if(var.second.second->attribs & Attr_VisPublic)
+			{
+				bool found = false;
+				for(auto v : clone->vars)
+				{
+					if(v.second.second->mangledName == var.second.second->mangledName)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if(!found && !deep)
+				{
+					clone->vars[var.first] = var.second;
+				}
+				else if(deep)
+				{
+					// add to the module list
+					// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
+
+					iceAssert(this->module);
+					iceAssert(clone->vars.find(var.first) != clone->vars.end());
+
+					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->mangledName);
+
+					if(potentialGV == 0)
+					{
+						auto gv = this->module->declareGlobalVariable(var.second.second->mangledName,
+							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
+
+						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
+					}
+					else
+					{
+						if(potentialGV->getType() != var.second.first->getType())
+						{
+							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
+								var.second.second->mangledName.c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
+								potentialGV->getType()->getPointerElementType()->str().c_str());
+						}
+
+						clone->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
+					}
+				}
 			}
 		}
 
@@ -1040,7 +1096,7 @@ namespace Codegen
 			std::deque<VarDecl*> params;
 			if(name == "malloc")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "size", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
 				fakefdmvd->type = "Uint64";
 				params.push_back(fakefdmvd);
 
@@ -1048,7 +1104,7 @@ namespace Codegen
 			}
 			else if(name == "free")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "ptr", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1056,7 +1112,7 @@ namespace Codegen
 			}
 			else if(name == "strlen")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::pin(), "str", false);
+				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
 				fakefdmvd->type = "Int8*";
 				params.push_back(fakefdmvd);
 
@@ -1064,15 +1120,15 @@ namespace Codegen
 			}
 			else if(name == "memset")
 			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::pin(), "ptr", false);
+				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
 				fakefdmvd1->type = "Int8*";
 				params.push_back(fakefdmvd1);
 
-				VarDecl* fakefdmvd2 = new VarDecl(Parser::pin(), "val", false);
+				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
 				fakefdmvd2->type = "Int8";
 				params.push_back(fakefdmvd2);
 
-				VarDecl* fakefdmvd3 = new VarDecl(Parser::pin(), "size", false);
+				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
 				fakefdmvd3->type = "Uint64";
 				params.push_back(fakefdmvd3);
 
@@ -1083,7 +1139,7 @@ namespace Codegen
 				error("enotsup: %s", name.c_str());
 			}
 
-			FuncDecl* fakefm = new FuncDecl(Parser::pin(), name, params, retType);
+			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
 			fakefm->isFFI = true;
 			fakefm->codegen(this);
 		}
@@ -2367,6 +2423,8 @@ namespace Codegen
 			fir::Function* initf = 0;
 			for(fir::Function* initers : sb->initFuncs)
 			{
+				// printf("init cand for %s -- %s :: %s\n", sb->name.c_str(), initers->getName().c_str(), initers->getType()->str().c_str());
+
 				if(initers->getArgumentCount() < 1)
 					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
 

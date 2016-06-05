@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Math
-import String
+import Foundation
+import Utilities
 
 import tests.fizzbuzz
 import tests.recursiveFib
@@ -12,53 +12,8 @@ import tests.operators
 import tests.arraytest
 import tests.generics
 
-import Utilities
-
-
 
 // name idea: mill
-
-public func main() -> Int
-{
-	var foo: String
-
-
-	printf("HELLO\n")
-
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("S = %s\n", s)
-
-	runTests()
-	return 0
-}
-
-
-class Bar
-{
-	init()
-	{
-		printf("DID BAR\n");
-		var foo: some.Qux
-	}
-
-	// var foo: Foo
-	var qux: some.Qux
-}
-
-namespace some
-{
-	class Qux
-	{
-	}
-}
-
-class Foo
-{
-}
-
-
-
-
 
 
 ƒ runTests()
@@ -77,7 +32,7 @@ class Foo
 
 	// fizzbuzz
 	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(20);
+	doFizzBuzz(10);
 	printf("\n\n");
 
 
@@ -102,109 +57,62 @@ class Foo
 	// generics
 	printf("*** GENERICS TEST ***\n")
 	doGenericsTest()
+	let s = generic_test(5, "HELLO WORLD #")
+	printf("s = %s\n", s)
 	printf("\n\n")
 
 
 	// fin.
-	printf("*** TESTS FINISHED ***\n");
+	printf("========= TESTS COMPLETE =========\n\n")
 }
 
 
 
-// class Foo
-// {
-// 	var v3: Math.Vector3
-// 	{
-// 		get {
-// 			var ret: Math.Vector3
+public func main(argc: Int32, argv: Int8**) -> Int
+{
+	runTests()
 
-// 			ret.x = 1
-// 			ret.y = 4
-// 			ret.z = 9
+	printf("pi = %f\n", Math.π())
 
-// 			return ret
-// 		}
-// 		set {
-// 			printf("set v3\n")
-// 		}
-// 	}
 
+	printf("Int32.min = %d, Int32.max = %d\n", Int32.min, Int32.max);
 
+	var arr8: Array<Int8>
+	var arr32: Array<Int32>
 
+	arr8.data = alloc[3] Int8
+	arr32.data = alloc[30] Int8
+	printf("data8 = %p\n", arr8.data);
+	printf("data32 = %p\n", arr32.data);
 
-// 	var _bar: Int = 537
-// 	var bar: Int
-// 	{
-// 		get {
-// 			return self._bar
-// 		}
-// 		set {
-// 			self._bar = newValue
-// 		}
-// 	}
 
-// 	ƒ doBar() -> Int
-// 	{
-// 		printf("in foo\n")
 
-// 		return self._bar
-// 	}
-// }
 
-// class Bar : Foo
-// {
-// 	override var bar: Int
-// 	{
-// 		get {
-// 			return 73
-// 		}
-// 		set {
-// 			// super.bar = newValue
-// 		}
-// 	}
 
-// 	override var v3: Math.Vector3
-// 	{
-// 		get {
-// 			var ret: Math.Vector3
 
 
-// 			// ret.x = super.v3.x + 3
-// 			// ret.y = super.v3.y + 5
-// 			// ret.z = super.v3.z + 7
 
-// 			ret.x = 33.1
+	// todo: look into these.
 
-// 			return ret
-// 		}
-// 		set {
-// 			let m = 0
-// 		}
-// 	}
+	// >>> universal function call syntax -- use dot-operator calling on everything.
+	// 	1. when you try to call a.b(c, ...), the usual "finding things in c" takes place
+	// 	2. if nothing in c matches b (or c is not a compound type), use UFCS.
+	// 	3. search for a function b(a, c, ...). if it exists, call it. if not, throw error as usual.
 
+	// >>> multiple, dynamic dispatch
 
 
+	printf("\n<< done >>\n");
+	return 0
+}
 
 
 
 
 
 
-// 	override ƒ doBar()
-// 	{
-// 		printf("in bar: %f\n", self.v3.x)
-// 	}
 
-// 	var foo = 73
-// }
 
-// class FooBar : Bar
-// {
-// 	override ƒ doBar()
-// 	{
-// 		printf("in foobar\n")
-// 	}
-// }
 
 
 
@@ -213,86 +121,24 @@ class Foo
 
 
 
-// func main(argc: Int32, argv: Int8**) -> Int
-// {
-// 	runTests()
-// 	printf("========= TESTS COMPLETE =========\n\n")
 
 
-// 	var k: Int
 
 
-// 	let bar: Bar()
-// 	let foo: Foo()
-// 	printf("bar.bar = %d\n", bar._bar)
-// 	printf("foo.bar = %d\n", foo.bar)
 
 
-// 	bar.doBar()
-// 	foo.doBar()
 
-// 	let fb: FooBar()
-// 	fb.doBar()
-// 	printf("%d\n", fb._bar)
 
-// 	printf("pi = %f\n", Math.π())
 
-// 	var vec: Math.Vector2
-// 	vec.x = 3
-// 	vec.y = 2
 
-// 	var vec2: Math.Vector2
-// 	vec2.x = 1
-// 	vec2.y = 7
 
 
 
-// 	let m = vec + vec2
-// 	printf("m = (%f, %f)\n", m.x, m.y)
 
 
-// 	// let g = foo(30, 1)
 
-// 	// var dream = Math.Complex.Cmplx()
-// 	// dream.r = 40
-// 	// dream.i = 1.412
 
-// 	// printf("bar.vector3 = (%f, %f, %f), dream = (%f, %f)\n", bar.v3.x, bar.v3.y, bar.v3.z, dream.r, dream.i)
 
-
-
-
-
-
-
-// 	// structs vs classes:
-// 	//
-// 	// structs will be pure data. POD types and other structs only. nothing else.
-// 	// classes will be everything else.
-// 	//
-// 	// that's it. simple shit.
-
-// 	// todo: look into these.
-
-// 	// >>> universal function call syntax -- use dot-operator calling on everything.
-// 	// 	1. when you try to call a.b(c, ...), the usual "finding things in c" takes place
-// 	// 	2. if nothing in c matches b (or c is not a compound type), use UFCS.
-// 	// 	3. search for a function b(a, c, ...). if it exists, call it. if not, throw error as usual.
-
-// 	// >>> multiple, dynamic dispatch
-
-
-
-
-
-
-
-
-
-
-
-// 	return 0
-// }
 
 
 

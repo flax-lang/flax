@@ -2,11 +2,6 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include <map>
-#include <unordered_map>
-
-#include "codegen.h"
-#include "compiler.h"
 #include "ir/type.h"
 
 namespace Codegen

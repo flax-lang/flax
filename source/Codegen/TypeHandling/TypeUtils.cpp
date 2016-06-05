@@ -560,6 +560,9 @@ namespace Codegen
 		if(!from || !to)
 			return -1;
 
+		if(from->isTypeEqual(to))
+			return 0;
+
 		int ret = 0;
 		if(from->isIntegerType() && to->isIntegerType()
 			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
@@ -625,14 +628,34 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
+		else if(to->isStructType() && from->isStructType())
+		{
+			fir::StructType* sto = to->toStructType();
+			fir::StructType* sfr = from->toStructType();
+
+			if(sto->isABaseTypeOf(sfr))
+			{
+				return 20;
+			}
+		}
+		else if(to->isPointerType() && from->isPointerType())
+		{
+			fir::StructType* sfr = from->getPointerElementType()->toStructType();
+			fir::StructType* sto = to->getPointerElementType()->toStructType();
+
+			if(sfr && sto && sto->isABaseTypeOf(sfr))
+			{
+				return 20;
+			}
+		}
 
 		return -1;
 	}
 
-	int CodegenInstance::autoCastType(fir::Type* target, fir::Value*& right, fir::Value* rhsPtr)
+	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr, int* distance)
 	{
 		if(!target || !right)
-			return -1;
+			return right;
 
 		// casting distance for size is determined by the number of "jumps"
 		// 8 -> 16 = 1
@@ -640,6 +663,8 @@ namespace Codegen
 		// 8 -> 64 = 3
 		// 16 -> 64 = 2
 		// etc.
+
+		fir::Value* retval = right;
 
 		int dist = -1;
 		if(target->isIntegerType() && right->getType()->isIntegerType()
@@ -655,27 +680,35 @@ namespace Codegen
 			{
 				// check if the number fits in the LHS type
 
-				// todo: commented
-				// if(lBits < 64)	// 64 is the max
-				// {
-				// 	if(constVal->getSExtValue() < 0)
-				// 	{
-				// 		int64_t max = -1 * powl(2, lBits - 1);
-				// 		if(constVal->getSExtValue() > max)
-				// 			shouldCast = true;
-				// 	}
-				// 	else
-				// 	{
-				// 		uint64_t max = powl(2, lBits) - 1;
-				// 		if(constVal->getZExtValue() <= max)
-				// 			shouldCast = true;
-				// 	}
-				// }
+				if(lBits < 64)	// todo: 64 is the max
+				{
+					if(constVal->getSignedValue() < 0)
+					{
+						int64_t max = -1 * powl(2, lBits - 1);
+						if(constVal->getSignedValue() >= max)
+							shouldCast = true;
+					}
+					else
+					{
+						uint64_t max = powl(2, lBits) - 1;
+						if(constVal->getUnsignedValue() <= max)
+							shouldCast = true;
+					}
+				}
 			}
 
-			if(shouldCast)
+			if(shouldCast && !constVal)
 			{
-				right = this->builder.CreateIntSizeCast(right, target);
+				retval = this->builder.CreateIntSizeCast(right, target);
+			}
+			else if(shouldCast)
+			{
+				// return a const, please.
+				if(constVal->getType()->isSignedIntType())
+					retval = fir::ConstantInt::getSigned(target, constVal->getSignedValue());
+
+				else
+					retval = fir::ConstantInt::getUnsigned(target, constVal->getUnsignedValue());
 			}
 		}
 
@@ -692,7 +725,7 @@ namespace Codegen
 				//     u32 -> i64 >> okay
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					right = this->builder.CreateIntSizeCast(right, target);
+					retval = this->builder.CreateIntSizeCast(right, target);
 			}
 			else
 			{
@@ -713,7 +746,7 @@ namespace Codegen
 
 						if(cright->getUnsignedValue() <= maxL)
 						{
-							right = this->builder.CreateIntSizeCast(right, target);
+							retval = this->builder.CreateIntSizeCast(right, target);
 						}
 					}
 				}
@@ -735,22 +768,57 @@ namespace Codegen
 				// cast the RHS to the LHS
 				iceAssert(rhsPtr);
 				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
-				right = this->builder.CreateLoad(ret);	// mutating
+				retval = this->builder.CreateLoad(ret);
 			}
 		}
 		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			right = this->builder.CreateIntToFloatCast(right, target);
+			retval = this->builder.CreateIntToFloatCast(right, target);
+		}
+		else if(target->isStructType() && right->getType()->isStructType())
+		{
+			fir::StructType* sto = target->toStructType();
+			fir::StructType* sfr = right->getType()->toStructType();
+
+			if(sto->isABaseTypeOf(sfr))
+			{
+				// create alloca, which gets us a pointer.
+				fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
+
+				// store the value into the pointer.
+				this->builder.CreateStore(right, alloca);
+
+				// do a pointer type cast.
+				fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+
+				// load it.
+				retval = this->builder.CreateLoad(ptr);
+			}
+		}
+		else if(target->isPointerType() && right->getType()->isPointerType())
+		{
+			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
+			fir::StructType* sto = target->getPointerElementType()->toStructType();
+
+			if(sfr && sto && sto->isABaseTypeOf(sfr))
+			{
+				retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
+			}
 		}
 
+
 		dist = this->getAutoCastDistance(right->getType(), target);
-		return dist;
+		if(distance != 0)
+			*distance = dist;
+
+		return retval;
 	}
 
-	int CodegenInstance::autoCastType(fir::Value* left, fir::Value*& right, fir::Value* rhsPtr)
+
+	fir::Value* CodegenInstance::autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr, int* distance)
 	{
-		return this->autoCastType(left->getType(), right, rhsPtr);
+		return this->autoCastType(left->getType(), right, rhsPtr, distance);
 	}
 
 
@@ -968,13 +1036,103 @@ namespace Codegen
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
 
-
+			std::map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
 				fir::Type* ret = this->resolveGenericType(type.strType);
 				if(ret) return ret;
 
+				if(atype.find("<") != std::string::npos)
+				{
+					size_t k = atype.find("<");
+					std::string base = atype.substr(0, k);
+
+					pair = this->findTypeInFuncTree(ns, base);
+					tp = pair.first;
+					indirections = pair.second;
+
+					if(tp && indirections >= 0)
+					{
+						// parse that shit.
+						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+						iceAssert(sb);
+
+						// todo: need to mangle name of struct, then find. currently fucks up.
+						// todo: need some way to give less shitty error messages
+
+						if(sb->genericTypes.size() == 0)
+							error(user, "Type %s does not have type parameters, is not generic", sb->name.c_str());
+
+
+						// parse the list of types.
+						std::string glist = atype.substr(k);
+						{
+							iceAssert(glist.size() > 0 && glist[0] == '<');
+							glist = glist.substr(1);
+
+							iceAssert(glist.back() == '>');
+							glist.pop_back();
+
+
+							// to allow for nesting generic types in generic types,
+							// eg. Foo<Bar<Int>,Qux<Double,Int>>, we need to be smart
+							// iterate through the string manually.
+							// if we encounter a '<', increase nesting.
+							// if we encounter a '>', decrease nesting.
+							// if we encounter a ',' while nesting > 0, ignore.
+							// if we encounter a ',' while nesting == 0, split the string there.
+
+							int nesting = 0;
+							std::deque<std::string> types;
+
+							std::string curtype;
+							for(size_t i = 0; i < glist.length(); i++)
+							{
+								if(glist[i] == '<')
+								{
+									nesting++;
+									curtype += glist[i];
+								}
+								else if(glist[i] == '>')
+								{
+									if(nesting == 0) error(user, "mismatched angle brackets in generic type parameter list");
+									nesting--;
+									curtype += glist[i];
+								}
+								else if(glist[i] == ',' && nesting == 0)
+								{
+									types.push_back(curtype);
+									curtype = "";
+								}
+								else
+								{
+									curtype += glist[i];
+								}
+							}
+							types.push_back(curtype);
+
+
+							if(types.size() != sb->genericTypes.size())
+								error(user, "Expected %zu type parameters, got %zu", sb->genericTypes.size(), types.size());
+
+							// ok.
+							for(size_t i = 0; i < types.size(); i++)
+							{
+								fir::Type* inst = this->parseAndGetOrInstantiateType(user, types[i]);
+								instantiatedGenericTypes[sb->genericTypes[i]] = inst;
+							}
+						}
+
+						// todo: ew, goto
+						goto foundType;
+					}
+					else
+					{
+						if(allowFail) return 0;
+						else error(user, "Invaild type '%s'", base.c_str());
+					}
+				}
 
 				std::string nsstr;
 				for(auto n : ns)
@@ -993,24 +1151,69 @@ namespace Codegen
 			}
 			else if(tp)
 			{
-				fir::Type* concrete = tp->first;
+				foundType:
+
+				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
+				std::string mangledGeneric = oldSB->name;
+
+				// mangle properly, and find it.
+				{
+					iceAssert(tp);
+					iceAssert(tp->second.first);
+
+					for(auto pair : instantiatedGenericTypes)
+						mangledGeneric += "_" + pair.first + ":" + pair.second->str();
+
+					tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					// fprintf(stderr, "mangled: %s // tp: %p\n", mangledGeneric.c_str(), tp);
+				}
+
+
+				fir::Type* concrete = tp ? tp->first : 0;
 				if(!concrete)
 				{
 					// generate the type.
-					StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-					iceAssert(sb);
+					iceAssert(oldSB);
+
+					if(oldSB->genericTypes.size() > 0 && instantiatedGenericTypes.size() == 0)
+					{
+						error(user, "Type '%s' needs %zu type parameter%s, but none were provided",
+							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
+					}
+
 
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
-					concrete = sb->createType(this);
+					concrete = oldSB->createType(this, instantiatedGenericTypes);
 
-					sb->codegen(this);
+					if(instantiatedGenericTypes.size() > 0)
+					{
+						this->pushGenericTypeStack();
+						for(auto t : instantiatedGenericTypes)
+							this->pushGenericType(t.first, t.second);
+					}
+
+					// note: codegen() uses str->createdType. since we only *recently* called
+					// createType, it should be set properly.
+
+					// set codegen = 0
+					oldSB->didCodegen = false;
+					oldSB->codegen(this); // this sets it to true
+
+					if(instantiatedGenericTypes.size() > 0)
+						this->popGenericTypeStack();
+
 					this->namespaceStack = old;
 
+					if(!concrete) error(user, "!!!");
 					iceAssert(concrete);
+
+					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					iceAssert(tp);
 				}
+				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
 				fir::Type* ret = tp->first;
 				while(indirections > 0)

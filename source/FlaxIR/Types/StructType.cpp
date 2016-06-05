@@ -2,11 +2,6 @@
 // Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include <map>
-#include <unordered_map>
-
-#include "codegen.h"
-#include "compiler.h"
 #include "ir/type.h"
 
 namespace fir
@@ -132,7 +127,8 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
-			return this->structName;
+			auto s = typeListToString(this->structMembers);
+			return this->structName + "<{ " + s.substr(2, s.length() - 4) + " }>";
 		}
 		else if(this->isLiteralStruct())
 		{
@@ -153,6 +149,7 @@ namespace fir
 		if(this->isTypePacked != os->isTypePacked) return false;
 		if(this->structMembers.size() != os->structMembers.size()) return false;
 		if(this->isLiteralStruct() != os->isLiteralStruct()) return false;
+		if(this->baseType && (!this->baseType->isTypeEqual(os->baseType))) return false;
 
 		// compare names
 		if(!this->isLiteralStruct() && (this->structName != os->structName)) return false;
@@ -225,6 +222,61 @@ namespace fir
 
 		this->structMembers = members;
 	}
+
+
+
+	void StructType::setBaseType(StructType* base)
+	{
+		this->baseType = base;
+	}
+
+	void StructType::clearBaseType()
+	{
+		this->baseType = 0;
+	}
+
+	StructType* StructType::getBaseType()
+	{
+		return this->baseType;
+	}
+
+	bool StructType::isABaseTypeOf(Type* ot)
+	{
+		StructType* ost = ot->toStructType();
+		if(!ost) return false;
+
+		StructType* base = ost->getBaseType();
+		while(base != 0)
+		{
+			if(base->isTypeEqual(this))
+				return true;
+
+			base = base->getBaseType();
+		}
+
+		return false;
+	}
+
+	bool StructType::isADerivedTypeOf(Type* ot)
+	{
+		StructType* ost = ot->toStructType();
+		if(!ost) return false;
+
+		StructType* base = this->getBaseType();
+		while(base != 0)
+		{
+			if(base->isTypeEqual(this))
+				return true;
+
+			base = base->getBaseType();
+		}
+
+		return false;
+	}
+
+
+
+
 
 
 	void StructType::deleteType(FTContext* tc)

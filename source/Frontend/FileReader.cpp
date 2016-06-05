@@ -55,7 +55,7 @@ namespace Compiler
 		}
 
 		Parser::Token curtok;
-		Parser::pin pos;
+		Parser::Pin pos;
 		Parser::TokenList ts;
 
 		pos.file = new char[fullPath.length() + 1];

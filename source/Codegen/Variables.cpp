@@ -34,6 +34,20 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	fir::Value* ai = storage;
 	bool didAddToSymtab = false;
 
+
+	iceAssert(this->inferredLType);
+	if(val != 0)
+	{
+		// cast.
+		val = cgi->autoCastType(this->inferredLType, val);
+	}
+
+
+
+
+
+
+
 	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
 	{
 		// ...
@@ -107,8 +121,10 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 			bool wasImmut = this->immutable;
 			this->immutable = false;
-			auto res = cgi->doBinOpAssign(this, /* todo: this varref leaks */ new VarRef(this->pin, this->name), this->initVal,
-				ArithmeticOp::Assign, cgi->builder.CreateLoad(ai), ai, val, valptr);
+
+			auto vr = new VarRef(this->pin, this->name);
+			auto res = cgi->doBinOpAssign(this, vr, this->initVal, ArithmeticOp::Assign, cgi->builder.CreateLoad(ai), ai, val, valptr);
+			delete vr;
 
 			this->immutable = wasImmut;
 			return res.result.first;
@@ -125,7 +141,6 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		{
 			if(ai->getType()->getPointerElementType() != val->getType())
 				ai = cgi->lastMinuteUnwrapType(this, ai);
-
 
 			if(ai->getType()->getPointerElementType() != val->getType())
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
@@ -196,8 +211,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 void VarDecl::inferType(CodegenInstance* cgi)
 {
-	if(this->inferredLType != 0)
-		return;
+	// if(this->inferredLType != 0)
+	// 	return;
 
 	if(this->type.strType == "Inferred")
 	{
@@ -228,6 +243,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
 
 		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
+		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
+
 		iceAssert(this->inferredLType);
 	}
 }
@@ -286,16 +303,28 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
 	}
 
+
 	if(this->initVal)
 	{
-		auto r = this->initVal->codegen(cgi, ai).result;
+		ValPtr_t r;
+
+		if(isGlobal && this->inferredLType->isStructType())
+		{
+			// can't call directly for globals, since we cannot call the function directly.
+			// todo: if it's a struct, and we need to call a constructor...
+			error(this, "enotsup");
+		}
+		else
+		{
+			r = this->initVal->codegen(cgi, ai).result;
+		}
 
 		val = r.first;
 		valptr = r.second;
 	}
 
 
-
+	mangledName = cgi->mangleWithNamespace(this->name);
 
 	// TODO: call global constructors
 	if(this->isGlobal)
@@ -303,11 +332,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		if(this->attribs & Attr_VisPublic)
 		{
 			// hmm.
-			error(this, "Public global variables are currently not supported.");
+			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+				this->immutable, fir::LinkageType::External);
 		}
 		else
 		{
-			ai = cgi->module->createGlobalVariable(this->name, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
 				this->immutable, fir::LinkageType::Internal);
 		}
 
@@ -319,8 +349,19 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 			if(dynamic_cast<fir::ConstantValue*>(val))
 			{
-				cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
-				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
+				if(val->getType() != ltype)
+					val = cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
+
+				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
+				iceAssert(cv);
+
+				if(cv->getType() != ai->getType()->getPointerElementType())
+				{
+					error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
+						this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());
+				}
+
+				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
 			}
 			else
 			{
@@ -368,12 +409,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		}
 
 
-		cgi->addSymbol(this->name, ai, this);
+		cgi->addSymbol(mangledName, ai, this);
 
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		ft->vars[this->name] = *cgi->getSymPair(this, this->name);
+		ft->vars[this->name] = *cgi->getSymPair(this, mangledName);
 	}
 	else
 	{
@@ -387,7 +428,11 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
 
-	return Result_t(val, ai);
+	if(!this->isGlobal)
+		return Result_t(cgi->builder.CreateLoad(ai), ai);
+
+	else
+		return Result_t(0, ai);
 }
 
 

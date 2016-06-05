@@ -42,6 +42,14 @@ namespace fir
 		// delete gv;
 	}
 
+	GlobalVariable* Module::tryGetGlobalVariable(std::string name)
+	{
+		if(this->globals.find(name) == this->globals.end())
+			return 0;
+
+		return this->globals[name];
+	}
+
 	GlobalVariable* Module::getGlobalVariable(std::string name)
 	{
 		if(this->globals.find(name) == this->globals.end())
@@ -79,6 +87,7 @@ namespace fir
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)
 	{
+		fprintf(stderr, "declaring func %s in mod %s\n", name.c_str(), this->moduleName.c_str());
 		this->getOrCreateFunction(name, ftype, LinkageType::External);
 	}
 
@@ -179,12 +188,14 @@ namespace fir
 
 		for(auto global : this->globals)
 		{
+			ret += "global " + global.first + " (%" + std::to_string(global.second->id) + ") :: "
+				+ global.second->getType()->getPointerElementType()->str() + "\n";
 		}
 
 		for(auto type : this->namedTypes)
 		{
 			// should just automatically create it.
-			ret += type.second->str() + "\n";
+			ret += "declare type :: " + type.second->str() + "\n";
 		}
 
 		for(auto fp : this->functions)

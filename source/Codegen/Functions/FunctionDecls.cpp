@@ -28,8 +28,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 	else if(fd->parentClass && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
 	{
 		// default.
-		linkageType = (fd->attribs & Attr_VisPrivate) || (fd->attribs & Attr_VisInternal) ?
-			fir::LinkageType::Internal : fir::LinkageType::External;
+		linkageType = fd->attribs & Attr_VisPrivate ? fir::LinkageType::Internal : fir::LinkageType::Internal;
 	}
 	else
 	{

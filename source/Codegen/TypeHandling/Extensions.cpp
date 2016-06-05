@@ -58,7 +58,7 @@ fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::
 	return defaultInitFunc;
 }
 
-fir::Type* Extension::createType(CodegenInstance* cgi)
+fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(!cgi->isDuplicateType(this->name))
 		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
@@ -143,7 +143,7 @@ fir::Type* Extension::createType(CodegenInstance* cgi)
 		this->scope = cgi->namespaceStack;
 
 		str->extensions.push_back(this);
-		delete types;
+		delete[] types;
 
 
 		cgi->module->addNamedType(newType->getStructName(), newType);
