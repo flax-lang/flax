@@ -948,17 +948,6 @@ namespace Parser
 		if(f->isCStyleVarArg && f->isVariadic)
 			parserError("C-style variadic arguments and Flax-style variadic arguments are mutually exclusive.");
 
-		// last argument of flax-style varargs is the number of arguments
-		// add it.
-		if(f->isVariadic)
-		{
-			VarDecl* fake = new VarDecl(f->pin, "__argc", true);
-			fake->type.isLiteral = true;
-			fake->type.strType = "Int64";
-
-			f->params.push_back(fake);
-		}
-
 		return f;
 	}
 

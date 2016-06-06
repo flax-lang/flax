@@ -992,32 +992,43 @@ namespace Codegen
 
 			iceAssert(decl);
 
-			if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
-			if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
-
-
-			#define __min(x, y) ((x) > (y) ? (y) : (x))
-			for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
+			if(!decl->isVariadic)
 			{
-				auto t1 = this->getExprType(params[i], true);
-				auto t2 = this->getExprType(decl->params[i], true);
+				if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
+				if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
 
-				if(t1 != t2)
+				#define __min(x, y) ((x) > (y) ? (y) : (x))
+				for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 				{
-					if(exactMatch || t1 == 0 || t2 == 0) return false;
+					auto t1 = this->getExprType(params[i], true);
+					auto t2 = this->getExprType(decl->params[i], true);
 
-					// try to cast.
-					int dist = this->getAutoCastDistance(t1, t2);
-					if(dist == -1) return false;
+					if(t1 != t2)
+					{
+						if(exactMatch || t1 == 0 || t2 == 0) return false;
 
-					*castingDistance += dist;
+						// try to cast.
+						int dist = this->getAutoCastDistance(t1, t2);
+						if(dist == -1) return false;
+
+						*castingDistance += dist;
+					}
 				}
-			}
 
-			return true;
+				return true;
+			}
+			else
+			{
+				// variadic.
+				// check until the last parameter.
+			}
 		}
 		else if(fp.first)
 		{
+			error("ICE: don't have FuncDecl??? (%s)", fp.first->getName().c_str());
+
+
+			#if 0
 			fir::Function* lf = fp.first;
 			fir::FunctionType* ft = lf->getType();
 
@@ -1039,6 +1050,8 @@ namespace Codegen
 			}
 
 			return true;
+
+			#endif
 		}
 		else
 		{
@@ -2563,6 +2576,76 @@ namespace Codegen
 
 		return Result_t(this->builder.CreateLoad(anyptr), anyptr);
 	}
+
+
+
+
+	Result_t CodegenInstance::createLLVariableArray(fir::Value* ptr, fir::Value* length)
+	{
+		iceAssert(ptr->getType()->isPointerType());
+		iceAssert(length->getType()->isIntegerType());
+
+		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
+		fir::Value* arr = this->allocateInstanceInBlock(arrType);
+
+		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
+		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
+
+		this->builder.CreateStore(ptr, ptrGEP);
+		this->builder.CreateStore(length, lenGEP);
+
+		return Result_t(this->builder.CreateLoad(arr), arr);
+	}
+
+	Result_t CodegenInstance::indexLLVariableArray(fir::Value* arr, fir::Value* index)
+	{
+		iceAssert(arr->getType()->isLLVariableArrayType());
+		iceAssert(index->getType()->isIntegerType());
+
+		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
+		fir::Value* ptr = this->builder.CreateLoad(ptrGEP);
+
+		// todo: bounds checking?
+
+		fir::Value* gep = this->builder.CreateGEP2(ptr, fir::ConstantInt::getUint64(0), index);
+		return Result_t(this->builder.CreateLoad(gep), gep);
+	}
+
+	Result_t CodegenInstance::getLLVariableArrayDataPtr(fir::Value* arr)
+	{
+		iceAssert(arr->getType()->isLLVariableArrayType());
+
+		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
+		return Result_t(this->builder.CreateLoad(ptrGEP), ptrGEP);
+	}
+
+	Result_t CodegenInstance::getLLVariableArrayLength(fir::Value* arr)
+	{
+		iceAssert(arr->getType()->isLLVariableArrayType());
+
+		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
+		return Result_t(this->builder.CreateLoad(lenGEP), lenGEP);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

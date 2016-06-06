@@ -30,6 +30,7 @@ namespace fir
 	struct PointerType;
 	struct StructType;
 	struct ArrayType;
+	struct LLVariableArrayType;
 
 	struct FTContext
 	{
@@ -67,6 +68,7 @@ namespace fir
 		Floating,
 
 		Array,
+		LowLevelVariableArray,
 		Function,
 	};
 
@@ -98,6 +100,7 @@ namespace fir
 		PointerType* toPointerType();
 		StructType* toStructType();
 		ArrayType* toArrayType();
+		LLVariableArrayType* toLLVariableArray();
 
 
 		// bool isPointerTo(Type* other, FTContext* tc = 0);
@@ -116,6 +119,8 @@ namespace fir
 		bool isFunctionType();
 		bool isSignedIntType();
 		bool isFloatingPointType();
+
+		bool isLLVariableArrayType();
 
 		bool isPointerType();
 		bool isVoidType();
@@ -346,6 +351,29 @@ namespace fir
 		// static funcs
 		public:
 		static ArrayType* get(Type* elementType, size_t num, FTContext* tc = 0);
+	};
+
+	struct LLVariableArrayType : Type
+	{
+		friend struct Type;
+
+		// methods
+		Type* getElementType();
+
+		virtual std::string str() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		// protected constructor
+		protected:
+		LLVariableArrayType(Type* elmType);
+		virtual ~LLVariableArrayType() override { }
+
+		// fields
+		Type* arrayElementType;
+
+		// static funcs
+		public:
+		static LLVariableArrayType* get(Type* elementType, FTContext* tc = 0);
 	};
 
 

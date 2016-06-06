@@ -950,10 +950,13 @@ namespace Codegen
 						}
 						else if(arr.find("...") == 0)
 						{
-							sizes.push_back(0);
+							sizes.push_back(-1);
 							iceAssert(arr.find("]") == 3);
 
 							arr = arr.substr(3);
+
+							if(arr.length() > 0 && arr.front() == '[')
+								error(user, "Variadic array '[...]' must be the last dimension.");
 						}
 						else
 						{
@@ -972,11 +975,18 @@ namespace Codegen
 
 					for(auto i : sizes)
 					{
-						if(i != 0)
+						if(i > 0)
+						{
 							btype = fir::ArrayType::get(btype, i);
-
+						}
+						else if(i == -1)
+						{
+							btype = fir::LLVariableArrayType::get(btype);
+						}
 						else
+						{
 							btype = btype->getPointerTo();
+						}
 					}
 
 					return btype;
