@@ -208,7 +208,7 @@ namespace Codegen
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleLlvmType(fir::Type* t);
+		std::string mangleType(fir::Type* t);
 
 		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
