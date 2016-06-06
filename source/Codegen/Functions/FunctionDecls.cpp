@@ -42,7 +42,18 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 
 static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype)
 {
-	fir::FunctionType* ft = fir::FunctionType::get(argtypes, rettype, fd->isCStyleVarArg);
+	fir::FunctionType* ft = 0;
+
+	if(fd->isCStyleVarArg)
+	{
+		ft = fir::FunctionType::getCVariadicFunc(argtypes, rettype);
+	}
+	else
+	{
+		ft = fir::FunctionType::get(argtypes, rettype, fd->isVariadic);
+	}
+
+
 	auto linkageType = getFunctionDeclLinkage(fd);
 
 	// check for redef

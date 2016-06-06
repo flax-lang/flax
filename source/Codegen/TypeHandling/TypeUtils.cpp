@@ -638,7 +638,8 @@ namespace Codegen
 				return 20;
 			}
 		}
-		else if(to->isPointerType() && from->isPointerType())
+
+		if(to->isPointerType() && from->isPointerType())
 		{
 			fir::StructType* sfr = from->getPointerElementType()->toStructType();
 			fir::StructType* sto = to->getPointerElementType()->toStructType();
@@ -647,6 +648,12 @@ namespace Codegen
 			{
 				return 20;
 			}
+		}
+
+		if(this->isAnyType(to))
+		{
+			// any cast is 25.
+			return 25;
 		}
 
 		return -1;

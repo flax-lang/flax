@@ -385,7 +385,9 @@ namespace fir
 		std::deque<Type*> getArgumentTypes();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
-		bool isVarArg();
+
+		bool isCStyleVarArg();
+		bool isVariadicFunc();
 
 
 		virtual std::string str() override;
@@ -393,19 +395,25 @@ namespace fir
 
 		// protected constructor
 		protected:
-		FunctionType(std::deque<Type*> args, Type* ret, bool isva);
+		FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva);
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
-		bool isFnVarArg;
+		bool isFnCStyleVarArg;
+		bool isFnVariadic;
+
 		std::deque<Type*> functionParams;
 		Type* functionRetType;
 
 		// static funcs
 		public:
-		static FunctionType* get(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
-		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
-		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(std::deque<Type*> args, Type* ret, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc = 0);
+
+		static FunctionType* get(std::deque<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
+		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
+		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 	};
 }
 

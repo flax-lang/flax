@@ -16,6 +16,8 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 
+#include "llvm/Support/raw_ostream.h"
+
 
 #include "ir/module.h"
 #include "ir/constant.h"
@@ -65,7 +67,7 @@ namespace fir
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
 
-			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isVarArg());
+			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg());
 		}
 		else if(ArrayType* at = type->toArrayType())
 		{
@@ -82,7 +84,7 @@ namespace fir
 		else if(LLVariableArrayType* llat = type->toLLVariableArray())
 		{
 			std::vector<llvm::Type*> mems;
-			mems.push_back(typeToLlvm(llat->getElementType(), mod));
+			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
 
 			return llvm::StructType::get(gc, mems, false);
@@ -131,6 +133,24 @@ namespace fir
 		}
 	}
 
+
+	inline std::string llvmToString(llvm::Type* t)
+	{
+		std::string str;
+		llvm::raw_string_ostream rso(str);
+		t->print(rso);
+
+		return str;
+	}
+
+	inline std::string llvmToString(llvm::Value* t)
+	{
+		std::string str;
+		llvm::raw_string_ostream rso(str);
+		t->getType()->print(rso);
+
+		return str;
+	}
 
 
 
