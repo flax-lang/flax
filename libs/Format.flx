@@ -11,7 +11,7 @@ public func format(fmt: String, args: Any[...]) -> String
 {
 	var output: String
 
-	var i: Uint = 0
+	var i: Int = 0
 
 	while i < fmt.length
 	{
