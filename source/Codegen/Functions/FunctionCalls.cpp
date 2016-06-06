@@ -202,7 +202,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 		fir::Type* variadicType = target->getArguments().back()->getType()->toLLVariableArray()->getElementType();
 		std::deque<fir::Value*> variadics;
 
-		for(size_t i = params.size() - target->getArgumentCount(); i < params.size(); i++)
+		for(size_t i = target->getArgumentCount() - 1; i < params.size(); i++)
 		{
 			auto r = params[i]->codegen(cgi).result;
 			fir::Value* val = r.first;
@@ -224,12 +224,12 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 		// make the array thing.
 		fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
+		fprintf(stderr, "variadic: %zu\n", variadics.size());
 		fir::Value* rawArrayPtr = cgi->allocateInstanceInBlock(arrtype);
 
 		for(size_t i = 0; i < variadics.size(); i++)
 		{
 			auto gep = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, i);
-			fprintf(stderr, "storing %s -> %s\n", variadics[i]->getType()->str().c_str(), gep->getType()->str().c_str());
 			cgi->builder.CreateStore(variadics[i], gep);
 		}
 

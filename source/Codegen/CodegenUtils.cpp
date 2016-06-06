@@ -1278,9 +1278,14 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::mangleLlvmType(fir::Type* type)
+	std::string CodegenInstance::mangleType(fir::Type* type)
 	{
 		std::string r = this->getReadableType(type);
+		if(type->isLLVariableArrayType())
+		{
+			// hacky -- special case for this.
+			r = "V" + this->mangleType(type->toLLVariableArray()->getElementType());
+		}
 
 		int ind = 0;
 		r = unwrapPointerType(r, &ind);
@@ -1423,7 +1428,7 @@ namespace Codegen
 		std::deque<std::string> strings;
 
 		for(fir::Type* e : args)
-			strings.push_back(this->mangleLlvmType(e));
+			strings.push_back(this->mangleType(e));
 
 		return this->mangleFunctionName(base, strings);
 	}
@@ -1495,7 +1500,7 @@ namespace Codegen
 			}
 			else
 			{
-				strs.push_back(this->mangleLlvmType(atype));
+				strs.push_back(this->mangleType(atype));
 			}
 		}
 

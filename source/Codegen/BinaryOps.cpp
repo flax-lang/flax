@@ -759,7 +759,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		return ret;
 	}
 
-	error(this, "Unsupported operator on type");
+	error(this, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 }
 
 

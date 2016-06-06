@@ -572,7 +572,9 @@ namespace Codegen
 			unsigned int bb = to->toPrimitiveType()->getIntegerBitWidth();
 
 			// we only allow promotion, never truncation (implicitly anyway)
-			if(ab > bb) return -1;
+
+			// todo: do we?
+			// if(ab > bb) return -1;
 
 			// fk it
 			if(ab == 8)
