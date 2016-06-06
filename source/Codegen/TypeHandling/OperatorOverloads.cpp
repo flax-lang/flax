@@ -56,6 +56,11 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 		if(decl->params.size() != 2)
 			error(this, "Operator overload can only have two arguments, have %zu", decl->params.size());
 	}
+	else if(this->op == ArithmeticOp::Subscript)
+	{
+		if(decl->params.size() == 0)
+			error(this, "Subscript operator must accept at least one argument.");
+	}
 	else if(decl->params.size() > 2)
 	{
 		// custom operator... but we have no way to handle 2 arguments

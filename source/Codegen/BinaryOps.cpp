@@ -630,7 +630,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		// 	cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
 
 		rhs = cgi->autoCastType(lhs, rhs);
-		lhs = cgi->autoCastType(rhs, lhs);
 
 		fir::Value* tryop = cgi->builder.CreateBinaryOp(this->op, lhs, rhs);
 		if(tryop)

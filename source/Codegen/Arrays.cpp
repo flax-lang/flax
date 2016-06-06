@@ -10,13 +10,35 @@ using namespace Ast;
 using namespace Codegen;
 
 
+static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, Expr* index)
+{
+	fir::Type* lhsType = cgi->getExprType(e);
+	iceAssert(lhsType->isStructType());
+
+	return Result_t(0, 0);
+}
+
+
+
+
+
+
+
+
+
+
 Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// get our array type
 	fir::Type* atype = cgi->getExprType(this->arr);
 
 	if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+	{
+		if(atype->isStructType())
+			return handleSubscriptOperatorOverload(cgi, this->arr, this->index);
+
 		error(this, "Can only index on pointer or array types, got %s", atype->str().c_str());
+	}
 
 
 

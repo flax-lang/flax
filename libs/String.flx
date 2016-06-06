@@ -5,6 +5,11 @@
 import Unicode
 import LibCInterface
 
+public class Character
+{
+	var ascii: Int8 = 0
+}
+
 public class String
 {
 	var data: Int8* = 0
@@ -121,6 +126,10 @@ public class String
 
 
 
+	operator [] (index: Int) -> Int8
+	{
+		return self.data[index]
+	}
 
 
 
