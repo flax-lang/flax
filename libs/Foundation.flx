@@ -26,15 +26,26 @@ public func max(a: Uint64, b: Uint64) -> Uint64
 	return b
 }
 
-public func println(a: String)
+public func print(fmt: String, args: Any[...])
 {
-	printf(@raw "%s\n", a)
+	printf("%s", fmt)
 }
 
 public func println()
 {
-	printf(@raw "\n");
+	printf("\n");
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
