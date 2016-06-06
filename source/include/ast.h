@@ -443,6 +443,16 @@ namespace Ast
 		bool isCommutative = 0; // assumes isBinOp == true
 	};
 
+	struct SubscriptOpOverload : OpOverload
+	{
+		~SubscriptOpOverload();
+		SubscriptOpOverload(Parser::Pin pos, ArithmeticOp op, ComputedProperty* cp) : OpOverload(pos, op), cprop(cp) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhsPtr = 0) override;
+
+		std::deque<VarDecl*> args;
+		ComputedProperty* cprop = 0;
+	};
+
 	struct StructBase : Expr
 	{
 		virtual ~StructBase();

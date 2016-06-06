@@ -1954,6 +1954,9 @@ namespace Codegen
 				fir::Function* fop = oo.second;
 				OpOverload* opov = oo.first;
 
+				// special case
+				if(!fop) continue;
+
 				Attribs attr;
 
 				attr.op				= opov->op;
