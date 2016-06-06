@@ -41,6 +41,18 @@ namespace TypeInfo
 			i++;
 		}
 
+		if(type->isPointerType())
+		{
+			while(type->isPointerType())
+				type = type->getPointerElementType();
+
+			return getIndexForType(cgi, type);
+		}
+		else if(type->isArrayType())
+		{
+			return getIndexForType(cgi, type->toArrayType()->getElementType());
+		}
+
 		return 0;
 	}
 
@@ -76,7 +88,7 @@ namespace TypeInfo
 
 
 		// create the Any type.
-		#if 0
+		#if 1
 		if(cgi->getType("Any") == 0)
 		{
 			Struct* any = new Struct(Parser::Pin(), "Any");
@@ -155,7 +167,7 @@ namespace TypeInfo
 		}
 
 		#if 0
-		printf("Final type list for module %s\n{\n", cgi->module->getModuleIdentifier().c_str());
+		printf("Final type list for module %s\n{\n", cgi->module->getModuleName().c_str());
 
 		int i = 1;
 		for(auto c : enr->cases)

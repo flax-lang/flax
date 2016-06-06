@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 import Core
+import Format
 import LibCInterface
 import IntegerLimits
 
@@ -26,10 +27,15 @@ public func max(a: Uint64, b: Uint64) -> Uint64
 	return b
 }
 
-public func println(a: String)
-{
-	printf(@raw "%s\n", a)
-}
+
+
+
+
+
+
+
+
+
 
 
 

@@ -80,9 +80,14 @@ namespace fir
 		return this->fnArguments;
 	}
 
-	bool Function::isVarArg()
+	bool Function::isCStyleVarArg()
 	{
-		return this->getType()->isVarArg();
+		return this->getType()->isCStyleVarArg();
+	}
+
+	bool Function::isVariadic()
+	{
+		return this->getType()->isVariadicFunc();
 	}
 
 

@@ -14,16 +14,10 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 {
 	// get our array type
 	fir::Type* atype = cgi->getExprType(this->arr);
-	fir::Type* etype = nullptr;
 
-	if(atype->isArrayType())
-		etype = atype->toArrayType()->getElementType();
+	if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+		error(this, "Can only index on pointer or array types, got %s", atype->str().c_str());
 
-	else if(atype->isPointerType())
-		etype = atype->getPointerElementType();
-
-	else
-		error(this, "Can only index on pointer or array types.");
 
 
 	// try and do compile-time bounds checking
@@ -54,6 +48,8 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 	if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
 	else												lhs = lhsp.result.second;
 
+	iceAssert(lhs);
+
 	fir::Value* gep = nullptr;
 	fir::Value* ind = this->index->codegen(cgi).result.first;
 
@@ -61,6 +57,13 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Valu
 	{
 		gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
 		// info(this, "lhs type: %s, gep type: %s\n", lhs->getType()->str().c_str(), gep->getType()->str().c_str());
+	}
+	else if(atype->isLLVariableArrayType())
+	{
+		fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
+		fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+
+		gep = cgi->builder.CreateGetPointer(data, ind);
 	}
 	else
 	{

@@ -250,7 +250,12 @@ namespace Ast
 
 		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
 
-		bool hasVarArg = false;
+		bool isCStyleVarArg = false;
+
+		bool isVariadic = false;
+		std::string variadicStrType;
+		fir::Type* variadicType = 0;
+
 		bool isFFI = false;
 		bool isStatic = false;
 		bool wasCalled = false;
