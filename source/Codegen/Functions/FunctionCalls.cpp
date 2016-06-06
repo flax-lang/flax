@@ -210,7 +210,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 			if(cgi->isAnyType(variadicType))
 			{
-				variadics.push_back(cgi->makeAnyFromValue(val).result.first);
+				variadics.push_back(cgi->makeAnyFromValue(val, valP).result.first);
 			}
 			else if(variadicType != val->getType())
 			{
@@ -224,7 +224,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 		// make the array thing.
 		fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
-		fprintf(stderr, "variadic: %zu\n", variadics.size());
 		fir::Value* rawArrayPtr = cgi->allocateInstanceInBlock(arrtype);
 
 		for(size_t i = 0; i < variadics.size(); i++)

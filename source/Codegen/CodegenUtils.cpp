@@ -2607,25 +2607,19 @@ namespace Codegen
 		}
 	}
 
-	Result_t CodegenInstance::makeAnyFromValue(fir::Value* value)
+	Result_t CodegenInstance::makeAnyFromValue(fir::Value* value, fir::Value* valuePtr)
 	{
 		TypePair_t* anyt = this->getType("Any");
 		iceAssert(anyt);
 
+		if(!valuePtr)
+		{
+			valuePtr = this->allocateInstanceInBlock(value->getType());
+			this->builder.CreateStore(value, valuePtr);
+		}
+
 		fir::Value* anyptr = this->allocateInstanceInBlock(anyt->first);
-
-		fir::Value* typeGEP = this->builder.CreateStructGEP(anyptr, 0);
-		fir::Value* valueGEP = this->builder.CreateStructGEP(anyptr, 1);
-
-		this->builder.CreateStore(value, valueGEP);
-
-		size_t index = TypeInfo::getIndexForType(this, value->getType());
-		iceAssert(index > 0);
-
-		fir::Value* constint = fir::ConstantInt::getUnsigned(typeGEP->getType()->getPointerElementType(), index);
-		this->builder.CreateStore(constint, typeGEP);
-
-		return Result_t(this->builder.CreateLoad(anyptr), anyptr);
+		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
 
 
