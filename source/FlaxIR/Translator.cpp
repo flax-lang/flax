@@ -79,6 +79,14 @@ namespace fir
 		{
 			return llvm::Type::getVoidTy(gc);
 		}
+		else if(LLVariableArrayType* llat = type->toLLVariableArray())
+		{
+			std::vector<llvm::Type*> mems;
+			mems.push_back(typeToLlvm(llat->getElementType(), mod));
+			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
+
+			return llvm::StructType::get(gc, mems, false);
+		}
 		else
 		{
 			iceAssert(0 && "????");

@@ -107,6 +107,17 @@ namespace fir
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);
 
+
+		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
+
+
+
+
+
+
+
+
+
 		IRBlock* addNewBlockInFunction(std::string name, Function* func);
 		IRBlock* addNewBlockAfter(std::string name, IRBlock* block);
 
@@ -117,7 +128,6 @@ namespace fir
 		Function* getCurrentFunction();
 		IRBlock* getCurrentBlock();
 
-		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 		private:
 		Value* addInstruction(Instruction* instr, std::string vname);

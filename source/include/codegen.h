@@ -266,6 +266,19 @@ namespace Codegen
 
 		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
+
+
+		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
+		Ast::Result_t indexLLVariableArray(fir::Value* arr, fir::Value* index);
+		Ast::Result_t getLLVariableArrayDataPtr(fir::Value* arr);
+		Ast::Result_t getLLVariableArrayLength(fir::Value* arr);
+
+
+
+
+
+
+
 		fir::FTContext* getContext();
 		fir::Value* getDefaultValue(Ast::Expr* e);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
