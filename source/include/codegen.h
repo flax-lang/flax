@@ -270,8 +270,8 @@ namespace Codegen
 
 		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
 		Ast::Result_t indexLLVariableArray(fir::Value* arr, fir::Value* index);
-		Ast::Result_t getLLVariableArrayDataPtr(fir::Value* arr);
-		Ast::Result_t getLLVariableArrayLength(fir::Value* arr);
+		Ast::Result_t getLLVariableArrayDataPtr(fir::Value* arrPtr);
+		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
 
 
 

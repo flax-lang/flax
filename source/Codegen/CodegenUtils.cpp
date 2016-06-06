@@ -2656,19 +2656,21 @@ namespace Codegen
 		return Result_t(this->builder.CreateLoad(gep), gep);
 	}
 
-	Result_t CodegenInstance::getLLVariableArrayDataPtr(fir::Value* arr)
+	Result_t CodegenInstance::getLLVariableArrayDataPtr(fir::Value* arrPtr)
 	{
-		iceAssert(arr->getType()->isLLVariableArrayType());
+		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
+		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
+		fir::Value* ptrGEP = this->builder.CreateStructGEP(arrPtr, 0);
 		return Result_t(this->builder.CreateLoad(ptrGEP), ptrGEP);
 	}
 
-	Result_t CodegenInstance::getLLVariableArrayLength(fir::Value* arr)
+	Result_t CodegenInstance::getLLVariableArrayLength(fir::Value* arrPtr)
 	{
-		iceAssert(arr->getType()->isLLVariableArrayType());
+		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
+		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
+		fir::Value* lenGEP = this->builder.CreateStructGEP(arrPtr, 1);
 		return Result_t(this->builder.CreateLoad(lenGEP), lenGEP);
 	}
 

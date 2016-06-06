@@ -94,6 +94,22 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 		{
 			type = type->getPointerElementType(), isPtr = true;
 		}
+		else if(type->isLLVariableArrayType())
+		{
+			// lol, some magic.
+			if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
+			{
+				if(vr->name != "length")
+					error(this, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+
+				// lol, now do the thing.
+				return cgi->getLLVariableArrayLength(selfPtr);
+			}
+			else
+			{
+				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
+			}
+		}
 		else
 		{
 			error(this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
