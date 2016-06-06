@@ -163,7 +163,7 @@ import String
 
 func printer(fmt: String, args: Any[...])
 {
-	printf("%s", fmt)
+	printf("%lld", args.length)
 }
 
 
