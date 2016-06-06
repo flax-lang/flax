@@ -34,6 +34,8 @@ public class String
 	{
 		self.data = malloc(32)
 		self.allocated = 32
+
+		self.setString(@raw "")
 	}
 
 	init(str: Int8*)

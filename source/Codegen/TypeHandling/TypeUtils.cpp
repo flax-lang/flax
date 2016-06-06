@@ -776,6 +776,13 @@ namespace Codegen
 				// var allocated: Uint64
 
 				// cast the RHS to the LHS
+
+				if(!rhsPtr)
+				{
+					rhsPtr = this->allocateInstanceInBlock(right->getType());
+					this->builder.CreateStore(right, rhsPtr);
+				}
+
 				iceAssert(rhsPtr);
 				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
 				retval = this->builder.CreateLoad(ret);
