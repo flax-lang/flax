@@ -119,6 +119,10 @@ namespace Ast
 	{
 	}
 
+	SubscriptOpOverload::~SubscriptOpOverload()
+	{
+	}
+
 	StructBase::~StructBase()
 	{
 	}
