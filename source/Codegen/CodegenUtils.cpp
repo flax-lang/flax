@@ -1021,6 +1021,52 @@ namespace Codegen
 			{
 				// variadic.
 				// check until the last parameter.
+
+				// 1. passed parameters must have at least all the fixed parameters, since the varargs can be 0-length.
+				if(params.size() < decl->params.size() - 1) return false;
+
+				// 2. check the fixed parameters
+				for(size_t i = 0; i < decl->params.size() - 1; i++)
+				{
+					auto t1 = this->getExprType(params[i], true);
+					auto t2 = this->getExprType(decl->params[i], true);
+
+					if(t1 != t2)
+					{
+						if(exactMatch || t1 == 0 || t2 == 0) return false;
+
+						// try to cast.
+						int dist = this->getAutoCastDistance(t1, t2);
+						if(dist == -1) return false;
+
+						*castingDistance += dist;
+					}
+				}
+
+				// 3. get the type of the vararg array.
+				fir::Type* funcLLType = this->getExprType(decl->params.back());
+				iceAssert(funcLLType->isLLVariableArrayType());
+
+				fir::Type* llElmType = funcLLType->toLLVariableArray()->getElementType();
+
+				// 4. check the variable args.
+				for(size_t i = decl->params.size() - 1; i < params.size(); i++)
+				{
+					fir::Type* argType = this->getExprType(params[i]);
+
+					if(llElmType != argType)
+					{
+						if(exactMatch || argType == 0) return false;
+
+						// try to cast.
+						int dist = this->getAutoCastDistance(argType, llElmType);
+						if(dist == -1) return false;
+
+						*castingDistance += dist;
+					}
+				}
+
+				return true;
 			}
 		}
 		else if(fp.first)
