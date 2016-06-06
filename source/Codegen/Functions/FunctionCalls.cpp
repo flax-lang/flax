@@ -45,7 +45,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	}
 
 	std::vector<fir::Value*> args;
-	std::vector<fir::Value*> argPtrs;
 
 	fir::Function* target = 0;
 	if(this->cachedGenericFuncTarget == 0)
@@ -139,6 +138,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	if(!checkVariadic)
 	{
 		int argNum = 0;
+		std::vector<fir::Value*> argPtrs;
+
 		for(Expr* e : this->params)
 		{
 			ValPtr_t res = e->codegen(cgi).result;
@@ -195,46 +196,54 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 				GenError::nullValue(cgi, this, i);
 
 			args.push_back(arg);
-			argPtrs.push_back(res.second);
 		}
 
-		// do the last.
-		fir::Type* variadicType = target->getArguments().back()->getType()->toLLVariableArray()->getElementType();
-		std::deque<fir::Value*> variadics;
 
-		for(size_t i = target->getArgumentCount() - 1; i < params.size(); i++)
+		// special case: we can directly forward the arguments
+		if(cgi->getExprType(params.back())->isLLVariableArrayType())
 		{
-			auto r = params[i]->codegen(cgi).result;
-			fir::Value* val = r.first;
-			fir::Value* valP = r.second;
-
-			if(cgi->isAnyType(variadicType))
-			{
-				variadics.push_back(cgi->makeAnyFromValue(val, valP).result.first);
-			}
-			else if(variadicType != val->getType())
-			{
-				variadics.push_back(cgi->autoCastType(variadicType, val, valP));
-			}
-			else
-			{
-				variadics.push_back(val);
-			}
+			args.push_back(params.back()->codegen(cgi).result.first);
 		}
-
-		// make the array thing.
-		fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
-		fir::Value* rawArrayPtr = cgi->allocateInstanceInBlock(arrtype);
-
-		for(size_t i = 0; i < variadics.size(); i++)
+		else
 		{
-			auto gep = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, i);
-			cgi->builder.CreateStore(variadics[i], gep);
-		}
+			// do the last.
+			fir::Type* variadicType = target->getArguments().back()->getType()->toLLVariableArray()->getElementType();
+			std::deque<fir::Value*> variadics;
 
-		fir::Value* arrPtr = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, 0);
-		fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).result.first;
-		args.push_back(llar);
+			for(size_t i = target->getArgumentCount() - 1; i < params.size(); i++)
+			{
+				auto r = params[i]->codegen(cgi).result;
+				fir::Value* val = r.first;
+				fir::Value* valP = r.second;
+
+				if(cgi->isAnyType(variadicType))
+				{
+					variadics.push_back(cgi->makeAnyFromValue(val, valP).result.first);
+				}
+				else if(variadicType != val->getType())
+				{
+					variadics.push_back(cgi->autoCastType(variadicType, val, valP));
+				}
+				else
+				{
+					variadics.push_back(val);
+				}
+			}
+
+			// make the array thing.
+			fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
+			fir::Value* rawArrayPtr = cgi->allocateInstanceInBlock(arrtype);
+
+			for(size_t i = 0; i < variadics.size(); i++)
+			{
+				auto gep = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, i);
+				cgi->builder.CreateStore(variadics[i], gep);
+			}
+
+			fir::Value* arrPtr = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, 0);
+			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).result.first;
+			args.push_back(llar);
+		}
 	}
 
 
