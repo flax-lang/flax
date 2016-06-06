@@ -53,7 +53,9 @@ namespace fir
 		friend struct Argument;
 		friend struct IRBuilder;
 
-		bool isVarArg();
+		bool isCStyleVarArg();
+		bool isVariadic();
+
 		std::string getName();
 		Type* getReturnType();
 		size_t getArgumentCount();
