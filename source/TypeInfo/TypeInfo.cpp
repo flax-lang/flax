@@ -41,6 +41,18 @@ namespace TypeInfo
 			i++;
 		}
 
+		if(type->isPointerType())
+		{
+			while(type->isPointerType())
+				type = type->getPointerElementType();
+
+			return getIndexForType(cgi, type);
+		}
+		else if(type->isArrayType())
+		{
+			return getIndexForType(cgi, type->toArrayType()->getElementType());
+		}
+
 		return 0;
 	}
 
