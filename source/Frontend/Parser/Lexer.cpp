@@ -139,7 +139,7 @@ namespace Parser
 		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";
-			tok.type = TType::Elipsis;
+			tok.type = TType::Ellipsis;
 			read = 3;
 		}
 		else if(stream.compare(0, 2, "::") == 0)
@@ -430,6 +430,7 @@ namespace Parser
 						case 'n':	ss << "\n";	break;
 						case 'b':	ss << "\b";	break;
 						case 'r':	ss << "\r";	break;
+						case 't':	ss << "\t";	break;
 						case '\\':	ss << "\\"; break;
 					}
 

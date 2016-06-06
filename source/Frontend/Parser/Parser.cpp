@@ -840,7 +840,9 @@ namespace Parser
 			ps.eat();
 		}
 
-		bool isVA = false;
+		bool isCVA = false;
+		bool isVariableArg = false;
+
 		// get the parameter list
 		// expect an identifer, colon, type
 		std::deque<VarDecl*> params;
@@ -852,11 +854,11 @@ namespace Parser
 			bool immutable = true;
 			if((tok_id = ps.eat()).type != TType::Identifier)
 			{
-				if(tok_id.type == TType::Elipsis)
+				if(tok_id.type == TType::Ellipsis)
 				{
-					isVA = true;
+					isCVA = true;
 					if(ps.front().type != TType::RParen)
-						parserError("Vararg declaration must be last in the function declaration");
+						parserError("Vararg must be last in the function declaration");
 
 					break;
 				}
@@ -888,6 +890,17 @@ namespace Parser
 			v->type = ctype->type;
 			delete ctype;		// cleanup
 
+
+
+			// NOTE: FUCKING. GHETTO.
+			if(v->type.strType.find("[...]") != std::string::npos)
+			{
+				isVariableArg = true;
+				if(ps.front().type != TType::RParen)
+					parserError("Vararg must be last in the function declaration");
+			}
+
+
 			if(!nameCheck[v->name])
 			{
 				params.push_back(v);
@@ -897,6 +910,7 @@ namespace Parser
 			{
 				parserError("Redeclared variable '%s' in argument list", v->name.c_str());
 			}
+
 
 			if(ps.front().type == TType::Comma)
 				ps.eat();
@@ -927,8 +941,12 @@ namespace Parser
 		f->attribs = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
 			Attr_NoMangle | Attr_ForceMangle | Attr_Override);
 
-		f->hasVarArg = isVA;
+		f->isCStyleVarArg = isCVA;
+		f->isVariadic = isVariableArg;
 		f->genericTypes = genericTypes;
+
+		if(f->isCStyleVarArg && f->isVariadic)
+			parserError("C-style variadic arguments and Flax-style variadic arguments are mutually exclusive.");
 
 		return f;
 	}
@@ -1181,16 +1199,41 @@ namespace Parser
 
 				// this parses multi-dim array types.
 				Token n = ps.eat();
-				if(n.type != TType::Integer)
-					parserError("Expected integer size for fixed-length array");
+				std::string dims;
 
-				std::string dims = "[" + n.text + "]";
+				if(n.type == TType::Integer)
+				{
+					dims = "[" + n.text + "]";
+				}
+				else if(n.type == TType::Ellipsis)
+				{
+					dims = "[...]";
+				}
+				else if(n.type == TType::RSquare)
+				{
+					dims = "[]";
+				}
+				else
+				{
+					parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for"
+						"a variadic function argument.");
+				}
+
+				bool isVarArray = false;
+				if(n.type == TType::Ellipsis)
+					isVarArray = true;
+
 
 				n = ps.eat();
 				if(n.type != TType::RSquare)
 					parserError("Expected ']', have %s", n.text.c_str());
 
 				ptrAppend += dims;
+
+				if(isVarArray && ps.front().type == TType::LSquare)
+				{
+					parserError("Variadic array must be the last dimension");
+				}
 			}
 
 			std::string ret = baseType + ptrAppend;
@@ -1251,24 +1294,6 @@ namespace Parser
 			ct->type.strType = final;
 
 			return ct;
-		}
-		else if(tmp.type == TType::LSquare)
-		{
-			// variable-sized array.
-			// declared as pointers, basically.
-
-			Expr* _dm = parseType(ps);
-			iceAssert(_dm->type.isLiteral);
-
-			DummyExpr* dm = CreateAST(DummyExpr, tmp);
-			dm->type.isLiteral = true;
-			dm->type.strType = "[" + _dm->type.strType + "]";
-
-			Token next = ps.eat();
-			if(next.type != TType::RSquare)
-				parserError("Expected ']' after array type declaration.");
-
-			return dm;
 		}
 		else
 		{
@@ -2515,8 +2540,19 @@ namespace Parser
 
 	Typeof* parseTypeof(ParserState& ps)
 	{
-		iceAssert(ps.front().type == TType::Typeof);
-		return CreateAST(Typeof, ps.eat(), parseExpr(ps));
+		Token t;
+		iceAssert((t = ps.eat()).type == TType::Typeof);
+
+		// require parens
+		if(ps.eat().type != TType::LParen)
+			parserError("typeof() requires parentheses");
+
+		Expr* inside = parseExpr(ps);
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')'");
+
+		return CreateAST(Typeof, t, inside);
 	}
 
 	ArrayLiteral* parseArrayLiteral(ParserState& ps)

@@ -1,0 +1,20 @@
+// limits.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+public func printIntegerLimits()
+{
+	printf("Int8.min   = %hhd,\t\t\tInt8.max   = %hhd\n", Int8.min, Int8.max);
+	printf("Int16.min  = %hd,\t\t\tInt16.max  = %hd\n", Int16.min, Int16.max);
+	printf("Int32.min  = %d,\t\tInt32.max  = %d\n", Int32.min, Int32.max);
+	printf("Int64.min  = %lld,\tInt64.max  = %lld\n", Int64.min, Int64.max);
+
+	println()
+
+	printf("Uint8.min  = %hhu,\t\t\t\tUint8.max  = %hhu\n", Uint8.min, Uint8.max);
+	printf("Uint16.min = %hu\t\t\t\tUint16.max = %hu\n", Uint16.min, Uint16.max);
+	printf("Uint32.min = %u,\t\t\t\tUint32.max = %u\n", Uint32.min, Uint32.max);
+	printf("Uint64.min = %llu,\t\t\t\tUint64.max = %llu\n", Uint64.min, Uint64.max);
+}

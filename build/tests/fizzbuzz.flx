@@ -7,7 +7,7 @@ import Foundation
 public ƒ doFizzBuzz(num: Int)
 {
 	var i = 0
-	while i < num
+	while i <= num
 	{
 		printf("%02d:      ", i)
 

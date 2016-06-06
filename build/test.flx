@@ -2,100 +2,201 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-import Utilities
+// import Foundation
+// import Utilities
 
-import tests.fizzbuzz
-import tests.recursiveFib
-import tests.scopes
-import tests.operators
-import tests.arraytest
-import tests.generics
+// import tests.fizzbuzz
+// import tests.recursiveFib
+// import tests.scopes
+// import tests.operators
+// import tests.arraytest
+// import tests.generics
+// import tests.limits
+
+
+
+
+// ƒ runTests()
+// {
+// 	// fib
+// 	printf("*** FIBONACII SEQUENCE ***\n")
+
+// 	var n = 0
+// 	while n < 20
+// 	{
+// 		printf("%d: %lld\n", n, doRecursiveFib(n))
+// 		n += 1
+// 	}
+// 	printf("\n\n");
+
+
+// 	// fizzbuzz
+// 	printf("*** FIZZBUZZ ***\n")
+// 	doFizzBuzz(15);
+// 	printf("\n\n");
+
+
+// 	// scopes
+// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+// 	doScopeTest("__llvm_jit__build/test")
+// 	printf("\n\n");
+
+
+// 	// operators and tuples (vectors type, mainly)
+// 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+// 	doOperatorTupleTest()
+// 	printf("\n\n");
+
+
+// 	// arrays
+// 	printf("*** ARRAY REGRESSION TEST ***\n")
+// 	doArrayTest()
+// 	printf("\n\n")
+
+
+// 	// generics
+// 	printf("*** GENERICS TEST ***\n")
+// 	doGenericsTest()
+// 	let s = generic_test(5, "HELLO WORLD #")
+// 	printf("s = %s\n", s)
+// 	printf("\n\n")
+
+
+// 	// int limits
+// 	printf("*** PRINTING INT LIMITS ***\n")
+// 	printIntegerLimits()
+// 	printf("\n\n")
+
+
+// 	// fin.
+// 	printf("========= TESTS COMPLETE =========\n\n")
+// }
+
+// ƒ randomTest(fmt: String, argn: Int64, args: Any*)
+// {
+// 	var i = 0
+// 	while i < argn
+// 	{
+// 		let argtype = typeof(args[i])
+
+// 		if argtype == typeof(String)
+// 		{
+// 			printf("%s", args[i] as String)
+// 		}
+// 		else if argtype == typeof(Int8)
+// 		{
+// 			printf("%hhd", args[i] as Int8)
+// 		}
+// 		else if argtype == typeof(Int16)
+// 		{
+// 			printf("%hd", args[i] as Int16)
+// 		}
+// 		else if argtype == typeof(Int32)
+// 		{
+// 			printf("%d", args[i] as Int32)
+// 		}
+// 		else if argtype == typeof(Int64)
+// 		{
+// 			printf("%lld", args[i] as Int64)
+// 		}
+// 		else if argtype == typeof(Uint8)
+// 		{
+// 			printf("%hhu", args[i] as Uint8)
+// 		}
+// 		else if argtype == typeof(Uint16)
+// 		{
+// 			printf("%hu", args[i] as Uint16)
+// 		}
+// 		else if argtype == typeof(Uint32)
+// 		{
+// 			printf("%u", args[i] as Uint32)
+// 		}
+// 		else if argtype == typeof(Uint64)
+// 		{
+// 			printf("%llu", args[i] as Uint64)
+// 		}
+
+// 		i += 1
+// 	}
+// }
+
+
+
 
 
 // name idea: mill
 
+// syntax thingy
+// do we follow swift, in doing this:
+// ƒ foo(fmt: String, args: Any...)
 
-ƒ runTests()
-{
-	// fib
-	printf("*** FIBONACII SEQUENCE ***\n")
+// or, something like this (since it is conceptually an array-like structure)
+// ƒ foo(fmt: String, args: Any[...])
 
-	var n = 0
-	while n < 20
-	{
-		printf("%d: %lld\n", n, doRecursiveFib(n))
-		n += 1
-	}
-	printf("\n\n");
+// both require some amount of parsing patches, but should be equally doable.
+// i'm personally a fan of the secound.
 
+// it should be possible, theoretically, to implement this as a kind of array??
+// with a whole "length" and "data" thing. possibly.
+// not entirely sure how that will work...
+// we don't even have a length property, i don't think, for arrays right now.
+// we can statically type check **CONSTANT** indexes into fixed-length arrays at compile time.
+// aka it's basically useless.
 
-	// fizzbuzz
-	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(10);
-	printf("\n\n");
+// but i don't think it will be possible to do that for vararg functions
+// so we def. need a length property or something.
+// i kinda want varargs first,
+// although it would be possibel to move the slipshod array system into a generic Array<> thing, once it's implemented
+// (if ever)
 
-
-	// scopes
-	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest("__llvm_jit__build/test")
-	printf("\n\n");
-
-
-	// operators and tuples (vectors type, mainly)
-	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-	doOperatorTupleTest()
-	printf("\n\n");
+// that has a lot more friction though, so i'm more keen to get the non-generic varargs thing working first.
+// first, the Any[...] implementation.
+// theoretically it should also be possible not to restrict it to Any, and have Int[...], String[...] and so on.
+// the array mechanics should work, and typeof() isn't necessary.
 
 
-	// arrays
-	printf("*** ARRAY REGRESSION TEST ***\n")
-	doArrayTest()
-	printf("\n\n")
 
-
-	// generics
-	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
-	printf("\n\n")
-
-
-	// fin.
-	printf("========= TESTS COMPLETE =========\n\n")
-}
+import LibCInterface
+import String
+import Foundation
+// import tests.arraytest
 
 
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
-	runTests()
+	// runTests()
 
-	printf("pi = %f\n", Math.π())
-
-
-	printf("Int8.min = %hhd, Int8.max = %hhd\n", Int8.min, Int8.max);
-	printf("Int16.min = %hd, Int16.max = %hd\n", Int16.min, Int16.max);
-	printf("Int32.min = %d, Int32.max = %d\n", Int32.min, Int32.max);
-	printf("Int64.min = %lld, Int64.max = %lld\n", Int64.min, Int64.max);
+	// printf("pi = %.16lf\n", Math.π())
 
 
-	printf("Uint8.min = %hhu, Uint8.max = %hhu\n", Uint8.min, Uint8.max);
-	printf("Uint16.min = %hu, Uint16.max = %hu\n", Uint16.min, Uint16.max);
-	printf("Uint32.min = %u, Uint32.max = %u\n", Uint32.min, Uint32.max);
-	printf("Uint64.min = %llu, Uint64.max = %llu\n", Uint64.min, Uint64.max);
+
+	// var arr8: Array<Int8>
+	// var arr32: Array<Int32>
+
+	// arr8.data = alloc[3] Int8
+	// arr32.data = alloc[30] Int8
+	// printf("data8  = %p\n", arr8.data);
+	// printf("data32 = %p\n", arr32.data);
 
 
-	var arr8: Array<Int8>
-	var arr32: Array<Int32>
-
-	arr8.data = alloc[3] Int8
-	arr32.data = alloc[30] Int8
-	printf("data8  = %p\n", arr8.data);
-	printf("data32 = %p\n", arr32.data);
+	// var args = alloc[10] Any
+	// args[0] = "HELLO"
+	// #(args + 1) = 40
+	// args[2] = "GOODBYE"
 
 
+	// randomTest("", 3, args)
+
+	println("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
+
+
+	// var i = 0
+	// while true
+	// {
+	// 	printf("%lld\n", i += 1)
+	// 	usleep((10 * 1000) as Uint32)
+	// }
 
 
 
@@ -112,7 +213,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// >>> multiple, dynamic dispatch
 
 
-	printf("\n<< done >>\n");
+	// printf("\n<< done >>\n");
 	return 0
 }
 

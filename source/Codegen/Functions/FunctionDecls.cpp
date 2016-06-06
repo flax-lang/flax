@@ -42,7 +42,18 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 
 static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype)
 {
-	fir::FunctionType* ft = fir::FunctionType::get(argtypes, rettype, fd->hasVarArg);
+	fir::FunctionType* ft = 0;
+
+	if(fd->isCStyleVarArg)
+	{
+		ft = fir::FunctionType::getCVariadicFunc(argtypes, rettype);
+	}
+	else
+	{
+		ft = fir::FunctionType::get(argtypes, rettype, fd->isVariadic);
+	}
+
+
 	auto linkageType = getFunctionDeclLinkage(fd);
 
 	// check for redef
@@ -119,6 +130,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	// wait until we get specific instances
 	// (where all the typenames, T, U etc. have been replaced with concrete types by callers)
 
+
+	if(this->isCStyleVarArg && (!this->isFFI || this->ffiType != FFIType::C))
+		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
+
+
 	if(this->genericTypes.size() > 0)
 	{
 		std::map<std::string, bool> usage;
@@ -161,6 +177,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	if(isMemberFunction)
 	{
 		iceAssert(!this->isFFI);
+
 		std::deque<Expr*> es;
 		for(auto p : this->params)
 			es.push_back(p);
@@ -232,6 +249,12 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			else			this->mangledName = cgi->mangleFunctionName(this->name, this->params);
 		}
 	}
+
+
+	if(this->isVariadic)
+		this->mangledName += "__VARIADIC";
+
+
 
 	if(!isGeneric)
 	{

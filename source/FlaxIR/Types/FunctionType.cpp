@@ -11,21 +11,61 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isva) : Type(FTypeKind::Function)
+	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva) : Type(FTypeKind::Function)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;
-		this->isFnVarArg = isva;
+		this->isFnVariadic = isvariadic;
+
+		this->isFnCStyleVarArg = iscva;
 	}
 
+
+
+
+
+
 	// functions
+	FunctionType* FunctionType::getCVariadicFunc(std::deque<Type*> args, Type* ret, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// create.
+		FunctionType* type = new FunctionType(args, ret, false, true);
+		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
+	}
+
+	FunctionType* FunctionType::getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc)
+	{
+		std::deque<Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return getCVariadicFunc(dargs, ret, tc);
+	}
+
+	FunctionType* FunctionType::getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc)
+	{
+		std::deque<Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return getCVariadicFunc(dargs, ret, tc);
+	}
+
+
+
+
+
+
 	FunctionType* FunctionType::get(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
 		// create.
-		FunctionType* type = new FunctionType(args, ret, isVarArg);
+		FunctionType* type = new FunctionType(args, ret, isVarArg, false);
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
@@ -84,9 +124,14 @@ namespace fir
 		return this->functionRetType;
 	}
 
-	bool FunctionType::isVarArg()
+	bool FunctionType::isCStyleVarArg()
 	{
-		return this->isFnVarArg;
+		return this->isFnCStyleVarArg;
+	}
+
+	bool FunctionType::isVariadicFunc()
+	{
+		return this->isFnVariadic;
 	}
 
 
@@ -94,7 +139,8 @@ namespace fir
 	{
 		FunctionType* of = dynamic_cast<FunctionType*>(other);
 		if(!of) return false;
-		if(this->isFnVarArg != of->isFnVarArg) return false;
+		if(this->isFnCStyleVarArg != of->isFnCStyleVarArg) return false;
+		if(this->isFnVariadic != of->isFnVariadic) return false;
 		if(this->functionParams.size() != of->functionParams.size()) return false;
 		if(!this->functionRetType->isTypeEqual(of->functionRetType)) return false;
 

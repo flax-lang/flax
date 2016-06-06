@@ -56,7 +56,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	}
 	else
 	{
-		error("");
+		error("wtf");
 		// reset this?
 		// this->cachedCodegenResult = Result_t(0, 0);
 	}
@@ -93,6 +93,22 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 		if(type->isPointerType() && type->getPointerElementType()->isStructType())
 		{
 			type = type->getPointerElementType(), isPtr = true;
+		}
+		else if(type->isLLVariableArrayType())
+		{
+			// lol, some magic.
+			if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
+			{
+				if(vr->name != "length")
+					error(this, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+
+				// lol, now do the thing.
+				return cgi->getLLVariableArrayLength(selfPtr);
+			}
+			else
+			{
+				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
+			}
 		}
 		else
 		{
