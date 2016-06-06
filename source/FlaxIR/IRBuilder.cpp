@@ -852,14 +852,19 @@ namespace fir
 		iceAssert(ptr->getType()->isPointerType() && "ptr is not a pointer");
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not an integer type");
 
-		StructType* st = dynamic_cast<StructType*>(ptr->getType()->getPointerElementType());
-		iceAssert(st && "ptr is not pointer to struct");
-		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
+		if(StructType* st = dynamic_cast<StructType*>(ptr->getType()->getPointerElementType()))
+		{
+			iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
-			{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
+			Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
+				{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
 
-		return this->addInstruction(instr, vname);
+			return this->addInstruction(instr, vname);
+		}
+		else
+		{
+			error("type %s is not a valid type to GEP into", ptr->getType()->getPointerElementType()->str().c_str());
+		}
 	}
 
 
@@ -868,14 +873,30 @@ namespace fir
 	{
 		iceAssert(structPtr->getType()->isPointerType() && "ptr is not a pointer");
 
-		StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType());
-		iceAssert(st && "ptr is not pointer to struct");
-		iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
+		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
+		{
+			iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
-			{ structPtr, ConstantInt::getUint64(memberIndex) });
+			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
+				{ structPtr, ConstantInt::getUint64(memberIndex) });
 
-		return this->addInstruction(instr, vname);
+			return this->addInstruction(instr, vname);
+		}
+		else if(LLVariableArrayType* llat = dynamic_cast<LLVariableArrayType*>(structPtr->getType()->getPointerElementType()))
+		{
+			iceAssert(memberIndex <= 1 && "LLVariableArrayType only has 2 members");
+
+			Type* ty = (memberIndex == 0 ? llat->getElementType()->getPointerTo() : PrimitiveType::getInt64());
+
+			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, ty->getPointerTo(),
+				{ structPtr, ConstantInt::getUint64(memberIndex) });
+
+			return this->addInstruction(instr, vname);
+		}
+		else
+		{
+			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str().c_str());
+		}
 	}
 
 	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
@@ -919,9 +940,6 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
 		return this->addInstruction(instr, vname);
 	}
-
-
-
 
 
 

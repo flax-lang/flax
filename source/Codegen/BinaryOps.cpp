@@ -82,7 +82,9 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 	{
 		{
 			VarDecl* vdecl = this->getSymDecl(user, v->name);
-			if(!vdecl) GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
+
+			if(!vdecl)
+				GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
 
 			if(vdecl->immutable)
 				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
@@ -90,7 +92,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		if(!rhs)
 			error(user, "(%s:%d) -> Internal check failed: invalid RHS for assignment", __FILE__, __LINE__);
-
 
 		if(SymbolPair_t* sp = this->getSymPair(user, v->name))
 		{
@@ -107,6 +108,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		Result_t tryOpOverload = callOperatorOverloadOnStruct(this, user, op, ref, rhs, rhsPtr);
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
+
+
 
 		lhs = this->autoCastType(rhs, lhs);
 		if(!this->areEqualTypes(lhs->getType(), rhs->getType()))
@@ -205,7 +208,6 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					fir::Value* gep = this->builder.CreateStructGEP(ai, 0);
 
 					this->builder.CreateStore(rhs, gep);
-
 					this->builder.CreateStore(this->builder.CreateLoad(ai), ref);
 
 					return Result_t(lhs, ref);
@@ -254,6 +256,8 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		else if(!varptr->getType()->isPointerType())
 			GenError::invalidAssignment(this, user, varptr, rhs);
 
+
+
 		// redo the number casting
 		if(rhs->getType()->isIntegerType() && lhs->getType()->isIntegerType())
 			rhs = this->builder.CreateIntSizeCast(rhs, varptr->getType()->getPointerElementType());
@@ -274,6 +278,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		if(tryOpOverload.result.first != 0)
 			return tryOpOverload;
 	}
+
 
 	// check for overflow
 	if(lhs->getType()->isIntegerType())
@@ -307,7 +312,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 			}
 
 			if(shouldwarn)
-				warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival, this->getReadableType(lhs->getType()).c_str(), max);
+			{
+				warn(user, "Value '%" PRIu64 "' is too large for variable type '%s', max %lld", n->ival,
+					this->getReadableType(lhs->getType()).c_str(), max);
+			}
 		}
 	}
 
@@ -739,11 +747,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 	}
 	else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
 	{
-		// Result_t ret = cgi->findAndCallOperatorOverload(this, op, valptr.first, valptr.second, rhs, r.second);
-
 		auto data = cgi->getOperatorOverload(this, op, valptr.first->getType(), rhs->getType());
 		Result_t ret = cgi->callOperatorOverload(data, valptr.first, valptr.second, rhs, r.second, op);
-
 
 		if(ret.result.first == 0)
 		{
