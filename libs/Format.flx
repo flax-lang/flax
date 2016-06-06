@@ -13,7 +13,10 @@ public func format(fmt: String, args: Any[...]) -> String
 
 	var i: Uint = 0
 
-	// while i < fmt.length
+	while i < fmt.length
+	{
+		i += 1
+	}
 	// {
 	// 	if fmt[i] != 0
 	// 	{
