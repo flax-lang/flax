@@ -167,8 +167,8 @@ public func main(argc: Int32, argv: Int8**) -> Int
 {
 	// runTests()
 
-	// printf("pi = %.16lf\n", Math.π())
-
+	printf("pi = %.16lf\n", Math.π())
+	printf("%c\n", "foo"[1])
 
 
 	// var arr8: Array<Int8>
@@ -189,7 +189,6 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// randomTest("", 3, args)
 
 	println("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
-
 
 	// var i = 0
 	// while true

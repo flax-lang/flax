@@ -733,7 +733,10 @@ namespace Codegen
 				// eg. u32 -> i32 >> not okay
 				//     u32 -> i64 >> okay
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
+				// TODO: making this more like C.
+				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
 					retval = this->builder.CreateIntSizeCast(right, target);
 			}
 			else

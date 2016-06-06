@@ -201,6 +201,7 @@ namespace Parser
 			case ArithmeticOp::MemberAccess:		return ".";
 			case ArithmeticOp::ScopeResolution:		return "::";
 			case ArithmeticOp::TupleSeparator:		return ",";
+			case ArithmeticOp::Subscript:			return "[]";
 			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 
 			default:								return cgi->customOperatorMap[op].first;
@@ -288,7 +289,9 @@ namespace Parser
 
 		ps.skipNewline();
 
+
 		// hackjob... kinda.
+		// todo: why is this a closure???
 		auto findOperators = [&](ParserState& ps) {
 
 			int curPrec = 0;
@@ -1540,7 +1543,8 @@ namespace Parser
 		}
 		else
 		{
-			iceAssert(false);
+			// todo: ++ and --.
+			parserError("enotsup");
 		}
 
 		return newlhs;
@@ -2660,6 +2664,7 @@ namespace Parser
 		else if(op == "gt") return ArithmeticOp::CmpGT;
 		else if(op == "le") return ArithmeticOp::CmpLEq;
 		else if(op == "ge") return ArithmeticOp::CmpGEq;
+		else if(op == "ix") return ArithmeticOp::Subscript;
 		else
 		{
 			if(cgi->customOperatorMapRev.find(op) != cgi->customOperatorMapRev.end())
@@ -2707,6 +2712,7 @@ namespace Parser
 			case ArithmeticOp::CmpGT:				return "gt";
 			case ArithmeticOp::CmpLEq:				return "le";
 			case ArithmeticOp::CmpGEq:				return "ge";
+			case ArithmeticOp::Subscript:			return "ix";
 			default:								return cgi->customOperatorMap[op].first;
 		}
 	}
@@ -2733,6 +2739,11 @@ namespace Parser
 		else if(op.type == TType::MinusEq)		ao = ArithmeticOp::MinusEquals;
 		else if(op.type == TType::MultiplyEq)	ao = ArithmeticOp::MultiplyEquals;
 		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
+		else if(op.type == TType::LSquare && ps.front().type == TType::RSquare)
+		{
+			ps.eat();
+			ao = ArithmeticOp::Subscript;
+		}
 		else
 		{
 			if(ps.cgi->customOperatorMapRev.find(op.text) != ps.cgi->customOperatorMapRev.end())

@@ -70,6 +70,8 @@ namespace Ast
 		ScopeResolution,
 		TupleSeparator,
 
+		Subscript,
+
 		UserDefined
 	};
 
