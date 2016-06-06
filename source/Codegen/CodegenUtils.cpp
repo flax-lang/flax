@@ -2460,10 +2460,23 @@ namespace Codegen
 	}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
 		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0);		// Type
+		typegep = this->builder.CreateStructGEP(typegep, 0);			// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
@@ -2476,7 +2489,6 @@ namespace Codegen
 		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1);
 		if(rhsPtr)
 		{
-			// printf("rhsPtr, %s\n", this->getReadableType(valgep).c_str());
 			fir::Value* casted = this->builder.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
 			this->builder.CreateStore(casted, valgep);
 		}
@@ -2530,6 +2542,28 @@ namespace Codegen
 			return Result_t(val, 0);
 		}
 	}
+
+	Result_t CodegenInstance::makeAnyFromValue(fir::Value* value)
+	{
+		TypePair_t* anyt = this->getType("Any");
+		iceAssert(anyt);
+
+		fir::Value* anyptr = this->allocateInstanceInBlock(anyt->first);
+
+		fir::Value* typeGEP = this->builder.CreateStructGEP(anyptr, 0);
+		fir::Value* valueGEP = this->builder.CreateStructGEP(anyptr, 1);
+
+		this->builder.CreateStore(value, valueGEP);
+
+		size_t index = TypeInfo::getIndexForType(this, value->getType());
+		iceAssert(index > 0);
+
+		fir::Value* constint = fir::ConstantInt::getUnsigned(typeGEP->getType()->getPointerElementType(), index);
+		this->builder.CreateStore(constint, typeGEP);
+
+		return Result_t(this->builder.CreateLoad(anyptr), anyptr);
+	}
+
 
 
 
