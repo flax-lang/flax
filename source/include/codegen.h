@@ -260,6 +260,7 @@ namespace Codegen
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
+		Ast::Result_t makeAnyFromValue(fir::Value* value);
 
 		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
