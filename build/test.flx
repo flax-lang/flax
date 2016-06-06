@@ -157,21 +157,13 @@
 
 
 import LibCInterface
-// import String
+import String
 // import tests.arraytest
 
 
-func printInts(args: Int[...])
+func printer(fmt: String, args: Any[...])
 {
-	var i: Int = 0
-
-	while i < 10
-	{
-		printf("%lld, ", args[i])
-		i += 1
-	}
-
-	printf("\n")
+	printf("%s", fmt)
 }
 
 
@@ -200,7 +192,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 
 	// randomTest("", 3, args)
 
-	printInts(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	printer("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
 
 
 	// var i = 0
