@@ -1304,6 +1304,101 @@ namespace Parser
 		}
 	}
 
+
+
+
+	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
+	{
+		if(!ps.isParsingStruct)
+			parserError("Computed properties can only be declared inside classes");
+
+		// computed property, getting and setting
+
+		// eat the brace, skip whitespace
+		ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, name);
+
+		iceAssert(ps.eat().type == TType::LBrace);
+
+		cprop->type = type;
+		cprop->attribs = attribs;
+
+		bool didGetter = false;
+		bool didSetter = false;
+		for(int i = 0; i < 2; i++)
+		{
+			if(ps.front().type == TType::Get)
+			{
+				if(didGetter)
+					parserError("Only one getter is allowed per computed property");
+
+				didGetter = true;
+
+				// parse a braced block.
+				ps.eat();
+				if(ps.front().type != TType::LBrace)
+					parserError("Expected '{' after 'get'");
+
+				cprop->getter = parseBracedBlock(ps);
+			}
+			else if(ps.front().type == TType::Set)
+			{
+				if(didSetter)
+					parserError("Only one getter is allowed per computed property");
+
+				didSetter = true;
+
+				ps.eat();
+				std::string setValName = "newValue";
+
+				// see if we have parentheses
+				if(ps.front().type == TType::LParen)
+				{
+					ps.eat();
+					if(ps.front().type != TType::Identifier)
+						parserError("Expected identifier for custom setter argument name");
+
+					setValName = ps.eat().text;
+
+					if(ps.eat().type != TType::RParen)
+						parserError("Expected closing ')'");
+				}
+
+				cprop->setter = parseBracedBlock(ps);
+				cprop->setterArgName = setValName;
+			}
+			else if(ps.front().type == TType::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				// implicit read-only, 'get' not required
+				// there's no set, so make i = 1 so we error on extra bits
+				i = 1;
+
+				// insert a dummy brace
+				Token dummy;
+				dummy.type = TType::LBrace;
+				dummy.text = "{";
+
+				ps.tokens.push_front(dummy);
+				cprop->getter = parseBracedBlock(ps);
+
+
+				// lol, another hack
+				dummy.type = TType::RBrace;
+				dummy.text = "}";
+				ps.tokens.push_front(dummy);
+			}
+		}
+
+		if(ps.eat().type != TType::RBrace)
+			parserError("Expected closing '}'");
+
+		return cprop;
+	}
+
+
 	VarDecl* parseVarDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
@@ -1343,93 +1438,7 @@ namespace Parser
 			}
 			else if(ps.front().type == TType::LBrace)
 			{
-				if(!ps.isParsingStruct)
-					parserError("Computed properties can only be declared inside structs");
-
-				// computed property, getting and setting
-
-				// eat the brace, skip whitespace
-				ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, id);
-				ps.eat();
-
-				cprop->type = v->type;
-				cprop->attribs = v->attribs;
-				delete v;
-
-				bool didGetter = false;
-				bool didSetter = false;
-				for(int i = 0; i < 2; i++)
-				{
-					if(ps.front().type == TType::Get)
-					{
-						if(didGetter)
-							parserError("Only one getter is allowed per computed property");
-
-						didGetter = true;
-
-						// parse a braced block.
-						ps.eat();
-						if(ps.front().type != TType::LBrace)
-							parserError("Expected '{' after 'get'");
-
-						cprop->getter = parseBracedBlock(ps);
-					}
-					else if(ps.front().type == TType::Set)
-					{
-						if(didSetter)
-							parserError("Only one getter is allowed per computed property");
-
-						didSetter = true;
-
-						ps.eat();
-						std::string setValName = "newValue";
-
-						// see if we have parentheses
-						if(ps.front().type == TType::LParen)
-						{
-							ps.eat();
-							if(ps.front().type != TType::Identifier)
-								parserError("Expected identifier for custom setter argument name");
-
-							setValName = ps.eat().text;
-
-							if(ps.eat().type != TType::RParen)
-								parserError("Expected closing ')'");
-						}
-
-						cprop->setter = parseBracedBlock(ps);
-						cprop->setterArgName = setValName;
-					}
-					else if(ps.front().type == TType::RBrace)
-					{
-						break;
-					}
-					else
-					{
-						// implicit read-only, 'get' not required
-						// there's no set, so make i = 1 so we error on extra bits
-						i = 1;
-
-						// insert a dummy brace
-						Token dummy;
-						dummy.type = TType::LBrace;
-						dummy.text = "{";
-
-						ps.tokens.push_front(dummy);
-						cprop->getter = parseBracedBlock(ps);
-
-
-						// lol, another hack
-						dummy.type = TType::RBrace;
-						dummy.text = "}";
-						ps.tokens.push_front(dummy);
-					}
-				}
-
-				if(ps.eat().type != TType::RBrace)
-					parserError("Expected closing '}'");
-
-				return cprop;
+				return parseComputedProperty(ps, v->name, v->type.strType, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
@@ -2182,7 +2191,8 @@ namespace Parser
 			{
 				cls->opOverloads.push_back(oo);
 
-				cls->funcs.push_back(oo->func);
+				if(oo->op != ArithmeticOp::Subscript)
+					cls->funcs.push_back(oo->func);
 			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
@@ -2743,6 +2753,33 @@ namespace Parser
 		{
 			ps.eat();
 			ao = ArithmeticOp::Subscript;
+
+			Token fake;
+			fake.pin = ps.currentPos;
+			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.type = TType::Identifier;
+
+			ps.tokens.push_front(fake);
+			FuncDecl* fd = parseFuncDecl(ps);
+
+			if(fd->type.strType == "Void")
+				parserError("Subscript operator must return a value");
+
+			if(fd->params.size() == 0)
+				parserError("Subscript operator must take at least one argument");
+
+			std::string type = fd->type.strType;
+
+			// subscript operator is done a bit differently
+			// i suspect some others like deref ('#') operator will be too
+			// needs to be able to set read/write, so we take from swift
+			// act like a computed property, with get and set style bodies.
+
+			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
+			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op, ao, cprop);
+			oo->args = fd->params;
+
+			return oo;
 		}
 		else
 		{

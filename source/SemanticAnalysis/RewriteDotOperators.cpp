@@ -189,6 +189,8 @@ static void rewriteDotOperator(MemberAccess* ma)
 // might be a mess.
 static void findDotOperator(Expr* expr)
 {
+	if(!expr) return;
+
 	if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 	{
 		// check for init var.
@@ -265,7 +267,17 @@ static void findDotOperator(Expr* expr)
 		}
 
 		for(auto op : cls->opOverloads)
-			findDotOperator(op->func);
+		{
+			if(auto s = dynamic_cast<SubscriptOpOverload*>(op))
+			{
+				findDotOperator(s->cprop->getter);
+				findDotOperator(s->cprop->setter);
+			}
+			else
+			{
+				findDotOperator(op->func);
+			}
+		}
 
 		for(auto fn : cls->funcs)
 			findDotOperator(fn);
@@ -316,6 +328,7 @@ static void findDotOperator(Expr* expr)
 	{
 		findDotOperator(oo->func);
 	}
+
 	else
 	{
 		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");

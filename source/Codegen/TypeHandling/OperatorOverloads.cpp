@@ -9,6 +9,29 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+
+Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* lhsPtr, fir::Value* rhs)
+{
+	return Result_t(0, 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	// this is never really called for actual codegen. operators are handled as functions,
