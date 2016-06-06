@@ -435,6 +435,7 @@ namespace fir
 		// return type;
 
 		// return fir::Type::getVoidTy(fir::getGlobalContext());
+		iceAssert(0);
 		return PrimitiveType::getVoid();
 	}
 
@@ -471,7 +472,11 @@ namespace fir
 		return dynamic_cast<ArrayType*>(this);
 	}
 
-
+	LLVariableArrayType* Type::toLLVariableArray()
+	{
+		if(this->typeKind != FTypeKind::LowLevelVariableArray) return 0;
+		return dynamic_cast<LLVariableArrayType*>(this);
+	}
 
 
 
@@ -553,6 +558,11 @@ namespace fir
 	bool Type::isVoidType()
 	{
 		return this->isTypeVoid;
+	}
+
+	bool Type::isLLVariableArrayType()
+	{
+		return this->typeKind == FTypeKind::LowLevelVariableArray;
 	}
 }
 

@@ -208,7 +208,7 @@ namespace Codegen
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleLlvmType(fir::Type* t);
+		std::string mangleType(fir::Type* t);
 
 		std::string mangleRawNamespace(std::string original);
 		std::string mangleWithNamespace(std::string original, bool isFunction = true);
@@ -260,10 +260,24 @@ namespace Codegen
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
+		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
 		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
 		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
+
+
+
+		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
+		Ast::Result_t indexLLVariableArray(fir::Value* arr, fir::Value* index);
+		Ast::Result_t getLLVariableArrayDataPtr(fir::Value* arrPtr);
+		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
+
+
+
+
+
+
 
 		fir::FTContext* getContext();
 		fir::Value* getDefaultValue(Ast::Expr* e);
