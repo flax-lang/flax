@@ -40,7 +40,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Val
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	if(this->didCodegen & !lhsPtr)
-		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
+		error(this, "Tried to generate function twice (%s)", this->decl->mangledName.c_str());
 
 	this->didCodegen = true;
 

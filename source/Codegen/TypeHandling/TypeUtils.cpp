@@ -334,7 +334,7 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
-					return std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype))->getReturnType();
+					return std::get<5>(this->getOperatorOverload(bo, bo->op, ltype, rtype))->getReturnType();
 				}
 				else
 				{
@@ -369,11 +369,17 @@ namespace Codegen
 							return ltype;
 						}
 
-						auto opfn = std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype));
-						if(opfn) return opfn->getReturnType();
-
-						error(expr, "??? // (%s %s %s)", this->getReadableType(ltype).c_str(),
-							Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(rtype).c_str());
+						auto opfn = std::get<5>(this->getOperatorOverload(bo, bo->op, ltype, rtype));
+						if(opfn)
+						{
+							return opfn->getReturnType();
+						}
+						else
+						{
+							error(expr, "No such operator overload for operator '%s' accepting types %s and %s.",
+								Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(ltype).c_str(),
+								this->getReadableType(rtype).c_str());
+						}
 					}
 				}
 			}

@@ -9,17 +9,17 @@
 
 namespace fir
 {
-	GlobalValue::GlobalValue(Type* type, LinkageType linkage) : Value(type->getPointerTo())
+	GlobalValue::GlobalValue(Module* m, Type* type, LinkageType linkage) : Value(type->getPointerTo())
 	{
 		this->linkageType = linkage;
+		this->parentModule = m;
 	}
 
 
 	GlobalVariable::GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
-		: GlobalValue(type, lt)
+		: GlobalValue(module, type, lt)
 	{
 		this->valueName = name;
-		this->parentModule = module;
 		this->isImmutable = immutable;
 		this->initValue = initValue;
 	}

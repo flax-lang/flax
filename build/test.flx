@@ -2,123 +2,123 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Foundation
-// import Utilities
+import Foundation
+import Utilities
 
-// import tests.fizzbuzz
-// import tests.recursiveFib
-// import tests.scopes
-// import tests.operators
-// import tests.arraytest
-// import tests.generics
-// import tests.limits
-
-
+import tests.fizzbuzz
+import tests.recursiveFib
+import tests.scopes
+import tests.operators
+import tests.arraytest
+import tests.generics
+import tests.limits
 
 
-// ƒ runTests()
-// {
-// 	// fib
-// 	printf("*** FIBONACII SEQUENCE ***\n")
-
-// 	var n = 0
-// 	while n < 20
-// 	{
-// 		printf("%d: %lld\n", n, doRecursiveFib(n))
-// 		n += 1
-// 	}
-// 	printf("\n\n");
 
 
-// 	// fizzbuzz
-// 	printf("*** FIZZBUZZ ***\n")
-// 	doFizzBuzz(15);
-// 	printf("\n\n");
+ƒ runTests()
+{
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
+
+	var n = 0
+	while n < 20
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
 
 
-// 	// scopes
-// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-// 	doScopeTest("__llvm_jit__build/test")
-// 	printf("\n\n");
+	// fizzbuzz
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(15);
+	printf("\n\n");
 
 
-// 	// operators and tuples (vectors type, mainly)
-// 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-// 	doOperatorTupleTest()
-// 	printf("\n\n");
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
 
 
-// 	// arrays
-// 	printf("*** ARRAY REGRESSION TEST ***\n")
-// 	doArrayTest()
-// 	printf("\n\n")
+	// operators and tuples (vectors type, mainly)
+	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+	doOperatorTupleTest()
+	printf("\n\n");
 
 
-// 	// generics
-// 	printf("*** GENERICS TEST ***\n")
-// 	doGenericsTest()
-// 	let s = generic_test(5, "HELLO WORLD #")
-// 	printf("s = %s\n", s)
-// 	printf("\n\n")
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	doArrayTest()
+	printf("\n\n")
 
 
-// 	// int limits
-// 	printf("*** PRINTING INT LIMITS ***\n")
-// 	printIntegerLimits()
-// 	printf("\n\n")
+	// generics
+	printf("*** GENERICS TEST ***\n")
+	doGenericsTest()
+	let s = generic_test(5, "HELLO WORLD #")
+	printf("s = %s\n", s)
+	printf("\n\n")
 
 
-// 	// fin.
-// 	printf("========= TESTS COMPLETE =========\n\n")
-// }
+	// int limits
+	printf("*** PRINTING INT LIMITS ***\n")
+	printIntegerLimits()
+	printf("\n\n")
 
-// ƒ randomTest(fmt: String, argn: Int64, args: Any*)
-// {
-// 	var i = 0
-// 	while i < argn
-// 	{
-// 		let argtype = typeof(args[i])
 
-// 		if argtype == typeof(String)
-// 		{
-// 			printf("%s", args[i] as String)
-// 		}
-// 		else if argtype == typeof(Int8)
-// 		{
-// 			printf("%hhd", args[i] as Int8)
-// 		}
-// 		else if argtype == typeof(Int16)
-// 		{
-// 			printf("%hd", args[i] as Int16)
-// 		}
-// 		else if argtype == typeof(Int32)
-// 		{
-// 			printf("%d", args[i] as Int32)
-// 		}
-// 		else if argtype == typeof(Int64)
-// 		{
-// 			printf("%lld", args[i] as Int64)
-// 		}
-// 		else if argtype == typeof(Uint8)
-// 		{
-// 			printf("%hhu", args[i] as Uint8)
-// 		}
-// 		else if argtype == typeof(Uint16)
-// 		{
-// 			printf("%hu", args[i] as Uint16)
-// 		}
-// 		else if argtype == typeof(Uint32)
-// 		{
-// 			printf("%u", args[i] as Uint32)
-// 		}
-// 		else if argtype == typeof(Uint64)
-// 		{
-// 			printf("%llu", args[i] as Uint64)
-// 		}
+	// fin.
+	printf("========= TESTS COMPLETE =========\n\n")
+}
 
-// 		i += 1
-// 	}
-// }
+ƒ randomTest(fmt: String, argn: Int64, args: Any*)
+{
+	var i = 0
+	while i < argn
+	{
+		let argtype = typeof(args[i])
+
+		if argtype == typeof(String)
+		{
+			printf("%s", args[i] as String)
+		}
+		else if argtype == typeof(Int8)
+		{
+			printf("%hhd", args[i] as Int8)
+		}
+		else if argtype == typeof(Int16)
+		{
+			printf("%hd", args[i] as Int16)
+		}
+		else if argtype == typeof(Int32)
+		{
+			printf("%d", args[i] as Int32)
+		}
+		else if argtype == typeof(Int64)
+		{
+			printf("%lld", args[i] as Int64)
+		}
+		else if argtype == typeof(Uint8)
+		{
+			printf("%hhu", args[i] as Uint8)
+		}
+		else if argtype == typeof(Uint16)
+		{
+			printf("%hu", args[i] as Uint16)
+		}
+		else if argtype == typeof(Uint32)
+		{
+			printf("%u", args[i] as Uint32)
+		}
+		else if argtype == typeof(Uint64)
+		{
+			printf("%llu", args[i] as Uint64)
+		}
+
+		i += 1
+	}
+}
 
 
 
@@ -156,23 +156,33 @@
 
 
 
+import Math
 import LibCInterface
 import String
-import Foundation
+// import Foundation
 // import tests.arraytest
 
+struct Test
+{
+	var a: Int = 40
+}
+
+operator + (a: Test, b: Test) -> Test
+{
+	return Test()
+}
 
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
-	// runTests()
+	runTests()
 
-	printf("pi = %.16lf\n", Math.π())
+	// printf("pi = %.16lf\n", Math.π())
 
-	var k: String = "HELLO"
-	k[1] = 65 as Int8
+	// var k: String = "HELLO"
+	// k[1] = 65 as Int8
 
-	printf("%c\n", k[0], k[1])
+	// printf("%c\n", k[0], k[1])
 
 
 	// var arr8: Array<Int8>
@@ -184,15 +194,36 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// printf("data32 = %p\n", arr32.data);
 
 
-	// var args = alloc[10] Any
-	// args[0] = "HELLO"
-	// #(args + 1) = 40
-	// args[2] = "GOODBYE"
+	printf("HELLO\n")
+	let a = Test()
+	let b = Test()
+
+	let c = a + b
+
+	let v1 = Math.Vector2(1.0, 3.0)
+	let v2 = Math.Vector2(5.0, 9.0)
+
+	let v3 = v1 + v2
+
+	var g = "FOO"
+	g = "BAR"
+
+	printf(">> g = %s\n", g)
+
+	printf(">> %d\n", c.a)
+	printf(">> (%f, %f)\n", v3.x, v3.y)
 
 
-	// randomTest("", 3, args)
 
-	println("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
+	var args = alloc[10] Any
+	args[0] = "HELLO"
+	#(args + 1) = 40
+	args[2] = "GOODBYE"
+
+
+	randomTest("", 3, args)
+
+	// println("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
 
 	// var i = 0
 	// while true
