@@ -798,6 +798,18 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+	Value* IRBuilder::CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname)
+	{
+		std::deque<Value*> dargs;
+		dargs.push_back(fn);
+
+		for(auto a : args)
+			dargs.push_back(a);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), dargs);
+		return this->addInstruction(instr, vname);
+	}
+
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_Return, PrimitiveType::getVoid(), { v });
