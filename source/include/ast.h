@@ -426,32 +426,59 @@ namespace Ast
 	};
 
 	// fuck
-	struct StructBase;
 	struct OpOverload : Expr
 	{
+		enum class OperatorKind
+		{
+			Invalid,
+
+			PrefixUnary,
+			PostfixUnary,
+
+			CommBinary,
+			NonCommBinary,
+		};
+
 		~OpOverload();
 		OpOverload(Parser::Pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
 
-		ArithmeticOp op;
+		ArithmeticOp op = ArithmeticOp::Invalid;
+		OperatorKind kind = OperatorKind::Invalid;
+
 		Func* func = 0;
-
-		bool isInType = 0;
-
-		bool isBinOp = 0;
-		bool isPrefixUnary = 0;	// assumes isBinOp == false
-		bool isCommutative = 0; // assumes isBinOp == true
+		fir::Function* lfunc = 0;
 	};
 
-	struct SubscriptOpOverload : OpOverload
+
+	struct SubscriptOpOverload : Expr
 	{
 		~SubscriptOpOverload();
-		SubscriptOpOverload(Parser::Pin pos, ArithmeticOp op, ComputedProperty* cp) : OpOverload(pos, op), cprop(cp) { }
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhsPtr = 0) override;
+		SubscriptOpOverload(Parser::Pin pos) : Expr(pos) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
 
-		std::deque<VarDecl*> args;
-		ComputedProperty* cprop = 0;
+		std::string setterArgName;
+
+		FuncDecl* getterDecl = 0;
+		FuncDecl* setterDecl = 0;
+
+		BracedBlock* getterBody = 0;
+		BracedBlock* setterBody = 0;
+
+		fir::Function* getterFunc = 0;
+		fir::Function* setterFunc = 0;
 	};
+
+	struct AssignOpOverload : Expr
+	{
+		~AssignOpOverload();
+		AssignOpOverload(Parser::Pin pos) : Expr(pos) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
+
+		Func* func = 0;
+		fir::Function* lfunc = 0;
+	};
+
 
 	struct StructBase : Expr
 	{
@@ -471,9 +498,10 @@ namespace Ast
 		std::deque<VarDecl*> members;
 		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
-		std::deque<OpOverload*> opOverloads;
 		std::deque<fir::Function*> initFuncs;
-		std::deque<std::pair<ArithmeticOp, fir::Function*>> lOpOverloads;
+
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 	struct Extension;

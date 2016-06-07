@@ -269,7 +269,7 @@ namespace Parser
 	Ast::Extension*			parseExtension(ParserState& tokens);
 	Ast::NamespaceDecl*		parseNamespace(ParserState& tokens);
 	Ast::Expr*				parseStaticDecl(ParserState& tokens);
-	Ast::OpOverload*		parseOpOverload(ParserState& tokens);
+	Ast::Expr*				parseOpOverload(ParserState& tokens);
 	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens);
 	Ast::ForeignFuncDecl*	parseForeignFunc(ParserState& tokens);
 	Ast::Func*				parseTopLevelExpr(ParserState& tokens);

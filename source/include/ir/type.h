@@ -89,6 +89,7 @@ namespace fir
 
 		// various
 		virtual std::string str() = 0;
+		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
 
 		Type* getPointerTo(FTContext* tc = 0);
@@ -193,6 +194,7 @@ namespace fir
 
 
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
@@ -251,6 +253,7 @@ namespace fir
 		PointerType(size_t inds, Type* base);
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 
 
 		size_t indirections = 0;
@@ -289,6 +292,7 @@ namespace fir
 		void deleteType(FTContext* tc = 0);
 
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		void setBaseType(StructType* base);
@@ -337,6 +341,7 @@ namespace fir
 		size_t getArraySize();
 
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
@@ -361,6 +366,7 @@ namespace fir
 		Type* getElementType();
 
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
@@ -391,6 +397,7 @@ namespace fir
 
 
 		virtual std::string str() override;
+		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor

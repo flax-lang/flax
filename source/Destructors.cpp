@@ -123,6 +123,10 @@ namespace Ast
 	{
 	}
 
+	AssignOpOverload::~AssignOpOverload()
+	{
+	}
+
 	StructBase::~StructBase()
 	{
 	}

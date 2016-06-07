@@ -12,6 +12,7 @@ using namespace Codegen;
 
 static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, Expr* index, fir::Value* rhs)
 {
+	#if 0
 	fir::Type* lhsType = cgi->getExprType(e);
 	iceAssert(lhsType->isStructType());
 
@@ -134,6 +135,9 @@ static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, E
 
 		return Result_t(ret, 0);
 	}
+	#endif
+
+	return Result_t(0, 0);
 }
 
 

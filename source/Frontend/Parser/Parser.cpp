@@ -425,6 +425,17 @@ namespace Parser
 						curPrec = 0;
 					}
 				}
+				else if(t.type == TType::Private || t.type == TType::Internal || t.type == TType::Public)
+				{
+					switch(t.type)
+					{
+						case TType::Private:	ps.curAttrib |= Attr_VisPrivate; break;
+						case TType::Internal:	ps.curAttrib |= Attr_VisInternal; break;
+						case TType::Public:		ps.curAttrib |= Attr_VisPublic; break;
+
+						default: iceAssert(0);
+					}
+				}
 				else if(curPrec > 0)
 				{
 					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
@@ -2094,19 +2105,20 @@ namespace Parser
 				}
 				else
 				{
+					// nothing
 				}
-			}
-			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
-			{
-				str->opOverloads.push_back(oo);
 			}
 			else if(Func* fn = dynamic_cast<Func*>(stmt))
 			{
-				parserError(fn->pin, "structs cannot contain functions");
+				parserError(fn->pin, "Structs cannot contain functions");
+			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				str->assignmentOverloads.push_back(aoo);
 			}
 			else
 			{
-				parserError("Found invalid expression type %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
 			}
 		}
 
@@ -2187,13 +2199,6 @@ namespace Parser
 			{
 				cls->funcs.push_back(func);
 			}
-			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
-			{
-				cls->opOverloads.push_back(oo);
-
-				if(oo->op != ArithmeticOp::Subscript)
-					cls->funcs.push_back(oo->func);
-			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
 				if(Class* nested = dynamic_cast<Class*>(sb))
@@ -2202,13 +2207,21 @@ namespace Parser
 				else
 					parserError("Only class definitions can be nested within other types");
 			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				cls->assignmentOverloads.push_back(aoo);
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				cls->subscriptOverloads.push_back(soo);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
 			}
 			else
 			{
-				parserError("Found invalid expression type %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s in class", typeid(*stmt).name());
 			}
 		}
 
@@ -2225,14 +2238,15 @@ namespace Parser
 		Extension* ext = CreateAST(Extension, tok_ext, "");
 		Class* cls = parseClass(ps);
 
-		ext->attribs		= cls->attribs;
-		ext->funcs			= cls->funcs;
-		ext->opOverloads	= cls->opOverloads;
-		ext->members		= cls->members;
-		ext->nameMap		= cls->nameMap;
-		ext->name			= cls->name;
-		ext->cprops			= cls->cprops;
-		ext->protocolstrs	= cls->protocolstrs;
+		ext->attribs				= cls->attribs;
+		ext->funcs					= cls->funcs;
+		ext->members				= cls->members;
+		ext->nameMap				= cls->nameMap;
+		ext->name					= cls->name;
+		ext->cprops					= cls->cprops;
+		ext->protocolstrs			= cls->protocolstrs;
+		ext->assignmentOverloads	= cls->assignmentOverloads;
+		ext->subscriptOverloads		= cls->subscriptOverloads;
 
 		delete cls;
 		return ext;
@@ -2398,10 +2412,10 @@ namespace Parser
 					iceAssert(ps.front().type == TType::Identifier);
 
 					if(ps.front().text == "Commutative")
-						ps.curAttrib |= Attr_CommutativeOp;
+						attr |= Attr_CommutativeOp;
 
 					else if(ps.front().text == "NotCommutative")
-						ps.curAttrib &= ~Attr_CommutativeOp;
+						attr &= ~Attr_CommutativeOp;
 
 					else
 						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
@@ -2416,10 +2430,10 @@ namespace Parser
 			else if(ps.front().type == TType::Identifier)
 			{
 				if(ps.front().text == "Commutative")
-					ps.curAttrib |= Attr_CommutativeOp;
+					attr |= Attr_CommutativeOp;
 
 				else if(ps.front().text == "NotCommutative")
-					ps.curAttrib &= ~Attr_CommutativeOp;
+					attr &= ~Attr_CommutativeOp;
 
 				else
 					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
@@ -2727,7 +2741,8 @@ namespace Parser
 		}
 	}
 
-	OpOverload* parseOpOverload(ParserState& ps)
+
+	Expr* parseOpOverload(ParserState& ps)
 	{
 		// if(!ps.isParsingStruct)
 		// 	parserError("Can only overload operators in the context of a named aggregate type");
@@ -2737,8 +2752,7 @@ namespace Parser
 
 		ArithmeticOp ao;
 
-		if(op.type == TType::Equal)				ao = ArithmeticOp::Assign;
-		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
+		if(op.type == TType::EqualsTo)			ao = ArithmeticOp::CmpEq;
 		else if(op.type == TType::NotEquals)	ao = ArithmeticOp::CmpNEq;
 		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
 		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
@@ -2776,10 +2790,38 @@ namespace Parser
 			// act like a computed property, with get and set style bodies.
 
 			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
-			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op, ao, cprop);
-			oo->args = fd->params;
+			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op);
+
+			oo->getterDecl = cprop->getterFunc;
+			oo->getterBody = cprop->getter;
+
+			oo->setterDecl = cprop->setterFunc;
+			oo->setterBody = cprop->setter;
+			oo->setterArgName = cprop->setterArgName;
 
 			return oo;
+		}
+		else if(op.type == TType::Equal)
+		{
+			ao = ArithmeticOp::Assign;
+
+			AssignOpOverload* aoo = CreateAST(AssignOpOverload, op);
+
+			Token fake;
+			fake.pin = ps.currentPos;
+			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.type = TType::Identifier;
+
+			ps.tokens.push_front(fake);
+
+			// parse a func declaration.
+			uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+			aoo->func = parseFunc(ps);
+
+			aoo->func->decl->attribs = attr;
+			aoo->attribs = attr;
+
+			return aoo;
 		}
 		else
 		{
@@ -2808,49 +2850,27 @@ namespace Parser
 		oo->attribs = attr;
 
 		// check number of arguments
-		// note: this is without the "self" parameter, so args == 1 --> binop
-		// args == 0 --> unary op.
-
-		// if this is not in a struct, then 2 == binop, 1 == unaryop.
+		// 2 is binop, 1 is unaryop
 
 		if(attr & Attr_CommutativeOp)
 		{
-			oo->isCommutative = true;
+			oo->kind = OpOverload::OperatorKind::CommBinary;
+			if(oo->func->decl->params.size() != 2)
+				parserError("Expected exactly 2 arguments for binary op (marked commutative, must be binary op)");
 		}
-
-		if(ps.isParsingStruct)
+		else if(oo->func->decl->params.size() == 2)
 		{
-			oo->isInType = true;
-			if(oo->func->decl->params.size() == 1)
-			{
-				oo->isBinOp = true;
-			}
-			else if(oo->func->decl->params.size() == 0)
-			{
-				oo->isBinOp = false;
-			}
-			else
-			{
-				parserError(ps, "Invalid number of parameters to operator overload; expected 0 or 1, got %zu",
-					oo->func->decl->params.size());
-			}
+			oo->kind = OpOverload::OperatorKind::NonCommBinary;
+		}
+		else if(oo->func->decl->params.size() == 1)
+		{
+			iceAssert(0 && "enotsup");
+			oo->kind = OpOverload::OperatorKind::PrefixUnary;
 		}
 		else
 		{
-			oo->isInType = false;
-			if(oo->func->decl->params.size() == 2)
-			{
-				oo->isBinOp = true;
-			}
-			else if(oo->func->decl->params.size() == 1)
-			{
-				oo->isBinOp = false;
-			}
-			else
-			{
-				parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
-					oo->func->decl->params.size());
-			}
+			parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
+				oo->func->decl->params.size());
 		}
 
 		return oo;

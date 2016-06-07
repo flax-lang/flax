@@ -41,10 +41,10 @@ static void addOpOverloadToFuncTree(CodegenInstance* cgi, OpOverload* oo)
 	FunctionTree* ftree = p.first;
 	FunctionTree* pftree = p.second;
 
-	ftree->operators.push_back({ oo, 0 });
+	ftree->operators.push_back(oo);
 
 	if(oo->attribs & Attr_VisPublic)
-		pftree->operators.push_back({ oo, 0 });
+		pftree->operators.push_back(oo);
 }
 
 static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
@@ -195,10 +195,15 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 7: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
-			Func* func						= dynamic_cast<Func*>(e);
-			NamespaceDecl* ns				= dynamic_cast<NamespaceDecl*>(e);
+			Func* func				= dynamic_cast<Func*>(e);
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
+
+			if(oo && isInsideNamespace)
+				warn(oo, "Placing operator overloads inside a namespace will make them completely inaccessible.");
 
 			if(func && !func->didCodegen)	func->codegen(cgi);
+			if(oo)							oo->codegen(cgi);
 			if(ns)							ns->codegenPass(cgi, pass);
 		}
 	}
@@ -221,7 +226,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
+	// cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
 
 	// this is getting quite out of hand.
 	// note: we're using <= to show that there are 6 passes.

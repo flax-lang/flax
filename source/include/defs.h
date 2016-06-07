@@ -97,7 +97,7 @@ namespace Codegen
 
 		// things within.
 		std::deque<FuncPair_t> funcs;
-		std::deque<std::pair<Ast::OpOverload*, fir::Function*>> operators;
+		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
 		std::map<std::string, SymbolPair_t> vars;

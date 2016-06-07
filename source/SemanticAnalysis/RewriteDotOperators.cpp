@@ -266,17 +266,13 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : cls->opOverloads)
+		for(auto op : cls->assignmentOverloads)
+			findDotOperator(op->func);
+
+		for(auto op : cls->subscriptOverloads)
 		{
-			if(auto s = dynamic_cast<SubscriptOpOverload*>(op))
-			{
-				findDotOperator(s->cprop->getter);
-				findDotOperator(s->cprop->setter);
-			}
-			else
-			{
-				findDotOperator(op->func);
-			}
+			findDotOperator(op->getterBody);
+			findDotOperator(op->setterBody);
 		}
 
 		for(auto fn : cls->funcs)
@@ -302,7 +298,7 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : str->opOverloads)
+		for(auto op : str->assignmentOverloads)
 			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))

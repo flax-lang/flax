@@ -28,6 +28,12 @@ namespace fir
 		return "[" + std::to_string(this->getArraySize()) + " x " + this->arrayElementType->str() + "]";
 	}
 
+	std::string ArrayType::encodedStr()
+	{
+		return "[" + std::to_string(this->getArraySize()) + "x" + this->arrayElementType->encodedStr() + "]";
+	}
+
+
 
 	bool ArrayType::isTypeEqual(Type* other)
 	{
