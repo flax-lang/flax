@@ -85,10 +85,10 @@ fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir
 		// we could only build an incomplete name -> index map
 		// finish it here.
 
-		for(auto p : this->opOverloads)
-		{
-			p->codegen(cgi);
-		}
+		// for(auto p : this->opOverloads)
+		// {
+		// 	p->codegen(cgi);
+		// }
 
 		for(Func* func : this->funcs)
 		{

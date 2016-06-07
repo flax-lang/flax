@@ -154,9 +154,45 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 
 
 
+	for(AssignOpOverload* aoo : this->assignmentOverloads)
+	{
+		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->decl->name = aoo->func->decl->name.substr(9 /*strlen("operator#")*/);
+		aoo->func->decl->parentClass = this;
+
+		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+		{
+			aoo->func->decl->attribs |= Attr_VisPublic;
+		}
+
+		fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
+		cgi->builder.setCurrentBlock(ob);
+
+		aoo->lfunc = dynamic_cast<fir::Function*>(val);
+
+		if(aoo->func->decl->attribs & Attr_VisPublic)
+			cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
+
+		ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->codegen(cgi);
+
+		cgi->builder.setCurrentBlock(ob);
+	}
 
 
 
+
+
+
+
+
+
+
+
+
+	#if 0
 	for(OpOverload* oo : this->opOverloads)
 	{
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
@@ -189,6 +225,7 @@ Result_t Struct::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 		oo->func->codegen(cgi);
 		cgi->builder.setCurrentBlock(ob);
 	}
+	#endif
 
 
 	return Result_t(0, 0);
@@ -265,7 +302,8 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 	// we could only build an incomplete name -> index map
 	// finish it here.
 
-	for(auto p : this->opOverloads)
+	#if 0
+	for(auto p : this->assignmentOverloads)
 	{
 		// before calling codegen (that checks for valid overloads), insert the "self" parameter
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
@@ -276,14 +314,54 @@ fir::Type* Struct::createType(CodegenInstance* cgi, std::map<std::string, fir::T
 
 		fakeSelf->type = fulltype + this->name + "*";
 
-		p->func->decl->params.push_front(fakeSelf);
+		p->decl->params.push_front(fakeSelf);
 
 		p->codegen(cgi);
 
 		// remove it after
-		iceAssert(p->func->decl->params.front() == fakeSelf);
-		p->func->decl->params.pop_front();
+		iceAssert(p->decl->params.front() == fakeSelf);
+		p->decl->params.pop_front();
 	}
+
+	for(auto p : this->subscriptOverloads)
+	{
+		// before calling codegen (that checks for valid overloads), insert the "self" parameter
+		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+
+		std::string fulltype;
+		for(auto s : cgi->getFullScope())
+			fulltype += s + "::";
+
+		fakeSelf->type = fulltype + this->name + "*";
+
+		p->getterDecl->params.push_front(fakeSelf);
+		p->codegen(cgi);
+
+		// remove it after
+		iceAssert(p->getterDecl->params.front() == fakeSelf);
+		p->getterDecl->params.pop_front();
+
+
+		if(p->setterDecl)
+		{
+			p->setterDecl->params.push_front(fakeSelf);
+			p->codegen(cgi);
+
+			// remove it after
+			iceAssert(p->setterDecl->params.front() == fakeSelf);
+			p->setterDecl->params.pop_front();
+		}
+	}
+	#endif
+
+
+
+
+
+
+
+
+
 
 	for(VarDecl* var : this->members)
 	{

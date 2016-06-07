@@ -17,6 +17,11 @@ Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value*
 }
 
 
+Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* lhsPtr, fir::Value* rhs)
+{
+	return Result_t(0, 0);
+}
+
 
 
 
@@ -34,65 +39,20 @@ Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value*
 
 Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
-	// this is never really called for actual codegen. operators are handled as functions,
-	// so we just put them into the structs' funcs.
-	// BinOp will do a lookup on the opMap, but never call codegen for this.
-
-	// however, this will get called, because we need to know if the parameters for
-	// the operator overload are legit. people ignore our return value.
-
-	FuncDecl* decl = this->func->decl;
-	if(this->op == ArithmeticOp::Assign)
+	if(!this->didCodegen)
 	{
-		if(!this->isInType && decl->params.size() != 2)
-		{
-			error(this, "Operator overload for '=' can only have one argument, have %zu", decl->params.size());
-		}
+		this->didCodegen = true;
 
-		// needs to return pointer to self
-		fir::Type* ret = cgi->getExprType(decl);
-		fir::Type* front = cgi->getExprType(decl->params.front());
-		if(ret == fir::PrimitiveType::getVoid(cgi->getContext()))
-		{
-			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got void)");
-		}
-		else if(ret != (this->isInType ? front : front->getPointerTo()))
-		{
-			error(this, "Operator overload for '=' must return a pointer to the LHS being assigned to (got %s, need %s)",
-				cgi->getReadableType(ret).c_str(), cgi->getReadableType(front).c_str());
-		}
+		auto res = this->func->codegen(cgi);
+		this->lfunc = dynamic_cast<fir::Function*>(res.result.first);
 
-		// we can't actually do much, because they can assign to anything
+		return res;
 	}
-	else if(this->op == ArithmeticOp::CmpEq)
+	else
 	{
-		if(decl->params.size() != 2)
-			error(this, "Operator overload for '==' can only have two arguments, have %zu", decl->params.size());
-
-		if(cgi->getExprType(decl) != fir::PrimitiveType::getBool(cgi->getContext()))
-			error(this, "Operator overload for '==' must return a boolean value");
+		iceAssert(this->lfunc);
+		return Result_t(this->lfunc, 0);
 	}
-	else if(this->op == ArithmeticOp::Add || this->op == ArithmeticOp::Subtract || this->op == ArithmeticOp::Multiply
-		|| this->op == ArithmeticOp::Divide || this->op == ArithmeticOp::PlusEquals || this->op == ArithmeticOp::MinusEquals
-		|| this->op == ArithmeticOp::MultiplyEquals || this->op == ArithmeticOp::DivideEquals)
-	{
-		if(decl->params.size() != 2)
-			error(this, "Operator overload can only have two arguments, have %zu", decl->params.size());
-	}
-	else if(this->op == ArithmeticOp::Subscript)
-	{
-		if(decl->params.size() == 0)
-			error(this, "Subscript operator must accept at least one argument.");
-	}
-	else if(decl->params.size() > 2)
-	{
-		// custom operator... but we have no way to handle 2 arguments
-		// todo: will change when we allow operator definitions outside of class bodies.
-
-		error(this, "Cannot currently handle operator overloads with more than two arguments");
-	}
-
-	return Result_t(0, 0);
 }
 
 

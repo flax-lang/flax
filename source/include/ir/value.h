@@ -85,8 +85,12 @@ namespace fir
 
 		LinkageType linkageType;
 
+		Module* getParentModule() { return this->parentModule; }
+
 		protected:
-		GlobalValue(Type* type, LinkageType linkage);
+		GlobalValue(Module* mod, Type* type, LinkageType linkage);
+
+		Module* parentModule = 0;
 	};
 
 	struct GlobalVariable : GlobalValue
@@ -98,8 +102,6 @@ namespace fir
 
 		protected:
 		bool isImmutable;
-		Module* parentModule;
-
 		ConstantValue* initValue = 0;
 	};
 

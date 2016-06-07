@@ -126,51 +126,24 @@ public class String
 
 
 
-	operator [] (index: Int64) -> Int8
-	{
-		get
-		{
-			if index < self.length { return self.data[index] }
-			else { return 0 }
-		}
-		set
-		{
-			if index < self.length
-			{
-				self.data[index] = newValue
-			}
-		}
-	}
+	// operator [] (index: Int64) -> Int8
+	// {
+	// 	get
+	// 	{
+	// 		if index < self.length { return self.data[index] }
+	// 		else { return 0 }
+	// 	}
+	// 	set
+	// 	{
+	// 		if index < self.length
+	// 		{
+	// 			self.data[index] = newValue
+	// 		}
+	// 	}
+	// }
 
 
 
-	operator + (other: String) -> String
-	{
-		var ret: String(self.data)
-		ret += other
-
-		return ret
-	}
-
-	operator + (other: Int8*) -> String
-	{
-		var ret: String(self.data)
-		ret += other
-
-		return ret
-	}
-
-	operator += (other: String) -> String
-	{
-		self.append(other.data)
-		return #self
-	}
-
-	operator += (other: Int8*) -> String
-	{
-		self.append(other)
-		return #self
-	}
 
 	operator = (other: Int8*) -> String*
 	{
@@ -183,15 +156,57 @@ public class String
 		self.setString(other.data)
 		return self
 	}
-
-	operator == (other: Int8*) -> Bool
-	{
-		// return false
-		return strcmp(self.data, other) == 0
-	}
-
-	operator == (other: String) -> Bool
-	{
-		return strcmp(self.data, other.data) == 0
-	}
 }
+
+
+public operator += (this: String, other: String) -> String
+{
+	this.append(other.data)
+	return this
+}
+
+public operator += (this: String, other: Int8*) -> String
+{
+	this.append(other)
+	return this
+}
+
+public operator + (this: String, other: String) -> String
+{
+	var ret: String(this.data)
+	ret += other
+
+	return ret
+}
+
+public operator + (this: String, other: Int8*) -> String
+{
+	var ret: String(this.data)
+	ret += other
+
+	return ret
+}
+
+public operator == (this: String, other: Int8*) -> Bool
+{
+	// return false
+	return strcmp(this.data, other) == 0
+}
+
+public operator == (this: String, other: String) -> Bool
+{
+	return strcmp(this.data, other.data) == 0
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -210,6 +210,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 	// handle subscript operators
+	#if 0
 	for(auto opo : this->opOverloads)
 	{
 		if(opo->op == ArithmeticOp::Subscript)
@@ -257,7 +258,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 			this->lOpOverloads.push_back({ ArithmeticOp::Subscript, 0 });
 		}
 	}
-
+	#endif
 
 
 
@@ -284,9 +285,9 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	for(Func* f : this->funcs)
 	{
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-		bool isOpOverload = f->decl->name.find("operator#") == 0;
-		if(isOpOverload)
-			f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
+		// bool isOpOverload = f->decl->name.find("operator#") == 0;
+		// if(isOpOverload)
+		// 	f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 
 		fir::Value* val = nullptr;
 
@@ -317,11 +318,11 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.setCurrentBlock(ob);
 		this->lfuncs.push_back(dynamic_cast<fir::Function*>(val));
 
-		if(isOpOverload)
-		{
-			ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
-			this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
-		}
+		// if(isOpOverload)
+		// {
+		// 	ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
+		// 	this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
+		// }
 
 		if(f->decl->attribs & Attr_VisPublic)
 		{
@@ -379,6 +380,42 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
+
+
+
+
+
+	for(AssignOpOverload* aoo : this->assignmentOverloads)
+	{
+		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->decl->name = aoo->func->decl->name.substr(9 /*strlen("operator#")*/);
+		aoo->func->decl->parentClass = this;
+
+		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+		{
+			aoo->func->decl->attribs |= Attr_VisPublic;
+		}
+
+		fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
+		cgi->builder.setCurrentBlock(ob);
+
+		aoo->lfunc = dynamic_cast<fir::Function*>(val);
+
+		if(aoo->func->decl->attribs & Attr_VisPublic)
+			cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
+
+		ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->codegen(cgi);
+
+		cgi->builder.setCurrentBlock(ob);
+	}
+
+	for(SubscriptOpOverload* soo : this->subscriptOverloads)
+	{
+
+	}
 
 
 
@@ -628,6 +665,7 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 	// we could only build an incomplete name -> index map
 	// finish it here.
 
+	#if 0
 	for(auto p : this->opOverloads)
 	{
 		if(p->op != ArithmeticOp::Subscript)
@@ -650,6 +688,7 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 			p->func->decl->params.pop_front();
 		}
 	}
+	#endif
 
 	for(Func* func : this->funcs)
 	{

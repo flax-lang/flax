@@ -10,17 +10,6 @@ namespace Math
 		var y: Double
 		var z: Double
 
-
-		operator == (other: Math.Vector3) -> Bool { (self.x == other.x) && (self.y == other.y) && (self.z == other.z) }
-
-		@operator[Commutative]
-		operator * (other: Double) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
-		operator / (other: Double) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
-
-		@operator[Commutative]
-		operator * (other: Int) -> Math.Vector3 { Math.Vector3(self.x * other, self.y * other, self.z * other) }
-		operator / (other: Int) -> Math.Vector3 { Math.Vector3(self.x / other, self.y / other, self.z / other) }
-
 		operator = (other: Math.Vector3) -> Math.Vector3*
 		{
 			self.x = other.x
@@ -34,14 +23,26 @@ namespace Math
 }
 
 
-operator + (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x + b.x, a.y + b.y, a.z + b.z) }
-operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x - b.x, a.y - b.y, a.z - b.z) }
+
+public operator == (this: Math.Vector3, other: Math.Vector3) -> Bool { (this.x == other.x) && (this.y == other.y) && (this.z == other.z) }
+
+@operator[Commutative]
+public operator * (this: Math.Vector3, other: Double) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
+public operator / (this: Math.Vector3, other: Double) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
+
+@operator[Commutative]
+public operator * (this: Math.Vector3, other: Int) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
+public operator / (this: Math.Vector3, other: Int) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
+
+
+public operator + (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x + b.x, a.y + b.y, a.z + b.z) }
+public operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x - b.x, a.y - b.y, a.z - b.z) }
 
 @operator[90]
-operator • (a: Math.Vector3, b: Math.Vector3) -> Double { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
+public operator • (a: Math.Vector3, b: Math.Vector3) -> Double { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
 
 @operator[100]
-operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
+public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
 {
 	Math.Vector3(
 				(a.y * b.z) - (a.z * b.y),
