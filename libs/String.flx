@@ -126,11 +126,20 @@ public class String
 
 
 
-	operator [] (index: Int) -> Int8
+	operator [] (index: Int64) -> Int8
 	{
-		self.data
-
-		return 1
+		get
+		{
+			if index < self.length { return self.data[index] }
+			else { return 0 }
+		}
+		set
+		{
+			if index < self.length
+			{
+				self.data[index] = newValue
+			}
+		}
 	}
 
 
