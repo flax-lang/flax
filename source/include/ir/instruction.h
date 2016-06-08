@@ -76,10 +76,6 @@ namespace fir
 		FCompare_LessEqual_ORD,
 		FCompare_LessEqual_UNORD,
 
-		// logical
-		Logical_And,
-		Logical_Or,
-
 		// bitwise
 		Bitwise_Not,
 		Bitwise_Xor,

@@ -2,75 +2,76 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Foundation
-// import Utilities
+import Foundation
+import Utilities
+import String
 
-// import tests.fizzbuzz
-// import tests.recursiveFib
-// import tests.scopes
-// import tests.operators
-// import tests.arraytest
-// import tests.generics
-// import tests.limits
-
-
-
-
-// ƒ runTests()
-// {
-// 	// fib
-// 	printf("*** FIBONACII SEQUENCE ***\n")
-
-// 	var n = 0
-// 	while n < 20
-// 	{
-// 		printf("%d: %lld\n", n, doRecursiveFib(n))
-// 		n += 1
-// 	}
-// 	printf("\n\n");
+import tests.fizzbuzz
+import tests.recursiveFib
+import tests.scopes
+import tests.operators
+import tests.arraytest
+import tests.generics
+import tests.limits
 
 
-// 	// fizzbuzz
-// 	printf("*** FIZZBUZZ ***\n")
-// 	doFizzBuzz(15);
-// 	printf("\n\n");
 
 
-// 	// scopes
-// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-// 	doScopeTest("__llvm_jit__build/test")
-// 	printf("\n\n");
+ƒ runTests()
+{
+	// fib
+	printf("*** FIBONACII SEQUENCE ***\n")
+
+	var n = 0
+	while n < 20
+	{
+		printf("%d: %lld\n", n, doRecursiveFib(n))
+		n += 1
+	}
+	printf("\n\n");
 
 
-// 	// operators and tuples (vectors type, mainly)
-// 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-// 	doOperatorTupleTest()
-// 	printf("\n\n");
+	// fizzbuzz
+	printf("*** FIZZBUZZ ***\n")
+	doFizzBuzz(15);
+	printf("\n\n");
 
 
-// 	// arrays
-// 	printf("*** ARRAY REGRESSION TEST ***\n")
-// 	doArrayTest()
-// 	printf("\n\n")
+	// scopes
+	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+	doScopeTest("__llvm_jit__build/test")
+	printf("\n\n");
 
 
-// 	// generics
-// 	printf("*** GENERICS TEST ***\n")
-// 	doGenericsTest()
-// 	let s = generic_test(5, "HELLO WORLD #")
-// 	printf("s = %s\n", s)
-// 	printf("\n\n")
+	// operators and tuples (vectors type, mainly)
+	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+	doOperatorTupleTest()
+	printf("\n\n");
 
 
-// 	// int limits
-// 	printf("*** PRINTING INT LIMITS ***\n")
-// 	printIntegerLimits()
-// 	printf("\n\n")
+	// arrays
+	printf("*** ARRAY REGRESSION TEST ***\n")
+	doArrayTest()
+	printf("\n\n")
 
 
-// 	// fin.
-// 	printf("========= TESTS COMPLETE =========\n\n")
-// }
+	// generics
+	printf("*** GENERICS TEST ***\n")
+	doGenericsTest()
+	let s = generic_test(5, "HELLO WORLD #")
+	printf("s = %s\n", s)
+	printf("\n\n")
+
+
+	// int limits
+	printf("*** PRINTING INT LIMITS ***\n")
+	printIntegerLimits()
+	printf("\n\n")
+
+
+	// fin.
+	printf("========= TESTS COMPLETE =========\n\n")
+}
 
 // ƒ randomTest(fmt: String, argn: Int64, args: Any*)
 // {
@@ -157,11 +158,11 @@
 
 
 // import Math
-import LibCInterface
+// import LibCInterface
 // import String
 // import Foundation
-import tests.operators
-import tests.arraytest
+// import tests.operators
+// import tests.arraytest
 
 struct Test
 {
@@ -179,7 +180,7 @@ func f() -> Bool { printf(@raw "called false\n"); false }
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
-	// runTests()
+	runTests()
 
 	// printf("pi = %.16lf\n", Math.π())
 
@@ -259,9 +260,9 @@ public func main(argc: Int32, argv: Int8**) -> Int
 
 
 
-	if t() && t() && t() && t()
+	if t() || t() && t() && t()
 	{
-		printf(@raw "done\n")
+		printf("done\n")
 	}
 
 
