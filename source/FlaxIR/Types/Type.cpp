@@ -550,6 +550,11 @@ namespace fir
 			&& this->toFunctionType() != 0;
 	}
 
+	bool Type::isPrimitiveType()
+	{
+		return this->toPrimitiveType() != 0;
+	}
+
 	bool Type::isPointerType()
 	{
 		return this->toPointerType() != 0;

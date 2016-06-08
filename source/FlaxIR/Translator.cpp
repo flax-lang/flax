@@ -1167,8 +1167,54 @@ namespace fir
 							break;
 						}
 
-						default:
+						case OpKind::Value_PointerAddition:
+						case OpKind::Value_PointerSubtraction:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Type* ptrWidthType = module->getDataLayout()->getIntPtrType(llvm::getGlobalContext());
+
+							// get the size of the type on the left.
+							size_t typeSize = module->getDataLayout()->getTypeAllocSize(a->getType()->getPointerElementType());
+							llvm::Value* typeSizeVal = llvm::ConstantInt::get(ptrWidthType, typeSize);
+
+							llvm::Value* ptrValue = builder.CreatePtrToInt(a, ptrWidthType);
+
+							if(b->getType()->getIntegerBitWidth() < typeSizeVal->getType()->getIntegerBitWidth())
+								b = builder.CreateIntCast(b, typeSizeVal->getType(), false);
+
+
+							iceAssert(b->getType() == typeSizeVal->getType());
+							llvm::Value* offset = builder.CreateMul(typeSizeVal, b);
+
+							llvm::Value* newPtrVal = 0;
+							if(inst->opKind == OpKind::Value_PointerAddition)
+								newPtrVal = builder.CreateAdd(ptrValue, offset);
+
+							else
+								newPtrVal = builder.CreateSub(ptrValue, offset);
+
+							iceAssert(newPtrVal);
+							llvm::Value* ret = builder.CreateIntToPtr(newPtrVal, a->getType());
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+						case OpKind::Invalid:
+						{
+							// note we don't use "default" to catch
+							// new opkinds that we forget to add.
 							iceAssert(0);
+						}
 					}
 				}
 			}
