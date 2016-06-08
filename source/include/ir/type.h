@@ -109,6 +109,7 @@ namespace fir
 		// bool isPointerElementOf(Type* other, FTContext* tc = 0);
 
 
+
 		bool isStructType();
 		bool isNamedStruct();
 		bool isLiteralStruct();
@@ -123,6 +124,7 @@ namespace fir
 
 		bool isLLVariableArrayType();
 
+		bool isPrimitiveType();
 		bool isPointerType();
 		bool isVoidType();
 

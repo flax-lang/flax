@@ -108,6 +108,8 @@ namespace fir
 			case OpKind::Value_GetGEP2: 					name = "gep"; break;
 			case OpKind::Branch_UnCond: 					name = "jump"; break;
 			case OpKind::Branch_Cond: 						name = "branch"; break;
+			case OpKind::Value_PointerAddition:				name = "ptradd"; break;
+			case OpKind::Value_PointerSubtraction:			name = "ptrsub"; break;
 			case OpKind::Invalid:							name = "unknown"; break;
 		}
 

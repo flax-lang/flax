@@ -11,6 +11,397 @@
 using namespace Ast;
 using namespace Codegen;
 
+Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	ValPtr_t leftVP = args[0]->codegen(cgi).result;
+	ValPtr_t rightVP = args[1]->codegen(cgi).result;
+
+	fir::Value* lhs = leftVP.first;
+	fir::Value* rhs = rightVP.first;
+
+	rhs = cgi->autoCastType(lhs, rhs);
+
+	if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
+	{
+		fir::Value* tryop = cgi->builder.CreateBinaryOp(op, lhs, rhs);
+		iceAssert(tryop);
+
+		fprintf(stderr, "success\n");
+		return Result_t(tryop, 0);
+	}
+	else
+	{
+		warn(user, "stumped\n");
+		return Result_t(0, 0);
+	}
+}
+
+
+
+
+
+Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorPlusEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorMinusEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorMultiplyEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorDivideEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorModuloEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorShiftLeftEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorShiftRightEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorBitwiseAndEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorBitwiseOrEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorBitwiseXorEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorBitwiseNotEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCmpLessThan(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCmpGreaterThan(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCmpLessThanEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorGreaterThanEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCmpEqual(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCmpNotEqual(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+
+
+
+Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+
+
+
+
+
+Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	return Result_t(0, 0);
+}
+
+Result_t operatorUnaryMinus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	return Result_t(0, 0);
+}
+
+Result_t operatorAddressOf(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	return Result_t(0, 0);
+}
+
+Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	return Result_t(0, 0);
+}
+
+Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	return Result_t(0, 0);
+}
+
+
+
+
+
+
+struct OperatorMap
+{
+	std::map<ArithmeticOp, std::function<Result_t(CodegenInstance*, ArithmeticOp, Expr*, std::deque<Expr*>)>> theMap;
+
+	OperatorMap()
+	{
+		this->theMap[ArithmeticOp::Add]					= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::Subtract]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::Multiply]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::Divide]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::Modulo]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::ShiftLeft]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::ShiftRight]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::BitwiseAnd]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::BitwiseOr]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::BitwiseXor]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::BitwiseNot]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::Assign]				= operatorAssign;
+		this->theMap[ArithmeticOp::PlusEquals]			= operatorPlusEquals;
+		this->theMap[ArithmeticOp::MinusEquals]			= operatorMinusEquals;
+		this->theMap[ArithmeticOp::MultiplyEquals]		= operatorMultiplyEquals;
+		this->theMap[ArithmeticOp::DivideEquals]		= operatorDivideEquals;
+		this->theMap[ArithmeticOp::ModEquals]			= operatorModuloEquals;
+		this->theMap[ArithmeticOp::ShiftLeftEquals]		= operatorShiftLeftEquals;
+		this->theMap[ArithmeticOp::ShiftRightEquals]	= operatorShiftRightEquals;
+		this->theMap[ArithmeticOp::BitwiseAndEquals]	= operatorBitwiseAndEquals;
+		this->theMap[ArithmeticOp::BitwiseOrEquals]		= operatorBitwiseOrEquals;
+		this->theMap[ArithmeticOp::BitwiseXorEquals]	= operatorBitwiseXorEquals;
+		this->theMap[ArithmeticOp::BitwiseNot]			= operatorBitwiseNotEquals;
+		this->theMap[ArithmeticOp::CmpLT]				= operatorCmpLessThan;
+		this->theMap[ArithmeticOp::CmpGT]				= operatorCmpGreaterThan;
+		this->theMap[ArithmeticOp::CmpLEq]				= operatorCmpLessThanEquals;
+		this->theMap[ArithmeticOp::CmpGEq]				= operatorGreaterThanEquals;
+		this->theMap[ArithmeticOp::CmpEq]				= operatorCmpEqual;
+		this->theMap[ArithmeticOp::CmpNEq]				= operatorCmpNotEqual;
+		this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
+		this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
+		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
+		this->theMap[ArithmeticOp::Cast]				= operatorCast;
+		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
+		this->theMap[ArithmeticOp::Minus]				= operatorUnaryMinus;
+		this->theMap[ArithmeticOp::AddrOf]				= operatorAddressOf;
+		this->theMap[ArithmeticOp::Deref]				= operatorDereference;
+		this->theMap[ArithmeticOp::UserDefined]			= operatorCustom;
+	}
+
+	Result_t call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
+	{
+		if(theMap.find(op) == theMap.end())
+			op = ArithmeticOp::UserDefined;
+
+		auto fn = theMap[op];
+		return fn(cgi, op, usr, args);
+	}
+};
+
+static OperatorMap operatorMap;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef)
 {
 	if(lhsRef->getType()->getPointerElementType()->isStructType())
@@ -376,6 +767,10 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _rhs)
 {
 	iceAssert(this->left && this->right);
+
+	operatorMap.call(this->op, cgi, this, { this->left, this->right });
+
+
 	ValPtr_t valptr;
 
 	fir::Value* lhs;
@@ -389,6 +784,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
 		// uhh. we kinda need the rhs, but sometimes the rhs needs the lhs.
+		// note: when? usually the lhs needs the rhs eg. during fake assigns (subscript/cprops)
 		// todo: fix???
 		// was doing lhs without rhs, then rhs with lhs *before*.
 		// swapped order to fix computed property setters.
@@ -626,9 +1022,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 	}
 	else if(isBuiltinIntegerOp)
 	{
-		// fir::Instruction::BinaryOps lop = cgi->getBinaryOperator(this->op,
-		// 	cgi->isSignedType(this->left) || cgi->isSignedType(this->right), false);
-
 		rhs = cgi->autoCastType(lhs, rhs);
 
 		fir::Value* tryop = cgi->builder.CreateBinaryOp(this->op, lhs, rhs);
