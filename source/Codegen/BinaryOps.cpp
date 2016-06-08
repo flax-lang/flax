@@ -104,8 +104,12 @@ static Result_t compareEnumValues(CodegenInstance* cgi, ArithmeticOp op, fir::Va
 	return Result_t(res, 0);
 }
 
-
-
+static Result_t findAndCallOperatorOverload(Expr* user, CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr,
+	fir::Value* rhs, fir::Value* rhsPtr)
+{
+	auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+	return cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+}
 
 
 
@@ -167,8 +171,7 @@ Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* 
 	}
 	else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
 	{
-		auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
-		Result_t ret = cgi->callOperatorOverload(data, lhs, leftVP.second, rhs, rightVP.second, op);
+		Result_t ret = findAndCallOperatorOverload(user, cgi, op, lhs, leftVP.second, rhs, rightVP.second);
 
 		if(ret.result.first == 0)
 		{
@@ -210,6 +213,24 @@ Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Ex
 }
 
 
+
+
+Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	ValPtr_t leftVP = args[0]->codegen(cgi).result;
+	ValPtr_t rightVP = args[1]->codegen(cgi).result;
+
+	Result_t ret = findAndCallOperatorOverload(user, cgi, op, leftVP.first, leftVP.second, rightVP.first, rightVP.second);
+
+	if(ret.result.first == 0)
+	{
+		error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+			cgi->getReadableType(leftVP.first).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
+			cgi->getReadableType(rightVP.first).c_str());
+	}
+
+	return ret;
+}
 
 
 
@@ -409,10 +430,6 @@ Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, 
 	return Result_t(0, 0);
 }
 
-Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	return Result_t(0, 0);
-}
 
 
 
@@ -470,10 +487,7 @@ struct OperatorMap
 
 	Result_t call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
 	{
-		if(theMap.find(op) == theMap.end())
-			op = ArithmeticOp::UserDefined;
-
-		auto fn = theMap[op];
+		auto fn = theMap[op > ArithmeticOp::UserDefined ? ArithmeticOp::UserDefined : op];
 		return fn(cgi, op, usr, args);
 	}
 };
@@ -1114,6 +1128,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 
 
+	iceAssert(0);
 
 
 
@@ -1167,7 +1182,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 
 
-
+	iceAssert(0);
 
 	if(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType())
 	{
