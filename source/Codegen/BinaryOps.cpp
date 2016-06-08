@@ -23,6 +23,100 @@ static bool isComparisonOp(ArithmeticOp op)
 			(op == ArithmeticOp::CmpGEq);
 }
 
+static Result_t compareFloatingPoints(CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* rhs)
+{
+	switch(op)
+	{
+		case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
+		case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
+		case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT_ORD(lhs, rhs), 0);
+		case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
+		case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
+		case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
+
+		default:	iceAssert(0);
+	}
+}
+
+static Result_t compareIntegers(CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* rhs)
+{
+	switch(op)
+	{
+		case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
+		case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
+		case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
+		case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
+		case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
+		case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
+
+		default:	iceAssert(0);
+	}
+}
+
+static Result_t performPointerArithemetic(CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* rhs)
+{
+	// note: mess above is because
+	// APPARENTLY,
+	// 1 + foo === foo + 1, even if foo is a pointer.
+
+	// make life easier below.
+	if(lhs->getType()->isIntegerType())
+		std::swap(lhs, rhs);
+
+	// do the pointer arithmetic thing
+	fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
+
+	if(rhs->getType() != ptrIntType)
+		rhs = cgi->builder.CreateIntSizeCast(rhs, ptrIntType);
+
+	// do the actual thing.
+	fir::Value* ret = 0;
+	if(op == ArithmeticOp::Add)	ret = cgi->builder.CreatePointerAdd(lhs, rhs);
+	else						ret = cgi->builder.CreatePointerSub(lhs, rhs);
+
+	return Result_t(ret, 0);
+}
+
+static Result_t compareEnumValues(CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr,
+	fir::Value* rhs, fir::Value* rhsPtr)
+{
+	// enums
+	iceAssert(lhsPtr);
+	iceAssert(rhsPtr);
+
+	fir::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
+	fir::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
+
+	fir::Value* l = cgi->builder.CreateLoad(gepL);
+	fir::Value* r = cgi->builder.CreateLoad(gepR);
+
+	fir::Value* res = 0;
+
+	if(op == ArithmeticOp::CmpEq)
+	{
+		res = cgi->builder.CreateICmpEQ(l, r);
+	}
+	else if(op == ArithmeticOp::CmpNEq)
+	{
+		res = cgi->builder.CreateICmpNEQ(l, r);
+	}
+
+	return Result_t(res, 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	if(args.size() != 2)
@@ -48,31 +142,11 @@ Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* 
 
 		if(lhs->getType()->isFloatingPointType() || rhs->getType()->isFloatingPointType())
 		{
-			switch(op)
-			{
-				case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
-				case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
-				case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT_ORD(lhs, rhs), 0);
-				case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
-				case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
-				case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
-
-				default:	iceAssert(0);
-			}
+			return compareFloatingPoints(cgi, op, lhs, rhs);
 		}
 		else
 		{
-			switch(op)
-			{
-				case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
-				case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
-				case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
-				case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
-				case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
-				case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
-
-				default:	iceAssert(0);
-			}
+			return compareIntegers(cgi, op, lhs, rhs);
 		}
 	}
 	else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
@@ -85,34 +159,33 @@ Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* 
 	else if((op == ArithmeticOp::Add || op == ArithmeticOp::Subtract) && ((lhs->getType()->isPointerType() && rhs->getType()->isIntegerType())
 		|| (lhs->getType()->isIntegerType() && rhs->getType()->isPointerType())))
 	{
-		// note: mess above is because
-		// APPARENTLY,
-		// 1 + foo === foo + 1, even if foo is a pointer.
+		return performPointerArithemetic(cgi, op, lhs, rhs);
+	}
+	else if((op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq) && cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
+	{
+		return compareEnumValues(cgi, op, lhs, leftVP.second, rhs, rightVP.second);
+	}
+	else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
+	{
+		auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+		Result_t ret = cgi->callOperatorOverload(data, lhs, leftVP.second, rhs, rightVP.second, op);
 
-		// make life easier below.
-		if(lhs->getType()->isIntegerType())
-			std::swap(lhs, rhs);
+		if(ret.result.first == 0)
+		{
+			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+				cgi->getReadableType(lhs).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), cgi->getReadableType(rhs).c_str());
+		}
 
-		// do the pointer arithmetic thing
-		fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
-
-		if(rhs->getType() != ptrIntType)
-			rhs = cgi->builder.CreateIntSizeCast(rhs, ptrIntType);
-
-		// do the actual thing.
-		fir::Value* ret = 0;
-		if(op == ArithmeticOp::Add)	ret = cgi->builder.CreatePointerAdd(lhs, rhs);
-		else						ret = cgi->builder.CreatePointerSub(lhs, rhs);
-
-		return Result_t(ret, 0);
+		return ret;
 	}
 	else
 	{
-		warn(user, "stumped\n");
-		return Result_t(0, 0);
+		error(user, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+			lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+
+		// return Result_t(0, 0);
 	}
 }
-
 
 
 
@@ -125,7 +198,10 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 	return Result_t(0, 0);
 }
 
-Result_t operatorPlusEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+
+
+
+Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	if(args.size() != 2)
 		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
@@ -133,154 +209,47 @@ Result_t operatorPlusEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, s
 	return Result_t(0, 0);
 }
 
-Result_t operatorMinusEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorMultiplyEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorDivideEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorModuloEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorShiftLeftEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorShiftRightEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorBitwiseAndEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorBitwiseOrEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorBitwiseXorEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorBitwiseNotEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorCmpLessThan(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorCmpGreaterThan(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorCmpLessThanEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorGreaterThanEquals(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorCmpEqual(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
 
-Result_t operatorCmpNotEqual(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
-}
+
+
+
+
+
 
 
 
 
 Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
-
-Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
-
-Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	if(args.size() != 2)
 		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
@@ -295,6 +264,125 @@ Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::de
 
 	return Result_t(0, 0);
 }
+
+
+
+
+
+
+
+
+Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	// get ourselves some short circuiting goodness
+
+	fir::IRBlock* currentBlock = cgi->builder.getCurrentBlock();
+
+	fir::IRBlock* checkRight = cgi->builder.addNewBlockAfter("checkRight", currentBlock);
+	fir::IRBlock* setTrue = cgi->builder.addNewBlockAfter("setTrue", currentBlock);
+	fir::IRBlock* merge = cgi->builder.addNewBlockAfter("merge", currentBlock);
+
+
+	cgi->builder.setCurrentBlock(currentBlock);
+
+	fir::Value* resPtr = cgi->allocateInstanceInBlock(fir::PrimitiveType::getBool());
+	cgi->builder.CreateStore(fir::ConstantInt::getBool(false), resPtr);
+
+	// always codegen left.
+	fir::Value* lhs = args[0]->codegen(cgi).result.first;
+	if(lhs->getType() != fir::PrimitiveType::getBool())
+		error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+
+	// branch to either setTrue or merge.
+	cgi->builder.CreateCondBranch(lhs, checkRight, merge);
+
+
+	// in this block, the first condition is true.
+	// so if the second condition is also true, then we can jump to merge.
+	cgi->builder.setCurrentBlock(checkRight);
+
+	fir::Value* rhs = args[1]->codegen(cgi).result.first;
+
+	if(lhs->getType() != fir::PrimitiveType::getBool())
+		error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+
+	cgi->builder.CreateCondBranch(rhs, setTrue, merge);
+
+
+	// this block's sole purpose is to set the thing to true.
+	cgi->builder.setCurrentBlock(setTrue);
+
+	cgi->builder.CreateStore(fir::ConstantInt::getBool(true), resPtr);
+	cgi->builder.CreateUnCondBranch(merge);
+
+	// go back to the merge.
+	cgi->builder.setCurrentBlock(merge);
+
+
+	return Result_t(cgi->builder.CreateLoad(resPtr), resPtr);
+}
+
+Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+
+	// much the same as logical and,
+	// except the first branch goes to setTrue/checkRight, instead of checkRight/merge.
+
+
+	fir::IRBlock* currentBlock = cgi->builder.getCurrentBlock();
+
+	fir::IRBlock* checkRight = cgi->builder.addNewBlockAfter("checkRight", currentBlock);
+	fir::IRBlock* setTrue = cgi->builder.addNewBlockAfter("setTrue", currentBlock);
+	fir::IRBlock* merge = cgi->builder.addNewBlockAfter("merge", currentBlock);
+
+
+	cgi->builder.setCurrentBlock(currentBlock);
+
+	fir::Value* resPtr = cgi->allocateInstanceInBlock(fir::PrimitiveType::getBool());
+	cgi->builder.CreateStore(fir::ConstantInt::getBool(false), resPtr);
+
+	// always codegen left.
+	fir::Value* lhs = args[0]->codegen(cgi).result.first;
+	if(lhs->getType() != fir::PrimitiveType::getBool())
+		error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+
+	// branch to either setTrue or merge.
+	cgi->builder.CreateCondBranch(lhs, setTrue, checkRight);
+
+
+	// in this block, the first condition is true.
+	// so if the second condition is also true, then we can jump to merge.
+	cgi->builder.setCurrentBlock(checkRight);
+
+	fir::Value* rhs = args[1]->codegen(cgi).result.first;
+
+	if(lhs->getType() != fir::PrimitiveType::getBool())
+		error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+
+	cgi->builder.CreateCondBranch(rhs, setTrue, merge);
+
+
+	// this block's sole purpose is to set the thing to true.
+	cgi->builder.setCurrentBlock(setTrue);
+
+	cgi->builder.CreateStore(fir::ConstantInt::getBool(true), resPtr);
+	cgi->builder.CreateUnCondBranch(merge);
+
+
+	// go back to the merge.
+	cgi->builder.setCurrentBlock(merge);
+
+
+	return Result_t(cgi->builder.CreateLoad(resPtr), resPtr);
+}
+
+
 
 
 
@@ -356,20 +444,22 @@ struct OperatorMap
 		this->theMap[ArithmeticOp::CmpNEq]				= generalArithmeticOperator;
 
 		this->theMap[ArithmeticOp::Assign]				= operatorAssign;
-		this->theMap[ArithmeticOp::PlusEquals]			= operatorPlusEquals;
-		this->theMap[ArithmeticOp::MinusEquals]			= operatorMinusEquals;
-		this->theMap[ArithmeticOp::MultiplyEquals]		= operatorMultiplyEquals;
-		this->theMap[ArithmeticOp::DivideEquals]		= operatorDivideEquals;
-		this->theMap[ArithmeticOp::ModEquals]			= operatorModuloEquals;
-		this->theMap[ArithmeticOp::ShiftLeftEquals]		= operatorShiftLeftEquals;
-		this->theMap[ArithmeticOp::ShiftRightEquals]	= operatorShiftRightEquals;
-		this->theMap[ArithmeticOp::BitwiseAndEquals]	= operatorBitwiseAndEquals;
-		this->theMap[ArithmeticOp::BitwiseOrEquals]		= operatorBitwiseOrEquals;
-		this->theMap[ArithmeticOp::BitwiseXorEquals]	= operatorBitwiseXorEquals;
-		this->theMap[ArithmeticOp::BitwiseNot]			= operatorBitwiseNotEquals;
+		this->theMap[ArithmeticOp::PlusEquals]			= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::MinusEquals]			= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::MultiplyEquals]		= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::DivideEquals]		= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::ModEquals]			= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::ShiftLeftEquals]		= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::ShiftRightEquals]	= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::BitwiseAndEquals]	= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::BitwiseOrEquals]		= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::BitwiseXorEquals]	= generalCompoundAssignOperator;
+		this->theMap[ArithmeticOp::BitwiseNotEquals]	= generalCompoundAssignOperator;
+
 		this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
 		this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
 		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
+
 		this->theMap[ArithmeticOp::Cast]				= operatorCast;
 		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
 		this->theMap[ArithmeticOp::Minus]				= operatorUnaryMinus;
@@ -1027,6 +1117,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 
 
+
 	// else case.
 	// no point being explicit about this and wasting indentation
 
@@ -1137,14 +1228,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				ret = cgi->builder.CreateICmpGEQ(lhs, rhs);
 				break;
 
-			case ArithmeticOp::LogicalOr:
-				ret = cgi->builder.CreateLogicalOR(lhs, rhs);
-				break;
-
-			case ArithmeticOp::LogicalAnd:
-				ret = cgi->builder.CreateLogicalAND(lhs, rhs);
-				break;
-
 			default:
 				// should not be reached
 				error("what?!");
@@ -1179,10 +1262,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
 			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
 			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
-
-			// logical shit.
-			case ArithmeticOp::LogicalAnd:	return Result_t(cgi->builder.CreateLogicalAND(lhs, rhs), 0);
-			case ArithmeticOp::LogicalOr:	return Result_t(cgi->builder.CreateLogicalOR(lhs, rhs), 0);
 
 			default:						error(this, "Unsupported operator. (%d)", this->op);
 		}

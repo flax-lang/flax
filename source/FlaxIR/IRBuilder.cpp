@@ -609,20 +609,6 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateLogicalAND(Value* a, Value* b, std::string vname)
-	{
-		iceAssert(a->getType() == b->getType() && "creating logical and instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_And, fir::PrimitiveType::getBool(this->context), { a, b });
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::CreateLogicalOR(Value* a, Value* b, std::string vname)
-	{
-		iceAssert(a->getType() == b->getType() && "creating logical or instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_Or, fir::PrimitiveType::getBool(this->context), { a, b });
-		return this->addInstruction(instr, vname);
-	}
-
 	Value* IRBuilder::CreateBitwiseXOR(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise xor instruction with non-equal types");
@@ -1036,7 +1022,7 @@ namespace fir
 		for(size_t i = 0; i < this->currentFunction->blocks.size(); i++)
 		{
 			IRBlock* b = this->currentFunction->blocks[i];
-			if(b == nb)
+			if(b == block)
 			{
 				this->currentFunction->blocks.insert(this->currentFunction->blocks.begin() + i + 1, nb);
 				return nb;
