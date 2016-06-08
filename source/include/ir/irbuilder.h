@@ -54,8 +54,6 @@ namespace fir
 		Value* CreateFCmpLEQ_ORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpLEQ_UNORD(Value* a, Value* b, std::string vname = "");
 
-		Value* CreateLogicalAND(Value* a, Value* b, std::string vname = "");
-		Value* CreateLogicalOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseXOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseLogicalSHR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseArithmeticSHR(Value* a, Value* b, std::string vname = "");
