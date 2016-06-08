@@ -28,7 +28,8 @@ namespace GenError
 	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Value* a, fir::Value* b) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
-	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument = -1) __attribute__((noreturn));
+
+	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Expr* faulty, int funcArgument = -1) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<fir::Value*> args) __attribute__((noreturn));

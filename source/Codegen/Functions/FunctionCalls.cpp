@@ -146,7 +146,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			fir::Value* arg = res.first;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, this, argNum);
+				GenError::nullValue(cgi, this, e, argNum);
 
 			if(checkCVarArg && arg->getType()->isStructType())
 			{
@@ -193,7 +193,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			fir::Value* arg = res.first;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, this, i);
+				GenError::nullValue(cgi, this, ex, i);
 
 			args.push_back(arg);
 		}

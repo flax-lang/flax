@@ -70,6 +70,12 @@ namespace GenError
 }
 
 
+__attribute__ ((noreturn)) static void doTheExit()
+{
+	fprintf(stderr, "There were errors, compilation cannot continue\n");
+	abort();
+}
+
 void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, const char* msg,
 	const char* type, bool doExit, va_list ap)
 {
@@ -113,8 +119,7 @@ void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, co
 
 	if(doExit)
 	{
-		fprintf(stderr, "There were errors, compilation cannot continue\n");
-		abort();
+		doTheExit();
 	}
 	else if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
 	{
@@ -145,6 +150,32 @@ void error(const char* msg, ...)
 	va_end(ap);
 	abort();
 }
+
+
+
+void errorNoExit(Expr* relevantast, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	const char* file	= relevantast ? relevantast->pin.file : "";
+	uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(line, col, len, file, msg, "Error", false, ap);
+	va_end(ap);
+}
+
+void errorNoExit(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(0, 0, 0, "", msg, "Error", false, ap);
+	va_end(ap);
+}
+
+
 
 
 
@@ -265,13 +296,46 @@ namespace GenError
 		error(e, "Expected %s", expect.c_str());
 	}
 
-	void nullValue(Codegen::CodegenInstance* cgi, Expr* e, int funcArgument)
+	static bool _isass(ArithmeticOp o)
 	{
-		if(funcArgument >= 0)
-			error(e, "Invalid (void) value in argument %d of function call", funcArgument + 1);
+		return o == ArithmeticOp::Assign ||
+				o == ArithmeticOp::PlusEquals ||
+				o == ArithmeticOp::MinusEquals ||
+				o == ArithmeticOp::MultiplyEquals ||
+				o == ArithmeticOp::DivideEquals ||
+				o == ArithmeticOp::ModEquals ||
+				o == ArithmeticOp::ShiftLeftEquals ||
+				o == ArithmeticOp::ShiftRightEquals ||
+				o == ArithmeticOp::BitwiseAndEquals ||
+				o == ArithmeticOp::BitwiseOrEquals ||
+				o == ArithmeticOp::BitwiseXorEquals ||
+				o == ArithmeticOp::BitwiseNotEquals;
+	}
+	void nullValue(Codegen::CodegenInstance* cgi, Expr* e, Expr* faulty, int funcArgument)
+	{
+		if(dynamic_cast<BinOp*>(faulty) && _isass(dynamic_cast<BinOp*>(faulty)->op))
+		{
+			auto op = dynamic_cast<BinOp*>(faulty)->op;
 
+			if(funcArgument >= 0)
+				errorNoExit(e, "Trying to yield a value from void in argument %d of function call", funcArgument + 1);
+
+			else
+				errorNoExit(e, "Values cannot be yielded from voids (check)");
+
+			info(faulty, "Assignment and compound assignment operators (of which '%s' is one) do not yield a value.",
+				Parser::arithmeticOpToString(cgi, op).c_str());
+
+			doTheExit();
+		}
 		else
-			error(e, "Invalid (void) value");
+		{
+			if(funcArgument >= 0)
+				error(e, "Trying to yield a value from void in argument %d of function call", funcArgument + 1);
+
+			else
+				error(e, "Values cannot be yielded from voids (check)");
+		}
 	}
 
 	void noSuchMember(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string member)
