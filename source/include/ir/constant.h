@@ -29,6 +29,7 @@ namespace fir
 
 		// static stuff
 		static ConstantValue* getNullValue(Type* type);
+		static ConstantValue* getNull();
 
 
 		protected:

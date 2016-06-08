@@ -19,6 +19,8 @@ public ƒ doArrayTest()
 	arr1[2] = 43
 
 	printf("arr[1] = %d\n", (arr1 + 1)[1])
+	// printf("arr[2] = %d\n", (3 + arr1)[-1])
+
 	dealloc arr1
 
 	var s = alloc[4][4] String("array of array of strings test")

@@ -34,6 +34,11 @@ namespace fir
 		return this->valueName;
 	}
 
+	bool Value::isNull()
+	{
+		return this->getType()->isNullPointer();
+	}
+
 	void Value::addUser(Value* user)
 	{
 		for(auto v : this->users)

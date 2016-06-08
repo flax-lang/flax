@@ -14,7 +14,14 @@ namespace fir
 
 	ConstantValue* ConstantValue::getNullValue(Type* type)
 	{
-		return new ConstantValue(type);
+		auto ret = new ConstantValue(type);
+		return ret;
+	}
+
+	ConstantValue* ConstantValue::getNull()
+	{
+		auto ret = new ConstantValue(fir::PrimitiveType::getVoid()->getPointerTo());
+		return ret;
 	}
 
 

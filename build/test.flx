@@ -161,16 +161,17 @@ import LibCInterface
 // import String
 // import Foundation
 import tests.operators
+import tests.arraytest
 
-// struct Test
-// {
-// 	var a: Int = 40
-// }
+struct Test
+{
+	var a: Int = 40
+}
 
-// operator + (a: Test, b: Test) -> Test
-// {
-// 	return Test()
-// }
+operator + (a: Test, b: Test) -> Test
+{
+	return Test()
+}
 
 func t() -> Bool { printf(@raw "called true\n"); true }
 func f() -> Bool { printf(@raw "called false\n"); false }
@@ -265,24 +266,24 @@ public func main(argc: Int32, argv: Int8**) -> Int
 
 
 
-	// printf("HELLO\n")
-	// let a = Test()
-	// let b = Test()
+	printf("HELLO\n")
+	let a = Test()
+	let b = Test()
 
-	// let c = a + b
+	let c = a + b
 
-	// let v1 = Math.Vector2(1.0, 3.0)
-	// let v2 = Math.Vector2(5.0, 9.0)
+	let v1 = Math.Vector2(1.0, 3.0)
+	let v2 = Math.Vector2(5.0, 9.0)
 
-	// let v3 = v1 + v2
+	let v3 = v1 + v2
 
-	// var g = "FOO"
-	// g = "BAR"
+	var g = "FOO"
+	g = "BAR"
 
-	// printf(">> g = %s\n", g)
+	printf(">> g = %s\n", g)
 
-	// printf(">> %d\n", c.a)
-	// printf(">> (%f, %f)\n", v3.x, v3.y)
+	printf(">> %d\n", c.a)
+	printf(">> (%f, %f)\n", v3.x, v3.y)
 
 
 

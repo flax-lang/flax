@@ -78,6 +78,8 @@ namespace fir
 		size_t getPointerWidthInBits();
 		size_t getTypeSizeInBits(Type* type);
 
+		Type* getPointerSizedIntegerType();
+
 		static ExecutionTarget* getLP64();
 		static ExecutionTarget* getILP32();
 

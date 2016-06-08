@@ -51,6 +51,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
 	{
 		// ...
+		// handled below
 	}
 	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
 	{
@@ -109,8 +110,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 
 
-		if(this->initVal && (!cmplxtype || reinterpret_cast<StructBase*>(cmplxtype->second.first)->name == "Any"
-			|| cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
 
@@ -158,6 +158,10 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 	}
 
+
+
+
+
 	if(!ai)
 	{
 		error(this, "ai is null");
@@ -169,12 +173,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
-		Number* n = 0;
-		if(val->getType()->isIntegerType() && (n = dynamic_cast<Number*>(this->initVal)) && n->ival == 0)
-		{
-			val = fir::ConstantValue::getNullValue(ai->getType()->getPointerElementType());
-		}
-		else if(val->getType()->isIntegerType() && ai->getType()->getPointerElementType()->isIntegerType())
+		if(val->getType()->isIntegerType() && ai->getType()->getPointerElementType()->isIntegerType())
 		{
 			Number* n = 0;
 

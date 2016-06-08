@@ -30,6 +30,11 @@ Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 	return Result_t(fir::ConstantInt::getBool(this->val), 0);
 }
 
+Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+{
+	return Result_t(fir::ConstantValue::getNull(), 0);
+}
+
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
 {
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));

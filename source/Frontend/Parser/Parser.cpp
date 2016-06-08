@@ -696,7 +696,10 @@ namespace Parser
 					ps.pop_front();
 					return CreateAST(BoolVal, tok, false);
 
-
+				// nor for this
+				case TType::Null:
+					ps.pop_front();
+					return CreateAST(NullVal, tok);
 
 				// attributes-as-keywords
 				// stored as attributes in the AST, but parsed as keywords by the parser.
