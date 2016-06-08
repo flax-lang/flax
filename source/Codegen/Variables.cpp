@@ -34,6 +34,12 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	fir::Value* ai = storage;
 	bool didAddToSymtab = false;
 
+	if(this->initVal && !val)
+	{
+		// means the expression is void
+		GenError::nullValue(cgi, this, this->initVal);
+	}
+
 
 	iceAssert(this->inferredLType);
 	if(val != 0)
@@ -41,8 +47,6 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		// cast.
 		val = cgi->autoCastType(this->inferredLType, val);
 	}
-
-
 
 
 
@@ -221,7 +225,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		fir::Type* vartype = cgi->getExprType(this->initVal);
 		if(vartype == nullptr || vartype->isVoidType())
-			GenError::nullValue(cgi, this->initVal);
+			GenError::nullValue(cgi, this, this->initVal);
 
 
 		if(cgi->isAnyType(vartype))

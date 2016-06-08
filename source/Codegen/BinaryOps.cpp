@@ -896,7 +896,12 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		// varptr = this->lastMinuteUnwrapType(varptr);
 
 		this->builder.CreateStore(rhs, varptr);
-		return Result_t(rhs, varptr);
+
+		// since we don't return a value from the assignment operator...
+		// dont.
+		return Result_t(0, 0);
+
+		// return Result_t(rhs, varptr);
 	}
 	else
 	{
@@ -905,7 +910,12 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 		iceAssert(newrhs);
 
 		this->builder.CreateStore(newrhs, varptr);
-		return Result_t(newrhs, varptr);
+
+		// same, we refuse to return a value.
+
+		return Result_t(0, 0);
+
+		// return Result_t(newrhs, varptr);
 	}
 }
 
@@ -1130,6 +1140,9 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 	iceAssert(0);
 
+	#if 0
+
+
 
 
 
@@ -1326,6 +1339,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 	error(this, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+
+	#endif
 }
 
 
