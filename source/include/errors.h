@@ -20,6 +20,9 @@ void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, co
 void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
 void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
 
+void errorNoExit(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void errorNoExit(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+
 void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
 
