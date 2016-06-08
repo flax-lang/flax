@@ -64,6 +64,8 @@ namespace fir
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
 
+		bool isNull();
+
 		// protected shit
 		size_t id;
 		protected:

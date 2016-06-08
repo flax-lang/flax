@@ -64,6 +64,8 @@ namespace Parser
 		Get,
 		Set,
 
+		Null,
+
 		Private,
 		Public,
 		Internal,

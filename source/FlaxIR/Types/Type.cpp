@@ -569,6 +569,11 @@ namespace fir
 	{
 		return this->typeKind == FTypeKind::LowLevelVariableArray;
 	}
+
+	bool Type::isNullPointer()
+	{
+		return this == PrimitiveType::getVoid()->getPointerTo();
+	}
 }
 
 

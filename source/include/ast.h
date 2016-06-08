@@ -186,6 +186,13 @@ namespace Ast
 		bool val = false;
 	};
 
+	struct NullVal : Expr
+	{
+		~NullVal();
+		NullVal(Parser::Pin pos) : Expr(pos) { }
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* lhsPtr = 0, fir::Value* rhs = 0) override;
+	};
+
 	struct VarRef : Expr
 	{
 		~VarRef();

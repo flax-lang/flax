@@ -954,6 +954,30 @@ namespace fir
 	}
 
 
+	Value* IRBuilder::CreatePointerAdd(Value* ptr, Value* num, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(!num->getType()->isIntegerType())
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreatePointerSub(Value* ptr, Value* num, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(!num->getType()->isIntegerType())
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
+		return this->addInstruction(instr, vname);
+	}
+
 
 
 

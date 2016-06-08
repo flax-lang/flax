@@ -111,6 +111,8 @@ namespace fir
 		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 
+		Value* CreatePointerAdd(Value* ptr, Value* num, std::string vname = "");
+		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
 
