@@ -636,29 +636,21 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isStructType() && from->isStructType())
+		else if(to->isStructType() && from->isStructType() && to->toStructType()->isABaseTypeOf(from->toStructType()))
 		{
-			fir::StructType* sto = to->toStructType();
-			fir::StructType* sfr = from->toStructType();
-
-			if(sto->isABaseTypeOf(sfr))
-			{
-				return 20;
-			}
+			return 20;
 		}
-
-		if(to->isPointerType() && from->isPointerType())
+		else if(to->isPointerType() && from->isNullPointer())
 		{
-			fir::StructType* sfr = from->getPointerElementType()->toStructType();
-			fir::StructType* sto = to->getPointerElementType()->toStructType();
-
-			if(sfr && sto && sto->isABaseTypeOf(sfr))
-			{
-				return 20;
-			}
+			return 5;
 		}
-
-		if(this->isAnyType(to))
+		else if(to->isPointerType() && from->isPointerType() && from->getPointerElementType()->toStructType()
+				&& to->getPointerElementType()->toStructType() && to->getPointerElementType()->toStructType()
+						->isABaseTypeOf(from->getPointerElementType()->toStructType()))
+		{
+			return 20;
+		}
+		else if(this->isAnyType(to))
 		{
 			// any cast is 25.
 			return 25;
@@ -681,7 +673,6 @@ namespace Codegen
 
 		fir::Value* retval = right;
 
-		int dist = -1;
 		if(target->isIntegerType() && right->getType()->isIntegerType()
 			&& target->toPrimitiveType()->getIntegerBitWidth() != right->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
@@ -773,68 +764,68 @@ namespace Codegen
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext()))
+		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+				&& right->getType()->isStructType()
+				&& right->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 		{
-			fir::Type* rtype = right->getType();
-			if(rtype->isStructType()
-				&& rtype->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+			// get the struct gep:
+			// Layout of string:
+			// var data: Int8*
+			// var allocated: Uint64
+
+			// cast the RHS to the LHS
+
+			if(!rhsPtr)
 			{
-				// get the struct gep:
-				// Layout of string:
-				// var data: Int8*
-				// var allocated: Uint64
-
-				// cast the RHS to the LHS
-
-				if(!rhsPtr)
-				{
-					rhsPtr = this->allocateInstanceInBlock(right->getType());
-					this->builder.CreateStore(right, rhsPtr);
-				}
-
-				iceAssert(rhsPtr);
-				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
-				retval = this->builder.CreateLoad(ret);
+				rhsPtr = this->allocateInstanceInBlock(right->getType());
+				this->builder.CreateStore(right, rhsPtr);
 			}
+
+			iceAssert(rhsPtr);
+			fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+			retval = this->builder.CreateLoad(ret);
 		}
 		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
 			retval = this->builder.CreateIntToFloatCast(right, target);
 		}
-		else if(target->isStructType() && right->getType()->isStructType())
+		else if(target->isStructType() && right->getType()->isStructType() && target->toStructType()->isABaseTypeOf(right->getType()
+						->toStructType()))
 		{
 			fir::StructType* sto = target->toStructType();
 			fir::StructType* sfr = right->getType()->toStructType();
 
-			if(sto->isABaseTypeOf(sfr))
-			{
-				// create alloca, which gets us a pointer.
-				fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
+			iceAssert(sto->isABaseTypeOf(sfr));
 
-				// store the value into the pointer.
-				this->builder.CreateStore(right, alloca);
+			// create alloca, which gets us a pointer.
+			fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
 
-				// do a pointer type cast.
-				fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+			// store the value into the pointer.
+			this->builder.CreateStore(right, alloca);
 
-				// load it.
-				retval = this->builder.CreateLoad(ptr);
-			}
+			// do a pointer type cast.
+			fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+
+			// load it.
+			retval = this->builder.CreateLoad(ptr);
 		}
-		else if(target->isPointerType() && right->getType()->isPointerType())
+		else if(target->isPointerType() && right->getType()->isNullPointer())
+		{
+			retval = fir::ConstantValue::getNullValue(target);
+		}
+		else if(target->isPointerType() && right->getType()->isPointerType() && target->getPointerElementType()->toStructType()
+				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(right->getType()->getPointerElementType()->toStructType()))
 		{
 			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
 			fir::StructType* sto = target->getPointerElementType()->toStructType();
 
-			if(sfr && sto && sto->isABaseTypeOf(sfr))
-			{
-				retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
-			}
+			iceAssert(sfr && sto && sto->isABaseTypeOf(sfr));
+			retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
 		}
 
 
-		dist = this->getAutoCastDistance(right->getType(), target);
+		int dist = this->getAutoCastDistance(right->getType(), target);
 		if(distance != 0)
 			*distance = dist;
 

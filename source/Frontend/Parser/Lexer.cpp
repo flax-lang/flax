@@ -407,6 +407,8 @@ namespace Parser
 			else if(id == "get")		tok.type = TType::Get;
 			else if(id == "set")		tok.type = TType::Set;
 
+			else if(id == "null")		tok.type = TType::Null;
+
 			else if(id == "module")		tok.type = TType::Module;
 			else if(id == "namespace")	tok.type = TType::Namespace;
 			else if(id == "extension")	tok.type = TType::Extension;

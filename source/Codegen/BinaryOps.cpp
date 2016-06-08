@@ -11,6 +11,18 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+
+static bool isComparisonOp(ArithmeticOp op)
+{
+	return	(op == ArithmeticOp::CmpEq) ||
+			(op == ArithmeticOp::CmpNEq) ||
+			(op == ArithmeticOp::CmpLT) ||
+			(op == ArithmeticOp::CmpGT) ||
+			(op == ArithmeticOp::CmpLEq) ||
+			(op == ArithmeticOp::CmpGEq);
+}
+
 Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	if(args.size() != 2)
@@ -24,13 +36,75 @@ Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* 
 
 	rhs = cgi->autoCastType(lhs, rhs);
 
-	if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
+	if(isComparisonOp(op) && lhs->getType() == rhs->getType() && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
+							&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
+	{
+		// todo(behaviour): c/c++ states that comparing pointers (>, <, etc) is undefined when the pointers do not
+		// point to the same "aggregate" (pointer to struct members, or array members)
+		// we allow it, but should this is changed?
+
+		// if everyone is primitive, autocasting should have made them the same
+		iceAssert(lhs->getType() == rhs->getType());
+
+		if(lhs->getType()->isFloatingPointType() || rhs->getType()->isFloatingPointType())
+		{
+			switch(op)
+			{
+				case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
+				case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
+				case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT_ORD(lhs, rhs), 0);
+				case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
+				case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
+				case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
+
+				default:	iceAssert(0);
+			}
+		}
+		else
+		{
+			switch(op)
+			{
+				case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
+				case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
+				case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
+				case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
+				case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
+				case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
+
+				default:	iceAssert(0);
+			}
+		}
+	}
+	else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 	{
 		fir::Value* tryop = cgi->builder.CreateBinaryOp(op, lhs, rhs);
 		iceAssert(tryop);
 
-		fprintf(stderr, "success\n");
 		return Result_t(tryop, 0);
+	}
+	else if((op == ArithmeticOp::Add || op == ArithmeticOp::Subtract) && ((lhs->getType()->isPointerType() && rhs->getType()->isIntegerType())
+		|| (lhs->getType()->isIntegerType() && rhs->getType()->isPointerType())))
+	{
+		// note: mess above is because
+		// APPARENTLY,
+		// 1 + foo === foo + 1, even if foo is a pointer.
+
+		// make life easier below.
+		if(lhs->getType()->isIntegerType())
+			std::swap(lhs, rhs);
+
+		// do the pointer arithmetic thing
+		fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
+
+		if(rhs->getType() != ptrIntType)
+			rhs = cgi->builder.CreateIntSizeCast(rhs, ptrIntType);
+
+		// do the actual thing.
+		fir::Value* ret = 0;
+		if(op == ArithmeticOp::Add)	ret = cgi->builder.CreatePointerAdd(lhs, rhs);
+		else						ret = cgi->builder.CreatePointerSub(lhs, rhs);
+
+		return Result_t(ret, 0);
 	}
 	else
 	{
@@ -274,6 +348,13 @@ struct OperatorMap
 		this->theMap[ArithmeticOp::BitwiseOr]			= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::BitwiseXor]			= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::BitwiseNot]			= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpLT]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpGT]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpLEq]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpGEq]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpEq]				= generalArithmeticOperator;
+		this->theMap[ArithmeticOp::CmpNEq]				= generalArithmeticOperator;
+
 		this->theMap[ArithmeticOp::Assign]				= operatorAssign;
 		this->theMap[ArithmeticOp::PlusEquals]			= operatorPlusEquals;
 		this->theMap[ArithmeticOp::MinusEquals]			= operatorMinusEquals;
@@ -286,12 +367,6 @@ struct OperatorMap
 		this->theMap[ArithmeticOp::BitwiseOrEquals]		= operatorBitwiseOrEquals;
 		this->theMap[ArithmeticOp::BitwiseXorEquals]	= operatorBitwiseXorEquals;
 		this->theMap[ArithmeticOp::BitwiseNot]			= operatorBitwiseNotEquals;
-		this->theMap[ArithmeticOp::CmpLT]				= operatorCmpLessThan;
-		this->theMap[ArithmeticOp::CmpGT]				= operatorCmpGreaterThan;
-		this->theMap[ArithmeticOp::CmpLEq]				= operatorCmpLessThanEquals;
-		this->theMap[ArithmeticOp::CmpGEq]				= operatorGreaterThanEquals;
-		this->theMap[ArithmeticOp::CmpEq]				= operatorCmpEqual;
-		this->theMap[ArithmeticOp::CmpNEq]				= operatorCmpNotEqual;
 		this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
 		this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
 		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
@@ -768,7 +843,11 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 {
 	iceAssert(this->left && this->right);
 
-	operatorMap.call(this->op, cgi, this, { this->left, this->right });
+	{
+		auto res = operatorMap.call(this->op, cgi, this, { this->left, this->right });
+		if(res.result.first)
+			return res;
+	}
 
 
 	ValPtr_t valptr;

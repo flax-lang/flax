@@ -217,7 +217,7 @@
 		<key>boolean</key>
 		<dict>
 			<key>match</key>
-			<string>\b(true|false)\b</string>
+			<string>\b(true|false|null)\b</string>
 			<key>name</key>
 			<string>constant.numeric.integer.boolean.flax</string>
 		</dict>

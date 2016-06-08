@@ -27,6 +27,10 @@ namespace Ast
 
 	}
 
+	NullVal::~NullVal()
+	{
+	}
+
 	VarRef::~VarRef()
 	{
 
