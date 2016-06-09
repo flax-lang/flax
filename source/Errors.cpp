@@ -9,6 +9,8 @@
 #include "codegen.h"
 #include "compiler.h"
 
+#include <signal.h>
+
 using namespace Ast;
 
 namespace GenError
@@ -103,12 +105,6 @@ namespace GenError
 			fprintf(stderr, "(no context)");
 		}
 	}
-
-	// void printContext(Expr* e)
-	// {
-	// 	if(e->pin.line > 0)
-	// 		printContext(e->pin.file, e->pin.line, e->pin.col, e->pin.len);
-	// }
 }
 
 
@@ -186,11 +182,6 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
-
 	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", true, ap);
 	va_end(ap);
 	abort();
@@ -200,11 +191,6 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
 	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
@@ -228,11 +214,6 @@ void errorNoExit(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
-
 	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", false, ap);
 	va_end(ap);
 }
@@ -241,11 +222,6 @@ void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
 	__error_gen(ops, msg, "Error", false, ap);
 	va_end(ap);
@@ -273,11 +249,6 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
-
 	__error_gen(HighlightOptions(relevantast->pin), msg, "Warning", false, ap);
 	va_end(ap);
 }
@@ -286,11 +257,6 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
 	__error_gen(ops, msg, "Warning", false, ap);
 	va_end(ap);
@@ -311,11 +277,6 @@ void info(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
-
 	__error_gen(HighlightOptions(relevantast->pin), msg, "Note", false, ap);
 	va_end(ap);
 }
@@ -324,11 +285,6 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-
-	// const char* file	= relevantast ? relevantast->pin.file : "";
-	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
 	__error_gen(ops, msg, "Note", false, ap);
 	va_end(ap);
@@ -435,7 +391,7 @@ namespace GenError
 
 			errorNoExit(expr, ops, "Values cannot be yielded from voids");
 
-			info(expr, "Assignment and compound assignment operators (of which '%s' is one) do not yield a value.",
+			info(expr, "Assignment and compound assignment operators (eg. '%s' here) are not expressions, and cannot produce a value",
 				Parser::arithmeticOpToString(cgi, op).c_str());
 
 			doTheExit();
