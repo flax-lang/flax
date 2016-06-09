@@ -37,7 +37,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(this->initVal && !val)
 	{
 		// means the expression is void
-		GenError::nullValue(cgi, this, this->initVal);
+		GenError::nullValue(cgi, this->initVal);
 	}
 
 
@@ -225,7 +225,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		fir::Type* vartype = cgi->getExprType(this->initVal);
 		if(vartype == nullptr || vartype->isVoidType())
-			GenError::nullValue(cgi, this, this->initVal);
+			GenError::nullValue(cgi, this->initVal);
 
 
 		if(cgi->isAnyType(vartype))
