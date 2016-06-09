@@ -13,12 +13,12 @@ using namespace Ast;
 
 namespace GenError
 {
-	void printContext(std::string file, uint64_t line, uint64_t col, uint64_t len)
+	static void printContext(HighlightOptions ops)
 	{
-		std::vector<std::string> lines = Compiler::getFileLines(file);
-		if(lines.size() > line - 1)
+		std::vector<std::string> lines = Compiler::getFileLines(ops.caret.file);
+		if(lines.size() > ops.caret.line - 1)
 		{
-			std::string orig = lines[line - 1];
+			std::string orig = lines[ops.caret.line - 1];
 			std::string ln;
 
 			for(auto c : orig)
@@ -37,24 +37,66 @@ namespace GenError
 
 			fprintf(stderr, "%s\n", ln.c_str());
 
-			for(uint64_t i = 1; i < col - 1; i++)
+			size_t cursorX = 1;
+
+			if(ops.caret.col > 0 && ops.drawCaret)
 			{
-				if(ln[i - 1] == '\t')
+				for(uint64_t i = 1; i <= ops.caret.col - 1; i++)
 				{
-					for(size_t i = 0; i < TAB_WIDTH; i++)
+					if(ln[i - 1] == '\t')
+					{
+						for(size_t j = 0; j < TAB_WIDTH; j++)
+						{
+							fprintf(stderr, " ");
+							cursorX++;
+						}
+					}
+					else
+					{
 						fprintf(stderr, " ");
+						cursorX++;
+					}
 				}
-				else
+
+				// move the caret to the "middle" or average of the entire token
+				for(size_t i = 0; i < ops.caret.len / 2; i++)
 				{
 					fprintf(stderr, " ");
+					cursorX++;
 				}
+
+				cursorX++;
+				fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 			}
 
-			std::string tildes;
-			// for(size_t i = 0; i < len; i++)
-			// 	tildes += "~";
 
-			fprintf(stderr, "%s^%s%s", COLOUR_GREEN_BOLD, tildes.c_str(), COLOUR_RESET);
+			// sort in reverse order
+			// since we can use \b to move left, without actually erasing the cursor
+			// but ' ' doesn't work that way
+			std::sort(ops.underlines.begin(), ops.underlines.end(), [](Parser::Pin a, Parser::Pin b) { return a.col < b.col; });
+			for(auto ul : ops.underlines)
+			{
+				// fprintf(stderr, "col = %d, x = %d\n", ul.col, cursorX);
+				while(ul.col < cursorX)
+				{
+					cursorX--;
+					fprintf(stderr, "\b");
+				}
+
+				while(ul.col > cursorX)
+				{
+					cursorX++;
+					fprintf(stderr, " ");
+				}
+
+
+				for(size_t i = 0; i < ul.len; i++)
+				{
+					// ̅, ﹋
+					fprintf(stderr, "%s̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+					cursorX++;
+				}
+			}
 		}
 		else
 		{
@@ -62,11 +104,11 @@ namespace GenError
 		}
 	}
 
-	void printContext(Expr* e)
-	{
-		if(e->pin.line > 0)
-			printContext(e->pin.file, e->pin.line, e->pin.col, e->pin.len);
-	}
+	// void printContext(Expr* e)
+	// {
+	// 	if(e->pin.line > 0)
+	// 		printContext(e->pin.file, e->pin.line, e->pin.col, e->pin.len);
+	// }
 }
 
 
@@ -76,8 +118,7 @@ __attribute__ ((noreturn)) static void doTheExit()
 	abort();
 }
 
-void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, const char* msg,
-	const char* type, bool doExit, va_list ap)
+void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list ap)
 {
 	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
 		return;
@@ -96,19 +137,19 @@ void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, co
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = Compiler::getFilenameFromPath(file ? file : "(unknown)");
+	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
 
-	if(line > 0 && col > 0)
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), line, col);
+	if(ops.caret.line > 0 && ops.caret.col > 0)
+		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
-	fprintf(stderr, "%s%s%s: %s\n", colour, type, COLOUR_RESET, alloc);
+	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, COLOUR_BLACK_BOLD, alloc, COLOUR_RESET);
 
-	if(line > 0 && col > 0)
+	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{
 		std::vector<std::string> lines;
-		if(strcmp(file, "") != 0)
+		if(ops.caret.file.length() > 0)
 		{
-			GenError::printContext(file, line, col, len);
+			GenError::printContext(ops);
 		}
 	}
 
@@ -127,53 +168,89 @@ void __error_gen(uint64_t line, uint64_t col, uint64_t len, const char* file, co
 	}
 }
 
-void error(Expr* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->pin.file : "";
-	uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, len, file, msg, "Error", true, ap);
-	va_end(ap);
-	abort();
-}
+
 
 void error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, 0, "", msg, "Error", true, ap);
+	__error_gen(HighlightOptions(), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
+
+void error(Expr* relevantast, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
+
+void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
 
 
+
+
+
+void errorNoExit(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(HighlightOptions(), msg, "Error", false, ap);
+	va_end(ap);
+}
 
 void errorNoExit(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->pin.file : "";
-	uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	uint64_t len		= relevantast ? relevantast->pin.len : 0;
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, len, file, msg, "Error", false, ap);
+	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", false, ap);
 	va_end(ap);
 }
 
-void errorNoExit(const char* msg, ...)
+void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, 0, "", msg, "Error", false, ap);
+
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(ops, msg, "Error", false, ap);
 	va_end(ap);
 }
+
 
 
 
@@ -187,7 +264,7 @@ void warn(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, 0, "", msg, "Warning", false, ap);
+	__error_gen(HighlightOptions(), msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -196,12 +273,26 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->pin.file : "";
-	uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	uint64_t len		= relevantast ? relevantast->pin.len : 0;
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, len, file, msg, "Warning", false, ap);
+	__error_gen(HighlightOptions(relevantast->pin), msg, "Warning", false, ap);
+	va_end(ap);
+}
+
+void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(ops, msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -211,7 +302,7 @@ void info(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(0, 0, 0, "", msg, "Note", false, ap);
+	__error_gen(HighlightOptions(), msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -220,12 +311,26 @@ void info(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	const char* file	= relevantast ? relevantast->pin.file : "";
-	uint64_t line		= relevantast ? relevantast->pin.line : 0;
-	uint64_t col		= relevantast ? relevantast->pin.col : 0;
-	uint64_t len		= relevantast ? relevantast->pin.len : 0;
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
 
-	__error_gen(line, col, len, file, msg, "Note", false, ap);
+	__error_gen(HighlightOptions(relevantast->pin), msg, "Note", false, ap);
+	va_end(ap);
+}
+
+void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	// const char* file	= relevantast ? relevantast->pin.file : "";
+	// uint64_t line		= relevantast ? relevantast->pin.line : 0;
+	// uint64_t col		= relevantast ? relevantast->pin.col : 0;
+	// uint64_t len		= relevantast ? relevantast->pin.len : 0;
+
+	__error_gen(ops, msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -311,30 +416,33 @@ namespace GenError
 				o == ArithmeticOp::BitwiseXorEquals ||
 				o == ArithmeticOp::BitwiseNotEquals;
 	}
-	void nullValue(Codegen::CodegenInstance* cgi, Expr* e, Expr* faulty, int funcArgument)
+	void nullValue(Codegen::CodegenInstance* cgi, Expr* expr)
 	{
-		if(dynamic_cast<BinOp*>(faulty) && _isass(dynamic_cast<BinOp*>(faulty)->op))
+		if(dynamic_cast<BinOp*>(expr) && _isass(dynamic_cast<BinOp*>(expr)->op))
 		{
-			auto op = dynamic_cast<BinOp*>(faulty)->op;
+			auto bo = dynamic_cast<BinOp*>(expr);
+			auto op = bo->op;
 
-			if(funcArgument >= 0)
-				errorNoExit(e, "Trying to yield a value from void in argument %d of function call", funcArgument + 1);
+			HighlightOptions ops;
 
-			else
-				errorNoExit(e, "Values cannot be yielded from voids (check)");
+			ops.caret = expr->pin;
+			ops.drawCaret = false;
 
-			info(faulty, "Assignment and compound assignment operators (of which '%s' is one) do not yield a value.",
+			auto pin = bo->left->pin;
+			pin.len += bo->right->pin.col - (bo->left->pin.col + bo->left->pin.len - 1);
+
+			ops.underlines.push_back(pin);
+
+			errorNoExit(expr, ops, "Values cannot be yielded from voids");
+
+			info(expr, "Assignment and compound assignment operators (of which '%s' is one) do not yield a value.",
 				Parser::arithmeticOpToString(cgi, op).c_str());
 
 			doTheExit();
 		}
 		else
 		{
-			if(funcArgument >= 0)
-				error(e, "Trying to yield a value from void in argument %d of function call", funcArgument + 1);
-
-			else
-				error(e, "Values cannot be yielded from voids (check)");
+			error(expr, "Values cannot be yielded from voids");
 		}
 	}
 

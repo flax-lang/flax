@@ -275,8 +275,7 @@ namespace Parser
 		std::string fullpath = Compiler::getFullPathOfFile(filename);
 		ps.tokens = Compiler::getFileTokens(fullpath);
 
-		ps.currentPos.file = new char[filename.length() + 1];
-		strcpy(ps.currentPos.file, filename.c_str());
+		ps.currentPos.file = filename;
 
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
@@ -456,9 +455,7 @@ namespace Parser
 
 		ps.rootNode = new Root();
 
-		ps.currentPos.file = new char[filename.length() + 1];
-		strcpy(ps.currentPos.file, filename.c_str());
-
+		ps.currentPos.file = filename;
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -765,7 +762,7 @@ namespace Parser
 			ps.eat();
 			Expr* un = parseUnary(ps);
 
-			return CreateASTPos(UnaryOp, tk.pin.file, tk.pin.line, tk.pin.col, tk.pin.len + un->pin.len, op, un);
+			return CreateAST(UnaryOp, tk, op, un);
 		}
 
 		return parsePrimary(ps);
@@ -1718,8 +1715,6 @@ namespace Parser
 
 
 
-
-
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
 
@@ -2482,7 +2477,8 @@ namespace Parser
 
 	Import* parseImport(ParserState& ps)
 	{
-		iceAssert(ps.eat().type == TType::Import);
+		Token front;
+		iceAssert((front = ps.eat()).type == TType::Import);
 
 		std::string s;
 		Token tok_mod = ps.front();
@@ -2517,7 +2513,7 @@ namespace Parser
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
-		return CreateAST(Import, tok_mod, s);
+		return CreateAST(Import, front, s);
 	}
 
 	StringLiteral* parseStringLiteral(ParserState& ps)
@@ -2900,6 +2896,13 @@ namespace Parser
 
 
 
+	static HighlightOptions pinToHO(Pin p)
+	{
+		HighlightOptions ops;
+		ops.caret = p;
+
+		return ops;
+	}
 
 
 	// come on man
@@ -2909,8 +2912,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
-			msg, "Error", true, ap);
+		__error_gen(pinToHO(staticState->curtok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2923,8 +2925,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
-			msg, "Warning", false, ap);
+		__error_gen(pinToHO(staticState->curtok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2936,7 +2937,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(ps.curtok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2948,7 +2949,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(ps.curtok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2963,7 +2964,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2975,7 +2976,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2989,7 +2990,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -3001,7 +3002,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -3016,7 +3017,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -3028,7 +3029,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
