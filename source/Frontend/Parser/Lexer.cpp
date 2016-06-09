@@ -347,7 +347,7 @@ namespace Parser
 
 			read = 0;		// done above
 			tok.text = num;
-			pos.len = num.length();
+			tok.pin.len = num.length();
 		}
 		else if(isalpha(stream[0]) || stream[0] == '_' || !isascii(stream[0]))
 		{
@@ -495,11 +495,14 @@ namespace Parser
 		stream = stream.substr(read);
 		if(tok.type != TType::NewLine)
 		{
-			tok.pin.col += read;
+			// note(debatable): put the actual "position" in the front of the token
 			pos.col += read;
 
 			if(read > 0)
+			{
 				pos.len = read;
+				tok.pin.len = read;
+			}
 		}
 		else
 		{

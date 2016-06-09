@@ -29,7 +29,7 @@ namespace GenError
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Value* a, fir::Value* b) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
 
-	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, Ast::Expr* faulty, int funcArgument = -1) __attribute__((noreturn));
+	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<fir::Value*> args) __attribute__((noreturn));
@@ -37,9 +37,6 @@ namespace GenError
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
-
-	void printContext(std::string file, uint64_t line, uint64_t col, uint64_t len);
-	void printContext(Ast::Expr* e);
 }
 
 

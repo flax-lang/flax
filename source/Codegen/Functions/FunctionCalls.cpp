@@ -137,7 +137,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 	if(!checkVariadic)
 	{
-		int argNum = 0;
 		std::vector<fir::Value*> argPtrs;
 
 		for(Expr* e : this->params)
@@ -146,7 +145,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			fir::Value* arg = res.first;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, this, e, argNum);
+				GenError::nullValue(cgi, e);
 
 			if(checkCVarArg && arg->getType()->isStructType())
 			{
@@ -164,7 +163,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 			args.push_back(arg);
 			argPtrs.push_back(res.second);
-			argNum++;
 		}
 
 
@@ -193,7 +191,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 			fir::Value* arg = res.first;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, this, ex, i);
+				GenError::nullValue(cgi, ex);
 
 			args.push_back(arg);
 		}
