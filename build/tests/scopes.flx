@@ -86,7 +86,7 @@ public ƒ doScopeTest(argv: String)
 
 
 	let gg = (4, 100.39)
-	printf("gg.0: %d, gg.1: %.2f", (4, 50).0, gg.1)
+	printf("gg.0: %d, gg.1: %.2f\n", (4, 50).0, gg.1)
 
 	printf("[%d]\n", foo.oor)
 	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
