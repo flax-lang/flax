@@ -731,6 +731,7 @@ namespace Codegen
 				//     u32 -> i64 >> okay
 
 				// TODO: making this more like C.
+				// note(behaviour): check this
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
@@ -738,9 +739,19 @@ namespace Codegen
 			}
 			else
 			{
+				// TODO: making this more like C.
+				// note(behaviour): check this
+				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(right, target);
+
+
+
 				// we can't "normally" do it without losing data
 				// but if the rhs is a constant, maybe we can.
 
+				#if 0
 				if(fir::ConstantInt* cright = dynamic_cast<fir::ConstantInt*>(right))
 				{
 					// only if not negative, can we convert to unsigned.
@@ -760,6 +771,7 @@ namespace Codegen
 						}
 					}
 				}
+				#endif
 			}
 		}
 

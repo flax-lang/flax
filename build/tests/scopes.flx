@@ -46,6 +46,13 @@ enum OutsideEnum
 	case Four
 }
 
+enum StrongEnum
+{
+	case Red
+	case Green
+	case Blue
+}
+
 
 class Sheep
 {
@@ -97,9 +104,6 @@ public ƒ doScopeTest(argv: String)
 	printf("x1: %d, x2: %d\n", x1, x2)
 
 
-
-
-
 	n1.n2.m.foo.oor = 968
 
 	let t1 = n1.n2.m.foo.somefoo().bar
@@ -110,6 +114,7 @@ public ƒ doScopeTest(argv: String)
 
 	printf("t1 = %d, t2 = %d\n", t1, t2)
 	printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
+
 }
 
 
