@@ -185,32 +185,9 @@ Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* 
 	{
 		error(user, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
 			lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
-
-		// return Result_t(0, 0);
 	}
 }
 
-
-
-
-Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
-
-
-
-
-Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
 
 
 
@@ -233,6 +210,203 @@ Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 }
 
 
+
+Result_t operatorAssignToSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, Expr* rhs)
+{
+	iceAssert(0);
+}
+
+
+Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	iceAssert(0);
+}
+
+
+Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	// arg[0] is the thing being subscripted
+	// the rest are the things within the subscript.
+
+	if(args.size() < 2)
+		error(user, "Expected at least one expression in the subscript operator (have %zu)", args.size() - 1);
+
+	Expr* subscriptee = args[0];
+	Expr* subscriptIndex = args[1];
+
+	// get our array type
+	fir::Type* atype = cgi->getExprType(subscriptee);
+
+	if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+	{
+		if(atype->isStructType())
+			return operatorOverloadedSubscript(cgi, op, user, args);
+
+		error(user, "Can only index on pointer or array types, got %s", atype->str().c_str());
+	}
+
+
+	Result_t lhsp = subscriptee->codegen(cgi);
+
+	fir::Value* lhs = 0;
+	if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
+	else												lhs = lhsp.result.second;
+
+
+	iceAssert(lhs);
+
+	fir::Value* gep = nullptr;
+	fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
+
+	if(atype->isStructType() || atype->isArrayType())
+	{
+		gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+	}
+	else if(atype->isLLVariableArrayType())
+	{
+		fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
+		fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+
+		gep = cgi->builder.CreateGetPointer(data, ind);
+	}
+	else
+	{
+		gep = cgi->builder.CreateGetPointer(lhs, ind);
+	}
+
+	return Result_t(cgi->builder.CreateLoad(gep), gep);
+}
+
+
+
+
+Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	// first check if the left side is a subscript.
+	// if(dynamic_cast<ArrayIndex*>(args[0]))
+	// 	return operatorAssignToSubscript(cgi, op, user, args[0], args[1]);
+
+
+	// else, we should be safe to codegen both sides
+	auto leftVP = args[0]->codegen(cgi).result;
+	auto rightVP = args[1]->codegen(cgi).result;
+
+	fir::Value* lhs = leftVP.first;
+	fir::Value* rhs = rightVP.first;
+
+	fir::Value* lhsPtr = leftVP.second;
+	fir::Value* rhsPtr = rightVP.second;
+
+
+	// assigning something to Any
+	if(cgi->isAnyType(lhs->getType()))
+	{
+		if(!rhsPtr && !rhs->getType()->isPrimitiveType() && !rhs->getType()->isPointerType())
+		{
+			// we need a pointer, since bytes and all, for Any.
+			rhsPtr = cgi->allocateInstanceInBlock(rhs->getType());
+			cgi->builder.CreateStore(rhs, rhsPtr);
+		}
+
+		iceAssert(lhsPtr);
+		cgi->assignValueToAny(lhsPtr, rhs, rhsPtr);
+
+		// assign returns nothing
+		return Result_t(0, 0);
+	}
+
+	// assigning Any to something
+	if(cgi->isAnyType(rhs->getType()))
+	{
+		// todo: find some fucking way to unwrap this shit at compile time.
+		warn(user, "Unchecked assignment from 'Any' to typed variable (unfixable)");
+
+		iceAssert(rhsPtr);
+		Result_t res = cgi->extractValueFromAny(lhs->getType(), rhsPtr);
+
+		cgi->builder.CreateStore(res.result.first, lhsPtr);
+
+		// assign returns nothing.
+		return Result_t(0, 0);
+	}
+
+
+
+
+
+
+	if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
+	{
+		fprintf(stderr, "before: %s -> %s\n", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
+		rhs = cgi->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
+		fprintf(stderr, "after: %s -> %s\n", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
+	}
+
+
+
+
+	// check if the left side is a simple var
+	if(VarRef* v = dynamic_cast<VarRef*>(args[0]))
+	{
+		VarDecl* vdecl = cgi->getSymDecl(user, v->name);
+
+		if(!vdecl)
+			GenError::unknownSymbol(cgi, user, v->name, SymbolType::Variable);
+
+		if(vdecl->immutable)
+			error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+
+
+		// store it, and return 0.
+		cgi->builder.CreateStore(rhs, lhsPtr);
+		return Result_t(0, 0);
+	}
+	else
+	{
+		// just do it
+		iceAssert(rhs);
+		iceAssert(lhsPtr);
+
+		warn(user, "unknown assign (%s -> %s)", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
+
+		cgi->builder.CreateStore(rhs, lhsPtr);
+
+		return Result_t(0, 0);
+	}
+}
+
+
+
+
+Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+{
+	return operatorSubscript(cgi, ArithmeticOp::Subscript, this, { this->arr, this->index });
+}
 
 
 
@@ -476,6 +650,8 @@ struct OperatorMap
 		this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
 		this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
 		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
+
+		this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
 
 		this->theMap[ArithmeticOp::Cast]				= operatorCast;
 		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
@@ -959,7 +1135,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 	{
 		auto res = operatorMap.call(this->op, cgi, this, { this->left, this->right });
-		if(res.result.first)
+		if(res.result.first/* || this->op == ArithmeticOp::Assign*/)
 			return res;
 	}
 
