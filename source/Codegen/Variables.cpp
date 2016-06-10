@@ -350,23 +350,23 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		{
 			iceAssert(val);
 
-			if(dynamic_cast<fir::ConstantValue*>(val))
-			{
-				if(val->getType() != ltype)
-					val = cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
+			// if(dynamic_cast<fir::ConstantValue*>(val))
+			// {
+			// 	if(val->getType() != ltype)
+			// 		val = cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
 
-				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
-				iceAssert(cv);
+			// 	fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
+			// 	iceAssert(cv);
 
-				if(cv->getType() != ai->getType()->getPointerElementType())
-				{
-					error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
-						this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());
-				}
+			// 	if(cv->getType() != ai->getType()->getPointerElementType())
+			// 	{
+			// 		error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
+			// 			this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());
+			// 	}
 
-				dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
-			}
-			else
+			// 	dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
+			// }
+			// else
 			{
 				cgi->addGlobalConstructedValue(ai, val);
 			}

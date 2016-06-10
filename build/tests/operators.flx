@@ -25,6 +25,8 @@ public func doOperatorTupleTest()
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	v += v1
 
+	v = v1 + v2 + v1
+
 	let vv = 3 * v
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
