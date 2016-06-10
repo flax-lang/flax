@@ -92,6 +92,7 @@ namespace Compiler
 				va_list ap;
 
 				__error_gen(prettyErrorImport(imp, fullPath), msg.c_str(), "Error", true, ap);
+				abort();
 			}
 		}
 	}
