@@ -519,8 +519,6 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 
 
-	// TODO: BROKEN AS FUCK
-	// NEED TO CHECK FOR OPERATOR OVERLOADS BEFORE BLINDLY STORING THINGS
 
 	// check if the left side is a simple var
 	if(VarRef* v = dynamic_cast<VarRef*>(args[0]))
@@ -647,15 +645,6 @@ Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, s
 	return Result_t(0, 0);
 }
 
-Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
-
-
 
 
 
@@ -771,6 +760,149 @@ Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, st
 
 	return Result_t(cgi->builder.CreateLoad(resPtr), resPtr);
 }
+
+
+
+Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+
+	auto leftVP = args[0]->codegen(cgi).result;
+	fir::Value* lhs = leftVP.first;
+	fir::Value* lhsPtr = leftVP.second;
+
+	fir::Type* rtype = cgi->getExprType(args[1]);
+	if(!rtype)
+	{
+		GenError::unknownSymbol(cgi, user, args[1]->type.strType, SymbolType::Type);
+	}
+
+
+	iceAssert(rtype);
+	if(lhs->getType() == rtype)
+	{
+		warn(user, "Redundant cast");
+		return Result_t(lhs, 0);
+	}
+
+
+
+	if(lhs->getType()->isIntegerType() && rtype->isIntegerType())
+	{
+		return Result_t(cgi->builder.CreateIntSizeCast(lhs, rtype), 0);
+	}
+	else if(lhs->getType()->isIntegerType() && rtype->isFloatingPointType())
+	{
+		return Result_t(cgi->builder.CreateIntToFloatCast(lhs, rtype), 0);
+	}
+	else if(lhs->getType()->isFloatingPointType() && rtype->isFloatingPointType())
+	{
+		// printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
+
+		if(lhs->getType()->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
+			return Result_t(cgi->builder.CreateFTruncate(lhs, rtype), 0);
+
+		else
+			return Result_t(cgi->builder.CreateFExtend(lhs, rtype), 0);
+	}
+	else if(lhs->getType()->isPointerType() && rtype->isPointerType())
+	{
+		return Result_t(cgi->builder.CreatePointerTypeCast(lhs, rtype), 0);
+	}
+	else if(lhs->getType()->isPointerType() && rtype->isIntegerType())
+	{
+		return Result_t(cgi->builder.CreatePointerToIntCast(lhs, rtype), 0);
+	}
+	else if(lhs->getType()->isIntegerType() && rtype->isPointerType())
+	{
+		return Result_t(cgi->builder.CreateIntToPointerCast(lhs, rtype), 0);
+	}
+	else if(cgi->isEnum(rtype))
+	{
+		// dealing with enum
+		fir::Type* insideType = rtype->toStructType()->getElementN(0);
+		if(lhs->getType() == insideType)
+		{
+			fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
+
+			fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
+			cgi->builder.CreateStore(lhs, gep);
+
+			return Result_t(cgi->builder.CreateLoad(tmp), tmp);
+		}
+		else
+		{
+			error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().c_str(),
+				lhs->getType()->str().c_str());
+		}
+	}
+	else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
+	{
+		iceAssert(lhsPtr);
+		fir::Value* gep = cgi->builder.CreateStructGEP(lhsPtr, 0);
+		fir::Value* val = cgi->builder.CreateLoad(gep);
+
+		return Result_t(val, gep);
+	}
+	else if(cgi->isAnyType(lhs->getType()))
+	{
+		iceAssert(lhsPtr);
+		return cgi->extractValueFromAny(rtype, lhsPtr);
+	}
+	else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName() == "String"
+		&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
+	{
+		#if 0
+		if(!lhsPtr)
+		{
+			// dammit.
+			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+			fir::StructType* stringType = dynamic_cast<fir::StructType*>(strPair->first);
+			lhsPtr = cgi->getStackAlloc(stringType);
+			cgi->builder.CreateStore(lhs, lhsPtr);
+		}
+		#endif
+
+		// string to int8*.
+		// just access the data pointer.
+
+		iceAssert(lhsPtr);
+		fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsPtr, 0);
+
+		return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
+	}
+	else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
+		&& rtype->isStructType() && rtype->toStructType()->getStructName() == "String")
+	{
+		// support this shit.
+		// error(cgi, this, "Automatic char* -> String casting not yet supported");
+
+		// create a bogus func call.
+		TypePair_t* tp = cgi->getType("String");
+		iceAssert(tp);
+
+		std::vector<fir::Value*> args { lhs };
+		return cgi->callTypeInitialiser(tp, user, args);
+	}
+	else if(op != ArithmeticOp::ForcedCast)
+	{
+		std::string lstr = cgi->getReadableType(lhs).c_str();
+		std::string rstr = cgi->getReadableType(rtype).c_str();
+
+		// if(!fir::CastInst::castIsValid(fir::Instruction::BitCast, lhs, rtype))
+		// {
+		// 	error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+		// }
+		// else
+
+		error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+	}
+
+	return Result_t(cgi->builder.CreateBitcast(lhs, rtype), 0);
+}
+
 
 
 
@@ -985,6 +1117,8 @@ static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, A
 Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, fir::Value* lhs,
 	fir::Value* ref, fir::Value* rhs, fir::Value* rhsPtr)
 {
+	// iceAssert(0);
+
 	VarRef* v		= nullptr;
 	UnaryOp* uo		= nullptr;
 	ArrayIndex* ari	= nullptr;
@@ -1320,7 +1454,9 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->left && this->right);
+	return operatorMap.call(this->op, cgi, this, { this->left, this->right });
 
+	#if 0
 	{
 		auto res = operatorMap.call(this->op, cgi, this, { this->left, this->right });
 		if(res.result.first || cgi->isArithmeticOpAssignment(this->op))
@@ -1340,6 +1476,8 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 		|| this->op == ArithmeticOp::ShiftRightEquals	|| this->op == ArithmeticOp::BitwiseAndEquals
 		|| this->op == ArithmeticOp::BitwiseOrEquals	|| this->op == ArithmeticOp::BitwiseXorEquals)
 	{
+		iceAssert(0);
+
 		// uhh. we kinda need the rhs, but sometimes the rhs needs the lhs.
 		// note: when? usually the lhs needs the rhs eg. during fake assigns (subscript/cprops)
 		// todo: fix???
@@ -1360,139 +1498,6 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
 	{
-		valptr = this->left->codegen(cgi).result;
-		lhs = valptr.first;
-
-		fir::Type* rtype = cgi->getExprType(this->right);
-		if(!rtype)
-		{
-			GenError::unknownSymbol(cgi, this, this->right->type.strType, SymbolType::Type);
-		}
-
-
-		iceAssert(rtype);
-		if(lhs->getType() == rtype)
-		{
-			warn(this, "Redundant cast");
-			return Result_t(lhs, 0);
-		}
-
-		if(this->op != ArithmeticOp::ForcedCast)
-		{
-			if(lhs->getType()->isIntegerType() && rtype->isIntegerType())
-			{
-				return Result_t(cgi->builder.CreateIntSizeCast(lhs, rtype), 0);
-			}
-			else if(lhs->getType()->isIntegerType() && rtype->isFloatingPointType())
-			{
-				return Result_t(cgi->builder.CreateIntToFloatCast(lhs, rtype), 0);
-			}
-			else if(lhs->getType()->isFloatingPointType() && rtype->isFloatingPointType())
-			{
-				// printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
-
-				if(lhs->getType()->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
-					return Result_t(cgi->builder.CreateFTruncate(lhs, rtype), 0);
-
-				else
-					return Result_t(cgi->builder.CreateFExtend(lhs, rtype), 0);
-			}
-			else if(lhs->getType()->isPointerType() && rtype->isPointerType())
-			{
-				return Result_t(cgi->builder.CreatePointerTypeCast(lhs, rtype), 0);
-			}
-			else if(lhs->getType()->isPointerType() && rtype->isIntegerType())
-			{
-				return Result_t(cgi->builder.CreatePointerToIntCast(lhs, rtype), 0);
-			}
-			else if(lhs->getType()->isIntegerType() && rtype->isPointerType())
-			{
-				return Result_t(cgi->builder.CreateIntToPointerCast(lhs, rtype), 0);
-			}
-			else if(cgi->isEnum(rtype))
-			{
-				// dealing with enum
-				fir::Type* insideType = rtype->toStructType()->getElementN(0);
-				if(lhs->getType() == insideType)
-				{
-					fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
-
-					fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
-					cgi->builder.CreateStore(lhs, gep);
-
-					return Result_t(cgi->builder.CreateLoad(tmp), tmp);
-				}
-				else
-				{
-					error(this, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().c_str(),
-						lhs->getType()->str().c_str());
-				}
-			}
-			else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
-			{
-				iceAssert(valptr.second);
-				fir::Value* gep = cgi->builder.CreateStructGEP(valptr.second, 0);
-				fir::Value* val = cgi->builder.CreateLoad(gep);
-
-				return Result_t(val, gep);
-			}
-		}
-
-
-
-		if(cgi->isAnyType(lhs->getType()))
-		{
-			iceAssert(valptr.second);
-			return cgi->extractValueFromAny(rtype, valptr.second);
-		}
-		else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName() == "String"
-			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
-		{
-			auto strPair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
-			fir::StructType* stringType = dynamic_cast<fir::StructType*>(strPair->first);
-
-			// string to int8*.
-			// just access the data pointer.
-
-			fir::Value* lhsref = valptr.second;
-			if(!lhsref)
-			{
-				// dammit.
-				lhsref = cgi->getStackAlloc(stringType);
-				cgi->builder.CreateStore(lhs, lhsref);
-			}
-
-			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsref, 0);
-			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
-		}
-		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
-			&& rtype->isStructType() && rtype->toStructType()->getStructName() == "String")
-		{
-			// support this shit.
-			// error(cgi, this, "Automatic char* -> String casting not yet supported");
-
-			// create a bogus func call.
-			TypePair_t* tp = cgi->getType("String");
-			iceAssert(tp);
-
-			std::vector<fir::Value*> args { lhs };
-			return cgi->callTypeInitialiser(tp, this, args);
-		}
-		else if(this->op != ArithmeticOp::ForcedCast)
-		{
-			std::string lstr = cgi->getReadableType(lhs).c_str();
-			std::string rstr = cgi->getReadableType(rtype).c_str();
-
-			// if(!fir::CastInst::castIsValid(fir::Instruction::BitCast, lhs, rtype))
-			// {
-			// 	error(this, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
-			// }
-			// else
-
-			warn(this, "Unknown cast, doing raw bitcast (from type %s to %s)", lstr.c_str(), rstr.c_str());
-		}
-
-		return Result_t(cgi->builder.CreateBitcast(lhs, rtype), 0);
 	}
 	else
 	{
@@ -1703,6 +1708,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 	error(this, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 
+	#endif
 	#endif
 }
 

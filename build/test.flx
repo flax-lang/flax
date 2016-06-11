@@ -177,6 +177,8 @@ func t() -> Bool { printf(@raw "called true\n"); true }
 func f() -> Bool { printf(@raw "called false\n"); false }
 
 
+var foo: Test
+
 public func main(argc: Int32, argv: Int8**) -> Int
 {
 	runTests()
@@ -215,10 +217,10 @@ public func main(argc: Int32, argv: Int8**) -> Int
 		printf("done\n")
 	}
 
-	// var lol: String = "HELLO"
+	var lol: String = "HELLO"
 	// lol = 4
 
-	var k = Math.Vector2()
+	var k: Math.Vector2
 	k = Math.Vector2(1.0, 4.0)
 
 	printf("k = (%f, %f)\n", k.x, k.y);
