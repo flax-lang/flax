@@ -64,6 +64,10 @@ namespace fir
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
 
+		bool isImmutable() { return this->immut; }
+		void makeImmutable() { this->immut = true; }
+		void makeNotImmutable() { this->immut = false; }
+
 		// protected shit
 		size_t id;
 		protected:
@@ -71,13 +75,13 @@ namespace fir
 		virtual ~Value() { }
 
 		// fields
+		bool immut = 0;
+
 		Type* valueType;
 		std::string valueName;
 		FValueKind valueKind;
 		std::deque<Value*> users;
 	};
-
-
 
 	struct GlobalValue : Value
 	{
@@ -85,8 +89,12 @@ namespace fir
 
 		LinkageType linkageType;
 
+		Module* getParentModule() { return this->parentModule; }
+
 		protected:
-		GlobalValue(Type* type, LinkageType linkage);
+		GlobalValue(Module* mod, Type* type, LinkageType linkage);
+
+		Module* parentModule = 0;
 	};
 
 	struct GlobalVariable : GlobalValue
@@ -97,9 +105,6 @@ namespace fir
 		void setInitialValue(ConstantValue* constVal);
 
 		protected:
-		bool isImmutable;
-		Module* parentModule;
-
 		ConstantValue* initValue = 0;
 	};
 

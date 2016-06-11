@@ -233,7 +233,7 @@ namespace fir
 			}
 
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
-				module), global.second->isImmutable, llvm::GlobalValue::LinkageTypes::ExternalLinkage, initval, global.first);
+				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first);
 
 			valueMap[global.second->id] = gv;
 		}
@@ -1087,75 +1087,6 @@ namespace fir
 						}
 
 
-						case OpKind::Logical_And:
-						case OpKind::Logical_Or:
-						{
-							iceAssert(inst->operands.size() == 2);
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-
-
-							int theOp = inst->opKind == OpKind::Logical_Or ? 0 : 1;
-							llvm::Value* trueval = llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, 1, true));
-							llvm::Value* falseval = llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(1, 0, true));
-
-							llvm::Function* fn = builder.GetInsertBlock()->getParent();
-							iceAssert(func);
-
-							llvm::Value* res = builder.CreateTrunc(a, llvm::Type::getInt1Ty(llvm::getGlobalContext()));
-
-							llvm::BasicBlock* entry = builder.GetInsertBlock();
-							llvm::BasicBlock* lb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "leftbl", fn);
-							llvm::BasicBlock* rb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "rightbl", fn);
-							llvm::BasicBlock* mb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "mergebl", fn);
-							builder.CreateCondBr(res, lb, rb);
-
-							builder.SetInsertPoint(rb);
-
-							llvm::PHINode* phi = builder.CreatePHI(llvm::Type::getInt1Ty(llvm::getGlobalContext()), 2);
-
-							// if this is a logical-or
-							if(theOp == 0)
-							{
-								// do the true case
-								builder.SetInsertPoint(lb);
-								phi->addIncoming(trueval, lb);
-
-								// if it succeeded (aka res is true), go to the merge block.
-								builder.CreateBr(rb);
-
-
-
-								// do the false case
-								builder.SetInsertPoint(rb);
-
-								// do another compare.
-								llvm::Value* rres = builder.CreateTrunc(b, llvm::Type::getInt1Ty(llvm::getGlobalContext()));
-								phi->addIncoming(rres, entry);
-							}
-							else
-							{
-								// do the true case
-								builder.SetInsertPoint(lb);
-								llvm::Value* rres = builder.CreateTrunc(b, llvm::Type::getInt1Ty(llvm::getGlobalContext()));
-								phi->addIncoming(rres, lb);
-
-								builder.CreateBr(rb);
-
-
-								// do the false case
-								builder.SetInsertPoint(rb);
-								phi->addIncoming(falseval, entry);
-							}
-
-							builder.CreateBr(mb);
-							builder.SetInsertPoint(mb);
-
-							llvm::Value* ret = phi;
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 						case OpKind::Logical_Not:
 						{
@@ -1167,8 +1098,31 @@ namespace fir
 							break;
 						}
 
-						default:
+						case OpKind::Value_PointerAddition:
+						case OpKind::Value_PointerSubtraction:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Value* ret = builder.CreateInBoundsGEP(a, b);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+						case OpKind::Invalid:
+						{
+							// note we don't use "default" to catch
+							// new opkinds that we forget to add.
 							iceAssert(0);
+						}
 					}
 				}
 			}

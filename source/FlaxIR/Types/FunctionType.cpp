@@ -105,6 +105,12 @@ namespace fir
 		return ret;
 	}
 
+	std::string FunctionType::encodedStr()
+	{
+		return this->str();
+	}
+
+
 
 
 

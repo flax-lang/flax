@@ -58,7 +58,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	func->getBlockList().push_back(f);
 }
 
-Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->cases.size() > 0);
 

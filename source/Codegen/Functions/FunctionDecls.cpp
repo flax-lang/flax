@@ -124,7 +124,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 
 
 
-Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// if we're a generic function, we can't generate anything
 	// wait until we get specific instances
@@ -310,7 +310,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 
 
-Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return this->decl->codegen(cgi);
 }

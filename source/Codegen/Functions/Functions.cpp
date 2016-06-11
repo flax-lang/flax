@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	Result_t lastval(0, 0);
 	cgi->pushScope();
@@ -37,10 +37,10 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Val
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(this->didCodegen & !lhsPtr)
-		error(this, "Tried to generate function twice (%s)", this->decl->name.c_str());
+	if(this->didCodegen & !extra)
+		error(this, "Tried to generate function twice (%s)", this->decl->mangledName.c_str());
 
 	this->didCodegen = true;
 
@@ -58,9 +58,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 
 	fir::Function* func = 0;
 
-	if(isGeneric && lhsPtr != 0)
+	if(isGeneric && extra != 0)
 	{
-		iceAssert(func = dynamic_cast<fir::Function*>(lhsPtr));
+		iceAssert(func = dynamic_cast<fir::Function*>(extra));
 	}
 	else
 	{
@@ -114,18 +114,26 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 	{
 		func->getArguments()[i]->setName(this->decl->params[i]->name);
 
-		fir::Value* ai = 0;
-
 		if(isGeneric)
 		{
-			ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
+			iceAssert(func->getArguments()[i]->getType() == this->decl->instantiatedGenericTypes[i]);
 		}
 		else
 		{
-			ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(this->decl->params[i]));
 		}
 
-		cgi->builder.CreateStore(func->getArguments()[i], ai);
+		fir::Value* ai = 0;
+		if(!this->decl->params[i]->immutable)
+		{
+			ai = cgi->getStackAlloc(func->getArguments()[i]->getType());
+			cgi->builder.CreateStore(func->getArguments()[i], ai);
+		}
+		else
+		{
+			ai = cgi->getImmutStackAllocValue(func->getArguments()[i]);
+		}
+
 		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
 		func->getArguments()[i]->setValue(ai);
 	}
