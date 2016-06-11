@@ -14,7 +14,7 @@ namespace Operators
 	Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
 		if(args.size() != 2)
-			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+			error(user, "Expected 2 arguments for operator %s, have %zu", Parser::arithmeticOpToString(cgi, op).c_str(), args.size());
 
 		// get ourselves some short circuiting goodness
 
@@ -67,7 +67,7 @@ namespace Operators
 	Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
 		if(args.size() != 2)
-			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+			error(user, "Expected 2 arguments for operator %s, have %zu", Parser::arithmeticOpToString(cgi, op).c_str(), args.size());
 
 
 		// much the same as logical and,
@@ -123,7 +123,11 @@ namespace Operators
 
 	Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		iceAssert(0);
+		if(args.size() != 1)
+			error(user, "Expected 1 argument for logical not, have %zu", args.size());
+
+		auto res = args[0]->codegen(cgi).result;
+		return Result_t(cgi->builder.CreateLogicalNot(res.first), res.second);
 	}
 }
 
