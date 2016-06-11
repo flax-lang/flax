@@ -735,6 +735,9 @@ namespace fir
 		if(v->getType()->getPointerTo() != ptr->getType())
 			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->str().c_str(), ptr->getType()->str().c_str());
 
+		if(ptr->isImmutable())
+			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
+
 		Instruction* instr = new Instruction(OpKind::Value_Store, PrimitiveType::getVoid(), { v, ptr });
 		return this->addInstruction(instr, "");
 	}
@@ -821,6 +824,17 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+	Value* IRBuilder::CreateImmutStackAlloc(Type* type, Value* v, std::string vname)
+	{
+		Value* ret = this->CreateStackAlloc(type, vname);
+		ret->immut = false;		// for now
+
+		this->CreateStore(v, ret);
+		ret->immut = true;
+
+		return ret;
+	}
+
 	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
 	{
 		Instruction* instr = new Instruction(OpKind::Branch_Cond, PrimitiveType::getVoid(), { condition, trueB, falseB });
@@ -857,6 +871,10 @@ namespace fir
 			Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
 				{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
 
+			// disallow storing to members of immut structs
+			if(ptr->isImmutable())
+				instr->realOutput->immut = true;
+
 			return this->addInstruction(instr, vname);
 		}
 		else
@@ -878,6 +896,10 @@ namespace fir
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(memberIndex) });
 
+			// disallow storing to members of immut structs
+			if(structPtr->isImmutable())
+				instr->realOutput->immut = true;
+
 			return this->addInstruction(instr, vname);
 		}
 		else if(LLVariableArrayType* llat = dynamic_cast<LLVariableArrayType*>(structPtr->getType()->getPointerElementType()))
@@ -888,6 +910,10 @@ namespace fir
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, ty->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(memberIndex) });
+
+			// disallow storing to members of immut structs
+			if(structPtr->isImmutable())
+				instr->realOutput->immut = true;
 
 			return this->addInstruction(instr, vname);
 		}
@@ -922,7 +948,13 @@ namespace fir
 		if(retType->isArrayType())
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
 
+
 		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, retType, { ptr, ptrIndex, elmIndex });
+
+		// disallow storing to members of immut arrays
+		if(ptr->isImmutable())
+			instr->realOutput->immut = true;
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -936,6 +968,12 @@ namespace fir
 			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
+
+		// disallow storing to members of immut arrays
+		if(ptr->isImmutable())
+			instr->realOutput->immut = true;
+
+
 		return this->addInstruction(instr, vname);
 	}
 

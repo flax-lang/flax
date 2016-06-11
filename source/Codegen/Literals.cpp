@@ -42,7 +42,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 	{
 		fir::StructType* stringType = dynamic_cast<fir::StructType*>(pair->first);
 
-		fir::Value* alloca = cgi->allocateInstanceInBlock(stringType);
+		fir::Value* alloca = cgi->getStackAlloc(stringType);
 
 		// String layout:
 		// var data: Int8*

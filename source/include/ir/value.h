@@ -64,7 +64,9 @@ namespace fir
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
 
-		bool isNull();
+		bool isImmutable() { return this->immut; }
+		void makeImmutable() { this->immut = true; }
+		void makeNotImmutable() { this->immut = false; }
 
 		// protected shit
 		size_t id;
@@ -73,13 +75,13 @@ namespace fir
 		virtual ~Value() { }
 
 		// fields
+		bool immut = 0;
+
 		Type* valueType;
 		std::string valueName;
 		FValueKind valueKind;
 		std::deque<Value*> users;
 	};
-
-
 
 	struct GlobalValue : Value
 	{

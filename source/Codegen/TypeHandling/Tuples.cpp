@@ -70,7 +70,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	}
 	else
 	{
-		gep = cgi->allocateInstanceInBlock(this->getType(cgi));
+		gep = cgi->getStackAlloc(this->getType(cgi));
 	}
 
 	iceAssert(gep);
