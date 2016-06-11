@@ -5,7 +5,8 @@
 
 #include "ast.h"
 #include "codegen.h"
-#include "dependency.h"
+
+#include "operators.h"
 
 
 using namespace Ast;
@@ -112,7 +113,9 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			this->immutable = false;
 
 			auto vr = new VarRef(this->pin, this->name);
-			auto res = cgi->doBinOpAssign(this, vr, this->initVal, ArithmeticOp::Assign, cgi->builder.CreateLoad(ai), ai, val, valptr);
+			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->builder.CreateLoad(ai),
+				ai, val, valptr);
+
 			delete vr;
 
 			this->immutable = wasImmut;
@@ -276,17 +279,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		if(this->attribs & Attr_VisPublic)
-		{
-			// hmm.
-			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
-				this->immutable, fir::LinkageType::External);
-		}
-		else
-		{
-			ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
-				this->immutable, fir::LinkageType::Internal);
-		}
+		ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+			this->immutable, this->attribs & Attr_VisPublic ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();
 

@@ -1,18 +1,94 @@
-// ArrayCodegen.cpp
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Subscript.cpp
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
-
 
 #include "ast.h"
 #include "codegen.h"
+#include "operators.h"
 
 using namespace Ast;
 using namespace Codegen;
 
+namespace Operators
+{
+	Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, fir::Value* rhs)
+	{
+		iceAssert(0);
+	}
 
+
+	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	{
+		iceAssert(0);
+	}
+
+
+	Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	{
+		// arg[0] is the thing being subscripted
+		// the rest are the things within the subscript.
+
+		if(args.size() < 2)
+			error(user, "Expected at least one expression in the subscript operator (have %zu)", args.size() - 1);
+
+		Expr* subscriptee = args[0];
+		Expr* subscriptIndex = args[1];
+
+		// get our array type
+		fir::Type* atype = cgi->getExprType(subscriptee);
+
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+		{
+			if(atype->isStructType())
+				return operatorOverloadedSubscript(cgi, op, user, args);
+
+			error(user, "Can only index on pointer or array types, got %s", atype->str().c_str());
+		}
+
+
+		Result_t lhsp = subscriptee->codegen(cgi);
+
+		fir::Value* lhs = 0;
+		if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
+		else												lhs = lhsp.result.second;
+
+
+		iceAssert(lhs);
+
+		fir::Value* gep = nullptr;
+		fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
+
+		if(atype->isStructType() || atype->isArrayType())
+		{
+			gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+		}
+		else if(atype->isLLVariableArrayType())
+		{
+			fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
+			fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+
+			gep = cgi->builder.CreateGetPointer(data, ind);
+		}
+		else
+		{
+			gep = cgi->builder.CreateGetPointer(lhs, ind);
+		}
+
+		return Result_t(cgi->builder.CreateLoad(gep), gep);
+	}
+}
+
+
+
+
+
+
+
+
+
+#if 0
 static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, Expr* index, fir::Value* rhs)
 {
-	#if 0
 	fir::Type* lhsType = cgi->getExprType(e);
 	iceAssert(lhsType->isStructType());
 
@@ -135,51 +211,10 @@ static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, E
 
 		return Result_t(ret, 0);
 	}
-	#endif
 
 	return Result_t(0, 0);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif
 
 
 

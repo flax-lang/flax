@@ -105,7 +105,6 @@ namespace fir
 		void setInitialValue(ConstantValue* constVal);
 
 		protected:
-		bool isImmutable;
 		ConstantValue* initValue = 0;
 	};
 

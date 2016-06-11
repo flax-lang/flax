@@ -66,7 +66,6 @@ namespace Ast
 		BitwiseAndEquals,
 		BitwiseOrEquals,
 		BitwiseXorEquals,
-		BitwiseNotEquals,
 
 		MemberAccess,
 		ScopeResolution,

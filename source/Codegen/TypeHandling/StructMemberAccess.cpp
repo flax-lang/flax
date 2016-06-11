@@ -42,7 +42,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
 		if(this->matype == MAType::Invalid) error(this, "??");
-		return cgi->resolveStaticDotOperator(this, true).second;
+		return cgi->resolveStaticDotOperator(this, true).first.second;
 	}
 
 
@@ -480,7 +480,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 
-std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
+std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
@@ -499,6 +499,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 	std::deque<std::string> list;
 
+	fir::Type* curFType = 0;
 	Class* curType = 0;
 
 	MemberAccess* cur = ma;
@@ -564,6 +565,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<Class*>(tp->second.first);
+				curFType = tp->first;
 				iceAssert(curType);
 
 				found = true;
@@ -578,6 +580,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				if(sb.first->name == front)
 				{
 					curType = sb.first;
+					curFType = sb.second;
 					found = true;
 					break;
 				}
@@ -651,7 +654,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				for(Expr* e : fc->params)
 					args.push_back(e->codegen(this).result.first);
 
-				return { ltype, this->callTypeInitialiser(tp, ma, args) };
+				return { { ltype, this->callTypeInitialiser(tp, ma, args) }, curFType };
 			}
 			else
 			{
@@ -668,11 +671,11 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 			fc->cachedResolveTarget = res;
 			Result_t res = fc->codegen(this);
 
-			return { ltype, res };
+			return { { ltype, res }, curFType };
 		}
 		else
 		{
-			return { ltype, Result_t(0, 0) };
+			return { { ltype, Result_t(0, 0) }, curFType };
 		}
 	}
 	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
@@ -696,8 +699,11 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 			return
 			{
-				ptr->getType()->getPointerElementType(),
-				actual ? Result_t(this->builder.CreateLoad(ptr), ptr) : Result_t(0, 0)
+				{
+					ptr->getType()->getPointerElementType(),
+					actual ? Result_t(this->builder.CreateLoad(ptr), ptr) : Result_t(0, 0)
+				},
+				curFType
 			};
 		}
 		else
@@ -711,7 +717,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 					error(vr, "Invalid class '%s'", vr->name.c_str());
 
 				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
-				return { res.result.first->getType(), res };
+				return { { res.result.first->getType(), res }, curFType };
 			}
 			else if(Class* cls = dynamic_cast<Class*>(curType))
 			{
@@ -720,7 +726,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 					if(v->isStatic && v->name == vr->name)
 					{
 						fir::Type* ltype = this->getExprType(v);
-						return { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) };
+						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) }, curFType };
 					}
 				}
 			}

@@ -1927,7 +1927,6 @@ namespace Codegen
 			case ArithmeticOp::BitwiseAndEquals:	return true;
 			case ArithmeticOp::BitwiseOrEquals:		return true;
 			case ArithmeticOp::BitwiseXorEquals:	return true;
-			case ArithmeticOp::BitwiseNotEquals:	return true;
 
 			default: return false;
 		}
