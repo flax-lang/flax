@@ -260,6 +260,8 @@ namespace Ast
 
 		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
 
+		Parser::Pin returnTypePos;
+
 		bool isCStyleVarArg = false;
 
 		bool isVariadic = false;

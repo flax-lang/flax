@@ -948,9 +948,12 @@ namespace Parser
 
 		// get return type.
 		std::string ret;
+		Pin retPin;
 		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
 		{
 			ps.eat();
+			retPin = ps.front().pin;
+
 			Expr* ctype = parseType(ps);
 			ret = ctype->type.strType;
 			delete ctype;
@@ -971,6 +974,8 @@ namespace Parser
 		f->isCStyleVarArg = isCVA;
 		f->isVariadic = isVariableArg;
 		f->genericTypes = genericTypes;
+
+		f->returnTypePos = retPin;
 
 		if(f->isCStyleVarArg && f->isVariadic)
 			parserError("C-style variadic arguments and Flax-style variadic arguments are mutually exclusive.");
