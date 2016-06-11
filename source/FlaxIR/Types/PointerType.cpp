@@ -60,6 +60,10 @@ namespace fir
 		return this->baseType->str() + "*";
 	}
 
+	std::string PointerType::encodedStr()
+	{
+		return this->baseType->encodedStr() + "P";
+	}
 
 
 	bool PointerType::isTypeEqual(Type* other)

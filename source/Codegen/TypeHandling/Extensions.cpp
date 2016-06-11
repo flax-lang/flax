@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
@@ -85,10 +85,10 @@ fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir
 		// we could only build an incomplete name -> index map
 		// finish it here.
 
-		for(auto p : this->opOverloads)
-		{
-			p->codegen(cgi);
-		}
+		// for(auto p : this->opOverloads)
+		// {
+		// 	p->codegen(cgi);
+		// }
 
 		for(Func* func : this->funcs)
 		{

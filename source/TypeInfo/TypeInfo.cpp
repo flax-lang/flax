@@ -41,19 +41,10 @@ namespace TypeInfo
 			i++;
 		}
 
-		if(type->isPointerType())
-		{
-			while(type->isPointerType())
-				type = type->getPointerElementType();
+		std::string name = type->str();
+		cgi->rootNode->typeList.push_back(std::make_tuple(name, type, TypeKind::BuiltinType));
 
-			return getIndexForType(cgi, type);
-		}
-		else if(type->isArrayType())
-		{
-			return getIndexForType(cgi, type->toArrayType()->getElementType());
-		}
-
-		return 0;
+		return getIndexForType(cgi, type);
 	}
 
 	void initialiseTypeInfo(CodegenInstance* cgi)

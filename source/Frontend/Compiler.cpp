@@ -29,6 +29,25 @@ using namespace Ast;
 
 namespace Compiler
 {
+	static HighlightOptions prettyErrorImport(Import* imp, std::string fpath)
+	{
+		HighlightOptions ops;
+		ops.caret = imp->pin;
+		ops.caret.file = fpath;
+
+		// fprintf(stderr, "ops.caret.file = %s // %s\n", ops.caret.file.c_str(), fpath.c_str());
+
+		auto tmp = imp->pin;
+		tmp.col += std::string("import ").length();
+		tmp.len = imp->module.length();
+
+		ops.underlines.push_back(tmp);
+
+		return ops;
+	}
+
+
+
 	std::string resolveImport(Import* imp, std::string fullPath)
 	{
 		std::string curpath = getPathFromFile(fullPath);
@@ -71,9 +90,8 @@ namespace Compiler
 				std::string msg = "No module or library with the name '" + modname + "' could be found (no such builtin library either)";
 
 				va_list ap;
-				__error_gen(imp->pin.line + 1 /* idk why */, imp->pin.col, imp->pin.len,
-					getFilenameFromPath(fullPath).c_str(), msg.c_str(), "Error", true, ap);
 
+				__error_gen(prettyErrorImport(imp, fullPath), msg.c_str(), "Error", true, ap);
 				abort();
 			}
 		}
@@ -174,8 +192,7 @@ namespace Compiler
 		ParserState fakeps(0);
 
 
-		fakeps.currentPos.file = new char[currentMod.length() + 1];
-		strcpy(fakeps.currentPos.file, currentMod.c_str());
+		fakeps.currentPos.file = currentMod;
 
 
 		fakeps.currentPos.line = 1;
@@ -266,8 +283,7 @@ namespace Compiler
 					{
 						va_list ap;
 
-						__error_gen(u.second->pin.line + 1 /* idk why */, u.second->pin.col, u.second->pin.len,
-							getFilenameFromPath(u.first->name).c_str(), "", "Note", false, ap);
+						__error_gen(prettyErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "", "Note", false, ap);
 					}
 				}
 

@@ -36,7 +36,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	size = cgi->autoCastType(allocsize->getType(), size);
 
 	fir::Value* totalAlloc = cgi->builder.CreateMul(allocsize, size, "totalalloc");
-	fir::Value* allocmemptr = cgi->allocateInstanceInBlock(type->getPointerTo(), "allocmemptr");
+	fir::Value* allocmemptr = cgi->getStackAlloc(type->getPointerTo(), "allocmemptr");
 
 	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->builder.CreateStore(amem, allocmemptr);
@@ -161,7 +161,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 
 
 
-Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// if we haven't declared malloc() yet, then we need to do it here
 	// NOTE: this is the only place in the compiler where a hardcoded call is made to a non-provided function.
@@ -214,7 +214,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 
-Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Value* freearg = 0;
 	if(dynamic_cast<VarRef*>(this->expr))

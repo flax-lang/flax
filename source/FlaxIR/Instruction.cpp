@@ -79,8 +79,6 @@ namespace fir
 			case OpKind::FCompare_GreaterEqual_UNORD: 		name = "fcmp unord ge"; break;
 			case OpKind::FCompare_LessEqual_ORD: 			name = "fcmp ord le"; break;
 			case OpKind::FCompare_LessEqual_UNORD: 			name = "fcmp unord le"; break;
-			case OpKind::Logical_And: 						name = "logicalAnd"; break;
-			case OpKind::Logical_Or: 						name = "logicalOr"; break;
 			case OpKind::Bitwise_Not: 						name = "not"; break;
 			case OpKind::Bitwise_Xor: 						name = "xor"; break;
 			case OpKind::Bitwise_Arithmetic_Shr: 			name = "ashr"; break;
@@ -108,6 +106,8 @@ namespace fir
 			case OpKind::Value_GetGEP2: 					name = "gep"; break;
 			case OpKind::Branch_UnCond: 					name = "jump"; break;
 			case OpKind::Branch_Cond: 						name = "branch"; break;
+			case OpKind::Value_PointerAddition:				name = "ptradd"; break;
+			case OpKind::Value_PointerSubtraction:			name = "ptrsub"; break;
 			case OpKind::Invalid:							name = "unknown"; break;
 		}
 

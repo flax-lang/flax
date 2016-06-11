@@ -87,7 +87,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// grab the functree.
 			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
 
-
 			// is this a namespace?
 			for(auto sub : ft->subs)
 			{
@@ -189,6 +188,8 @@ static void rewriteDotOperator(MemberAccess* ma)
 // might be a mess.
 static void findDotOperator(Expr* expr)
 {
+	if(!expr) return;
+
 	if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 	{
 		// check for init var.
@@ -264,8 +265,14 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : cls->opOverloads)
+		for(auto op : cls->assignmentOverloads)
 			findDotOperator(op->func);
+
+		for(auto op : cls->subscriptOverloads)
+		{
+			findDotOperator(op->getterBody);
+			findDotOperator(op->setterBody);
+		}
 
 		for(auto fn : cls->funcs)
 			findDotOperator(fn);
@@ -290,7 +297,7 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(mem->initVal);
 		}
 
-		for(auto op : str->opOverloads)
+		for(auto op : str->assignmentOverloads)
 			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
@@ -316,6 +323,7 @@ static void findDotOperator(Expr* expr)
 	{
 		findDotOperator(oo->func);
 	}
+
 	else
 	{
 		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");

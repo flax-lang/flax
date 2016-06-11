@@ -21,6 +21,12 @@ namespace fir
 		return "[(variable) x " + this->arrayElementType->str() + "]";
 	}
 
+	std::string LLVariableArrayType::encodedStr()
+	{
+		return "[Vx" + this->arrayElementType->encodedStr() + "]";
+	}
+
+
 	bool LLVariableArrayType::isTypeEqual(Type* other)
 	{
 		LLVariableArrayType* af = dynamic_cast<LLVariableArrayType*>(other);

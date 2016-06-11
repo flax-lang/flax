@@ -5,6 +5,20 @@
 import Math
 import Foundation
 
+class CPTest
+{
+	var readwrite: Int
+	{
+		get { printf("READ\n"); return 31 }
+		set { printf("WRITE: %d\n", newValue); }
+	}
+}
+
+
+
+
+
+
 public func doOperatorTupleTest()
 {
 	let g: Int8 = 100
@@ -25,6 +39,8 @@ public func doOperatorTupleTest()
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	v += v1
 
+	v = v1 + v2 + v1
+
 	let vv = 3 * v
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
@@ -35,6 +51,14 @@ public func doOperatorTupleTest()
 
 	let crossn = m.1 x m.0
 	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
+
+
+
+
+
+	var k = alloc CPTest
+	k.readwrite = 40
+	printf("k: %d\n", k.readwrite)
 }
 
 
