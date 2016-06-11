@@ -15,11 +15,11 @@ import Development.Shake.Util
 
 main :: IO()
 
-sysroot		= "build/sysroot" :: [Char]
-prefix		= "usr/local" :: [Char]
-outputBin	= "flaxc" :: [Char]
+sysroot		= "build/sysroot"
+prefix		= "usr/local"
+outputBin	= "flaxc"
 
-finalOutput	= sysroot </> prefix </> "bin" </> outputBin :: [Char]
+finalOutput	= sysroot </> prefix </> "bin" </> outputBin
 
 
 
@@ -32,14 +32,16 @@ flaxcNormFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-buil
 flaxcJitFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
-main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
-	want ["build"]
+main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
+	want ["jit"]
 
-	phony "build" $ do
+
+	phony "jit" $ do
 		need [finalOutput]
-		putNormal "======================================="
+
 		Exit code <- cmd Shell finalOutput [flaxcJitFlags] testSource
-		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Compilation failed"])
+
+		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Test failed"])
 
 
 	phony "compile" $ do
@@ -57,7 +59,6 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 
 		Exit code <- cmd Shell finalOutput [flaxcNormFlags] testSource
 
-		putNormal "======================================="
 		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
 
 
@@ -103,7 +104,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics -fsanitize=undefined"
+		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX
