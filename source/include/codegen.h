@@ -46,6 +46,20 @@ namespace Codegen
 {
 	struct DependencyGraph;
 
+	struct _OpOverloadData
+	{
+		bool found					= 0;
+
+		bool isBinOp				= 0;
+		bool isPrefix				= 0;
+		bool needsSwap				= 0;
+		bool needsNot				= 0;
+		bool needsAssign			= 0;
+		fir::Function* opFunc		= 0;
+		fir::Function* assignFunc	= 0;
+	};
+
+
 	struct CodegenInstance
 	{
 		Ast::Root* rootNode;
@@ -139,6 +153,7 @@ namespace Codegen
 		fir::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
+		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
 		void pushNestedTypeScope(Ast::Class* nest);
 		void popNestedTypeScope();
@@ -288,10 +303,10 @@ namespace Codegen
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
 		// <isBinOp, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-		std::tuple<bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
-		getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
-		Ast::Result_t callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
+		_OpOverloadData getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
+
+		Ast::Result_t callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);

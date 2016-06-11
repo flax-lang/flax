@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
@@ -257,7 +257,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 
-Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* _rhs)
+Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(cgi->isDuplicateSymbol(this->name))
 		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);

@@ -11,13 +11,13 @@ using namespace Codegen;
 
 
 
-Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
 
 
-Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
@@ -37,7 +37,7 @@ Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* lh
 
 
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(!this->didCodegen)
 	{

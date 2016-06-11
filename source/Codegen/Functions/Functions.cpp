@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	Result_t lastval(0, 0);
 	cgi->pushScope();
@@ -37,9 +37,9 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Val
 	return lastval;
 }
 
-Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(this->didCodegen & !lhsPtr)
+	if(this->didCodegen & !extra)
 		error(this, "Tried to generate function twice (%s)", this->decl->mangledName.c_str());
 
 	this->didCodegen = true;
@@ -58,9 +58,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 
 	fir::Function* func = 0;
 
-	if(isGeneric && lhsPtr != 0)
+	if(isGeneric && extra != 0)
 	{
-		iceAssert(func = dynamic_cast<fir::Function*>(lhsPtr));
+		iceAssert(func = dynamic_cast<fir::Function*>(extra));
 	}
 	else
 	{

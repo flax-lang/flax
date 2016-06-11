@@ -145,31 +145,28 @@ public class String
 
 
 
-	operator = (other: Int8*) -> String*
+	operator = (other: Int8*)
 	{
 		self.setString(other)
-		return self
 	}
 
-	operator = (other: String) -> String*
+	operator = (other: String)
 	{
 		self.setString(other.data)
-		return self
+	}
+
+	operator += (other: String)
+	{
+		self.append(other.data)
+	}
+
+	operator += (other: Int8*)
+	{
+		self.append(other)
 	}
 }
 
 
-public operator += (this: String, other: String) -> String
-{
-	this.append(other.data)
-	return this
-}
-
-public operator += (this: String, other: Int8*) -> String
-{
-	this.append(other)
-	return this
-}
 
 public operator + (this: String, other: String) -> String
 {
