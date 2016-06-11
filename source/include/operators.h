@@ -39,6 +39,7 @@ namespace Operators
 	Ast::Result_t operatorLogicalAnd(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 	Ast::Result_t operatorLogicalOr(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 
+	Ast::Result_t operatorBitwiseNot(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 	Ast::Result_t operatorUnaryPlus(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 	Ast::Result_t operatorUnaryMinus(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 	Ast::Result_t operatorAddressOf(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);

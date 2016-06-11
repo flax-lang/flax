@@ -10,6 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
+
 Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
@@ -25,38 +26,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	iceAssert(this->expr);
-	Result_t res = this->expr->codegen(cgi);
-
-	switch(this->op)
-	{
-		case ArithmeticOp::LogicalNot:
-			return Result_t(cgi->builder.CreateLogicalNot(res.result.first), res.result.second);
-
-		case ArithmeticOp::Minus:
-			return Result_t(cgi->builder.CreateNeg(res.result.first), res.result.second);
-
-		case ArithmeticOp::Plus:
-			return res;
-
-		case ArithmeticOp::Deref:
-			if(!res.result.first->getType()->isPointerType())
-				error(this, "Cannot dereference non-pointer type");
-
-			return Result_t(cgi->builder.CreateLoad(res.result.first), res.result.first);
-
-		case ArithmeticOp::AddrOf:
-			if(!res.result.second)
-				error(this, "Cannot take the address of literal");
-
-			return Result_t(res.result.second, 0);
-
-		case ArithmeticOp::BitwiseNot:
-			return Result_t(cgi->builder.CreateBitwiseNOT(res.result.first), res.result.second);
-
-		default:
-			error(this, "(%s:%d) -> Internal check failed: invalid unary operator", __FILE__, __LINE__);
-	}
+	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->expr });
 }
 
 Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
