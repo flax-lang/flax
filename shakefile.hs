@@ -103,7 +103,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
+		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics -fsanitize=undefined"
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX

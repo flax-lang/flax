@@ -128,7 +128,23 @@ namespace fir
 		if(this->isNamedStruct())
 		{
 			auto s = typeListToString(this->structMembers);
-			return this->structName + "<{ " + s.substr(2, s.length() - 4) + " }>";
+			return this->structName + "<{" + s.substr(2, s.length() - 4) + "}>";
+		}
+		else if(this->isLiteralStruct())
+		{
+			return typeListToString(this->structMembers);
+		}
+		else
+		{
+			iceAssert(0);
+		}
+	}
+
+	std::string StructType::encodedStr()
+	{
+		if(this->isNamedStruct())
+		{
+			return this->structName;
 		}
 		else if(this->isLiteralStruct())
 		{

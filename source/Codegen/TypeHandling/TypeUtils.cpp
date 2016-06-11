@@ -218,7 +218,7 @@ namespace Codegen
 			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
 				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
-					return this->resolveStaticDotOperator(ma, false).first;
+					return this->resolveStaticDotOperator(ma, false).first.first;
 
 
 				// first, get the type of the lhs
@@ -334,7 +334,10 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
-					return std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype))->getReturnType();
+					auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+
+					iceAssert(data.found);
+					return data.opFunc->getReturnType();
 				}
 				else
 				{
@@ -369,11 +372,17 @@ namespace Codegen
 							return ltype;
 						}
 
-						auto opfn = std::get<6>(this->getOperatorOverload(bo, bo->op, ltype, rtype));
-						if(opfn) return opfn->getReturnType();
-
-						error(expr, "??? // (%s %s %s)", this->getReadableType(ltype).c_str(),
-							Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(rtype).c_str());
+						auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+						if(data.found)
+						{
+							return data.opFunc->getReturnType();
+						}
+						else
+						{
+							error(expr, "No such operator overload for operator '%s' accepting types %s and %s.",
+								Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(ltype).c_str(),
+								this->getReadableType(rtype).c_str());
+						}
 					}
 				}
 			}
@@ -484,14 +493,14 @@ namespace Codegen
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
-	fir::Value* CodegenInstance::allocateInstanceInBlock(fir::Type* type, std::string name)
+	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
 		return this->builder.CreateStackAlloc(type, name);
 	}
 
-	fir::Value* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
+	fir::Value* CodegenInstance::getImmutStackAllocValue(fir::Value* initValue, std::string name)
 	{
-		return allocateInstanceInBlock(this->getExprType(var), var->name);
+		return this->builder.CreateImmutStackAlloc(initValue->getType(), initValue, name);
 	}
 
 
@@ -630,29 +639,21 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isStructType() && from->isStructType())
+		else if(to->isStructType() && from->isStructType() && to->toStructType()->isABaseTypeOf(from->toStructType()))
 		{
-			fir::StructType* sto = to->toStructType();
-			fir::StructType* sfr = from->toStructType();
-
-			if(sto->isABaseTypeOf(sfr))
-			{
-				return 20;
-			}
+			return 20;
 		}
-
-		if(to->isPointerType() && from->isPointerType())
+		else if(to->isPointerType() && from->isNullPointer())
 		{
-			fir::StructType* sfr = from->getPointerElementType()->toStructType();
-			fir::StructType* sto = to->getPointerElementType()->toStructType();
-
-			if(sfr && sto && sto->isABaseTypeOf(sfr))
-			{
-				return 20;
-			}
+			return 5;
 		}
-
-		if(this->isAnyType(to))
+		else if(to->isPointerType() && from->isPointerType() && from->getPointerElementType()->toStructType()
+				&& to->getPointerElementType()->toStructType() && to->getPointerElementType()->toStructType()
+						->isABaseTypeOf(from->getPointerElementType()->toStructType()))
+		{
+			return 20;
+		}
+		else if(this->isAnyType(to))
 		{
 			// any cast is 25.
 			return 25;
@@ -675,7 +676,6 @@ namespace Codegen
 
 		fir::Value* retval = right;
 
-		int dist = -1;
 		if(target->isIntegerType() && right->getType()->isIntegerType()
 			&& target->toPrimitiveType()->getIntegerBitWidth() != right->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
@@ -733,14 +733,28 @@ namespace Codegen
 				// eg. u32 -> i32 >> not okay
 				//     u32 -> i64 >> okay
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() > right->getType()->toPrimitiveType()->getIntegerBitWidth())
+				// TODO: making this more like C.
+				// note(behaviour): check this
+				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
 					retval = this->builder.CreateIntSizeCast(right, target);
 			}
 			else
 			{
+				// TODO: making this more like C.
+				// note(behaviour): check this
+				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
+
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(right, target);
+
+
+
 				// we can't "normally" do it without losing data
 				// but if the rhs is a constant, maybe we can.
 
+				#if 0
 				if(fir::ConstantInt* cright = dynamic_cast<fir::ConstantInt*>(right))
 				{
 					// only if not negative, can we convert to unsigned.
@@ -760,65 +774,72 @@ namespace Codegen
 						}
 					}
 				}
+				#endif
 			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext()))
+		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+				&& right->getType()->isStructType()
+				&& right->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 		{
-			fir::Type* rtype = right->getType();
-			if(rtype->isStructType()
-				&& rtype->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
-			{
-				// get the struct gep:
-				// Layout of string:
-				// var data: Int8*
-				// var allocated: Uint64
+			// get the struct gep:
+			// Layout of string:
+			// var data: Int8*
+			// var allocated: Uint64
 
-				// cast the RHS to the LHS
-				iceAssert(rhsPtr);
-				fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
-				retval = this->builder.CreateLoad(ret);
+			// cast the RHS to the LHS
+
+			if(!rhsPtr)
+			{
+				rhsPtr = this->getImmutStackAllocValue(right);
 			}
+
+			iceAssert(rhsPtr);
+			fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+			retval = this->builder.CreateLoad(ret);
 		}
 		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
 			retval = this->builder.CreateIntToFloatCast(right, target);
 		}
-		else if(target->isStructType() && right->getType()->isStructType())
+		else if(target->isStructType() && right->getType()->isStructType() && target->toStructType()->isABaseTypeOf(right->getType()
+						->toStructType()))
 		{
 			fir::StructType* sto = target->toStructType();
 			fir::StructType* sfr = right->getType()->toStructType();
 
-			if(sto->isABaseTypeOf(sfr))
-			{
-				// create alloca, which gets us a pointer.
-				fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
+			iceAssert(sto->isABaseTypeOf(sfr));
 
-				// store the value into the pointer.
-				this->builder.CreateStore(right, alloca);
+			// create alloca, which gets us a pointer.
+			fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
 
-				// do a pointer type cast.
-				fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+			// store the value into the pointer.
+			this->builder.CreateStore(right, alloca);
 
-				// load it.
-				retval = this->builder.CreateLoad(ptr);
-			}
+			// do a pointer type cast.
+			fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
+
+			// load it.
+			retval = this->builder.CreateLoad(ptr);
 		}
-		else if(target->isPointerType() && right->getType()->isPointerType())
+		else if(target->isPointerType() && right->getType()->isNullPointer())
+		{
+			retval = fir::ConstantValue::getNullValue(target);
+		}
+		else if(target->isPointerType() && right->getType()->isPointerType() && target->getPointerElementType()->toStructType()
+				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(right->getType()->getPointerElementType()->toStructType()))
 		{
 			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
 			fir::StructType* sto = target->getPointerElementType()->toStructType();
 
-			if(sfr && sto && sto->isABaseTypeOf(sfr))
-			{
-				retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
-			}
+			iceAssert(sfr && sto && sto->isABaseTypeOf(sfr));
+			retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
 		}
 
 
-		dist = this->getAutoCastDistance(right->getType(), target);
+		int dist = this->getAutoCastDistance(right->getType(), target);
 		if(distance != 0)
 			*distance = dist;
 

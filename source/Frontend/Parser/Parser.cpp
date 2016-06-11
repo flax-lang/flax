@@ -69,66 +69,74 @@ namespace Parser
 		{
 			// check if the next one matches.
 			if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LAngle)
-				return 160;
+				return 650;
 
 			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::RAngle)
-				return 160;
+				return 650;
 
 
 			else if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LessThanEquals)
-				return 90;
+				return 100;
 
 			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::GreaterEquals)
-				return 90;
+				return 100;
 		}
 
+		// note that unary ops do not have precedence.
 		switch(ps.front().type)
 		{
 			case TType::Comma:
 				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
 
-			case TType::As:
 			case TType::Period:
-				return 400;
+				return 1000;
 
-			// array index: 120
+			case TType::As:
+				return 950;
+
 			case TType::LSquare:
-				return 310;
+				return 900;
 
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
-				return 300;
-
-			case TType::ShiftLeft:
-			case TType::ShiftRight:
-				iceAssert(0);	// note: handled above
-				break;
-				// return 160;
+				return 850;
 
 			case TType::Asterisk:
 			case TType::Divide:
 			case TType::Percent:
-			case TType::Ampersand:
-				return 160;
+				return 800;
 
 			case TType::Plus:
 			case TType::Minus:
-			case TType::Pipe:
-				return 140;
+				return 750;
+
+			// << and >>
+			// precedence = 700
 
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
+				return 650;
+
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 130;
+				return 600;
+
+			case TType::Ampersand:
+				return 550;
+
+			case TType::Caret:
+				return 500;
+
+			case TType::Pipe:
+				return 450;
 
 			case TType::LogicalAnd:
-				return 120;
+				return 400;
 
 			case TType::LogicalOr:
-				return 110;
+				return 350;
 
 			case TType::Equal:
 			case TType::PlusEq:
@@ -136,12 +144,17 @@ namespace Parser
 			case TType::MultiplyEq:
 			case TType::DivideEq:
 			case TType::ModEq:
-				return 90;
+			case TType::AmpersandEq:
+			case TType::PipeEq:
+			case TType::CaretEq:
+				return 100;
 
 
 			case TType::ShiftLeftEq:
 			case TType::ShiftRightEq:
-				iceAssert(0);	// note: handled above.
+			case TType::ShiftLeft:
+			case TType::ShiftRight:
+				iceAssert(0);	// note: handled above, should not reach here
 				break;
 
 
@@ -201,6 +214,7 @@ namespace Parser
 			case ArithmeticOp::MemberAccess:		return ".";
 			case ArithmeticOp::ScopeResolution:		return "::";
 			case ArithmeticOp::TupleSeparator:		return ",";
+			case ArithmeticOp::Subscript:			return "[]";
 			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 
 			default:								return cgi->customOperatorMap[op].first;
@@ -274,8 +288,7 @@ namespace Parser
 		std::string fullpath = Compiler::getFullPathOfFile(filename);
 		ps.tokens = Compiler::getFileTokens(fullpath);
 
-		ps.currentPos.file = new char[filename.length() + 1];
-		strcpy(ps.currentPos.file, filename.c_str());
+		ps.currentPos.file = filename;
 
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
@@ -288,7 +301,9 @@ namespace Parser
 
 		ps.skipNewline();
 
+
 		// hackjob... kinda.
+		// todo: why is this a closure???
 		auto findOperators = [&](ParserState& ps) {
 
 			int curPrec = 0;
@@ -422,6 +437,17 @@ namespace Parser
 						curPrec = 0;
 					}
 				}
+				else if(t.type == TType::Private || t.type == TType::Internal || t.type == TType::Public)
+				{
+					switch(t.type)
+					{
+						case TType::Private:	ps.curAttrib |= Attr_VisPrivate; break;
+						case TType::Internal:	ps.curAttrib |= Attr_VisInternal; break;
+						case TType::Public:		ps.curAttrib |= Attr_VisPublic; break;
+
+						default: iceAssert(0);
+					}
+				}
 				else if(curPrec > 0)
 				{
 					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
@@ -442,9 +468,7 @@ namespace Parser
 
 		ps.rootNode = new Root();
 
-		ps.currentPos.file = new char[filename.length() + 1];
-		strcpy(ps.currentPos.file, filename.c_str());
-
+		ps.currentPos.file = filename;
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -682,7 +706,10 @@ namespace Parser
 					ps.pop_front();
 					return CreateAST(BoolVal, tok, false);
 
-
+				// nor for this
+				case TType::Null:
+					ps.pop_front();
+					return CreateAST(NullVal, tok);
 
 				// attributes-as-keywords
 				// stored as attributes in the AST, but parsed as keywords by the parser.
@@ -738,17 +765,17 @@ namespace Parser
 
 		if(tk.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
 		else if(tk.type == TType::Plus)			op = ArithmeticOp::Plus;
-		else if(tk.type == TType::Minus)			op = ArithmeticOp::Minus;
-		else if(tk.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
-		else if(tk.type == TType::Pound)			op = ArithmeticOp::Deref;
-		else if(tk.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+		else if(tk.type == TType::Minus)		op = ArithmeticOp::Minus;
+		else if(tk.type == TType::Tilde)		op = ArithmeticOp::BitwiseNot;
+		else if(tk.type == TType::Pound)		op = ArithmeticOp::Deref;
+		else if(tk.type == TType::Ampersand)	op = ArithmeticOp::AddrOf;
 
 		if(op != ArithmeticOp::Invalid)
 		{
 			ps.eat();
 			Expr* un = parseUnary(ps);
 
-			return CreateASTPos(UnaryOp, tk.pin.file, tk.pin.line, tk.pin.col, tk.pin.len + un->pin.len, op, un);
+			return CreateAST(UnaryOp, tk, op, un);
 		}
 
 		return parsePrimary(ps);
@@ -1301,6 +1328,101 @@ namespace Parser
 		}
 	}
 
+
+
+
+	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
+	{
+		if(!ps.isParsingStruct)
+			parserError("Computed properties can only be declared inside classes");
+
+		// computed property, getting and setting
+
+		// eat the brace, skip whitespace
+		ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, name);
+
+		iceAssert(ps.eat().type == TType::LBrace);
+
+		cprop->type = type;
+		cprop->attribs = attribs;
+
+		bool didGetter = false;
+		bool didSetter = false;
+		for(int i = 0; i < 2; i++)
+		{
+			if(ps.front().type == TType::Get)
+			{
+				if(didGetter)
+					parserError("Only one getter is allowed per computed property");
+
+				didGetter = true;
+
+				// parse a braced block.
+				ps.eat();
+				if(ps.front().type != TType::LBrace)
+					parserError("Expected '{' after 'get'");
+
+				cprop->getter = parseBracedBlock(ps);
+			}
+			else if(ps.front().type == TType::Set)
+			{
+				if(didSetter)
+					parserError("Only one getter is allowed per computed property");
+
+				didSetter = true;
+
+				ps.eat();
+				std::string setValName = "newValue";
+
+				// see if we have parentheses
+				if(ps.front().type == TType::LParen)
+				{
+					ps.eat();
+					if(ps.front().type != TType::Identifier)
+						parserError("Expected identifier for custom setter argument name");
+
+					setValName = ps.eat().text;
+
+					if(ps.eat().type != TType::RParen)
+						parserError("Expected closing ')'");
+				}
+
+				cprop->setter = parseBracedBlock(ps);
+				cprop->setterArgName = setValName;
+			}
+			else if(ps.front().type == TType::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				// implicit read-only, 'get' not required
+				// there's no set, so make i = 1 so we error on extra bits
+				i = 1;
+
+				// insert a dummy brace
+				Token dummy;
+				dummy.type = TType::LBrace;
+				dummy.text = "{";
+
+				ps.tokens.push_front(dummy);
+				cprop->getter = parseBracedBlock(ps);
+
+
+				// lol, another hack
+				dummy.type = TType::RBrace;
+				dummy.text = "}";
+				ps.tokens.push_front(dummy);
+			}
+		}
+
+		if(ps.eat().type != TType::RBrace)
+			parserError("Expected closing '}'");
+
+		return cprop;
+	}
+
+
 	VarDecl* parseVarDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
@@ -1340,93 +1462,7 @@ namespace Parser
 			}
 			else if(ps.front().type == TType::LBrace)
 			{
-				if(!ps.isParsingStruct)
-					parserError("Computed properties can only be declared inside structs");
-
-				// computed property, getting and setting
-
-				// eat the brace, skip whitespace
-				ComputedProperty* cprop = CreateAST(ComputedProperty, tok_id, id);
-				ps.eat();
-
-				cprop->type = v->type;
-				cprop->attribs = v->attribs;
-				delete v;
-
-				bool didGetter = false;
-				bool didSetter = false;
-				for(int i = 0; i < 2; i++)
-				{
-					if(ps.front().type == TType::Get)
-					{
-						if(didGetter)
-							parserError("Only one getter is allowed per computed property");
-
-						didGetter = true;
-
-						// parse a braced block.
-						ps.eat();
-						if(ps.front().type != TType::LBrace)
-							parserError("Expected '{' after 'get'");
-
-						cprop->getter = parseBracedBlock(ps);
-					}
-					else if(ps.front().type == TType::Set)
-					{
-						if(didSetter)
-							parserError("Only one getter is allowed per computed property");
-
-						didSetter = true;
-
-						ps.eat();
-						std::string setValName = "newValue";
-
-						// see if we have parentheses
-						if(ps.front().type == TType::LParen)
-						{
-							ps.eat();
-							if(ps.front().type != TType::Identifier)
-								parserError("Expected identifier for custom setter argument name");
-
-							setValName = ps.eat().text;
-
-							if(ps.eat().type != TType::RParen)
-								parserError("Expected closing ')'");
-						}
-
-						cprop->setter = parseBracedBlock(ps);
-						cprop->setterArgName = setValName;
-					}
-					else if(ps.front().type == TType::RBrace)
-					{
-						break;
-					}
-					else
-					{
-						// implicit read-only, 'get' not required
-						// there's no set, so make i = 1 so we error on extra bits
-						i = 1;
-
-						// insert a dummy brace
-						Token dummy;
-						dummy.type = TType::LBrace;
-						dummy.text = "{";
-
-						ps.tokens.push_front(dummy);
-						cprop->getter = parseBracedBlock(ps);
-
-
-						// lol, another hack
-						dummy.type = TType::RBrace;
-						dummy.text = "}";
-						ps.tokens.push_front(dummy);
-					}
-				}
-
-				if(ps.eat().type != TType::RBrace)
-					parserError("Expected closing '}'");
-
-				return cprop;
+				return parseComputedProperty(ps, v->name, v->type.strType, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
@@ -1490,7 +1526,6 @@ namespace Parser
 
 		// leave the last rparen
 		iceAssert(ps.front().type == TType::RParen);
-		// ps.eat();
 
 		return CreateAST(Tuple, first, values);
 	}
@@ -1524,9 +1559,6 @@ namespace Parser
 		// get the type of op.
 		// prec: array index: 120
 
-		// std::deque<Expr*> args;
-		// PostfixUnaryOp::Kind k;
-
 		Token top = tok;
 		Expr* newlhs = 0;
 		if(top.type == TType::LSquare)
@@ -1540,7 +1572,8 @@ namespace Parser
 		}
 		else
 		{
-			iceAssert(false);
+			// todo: ++ and --.
+			parserError("enotsup");
 		}
 
 		return newlhs;
@@ -1630,6 +1663,7 @@ namespace Parser
 
 					case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
 					case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
+					case TType::Caret:			op = ArithmeticOp::BitwiseXor;			break;
 					case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
 					case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
 
@@ -1640,6 +1674,10 @@ namespace Parser
 					case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
 					case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
 					case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
+					case TType::AmpersandEq:	op = ArithmeticOp::BitwiseAndEquals;	break;
+					case TType::PipeEq:			op = ArithmeticOp::BitwiseOrEquals;		break;
+					case TType::CaretEq:		op = ArithmeticOp::BitwiseXorEquals;	break;
+
 					case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
 					case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 					case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
@@ -1688,8 +1726,6 @@ namespace Parser
 			}
 
 			ps.currentOpPrec = prec;
-
-
 
 
 
@@ -2081,19 +2117,20 @@ namespace Parser
 				}
 				else
 				{
+					// nothing
 				}
-			}
-			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
-			{
-				str->opOverloads.push_back(oo);
 			}
 			else if(Func* fn = dynamic_cast<Func*>(stmt))
 			{
-				parserError(fn->pin, "structs cannot contain functions");
+				parserError(fn->pin, "Structs cannot contain functions");
+			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				str->assignmentOverloads.push_back(aoo);
 			}
 			else
 			{
-				parserError("Found invalid expression type %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
 			}
 		}
 
@@ -2174,12 +2211,6 @@ namespace Parser
 			{
 				cls->funcs.push_back(func);
 			}
-			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
-			{
-				cls->opOverloads.push_back(oo);
-
-				cls->funcs.push_back(oo->func);
-			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
 				if(Class* nested = dynamic_cast<Class*>(sb))
@@ -2188,13 +2219,21 @@ namespace Parser
 				else
 					parserError("Only class definitions can be nested within other types");
 			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				cls->assignmentOverloads.push_back(aoo);
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				cls->subscriptOverloads.push_back(soo);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
 			}
 			else
 			{
-				parserError("Found invalid expression type %s", typeid(*stmt).name());
+				parserError("Found invalid expression type %s in class", typeid(*stmt).name());
 			}
 		}
 
@@ -2211,14 +2250,15 @@ namespace Parser
 		Extension* ext = CreateAST(Extension, tok_ext, "");
 		Class* cls = parseClass(ps);
 
-		ext->attribs		= cls->attribs;
-		ext->funcs			= cls->funcs;
-		ext->opOverloads	= cls->opOverloads;
-		ext->members		= cls->members;
-		ext->nameMap		= cls->nameMap;
-		ext->name			= cls->name;
-		ext->cprops			= cls->cprops;
-		ext->protocolstrs	= cls->protocolstrs;
+		ext->attribs				= cls->attribs;
+		ext->funcs					= cls->funcs;
+		ext->members				= cls->members;
+		ext->nameMap				= cls->nameMap;
+		ext->name					= cls->name;
+		ext->cprops					= cls->cprops;
+		ext->protocolstrs			= cls->protocolstrs;
+		ext->assignmentOverloads	= cls->assignmentOverloads;
+		ext->subscriptOverloads		= cls->subscriptOverloads;
 
 		delete cls;
 		return ext;
@@ -2384,10 +2424,10 @@ namespace Parser
 					iceAssert(ps.front().type == TType::Identifier);
 
 					if(ps.front().text == "Commutative")
-						ps.curAttrib |= Attr_CommutativeOp;
+						attr |= Attr_CommutativeOp;
 
 					else if(ps.front().text == "NotCommutative")
-						ps.curAttrib &= ~Attr_CommutativeOp;
+						attr &= ~Attr_CommutativeOp;
 
 					else
 						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
@@ -2402,10 +2442,10 @@ namespace Parser
 			else if(ps.front().type == TType::Identifier)
 			{
 				if(ps.front().text == "Commutative")
-					ps.curAttrib |= Attr_CommutativeOp;
+					attr |= Attr_CommutativeOp;
 
 				else if(ps.front().text == "NotCommutative")
-					ps.curAttrib &= ~Attr_CommutativeOp;
+					attr &= ~Attr_CommutativeOp;
 
 				else
 					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
@@ -2451,7 +2491,8 @@ namespace Parser
 
 	Import* parseImport(ParserState& ps)
 	{
-		iceAssert(ps.eat().type == TType::Import);
+		Token front;
+		iceAssert((front = ps.eat()).type == TType::Import);
 
 		std::string s;
 		Token tok_mod = ps.front();
@@ -2486,7 +2527,7 @@ namespace Parser
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
-		return CreateAST(Import, tok_mod, s);
+		return CreateAST(Import, front, s);
 	}
 
 	StringLiteral* parseStringLiteral(ParserState& ps)
@@ -2660,6 +2701,7 @@ namespace Parser
 		else if(op == "gt") return ArithmeticOp::CmpGT;
 		else if(op == "le") return ArithmeticOp::CmpLEq;
 		else if(op == "ge") return ArithmeticOp::CmpGEq;
+		else if(op == "ix") return ArithmeticOp::Subscript;
 		else
 		{
 			if(cgi->customOperatorMapRev.find(op) != cgi->customOperatorMapRev.end())
@@ -2707,11 +2749,13 @@ namespace Parser
 			case ArithmeticOp::CmpGT:				return "gt";
 			case ArithmeticOp::CmpLEq:				return "le";
 			case ArithmeticOp::CmpGEq:				return "ge";
+			case ArithmeticOp::Subscript:			return "ix";
 			default:								return cgi->customOperatorMap[op].first;
 		}
 	}
 
-	OpOverload* parseOpOverload(ParserState& ps)
+
+	Expr* parseOpOverload(ParserState& ps)
 	{
 		// if(!ps.isParsingStruct)
 		// 	parserError("Can only overload operators in the context of a named aggregate type");
@@ -2721,18 +2765,83 @@ namespace Parser
 
 		ArithmeticOp ao;
 
-		if(op.type == TType::Equal)				ao = ArithmeticOp::Assign;
-		else if(op.type == TType::EqualsTo)		ao = ArithmeticOp::CmpEq;
+		if(op.type == TType::EqualsTo)			ao = ArithmeticOp::CmpEq;
 		else if(op.type == TType::NotEquals)	ao = ArithmeticOp::CmpNEq;
 		else if(op.type == TType::Plus)			ao = ArithmeticOp::Add;
 		else if(op.type == TType::Minus)		ao = ArithmeticOp::Subtract;
 		else if(op.type == TType::Asterisk)		ao = ArithmeticOp::Multiply;
 		else if(op.type == TType::Divide)		ao = ArithmeticOp::Divide;
 
-		else if(op.type == TType::PlusEq)		ao = ArithmeticOp::PlusEquals;
-		else if(op.type == TType::MinusEq)		ao = ArithmeticOp::MinusEquals;
-		else if(op.type == TType::MultiplyEq)	ao = ArithmeticOp::MultiplyEquals;
-		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
+		else if(op.type == TType::LSquare && ps.front().type == TType::RSquare)
+		{
+			ps.eat();
+			ao = ArithmeticOp::Subscript;
+
+			Token fake;
+			fake.pin = ps.currentPos;
+			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.type = TType::Identifier;
+
+			ps.tokens.push_front(fake);
+			FuncDecl* fd = parseFuncDecl(ps);
+
+			if(fd->type.strType == "Void")
+				parserError("Subscript operator must return a value");
+
+			if(fd->params.size() == 0)
+				parserError("Subscript operator must take at least one argument");
+
+			std::string type = fd->type.strType;
+
+			// subscript operator is done a bit differently
+			// i suspect some others like deref ('#') operator will be too
+			// needs to be able to set read/write, so we take from swift
+			// act like a computed property, with get and set style bodies.
+
+			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
+			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op);
+
+			oo->getterDecl = cprop->getterFunc;
+			oo->getterBody = cprop->getter;
+
+			oo->setterDecl = cprop->setterFunc;
+			oo->setterBody = cprop->setter;
+			oo->setterArgName = cprop->setterArgName;
+
+			return oo;
+		}
+		else if(op.type == TType::Equal || op.type == TType::PlusEq || op.type == TType::MinusEq || op.type == TType::MultiplyEq
+			|| op.type == TType::DivideEq)
+		{
+			switch(op.type)
+			{
+				case TType::Equal:		ao = ArithmeticOp::Assign; break;
+				case TType::PlusEq:		ao = ArithmeticOp::PlusEquals; break;
+				case TType::MinusEq:	ao = ArithmeticOp::MinusEquals; break;
+				case TType::MultiplyEq:	ao = ArithmeticOp::MultiplyEquals; break;
+				case TType::DivideEq:	ao = ArithmeticOp::DivideEquals; break;
+
+				default: iceAssert(0);
+			}
+
+			AssignOpOverload* aoo = CreateAST(AssignOpOverload, op, ao);
+
+			Token fake;
+			fake.pin = ps.currentPos;
+			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.type = TType::Identifier;
+
+			ps.tokens.push_front(fake);
+
+			// parse a func declaration.
+			uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+			aoo->func = parseFunc(ps);
+
+			aoo->func->decl->attribs = attr;
+			aoo->attribs = attr;
+
+			return aoo;
+		}
 		else
 		{
 			if(ps.cgi->customOperatorMapRev.find(op.text) != ps.cgi->customOperatorMapRev.end())
@@ -2760,49 +2869,27 @@ namespace Parser
 		oo->attribs = attr;
 
 		// check number of arguments
-		// note: this is without the "self" parameter, so args == 1 --> binop
-		// args == 0 --> unary op.
-
-		// if this is not in a struct, then 2 == binop, 1 == unaryop.
+		// 2 is binop, 1 is unaryop
 
 		if(attr & Attr_CommutativeOp)
 		{
-			oo->isCommutative = true;
+			oo->kind = OpOverload::OperatorKind::CommBinary;
+			if(oo->func->decl->params.size() != 2)
+				parserError("Expected exactly 2 arguments for binary op (marked commutative, must be binary op)");
 		}
-
-		if(ps.isParsingStruct)
+		else if(oo->func->decl->params.size() == 2)
 		{
-			oo->isInType = true;
-			if(oo->func->decl->params.size() == 1)
-			{
-				oo->isBinOp = true;
-			}
-			else if(oo->func->decl->params.size() == 0)
-			{
-				oo->isBinOp = false;
-			}
-			else
-			{
-				parserError(ps, "Invalid number of parameters to operator overload; expected 0 or 1, got %zu",
-					oo->func->decl->params.size());
-			}
+			oo->kind = OpOverload::OperatorKind::NonCommBinary;
+		}
+		else if(oo->func->decl->params.size() == 1)
+		{
+			iceAssert(0 && "enotsup");
+			oo->kind = OpOverload::OperatorKind::PrefixUnary;
 		}
 		else
 		{
-			oo->isInType = false;
-			if(oo->func->decl->params.size() == 2)
-			{
-				oo->isBinOp = true;
-			}
-			else if(oo->func->decl->params.size() == 1)
-			{
-				oo->isBinOp = false;
-			}
-			else
-			{
-				parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
-					oo->func->decl->params.size());
-			}
+			parserError(ps, "Invalid number of parameters to operator overload; expected 1 or 2, got %zu",
+				oo->func->decl->params.size());
 		}
 
 		return oo;
@@ -2829,6 +2916,13 @@ namespace Parser
 
 
 
+	static HighlightOptions pinToHO(Pin p)
+	{
+		HighlightOptions ops;
+		ops.caret = p;
+
+		return ops;
+	}
 
 
 	// come on man
@@ -2838,8 +2932,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
-			msg, "Error", true, ap);
+		__error_gen(pinToHO(staticState->curtok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2852,8 +2945,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(staticState->curtok.pin.line, staticState->curtok.pin.col, staticState->curtok.pin.len, staticState->curtok.pin.file,
-			msg, "Warning", false, ap);
+		__error_gen(pinToHO(staticState->curtok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2865,7 +2957,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(ps.curtok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2877,7 +2969,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(ps.curtok.pin.line, ps.curtok.pin.col, ps.curtok.pin.len, ps.curtok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(ps.curtok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2892,7 +2984,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2904,7 +2996,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2918,7 +3010,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2930,7 +3022,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(pin.line, pin.col, pin.len, pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}
@@ -2945,7 +3037,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Error", true, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
 
 		va_end(ap);
 		abort();
@@ -2957,7 +3049,7 @@ namespace Parser
 		va_list ap;
 		va_start(ap, msg);
 
-		__error_gen(tok.pin.line, tok.pin.col, tok.pin.len, tok.pin.file, msg, "Warning", false, ap);
+		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
 
 		va_end(ap);
 	}

@@ -28,6 +28,11 @@ namespace fir
 		return this->psize;
 	}
 
+	Type* ExecutionTarget::getPointerSizedIntegerType()
+	{
+		return fir::PrimitiveType::getUintN(this->psize);
+	}
+
 	static size_t getLargestMember(ExecutionTarget* et, StructType* t, size_t largest)
 	{
 		for(auto m : t->getElements())
