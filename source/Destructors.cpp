@@ -27,6 +27,10 @@ namespace Ast
 
 	}
 
+	NullVal::~NullVal()
+	{
+	}
+
 	VarRef::~VarRef()
 	{
 
@@ -116,6 +120,14 @@ namespace Ast
 	}
 
 	OpOverload::~OpOverload()
+	{
+	}
+
+	SubscriptOpOverload::~SubscriptOpOverload()
+	{
+	}
+
+	AssignOpOverload::~AssignOpOverload()
 	{
 	}
 

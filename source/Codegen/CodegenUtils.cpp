@@ -422,6 +422,41 @@ namespace Codegen
 		this->addFunctionToScope(fp, this->rootNode->publicFuncTree);
 	}
 
+
+
+	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* decl, FunctionTree* target)
+	{
+		fir::Function* ret = func;
+		if(func && func->linkageType == fir::LinkageType::External)
+		{
+			iceAssert(func);
+
+			// add to the func table
+			auto lf = cgi->module->getFunction(func->getName());
+			if(!lf)
+			{
+				cgi->module->declareFunction(func->getName(), func->getType());
+				lf = cgi->module->getFunction(func->getName());
+			}
+
+			fir::Function* f = dynamic_cast<fir::Function*>(lf);
+
+			f->deleteBody();
+			cgi->addFunctionToScope(FuncPair_t(f, decl));
+
+			ret = f;
+		}
+		else if(!func)
+		{
+
+			// note: generic functions are not instantiated
+			if(decl->genericTypes.size() == 0)
+				error(decl, "!func (%s)", decl->mangledName.c_str());
+		}
+
+		return ret;
+	}
+
 	void CodegenInstance::cloneFunctionTree(FunctionTree* ft, FunctionTree* clone, bool deep)
 	{
 		clone->nsName = ft->nsName;
@@ -442,31 +477,7 @@ namespace Codegen
 
 			if(deep)
 			{
-				fir::Function* func = pair.first;
-				if(func && func->linkageType == fir::LinkageType::External)
-				{
-					iceAssert(func);
-
-					// add to the func table
-					auto lf = this->module->getFunction(func->getName());
-					if(!lf)
-					{
-						this->module->declareFunction(func->getName(), func->getType());
-						lf = this->module->getFunction(func->getName());
-					}
-
-					fir::Function* f = dynamic_cast<fir::Function*>(lf);
-
-					f->deleteBody();
-					this->addFunctionToScope(FuncPair_t(f, pair.second));
-					pair.first = f;
-				}
-				else if(!func)
-				{
-					// note: generic functions are not instantiated
-					if(pair.second->genericTypes.size() == 0)
-						error(pair.second, "!func (%s)", pair.second->mangledName.c_str());
-				}
+				pair.first = cloneFunctionIntoCurrentTree(this, pair.first, pair.second, clone);
 			}
 
 			if(!existing)
@@ -535,7 +546,7 @@ namespace Codegen
 			bool found = false;
 			for(auto ooc : clone->operators)
 			{
-				if(oo == ooc || oo.first->func == ooc.first->func)
+				if(oo == ooc)
 				{
 					if(!deep)
 					{
@@ -545,10 +556,15 @@ namespace Codegen
 				}
 			}
 
+			if(deep)
+			{
+				// todo: do we need this?
+				oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, clone);
+			}
+
 			if(!found)
 			{
-				OpOverload* ooo = oo.first;
-				clone->operators.push_back(std::make_pair(ooo, (fir::Function*) 0));
+				clone->operators.push_back(oo);
 			}
 		}
 
@@ -1280,7 +1296,7 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleType(fir::Type* type)
 	{
-		std::string r = this->getReadableType(type);
+		std::string r = type->encodedStr();
 		if(type->isLLVariableArrayType())
 		{
 			// hacky -- special case for this.
@@ -1894,24 +1910,40 @@ namespace Codegen
 
 
 
+	bool CodegenInstance::isArithmeticOpAssignment(Ast::ArithmeticOp op)
+	{
+		// note: why is this a switch?
+		// answer: because multiple cursor editing wins.
+		switch(op)
+		{
+			case ArithmeticOp::Assign:				return true;
+			case ArithmeticOp::PlusEquals:			return true;
+			case ArithmeticOp::MinusEquals:			return true;
+			case ArithmeticOp::MultiplyEquals:		return true;
+			case ArithmeticOp::DivideEquals:		return true;
+			case ArithmeticOp::ModEquals:			return true;
+			case ArithmeticOp::ShiftLeftEquals:		return true;
+			case ArithmeticOp::ShiftRightEquals:	return true;
+			case ArithmeticOp::BitwiseAndEquals:	return true;
+			case ArithmeticOp::BitwiseOrEquals:		return true;
+			case ArithmeticOp::BitwiseXorEquals:	return true;
+
+			default: return false;
+		}
+	}
 
 
-
-	// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-	std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
-	CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
+	_OpOverloadData CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
 	{
 		struct Attribs
 		{
 			ArithmeticOp op;
-			bool isInType = 0;
 
 			bool isBinOp = 0;
 			bool isPrefixUnary = 0;	// assumes isBinOp == false
 			bool isCommutative = 0; // assumes isBinOp == true
 
 			bool needsBooleanNOT = 0;
-			bool needsEqual = 0;
 			bool needsSwap = 0;
 		};
 
@@ -1919,152 +1951,53 @@ namespace Codegen
 		std::deque<std::pair<Attribs, fir::Function*>> candidates;
 
 
-		// get assignfuncs.
-		std::deque<std::pair<bool, fir::Function*>> assignFuncs;
 
-		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
-			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
-		{
-			// we need one. but only on LHS.
-			if(TypePair_t* tp = this->getType(lhs))
-			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
-				{
-					size_t i = 0;
-					for(auto oo : sb->lOpOverloads)
-					{
-						if(oo.first == ArithmeticOp::Assign)
-							assignFuncs.push_back({ sb->opOverloads[i]->isInType, oo.second });
-
-						i++;
-					}
-				}
-			}
-
-			// todo: find assign operators outside structs
-		}
-
-
-
-		auto findCandidatesPass1 = [this, assignFuncs](std::deque<std::pair<Attribs, fir::Function*>>* cands,
-			std::deque<std::pair<OpOverload*, fir::Function*>> list, ArithmeticOp op)
+		auto findCandidatesPass1 = [](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
+			std::deque<OpOverload*> list, ArithmeticOp op)
 		{
 			for(auto oo : list)
 			{
-				fir::Function* fop = oo.second;
-				OpOverload* opov = oo.first;
-
 				Attribs attr;
 
-				attr.op				= opov->op;
-				attr.isInType		= opov->isInType;
-				attr.isBinOp		= opov->isBinOp;
-				attr.isCommutative	= opov->isCommutative;
-				attr.isPrefixUnary	= opov->isPrefixUnary;
+				attr.op				= oo->op;
+				attr.isBinOp		= oo->kind == OpOverload::OperatorKind::CommBinary || oo->kind == OpOverload::OperatorKind::NonCommBinary;
+				attr.isCommutative	= oo->kind == OpOverload::OperatorKind::CommBinary;
+				attr.isPrefixUnary	= oo->kind == OpOverload::OperatorKind::PrefixUnary;
 
 				attr.needsSwap		= false;
 
-				if(opov->op == op)
+				fir::Function* lfunc = oo->lfunc;
+				if(!lfunc && !oo->didCodegen)
 				{
-					attr.needsEqual = false;
+					// kinda a hack
+					// if we have operators that use other operators, they all should be codegened first.
+					// unless this leads to a stupid loop...
+					// todo: edge case detection/fixing?
+
+					oo->codegen(cgi);
+					lfunc = oo->lfunc;
+				}
+
+				if(!lfunc) continue;
+
+
+				if(oo->op == op)
+				{
 					attr.needsBooleanNOT = false;
 
-					(*cands).push_back({ attr, fop });
-				}
-				else if((op == ArithmeticOp::CmpEq && opov->op == ArithmeticOp::CmpNEq)
-						|| (opov->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
-				{
-					attr.needsEqual = false;
-					attr.needsBooleanNOT = true;
-
-					// op = opov->op;
-					(*cands).push_back({ attr, fop });
-				}
-				else if(opov->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, fop });
-					}
-				}
-				else if(opov->op == ArithmeticOp::Subtract && op == ArithmeticOp::MinusEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, fop });
-					}
-				}
-				else if(opov->op == ArithmeticOp::Multiply && op == ArithmeticOp::MultiplyEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, fop });
-					}
-				}
-				else if(opov->op == ArithmeticOp::Divide && op == ArithmeticOp::DivideEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, fop });
-					}
+					(*cands).push_back({ attr, lfunc });
 				}
 			}
 		};
 
 
 
-		auto checkType = [this, findCandidatesPass1, op](fir::Type* type, std::deque<std::pair<Attribs, fir::Function*>>* candidates)
-		{
-			// construct the list
-			if(TypePair_t* tp = this->getType(type))
-			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
-				{
-					std::deque<std::pair<OpOverload*, fir::Function*>> list;
-					for(size_t i = 0; i < sb->opOverloads.size(); i++)
-					{
-						iceAssert(sb->lOpOverloads[i].first == sb->opOverloads[i]->op);
-						list.push_back({ sb->opOverloads[i], sb->lOpOverloads[i].second });
-					}
 
-					findCandidatesPass1(candidates, list, op);
-				}
-			}
-		};
-
-
-
-		// check member operators of the LHS and RHS types, if it exists.
-		{
-			checkType(lhs, &candidates);
-			checkType(rhs, &candidates);
-		}
-
-
-
-
-		// check non-member operator overloads
 		// get the functree, starting from here, up.
 		{
 			auto curDepth = this->namespaceStack;
 
-			std::deque<std::pair<OpOverload*, fir::Function*>> list;
+			std::deque<OpOverload*> list;
 			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
 			{
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
@@ -2072,57 +2005,44 @@ namespace Codegen
 
 				for(auto f : ft->operators)
 				{
-					Attribs attr;
-
-					attr.op				= f.first->op;
-					attr.isInType		= f.first->isInType;
-					attr.isBinOp		= f.first->isBinOp;
-					attr.isCommutative	= f.first->isCommutative;
-					attr.isPrefixUnary	= f.first->isPrefixUnary;
-
-					attr.needsSwap		= false;
-
-					fir::Function* fn = 0;
-
-					// todo: add to candidate list.
-					if(!f.first->func->didCodegen)
-					{
-						// hijack the namespaceStack
-						auto oldns = this->namespaceStack;
-						auto oldfs = this->getCurrentFunctionScope();
-
-						this->namespaceStack = curDepth;
-						this->clearCurrentFunctionScope();
-
-						// does some checks
-						f.first->codegen(this);
-
-						// generate the actual function
-						f.first->func->decl->name = Parser::operatorToMangledString(this, f.first->op);
-
-						f.first->func->decl->attribs |= Attr_VisPublic;
-						f.first->func->decl->codegen(this);
-
-						fn = dynamic_cast<fir::Function*>(f.first->func->codegen(this).result.first);
-
-						this->namespaceStack = oldns;
-						this->setCurrentFunctionScope(oldfs);
-					}
-					else
-					{
-						fn = this->module->getFunction(f.first->func->decl->mangledName);
-					}
-
-					iceAssert(fn);
-					list.push_back(std::make_pair(f.first, fn));
+					list.push_back(f);
 				}
 
 				if(curDepth.size() > 0)
 					curDepth.pop_back();
 			}
 
-			findCandidatesPass1(&candidates, list, op);
+			// if we're assigning things, we need to get the assignfuncs as well.
+			if(this->isArithmeticOpAssignment(op))
+			{
+				TypePair_t* tp = this->getType(lhs);
+				iceAssert(tp);
+
+				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
+				iceAssert(sb);
+
+				for(auto aso : sb->assignmentOverloads)
+				{
+					if(aso->op == op)
+					{
+						Attribs atr;
+
+						atr.op				= op;
+						atr.isBinOp			= true;
+						atr.isPrefixUnary	= false;
+						atr.isCommutative	= false;
+						atr.needsSwap		= false;
+
+						iceAssert(aso->lfunc);
+						candidates.push_back({ atr, aso->lfunc });
+					}
+				}
+			}
+
+
+			findCandidatesPass1(this, &candidates, list, op);
 		}
+
 
 		// pass 1.5: prune duplicates
 		auto set = candidates;
@@ -2162,50 +2082,33 @@ namespace Codegen
 		set = candidates;
 		candidates.clear();
 
+		bool hasSelf = (this->isArithmeticOpAssignment(op) || op == ArithmeticOp::Subscript);
+		if(hasSelf) lhs = lhs->getPointerTo();
+
 		for(auto cand : set)
 		{
-			bool intype = cand.first.isInType;
 			fir::Type* targL = cand.second->getArguments()[0]->getType();
 			fir::Type* targR = cand.second->getArguments()[1]->getType();
+
 
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
 			{
-				if(intype)
+				if(targL == lhs && targR == rhs)
 				{
-					// if operator+(int, foo) is defined, check both int + foo and foo + int.
-					if(targL == lhs->getPointerTo() && targR == rhs)
-					{
-						candidates.push_back(cand);
-					}
-					else if(cand.first.isCommutative && targR == lhs && targL == rhs->getPointerTo())
-					{
-						cand.first.needsSwap = true;
-						candidates.push_back(cand);
-					}
+					candidates.push_back(cand);
 				}
-				else
+				else if(cand.first.isCommutative && targR == lhs && targL == rhs)
 				{
-					if(targL == lhs && targR == rhs)
-					{
-						candidates.push_back(cand);
-					}
-					else if(cand.first.isCommutative && targR == lhs && targL == rhs)
-					{
-						cand.first.needsSwap = true;
-						candidates.push_back(cand);
-					}
+					cand.first.needsSwap = true;
+					candidates.push_back(cand);
 				}
 			}
 			else
 			{
-				if((intype && targL == lhs->getPointerTo()) || (!intype && targL == lhs))
-				{
-					candidates.push_back(cand);
-				}
+				iceAssert(0 && "unary op overloads not implemented");
 			}
 		}
-
 
 
 		// eliminate more.
@@ -2218,36 +2121,7 @@ namespace Codegen
 		for(std::pair<Attribs, fir::Function*> c : set)
 		{
 			// see if the appropriate assign exists.
-			if(c.first.needsEqual)
-			{
-				// check the return type.
-				fir::Type* ret = c.second->getReturnType();
-
-				// check the assign funcs that take such a type as RHS
-				for(auto pair : assignFuncs)
-				{
-					fir::Function* af = pair.second;
-					bool intype = pair.first;
-
-					iceAssert(af->getArgumentCount() == 2);
-
-					fir::Type* afltype = af->getArguments()[0]->getType();
-					fir::Type* afrtype = af->getArguments()[1]->getType();
-
-					fir::Type* apprtype = lhs;
-					if(intype) apprtype = apprtype->getPointerTo();
-
-					if(afltype == apprtype && afrtype == ret && af->getReturnType() == lhs->getPointerTo())
-					{
-						finals.push_back({ { c.first, c.second }, af });
-						break;
-					}
-				}
-			}
-			else
-			{
-				finals.push_back({ { c.first, c.second }, 0 });
-			}
+			finals.push_back({ { c.first, c.second }, 0 });
 		}
 
 		// final step: disambiguate using the more specific op.
@@ -2282,28 +2156,24 @@ namespace Codegen
 			error(us, "More than one possible operator overload candidate in this expression");
 
 		else if(finals.size() == 0)
-			return { false, false, false, false, false, false, nullptr, nullptr };
+		{
+			_OpOverloadData ret;
+			ret.found = false;
+
+			return ret;
+		}
 
 		auto cand = finals.front();
 
-		fir::Function* func = this->module->getFunction(cand.first.second->getName());
-		iceAssert(func);
+		_OpOverloadData ret;
+		ret.found = true;
 
+		ret.isBinOp = cand.first.first.isBinOp;
+		ret.isPrefix = cand.first.first.isPrefixUnary;
+		ret.needsSwap = cand.first.first.needsSwap;
+		ret.needsNot = cand.first.first.needsBooleanNOT;
 
-
-		std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> ret;
-		ret = { cand.first.first.isBinOp,
-				cand.first.first.isInType,
-				cand.first.first.isPrefixUnary,
-				cand.first.first.needsSwap,
-				cand.first.first.needsBooleanNOT,
-				cand.first.first.needsEqual,
-
-				cand.first.second,
-				cand.second };
-
-
-
+		ret.opFunc = cand.first.second;
 
 		return ret;
 	}
@@ -2312,8 +2182,8 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data,
-		fir::Value* lhs, fir::Value* lref, fir::Value* rhs, fir::Value* rref, ArithmeticOp op)
+	Result_t CodegenInstance::callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lref, fir::Value* rhs,
+		fir::Value* rref, ArithmeticOp op)
 	{
 		// check if we have a ref.
 		if(lref == 0)
@@ -2338,16 +2208,15 @@ namespace Codegen
 			rref = ptr;
 		}
 
-		bool isBinOp	= std::get<0>(data);
-		bool isInType	= std::get<1>(data);
-		// bool isPrefix	= std::get<2>(data);
-		bool needsSwap	= std::get<3>(data);
-		bool needsNot	= std::get<4>(data);
-		bool needsAss	= std::get<5>(data);
+		bool isBinOp	= data.isBinOp;
+		bool needsSwap	= data.needsSwap;
+		bool needsNot	= data.needsNot;
 
 
-		fir::Function* opFunc = std::get<6>(data) ? this->module->getFunction(std::get<6>(data)->getName()) : 0;
-		fir::Function* asFunc = std::get<7>(data) ? this->module->getFunction(std::get<7>(data)->getName()) : 0;
+		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
+
+		if(!opFunc)
+			error("wtf??");
 
 		fir::Value* ret = 0;
 
@@ -2356,7 +2225,7 @@ namespace Codegen
 			fir::Value* larg = 0;
 			fir::Value* rarg = 0;
 
-			if(isInType || op == ArithmeticOp::Assign)
+			if(this->isArithmeticOpAssignment(op))
 			{
 				if(needsSwap)
 				{
@@ -2371,8 +2240,16 @@ namespace Codegen
 			}
 			else
 			{
-				larg = lhs;
-				rarg = rhs;
+				if(needsSwap)
+				{
+					larg = rhs;
+					rarg = lhs;
+				}
+				else
+				{
+					larg = lhs;
+					rarg = rhs;
+				}
 			}
 
 
@@ -2380,11 +2257,7 @@ namespace Codegen
 		}
 		else
 		{
-			if(isInType)
-				ret = this->builder.CreateCall1(opFunc, lref);
-
-			else
-				ret = this->builder.CreateCall1(opFunc, lhs);
+			iceAssert(0 && "not sup unary");
 		}
 
 
@@ -2392,16 +2265,6 @@ namespace Codegen
 		if(needsNot)
 		{
 			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
-		}
-		else if(needsAss)
-		{
-			iceAssert(!needsSwap);
-			fir::Function* ass = this->module->getFunction(asFunc->getName());
-
-			iceAssert(lref);
-			iceAssert(ass);
-
-			ret = this->builder.CreateCall2(ass, lref, ret);
 		}
 
 		return Result_t(ret, 0);
@@ -2614,11 +2477,11 @@ namespace Codegen
 
 		if(!valuePtr)
 		{
-			valuePtr = this->allocateInstanceInBlock(value->getType());
+			valuePtr = this->getStackAlloc(value->getType());
 			this->builder.CreateStore(value, valuePtr);
 		}
 
-		fir::Value* anyptr = this->allocateInstanceInBlock(anyt->first);
+		fir::Value* anyptr = this->getStackAlloc(anyt->first);
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
 
@@ -2631,7 +2494,7 @@ namespace Codegen
 		iceAssert(length->getType()->isIntegerType());
 
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
-		fir::Value* arr = this->allocateInstanceInBlock(arrType);
+		fir::Value* arr = this->getStackAlloc(arrType);
 
 		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
 		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
@@ -2745,7 +2608,7 @@ namespace Codegen
 
 		// turn the int back into a pointer, so we can store it back into the var.
 		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
-			lhsPtr : this->allocateInstanceInBlock(lhs->getType());
+			lhsPtr : this->getStackAlloc(lhs->getType());
 
 
 		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());

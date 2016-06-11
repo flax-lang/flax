@@ -28,7 +28,8 @@ namespace GenError
 	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Value* a, fir::Value* b) __attribute__((noreturn));
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
-	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e, int funcArgument = -1) __attribute__((noreturn));
+
+	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<fir::Value*> args) __attribute__((noreturn));
@@ -36,9 +37,6 @@ namespace GenError
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
-
-	void printContext(std::string file, uint64_t line, uint64_t col, uint64_t len);
-	void printContext(Ast::Expr* e);
 }
 
 
@@ -47,6 +45,18 @@ namespace GenError
 namespace Codegen
 {
 	struct DependencyGraph;
+
+	struct _OpOverloadData
+	{
+		bool found					= 0;
+
+		bool isBinOp				= 0;
+		bool isPrefix				= 0;
+		bool needsSwap				= 0;
+		bool needsNot				= 0;
+		fir::Function* opFunc		= 0;
+	};
+
 
 	struct CodegenInstance
 	{
@@ -141,6 +151,7 @@ namespace Codegen
 		fir::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
 
+		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
 		void pushNestedTypeScope(Ast::Class* nest);
 		void popNestedTypeScope();
@@ -233,15 +244,14 @@ namespace Codegen
 		std::string getReadableType(fir::Type* type);
 		std::string getReadableType(fir::Value* val);
 
-
-		fir::Value* allocateInstanceInBlock(Ast::VarDecl* var);
-		fir::Value* allocateInstanceInBlock(fir::Type* type, std::string name = "");
+		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
+		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 
 		fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
 
-		std::pair<fir::Type*, Ast::Result_t> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
+		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Func* getFunctionFromMemberFuncCall(Ast::Class* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
@@ -252,9 +262,6 @@ namespace Codegen
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
 
-
-
-		Ast::Result_t doBinOpAssign(Ast::Expr* user, Ast::Expr* l, Ast::Expr* r, Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* ref, fir::Value* rhs, fir::Value* rhsPtr);
 
 		Ast::Result_t doTupleAccess(fir::Value* selfPtr, Ast::Number* num, bool createPtr);
 
@@ -290,11 +297,11 @@ namespace Codegen
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
-		// <isBinOp, isInType, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-		std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
-		getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
+		// <isBinOp, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
 
-		Ast::Result_t callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
+		_OpOverloadData getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
+
+		Ast::Result_t callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);
@@ -302,6 +309,7 @@ namespace Codegen
 
 		~CodegenInstance();
 	};
+
 
 	std::string unwrapPointerType(std::string type, int* indirections);
 

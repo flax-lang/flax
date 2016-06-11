@@ -14,7 +14,14 @@ namespace fir
 
 	ConstantValue* ConstantValue::getNullValue(Type* type)
 	{
-		return new ConstantValue(type);
+		auto ret = new ConstantValue(type);
+		return ret;
+	}
+
+	ConstantValue* ConstantValue::getNull()
+	{
+		auto ret = new ConstantValue(fir::PrimitiveType::getVoid()->getPointerTo());
+		return ret;
 	}
 
 
@@ -147,7 +154,7 @@ namespace fir
 
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = val;
+		this->value = (double) val;
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)

@@ -180,6 +180,7 @@ namespace SemAnalysis
 
 
 
+	#if 0
 
 	static void _createDep(DependencyGraph* graph, Dep* d, Expr* src, Expr* ex, std::string dest)
 	{
@@ -230,11 +231,12 @@ namespace SemAnalysis
 		_createDep(graph, d, src, 0, name);
 		d->type = DepType::Type;
 	}
-
+	#endif
 
 
 	static Dep* createDependencies(DependencyGraph* graph, Expr* from, Expr* expr)
 	{
+		#if 0
 		createExprDep(graph, new Dep(), from, expr);
 
 		Dep* dep = new Dep();
@@ -411,6 +413,9 @@ namespace SemAnalysis
 		}
 
 		return dep;
+		#endif
+
+		iceAssert(0);
 	}
 }
 

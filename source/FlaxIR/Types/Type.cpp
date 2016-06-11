@@ -550,6 +550,11 @@ namespace fir
 			&& this->toFunctionType() != 0;
 	}
 
+	bool Type::isPrimitiveType()
+	{
+		return this->toPrimitiveType() != 0;
+	}
+
 	bool Type::isPointerType()
 	{
 		return this->toPointerType() != 0;
@@ -563,6 +568,11 @@ namespace fir
 	bool Type::isLLVariableArrayType()
 	{
 		return this->typeKind == FTypeKind::LowLevelVariableArray;
+	}
+
+	bool Type::isNullPointer()
+	{
+		return this == PrimitiveType::getVoid()->getPointerTo();
 	}
 }
 

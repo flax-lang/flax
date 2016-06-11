@@ -12,10 +12,9 @@ using namespace Codegen;
 static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
-// static Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
 
 
-Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// handled elsewhere.
 	return Result_t(0, 0);
@@ -38,12 +37,12 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 }
 
 
-Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* _rhs)
+Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
 		if(this->matype == MAType::Invalid) error(this, "??");
-		return cgi->resolveStaticDotOperator(this, true).second;
+		return cgi->resolveStaticDotOperator(this, true).first.second;
 	}
 
 
@@ -57,16 +56,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	else
 	{
 		error("wtf");
-		// reset this?
-		// this->cachedCodegenResult = Result_t(0, 0);
 	}
 
 	ValPtr_t p = res.result;
 
 	fir::Value* self = p.first;
 	fir::Value* selfPtr = p.second;
-
-	// info(this, "self type = %s, self ptr type = %s", self->getType()->str().c_str(), selfPtr ? selfPtr->getType()->str().c_str() : "");
 
 
 	bool isPtr = false;
@@ -124,13 +119,13 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 		// it's required for CreateStructGEP, so we'll have to make a temp variable
 		// then store the result of the LHS into it.
 
-		if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
+		// if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
+		// {
+		// 	selfPtr = lhsPtr;
+		// }
+		// else
 		{
-			selfPtr = lhsPtr;
-		}
-		else
-		{
-			selfPtr = cgi->allocateInstanceInBlock(type);
+			selfPtr = cgi->getStackAlloc(type);
 			cgi->builder.CreateStore(self, selfPtr);
 		}
 	}
@@ -334,7 +329,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 				}
 
 				iceAssert(cprop);
-				return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, cls);
+				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr, cls);
 			}
 		}
 		else
@@ -391,7 +386,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		lcallee = cgi->module->getFunction(lcallee->getName());
 
 		fir::Value* val = cgi->builder.CreateCall(lcallee, args);
-		fir::Value* fake = cgi->allocateInstanceInBlock(_rhs->getType());
+		fir::Value* fake = cgi->getStackAlloc(_rhs->getType());
 
 		cgi->builder.CreateStore(val, fake);
 
@@ -485,7 +480,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 
-std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
+std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
@@ -504,6 +499,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 	std::deque<std::string> list;
 
+	fir::Type* curFType = 0;
 	Class* curType = 0;
 
 	MemberAccess* cur = ma;
@@ -569,6 +565,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<Class*>(tp->second.first);
+				curFType = tp->first;
 				iceAssert(curType);
 
 				found = true;
@@ -583,6 +580,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				if(sb.first->name == front)
 				{
 					curType = sb.first;
+					curFType = sb.second;
 					found = true;
 					break;
 				}
@@ -656,7 +654,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 				for(Expr* e : fc->params)
 					args.push_back(e->codegen(this).result.first);
 
-				return { ltype, this->callTypeInitialiser(tp, ma, args) };
+				return { { ltype, this->callTypeInitialiser(tp, ma, args) }, curFType };
 			}
 			else
 			{
@@ -673,11 +671,11 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 			fc->cachedResolveTarget = res;
 			Result_t res = fc->codegen(this);
 
-			return { ltype, res };
+			return { { ltype, res }, curFType };
 		}
 		else
 		{
-			return { ltype, Result_t(0, 0) };
+			return { { ltype, Result_t(0, 0) }, curFType };
 		}
 	}
 	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
@@ -701,8 +699,11 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 
 			return
 			{
-				ptr->getType()->getPointerElementType(),
-				actual ? Result_t(this->builder.CreateLoad(ptr), ptr) : Result_t(0, 0)
+				{
+					ptr->getType()->getPointerElementType(),
+					actual ? Result_t(this->builder.CreateLoad(ptr), ptr) : Result_t(0, 0)
+				},
+				curFType
 			};
 		}
 		else
@@ -716,7 +717,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 					error(vr, "Invalid class '%s'", vr->name.c_str());
 
 				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
-				return { res.result.first->getType(), res };
+				return { { res.result.first->getType(), res }, curFType };
 			}
 			else if(Class* cls = dynamic_cast<Class*>(curType))
 			{
@@ -725,7 +726,7 @@ std::pair<fir::Type*, Result_t> CodegenInstance::resolveStaticDotOperator(Member
 					if(v->isStatic && v->name == vr->name)
 					{
 						fir::Type* ltype = this->getExprType(v);
-						return { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) };
+						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) }, curFType };
 					}
 				}
 			}

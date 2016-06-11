@@ -38,9 +38,9 @@ namespace Parser
 	struct Pin
 	{
 		Pin() { }
-		Pin(char* f, uint64_t l, uint64_t c, uint64_t ln) : file(f), line(l), col(c), len(ln) { }
+		Pin(std::string f, uint64_t l, uint64_t c, uint64_t ln) : file(f), line(l), col(c), len(ln) { }
 
-		char* file = 0;
+		std::string file;
 		uint64_t line = 1;
 		uint64_t col = 1;
 		uint64_t len = 1;
@@ -97,7 +97,7 @@ namespace Codegen
 
 		// things within.
 		std::deque<FuncPair_t> funcs;
-		std::deque<std::pair<Ast::OpOverload*, fir::Function*>> operators;
+		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
 		std::map<std::string, SymbolPair_t> vars;
