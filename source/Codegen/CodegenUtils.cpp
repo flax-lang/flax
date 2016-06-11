@@ -1945,7 +1945,6 @@ namespace Codegen
 			bool isCommutative = 0; // assumes isBinOp == true
 
 			bool needsBooleanNOT = 0;
-			bool needsEqual = 0;
 			bool needsSwap = 0;
 		};
 
@@ -1953,31 +1952,8 @@ namespace Codegen
 		std::deque<std::pair<Attribs, fir::Function*>> candidates;
 
 
-		// get assignfuncs.
-		std::deque<fir::Function*> assignFuncs;
 
-		#if 0
-		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
-			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
-		{
-			// we need one. but only on LHS.
-			if(TypePair_t* tp = this->getType(lhs))
-			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
-				{
-					for(auto ao : sb->assignmentOverloads)
-					{
-						if(ao->op == ArithmeticOp::Assign)
-							assignFuncs.push_back(ao->lfunc);
-					}
-				}
-			}
-		}
-		#endif
-
-
-
-		auto findCandidatesPass1 = [assignFuncs](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
+		auto findCandidatesPass1 = [](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
 			std::deque<OpOverload*> list, ArithmeticOp op)
 		{
 			for(auto oo : list)
@@ -2005,79 +1981,13 @@ namespace Codegen
 
 				if(!lfunc) continue;
 
-				// todo: do we need this crap?
-				#if 0
-				if(lfunc->getParentModule() != cgi->module)
-				{
-					fprintf(stderr, "replacing func %s\n", lfunc->getName().c_str());
-					lfunc = cgi->module->getFunction(lfunc->getName());
-					iceAssert(lfunc);
-				}
-				#endif
 
 				if(oo->op == op)
 				{
-					attr.needsEqual = false;
 					attr.needsBooleanNOT = false;
 
 					(*cands).push_back({ attr, lfunc });
 				}
-
-				#if 0
-				else if((op == ArithmeticOp::CmpEq && oo->op == ArithmeticOp::CmpNEq)
-						|| (oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
-				{
-					attr.needsEqual = false;
-					attr.needsBooleanNOT = true;
-
-					// op = opov->op;
-					(*cands).push_back({ attr, lfunc });
-				}
-				else if(oo->op == ArithmeticOp::Add && op == ArithmeticOp::PlusEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, lfunc });
-					}
-				}
-				else if(oo->op == ArithmeticOp::Subtract && op == ArithmeticOp::MinusEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, lfunc });
-					}
-				}
-				else if(oo->op == ArithmeticOp::Multiply && op == ArithmeticOp::MultiplyEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, lfunc });
-					}
-				}
-				else if(oo->op == ArithmeticOp::Divide && op == ArithmeticOp::DivideEquals)
-				{
-					if(assignFuncs.size() > 0)
-					{
-						attr.needsEqual = true;
-						attr.needsBooleanNOT = false;
-
-						// op = opov->op;
-						(*cands).push_back({ attr, lfunc });
-					}
-				}
-				#endif
 			}
 		};
 
@@ -2198,10 +2108,6 @@ namespace Codegen
 			else
 			{
 				iceAssert(0 && "unary op overloads not implemented");
-				// if((intype && targL == lhs->getPointerTo()) || (!intype && targL == lhs))
-				// {
-				// 	candidates.push_back(cand);
-				// }
 			}
 		}
 
@@ -2216,32 +2122,7 @@ namespace Codegen
 		for(std::pair<Attribs, fir::Function*> c : set)
 		{
 			// see if the appropriate assign exists.
-			if(c.first.needsEqual)
-			{
-				// check the return type.
-				fir::Type* ret = c.second->getReturnType();
-
-				// check the assign funcs that take such a type as RHS
-				for(auto af : assignFuncs)
-				{
-					iceAssert(af->getArgumentCount() == 2);
-
-					fir::Type* afltype = af->getArguments()[0]->getType();
-					fir::Type* afrtype = af->getArguments()[1]->getType();
-
-					fir::Type* apprtype = lhs->getPointerTo();
-
-					if(afltype == apprtype && afrtype == ret && af->getReturnType() == lhs->getPointerTo())
-					{
-						finals.push_back({ { c.first, c.second }, af });
-						break;
-					}
-				}
-			}
-			else
-			{
-				finals.push_back({ { c.first, c.second }, 0 });
-			}
+			finals.push_back({ { c.first, c.second }, 0 });
 		}
 
 		// final step: disambiguate using the more specific op.
@@ -2292,10 +2173,8 @@ namespace Codegen
 		ret.isPrefix = cand.first.first.isPrefixUnary;
 		ret.needsSwap = cand.first.first.needsSwap;
 		ret.needsNot = cand.first.first.needsBooleanNOT;
-		ret.needsAssign = cand.first.first.needsEqual;
 
 		ret.opFunc = cand.first.second;
-		ret.assignFunc = cand.second;
 
 		return ret;
 	}
@@ -2333,11 +2212,9 @@ namespace Codegen
 		bool isBinOp	= data.isBinOp;
 		bool needsSwap	= data.needsSwap;
 		bool needsNot	= data.needsNot;
-		bool needsAss	= data.needsAssign;
 
 
 		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
-		fir::Function* asFunc = data.assignFunc ? this->module->getFunction(data.assignFunc->getName()) : 0;
 
 		if(!opFunc)
 			error("wtf??");
@@ -2381,13 +2258,7 @@ namespace Codegen
 		}
 		else
 		{
-			iceAssert(0);
-
-			// if(isInType)
-			// 	ret = this->builder.CreateCall1(opFunc, lref);
-
-			// else
-			// 	ret = this->builder.CreateCall1(opFunc, lhs);
+			iceAssert(0 && "not sup unary");
 		}
 
 
@@ -2395,16 +2266,6 @@ namespace Codegen
 		if(needsNot)
 		{
 			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
-		}
-		else if(needsAss)
-		{
-			iceAssert(!needsSwap);
-			fir::Function* ass = this->module->getFunction(asFunc->getName());
-
-			iceAssert(lref);
-			iceAssert(ass);
-
-			ret = this->builder.CreateCall2(ass, lref, ret);
 		}
 
 		return Result_t(ret, 0);
