@@ -209,73 +209,6 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	// handle subscript operators
-	#if 0
-	for(auto opo : this->opOverloads)
-	{
-		if(opo->op == ArithmeticOp::Subscript)
-		{
-			SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(opo);
-			ComputedProperty* cpr = soo->cprop;
-
-			VarDecl* fakeSelf = new VarDecl(soo->pin, "self", true);
-			fakeSelf->type = this->name + "*";
-
-			if(cpr->getter)
-			{
-				std::deque<VarDecl*> params = soo->args;
-				params.push_front(fakeSelf);
-
-
-				FuncDecl* fakeDecl = new FuncDecl(cpr->pin, "_get" + std::to_string(cpr->name.length()) + cpr->name, params, cpr->type.strType);
-				Func* fakeFunc = new Func(cpr->pin, fakeDecl, cpr->getter);
-
-				if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
-					fakeDecl->attribs |= Attr_VisPublic;
-
-				this->funcs.push_back(fakeFunc);
-				cpr->getterFunc = fakeDecl;
-			}
-			if(cpr->setter)
-			{
-				VarDecl* setterArg = new VarDecl(cpr->pin, cpr->setterArgName, true);
-				setterArg->type = cpr->type;
-
-				std::deque<VarDecl*> params = soo->args;
-				params.push_front(fakeSelf);
-				params.push_back(setterArg);
-
-				FuncDecl* fakeDecl = new FuncDecl(cpr->pin, "_set" + std::to_string(cpr->name.length()) + cpr->name, params, "Void");
-				Func* fakeFunc = new Func(cpr->pin, fakeDecl, cpr->setter);
-
-				if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
-					fakeDecl->attribs |= Attr_VisPublic;
-
-				this->funcs.push_back(fakeFunc);
-				cpr->setterFunc = fakeDecl;
-			}
-
-			this->lOpOverloads.push_back({ ArithmeticOp::Subscript, 0 });
-		}
-	}
-	#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 	// issue here is that functions aren't codegened (ie. don't have the fir::Function*)
@@ -402,6 +335,20 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		aoo->lfunc = dynamic_cast<fir::Function*>(val);
 
+		if(!aoo->lfunc->getReturnType()->isVoidType())
+		{
+			HighlightOptions ops;
+			ops.caret = aoo->pin;
+
+			if(aoo->func->decl->returnTypePos.file.size() > 0)
+			{
+				Parser::Pin hl = aoo->func->decl->returnTypePos;
+				ops.underlines.push_back(hl);
+			}
+
+			error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)", aoo->lfunc->getReturnType()->str().c_str());
+		}
+
 		if(aoo->func->decl->attribs & Attr_VisPublic)
 			cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
 
@@ -414,7 +361,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	for(SubscriptOpOverload* soo : this->subscriptOverloads)
 	{
-
+		info(soo, "");
 	}
 
 
@@ -665,30 +612,6 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 	// we could only build an incomplete name -> index map
 	// finish it here.
 
-	#if 0
-	for(auto p : this->opOverloads)
-	{
-		if(p->op != ArithmeticOp::Subscript)
-		{
-			// before calling codegen (that checks for valid overloads), insert the "self" parameter
-			VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
-
-			std::string fulltype;
-			for(auto s : cgi->getFullScope())
-				fulltype += s + "::";
-
-			fakeSelf->type = fulltype + this->name + "*";
-
-			p->func->decl->params.push_front(fakeSelf);
-
-			p->codegen(cgi);
-
-			// remove it after
-			iceAssert(p->func->decl->params.front() == fakeSelf);
-			p->func->decl->params.pop_front();
-		}
-	}
-	#endif
 
 	for(Func* func : this->funcs)
 	{
