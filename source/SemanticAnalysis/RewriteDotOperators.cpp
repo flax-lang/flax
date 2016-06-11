@@ -87,7 +87,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 			// grab the functree.
 			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
 
-
 			// is this a namespace?
 			for(auto sub : ft->subs)
 			{

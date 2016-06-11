@@ -218,7 +218,7 @@ namespace Codegen
 			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 			{
 				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
-					return this->resolveStaticDotOperator(ma, false).first;
+					return this->resolveStaticDotOperator(ma, false).first.first;
 
 
 				// first, get the type of the lhs

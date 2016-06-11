@@ -111,6 +111,7 @@ namespace Parser
 		At,
 		Pound,
 		Tilde,
+		Caret,
 
 
 		// compound symbols
@@ -130,6 +131,10 @@ namespace Parser
 		ModEq,
 		ShiftLeftEq,
 		ShiftRightEq,
+		AmpersandEq,		// &= (AND)
+		PipeEq,				// |= (OR)
+		CaretEq,			// ^= (XOR)
+
 		Ellipsis,
 		DoubleColon,
 

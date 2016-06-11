@@ -20,7 +20,7 @@ namespace fir
 		: GlobalValue(module, type, lt)
 	{
 		this->valueName = name;
-		this->isImmutable = immutable;
+		this->immut = immutable;
 		this->initValue = initValue;
 	}
 

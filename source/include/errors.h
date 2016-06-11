@@ -27,6 +27,8 @@ struct HighlightOptions
 	HighlightOptions(Parser::Pin c, std::deque<Parser::Pin> u, bool dc) : caret(c), underlines(u), drawCaret(dc) { }
 };
 
+Parser::Pin getHighlightExtent(Ast::Expr* e);
+
 void __error_gen(HighlightOptions ops, const char* msg, const char* type,
 	bool doExit, va_list ap);
 
