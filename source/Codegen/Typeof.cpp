@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	size_t index = 0;
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))

@@ -9,12 +9,11 @@ namespace Math
 		var x: Double
 		var y: Double
 
-		public operator = (other: Math.Vector2) -> Math.Vector2*
+		public operator = (other: Math.Vector2)
 		{
+			printf("ASSIGN v2\n")
 			self.x = other.x
 			self.y = other.y
-
-			return self
 		}
 	}
 }

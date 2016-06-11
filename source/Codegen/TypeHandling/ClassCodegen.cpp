@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->genericTypes.size() > 0 && !this->didCreateType)
 		return Result_t(0, 0);

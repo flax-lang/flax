@@ -2758,10 +2758,6 @@ namespace Parser
 		else if(op.type == TType::Asterisk)		ao = ArithmeticOp::Multiply;
 		else if(op.type == TType::Divide)		ao = ArithmeticOp::Divide;
 
-		else if(op.type == TType::PlusEq)		ao = ArithmeticOp::PlusEquals;
-		else if(op.type == TType::MinusEq)		ao = ArithmeticOp::MinusEquals;
-		else if(op.type == TType::MultiplyEq)	ao = ArithmeticOp::MultiplyEquals;
-		else if(op.type == TType::DivideEq)		ao = ArithmeticOp::DivideEquals;
 		else if(op.type == TType::LSquare && ps.front().type == TType::RSquare)
 		{
 			ps.eat();
@@ -2800,11 +2796,21 @@ namespace Parser
 
 			return oo;
 		}
-		else if(op.type == TType::Equal)
+		else if(op.type == TType::Equal || op.type == TType::PlusEq || op.type == TType::MinusEq || op.type == TType::MultiplyEq
+			|| op.type == TType::DivideEq)
 		{
-			ao = ArithmeticOp::Assign;
+			switch(op.type)
+			{
+				case TType::Equal:		ao = ArithmeticOp::Assign; break;
+				case TType::PlusEq:		ao = ArithmeticOp::PlusEquals; break;
+				case TType::MinusEq:	ao = ArithmeticOp::MinusEquals; break;
+				case TType::MultiplyEq:	ao = ArithmeticOp::MultiplyEquals; break;
+				case TType::DivideEq:	ao = ArithmeticOp::DivideEquals; break;
 
-			AssignOpOverload* aoo = CreateAST(AssignOpOverload, op);
+				default: iceAssert(0);
+			}
+
+			AssignOpOverload* aoo = CreateAST(AssignOpOverload, op, ao);
 
 			Token fake;
 			fake.pin = ps.currentPos;

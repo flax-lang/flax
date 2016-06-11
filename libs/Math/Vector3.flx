@@ -10,14 +10,11 @@ namespace Math
 		var y: Double
 		var z: Double
 
-		operator = (other: Math.Vector3) -> Math.Vector3*
+		operator = (other: Math.Vector3)
 		{
 			self.x = other.x
 			self.y = other.y
 			self.z = other.z
-
-			let m: Math.Vector3* = null
-			return m
 		}
 	}
 }

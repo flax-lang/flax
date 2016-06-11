@@ -67,7 +67,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
 }
 
-Result_t Enumeration::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Enumeration::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }

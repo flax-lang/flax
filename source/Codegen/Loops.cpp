@@ -9,7 +9,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Break::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -26,7 +26,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -43,7 +43,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-Result_t Return::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->val)
 	{
@@ -67,12 +67,12 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 }
 
 
-Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return expr->codegen(cgi);
 }
 
-Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Function* parentFunc = cgi->builder.getCurrentBlock()->getParentFunction();
 	iceAssert(parentFunc);

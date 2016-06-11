@@ -10,7 +10,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->expr);
 	Result_t res = this->expr->codegen(cgi);
@@ -52,12 +52,12 @@ Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 
 
-Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->kind == Kind::ArrayIndex)
 	{
 		ArrayIndex* fake = new ArrayIndex(this->pin, this->expr, this->args.front());
-		return fake->codegen(cgi, lhsPtr, rhs);
+		return fake->codegen(cgi, extra);
 	}
 	else
 	{

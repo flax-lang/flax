@@ -34,23 +34,19 @@ public func foo_generic<T, K>(a: T, b: K)
 
 	if(tb == Type.Int8)
 	{
-		printf("(int8)   %d\n", a)
+		printf("(int8)   %d\n", b)
 	}
 	else if(tb == Type.Int16)
 	{
-		printf("(int16)  %d\n", a)
+		printf("(int16)  %d\n", b)
 	}
 	else if(tb == Type.Int32)
 	{
-		printf("(int32)  %d\n", a)
+		printf("(int32)  %d\n", b)
 	}
 	else if(tb == Type.Int64)
 	{
-		printf("(int64)  %d\n", a)
-	}
-	else if(tb == Type.Int64)
-	{
-		printf("(int64) %d\n", b)
+		printf("(int64)  %d\n", b)
 	}
 	else if(tb == Type.String)
 	{

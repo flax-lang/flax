@@ -1910,12 +1910,31 @@ namespace Codegen
 
 
 
+	bool CodegenInstance::isArithmeticOpAssignment(Ast::ArithmeticOp op)
+	{
+		// note: why is this a switch?
+		// answer: because multiple cursor editing wins.
+		switch(op)
+		{
+			case ArithmeticOp::Assign:				return true;
+			case ArithmeticOp::PlusEquals:			return true;
+			case ArithmeticOp::MinusEquals:			return true;
+			case ArithmeticOp::MultiplyEquals:		return true;
+			case ArithmeticOp::DivideEquals:		return true;
+			case ArithmeticOp::ModEquals:			return true;
+			case ArithmeticOp::ShiftLeftEquals:		return true;
+			case ArithmeticOp::ShiftRightEquals:	return true;
+			case ArithmeticOp::BitwiseAndEquals:	return true;
+			case ArithmeticOp::BitwiseOrEquals:		return true;
+			case ArithmeticOp::BitwiseXorEquals:	return true;
+			case ArithmeticOp::BitwiseNotEquals:	return true;
+
+			default: return false;
+		}
+	}
 
 
-
-	// <isBinOp, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
-	std::tuple<bool, bool, bool, bool, bool, fir::Function*, fir::Function*>
-	CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
+	_OpOverloadData CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
 	{
 		struct Attribs
 		{
@@ -1937,6 +1956,7 @@ namespace Codegen
 		// get assignfuncs.
 		std::deque<fir::Function*> assignFuncs;
 
+		#if 0
 		if(op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals
 			 || op == ArithmeticOp::MultiplyEquals || op == ArithmeticOp::DivideEquals)
 		{
@@ -1946,10 +1966,14 @@ namespace Codegen
 				if(StructBase* sb = dynamic_cast<StructBase*>(tp->second.first))
 				{
 					for(auto ao : sb->assignmentOverloads)
-						assignFuncs.push_back(ao->lfunc);
+					{
+						if(ao->op == ArithmeticOp::Assign)
+							assignFuncs.push_back(ao->lfunc);
+					}
 				}
 			}
 		}
+		#endif
 
 
 
@@ -1998,6 +2022,8 @@ namespace Codegen
 
 					(*cands).push_back({ attr, lfunc });
 				}
+
+				#if 0
 				else if((op == ArithmeticOp::CmpEq && oo->op == ArithmeticOp::CmpNEq)
 						|| (oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq))
 				{
@@ -2051,8 +2077,10 @@ namespace Codegen
 						(*cands).push_back({ attr, lfunc });
 					}
 				}
+				#endif
 			}
 		};
+
 
 
 
@@ -2076,7 +2104,7 @@ namespace Codegen
 			}
 
 			// if we're assigning things, we need to get the assignfuncs as well.
-			if(op == ArithmeticOp::Assign)
+			if(this->isArithmeticOpAssignment(op))
 			{
 				TypePair_t* tp = this->getType(lhs);
 				iceAssert(tp);
@@ -2086,16 +2114,19 @@ namespace Codegen
 
 				for(auto aso : sb->assignmentOverloads)
 				{
-					Attribs atr;
+					if(aso->op == op)
+					{
+						Attribs atr;
 
-					atr.op				= ArithmeticOp::Assign;
-					atr.isBinOp			= true;
-					atr.isPrefixUnary	= false;
-					atr.isCommutative	= false;
-					atr.needsSwap		= false;
+						atr.op				= op;
+						atr.isBinOp			= true;
+						atr.isPrefixUnary	= false;
+						atr.isCommutative	= false;
+						atr.needsSwap		= false;
 
-					iceAssert(aso->lfunc);
-					candidates.push_back({ atr, aso->lfunc });
+						iceAssert(aso->lfunc);
+						candidates.push_back({ atr, aso->lfunc });
+					}
 				}
 			}
 
@@ -2142,7 +2173,7 @@ namespace Codegen
 		set = candidates;
 		candidates.clear();
 
-		bool hasSelf = (op == ArithmeticOp::Assign || op == ArithmeticOp::Subscript);
+		bool hasSelf = (this->isArithmeticOpAssignment(op) || op == ArithmeticOp::Subscript);
 		if(hasSelf) lhs = lhs->getPointerTo();
 
 		for(auto cand : set)
@@ -2166,14 +2197,13 @@ namespace Codegen
 			}
 			else
 			{
-				iceAssert(0);
+				iceAssert(0 && "unary op overloads not implemented");
 				// if((intype && targL == lhs->getPointerTo()) || (!intype && targL == lhs))
 				// {
 				// 	candidates.push_back(cand);
 				// }
 			}
 		}
-
 
 
 		// eliminate more.
@@ -2246,23 +2276,26 @@ namespace Codegen
 			error(us, "More than one possible operator overload candidate in this expression");
 
 		else if(finals.size() == 0)
-			return { false, false, false, false, false, nullptr, nullptr };
+		{
+			_OpOverloadData ret;
+			ret.found = false;
+
+			return ret;
+		}
 
 		auto cand = finals.front();
 
-		fir::Function* func = this->module->getFunction(cand.first.second->getName());
-		iceAssert(func);
+		_OpOverloadData ret;
+		ret.found = true;
 
+		ret.isBinOp = cand.first.first.isBinOp;
+		ret.isPrefix = cand.first.first.isPrefixUnary;
+		ret.needsSwap = cand.first.first.needsSwap;
+		ret.needsNot = cand.first.first.needsBooleanNOT;
+		ret.needsAssign = cand.first.first.needsEqual;
 
-		std::tuple<bool, bool, bool, bool, bool, fir::Function*, fir::Function*> ret;
-		ret = { cand.first.first.isBinOp,
-				cand.first.first.isPrefixUnary,
-				cand.first.first.needsSwap,
-				cand.first.first.needsBooleanNOT,
-				cand.first.first.needsEqual,
-
-				cand.first.second,
-				cand.second };
+		ret.opFunc = cand.first.second;
+		ret.assignFunc = cand.second;
 
 		return ret;
 	}
@@ -2271,8 +2304,8 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::callOperatorOverload(std::tuple<bool, bool, bool, bool, bool, fir::Function*, fir::Function*> data,
-		fir::Value* lhs, fir::Value* lref, fir::Value* rhs, fir::Value* rref, ArithmeticOp op)
+	Result_t CodegenInstance::callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lref, fir::Value* rhs,
+		fir::Value* rref, ArithmeticOp op)
 	{
 		// check if we have a ref.
 		if(lref == 0)
@@ -2297,15 +2330,14 @@ namespace Codegen
 			rref = ptr;
 		}
 
-		bool isBinOp	= std::get<0>(data);
-		// bool isPrefix	= std::get<1>(data);
-		bool needsSwap	= std::get<2>(data);
-		bool needsNot	= std::get<3>(data);
-		bool needsAss	= std::get<4>(data);
+		bool isBinOp	= data.isBinOp;
+		bool needsSwap	= data.needsSwap;
+		bool needsNot	= data.needsNot;
+		bool needsAss	= data.needsAssign;
 
 
-		fir::Function* opFunc = std::get<5>(data) ? this->module->getFunction(std::get<5>(data)->getName()) : 0;
-		fir::Function* asFunc = std::get<6>(data) ? this->module->getFunction(std::get<6>(data)->getName()) : 0;
+		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
+		fir::Function* asFunc = data.assignFunc ? this->module->getFunction(data.assignFunc->getName()) : 0;
 
 		if(!opFunc)
 			error("wtf??");
@@ -2317,7 +2349,7 @@ namespace Codegen
 			fir::Value* larg = 0;
 			fir::Value* rarg = 0;
 
-			if(op == ArithmeticOp::Assign)
+			if(this->isArithmeticOpAssignment(op))
 			{
 				if(needsSwap)
 				{
