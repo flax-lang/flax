@@ -69,66 +69,74 @@ namespace Parser
 		{
 			// check if the next one matches.
 			if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LAngle)
-				return 160;
+				return 650;
 
 			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::RAngle)
-				return 160;
+				return 650;
 
 
 			else if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LessThanEquals)
-				return 90;
+				return 100;
 
 			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::GreaterEquals)
-				return 90;
+				return 100;
 		}
 
+		// note that unary ops do not have precedence.
 		switch(ps.front().type)
 		{
 			case TType::Comma:
 				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
 
-			case TType::As:
 			case TType::Period:
-				return 400;
+				return 1000;
 
-			// array index: 120
+			case TType::As:
+				return 950;
+
 			case TType::LSquare:
-				return 310;
+				return 900;
 
 			case TType::DoublePlus:
 			case TType::DoubleMinus:
-				return 300;
-
-			case TType::ShiftLeft:
-			case TType::ShiftRight:
-				iceAssert(0);	// note: handled above
-				break;
-				// return 160;
+				return 850;
 
 			case TType::Asterisk:
 			case TType::Divide:
 			case TType::Percent:
-			case TType::Ampersand:
-				return 160;
+				return 800;
 
 			case TType::Plus:
 			case TType::Minus:
-			case TType::Pipe:
-				return 140;
+				return 750;
+
+			// << and >>
+			// precedence = 700
 
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
+				return 650;
+
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 130;
+				return 600;
+
+			case TType::Ampersand:
+				return 550;
+
+			case TType::Caret:
+				return 500;
+
+			case TType::Pipe:
+				return 450;
 
 			case TType::LogicalAnd:
-				return 120;
+				return 400;
 
 			case TType::LogicalOr:
-				return 110;
+				return 350;
 
 			case TType::Equal:
 			case TType::PlusEq:
@@ -136,12 +144,17 @@ namespace Parser
 			case TType::MultiplyEq:
 			case TType::DivideEq:
 			case TType::ModEq:
-				return 90;
+			case TType::AmpersandEq:
+			case TType::PipeEq:
+			case TType::CaretEq:
+				return 100;
 
 
 			case TType::ShiftLeftEq:
 			case TType::ShiftRightEq:
-				iceAssert(0);	// note: handled above.
+			case TType::ShiftLeft:
+			case TType::ShiftRight:
+				iceAssert(0);	// note: handled above, should not reach here
 				break;
 
 
@@ -752,10 +765,10 @@ namespace Parser
 
 		if(tk.type == TType::Exclamation)		op = ArithmeticOp::LogicalNot;
 		else if(tk.type == TType::Plus)			op = ArithmeticOp::Plus;
-		else if(tk.type == TType::Minus)			op = ArithmeticOp::Minus;
-		else if(tk.type == TType::Tilde)			op = ArithmeticOp::BitwiseNot;
-		else if(tk.type == TType::Pound)			op = ArithmeticOp::Deref;
-		else if(tk.type == TType::Ampersand)		op = ArithmeticOp::AddrOf;
+		else if(tk.type == TType::Minus)		op = ArithmeticOp::Minus;
+		else if(tk.type == TType::Tilde)		op = ArithmeticOp::BitwiseNot;
+		else if(tk.type == TType::Pound)		op = ArithmeticOp::Deref;
+		else if(tk.type == TType::Ampersand)	op = ArithmeticOp::AddrOf;
 
 		if(op != ArithmeticOp::Invalid)
 		{
@@ -1513,7 +1526,6 @@ namespace Parser
 
 		// leave the last rparen
 		iceAssert(ps.front().type == TType::RParen);
-		// ps.eat();
 
 		return CreateAST(Tuple, first, values);
 	}
@@ -1546,9 +1558,6 @@ namespace Parser
 
 		// get the type of op.
 		// prec: array index: 120
-
-		// std::deque<Expr*> args;
-		// PostfixUnaryOp::Kind k;
 
 		Token top = tok;
 		Expr* newlhs = 0;
@@ -1654,6 +1663,7 @@ namespace Parser
 
 					case TType::Ampersand:		op = ArithmeticOp::BitwiseAnd;			break;
 					case TType::Pipe:			op = ArithmeticOp::BitwiseOr;			break;
+					case TType::Caret:			op = ArithmeticOp::BitwiseXor;			break;
 					case TType::LogicalOr:		op = ArithmeticOp::LogicalOr;			break;
 					case TType::LogicalAnd:		op = ArithmeticOp::LogicalAnd;			break;
 
@@ -1664,6 +1674,10 @@ namespace Parser
 					case TType::ModEq:			op = ArithmeticOp::ModEquals;			break;
 					case TType::ShiftLeftEq:	op = ArithmeticOp::ShiftLeftEquals;		break;
 					case TType::ShiftRightEq:	op = ArithmeticOp::ShiftRightEquals;	break;
+					case TType::AmpersandEq:	op = ArithmeticOp::BitwiseAndEquals;	break;
+					case TType::PipeEq:			op = ArithmeticOp::BitwiseOrEquals;		break;
+					case TType::CaretEq:		op = ArithmeticOp::BitwiseXorEquals;	break;
+
 					case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
 					case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 					case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;

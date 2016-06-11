@@ -233,7 +233,7 @@ namespace fir
 			}
 
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
-				module), global.second->isImmutable, llvm::GlobalValue::LinkageTypes::ExternalLinkage, initval, global.first);
+				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first);
 
 			valueMap[global.second->id] = gv;
 		}

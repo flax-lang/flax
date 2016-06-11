@@ -94,8 +94,9 @@ namespace GenError
 
 				for(size_t i = 0; i < ul.len; i++)
 				{
-					// ̅, ﹋
+					// ̅, ﹋, ̅
 					fprintf(stderr, "%s̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+					// fprintf(stderr, "%s-%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 					cursorX++;
 				}
 			}
@@ -357,24 +358,9 @@ namespace GenError
 		error(e, "Expected %s", expect.c_str());
 	}
 
-	static bool _isass(ArithmeticOp o)
-	{
-		return o == ArithmeticOp::Assign ||
-				o == ArithmeticOp::PlusEquals ||
-				o == ArithmeticOp::MinusEquals ||
-				o == ArithmeticOp::MultiplyEquals ||
-				o == ArithmeticOp::DivideEquals ||
-				o == ArithmeticOp::ModEquals ||
-				o == ArithmeticOp::ShiftLeftEquals ||
-				o == ArithmeticOp::ShiftRightEquals ||
-				o == ArithmeticOp::BitwiseAndEquals ||
-				o == ArithmeticOp::BitwiseOrEquals ||
-				o == ArithmeticOp::BitwiseXorEquals ||
-				o == ArithmeticOp::BitwiseNotEquals;
-	}
 	void nullValue(Codegen::CodegenInstance* cgi, Expr* expr)
 	{
-		if(dynamic_cast<BinOp*>(expr) && _isass(dynamic_cast<BinOp*>(expr)->op))
+		if(dynamic_cast<BinOp*>(expr) && cgi->isArithmeticOpAssignment(dynamic_cast<BinOp*>(expr)->op))
 		{
 			auto bo = dynamic_cast<BinOp*>(expr);
 			auto op = bo->op;
@@ -384,10 +370,7 @@ namespace GenError
 			ops.caret = expr->pin;
 			ops.drawCaret = false;
 
-			auto pin = bo->left->pin;
-			pin.len += bo->right->pin.col - (bo->left->pin.col + bo->left->pin.len - 1);
-
-			ops.underlines.push_back(pin);
+			ops.underlines.push_back(getHighlightExtent(bo));
 
 			errorNoExit(expr, ops, "Values cannot be yielded from voids");
 
@@ -418,6 +401,69 @@ namespace GenError
 		error(e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
 	}
 }
+
+
+
+
+Parser::Pin getHighlightExtent(Ast::Expr* e)
+{
+	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(e))
+	{
+		auto left = getHighlightExtent(ma->left);
+		auto right = getHighlightExtent(ma->right);
+
+		Parser::Pin ret;
+
+		ret.file = ma->pin.file;
+		ret.line = ma->pin.line;
+		ret.col = left.col;
+		ret.len = (right.col + right.len) - left.len;
+
+		return ret;
+	}
+	else if(BinOp* bo = dynamic_cast<BinOp*>(e))
+	{
+		auto left = getHighlightExtent(bo->left);
+		auto right = getHighlightExtent(bo->right);
+
+		Parser::Pin ret;
+
+		ret.file = bo->pin.file;
+		ret.line = bo->pin.line;
+		ret.col = left.col;
+		ret.len = (right.col + right.len) - left.col;
+
+		return ret;
+	}
+	else
+	{
+		return e->pin;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
