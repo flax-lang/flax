@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->genericTypes.size() > 0 && !this->didCreateType)
 		return Result_t(0, 0);
@@ -209,6 +209,56 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 
 
+	// handle subscript operators
+	#if 0
+	for(auto opo : this->opOverloads)
+	{
+		if(opo->op == ArithmeticOp::Subscript)
+		{
+			SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(opo);
+			ComputedProperty* cpr = soo->cprop;
+
+			VarDecl* fakeSelf = new VarDecl(soo->pin, "self", true);
+			fakeSelf->type = this->name + "*";
+
+			if(cpr->getter)
+			{
+				std::deque<VarDecl*> params = soo->args;
+				params.push_front(fakeSelf);
+
+
+				FuncDecl* fakeDecl = new FuncDecl(cpr->pin, "_get" + std::to_string(cpr->name.length()) + cpr->name, params, cpr->type.strType);
+				Func* fakeFunc = new Func(cpr->pin, fakeDecl, cpr->getter);
+
+				if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
+					fakeDecl->attribs |= Attr_VisPublic;
+
+				this->funcs.push_back(fakeFunc);
+				cpr->getterFunc = fakeDecl;
+			}
+			if(cpr->setter)
+			{
+				VarDecl* setterArg = new VarDecl(cpr->pin, cpr->setterArgName, true);
+				setterArg->type = cpr->type;
+
+				std::deque<VarDecl*> params = soo->args;
+				params.push_front(fakeSelf);
+				params.push_back(setterArg);
+
+				FuncDecl* fakeDecl = new FuncDecl(cpr->pin, "_set" + std::to_string(cpr->name.length()) + cpr->name, params, "Void");
+				Func* fakeFunc = new Func(cpr->pin, fakeDecl, cpr->setter);
+
+				if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
+					fakeDecl->attribs |= Attr_VisPublic;
+
+				this->funcs.push_back(fakeFunc);
+				cpr->setterFunc = fakeDecl;
+			}
+
+			this->lOpOverloads.push_back({ ArithmeticOp::Subscript, 0 });
+		}
+	}
+	#endif
 
 
 
@@ -235,9 +285,9 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 	for(Func* f : this->funcs)
 	{
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-		bool isOpOverload = f->decl->name.find("operator#") == 0;
-		if(isOpOverload)
-			f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
+		// bool isOpOverload = f->decl->name.find("operator#") == 0;
+		// if(isOpOverload)
+		// 	f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 
 		fir::Value* val = nullptr;
 
@@ -268,11 +318,11 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 		cgi->builder.setCurrentBlock(ob);
 		this->lfuncs.push_back(dynamic_cast<fir::Function*>(val));
 
-		if(isOpOverload)
-		{
-			ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
-			this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
-		}
+		// if(isOpOverload)
+		// {
+		// 	ArithmeticOp ao = cgi->determineArithmeticOp(f->decl->name);
+		// 	this->lOpOverloads.push_back(std::make_pair(ao, dynamic_cast<fir::Function*>(val)));
+		// }
 
 		if(f->decl->attribs & Attr_VisPublic)
 		{
@@ -330,6 +380,42 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rh
 
 	cgi->addPublicFunc({ defaultInitFunc, 0 });
 
+
+
+
+
+
+	for(AssignOpOverload* aoo : this->assignmentOverloads)
+	{
+		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->decl->name = aoo->func->decl->name.substr(9 /*strlen("operator#")*/);
+		aoo->func->decl->parentClass = this;
+
+		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+		{
+			aoo->func->decl->attribs |= Attr_VisPublic;
+		}
+
+		fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
+		cgi->builder.setCurrentBlock(ob);
+
+		aoo->lfunc = dynamic_cast<fir::Function*>(val);
+
+		if(aoo->func->decl->attribs & Attr_VisPublic)
+			cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
+
+		ob = cgi->builder.getCurrentBlock();
+
+		aoo->func->codegen(cgi);
+
+		cgi->builder.setCurrentBlock(ob);
+	}
+
+	for(SubscriptOpOverload* soo : this->subscriptOverloads)
+	{
+
+	}
 
 
 
@@ -579,25 +665,30 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 	// we could only build an incomplete name -> index map
 	// finish it here.
 
+	#if 0
 	for(auto p : this->opOverloads)
 	{
-		// before calling codegen (that checks for valid overloads), insert the "self" parameter
-		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+		if(p->op != ArithmeticOp::Subscript)
+		{
+			// before calling codegen (that checks for valid overloads), insert the "self" parameter
+			VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 
-		std::string fulltype;
-		for(auto s : cgi->getFullScope())
-			fulltype += s + "::";
+			std::string fulltype;
+			for(auto s : cgi->getFullScope())
+				fulltype += s + "::";
 
-		fakeSelf->type = fulltype + this->name + "*";
+			fakeSelf->type = fulltype + this->name + "*";
 
-		p->func->decl->params.push_front(fakeSelf);
+			p->func->decl->params.push_front(fakeSelf);
 
-		p->codegen(cgi);
+			p->codegen(cgi);
 
-		// remove it after
-		iceAssert(p->func->decl->params.front() == fakeSelf);
-		p->func->decl->params.pop_front();
+			// remove it after
+			iceAssert(p->func->decl->params.front() == fakeSelf);
+			p->func->decl->params.pop_front();
+		}
 	}
+	#endif
 
 	for(Func* func : this->funcs)
 	{

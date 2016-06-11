@@ -33,6 +33,7 @@ namespace Parser
 			return Token();
 
 		int read = 0;
+		int unicodeLength = 0;
 
 		// first eat all whitespace
 		skipWhitespace(stream, pos);
@@ -136,6 +137,24 @@ namespace Parser
 			tok.type = TType::ModEq;
 			read = 2;
 		}
+		else if(stream.compare(0, 2, "&=") == 0)
+		{
+			tok.text = "&=";
+			tok.type = TType::AmpersandEq;
+			read = 2;
+		}
+		else if(stream.compare(0, 2, "|=") == 0)
+		{
+			tok.text = "|=";
+			tok.type = TType::PipeEq;
+			read = 2;
+		}
+		else if(stream.compare(0, 2, "^=") == 0)
+		{
+			tok.text = "^=";
+			tok.type = TType::CaretEq;
+			read = 2;
+		}
 		else if(stream.compare(0, 3, "...") == 0)
 		{
 			tok.text = "...";
@@ -207,36 +226,48 @@ namespace Parser
 			tok.text = "func";
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
+
+			unicodeLength = 1;
 		}
 		else if(stream.compare(0, strlen("ﬁ"), "ﬁ") == 0)
 		{
 			tok.text = "ffi";
 			tok.type = TType::ForeignFunc;
 			read = std::string("ﬁ").length();
+
+			unicodeLength = 1;
 		}
 		else if(stream.compare(0, strlen("÷"), "÷") == 0)
 		{
 			tok.text = "÷";
 			tok.type = TType::Divide;
 			read = std::string("÷").length();
+
+			unicodeLength = 1;
 		}
 		else if(stream.compare(0, strlen("≠"), "≠") == 0)
 		{
 			tok.text = "≠";
 			tok.type = TType::NotEquals;
 			read = std::string("≠").length();
+
+			unicodeLength = 1;
 		}
 		else if(stream.compare(0, strlen("≤"), "≤") == 0)
 		{
 			tok.text = "≤";
 			tok.type = TType::LessThanEquals;
 			read = std::string("≤").length();
+
+			unicodeLength = 1;
 		}
 		else if(stream.compare(0, strlen("≥"), "≥") == 0)
 		{
 			tok.text = "≥";
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
+
+			unicodeLength = 1;
 		}
 		else if(isdigit(stream[0]) || (stream.length() > 2 && ((stream[0] == '-') || (stream[0] == '+')) && isdigit(stream[1])))
 		{
@@ -347,7 +378,7 @@ namespace Parser
 
 			read = 0;		// done above
 			tok.text = num;
-			pos.len = num.length();
+			tok.pin.len = num.length();
 		}
 		else if(isalpha(stream[0]) || stream[0] == '_' || !isascii(stream[0]))
 		{
@@ -406,6 +437,8 @@ namespace Parser
 
 			else if(id == "get")		tok.type = TType::Get;
 			else if(id == "set")		tok.type = TType::Set;
+
+			else if(id == "null")		tok.type = TType::Null;
 
 			else if(id == "module")		tok.type = TType::Module;
 			else if(id == "namespace")	tok.type = TType::Namespace;
@@ -479,6 +512,9 @@ namespace Parser
 				case '|':	tok.type = TType::Pipe;					break;
 				case '@':	tok.type = TType::At;					break;
 				case '#':	tok.type = TType::Pound;				break;
+
+				default:
+					Parser::parserError("Unknown token '%c'", stream[0]);
 			}
 
 			tok.text = stream[0];
@@ -493,11 +529,15 @@ namespace Parser
 		stream = stream.substr(read);
 		if(tok.type != TType::NewLine)
 		{
-			tok.pin.col += read;
+			// note(debatable): put the actual "position" in the front of the token
 			pos.col += read;
 
 			if(read > 0)
-				pos.len = read;
+			{
+				// special handling -- things like ƒ, ≤ etc. are one character wide, but can be several *bytes* long.
+				pos.len = (unicodeLength > 0 ? unicodeLength : read);
+				tok.pin.len = read;
+			}
 		}
 		else
 		{

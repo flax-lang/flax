@@ -609,20 +609,6 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateLogicalAND(Value* a, Value* b, std::string vname)
-	{
-		iceAssert(a->getType() == b->getType() && "creating logical and instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_And, fir::PrimitiveType::getBool(this->context), { a, b });
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::CreateLogicalOR(Value* a, Value* b, std::string vname)
-	{
-		iceAssert(a->getType() == b->getType() && "creating logical or instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Logical_Or, fir::PrimitiveType::getBool(this->context), { a, b });
-		return this->addInstruction(instr, vname);
-	}
-
 	Value* IRBuilder::CreateBitwiseXOR(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise xor instruction with non-equal types");
@@ -749,53 +735,82 @@ namespace fir
 		if(v->getType()->getPointerTo() != ptr->getType())
 			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->str().c_str(), ptr->getType()->str().c_str());
 
+		if(ptr->isImmutable())
+			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
+
 		Instruction* instr = new Instruction(OpKind::Value_Store, PrimitiveType::getVoid(), { v, ptr });
 		return this->addInstruction(instr, "");
 	}
 
+
 	Value* IRBuilder::CreateCall0(Function* fn, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { }, vname);
 	}
 
 	Value* IRBuilder::CreateCall1(Function* fn, Value* p1, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1 }, vname);
 	}
 
 	Value* IRBuilder::CreateCall2(Function* fn, Value* p1, Value* p2, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1, p2 }, vname);
 	}
 
 	Value* IRBuilder::CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2, p3 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1, p2, p3 }, vname);
 	}
+
+
+
 
 	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args, std::string vname)
 	{
-		auto v = args;
+		// in theory we should still check, but i'm lazy right now
+		// TODO.
+		if(!fn->isCStyleVarArg())
+		{
+			// check here, to stop llvm dying
+			if(args.size() != fn->getArgumentCount())
+				error("Calling function %s with the wrong number of arguments (needs %zu, have %zu)", fn->getName().c_str(),
+					fn->getArgumentCount(), args.size());
+
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i]->getType() != fn->getArguments()[i]->getType())
+				{
+					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().c_str(),
+						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+				}
+			}
+		}
+
 		args.push_front(fn);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), v);
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), args);
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args, std::string vname)
 	{
 		std::deque<Value*> dargs;
-		dargs.push_back(fn);
 
 		for(auto a : args)
 			dargs.push_back(a);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), dargs);
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, dargs, vname);
+	}
+
+	Value* IRBuilder::CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname)
+	{
+		std::deque<Value*> dargs;
+
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return this->CreateCall(fn, dargs, vname);
 	}
 
 	Value* IRBuilder::CreateReturn(Value* v)
@@ -821,6 +836,17 @@ namespace fir
 	{
 		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, type->getPointerTo(), { ConstantValue::getNullValue(type) });
 		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateImmutStackAlloc(Type* type, Value* v, std::string vname)
+	{
+		Value* ret = this->CreateStackAlloc(type, vname);
+		ret->immut = false;		// for now
+
+		this->CreateStore(v, ret);
+		ret->immut = true;
+
+		return ret;
 	}
 
 	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
@@ -859,6 +885,10 @@ namespace fir
 			Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
 				{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
 
+			// disallow storing to members of immut structs
+			if(ptr->isImmutable())
+				instr->realOutput->immut = true;
+
 			return this->addInstruction(instr, vname);
 		}
 		else
@@ -880,6 +910,10 @@ namespace fir
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(memberIndex) });
 
+			// disallow storing to members of immut structs
+			if(structPtr->isImmutable())
+				instr->realOutput->immut = true;
+
 			return this->addInstruction(instr, vname);
 		}
 		else if(LLVariableArrayType* llat = dynamic_cast<LLVariableArrayType*>(structPtr->getType()->getPointerElementType()))
@@ -890,6 +924,10 @@ namespace fir
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, ty->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(memberIndex) });
+
+			// disallow storing to members of immut structs
+			if(structPtr->isImmutable())
+				instr->realOutput->immut = true;
 
 			return this->addInstruction(instr, vname);
 		}
@@ -924,7 +962,13 @@ namespace fir
 		if(retType->isArrayType())
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
 
+
 		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, retType, { ptr, ptrIndex, elmIndex });
+
+		// disallow storing to members of immut arrays
+		if(ptr->isImmutable())
+			instr->realOutput->immut = true;
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -938,9 +982,39 @@ namespace fir
 			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
+
+		// disallow storing to members of immut arrays
+		if(ptr->isImmutable())
+			instr->realOutput->immut = true;
+
+
 		return this->addInstruction(instr, vname);
 	}
 
+
+	Value* IRBuilder::CreatePointerAdd(Value* ptr, Value* num, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(!num->getType()->isIntegerType())
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreatePointerSub(Value* ptr, Value* num, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
+
+		if(!num->getType()->isIntegerType())
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
+		return this->addInstruction(instr, vname);
+	}
 
 
 
@@ -1000,7 +1074,7 @@ namespace fir
 		for(size_t i = 0; i < this->currentFunction->blocks.size(); i++)
 		{
 			IRBlock* b = this->currentFunction->blocks[i];
-			if(b == nb)
+			if(b == block)
 			{
 				this->currentFunction->blocks.insert(this->currentFunction->blocks.begin() + i + 1, nb);
 				return nb;

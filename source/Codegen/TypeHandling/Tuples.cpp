@@ -59,18 +59,16 @@ Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool c
 	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
 }
 
-Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	(void) rhs;
-
 	fir::Value* gep = 0;
-	if(lhsPtr)
+	if(extra)
 	{
-		gep = lhsPtr;
+		gep = extra;
 	}
 	else
 	{
-		gep = cgi->allocateInstanceInBlock(this->getType(cgi));
+		gep = cgi->getStackAlloc(this->getType(cgi));
 	}
 
 	iceAssert(gep);
