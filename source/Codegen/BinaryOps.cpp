@@ -211,7 +211,7 @@ Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 
 
-Result_t operatorAssignToSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, Expr* rhs)
+Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, Expr* rhs)
 {
 	iceAssert(0);
 }
@@ -287,7 +287,10 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 	// first check if the left side is a subscript.
 	// if(dynamic_cast<ArrayIndex*>(args[0]))
-	// 	return operatorAssignToSubscript(cgi, op, user, args[0], args[1]);
+	// 	return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], args[1]);
+
+
+	// also check if it's a computed property.
 
 
 	// else, we should be safe to codegen both sides
@@ -307,8 +310,8 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 		if(!rhsPtr && !rhs->getType()->isPrimitiveType() && !rhs->getType()->isPointerType())
 		{
 			// we need a pointer, since bytes and all, for Any.
-			rhsPtr = cgi->allocateInstanceInBlock(rhs->getType());
-			cgi->builder.CreateStore(rhs, rhsPtr);
+			rhsPtr = cgi->getImmutStackAllocValue(rhs);
+			// cgi->builder.CreateStore(rhs, rhsPtr);
 		}
 
 		iceAssert(lhsPtr);
@@ -340,13 +343,14 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 	if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
 	{
-		fprintf(stderr, "before: %s -> %s\n", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
 		rhs = cgi->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
-		fprintf(stderr, "after: %s -> %s\n", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
 	}
 
 
 
+
+	// TODO: BROKEN AS FUCK
+	// NEED TO CHECK FOR OPERATOR OVERLOADS BEFORE BLINDLY STORING THINGS
 
 	// check if the left side is a simple var
 	if(VarRef* v = dynamic_cast<VarRef*>(args[0]))
@@ -483,7 +487,7 @@ Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, s
 
 	cgi->builder.setCurrentBlock(currentBlock);
 
-	fir::Value* resPtr = cgi->allocateInstanceInBlock(fir::PrimitiveType::getBool());
+	fir::Value* resPtr = cgi->getStackAlloc(fir::PrimitiveType::getBool());
 	cgi->builder.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 	// always codegen left.
@@ -539,7 +543,7 @@ Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, st
 
 	cgi->builder.setCurrentBlock(currentBlock);
 
-	fir::Value* resPtr = cgi->allocateInstanceInBlock(fir::PrimitiveType::getBool());
+	fir::Value* resPtr = cgi->getStackAlloc(fir::PrimitiveType::getBool());
 	cgi->builder.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 	// always codegen left.
@@ -902,9 +906,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 				if(!rptr)
 				{
 					// fuck it, create a temporary.
-					fir::Value* temp = this->allocateInstanceInBlock(rhs->getType());
-					iceAssert(temp->getType()->getPointerElementType()->isStructType());
-
+					fir::Value* temp = this->getStackAlloc(rhs->getType());
 					this->builder.CreateStore(rhs, temp);
 					rptr = temp;
 				}
@@ -950,7 +952,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 					// okay.
 					// create a wrapper value.
 
-					fir::Value* ai = this->allocateInstanceInBlock(lhs->getType());
+					fir::Value* ai = this->getStackAlloc(lhs->getType());
 					fir::Value* gep = this->builder.CreateStructGEP(ai, 0);
 
 					this->builder.CreateStore(rhs, gep);
@@ -1135,7 +1137,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 	{
 		auto res = operatorMap.call(this->op, cgi, this, { this->left, this->right });
-		if(res.result.first/* || this->op == ArithmeticOp::Assign*/)
+		if(res.result.first || this->op == ArithmeticOp::Assign)
 			return res;
 	}
 
@@ -1228,7 +1230,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 				fir::Type* insideType = rtype->toStructType()->getElementN(0);
 				if(lhs->getType() == insideType)
 				{
-					fir::Value* tmp = cgi->allocateInstanceInBlock(rtype, "tmp_enum");
+					fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
 
 					fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
 					cgi->builder.CreateStore(lhs, gep);
@@ -1271,7 +1273,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 			if(!lhsref)
 			{
 				// dammit.
-				lhsref = cgi->allocateInstanceInBlock(stringType);
+				lhsref = cgi->getStackAlloc(stringType);
 				cgi->builder.CreateStore(lhs, lhsref);
 			}
 

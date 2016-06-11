@@ -63,36 +63,52 @@ namespace Codegen
 		fir::IRBlock* iblock = this->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
 		this->builder.setCurrentBlock(iblock);
 
+
 		for(auto pair : this->globalConstructors.funcs)
+		{
+			pair.first->makeNotImmutable();
+
 			this->builder.CreateCall1(pair.second, pair.first);
+
+			pair.first->makeImmutable();
+		}
 
 		for(auto pair : this->globalConstructors.values)
 		{
 			fir::Value* gv = pair.first;
 			fir::Value* val = pair.second;
-			auto d = dynamic_cast<fir::ConstantValue*>(pair.second);
-			(void) d;
+
+			pair.first->makeNotImmutable();
 
 			val = this->autoCastType(gv->getType()->getPointerElementType(), val);
 			this->builder.CreateStore(val, gv);
+
+			pair.first->makeImmutable();
 		}
 
 		for(auto pair : this->globalConstructors.tupleInitFuncs)
 		{
 			std::pair<int, fir::Function*> ivp = pair.second;
 
+
+			pair.first->makeNotImmutable();
+
 			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
-			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			this->builder.CreateCall1(ivp.second, gep);
+
+			pair.first->makeImmutable();
 		}
 
 		for(auto pair : this->globalConstructors.tupleInitVals)
 		{
 			std::pair<int, fir::Value*> ivp = pair.second;
 
+			pair.first->makeNotImmutable();
+
 			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
-			// fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
 			this->builder.CreateStore(ivp.second, gep);
+
+			pair.first->makeImmutable();
 		}
 
 		this->builder.CreateReturnVoid();

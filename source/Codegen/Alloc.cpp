@@ -36,7 +36,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	size = cgi->autoCastType(allocsize->getType(), size);
 
 	fir::Value* totalAlloc = cgi->builder.CreateMul(allocsize, size, "totalalloc");
-	fir::Value* allocmemptr = cgi->allocateInstanceInBlock(type->getPointerTo(), "allocmemptr");
+	fir::Value* allocmemptr = cgi->getStackAlloc(type->getPointerTo(), "allocmemptr");
 
 	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->builder.CreateStore(amem, allocmemptr);

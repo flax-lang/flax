@@ -37,10 +37,12 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 			ValPtr_t vp = this->inside->codegen(cgi).result;
 			fir::Value* ptr = vp.second;
 
-			if(ptr)
+			if(!ptr)
 			{
+				iceAssert(0);
+
 				// make one
-				ptr = cgi->allocateInstanceInBlock(vp.first->getType());
+				ptr = cgi->getImmutStackAllocValue(vp.first);
 				cgi->builder.CreateStore(vp.first, ptr);
 			}
 
@@ -64,7 +66,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
 	iceAssert(enr);
 
-	fir::Value* wrapper = cgi->allocateInstanceInBlock(tp->first, "typeof_tmp");
+	fir::Value* wrapper = cgi->getStackAlloc(tp->first, "typeof_tmp");
 	fir::Value* gep = cgi->builder.CreateStructGEP(wrapper, 0);
 
 	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);

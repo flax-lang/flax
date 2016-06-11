@@ -12,7 +12,6 @@ using namespace Codegen;
 static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
-// static Result_t doBaseClass(CodegenInstance* cgi, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
@@ -57,16 +56,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 	else
 	{
 		error("wtf");
-		// reset this?
-		// this->cachedCodegenResult = Result_t(0, 0);
 	}
 
 	ValPtr_t p = res.result;
 
 	fir::Value* self = p.first;
 	fir::Value* selfPtr = p.second;
-
-	// info(this, "self type = %s, self ptr type = %s", self->getType()->str().c_str(), selfPtr ? selfPtr->getType()->str().c_str() : "");
 
 
 	bool isPtr = false;
@@ -130,7 +125,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 		}
 		else
 		{
-			selfPtr = cgi->allocateInstanceInBlock(type);
+			selfPtr = cgi->getStackAlloc(type);
 			cgi->builder.CreateStore(self, selfPtr);
 		}
 	}
@@ -391,7 +386,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		lcallee = cgi->module->getFunction(lcallee->getName());
 
 		fir::Value* val = cgi->builder.CreateCall(lcallee, args);
-		fir::Value* fake = cgi->allocateInstanceInBlock(_rhs->getType());
+		fir::Value* fake = cgi->getStackAlloc(_rhs->getType());
 
 		cgi->builder.CreateStore(val, fake);
 

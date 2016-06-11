@@ -2585,11 +2585,11 @@ namespace Codegen
 
 		if(!valuePtr)
 		{
-			valuePtr = this->allocateInstanceInBlock(value->getType());
+			valuePtr = this->getStackAlloc(value->getType());
 			this->builder.CreateStore(value, valuePtr);
 		}
 
-		fir::Value* anyptr = this->allocateInstanceInBlock(anyt->first);
+		fir::Value* anyptr = this->getStackAlloc(anyt->first);
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
 
@@ -2602,7 +2602,7 @@ namespace Codegen
 		iceAssert(length->getType()->isIntegerType());
 
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
-		fir::Value* arr = this->allocateInstanceInBlock(arrType);
+		fir::Value* arr = this->getStackAlloc(arrType);
 
 		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
 		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
@@ -2716,7 +2716,7 @@ namespace Codegen
 
 		// turn the int back into a pointer, so we can store it back into the var.
 		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
-			lhsPtr : this->allocateInstanceInBlock(lhs->getType());
+			lhsPtr : this->getStackAlloc(lhs->getType());
 
 
 		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());

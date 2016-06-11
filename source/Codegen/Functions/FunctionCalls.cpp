@@ -12,7 +12,7 @@ using namespace Codegen;
 Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args)
 {
 	iceAssert(tp);
-	fir::Value* ai = this->allocateInstanceInBlock(tp->first, "tmp");
+	fir::Value* ai = this->getStackAlloc(tp->first, "tmp");
 
 	args.insert(args.begin(), ai);
 
@@ -230,7 +230,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value*
 
 			// make the array thing.
 			fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
-			fir::Value* rawArrayPtr = cgi->allocateInstanceInBlock(arrtype);
+			fir::Value* rawArrayPtr = cgi->getStackAlloc(arrtype);
 
 			for(size_t i = 0; i < variadics.size(); i++)
 			{
