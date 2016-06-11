@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// check builtin type
 	if(!this->decimal)
@@ -25,19 +25,24 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* r
 	}
 }
 
-Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(fir::ConstantInt::getBool(this->val), 0);
 }
 
-Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	return Result_t(fir::ConstantValue::getNull(), 0);
+}
+
+Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
 	if(pair && !this->isRaw)
 	{
 		fir::StructType* stringType = dynamic_cast<fir::StructType*>(pair->first);
 
-		fir::Value* alloca = cgi->allocateInstanceInBlock(stringType);
+		fir::Value* alloca = cgi->getStackAlloc(stringType);
 
 		// String layout:
 		// var data: Int8*
@@ -76,19 +81,19 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::V
 }
 
 
-Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Type* tp = 0;
 	std::vector<fir::ConstantValue*> vals;
 
 	if(this->values.size() == 0)
 	{
-		if(!lhsPtr)
+		if(!extra)
 		{
 			error(this, "Unable to infer type for empty array");
 		}
 
-		tp = lhsPtr->getType()->getPointerElementType();
+		tp = extra->getType()->getPointerElementType();
 	}
 	else
 	{

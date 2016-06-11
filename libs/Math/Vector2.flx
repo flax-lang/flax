@@ -9,35 +9,32 @@ namespace Math
 		var x: Double
 		var y: Double
 
-		public operator == (other: Math.Vector2) -> Bool { (self.x == other.x) && (self.y == other.y) }
-
-		@operator[Commutative]
-		public operator * (other: Double) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
-		public operator / (other: Double) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
-
-		@operator[Commutative]
-		public operator * (other: Int) -> Math.Vector2 { Math.Vector2(self.x * other, self.y * other) }
-		public operator / (other: Int) -> Math.Vector2 { Math.Vector2(self.x / other, self.y / other) }
-
-		public operator = (other: Math.Vector2) -> Math.Vector2*
+		public operator = (other: Math.Vector2)
 		{
 			self.x = other.x
 			self.y = other.y
-
-			return self
 		}
 	}
 }
 
+public operator == (this: Math.Vector2, other: Math.Vector2) -> Bool { (this.x == other.x) && (this.y == other.y) }
+
+@operator[Commutative]
+public operator * (this: Math.Vector2, other: Double) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
+public operator / (this: Math.Vector2, other: Double) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
+
+@operator[Commutative]
+public operator * (this: Math.Vector2, other: Int) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
+public operator / (this: Math.Vector2, other: Int) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
 
 public operator + (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x + b.x, a.y + b.y) }
 public operator - (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x - b.x, a.y - b.y) }
 
-public @operator[90]
-operator • (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.x + a.y * b.y }
+@operator[90]
+public operator • (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.x + a.y * b.y }
 
-public @operator[100]
-operator x (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.y - a.y * b.x }
+@operator[100]
+public operator x (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.y - a.y * b.x }
 
 
 

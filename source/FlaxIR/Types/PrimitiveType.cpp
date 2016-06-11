@@ -229,6 +229,11 @@ namespace fir
 		return ret;
 	}
 
+	std::string PrimitiveType::encodedStr()
+	{
+		return this->str();
+	}
+
 
 	bool PrimitiveType::isTypeEqual(Type* other)
 	{

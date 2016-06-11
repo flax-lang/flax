@@ -43,14 +43,3 @@ public namespace Uint64
 	val min: Uint64 = 0
 	val max: Uint64 = 18446744073709551615
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -54,8 +54,6 @@ namespace fir
 		Value* CreateFCmpLEQ_ORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpLEQ_UNORD(Value* a, Value* b, std::string vname = "");
 
-		Value* CreateLogicalAND(Value* a, Value* b, std::string vname = "");
-		Value* CreateLogicalOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseXOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseLogicalSHR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseArithmeticSHR(Value* a, Value* b, std::string vname = "");
@@ -88,7 +86,9 @@ namespace fir
 		Value* CreateReturnVoid();
 
 		Value* CreateLogicalNot(Value* v, std::string vname = "");
+
 		Value* CreateStackAlloc(Type* type, std::string vname = "");
+		Value* CreateImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex, std::string vname = "");
@@ -111,6 +111,8 @@ namespace fir
 		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 
+		Value* CreatePointerAdd(Value* ptr, Value* num, std::string vname = "");
+		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
 
