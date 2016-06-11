@@ -27,7 +27,6 @@ namespace Operators
 		this->theMap[ArithmeticOp::BitwiseAnd]			= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::BitwiseOr]			= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::BitwiseXor]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::BitwiseNot]			= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::CmpLT]				= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::CmpGT]				= generalArithmeticOperator;
 		this->theMap[ArithmeticOp::CmpLEq]				= generalArithmeticOperator;
@@ -54,6 +53,8 @@ namespace Operators
 		this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
 
 		this->theMap[ArithmeticOp::Cast]				= operatorCast;
+
+		this->theMap[ArithmeticOp::BitwiseNot]			= operatorBitwiseNot;
 		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
 		this->theMap[ArithmeticOp::Minus]				= operatorUnaryMinus;
 		this->theMap[ArithmeticOp::AddrOf]				= operatorAddressOf;
