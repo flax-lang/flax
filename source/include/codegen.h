@@ -54,9 +54,7 @@ namespace Codegen
 		bool isPrefix				= 0;
 		bool needsSwap				= 0;
 		bool needsNot				= 0;
-		bool needsAssign			= 0;
 		fir::Function* opFunc		= 0;
-		fir::Function* assignFunc	= 0;
 	};
 
 
