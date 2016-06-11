@@ -231,9 +231,8 @@ namespace Codegen
 		std::string getReadableType(fir::Type* type);
 		std::string getReadableType(fir::Value* val);
 
-
-		fir::Value* allocateInstanceInBlock(Ast::VarDecl* var);
-		fir::Value* allocateInstanceInBlock(fir::Type* type, std::string name = "");
+		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
+		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 

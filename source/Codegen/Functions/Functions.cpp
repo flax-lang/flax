@@ -114,18 +114,26 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs
 	{
 		func->getArguments()[i]->setName(this->decl->params[i]->name);
 
-		fir::Value* ai = 0;
-
 		if(isGeneric)
 		{
-			ai = cgi->allocateInstanceInBlock(this->decl->instantiatedGenericTypes[i]);
+			iceAssert(func->getArguments()[i]->getType() == this->decl->instantiatedGenericTypes[i]);
 		}
 		else
 		{
-			ai = cgi->allocateInstanceInBlock(this->decl->params[i]);
+			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(this->decl->params[i]));
 		}
 
-		cgi->builder.CreateStore(func->getArguments()[i], ai);
+		fir::Value* ai = 0;
+		if(!this->decl->params[i]->immutable)
+		{
+			ai = cgi->getStackAlloc(func->getArguments()[i]->getType());
+			cgi->builder.CreateStore(func->getArguments()[i], ai);
+		}
+		else
+		{
+			ai = cgi->getImmutStackAllocValue(func->getArguments()[i]);
+		}
+
 		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
 		func->getArguments()[i]->setValue(ai);
 	}

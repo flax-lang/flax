@@ -5,6 +5,20 @@
 import Math
 import Foundation
 
+class CPTest
+{
+	var readwrite: Int
+	{
+		get { printf("READ"); return 0 }
+		set { printf("WRITE: %d\n", newValue); }
+	}
+}
+
+
+
+
+
+
 public func doOperatorTupleTest()
 {
 	let g: Int8 = 100

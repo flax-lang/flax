@@ -80,7 +80,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		if(!ai)
 		{
 			iceAssert(cmplxtype);
-			iceAssert((ai = cgi->allocateInstanceInBlock(cmplxtype->first)));
+			iceAssert((ai = cgi->getStackAlloc(cmplxtype->first)));
 		}
 
 		if(cmplxtype)
@@ -302,7 +302,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 	if(!this->isGlobal)
 	{
-		ai = cgi->allocateInstanceInBlock(this);
+		ai = cgi->getStackAlloc(this->inferredLType);
 		iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
 	}
 
@@ -349,27 +349,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 		if(this->initVal)
 		{
 			iceAssert(val);
-
-			// if(dynamic_cast<fir::ConstantValue*>(val))
-			// {
-			// 	if(val->getType() != ltype)
-			// 		val = cgi->autoCastType(ai->getType()->getPointerElementType(), val, valptr);
-
-			// 	fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
-			// 	iceAssert(cv);
-
-			// 	if(cv->getType() != ai->getType()->getPointerElementType())
-			// 	{
-			// 		error(this, "Cannot store value of type '%s' into a variable '%s' of type '%s'", cv->getType()->str().c_str(),
-			// 			this->name.c_str(), ai->getType()->getPointerElementType()->str().c_str());
-			// 	}
-
-			// 	dynamic_cast<fir::GlobalVariable*>(ai)->setInitialValue(cv);
-			// }
-			// else
-			{
-				cgi->addGlobalConstructedValue(ai, val);
-			}
+			cgi->addGlobalConstructedValue(ai, val);
 		}
 		else if(ltype->isStructType() && !cgi->isTupleType(ltype))
 		{
@@ -430,6 +410,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* 
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
 	}
+
+	if(this->immutable)
+		ai->makeImmutable();
 
 	if(!this->isGlobal)
 		return Result_t(cgi->builder.CreateLoad(ai), ai);

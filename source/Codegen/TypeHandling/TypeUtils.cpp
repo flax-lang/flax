@@ -490,14 +490,14 @@ namespace Codegen
 		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
 
-	fir::Value* CodegenInstance::allocateInstanceInBlock(fir::Type* type, std::string name)
+	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
 		return this->builder.CreateStackAlloc(type, name);
 	}
 
-	fir::Value* CodegenInstance::allocateInstanceInBlock(VarDecl* var)
+	fir::Value* CodegenInstance::getImmutStackAllocValue(fir::Value* initValue, std::string name)
 	{
-		return allocateInstanceInBlock(this->getExprType(var), var->name);
+		return this->builder.CreateImmutStackAlloc(initValue->getType(), initValue, name);
 	}
 
 
@@ -789,8 +789,7 @@ namespace Codegen
 
 			if(!rhsPtr)
 			{
-				rhsPtr = this->allocateInstanceInBlock(right->getType());
-				this->builder.CreateStore(right, rhsPtr);
+				rhsPtr = this->getImmutStackAllocValue(right);
 			}
 
 			iceAssert(rhsPtr);

@@ -86,7 +86,9 @@ namespace fir
 		Value* CreateReturnVoid();
 
 		Value* CreateLogicalNot(Value* v, std::string vname = "");
+
 		Value* CreateStackAlloc(Type* type, std::string vname = "");
+		Value* CreateImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex, std::string vname = "");
