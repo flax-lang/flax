@@ -337,6 +337,13 @@ Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, st
 
 
 
+
+
+
+
+
+
+
 Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	if(args.size() != 2)
@@ -379,9 +386,6 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 
 
-
-
-
 	// check if it's a computed property.
 	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(args[0]))
 	{
@@ -416,8 +420,6 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 
 
-
-
 	// else, we should be safe to codegen both sides
 	auto leftVP = args[0]->codegen(cgi).result;
 	fir::Value* lhsPtr = leftVP.second;
@@ -437,117 +439,8 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 	}
 
 
-
-	// check whether the left side is a struct, and if so do an operator overload call
-	if(lhs->getType()->isStructType())
-	{
-		auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
-		if(data.found)
-		{
-			fir::Function* opf = data.opFunc;
-			iceAssert(opf);
-			iceAssert(opf->getArgumentCount() == 2);
-			iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
-			iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
-
-			iceAssert(lhsPtr);
-
-			cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
-
-			return Result_t(0, 0);
-		}
-		else
-		{
-			error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
-				lhs->getType()->str().c_str());
-		}
-	}
-
-
-
-
-
-
-
-
-
-
-
-	// assigning something to Any
-	if(cgi->isAnyType(lhs->getType()))
-	{
-		if(!rhsPtr && !rhs->getType()->isPrimitiveType() && !rhs->getType()->isPointerType())
-		{
-			// we need a pointer, since bytes and all, for Any.
-			rhsPtr = cgi->getImmutStackAllocValue(rhs);
-			// cgi->builder.CreateStore(rhs, rhsPtr);
-		}
-
-		iceAssert(lhsPtr);
-		cgi->assignValueToAny(lhsPtr, rhs, rhsPtr);
-
-		// assign returns nothing
-		return Result_t(0, 0);
-	}
-
-	// assigning Any to something
-	if(cgi->isAnyType(rhs->getType()))
-	{
-		// todo: find some fucking way to unwrap this shit at compile time.
-		warn(user, "Unchecked assignment from 'Any' to typed variable (unfixable)");
-
-		iceAssert(rhsPtr);
-		Result_t res = cgi->extractValueFromAny(lhs->getType(), rhsPtr);
-
-		cgi->builder.CreateStore(res.result.first, lhsPtr);
-
-		// assign returns nothing.
-		return Result_t(0, 0);
-	}
-
-	if(!lhsPtr)
-	{
-		error(user, "Unassignable?");
-	}
-
-	// do the casting.
-	if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
-	{
-		rhs = cgi->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
-	}
-
-
-
-
-
-	// check if the left side is a simple var
-	if(VarRef* v = dynamic_cast<VarRef*>(args[0]))
-	{
-		VarDecl* vdecl = cgi->getSymDecl(user, v->name);
-
-		if(!vdecl)
-			GenError::unknownSymbol(cgi, user, v->name, SymbolType::Variable);
-
-		if(vdecl->immutable)
-			error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
-
-
-		// store it, and return 0.
-		cgi->builder.CreateStore(rhs, lhsPtr);
-		return Result_t(0, 0);
-	}
-	else
-	{
-		// just do it
-		iceAssert(rhs);
-		iceAssert(lhsPtr);
-
-		// warn(user, "unknown assign (%s -> %s)", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
-
-		cgi->builder.CreateStore(rhs, lhsPtr);
-
-		return Result_t(0, 0);
-	}
+	// the bulk of the work is still done here
+	return cgi->doBinOpAssign(user, args[0], args[1], op, lhs, lhsPtr, rhs, rhsPtr);
 }
 
 
@@ -635,15 +528,6 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
-
-Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
-{
-	if(args.size() != 2)
-		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-	return Result_t(0, 0);
-}
 
 
 
@@ -911,6 +795,14 @@ Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::de
 
 
 
+Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+{
+	if(args.size() != 2)
+		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+	return Result_t(0, 0);
+}
+
 Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 {
 	return Result_t(0, 0);
@@ -1079,44 +971,136 @@ Result_t OperatorMap::call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std
 
 
 
-static Result_t callOperatorOverloadOnStruct(CodegenInstance* cgi, Expr* user, ArithmeticOp op, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef)
+
+Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* leftExpr, Expr* rightExpr, ArithmeticOp op, fir::Value* lhs,
+	fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 {
-	if(lhsRef->getType()->getPointerElementType()->isStructType())
+	// check whether the left side is a struct, and if so do an operator overload call
+	iceAssert(op == ArithmeticOp::Assign);
+
+	if(lhs->getType()->isStructType())
 	{
-		TypePair_t* tp = cgi->getType(lhsRef->getType()->getPointerElementType()->toStructType()->getStructName());
-		if(!tp)
+		auto data = this->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+		if(data.found)
+		{
+			fir::Function* opf = data.opFunc;
+			iceAssert(opf);
+			iceAssert(opf->getArgumentCount() == 2);
+			iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
+			iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
+
+			iceAssert(lhsPtr);
+
+			this->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+
 			return Result_t(0, 0);
-
-		// if we can find an operator, then we call it. if not, then we'll have to handle it somewhere below.
-
-		auto data = cgi->getOperatorOverload(user, op, lhsRef->getType()->getPointerElementType(), rhs->getType());
-		Result_t ret = cgi->callOperatorOverload(data, cgi->builder.CreateLoad(lhsRef), lhsRef, rhs, rhsRef, op);
-
-		if(ret.result.first != 0)
-		{
-			return ret;
 		}
-		else if(op != ArithmeticOp::Assign)
+		else
 		{
-			// only assign can conceivably be done automatically
-			GenError::noOpOverload(cgi, user, reinterpret_cast<Struct*>(tp->second.first)->name, op);
+			error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+				lhs->getType()->str().c_str());
 		}
-
-		// fail gracefully-ish
 	}
 
-	return Result_t(0, 0);
-}
+
+
+	// assigning something to Any
+	if(this->isAnyType(lhs->getType()))
+	{
+		if(!rhsPtr && !rhs->getType()->isPrimitiveType() && !rhs->getType()->isPointerType())
+		{
+			// we need a pointer, since bytes and all, for Any.
+			rhsPtr = this->getImmutStackAllocValue(rhs);
+		}
+
+		iceAssert(lhsPtr);
+		this->assignValueToAny(lhsPtr, rhs, rhsPtr);
+
+		// assign returns nothing
+		return Result_t(0, 0);
+	}
+
+	// assigning Any to something
+	if(this->isAnyType(rhs->getType()))
+	{
+		// todo: find some fucking way to unwrap this shit at compile time.
+		warn(user, "Unchecked assignment from 'Any' to typed variable (unfixable)");
+
+		iceAssert(rhsPtr);
+		Result_t res = this->extractValueFromAny(lhs->getType(), rhsPtr);
+
+		this->builder.CreateStore(res.result.first, lhsPtr);
+
+		// assign returns nothing.
+		return Result_t(0, 0);
+	}
+
+	if(!lhsPtr)
+	{
+		error(user, "Unassignable?");
+	}
+
+	// do the casting.
+	if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
+	{
+		rhs = this->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
+	}
+
+
+
+	if(lhs->getType() != rhs->getType())
+		error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+
+
+	// check if the left side is a simple var
+	if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
+	{
+		VarDecl* vdecl = this->getSymDecl(user, v->name);
+
+		if(!vdecl)
+			GenError::unknownSymbol(this, user, v->name, SymbolType::Variable);
+
+		if(vdecl->immutable)
+			error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
+
+		// store it, and return 0.
+		this->builder.CreateStore(rhs, lhsPtr);
+		return Result_t(0, 0);
+	}
+	else if(this->isEnum(lhs->getType()) && this->isEnum(rhs->getType()))
+	{
+		iceAssert(lhs->getType() == rhs->getType());
+
+		// directly store the enum innards into the lhs.
+
+		iceAssert(lhsPtr);
+		iceAssert(rhsPtr);
+
+		fir::Value* lhsGEP = this->builder.CreateStructGEP(lhsPtr, 0);
+		fir::Value* rhsGEP = this->builder.CreateStructGEP(rhsPtr, 0);
+
+		fir::Value* rhsVal = this->builder.CreateLoad(rhsGEP);
+		this->builder.CreateStore(rhsVal, lhsGEP);
+
+		return Result_t(0, 0);
+	}
+	else
+	{
+		// just do it
+		iceAssert(rhs);
+		iceAssert(lhsPtr);
+
+		// warn(user, "unknown assign (%s -> %s)", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
+
+		this->builder.CreateStore(rhs, lhsPtr);
+
+		return Result_t(0, 0);
+	}
 
 
 
 
-
-
-
-Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, ArithmeticOp op, fir::Value* lhs,
-	fir::Value* ref, fir::Value* rhs, fir::Value* rhsPtr)
-{
+	#if 0
 	// iceAssert(0);
 
 	VarRef* v		= nullptr;
@@ -1415,6 +1399,7 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 		// return Result_t(newrhs, varptr);
 	}
+	#endif
 }
 
 
