@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }

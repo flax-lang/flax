@@ -12,6 +12,16 @@ using namespace Ast;
 using namespace Codegen;
 
 
+struct OperatorMap
+{
+	std::map<ArithmeticOp, std::function<Result_t(CodegenInstance*, ArithmeticOp, Expr*, std::deque<Expr*>)>> theMap;
+	OperatorMap();
+	Result_t call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args);
+};
+
+static OperatorMap operatorMap;
+
+
 
 static bool isComparisonOp(ArithmeticOp op)
 {
@@ -108,9 +118,56 @@ static Result_t findAndCallOperatorOverload(Expr* user, CodegenInstance* cgi, Ar
 	fir::Value* rhs, fir::Value* rhsPtr)
 {
 	auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+	if(!data.found)
+	{
+		error(user, "Invalid operator '%s' between types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
+			lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+	}
+
 	return cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
 }
 
+static fir::Function* tryGetComputedPropSetter(CodegenInstance* cgi, MemberAccess* ma)
+{
+	VarRef* vrname = 0;
+	if(!(vrname = dynamic_cast<VarRef*>(ma->right)))
+		return 0;
+
+	fir::Type* leftType = cgi->getExprType(ma->left);
+	if(!leftType->isStructType() && (leftType->isPointerType() && !leftType->getPointerElementType()->isStructType()))
+		return 0;
+
+	TypePair_t* tp = cgi->getType(leftType);
+	if(!tp && leftType->isPointerType()) { tp = cgi->getType(leftType->getPointerElementType()); }
+	if(!tp)
+		return 0;
+
+	Class* cls = dynamic_cast<Class*>(tp->second.first);
+	if(!cls)
+		return 0;
+
+	ComputedProperty* ret = 0;
+	for(auto cp : cls->cprops)
+	{
+		if(cp->name == vrname->name)
+		{
+			// found
+			ret = cp;
+			break;
+		}
+	}
+
+	if(!ret) return 0;
+	if(!ret->setterFunc) return 0;
+
+	for(auto lf : cls->lfuncs)
+	{
+		if(lf->getName() == ret->setterFunc->mangledName)
+			return lf;
+	}
+
+	return 0;
+}
 
 
 
@@ -211,7 +268,7 @@ Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 
 
 
-Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, Expr* rhs)
+Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, fir::Value* rhs)
 {
 	iceAssert(0);
 }
@@ -285,23 +342,135 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 	if(args.size() != 2)
 		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	// first check if the left side is a subscript.
-	// if(dynamic_cast<ArrayIndex*>(args[0]))
-	// 	return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], args[1]);
+
+	fir::Value* rhsPtr = 0;
+	fir::Value* rhs = 0;
 
 
-	// also check if it's a computed property.
+	if(op != ArithmeticOp::Assign)
+	{
+		ArithmeticOp actualOp;
+		switch(op)
+		{
+			case ArithmeticOp::PlusEquals:			actualOp = ArithmeticOp::Add; break;
+			case ArithmeticOp::MinusEquals:			actualOp = ArithmeticOp::Subtract; break;
+			case ArithmeticOp::MultiplyEquals:		actualOp = ArithmeticOp::Multiply; break;
+			case ArithmeticOp::DivideEquals:		actualOp = ArithmeticOp::Divide; break;
+			case ArithmeticOp::ModEquals:			actualOp = ArithmeticOp::Modulo; break;
+			case ArithmeticOp::ShiftLeftEquals:		actualOp = ArithmeticOp::ShiftLeft; break;
+			case ArithmeticOp::ShiftRightEquals:	actualOp = ArithmeticOp::ShiftRight; break;
+			case ArithmeticOp::BitwiseAndEquals:	actualOp = ArithmeticOp::BitwiseAnd; break;
+			case ArithmeticOp::BitwiseOrEquals:		actualOp = ArithmeticOp::BitwiseOr; break;
+			case ArithmeticOp::BitwiseXorEquals:	actualOp = ArithmeticOp::BitwiseXor; break;
+			case ArithmeticOp::BitwiseNotEquals:	actualOp = ArithmeticOp::BitwiseNot; break;
+			default:	error("what");
+		}
+
+		// note: when we reach this, it means that we didn't find a specific operator overload
+		// in the "generalCompoundAssignmentOperator" function.
+		Result_t res = operatorMap.call(actualOp, cgi, user, args);
+		iceAssert(res.result.first);
+
+		rhs = res.result.first;
+		rhsPtr = res.result.second;
+
+		op = ArithmeticOp::Assign;
+	}
+
+
+
+
+
+
+	// check if it's a computed property.
+	if(MemberAccess* ma = dynamic_cast<MemberAccess*>(args[0]))
+	{
+		// todo: move this out.
+		fir::Function* setter = tryGetComputedPropSetter(cgi, ma);
+		if(setter)
+		{
+			iceAssert(setter->getArgumentCount() == 2 && "invalid setter");
+
+			fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi).result.first;
+
+			auto lres = ma->left->codegen(cgi).result;
+			fir::Value* lhsPtr = lres.first->getType()->isPointerType() ? lres.first : lres.second;
+
+			iceAssert(lhsPtr);
+			cgi->builder.CreateCall2(setter, lhsPtr, rhsVal);
+
+			return Result_t(0, 0);
+		}
+	}
+	else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(args[0]))
+	{
+		// also check if the left side is a subscript on a type.
+
+		fir::Type* t = cgi->getExprType(ai->arr);
+
+		// todo: do we need to add the LLVariableArray thing?
+		if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
+			return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first);
+	}
+
+
+
+
 
 
 	// else, we should be safe to codegen both sides
 	auto leftVP = args[0]->codegen(cgi).result;
-	auto rightVP = args[1]->codegen(cgi).result;
-
-	fir::Value* lhs = leftVP.first;
-	fir::Value* rhs = rightVP.first;
-
 	fir::Value* lhsPtr = leftVP.second;
-	fir::Value* rhsPtr = rightVP.second;
+	fir::Value* lhs = leftVP.first;
+
+
+	// this is to allow handling of compound assignment operators
+	// if we are one, then the rhs will already have been generated, and we can't do codegen (again).
+	if(rhs == 0 && rhsPtr == 0)
+	{
+		iceAssert(rhs == 0);
+		iceAssert(rhsPtr == 0);
+
+		auto rightVP = args[1]->codegen(cgi).result;
+		rhsPtr = rightVP.second;
+		rhs = rightVP.first;
+	}
+
+
+
+	// check whether the left side is a struct, and if so do an operator overload call
+	if(lhs->getType()->isStructType())
+	{
+		auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+		if(data.found)
+		{
+			fir::Function* opf = data.opFunc;
+			iceAssert(opf);
+			iceAssert(opf->getArgumentCount() == 2);
+			iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
+			iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
+
+			iceAssert(lhsPtr);
+
+			cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+
+			return Result_t(0, 0);
+		}
+		else
+		{
+			error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+				lhs->getType()->str().c_str());
+		}
+	}
+
+
+
+
+
+
+
+
+
 
 
 	// assigning something to Any
@@ -336,11 +505,12 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 		return Result_t(0, 0);
 	}
 
+	if(!lhsPtr)
+	{
+		error(user, "Unassignable?");
+	}
 
-
-
-
-
+	// do the casting.
 	if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
 	{
 		rhs = cgi->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
@@ -374,7 +544,7 @@ Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::
 		iceAssert(rhs);
 		iceAssert(lhsPtr);
 
-		warn(user, "unknown assign (%s -> %s)", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
+		// warn(user, "unknown assign (%s -> %s)", rhs->getType()->str().c_str(), lhsPtr->getType()->str().c_str());
 
 		cgi->builder.CreateStore(rhs, lhsPtr);
 
@@ -390,7 +560,28 @@ Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Ex
 	if(args.size() != 2)
 		error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-	return Result_t(0, 0);
+
+	fir::Type* ltype = cgi->getExprType(args[0]);
+	fir::Type* rtype = cgi->getExprType(args[1]);
+
+	if(ltype->isStructType() || rtype->isStructType())
+	{
+		// first check if we have an overload for the compound thing as a whole.
+		auto data = cgi->getOperatorOverload(user, op, ltype, rtype);
+		if(data.found)
+		{
+			auto leftvp = args[0]->codegen(cgi).result;
+			auto rightvp = args[1]->codegen(cgi).result;
+
+			cgi->callOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
+			return Result_t(0, 0);
+		}
+
+		// if not, then we'll rely on + and = separation/synthesis.
+	}
+
+	// else
+	return operatorAssign(cgi, op, user, args);
 }
 
 
@@ -407,7 +598,7 @@ Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Ex
 
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return operatorSubscript(cgi, ArithmeticOp::Subscript, this, { this->arr, this->index });
 }
@@ -614,65 +805,60 @@ Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, 
 
 
 
-struct OperatorMap
+
+OperatorMap::OperatorMap()
 {
-	std::map<ArithmeticOp, std::function<Result_t(CodegenInstance*, ArithmeticOp, Expr*, std::deque<Expr*>)>> theMap;
+	this->theMap[ArithmeticOp::Add]					= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::Subtract]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::Multiply]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::Divide]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::Modulo]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::ShiftLeft]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::ShiftRight]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::BitwiseAnd]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::BitwiseOr]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::BitwiseXor]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::BitwiseNot]			= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpLT]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpGT]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpLEq]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpGEq]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpEq]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::CmpNEq]				= generalArithmeticOperator;
 
-	OperatorMap()
-	{
-		this->theMap[ArithmeticOp::Add]					= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::Subtract]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::Multiply]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::Divide]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::Modulo]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::ShiftLeft]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::ShiftRight]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::BitwiseAnd]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::BitwiseOr]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::BitwiseXor]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::BitwiseNot]			= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpLT]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpGT]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpLEq]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpGEq]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpEq]				= generalArithmeticOperator;
-		this->theMap[ArithmeticOp::CmpNEq]				= generalArithmeticOperator;
+	this->theMap[ArithmeticOp::Assign]				= operatorAssign;
+	this->theMap[ArithmeticOp::PlusEquals]			= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::MinusEquals]			= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::MultiplyEquals]		= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::DivideEquals]		= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::ModEquals]			= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::ShiftLeftEquals]		= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::ShiftRightEquals]	= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::BitwiseAndEquals]	= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::BitwiseOrEquals]		= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::BitwiseXorEquals]	= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::BitwiseNotEquals]	= generalCompoundAssignOperator;
 
-		this->theMap[ArithmeticOp::Assign]				= operatorAssign;
-		this->theMap[ArithmeticOp::PlusEquals]			= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::MinusEquals]			= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::MultiplyEquals]		= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::DivideEquals]		= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::ModEquals]			= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::ShiftLeftEquals]		= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::ShiftRightEquals]	= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::BitwiseAndEquals]	= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::BitwiseOrEquals]		= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::BitwiseXorEquals]	= generalCompoundAssignOperator;
-		this->theMap[ArithmeticOp::BitwiseNotEquals]	= generalCompoundAssignOperator;
+	this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
+	this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
+	this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
 
-		this->theMap[ArithmeticOp::LogicalNot]			= operatorLogicalNot;
-		this->theMap[ArithmeticOp::LogicalAnd]			= operatorLogicalAnd;
-		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
+	this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
 
-		this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
+	this->theMap[ArithmeticOp::Cast]				= operatorCast;
+	this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
+	this->theMap[ArithmeticOp::Minus]				= operatorUnaryMinus;
+	this->theMap[ArithmeticOp::AddrOf]				= operatorAddressOf;
+	this->theMap[ArithmeticOp::Deref]				= operatorDereference;
+	this->theMap[ArithmeticOp::UserDefined]			= operatorCustom;
+}
 
-		this->theMap[ArithmeticOp::Cast]				= operatorCast;
-		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
-		this->theMap[ArithmeticOp::Minus]				= operatorUnaryMinus;
-		this->theMap[ArithmeticOp::AddrOf]				= operatorAddressOf;
-		this->theMap[ArithmeticOp::Deref]				= operatorDereference;
-		this->theMap[ArithmeticOp::UserDefined]			= operatorCustom;
-	}
+Result_t OperatorMap::call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
+{
+	auto fn = theMap[op > ArithmeticOp::UserDefined ? ArithmeticOp::UserDefined : op];
+	return fn(cgi, op, usr, args);
+}
 
-	Result_t call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
-	{
-		auto fn = theMap[op > ArithmeticOp::UserDefined ? ArithmeticOp::UserDefined : op];
-		return fn(cgi, op, usr, args);
-	}
-};
-
-static OperatorMap operatorMap;
 
 
 
@@ -1131,13 +1317,13 @@ Result_t CodegenInstance::doBinOpAssign(Expr* user, Expr* left, Expr* right, Ari
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _rhs)
+Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->left && this->right);
 
 	{
 		auto res = operatorMap.call(this->op, cgi, this, { this->left, this->right });
-		if(res.result.first || this->op == ArithmeticOp::Assign)
+		if(res.result.first || cgi->isArithmeticOpAssignment(this->op))
 			return res;
 	}
 
@@ -1162,8 +1348,7 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* _lhsPtr, fir::Value* _
 
 		auto res = this->right->codegen(cgi /*, valptr.second*/).result;
 
-		valptr = this->left->codegen(cgi, 0, res.first).result;
-
+		valptr = this->left->codegen(cgi).result;
 
 		rhs = res.first;
 		lhs = valptr.first;

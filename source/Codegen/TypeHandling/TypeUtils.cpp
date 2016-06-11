@@ -334,7 +334,10 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
-					return std::get<5>(this->getOperatorOverload(bo, bo->op, ltype, rtype))->getReturnType();
+					auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+
+					iceAssert(data.found);
+					return data.opFunc->getReturnType();
 				}
 				else
 				{
@@ -369,10 +372,10 @@ namespace Codegen
 							return ltype;
 						}
 
-						auto opfn = std::get<5>(this->getOperatorOverload(bo, bo->op, ltype, rtype));
-						if(opfn)
+						auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+						if(data.found)
 						{
-							return opfn->getReturnType();
+							return data.opFunc->getReturnType();
 						}
 						else
 						{

@@ -9,7 +9,7 @@ class CPTest
 {
 	var readwrite: Int
 	{
-		get { printf("READ"); return 0 }
+		get { printf("READ\n"); return 31 }
 		set { printf("WRITE: %d\n", newValue); }
 	}
 }
@@ -51,6 +51,14 @@ public func doOperatorTupleTest()
 
 	let crossn = m.1 x m.0
 	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
+
+
+
+
+
+	var k = alloc CPTest
+	k.readwrite = 40
+	printf("k: %d\n", k.readwrite)
 }
 
 

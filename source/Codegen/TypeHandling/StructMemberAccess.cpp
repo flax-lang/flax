@@ -14,7 +14,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
 
 
-Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* rhs)
+Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// handled elsewhere.
 	return Result_t(0, 0);
@@ -37,7 +37,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 }
 
 
-Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Value* _rhs)
+Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
@@ -119,11 +119,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 		// it's required for CreateStructGEP, so we'll have to make a temp variable
 		// then store the result of the LHS into it.
 
-		if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
-		{
-			selfPtr = lhsPtr;
-		}
-		else
+		// if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
+		// {
+		// 	selfPtr = lhsPtr;
+		// }
+		// else
 		{
 			selfPtr = cgi->getStackAlloc(type);
 			cgi->builder.CreateStore(self, selfPtr);
@@ -329,7 +329,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* lhsPtr, fir::Va
 				}
 
 				iceAssert(cprop);
-				return doComputedProperty(cgi, var, cprop, _rhs, isPtr ? self : selfPtr, cls);
+				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr, cls);
 			}
 		}
 		else

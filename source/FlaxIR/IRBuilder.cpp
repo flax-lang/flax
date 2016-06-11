@@ -742,61 +742,75 @@ namespace fir
 		return this->addInstruction(instr, "");
 	}
 
+
 	Value* IRBuilder::CreateCall0(Function* fn, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { }, vname);
 	}
 
 	Value* IRBuilder::CreateCall1(Function* fn, Value* p1, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1 }, vname);
 	}
 
 	Value* IRBuilder::CreateCall2(Function* fn, Value* p1, Value* p2, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1, p2 }, vname);
 	}
 
 	Value* IRBuilder::CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), { fn, p1, p2, p3 });
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, { p1, p2, p3 }, vname);
 	}
+
+
+
 
 	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args, std::string vname)
 	{
-		auto v = args;
+		// in theory we should still check, but i'm lazy right now
+		// TODO.
+		if(!fn->isCStyleVarArg())
+		{
+			// check here, to stop llvm dying
+			if(args.size() != fn->getArgumentCount())
+				error("Calling function %s with the wrong number of arguments (needs %zu, have %zu)", fn->getName().c_str(),
+					fn->getArgumentCount(), args.size());
+
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i]->getType() != fn->getArguments()[i]->getType())
+				{
+					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().c_str(),
+						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+				}
+			}
+		}
+
 		args.push_front(fn);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), v);
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), args);
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args, std::string vname)
 	{
 		std::deque<Value*> dargs;
-		dargs.push_back(fn);
 
 		for(auto a : args)
 			dargs.push_back(a);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), dargs);
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, dargs, vname);
 	}
 
 	Value* IRBuilder::CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname)
 	{
 		std::deque<Value*> dargs;
-		dargs.push_back(fn);
 
 		for(auto a : args)
 			dargs.push_back(a);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, fn->getType()->getReturnType(), dargs);
-		return this->addInstruction(instr, vname);
+		return this->CreateCall(fn, dargs, vname);
 	}
 
 	Value* IRBuilder::CreateReturn(Value* v)
