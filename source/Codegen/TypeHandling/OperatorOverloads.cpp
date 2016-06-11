@@ -25,18 +25,6 @@ Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* ex
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(!this->didCodegen)
@@ -54,6 +42,18 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
 		return Result_t(this->lfunc, 0);
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
