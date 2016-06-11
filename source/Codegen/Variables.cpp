@@ -64,24 +64,9 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	}
 	else
 	{
-		if(this->inferredLType)
-		{
-			cmplxtype = cgi->getType(this->inferredLType);
-		}
-		else
-		{
-			if(this->type.strType.find("::") != std::string::npos)
-				cmplxtype = cgi->getType(cgi->mangleRawNamespace(this->type.strType));
-
-			else
-				cmplxtype = cgi->getType(this->type.strType);
-		}
-
-		if(!ai)
-		{
-			iceAssert(cmplxtype);
-			iceAssert((ai = cgi->getStackAlloc(cmplxtype->first)));
-		}
+		iceAssert(ai);
+		iceAssert(this->inferredLType);
+		cmplxtype = cgi->getType(this->inferredLType);
 
 		if(cmplxtype)
 		{
@@ -135,9 +120,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 		else if(!cmplxtype && !this->initVal)
 		{
-			if(!val)
-				val = cgi->getDefaultValue(this);
-
+			iceAssert(val);
 			cgi->builder.CreateStore(val, ai);
 			return val;
 		}
@@ -163,46 +146,10 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	}
 
 
-
-
-
-	if(!ai)
-	{
-		error(this, "ai is null");
-	}
+	iceAssert(ai);
 
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->name, ai, this);
-
-
-	if(val->getType() != ai->getType()->getPointerElementType())
-	{
-		if(val->getType()->isIntegerType() && ai->getType()->getPointerElementType()->isIntegerType())
-		{
-			Number* n = 0;
-
-			if((n = dynamic_cast<Number*>(this->initVal)))
-			{
-				uint64_t max = pow(2, ai->getType()->getPointerElementType()->toPrimitiveType()->getIntegerBitWidth()) - 1;
-				if(max == 0)
-					max = UINT64_MAX;
-
-				if((uint64_t) n->ival < max)
-				{
-					val = cgi->builder.CreateIntSizeCast(val, ai->getType()->getPointerElementType());
-				}
-				else
-				{
-					error(this, "Trying to assign value of %s to variable with max value %s (int%zu)", std::to_string(n->ival).c_str(),
-						std::to_string(max).c_str(), ai->getType()->getPointerElementType()->toPrimitiveType()->getIntegerBitWidth());
-				}
-			}
-		}
-		else
-		{
-			GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
-		}
-	}
 
 	cgi->builder.CreateStore(val, ai);
 	return val;
@@ -214,9 +161,6 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 void VarDecl::inferType(CodegenInstance* cgi)
 {
-	// if(this->inferredLType != 0)
-	// 	return;
-
 	if(this->type.strType == "Inferred")
 	{
 		if(this->initVal == nullptr)
@@ -327,7 +271,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	mangledName = cgi->mangleWithNamespace(this->name);
+	this->mangledName = cgi->mangleWithNamespace(this->name);
 
 	// TODO: call global constructors
 	if(this->isGlobal)
