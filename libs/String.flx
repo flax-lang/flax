@@ -145,7 +145,7 @@ public class String
 
 
 
-	operator = (other: Int8*) -> Bool
+	operator = (other: Int8*)
 	{
 		self.setString(other)
 	}
