@@ -104,8 +104,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// and fuck shit up big time
 	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
 
-	fir::IRBlock* block = cgi->builder.addNewBlockInFunction(this->decl->name + "_entry", func);
-	cgi->builder.setCurrentBlock(block);
+	fir::IRBlock* irblock = cgi->builder.addNewBlockInFunction(this->decl->name + "_entry", func);
+	cgi->builder.setCurrentBlock(irblock);
 
 
 

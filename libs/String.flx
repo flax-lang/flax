@@ -7,7 +7,45 @@ import LibCInterface
 
 public class Character
 {
-	var ascii: Int8 = 0
+	var utf8Bytes: Uint8* = null
+	var byteCount: Uint64 = 0
+
+	init()
+	{
+		self.utf8Bytes = null
+		self.byteCount = 0
+	}
+
+	init(c: Int8)
+	{
+		self.utf8Bytes = alloc Uint8
+		self.utf8Bytes[0] = c
+		self.byteCount = 1
+	}
+
+	init(c: Uint8*, l: Uint64)
+	{
+		self.utf8Bytes = c
+		self.byteCount = l
+	}
+
+	func toAscii() -> Int8
+	{
+		if self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
+		{
+			// is ascii, return it
+			return self.utf8Bytes[0]
+		}
+		else
+		{
+			return 0
+		}
+	}
+
+	func isAscii() -> Bool
+	{
+		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
+	}
 }
 
 public class String
@@ -126,19 +164,17 @@ public class String
 
 
 
-	operator [] (index: Int64) -> Int8
+	operator [] (index: Int64) -> Character
 	{
 		get
 		{
-			if index < self.length { return self.data[index] }
-			else { return 0 }
-		}
-		set
-		{
-			if index < self.length
-			{
-				self.data[index] = newValue
-			}
+			if index >= self.length { return Character() }
+
+			// else
+			let chars = Utf8Index(self.data, index)
+			let ret = Character(chars as Uint8*, Utf8CharLength(chars))
+
+			return ret
 		}
 	}
 
