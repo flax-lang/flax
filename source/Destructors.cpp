@@ -135,15 +135,15 @@ namespace Ast
 	{
 	}
 
-	Extension::~Extension()
+	ExtensionDef::~ExtensionDef()
 	{
 	}
 
-	Struct::~Struct()
+	StructDef::~StructDef()
 	{
 	}
 
-	Class::~Class()
+	ClassDef::~ClassDef()
 	{
 	}
 
@@ -173,7 +173,7 @@ namespace Ast
 	{
 	}
 
-	Enumeration::~Enumeration()
+	EnumDef::~EnumDef()
 	{
 	}
 

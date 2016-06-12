@@ -512,31 +512,31 @@ namespace Ast
 		std::deque<fir::Function*> initFuncs;
 	};
 
-	struct Extension;
-	struct Class : StructBase
+	struct ExtensionDef;
+	struct ClassDef : StructBase
 	{
-		~Class();
-		Class(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+		~ClassDef();
+		ClassDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
-		std::deque<Extension*> extensions;
+		std::deque<ExtensionDef*> extensions;
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::pair<Class*, fir::StructType*> superclass;
-		std::deque<std::pair<Class*, fir::Type*>> nestedTypes;
+		std::pair<ClassDef*, fir::StructType*> superclass;
+		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
 
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 	// extends class, because it's basically a class, except we need to apply it to an existing class
-	struct Extension : Class
+	struct ExtensionDef : ClassDef
 	{
-		~Extension();
-		Extension(Parser::Pin pos, std::string name) : Class(pos, name) { }
+		~ExtensionDef();
+		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
@@ -546,21 +546,20 @@ namespace Ast
 
 
 
-	struct Struct : StructBase
+	struct StructDef : StructBase
 	{
-		~Struct();
-		Struct(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+		~StructDef();
+		StructDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool packed = false;
-		std::deque<Struct*> imports;
 	};
 
-	struct Enumeration : Class
+	struct EnumDef : ClassDef
 	{
-		~Enumeration();
-		Enumeration(Parser::Pin pos, std::string name) : Class(pos, name) { }
+		~EnumDef();
+		EnumDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 

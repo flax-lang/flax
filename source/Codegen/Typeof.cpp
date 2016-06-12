@@ -63,7 +63,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 	TypePair_t* tp = cgi->getType("Type");
 	iceAssert(tp);
 
-	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+	EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
 	iceAssert(enr);
 
 	fir::Value* wrapper = cgi->getStackAlloc(tp->first, "typeof_tmp");

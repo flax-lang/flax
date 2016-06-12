@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->genericTypes.size() > 0 && !this->didCreateType)
 		return Result_t(0, 0);
@@ -380,7 +380,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
 		return 0;
@@ -437,7 +437,7 @@ fir::Type* Class::createType(CodegenInstance* cgi, std::map<std::string, fir::Ty
 		}
 
 
-		Class* supcls = dynamic_cast<Class*>(type->second.first);
+		ClassDef* supcls = dynamic_cast<ClassDef*>(type->second.first);
 		iceAssert(supcls);
 
 		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves

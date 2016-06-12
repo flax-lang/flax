@@ -9,9 +9,9 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall);
+static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, Class* str);
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, ClassDef* cls);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -20,9 +20,9 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string name)
+Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::string name)
 {
-	std::string mangledName = this->mangleMemberFunction(str, name, std::deque<Ast::Expr*>());
+	std::string mangledName = this->mangleMemberFunction(cls, name, std::deque<Ast::Expr*>());
 	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
 	{
 		// todo: another kinda hacky thing.
@@ -33,7 +33,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, Class* str, std::string 
 		return Result_t(this->builder.CreateLoad(gv), gv);
 	}
 
-	error(user, "Struct '%s' has no such static member '%s'", str->name.c_str(), name.c_str());
+	error(user, "Class '%s' has no such static member '%s'", cls->name.c_str(), name.c_str());
 }
 
 
@@ -200,7 +200,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else if(pair->second.second == TypeKind::Struct)
 	{
-		Struct* str = dynamic_cast<Struct*>(pair->second.first);
+		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
 
 		iceAssert(str);
 		iceAssert(self);
@@ -252,7 +252,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else if(pair->second.second == TypeKind::Class)
 	{
-		Class* cls = dynamic_cast<Class*>(pair->second.first);
+		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
 
 		iceAssert(cls);
 		iceAssert(self);
@@ -352,7 +352,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, Class* str)
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, ClassDef* cls)
 {
 	if(_rhs)
 	{
@@ -362,7 +362,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 		}
 
 		fir::Function* lcallee = 0;
-		for(fir::Function* lf : str->lfuncs)
+		for(fir::Function* lf : cls->lfuncs)
 		{
 			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
 			if(lf->getName() == cprop->setterFunc->mangledName)
@@ -395,7 +395,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	else
 	{
 		fir::Function* lcallee = 0;
-		for(fir::Function* lf : str->lfuncs)
+		for(fir::Function* lf : cls->lfuncs)
 		{
 			if(lf->getName() == cprop->getterFunc->mangledName)
 			{
@@ -429,7 +429,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 	return Result_t(val, ptr);
 }
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, Class* str, bool isStaticFunctionCall)
+static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
@@ -441,7 +441,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromMemberFuncCall(str, fc);
+	Func* callee = cgi->getFunctionFromMemberFuncCall(cls, fc);
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -460,7 +460,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 	fir::Function* lcallee = 0;
-	for(fir::Function* lf : str->lfuncs)
+	for(fir::Function* lf : cls->lfuncs)
 	{
 		if(lf->getName() == callee->decl->mangledName)
 		{
@@ -500,7 +500,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	std::deque<std::string> list;
 
 	fir::Type* curFType = 0;
-	Class* curType = 0;
+	ClassDef* curType = 0;
 
 	MemberAccess* cur = ma;
 	while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
@@ -564,7 +564,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
-				curType = dynamic_cast<Class*>(tp->second.first);
+				curType = dynamic_cast<ClassDef*>(tp->second.first);
 				curFType = tp->first;
 				iceAssert(curType);
 
@@ -710,7 +710,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		{
 			// check static members
 			// note: check for enum comes first since enum : class, so it's more specific.
-			if(dynamic_cast<Enumeration*>(curType))
+			if(dynamic_cast<EnumDef*>(curType))
 			{
 				TypePair_t* tpair = this->getType(curType->mangledName);
 				if(!tpair)
@@ -719,7 +719,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
 				return { { res.result.first->getType(), res }, curFType };
 			}
-			else if(Class* cls = dynamic_cast<Class*>(curType))
+			else if(ClassDef* cls = dynamic_cast<ClassDef*>(curType))
 			{
 				for(auto v : cls->members)
 				{
@@ -777,7 +777,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 
-Func* CodegenInstance::getFunctionFromMemberFuncCall(Class* str, FuncCall* fc)
+Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc)
 {
 	std::string full;
 	std::deque<std::string> fs = this->getFullScope();
@@ -817,7 +817,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 {
 	Expr* found = 0;
 
-	if(Class* cls = dynamic_cast<Class*>(str))
+	if(ClassDef* cls = dynamic_cast<ClassDef*>(str))
 	{
 		for(auto c : cls->cprops)
 		{
