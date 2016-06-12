@@ -26,7 +26,7 @@ namespace Operators
 		if(!tp)
 			return 0;
 
-		Class* cls = dynamic_cast<Class*>(tp->second.first);
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 		if(!cls)
 			return 0;
 
@@ -110,6 +110,9 @@ namespace Operators
 				fir::Value* lhsPtr = lres.first->getType()->isPointerType() ? lres.first : lres.second;
 
 				iceAssert(lhsPtr);
+				if(lhsPtr->isImmutable())
+					GenError::assignToImmutable(cgi, user, args[1]);
+
 				cgi->builder.CreateCall2(setter, lhsPtr, rhsVal);
 
 				return Result_t(0, 0);
@@ -118,12 +121,11 @@ namespace Operators
 		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(args[0]))
 		{
 			// also check if the left side is a subscript on a type.
-
 			fir::Type* t = cgi->getExprType(ai->arr);
 
 			// todo: do we need to add the LLVariableArray thing?
 			if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
-				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first);
+				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first, args[1]);
 		}
 
 
@@ -167,13 +169,13 @@ namespace Operators
 		if(ltype->isStructType() || rtype->isStructType())
 		{
 			// first check if we have an overload for the compound thing as a whole.
-			auto data = cgi->getOperatorOverload(user, op, ltype, rtype);
+			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
 				auto leftvp = args[0]->codegen(cgi).result;
 				auto rightvp = args[1]->codegen(cgi).result;
 
-				cgi->callOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
+				cgi->callBinaryOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
 				return Result_t(0, 0);
 			}
 
@@ -194,27 +196,49 @@ namespace Operators
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
 
+		if(lhsPtr && lhsPtr->isImmutable())
+		{
+			GenError::assignToImmutable(cgi, user, leftExpr);
+		}
+
+
 		if(lhs->getType()->isStructType())
 		{
-			auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
-			if(data.found)
+			TypePair_t* tp = cgi->getType(lhs->getType());
+			iceAssert(tp);
+
+			if(tp->second.second == TypeKind::Class)
 			{
-				fir::Function* opf = data.opFunc;
-				iceAssert(opf);
-				iceAssert(opf->getArgumentCount() == 2);
-				iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
-				iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
+				auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
+				if(data.found)
+				{
+					fir::Function* opf = data.opFunc;
+					iceAssert(opf);
+					iceAssert(opf->getArgumentCount() == 2);
+					iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
+					iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
 
-				iceAssert(lhsPtr);
+					iceAssert(lhsPtr);
 
-				cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+					cgi->callBinaryOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
 
+					return Result_t(0, 0);
+				}
+				else
+				{
+					error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+						lhs->getType()->str().c_str());
+				}
+			}
+			else if(tp->second.second == TypeKind::Struct)
+			{
+				// for structs, we just assgin the members.
+				cgi->builder.CreateStore(rhs, lhsPtr);
 				return Result_t(0, 0);
 			}
 			else
 			{
-				error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
-					lhs->getType()->str().c_str());
+				error(user, "wtf? %s", lhs->getType()->str().c_str());
 			}
 		}
 
@@ -305,17 +329,6 @@ namespace Operators
 			// just do it
 			iceAssert(rhs);
 			iceAssert(lhsPtr);
-
-
-			if(lhsPtr->isImmutable())
-			{
-				HighlightOptions ops;
-				ops.caret = user->pin;
-
-				ops.underlines.push_back(getHighlightExtent(leftExpr));
-
-				error(user, ops, "Cannot assign to immutable expression '%s'!", cgi->printAst(leftExpr).c_str());
-			}
 
 			cgi->builder.CreateStore(rhs, lhsPtr);
 

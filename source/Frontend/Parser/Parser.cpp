@@ -19,7 +19,7 @@ using namespace Ast;
 
 namespace Parser
 {
-	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
+	#define CreateAST_Pin(name, pin, ...)	(new name (pin, ##__VA_ARGS__))
 	#define CreateAST(name, tok, ...)		(new name (tok.pin, ##__VA_ARGS__))
 
 	#define CreateASTPos(name, f, l, c, len, ...)	(new name (Parser::Pin(f, l, c, len), ##__VA_ARGS__))
@@ -948,9 +948,12 @@ namespace Parser
 
 		// get return type.
 		std::string ret;
+		Pin retPin;
 		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
 		{
 			ps.eat();
+			retPin = ps.front().pin;
+
 			Expr* ctype = parseType(ps);
 			ret = ctype->type.strType;
 			delete ctype;
@@ -971,6 +974,8 @@ namespace Parser
 		f->isCStyleVarArg = isCVA;
 		f->isVariadic = isVariableArg;
 		f->genericTypes = genericTypes;
+
+		f->returnTypePos = retPin;
 
 		if(f->isCStyleVarArg && f->isVariadic)
 			parserError("C-style variadic arguments and Flax-style variadic arguments are mutually exclusive.");
@@ -1413,8 +1418,13 @@ namespace Parser
 				dummy.type = TType::RBrace;
 				dummy.text = "}";
 				ps.tokens.push_front(dummy);
+
+				didGetter = true;
 			}
 		}
+
+		if(!didGetter)
+			parserError(tok_id, "Computed properties must have at least a getter.");
 
 		if(ps.eat().type != TType::RBrace)
 			parserError("Expected closing '}'");
@@ -2009,7 +2019,7 @@ namespace Parser
 	}
 
 
-	static void parseInheritanceList(ParserState& ps, Class* cls)
+	static void parseInheritanceList(ParserState& ps, ClassDef* cls)
 	{
 		while(true)
 		{
@@ -2061,7 +2071,7 @@ namespace Parser
 
 
 
-	Struct* parseStruct(ParserState& ps)
+	StructDef* parseStruct(ParserState& ps)
 	{
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Struct);
@@ -2073,7 +2083,7 @@ namespace Parser
 			parserError("Expected identifier");
 
 		std::string id = tok_id.text;
-		Struct* str = CreateAST(Struct, tok_id, id);
+		StructDef* str = CreateAST(StructDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		if(attr & Attr_PackedStruct)
@@ -2126,7 +2136,11 @@ namespace Parser
 			}
 			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
 			{
-				str->assignmentOverloads.push_back(aoo);
+				parserError(aoo->pin, "Structs cannot contain operator overloads");
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				parserError(soo->pin, "Structs cannot contain operator overloads");
 			}
 			else
 			{
@@ -2143,7 +2157,7 @@ namespace Parser
 
 
 
-	Class* parseClass(ParserState& ps)
+	ClassDef* parseClass(ParserState& ps)
 	{
 		Token tok_cls = ps.eat();
 		iceAssert(tok_cls.type == TType::Class || tok_cls.type == TType::Extension);
@@ -2155,7 +2169,7 @@ namespace Parser
 			parserError("Expected identifier (got %s)", tok_id.text.c_str());
 
 		std::string id = tok_id.text;
-		Class* cls = CreateAST(Class, tok_id, id);
+		ClassDef* cls = CreateAST(ClassDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		cls->attribs = attr;
@@ -2213,7 +2227,7 @@ namespace Parser
 			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
-				if(Class* nested = dynamic_cast<Class*>(sb))
+				if(ClassDef* nested = dynamic_cast<ClassDef*>(sb))
 					cls->nestedTypes.push_back({ nested, 0 });
 
 				else
@@ -2242,13 +2256,13 @@ namespace Parser
 		return cls;
 	}
 
-	Extension* parseExtension(ParserState& ps)
+	ExtensionDef* parseExtension(ParserState& ps)
 	{
 		Token tok_ext = ps.eat();
 		iceAssert(tok_ext.type == TType::Extension);
 
-		Extension* ext = CreateAST(Extension, tok_ext, "");
-		Class* cls = parseClass(ps);
+		ExtensionDef* ext = CreateAST(ExtensionDef, tok_ext, "");
+		ClassDef* cls = parseClass(ps);
 
 		ext->attribs				= cls->attribs;
 		ext->funcs					= cls->funcs;
@@ -2270,7 +2284,7 @@ namespace Parser
 
 
 
-	Ast::Enumeration* parseEnum(ParserState& ps)
+	EnumDef* parseEnum(ParserState& ps)
 	{
 		iceAssert(ps.eat().type == TType::Enum);
 
@@ -2286,7 +2300,7 @@ namespace Parser
 			parserError("Empty enumerations are not allowed");
 
 
-		Enumeration* enumer = CreateAST(Enumeration, tok_id, tok_id.text);
+		EnumDef* enumer = CreateAST(EnumDef, tok_id, tok_id.text);
 		Token front = ps.front();
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -2799,12 +2813,10 @@ namespace Parser
 			// act like a computed property, with get and set style bodies.
 
 			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
-			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op);
+			SubscriptOpOverload* oo = CreateAST_Pin(SubscriptOpOverload, fd->pin);
 
-			oo->getterDecl = cprop->getterFunc;
+			oo->decl = fd;
 			oo->getterBody = cprop->getter;
-
-			oo->setterDecl = cprop->setterFunc;
 			oo->setterBody = cprop->setter;
 			oo->setterArgName = cprop->setterArgName;
 

@@ -247,8 +247,8 @@ namespace Compiler
 
 
 
-	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, fir::Module*>>
-	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
+	CompiledData compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps,
+		std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		using namespace Codegen;
 
@@ -293,7 +293,7 @@ namespace Compiler
 
 		std::vector<std::string> outlist;
 		std::unordered_map<std::string, Root*> rootmap;
-		std::unordered_map<std::string, fir::Module*> modulemap;
+		std::deque<std::pair<std::string, fir::Module*>> modulelist;
 
 
 		Root* dummyRoot = new Root();
@@ -320,13 +320,20 @@ namespace Compiler
 			CodegenInstance* cgi = pair.first;
 
 			outlist.push_back(pair.second);
-			modulemap[name] = cgi->module;
+			modulelist.push_back({ name, cgi->module });
 			rootmap[name] = cgi->rootNode;
 
 			delete cgi;
 		}
 
-		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modulemap);
+		CompiledData ret;
+
+		ret.rootNode = rootmap[Compiler::getFullPathOfFile(filename)];
+		ret.fileList = outlist;
+		ret.rootMap = rootmap;
+		ret.moduleList = modulelist;
+
+		return ret;
 	}
 
 

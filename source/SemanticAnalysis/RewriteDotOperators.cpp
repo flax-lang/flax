@@ -257,7 +257,7 @@ static void findDotOperator(Expr* expr)
 		findDotOperator(ari->arr);
 		findDotOperator(ari->index);
 	}
-	else if(Class* cls = dynamic_cast<Class*>(expr))
+	else if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
 	{
 		for(auto mem : cls->members)
 		{
@@ -289,16 +289,13 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(c->setter);
 		}
 	}
-	else if(Struct* str = dynamic_cast<Struct*>(expr))
+	else if(StructDef* str = dynamic_cast<StructDef*>(expr))
 	{
 		for(auto mem : str->members)
 		{
 			if(mem->initVal)
 				findDotOperator(mem->initVal);
 		}
-
-		for(auto op : str->assignmentOverloads)
-			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 	{
