@@ -469,8 +469,7 @@ namespace Ast
 
 		std::string setterArgName;
 
-		FuncDecl* getterDecl = 0;
-		FuncDecl* setterDecl = 0;
+		FuncDecl* decl = 0;
 
 		BracedBlock* getterBody = 0;
 		BracedBlock* setterBody = 0;

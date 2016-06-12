@@ -16,10 +16,10 @@ namespace Operators
 		ValPtr_t leftVP = args[0]->codegen(cgi).result;
 		ValPtr_t rightVP = args[1]->codegen(cgi).result;
 
-		auto data = cgi->getOperatorOverload(user, op, leftVP.first->getType(), rightVP.first->getType());
+		auto data = cgi->getBinaryOperatorOverload(user, op, leftVP.first->getType(), rightVP.first->getType());
 		if(data.found)
 		{
-			return cgi->callOperatorOverload(data, leftVP.first, leftVP.second, rightVP.first, rightVP.second, op);
+			return cgi->callBinaryOperatorOverload(data, leftVP.first, leftVP.second, rightVP.first, rightVP.second, op);
 		}
 		else
 		{
