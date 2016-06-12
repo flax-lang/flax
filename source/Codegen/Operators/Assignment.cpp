@@ -26,7 +26,7 @@ namespace Operators
 		if(!tp)
 			return 0;
 
-		Class* cls = dynamic_cast<Class*>(tp->second.first);
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 		if(!cls)
 			return 0;
 

@@ -67,7 +67,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::Class*> nestedTypeStack;
+		std::deque<Ast::ClassDef*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 
@@ -153,7 +153,7 @@ namespace Codegen
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
-		void pushNestedTypeScope(Ast::Class* nest);
+		void pushNestedTypeScope(Ast::ClassDef* nest);
 		void popNestedTypeScope();
 
 
@@ -253,10 +253,10 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		Ast::Func* getFunctionFromMemberFuncCall(Ast::Class* str, Ast::FuncCall* fc);
+		Ast::Func* getFunctionFromMemberFuncCall(Ast::ClassDef* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 
-		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::Class* str, std::string name);
+		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
 
 
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
