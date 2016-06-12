@@ -110,6 +110,9 @@ namespace Operators
 				fir::Value* lhsPtr = lres.first->getType()->isPointerType() ? lres.first : lres.second;
 
 				iceAssert(lhsPtr);
+				if(lhsPtr->isImmutable())
+					GenError::assignToImmutable(cgi, user, args[1]);
+
 				cgi->builder.CreateCall2(setter, lhsPtr, rhsVal);
 
 				return Result_t(0, 0);
@@ -118,12 +121,11 @@ namespace Operators
 		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(args[0]))
 		{
 			// also check if the left side is a subscript on a type.
-
 			fir::Type* t = cgi->getExprType(ai->arr);
 
 			// todo: do we need to add the LLVariableArray thing?
 			if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
-				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first);
+				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first, args[1]);
 		}
 
 
@@ -196,12 +198,7 @@ namespace Operators
 
 		if(lhsPtr && lhsPtr->isImmutable())
 		{
-			HighlightOptions ops;
-			ops.caret = user->pin;
-
-			ops.underlines.push_back(getHighlightExtent(leftExpr));
-
-			error(user, ops, "Cannot assign to immutable expression '%s'!", cgi->printAst(leftExpr).c_str());
+			GenError::assignToImmutable(cgi, user, leftExpr);
 		}
 
 

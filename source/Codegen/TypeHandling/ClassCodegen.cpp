@@ -345,6 +345,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
+
 	for(SubscriptOpOverload* soo : this->subscriptOverloads)
 	{
 		// note(anti-confusion): decl->codegen() looks at parentClass
@@ -382,79 +383,44 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->builder.setCurrentBlock(ob);
 		}
 
-		#if 0
 
-		VarDecl* fakeSelf = new VarDecl(c->pin, "self", true);
-		fakeSelf->type = this->name + "*";
 
-		if(c->getter)
+
+		if(soo->setterBody)
 		{
-			std::deque<VarDecl*> params { fakeSelf };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
-			Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
+			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
-			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
-				fakeDecl->attribs |= Attr_VisPublic;
+			VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
+			setterArg->type = soo->decl->type;
 
-			this->funcs.push_back(fakeFunc);
-			c->getterFunc = fakeDecl;
+			std::deque<VarDecl*> params;
+			params = soo->decl->params;
+			params.push_back(setterArg);
+
+			// do getter.
+			BracedBlock* body = soo->setterBody;
+			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, "Void");
+
+			decl->parentClass = this;
+
+			if(this->attribs & Attr_VisPublic)
+				decl->attribs |= Attr_VisPublic;
+
+			soo->setterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).result.first);
+			iceAssert(soo->setterFunc);
+
+			cgi->builder.setCurrentBlock(ob);
+
+			Func* fn = new Func(decl->pin, decl, body);
+
+			if(decl->attribs & Attr_VisPublic || this->attribs & Attr_VisPublic)
+				cgi->addPublicFunc({ soo->setterFunc, decl });
+
+			ob = cgi->builder.getCurrentBlock();
+			fn->codegen(cgi);
+
+			cgi->builder.setCurrentBlock(ob);
 		}
-		if(c->setter)
-		{
-			VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
-			setterArg->type = c->type;
-
-			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
-			Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
-
-			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
-				fakeDecl->attribs |= Attr_VisPublic;
-
-			this->funcs.push_back(fakeFunc);
-			c->setterFunc = fakeDecl;
-		}
-
-		#endif
-		#if 0
-		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-
-		aoo->func->decl->name = aoo->func->decl->name.substr(9 /*strlen("operator#")*/);
-		aoo->func->decl->parentClass = this;
-
-		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
-		{
-			aoo->func->decl->attribs |= Attr_VisPublic;
-		}
-
-		fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
-		cgi->builder.setCurrentBlock(ob);
-
-		aoo->lfunc = dynamic_cast<fir::Function*>(val);
-
-		if(!aoo->lfunc->getReturnType()->isVoidType())
-		{
-			HighlightOptions ops;
-			ops.caret = aoo->pin;
-
-			if(aoo->func->decl->returnTypePos.file.size() > 0)
-			{
-				Parser::Pin hl = aoo->func->decl->returnTypePos;
-				ops.underlines.push_back(hl);
-			}
-
-			error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)", aoo->lfunc->getReturnType()->str().c_str());
-		}
-
-		if(aoo->func->decl->attribs & Attr_VisPublic)
-			cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
-
-		ob = cgi->builder.getCurrentBlock();
-
-		aoo->func->codegen(cgi);
-
-		cgi->builder.setCurrentBlock(ob);
-		#endif
 	}
 
 

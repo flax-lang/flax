@@ -19,7 +19,7 @@ using namespace Ast;
 
 namespace Parser
 {
-	#define CreateAST_Raw(name, ...)		(new name (currentPos, ##__VA_ARGS__))
+	#define CreateAST_Pin(name, pin, ...)	(new name (pin, ##__VA_ARGS__))
 	#define CreateAST(name, tok, ...)		(new name (tok.pin, ##__VA_ARGS__))
 
 	#define CreateASTPos(name, f, l, c, len, ...)	(new name (Parser::Pin(f, l, c, len), ##__VA_ARGS__))
@@ -2813,7 +2813,7 @@ namespace Parser
 			// act like a computed property, with get and set style bodies.
 
 			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
-			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op);
+			SubscriptOpOverload* oo = CreateAST_Pin(SubscriptOpOverload, fd->pin);
 
 			oo->decl = fd;
 			oo->getterBody = cprop->getter;

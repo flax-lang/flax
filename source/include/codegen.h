@@ -30,6 +30,7 @@ namespace GenError
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
 
 	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e) __attribute__((noreturn));
+	void assignToImmutable(Codegen::CodegenInstance* cgi, Ast::Expr* op, Ast::Expr* value) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<fir::Value*> args) __attribute__((noreturn));
