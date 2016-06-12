@@ -402,6 +402,15 @@ namespace GenError
 		error(e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
 	}
 
+	void assignToImmutable(CodegenInstance* cgi, Expr* op, Expr* value)
+	{
+		HighlightOptions ops;
+		ops.caret = op->pin;
+
+		ops.underlines.push_back(getHighlightExtent(value));
+
+		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(op).c_str());
+	}
 
 
 
@@ -466,9 +475,13 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		return ret;
 	}
-	else
+	else if(e)
 	{
 		return e->pin;
+	}
+	else
+	{
+		return Parser::Pin();
 	}
 }
 
