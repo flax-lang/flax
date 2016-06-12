@@ -10,7 +10,7 @@ using namespace Codegen;
 
 Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName, bool actual)
 {
-	Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+	EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
 	if(!enr) printf("wtf?? %s\n", typeid(*tp->second.first).name());
 	iceAssert(enr);
 
@@ -67,12 +67,12 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
 }
 
-Result_t Enumeration::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
 
-fir::Type* Enumeration::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* EnumDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?

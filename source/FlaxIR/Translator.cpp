@@ -244,6 +244,7 @@ namespace fir
 			typeToLlvm(type.second, module);
 		}
 
+		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : this->functions)
 		{
 			Function* ffn = f.second;
@@ -262,7 +263,6 @@ namespace fir
 				ffn->getName(), module);
 
 			valueMap[ffn->id] = func;
-			// fprintf(stderr, "adding func %zu\n", ffn->id);
 
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)

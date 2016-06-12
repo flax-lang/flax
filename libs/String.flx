@@ -126,21 +126,21 @@ public class String
 
 
 
-	// operator [] (index: Int64) -> Int8
-	// {
-	// 	get
-	// 	{
-	// 		if index < self.length { return self.data[index] }
-	// 		else { return 0 }
-	// 	}
-	// 	set
-	// 	{
-	// 		if index < self.length
-	// 		{
-	// 			self.data[index] = newValue
-	// 		}
-	// 	}
-	// }
+	operator [] (index: Int64) -> Int8
+	{
+		get
+		{
+			if index < self.length { return self.data[index] }
+			else { return 0 }
+		}
+		set
+		{
+			if index < self.length
+			{
+				self.data[index] = newValue
+			}
+		}
+	}
 
 
 

@@ -251,7 +251,7 @@ namespace Parser
 	Ast::Expr* 				parseIf(ParserState& tokens);
 	Ast::ForLoop*			parseFor(ParserState& tokens);
 	Ast::Expr*				parseType(ParserState& tokens);
-	Ast::Enumeration*		parseEnum(ParserState& tokens);
+	Ast::EnumDef*			parseEnum(ParserState& tokens);
 	Ast::Func*				parseFunc(ParserState& tokens);
 	Ast::Expr*				parseExpr(ParserState& tokens);
 	Ast::Expr*				parseUnary(ParserState& tokens);
@@ -259,9 +259,9 @@ namespace Parser
 	Ast::Alloc*				parseAlloc(ParserState& tokens);
 	Ast::Break*				parseBreak(ParserState& tokens);
 	Ast::DeferredExpr*		parseDefer(ParserState& tokens);
-	Ast::Class*				parseClass(ParserState& tokens);
+	Ast::ClassDef*			parseClass(ParserState& tokens);
 	Ast::Expr*				parseIdExpr(ParserState& tokens);
-	Ast::Struct*			parseStruct(ParserState& tokens);
+	Ast::StructDef*			parseStruct(ParserState& tokens);
 	Ast::Import*			parseImport(ParserState& tokens);
 	Ast::Return*			parseReturn(ParserState& tokens);
 	Ast::Typeof*			parseTypeof(ParserState& tokens);
@@ -273,7 +273,7 @@ namespace Parser
 	Ast::FuncDecl*			parseFuncDecl(ParserState& tokens);
 	void					parseAttribute(ParserState& tokens);
 	Ast::TypeAlias*			parseTypeAlias(ParserState& tokens);
-	Ast::Extension*			parseExtension(ParserState& tokens);
+	Ast::ExtensionDef*		parseExtension(ParserState& tokens);
 	Ast::NamespaceDecl*		parseNamespace(ParserState& tokens);
 	Ast::Expr*				parseStaticDecl(ParserState& tokens);
 	Ast::Expr*				parseOpOverload(ParserState& tokens);
