@@ -1418,8 +1418,13 @@ namespace Parser
 				dummy.type = TType::RBrace;
 				dummy.text = "}";
 				ps.tokens.push_front(dummy);
+
+				didGetter = true;
 			}
 		}
+
+		if(!didGetter)
+			parserError(tok_id, "Computed properties must have at least a getter.");
 
 		if(ps.eat().type != TType::RBrace)
 			parserError("Expected closing '}'");
@@ -2810,10 +2815,8 @@ namespace Parser
 			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
 			SubscriptOpOverload* oo = CreateAST(SubscriptOpOverload, op);
 
-			oo->getterDecl = cprop->getterFunc;
+			oo->decl = fd;
 			oo->getterBody = cprop->getter;
-
-			oo->setterDecl = cprop->setterFunc;
 			oo->setterBody = cprop->setter;
 			oo->setterArgName = cprop->setterArgName;
 

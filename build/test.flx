@@ -216,7 +216,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	}
 
 	var lol: String = "HELLO"
-	// lol = 4
+	printf("lol[2]: %c\n", lol[2])
 
 	var k: Math.Vector2
 	k = Math.Vector2(1.0, 4.0)

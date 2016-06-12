@@ -167,13 +167,13 @@ namespace Operators
 		if(ltype->isStructType() || rtype->isStructType())
 		{
 			// first check if we have an overload for the compound thing as a whole.
-			auto data = cgi->getOperatorOverload(user, op, ltype, rtype);
+			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
 				auto leftvp = args[0]->codegen(cgi).result;
 				auto rightvp = args[1]->codegen(cgi).result;
 
-				cgi->callOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
+				cgi->callBinaryOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
 				return Result_t(0, 0);
 			}
 
@@ -212,7 +212,7 @@ namespace Operators
 
 			if(tp->second.second == TypeKind::Class)
 			{
-				auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+				auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 				if(data.found)
 				{
 					fir::Function* opf = data.opFunc;
@@ -223,7 +223,7 @@ namespace Operators
 
 					iceAssert(lhsPtr);
 
-					cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+					cgi->callBinaryOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
 
 					return Result_t(0, 0);
 				}

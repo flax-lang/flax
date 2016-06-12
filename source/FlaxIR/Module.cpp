@@ -100,12 +100,14 @@ namespace fir
 					this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
 			}
 
+			// fprintf(stderr, "returning existing function %s (id = %zu)\n", name.c_str(), this->functions[name]->id);
 			return this->functions[name];
 		}
 
 		Function* f = new Function(name, ftype, this, linkage);
 		this->functions[name] = f;
 
+		// fprintf(stderr, "returning new function %s (id = %zu) (mod %s)\n", name.c_str(), f->id, this->moduleName.c_str());
 		return f;
 	}
 

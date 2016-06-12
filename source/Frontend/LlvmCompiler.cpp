@@ -52,13 +52,10 @@ namespace Compiler
 
 	void compileToLlvm(std::string filename, std::string outname, CompiledData data)
 	{
-		Ast::Root* root = std::get<0>(data);
-		std::vector<std::string> filelist = std::get<1>(data);
-		std::unordered_map<std::string, Ast::Root*> rootmap = std::get<2>(data);
 		std::unordered_map<std::string, llvm::Module*> modulelist;
 
 		// translate to llvm
-		for(auto mod : std::get<3>(data))
+		for(auto mod : data.moduleList)
 		{
 			modulelist[mod.first] = mod.second->translateToLlvm();
 
@@ -80,7 +77,7 @@ namespace Compiler
 
 		mainModule = linker.getModule();
 
-		doGlobalConstructors(filename, data, root, mainModule);
+		doGlobalConstructors(filename, data, data.rootNode, mainModule);
 
 
 		if(Compiler::getDumpLlvm())
@@ -100,12 +97,12 @@ namespace Compiler
 		}
 
 
-		for(auto s : std::get<1>(data))
+		for(auto s : data.fileList)
 			remove(s.c_str());
 
 
 		// cleanup
-		for(auto p : rootmap)
+		for(auto p : data.rootMap)
 			delete p.second;
 	}
 
@@ -182,16 +179,16 @@ namespace Compiler
 			foldername = filename.substr(0, sep);
 
 		llvm::verifyModule(*mod, &llvm::errs());
-		Compiler::compileProgram(mod, std::get<1>(data), foldername, outname);
+		Compiler::compileProgram(mod, data.fileList, foldername, outname);
 	}
 
 	static void doGlobalConstructors(std::string filename, CompiledData& data, Ast::Root* root, llvm::Module* mod)
 	{
-		auto& rootmap = std::get<2>(data);
+		auto& rootmap = data.rootMap;
 
 		bool needGlobalConstructor = false;
 		if(root->globalConstructorTrampoline != 0) needGlobalConstructor = true;
-		for(auto pair : std::get<2>(data))
+		for(auto pair : data.rootMap)
 		{
 			if(pair.second->globalConstructorTrampoline != 0)
 			{
