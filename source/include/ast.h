@@ -510,9 +510,6 @@ namespace Ast
 		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
-
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
-		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 	struct Extension;
@@ -530,6 +527,9 @@ namespace Ast
 		std::deque<std::string> protocolstrs;
 		std::pair<Class*, fir::StructType*> superclass;
 		std::deque<std::pair<Class*, fir::Type*>> nestedTypes;
+
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 	// extends class, because it's basically a class, except we need to apply it to an existing class

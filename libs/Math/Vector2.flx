@@ -8,12 +8,6 @@ namespace Math
 	{
 		var x: Double
 		var y: Double
-
-		public operator = (other: Math.Vector2)
-		{
-			self.x = other.x
-			self.y = other.y
-		}
 	}
 }
 
