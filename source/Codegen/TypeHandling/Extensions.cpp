@@ -9,12 +9,12 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Extension::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
 
-fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
+fir::Function* ExtensionDef::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
 {
 	// generate initialiser
 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex), fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
@@ -58,7 +58,7 @@ fir::Function* Extension::createAutomaticInitialiser(CodegenInstance* cgi, fir::
 	return defaultInitFunc;
 }
 
-fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(!cgi->isDuplicateType(this->name))
 		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
@@ -72,10 +72,10 @@ fir::Type* Extension::createType(CodegenInstance* cgi, std::map<std::string, fir
 	fir::StructType* existing = dynamic_cast<fir::StructType*>(existingtp->first);
 	cgi->module->deleteNamedType(existing->getStructName());
 
-	if(!dynamic_cast<Class*>(existingtp->second.first))
+	if(!dynamic_cast<ClassDef*>(existingtp->second.first))
 		error(this, "Extensions can only be applied onto classes");
 
-	Class* str = (Class*) existingtp->second.first;
+	ClassDef* str = dynamic_cast<ClassDef*>(existingtp->second.first);
 
 	fir::Type** types = new fir::Type*[str->members.size() + this->members.size()];
 

@@ -86,8 +86,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		{
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
-			Struct* str				= dynamic_cast<Struct*>(e);
-			Class* cls				= dynamic_cast<Class*>(e);		// enum : class, extension : class
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
@@ -106,7 +106,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 1: setup extensions
 		for(Expr* e : expressions)
 		{
-			Extension* ext			= dynamic_cast<Extension*>(e);
+			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
@@ -124,8 +124,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 2: create types
 		for(Expr* e : expressions)
 		{
-			Struct* str				= dynamic_cast<Struct*>(e);
-			Class* cls				= dynamic_cast<Class*>(e);	// enums are handled, since enum : class
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);	// enums are handled, since enum : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->createType(cgi);
@@ -138,7 +138,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 3: override types with any extensions
 		for(Expr* e : expressions)
 		{
-			Extension* ext			= dynamic_cast<Extension*>(e);
+			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
 
@@ -177,9 +177,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 4: everything else
 		for(Expr* e : expressions)
 		{
-			Struct* str				= dynamic_cast<Struct*>(e);
-			Class* cls				= dynamic_cast<Class*>(e);		// again, enums are handled since enum : class
-			Extension* ext			= dynamic_cast<Extension*>(e);
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 

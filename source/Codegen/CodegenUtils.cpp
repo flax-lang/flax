@@ -265,7 +265,7 @@ namespace Codegen
 		// find nested types.
 		if(this->nestedTypeStack.size() > 0)
 		{
-			Class* cls = this->nestedTypeStack.back();
+			ClassDef* cls = this->nestedTypeStack.back();
 
 			// only allow one level of implicit use
 			for(auto n : cls->nestedTypes)
@@ -346,7 +346,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::pushNestedTypeScope(Class* nest)
+	void CodegenInstance::pushNestedTypeScope(ClassDef* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
 	}
@@ -512,7 +512,7 @@ namespace Codegen
 						this->typeMap[sb->mangledName] = t.second;
 
 						// check what kind of struct.
-						if(Struct* str = dynamic_cast<Struct*>(sb))
+						if(StructDef* str = dynamic_cast<StructDef*>(sb))
 						{
 							if(str->attribs & Attr_VisPublic)
 							{
@@ -520,7 +520,7 @@ namespace Codegen
 									this->module->declareFunction(f->getName(), f->getType());
 							}
 						}
-						else if(Class* cls = dynamic_cast<Class*>(sb))
+						else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
 						{
 							if(cls->attribs & Attr_VisPublic)
 							{
@@ -1227,7 +1227,7 @@ namespace Codegen
 	{
 		for(Expr* e : exprs)
 		{
-			Extension* ext		= dynamic_cast<Extension*>(e);
+			ExtensionDef* ext	= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns	= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ext && ext->mangledName == extName)
@@ -2018,7 +2018,7 @@ namespace Codegen
 				TypePair_t* tp = this->getType(lhs);
 				iceAssert(tp);
 
-				Class* cls = dynamic_cast<Class*>(tp->second.first);
+				ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 				if(cls)
 				{
 					for(auto aso : cls->assignmentOverloads)
