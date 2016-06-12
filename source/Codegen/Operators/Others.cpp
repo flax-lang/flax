@@ -143,6 +143,18 @@ namespace Operators
 			std::vector<fir::Value*> args { lhs };
 			return cgi->callTypeInitialiser(tp, user, args);
 		}
+		else if(lhs->getType()->isArrayType() && rtype->isPointerType()
+			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
+		{
+			// array to pointer cast.
+			if(!dynamic_cast<fir::ConstantArray*>(lhs))
+				warn(user, "Casting from non-constant array to pointer is potentially unsafe");
+
+			iceAssert(lhsPtr);
+
+			fir::Value* lhsRawPtr = cgi->builder.CreateConstGEP2(lhsPtr, 0, 0);
+			return Result_t(lhsRawPtr, 0);
+		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
 			std::string lstr = cgi->getReadableType(lhs).c_str();
