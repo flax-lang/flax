@@ -683,6 +683,7 @@ namespace Codegen
 			unsigned int rBits = right->getType()->toPrimitiveType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
+
 			// check if the RHS is a constant value
 			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(right);
 			if(constVal)
