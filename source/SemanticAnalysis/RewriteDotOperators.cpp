@@ -296,9 +296,6 @@ static void findDotOperator(Expr* expr)
 			if(mem->initVal)
 				findDotOperator(mem->initVal);
 		}
-
-		for(auto op : str->assignmentOverloads)
-			findDotOperator(op->func);
 	}
 	else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
 	{

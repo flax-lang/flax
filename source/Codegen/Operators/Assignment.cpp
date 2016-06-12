@@ -194,27 +194,54 @@ namespace Operators
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
 
+		if(lhsPtr && lhsPtr->isImmutable())
+		{
+			HighlightOptions ops;
+			ops.caret = user->pin;
+
+			ops.underlines.push_back(getHighlightExtent(leftExpr));
+
+			error(user, ops, "Cannot assign to immutable expression '%s'!", cgi->printAst(leftExpr).c_str());
+		}
+
+
 		if(lhs->getType()->isStructType())
 		{
-			auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
-			if(data.found)
+			TypePair_t* tp = cgi->getType(lhs->getType());
+			iceAssert(tp);
+
+			if(tp->second.second == TypeKind::Class)
 			{
-				fir::Function* opf = data.opFunc;
-				iceAssert(opf);
-				iceAssert(opf->getArgumentCount() == 2);
-				iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
-				iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
+				auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+				if(data.found)
+				{
+					fir::Function* opf = data.opFunc;
+					iceAssert(opf);
+					iceAssert(opf->getArgumentCount() == 2);
+					iceAssert(opf->getArguments()[0]->getType() == lhs->getType()->getPointerTo());
+					iceAssert(opf->getArguments()[1]->getType() == rhs->getType());
 
-				iceAssert(lhsPtr);
+					iceAssert(lhsPtr);
 
-				cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
+					cgi->callOperatorOverload(data, lhs, lhsPtr, rhs, rhsPtr, op);
 
+					return Result_t(0, 0);
+				}
+				else
+				{
+					error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+						lhs->getType()->str().c_str());
+				}
+			}
+			else if(tp->second.second == TypeKind::Struct)
+			{
+				// for structs, we just assgin the members.
+				cgi->builder.CreateStore(rhs, lhsPtr);
 				return Result_t(0, 0);
 			}
 			else
 			{
-				error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
-					lhs->getType()->str().c_str());
+				error(user, "wtf? %s", lhs->getType()->str().c_str());
 			}
 		}
 
@@ -305,17 +332,6 @@ namespace Operators
 			// just do it
 			iceAssert(rhs);
 			iceAssert(lhsPtr);
-
-
-			if(lhsPtr->isImmutable())
-			{
-				HighlightOptions ops;
-				ops.caret = user->pin;
-
-				ops.underlines.push_back(getHighlightExtent(leftExpr));
-
-				error(user, ops, "Cannot assign to immutable expression '%s'!", cgi->printAst(leftExpr).c_str());
-			}
 
 			cgi->builder.CreateStore(rhs, lhsPtr);
 
