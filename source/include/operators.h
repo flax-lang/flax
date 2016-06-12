@@ -52,7 +52,8 @@ namespace Operators
 
 	Ast::Result_t operatorSubscript(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
 	Ast::Result_t operatorOverloadedSubscript(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::deque<Ast::Expr*> args);
-	Ast::Result_t operatorAssignToOverloadedSubscript(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, Ast::Expr* lhs, fir::Value* rhs);
+	Ast::Result_t operatorAssignToOverloadedSubscript(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr,
+		Ast::Expr* lhs, fir::Value* rhs, Ast::Expr* rhsExpr);
 }
 
 

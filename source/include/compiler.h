@@ -27,7 +27,26 @@ namespace Parser
 
 namespace Compiler
 {
-	typedef std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>> CompiledData;
+	struct CompiledData
+	{
+		Ast::Root* rootNode = 0;
+		std::vector<std::string> fileList;
+
+		std::unordered_map<std::string, Ast::Root*> rootMap;
+		std::deque<std::pair<std::string, fir::Module*>> moduleList;
+
+
+		fir::Module* getModule(std::string name)
+		{
+			for(auto pair : this->moduleList)
+			{
+				if(pair.first == name)
+					return pair.second;
+			}
+
+			return 0;
+		}
+	};
 
 	CompiledData compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps,
 		std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
