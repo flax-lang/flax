@@ -334,7 +334,7 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
-					auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+					auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 
 					iceAssert(data.found);
 					return data.opFunc->getReturnType();
@@ -372,7 +372,7 @@ namespace Codegen
 							return ltype;
 						}
 
-						auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+						auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 						if(data.found)
 						{
 							return data.opFunc->getReturnType();

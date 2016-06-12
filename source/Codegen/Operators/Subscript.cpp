@@ -19,7 +19,56 @@ namespace Operators
 
 	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		iceAssert(0);
+		Expr* subscripteeExpr = args[0];
+		fir::Type* subscripteeType = cgi->getExprType(subscripteeExpr);
+
+		TypePair_t* tp = cgi->getType(subscripteeType);
+		if(!tp || !dynamic_cast<ClassDef*>(tp->second.first))
+			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
+
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+
+		if(cls->subscriptOverloads.size() == 0)
+			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+
+		std::deque<FuncPair_t> cands;
+
+		for(auto soo : cls->subscriptOverloads)
+			cands.push_back({ soo->getterFunc, soo->decl });
+
+		std::string basename = cls->subscriptOverloads[0]->decl->name;
+
+		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+
+		if(!res.resolved)
+		{
+			auto pair = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			std::string argstr = pair.first;
+			std::string candstr = pair.second;
+
+			error(user, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+				subscripteeType->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
+		}
+		else
+		{
+			std::deque<fir::Value*> fargs;
+
+			// gen the self.
+			fir::Value* lhsPtr = args[0]->codegen(cgi).result.second;
+			iceAssert(lhsPtr);
+
+			fargs.push_back(lhsPtr);
+
+			// gen args.
+			for(auto p : params)
+				fargs.push_back(p->codegen(cgi).result.first);
+
+			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			iceAssert(fn);
+
+			return Result_t(cgi->builder.CreateCall(fn, fargs), 0);
+		}
 	}
 
 
