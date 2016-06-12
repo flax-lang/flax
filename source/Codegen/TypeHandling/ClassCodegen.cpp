@@ -367,7 +367,7 @@ Result_t Class::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	return Result_t(nullptr, nullptr);
+	return Result_t(0, 0);
 }
 
 

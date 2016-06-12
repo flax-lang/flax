@@ -2018,23 +2018,24 @@ namespace Codegen
 				TypePair_t* tp = this->getType(lhs);
 				iceAssert(tp);
 
-				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-				iceAssert(sb);
-
-				for(auto aso : sb->assignmentOverloads)
+				Class* cls = dynamic_cast<Class*>(tp->second.first);
+				if(cls)
 				{
-					if(aso->op == op)
+					for(auto aso : cls->assignmentOverloads)
 					{
-						Attribs atr;
+						if(aso->op == op)
+						{
+							Attribs atr;
 
-						atr.op				= op;
-						atr.isBinOp			= true;
-						atr.isPrefixUnary	= false;
-						atr.isCommutative	= false;
-						atr.needsSwap		= false;
+							atr.op				= op;
+							atr.isBinOp			= true;
+							atr.isPrefixUnary	= false;
+							atr.isCommutative	= false;
+							atr.needsSwap		= false;
 
-						iceAssert(aso->lfunc);
-						candidates.push_back({ atr, aso->lfunc });
+							iceAssert(aso->lfunc);
+							candidates.push_back({ atr, aso->lfunc });
+						}
 					}
 				}
 			}
