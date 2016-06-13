@@ -11,16 +11,182 @@ using namespace Codegen;
 
 namespace Operators
 {
-	Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, fir::Value* rhs)
+	static std::pair<ClassDef*, fir::Type*> getClassDef(CodegenInstance* cgi, Expr* user, Expr* subscriptee)
 	{
-		iceAssert(0);
+		fir::Type* subscripteeType = cgi->getExprType(subscriptee);
+
+		TypePair_t* tp = cgi->getType(subscripteeType);
+		if(!tp || !dynamic_cast<ClassDef*>(tp->second.first))
+			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
+
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+
+		if(cls->subscriptOverloads.size() == 0)
+			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+
+		return { cls, subscripteeType };
 	}
 
+
+	Result_t operatorAssignToOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, Expr* lhs, fir::Value* rhs, Expr* rhsExpr)
+	{
+		ArrayIndex* ari = dynamic_cast<ArrayIndex*>(lhs);
+		iceAssert(ari);
+
+		auto p = getClassDef(cgi, user, ari->arr);
+		ClassDef* cls = p.first;
+		fir::Type* ftype = p.second;
+
+		std::deque<FuncPair_t> cands;
+
+		for(auto soo : cls->subscriptOverloads)
+			cands.push_back({ soo->setterFunc, soo->decl });
+
+		std::string basename = cls->subscriptOverloads[0]->decl->name;
+
+		// todo: MULIPLE SUBSCRIPTS
+		std::deque<Expr*> params = { ari->index };
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+
+
+
+		if(!res.resolved)
+		{
+			auto pair = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			std::string argstr = pair.first;
+			std::string candstr = pair.second;
+
+			error(user, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
+		}
+		else
+		{
+			std::deque<fir::Value*> fargs;
+
+			// gen the self (note: uses the ArrayIndex AST)
+			fir::Value* lhsPtr = ari->arr->codegen(cgi).result.second;
+			iceAssert(lhsPtr);
+
+			if(lhsPtr->isImmutable())
+				GenError::assignToImmutable(cgi, user, rhsExpr);
+
+			fargs.push_back(lhsPtr);
+
+			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			iceAssert(fn);
+
+			// gen args.
+			// -2 to exclude the first param, and the rhs param.
+			for(size_t i = 0; i < fn->getArgumentCount() - 2; i++)
+			{
+				fir::Value* arg = params[i]->codegen(cgi).result.first;
+
+				// i + 1 to skip the self
+				if(fn->getArguments()[i + 1]->getType() != arg->getType())
+					arg = cgi->autoCastType(fn->getArguments()[i + 1]->getType(), arg);
+
+				fargs.push_back(arg);
+			}
+
+
+			rhs = cgi->autoCastType(fn->getArguments().back()->getType(), rhs);
+			fargs.push_back(rhs);
+
+
+			cgi->builder.CreateCall(fn, fargs);
+
+			return Result_t(0, 0);
+		}
+	}
+
+
+
+	// note: only used by getExprType(), we don't use it ourselves here.
+	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::deque<Ast::Expr*> args)
+	{
+		iceAssert(args.size() >= 1);
+
+		TypePair_t* tp = cgi->getType(fcls);
+		if(!tp) { return 0; }
+
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		if(!cls) { return 0; }
+
+
+		std::deque<FuncPair_t> cands;
+
+		for(auto soo : cls->subscriptOverloads)
+			cands.push_back({ soo->getterFunc, soo->decl });
+
+		std::string basename = cls->subscriptOverloads[0]->decl->name;
+
+		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+
+		if(res.resolved) return res.t.first;
+		else return 0;
+	}
 
 	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		iceAssert(0);
+		iceAssert(args.size() >= 2);
+
+		auto p = getClassDef(cgi, user, args[0]);
+		ClassDef* cls = p.first;
+		fir::Type* ftype = p.second;
+
+		std::deque<FuncPair_t> cands;
+
+		for(auto soo : cls->subscriptOverloads)
+			cands.push_back({ soo->getterFunc, soo->decl });
+
+		std::string basename = cls->subscriptOverloads[0]->decl->name;
+
+		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+
+		if(!res.resolved)
+		{
+			auto pair = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			std::string argstr = pair.first;
+			std::string candstr = pair.second;
+
+			error(user, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
+		}
+		else
+		{
+			std::deque<fir::Value*> fargs;
+
+			// gen the self.
+			fir::Value* lhsPtr = args[0]->codegen(cgi).result.second;
+			iceAssert(lhsPtr);
+
+			fargs.push_back(lhsPtr);
+
+			// gen args.
+			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			iceAssert(fn);
+
+			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
+			{
+				fir::Value* arg = params[i]->codegen(cgi).result.first;
+
+				// i + 1 to skip the self
+				if(fn->getArguments()[i + 1]->getType() != arg->getType())
+					arg = cgi->autoCastType(fn->getArguments()[i + 1]->getType(), arg);
+
+				fargs.push_back(arg);
+			}
+
+			fir::Value* val = cgi->builder.CreateCall(fn, fargs);
+			fir::Value* ret = cgi->builder.CreateImmutStackAlloc(fn->getReturnType(), val);
+			return Result_t(val, ret);
+		}
 	}
+
+
+
 
 
 	Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
@@ -86,135 +252,6 @@ namespace Operators
 
 
 
-#if 0
-static Result_t handleSubscriptOperatorOverload(CodegenInstance* cgi, Expr* e, Expr* index, fir::Value* rhs)
-{
-	fir::Type* lhsType = cgi->getExprType(e);
-	iceAssert(lhsType->isStructType());
-
-	TypePair_t* tp = cgi->getType(lhsType);
-	if(!tp) iceAssert(0 && "what?");
-
-	iceAssert(tp->second.second == TypeKind::Class);
-	Class* cls = dynamic_cast<Class*>(tp->second.first);
-
-
-	// todo: do we want to handle top-level subscript overloads?
-	std::deque<SubscriptOpOverload*> candidates;
-	for(auto opo : cls->opOverloads)
-	{
-		if(opo->op == ArithmeticOp::Subscript)
-			candidates.push_back(dynamic_cast<SubscriptOpOverload*>(opo));
-	}
-
-
-	if(candidates.size() == 0)
-		error(e, "No subscript operator overloads for type %s", cgi->getReadableType(e).c_str());
-
-
-	fir::Value* selfPtr = e->codegen(cgi).result.second;
-	iceAssert(selfPtr);
-
-	fir::Value* indexVal = index->codegen(cgi).result.first;
-	iceAssert(indexVal);
-
-
-	std::deque<std::tuple<int, fir::Function*, fir::Function*>> c2s;
-	for(auto cand : candidates)
-	{
-		// todo: HANDLE MULTIPLE SUBSCRIPTS
-		// check getter
-		std::tuple<int, fir::Function*, fir::Function*> final;
-		{
-			fir::Function* gf = cgi->module->getFunction(cand->cprop->getterFunc->mangledName);
-			iceAssert(gf);	// should always have getter
-
-
-			// should match...
-			iceAssert(gf->getArguments()[0]->getType() == selfPtr->getType());
-
-
-			// check second argument
-			// note: HANDLE MULTIPLE FUCKING SUBSCRIPTS
-			if(gf->getArguments()[1]->getType() == indexVal->getType())
-			{
-				std::get<0>(final) = 0;
-				std::get<1>(final) = gf;
-			}
-			else
-			{
-				if(int d = cgi->getAutoCastDistance(indexVal->getType(), gf->getArguments()[1]->getType()) >= 0)
-				{
-					std::get<0>(final) = d;
-					std::get<1>(final) = gf;
-				}
-			}
-		}
-
-
-		// check setter
-		// but don't bother if we have no getter
-		if(std::get<1>(final))
-		{
-			fir::Function* sf = cgi->module->getFunction(cand->cprop->setterFunc->mangledName);
-			if(sf)
-			{
-				// should match...
-				iceAssert(sf->getArguments()[0]->getType() == selfPtr->getType());
-
-
-				// check second argument
-				// note: HANDLE MULTIPLE FUCKING SUBSCRIPTS
-				if(sf->getArguments()[1]->getType() == indexVal->getType())
-				{
-					std::get<2>(final) = sf;
-				}
-				else
-				{
-					if(cgi->getAutoCastDistance(indexVal->getType(), sf->getArguments()[1]->getType()) >= 0)
-					{
-						std::get<2>(final) = sf;
-					}
-				}
-			}
-		}
-
-		if(std::get<1>(final))
-			c2s.push_back(final);
-	}
-
-
-
-	int best = 10000000;
-	std::pair<fir::Function*, fir::Function*> fin;
-	for(auto c2 : c2s)
-	{
-		if(std::get<0>(c2) < best)
-		{
-			fin = { std::get<1>(c2), std::get<2>(c2) };
-			best = std::get<0>(c2);
-		}
-	}
-
-	if(rhs)
-	{
-		// call setter
-		fir::Function* set = std::get<1>(fin);
-		cgi->builder.CreateCall(set, { selfPtr, indexVal, rhs });
-
-		return Result_t(0, 0);
-	}
-	else
-	{
-		fir::Function* get = std::get<0>(fin);
-		fir::Value* ret = cgi->builder.CreateCall(get, { selfPtr, indexVal });
-
-		return Result_t(ret, 0);
-	}
-
-	return Result_t(0, 0);
-}
-#endif
 
 
 

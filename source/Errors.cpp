@@ -12,6 +12,7 @@
 #include <signal.h>
 
 using namespace Ast;
+using namespace Codegen;
 
 namespace GenError
 {
@@ -304,22 +305,22 @@ namespace GenError
 		"type"
 	};
 
-	void unknownSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
+	void unknownSymbol(CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
 		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
-	void duplicateSymbol(Codegen::CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
+	void duplicateSymbol(CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
 		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
-	void noOpOverload(Codegen::CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
+	void noOpOverload(CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
 	{
 		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
+	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
 		// note: HACK
 		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
@@ -330,12 +331,12 @@ namespace GenError
 			cgi->getReadableType(a).c_str());
 	}
 
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
+	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
 	{
 		invalidAssignment(cgi, e, a->getType(), b->getType());
 	}
 
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Expr* e, std::string name, std::vector<fir::Value*> args)
+	void invalidInitialiser(CodegenInstance* cgi, Expr* e, std::string name, std::vector<fir::Value*> args)
 	{
 		std::string args_str;
 		for(fir::Value* v : args)
@@ -353,12 +354,12 @@ namespace GenError
 		error(e, "No valid init() candidate for type %s taking parameters [ %s ]", name.c_str(), args_str.c_str());
 	}
 
-	void expected(Codegen::CodegenInstance* cgi, Expr* e, std::string expect)
+	void expected(CodegenInstance* cgi, Expr* e, std::string expect)
 	{
 		error(e, "Expected %s", expect.c_str());
 	}
 
-	void nullValue(Codegen::CodegenInstance* cgi, Expr* expr)
+	void nullValue(CodegenInstance* cgi, Expr* expr)
 	{
 		if(dynamic_cast<BinOp*>(expr) && cgi->isArithmeticOpAssignment(dynamic_cast<BinOp*>(expr)->op))
 		{
@@ -385,12 +386,12 @@ namespace GenError
 		}
 	}
 
-	void noSuchMember(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string member)
+	void noSuchMember(CodegenInstance* cgi, Expr* e, std::string type, std::string member)
 	{
 		error(e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
 	}
 
-	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
+	void noFunctionTakingParams(CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
 	{
 		std::string prs = "";
 		for(auto p : ps)
@@ -399,6 +400,45 @@ namespace GenError
 		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
 
 		error(e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
+	}
+
+	void assignToImmutable(CodegenInstance* cgi, Expr* op, Expr* value)
+	{
+		HighlightOptions ops;
+		ops.caret = op->pin;
+
+		ops.underlines.push_back(getHighlightExtent(value));
+
+		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(op).c_str());
+	}
+
+
+
+
+
+	std::pair<std::string, std::string> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
+	{
+		std::vector<std::string> argtypes;
+		for(auto a : args)
+			argtypes.push_back(cgi->getReadableType(a).c_str());
+
+		std::string argstr;
+		for(auto s : argtypes)
+			argstr += ", " + s;
+
+		if(argstr.length() > 0)
+			argstr = argstr.substr(2);
+
+		std::string candidates;
+		std::deque<FuncPair_t> reses;
+
+		for(auto fs : cands)
+		{
+			if(fs.second)
+				candidates += cgi->printAst(fs.second) + "\n";
+		}
+
+		return { argstr, candidates };
 	}
 }
 
@@ -435,9 +475,13 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		return ret;
 	}
-	else
+	else if(e)
 	{
 		return e->pin;
+	}
+	else
+	{
+		return Parser::Pin();
 	}
 }
 

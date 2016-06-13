@@ -100,12 +100,14 @@ namespace fir
 					this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
 			}
 
+			// fprintf(stderr, "returning existing function %s (id = %zu)\n", name.c_str(), this->functions[name]->id);
 			return this->functions[name];
 		}
 
 		Function* f = new Function(name, ftype, this, linkage);
 		this->functions[name] = f;
 
+		// fprintf(stderr, "returning new function %s (id = %zu) (mod %s)\n", name.c_str(), f->id, this->moduleName.c_str());
 		return f;
 	}
 
@@ -194,7 +196,12 @@ namespace fir
 		for(auto type : this->namedTypes)
 		{
 			// should just automatically create it.
-			ret += "declare type :: " + type.second->str() + "\n";
+			auto c = new char[32];
+			snprintf(c, 32, "%p", (void*) type.second);
+
+			ret += "declare type :: " + type.second->str() + " :: <" + std::string(c) + ">\n";
+
+			delete[] c;
 		}
 
 		for(auto fp : this->functions)
@@ -206,7 +213,7 @@ namespace fir
 			decl += "func: " + ffn->getName() + "(";
 			for(auto a : ffn->getArguments())
 			{
-				decl += "%" + std::to_string(a->id);
+				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
 
 				if(a != ffn->getArguments().back())
 					decl += ", ";
