@@ -44,7 +44,13 @@ namespace SemAnalysis
 
 	static void complainAboutVarState(CodegenInstance* cgi, Expr* user, VarDef& vd)
 	{
-		switch(vd.state)
+		if(vd.stateStack.empty())
+		{
+			vd.visited = true;
+			return;
+		}
+
+		switch(vd.stateStack.back())
 		{
 			// todo: don't ignore this
 			// case VarState::Invalid:
@@ -102,12 +108,26 @@ namespace SemAnalysis
 
 	static void pushScope(CodegenInstance*)
 	{
+		for(auto& gv : gs.vars)
+		{
+			for(auto& vd : gv)
+				vd.stateStack.push_back(vd.stateStack.back());
+		}
+
+
 		gs.vars.push_back({ });
 	}
 
 	static void popScope(CodegenInstance* cgi)
 	{
 		findUnsed(cgi, 1);
+
+		for(auto& gv : gs.vars)
+		{
+			for(auto& vd : gv)
+				vd.stateStack.pop_back();
+		}
+
 		gs.vars.pop_back();
 	}
 
@@ -142,7 +162,7 @@ namespace SemAnalysis
 				{
 					VarDef vdef;
 					vdef.name = var->name;
-					vdef.state = VarState::ValidStack;
+					vdef.stateStack.push_back(VarState::ValidStack);
 					vdef.decl = var;
 
 					// printf("DEF %s: %zu\n", vdef.name.c_str(), gs.vars.size() - 1);
@@ -163,7 +183,7 @@ namespace SemAnalysis
 				{
 					VarDef vdef;
 					vdef.name = vd->name;
-					vdef.state = VarState::NoValue;
+					vdef.stateStack.push_back(VarState::NoValue);
 					vdef.decl = vd;
 
 					if(vd->initVal != 0)
@@ -172,12 +192,12 @@ namespace SemAnalysis
 						// todo: more robust identification
 						if(dynamic_cast<Alloc*>(vd->initVal))
 						{
-							vdef.state = VarState::ValidAlloc;
-							// printf("%s is ALLOC (%zu)\n", vdef.name.c_str(), gs.vars.size() - 1);
+							vdef.stateStack.back() = VarState::ValidAlloc;
+							// fprintf(stderr, "%s is ALLOC (%zu) (%zu)\n", vdef.name.c_str(), gs.vars.size(), vdef.stateStack.size());
 						}
 						else
 						{
-							vdef.state = VarState::ValidStack;
+							vdef.stateStack.back() = VarState::ValidStack;
 							// printf("%s is STACK (%zu)\n", vdef.name.c_str(), gs.vars.size() - 1);
 						}
 
@@ -210,19 +230,19 @@ namespace SemAnalysis
 					{
 						if(dynamic_cast<Alloc*>(bo->right))
 						{
-							vd.state = VarState::ValidAlloc;
+							vd.stateStack.back() = VarState::ValidAlloc;
 						}
 						else
 						{
-							if(vd.state == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
+							if(vd.stateStack.back() == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 							{
 								warn(vr, "Modifying alloced variable prevents proper deallocation checking");
-								vd.state = VarState::ModifiedAlloc;
+								vd.stateStack.back() = VarState::ModifiedAlloc;
 								vd.expr = bo;
 							}
 							else
 							{
-								vd.state = VarState::ValidStack;
+								vd.stateStack.back() = VarState::ValidStack;
 							}
 						}
 					}
@@ -232,10 +252,10 @@ namespace SemAnalysis
 							bo->op == ArithmeticOp::ShiftRightEquals || bo->op == ArithmeticOp::BitwiseAndEquals ||
 							bo->op == ArithmeticOp::BitwiseOrEquals || bo->op == ArithmeticOp::BitwiseXorEquals)
 					{
-						if(vd.state == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
+						if(vd.stateStack.back() == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 						{
 							warn(vr, "Modifying alloced variable prevents proper deallocation checking");
-							vd.state = VarState::ModifiedAlloc;
+							vd.stateStack.back() = VarState::ModifiedAlloc;
 							vd.expr = bo;
 						}
 					}
@@ -317,14 +337,15 @@ namespace SemAnalysis
 					VarDef& vd = findVarDef(cgi, vr, vr->name);
 					complainAboutVarState(cgi, vr, vd);
 
-					if(vd.state == VarState::ModifiedAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
+					if(vd.stateStack.back() == VarState::ModifiedAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 					{
 						warn(vr, "Variable '%s' has been modified since its allocation", vd.name.c_str());
 						warn(vd.expr, "First modified here");
 					}
 
 					vd.expr = da;
-					vd.state = VarState::Deallocated;
+					vd.stateStack.back() = VarState::Deallocated;
+					// fprintf(stderr, "DEALLOC %s (%zu)\n", vd.name.c_str(), vd.stateStack.size());
 				}
 			}
 			else
@@ -332,6 +353,9 @@ namespace SemAnalysis
 				// skip
 			}
 		}
+
+		for(auto vd : gs.vars.back())
+			vd.stateStack.pop_back();
 	}
 
 	void analyseVarUsage(CodegenInstance* cgi)
