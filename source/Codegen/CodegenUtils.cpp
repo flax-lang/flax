@@ -942,6 +942,8 @@ namespace Codegen
 		{
 			int distance = 0;
 
+			// fprintf(stderr, "%s vs %s\n", (c.second ? c.second->name : c.first->getName()).c_str(), basename.c_str());
+
 			if((c.second ? c.second->name : c.first->getName()) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
@@ -1021,6 +1023,8 @@ namespace Codegen
 
 			if(!decl->isVariadic)
 			{
+				// fprintf(stderr, "%s -- %zu, %zu\n", decl->name.c_str(), decl->params.size(), params.size());
+
 				if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
 				if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
 
@@ -1029,6 +1033,9 @@ namespace Codegen
 				{
 					fir::Type* t1 = this->getExprType(params[i], true);
 					fir::Type* t2 = this->getExprType(decl->params[i], true);
+
+
+					// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
 
 					if(t1 != t2)
 					{
@@ -1042,6 +1049,7 @@ namespace Codegen
 					}
 				}
 
+				// fprintf(stderr, "%s -- good\n", decl->name.c_str());
 				return true;
 			}
 			else

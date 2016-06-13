@@ -196,7 +196,12 @@ namespace fir
 		for(auto type : this->namedTypes)
 		{
 			// should just automatically create it.
-			ret += "declare type :: " + type.second->str() + "\n";
+			auto c = new char[32];
+			snprintf(c, 32, "%p", (void*) type.second);
+
+			ret += "declare type :: " + type.second->str() + " :: <" + std::string(c) + ">\n";
+
+			delete[] c;
 		}
 
 		for(auto fp : this->functions)
@@ -208,7 +213,7 @@ namespace fir
 			decl += "func: " + ffn->getName() + "(";
 			for(auto a : ffn->getArguments())
 			{
-				decl += "%" + std::to_string(a->id);
+				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
 
 				if(a != ffn->getArguments().back())
 					decl += ", ";

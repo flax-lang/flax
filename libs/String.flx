@@ -29,6 +29,12 @@ public class Character
 		self.byteCount = l
 	}
 
+
+	func hasData() -> Bool
+	{
+		return self.utf8Bytes != null && self.byteCount > 0
+	}
+
 	func toAscii() -> Int8
 	{
 		if self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
@@ -146,9 +152,8 @@ public class String
 
 
 
-	func append(str: Int8*)
+	func append(str: Int8*, addlen: Uint64)
 	{
-		let addlen = strlen(str)
 		if self.byteCount + addlen >= self.allocated
 		{
 			self.grow(self.byteCount + addlen + 1)
@@ -159,12 +164,18 @@ public class String
 		self.data[prevBC + addlen] = 0
 	}
 
+	func append(char: Character)
+	{
+		self.append(char.utf8Bytes as Int8*, char.byteCount)
+	}
 
 
 
 
 
-	operator [] (index: Int64) -> Character
+
+
+	operator [] (index: Uint64) -> Character
 	{
 		get
 		{
@@ -193,10 +204,15 @@ public class String
 
 	operator += (other: String)
 	{
-		self.append(other.data)
+		self.append(other.data, strlen(other))
 	}
 
 	operator += (other: Int8*)
+	{
+		self.append(other, strlen(other))
+	}
+
+	operator += (other: Character)
 	{
 		self.append(other)
 	}
@@ -213,6 +229,14 @@ public operator + (this: String, other: String) -> String
 }
 
 public operator + (this: String, other: Int8*) -> String
+{
+	var ret: String(this.data)
+	ret += other
+
+	return ret
+}
+
+public operator + (this: String, other: Character) -> String
 {
 	var ret: String(this.data)
 	ret += other

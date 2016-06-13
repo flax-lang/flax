@@ -794,13 +794,18 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc
 
 	std::deque<FuncPair_t> fns;
 	for(auto f : str->funcs)
-		fns.push_back({ 0, f->decl });
+	{
+		if(f->decl->name == fc->name)
+			fns.push_back({ 0, f->decl });
+	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
 
 	if(!res.resolved)
 	{
-		error(fc, "Function '%s' is not a member of struct '%s'", fc->name.c_str(), str->name.c_str());
+		auto p = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
+		error(fc, "No such member function '%s' in class %s taking paramters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
+			str->name.c_str(), p.first.c_str(), fns.size(), p.second.c_str());
 	}
 
 
