@@ -267,7 +267,7 @@ namespace fir
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
 			{
-				valueMap[ffn->getArguments()[i]->id] = it;
+				valueMap[ffn->getArguments()[i]->id] = it.getNodePtrUnchecked();
 
 				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
@@ -850,7 +850,7 @@ namespace fir
 						case OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							llvm::Value* a = getOperand(inst, 0);
+							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
 
 							Function* fn = dynamic_cast<Function*>(inst->operands[0]);
 							iceAssert(fn);
@@ -1050,7 +1050,7 @@ namespace fir
 								builder.CreateStore(a, ptr);
 							}
 
-							llvm::Value* ret = builder.CreateStructGEP(ptr, ci->value);
+							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->value);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

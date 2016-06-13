@@ -101,7 +101,31 @@ namespace Operators
 
 
 
+	// note: only used by getExprType(), we don't use it ourselves here.
+	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::deque<Ast::Expr*> args)
+	{
+		iceAssert(args.size() >= 1);
 
+		TypePair_t* tp = cgi->getType(fcls);
+		if(!tp) { return 0; }
+
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		if(!cls) { return 0; }
+
+
+		std::deque<FuncPair_t> cands;
+
+		for(auto soo : cls->subscriptOverloads)
+			cands.push_back({ soo->getterFunc, soo->decl });
+
+		std::string basename = cls->subscriptOverloads[0]->decl->name;
+
+		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+
+		if(res.resolved) return res.t.first;
+		else return 0;
+	}
 
 	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
@@ -155,8 +179,9 @@ namespace Operators
 				fargs.push_back(arg);
 			}
 
-
-			return Result_t(cgi->builder.CreateCall(fn, fargs), 0);
+			fir::Value* val = cgi->builder.CreateCall(fn, fargs);
+			fir::Value* ret = cgi->builder.CreateImmutStackAlloc(fn->getReturnType(), val);
+			return Result_t(val, ret);
 		}
 	}
 
