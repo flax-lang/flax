@@ -18,21 +18,28 @@ public class Character
 
 	init(c: Int8)
 	{
-		self.utf8Bytes = alloc Uint8
+		self.utf8Bytes = alloc[2] Uint8
 		self.utf8Bytes[0] = c
+		self.utf8Bytes[1] = 0
+
 		self.byteCount = 1
 	}
 
 	init(c: Uint8*, l: Uint64)
 	{
-		self.utf8Bytes = c
+		self.utf8Bytes = alloc[l + 1] Uint8
 		self.byteCount = l
+
+		memcpy(self.utf8Bytes as Int8*, c as Int8*, l)
+		self.utf8Bytes[l] = 0
 	}
 
 	init(c: String)
 	{
-		self.utf8Bytes = alloc Uint8
+		self.utf8Bytes = alloc[2] Uint8
 		self.utf8Bytes[0] = c.data[0]
+		self.utf8Bytes[1] = 0
+
 		self.byteCount = 1
 	}
 
@@ -60,6 +67,9 @@ public class Character
 		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 	}
 }
+
+
+
 
 
 
@@ -133,6 +143,7 @@ public class String
 		let newDat = malloc(self.allocated)
 		let moveCount = self.byteCount
 
+		memset(newDat, 0, self.allocated)
 		memcpy(newDat, self.data, moveCount)
 
 		if needFree
@@ -176,6 +187,16 @@ public class String
 
 	func append(char: Character)
 	{
+		// copy it over
+		// var copy = alloc[char.byteCount + 1] Int8
+		// memcpy(copy, char.utf8Bytes as Int8*, char.byteCount)
+
+		// copy[char.byteCount] = 0
+		// self.append(copy, char.byteCount)
+
+		// dealloc copy
+
+
 		self.append(char.utf8Bytes as Int8*, char.byteCount)
 	}
 

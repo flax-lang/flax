@@ -6,6 +6,7 @@
 public ffi func puts(x: Int8*) -> Int32
 public ffi func printf(x: Int8*, ...) -> Int32
 public ffi func sprintf(x: Int8*, y: Int8*, ...) -> Int32
+public ffi func snprintf(x: Int8* l: Uint64, y: Int8*, ...) -> Int32
 
 // memcpy/set/move
 public ffi func memcpy(dest: Int8*, source: Int8*, length: Uint64) -> Int8*
