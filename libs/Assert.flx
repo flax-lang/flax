@@ -1,0 +1,12 @@
+// Assert.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import String
+import LibCInterface
+
+public func programExit(reason: String)
+{
+	write(2, reason.data, reason.byteCount)
+	abort()
+}

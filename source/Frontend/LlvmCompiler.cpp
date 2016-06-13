@@ -15,7 +15,6 @@
 #include <deque>
 #include <vector>
 
-#include "llvm/PassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/Host.h"
@@ -25,6 +24,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Instrumentation.h"
@@ -61,28 +61,33 @@ namespace Compiler
 
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
+
+			// modulelist[mod.first]->dump();
 		}
 
 
 		// link together
-		llvm::Module* mainModule = modulelist[filename];
+		// llvm::Module* mainModule = modulelist[filename];
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-		llvm::Linker linker = llvm::Linker(mainModule);
+		llvm::Module* emptyModule = new llvm::Module("_empty", llvm::getGlobalContext());
+		llvm::Linker linker = llvm::Linker(emptyModule);
+		// llvm::Linker linker = llvm::Linker(mainModule);
 		for(auto mod : modulelist)
 		{
-			if(mod.second != mainModule)
-				linker.linkInModule(mod.second);
+			// if(mod.second != mainModule)
+			linker.linkInModule(mod.second);
 		}
 
-		mainModule = linker.getModule();
+		// mainModule = linker.getModule();
+		emptyModule = linker.getModule();
+		llvm::Module* mainModule = emptyModule;
 
 		doGlobalConstructors(filename, data, data.rootNode, mainModule);
 
 
 		if(Compiler::getDumpLlvm())
 			mainModule->dump();
-
 
 		// once more
 		optimiseLlvmModule(mainModule);
@@ -148,21 +153,26 @@ namespace Compiler
 		llvm::verifyModule(*mod, &llvm::errs());
 		if(mod->getFunction("main") != 0)
 		{
-			std::string err;
-			llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(mod))
-						.setErrorStr(&err)
-						.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
-						.create();
+			// std::string err;
+			// llvm::ExecutionEngine* ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(mod))
+			// 			.setErrorStr(&err)
+			// 			.setMCJITMemoryManager(llvm::make_unique<llvm::SectionMemoryManager>())
+			// 			.create();
 
-			void* func = ee->getPointerToFunction(mod->getFunction("main"));
-			iceAssert(func);
+			// void* func = ee->getPointerToFunction(mod->getFunction("main"));
+
+			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(mod)).create();
+			uint64_t func = execEngine->getFunctionAddress("main");
+			iceAssert(func != 0);
+
 			auto mainfunc = (int (*)(int, const char**)) func;
 
 			const char* m[] = { ("__llvmJIT_" + mod->getModuleIdentifier()).c_str() };
 
 			// finalise the object, which causes the memory to be executable
 			// fucking NX bit
-			ee->finalizeObject();
+			// ee->finalizeObject();
+
 			mainfunc(1, m);
 		}
 		else
@@ -262,7 +272,7 @@ namespace Compiler
 	static void optimiseLlvmModule(llvm::Module* mod)
 	{
 		// llvm::FunctionPassManager fpm = llvm::FunctionPassManager(mod);
-		llvm::PassManager fpm = llvm::PassManager();
+		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{

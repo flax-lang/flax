@@ -252,6 +252,14 @@ static void findDotOperator(Expr* expr)
 		if(ret->val)
 			findDotOperator(ret->val);
 	}
+	else if(Alloc* alc = dynamic_cast<Alloc*>(expr))
+	{
+		for(auto c : alc->counts)
+			findDotOperator(c);
+
+		for(auto p : alc->params)
+			findDotOperator(p);
+	}
 	else if(ArrayIndex* ari = dynamic_cast<ArrayIndex*>(expr))
 	{
 		findDotOperator(ari->arr);

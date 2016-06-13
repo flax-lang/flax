@@ -23,13 +23,13 @@ finalOutput	= sysroot </> prefix </> "bin" </> outputBin
 
 
 
-llvmConfig	= "llvm-config"
+llvmConfig	= "llvm-config-3.7"
 disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move"
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
+flaxcNormFlags		= "-Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
 main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
@@ -51,6 +51,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 	phony "clean" $ do
 		putQuiet "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
+		removeFilesAfter (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
 
 
 	compiledTest %> \out -> do
@@ -73,6 +74,9 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 
 	phony "copyLibraries" $ do
 		--- copy the libs to the prefix.
+		--- remove the old ones first
+		removeFiles (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
+
 		() <- quietly $ cmd Shell "mkdir" "-p" (sysroot </> prefix </> "lib" </> "flaxlibs")
 		quietly $ cmd Shell "cp" ("-R") ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
