@@ -8,52 +8,52 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+static Result_t getTypeOfAny(CodegenInstance* cgi, fir::Value* ptr)
+{
+	fir::Value* gep = cgi->builder.CreateStructGEP(ptr, 0);
+	return Result_t(cgi->builder.CreateLoad(gep), gep);
+}
+
 Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	size_t index = 0;
+	fir::Type* type = 0;
+
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))
 	{
 		VarDecl* decl = cgi->getSymDecl(this, vr->name);
-		fir::Type* t = 0;
 		if(!decl)
 		{
-			t = cgi->getExprTypeFromStringType(this, vr->name);
+			type = cgi->getExprTypeFromStringType(this, vr->name);
 
-			if(!t)
+			if(!type)
 				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
 		}
 		else
 		{
-			t = cgi->getExprType(decl);
+			type = cgi->getExprType(decl);
 		}
-
-		index = TypeInfo::getIndexForType(cgi, t);
 	}
 	else
 	{
-		fir::Type* t = cgi->getExprType(this->inside);
-		if(cgi->isAnyType(t))
-		{
-			ValPtr_t vp = this->inside->codegen(cgi).result;
-			fir::Value* ptr = vp.second;
-
-			if(!ptr)
-			{
-				iceAssert(0);
-
-				// make one
-				ptr = cgi->getImmutStackAllocValue(vp.first);
-				cgi->builder.CreateStore(vp.first, ptr);
-			}
-
-			fir::Value* gep = cgi->builder.CreateStructGEP(ptr, 0);
-			return Result_t(cgi->builder.CreateLoad(gep), gep);
-		}
-		else
-		{
-			index = TypeInfo::getIndexForType(cgi, t);
-		}
+		type = cgi->getExprType(this->inside);
 	}
+
+
+	if(cgi->isAnyType(type))
+	{
+		ValPtr_t vp = this->inside->codegen(cgi).result;
+		fir::Value* ptr = vp.second;
+
+		return getTypeOfAny(cgi, ptr);
+	}
+	else
+	{
+		index = TypeInfo::getIndexForType(cgi, type);
+	}
+
+
 
 
 	if(index == 0)

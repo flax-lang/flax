@@ -9,20 +9,16 @@ import String
 
 func anyToString(any: Any) -> String
 {
-	// let argtype = typeof(any)
-
-	// var buffer = alloc[64] Int8
-	// var buffer = malloc(64)
-
-	return any as String
+	var buffer = alloc[64] Int8
 
 
+	let argtype = typeof(any)
 
-	// if argtype == typeof(String)
-	// {
-	// 	dealloc buffer
-	// 	return any as String
-	// }
+	if argtype == typeof(String)
+	{
+		dealloc buffer
+		return any as String
+	}
 	// else if argtype == typeof(Int8)
 	// {
 	// 	snprintf(buffer, 64, "%hhd", any as Int8)
@@ -35,10 +31,11 @@ func anyToString(any: Any) -> String
 	// {
 	// 	snprintf(buffer, 64, "%d", any as Int32)
 	// }
-	// else if argtype == typeof(Int64)
-	// {
-	// 	snprintf(buffer, 64, "%lld", any as Int64)
-	// }
+	else if argtype == typeof(Int64)
+	{
+		snprintf(buffer, 64, "%lld", any as Int64)
+		printf("lol -- %s\n", buffer)
+	}
 	// else if argtype == typeof(Uint8)
 	// {
 	// 	snprintf(buffer, 64, "%hhu", any as Uint8)
@@ -56,10 +53,10 @@ func anyToString(any: Any) -> String
 	// 	snprintf(buffer, 64, "%llu", any as Uint64)
 	// }
 
-	// let s = String(buffer)
-	// dealloc buffer
+	let s = String(buffer)
+	dealloc buffer
 
-	// return s
+	return s
 }
 
 
@@ -111,7 +108,7 @@ public func format(fmt: String, args: Any[...]) -> String
 				// output += anyToString(args[argNum])
 				// argNum += 1
 
-				// printf("%s\n", anyToString(args[argNum]))
+				printf("%s\n", anyToString(args[argNum]))
 				output += "%"
 
 				argNum += 1

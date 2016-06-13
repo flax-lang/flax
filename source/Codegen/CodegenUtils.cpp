@@ -2084,8 +2084,8 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0);			// Type
+		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
+		typegep = this->builder.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
@@ -2159,11 +2159,11 @@ namespace Codegen
 
 		if(!valuePtr)
 		{
-			valuePtr = this->getStackAlloc(value->getType());
-			this->builder.CreateStore(value, valuePtr);
+			// valuePtr = this->getStackAlloc(value->getType(), "tempAlloca");
+			// this->builder.CreateStore(value, valuePtr);
 		}
 
-		fir::Value* anyptr = this->getStackAlloc(anyt->first);
+		fir::Value* anyptr = this->getStackAlloc(anyt->first, "anyPtr");
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
 
@@ -2176,7 +2176,7 @@ namespace Codegen
 		iceAssert(length->getType()->isIntegerType());
 
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
-		fir::Value* arr = this->getStackAlloc(arrType);
+		fir::Value* arr = this->getStackAlloc(arrType, "Any_Variadic_Array");
 
 		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
 		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
