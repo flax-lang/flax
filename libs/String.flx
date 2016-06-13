@@ -29,6 +29,13 @@ public class Character
 		self.byteCount = l
 	}
 
+	init(c: String)
+	{
+		self.utf8Bytes = alloc Uint8
+		self.utf8Bytes[0] = c.data[0]
+		self.byteCount = 1
+	}
+
 
 	func hasData() -> Bool
 	{
@@ -53,6 +60,9 @@ public class Character
 		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 	}
 }
+
+
+
 
 public class String
 {
@@ -220,43 +230,45 @@ public class String
 
 
 
-public operator + (this: String, other: String) -> String
+public operator + (lhs: String, rhs: String) -> String
 {
-	var ret: String(this.data)
-	ret += other
+	var ret: String(lhs.data)
+	ret += rhs
 
 	return ret
 }
 
-public operator + (this: String, other: Int8*) -> String
+public operator + (lhs: String, rhs: Int8*) -> String
 {
-	var ret: String(this.data)
-	ret += other
+	var ret: String(lhs.data)
+	ret += rhs
 
 	return ret
 }
 
-public operator + (this: String, other: Character) -> String
+public operator + (lhs: String, rhs: Character) -> String
 {
-	var ret: String(this.data)
-	ret += other
+	var ret: String(lhs.data)
+	ret += rhs
 
 	return ret
 }
 
-public operator == (this: String, other: Int8*) -> Bool
+public operator == (lhs: String, rhs: Int8*) -> Bool
 {
 	// return false
-	return strcmp(this.data, other) == 0
+	return strcmp(lhs.data, rhs) == 0
 }
 
-public operator == (this: String, other: String) -> Bool
+public operator == (lhs: String, rhs: String) -> Bool
 {
-	return strcmp(this.data, other.data) == 0
+	return strcmp(lhs.data, rhs.data) == 0
 }
 
-
-
+public operator == (lhs: Character, rhs: Character) -> Bool
+{
+	return lhs.byteCount == rhs.byteCount && strncmp(lhs.utf8Bytes as Int8*, rhs.utf8Bytes as Int8*, lhs.byteCount) == 0
+}
 
 
 
