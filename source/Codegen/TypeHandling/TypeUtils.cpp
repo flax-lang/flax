@@ -1202,12 +1202,12 @@ namespace Codegen
 							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
 					}
 
-
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
 					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					iceAssert(concrete);
 
 					if(instantiatedGenericTypes.size() > 0)
 					{
@@ -1216,25 +1216,15 @@ namespace Codegen
 							this->pushGenericType(t.first, t.second);
 					}
 
-					// note: codegen() uses str->createdType. since we only *recently* called
-					// createType, it should be set properly.
-
-					// set codegen = 0
-					oldSB->didCodegen = false;
-					oldSB->codegen(this); // this sets it to true
-
 					if(instantiatedGenericTypes.size() > 0)
 						this->popGenericTypeStack();
 
 					this->namespaceStack = old;
 
-					if(!concrete) error(user, "!!!");
-					iceAssert(concrete);
 
 					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
 					iceAssert(tp);
 				}
-				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
 				fir::Type* ret = tp->first;
 				while(indirections > 0)
