@@ -49,11 +49,11 @@ namespace TypeInfo
 
 	void initialiseTypeInfo(CodegenInstance* cgi)
 	{
-		Enumeration* enr = 0;
+		EnumDef* enr = 0;
 
 		if(cgi->getType("Type") == nullptr)
 		{
-			enr = new Enumeration(Parser::Pin(), "Type");
+			enr = new EnumDef(Parser::Pin(), "Type");
 			enr->isStrong = true;
 
 			Number* num = new Number(Parser::Pin(), (int64_t) 1);
@@ -73,7 +73,7 @@ namespace TypeInfo
 
 			iceAssert(pair->second.second == TypeKind::Enum);
 
-			enr = dynamic_cast<Enumeration*>(pair->second.first);
+			enr = dynamic_cast<EnumDef*>(pair->second.first);
 			iceAssert(enr);
 		}
 
@@ -82,7 +82,7 @@ namespace TypeInfo
 		#if 1
 		if(cgi->getType("Any") == 0)
 		{
-			Struct* any = new Struct(Parser::Pin(), "Any");
+			StructDef* any = new StructDef(Parser::Pin(), "Any");
 			{
 				VarDecl* type = new VarDecl(Parser::Pin(), "type", false);
 				type->type.strType = "Type";
@@ -102,7 +102,7 @@ namespace TypeInfo
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		Enumeration* enr = dynamic_cast<Enumeration*>(cgi->getType("Type")->second.first);
+		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getType("Type")->second.first);
 		iceAssert(enr);
 
 		// start at 2, we already have 1

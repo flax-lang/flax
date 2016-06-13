@@ -7,6 +7,7 @@
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
+#include "operators.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -79,7 +80,7 @@ namespace Codegen
 				error(user, "Invalid type '%s'!", bst->getStructName().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
-			Enumeration* enr = dynamic_cast<Enumeration*>(tp->second.first);
+			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
 
 			iceAssert(enr);
 			if(enr->isStrong)
@@ -252,7 +253,7 @@ namespace Codegen
 				}
 				else if(pair->second.second == TypeKind::Class)
 				{
-					Class* cls = dynamic_cast<Class*>(pair->second.first);
+					ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
 					iceAssert(cls);
 
 					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
@@ -278,7 +279,7 @@ namespace Codegen
 				}
 				else if(pair->second.second == TypeKind::Struct)
 				{
-					Struct* str = dynamic_cast<Struct*>(pair->second.first);
+					StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
 					iceAssert(str);
 
 					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
@@ -299,7 +300,7 @@ namespace Codegen
 				}
 				else if(pair->second.second == TypeKind::Enum)
 				{
-					Enumeration* enr = dynamic_cast<Enumeration*>(pair->second.first);
+					EnumDef* enr = dynamic_cast<EnumDef*>(pair->second.first);
 					iceAssert(enr);
 
 					VarRef* enrcase = dynamic_cast<VarRef*>(ma->right);
@@ -334,7 +335,7 @@ namespace Codegen
 				}
 				else if(bo->op >= ArithmeticOp::UserDefined)
 				{
-					auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+					auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 
 					iceAssert(data.found);
 					return data.opFunc->getReturnType();
@@ -372,7 +373,7 @@ namespace Codegen
 							return ltype;
 						}
 
-						auto data = this->getOperatorOverload(bo, bo->op, ltype, rtype);
+						auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 						if(data.found)
 						{
 							return data.opFunc->getReturnType();
@@ -456,37 +457,34 @@ namespace Codegen
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
 				fir::Type* t = this->getExprType(ai->arr);
-				if(!t->isArrayType() && !t->isPointerType())
-					error(expr, "Not array or pointer type: %s", t->str().c_str());
+				if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
+				{
+					// todo: multiple subscripts
+					fir::Function* getter = Operators::getOperatorSubscriptGetter(this, expr, t, { expr, ai->index });
+					if(!getter)
+					{
+						error(expr, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
+							this->getReadableType(ai->index).c_str());
+					}
 
-				if(t->isPointerType()) return t->getPointerElementType();
-				else return t->toArrayType()->getElementType();
+					return getter->getReturnType();
+				}
+				else
+				{
+					if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
+					else if(t->isPointerType()) return t->getPointerElementType();
+					else return t->toArrayType()->getElementType();
+				}
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
 				// todo: make this not shit.
+				// edit: ???
 				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
 			}
-			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
+			else if(dynamic_cast<PostfixUnaryOp*>(expr))
 			{
-				fir::Type* targtype = this->getExprType(puo->expr);
-				iceAssert(targtype);
-
-				if(puo->kind == PostfixUnaryOp::Kind::ArrayIndex)
-				{
-					if(targtype->isPointerType())
-						return targtype->getPointerElementType();
-
-					else if(targtype->isArrayType())
-						return targtype->toArrayType()->getElementType();
-
-					else
-						error(expr, "Invalid???");
-				}
-				else
-				{
-					iceAssert(0);
-				}
+				iceAssert(0);
 			}
 		}
 
@@ -513,7 +511,7 @@ namespace Codegen
 	{
 		// check if we have a default constructor.
 
-		if(Class* cls = dynamic_cast<Class*>(sb))
+		if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
 		{
 			fir::Function* candidate = 0;
 			for(fir::Function* fn : cls->initFuncs)
@@ -530,7 +528,7 @@ namespace Codegen
 
 			return candidate;
 		}
-		else if(Struct* str = dynamic_cast<Struct*>(sb))
+		else if(StructDef* str = dynamic_cast<StructDef*>(sb))
 		{
 			// should be the front one.
 			iceAssert(str->initFuncs.size() > 0);
@@ -683,6 +681,7 @@ namespace Codegen
 			unsigned int rBits = right->getType()->toPrimitiveType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
+
 			// check if the RHS is a constant value
 			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(right);
 			if(constVal)
@@ -1204,12 +1203,12 @@ namespace Codegen
 							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
 					}
 
-
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
 					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					iceAssert(concrete);
 
 					if(instantiatedGenericTypes.size() > 0)
 					{
@@ -1218,25 +1217,15 @@ namespace Codegen
 							this->pushGenericType(t.first, t.second);
 					}
 
-					// note: codegen() uses str->createdType. since we only *recently* called
-					// createType, it should be set properly.
-
-					// set codegen = 0
-					oldSB->didCodegen = false;
-					oldSB->codegen(this); // this sets it to true
-
 					if(instantiatedGenericTypes.size() > 0)
 						this->popGenericTypeStack();
 
 					this->namespaceStack = old;
 
-					if(!concrete) error(user, "!!!");
-					iceAssert(concrete);
 
 					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
 					iceAssert(tp);
 				}
-				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
 				fir::Type* ret = tp->first;
 				while(indirections > 0)
@@ -1572,7 +1561,7 @@ namespace Codegen
 
 			return final;
 		}
-		else if(Class* cls = dynamic_cast<Class*>(expr))
+		else if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
 		{
 			std::string s;
 			s = "class " + cls->name + "\n{\n";
@@ -1586,7 +1575,7 @@ namespace Codegen
 			s += "\n}";
 			return s;
 		}
-		else if(Struct* str = dynamic_cast<Struct*>(expr))
+		else if(StructDef* str = dynamic_cast<StructDef*>(expr))
 		{
 			std::string s;
 			s = "struct " + str->name + "\n{\n";
@@ -1597,7 +1586,7 @@ namespace Codegen
 			s += "\n}";
 			return s;
 		}
-		else if(Enumeration* enr = dynamic_cast<Enumeration*>(expr))
+		else if(EnumDef* enr = dynamic_cast<EnumDef*>(expr))
 		{
 			std::string s;
 			s = "enum " + enr->name + "\n{\n";

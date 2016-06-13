@@ -265,7 +265,7 @@ namespace Codegen
 		// find nested types.
 		if(this->nestedTypeStack.size() > 0)
 		{
-			Class* cls = this->nestedTypeStack.back();
+			ClassDef* cls = this->nestedTypeStack.back();
 
 			// only allow one level of implicit use
 			for(auto n : cls->nestedTypes)
@@ -346,7 +346,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::pushNestedTypeScope(Class* nest)
+	void CodegenInstance::pushNestedTypeScope(ClassDef* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
 	}
@@ -512,7 +512,7 @@ namespace Codegen
 						this->typeMap[sb->mangledName] = t.second;
 
 						// check what kind of struct.
-						if(Struct* str = dynamic_cast<Struct*>(sb))
+						if(StructDef* str = dynamic_cast<StructDef*>(sb))
 						{
 							if(str->attribs & Attr_VisPublic)
 							{
@@ -520,12 +520,23 @@ namespace Codegen
 									this->module->declareFunction(f->getName(), f->getType());
 							}
 						}
-						else if(Class* cls = dynamic_cast<Class*>(sb))
+						else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
 						{
 							if(cls->attribs & Attr_VisPublic)
 							{
 								for(auto f : cls->initFuncs)
 									this->module->declareFunction(f->getName(), f->getType());
+
+								for(auto ao : cls->assignmentOverloads)
+									this->module->declareFunction(ao->lfunc->getName(), ao->lfunc->getType());
+
+								for(auto so : cls->subscriptOverloads)
+								{
+									this->module->declareFunction(so->getterFunc->getName(), so->getterFunc->getType());
+
+									if(so->setterFunc)
+										this->module->declareFunction(so->setterFunc->getName(), so->setterFunc->getType());
+								}
 							}
 						}
 						else if(dynamic_cast<Tuple*>(sb))
@@ -931,6 +942,8 @@ namespace Codegen
 		{
 			int distance = 0;
 
+			// fprintf(stderr, "%s vs %s\n", (c.second ? c.second->name : c.first->getName()).c_str(), basename.c_str());
+
 			if((c.second ? c.second->name : c.first->getName()) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
@@ -1010,14 +1023,19 @@ namespace Codegen
 
 			if(!decl->isVariadic)
 			{
+				// fprintf(stderr, "%s -- %zu, %zu\n", decl->name.c_str(), decl->params.size(), params.size());
+
 				if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
 				if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
 
 				#define __min(x, y) ((x) > (y) ? (y) : (x))
 				for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
 				{
-					auto t1 = this->getExprType(params[i], true);
-					auto t2 = this->getExprType(decl->params[i], true);
+					fir::Type* t1 = this->getExprType(params[i], true);
+					fir::Type* t2 = this->getExprType(decl->params[i], true);
+
+
+					// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
 
 					if(t1 != t2)
 					{
@@ -1031,6 +1049,7 @@ namespace Codegen
 					}
 				}
 
+				// fprintf(stderr, "%s -- good\n", decl->name.c_str());
 				return true;
 			}
 			else
@@ -1044,8 +1063,8 @@ namespace Codegen
 				// 2. check the fixed parameters
 				for(size_t i = 0; i < decl->params.size() - 1; i++)
 				{
-					auto t1 = this->getExprType(params[i], true);
-					auto t2 = this->getExprType(decl->params[i], true);
+					fir::Type* t1 = this->getExprType(params[i], true);
+					fir::Type* t2 = this->getExprType(decl->params[i], true);
 
 					if(t1 != t2)
 					{
@@ -1227,7 +1246,7 @@ namespace Codegen
 	{
 		for(Expr* e : exprs)
 		{
-			Extension* ext		= dynamic_cast<Extension*>(e);
+			ExtensionDef* ext	= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns	= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ext && ext->mangledName == extName)
@@ -1933,343 +1952,6 @@ namespace Codegen
 	}
 
 
-	_OpOverloadData CodegenInstance::getOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
-	{
-		struct Attribs
-		{
-			ArithmeticOp op;
-
-			bool isBinOp = 0;
-			bool isPrefixUnary = 0;	// assumes isBinOp == false
-			bool isCommutative = 0; // assumes isBinOp == true
-
-			bool needsBooleanNOT = 0;
-			bool needsSwap = 0;
-		};
-
-
-		std::deque<std::pair<Attribs, fir::Function*>> candidates;
-
-
-
-		auto findCandidatesPass1 = [](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
-			std::deque<OpOverload*> list, ArithmeticOp op)
-		{
-			for(auto oo : list)
-			{
-				Attribs attr;
-
-				attr.op				= oo->op;
-				attr.isBinOp		= oo->kind == OpOverload::OperatorKind::CommBinary || oo->kind == OpOverload::OperatorKind::NonCommBinary;
-				attr.isCommutative	= oo->kind == OpOverload::OperatorKind::CommBinary;
-				attr.isPrefixUnary	= oo->kind == OpOverload::OperatorKind::PrefixUnary;
-
-				attr.needsSwap		= false;
-
-				fir::Function* lfunc = oo->lfunc;
-				if(!lfunc && !oo->didCodegen)
-				{
-					// kinda a hack
-					// if we have operators that use other operators, they all should be codegened first.
-					// unless this leads to a stupid loop...
-					// todo: edge case detection/fixing?
-
-					oo->codegen(cgi);
-					lfunc = oo->lfunc;
-				}
-
-				if(!lfunc) continue;
-
-
-				if(oo->op == op)
-				{
-					attr.needsBooleanNOT = false;
-
-					(*cands).push_back({ attr, lfunc });
-				}
-			}
-		};
-
-
-
-
-		// get the functree, starting from here, up.
-		{
-			auto curDepth = this->namespaceStack;
-
-			std::deque<OpOverload*> list;
-			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
-			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-				if(!ft) break;
-
-				for(auto f : ft->operators)
-				{
-					list.push_back(f);
-				}
-
-				if(curDepth.size() > 0)
-					curDepth.pop_back();
-			}
-
-			// if we're assigning things, we need to get the assignfuncs as well.
-			if(this->isArithmeticOpAssignment(op))
-			{
-				TypePair_t* tp = this->getType(lhs);
-				iceAssert(tp);
-
-				StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-				iceAssert(sb);
-
-				for(auto aso : sb->assignmentOverloads)
-				{
-					if(aso->op == op)
-					{
-						Attribs atr;
-
-						atr.op				= op;
-						atr.isBinOp			= true;
-						atr.isPrefixUnary	= false;
-						atr.isCommutative	= false;
-						atr.needsSwap		= false;
-
-						iceAssert(aso->lfunc);
-						candidates.push_back({ atr, aso->lfunc });
-					}
-				}
-			}
-
-
-			findCandidatesPass1(this, &candidates, list, op);
-		}
-
-
-		// pass 1.5: prune duplicates
-		auto set = candidates;
-		candidates.clear();
-
-		for(auto s : set)
-		{
-			if(std::find_if(candidates.begin(), candidates.end(), [s](std::pair<Attribs, fir::Function*> other) -> bool {
-				return other.second->getName() == s.second->getName(); }) == candidates.end())
-			{
-				candidates.push_back(s);
-			}
-		}
-
-
-
-
-
-
-
-		// pass 2: prune based on number of parameters. (binop vs normal)
-		set = candidates;
-		candidates.clear();
-
-		for(auto cand : set)
-		{
-			if(cand.first.isBinOp && cand.second->getArgumentCount() == 2)
-				candidates.push_back(cand);
-
-			else if(!cand.first.isBinOp && cand.second->getArgumentCount() == 1)
-				candidates.push_back(cand);
-		}
-
-
-
-		// pass 3: prune based on operand type
-		set = candidates;
-		candidates.clear();
-
-		bool hasSelf = (this->isArithmeticOpAssignment(op) || op == ArithmeticOp::Subscript);
-		if(hasSelf) lhs = lhs->getPointerTo();
-
-		for(auto cand : set)
-		{
-			fir::Type* targL = cand.second->getArguments()[0]->getType();
-			fir::Type* targR = cand.second->getArguments()[1]->getType();
-
-
-			// if unary op, only LHS is used.
-			if(cand.first.isBinOp)
-			{
-				if(targL == lhs && targR == rhs)
-				{
-					candidates.push_back(cand);
-				}
-				else if(cand.first.isCommutative && targR == lhs && targL == rhs)
-				{
-					cand.first.needsSwap = true;
-					candidates.push_back(cand);
-				}
-			}
-			else
-			{
-				iceAssert(0 && "unary op overloads not implemented");
-			}
-		}
-
-
-		// eliminate more.
-		set = candidates;
-		candidates.clear();
-
-
-		// deque [pair [<attr, operator func>, assign func]]
-		std::deque<std::pair<std::pair<Attribs, fir::Function*>, fir::Function*>> finals;
-		for(std::pair<Attribs, fir::Function*> c : set)
-		{
-			// see if the appropriate assign exists.
-			finals.push_back({ { c.first, c.second }, 0 });
-		}
-
-		// final step: disambiguate using the more specific op.
-		if(finals.size() > 1)
-		{
-			auto fset = finals;
-			finals.clear();
-
-			for(auto f : fset)
-			{
-				if(f.first.first.op == op)
-				{
-					for(auto fs : fset)
-					{
-						if(fs.first.first.op != op)
-						{
-							fset.clear();
-							fset.push_back(f);
-							break;
-						}
-					}
-				}
-			}
-
-			finals = fset;
-		}
-
-
-
-
-		if(finals.size() > 1)
-			error(us, "More than one possible operator overload candidate in this expression");
-
-		else if(finals.size() == 0)
-		{
-			_OpOverloadData ret;
-			ret.found = false;
-
-			return ret;
-		}
-
-		auto cand = finals.front();
-
-		_OpOverloadData ret;
-		ret.found = true;
-
-		ret.isBinOp = cand.first.first.isBinOp;
-		ret.isPrefix = cand.first.first.isPrefixUnary;
-		ret.needsSwap = cand.first.first.needsSwap;
-		ret.needsNot = cand.first.first.needsBooleanNOT;
-
-		ret.opFunc = cand.first.second;
-
-		return ret;
-	}
-
-
-
-
-
-	Result_t CodegenInstance::callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lref, fir::Value* rhs,
-		fir::Value* rref, ArithmeticOp op)
-	{
-		// check if we have a ref.
-		if(lref == 0)
-		{
-			// we don't have a pointer-type ref, which is required for operators to work.
-			// create one.
-
-			iceAssert(lhs);
-
-			fir::Value* ptr = this->builder.CreateStackAlloc(lhs->getType());
-			this->builder.CreateStore(lhs, ptr);
-
-			lref = ptr;
-		}
-		if(rref == 0)
-		{
-			iceAssert(rhs);
-
-			fir::Value* ptr = this->builder.CreateStackAlloc(rhs->getType());
-			this->builder.CreateStore(rhs, ptr);
-
-			rref = ptr;
-		}
-
-		bool isBinOp	= data.isBinOp;
-		bool needsSwap	= data.needsSwap;
-		bool needsNot	= data.needsNot;
-
-
-		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
-
-		if(!opFunc)
-			error("wtf??");
-
-		fir::Value* ret = 0;
-
-		if(isBinOp)
-		{
-			fir::Value* larg = 0;
-			fir::Value* rarg = 0;
-
-			if(this->isArithmeticOpAssignment(op))
-			{
-				if(needsSwap)
-				{
-					larg = rref;
-					rarg = lhs;
-				}
-				else
-				{
-					larg = lref;
-					rarg = rhs;
-				}
-			}
-			else
-			{
-				if(needsSwap)
-				{
-					larg = rhs;
-					rarg = lhs;
-				}
-				else
-				{
-					larg = lhs;
-					rarg = rhs;
-				}
-			}
-
-
-			ret = this->builder.CreateCall2(opFunc, larg, rarg);
-		}
-		else
-		{
-			iceAssert(0 && "not sup unary");
-		}
-
-
-
-		if(needsNot)
-		{
-			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
-		}
-
-		return Result_t(ret, 0);
-	}
-
 
 
 
@@ -2402,8 +2084,8 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0);	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0);			// Type
+		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
+		typegep = this->builder.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
@@ -2477,11 +2159,11 @@ namespace Codegen
 
 		if(!valuePtr)
 		{
-			valuePtr = this->getStackAlloc(value->getType());
-			this->builder.CreateStore(value, valuePtr);
+			// valuePtr = this->getStackAlloc(value->getType(), "tempAlloca");
+			// this->builder.CreateStore(value, valuePtr);
 		}
 
-		fir::Value* anyptr = this->getStackAlloc(anyt->first);
+		fir::Value* anyptr = this->getStackAlloc(anyt->first, "anyPtr");
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
 
@@ -2494,7 +2176,7 @@ namespace Codegen
 		iceAssert(length->getType()->isIntegerType());
 
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
-		fir::Value* arr = this->getStackAlloc(arrType);
+		fir::Value* arr = this->getStackAlloc(arrType, "Any_Variadic_Array");
 
 		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
 		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);

@@ -157,10 +157,10 @@ namespace Operators
 		}
 		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
 		{
-			auto data = cgi->getOperatorOverload(user, op, lhs->getType(), rhs->getType());
+			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)
 			{
-				return cgi->callOperatorOverload(data, lhs, leftVP.second, rhs, rightVP.second, op);
+				return cgi->callBinaryOperatorOverload(data, lhs, leftVP.second, rhs, rightVP.second, op);
 			}
 			else
 			{

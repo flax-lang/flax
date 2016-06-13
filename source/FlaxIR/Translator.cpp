@@ -24,6 +24,7 @@
 
 namespace fir
 {
+	static std::unordered_map<std::string, llvm::StructType*> createdTypes;
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
 		auto& gc = llvm::getGlobalContext();
@@ -55,10 +56,14 @@ namespace fir
 			}
 			else
 			{
-				if(mod->getTypeByName(st->getStructName()) != 0)
-					return mod->getTypeByName(st->getStructName());
 
-				return llvm::StructType::create(gc, lmems, st->getStructName(), st->isPackedStruct());
+				// if(mod->getTypeByName(st->getStructName()) != 0)
+				// 	return mod->getTypeByName(st->getStructName());
+
+				if(createdTypes.find(st->getStructName()) != createdTypes.end())
+					return createdTypes[st->getStructName()];
+
+				return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName(), st->isPackedStruct());
 			}
 		}
 		else if(FunctionType* ft = type->toFunctionType())
@@ -163,6 +168,8 @@ namespace fir
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
+		createdTypes.clear();
+
 		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
@@ -244,6 +251,7 @@ namespace fir
 			typeToLlvm(type.second, module);
 		}
 
+		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : this->functions)
 		{
 			Function* ffn = f.second;
@@ -262,12 +270,11 @@ namespace fir
 				ffn->getName(), module);
 
 			valueMap[ffn->id] = func;
-			// fprintf(stderr, "adding func %zu\n", ffn->id);
 
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
 			{
-				valueMap[ffn->getArguments()[i]->id] = it;
+				valueMap[ffn->getArguments()[i]->id] = it.getNodePtrUnchecked();
 
 				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
@@ -850,7 +857,7 @@ namespace fir
 						case OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							llvm::Value* a = getOperand(inst, 0);
+							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
 
 							Function* fn = dynamic_cast<Function*>(inst->operands[0]);
 							iceAssert(fn);
@@ -1050,7 +1057,7 @@ namespace fir
 								builder.CreateStore(a, ptr);
 							}
 
-							llvm::Value* ret = builder.CreateStructGEP(ptr, ci->value);
+							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->value);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

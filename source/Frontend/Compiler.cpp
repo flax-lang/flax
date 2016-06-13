@@ -246,12 +246,9 @@ namespace Compiler
 
 
 
-
-	std::tuple<Root*, std::vector<std::string>, std::unordered_map<std::string, Root*>, std::unordered_map<std::string, fir::Module*>>
-	compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
+	using namespace Codegen;
+	std::deque<std::deque<DepNode*>> checkCyclicDependencies(std::string filename)
 	{
-		using namespace Codegen;
-
 		filename = getFullPathOfFile(filename);
 		std::string curpath = getPathFromFile(filename);
 
@@ -271,7 +268,7 @@ namespace Compiler
 					std::string fn = getFilenameFromPath(m->name);
 					fn = fn.substr(0, fn.find_last_of('.'));
 
-					modlist += "\t" + fn + "\n";
+					modlist += "    " + fn + "\n";
 				}
 
 				info("Cyclic import dependencies between these modules:\n%s", modlist.c_str());
@@ -283,7 +280,7 @@ namespace Compiler
 					{
 						va_list ap;
 
-						__error_gen(prettyErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "", "Note", false, ap);
+						__error_gen(prettyErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "here", "Note", false, ap);
 					}
 				}
 
@@ -291,9 +288,19 @@ namespace Compiler
 			}
 		}
 
+		return groups;
+	}
+
+
+
+	CompiledData compileFile(std::string filename, std::deque<std::deque<DepNode*>> groups, std::map<Ast::ArithmeticOp,
+		std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
+	{
+		filename = getFullPathOfFile(filename);
+
 		std::vector<std::string> outlist;
 		std::unordered_map<std::string, Root*> rootmap;
-		std::unordered_map<std::string, fir::Module*> modulemap;
+		std::deque<std::pair<std::string, fir::Module*>> modulelist;
 
 
 		Root* dummyRoot = new Root();
@@ -320,13 +327,20 @@ namespace Compiler
 			CodegenInstance* cgi = pair.first;
 
 			outlist.push_back(pair.second);
-			modulemap[name] = cgi->module;
+			modulelist.push_back({ name, cgi->module });
 			rootmap[name] = cgi->rootNode;
 
 			delete cgi;
 		}
 
-		return std::make_tuple(rootmap[Compiler::getFullPathOfFile(filename)], outlist, rootmap, modulemap);
+		CompiledData ret;
+
+		ret.rootNode = rootmap[Compiler::getFullPathOfFile(filename)];
+		ret.fileList = outlist;
+		ret.rootMap = rootmap;
+		ret.moduleList = modulelist;
+
+		return ret;
 	}
 
 
