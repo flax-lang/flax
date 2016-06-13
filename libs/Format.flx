@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Core
+import Assert
 import LibCInterface
 import String
 
@@ -19,39 +19,38 @@ func anyToString(any: Any) -> String
 		dealloc buffer
 		return any as String
 	}
-	// else if argtype == typeof(Int8)
-	// {
-	// 	snprintf(buffer, 64, "%hhd", any as Int8)
-	// }
-	// else if argtype == typeof(Int16)
-	// {
-	// 	snprintf(buffer, 64, "%hd", any as Int16)
-	// }
-	// else if argtype == typeof(Int32)
-	// {
-	// 	snprintf(buffer, 64, "%d", any as Int32)
-	// }
+	else if argtype == typeof(Int8)
+	{
+		snprintf(buffer, 64, "%hhd", any as Int8)
+	}
+	else if argtype == typeof(Int16)
+	{
+		snprintf(buffer, 64, "%hd", any as Int16)
+	}
+	else if argtype == typeof(Int32)
+	{
+		snprintf(buffer, 64, "%d", any as Int32)
+	}
 	else if argtype == typeof(Int64)
 	{
 		snprintf(buffer, 64, "%lld", any as Int64)
-		printf("lol -- %s\n", buffer)
 	}
-	// else if argtype == typeof(Uint8)
-	// {
-	// 	snprintf(buffer, 64, "%hhu", any as Uint8)
-	// }
-	// else if argtype == typeof(Uint16)
-	// {
-	// 	snprintf(buffer, 64, "%hu", any as Uint16)
-	// }
-	// else if argtype == typeof(Uint32)
-	// {
-	// 	snprintf(buffer, 64, "%u", any as Uint32)
-	// }
-	// else if argtype == typeof(Uint64)
-	// {
-	// 	snprintf(buffer, 64, "%llu", any as Uint64)
-	// }
+	else if argtype == typeof(Uint8)
+	{
+		snprintf(buffer, 64, "%hhu", any as Uint8)
+	}
+	else if argtype == typeof(Uint16)
+	{
+		snprintf(buffer, 64, "%hu", any as Uint16)
+	}
+	else if argtype == typeof(Uint32)
+	{
+		snprintf(buffer, 64, "%u", any as Uint32)
+	}
+	else if argtype == typeof(Uint64)
+	{
+		snprintf(buffer, 64, "%llu", any as Uint64)
+	}
 
 	let s = String(buffer)
 	dealloc buffer
@@ -105,18 +104,13 @@ public func format(fmt: String, args: Any[...]) -> String
 			// else
 			if argNum < args.length
 			{
-				// output += anyToString(args[argNum])
-				// argNum += 1
-
-				printf("%s\n", anyToString(args[argNum]))
-				output += "%"
-
+				output += anyToString(args[argNum])
 				argNum += 1
 			}
 			else
 			{
 				// uh... not enough arguments
-				output += "(null -- no argument provided)"
+				programExit("Not enough arguments for println")
 			}
 		}
 		else
