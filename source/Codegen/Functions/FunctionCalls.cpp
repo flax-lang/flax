@@ -70,29 +70,13 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				failedToFind:
 
-				// print a better error message.
-				std::vector<std::string> argtypes;
-				for(auto a : this->params)
-					argtypes.push_back(cgi->getReadableType(a).c_str());
-
-				std::string argstr;
-				for(auto s : argtypes)
-					argstr += ", " + s;
-
-				if(argstr.length() > 0)
-					argstr = argstr.substr(2);
-
-				std::string candidates;
-				std::deque<FuncPair_t> reses;
-
-				for(auto fs : reses = cgi->resolveFunctionName(this->name))
-				{
-					if(fs.second)
-						candidates += cgi->printAst(fs.second) + "\n";
-				}
+				auto rs = cgi->resolveFunctionName(this->name);
+				auto pair = GenError::getPrettyNoSuchFunctionError(cgi, this->params, rs);
+				std::string argstr = pair.first;
+				std::string candstr = pair.second;
 
 				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
-					this->name.c_str(), argstr.c_str(), reses.size(), candidates.c_str());
+					this->name.c_str(), argstr.c_str(), rs.size(), candstr.c_str());
 			}
 
 			if(rt.t.first == 0)

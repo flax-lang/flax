@@ -30,6 +30,7 @@ namespace GenError
 	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
 
 	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e) __attribute__((noreturn));
+	void assignToImmutable(Codegen::CodegenInstance* cgi, Ast::Expr* op, Ast::Expr* value) __attribute__((noreturn));
 
 	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
 		std::vector<fir::Value*> args) __attribute__((noreturn));
@@ -37,6 +38,8 @@ namespace GenError
 	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
+
+	std::pair<std::string, std::string> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncPair_t> cands);
 }
 
 
@@ -67,7 +70,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::Class*> nestedTypeStack;
+		std::deque<Ast::ClassDef*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 
@@ -153,7 +156,7 @@ namespace Codegen
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
-		void pushNestedTypeScope(Ast::Class* nest);
+		void pushNestedTypeScope(Ast::ClassDef* nest);
 		void popNestedTypeScope();
 
 
@@ -253,10 +256,10 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		Ast::Func* getFunctionFromMemberFuncCall(Ast::Class* str, Ast::FuncCall* fc);
+		Ast::Func* getFunctionFromMemberFuncCall(Ast::ClassDef* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 
-		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::Class* str, std::string name);
+		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
 
 
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
@@ -299,9 +302,9 @@ namespace Codegen
 
 		// <isBinOp, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
 
-		_OpOverloadData getOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
+		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
-		Ast::Result_t callOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
+		Ast::Result_t callBinaryOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
 
 
 		Ast::Expr* cloneAST(Ast::Expr* e);

@@ -25,12 +25,39 @@ namespace Parser
 	struct Token;
 }
 
+namespace Codegen
+{
+	struct DepNode;
+	struct DependencyGraph;
+}
+
 namespace Compiler
 {
-	typedef std::tuple<Ast::Root*, std::vector<std::string>, std::unordered_map<std::string, Ast::Root*>, std::unordered_map<std::string, fir::Module*>> CompiledData;
+	struct CompiledData
+	{
+		Ast::Root* rootNode = 0;
+		std::vector<std::string> fileList;
 
-	CompiledData compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps,
-		std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
+		std::unordered_map<std::string, Ast::Root*> rootMap;
+		std::deque<std::pair<std::string, fir::Module*>> moduleList;
+
+
+		fir::Module* getModule(std::string name)
+		{
+			for(auto pair : this->moduleList)
+			{
+				if(pair.first == name)
+					return pair.second;
+			}
+
+			return 0;
+		}
+	};
+
+	std::deque<std::deque<Codegen::DepNode*>> checkCyclicDependencies(std::string filename);
+
+	CompiledData compileFile(std::string filename,std::deque<std::deque<Codegen::DepNode*>> groups,
+		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	void compileToLlvm(std::string filename, std::string outname, CompiledData data);
 

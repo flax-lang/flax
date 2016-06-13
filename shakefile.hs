@@ -15,31 +15,33 @@ import Development.Shake.Util
 
 main :: IO()
 
-sysroot		= "build/sysroot" :: [Char]
-prefix		= "usr/local" :: [Char]
-outputBin	= "flaxc" :: [Char]
+sysroot		= "build/sysroot"
+prefix		= "usr/local"
+outputBin	= "flaxc"
 
-finalOutput	= sysroot </> prefix </> "bin" </> outputBin :: [Char]
+finalOutput	= sysroot </> prefix </> "bin" </> outputBin
 
 
 
-llvmConfig	= "llvm-config"
+llvmConfig	= "llvm-config-3.7"
 disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move"
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-O3 -Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
+flaxcNormFlags		= "-Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-Wno-unused -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
 
 
-main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
-	want ["build"]
+main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
+	want ["jit"]
 
-	phony "build" $ do
+
+	phony "jit" $ do
 		need [finalOutput]
-		putNormal "======================================="
+
 		Exit code <- cmd Shell finalOutput [flaxcJitFlags] testSource
-		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Compilation failed"])
+
+		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Test failed"])
 
 
 	phony "compile" $ do
@@ -49,6 +51,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 	phony "clean" $ do
 		putQuiet "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
+		removeFilesAfter (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
 
 
 	compiledTest %> \out -> do
@@ -57,7 +60,6 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 
 		Exit code <- cmd Shell finalOutput [flaxcNormFlags] testSource
 
-		putNormal "======================================="
 		cmd Shell (if code == ExitSuccess then [compiledTest] else ["echo Test failed"])
 
 
@@ -72,6 +74,9 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 
 	phony "copyLibraries" $ do
 		--- copy the libs to the prefix.
+		--- remove the old ones first
+		removeFiles (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
+
 		() <- quietly $ cmd Shell "mkdir" "-p" (sysroot </> prefix </> "lib" </> "flaxlibs")
 		quietly $ cmd Shell "cp" ("-R") ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
@@ -103,7 +108,7 @@ main = shakeArgs shakeOptions { shakeFiles = "build", shakeVerbosity = Quiet, sh
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics -fsanitize=undefined"
+		let cxxFlags = "-std=gnu++14 -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX

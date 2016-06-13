@@ -12,6 +12,7 @@
 #include "../include/parser.h"
 #include "../include/codegen.h"
 #include "../include/compiler.h"
+#include "../include/dependency.h"
 
 #include "llvm/Support/TargetSelect.h"
 
@@ -47,10 +48,15 @@ int main(int argc, char* argv[])
 	// parse and find all custom operators
 	Parser::ParserState pstate(__cgi);
 
+
+
+
+	auto groups = Compiler::checkCyclicDependencies(filename);
+
 	Parser::parseAllCustomOperators(pstate, filename, curpath);
 
 	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<fir::Module*>>
-	auto ret = Compiler::compileFile(filename, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
+	auto ret = Compiler::compileFile(filename, groups, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
 	Compiler::compileToLlvm(filename, outname, ret);
 
