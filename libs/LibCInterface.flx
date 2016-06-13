@@ -24,7 +24,7 @@ public ffi func strncmp(str1: Int8*, str2: Int8*, length: Uint64) -> Int32
 // random things
 public ffi func usleep(usec: Uint32) -> Int32
 public ffi func sleep(sec: Uint32) -> Uint32
-
+public ffi func abort()
 
 
 // file stuff
