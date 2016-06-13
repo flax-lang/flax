@@ -457,7 +457,7 @@ namespace Codegen
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
 				fir::Type* t = this->getExprType(ai->arr);
-				if(!t->isArrayType() && !t->isPointerType())
+				if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
 				{
 					// todo: multiple subscripts
 					fir::Function* getter = Operators::getOperatorSubscriptGetter(this, expr, t, { expr, ai->index });
@@ -471,7 +471,8 @@ namespace Codegen
 				}
 				else
 				{
-					if(t->isPointerType()) return t->getPointerElementType();
+					if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
+					else if(t->isPointerType()) return t->getPointerElementType();
 					else return t->toArrayType()->getElementType();
 				}
 			}
