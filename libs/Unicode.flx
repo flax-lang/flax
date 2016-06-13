@@ -27,9 +27,9 @@ public func Utf8CharLength(char: Int8*) -> Uint64
 {
 	if char == null { return 0 }
 
-	if char[0] & 0xF0 { return 4 }
-	else if char[0] & 0xE0 { return 3 }
-	else if char[0] & 0xC0 { return 2 }
+	if (char[0] & 0xF8) == 0xF0 { return 4 }
+	else if (char[0] & 0xF0) == 0xE0 { return 3 }
+	else if (char[0] & 0xE0) == 0xC0 { return 2 }
 	else { return 1 }
 }
 
