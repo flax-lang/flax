@@ -24,6 +24,7 @@
 
 namespace fir
 {
+	static std::unordered_map<std::string, llvm::StructType*> createdTypes;
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
 		auto& gc = llvm::getGlobalContext();
@@ -55,10 +56,14 @@ namespace fir
 			}
 			else
 			{
-				if(mod->getTypeByName(st->getStructName()) != 0)
-					return mod->getTypeByName(st->getStructName());
 
-				return llvm::StructType::create(gc, lmems, st->getStructName(), st->isPackedStruct());
+				// if(mod->getTypeByName(st->getStructName()) != 0)
+				// 	return mod->getTypeByName(st->getStructName());
+
+				if(createdTypes.find(st->getStructName()) != createdTypes.end())
+					return createdTypes[st->getStructName()];
+
+				return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName(), st->isPackedStruct());
 			}
 		}
 		else if(FunctionType* ft = type->toFunctionType())
@@ -162,6 +167,8 @@ namespace fir
 	{
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
+
+		createdTypes.clear();
 
 		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
 
