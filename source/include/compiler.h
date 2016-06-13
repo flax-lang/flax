@@ -25,6 +25,12 @@ namespace Parser
 	struct Token;
 }
 
+namespace Codegen
+{
+	struct DepNode;
+	struct DependencyGraph;
+}
+
 namespace Compiler
 {
 	struct CompiledData
@@ -48,8 +54,10 @@ namespace Compiler
 		}
 	};
 
-	CompiledData compileFile(std::string filename, std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps,
-		std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
+	std::deque<std::deque<Codegen::DepNode*>> checkCyclicDependencies(std::string filename);
+
+	CompiledData compileFile(std::string filename,std::deque<std::deque<Codegen::DepNode*>> groups,
+		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	void compileToLlvm(std::string filename, std::string outname, CompiledData data);
 

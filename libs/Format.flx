@@ -10,36 +10,31 @@ import String
 public func format(fmt: String, args: Any[...]) -> String
 {
 	var output: String
-
-
 	var i: Uint64 = 0
 
-	while i < fmt.length
+	let percent = Character("%")
+
+	while i < fmt.length && fmt[i].hasData()
 	{
-		if fmt[i].hasData()
+		if fmt[i] == percent
+		{
+			output += "X"
+		}
+		else
 		{
 			output += fmt[i]
-			// printf("%s\n", output)
-			// continue
 		}
 
 		i += 1
 	}
 
 	return output
-
-	// %47 = call %3 bitcast (%0 (%0*, i64)* @_ZN6String7_get2ixEm to %3 (%0*, i64)*)(%0* %29, i64 1)
-	// %48 = alloca %3
-	// store %3 %47, %3* %48
-	// %49 = load %3* %48
-	// %50 = call i1 bitcast (i1 (%0*)* @_ZN9Character7hasDataEv to i1 (%3*)*)(%3* %48)
-
-	// %10 = call %3 bitcast (%0 (%0*, i64)* @_ZN6String7_get2ixEm to %3 (%0*, i64)*)(%0* %2, i64 %9)
-	// %11 = alloca %0
-	// store %0 %10, %0* %11
-	// %12 = load %0* %11
-	// %13 = call i1 bitcast (i1 (%0*)* @_ZN9Character7hasDataEv to i1 (%3*)*)(%0* %11)
 }
+
+
+
+
+
 
 
 

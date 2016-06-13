@@ -51,6 +51,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 	phony "clean" $ do
 		putQuiet "Cleaning files"
 		removeFilesAfter "source" ["//*.o"]
+		removeFilesAfter (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
 
 
 	compiledTest %> \out -> do
@@ -73,6 +74,9 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 
 	phony "copyLibraries" $ do
 		--- copy the libs to the prefix.
+		--- remove the old ones first
+		removeFiles (sysroot </> prefix </> "lib" </> "flaxlibs") ["//*.flx"]
+
 		() <- quietly $ cmd Shell "mkdir" "-p" (sysroot </> prefix </> "lib" </> "flaxlibs")
 		quietly $ cmd Shell "cp" ("-R") ("libs/*") (sysroot </> prefix </> "lib" </> "flaxlibs/")
 
