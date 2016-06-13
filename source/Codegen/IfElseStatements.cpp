@@ -20,6 +20,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	fir::IRBlock* t = cgi->builder.addNewBlockInFunction("trueCaseR", func);
 	fir::IRBlock* f = new fir::IRBlock();
 	f->setName("falseCaseR");
+	f->setFunction(func);
 
 
 	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;

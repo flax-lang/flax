@@ -41,102 +41,101 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->builder.CreateStore(amem, allocmemptr);
 
+
+
 	fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
+	fir::IRBlock* loopHead = cgi->builder.addNewBlockInFunction("loopHead", curbb->getParentFunction());
 	fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
 	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
-	fir::IRBlock* zeroBlock = cgi->builder.addNewBlockInFunction("zeroBlock", curbb->getParentFunction());
-	fir::IRBlock* after = cgi->builder.addNewBlockInFunction("afterLoop", curbb->getParentFunction());
 
+	fir::IRBlock* allocZeroCase = cgi->builder.addNewBlockInFunction("allocZeroCase", curbb->getParentFunction());
+	fir::IRBlock* loopMerge = cgi->builder.addNewBlockInFunction("loopMerge", curbb->getParentFunction());
 
 	cgi->builder.setCurrentBlock(curbb);
+	cgi->builder.CreateUnCondBranch(loopHead);
 
-	fir::Value* origPtr = cgi->builder.CreateLoad(allocmemptr, "origptr");
+	cgi->builder.setCurrentBlock(loopHead);
 
-	fir::Value* curMarkPtr = cgi->builder.CreateStackAlloc(zeroValue->getType(), "curmarkptr");
-	cgi->builder.CreateStore(zeroValue, curMarkPtr);
-
-
+	// set a counter
+	fir::Value* counterPtr = cgi->builder.CreateStackAlloc(fir::PrimitiveType::getUint64(), "counterPtr");
+	cgi->builder.CreateStore(zeroValue, counterPtr);
 
 	// check for zero.
 	{
 		fir::Value* isZero = cgi->builder.CreateICmpEQ(size, zeroValue, "iszero");
-		cgi->builder.CreateCondBranch(isZero, zeroBlock, loopBegin);
+		cgi->builder.CreateCondBranch(isZero, allocZeroCase, loopBegin);
 	}
 
 
-	// start building the loop.
+	// begin the loop
 	cgi->builder.setCurrentBlock(loopBegin);
-
-
-	fir::Value* valPtr = cgi->builder.CreateLoad(allocmemptr, "valptr");
-	if(type->isStructType())
 	{
-		// call the init func
-		TypePair_t* typePair = 0;
+		// get the pointer.
+		fir::Value* pointer = cgi->builder.CreateGetPointer(cgi->builder.CreateLoad(allocmemptr),
+			cgi->builder.CreateLoad(counterPtr), "pointerPtr");
 
-		std::vector<fir::Value*> args;
-		args.push_back(valPtr);
-		for(Expr* e : params)
-			args.push_back(e->codegen(cgi).result.first);
+		if(type->isStructType())
+		{
+			// call the init func
+			TypePair_t* typePair = 0;
 
-		typePair = cgi->getType(type);
-		fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
-		iceAssert(initfunc);
+			std::vector<fir::Value*> args;
+			args.push_back(pointer);
+			for(Expr* e : params)
+				args.push_back(e->codegen(cgi).result.first);
 
-		cgi->builder.CreateCall(initfunc, args);
-	}
-	else if(type->isPointerType() && sizes.size() > 0)
-	{
-		fir::Value* front = sizes.front();
-		sizes.pop_front();
+			typePair = cgi->getType(type);
+			fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
+			iceAssert(initfunc);
 
-		fir::Value* rret = recursivelyDoAlloc(cgi, type->getPointerElementType(), front, params, sizes);
-		cgi->builder.CreateStore(rret, valPtr);
-	}
-	else
-	{
-		cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type), valPtr);
-	}
+			cgi->builder.CreateCall(initfunc, args);
+		}
+		else if(type->isPointerType() && sizes.size() > 0)
+		{
+			fir::Value* front = sizes.front();
+			sizes.pop_front();
 
-
-	// move our counter
-	fir::Value* currentMark = cgi->builder.CreateLoad(curMarkPtr, "currentmark");
-	currentMark = cgi->builder.CreateAdd(currentMark, oneValue, "currentmark");
-	cgi->builder.CreateStore(currentMark, curMarkPtr);
+			fir::Value* rret = recursivelyDoAlloc(cgi, type->getPointerElementType(), front, params, sizes);
+			cgi->builder.CreateStore(rret, pointer);
+		}
+		else
+		{
+			cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
+		}
 
 
-	// move our pointer
-	{
-		fir::Value* strPtrInt = cgi->builder.CreatePointerToIntCast(valPtr, fir::PrimitiveType::getUint64(), "strptrint");
-		strPtrInt = cgi->builder.CreateAdd(strPtrInt, allocsize, "strptrint");
+		// increment counter
+		fir::Value* incremented = cgi->builder.CreateAdd(oneValue, cgi->builder.CreateLoad(counterPtr));
+		cgi->builder.CreateStore(incremented, counterPtr);
 
-		valPtr = cgi->builder.CreateIntToPointerCast(strPtrInt, valPtr->getType(), "valptr");
-		cgi->builder.CreateStore(valPtr, allocmemptr);
+
+		// check.
+		// basically this: if counter < size goto loopBegin else goto loopEnd
+
+		cgi->builder.CreateCondBranch(cgi->builder.CreateICmpLT(cgi->builder.CreateLoad(counterPtr), size), loopBegin, loopEnd);
 	}
 
 
-	// check for repeat
+	// in zeroBlock, set the pointer to 0 and branch to merge
+	cgi->builder.setCurrentBlock(allocZeroCase);
 	{
-		fir::Value* cmp = cgi->builder.CreateICmpNEQ(currentMark, size, "toloop");
-		cgi->builder.CreateCondBranch(cmp, loopBegin, loopEnd);
+		cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type->getPointerTo()), allocmemptr);
+		cgi->builder.CreateUnCondBranch(loopMerge);
 	}
 
 
-	cgi->builder.setCurrentBlock(zeroBlock);
-	cgi->builder.CreateStore(fir::ConstantValue::getNullValue(origPtr->getType()), allocmemptr);
-	cgi->builder.CreateUnCondBranch(after);
 
-
+	// in end block... do nothing.
 	cgi->builder.setCurrentBlock(loopEnd);
-	cgi->builder.CreateStore(origPtr, allocmemptr);
-	cgi->builder.CreateUnCondBranch(after);
-
-	cgi->builder.setCurrentBlock(after);
-	origPtr = cgi->builder.CreateLoad(allocmemptr, "origptr");
+	{
+		cgi->builder.CreateUnCondBranch(loopMerge);
+	}
 
 
-	// cgi->builder.setCurrentBlock(curbb);
-	return origPtr;
+	cgi->builder.setCurrentBlock(loopMerge);
+	fir::Value* ret = cgi->builder.CreateLoad(allocmemptr, "mem");
+
+	return ret;
 }
 
 
@@ -170,6 +169,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	allocType = cgi->getExprTypeFromStringType(this, this->type);
 	iceAssert(allocType);
+
 
 
 

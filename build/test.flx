@@ -2,75 +2,75 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-import Utilities
-import String
+// import Foundation
+// import Utilities
+// import String
 
-import tests.fizzbuzz
-import tests.recursiveFib
-import tests.scopes
-import tests.operators
-import tests.arraytest
-import tests.generics
-import tests.limits
-
-
-
-ƒ runTests()
-{
-	// fib
-	printf("*** FIBONACII SEQUENCE ***\n")
-
-	var n = 0
-	while n < 20
-	{
-		printf("%d: %lld\n", n, doRecursiveFib(n))
-		n += 1
-	}
-	printf("\n\n");
+// import tests.fizzbuzz
+// import tests.recursiveFib
+// import tests.scopes
+// import tests.operators
+// import tests.arraytest
+// import tests.generics
+// import tests.limits
 
 
-	// fizzbuzz
-	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(15);
-	printf("\n\n");
+
+// ƒ runTests()
+// {
+// 	// fib
+// 	printf("*** FIBONACII SEQUENCE ***\n")
+
+// 	var n = 0
+// 	while n < 20
+// 	{
+// 		printf("%d: %lld\n", n, doRecursiveFib(n))
+// 		n += 1
+// 	}
+// 	printf("\n\n");
 
 
-	// scopes
-	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest("__llvm_jit__build/test")
-	printf("\n\n");
+// 	// fizzbuzz
+// 	printf("*** FIZZBUZZ ***\n")
+// 	doFizzBuzz(15);
+// 	printf("\n\n");
 
 
-	// operators and tuples (vectors type, mainly)
-	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-	doOperatorTupleTest()
-	printf("\n\n");
+// 	// scopes
+// 	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
+// 	doScopeTest("__llvm_jit__build/test")
+// 	printf("\n\n");
 
 
-	// arrays
-	printf("*** ARRAY REGRESSION TEST ***\n")
-	doArrayTest()
-	printf("\n\n")
+// 	// operators and tuples (vectors type, mainly)
+// 	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
+// 	doOperatorTupleTest()
+// 	printf("\n\n");
 
 
-	// generics
-	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
-	printf("\n\n")
+// 	// arrays
+// 	printf("*** ARRAY REGRESSION TEST ***\n")
+// 	doArrayTest()
+// 	printf("\n\n")
 
 
-	// int limits
-	printf("*** PRINTING INT LIMITS ***\n")
-	printIntegerLimits()
-	printf("\n\n")
+// 	// generics
+// 	printf("*** GENERICS TEST ***\n")
+// 	doGenericsTest()
+// 	let s = generic_test(5, "HELLO WORLD #")
+// 	printf("s = %s\n", s)
+// 	printf("\n\n")
 
 
-	// fin.
-	printf("========= TESTS COMPLETE =========\n\n")
-}
+// 	// int limits
+// 	printf("*** PRINTING INT LIMITS ***\n")
+// 	printIntegerLimits()
+// 	printf("\n\n")
+
+
+// 	// fin.
+// 	printf("========= TESTS COMPLETE =========\n\n")
+// }
 
 // ƒ randomTest(fmt: String, argn: Int64, args: Any*)
 // {
@@ -163,25 +163,37 @@ import tests.limits
 // import tests.operators
 // import tests.arraytest
 
-struct Test
+// struct Test
+// {
+// 	var a: Int = 40
+// }
+
+// operator + (a: Test, b: Test) -> Test
+// {
+// 	return Test()
+// }
+
+// func t() -> Bool { printf(@raw "called true\n"); true }
+// func f() -> Bool { printf(@raw "called false\n"); false }
+
+
+// var foo: Test
+
+import Format
+import String
+
+func something(fmt: String)
 {
-	var a: Int = 40
+	let i = 1
+	printf(">> %d\n", fmt[i].hasData())
 }
-
-operator + (a: Test, b: Test) -> Test
-{
-	return Test()
-}
-
-func t() -> Bool { printf(@raw "called true\n"); true }
-func f() -> Bool { printf(@raw "called false\n"); false }
-
-
-var foo: Test
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
-	runTests()
+	something("fOO")
+	println("Hello, %. This is world %, version %. %.", "World", 40, "483", "Goodbye")
+
+	// runTests()
 
 	// printf("pi = %.16lf\n", Math.π())
 
@@ -210,40 +222,47 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// and i definitely don't want to have to pass Expr* user to every CreateStore() out there...
 
 
-	if !f() && t() && t() && t()
-	{
-		printf("done\n")
-	}
+	// if !f() && t() && t() && t()
+	// {
+	// 	printf("done\n")
+	// }
 
-	var lol: String = "HELLO"
-	lol[1] = 65
-	printf("lol[2]: %c // %s\n", lol[1], lol)
-
-	var k: Math.Vector2
-	k = Math.Vector2(1.0, 4.0)
-
-	printf("k = (%f, %f)\n", k.x, k.y);
+	// var char: Character
+	// char.utf8Bytes = alloc[2] Uint8
 
 
-	var foo = 40
-	printf("HELLO %d\n", foo + 3)
-	let a = Test()
-	let b = Test()
 
-	let c = a + b
 
-	let v1 = Math.Vector2(1.0, 3.0)
-	let v2 = Math.Vector2(5.0, 9.0)
 
-	let v3 = v1 + v2
+	// var lol: String = "HELLO"
+	// printf("%d\n", lol[1].hasData())
+	// printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
 
-	var g = "FOO"
-	g = "BAR"
+	// var k: Math.Vector2
+	// k = Math.Vector2(1.0, 4.0)
 
-	printf(">> g = %s\n", g)
+	// printf("k = (%f, %f)\n", k.x, k.y);
 
-	printf(">> %d\n", c.a)
-	printf(">> (%f, %f)\n", v3.x, v3.y)
+
+	// var foo = 40
+	// printf("HELLO %d\n", foo + 3)
+	// let a = Test()
+	// let b = Test()
+
+	// let c = a + b
+
+	// let v1 = Math.Vector2(1.0, 3.0)
+	// let v2 = Math.Vector2(5.0, 9.0)
+
+	// let v3 = v1 + v2
+
+	// var g = "FOO"
+	// g = "BAR"
+
+	// printf(">> g = %s\n", g)
+
+	// printf(">> %d\n", c.a)
+	// printf(">> (%f, %f)\n", v3.x, v3.y)
 
 
 
@@ -255,7 +274,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 
 	// randomTest("", 3, args)
 
-	// println("Hello, ", "World! ", 40, " ", 483, " Goodbye!")
+	// println("Hello, %. This is world %, version %. %.", "World", 40, 483, "Goodbye")
 
 	// var i = 0
 	// while true

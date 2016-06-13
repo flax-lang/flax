@@ -7,8 +7,72 @@ import LibCInterface
 
 public class Character
 {
-	var ascii: Int8 = 0
+	var utf8Bytes: Uint8* = null
+	var byteCount: Uint64 = 0
+
+	init()
+	{
+		self.utf8Bytes = null
+		self.byteCount = 0
+	}
+
+	init(c: Int8)
+	{
+		self.utf8Bytes = alloc[2] Uint8
+		self.utf8Bytes[0] = c
+		self.utf8Bytes[1] = 0
+
+		self.byteCount = 1
+	}
+
+	init(c: Uint8*, l: Uint64)
+	{
+		self.utf8Bytes = alloc[l + 1] Uint8
+		self.byteCount = l
+
+		memcpy(self.utf8Bytes as Int8*, c as Int8*, l)
+		self.utf8Bytes[l] = 0
+	}
+
+	init(c: String)
+	{
+		self.utf8Bytes = alloc[2] Uint8
+		self.utf8Bytes[0] = c.data[0]
+		self.utf8Bytes[1] = 0
+
+		self.byteCount = 1
+	}
+
+
+	func hasData() -> Bool
+	{
+		return self.utf8Bytes != null && self.byteCount > 0
+	}
+
+	func toAscii() -> Int8
+	{
+		if self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
+		{
+			// is ascii, return it
+			return self.utf8Bytes[0]
+		}
+		else
+		{
+			return 0
+		}
+	}
+
+	func isAscii() -> Bool
+	{
+		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
+	}
 }
+
+
+
+
+
+
 
 public class String
 {
@@ -79,6 +143,7 @@ public class String
 		let newDat = malloc(self.allocated)
 		let moveCount = self.byteCount
 
+		memset(newDat, 0, self.allocated)
 		memcpy(newDat, self.data, moveCount)
 
 		if needFree
@@ -108,9 +173,8 @@ public class String
 
 
 
-	func append(str: Int8*)
+	func append(str: Int8*, addlen: Uint64)
 	{
-		let addlen = strlen(str)
 		if self.byteCount + addlen >= self.allocated
 		{
 			self.grow(self.byteCount + addlen + 1)
@@ -121,24 +185,38 @@ public class String
 		self.data[prevBC + addlen] = 0
 	}
 
+	func append(char: Character)
+	{
+		// copy it over
+		// var copy = alloc[char.byteCount + 1] Int8
+		// memcpy(copy, char.utf8Bytes as Int8*, char.byteCount)
+
+		// copy[char.byteCount] = 0
+		// self.append(copy, char.byteCount)
+
+		// dealloc copy
+
+
+		self.append(char.utf8Bytes as Int8*, char.byteCount)
+	}
 
 
 
 
 
-	operator [] (index: Int64) -> Int8
+
+
+	operator [] (index: Uint64) -> Character
 	{
 		get
 		{
-			if index < self.length { return self.data[index] }
-			else { return 0 }
-		}
-		set
-		{
-			if index < self.length
-			{
-				self.data[index] = newValue
-			}
+			if index >= self.length { return Character() }
+
+			// else
+			let chars = Utf8Index(self.data, index)
+			let ret = Character(chars as Uint8*, Utf8CharLength(chars))
+
+			return ret
 		}
 	}
 
@@ -157,10 +235,15 @@ public class String
 
 	operator += (other: String)
 	{
-		self.append(other.data)
+		self.append(other.data, strlen(other))
 	}
 
 	operator += (other: Int8*)
+	{
+		self.append(other, strlen(other))
+	}
+
+	operator += (other: Character)
 	{
 		self.append(other)
 	}
@@ -168,35 +251,45 @@ public class String
 
 
 
-public operator + (this: String, other: String) -> String
+public operator + (lhs: String, rhs: String) -> String
 {
-	var ret: String(this.data)
-	ret += other
+	var ret: String(lhs.data)
+	ret += rhs
 
 	return ret
 }
 
-public operator + (this: String, other: Int8*) -> String
+public operator + (lhs: String, rhs: Int8*) -> String
 {
-	var ret: String(this.data)
-	ret += other
+	var ret: String(lhs.data)
+	ret += rhs
 
 	return ret
 }
 
-public operator == (this: String, other: Int8*) -> Bool
+public operator + (lhs: String, rhs: Character) -> String
+{
+	var ret: String(lhs.data)
+	ret += rhs
+
+	return ret
+}
+
+public operator == (lhs: String, rhs: Int8*) -> Bool
 {
 	// return false
-	return strcmp(this.data, other) == 0
+	return strcmp(lhs.data, rhs) == 0
 }
 
-public operator == (this: String, other: String) -> Bool
+public operator == (lhs: String, rhs: String) -> Bool
 {
-	return strcmp(this.data, other.data) == 0
+	return strcmp(lhs.data, rhs.data) == 0
 }
 
-
-
+public operator == (lhs: Character, rhs: Character) -> Bool
+{
+	return lhs.byteCount == rhs.byteCount && strncmp(lhs.utf8Bytes as Int8*, rhs.utf8Bytes as Int8*, lhs.byteCount) == 0
+}
 
 
 

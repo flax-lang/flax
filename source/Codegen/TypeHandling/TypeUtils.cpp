@@ -7,6 +7,7 @@
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
+#include "operators.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -456,37 +457,34 @@ namespace Codegen
 			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
 			{
 				fir::Type* t = this->getExprType(ai->arr);
-				if(!t->isArrayType() && !t->isPointerType())
-					error(expr, "Not array or pointer type: %s", t->str().c_str());
+				if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
+				{
+					// todo: multiple subscripts
+					fir::Function* getter = Operators::getOperatorSubscriptGetter(this, expr, t, { expr, ai->index });
+					if(!getter)
+					{
+						error(expr, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
+							this->getReadableType(ai->index).c_str());
+					}
 
-				if(t->isPointerType()) return t->getPointerElementType();
-				else return t->toArrayType()->getElementType();
+					return getter->getReturnType();
+				}
+				else
+				{
+					if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
+					else if(t->isPointerType()) return t->getPointerElementType();
+					else return t->toArrayType()->getElementType();
+				}
 			}
 			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 			{
 				// todo: make this not shit.
+				// edit: ???
 				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
 			}
-			else if(PostfixUnaryOp* puo = dynamic_cast<PostfixUnaryOp*>(expr))
+			else if(dynamic_cast<PostfixUnaryOp*>(expr))
 			{
-				fir::Type* targtype = this->getExprType(puo->expr);
-				iceAssert(targtype);
-
-				if(puo->kind == PostfixUnaryOp::Kind::ArrayIndex)
-				{
-					if(targtype->isPointerType())
-						return targtype->getPointerElementType();
-
-					else if(targtype->isArrayType())
-						return targtype->toArrayType()->getElementType();
-
-					else
-						error(expr, "Invalid???");
-				}
-				else
-				{
-					iceAssert(0);
-				}
+				iceAssert(0);
 			}
 		}
 
@@ -1205,12 +1203,12 @@ namespace Codegen
 							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
 					}
 
-
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
 					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					iceAssert(concrete);
 
 					if(instantiatedGenericTypes.size() > 0)
 					{
@@ -1219,25 +1217,15 @@ namespace Codegen
 							this->pushGenericType(t.first, t.second);
 					}
 
-					// note: codegen() uses str->createdType. since we only *recently* called
-					// createType, it should be set properly.
-
-					// set codegen = 0
-					oldSB->didCodegen = false;
-					oldSB->codegen(this); // this sets it to true
-
 					if(instantiatedGenericTypes.size() > 0)
 						this->popGenericTypeStack();
 
 					this->namespaceStack = old;
 
-					if(!concrete) error(user, "!!!");
-					iceAssert(concrete);
 
 					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
 					iceAssert(tp);
 				}
-				// info(user, "concrete: %s // %s\n", type.strType.c_str(), concrete->str().c_str());
 
 				fir::Type* ret = tp->first;
 				while(indirections > 0)

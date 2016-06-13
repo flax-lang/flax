@@ -114,11 +114,15 @@ namespace fir
 		std::string ops;
 		for(auto op : this->operands)
 		{
+			bool didfn = false;
 			if(op->getType()->isFunctionType())
 			{
 				ops += "@" + op->getName();
 				if(this->opKind == OpKind::Value_CallFunction)
+				{
 					ops += ", (";
+					didfn = true;
+				}
 			}
 			else if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
 			{
@@ -141,11 +145,11 @@ namespace fir
 				ops += "%" + std::to_string(op->id) + " :: " + op->getType()->str();
 			}
 
-			if(this->opKind != OpKind::Value_CallFunction)
+			if(!didfn)
 				ops += ", ";
 		}
 
-		if(ops.length() > 0 && this->opKind != OpKind::Value_CallFunction)
+		if(ops.length() > 0)
 			ops = ops.substr(0, ops.length() - 2);
 
 
