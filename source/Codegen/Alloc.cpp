@@ -41,7 +41,114 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->builder.CreateStore(amem, allocmemptr);
 
+
+
+	#if 1
 	fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
+	fir::IRBlock* loopHead = cgi->builder.addNewBlockInFunction("loopHead", curbb->getParentFunction());
+	fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
+	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
+
+	fir::IRBlock* allocZeroCase = cgi->builder.addNewBlockInFunction("allocZeroCase", curbb->getParentFunction());
+	fir::IRBlock* loopMerge = cgi->builder.addNewBlockInFunction("loopMerge", curbb->getParentFunction());
+
+	cgi->builder.setCurrentBlock(curbb);
+	cgi->builder.CreateUnCondBranch(loopHead);
+
+	cgi->builder.setCurrentBlock(loopHead);
+
+	// set a counter
+	fir::Value* counterPtr = cgi->builder.CreateStackAlloc(fir::PrimitiveType::getUint64(), "counterPtr");
+	cgi->builder.CreateStore(zeroValue, counterPtr);
+
+	// check for zero.
+	{
+		fir::Value* isZero = cgi->builder.CreateICmpEQ(size, zeroValue, "iszero");
+		cgi->builder.CreateCondBranch(isZero, allocZeroCase, loopBegin);
+	}
+
+
+	// begin the loop
+	cgi->builder.setCurrentBlock(loopBegin);
+	{
+		// get the pointer.
+		fir::Value* pointer = cgi->builder.CreateGetPointer(cgi->builder.CreateLoad(allocmemptr),
+			cgi->builder.CreateLoad(counterPtr), "pointerPtr");
+
+		if(type->isStructType())
+		{
+			// call the init func
+			TypePair_t* typePair = 0;
+
+			std::vector<fir::Value*> args;
+			args.push_back(pointer);
+			for(Expr* e : params)
+				args.push_back(e->codegen(cgi).result.first);
+
+			typePair = cgi->getType(type);
+			fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
+			iceAssert(initfunc);
+
+			cgi->builder.CreateCall(initfunc, args);
+		}
+		else if(type->isPointerType() && sizes.size() > 0)
+		{
+			fir::Value* front = sizes.front();
+			sizes.pop_front();
+
+			fir::Value* rret = recursivelyDoAlloc(cgi, type->getPointerElementType(), front, params, sizes);
+			cgi->builder.CreateStore(rret, pointer);
+		}
+		else
+		{
+			cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
+		}
+
+
+		// increment counter
+		fir::Value* incremented = cgi->builder.CreateAdd(oneValue, cgi->builder.CreateLoad(counterPtr));
+		cgi->builder.CreateStore(incremented, counterPtr);
+
+
+		// check.
+		// basically this: if counter < size goto loopBegin else goto loopEnd
+
+		cgi->builder.CreateCondBranch(cgi->builder.CreateICmpLT(cgi->builder.CreateLoad(counterPtr), size), loopBegin, loopEnd);
+	}
+
+
+	// in zeroBlock, set the pointer to 0 and branch to merge
+	cgi->builder.setCurrentBlock(allocZeroCase);
+	{
+		cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type->getPointerTo()), allocmemptr);
+		cgi->builder.CreateUnCondBranch(loopMerge);
+	}
+
+
+
+	// in end block... do nothing.
+	cgi->builder.setCurrentBlock(loopEnd);
+	{
+		cgi->builder.CreateUnCondBranch(loopMerge);
+	}
+
+
+	cgi->builder.setCurrentBlock(loopMerge);
+	fir::Value* ret = cgi->builder.CreateLoad(allocmemptr, "origptr");
+
+	return ret;
+
+
+
+
+
+
+
+
+	#else
+	fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
+	fir::IRBlock* loopHead = cgi->builder.addNewBlockInFunction("loopHead", curbb->getParentFunction());
+
 	fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
 	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
 	fir::IRBlock* zeroBlock = cgi->builder.addNewBlockInFunction("zeroBlock", curbb->getParentFunction());
@@ -49,6 +156,9 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 
 
 	cgi->builder.setCurrentBlock(curbb);
+	cgi->builder.CreateUnCondBranch(loopHead);
+
+	cgi->builder.setCurrentBlock(loopHead);
 
 	fir::Value* origPtr = cgi->builder.CreateLoad(allocmemptr, "origptr");
 
@@ -62,6 +172,9 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 		fir::Value* isZero = cgi->builder.CreateICmpEQ(size, zeroValue, "iszero");
 		cgi->builder.CreateCondBranch(isZero, zeroBlock, loopBegin);
 	}
+
+
+
 
 
 	// start building the loop.
@@ -137,6 +250,8 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 
 	// cgi->builder.setCurrentBlock(curbb);
 	return origPtr;
+
+	#endif
 }
 
 
@@ -170,6 +285,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	allocType = cgi->getExprTypeFromStringType(this, this->type);
 	iceAssert(allocType);
+
 
 
 

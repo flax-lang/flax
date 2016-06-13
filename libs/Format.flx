@@ -7,18 +7,120 @@ import LibCInterface
 import String
 
 
+func anyToString(any: Any) -> String
+{
+	// let argtype = typeof(any)
+
+	// var buffer = alloc[64] Int8
+	// var buffer = malloc(64)
+
+	return any as String
+
+
+
+	// if argtype == typeof(String)
+	// {
+	// 	dealloc buffer
+	// 	return any as String
+	// }
+	// else if argtype == typeof(Int8)
+	// {
+	// 	snprintf(buffer, 64, "%hhd", any as Int8)
+	// }
+	// else if argtype == typeof(Int16)
+	// {
+	// 	snprintf(buffer, 64, "%hd", any as Int16)
+	// }
+	// else if argtype == typeof(Int32)
+	// {
+	// 	snprintf(buffer, 64, "%d", any as Int32)
+	// }
+	// else if argtype == typeof(Int64)
+	// {
+	// 	snprintf(buffer, 64, "%lld", any as Int64)
+	// }
+	// else if argtype == typeof(Uint8)
+	// {
+	// 	snprintf(buffer, 64, "%hhu", any as Uint8)
+	// }
+	// else if argtype == typeof(Uint16)
+	// {
+	// 	snprintf(buffer, 64, "%hu", any as Uint16)
+	// }
+	// else if argtype == typeof(Uint32)
+	// {
+	// 	snprintf(buffer, 64, "%u", any as Uint32)
+	// }
+	// else if argtype == typeof(Uint64)
+	// {
+	// 	snprintf(buffer, 64, "%llu", any as Uint64)
+	// }
+
+	// let s = String(buffer)
+	// dealloc buffer
+
+	// return s
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 public func format(fmt: String, args: Any[...]) -> String
 {
 	var output: String
-	var i: Uint64 = 0
+	var argNum: Uint64 = 0
 
 	let percent = Character("%")
 
+
+
+	var i: Uint64 = 0
 	while i < fmt.length && fmt[i].hasData()
 	{
 		if fmt[i] == percent
 		{
-			output += "X"
+			if i + 1 < fmt.length && fmt[i + 1] == percent
+			{
+				output += percent
+				i += 1
+
+				continue
+			}
+
+			// else
+			if argNum < args.length
+			{
+				// output += anyToString(args[argNum])
+				// argNum += 1
+
+				// printf("%s\n", anyToString(args[argNum]))
+				output += "%"
+
+				argNum += 1
+			}
+			else
+			{
+				// uh... not enough arguments
+				output += "(null -- no argument provided)"
+			}
 		}
 		else
 		{
