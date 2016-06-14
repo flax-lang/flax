@@ -2112,6 +2112,14 @@ namespace Codegen
 				fir::Value* casted = this->builder.CreateIntToPointerCast(rhs, targetType);
 				this->builder.CreateStore(casted, valgep);
 			}
+			else if(rhs->getType()->isFloatingPointType())
+			{
+				fir::Value* casted = this->builder.CreateBitcast(rhs, fir::PrimitiveType::getUintN(rhs->getType()->toPrimitiveType()->getFloatingPointBitWidth()));
+
+				casted = this->builder.CreateIntSizeCast(casted, targetType);
+				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
+				this->builder.CreateStore(casted, valgep);
+			}
 			else
 			{
 				fir::Value* casted = this->builder.CreateBitcast(rhs, targetType);
@@ -2145,6 +2153,12 @@ namespace Codegen
 
 			if(val->getType() != type)
 			{
+				if(type->isFloatingPointType()
+					&& type->toPrimitiveType()->getFloatingPointBitWidth() != val->getType()->toPrimitiveType()->getIntegerBitWidth())
+				{
+					val = builder.CreateIntSizeCast(val, fir::PrimitiveType::getUintN(type->toPrimitiveType()->getFloatingPointBitWidth()));
+				}
+
 				val = this->builder.CreateBitcast(val, type);
 			}
 
