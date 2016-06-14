@@ -94,7 +94,10 @@ namespace fir
 		Cast_PointerType,
 		Cast_PointerToInt,
 		Cast_IntToPointer,
+		Cast_IntSignedness,
 
+		Integer_ZeroExt,
+		Integer_Truncate,
 
 		// unary
 		Logical_Not,

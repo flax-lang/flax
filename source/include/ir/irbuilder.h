@@ -61,6 +61,7 @@ namespace fir
 		Value* CreateBitwiseAND(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseNOT(Value* a, std::string vname = "");
+
 		Value* CreateBitcast(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateIntSizeCast(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateFloatToIntCast(Value* v, Type* targetType, std::string vname = "");
@@ -68,6 +69,10 @@ namespace fir
 		Value* CreatePointerTypeCast(Value* v, Type* targetType, std::string vname = "");
 		Value* CreatePointerToIntCast(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateIntToPointerCast(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateIntSignednessCast(Value* v, Type* targetType, std::string vname = "");
+
+		Value* CreateIntTruncate(Value* v, Type* targetType, std::string vname = "");
+		Value* CreateIntZeroExt(Value* v, Type* targetType, std::string vname = "");
 
 		Value* CreateFTruncate(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateFExtend(Value* v, Type* targetType, std::string vname = "");

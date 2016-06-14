@@ -1129,8 +1129,9 @@ namespace Parser
 		{
 			// no brace, it's a call
 			// eat the "init" token
-			ps.eat();
-			return parseFuncCall(ps, "init");
+			// ps.eat();
+
+			return parseFuncCall(ps, "init", ps.eat().pin);
 		}
 	}
 
@@ -1459,6 +1460,8 @@ namespace Parser
 			Expr* ctype = parseType(ps);
 			v->type = ctype->type;
 
+			auto typep = ctype->pin;
+
 			delete ctype;	// cleanup
 
 			if(ps.front().type == TType::LParen)
@@ -1468,7 +1471,7 @@ namespace Parser
 
 				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
 				// it's easy.
-				v->initVal = parseFuncCall(ps, v->type.strType);
+				v->initVal = parseFuncCall(ps, v->type.strType, typep);
 			}
 			else if(ps.front().type == TType::LBrace)
 			{
@@ -1578,7 +1581,7 @@ namespace Parser
 			if(ps.eat().type != TType::RSquare)
 				parserError("Expected ']' after '[' for array index");
 
-			newlhs = CreateAST(ArrayIndex, top, curLhs, inside);
+			newlhs = CreateAST_Pin(ArrayIndex, curLhs->pin, curLhs, inside);
 		}
 		else
 		{
@@ -1755,8 +1758,10 @@ namespace Parser
 
 		if(ps.front().type == TType::LParen)
 		{
+			auto ret = parseFuncCall(ps, id, idvr->pin);
 			delete idvr;
-			return parseFuncCall(ps, id);
+
+			return ret;
 		}
 		else
 		{
@@ -1800,17 +1805,17 @@ namespace Parser
 
 		auto ct = parseType(ps);
 		std::string type = ct->type.strType;
-		delete ct;
 
 		if(ps.front().type == TType::LParen)
 		{
 			// alloc[...] Foo(...)
-			FuncCall* fc = parseFuncCall(ps, type);
+			FuncCall* fc = parseFuncCall(ps, type, ct->pin);
 			ret->params = fc->params;
 		}
 
 		ret->type = type;
 
+		delete ct;
 		return ret;
 	}
 
@@ -1862,14 +1867,13 @@ namespace Parser
 		return n;
 	}
 
-	FuncCall* parseFuncCall(ParserState& ps, std::string id)
+	FuncCall* parseFuncCall(ParserState& ps, std::string id, Pin id_pos)
 	{
 		Token tk = ps.eat();
 		iceAssert(tk.type == TType::LParen);
 
 		std::deque<Expr*> args;
 
-		size_t paramlen = 0;
 		if(ps.front().type != TType::RParen)
 		{
 			while(true)
@@ -1879,7 +1883,6 @@ namespace Parser
 				if(arg == nullptr)
 					return nullptr;
 
-				paramlen += arg->pin.len;
 
 				args.push_back(arg);
 				if(ps.front().type == TType::RParen)
@@ -1898,7 +1901,7 @@ namespace Parser
 			ps.eat();
 		}
 
-		auto ret = CreateASTPos(FuncCall, tk.pin.file, tk.pin.line, tk.pin.col - id.length() + 3, id.length() + 1 + paramlen, id, args);
+		auto ret = CreateAST_Pin(FuncCall, id_pos, id, args);
 
 		return ret;
 	}

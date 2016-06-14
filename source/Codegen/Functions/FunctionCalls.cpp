@@ -70,13 +70,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				failedToFind:
 
-				auto rs = cgi->resolveFunctionName(this->name);
-				auto pair = GenError::getPrettyNoSuchFunctionError(cgi, this->params, rs);
-				std::string argstr = pair.first;
-				std::string candstr = pair.second;
-
-				error(this, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
-					this->name.c_str(), argstr.c_str(), rs.size(), candstr.c_str());
+				GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 			}
 
 			if(rt.t.first == 0)
