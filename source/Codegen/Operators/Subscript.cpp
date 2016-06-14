@@ -52,11 +52,12 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto pair = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
-			std::string argstr = pair.first;
-			std::string candstr = pair.second;
+			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			std::string argstr = std::get<0>(tup);
+			std::string candstr = std::get<1>(tup);
+			HighlightOptions ops = std::get<2>(tup);
 
-			error(user, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
@@ -127,6 +128,14 @@ namespace Operators
 		else return 0;
 	}
 
+
+
+
+
+
+
+
+
 	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
 		iceAssert(args.size() >= 2);
@@ -147,11 +156,12 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto pair = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
-			std::string argstr = pair.first;
-			std::string candstr = pair.second;
+			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			std::string argstr = std::get<0>(tup);
+			std::string candstr = std::get<1>(tup);
+			HighlightOptions ops = std::get<2>(tup);
 
-			error(user, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else

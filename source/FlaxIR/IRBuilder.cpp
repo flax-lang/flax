@@ -672,6 +672,15 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+	Value* IRBuilder::CreateIntSignednessCast(Value* v, Type* targetType, std::string vname)
+	{
+		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
+		iceAssert(targetType->isIntegerType() && "target is not integer type");
+
+		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, targetType, { v, ConstantValue::getNullValue(targetType) });
+		return this->addInstruction(instr, vname);
+	}
+
 	Value* IRBuilder::CreateFloatToIntCast(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && "value is not floating point type");
@@ -716,6 +725,31 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Cast_IntToPointer, targetType, { v, ConstantValue::getNullValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
+
+
+	Value* IRBuilder::CreateIntTruncate(Value* v, Type* targetType, std::string vname)
+	{
+		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
+		iceAssert(targetType->isPointerType() && "target is not pointer type");
+
+		Instruction* instr = new Instruction(OpKind::Integer_Truncate, targetType, { v, ConstantValue::getNullValue(targetType) });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateIntZeroExt(Value* v, Type* targetType, std::string vname)
+	{
+		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
+		iceAssert(targetType->isPointerType() && "target is not pointer type");
+
+		Instruction* instr = new Instruction(OpKind::Integer_ZeroExt, targetType, { v, ConstantValue::getNullValue(targetType) });
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
 
 
 	Value* IRBuilder::CreateLoad(Value* ptr, std::string vname)

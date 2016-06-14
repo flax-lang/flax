@@ -7,7 +7,14 @@ import LibCInterface
 import String
 
 
-func anyToString(any: Any) -> String
+
+
+
+
+
+
+
+func anyToString(any: Any, options: String) -> String
 {
 	var buffer = alloc[64] Int8
 
@@ -18,6 +25,17 @@ func anyToString(any: Any) -> String
 	{
 		dealloc buffer
 		return any as String
+	}
+	else if argtype == typeof(Bool)
+	{
+		if any as Bool
+		{
+			snprintf(buffer, 64, "true")
+		}
+		else
+		{
+			snprintf(buffer, 64, "false")
+		}
 	}
 	else if argtype == typeof(Int8)
 	{
@@ -51,6 +69,21 @@ func anyToString(any: Any) -> String
 	{
 		snprintf(buffer, 64, "%llu", any as Uint64)
 	}
+	else if argtype == typeof(Float32)
+	{
+		snprintf(buffer, 64, "%f", any as Float32)
+	}
+	else if argtype == typeof(Float64)
+	{
+		snprintf(buffer, 64, "%lf", any as Float64)
+		// programExit("LOL")
+	}
+	else
+	{
+		snprintf(buffer, 64, "(unknown type)")
+	}
+
+
 
 	let s = String(buffer)
 	dealloc buffer
@@ -104,7 +137,7 @@ public func format(fmt: String, args: Any[...]) -> String
 			// else
 			if argNum < args.length
 			{
-				output += anyToString(args[argNum])
+				output += anyToString(args[argNum], "")
 				argNum += 1
 			}
 			else
