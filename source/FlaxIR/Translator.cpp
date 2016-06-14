@@ -527,6 +527,15 @@ namespace fir
 							break;
 						}
 
+						case OpKind::Integer_ZeroExt:
+						case OpKind::Integer_Truncate:
+						{
+							iceAssert(0);
+						}
+
+
+
+
 						case OpKind::ICompare_Equal:
 						{
 							iceAssert(inst->operands.size() == 2);
@@ -1022,6 +1031,18 @@ namespace fir
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateIntToPtr(a, t);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Cast_IntSignedness:
+						{
+							// is no op.
+							// since llvm does not differentiate signed and unsigned.
+
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* ret = getOperand(inst, 0);
+
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
