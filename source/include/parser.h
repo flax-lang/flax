@@ -284,8 +284,8 @@ namespace Parser
 	Ast::Expr*				parseParenthesised(ParserState& tokens);
 	Ast::StringLiteral*		parseStringLiteral(ParserState& tokens);
 	Ast::Tuple*				parseTuple(ParserState& tokens, Ast::Expr* lhs);
-	Ast::FuncCall*			parseFuncCall(ParserState& tokens, std::string id);
 	Ast::Expr*				parseRhs(ParserState& tokens, Ast::Expr* expr, int prio);
+	Ast::FuncCall*			parseFuncCall(ParserState& tokens, std::string id, Pin id_pos);
 
 
 

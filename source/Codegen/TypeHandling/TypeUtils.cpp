@@ -175,7 +175,7 @@ namespace Codegen
 							if(genericMaybe)
 								return genericMaybe->getReturnType();
 
-							GenError::unknownSymbol(this, expr, fc->name.c_str(), SymbolType::Function);
+							GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params);
 						}
 					}
 					else
@@ -707,6 +707,19 @@ namespace Codegen
 
 			if(shouldCast && !constVal)
 			{
+				// check signed to unsiged first
+				// note(behaviour): should this be implicit?
+				// if we should cast, then the bitwidth should already be >=
+
+				if(target->toPrimitiveType()->isSigned() != right->getType()->toPrimitiveType()->isSigned())
+				{
+					if(target->toPrimitiveType()->isSigned())
+						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getIntN(rBits));
+
+					else
+						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getUintN(rBits));
+				}
+
 				retval = this->builder.CreateIntSizeCast(right, target);
 			}
 			else if(shouldCast)
@@ -747,33 +760,6 @@ namespace Codegen
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
 					retval = this->builder.CreateIntSizeCast(right, target);
-
-
-
-				// we can't "normally" do it without losing data
-				// but if the rhs is a constant, maybe we can.
-
-				#if 0
-				if(fir::ConstantInt* cright = dynamic_cast<fir::ConstantInt*>(right))
-				{
-					// only if not negative, can we convert to unsigned.
-					if(cright->getSignedValue() >= 0)
-					{
-						// get bits of lhs
-						size_t lbits = target->toPrimitiveType()->getIntegerBitWidth();
-
-						// get max value.
-						size_t maxL = pow(2, lbits) - 1;
-						if(lbits == 64) maxL = UINT64_MAX;
-
-						if(cright->getUnsignedValue() <= maxL)
-						{
-							// retval = this->builder.CreateIntSizeCast(right, target);
-							retval = fir::ConstantInt::getUnsigned(target, cright->getUnsignedValue());
-						}
-					}
-				}
-				#endif
 			}
 		}
 
