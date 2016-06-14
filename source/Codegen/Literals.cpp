@@ -59,6 +59,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->builder.CreateStore(fir::ConstantInt::getUint64(0, cgi->getContext()), allocdPtr);
 
 		fir::Value* val = cgi->builder.CreateLoad(alloca);
+		alloca->makeImmutable();
+
 		return Result_t(val, alloca);
 	}
 	else
