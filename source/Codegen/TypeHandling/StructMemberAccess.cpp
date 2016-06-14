@@ -803,9 +803,13 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc
 
 	if(!res.resolved)
 	{
-		auto p = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
-		error(fc, "No such member function '%s' in class %s taking paramters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			str->name.c_str(), p.first.c_str(), fns.size(), p.second.c_str());
+		auto tup = GenError::getPrettyNoSuchFunctionError(this, params, fns);
+		std::string argstr = std::get<0>(tup);
+		std::string candstr = std::get<1>(tup);
+		HighlightOptions ops = std::get<2>(tup);
+
+		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
+			str->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 	}
 
 
