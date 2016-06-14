@@ -194,6 +194,9 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
+	if(ops.caret.file.empty())
+		ops.caret = relevantast->pin;
+
 	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
 	abort();
@@ -224,6 +227,9 @@ void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
+
+	if(ops.caret.file.empty())
+		ops.caret = relevantast->pin;
 
 	__error_gen(ops, msg, "Error", false, ap);
 	va_end(ap);
@@ -260,6 +266,9 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
+	if(ops.caret.file.empty())
+		ops.caret = relevantast->pin;
+
 	__error_gen(ops, msg, "Warning", false, ap);
 	va_end(ap);
 }
@@ -287,6 +296,9 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
+
+	if(ops.caret.file.empty())
+		ops.caret = relevantast->pin;
 
 	__error_gen(ops, msg, "Note", false, ap);
 	va_end(ap);
@@ -412,15 +424,40 @@ namespace GenError
 		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(op).c_str());
 	}
 
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
+	{
+		auto cands = cgi->resolveFunctionName(name);
+		auto tup = getPrettyNoSuchFunctionError(cgi, args, cands);
+
+		std::string paramstr = std::get<0>(tup);
+		std::string candstr = std::get<1>(tup);
+		HighlightOptions ops = std::get<2>(tup);
+
+		error(expr, ops, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			name.c_str(), paramstr.c_str(), cands.size(), candstr.c_str());
+	}
 
 
 
 
-	std::pair<std::string, std::string> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
+
+
+
+
+
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
 	{
 		std::vector<std::string> argtypes;
+		HighlightOptions ops;
+
 		for(auto a : args)
+		{
 			argtypes.push_back(cgi->getReadableType(a).c_str());
+
+			auto ext = getHighlightExtent(a);
+			ext.col += 1;						// no idea why, but fix it.
+			ops.underlines.push_back(ext);
+		}
 
 		std::string argstr;
 		for(auto s : argtypes)
@@ -438,7 +475,7 @@ namespace GenError
 				candidates += cgi->printAst(fs.second) + "\n";
 		}
 
-		return { argstr, candidates };
+		return std::make_tuple(argstr, candidates, ops);
 	}
 }
 
@@ -472,6 +509,26 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 		ret.line = bo->pin.line;
 		ret.col = left.col;
 		ret.len = (right.col + right.len) - left.col;
+
+		return ret;
+	}
+	else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(e))
+	{
+		auto arr = getHighlightExtent(ai->arr);
+		auto ind = getHighlightExtent(ai->index);
+
+		Parser::Pin ret;
+
+		ret.file = arr.file;
+		ret.line = arr.line;
+		ret.col = arr.col;
+
+		// check for shit like this:
+		// foo [ bar
+		// however we can't check the back, so assume it's
+		// foo [ bar]. always. lol.
+
+		ret.len = arr.len + (ind.col - (arr.col + arr.len)) + ind.len + 1;
 
 		return ret;
 	}

@@ -94,6 +94,9 @@ namespace fir
 			case OpKind::Cast_PointerType: 					name = "ptrcast"; break;
 			case OpKind::Cast_PointerToInt: 				name = "ptrtoint"; break;
 			case OpKind::Cast_IntToPointer: 				name = "inttoptr"; break;
+			case OpKind::Cast_IntSignedness: 				name = "signcast"; break;
+			case OpKind::Integer_ZeroExt: 					name = "izeroext"; break;
+			case OpKind::Integer_Truncate: 					name = "itrunc"; break;
 			case OpKind::Value_Store: 						name = "store"; break;
 			case OpKind::Logical_Not: 						name = "logicalNot"; break;
 			case OpKind::Value_Load: 						name = "load"; break;
