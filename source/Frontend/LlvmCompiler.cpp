@@ -70,8 +70,8 @@ namespace Compiler
 		// llvm::Module* mainModule = modulelist[filename];
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-		llvm::Module* emptyModule = new llvm::Module("_empty", llvm::getGlobalContext());
-		llvm::Linker linker = llvm::Linker(*emptyModule);
+		llvm::Module* mainModule = new llvm::Module("_empty", llvm::getGlobalContext());
+		llvm::Linker linker = llvm::Linker(*mainModule);
 
 		for(auto mod : modulelist)
 		{
@@ -79,10 +79,7 @@ namespace Compiler
 		}
 
 
-		llvm::Module* mainModule = emptyModule;
-
 		doGlobalConstructors(filename, data, data.rootNode, mainModule);
-
 
 		if(Compiler::getDumpLlvm())
 			mainModule->dump();
