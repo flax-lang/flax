@@ -70,21 +70,16 @@ namespace Compiler
 		// llvm::Module* mainModule = modulelist[filename];
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-		llvm::Module* emptyModule = new llvm::Module("_empty", llvm::getGlobalContext());
-		llvm::Linker linker = llvm::Linker(emptyModule);
-		// llvm::Linker linker = llvm::Linker(mainModule);
+		llvm::Module* mainModule = new llvm::Module("_empty", llvm::getGlobalContext());
+		llvm::Linker linker = llvm::Linker(*mainModule);
+
 		for(auto mod : modulelist)
 		{
-			// if(mod.second != mainModule)
-			linker.linkInModule(mod.second);
+			linker.linkInModule(std::unique_ptr<llvm::Module>(mod.second));
 		}
 
-		// mainModule = linker.getModule();
-		emptyModule = linker.getModule();
-		llvm::Module* mainModule = emptyModule;
 
 		doGlobalConstructors(filename, data, data.rootNode, mainModule);
-
 
 		if(Compiler::getDumpLlvm())
 			mainModule->dump();
@@ -277,7 +272,7 @@ namespace Compiler
 		if(Compiler::getOptimisationLevel() > 0)
 		{
 			// Provide basic AliasAnalysis support for GVN.
-			fpm.add(llvm::createBasicAliasAnalysisPass());
+			// fpm.add(llvm::createBasicAliasAnalysisPass());
 
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
 			fpm.add(llvm::createInstructionCombiningPass());

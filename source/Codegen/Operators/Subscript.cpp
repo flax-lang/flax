@@ -62,6 +62,12 @@ namespace Operators
 		}
 		else
 		{
+			if(res.t.first == 0)
+			{
+				error(user, "Class %s does not have a subscript operator with a setter", ftype->str().c_str());
+			}
+
+
 			std::deque<fir::Value*> fargs;
 
 			// gen the self (note: uses the ArrayIndex AST)

@@ -76,7 +76,6 @@ func anyToString(any: Any, options: String) -> String
 	else if argtype == typeof(Float64)
 	{
 		snprintf(buffer, 64, "%lf", any as Float64)
-		// programExit("LOL")
 	}
 	else
 	{
