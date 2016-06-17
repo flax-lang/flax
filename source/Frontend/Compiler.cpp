@@ -485,6 +485,9 @@ namespace Compiler
 	std::string getFullPathOfFile(std::string partial)
 	{
 		const char* fullpath = realpath(partial.c_str(), 0);
+		if(fullpath == 0)
+			error("Nonexistent file %s", partial.c_str());
+
 		iceAssert(fullpath);
 
 		std::string ret = fullpath;
