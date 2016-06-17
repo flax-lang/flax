@@ -32,6 +32,41 @@ static std::string parseQuotedString(char** argv, int& i)
 	return ret;
 }
 
+
+#define ARG_SYSROOT								"-sysroot"
+#define ARG_TARGET								"-target"
+#define ARG_OUTPUT_FILE							"-o"
+#define ARG_POSINDEPENDENT						"-pic"
+#define ARG_MCMODEL								"-mcmodel"
+#define ARG_PRINT_FIR							"-print-fir"
+#define ARG_PRINT_LLVMIR						"-print-lir"
+#define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
+#define ARG_NO_LOWERCASE_BUILTIN				"-no-lowercase-builtin"
+#define ARG_JITPROGRAM							"-jit"
+#define ARG_RUNPROGRAM							"-run"
+#define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS	"-no-auto-gconstr"
+#define ARG_OPTIMISATION_LEVEL_SELECT			"-O"
+#define ARG_COMPILE_ONLY						"-c"
+
+#define WARNINGS_AS_ERRORS						"-Werror"
+#define WARNING_DISABLE_ALL						"-w"
+
+
+// actual warnings
+#define WARNING_ENABLE_UNUSED_VARIABLE			"-Wunused-variable"
+#define WARNING_ENABLE_VARIABLE_STATE_CHECKER	"-Wvar-state-checker"
+
+#define WARNING_DISABLE_UNUSED_VARIABLE			"-Wno-unused-variable"
+#define WARNING_DISABLE_VARIABLE_STATE_CHECKER	"-Wno-var-state-checker"
+
+
+
+
+
+
+
+
+
 namespace Compiler
 {
 	static bool printModule = false;
@@ -153,7 +188,7 @@ namespace Compiler
 			// parse the command line opts
 			for(int i = 1; i < argc; i++)
 			{
-				if(!strcmp(argv[i], "-sysroot"))
+				if(!strcmp(argv[i], ARG_SYSROOT))
 				{
 					if(i != argc - 1)
 					{
@@ -167,7 +202,7 @@ namespace Compiler
 						exit(-1);
 					}
 				}
-				if(!strcmp(argv[i], "-target"))
+				if(!strcmp(argv[i], ARG_TARGET))
 				{
 					if(i != argc - 1)
 					{
@@ -181,7 +216,7 @@ namespace Compiler
 						exit(-1);
 					}
 				}
-				else if(!strcmp(argv[i], "-o"))
+				else if(!strcmp(argv[i], ARG_OUTPUT_FILE))
 				{
 					if(i != argc - 1)
 					{
@@ -195,11 +230,11 @@ namespace Compiler
 						exit(-1);
 					}
 				}
-				else if(!strcmp(argv[i], "-fPIC"))
+				else if(!strcmp(argv[i], ARG_POSINDEPENDENT))
 				{
 					Compiler::isPIC = true;
 				}
-				else if(!strcmp(argv[i], "-mcmodel"))
+				else if(!strcmp(argv[i], ARG_MCMODEL))
 				{
 					if(i != argc - 1)
 					{
@@ -219,43 +254,43 @@ namespace Compiler
 						exit(-1);
 					}
 				}
-				else if(!strcmp(argv[i], "-Werror"))
+				else if(!strcmp(argv[i], WARNINGS_AS_ERRORS))
 				{
 					Compiler::Flags |= (uint64_t) Compiler::Flag::WarningsAsErrors;
 				}
-				else if(!strcmp(argv[i], "-w"))
+				else if(!strcmp(argv[i], WARNING_DISABLE_ALL))
 				{
 					Compiler::Flags |= (uint64_t) Compiler::Flag::NoWarnings;
 				}
-				else if(!strcmp(argv[i], "-print-lir"))
+				else if(!strcmp(argv[i], ARG_PRINT_LLVMIR))
 				{
 					Compiler::printModule = true;
 				}
-				else if(!strcmp(argv[i], "-print-fir"))
+				else if(!strcmp(argv[i], ARG_PRINT_FIR))
 				{
 					Compiler::printFIR = true;
 				}
-				else if(!strcmp(argv[i], "-no-lowercase-builtin"))
+				else if(!strcmp(argv[i], ARG_NO_LOWERCASE_BUILTIN))
 				{
 					Compiler::noLowercaseTypes = true;
 				}
-				else if(!strcmp(argv[i], "-c"))
+				else if(!strcmp(argv[i], ARG_COMPILE_ONLY))
 				{
 					Compiler::compileOnly = true;
 				}
-				else if(!strcmp(argv[i], "-show-clang"))
+				else if(!strcmp(argv[i], ARG_SHOW_CLANG_OUTPUT))
 				{
 					Compiler::printClangOutput = true;
 				}
-				else if(!strcmp(argv[i], "-jit") || !strcmp(argv[i], "-run"))
+				else if(!strcmp(argv[i], ARG_JITPROGRAM) || !strcmp(argv[i], ARG_RUNPROGRAM))
 				{
 					Compiler::runProgramWithJit = true;
 				}
-				else if(!strcmp(argv[i], "-no-auto-gconstr"))
+				else if(!strcmp(argv[i], ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS))
 				{
 					Compiler::noAutoGlobalConstructor = true;
 				}
-				else if(strstr(argv[i], "-O") == argv[i])
+				else if(strstr(argv[i], ARG_OPTIMISATION_LEVEL_SELECT) == argv[i])
 				{
 					// make sure we have at least 3 chars
 					if(strlen(argv[i]) < 3)
@@ -276,31 +311,21 @@ namespace Compiler
 				}
 
 				// warnings.
-				else if(!strcmp(argv[i], "-Wno-unused-variable"))
+				else if(!strcmp(argv[i], WARNING_DISABLE_UNUSED_VARIABLE))
 				{
 					Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
 				}
-				else if(!strcmp(argv[i], "-Wunused-variable"))
+				else if(!strcmp(argv[i], WARNING_ENABLE_UNUSED_VARIABLE))
 				{
 					Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
 				}
 
-				else if(!strcmp(argv[i], "-Wno-unused"))
-				{
-					Compiler::setWarning(Compiler::Warning::UnusedVariable, false);
-				}
-				else if(!strcmp(argv[i], "-Wunused"))
-				{
-					Compiler::setWarning(Compiler::Warning::UnusedVariable, true);
-				}
-
-
-				else if(!strcmp(argv[i], "-Wno-var-state-checker"))
+				else if(!strcmp(argv[i], WARNING_DISABLE_VARIABLE_STATE_CHECKER))
 				{
 					Compiler::setWarning(Compiler::Warning::UseAfterFree, false);
 					Compiler::setWarning(Compiler::Warning::UseBeforeAssign, false);
 				}
-				else if(!strcmp(argv[i], "-Wvar-state-checker"))
+				else if(!strcmp(argv[i], WARNING_ENABLE_VARIABLE_STATE_CHECKER))
 				{
 					Compiler::setWarning(Compiler::Warning::UseAfterFree, true);
 					Compiler::setWarning(Compiler::Warning::UseBeforeAssign, true);

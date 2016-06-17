@@ -96,7 +96,12 @@ namespace Codegen
 				if(oo->op == op)
 				{
 					attr.needsBooleanNOT = false;
-
+					(*cands).push_back({ attr, lfunc });
+				}
+				else if((oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq)
+					|| (oo->op == ArithmeticOp::CmpNEq && op == ArithmeticOp::CmpEq))
+				{
+					attr.needsBooleanNOT = true;
 					(*cands).push_back({ attr, lfunc });
 				}
 			}
