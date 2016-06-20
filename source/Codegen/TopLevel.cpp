@@ -129,8 +129,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->createType(cgi);
-			if(cls)					cls->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
+			else if(cls && !dynamic_cast<ExtensionDef*>(e))
+				cls->createType(cgi);
 		}
 	}
 	else if(pass == 3)

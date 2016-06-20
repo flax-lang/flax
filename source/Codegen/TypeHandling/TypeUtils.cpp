@@ -482,6 +482,10 @@ namespace Codegen
 				// edit: ???
 				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
 			}
+			else if(dynamic_cast<NullVal*>(expr))
+			{
+				return fir::ConstantValue::getNull()->getType();
+			}
 			else if(dynamic_cast<PostfixUnaryOp*>(expr))
 			{
 				iceAssert(0);
@@ -656,14 +660,29 @@ namespace Codegen
 			// any cast is 25.
 			return 25;
 		}
+		else if(this->isTupleType(from) && this->isTupleType(to)
+			&& from->toStructType()->getElementCount() == to->toStructType()->getElementCount())
+		{
+			int sum = 0;
+			for(size_t i = 0; i < from->toStructType()->getElementCount(); i++)
+			{
+				int d = this->getAutoCastDistance(from->toStructType()->getElementN(i), to->toStructType()->getElementN(i));
+				if(d == -1)
+					return -1;		// note: make sure this is the last case
+
+				sum += d;
+			}
+
+			return sum;
+		}
 
 		return -1;
 	}
 
-	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr, int* distance)
+	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* from, fir::Value* fromPtr, int* distance)
 	{
-		if(!target || !right)
-			return right;
+		if(!target || !from)
+			return from;
 
 		// casting distance for size is determined by the number of "jumps"
 		// 8 -> 16 = 1
@@ -672,18 +691,22 @@ namespace Codegen
 		// 16 -> 64 = 2
 		// etc.
 
-		fir::Value* retval = right;
+		fir::Value* retval = from;
 
-		if(target->isIntegerType() && right->getType()->isIntegerType()
-			&& target->toPrimitiveType()->getIntegerBitWidth() != right->getType()->toPrimitiveType()->getIntegerBitWidth())
+		if(from->getType() == target)
+		{
+			retval = from;
+		}
+		if(target->isIntegerType() && from->getType()->isIntegerType()
+			&& target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
 			unsigned int lBits = target->toPrimitiveType()->getIntegerBitWidth();
-			unsigned int rBits = right->getType()->toPrimitiveType()->getIntegerBitWidth();
+			unsigned int rBits = from->getType()->toPrimitiveType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
 
 			// check if the RHS is a constant value
-			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(right);
+			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(from);
 			if(constVal)
 			{
 				// check if the number fits in the LHS type
@@ -711,16 +734,16 @@ namespace Codegen
 				// note(behaviour): should this be implicit?
 				// if we should cast, then the bitwidth should already be >=
 
-				if(target->toPrimitiveType()->isSigned() != right->getType()->toPrimitiveType()->isSigned())
+				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
 					if(target->toPrimitiveType()->isSigned())
-						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getIntN(rBits));
+						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
 
 					else
-						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getUintN(rBits));
+						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
 				}
 
-				retval = this->builder.CreateIntSizeCast(right, target);
+				retval = this->builder.CreateIntSizeCast(from, target);
 			}
 			else if(shouldCast)
 			{
@@ -734,10 +757,10 @@ namespace Codegen
 		}
 
 		// signed to unsigned conversion
-		else if(target->isIntegerType() && right->getType()->isIntegerType()
-			&& (right->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
+		else if(target->isIntegerType() && from->getType()->isIntegerType()
+			&& (from->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
 		{
-			if(!right->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
+			if(!from->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
 			{
 				// only do it if it preserves all data.
 				// we cannot convert signed to unsigned, but unsigned to signed is okay if the
@@ -749,8 +772,8 @@ namespace Codegen
 				// note(behaviour): check this
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(right, target);
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(from, target);
 			}
 			else
 			{
@@ -758,15 +781,15 @@ namespace Codegen
 				// note(behaviour): check this
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(right, target);
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(from, target);
 			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& right->getType()->isStructType()
-				&& right->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+				&& from->getType()->isStructType()
+				&& from->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -775,25 +798,25 @@ namespace Codegen
 
 			// cast the RHS to the LHS
 
-			if(!rhsPtr)
+			if(!fromPtr)
 			{
-				rhsPtr = this->getImmutStackAllocValue(right);
+				fromPtr = this->getImmutStackAllocValue(from);
 			}
 
-			iceAssert(rhsPtr);
-			fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+			iceAssert(fromPtr);
+			fir::Value* ret = this->builder.CreateStructGEP(fromPtr, 0);
 			retval = this->builder.CreateLoad(ret);
 		}
-		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
+		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			retval = this->builder.CreateIntToFloatCast(right, target);
+			retval = this->builder.CreateIntToFloatCast(from, target);
 		}
-		else if(target->isStructType() && right->getType()->isStructType() && target->toStructType()->isABaseTypeOf(right->getType()
-						->toStructType()))
+		else if(target->isStructType() && from->getType()->isStructType()
+			&& target->toStructType()->isABaseTypeOf(from->getType()->toStructType()))
 		{
 			fir::StructType* sto = target->toStructType();
-			fir::StructType* sfr = right->getType()->toStructType();
+			fir::StructType* sfr = from->getType()->toStructType();
 
 			iceAssert(sto->isABaseTypeOf(sfr));
 
@@ -801,7 +824,7 @@ namespace Codegen
 			fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
 
 			// store the value into the pointer.
-			this->builder.CreateStore(right, alloca);
+			this->builder.CreateStore(from, alloca);
 
 			// do a pointer type cast.
 			fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
@@ -809,22 +832,49 @@ namespace Codegen
 			// load it.
 			retval = this->builder.CreateLoad(ptr);
 		}
-		else if(target->isPointerType() && right->getType()->isNullPointer())
+		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
 			retval = fir::ConstantValue::getNullValue(target);
+			// fprintf(stderr, "void cast, %s (%zu) // %s (%zu)\n", target->str().c_str(), from->id, retval->getType()->str().c_str(), retval->id);
 		}
-		else if(target->isPointerType() && right->getType()->isPointerType() && target->getPointerElementType()->toStructType()
-				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(right->getType()->getPointerElementType()->toStructType()))
+		else if(target->isPointerType() && from->getType()->isPointerType() && target->getPointerElementType()->toStructType()
+				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(from->getType()->getPointerElementType()->toStructType()))
 		{
-			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
+			fir::StructType* sfr = from->getType()->getPointerElementType()->toStructType();
 			fir::StructType* sto = target->getPointerElementType()->toStructType();
 
 			iceAssert(sfr && sto && sto->isABaseTypeOf(sfr));
-			retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
+			retval = this->builder.CreatePointerTypeCast(from, sto->getPointerTo());
+		}
+		else if(this->isTupleType(from->getType()) && this->isTupleType(target)
+			&& from->getType()->toStructType()->getElementCount() == target->toStructType()->getElementCount())
+		{
+			// somewhat complicated
+			iceAssert(fromPtr);
+
+			fir::Value* tuplePtr = this->getStackAlloc(target);
+			// fprintf(stderr, "tuplePtr = %s\n", tuplePtr->getType()->str().c_str());
+			// fprintf(stderr, "from = %s, to = %s\n", from->getType()->str().c_str(), target->str().c_str());
+
+			for(size_t i = 0; i < from->getType()->toStructType()->getElementCount(); i++)
+			{
+				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
+				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
+
+				// fprintf(stderr, "geps: %s, %s\n", gep->getType()->str().c_str(), fromGep->getType()->str().c_str());
+
+				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->builder.CreateLoad(fromGep), fromGep);
+
+				// fprintf(stderr, "casted = %s\n", casted->getType()->str().c_str());
+
+				this->builder.CreateStore(casted, gep);
+			}
+
+			retval = this->builder.CreateLoad(fromPtr);
 		}
 
 
-		int dist = this->getAutoCastDistance(right->getType(), target);
+		int dist = this->getAutoCastDistance(from->getType(), target);
 		if(distance != 0)
 			*distance = dist;
 

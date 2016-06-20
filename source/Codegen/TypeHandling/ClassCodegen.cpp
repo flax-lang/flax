@@ -55,7 +55,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	fir::StructType* str = this->createdType;
-	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
@@ -653,6 +652,8 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 			cgi->addNewType(str, this, TypeKind::Class);
 
 		this->name = oldname;
+
+		fprintf(stderr, "added type %s\n", this->mangledName.c_str());
 	}
 
 	// cgi->addNewType(str, this, TypeKind::Class);
@@ -731,6 +732,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 		cgi->popGenericTypeStack();
 
 
+	cgi->module->addNamedType(str->getStructName(), str);
 
 	return str;
 }
