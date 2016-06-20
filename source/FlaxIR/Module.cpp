@@ -74,16 +74,14 @@ namespace fir
 		if(this->namedTypes.find(name) != this->namedTypes.end())
 			error("ICE: type %s exists already", name.c_str());
 
-		fprintf(stderr, "add named type %s, %s\n", name.c_str(), type->str().c_str());
+		// fprintf(stderr, "add named type %s, %s\n", name.c_str(), type->str().c_str());
 		this->namedTypes[name] = type;
 	}
 
-	void Module::deleteNamedType(std::string name)
+	void Module::addExtensionType(std::string name, StructType* type)
 	{
-		if(this->namedTypes.find(name) == this->namedTypes.end())
-			error("ICE: no such type with name %s", name.c_str());
-
-		this->namedTypes.erase(name);
+		// the target type doesn't need to exist in *this* module, which makes it slightly iffy
+		this->extensionTypes[name] = type;
 	}
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)

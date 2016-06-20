@@ -8,4 +8,8 @@ import String
 
 extension String
 {
+	func toInteger() -> Int64
+	{
+		return 4913
+	}
 }

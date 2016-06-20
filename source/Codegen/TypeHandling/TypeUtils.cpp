@@ -274,7 +274,7 @@ namespace Codegen
 					}
 					else if(memberFc)
 					{
-						return this->getExprType(this->getFunctionFromMemberFuncCall(cls, memberFc));
+						return this->getExprType(this->getFunctionFromMemberFuncCall(ma, cls, memberFc));
 					}
 				}
 				else if(pair->second.second == TypeKind::Struct)
