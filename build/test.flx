@@ -129,18 +129,36 @@ struct FormatOptions
 	var paddingChar: Character
 	var precision: Int64
 	var width: Int64
-	var padLeft: Bool
+	var paddingKind: Int64			// 0 = left, 1 = centre, 2 = right
 	var type: String
+	var argNum: Int64
 }
 
 
 func parseFormatOptions(str: String) -> FormatOptions
 {
+	let colon		= Character(":")
+	let lbrace		= Character("{")
+	let rbrace		= Character("}")
+
+	let lettero		= Character("o")
+	let letterx		= Character("x")
+	let letterX		= Character("X")
+	let letterp		= Character("p")
+	let letterb		= Character("b")
+
+	let larrow		= Character("<")
+	let rarrow		= Character(">")
+	let caret		= Character("^")
+
+	let plus		= Character("+")
+	let pound		= Character("#")
+	let zero		= Character("0")
+	let period		= Character(".")
+
+
 	var ret: FormatOptions
 
-	let percent: Character("%")
-	let lbrace: Character("{")
-	let rbrace: Character("}")
 
 	if str.length < 1 || str[0] != lbrace
 	{
@@ -148,12 +166,26 @@ func parseFormatOptions(str: String) -> FormatOptions
 		return ret
 	}
 
-	var i = 0
-	while i < str.length
+	// skip the first.
+
+	let cc = str[1]
+
+	if cc.isDigit()
 	{
-		// skip the first.
-		i += 1
+		var argnum: String
+		var i = 1
+
+		while i < str.length && str[i].isDigit()
+		{
+			argnum += str[i]
+			i += 1
+		}
+
+		printf("string = %s", argnum)
 	}
+
+
+
 
 	return ret
 }
@@ -164,15 +196,17 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 public func main(argc: Int32, argv: Int8**) -> Int
 {
+	// runTests()
+
+
 	println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 
-	runTests()
 
 	printf("pi = %.16lf\n", Math.π())
 
 	println("%b", "a" != "b")
 
-	parseFormatOptions("{%}")
+	parseFormatOptions("{401:x}")
 
 
 	// var arr8: Array<Int8>
@@ -194,6 +228,7 @@ public func main(argc: Int32, argv: Int8**) -> Int
 	// and i definitely don't want to have to pass Expr* user to every CreateStore() out there...
 
 
+	printf("\n\n====================\n\n")
 
 	var lol: String = "HELLO"
 	printf("%d\n", lol[1].hasData())

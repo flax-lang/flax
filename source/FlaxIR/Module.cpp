@@ -74,6 +74,7 @@ namespace fir
 		if(this->namedTypes.find(name) != this->namedTypes.end())
 			error("ICE: type %s exists already", name.c_str());
 
+		fprintf(stderr, "add named type %s, %s\n", name.c_str(), type->str().c_str());
 		this->namedTypes[name] = type;
 	}
 

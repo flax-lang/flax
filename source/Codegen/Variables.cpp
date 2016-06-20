@@ -46,7 +46,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val != 0)
 	{
 		// cast.
-		val = cgi->autoCastType(this->inferredLType, val);
+		val = cgi->autoCastType(this->inferredLType, val, valptr);
 	}
 
 

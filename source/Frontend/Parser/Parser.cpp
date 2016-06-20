@@ -2261,7 +2261,7 @@ namespace Parser
 
 	ExtensionDef* parseExtension(ParserState& ps)
 	{
-		Token tok_ext = ps.eat();
+		Token tok_ext = ps.front();
 		iceAssert(tok_ext.type == TType::Extension);
 
 		ExtensionDef* ext = CreateAST(ExtensionDef, tok_ext, "");
