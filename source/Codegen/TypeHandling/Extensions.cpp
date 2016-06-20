@@ -70,14 +70,13 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 	iceAssert(existingtp);
 
 	fir::StructType* existing = dynamic_cast<fir::StructType*>(existingtp->first);
-	cgi->module->deleteNamedType(existing->getStructName());
 
 	if(!dynamic_cast<ClassDef*>(existingtp->second.first))
 		error(this, "Extensions can only be applied onto classes");
 
-	ClassDef* str = dynamic_cast<ClassDef*>(existingtp->second.first);
+	ClassDef* cls = dynamic_cast<ClassDef*>(existingtp->second.first);
 
-	fir::Type** types = new fir::Type*[str->members.size() + this->members.size()];
+	fir::Type** types = new fir::Type*[cls->members.size() + this->members.size()];
 
 	if(!this->didCreateType)
 	{
@@ -92,23 +91,25 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 
 		for(Func* func : this->funcs)
 		{
-			func->decl->parentClass = str;
+			func->decl->parentClass = cls;
 
 			std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
 			if(this->nameMap.find(mangled) != this->nameMap.end())
 				error(func, "Duplicate member '%s'", func->decl->name.c_str());
 
-			str->funcs.push_back(func);
+			cls->funcs.push_back(func);
+
+			fprintf(stderr, "add func %s to class %s\n", func->decl->name.c_str(), cls->mangledName.c_str());
 		}
 
 
-		int beginOffset = str->members.size();
+		int beginOffset = cls->members.size();
 		for(auto p : this->nameMap)
 		{
-			if(str->nameMap.find(p.first) != str->nameMap.end())
+			if(cls->nameMap.find(p.first) != cls->nameMap.end())
 				error(this, "Duplicate member '%s' in extension", p.first.c_str());
 
-			str->nameMap[p.first] = beginOffset + p.second;
+			cls->nameMap[p.first] = beginOffset + p.second;
 		}
 
 		for(VarDecl* var : this->members)
@@ -121,7 +122,9 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 		}
 
 		for(ComputedProperty* c : this->cprops)
-			str->cprops.push_back(c);
+			cls->cprops.push_back(c);
+
+
 
 		std::vector<fir::Type*> vec;
 		for(unsigned int i = 0; i < existing->getElementCount(); i++)
@@ -131,8 +134,8 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 			vec.push_back(types[i]);
 
 		// first, delete the existing struct.
-		existing->deleteType();
-		existing = 0;
+		// existing->deleteType();
+		// existing = 0;
 
 
 		// then, create a new type with the old name.
@@ -144,15 +147,28 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 		this->didCreateType = true;
 		this->scope = cgi->namespaceStack;
 
-		str->extensions.push_back(this);
+		cls->extensions.push_back(this);
 		delete[] types;
 
 
-		cgi->module->addNamedType(newType->getStructName(), newType);
+		// cgi->module->addNamedType(newType->getStructName(), newType);
+		cgi->module->addExtensionType(newType->getStructName(), newType);
+		cls->createdType = newType;
 	}
 
 	return existingtp->first;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

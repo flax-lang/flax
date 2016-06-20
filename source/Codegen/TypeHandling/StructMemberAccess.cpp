@@ -9,7 +9,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
+static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, ClassDef* cls);
 
@@ -305,10 +305,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 
 			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
-			if(res.resolved) return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, true);
+			if(res.resolved) return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
 
 
-			return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, false);
+			return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
 		}
 		else if(var)
 		{
@@ -429,7 +429,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 	return Result_t(val, ptr);
 }
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
+static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
@@ -441,7 +441,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromMemberFuncCall(cls, fc);
+	Func* callee = cgi->getFunctionFromMemberFuncCall(ma, cls, fc);
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -777,14 +777,14 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 
-Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc)
+Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
 {
 	std::string full;
 	std::deque<std::string> fs = this->getFullScope();
 	for(auto f : fs)
 		full += f + "::";
 
-	full += str->name;
+	full += cls->name;
 
 	std::deque<Expr*> params = fc->params;
 	DummyExpr* fake = new DummyExpr(fc->pin);
@@ -793,7 +793,7 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc
 	params.push_front(fake);
 
 	std::deque<FuncPair_t> fns;
-	for(auto f : str->funcs)
+	for(auto f : cls->funcs)
 	{
 		if(f->decl->name == fc->name)
 			fns.push_back({ 0, f->decl });
@@ -808,12 +808,16 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc
 		std::string candstr = std::get<1>(tup);
 		HighlightOptions ops = std::get<2>(tup);
 
+		ops.caret = ma->pin;
+		ops.caret.col--;
+		ops.underlines.front().col--;
+
 		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			str->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
+			cls->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 	}
 
 
-	for(auto f : str->funcs)
+	for(auto f : cls->funcs)
 	{
 		if(f->decl == res.t.second)
 			return f;

@@ -47,7 +47,8 @@ namespace fir
 
 		StructType* getNamedType(std::string name);
 		void addNamedType(std::string name, StructType* type);
-		void deleteNamedType(std::string name);
+
+		void addExtensionType(std::string name, StructType* type);
 
 		void declareFunction(std::string name, FunctionType* ftype);
 		void addFunction(Function* func);
@@ -69,6 +70,8 @@ namespace fir
 		std::map<std::string, GlobalVariable*> globals;
 		std::map<std::string, StructType*> namedTypes;
 		std::map<std::string, Function*> functions;
+
+		std::map<std::string, StructType*> extensionTypes;
 	};
 
 

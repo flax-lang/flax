@@ -264,6 +264,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
 		}
 
+		fprintf(stderr, "codegen func %s in class %s\n", f->decl->mangledName.c_str(), this->mangledName.c_str());
+
 		f->codegen(cgi);
 		cgi->builder.setCurrentBlock(ob);
 	}
@@ -427,6 +429,27 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	return Result_t(0, 0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -653,11 +676,8 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 
 		this->name = oldname;
 
-		fprintf(stderr, "added type %s\n", this->mangledName.c_str());
+		// fprintf(stderr, "added type %s\n", this->mangledName.c_str());
 	}
-
-	// cgi->addNewType(str, this, TypeKind::Class);
-
 
 
 	if(superClassType != 0)

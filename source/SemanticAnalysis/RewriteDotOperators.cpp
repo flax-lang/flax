@@ -175,6 +175,10 @@ static void rewriteDotOperator(MemberAccess* ma)
 		ma->matype = MAType::LeftVariable;
 		return;
 	}
+	else if(dynamic_cast<StringLiteral*>(ma->left))
+	{
+		ma->matype =MAType::LeftVariable;
+	}
 	else
 	{
 		error(ma, "?????");
