@@ -50,15 +50,12 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		auto res = this->val->codegen(cgi).result;
 		fir::Value* left = res.first;
 
-		auto f = cgi->builder.getCurrentBlock()->getParentFunction();
+		fir::Function* f = cgi->builder.getCurrentBlock()->getParentFunction();
 		iceAssert(f);
 
-		if(left->getType()->isIntegerType() && f->getReturnType()->isIntegerType())
-			left = cgi->builder.CreateIntSizeCast(left, f->getReturnType());
+		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), left, res.second);
 
-		this->actualReturnValue = left;
-
-		return Result_t(cgi->builder.CreateReturn(left), res.second, ResultType::BreakCodegen);
+		return Result_t(cgi->builder.CreateReturn(this->actualReturnValue), res.second, ResultType::BreakCodegen);
 	}
 	else
 	{

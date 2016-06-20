@@ -192,7 +192,13 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->builder.CreateReturnVoid();
 
 	else if(isImplicitReturn)
+	{
+		fir::Type* needed = func->getReturnType();
+		if(lastval.result.first->getType() != needed)
+			lastval.result.first = cgi->autoCastType(func->getReturnType(), lastval.result.first, lastval.result.second);
+
 		cgi->builder.CreateReturn(lastval.result.first);
+	}
 
 
 	// we've codegen'ed that stuff, pop the symbol table

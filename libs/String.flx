@@ -66,6 +66,14 @@ public class Character
 	{
 		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 	}
+
+
+
+
+	func isDigit() -> Bool
+	{
+		return self.isAscii() && self.toAscii() >= 48 && self.toAscii() <= 57
+	}
 }
 
 
@@ -187,16 +195,6 @@ public class String
 
 	func append(char: Character)
 	{
-		// copy it over
-		// var copy = alloc[char.byteCount + 1] Int8
-		// memcpy(copy, char.utf8Bytes as Int8*, char.byteCount)
-
-		// copy[char.byteCount] = 0
-		// self.append(copy, char.byteCount)
-
-		// dealloc copy
-
-
 		self.append(char.utf8Bytes as Int8*, char.byteCount)
 	}
 
@@ -205,6 +203,9 @@ public class String
 
 
 
+
+
+	// operators
 
 	operator [] (index: Uint64) -> Character
 	{

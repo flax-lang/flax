@@ -129,10 +129,9 @@ public func format(fmt: String, args: Any[...]) -> String
 	var output: String
 	var argNum: Uint64 = 0
 
-	let percent = Character("%")
-	let lbrace = Character("{")
-	let rbrace = Character("}")
-
+	let colon	= Character(":")
+	let lbrace	= Character("{")
+	let rbrace	= Character("}")
 
 
 	var i: Uint64 = 0
@@ -140,14 +139,6 @@ public func format(fmt: String, args: Any[...]) -> String
 	{
 		if fmt[i] == lbrace
 		{
-			if i + 1 < fmt.length && fmt[i + 1] == percent
-			{
-				output += percent
-				i += 1
-
-				continue
-			}
-
 			// else
 			if argNum < args.length
 			{

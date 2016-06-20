@@ -2326,9 +2326,29 @@ namespace Codegen
 			fir::Type* have = 0;
 
 			if(r->actualReturnValue)
+			{
 				have = r->actualReturnValue->getType();
+			}
 
-			if((have ? have : have = cgi->getExprType(r->val)) != (expected = (retType == 0 ? cgi->getExprType(f->decl) : retType)))
+			if(!have)
+			{
+				have = cgi->getExprType(r->val);
+			}
+
+
+			if(retType == 0)
+			{
+				expected = cgi->getExprType(f->decl);
+			}
+			else
+			{
+				expected = retType;
+			}
+
+
+			int dist = cgi->getAutoCastDistance(have, expected);
+
+			if(dist == -1)
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
 					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
 
@@ -2444,7 +2464,7 @@ namespace Codegen
 				break;
 		}
 
-		if(!ret && (isVoid || !checkType || this->getExprType(final) == this->getExprType(func)))
+		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(this->getExprType(final), this->getExprType(func)) != -1))
 			return true;
 
 		if(!ret)

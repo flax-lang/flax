@@ -132,6 +132,8 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 
 		// first, delete the existing struct.
 		existing->deleteType();
+		existing = 0;
+
 
 		// then, create a new type with the old name.
 		fir::StructType* newType = fir::StructType::createNamed(this->mangledName, vec, cgi->getContext(), true);
