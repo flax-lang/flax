@@ -2561,6 +2561,7 @@ namespace Parser
 		if(attr & Attr_RawString)
 			ret->isRaw = true;
 
+		ret->pin.col--;
 		return ret;
 	}
 

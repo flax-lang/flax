@@ -201,6 +201,11 @@ public class String
 
 
 
+	func lol() -> Int64
+	{
+		return 5912
+	}
+
 
 
 
