@@ -141,6 +141,10 @@ namespace TypeInfo
 		for(auto tup : cgi->rootNode->typeList)
 		{
 			bool skip = false;
+
+			// check for duplicates.
+			// slightly inefficient.
+			// todo: hashmap or something
 			for(auto c : enr->cases)
 			{
 				if(c.first == std::get<0>(tup))
@@ -152,12 +156,11 @@ namespace TypeInfo
 
 			if(skip) continue;
 
-
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
 			num = new Number(Parser::Pin(), num->ival + 1);
 		}
 
-		#if 0
+		#if 1
 		printf("Final type list for module %s\n{\n", cgi->module->getModuleName().c_str());
 
 		int i = 1;

@@ -69,6 +69,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 
 Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	this->createType(cgi);
 	return Result_t(0, 0);
 }
 

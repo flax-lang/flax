@@ -121,61 +121,22 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 2)
 	{
-		// pass 2: create types
-		for(Expr* e : expressions)
-		{
-			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);	// enums are handled, since enum : class
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-
-			if(str)					str->createType(cgi);
-			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(cls && !dynamic_cast<ExtensionDef*>(e))
-				cls->createType(cgi);
-		}
-	}
-	else if(pass == 3)
-	{
-		// pass 3: override types with any extensions
-		for(Expr* e : expressions)
-		{
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
-
-			if(ext)					ext->createType(cgi);
-			else if(ta)				ta->createType(cgi);
-			else if(ns)				ns->codegenPass(cgi, pass);
-		}
-
-		// step 3: generate the type info.
-		// now that we have all the types that we need, and they're all fully
-		// processed, we create the Type enum.
-		TypeInfo::generateTypeInfo(cgi);
-	}
-	else if(pass == 4)
-	{
-		// pass 4: create declarations
+		// pass 2: create declarations
 		for(Expr* e : expressions)
 		{
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
-			Func* func				= dynamic_cast<Func*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ffi)					ffi->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(func)
-			{
-				// func->decl->codegen(cgi);
-			}
 		}
 	}
-	else if(pass == 5)
+	else if(pass == 3)
 	{
 		// start semantic analysis before any typechecking needs to happen.
 		SemAnalysis::rewriteDotOperators(cgi);
 
-		// pass 4: everything else
+		// pass 3: types
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
@@ -188,12 +149,21 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(cls)			cls->codegen(cgi);
 			else if(ext)			ext->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
+			else if(vd)
+			{
+				vd->isGlobal = true;
+				vd->codegen(cgi);
+			}
 		}
+
+		// generate the type info.
+		// now that we have all the types that we need, and they're all fully
+		// processed, we create the Type enum.
+		TypeInfo::generateTypeInfo(cgi);
 	}
-	else if(pass == 6)
+	else if(pass == 4)
 	{
-		// pass 7: functions. for generic shit.
+		// pass 4: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -232,7 +202,7 @@ Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// this is getting quite out of hand.
 	// note: we're using <= to show that there are 6 passes.
 	// don't usually do this.
-	for(int pass = 0; pass <= 6; pass++)
+	for(int pass = 0; pass <= 4; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 
 	// run the after-codegen checkers.
