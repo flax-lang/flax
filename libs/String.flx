@@ -259,7 +259,7 @@ public class String
 
 public operator + (lhs: String, rhs: String) -> String
 {
-	var ret: String(lhs.data)
+	var ret = String(lhs.data)
 	ret += rhs
 
 	return ret
@@ -267,7 +267,7 @@ public operator + (lhs: String, rhs: String) -> String
 
 public operator + (lhs: String, rhs: Int8*) -> String
 {
-	var ret: String(lhs.data)
+	var ret = String(lhs.data)
 	ret += rhs
 
 	return ret
@@ -275,7 +275,7 @@ public operator + (lhs: String, rhs: Int8*) -> String
 
 public operator + (lhs: String, rhs: Character) -> String
 {
-	var ret: String(lhs.data)
+	var ret = String(lhs.data)
 	ret += rhs
 
 	return ret

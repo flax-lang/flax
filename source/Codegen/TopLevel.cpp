@@ -133,7 +133,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 3)
 	{
-		// start semantic analysis before any typechecking needs to happen.
+		// start "semantic analysis" before any typechecking needs to happen.
+		// this basically involves knowing what is on the left side of a dot operator
+		// this can be determined once we know all types and namespaces defined.
 		SemAnalysis::rewriteDotOperators(cgi);
 
 		// pass 3: types
@@ -141,13 +143,11 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
 			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(cls)			cls->codegen(cgi);
-			else if(ext)			ext->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 			else if(vd)
 			{

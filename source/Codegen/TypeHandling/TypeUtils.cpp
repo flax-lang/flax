@@ -1243,6 +1243,9 @@ namespace Codegen
 					this->namespaceStack = ns;
 
 					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
+
+					concrete = getExprTypeFromStringType(user, type, allowFail);
 					iceAssert(concrete);
 
 					if(instantiatedGenericTypes.size() > 0)
