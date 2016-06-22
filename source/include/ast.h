@@ -532,14 +532,20 @@ namespace Ast
 	};
 
 	// extends class, because it's basically a class, except we need to apply it to an existing class
-	struct ExtensionDef : ClassDef
+	struct ExtensionDef : StructBase
 	{
 		~ExtensionDef();
-		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
+		ExtensionDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		fir::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, fir::StructType* stype, int extIndex);
+
+		std::deque<Func*> funcs;
+		std::deque<std::string> protocolstrs;
+		std::deque<ComputedProperty*> cprops;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 

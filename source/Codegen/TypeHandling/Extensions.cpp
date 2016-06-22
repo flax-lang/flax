@@ -60,6 +60,8 @@ fir::Function* ExtensionDef::createAutomaticInitialiser(CodegenInstance* cgi, fi
 
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
+	return 0;
+
 	if(!cgi->isDuplicateType(this->name))
 		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
 
