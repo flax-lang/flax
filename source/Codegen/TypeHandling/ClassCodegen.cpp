@@ -12,6 +12,8 @@ using namespace Codegen;
 
 Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	this->createType(cgi);
+
 	if(this->genericTypes.size() > 0 && !this->didCreateType)
 		return Result_t(0, 0);
 
@@ -460,7 +462,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
 fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
@@ -468,7 +469,6 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 
 	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
 		return this->createdType;
-
 
 
 
