@@ -127,6 +127,9 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
+			if(this->structMembers.size() == 0)
+				return this->structName + "<???>";
+
 			auto s = typeListToString(this->structMembers);
 			return this->structName + "<{" + s.substr(2, s.length() - 4) + "}>";
 		}

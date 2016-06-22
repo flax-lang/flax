@@ -189,9 +189,6 @@ namespace Codegen
 
 
 
-		// fir::Types for non-primitive (POD) builtin types (string)
-		void applyExtensionToStruct(std::string extName);
-
 		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
 		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 

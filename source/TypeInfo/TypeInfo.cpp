@@ -59,10 +59,8 @@ namespace TypeInfo
 			Number* num = new Number(Parser::Pin(), (int64_t) 1);
 			enr->cases.push_back(std::make_pair("Type", num));
 
-			// note: Enumeration does nothing in codegen()
-			// fix this if that happens to change in the future.
-
-			enr->createType(cgi);
+			// codegen() calls createType()
+			enr->codegen(cgi);
 		}
 		else
 		{
@@ -94,7 +92,6 @@ namespace TypeInfo
 				any->members.push_back(data);		any->nameMap["value"] = 1;
 			}
 
-			any->createType(cgi);
 			any->codegen(cgi);
 		}
 		#endif
@@ -160,7 +157,7 @@ namespace TypeInfo
 			num = new Number(Parser::Pin(), num->ival + 1);
 		}
 
-		#if 1
+		#if 0
 		printf("Final type list for module %s\n{\n", cgi->module->getModuleName().c_str());
 
 		int i = 1;

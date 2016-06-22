@@ -219,12 +219,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(Func* f : this->funcs)
 	{
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-		// bool isOpOverload = f->decl->name.find("operator#") == 0;
-		// if(isOpOverload)
-		// 	f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
 
 		fir::Value* val = nullptr;
-
 
 		// todo for generics:
 		// function expects first parameter not to be there
@@ -265,8 +261,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
 		}
-
-		// fprintf(stderr, "codegen func %s in class %s\n", f->decl->mangledName.c_str(), this->mangledName.c_str());
 
 		f->codegen(cgi);
 		cgi->builder.setCurrentBlock(ob);
@@ -720,7 +714,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 			error(this, "Cannot have non-pointer member of type self");
 		}
 
-		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
+
 		if(!var->isStatic)
 		{
 			int i = this->nameMap[var->name];

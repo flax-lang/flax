@@ -1242,26 +1242,6 @@ namespace Codegen
 	}
 
 
-	static void searchForAndApplyExtension(CodegenInstance* cgi, std::deque<Expr*> exprs, std::string extName)
-	{
-		for(Expr* e : exprs)
-		{
-			ExtensionDef* ext	= dynamic_cast<ExtensionDef*>(e);
-			NamespaceDecl* ns	= dynamic_cast<NamespaceDecl*>(e);
-
-			if(ext && ext->mangledName == extName)
-				ext->createType(cgi);
-
-			else if(ns)
-				searchForAndApplyExtension(cgi, ns->innards->statements, extName);
-		}
-	}
-
-	void CodegenInstance::applyExtensionToStruct(std::string ext)
-	{
-		searchForAndApplyExtension(this, this->rootNode->topLevelExpressions, ext);
-	}
-
 
 
 
@@ -2027,6 +2007,8 @@ namespace Codegen
 		}
 		else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 		{
+			// todo: use function overload operator for this.
+
 			StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
 			iceAssert(sb);
 
