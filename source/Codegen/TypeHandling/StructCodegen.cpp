@@ -12,6 +12,8 @@ using namespace Codegen;
 
 Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	this->createType(cgi);
+
 	if(this->genericTypes.size() > 0 && !this->didCreateType)
 		return Result_t(0, 0);
 
@@ -164,6 +166,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
+
 	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
 		return 0;
 
