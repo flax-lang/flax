@@ -444,7 +444,6 @@ namespace GenError
 
 
 
-
 	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
 	{
 		std::vector<std::string> argtypes;

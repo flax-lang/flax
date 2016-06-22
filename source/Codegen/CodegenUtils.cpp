@@ -930,9 +930,20 @@ namespace Codegen
 
 
 
-
 	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
 		std::deque<Expr*> params, bool exactMatch)
+	{
+		std::deque<fir::Type*> argTypes;
+		for(auto e : params)
+			argTypes.push_back(this->getExprType(e, true));
+
+		return this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
+	}
+
+
+
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		std::deque<fir::Type*> params, bool exactMatch)
 	{
 		std::deque<FuncPair_t> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
@@ -942,9 +953,8 @@ namespace Codegen
 		{
 			int distance = 0;
 
-			// fprintf(stderr, "%s vs %s\n", (c.second ? c.second->name : c.first->getName()).c_str(), basename.c_str());
-
-			if((c.second ? c.second->name : c.first->getName()) == basename
+			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
+			if((c.second ? c.second->name : basename) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
 				finals.push_back({ c, distance });
@@ -979,7 +989,7 @@ namespace Codegen
 				// parameters
 				std::string pstr;
 				for(auto e : params)
-					pstr += this->printAst(e) + ", ";
+					pstr += e->str() + ", ";
 
 				if(params.size() > 0)
 					pstr = pstr.substr(0, pstr.size() - 2);
@@ -992,7 +1002,7 @@ namespace Codegen
 						cstr += this->printAst(c.first.second) + "\n";
 				}
 
-				error(user, "Ambiguous function call to function %s with parameters: [ %s ], have %zu candidates:\n%s",
+				error(user, "Ambiguous function call to function %s with parameters: (%s), have %zu candidates:\n%s",
 					basename.c_str(), pstr.c_str(), finals.size(), cstr.c_str());
 			}
 		}
@@ -1010,134 +1020,128 @@ namespace Codegen
 		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
-	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<Expr*> params, int* castingDistance, bool exactMatch)
+
+
+
+
+
+
+	static bool _checkFunction(CodegenInstance* cgi, std::deque<fir::Type*> funcParams, std::deque<fir::Type*> args,
+		int* _dist, bool variadic, bool c_variadic, bool exact)
 	{
-		iceAssert(castingDistance);
-		*castingDistance = 0;
+		iceAssert(_dist);
+		*_dist = 0;
 
-		if(fp.second)
+		if(!variadic)
 		{
-			FuncDecl* decl = fp.second;
+			if(funcParams.size() != args.size() && !c_variadic) return false;
+			if(funcParams.size() == 0 && (args.size() == 0 || c_variadic)) return true;
 
-			iceAssert(decl);
-
-			if(!decl->isVariadic)
+			#define __min(x, y) ((x) > (y) ? (y) : (x))
+			for(size_t i = 0; i < __min(args.size(), funcParams.size()); i++)
 			{
-				// fprintf(stderr, "%s -- %zu, %zu\n", decl->name.c_str(), decl->params.size(), params.size());
+				fir::Type* t1 = args[i];
+				fir::Type* t2 = funcParams[i];
 
-				if(decl->params.size() != params.size() && !decl->isCStyleVarArg) return false;
-				if(decl->params.size() == 0 && (params.size() == 0 || decl->isCStyleVarArg)) return true;
-
-				#define __min(x, y) ((x) > (y) ? (y) : (x))
-				for(size_t i = 0; i < __min(params.size(), decl->params.size()); i++)
-				{
-					fir::Type* t1 = this->getExprType(params[i], true);
-					fir::Type* t2 = this->getExprType(decl->params[i], true);
-
-
-					// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
-
-					if(t1 != t2)
-					{
-						if(exactMatch || t1 == 0 || t2 == 0) return false;
-
-						// try to cast.
-						int dist = this->getAutoCastDistance(t1, t2);
-						if(dist == -1) return false;
-
-						*castingDistance += dist;
-					}
-				}
-
-				// fprintf(stderr, "%s -- good\n", decl->name.c_str());
-				return true;
-			}
-			else
-			{
-				// variadic.
-				// check until the last parameter.
-
-				// 1. passed parameters must have at least all the fixed parameters, since the varargs can be 0-length.
-				if(params.size() < decl->params.size() - 1) return false;
-
-				// 2. check the fixed parameters
-				for(size_t i = 0; i < decl->params.size() - 1; i++)
-				{
-					fir::Type* t1 = this->getExprType(params[i], true);
-					fir::Type* t2 = this->getExprType(decl->params[i], true);
-
-					if(t1 != t2)
-					{
-						if(exactMatch || t1 == 0 || t2 == 0) return false;
-
-						// try to cast.
-						int dist = this->getAutoCastDistance(t1, t2);
-						if(dist == -1) return false;
-
-						*castingDistance += dist;
-					}
-				}
-
-				// 3. get the type of the vararg array.
-				fir::Type* funcLLType = this->getExprType(decl->params.back());
-				iceAssert(funcLLType->isLLVariableArrayType());
-
-				fir::Type* llElmType = funcLLType->toLLVariableArray()->getElementType();
-
-				// 4. check the variable args.
-				for(size_t i = decl->params.size() - 1; i < params.size(); i++)
-				{
-					fir::Type* argType = this->getExprType(params[i]);
-
-					if(llElmType != argType)
-					{
-						if(exactMatch || argType == 0) return false;
-
-						// try to cast.
-						int dist = this->getAutoCastDistance(argType, llElmType);
-						if(dist == -1) return false;
-
-						*castingDistance += dist;
-					}
-				}
-
-				return true;
-			}
-		}
-		else if(fp.first)
-		{
-			error("ICE: don't have FuncDecl??? (%s)", fp.first->getName().c_str());
-
-
-			#if 0
-			fir::Function* lf = fp.first;
-			fir::FunctionType* ft = lf->getType();
-
-			for(size_t i = 0; i < ft->getArgumentTypes().size(); i++)
-			{
-				auto t1 = this->getExprType(params[i], true);
-				auto t2 = ft->getArgumentN(i);
+				// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
 
 				if(t1 != t2)
 				{
-					if(exactMatch || t1 == 0 || t2 == 0) return false;
+					if(exact || t1 == 0 || t2 == 0) return false;
 
 					// try to cast.
-					int dist = this->getAutoCastDistance(t1, t2);
+					int dist = cgi->getAutoCastDistance(t1, t2);
 					if(dist == -1) return false;
 
-					*castingDistance += dist;
+					*_dist += dist;
 				}
 			}
 
 			return true;
-
-			#endif
 		}
 		else
 		{
-			return false;
+			// variadic.
+			// check until the last parameter.
+
+			// 1. passed parameters must have at least all the fixed parameters, since the varargs can be 0-length.
+			if(args.size() < funcParams.size() - 1) return false;
+
+			// 2. check the fixed parameters
+			for(size_t i = 0; i < funcParams.size() - 1; i++)
+			{
+				fir::Type* t1 = args[i];
+				fir::Type* t2 = funcParams[i];
+
+				if(t1 != t2)
+				{
+					if(exact || t1 == 0 || t2 == 0) return false;
+
+					// try to cast.
+					int dist = cgi->getAutoCastDistance(t1, t2);
+					if(dist == -1) return false;
+
+					*_dist += dist;
+				}
+			}
+
+
+			// 3. get the type of the vararg array.
+			fir::Type* funcLLType = funcParams.back();
+			iceAssert(funcLLType->isLLVariableArrayType());
+
+			fir::Type* llElmType = funcLLType->toLLVariableArray()->getElementType();
+
+			// 4. check the variable args.
+			for(size_t i = funcParams.size() - 1; i < args.size(); i++)
+			{
+				fir::Type* argType = args[i];
+
+				if(llElmType != argType)
+				{
+					if(exact || argType == 0) return false;
+
+					// try to cast.
+					int dist = cgi->getAutoCastDistance(argType, llElmType);
+					if(dist == -1) return false;
+
+					*_dist += dist;
+				}
+			}
+
+			return true;
 		}
+	}
+
+	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
+	{
+		iceAssert(castingDistance);
+		std::deque<fir::Type*> funcParams;
+
+
+		bool iscvar = 0;
+		bool isvar = 0;
+
+		if(fp.second)
+		{
+			for(auto arg : fp.second->params)
+				funcParams.push_back(this->getExprType(arg, true));
+
+			iscvar = fp.second->isCStyleVarArg;
+			isvar = fp.second->isVariadic;
+		}
+		else
+		{
+			iceAssert(fp.first);
+
+			for(auto arg : fp.first->getArguments())
+				funcParams.push_back(arg->getType());
+
+			iscvar = fp.first->isCStyleVarArg();
+			isvar = fp.first->isVariadic();
+		}
+
+		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
 	}
 
 
@@ -1608,7 +1612,7 @@ namespace Codegen
 		Resolved_t res = this->resolveFunction(decl, decl->name, es, true);
 		if(res.resolved && res.t.first != 0)
 		{
-			printf("dupe: %s\n", this->printAst(res.t.second).c_str());
+			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.second).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
 			{
 				info(res.t.second, "%zu: %s, %s", i, this->getReadableType(decl->params[i]).c_str(),
@@ -2007,42 +2011,34 @@ namespace Codegen
 		}
 		else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 		{
-			// todo: use function overload operator for this.
-
 			StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
 			iceAssert(sb);
 
-			fir::Function* initf = 0;
-			for(fir::Function* initers : sb->initFuncs)
+			// use function overload operator for this.
+
+			std::deque<FuncPair_t> fns;
+			for(auto f : sb->initFuncs)
+				fns.push_back({ f, 0 });
+
+			std::deque<fir::Type*> argTypes;
+			for(auto v : vals)
+				argTypes.push_back(v->getType());
+
+			Resolved_t res = this->resolveFunctionFromList(user, fns, "init", argTypes);
+
+			if(!res.resolved)
 			{
-				// printf("init cand for %s -- %s :: %s\n", sb->name.c_str(), initers->getName().c_str(), initers->getType()->str().c_str());
+				std::string argstr;
+				for(auto a : argTypes)
+					argstr += a->str() + ", ";
 
-				if(initers->getArgumentCount() < 1)
-					error(user, "(%s:%d) -> ICE: init() should have at least one (implicit) parameter", __FILE__, __LINE__);
+				if(argTypes.size() > 0)
+					argstr = argstr.substr(0, argstr.size() - 2);
 
-				if(initers->getArgumentCount() != vals.size())
-					continue;
-
-				for(size_t i = 0; i < initers->getArgumentCount(); i++)
-				{
-					if(vals[i]->getType() != initers->getArguments()[i]->getType())
-					{
-						goto breakout;
-					}
-				}
-
-				// todo: fuuuuuuuuck this is ugly
-				initf = initers;
-				break;
-
-				breakout:
-				continue;
+				error(user, "No initialiser for class/struct %s taking parameters (%s)", sb->name.c_str(), argstr.c_str());
 			}
 
-			if(!initf)
-				GenError::invalidInitialiser(this, user, sb->name, vals);
-
-			return this->module->getFunction(initf->getName());
+			return this->module->getFunction(res.t.first->getName());
 		}
 		else
 		{
