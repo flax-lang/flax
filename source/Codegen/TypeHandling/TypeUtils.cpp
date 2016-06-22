@@ -1202,7 +1202,6 @@ namespace Codegen
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
 			}
 
-
 			if(!tp && this->getExprTypeOfBuiltin(atype))
 			{
 				return this->getExprTypeOfBuiltin(atype);
