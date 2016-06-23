@@ -4,7 +4,20 @@
 
 import Foundation
 
-public func foo_generic<T, K>(a: T, b: K)
+
+func foo_generic<T>(a: T, b: T, c: T)
+{
+	printf("foo: triple T\n")
+	(a, b, c)
+}
+
+func foo_generic<T>(a: T, b: T)
+{
+	printf("foo: double T\n")
+	(a, b)
+}
+
+func foo_generic<T, K>(a: T, b: K)
 {
 	let ta = typeof(a)
 	let tb = typeof(b)
@@ -54,18 +67,13 @@ public func foo_generic<T, K>(a: T, b: K)
 	}
 }
 
-func foo_generic<T>(a: T, b: T, c: T)
-{
-	printf("foo: triple T\n")
-	(a, b, c)
-}
-
-
 public func doGenericsTest()
 {
 	foo_generic(7, 6 as Int8)
 	foo_generic(7, 6 as Int16)
 	foo_generic(7, 6 as Int32)
+
+	// foo_generic(501, 101)
 
 	foo_generic(5, "asdf")
 
