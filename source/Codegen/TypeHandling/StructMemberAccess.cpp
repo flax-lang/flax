@@ -809,8 +809,8 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 		HighlightOptions ops = std::get<2>(tup);
 
 		ops.caret = ma->pin;
-		ops.caret.col--;
-		ops.underlines.front().col--;
+		// ops.caret.col--;
+		// ops.underlines.front().col--;
 
 		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
 			cls->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
