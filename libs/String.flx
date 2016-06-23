@@ -36,11 +36,7 @@ public class Character
 
 	init(c: String)
 	{
-		self.utf8Bytes = alloc[2] Uint8
-		self.utf8Bytes[0] = c.data[0]
-		self.utf8Bytes[1] = 0
-
-		self.byteCount = 1
+		self.init(c.data as Uint8*, 1 as Uint64)
 	}
 
 

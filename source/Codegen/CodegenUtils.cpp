@@ -837,13 +837,16 @@ namespace Codegen
 
 		auto _isDupe = [this](FuncPair_t a, FuncPair_t b) -> bool {
 
-			if(a.first == b.first || a.second == b.second) return true;
 			if(a.first == 0 || b.first == 0)
 			{
 				iceAssert(a.second);
 				iceAssert(b.second);
 
 				if(a.second->params.size() != b.second->params.size()) return false;
+				if(a.second->genericTypes.size() > 0 && b.second->genericTypes.size() > 0)
+				{
+					if(a.second->genericTypes != b.second->genericTypes) return false;
+				}
 
 				for(size_t i = 0; i < a.second->params.size(); i++)
 				{
@@ -852,6 +855,10 @@ namespace Codegen
 						return false;
 				}
 
+				return true;
+			}
+			else if(a.first == b.first || a.second == b.second)
+			{
 				return true;
 			}
 			else
@@ -1658,7 +1665,7 @@ namespace Codegen
 				candidates.push_back(fp.second);
 		}
 
-		// printf("phase 1: %zu cands // %zu\n", candidates.size(), bodiesFound.size());
+		// fprintf(stderr, "phase 1: %zu cands // %zu // %zu\n", candidates.size(), bodiesFound.size(), fpcands.size());
 
 		if(candidates.size() == 0)
 		{
