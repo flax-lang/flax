@@ -300,26 +300,26 @@ namespace fir
 
 		Type* real = 0;
 
-		if(builtin == "Int8")			real = PrimitiveType::getInt8(tc);
-		else if(builtin == "Int16")		real = PrimitiveType::getInt16(tc);
-		else if(builtin == "Int32")		real = PrimitiveType::getInt32(tc);
-		else if(builtin == "Int64")		real = PrimitiveType::getInt64(tc);
-		else if(builtin == "Int")		real = PrimitiveType::getInt64(tc);
+		if(builtin == INT8_TYPE_STRING)				real = PrimitiveType::getInt8(tc);
+		else if(builtin == INT16_TYPE_STRING)		real = PrimitiveType::getInt16(tc);
+		else if(builtin == INT32_TYPE_STRING)		real = PrimitiveType::getInt32(tc);
+		else if(builtin == INT64_TYPE_STRING)		real = PrimitiveType::getInt64(tc);
+		else if(builtin == INTUNSPEC_TYPE_STRING)	real = PrimitiveType::getInt64(tc);
 
-		else if(builtin == "Uint8")		real = PrimitiveType::getUint8(tc);
-		else if(builtin == "Uint16")	real = PrimitiveType::getUint16(tc);
-		else if(builtin == "Uint32")	real = PrimitiveType::getUint32(tc);
-		else if(builtin == "Uint64")	real = PrimitiveType::getUint64(tc);
-		else if(builtin == "Uint")		real = PrimitiveType::getUint64(tc);
+		else if(builtin == UINT8_TYPE_STRING)		real = PrimitiveType::getUint8(tc);
+		else if(builtin == UINT16_TYPE_STRING)		real = PrimitiveType::getUint16(tc);
+		else if(builtin == UINT32_TYPE_STRING)		real = PrimitiveType::getUint32(tc);
+		else if(builtin == UINT64_TYPE_STRING)		real = PrimitiveType::getUint64(tc);
+		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = PrimitiveType::getUint64(tc);
 
-		else if(builtin == "Float32")	real = PrimitiveType::getFloat32(tc);
-		else if(builtin == "Float")		real = PrimitiveType::getFloat32(tc);
+		else if(builtin == FLOAT32_TYPE_STRING)		real = PrimitiveType::getFloat32(tc);
+		else if(builtin == FLOAT_TYPE_STRING)		real = PrimitiveType::getFloat32(tc);
 
-		else if(builtin == "Float64")	real = PrimitiveType::getFloat64(tc);
-		else if(builtin == "Double")	real = PrimitiveType::getFloat64(tc);
+		else if(builtin == FLOAT64_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
+		else if(builtin == DOUBLE_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
 
-		else if(builtin == "Bool")		real = PrimitiveType::getBool(tc);
-		else if(builtin == "Void")		real = PrimitiveType::getVoid(tc);
+		else if(builtin == BOOL_TYPE_STRING)		real = PrimitiveType::getBool(tc);
+		else if(builtin == VOID_TYPE_STRING)		real = PrimitiveType::getVoid(tc);
 		else return 0;
 
 		iceAssert(real);

@@ -14,54 +14,56 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Function* ExtensionDef::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
-{
-	// generate initialiser
-	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex), fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
-		fir::LinkageType::External);
+// fir::Function* ExtensionDef::createAutomaticInitialiser(CodegenInstance* cgi, fir::StructType* stype, int extIndex)
+// {
+// 	// generate initialiser
+// 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName + ".ext" + std::to_string(extIndex), fir::FunctionType::get({ stype->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false),
+// 		fir::LinkageType::External);
 
-	{
-		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
-		fakeSelf->type = this->name + "*";
+// 	{
+// 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
+// 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, "Void");
+// 		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, "Void");
 
-		cgi->addFunctionToScope({ defaultInitFunc, fd });
-	}
+// 		cgi->addFunctionToScope({ defaultInitFunc, fd });
+// 	}
 
-	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
+// 	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
 
-	fir::IRBlock* oldIP = cgi->builder.getCurrentBlock();
-	cgi->builder.setCurrentBlock(iblock);
+// 	fir::IRBlock* oldIP = cgi->builder.getCurrentBlock();
+// 	cgi->builder.setCurrentBlock(iblock);
 
-	// create the local instance of reference to self
-	fir::Value* self = defaultInitFunc->getArguments().front();
-	self->setName("self");
+// 	// create the local instance of reference to self
+// 	fir::Value* self = defaultInitFunc->getArguments().front();
+// 	self->setName("self");
 
-	int memberBeginOffset = stype->getElementCount() - this->members.size();
-	for(VarDecl* var : this->members)
-	{
-		iceAssert(this->nameMap.find(var->name) != this->nameMap.end());
-		int i = memberBeginOffset + this->nameMap[var->name];
-		iceAssert(i >= 0);
+// 	int memberBeginOffset = stype->getElementCount() - this->members.size();
+// 	for(VarDecl* var : this->members)
+// 	{
+// 		iceAssert(this->nameMap.find(var->name) != this->nameMap.end());
+// 		int i = memberBeginOffset + this->nameMap[var->name];
+// 		iceAssert(i >= 0);
 
-		fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+// 		fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
 
-		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
-	}
+// 		auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+// 		var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+// 	}
 
-	cgi->builder.CreateReturnVoid();
-	// fir::verifyFunction(*defaultInitFunc);
+// 	cgi->builder.CreateReturnVoid();
+// 	// fir::verifyFunction(*defaultInitFunc);
 
-	cgi->builder.setCurrentBlock(oldIP);
-	return defaultInitFunc;
-}
+// 	cgi->builder.setCurrentBlock(oldIP);
+// 	return defaultInitFunc;
+// }
+
 
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	return 0;
 
+	#if 0
 	if(!cgi->isDuplicateType(this->name))
 		error(this, "Cannot create extension for non-existent type '%s'", this->name.c_str());
 
@@ -159,6 +161,7 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 	}
 
 	return existingtp->first;
+	#endif
 }
 
 
