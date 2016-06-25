@@ -17,6 +17,32 @@ namespace fir
 	struct StructType;
 }
 
+#define INTUNSPEC_TYPE_STRING	"Int"
+#define INT8_TYPE_STRING		"Int8"
+#define INT16_TYPE_STRING		"Int16"
+#define INT32_TYPE_STRING		"Int32"
+#define INT64_TYPE_STRING		"Int64"
+
+#define UINTUNSPEC_TYPE_STRING	"Uint"
+#define UINT8_TYPE_STRING		"Uint8"
+#define UINT16_TYPE_STRING		"Uint16"
+#define UINT32_TYPE_STRING		"Uint32"
+#define UINT64_TYPE_STRING		"Uint64"
+
+#define FLOAT32_TYPE_STRING		"Float32"
+#define FLOAT64_TYPE_STRING		"Float64"
+
+#define FLOAT_TYPE_STRING		"Float"
+#define DOUBLE_TYPE_STRING		"Double"
+
+#define BOOL_TYPE_STRING		"Bool"
+#define VOID_TYPE_STRING		"Void"
+
+#define FUNC_KEYWORD_STRING		"func"
+
+
+
+
 namespace Ast
 {
 	enum class ArithmeticOp
@@ -520,26 +546,22 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
-		std::deque<ExtensionDef*> extensions;
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::pair<ClassDef*, fir::StructType*> superclass;
 		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
 
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
-	// extends class, because it's basically a class, except we need to apply it to an existing class
+
 	struct ExtensionDef : StructBase
 	{
 		~ExtensionDef();
 		ExtensionDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
-
-		fir::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, fir::StructType* stype, int extIndex);
 
 		std::deque<Func*> funcs;
 		std::deque<std::string> protocolstrs;

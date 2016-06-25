@@ -1202,42 +1202,42 @@ namespace Codegen
 			if(name == "malloc")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd->type = "Uint64";
+				fakefdmvd->type = UINT64_TYPE_STRING;
 				params.push_back(fakefdmvd);
 
-				retType = "Int8*";
+				retType = std::string(INT8_TYPE_STRING) + "*";
 			}
 			else if(name == "free")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd->type = "Int8*";
+				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
 				params.push_back(fakefdmvd);
 
-				retType = "Int8*";
+				retType = std::string(INT8_TYPE_STRING) + "*";
 			}
 			else if(name == "strlen")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
-				fakefdmvd->type = "Int8*";
+				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
 				params.push_back(fakefdmvd);
 
-				retType = "Int64";
+				retType = INT64_TYPE_STRING;
 			}
 			else if(name == "memset")
 			{
 				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd1->type = "Int8*";
+				fakefdmvd1->type = std::string(INT8_TYPE_STRING) + "*";
 				params.push_back(fakefdmvd1);
 
 				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
-				fakefdmvd2->type = "Int8";
+				fakefdmvd2->type = std::string(INT8_TYPE_STRING) + "*";
 				params.push_back(fakefdmvd2);
 
 				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd3->type = "Uint64";
+				fakefdmvd3->type = UINT64_TYPE_STRING;
 				params.push_back(fakefdmvd3);
 
-				retType = "Int8*";
+				retType = std::string(INT8_TYPE_STRING) + "*";
 			}
 			else
 			{
