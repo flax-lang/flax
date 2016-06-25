@@ -28,29 +28,8 @@ namespace Codegen
 			}
 		}
 
-		fir::Type* real = 0;
-
-		if(type == "Int8")			real = fir::PrimitiveType::getInt8(this->getContext());
-		else if(type == "Int16")	real = fir::PrimitiveType::getInt16(this->getContext());
-		else if(type == "Int32")	real = fir::PrimitiveType::getInt32(this->getContext());
-		else if(type == "Int64")	real = fir::PrimitiveType::getInt64(this->getContext());
-		else if(type == "Int")		real = fir::PrimitiveType::getInt64(this->getContext());
-
-		else if(type == "Uint8")	real = fir::PrimitiveType::getUint8(this->getContext());
-		else if(type == "Uint16")	real = fir::PrimitiveType::getUint16(this->getContext());
-		else if(type == "Uint32")	real = fir::PrimitiveType::getUint32(this->getContext());
-		else if(type == "Uint64")	real = fir::PrimitiveType::getUint64(this->getContext());
-		else if(type == "Uint")		real = fir::PrimitiveType::getUint64(this->getContext());
-
-		else if(type == "Float32")	real = fir::PrimitiveType::getFloat32(this->getContext());
-		else if(type == "Float")	real = fir::PrimitiveType::getFloat32(this->getContext());
-
-		else if(type == "Float64")	real = fir::PrimitiveType::getFloat64(this->getContext());
-		else if(type == "Double")	real = fir::PrimitiveType::getFloat64(this->getContext());
-
-		else if(type == "Bool")		real = fir::PrimitiveType::getBool(this->getContext());
-		else if(type == "Void")		real = fir::PrimitiveType::getVoid(this->getContext());
-		else return 0;
+		fir::Type* real = fir::Type::fromBuiltin(type);
+		if(!real) return 0;
 
 		iceAssert(real);
 		while(indirections > 0)

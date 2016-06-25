@@ -140,7 +140,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// since Flax is a statically typed language (good!)
-	// we know the types of everything at compilet time
+	// we know the types of everything at compile time
 
 	// to work around things like dangling returns (ie. if { return } else { return }, and the function itself has a return)
 	// we verify that all the code paths return first

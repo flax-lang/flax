@@ -131,17 +131,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 	}
 
-	// create all the other automatic init functions for our extensions
-	std::deque<fir::Function*> extensionInitialisers;
-	{
-		int i = 0;
-		for(auto ext : this->extensions)
-		{
-			extensionInitialisers.push_back(ext->createAutomaticInitialiser(cgi, str, i));
-			i++;
-		}
-	}
-
 
 
 	// check if we have any user-defined init() functions.
@@ -160,11 +149,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(!didFindInit)
 	{
-		for(fir::Function* f : extensionInitialisers)
-		{
-			fir::Function* actual = cgi->module->getFunction(f->getName());
-			cgi->builder.CreateCall1(actual, self);
-		}
+		// extra stuff, if any.
 	}
 
 	cgi->builder.CreateReturnVoid();
@@ -254,10 +239,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			VarRef* svr = new VarRef(this->pin, "self");
 			todeque.push_back(svr);
-
-
-			for(auto extInit : extensionInitialisers)
-				f->block->statements.push_front(new FuncCall(this->pin, extInit->getName(), todeque));
 
 			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
 		}
@@ -486,149 +467,21 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 	}
 
 
-	fir::StructType* superClassType = 0;
 
-	// check our inheritances??
-	bool alreadyHaveSuperclass = false;
+	// check protocols
 	for(auto super : this->protocolstrs)
 	{
 		TypePair_t* type = cgi->getType(super);
 		if(type == 0)
 			error(this, "Type %s does not exist", super.c_str());
 
-		if(type->second.second == TypeKind::Class)
+		if(type->second.second != TypeKind::Protocol)
 		{
-			if(alreadyHaveSuperclass)
-			{
-				error(this, "Multiple inheritance is not supported, only one superclass"
-					" can be inherited from. Consider using protocols instead");
-			}
-
-			alreadyHaveSuperclass = true;
-		}
-		else if(type->second.second != TypeKind::Protocol)
-		{
-			error(this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
+			error(this, "%s is not a protocol, and cannot be conformed to.", super.c_str());
 		}
 
-
-		ClassDef* supcls = dynamic_cast<ClassDef*>(type->second.first);
-		iceAssert(supcls);
-
-		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
-		// by the time we see it.
-		superClassType = supcls->createType(cgi)->toStructType();
-
-
-		// if it's a struct, copy its members into ourselves.
-		if(type->second.second == TypeKind::Class)
-		{
-			this->superclass = { supcls, type->first->toStructType() };
-
-			// normal members
-			for(auto mem : supcls->members)
-			{
-				auto pred = [mem](VarDecl* v) -> bool {
-
-					return v->name == mem->name;
-				};
-
-				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
-				if(it != this->members.end())
-				{
-					error(*it, "Fields cannot be overriden, only computed properties can");
-				}
-
-				this->members.push_back(mem);
-			}
-
-			size_t nms = this->nameMap.size();
-			for(auto nm : supcls->nameMap)
-			{
-				this->nameMap[nm.first] = nms;
-				nms++;
-			}
-
-			// functions
-			for(auto fn : supcls->funcs)
-			{
-				auto pred = [fn, cgi](Func* f) -> bool {
-
-					if(fn->decl->params.size() != f->decl->params.size())
-						return false;
-
-					for(size_t i = 0; i < fn->decl->params.size(); i++)
-					{
-						if(cgi->getExprType(fn->decl->params[i]) != cgi->getExprType(f->decl->params[i]))
-							return false;
-					}
-
-					return fn->decl->name == f->decl->name;
-				};
-
-
-				auto it = std::find_if(this->funcs.begin(), this->funcs.end(), pred);
-				if(it != this->funcs.end())
-				{
-					// check for 'override'
-					Func* f = *it;
-					if(!(f->decl->attribs & Attr_Override))
-					{
-						error(f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
-							cgi->printAst(f->decl).c_str(), supcls->name.c_str());
-					}
-					else
-					{
-						// don't add the superclass one.
-						continue;
-					}
-				}
-
-				this->funcs.push_back((Func*) cgi->cloneAST(fn));
-			}
-
-
-
-
-
-
-			// computed properties
-			for(auto cp : supcls->cprops)
-			{
-				auto pred = [cp](ComputedProperty* cpr) -> bool {
-
-					return cp->name == cpr->name;
-				};
-
-				auto it = std::find_if(this->cprops.begin(), this->cprops.end(), pred);
-				if(it != this->cprops.end())
-				{
-					// this thing exists.
-					// check if ours has an override
-					ComputedProperty* ours = *it;
-					iceAssert(ours->name == cp->name);
-
-					if(!(ours->attribs & Attr_Override))
-					{
-						error(ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
-							ours->name.c_str(), supcls->name.c_str());
-					}
-					else
-					{
-						// we have 'override'.
-						// disable this property, don't add it.
-						continue;
-					}
-				}
-
-				this->cprops.push_back((ComputedProperty*) cgi->cloneAST(cp));
-			}
-		}
-		else
-		{
-			// protcols not supported yet.
-			error(this, "enotsup");
-		}
+		// protcols not supported yet.
+		error(this, "enotsup");
 	}
 
 
@@ -673,9 +526,6 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 		// fprintf(stderr, "added type %s\n", this->mangledName.c_str());
 	}
 
-
-	if(superClassType != 0)
-		str->setBaseType(superClassType);
 
 
 
