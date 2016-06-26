@@ -28,8 +28,8 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -no-lowercase-builtin -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -no-lowercase-builtin -run"
+flaxcNormFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -run"
 
 
 main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = False } $ do

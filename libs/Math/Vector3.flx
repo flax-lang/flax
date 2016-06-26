@@ -6,30 +6,30 @@ namespace Math
 {
 	public struct Vector3
 	{
-		var x: Double
-		var y: Double
-		var z: Double
+		var x: float64
+		var y: float64
+		var z: float64
 	}
 }
 
 
 
-public operator == (this: Math.Vector3, other: Math.Vector3) -> Bool { (this.x == other.x) && (this.y == other.y) && (this.z == other.z) }
+public operator == (this: Math.Vector3, other: Math.Vector3) -> bool { (this.x == other.x) && (this.y == other.y) && (this.z == other.z) }
 
 @operator[Commutative]
-public operator * (this: Math.Vector3, other: Double) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
-public operator / (this: Math.Vector3, other: Double) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
+public operator * (this: Math.Vector3, other: float64) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
+public operator / (this: Math.Vector3, other: float64) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
 
 @operator[Commutative]
-public operator * (this: Math.Vector3, other: Int) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
-public operator / (this: Math.Vector3, other: Int) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
+public operator * (this: Math.Vector3, other: int) -> Math.Vector3 { Math.Vector3(this.x * other, this.y * other, this.z * other) }
+public operator / (this: Math.Vector3, other: int) -> Math.Vector3 { Math.Vector3(this.x / other, this.y / other, this.z / other) }
 
 
 public operator + (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x + b.x, a.y + b.y, a.z + b.z) }
 public operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vector3(a.x - b.x, a.y - b.y, a.z - b.z) }
 
 @operator[90]
-public operator • (a: Math.Vector3, b: Math.Vector3) -> Double { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
+public operator • (a: Math.Vector3, b: Math.Vector3) -> float64 { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
 
 @operator[100]
 public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3

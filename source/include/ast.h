@@ -17,26 +17,25 @@ namespace fir
 	struct StructType;
 }
 
-#define INTUNSPEC_TYPE_STRING	"Int"
-#define INT8_TYPE_STRING		"Int8"
-#define INT16_TYPE_STRING		"Int16"
-#define INT32_TYPE_STRING		"Int32"
-#define INT64_TYPE_STRING		"Int64"
+#define INTUNSPEC_TYPE_STRING	"int"
+#define INT8_TYPE_STRING		"int8"
+#define INT16_TYPE_STRING		"int16"
+#define INT32_TYPE_STRING		"int32"
+#define INT64_TYPE_STRING		"int64"
 
-#define UINTUNSPEC_TYPE_STRING	"Uint"
-#define UINT8_TYPE_STRING		"Uint8"
-#define UINT16_TYPE_STRING		"Uint16"
-#define UINT32_TYPE_STRING		"Uint32"
-#define UINT64_TYPE_STRING		"Uint64"
+#define UINTUNSPEC_TYPE_STRING	"uint"
+#define UINT8_TYPE_STRING		"uint8"
+#define UINT16_TYPE_STRING		"uint16"
+#define UINT32_TYPE_STRING		"uint32"
+#define UINT64_TYPE_STRING		"uint64"
 
-#define FLOAT32_TYPE_STRING		"Float32"
-#define FLOAT64_TYPE_STRING		"Float64"
+#define FLOAT32_TYPE_STRING		"float32"
+#define FLOAT64_TYPE_STRING		"float64"
 
-#define FLOAT_TYPE_STRING		"Float"
-#define DOUBLE_TYPE_STRING		"Double"
+#define FLOAT_TYPE_STRING		"float"
 
-#define BOOL_TYPE_STRING		"Bool"
-#define VOID_TYPE_STRING		"Void"
+#define BOOL_TYPE_STRING		"bool"
+#define VOID_TYPE_STRING		"void"
 
 #define FUNC_KEYWORD_STRING		"func"
 

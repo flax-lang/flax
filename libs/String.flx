@@ -7,8 +7,8 @@ import LibCInterface
 
 public class Character
 {
-	var utf8Bytes: Uint8* = null
-	var byteCount: Uint64 = 0
+	var utf8Bytes: uint8* = null
+	var byteCount: uint64 = 0
 
 	init()
 	{
@@ -16,36 +16,36 @@ public class Character
 		self.byteCount = 0
 	}
 
-	init(c: Int8)
+	init(c: int8)
 	{
-		self.utf8Bytes = alloc[2] Uint8
+		self.utf8Bytes = alloc[2] uint8
 		self.utf8Bytes[0] = c
 		self.utf8Bytes[1] = 0
 
 		self.byteCount = 1
 	}
 
-	init(c: Uint8*, l: Uint64)
+	init(c: uint8*, l: uint64)
 	{
-		self.utf8Bytes = alloc[l + 1] Uint8
+		self.utf8Bytes = alloc[l + 1] uint8
 		self.byteCount = l
 
-		memcpy(self.utf8Bytes as Int8*, c as Int8*, l)
+		memcpy(self.utf8Bytes as int8*, c as int8*, l)
 		self.utf8Bytes[l] = 0
 	}
 
 	init(c: String)
 	{
-		self.init(c.data as Uint8*, 1 as Uint64)
+		self.init(c.data as uint8*, 1 as uint64)
 	}
 
 
-	func hasData() -> Bool
+	func hasData() -> bool
 	{
 		return self.utf8Bytes != null && self.byteCount > 0
 	}
 
-	func toAscii() -> Int8
+	func toAscii() -> int8
 	{
 		if self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 		{
@@ -58,7 +58,7 @@ public class Character
 		}
 	}
 
-	func isAscii() -> Bool
+	func isAscii() -> bool
 	{
 		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 	}
@@ -66,7 +66,7 @@ public class Character
 
 
 
-	func isDigit() -> Bool
+	func isDigit() -> bool
 	{
 		return self.isAscii() && self.toAscii() >= 48 && self.toAscii() <= 57
 	}
@@ -80,10 +80,10 @@ public class Character
 
 public class String
 {
-	var data: Int8* = null
-	var allocated: Uint64 = 0
+	private var data: int8* = null
+	private var allocated: uint64 = 0
 
-	var length: Uint64
+	var length: uint64
 	{
 		if self.data == null
 		{
@@ -93,7 +93,7 @@ public class String
 		Utf8Length(self.data)
 	}
 
-	var byteCount: Uint64
+	var byteCount: uint64
 	{
 		if self.data != null
 		{
@@ -111,7 +111,7 @@ public class String
 		self.setString(@raw "")
 	}
 
-	init(str: Int8*)
+	init(str: int8*)
 	{
 		self.allocated = 0
 		self.setString(str)
@@ -129,7 +129,7 @@ public class String
 	{
 		if self.allocated > 0
 		{
-			memset(self.data, (0 as Int32), self.length)
+			memset(self.data, (0 as int32), self.length)
 		}
 		else
 		{
@@ -138,7 +138,7 @@ public class String
 		}
 	}
 
-	func grow(newSize: Uint64)
+	func grow(newSize: uint64)
 	{
 		var needFree = (self.allocated != 0)
 
@@ -160,7 +160,7 @@ public class String
 	}
 
 
-	func setString(str: Int8*)
+	func setString(str: int8*)
 	{
 		self.clear()
 		let len = strlen(str)
@@ -177,7 +177,7 @@ public class String
 
 
 
-	func append(str: Int8*, addlen: Uint64)
+	func append(str: int8*, addlen: uint64)
 	{
 		if self.byteCount + addlen >= self.allocated
 		{
@@ -191,13 +191,13 @@ public class String
 
 	func append(char: Character)
 	{
-		self.append(char.utf8Bytes as Int8*, char.byteCount)
+		self.append(char.utf8Bytes as int8*, char.byteCount)
 	}
 
 
 
 
-	func lol() -> Int64
+	func lol() -> int64
 	{
 		return 5912;
 	}
@@ -208,7 +208,7 @@ public class String
 
 	// operators
 
-	operator [] (index: Uint64) -> Character
+	operator [] (index: uint64) -> Character
 	{
 		get
 		{
@@ -216,7 +216,7 @@ public class String
 
 			// else
 			let chars = Utf8Index(self.data, index)
-			let ret = Character(chars as Uint8*, Utf8CharLength(chars))
+			let ret = Character(chars as uint8*, Utf8CharLength(chars))
 
 			return ret
 		}
@@ -225,7 +225,7 @@ public class String
 
 
 
-	operator = (other: Int8*)
+	operator = (other: int8*)
 	{
 		self.setString(other)
 	}
@@ -240,7 +240,7 @@ public class String
 		self.append(other.data, strlen(other))
 	}
 
-	operator += (other: Int8*)
+	operator += (other: int8*)
 	{
 		self.append(other, strlen(other))
 	}
@@ -261,7 +261,7 @@ public operator + (lhs: String, rhs: String) -> String
 	return ret
 }
 
-public operator + (lhs: String, rhs: Int8*) -> String
+public operator + (lhs: String, rhs: int8*) -> String
 {
 	var ret = String(lhs.data)
 	ret += rhs
@@ -277,20 +277,20 @@ public operator + (lhs: String, rhs: Character) -> String
 	return ret
 }
 
-public operator == (lhs: String, rhs: Int8*) -> Bool
+public operator == (lhs: String, rhs: int8*) -> bool
 {
 	// return false
 	return strcmp(lhs.data, rhs) == 0
 }
 
-public operator == (lhs: String, rhs: String) -> Bool
+public operator == (lhs: String, rhs: String) -> bool
 {
 	return strcmp(lhs.data, rhs.data) == 0
 }
 
-public operator == (lhs: Character, rhs: Character) -> Bool
+public operator == (lhs: Character, rhs: Character) -> bool
 {
-	return lhs.byteCount == rhs.byteCount && strncmp(lhs.utf8Bytes as Int8*, rhs.utf8Bytes as Int8*, lhs.byteCount) == 0
+	return lhs.byteCount == rhs.byteCount && strncmp(lhs.utf8Bytes as int8*, rhs.utf8Bytes as int8*, lhs.byteCount) == 0
 }
 
 

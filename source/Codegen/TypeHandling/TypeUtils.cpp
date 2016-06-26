@@ -20,14 +20,6 @@ namespace Codegen
 		int indirections = 0;
 		type = unwrapPointerType(type, &indirections);
 
-		if(!Compiler::getDisableLowercaseBuiltinTypes())
-		{
-			if(type.length() > 0)
-			{
-				type[0] = toupper(type[0]);
-			}
-		}
-
 		fir::Type* real = fir::Type::fromBuiltin(type);
 		if(!real) return 0;
 

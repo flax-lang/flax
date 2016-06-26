@@ -41,7 +41,6 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_PRINT_FIR							"-print-fir"
 #define ARG_PRINT_LLVMIR						"-print-lir"
 #define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
-#define ARG_NO_LOWERCASE_BUILTIN				"-no-lowercase-builtin"
 #define ARG_JITPROGRAM							"-jit"
 #define ARG_RUNPROGRAM							"-run"
 #define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS	"-no-auto-gconstr"
@@ -129,12 +128,6 @@ namespace Compiler
 	std::string getMcModel()
 	{
 		return mcmodel;
-	}
-
-	static bool noLowercaseTypes;
-	bool getDisableLowercaseBuiltinTypes()
-	{
-		return noLowercaseTypes;
 	}
 
 	static bool printClangOutput;
@@ -269,10 +262,6 @@ namespace Compiler
 				else if(!strcmp(argv[i], ARG_PRINT_FIR))
 				{
 					Compiler::printFIR = true;
-				}
-				else if(!strcmp(argv[i], ARG_NO_LOWERCASE_BUILTIN))
-				{
-					Compiler::noLowercaseTypes = true;
 				}
 				else if(!strcmp(argv[i], ARG_COMPILE_ONLY))
 				{

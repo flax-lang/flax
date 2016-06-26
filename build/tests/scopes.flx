@@ -68,8 +68,8 @@ namespace n1
 	{
 		var m: Sheep
 
-		var tup: (String, Int)
-		func nest() -> (String, Int)
+		var tup: (String, int)
+		func nest() -> (String, int)
 		{
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
@@ -99,8 +99,8 @@ public ƒ doScopeTest(argv: String)
 	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
 
 
-	let x1: Int = OutsideEnum.Three
-	let x2: Int = Something.InsideEnum.Quadruple
+	let x1: int = OutsideEnum.Three
+	let x2: int = Something.InsideEnum.Quadruple
 	printf("x1: %d, x2: %d\n", x1, x2)
 
 
