@@ -7,7 +7,7 @@ import Foundation
 
 class CPTest
 {
-	var readwrite: Int
+	var readwrite: int
 	{
 		get { printf("READ\n"); return 31 }
 		set { printf("WRITE: %d\n", newValue); }
@@ -21,7 +21,7 @@ class CPTest
 
 public func doOperatorTupleTest()
 {
-	let g: Int8 = 100
+	let g: int8 = 100
 	printf("g is: %d\n", g)
 
 	let m = (fa(), fb())
