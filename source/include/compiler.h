@@ -103,7 +103,6 @@ namespace Compiler
 	bool getRunProgramWithJit();
 	bool getIsPositionIndependent();
 	bool getNoAutoGlobalConstructor();
-	bool getDisableLowercaseBuiltinTypes();
 
 
 	enum class Flag

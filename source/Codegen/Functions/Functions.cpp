@@ -152,7 +152,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
 	// bool premature = false;
-	if(this->decl->type.strType != "Void")
+	if(this->decl->type.strType != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
 		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, isGeneric ? this->decl->instantiatedGenericReturnType : 0);

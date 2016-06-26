@@ -65,7 +65,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->pin, defifunc->getName(), { fakeSelf }, "Void");
+		FuncDecl* fd = new FuncDecl(this->pin, defifunc->getName(), { fakeSelf }, VOID_TYPE_STRING);
 		cgi->addFunctionToScope({ defifunc, fd });
 
 
@@ -121,7 +121,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(auto m : this->members)
 			args.push_back(m);
 
-		FuncDecl* fd = new FuncDecl(this->pin, memifunc->getName(), args, "Void");
+		FuncDecl* fd = new FuncDecl(this->pin, memifunc->getName(), args, VOID_TYPE_STRING);
 		cgi->addFunctionToScope({ memifunc, fd });
 
 

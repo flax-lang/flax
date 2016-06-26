@@ -958,12 +958,12 @@ namespace Parser
 			ret = ctype->type.strType;
 			delete ctype;
 
-			if(ret == "Void")
+			if(ret == VOID_TYPE_STRING)
 				parserWarn("Explicitly specifying 'Void' as the return type is redundant");
 		}
 		else
 		{
-			ret = "Void";
+			ret = VOID_TYPE_STRING;
 		}
 
 		ps.skipNewline();
@@ -2880,7 +2880,7 @@ namespace Parser
 			ps.tokens.push_front(fake);
 			FuncDecl* fd = parseFuncDecl(ps);
 
-			if(fd->type.strType == "Void")
+			if(fd->type.strType == VOID_TYPE_STRING)
 				parserError("Subscript operator must return a value");
 
 			if(fd->params.size() == 0)

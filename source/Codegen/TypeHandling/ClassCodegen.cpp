@@ -68,7 +68,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
-		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, "Void");
+		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, VOID_TYPE_STRING);
 		cgi->addFunctionToScope({ defaultInitFunc, fd });
 	}
 
@@ -182,7 +182,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, VOID_TYPE_STRING);
 			Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -377,7 +377,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			// do getter.
 			BracedBlock* body = soo->setterBody;
-			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, "Void");
+			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, VOID_TYPE_STRING);
 
 			decl->parentClass = this;
 

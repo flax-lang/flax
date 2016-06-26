@@ -279,7 +279,7 @@ namespace SemAnalysis
 		}
 		else if(FuncDecl* decl = dynamic_cast<FuncDecl*>(expr))
 		{
-			if(decl->type.strType != "Void")
+			if(decl->type.strType != VOID_TYPE_STRING)
 			{
 				// info(decl, "creating type dep on %s\n", decl->type.strType.c_str());
 				createTypeDep(graph, dep, decl, decl->type.strType);
