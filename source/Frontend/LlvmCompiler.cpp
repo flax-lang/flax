@@ -15,6 +15,8 @@
 #include <deque>
 #include <vector>
 
+#include <unistd.h>
+
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/Host.h"
@@ -22,12 +24,19 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/CodeGen/MIRParser/MIRParser.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
@@ -98,7 +107,7 @@ namespace Compiler
 
 
 		for(auto s : data.fileList)
-			remove(s.c_str());
+			std::remove(s.c_str());
 
 
 		// cleanup
@@ -266,14 +275,10 @@ namespace Compiler
 
 	static void optimiseLlvmModule(llvm::Module* mod)
 	{
-		// llvm::FunctionPassManager fpm = llvm::FunctionPassManager(mod);
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
-			// Provide basic AliasAnalysis support for GVN.
-			// fpm.add(llvm::createBasicAliasAnalysisPass());
-
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
 			fpm.add(llvm::createInstructionCombiningPass());
 
@@ -326,6 +331,194 @@ namespace Compiler
 		}
 
 		fpm.run(*mod);
+	}
+
+
+
+
+
+
+
+	void writeBitcode(std::string oname, llvm::Module* module)
+	{
+		std::error_code e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+		llvm::WriteBitcodeToFile(module, rso);
+		rso.close();
+	}
+
+
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)
+	{
+		std::string tgt;
+		if(!getTarget().empty())
+			tgt = "-target " + getTarget();
+
+
+		if(!Compiler::getIsCompileOnly() && !module->getFunction("main"))
+		{
+			error(0, "No main() function, a program cannot be compiled.");
+		}
+
+
+
+		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
+
+		llvm::verifyModule(*module, &llvm::errs());
+
+
+		if(Compiler::getEmitLLVMOutput())
+		{
+			Compiler::writeBitcode(oname + ".bc", module);
+			auto it = std::find(filelist.begin(), filelist.end(), oname + ".bc");
+			iceAssert(it != filelist.end());
+
+			filelist.erase(it);
+		}
+		else
+		{
+			llvm::InitializeAllTargets();
+			llvm::InitializeAllTargetMCs();
+			llvm::InitializeAllAsmParsers();
+			llvm::InitializeAllAsmPrinters();
+
+			llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
+			llvm::initializeCore(*Registry);
+			llvm::initializeCodeGen(*Registry);
+
+			llvm::Triple targetTriple;
+			targetTriple.setTriple(Compiler::getTarget().empty() ? llvm::sys::getDefaultTargetTriple() : Compiler::getTarget());
+
+
+
+			std::string err_str;
+			const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
+			if(!theTarget)
+			{
+				error("error creating target: (wanted: '%s');\n"
+						"llvm error: %s", targetTriple.str().c_str(), err_str.c_str());
+			}
+
+
+			// get the mcmodel
+			llvm::CodeModel::Model codeModel;
+			if(Compiler::getCodeModel() == "kernel")
+			{
+				codeModel = llvm::CodeModel::Kernel;
+			}
+			else if(Compiler::getCodeModel() == "small")
+			{
+				codeModel = llvm::CodeModel::Small;
+			}
+			else if(Compiler::getCodeModel() == "medium")
+			{
+				codeModel = llvm::CodeModel::Medium;
+			}
+			else if(Compiler::getCodeModel() == "large")
+			{
+				codeModel = llvm::CodeModel::Large;
+			}
+			else if(Compiler::getCodeModel().empty())
+			{
+				codeModel = llvm::CodeModel::Default;
+			}
+			else
+			{
+				error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", Compiler::getCodeModel().c_str());
+			}
+
+
+			llvm::TargetOptions targetOptions;
+			if(Compiler::getIsPositionIndependent())
+				targetOptions.PositionIndependentExecutable = true;
+
+			std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(),
+				"", "", targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
+
+
+
+			std::error_code e;
+			auto outStream = llvm::make_unique<llvm::tool_output_file>(oname + ".o", e, llvm::sys::fs::OpenFlags::F_None);
+
+			module->setDataLayout(targetMachine->createDataLayout());
+
+			{
+				llvm::raw_pwrite_stream& rawStream = outStream->os();
+				llvm::legacy::PassManager pm = llvm::legacy::PassManager();
+
+				targetMachine->addPassesToEmitFile(pm, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+
+				pm.run(*module);
+
+				outStream->keep();
+			}
+
+			if(!Compiler::getIsCompileOnly())
+			{
+				const char** argv = new const char*[5];
+				argv[0] = std::string("/usr/bin/cc").c_str();
+				argv[1] = std::string("-o").c_str();
+				argv[2] = oname.c_str();
+				argv[3] = (oname + ".o").c_str();
+				argv[4] = nullptr;
+
+				int pid = fork();
+
+				if(pid == 0)
+				{
+					// in child, pid == 0.
+
+					execvp("cc", (char* const*) argv);
+					exit(1);
+				}
+			}
+
+
+
+
+
+
+			// LLVMTargetMachineEmitToFile((LLVMTargetMachineRef) tm, (LLVMModuleRef) module, (char*) (oname + ".s").c_str(),
+			// 	LLVMCodeGenFileType::LLVMAssemblyFile, &msg);
+		}
+
+
+
+
+
+
+
+		// char* inv = new char[1024];
+		// memset(inv, 0, 1024);
+		// {
+		// 	int opt = Compiler::getOptimisationLevel();
+		// 	const char* optLevel	= (Compiler::getOptimisationLevel() >= 0 ? ("-O" + std::to_string(opt)) : "").c_str();
+		// 	const char* mcmodel		= (getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel())).c_str();
+		// 	const char* isPic		= (getIsPositionIndependent() ? "-fPIC" : "");
+		// 	const char* target		= (tgt).c_str();
+		// 	const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
+
+		// 	snprintf(inv, 1024, "clang++ -Wno-override-module %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
+		// 		isPic, outputMode, oname.c_str(), oname.c_str());
+		// }
+
+		// std::string final = inv;
+
+		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
+		// that warning is not affected by any flags I can pass
+		// besides, LLVM itself should have caught everything.
+
+		// edit: fixed now with -Wno-override-module
+		// clang shouldn't output anything when it shouldn't,
+		// but we should still get linking errors etc.
+
+		// if(!Compiler::getPrintClangOutput())
+			// final += " &>/dev/null";
+
+		// system(final.c_str());
+		// delete[] inv;
 	}
 }
 

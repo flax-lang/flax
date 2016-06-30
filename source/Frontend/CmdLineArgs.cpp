@@ -40,6 +40,7 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_MCMODEL								"-mcmodel"
 #define ARG_PRINT_FIR							"-print-fir"
 #define ARG_PRINT_LLVMIR						"-print-lir"
+#define ARG_EMIT_LLVM_IR						"-emit-llvm"
 #define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
 #define ARG_JITPROGRAM							"-jit"
 #define ARG_RUNPROGRAM							"-run"
@@ -125,7 +126,7 @@ namespace Compiler
 	}
 
 	static std::string mcmodel;
-	std::string getMcModel()
+	std::string getCodeModel()
 	{
 		return mcmodel;
 	}
@@ -134,6 +135,12 @@ namespace Compiler
 	bool getPrintClangOutput()
 	{
 		return printClangOutput;
+	}
+
+	static bool emitLLVMOutput;
+	bool getEmitLLVMOutput()
+	{
+		return emitLLVMOutput;
 	}
 
 	static bool runProgramWithJit;

@@ -76,7 +76,6 @@ import tests.limits
 
 
 
-
 // name idea: mill
 
 // syntax thingy
@@ -135,6 +134,7 @@ struct FormatOptions
 }
 
 
+
 func parseFormatOptions(str: String) -> FormatOptions
 {
 	let colon		= Character(":")
@@ -155,7 +155,6 @@ func parseFormatOptions(str: String) -> FormatOptions
 	let pound		= Character("#")
 	let zero		= Character("0")
 	let period		= Character(".")
-
 
 	var ret: FormatOptions
 
