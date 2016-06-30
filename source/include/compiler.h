@@ -92,9 +92,10 @@ namespace Compiler
 
 	bool getDumpFir();
 	bool getDumpLlvm();
+	bool getEmitLLVMOutput();
 	std::string getTarget();
 	std::string getPrefix();
-	std::string getMcModel();
+	std::string getCodeModel();
 	std::string getSysroot();
 
 	bool getIsCompileOnly();
