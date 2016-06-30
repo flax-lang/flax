@@ -460,8 +460,8 @@ namespace Compiler
 				const char* argv[5];
 				argv[0] = "cc";
 				argv[1] = "-o";
-				argv[2] = "build/test";
-				argv[3] = "build/test.o";
+				argv[2] = oname.c_str();
+				argv[3] = (oname + ".o").c_str();
 				argv[4] = nullptr;
 
 
@@ -474,12 +474,12 @@ namespace Compiler
 					exit(1);
 				}
 
+				// todo: what the fuck?
 				// else
 				// {
 				// 	int stat = 0;
 				// 	waitpid(pid, &stat, 0);
 				// }
-
 
 				// std::remove((oname + ".o").c_str());
 			}
