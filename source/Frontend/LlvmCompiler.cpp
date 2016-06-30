@@ -457,68 +457,33 @@ namespace Compiler
 
 			if(!Compiler::getIsCompileOnly())
 			{
-				const char** argv = new const char*[5];
-				argv[0] = std::string("/usr/bin/cc").c_str();
-				argv[1] = std::string("-o").c_str();
-				argv[2] = oname.c_str();
-				argv[3] = (oname + ".o").c_str();
+				const char* argv[5];
+				argv[0] = "cc";
+				argv[1] = "-o";
+				argv[2] = "build/test";
+				argv[3] = "build/test.o";
 				argv[4] = nullptr;
 
-				int pid = fork();
 
+				pid_t pid = fork();
 				if(pid == 0)
 				{
 					// in child, pid == 0.
 
-					execvp("cc", (char* const*) argv);
+					execvp(argv[0], (char* const*) argv);
 					exit(1);
 				}
+
+				// else
+				// {
+				// 	int stat = 0;
+				// 	waitpid(pid, &stat, 0);
+				// }
+
+
+				// std::remove((oname + ".o").c_str());
 			}
-
-
-
-
-
-
-			// LLVMTargetMachineEmitToFile((LLVMTargetMachineRef) tm, (LLVMModuleRef) module, (char*) (oname + ".s").c_str(),
-			// 	LLVMCodeGenFileType::LLVMAssemblyFile, &msg);
 		}
-
-
-
-
-
-
-
-		// char* inv = new char[1024];
-		// memset(inv, 0, 1024);
-		// {
-		// 	int opt = Compiler::getOptimisationLevel();
-		// 	const char* optLevel	= (Compiler::getOptimisationLevel() >= 0 ? ("-O" + std::to_string(opt)) : "").c_str();
-		// 	const char* mcmodel		= (getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel())).c_str();
-		// 	const char* isPic		= (getIsPositionIndependent() ? "-fPIC" : "");
-		// 	const char* target		= (tgt).c_str();
-		// 	const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
-
-		// 	snprintf(inv, 1024, "clang++ -Wno-override-module %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
-		// 		isPic, outputMode, oname.c_str(), oname.c_str());
-		// }
-
-		// std::string final = inv;
-
-		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
-		// that warning is not affected by any flags I can pass
-		// besides, LLVM itself should have caught everything.
-
-		// edit: fixed now with -Wno-override-module
-		// clang shouldn't output anything when it shouldn't,
-		// but we should still get linking errors etc.
-
-		// if(!Compiler::getPrintClangOutput())
-			// final += " &>/dev/null";
-
-		// system(final.c_str());
-		// delete[] inv;
 	}
 }
 
