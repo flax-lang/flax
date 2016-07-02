@@ -476,6 +476,8 @@ namespace Compiler
 				else
 				{
 					// else we just do everything in-memory
+					// yea right, lol
+
 					char templ[] = "/tmp/fileXXXXXX";
 					int fd = mkstemp(templ);
 
