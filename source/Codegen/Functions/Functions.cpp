@@ -112,7 +112,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
 	for(size_t i = 0; i < func->getArgumentCount(); i++)
 	{
-		func->getArguments()[i]->setName(this->decl->params[i]->name);
+		func->getArguments()[i]->setName(this->decl->params[i]->ident.name);
 
 		if(isGeneric)
 		{
@@ -134,7 +134,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			ai = cgi->getImmutStackAllocValue(func->getArguments()[i]);
 		}
 
-		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+		cgi->addSymbol(this->decl->params[i]->ident.name, ai, this->decl->params[i]);
 		func->getArguments()[i]->setValue(ai);
 	}
 

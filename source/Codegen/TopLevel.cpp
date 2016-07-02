@@ -91,14 +91,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	else if(pass == 1)
 	{
 		// pass 1: setup extensions
-		for(Expr* e : expressions)
-		{
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+		// for(Expr* e : expressions)
+		// {
+		// 	ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
+		// 	NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-			if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
-			else if(ns)				ns->codegenPass(cgi, pass);
-		}
+		// 	if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
+		// 	else if(ns)				ns->codegenPass(cgi, pass);
+		// }
 
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.

@@ -85,7 +85,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->name];
+			int i = this->nameMap[var->ident.name];
 			iceAssert(i >= 0);
 
 			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
@@ -99,7 +99,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// mangle the variable name.
 
 			// a bit hacky, but still well-defined.
-			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
+			std::string varname = cgi->mangleMemberFunction(this, var->ident.name, std::deque<Ast::Expr*>());
 
 			// generate a global variable
 			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
@@ -164,10 +164,12 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		VarDecl* fakeSelf = new VarDecl(c->pin, "self", true);
 		fakeSelf->type = this->name + "*";
 
+		std::string lenstr = std::to_string(c->ident.name.length()) + c->ident.name;
+
 		if(c->getter)
 		{
 			std::deque<VarDecl*> params { fakeSelf };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->type.strType);
 			Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -182,7 +184,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			setterArg->type = c->type;
 
 			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, VOID_TYPE_STRING);
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, VOID_TYPE_STRING);
 			Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -567,7 +569,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->name];
+			int i = this->nameMap[var->ident.name];
 			iceAssert(i >= 0);
 
 			types[i] = cgi->getExprType(var);

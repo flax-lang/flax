@@ -253,6 +253,10 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 	};
 
+
+
+
+
 	struct VarRef : Expr
 	{
 		~VarRef();
@@ -262,18 +266,21 @@ namespace Ast
 		std::string name;
 	};
 
+
+
 	struct VarDecl : Expr
 	{
 		~VarDecl();
-		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
+		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut) { ident.name = name; }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab);
 
 		void inferType(Codegen::CodegenInstance* cgi);
 
-		std::string name;
-		std::string mangledName;
+		Identifier ident;
+		std::string _name;
+
 		bool immutable = false;
 
 		bool isStatic = false;
