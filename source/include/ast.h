@@ -41,6 +41,41 @@ namespace fir
 
 
 
+// todo: name overhaul
+// stop using std::string for names
+// it's stupid and inflexible
+// and *DO NOT* mangle function args during codegen to FIR
+// name mangling should only be done at one location: when creating the actual function.
+
+// note: debate moving FIR over to an identifier system like this
+// FIR should do the argument type mangling, anyway
+
+// here: store the scope and args (if applicable) of a function
+// for foo::bar::qux::some_function(a: int, b: string)
+// scope would contain { foo, bar, qux }
+// actualname would contain { some_function }
+// args would contain { int, string }
+
+struct Identifier
+{
+	std::string name;
+	std::deque<std::string> scope;
+
+	// note(UB): apparently using incomplete types in template params is "undefined behaviour"
+	// lol. we're using vector here and not deque because vector uses pointers, deque apparently does not
+	// and we all know we cannot have a member of type T inside the definition of T.
+	std::vector<Identifier> functionArguments;
+
+
+	std::string mangledName;
+};
+
+
+
+
+
+
+
 
 namespace Ast
 {

@@ -53,19 +53,6 @@ static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 	FunctionTree* ftree = p.first;
 	FunctionTree* pftree = p.second;
 
-
-	if(decl->name == "main")
-	{
-		if(!(decl->attribs & Attr_VisPublic))
-			warn(decl, "main() function should be declared as public, forcing");
-
-		if(decl->attribs & Attr_ForceMangle)
-			warn(decl, "main() function should not be name mangled, disabling @forcemangle");
-
-		decl->attribs |= Attr_VisPublic;
-		decl->isFFI = true;
-	}
-
 	ftree->funcs.push_back({ 0, decl });
 
 	if(decl->attribs & Attr_VisPublic)
@@ -197,10 +184,8 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
-
 	// this is getting quite out of hand.
-	// note: we're using <= to show that there are 6 passes.
+	// note: we're using <= to show that there are N passes.
 	// don't usually do this.
 	for(int pass = 0; pass <= 4; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);

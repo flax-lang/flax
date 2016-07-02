@@ -11,6 +11,7 @@ using namespace Codegen;
 
 Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	warn("lol");
 	return Result_t(0, 0);
 }
 
