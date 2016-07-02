@@ -33,7 +33,7 @@ namespace Operators
 		ComputedProperty* ret = 0;
 		for(auto cp : cls->cprops)
 		{
-			if(cp->name == vrname->name)
+			if(cp->ident.name == vrname->name)
 			{
 				// found
 				ret = cp;

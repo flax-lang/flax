@@ -586,7 +586,7 @@ namespace Codegen
 				bool found = false;
 				for(auto v : clone->vars)
 				{
-					if(v.second.second->mangledName == var.second.second->mangledName)
+					if(v.second.second->ident.mangledName == var.second.second->ident.mangledName)
 					{
 						found = true;
 						break;
@@ -605,11 +605,11 @@ namespace Codegen
 					iceAssert(this->module);
 					iceAssert(clone->vars.find(var.first) != clone->vars.end());
 
-					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->mangledName);
+					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident.mangledName);
 
 					if(potentialGV == 0)
 					{
-						auto gv = this->module->declareGlobalVariable(var.second.second->mangledName,
+						auto gv = this->module->declareGlobalVariable(var.second.second->ident.mangledName,
 							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
 
 						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
@@ -619,7 +619,8 @@ namespace Codegen
 						if(potentialGV->getType() != var.second.first->getType())
 						{
 							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
-								var.second.second->mangledName.c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
+								var.second.second->ident.mangledName.c_str(),
+								var.second.first->getType()->getPointerElementType()->str().c_str(),
 								potentialGV->getType()->getPointerElementType()->str().c_str());
 						}
 
@@ -2477,7 +2478,7 @@ namespace Codegen
 
 		if(ComputedProperty* cp = dynamic_cast<ComputedProperty*>(expr))
 		{
-			ComputedProperty* clone = new ComputedProperty(cp->pin, cp->name);
+			ComputedProperty* clone = new ComputedProperty(cp->pin, cp->ident.name);
 
 			// copy the rest.
 			clone->getterFunc		= (FuncDecl*) this->cloneAST(cp->getterFunc);

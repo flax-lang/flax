@@ -189,10 +189,10 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// do a check.
 			for(auto p : this->params)
 			{
-				if(p->name == "self")
+				if(p->ident.name == "self")
 					error(this, "Cannot have a parameter named 'self' in a method declaration");
 
-				else if(p->name == "super")
+				else if(p->ident.name == "super")
 					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 
@@ -214,6 +214,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else
 	{
 		bool alreadyMangled = false;
+
+		if(this->name == "main")
+			this->attribs |= Attr_NoMangle;
 
 		// if we're a normal function, or we're ffi and the type is c++, mangle it
 		// our mangling is compatible with c++ to reduce headache
