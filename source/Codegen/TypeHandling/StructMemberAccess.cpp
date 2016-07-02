@@ -321,7 +321,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				ComputedProperty* cprop = nullptr;
 				for(ComputedProperty* c : cls->cprops)
 				{
-					if(c->name == var->name)
+					if(c->ident.name == var->name)
 					{
 						cprop = c;
 						break;
@@ -358,7 +358,7 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	{
 		if(!cprop->setter)
 		{
-			error(var, "Property '%s' of type has no setter and is readonly", cprop->name.c_str());
+			error(var, "Property '%s' of type has no setter and is readonly", cprop->ident.name.c_str());
 		}
 
 		fir::Function* lcallee = 0;
@@ -723,10 +723,10 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				for(auto v : cls->members)
 				{
-					if(v->isStatic && v->name == vr->name)
+					if(v->isStatic && v->ident.name == vr->name)
 					{
 						fir::Type* ltype = this->getExprType(v);
-						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) }, curFType };
+						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
 					}
 				}
 			}
@@ -834,7 +834,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto c : cls->cprops)
 		{
-			if(c->name == var->name)
+			if(c->ident.name == var->name)
 			{
 				found = c;
 				break;
@@ -846,7 +846,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto m : str->members)
 		{
-			if(m->name == var->name)
+			if(m->ident.name == var->name)
 			{
 				found = m;
 				break;

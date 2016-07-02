@@ -80,7 +80,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// not supported in structs
 			iceAssert(!var->isStatic);
 
-			int i = this->nameMap[var->name];
+			int i = this->nameMap[var->ident.name];
 			iceAssert(i >= 0);
 
 			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
@@ -240,7 +240,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->name];
+			int i = this->nameMap[var->ident.name];
 			iceAssert(i >= 0);
 
 			types[i] = cgi->getExprType(var);
