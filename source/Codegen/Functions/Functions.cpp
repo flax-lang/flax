@@ -39,8 +39,10 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(this->didCodegen & !extra)
-		error(this, "Tried to generate function twice (%s)", this->decl->mangledName.c_str());
+	static bool didRecurse = false;
+
+	if(this->didCodegen && !extra)
+		error(this, "Tried to generate function twice (%s)", this->decl->ident.str().c_str());
 
 	this->didCodegen = true;
 
@@ -64,7 +66,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		func = cgi->module->getFunction(this->decl->mangledName);
+		bool notMangling = (this->decl->attribs & Attr_NoMangle || this->decl->isFFI);
+		func = notMangling ? cgi->module->getFunction(this->decl->ident.name) : cgi->module->getFunction(this->decl->ident);
+
 		if(!func)
 		{
 			this->didCodegen = false;
@@ -79,13 +83,18 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
+				if(didRecurse) error(this, "Failed to generate function %s", this->decl->ident.str().c_str());
+
 				// generate it.
 				this->decl->codegen(cgi);
 				this->didCodegen = false;
 
+				didRecurse = true;
 				return this->codegen(cgi);	// recursively.
 			}
 		}
+
+		didRecurse = false;
 	}
 
 
@@ -104,7 +113,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// and fuck shit up big time
 	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
 
-	fir::IRBlock* irblock = cgi->builder.addNewBlockInFunction(this->decl->name + "_entry", func);
+	fir::IRBlock* irblock = cgi->builder.addNewBlockInFunction(this->decl->ident.name + "_entry", func);
 	cgi->builder.setCurrentBlock(irblock);
 
 
@@ -112,7 +121,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
 	for(size_t i = 0; i < func->getArgumentCount(); i++)
 	{
-		func->getArguments()[i]->setName(this->decl->params[i]->name);
+		func->getArguments()[i]->setName(this->decl->params[i]->ident.name);
 
 		if(isGeneric)
 		{
@@ -134,7 +143,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			ai = cgi->getImmutStackAllocValue(func->getArguments()[i]);
 		}
 
-		cgi->addSymbol(this->decl->params[i]->name, ai, this->decl->params[i]);
+		cgi->addSymbol(this->decl->params[i]->ident.name, ai, this->decl->params[i]);
 		func->getArguments()[i]->setValue(ai);
 	}
 

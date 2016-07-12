@@ -14,8 +14,7 @@
 
 #include <deque>
 #include <vector>
-
-#include <unistd.h>
+#include <fstream>
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
@@ -48,6 +47,14 @@
 
 #include "compiler.h"
 
+#include <stdio.h>
+#include <spawn.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 
 namespace Compiler
 {
@@ -58,6 +65,7 @@ namespace Compiler
 	static void runProgramWithJit(llvm::Module* mod);
 	static void compileBinary(std::string filename, std::string outname, CompiledData data, llvm::Module* mod);
 
+	extern "C" char** environ;
 
 	void compileToLlvm(std::string filename, std::string outname, CompiledData data)
 	{
@@ -365,7 +373,6 @@ namespace Compiler
 
 
 		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
-
 		llvm::verifyModule(*module, &llvm::errs());
 
 
@@ -431,94 +438,80 @@ namespace Compiler
 
 
 			llvm::TargetOptions targetOptions;
+
 			if(Compiler::getIsPositionIndependent())
 				targetOptions.PositionIndependentExecutable = true;
 
-			std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(),
-				"", "", targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
+
+			std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
+				targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
 
 
 
-			std::error_code e;
-			auto outStream = llvm::make_unique<llvm::tool_output_file>(oname + ".o", e, llvm::sys::fs::OpenFlags::F_None);
 
 			module->setDataLayout(targetMachine->createDataLayout());
-
 			{
-				llvm::raw_pwrite_stream& rawStream = outStream->os();
+				llvm::SmallVector<char, 0> memoryBuffer;
+				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
+				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
+
+
 				llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-
-				targetMachine->addPassesToEmitFile(pm, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
-
+				targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
 				pm.run(*module);
 
-				outStream->keep();
-			}
+				// flush and kill it.
+				rawStream->flush();
 
-			if(!Compiler::getIsCompileOnly())
-			{
-				const char** argv = new const char*[5];
-				argv[0] = std::string("/usr/bin/cc").c_str();
-				argv[1] = std::string("-o").c_str();
-				argv[2] = oname.c_str();
-				argv[3] = (oname + ".o").c_str();
-				argv[4] = nullptr;
 
-				int pid = fork();
-
-				if(pid == 0)
+				if(Compiler::getIsCompileOnly())
 				{
-					// in child, pid == 0.
+					// if we are compile-only, we need to write the .o file
 
-					execvp("cc", (char* const*) argv);
-					exit(1);
+					// now memoryBuffer should contain the .object file
+					std::ofstream objectOutput(oname + ".o", std::ios::binary | std::ios::out);
+					objectOutput.write(memoryBuffer.data(), memoryBuffer.size_in_bytes());
+					objectOutput.close();
+				}
+				else
+				{
+					// else we just do everything in-memory
+					// yea right, lol
+
+					char templ[] = "/tmp/fileXXXXXX";
+					int fd = mkstemp(templ);
+
+					write(fd, memoryBuffer.data(), memoryBuffer.size_in_bytes());
+
+					const char* argv[5];
+
+					argv[0] = "cc";
+					argv[1] = "-o";
+					argv[2] = oname.c_str();
+					argv[3] = templ;
+					argv[4] = 0;
+
+
+					pid_t pid = fork();
+					if(pid == 0)
+					{
+						// in child, pid == 0.
+
+						execvp(argv[0], (char* const*) argv);
+						exit(1);
+					}
+					else
+					{
+						// wait for child to finish, then we can continue cleanup
+						int stat = 0;
+						waitpid(pid, &stat, 0);
+					}
+
+					// delete the temp file
+					std::remove(templ);
 				}
 			}
-
-
-
-
-
-
-			// LLVMTargetMachineEmitToFile((LLVMTargetMachineRef) tm, (LLVMModuleRef) module, (char*) (oname + ".s").c_str(),
-			// 	LLVMCodeGenFileType::LLVMAssemblyFile, &msg);
 		}
-
-
-
-
-
-
-
-		// char* inv = new char[1024];
-		// memset(inv, 0, 1024);
-		// {
-		// 	int opt = Compiler::getOptimisationLevel();
-		// 	const char* optLevel	= (Compiler::getOptimisationLevel() >= 0 ? ("-O" + std::to_string(opt)) : "").c_str();
-		// 	const char* mcmodel		= (getMcModel().empty() ? "" : ("-mcmodel=" + getMcModel())).c_str();
-		// 	const char* isPic		= (getIsPositionIndependent() ? "-fPIC" : "");
-		// 	const char* target		= (tgt).c_str();
-		// 	const char* outputMode	= (Compiler::getIsCompileOnly() ? "-c" : "");
-
-		// 	snprintf(inv, 1024, "clang++ -Wno-override-module %s %s %s %s %s -o '%s' '%s.bc'", optLevel, mcmodel, target,
-		// 		isPic, outputMode, oname.c_str(), oname.c_str());
-		// }
-
-		// std::string final = inv;
-
-		// todo: clang bug, http://clang.llvm.org/doxygen/CodeGenAction_8cpp_source.html:714
-		// that warning is not affected by any flags I can pass
-		// besides, LLVM itself should have caught everything.
-
-		// edit: fixed now with -Wno-override-module
-		// clang shouldn't output anything when it shouldn't,
-		// but we should still get linking errors etc.
-
-		// if(!Compiler::getPrintClangOutput())
-			// final += " &>/dev/null";
-
-		// system(final.c_str());
-		// delete[] inv;
 	}
 }
 

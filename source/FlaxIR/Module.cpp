@@ -58,6 +58,56 @@ namespace fir
 		return this->globals[name];
 	}
 
+	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	{
+		return this->createGlobalVariable(id.str(), type, initVal, isImmut, linkage);
+	}
+
+	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage)
+	{
+		return this->createGlobalVariable(id.str(), type, isImmut, linkage);
+	}
+
+	GlobalVariable* Module::declareGlobalVariable(Identifier id, Type* type, bool isImmut)
+	{
+		return this->declareGlobalVariable(id.str(), type, isImmut);
+	}
+
+	GlobalVariable* Module::tryGetGlobalVariable(Identifier id)
+	{
+		return this->tryGetGlobalVariable(id.str());
+	}
+
+	GlobalVariable* Module::getGlobalVariable(Identifier id)
+	{
+		return this->getGlobalVariable(id.str());
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -148,6 +198,54 @@ namespace fir
 
 		return this->functions[name];
 	}
+
+
+
+	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	{
+		this->declareFunction(id.str(), ftype);
+	}
+
+	void Module::deleteFunction(Identifier id)
+	{
+		this->deleteFunction(id.str());
+	}
+
+	Function* Module::getFunction(Identifier id)
+	{
+		return this->getFunction(id.str());
+	}
+
+	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
+	{
+		return this->getOrCreateFunction(id.str(), ftype, linkage);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{
