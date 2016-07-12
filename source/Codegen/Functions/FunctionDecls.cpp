@@ -218,6 +218,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(this->name == "main")
 			this->attribs |= Attr_NoMangle;
 
+
+
+
 		// if we're a normal function, or we're ffi and the type is c++, mangle it
 		// our mangling is compatible with c++ to reduce headache
 
