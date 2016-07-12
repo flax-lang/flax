@@ -928,14 +928,14 @@ namespace Parser
 			}
 
 
-			if(!nameCheck[v->name])
+			if(!nameCheck[v->ident.name])
 			{
 				params.push_back(v);
-				nameCheck[v->name] = v;
+				nameCheck[v->ident.name] = v;
 			}
 			else
 			{
-				parserError("Redeclared variable '%s' in argument list", v->name.c_str());
+				parserError("Redeclared variable '%s' in argument list", v->ident.name.c_str());
 			}
 
 
@@ -1003,7 +1003,6 @@ namespace Parser
 			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
 
 			if(lftype == "c")			ffitype = FFIType::C;
-			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
 			else						parserError("Unknown FFI type '%s'", ftype.text.c_str());
 
 			if(ps.eat().type != TType::RParen)
@@ -1477,7 +1476,7 @@ namespace Parser
 			}
 			else if(ps.front().type == TType::LBrace)
 			{
-				return parseComputedProperty(ps, v->name, v->type.strType, v->attribs, tok_id);
+				return parseComputedProperty(ps, v->ident.name, v->type.strType, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
@@ -1501,7 +1500,7 @@ namespace Parser
 
 				v->initVal = parseExpr(ps);
 				if(!v->initVal)
-					parserError("Invalid initialiser for variable '%s'", v->name.c_str());
+					parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
 			}
 			else if(immutable)
 			{
@@ -2121,15 +2120,15 @@ namespace Parser
 		{
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(str->nameMap.find(var->name) != str->nameMap.end())
-					parserError("Duplicate member '%s'", var->name.c_str());
+				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
+					parserError("Duplicate member '%s'", var->ident.name.c_str());
 
 				str->members.push_back(var);
 
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					str->nameMap[var->name] = i;
+					str->nameMap[var->ident.name] = i;
 					i++;
 				}
 				else
@@ -2208,23 +2207,23 @@ namespace Parser
 			{
 				for(ComputedProperty* c : cls->cprops)
 				{
-					if(c->name == cprop->name)
-						parserError("Duplicate member '%s'", cprop->name.c_str());
+					if(c->ident.name == cprop->ident.name)
+						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
 				}
 
 				cls->cprops.push_back(cprop);
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(cls->nameMap.find(var->name) != cls->nameMap.end())
-					parserError("Duplicate member '%s'", var->name.c_str());
+				if(cls->nameMap.find(var->ident.name) != cls->nameMap.end())
+					parserError("Duplicate member '%s'", var->ident.name.c_str());
 
 				cls->members.push_back(var);
 
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					cls->nameMap[var->name] = i;
+					cls->nameMap[var->ident.name] = i;
 					i++;
 				}
 			}
@@ -2306,8 +2305,8 @@ namespace Parser
 			{
 				for(ComputedProperty* c : ext->cprops)
 				{
-					if(c->name == cprop->name)
-						parserError("Duplicate member '%s'", cprop->name.c_str());
+					if(c->ident.name == cprop->ident.name)
+						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
 				}
 
 				ext->cprops.push_back(cprop);

@@ -298,7 +298,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			for(auto f : cls->funcs)
 			{
 				FuncPair_t fp = { cls->lfuncs[i], f->decl };
-				if(f->decl->name == fc->name && f->decl->isStatic)
+				if(f->decl->ident.name == fc->name && f->decl->isStatic)
 					candidates.push_back(fp);
 
 				i++;
@@ -321,7 +321,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				ComputedProperty* cprop = nullptr;
 				for(ComputedProperty* c : cls->cprops)
 				{
-					if(c->name == var->name)
+					if(c->ident.name == var->name)
 					{
 						cprop = c;
 						break;
@@ -358,23 +358,11 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	{
 		if(!cprop->setter)
 		{
-			error(var, "Property '%s' of type has no setter and is readonly", cprop->name.c_str());
+			error(var, "Property '%s' of type has no setter and is readonly", cprop->ident.name.c_str());
 		}
 
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
-			if(lf->getName() == cprop->setterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!");
-
+		fir::Function* lcallee = cprop->setterFFn;
+		iceAssert(lcallee);
 
 		std::vector<fir::Value*> args { ref, _rhs };
 
@@ -394,18 +382,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	}
 	else
 	{
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			if(lf->getName() == cprop->getterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!???");
+		fir::Function* lcallee = cprop->getterFFn;
+		iceAssert(lcallee);
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<fir::Value*> args { ref };
@@ -453,21 +431,13 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 
 	if(callee->decl->isStatic != isStaticFunctionCall)
 	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
 	}
 
 
 
 
-	fir::Function* lcallee = 0;
-	for(fir::Function* lf : cls->lfuncs)
-	{
-		if(lf->getName() == callee->decl->mangledName)
-		{
-			lcallee = lf;
-			break;
-		}
-	}
+	fir::Function* lcallee = cls->functionMap[callee];
 
 	if(!lcallee)
 		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
@@ -626,7 +596,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			std::deque<FuncPair_t> flist;
 			for(size_t i = 0; i < curType->funcs.size(); i++)
 			{
-				if(curType->funcs[i]->decl->name == fc->name)
+				if(curType->funcs[i]->decl->ident.name == fc->name)
 					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
 			}
 
@@ -723,10 +693,10 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				for(auto v : cls->members)
 				{
-					if(v->isStatic && v->name == vr->name)
+					if(v->isStatic && v->ident.name == vr->name)
 					{
 						fir::Type* ltype = this->getExprType(v);
-						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) }, curFType };
+						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
 					}
 				}
 			}
@@ -795,7 +765,7 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 	std::deque<FuncPair_t> fns;
 	for(auto f : cls->funcs)
 	{
-		if(f->decl->name == fc->name)
+		if(f->decl->ident.name == fc->name)
 			fns.push_back({ 0, f->decl });
 	}
 
@@ -809,8 +779,8 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 		HighlightOptions ops = std::get<2>(tup);
 
 		ops.caret = ma->pin;
-		// ops.caret.col--;
-		// ops.underlines.front().col--;
+		ops.caret.col--;
+		ops.underlines.front().col--;
 
 		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
 			cls->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
@@ -834,7 +804,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto c : cls->cprops)
 		{
-			if(c->name == var->name)
+			if(c->ident.name == var->name)
 			{
 				found = c;
 				break;
@@ -846,7 +816,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto m : str->members)
 		{
-			if(m->name == var->name)
+			if(m->ident.name == var->name)
 			{
 				found = m;
 				break;

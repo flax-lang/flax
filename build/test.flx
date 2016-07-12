@@ -203,13 +203,13 @@ extension String
 
 public func main(argc: int32, argv: int8**) -> int
 {
-	// runTests()
+	runTests()
 
 
 	println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 
 
-	printf("pi = %.16lf, %d\n", Math.π(), 31)
+	printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
 	println("%b", "a" != "b")
 

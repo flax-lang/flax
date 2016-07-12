@@ -5,3 +5,10 @@
 import IntegerLimits
 import String
 
+extension String
+{
+	func foo() -> int64
+	{
+		return 67
+	}
+}
