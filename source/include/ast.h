@@ -58,8 +58,16 @@ namespace fir
 
 struct Identifier
 {
+	enum class IdKind
+	{
+		Variable,
+		Function
+	};
+
+
 	std::string name;
 	std::deque<std::string> scope;
+	IdKind kind;
 
 	// note(UB): apparently using incomplete types in template params is "undefined behaviour"
 	// lol. we're using vector here and not deque because vector uses pointers, deque apparently does not
@@ -289,7 +297,12 @@ namespace Ast
 	struct VarDecl : Expr
 	{
 		~VarDecl();
-		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut) { ident.name = name; }
+		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
+		{
+			ident.name = name;
+			ident.kind = Identifier::IdKind::Variable;
+		}
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab);

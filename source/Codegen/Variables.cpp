@@ -278,7 +278,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		ai = cgi->module->createGlobalVariable(this->ident.str(), this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+		ai = cgi->module->createGlobalVariable(this->ident, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
 			this->immutable, (this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();
