@@ -298,7 +298,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			for(auto f : cls->funcs)
 			{
 				FuncPair_t fp = { cls->lfuncs[i], f->decl };
-				if(f->decl->name == fc->name && f->decl->isStatic)
+				if(f->decl->ident.name == fc->name && f->decl->isStatic)
 					candidates.push_back(fp);
 
 				i++;
@@ -361,20 +361,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 			error(var, "Property '%s' of type has no setter and is readonly", cprop->ident.name.c_str());
 		}
 
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
-			if(lf->getName() == cprop->setterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!");
-
+		fir::Function* lcallee = cprop->setterFFn;
+		iceAssert(lcallee);
 
 		std::vector<fir::Value*> args { ref, _rhs };
 
@@ -394,18 +382,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	}
 	else
 	{
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			if(lf->getName() == cprop->getterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!???");
+		fir::Function* lcallee = cprop->getterFFn;
+		iceAssert(lcallee);
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<fir::Value*> args { ref };
@@ -453,21 +431,13 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 
 	if(callee->decl->isStatic != isStaticFunctionCall)
 	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
 	}
 
 
 
 
-	fir::Function* lcallee = 0;
-	for(fir::Function* lf : cls->lfuncs)
-	{
-		if(lf->getName() == callee->decl->mangledName)
-		{
-			lcallee = lf;
-			break;
-		}
-	}
+	fir::Function* lcallee = cls->functionMap[callee];
 
 	if(!lcallee)
 		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
@@ -626,7 +596,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			std::deque<FuncPair_t> flist;
 			for(size_t i = 0; i < curType->funcs.size(); i++)
 			{
-				if(curType->funcs[i]->decl->name == fc->name)
+				if(curType->funcs[i]->decl->ident.name == fc->name)
 					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
 			}
 
@@ -795,7 +765,7 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 	std::deque<FuncPair_t> fns;
 	for(auto f : cls->funcs)
 	{
-		if(f->decl->name == fc->name)
+		if(f->decl->ident.name == fc->name)
 			fns.push_back({ 0, f->decl });
 	}
 

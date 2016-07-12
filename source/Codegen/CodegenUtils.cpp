@@ -19,6 +19,36 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+std::string Identifier::str() const
+{
+	std::string ret;
+
+	for(auto s : scope)
+		ret += s + ".";
+
+	ret += name;
+
+	if(this->kind == IdKind::Function)
+	{
+		for(auto t : this->functionArguments)
+			ret += "_" + t->str();
+	}
+
+	return ret;
+}
+
+
+bool Identifier::operator == (const Identifier& other) const
+{
+	return this->name == other.name
+		&& this->scope == other.scope
+		&& this->functionArguments == other.functionArguments;
+}
+
+
+
+
 namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
@@ -451,7 +481,7 @@ namespace Codegen
 
 			// note: generic functions are not instantiated
 			if(decl->genericTypes.size() == 0)
-				error(decl, "!func (%s)", decl->mangledName.c_str());
+				error(decl, "!func (%s)", decl->ident.str().c_str());
 		}
 
 		return ret;
@@ -467,7 +497,7 @@ namespace Codegen
 			for(auto f : clone->funcs)
 			{
 				if((f.first && pair.first && (f.first == pair.first))
-					|| (f.second && pair.second && (f.second->mangledName == pair.second->mangledName)))
+					|| (f.second && pair.second && (f.second->ident == pair.second->ident)))
 				{
 					existing = true;
 					break;
@@ -880,7 +910,7 @@ namespace Codegen
 					return _isDupe(f, fp);
 				};
 
-				if((f.second ? f.second->name : f.first->getName()) == basename)
+				if((f.second ? f.second->ident.name : f.first->getName()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -898,7 +928,7 @@ namespace Codegen
 					return _isDupe({ 0, f.first }, fp);
 				};
 
-				if(f.first->name == basename)
+				if(f.first->ident.name == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -961,7 +991,7 @@ namespace Codegen
 			int distance = 0;
 
 			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
-			if((c.second ? c.second->name : basename) == basename
+			if((c.second ? c.second->ident.name : basename) == basename
 				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
 			{
 				finals.push_back({ c, distance });
@@ -1187,7 +1217,7 @@ namespace Codegen
 
 		for(auto f : fps)
 		{
-			iceAssert(f.second->name == name);
+			iceAssert(f.second->ident.name == name);
 			if(f.second->isFFI)
 			{
 				fp = &f;
@@ -1621,7 +1651,7 @@ namespace Codegen
 		std::deque<Expr*> es;
 		for(auto p : decl->params) es.push_back(p);
 
-		Resolved_t res = this->resolveFunction(decl, decl->name, es, true);
+		Resolved_t res = this->resolveFunction(decl, decl->ident.name, es, true);
 		if(res.resolved && res.t.first != 0)
 		{
 			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.second).c_str());
@@ -1837,7 +1867,7 @@ namespace Codegen
 			std::deque<Expr*> es;
 			for(auto p : candidate->params) es.push_back(p);
 
-			Resolved_t rt = this->resolveFunction(fc, candidate->name, es, true); // exact match
+			Resolved_t rt = this->resolveFunction(fc, candidate->ident.name, es, true); // exact match
 			iceAssert(rt.resolved);
 
 			FuncPair_t fp = rt.t;
@@ -2426,7 +2456,7 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->name.c_str(),
+			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
 				func->decl->type.strType.c_str(), this->printAst(func->decl).c_str());
 		}
 		else if(isVoid)
@@ -2459,7 +2489,7 @@ namespace Codegen
 
 		if(!ret)
 		{
-			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->name.c_str(),
+			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
 				this->getExprType(func)->str().c_str(), this->getExprType(final)->str().c_str());
 		}
 
@@ -2473,6 +2503,7 @@ namespace Codegen
 
 	Expr* CodegenInstance::cloneAST(Expr* expr)
 	{
+		#if 0
 		if(expr == 0) return 0;
 
 		if(ComputedProperty* cp = dynamic_cast<ComputedProperty*>(expr))
@@ -2510,7 +2541,7 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			FuncDecl* clone = new FuncDecl(fd->pin, fd->name, fd->params, fd->type.strType);
+			FuncDecl* clone = new FuncDecl(fd->pin, fd->ident.name, fd->params, fd->type.strType);
 
 			// copy the rest
 			clone->mangledName						= fd->mangledName;
@@ -2528,6 +2559,10 @@ namespace Codegen
 		{
 			error(expr, "cannot clone, enotsup (%s)", typeid(*expr).name());
 		}
+
+		#endif
+
+		error("cannot clone AST");
 	}
 
 
