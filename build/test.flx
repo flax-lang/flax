@@ -203,7 +203,7 @@ extension String
 
 public func main(argc: int32, argv: int8**) -> int
 {
-	// runTests()
+	runTests()
 
 
 	println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")

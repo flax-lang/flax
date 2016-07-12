@@ -34,6 +34,14 @@ namespace fir
 		GlobalVariable* createGlobalVariable(std::string name, Type* type, bool isImmut, LinkageType linkage);
 		GlobalVariable* declareGlobalVariable(std::string name, Type* type, bool isImmut);
 
+
+		GlobalVariable* createGlobalVariable(Identifier id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
+		GlobalVariable* createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage);
+		GlobalVariable* declareGlobalVariable(Identifier id, Type* type, bool isImmut);
+		GlobalVariable* tryGetGlobalVariable(Identifier id);
+		GlobalVariable* getGlobalVariable(Identifier id);
+
+
 		GlobalVariable* createGlobalString(std::string str);
 
 		void deleteGlobalVariable(std::string name);

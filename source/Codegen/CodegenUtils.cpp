@@ -586,7 +586,7 @@ namespace Codegen
 				bool found = false;
 				for(auto v : clone->vars)
 				{
-					if(v.second.second->ident.mangledName == var.second.second->ident.mangledName)
+					if(v.second.second->ident == var.second.second->ident)
 					{
 						found = true;
 						break;
@@ -605,11 +605,11 @@ namespace Codegen
 					iceAssert(this->module);
 					iceAssert(clone->vars.find(var.first) != clone->vars.end());
 
-					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident.mangledName);
+					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident);
 
 					if(potentialGV == 0)
 					{
-						auto gv = this->module->declareGlobalVariable(var.second.second->ident.mangledName,
+						auto gv = this->module->declareGlobalVariable(var.second.second->ident,
 							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
 
 						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
@@ -619,8 +619,7 @@ namespace Codegen
 						if(potentialGV->getType() != var.second.first->getType())
 						{
 							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
-								var.second.second->ident.mangledName.c_str(),
-								var.second.first->getType()->getPointerElementType()->str().c_str(),
+								var.second.second->ident.str().c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
 								potentialGV->getType()->getPointerElementType()->str().c_str());
 						}
 

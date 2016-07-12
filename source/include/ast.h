@@ -66,8 +66,26 @@ struct Identifier
 	// and we all know we cannot have a member of type T inside the definition of T.
 	std::vector<Identifier> functionArguments;
 
+	std::string mangled;
 
-	std::string mangledName;
+
+	bool operator == (const Identifier& other) const
+	{
+		return this->name == other.name
+			&& this->scope == other.scope
+			&& this->functionArguments == other.functionArguments;
+	}
+
+	std::string str() const
+	{
+		std::string ret;
+
+		for(auto s : scope)
+			ret += s + ".";
+
+		ret += name;
+		return ret;
+	}
 };
 
 
