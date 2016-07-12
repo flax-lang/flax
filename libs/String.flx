@@ -197,14 +197,6 @@ public class String
 
 
 
-	func lol() -> int64
-	{
-		return 5912;
-	}
-
-
-
-
 
 	// operators
 

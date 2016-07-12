@@ -68,6 +68,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			if(!rt.resolved && !target)
 			{
+				// label
 				failedToFind:
 
 				GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
@@ -81,6 +82,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// printf("expediting function call to %s\n", this->name.c_str());
 
 				rt = cgi->resolveFunction(this, this->name, this->params);
+
 				if(!rt.resolved) error("nani???");
 				if(rt.t.first == 0) goto failedToFind;
 			}

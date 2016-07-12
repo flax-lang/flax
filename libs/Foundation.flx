@@ -5,7 +5,6 @@
 import Core
 import Format
 import LibCInterface
-import IntegerLimits
 
 public func min(a: int, b: int) -> int
 {

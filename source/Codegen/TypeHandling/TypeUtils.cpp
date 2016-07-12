@@ -81,7 +81,7 @@ namespace Codegen
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
-						error(expr, "Invalid variable declaration for %s!", decl->name.c_str());
+						error(expr, "Invalid variable declaration for %s!", decl->ident.name.c_str());
 					}
 
 					iceAssert(decl->inferredLType);
@@ -234,12 +234,12 @@ namespace Codegen
 					{
 						for(VarDecl* mem : cls->members)
 						{
-							if(mem->name == memberVr->name)
+							if(mem->ident.name == memberVr->name)
 								return this->getExprType(mem);
 						}
 						for(ComputedProperty* c : cls->cprops)
 						{
-							if(c->name == memberVr->name)
+							if(c->ident.name == memberVr->name)
 								return this->getExprTypeFromStringType(c, c->type, allowFail);
 						}
 					}
@@ -260,7 +260,7 @@ namespace Codegen
 					{
 						for(VarDecl* mem : str->members)
 						{
-							if(mem->name == memberVr->name)
+							if(mem->ident.name == memberVr->name)
 								return this->getExprType(mem);
 						}
 					}
@@ -870,7 +870,7 @@ namespace Codegen
 
 	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
-		std::string sptr = std::string("*");
+		std::string sptr = "*";
 		size_t ptrStrLength = sptr.length();
 
 		int tmp = 0;
@@ -1425,11 +1425,10 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			std::string str = "ƒ " + fd->name + "(";
+			std::string str = "ƒ " + fd->ident.name + "(";
 			for(auto p : fd->params)
 			{
-				str += p->name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
-				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
+				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -1446,7 +1445,7 @@ namespace Codegen
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
-			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": "
+			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
 				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
