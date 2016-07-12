@@ -199,6 +199,54 @@ namespace fir
 		return this->functions[name];
 	}
 
+
+
+	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	{
+		this->declareFunction(id.str(), ftype);
+	}
+
+	void Module::deleteFunction(Identifier id)
+	{
+		this->deleteFunction(id.str());
+	}
+
+	Function* Module::getFunction(Identifier id)
+	{
+		return this->getFunction(id.str());
+	}
+
+	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
+	{
+		return this->getOrCreateFunction(id.str(), ftype, linkage);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{
 		if(this->globalStrings.find(str) != this->globalStrings.end())

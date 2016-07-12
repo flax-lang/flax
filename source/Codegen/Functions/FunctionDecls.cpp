@@ -40,7 +40,8 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 }
 
 
-static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype)
+static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::deque<fir::Type*> argtypes, fir::Type* rettype,
+	std::string genericMangling)
 {
 	fir::FunctionType* ft = 0;
 
@@ -58,20 +59,34 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	// check for redef
 	fir::Function* func = nullptr;
-	if(cgi->getType(fd->mangledName) != nullptr)
+	if(false /*cgi->getType(fd->mangledName) != nullptr*/)
 	{
-		GenError::duplicateSymbol(cgi, fd, fd->name + " (symbol previously declared as a type)", SymbolType::Generic);
+		GenError::duplicateSymbol(cgi, fd, fd->ident.str() + " (symbol previously declared as a type)", SymbolType::Generic);
 	}
-	else if(fd->genericTypes.size() == 0 && cgi->module->getFunction(fd->mangledName) != 0)
+	else if(fd->genericTypes.size() == 0 && cgi->module->getFunction(fd->ident) != 0)
 	{
 		if(!fd->isFFI)
 		{
-			GenError::duplicateSymbol(cgi, fd, fd->name, SymbolType::Function);
+			GenError::duplicateSymbol(cgi, fd, fd->ident.str(), SymbolType::Function);
 		}
 	}
 	else
 	{
-		func = cgi->module->getOrCreateFunction(fd->mangledName, ft, linkageType);
+		if(genericMangling.empty())
+		{
+			iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
+			func = cgi->module->getOrCreateFunction(fd->ident, ft, linkageType);
+		}
+		else
+		{
+			func = cgi->module->getOrCreateFunction(genericMangling, ft, linkageType);
+		}
+
+
+		// not generic -- add the args. generic funcs can't have this.
+		if(genericMangling.empty())
+			fd->ident.functionArguments = ft->getArgumentTypes();
+
 
 		if(fd->attribs & Attr_VisPublic)
 			cgi->addPublicFunc({ func, fd });
@@ -91,7 +106,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 {
 	iceAssert(types.size() == this->genericTypes.size());
 
-	std::vector<fir::Type*> argtypes;
+	std::deque<fir::Type*> argtypes;
 	for(size_t i = 0; i < this->params.size(); i++)
 	{
 		VarDecl* v = this->params[i];
@@ -116,8 +131,8 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		lret = types[this->type.strType];
 	}
 
-	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
-	return generateActualFuncDecl(cgi, this, argtypes, lret);
+	std::string genericMangled = cgi->mangleGenericFunctionName("" /*this->ident.name*/, this->params);
+	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled);
 }
 
 
@@ -133,6 +148,10 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(this->isCStyleVarArg && (!this->isFFI || this->ffiType != FFIType::C))
 		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
+
+
+	if(this->ident.scope.empty())
+		this->ident.scope = cgi->getFullScope();
 
 
 	if(this->genericTypes.size() > 0)
@@ -173,7 +192,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isMemberFunction = (this->parentClass != nullptr);
 	bool isGeneric = this->genericTypes.size() > 0;
 
-	this->mangledName = this->name;
+	// this->mangledName = this->name;
 	if(isMemberFunction)
 	{
 		iceAssert(!this->isFFI);
@@ -182,7 +201,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(auto p : this->params)
 			es.push_back(p);
 
-		this->mangledName = cgi->mangleMemberFunction(this->parentClass, this->name, es);
+		// std::string mangled = cgi->mangleMemberFunction(this->parentClass, this->ident.name, es);
 
 		if(!this->isStatic)
 		{
@@ -215,7 +234,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		bool alreadyMangled = false;
 
-		if(this->name == "main")
+		if(this->ident.str() == "main")
 			this->attribs |= Attr_NoMangle;
 
 
@@ -225,7 +244,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// our mangling is compatible with c++ to reduce headache
 
 		// if [ (not ffi) AND (not @nomangle) ] OR [ (is ffi) AND (ffi is cpp) ]
-		if((!this->isFFI && !(this->attribs & Attr_NoMangle)) || (this->isFFI && this->ffiType == FFIType::Cpp))
+		if((!this->isFFI && !(this->attribs & Attr_NoMangle)))
 		{
 			alreadyMangled = true;
 
@@ -233,14 +252,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(Func* cfs = cgi->getCurrentFunctionScope())
 			{
 				isNested = true;
-				cgi->pushNamespaceScope(cfs->decl->mangledName, false);
+				cgi->pushNamespaceScope(cfs->decl->ident.str(), false);
 			}
 
-			this->mangledNamespaceOnly = cgi->mangleWithNamespace(this->mangledName);
-			this->mangledName = this->mangledNamespaceOnly;
-
-			if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->mangledName, this->params);
-			else			this->mangledName = cgi->mangleFunctionName(this->mangledName, this->params);
+			// if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->mangledName, this->params);
+			// else			this->mangledName = cgi->mangleFunctionName(this->mangledName, this->params);
 
 			if(isNested)
 			{
@@ -251,24 +267,26 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if (not alreadyMangled) AND [ (not ffi) OR (@nomangle) ] AND (not @nomangle)
 		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
 		{
-			if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
-			else			this->mangledName = cgi->mangleFunctionName(this->name, this->params);
+			// if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
+			// else			this->mangledName = cgi->mangleFunctionName(this->name, this->params);
 		}
 	}
 
 
-	if(this->isVariadic)
-		this->mangledName += "__VARIADIC";
-
+	// if(this->isVariadic)
+	// 	this->mangledName += "__VARIADIC";
 
 
 	if(!isGeneric)
 	{
-		std::vector<fir::Type*> argtypes;
+		std::deque<fir::Type*> argtypes;
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getExprType(v));
 
-		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this));
+		this->ident.functionArguments = argtypes;
+
+		bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
+		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), disableMangle ? this->ident.name : "");
 	}
 	else
 	{

@@ -870,7 +870,7 @@ namespace Codegen
 
 	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
-		std::string sptr = std::string("*");
+		std::string sptr = "*";
 		size_t ptrStrLength = sptr.length();
 
 		int tmp = 0;
@@ -1425,7 +1425,7 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			std::string str = "ƒ " + fd->name + "(";
+			std::string str = "ƒ " + fd->ident.name + "(";
 			for(auto p : fd->params)
 			{
 				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";

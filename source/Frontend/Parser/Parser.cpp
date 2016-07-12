@@ -1003,7 +1003,6 @@ namespace Parser
 			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
 
 			if(lftype == "c")			ffitype = FFIType::C;
-			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
 			else						parserError("Unknown FFI type '%s'", ftype.text.c_str());
 
 			if(ps.eat().type != TType::RParen)
