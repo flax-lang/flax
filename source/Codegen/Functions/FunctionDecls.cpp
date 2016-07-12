@@ -59,11 +59,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	// check for redef
 	fir::Function* func = nullptr;
-	if(false /*cgi->getType(fd->mangledName) != nullptr*/)
-	{
-		GenError::duplicateSymbol(cgi, fd, fd->ident.str() + " (symbol previously declared as a type)", SymbolType::Generic);
-	}
-	else if(fd->genericTypes.size() == 0 && cgi->module->getFunction(fd->ident) != 0)
+	if(fd->genericTypes.size() == 0 && cgi->module->getFunction(fd->ident) != 0)
 	{
 		if(!fd->isFFI)
 		{
