@@ -189,9 +189,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
-		// not actually needed??????
-		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
-
 		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
 		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
 
@@ -209,34 +206,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(cgi->isDuplicateSymbol(this->ident.name))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Variable);
 
-	// if(FunctionTree* ft = cgi->getCurrentFuncTree())
-	// {
-	// 	for(auto sub : ft->subs)
-	// 	{
-	// 		if(sub->nsName == this->ident.name)
-	// 		{
-	// 			error(this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
-	// 				this->ident.name.c_str(), ft->nsName.c_str());
-	// 		}
-	// 	}
-	// }
-
-	// if(Func* fn = cgi->getCurrentFunctionScope())
-	// {
-	// 	if(fn->decl->parentClass != 0 && !fn->decl->isStatic)
-	// 	{
-	// 		// check.
-	// 		if(this->ident.name == "self")
-	// 			error(this, "Cannot have a parameter named 'self' in a method declaration");
-
-	// 		else if(this->ident.name == "super")
-	// 			error(this, "Cannot have a parameter named 'super' in a method declaration");
-	// 	}
-	// }
-
 
 	this->ident.scope = cgi->getFullScope();
-
 
 	fir::Value* val = nullptr;
 	fir::Value* valptr = nullptr;
@@ -328,13 +299,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 		}
 
-
-		// cgi->addSymbol(this->ident.mangledName, ai, this);
-
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		// ft->vars[this->ident.name] = *cgi->getSymPair(this, this->ident.mangledName);
 		ft->vars[this->ident.name] = { ai, this };
 	}
 	else
