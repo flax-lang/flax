@@ -69,31 +69,13 @@ struct Identifier
 	std::deque<std::string> scope;
 	IdKind kind;
 
-	// note(UB): apparently using incomplete types in template params is "undefined behaviour"
-	// lol. we're using vector here and not deque because vector uses pointers, deque apparently does not
-	// and we all know we cannot have a member of type T inside the definition of T.
-	std::vector<Identifier> functionArguments;
+	std::deque<fir::Type*> functionArguments;
 
 	std::string mangled;
 
-
-	bool operator == (const Identifier& other) const
-	{
-		return this->name == other.name
-			&& this->scope == other.scope
-			&& this->functionArguments == other.functionArguments;
-	}
-
-	std::string str() const
-	{
-		std::string ret;
-
-		for(auto s : scope)
-			ret += s + ".";
-
-		ret += name;
-		return ret;
-	}
+	// defined in CodegenUtils.cpp
+	bool operator == (const Identifier& other) const;
+	std::string str() const;
 };
 
 
@@ -164,8 +146,7 @@ namespace Ast
 
 	enum class FFIType
 	{
-		C,
-		Cpp,
+		C
 	};
 
 	extern uint64_t Attr_Invalid;
@@ -333,6 +314,9 @@ namespace Ast
 		std::string setterArgName;
 		BracedBlock* getter = 0;
 		BracedBlock* setter = 0;
+
+		fir::Function* getterFFn = 0;
+		fir::Function* setterFFn = 0;
 	};
 
 	struct BinOp : Expr
@@ -352,8 +336,12 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
-		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), name(id), params(params)
-		{ this->type.strType = ret; }
+		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), params(params)
+		{
+			this->type.strType = ret;
+			this->ident.name = id;
+			this->ident.kind = Identifier::IdKind::Function;
+		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
@@ -372,9 +360,8 @@ namespace Ast
 
 		StructBase* parentClass = 0;
 		FFIType ffiType = FFIType::C;
-		std::string name;
-		std::string mangledName;
-		std::string mangledNamespaceOnly;
+
+		Identifier ident;
 
 		std::deque<VarDecl*> params;
 		std::deque<std::string> genericTypes;
@@ -382,6 +369,13 @@ namespace Ast
 		fir::Type* instantiatedGenericReturnType = 0;
 		std::deque<fir::Type*> instantiatedGenericTypes;
 	};
+
+
+
+
+
+
+
 
 	struct DeferredExpr;
 	struct BracedBlock : Expr
@@ -622,6 +616,8 @@ namespace Ast
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
 		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
+
+		std::map<Func*, fir::Function*> functionMap;
 
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;

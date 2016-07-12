@@ -58,12 +58,22 @@ namespace fir
 
 		void addExtensionType(std::string name, StructType* type);
 
-		void declareFunction(std::string name, FunctionType* ftype);
 		void addFunction(Function* func);
+
+		void declareFunction(std::string name, FunctionType* ftype);
 		void deleteFunction(std::string name);
 		Function* getFunction(std::string name);
-
 		Function* getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage);
+
+
+		void declareFunction(Identifier id, FunctionType* ftype);
+		void deleteFunction(Identifier id);
+		Function* getFunction(Identifier id);
+		Function* getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage);
+
+
+
+
 
 		std::string getModuleName();
 		void setModuleName(std::string name);
