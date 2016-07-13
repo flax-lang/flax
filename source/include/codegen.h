@@ -182,9 +182,8 @@ namespace Codegen
 
 		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
-
-		void removeType(std::string name);
-		TypePair_t* getType(std::string name);
+		TypePair_t* getTypeByString(std::string name);
+		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
@@ -219,29 +218,11 @@ namespace Codegen
 		bool isTupleType(fir::Type* type);
 		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
-		bool isDuplicateType(std::string name);
+		bool isDuplicateType(Identifier id);
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleType(fir::Type* t);
-
-		std::string mangleRawNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original, bool isFunction = true);
-		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
-
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
-			bool isStatic = false);
-
-		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
-		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
-
-		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleFunctionName(std::string base, std::deque<fir::Type*> args);
-		std::string mangleFunctionName(std::string base, std::deque<std::string> args);
-		std::string mangleFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
-		std::string mangleGenericFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
@@ -272,8 +253,6 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
-
-		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
 		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 

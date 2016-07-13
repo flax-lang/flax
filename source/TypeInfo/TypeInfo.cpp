@@ -51,7 +51,7 @@ namespace TypeInfo
 	{
 		EnumDef* enr = 0;
 
-		if(cgi->getType("Type") == nullptr)
+		if(cgi->getTypeByString("Type") == nullptr)
 		{
 			enr = new EnumDef(Parser::Pin(), "Type");
 			enr->isStrong = true;
@@ -64,7 +64,7 @@ namespace TypeInfo
 		}
 		else
 		{
-			auto pair = cgi->getType("Type");
+			auto pair = cgi->getTypeByString("Type");
 			if(!pair) return;
 
 			iceAssert(pair);
@@ -78,7 +78,7 @@ namespace TypeInfo
 
 		// create the Any type.
 		#if 1
-		if(cgi->getType("Any") == 0)
+		if(cgi->getTypeByString("Any") == 0)
 		{
 			StructDef* any = new StructDef(Parser::Pin(), "Any");
 			{
@@ -99,7 +99,7 @@ namespace TypeInfo
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getType("Type")->second.first);
+		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getTypeByString("Type")->second.first);
 		iceAssert(enr);
 
 		// start at 2, we already have 1

@@ -103,8 +103,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 				fullScope.push_back(s);
 
 
-
-			if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
+			if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 			{
 				ma->matype = MAType::LeftTypename;
 				gstate.nestedTypeStrs.push_back(vr->name);
@@ -150,12 +149,11 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 		}
 
-
 		std::deque<std::string> fullScope = gstate.nsstrs;
 		for(auto s : gstate.nestedTypeStrs)
 			fullScope.push_back(s);
 
-		if(cgi->getType(cgi->mangleWithNamespace(vr->name, fullScope, false)))
+		if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 		{
 			ma->matype = MAType::LeftTypename;
 			gstate.nestedTypeStrs.push_back(vr->name);
