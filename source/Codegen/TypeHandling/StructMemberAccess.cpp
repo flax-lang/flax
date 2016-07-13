@@ -33,7 +33,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::stri
 		return Result_t(this->builder.CreateLoad(gv), gv);
 	}
 
-	error(user, "Class '%s' has no such static member '%s'", cls->name.c_str(), name.c_str());
+	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
 
 
@@ -225,14 +225,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(var, "Struct '%s' has no such member '%s'", str->name.c_str(), var->name.c_str());
+				error(var, "Struct '%s' has no such member '%s'", str->ident.name.c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(this, "Type '%s' is not a tuple", str->name.c_str());
+				error(this, "Type '%s' is not a tuple", str->ident.name.c_str());
 			}
 			else
 			{
@@ -283,7 +283,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(this, "Type '%s' is not a tuple", cls->name.c_str());
+				error(this, "Type '%s' is not a tuple", cls->ident.name.c_str());
 			}
 			else
 			{
@@ -530,7 +530,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				continue;
 			}
 
-			if(TypePair_t* tp = this->getType(this->mangleWithNamespace(front, nsstrs, false)))
+			if(TypePair_t* tp = this->getTypeByString(this->mangleWithNamespace(front, nsstrs, false)))
 			{
 				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
@@ -547,7 +547,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			this->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
-				if(sb.first->name == front)
+				if(sb.first->ident.name == front)
 				{
 					curType = sb.first;
 					curFType = sb.second;
@@ -562,7 +562,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 		std::string lscope = ma->matype == MAType::LeftNamespace ? "namespace" : "type";
 		error(ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
-			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
+			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
 
 
@@ -682,7 +682,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			// note: check for enum comes first since enum : class, so it's more specific.
 			if(dynamic_cast<EnumDef*>(curType))
 			{
-				TypePair_t* tpair = this->getType(curType->mangledName);
+				TypePair_t* tpair = this->getType(curType->ident);
 				if(!tpair)
 					error(vr, "Invalid class '%s'", vr->name.c_str());
 
@@ -701,7 +701,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				}
 			}
 
-			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->name.c_str(), vr->name.c_str());
+			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->ident.name.c_str(), vr->name.c_str());
 		}
 	}
 	else
@@ -749,47 +749,42 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
 {
-	std::string full;
-	std::deque<std::string> fs = this->getFullScope();
-	for(auto f : fs)
-		full += f + "::";
+	std::deque<fir::Type*> params;
+	for(auto p : fc->params)
+		params.push_back(this->getExprType(p));
 
-	full += cls->name;
+	if(cls->createdType == 0)
+		cls->createType(this);
 
-	std::deque<Expr*> params = fc->params;
-	DummyExpr* fake = new DummyExpr(fc->pin);
-	fake->type = full + "*";
+	iceAssert(cls->createdType);
+	params.push_front(cls->createdType->getPointerTo());
 
-	params.push_front(fake);
 
 	std::deque<FuncPair_t> fns;
 	for(auto f : cls->funcs)
 	{
 		if(f->decl->ident.name == fc->name)
-			fns.push_back({ 0, f->decl });
+			fns.push_back({ cls->functionMap[f], 0 });
 	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
 
 	if(!res.resolved)
 	{
-		auto tup = GenError::getPrettyNoSuchFunctionError(this, params, fns);
+		auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
 		std::string argstr = std::get<0>(tup);
 		std::string candstr = std::get<1>(tup);
 		HighlightOptions ops = std::get<2>(tup);
 
 		ops.caret = ma->pin;
-		ops.caret.col--;
-		ops.underlines.front().col--;
 
 		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			cls->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
+			cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 	}
-
 
 	for(auto f : cls->funcs)
 	{
-		if(f->decl == res.t.second)
+		if(cls->functionMap[f] == res.t.first)
 			return f;
 	}
 
@@ -826,7 +821,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 
 	if(!found)
 	{
-		GenError::noSuchMember(this, var, str->name, var->name);
+		GenError::noSuchMember(this, var, str->ident.name, var->name);
 	}
 
 	return found;

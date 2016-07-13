@@ -61,7 +61,8 @@ struct Identifier
 	enum class IdKind
 	{
 		Variable,
-		Function
+		Function,
+		Struct,
 	};
 
 
@@ -71,11 +72,11 @@ struct Identifier
 
 	std::deque<fir::Type*> functionArguments;
 
-	std::string mangled;
-
 	// defined in CodegenUtils.cpp
 	bool operator == (const Identifier& other) const;
 	std::string str() const;
+
+	static Identifier createUsingNameAndScope(std::string name, std::deque<std::string> scopes, IdKind kind);
 };
 
 
@@ -186,6 +187,7 @@ namespace Ast
 		std::string strType;
 
 		Expr* type = 0;
+		fir::Type* ftype = 0;
 
 		ExprType() : isLiteral(true), strType(""), type(0) { }
 		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
@@ -193,6 +195,12 @@ namespace Ast
 		void operator=(std::string stryp)
 		{
 			this->strType = stryp;
+			this->isLiteral = true;
+		}
+
+		void operator=(fir::Type* ft)
+		{
+			this->ftype = ft;
 			this->isLiteral = true;
 		}
 	};
@@ -585,20 +593,20 @@ namespace Ast
 	struct StructBase : Expr
 	{
 		virtual ~StructBase();
-		StructBase(Parser::Pin pos, std::string name) : Expr(pos), name(name) { }
+		StructBase(Parser::Pin pos, std::string name) : Expr(pos)
+		{
+			this->ident.name = name;
+			this->ident.kind = Identifier::IdKind::Struct;
+		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
-
-		std::deque<std::string> genericTypes;
 
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
 
-		std::string name;
-		std::string mangledName;
+		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 	};

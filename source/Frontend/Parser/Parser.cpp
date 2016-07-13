@@ -1160,7 +1160,7 @@ namespace Parser
 				Token t = ps.front();
 				while(t.text.length() > 0)
 				{
-					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
+					if(t.type == TType::Period && expectingScope)
 					{
 						baseType += "::";
 						expectingScope = false;
@@ -1463,18 +1463,7 @@ namespace Parser
 
 			delete ctype;	// cleanup
 
-			if(ps.front().type == TType::LParen)
-			{
-				// todo: remove this eventually, it's stupid
-
-				// this form:
-				// var foo: String("bla")
-
-				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
-				// it's easy.
-				v->initVal = parseFuncCall(ps, v->type.strType, typep);
-			}
-			else if(ps.front().type == TType::LBrace)
+			if(ps.front().type == TType::LBrace)
 			{
 				return parseComputedProperty(ps, v->ident.name, v->type.strType, v->attribs, tok_id);
 			}
@@ -1693,7 +1682,6 @@ namespace Parser
 					case TType::CaretEq:		op = ArithmeticOp::BitwiseXorEquals;	break;
 
 					case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
-					case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 					case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
 												break;
 					default:
@@ -2054,10 +2042,13 @@ namespace Parser
 		while(true)
 		{
 			Token type = ps.eat();
+
+			#if 0
 			if(std::find(sb->genericTypes.begin(), sb->genericTypes.end(), type.text) != sb->genericTypes.end())
 				parserError("Duplicate generic type %s", type.text.c_str());
 
 			sb->genericTypes.push_back(type.text);
+			#endif
 
 			if(ps.front().type == TType::Comma)
 				ps.eat();
@@ -2190,7 +2181,7 @@ namespace Parser
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
-			cls->protocolstrs = parseInheritanceList(ps, cls->name);
+			cls->protocolstrs = parseInheritanceList(ps, cls->ident.name);
 		}
 
 
@@ -2286,7 +2277,7 @@ namespace Parser
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
-			ext->protocolstrs = parseInheritanceList(ps, ext->name);
+			ext->protocolstrs = parseInheritanceList(ps, ext->ident.name);
 		}
 
 

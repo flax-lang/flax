@@ -27,15 +27,7 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// always try the type first.
-	if(TypePair_t* tp = cgi->getType(this->name))
-	{
-		std::vector<fir::Value*> args;
-		for(Expr* e : this->params)
-			args.push_back(e->codegen(cgi).result.first);
-
-		return cgi->callTypeInitialiser(tp, this, args);
-	}
-	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
+	if(TypePair_t* tp = cgi->getTypeByString(this->name))
 	{
 		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
