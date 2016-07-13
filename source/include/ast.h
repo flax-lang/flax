@@ -56,19 +56,20 @@ namespace fir
 // actualname would contain { some_function }
 // args would contain { int, string }
 
+
+enum class IdKind
+{
+	Invalid,
+	Variable,
+	Function,
+	Struct,
+};
+
 struct Identifier
 {
-	enum class IdKind
-	{
-		Variable,
-		Function,
-		Struct,
-	};
-
-
 	std::string name;
 	std::deque<std::string> scope;
-	IdKind kind;
+	IdKind kind = IdKind::Invalid;
 
 	std::deque<fir::Type*> functionArguments;
 
@@ -76,7 +77,9 @@ struct Identifier
 	bool operator == (const Identifier& other) const;
 	std::string str() const;
 
-	static Identifier createUsingNameAndScope(std::string name, std::deque<std::string> scopes, IdKind kind);
+	Identifier() { }
+	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
+	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
 };
 
 
@@ -289,7 +292,7 @@ namespace Ast
 		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
 		{
 			ident.name = name;
-			ident.kind = Identifier::IdKind::Variable;
+			ident.kind = IdKind::Variable;
 		}
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
@@ -348,7 +351,7 @@ namespace Ast
 		{
 			this->type.strType = ret;
 			this->ident.name = id;
-			this->ident.kind = Identifier::IdKind::Function;
+			this->ident.kind = IdKind::Function;
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
@@ -596,7 +599,7 @@ namespace Ast
 		StructBase(Parser::Pin pos, std::string name) : Expr(pos)
 		{
 			this->ident.name = name;
-			this->ident.kind = Identifier::IdKind::Struct;
+			this->ident.kind = IdKind::Struct;
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;

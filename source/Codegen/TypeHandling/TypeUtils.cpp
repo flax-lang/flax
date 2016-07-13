@@ -363,26 +363,14 @@ namespace Codegen
 			}
 			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
 			{
-				TypePair_t* type = this->getTypeByString(alloc->type.strType);
-				if(!type)
-				{
-					// check if it ends with pointer, and if we have a type that's un-pointered
-					if(alloc->type.strType.find("::") != std::string::npos)
-					{
-						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getExprTypeFromStringType(alloc, alloc->type, allowFail)->getPointerTo();
-					}
+				fir::Type* base = this->getExprTypeFromStringType(alloc, alloc->type.strType);
 
-					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
-				}
-
-				fir::Type* ret = type->first;
-				if(alloc->counts.size() == 0) return ret->getPointerTo();
+				if(alloc->counts.size() == 0) return base->getPointerTo();
 
 				for(size_t i = 0; i < alloc->counts.size(); i++)
-					 ret = ret->getPointerTo();
+					 base = base->getPointerTo();
 
-				return ret;
+				return base;
 			}
 			else if(Number* nm = dynamic_cast<Number*>(expr))
 			{
@@ -601,12 +589,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isStructType() && from->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& from->isStructType() && from->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isStructType() && to->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& to->isStructType() && to->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
@@ -762,8 +750,7 @@ namespace Codegen
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isStructType()
-				&& from->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName() == "String")
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -1079,6 +1066,9 @@ namespace Codegen
 				{
 					error("enotsup (generic structs)");
 
+
+					#if 0
+
 					size_t k = atype.find("<");
 					std::string base = atype.substr(0, k);
 
@@ -1148,13 +1138,15 @@ namespace Codegen
 						if(allowFail) return 0;
 						else error(user, "Invaild type '%s'", base.c_str());
 					}
+
+					#endif
 				}
 
 				std::string nsstr;
 				for(auto n : ns)
 					nsstr += n + ".";
 
-				if(ns.size() > 0) nsstr = nsstr.substr(1);
+				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
@@ -1166,7 +1158,7 @@ namespace Codegen
 			}
 			else if(tp)
 			{
-				foundType:
+				// foundType:
 
 				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
 				tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
@@ -1288,7 +1280,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getTypeByString(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::Enum)
 					return true;
@@ -1310,6 +1302,8 @@ namespace Codegen
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
 
+		if(!res) return false;
+
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
 			return tp->second.second == TypeKind::Enum;
@@ -1322,7 +1316,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getTypeByString(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::TypeAlias)
 					return true;
@@ -1343,6 +1337,8 @@ namespace Codegen
 		bool res = true;
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
+
+		if(!res) return false;
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
