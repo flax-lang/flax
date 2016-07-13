@@ -32,8 +32,8 @@ public func doOperatorTupleTest()
 	printf("dot = %f\n", dot);
 
 
-	let v1: Math.Vector3(1.0, 2.0, 4.0)
-	let v2: Math.Vector3(3.0, 6.0, 9.0)
+	let v1 = Math.Vector3(1.0, 2.0, 4.0)
+	let v2 = Math.Vector3(3.0, 6.0, 9.0)
 
 	var v = v1 + v2
 	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
