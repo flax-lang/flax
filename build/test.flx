@@ -227,6 +227,9 @@ public func main(argc: int32, argv: int8**) -> int
 
 	printf("\n\n====================\n\n")
 
+	let smth = alloc[4] Math.Vector2
+	smth[0].x = 10
+
 	var lol: String = "HELLO"
 	printf("%d\n", lol[1].hasData())
 	printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)

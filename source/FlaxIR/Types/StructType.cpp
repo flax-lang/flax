@@ -261,6 +261,8 @@ namespace fir
 
 	bool StructType::isABaseTypeOf(Type* ot)
 	{
+		if(!ot) return false;
+
 		StructType* ost = ot->toStructType();
 		if(!ost) return false;
 
@@ -278,6 +280,8 @@ namespace fir
 
 	bool StructType::isADerivedTypeOf(Type* ot)
 	{
+		if(!ot) return false;
+
 		StructType* ost = ot->toStructType();
 		if(!ost) return false;
 

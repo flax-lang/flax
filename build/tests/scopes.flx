@@ -87,7 +87,7 @@ public ƒ doScopeTest(argv: String)
 
 	let mmx = Something.Inside.Another
 	let another = 4
-	let foo: Something()
+	let foo = Something()
 
 	let mm = foo.somefoo().bar
 
