@@ -4,7 +4,7 @@
 
 import LibCInterface
 
-public func Utf8Length(_text: Int8*) -> Uint64
+public func Utf8Length(_text: int8*) -> uint64
 {
 	var len = 0
 	var text = _text
@@ -23,7 +23,7 @@ public func Utf8Length(_text: Int8*) -> Uint64
 	return len
 }
 
-public func Utf8CharLength(char: Int8*) -> Uint64
+public func Utf8CharLength(char: int8*) -> uint64
 {
 	if char == null { return 0 }
 
@@ -35,7 +35,7 @@ public func Utf8CharLength(char: Int8*) -> Uint64
 
 // returns a pointer to the beginning of the pos'th utf8 codepoint
 // in the buffer at text
-public func Utf8Index(_text: Int8*, var pos: Uint64) -> Int8*
+public func Utf8Index(_text: int8*, var pos: uint64) -> int8*
 {
 	pos += 1
 	var text = _text
@@ -55,17 +55,120 @@ public func Utf8Index(_text: Int8*, var pos: Uint64) -> Int8*
 		text = text + 1
 	}
 
-	return 0 as Int8*
+	return null
 }
 
-// // converts codepoint indexes start and end to byte offsets in the buffer at s
-// void utf8slice(char *s, ssize_t *start, ssize_t *end)
+
+
+
+
+// converts a utf8 string to uppercase.
+// return: (out buffer, out size)
+public func Utf8ToUppercase(input: int8*, inputLength: int64) -> (int8*, int64)
+{
+	// programExit("not supported lol")
+	return (null, 0)
+}
+
+
+
+
+
+
+
+
+
+
+
+// size_t utf8toupper(const char* input, size_t inputSize, char* target, size_t targetSize, int32_t* errors)
 // {
-// 	char *p = utf8index(s, *start);
-// 	*start = p ? p - s : -1;
-// 	p = utf8index(s, *end);
-// 	*end = p ? p - s : -1;
+// 	CaseMappingState state;
+// 	size_t bytes_written = 0;
+
+// 	/* Validate parameters */
+
+// 	UTF8_VALIDATE_PARAMETERS_CHAR(char, bytes_written);
+
+// 	/* Initialize case mapping */
+
+// 	if (!casemapping_initialize(
+// 		&state,
+// 		input, inputSize,
+// 		target, targetSize,
+// 		UppercaseIndex1Ptr, UppercaseIndex2Ptr, UppercaseDataPtr))
+// 	{
+// 		UTF8_SET_ERROR(NONE);
+
+// 		return bytes_written;
+// 	}
+
+// 	/* Execute case mapping as long as input remains */
+
+// 	while (state.src_size > 0)
+// 	{
+// 		size_t result = casemapping_execute(&state);
+// 		if (!result)
+// 		{
+// 			UTF8_SET_ERROR(NOT_ENOUGH_SPACE);
+
+// 			return bytes_written;
+// 		}
+
+// 		bytes_written += result;
+// 	}
+
+// 	UTF8_SET_ERROR(NONE);
+
+// 	return bytes_written;
 // }
+
+
+
+
+
+
+// size_t utf8tolower(const char* input, size_t inputSize, char* target, size_t targetSize, int32_t* errors)
+// {
+// 	CaseMappingState state;
+// 	size_t bytes_written = 0;
+
+// 	/* Validate parameters */
+
+// 	UTF8_VALIDATE_PARAMETERS_CHAR(char, bytes_written);
+
+// 	/* Initialize case mapping */
+
+// 	if (!casemapping_initialize(
+// 		&state,
+// 		input, inputSize,
+// 		target, targetSize,
+// 		LowercaseIndex1Ptr, LowercaseIndex2Ptr, LowercaseDataPtr))
+// 	{
+// 		UTF8_SET_ERROR(NONE);
+
+// 		return bytes_written;
+// 	}
+
+// 	/* Execute case mapping as long as input remains */
+
+// 	while (state.src_size > 0)
+// 	{
+// 		size_t result = casemapping_execute(&state);
+// 		if (!result)
+// 		{
+// 			UTF8_SET_ERROR(NOT_ENOUGH_SPACE);
+
+// 			return bytes_written;
+// 		}
+
+// 		bytes_written += result;
+// 	}
+
+// 	UTF8_SET_ERROR(NONE);
+
+// 	return bytes_written;
+// }
+
 
 
 

@@ -161,12 +161,12 @@ namespace Parser
 			tok.type = TType::Ellipsis;
 			read = 3;
 		}
-		else if(stream.compare(0, 2, "::") == 0)
-		{
-			tok.text = "::";
-			tok.type = TType::DoubleColon;
-			read = 2;
-		}
+		// else if(stream.compare(0, 2, "::") == 0)
+		// {
+		// 	tok.text = "::";
+		// 	tok.type = TType::DoubleColon;
+		// 	read = 2;
+		// }
 		// block comments
 		else if(stream.compare(0, 2, "/*") == 0)
 		{
@@ -223,7 +223,7 @@ namespace Parser
 		// unicode stuff
 		else if(stream.compare(0, strlen("ƒ"), "ƒ") == 0)
 		{
-			tok.text = "func";
+			tok.text = FUNC_KEYWORD_STRING;
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
 
@@ -399,53 +399,53 @@ namespace Parser
 
 
 			// check for keywords
-			if(id == "class")			tok.type = TType::Class;
-			else if(id == "struct")		tok.type = TType::Struct;
-			else if(id == "func")		tok.type = TType::Func;
-			else if(id == "import")		tok.type = TType::Import;
-			else if(id == "var")		tok.type = TType::Var;
-			else if(id == "val")		tok.type = TType::Val;
-			else if(id == "let")		tok.type = TType::Val;
-			else if(id == "for")		tok.type = TType::For;
-			else if(id == "while")		tok.type = TType::While;
-			else if(id == "if")			tok.type = TType::If;
-			else if(id == "else")		tok.type = TType::Else;
-			else if(id == "return")		tok.type = TType::Return;
-			else if(id == "as")			{ tok.type = TType::As; if(tmp == '!') { read++; tok.text = "as!"; } }
-			else if(id == "is")			tok.type = TType::Is;
-			else if(id == "switch")		tok.type = TType::Switch;
-			else if(id == "case")		tok.type = TType::Case;
-			else if(id == "enum")		tok.type = TType::Enum;
-			else if(id == "ffi")		tok.type = TType::ForeignFunc;
-			else if(id == "true")		tok.type = TType::True;
-			else if(id == "false")		tok.type = TType::False;
-			else if(id == "static")		tok.type = TType::Static;
+			if(id == "class")					tok.type = TType::Class;
+			else if(id == "struct")				tok.type = TType::Struct;
+			else if(id == FUNC_KEYWORD_STRING)	tok.type = TType::Func;
+			else if(id == "import")				tok.type = TType::Import;
+			else if(id == "var")				tok.type = TType::Var;
+			else if(id == "val")				tok.type = TType::Val;
+			else if(id == "let")				tok.type = TType::Val;
+			else if(id == "for")				tok.type = TType::For;
+			else if(id == "while")				tok.type = TType::While;
+			else if(id == "if")					tok.type = TType::If;
+			else if(id == "else")				tok.type = TType::Else;
+			else if(id == "return")				tok.type = TType::Return;
+			else if(id == "as")					{ tok.type = TType::As; if(tmp == '!') { read++; tok.text = "as!"; } }
+			else if(id == "is")					tok.type = TType::Is;
+			else if(id == "switch")				tok.type = TType::Switch;
+			else if(id == "case")				tok.type = TType::Case;
+			else if(id == "enum")				tok.type = TType::Enum;
+			else if(id == "ffi")				tok.type = TType::ForeignFunc;
+			else if(id == "true")				tok.type = TType::True;
+			else if(id == "false")				tok.type = TType::False;
+			else if(id == "static")				tok.type = TType::Static;
 
-			else if(id == "break")		tok.type = TType::Break;
-			else if(id == "continue")	tok.type = TType::Continue;
-			else if(id == "do")			tok.type = TType::Do;
-			else if(id == "loop")		tok.type = TType::Loop;
-			else if(id == "defer")		tok.type = TType::Defer;
+			else if(id == "break")				tok.type = TType::Break;
+			else if(id == "continue")			tok.type = TType::Continue;
+			else if(id == "do")					tok.type = TType::Do;
+			else if(id == "loop")				tok.type = TType::Loop;
+			else if(id == "defer")				tok.type = TType::Defer;
 
-			else if(id == "public")		tok.type = TType::Public;
-			else if(id == "private")	tok.type = TType::Private;
-			else if(id == "internal")	tok.type = TType::Internal;
+			else if(id == "public")				tok.type = TType::Public;
+			else if(id == "private")			tok.type = TType::Private;
+			else if(id == "internal")			tok.type = TType::Internal;
 
-			else if(id == "alloc")		tok.type = TType::Alloc;
-			else if(id == "dealloc")	tok.type = TType::Dealloc;
-			else if(id == "typeof")		tok.type = TType::Typeof;
+			else if(id == "alloc")				tok.type = TType::Alloc;
+			else if(id == "dealloc")			tok.type = TType::Dealloc;
+			else if(id == "typeof")				tok.type = TType::Typeof;
 
-			else if(id == "get")		tok.type = TType::Get;
-			else if(id == "set")		tok.type = TType::Set;
+			else if(id == "get")				tok.type = TType::Get;
+			else if(id == "set")				tok.type = TType::Set;
 
-			else if(id == "null")		tok.type = TType::Null;
+			else if(id == "null")				tok.type = TType::Null;
 
-			else if(id == "module")		tok.type = TType::Module;
-			else if(id == "namespace")	tok.type = TType::Namespace;
-			else if(id == "extension")	tok.type = TType::Extension;
-			else if(id == "typealias")	tok.type = TType::TypeAlias;
-			else if(id == "override")	tok.type = TType::Override;
-			else						tok.type = TType::Identifier;
+			else if(id == "module")				tok.type = TType::Module;
+			else if(id == "namespace")			tok.type = TType::Namespace;
+			else if(id == "extension")			tok.type = TType::Extension;
+			else if(id == "typealias")			tok.type = TType::TypeAlias;
+			else if(id == "override")			tok.type = TType::Override;
+			else								tok.type = TType::Identifier;
 		}
 		else if(stream[0] == '"')
 		{

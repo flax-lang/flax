@@ -4,7 +4,7 @@
 
 import Foundation
 
-public ƒ doFizzBuzz(num: Int)
+public ƒ doFizzBuzz(num: int)
 {
 	var i = 0
 	while i <= num

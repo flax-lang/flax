@@ -80,7 +80,11 @@ namespace fir
 		}
 		else if(type->isPointerType())
 		{
-			return typeToLlvm(type->getPointerElementType(), mod)->getPointerTo();
+			if(type->isNullPointer())
+				return llvm::Type::getInt8PtrTy(gc);
+
+			else
+				return typeToLlvm(type->getPointerElementType(), mod)->getPointerTo();
 		}
 		else if(type->isVoidType())
 		{

@@ -16,7 +16,7 @@ import String
 
 func anyToString(any: Any, options: String) -> String
 {
-	var buffer = alloc[64] Int8
+	var buffer = alloc[64] int8
 
 
 	let argtype = typeof(any)
@@ -26,9 +26,9 @@ func anyToString(any: Any, options: String) -> String
 		dealloc buffer
 		return any as String
 	}
-	else if argtype == typeof(Bool)
+	else if argtype == typeof(bool)
 	{
-		if any as Bool
+		if any as bool
 		{
 			snprintf(buffer, 64, "true")
 		}
@@ -37,45 +37,45 @@ func anyToString(any: Any, options: String) -> String
 			snprintf(buffer, 64, "false")
 		}
 	}
-	else if argtype == typeof(Int8)
+	else if argtype == typeof(int8)
 	{
-		snprintf(buffer, 64, "%hhd", any as Int8)
+		snprintf(buffer, 64, "%hhd", any as int8)
 	}
-	else if argtype == typeof(Int16)
+	else if argtype == typeof(int16)
 	{
-		snprintf(buffer, 64, "%hd", any as Int16)
+		snprintf(buffer, 64, "%hd", any as int16)
 	}
-	else if argtype == typeof(Int32)
+	else if argtype == typeof(int32)
 	{
-		snprintf(buffer, 64, "%d", any as Int32)
+		snprintf(buffer, 64, "%d", any as int32)
 	}
-	else if argtype == typeof(Int64)
+	else if argtype == typeof(int64)
 	{
-		snprintf(buffer, 64, "%lld", any as Int64)
+		snprintf(buffer, 64, "%lld", any as int64)
 	}
-	else if argtype == typeof(Uint8)
+	else if argtype == typeof(uint8)
 	{
-		snprintf(buffer, 64, "%hhu", any as Uint8)
+		snprintf(buffer, 64, "%hhu", any as uint8)
 	}
-	else if argtype == typeof(Uint16)
+	else if argtype == typeof(uint16)
 	{
-		snprintf(buffer, 64, "%hu", any as Uint16)
+		snprintf(buffer, 64, "%hu", any as uint16)
 	}
-	else if argtype == typeof(Uint32)
+	else if argtype == typeof(uint32)
 	{
-		snprintf(buffer, 64, "%u", any as Uint32)
+		snprintf(buffer, 64, "%u", any as uint32)
 	}
-	else if argtype == typeof(Uint64)
+	else if argtype == typeof(uint64)
 	{
-		snprintf(buffer, 64, "%llu", any as Uint64)
+		snprintf(buffer, 64, "%llu", any as uint64)
 	}
-	else if argtype == typeof(Float32)
+	else if argtype == typeof(float32)
 	{
-		snprintf(buffer, 64, "%f", any as Float32)
+		snprintf(buffer, 64, "%f", any as float32)
 	}
-	else if argtype == typeof(Float64)
+	else if argtype == typeof(float64)
 	{
-		snprintf(buffer, 64, "%lf", any as Float64)
+		snprintf(buffer, 64, "%lf", any as float64)
 	}
 	else
 	{
@@ -111,28 +111,34 @@ func anyToString(any: Any, options: String) -> String
 
 
 
+// here's how this works:
+//
+// 1. "{%}" -> default formatting, no type restrictions
+// 2. "{%%" -> everything prints literally until the closing }, if any. basically we ignore this.
+// 3. "{%s}" -> default formatting, strings only. error if anything else.
+// 4. "{%s, %d}" -> accept strings and numbers, default formatting.
+// 5. "{%f, precision: 4}" -> accept floats only, 4 decimal places.
+// 6. "{%f, padding: ' ', pad: 5, padto: right}" -> accept floats, pad using the space character, pad to 5, align to right.
+//
+// all this will be handled by a mini parser written here.
+// the padding char is specified with ' ' because *we* can look at it and parse, since we don't have compiler help (yet).
+
+
 public func format(fmt: String, args: Any[...]) -> String
 {
 	var output: String
-	var argNum: Uint64 = 0
+	var argNum: uint64 = 0
 
-	let percent = Character("%")
+	let colon	= Character(":")
+	let lbrace	= Character("{")
+	let rbrace	= Character("}")
 
 
-
-	var i: Uint64 = 0
+	var i: uint64 = 0
 	while i < fmt.length && fmt[i].hasData()
 	{
-		if fmt[i] == percent
+		if fmt[i] == lbrace
 		{
-			if i + 1 < fmt.length && fmt[i + 1] == percent
-			{
-				output += percent
-				i += 1
-
-				continue
-			}
-
 			// else
 			if argNum < args.length
 			{

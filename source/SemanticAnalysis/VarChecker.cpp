@@ -161,7 +161,7 @@ namespace SemAnalysis
 				for(VarDecl* var : fn->decl->params)
 				{
 					VarDef vdef;
-					vdef.name = var->name;
+					vdef.name = var->ident.name;
 					vdef.stateStack.push_back(VarState::ValidStack);
 					vdef.decl = var;
 
@@ -182,7 +182,7 @@ namespace SemAnalysis
 				if(!vd->isGlobal)
 				{
 					VarDef vdef;
-					vdef.name = vd->name;
+					vdef.name = vd->ident.name;
 					vdef.stateStack.push_back(VarState::NoValue);
 					vdef.decl = vd;
 

@@ -16,10 +16,10 @@ namespace fir
 		this->valueName = "v#" + std::to_string(vnames);
 		vnames++;
 
-		// if(this->id == 4292)
-		// {
-		// 	abort();
-		// }
+		if(this->id == 602)
+		{
+			// abort();
+		}
 	}
 
 	Type* Value::getType()

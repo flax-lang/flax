@@ -42,7 +42,7 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->setterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->name;
+		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
 		// todo: MULIPLE SUBSCRIPTS
 		std::deque<Expr*> params = { ari->index };
@@ -125,7 +125,7 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->name;
+		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
 		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
@@ -155,7 +155,7 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->name;
+		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
 		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);

@@ -6,29 +6,29 @@ namespace Math
 {
 	public struct Vector2
 	{
-		var x: Double
-		var y: Double
+		var x: float64
+		var y: float64
 	}
 }
 
-public operator == (this: Math.Vector2, other: Math.Vector2) -> Bool { (this.x == other.x) && (this.y == other.y) }
+public operator == (this: Math.Vector2, other: Math.Vector2) -> bool { (this.x == other.x) && (this.y == other.y) }
 
 @operator[Commutative]
-public operator * (this: Math.Vector2, other: Double) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
-public operator / (this: Math.Vector2, other: Double) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
+public operator * (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
+public operator / (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
 
 @operator[Commutative]
-public operator * (this: Math.Vector2, other: Int) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
-public operator / (this: Math.Vector2, other: Int) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
+public operator * (this: Math.Vector2, other: int) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
+public operator / (this: Math.Vector2, other: int) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
 
 public operator + (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x + b.x, a.y + b.y) }
 public operator - (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x - b.x, a.y - b.y) }
 
 @operator[90]
-public operator • (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.x + a.y * b.y }
+public operator • (a: Math.Vector2, b: Math.Vector2) -> float64 { a.x * b.x + a.y * b.y }
 
 @operator[100]
-public operator x (a: Math.Vector2, b: Math.Vector2) -> Double { a.x * b.y - a.y * b.x }
+public operator x (a: Math.Vector2, b: Math.Vector2) -> float64 { a.x * b.y - a.y * b.x }
 
 
 
