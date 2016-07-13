@@ -46,7 +46,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val != 0)
 	{
 		// cast.
-		val = cgi->autoCastType(this->inferredLType, val);
+		val = cgi->autoCastType(this->inferredLType, val, valptr);
 	}
 
 
@@ -95,12 +95,13 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 		if(shouldAddToSymtab)
 		{
-			cgi->addSymbol(this->name, ai, this);
+			cgi->addSymbol(this->ident.name, ai, this);
 			didAddToSymtab = true;
 		}
 
 
-		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->ident.name == "Any"
+										|| cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
 
@@ -112,7 +113,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			bool wasImmut = this->immutable;
 			this->immutable = false;
 
-			auto vr = new VarRef(this->pin, this->name);
+			auto vr = new VarRef(this->pin, this->ident.name);
 			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->builder.CreateLoad(ai),
 				ai, val, valptr);
 
@@ -152,7 +153,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	iceAssert(ai);
 
 	if(!didAddToSymtab && shouldAddToSymtab)
-		cgi->addSymbol(this->name, ai, this);
+		cgi->addSymbol(this->ident.name, ai, this);
 
 	cgi->builder.CreateStore(val, ai);
 	return val;
@@ -189,9 +190,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
-		// not actually needed??????
-		// std::deque<DepNode*> deps = cgi->dependencyGraph->findDependenciesOf(this);
-
 		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
 		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
 
@@ -206,37 +204,11 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(cgi->isDuplicateSymbol(this->name))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Variable);
-
-	if(FunctionTree* ft = cgi->getCurrentFuncTree())
-	{
-		for(auto sub : ft->subs)
-		{
-			if(sub->nsName == this->name)
-			{
-				error(this, "Declaration of variable %s conflicts with namespace declaration within scope %s",
-					this->name.c_str(), ft->nsName.c_str());
-			}
-		}
-	}
-
-	if(Func* fn = cgi->getCurrentFunctionScope())
-	{
-		if(fn->decl->parentClass != 0 && !fn->decl->isStatic)
-		{
-			// check.
-			if(this->name == "self")
-				error(this, "Cannot have a parameter named 'self' in a method declaration");
-
-			else if(this->name == "super")
-				error(this, "Cannot have a parameter named 'super' in a method declaration");
-		}
-	}
+	if(cgi->isDuplicateSymbol(this->ident.name))
+		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Variable);
 
 
-
-
+	this->ident.scope = cgi->getFullScope();
 
 	fir::Value* val = nullptr;
 	fir::Value* valptr = nullptr;
@@ -274,13 +246,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	this->mangledName = cgi->mangleWithNamespace(this->name);
 
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		ai = cgi->module->createGlobalVariable(mangledName, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
-			this->immutable, this->attribs & Attr_VisPublic ? fir::LinkageType::External : fir::LinkageType::Internal);
+		ai = cgi->module->createGlobalVariable(this->ident, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+			this->immutable, (this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();
 
@@ -329,13 +300,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 		}
 
-
-		cgi->addSymbol(mangledName, ai, this);
-
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		ft->vars[this->name] = *cgi->getSymPair(this, mangledName);
+		ft->vars[this->ident.name] = { ai, this };
 	}
 	else
 	{

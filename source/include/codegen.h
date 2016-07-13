@@ -170,27 +170,25 @@ namespace Codegen
 
 
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
-		bool isValidFuncOverload(FuncPair_t fp, std::deque<Ast::Expr*> params, int* castingDistance, bool exactMatch);
+		bool isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncPair_t> resolveFunctionName(std::string basename, std::deque<Ast::Func*>* bodiesFound = 0);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+			std::deque<fir::Type*> params, bool exactMatch = false);
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 
 		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
-
-		void removeType(std::string name);
-		TypePair_t* getType(std::string name);
+		TypePair_t* getTypeByString(std::string name);
+		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
 
 
-
-		// fir::Types for non-primitive (POD) builtin types (string)
-		void applyExtensionToStruct(std::string extName);
 
 		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
 		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
@@ -220,29 +218,11 @@ namespace Codegen
 		bool isTupleType(fir::Type* type);
 		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
-		bool isDuplicateType(std::string name);
+		bool isDuplicateType(Identifier id);
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleType(fir::Type* t);
-
-		std::string mangleRawNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original, bool isFunction = true);
-		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
-
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
-			bool isStatic = false);
-
-		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
-		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
-
-		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleFunctionName(std::string base, std::deque<fir::Type*> args);
-		std::string mangleFunctionName(std::string base, std::deque<std::string> args);
-		std::string mangleFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
-		std::string mangleGenericFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
@@ -258,7 +238,7 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		Ast::Func* getFunctionFromMemberFuncCall(Ast::ClassDef* str, Ast::FuncCall* fc);
+		Ast::Func* getFunctionFromMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 
 		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
@@ -273,8 +253,6 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
-
-		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
 		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
@@ -301,8 +279,6 @@ namespace Codegen
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
 		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
-
-		// <isBinOp, isPrefix, needsSwap, needsNOT, needsAssign, opFunc, assignFunc>
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

@@ -5,9 +5,8 @@
 import Core
 import Format
 import LibCInterface
-import IntegerLimits
 
-public func min(a: Uint64, b: Uint64) -> Uint64
+public func min(a: int, b: int) -> int
 {
 	if a < b
 	{
@@ -17,7 +16,7 @@ public func min(a: Uint64, b: Uint64) -> Uint64
 	return b
 }
 
-public func max(a: Uint64, b: Uint64) -> Uint64
+public func max(a: int, b: int) -> int
 {
 	if a > b
 	{

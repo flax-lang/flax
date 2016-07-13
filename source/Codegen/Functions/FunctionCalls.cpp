@@ -27,15 +27,7 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// always try the type first.
-	if(TypePair_t* tp = cgi->getType(this->name))
-	{
-		std::vector<fir::Value*> args;
-		for(Expr* e : this->params)
-			args.push_back(e->codegen(cgi).result.first);
-
-		return cgi->callTypeInitialiser(tp, this, args);
-	}
-	else if(TypePair_t* tp = cgi->getType(cgi->mangleRawNamespace(this->name)))
+	if(TypePair_t* tp = cgi->getTypeByString(this->name))
 	{
 		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
@@ -68,6 +60,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			if(!rt.resolved && !target)
 			{
+				// label
 				failedToFind:
 
 				GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
@@ -81,6 +74,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// printf("expediting function call to %s\n", this->name.c_str());
 
 				rt = cgi->resolveFunction(this, this->name, this->params);
+
 				if(!rt.resolved) error("nani???");
 				if(rt.t.first == 0) goto failedToFind;
 			}

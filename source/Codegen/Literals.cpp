@@ -37,7 +37,7 @@ Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	auto pair = cgi->getType(cgi->mangleWithNamespace("String", std::deque<std::string>()));
+	auto pair = cgi->getTypeByString("String");
 	if(pair && !this->isRaw)
 	{
 		fir::StructType* stringType = dynamic_cast<fir::StructType*>(pair->first);

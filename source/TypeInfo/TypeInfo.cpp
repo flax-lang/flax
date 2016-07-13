@@ -51,7 +51,7 @@ namespace TypeInfo
 	{
 		EnumDef* enr = 0;
 
-		if(cgi->getType("Type") == nullptr)
+		if(cgi->getTypeByString("Type") == nullptr)
 		{
 			enr = new EnumDef(Parser::Pin(), "Type");
 			enr->isStrong = true;
@@ -59,14 +59,12 @@ namespace TypeInfo
 			Number* num = new Number(Parser::Pin(), (int64_t) 1);
 			enr->cases.push_back(std::make_pair("Type", num));
 
-			// note: Enumeration does nothing in codegen()
-			// fix this if that happens to change in the future.
-
-			enr->createType(cgi);
+			// codegen() calls createType()
+			enr->codegen(cgi);
 		}
 		else
 		{
-			auto pair = cgi->getType("Type");
+			auto pair = cgi->getTypeByString("Type");
 			if(!pair) return;
 
 			iceAssert(pair);
@@ -80,7 +78,7 @@ namespace TypeInfo
 
 		// create the Any type.
 		#if 1
-		if(cgi->getType("Any") == 0)
+		if(cgi->getTypeByString("Any") == 0)
 		{
 			StructDef* any = new StructDef(Parser::Pin(), "Any");
 			{
@@ -88,13 +86,12 @@ namespace TypeInfo
 				type->type.strType = "Type";
 
 				VarDecl* data = new VarDecl(Parser::Pin(), "value", false);
-				data->type.strType = "Int8*";
+				data->type.strType = std::string(INT8_TYPE_STRING) + "*";
 
 				any->members.push_back(type);		any->nameMap["type"] = 0;
 				any->members.push_back(data);		any->nameMap["value"] = 1;
 			}
 
-			any->createType(cgi);
 			any->codegen(cgi);
 		}
 		#endif
@@ -102,7 +99,7 @@ namespace TypeInfo
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
-		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getType("Type")->second.first);
+		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getTypeByString("Type")->second.first);
 		iceAssert(enr);
 
 		// start at 2, we already have 1
@@ -112,7 +109,7 @@ namespace TypeInfo
 		bool done = false;
 		for(auto t : cgi->rootNode->typeList)
 		{
-			if(std::get<0>(t) == "Int8")
+			if(std::get<0>(t) == INT8_TYPE_STRING)
 			{
 				done = true;
 				break;
@@ -121,19 +118,20 @@ namespace TypeInfo
 
 		if(!done)
 		{
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int8", cgi->getExprTypeOfBuiltin("Int8"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int16", cgi->getExprTypeOfBuiltin("Int16"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int32", cgi->getExprTypeOfBuiltin("Int32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Int64", cgi->getExprTypeOfBuiltin("Int64"), TypeKind::BuiltinType));
+			auto kind = TypeKind::BuiltinType;
+			cgi->rootNode->typeList.push_back(std::make_tuple(INT8_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT8_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(INT16_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT16_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(INT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT32_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(INT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT64_TYPE_STRING), kind));
 
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint8", cgi->getExprTypeOfBuiltin("Uint8"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint16", cgi->getExprTypeOfBuiltin("Uint16"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint32", cgi->getExprTypeOfBuiltin("Uint32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Uint64", cgi->getExprTypeOfBuiltin("Uint64"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple(UINT8_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT8_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(UINT16_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT16_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(UINT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT32_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(UINT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT64_TYPE_STRING), kind));
 
-			cgi->rootNode->typeList.push_back(std::make_tuple("Float32", cgi->getExprTypeOfBuiltin("Float32"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Float64", cgi->getExprTypeOfBuiltin("Float64"), TypeKind::BuiltinType));
-			cgi->rootNode->typeList.push_back(std::make_tuple("Bool", cgi->getExprTypeOfBuiltin("Bool"), TypeKind::BuiltinType));
+			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT32_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT64_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(BOOL_TYPE_STRING, cgi->getExprTypeOfBuiltin(BOOL_TYPE_STRING), kind));
 		}
 
 
@@ -141,6 +139,10 @@ namespace TypeInfo
 		for(auto tup : cgi->rootNode->typeList)
 		{
 			bool skip = false;
+
+			// check for duplicates.
+			// slightly inefficient.
+			// todo: hashmap or something
 			for(auto c : enr->cases)
 			{
 				if(c.first == std::get<0>(tup))
@@ -151,7 +153,6 @@ namespace TypeInfo
 			}
 
 			if(skip) continue;
-
 
 			enr->cases.push_back(std::make_pair(std::get<0>(tup), num));
 			num = new Number(Parser::Pin(), num->ival + 1);

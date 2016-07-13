@@ -928,14 +928,14 @@ namespace Parser
 			}
 
 
-			if(!nameCheck[v->name])
+			if(!nameCheck[v->ident.name])
 			{
 				params.push_back(v);
-				nameCheck[v->name] = v;
+				nameCheck[v->ident.name] = v;
 			}
 			else
 			{
-				parserError("Redeclared variable '%s' in argument list", v->name.c_str());
+				parserError("Redeclared variable '%s' in argument list", v->ident.name.c_str());
 			}
 
 
@@ -958,12 +958,12 @@ namespace Parser
 			ret = ctype->type.strType;
 			delete ctype;
 
-			if(ret == "Void")
+			if(ret == VOID_TYPE_STRING)
 				parserWarn("Explicitly specifying 'Void' as the return type is redundant");
 		}
 		else
 		{
-			ret = "Void";
+			ret = VOID_TYPE_STRING;
 		}
 
 		ps.skipNewline();
@@ -1003,7 +1003,6 @@ namespace Parser
 			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
 
 			if(lftype == "c")			ffitype = FFIType::C;
-			else if(lftype == "cpp")	ffitype = FFIType::Cpp;
 			else						parserError("Unknown FFI type '%s'", ftype.text.c_str());
 
 			if(ps.eat().type != TType::RParen)
@@ -1161,9 +1160,9 @@ namespace Parser
 				Token t = ps.front();
 				while(t.text.length() > 0)
 				{
-					if((t.type == TType::DoubleColon || t.type == TType::Period) && expectingScope)
+					if(t.type == TType::Period && expectingScope)
 					{
-						baseType += "::";
+						baseType += ".";
 						expectingScope = false;
 					}
 					else if(t.type == TType::Identifier && !expectingScope)
@@ -1373,7 +1372,7 @@ namespace Parser
 			else if(ps.front().type == TType::Set)
 			{
 				if(didSetter)
-					parserError("Only one getter is allowed per computed property");
+					parserError("Only one setter is allowed per computed property");
 
 				didSetter = true;
 
@@ -1464,18 +1463,9 @@ namespace Parser
 
 			delete ctype;	// cleanup
 
-			if(ps.front().type == TType::LParen)
+			if(ps.front().type == TType::LBrace)
 			{
-				// this form:
-				// var foo: String("bla")
-
-				// since parseFuncCall is actually built for this kind of hack (like with the init() thing)
-				// it's easy.
-				v->initVal = parseFuncCall(ps, v->type.strType, typep);
-			}
-			else if(ps.front().type == TType::LBrace)
-			{
-				return parseComputedProperty(ps, v->name, v->type.strType, v->attribs, tok_id);
+				return parseComputedProperty(ps, v->ident.name, v->type.strType, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
@@ -1499,7 +1489,7 @@ namespace Parser
 
 				v->initVal = parseExpr(ps);
 				if(!v->initVal)
-					parserError("Invalid initialiser for variable '%s'", v->name.c_str());
+					parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
 			}
 			else if(immutable)
 			{
@@ -1614,13 +1604,13 @@ namespace Parser
 				{
 					if(next1.type == TType::LAngle)
 					{
-						// < <
+						// < < is <<
 						op = ArithmeticOp::ShiftLeft;
 						ps.eat();
 					}
 					else if(next1.type == TType::LessThanEquals)
 					{
-						// < <=
+						// < <= is <<=
 						op = ArithmeticOp::ShiftLeftEquals;
 						ps.eat();
 					}
@@ -1629,13 +1619,13 @@ namespace Parser
 				{
 					if(next1.type == TType::RAngle)
 					{
-						// > >
+						// > > is >>
 						op = ArithmeticOp::ShiftRight;
 						ps.eat();
 					}
 					else if(next1.type == TType::GreaterEquals)
 					{
-						// > >=
+						// > >= is >>=
 						op = ArithmeticOp::ShiftRightEquals;
 						ps.eat();
 					}
@@ -1692,7 +1682,6 @@ namespace Parser
 					case TType::CaretEq:		op = ArithmeticOp::BitwiseXorEquals;	break;
 
 					case TType::Period:			op = ArithmeticOp::MemberAccess;		break;
-					case TType::DoubleColon:	op = ArithmeticOp::ScopeResolution;		break;
 					case TType::As:				op = (tok_op.text == "as!") ? ArithmeticOp::ForcedCast : ArithmeticOp::Cast;
 												break;
 					default:
@@ -1774,7 +1763,6 @@ namespace Parser
 		Token tok_alloc = ps.eat();
 		iceAssert(tok_alloc.type == TType::Alloc);
 
-		// todo: alloc multidimensional arrays
 		Alloc* ret = CreateAST(Alloc, tok_alloc);
 
 
@@ -1784,12 +1772,12 @@ namespace Parser
 		// obviously, type is not necessary.
 		// probably. if we need to (for polymorphism, to specify the base type, for example)
 		// then either
-
 		// alloc: Type [1, 2, 3] or alloc [1, 2, 3]: Type will work.
 		// not too hard to implement either.
 
 
-
+		// right now we handle multi dim in the form of
+		// alloc[x][y][z] Type(params)
 		while(ps.front().type == TType::LSquare)
 		{
 			ps.eat();
@@ -1842,11 +1830,11 @@ namespace Parser
 			if(iv.second)
 			{
 				n->needUnsigned = true;
-				n->type = "Uint64";
+				n->type = UINT64_TYPE_STRING;
 			}
 			else
 			{
-				n->type = "Int64";
+				n->type = INT64_TYPE_STRING;
 			}
 		}
 		else if(ps.front().type == TType::Decimal)
@@ -1854,8 +1842,8 @@ namespace Parser
 			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
-			if(n->dval < (double) FLT_MAX)	n->type = "Float32";
-			else							n->type = "Float64";
+			if(n->dval < (double) FLT_MAX)	n->type = FLOAT32_TYPE_STRING;
+			else							n->type = FLOAT64_TYPE_STRING;
 		}
 		else
 		{
@@ -2022,21 +2010,22 @@ namespace Parser
 	}
 
 
-	static void parseInheritanceList(ParserState& ps, ClassDef* cls)
+	static std::deque<std::string> parseInheritanceList(ParserState& ps, std::string selfname)
 	{
+		std::deque<std::string> ret;
 		while(true)
 		{
 			Token id = ps.eat();
 			if(id.type != TType::Identifier)
 				parserError("Expected identifier after ':' in struct or class declaration");
 
-			if(std::find(cls->protocolstrs.begin(), cls->protocolstrs.end(), id.text) != cls->protocolstrs.end())
+			if(std::find(ret.begin(), ret.end(), id.text) != ret.end())
 				parserError("Duplicate member %s in inheritance list", id.text.c_str());
 
-			if(cls->name == id.text)
+			if(selfname == id.text)
 				parserError("Self inheritance is illegal");
 
-			cls->protocolstrs.push_back(id.text);
+			ret.push_back(id.text);
 			ps.skipNewline();
 
 			if(ps.front().type != TType::Comma)
@@ -2044,6 +2033,8 @@ namespace Parser
 
 			ps.eat();
 		}
+
+		return ret;
 	}
 
 	static void parseGenericTypeList(ParserState& ps, StructBase* sb)
@@ -2051,10 +2042,13 @@ namespace Parser
 		while(true)
 		{
 			Token type = ps.eat();
+
+			#if 0
 			if(std::find(sb->genericTypes.begin(), sb->genericTypes.end(), type.text) != sb->genericTypes.end())
 				parserError("Duplicate generic type %s", type.text.c_str());
 
 			sb->genericTypes.push_back(type.text);
+			#endif
 
 			if(ps.front().type == TType::Comma)
 				ps.eat();
@@ -2117,15 +2111,15 @@ namespace Parser
 		{
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(str->nameMap.find(var->name) != str->nameMap.end())
-					parserError("Duplicate member '%s'", var->name.c_str());
+				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
+					parserError("Duplicate member '%s'", var->ident.name.c_str());
 
 				str->members.push_back(var);
 
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					str->nameMap[var->name] = i;
+					str->nameMap[var->ident.name] = i;
 					i++;
 				}
 				else
@@ -2187,7 +2181,7 @@ namespace Parser
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
-			parseInheritanceList(ps, cls);
+			cls->protocolstrs = parseInheritanceList(ps, cls->ident.name);
 		}
 
 
@@ -2204,23 +2198,23 @@ namespace Parser
 			{
 				for(ComputedProperty* c : cls->cprops)
 				{
-					if(c->name == cprop->name)
-						parserError("Duplicate member '%s'", cprop->name.c_str());
+					if(c->ident.name == cprop->ident.name)
+						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
 				}
 
 				cls->cprops.push_back(cprop);
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(cls->nameMap.find(var->name) != cls->nameMap.end())
-					parserError("Duplicate member '%s'", var->name.c_str());
+				if(cls->nameMap.find(var->ident.name) != cls->nameMap.end())
+					parserError("Duplicate member '%s'", var->ident.name.c_str());
 
 				cls->members.push_back(var);
 
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					cls->nameMap[var->name] = i;
+					cls->nameMap[var->ident.name] = i;
 					i++;
 				}
 			}
@@ -2261,7 +2255,79 @@ namespace Parser
 
 	ExtensionDef* parseExtension(ParserState& ps)
 	{
-		Token tok_ext = ps.eat();
+
+		Token tok_str = ps.eat();
+		iceAssert(tok_str.type == TType::Extension);
+
+		ps.isParsingStruct = true;
+		Token tok_id = ps.eat();
+
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier");
+
+		std::string id = tok_id.text;
+		ExtensionDef* ext = CreateAST(ExtensionDef, tok_id, id);
+
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+
+		ext->attribs = attr;
+
+		// check for a colon.
+		ps.skipNewline();
+		if(ps.front().type == TType::Colon)
+		{
+			ps.eat();
+			ext->protocolstrs = parseInheritanceList(ps, ext->ident.name);
+		}
+
+
+
+
+
+		// parse a block.
+		BracedBlock* body = parseBracedBlock(ps);
+		for(Expr* stmt : body->statements)
+		{
+			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			{
+				parserError(var->pin, "Extensions cannot delcare new instance members");
+			}
+			else if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				for(ComputedProperty* c : ext->cprops)
+				{
+					if(c->ident.name == cprop->ident.name)
+						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
+				}
+
+				ext->cprops.push_back(cprop);
+			}
+			else if(Func* fn = dynamic_cast<Func*>(stmt))
+			{
+				ext->funcs.push_back(fn);
+			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				ext->assignmentOverloads.push_back(aoo);
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				ext->subscriptOverloads.push_back(soo);
+			}
+			else
+			{
+				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
+			}
+		}
+
+		ps.isParsingStruct = false;
+		delete body;
+		return ext;
+
+
+
+		#if 0
+		Token tok_ext = ps.front();
 		iceAssert(tok_ext.type == TType::Extension);
 
 		ExtensionDef* ext = CreateAST(ExtensionDef, tok_ext, "");
@@ -2279,6 +2345,7 @@ namespace Parser
 
 		delete cls;
 		return ext;
+		#endif
 	}
 
 
@@ -2561,6 +2628,7 @@ namespace Parser
 		if(attr & Attr_RawString)
 			ret->isRaw = true;
 
+		ret->pin.col--;
 		return ret;
 	}
 
@@ -2802,7 +2870,7 @@ namespace Parser
 			ps.tokens.push_front(fake);
 			FuncDecl* fd = parseFuncDecl(ps);
 
-			if(fd->type.strType == "Void")
+			if(fd->type.strType == VOID_TYPE_STRING)
 				parserError("Subscript operator must return a value");
 
 			if(fd->params.size() == 0)

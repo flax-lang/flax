@@ -10,18 +10,85 @@ using namespace Ast;
 using namespace Codegen;
 
 
+
+static fir::Function* generateMemberFunctionDecl(CodegenInstance* cgi, ClassDef* cls, Func* fn)
+{
+	fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+	fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).result.first);
+
+	cgi->builder.setCurrentBlock(ob);
+	if(fn->decl->attribs & Attr_VisPublic)
+	{
+		cgi->addPublicFunc({ lfunc, fn->decl });
+	}
+
+	return lfunc;
+}
+
+
+static void generateMemberFunctionBody(CodegenInstance* cgi, ClassDef* cls, Func* fn, fir::Function* defaultInitFunc)
+{
+	fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+	fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).result.first);
+	iceAssert(ffn);
+
+
+	if(fn->decl->ident.name == "init")
+	{
+		// note: a bit hacky, but better than constantly fucking with creating fake ASTs
+		// get the first block of the function
+		// create a new block *before* that
+		// call the auto init in the new block, then uncond branch to the old block.
+
+		fir::IRBlock* beginBlock = ffn->getBlockList().front();
+		fir::IRBlock* newBlock = new fir::IRBlock();
+
+		newBlock->setFunction(ffn);
+		newBlock->setName("call_autoinit");
+		ffn->getBlockList().push_front(newBlock);
+
+		cgi->builder.setCurrentBlock(newBlock);
+
+		iceAssert(ffn->getArgumentCount() > 0);
+		fir::Value* selfPtr = ffn->getArguments().front();
+
+		cgi->builder.CreateCall1(defaultInitFunc, selfPtr);
+		cgi->builder.CreateUnCondBranch(beginBlock);
+	}
+
+	cgi->builder.setCurrentBlock(ob);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(this->genericTypes.size() > 0 && !this->didCreateType)
-		return Result_t(0, 0);
+	this->createType(cgi);
+
+	TypePair_t* _type = cgi->getType(this->ident);
+	if(!_type) error(this, "how? generating class (%s) without type", this->ident.name.c_str());
 
 
-	TypePair_t* _type = cgi->getType(this->name);
-	if(!_type)
-		_type = cgi->getType(this->mangledName);
-
-	if(!_type)
-		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
 
 
 	// if we're already done, don't.
@@ -55,219 +122,185 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	fir::StructType* str = this->createdType;
-	cgi->module->addNamedType(str->getStructName(), str);
 
 	// generate initialiser
 	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
 		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
-	// printf("created init func for %s -- %s :: %s\n", this->name.c_str(), defaultInitFunc->getName().c_str(),
-	// 	defaultInitFunc->getType()->str().c_str());
 	{
-		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
-		fakeSelf->type = this->name + "*";
+		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
 
-		FuncDecl* fd = new FuncDecl(this->pin, defaultInitFunc->getName(), { fakeSelf }, "Void");
-		cgi->addFunctionToScope({ defaultInitFunc, fd });
-	}
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitFunc);
+		cgi->builder.setCurrentBlock(iblock);
 
+		// create the local instance of reference to self
+		fir::Value* self = defaultInitFunc->getArguments().front();
 
-	fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
-
-	fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defaultInitFunc);
-	cgi->builder.setCurrentBlock(iblock);
-
-	// create the local instance of reference to self
-	fir::Value* self = defaultInitFunc->getArguments().front();
-
-	for(VarDecl* var : this->members)
-	{
-		if(!var->isStatic)
+		for(VarDecl* var : this->members)
 		{
-			int i = this->nameMap[var->name];
-			iceAssert(i >= 0);
-
-			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
-
-			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
-		}
-		else
-		{
-			// generate some globals for static variables.
-			// mangle the variable name.
-
-			// a bit hacky, but still well-defined.
-			std::string varname = cgi->mangleMemberFunction(this, var->name, std::deque<Ast::Expr*>());
-
-			// generate a global variable
-			fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
-				fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
-				this->attribs & Attr_VisPublic ? fir::LinkageType::External : fir::LinkageType::Internal);
-
-
-			if(var->inferredLType->isStructType())
+			if(!var->isStatic)
 			{
-				TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
-				iceAssert(cmplxtype);
+				int i = this->nameMap[var->ident.name];
+				iceAssert(i >= 0);
 
-				fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
-				cgi->addGlobalConstructor(varname, init);
+				fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+
+				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
+				var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
 			}
 			else
 			{
-				iceAssert(var->initVal);
-				fir::Value* val = var->initVal->codegen(cgi, gv).result.first;
-				if(dynamic_cast<fir::ConstantValue*>(val))
+				// generate some globals for static variables.
+
+				auto tmp = this->ident.scope;
+				tmp.push_back(this->ident.name);
+
+				Identifier vid = Identifier(var->ident.name, tmp, IdKind::Variable);
+
+				// generate a global variable
+				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid.str(), var->inferredLType,
+					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
+					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
+
+				if(var->inferredLType->isStructType())
 				{
-					gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
+					TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
+					iceAssert(cmplxtype);
+
+					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
+					cgi->addGlobalConstructor(vid.str(), init);
 				}
 				else
 				{
-					error(this, "Static variables currently only support constant initialisers");
+					iceAssert(var->initVal);
+					fir::Value* val = var->initVal->codegen(cgi, gv).result.first;
+					if(dynamic_cast<fir::ConstantValue*>(val))
+					{
+						gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
+					}
+					else
+					{
+						error(this, "Static variables currently only support constant initialisers");
+					}
 				}
 			}
 		}
-	}
 
-	// create all the other automatic init functions for our extensions
-	std::deque<fir::Function*> extensionInitialisers;
-	{
-		int i = 0;
-		for(auto ext : this->extensions)
-		{
-			extensionInitialisers.push_back(ext->createAutomaticInitialiser(cgi, str, i));
-			i++;
-		}
+		cgi->builder.CreateReturnVoid();
+		cgi->builder.setCurrentBlock(currentblock);
 	}
 
 
 
-	// check if we have any user-defined init() functions.
-	// if we do, then we can stick the extension-init()-calls there
-	// if not, then we need to do it here
 
-	bool didFindInit = false;
+
+
+
+	// generate the decls before the bodies, so we can (a) call recursively, and (b) call other member functions independent of
+	// order of declaration.
+
+
+	// pass 1
 	for(Func* f : this->funcs)
 	{
-		if(f->decl->name == "init")
+		for(auto fn : this->funcs)
 		{
-			didFindInit = true;
-			break;
+			if(f != fn && f->decl->ident.name == fn->decl->ident.name)
+			{
+				int d = 0;
+				std::deque<fir::Type*> ps;
+				for(auto e : fn->decl->params)
+					ps.push_back(cgi->getExprType(e));
+
+				if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
+				{
+					info(fn->decl, "Previous declaration was here: %s", fn->decl->ident.name.c_str());
+					error(f->decl, "Duplicate member function: %s", f->decl->ident.name.c_str());
+				}
+			}
 		}
+
+		fir::Function* ffn = generateMemberFunctionDecl(cgi, this, f);
+
+		if(f->decl->ident.name == "init")
+			this->initFuncs.push_back(ffn);
+
+		this->lfuncs.push_back(ffn);
+		this->functionMap[f] = ffn;
 	}
 
-	if(!didFindInit)
-	{
-		for(fir::Function* f : extensionInitialisers)
-		{
-			fir::Function* actual = cgi->module->getFunction(f->getName());
-			cgi->builder.CreateCall1(actual, self);
-		}
-	}
 
-	cgi->builder.CreateReturnVoid();
-	cgi->builder.setCurrentBlock(currentblock);
-
-
-
-	// add getters/setters (ie. computed properties)
-	// as functions to simplify our code
+	// do comprops here:
+	// 1. we need to generate the decls separately (because they're fake)
+	// 2. we need to *get* the fir::Function* to store somewhere to retrieve later
+	// 3. we need the rest of the member decls to be in place, so we can call member functions
+	// from the getters/setters.
 	for(ComputedProperty* c : this->cprops)
 	{
-		VarDecl* fakeSelf = new VarDecl(c->pin, "self", true);
-		fakeSelf->type = this->name + "*";
+		std::string lenstr = std::to_string(c->ident.name.length()) + c->ident.name;
 
 		if(c->getter)
 		{
-			std::deque<VarDecl*> params { fakeSelf };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + std::to_string(c->name.length()) + c->name, params, c->type.strType);
+			std::deque<VarDecl*> params;
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->type.strType);
 			Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
+
+			fakeDecl->parentClass = this;
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 				fakeDecl->attribs |= Attr_VisPublic;
 
-			this->funcs.push_back(fakeFunc);
 			c->getterFunc = fakeDecl;
+			c->getterFFn = generateMemberFunctionDecl(cgi, this, fakeFunc);
+			generateMemberFunctionBody(cgi, this, fakeFunc, 0);
 		}
 		if(c->setter)
 		{
 			VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
 			setterArg->type = c->type;
 
-			std::deque<VarDecl*> params { fakeSelf, setterArg };
-			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + std::to_string(c->name.length()) + c->name, params, "Void");
+			std::deque<VarDecl*> params { setterArg };
+			FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, VOID_TYPE_STRING);
 			Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
+
+			fakeDecl->parentClass = this;
 
 			if((this->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 				fakeDecl->attribs |= Attr_VisPublic;
 
-			this->funcs.push_back(fakeFunc);
 			c->setterFunc = fakeDecl;
-		}
-	}
-
-
-
-
-
-	// issue here is that functions aren't codegened (ie. don't have the fir::Function*)
-	// before their bodies are codegened, so this makes functions in structs order-dependent.
-
-	// pass 1
-	for(Func* f : this->funcs)
-	{
-		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-		// bool isOpOverload = f->decl->name.find("operator#") == 0;
-		// if(isOpOverload)
-		// 	f->decl->name = f->decl->name.substr(9 /*strlen("operator#")*/ );
-
-		fir::Value* val = nullptr;
-
-
-		// todo for generics:
-		// function expects first parameter not to be there
-		// but since we've already been through this, it'll be there.
-
-		val = f->decl->codegen(cgi).result.first;
-
-		if(f->decl->name == "init")
-			this->initFuncs.push_back(dynamic_cast<fir::Function*>(val));
-
-
-		cgi->builder.setCurrentBlock(ob);
-		this->lfuncs.push_back(dynamic_cast<fir::Function*>(val));
-
-
-		if(f->decl->attribs & Attr_VisPublic)
-		{
-			// make the functions public as well
-			cgi->addPublicFunc({ dynamic_cast<fir::Function*>(val), f->decl });
+			c->setterFFn = generateMemberFunctionDecl(cgi, this, fakeFunc);
+			generateMemberFunctionBody(cgi, this, fakeFunc, 0);
 		}
 	}
 
 	// pass 2
 	for(Func* f : this->funcs)
 	{
-		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-
-		if(f->decl->name == "init")
-		{
-			std::deque<Expr*> todeque;
-
-			VarRef* svr = new VarRef(this->pin, "self");
-			todeque.push_back(svr);
-
-
-			for(auto extInit : extensionInitialisers)
-				f->block->statements.push_front(new FuncCall(this->pin, extInit->getName(), todeque));
-
-			f->block->statements.push_front(new FuncCall(this->pin, "__auto_init__" + this->mangledName, todeque));
-		}
-
-		f->codegen(cgi);
-		cgi->builder.setCurrentBlock(ob);
+		generateMemberFunctionBody(cgi, this, f, defaultInitFunc);
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	if(initFuncs.size() == 0)
@@ -307,7 +340,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
-		aoo->func->decl->name = aoo->func->decl->name.substr(9 /*strlen("operator#")*/);
+		aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 		aoo->func->decl->parentClass = this;
 
 		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
@@ -399,7 +432,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			// do getter.
 			BracedBlock* body = soo->setterBody;
-			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, "Void");
+			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, VOID_TYPE_STRING);
 
 			decl->parentClass = this;
 
@@ -439,27 +472,33 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
-	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
-		return 0;
-
-	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
+	if(this->didCreateType)
 		return this->createdType;
 
 
-
-
-
-	if(instantiatedGenericTypes.size() > 0)
-	{
-		cgi->pushGenericTypeStack();
-		for(auto t : instantiatedGenericTypes)
-			cgi->pushGenericType(t.first, t.second);
-	}
-
-
-
+	this->ident.scope = cgi->getFullScope();
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -470,201 +509,28 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 	}
 
 
-	fir::StructType* superClassType = 0;
 
-	// check our inheritances??
-	bool alreadyHaveSuperclass = false;
+	// check protocols
 	for(auto super : this->protocolstrs)
 	{
-		TypePair_t* type = cgi->getType(super);
-		if(type == 0)
-			error(this, "Type %s does not exist", super.c_str());
-
-		if(type->second.second == TypeKind::Class)
-		{
-			if(alreadyHaveSuperclass)
-			{
-				error(this, "Multiple inheritance is not supported, only one superclass"
-					" can be inherited from. Consider using protocols instead");
-			}
-
-			alreadyHaveSuperclass = true;
-		}
-		else if(type->second.second != TypeKind::Protocol)
-		{
-			error(this, "%s is neither a protocol nor a class, and cannot be inherited from", super.c_str());
-		}
-
-
-		ClassDef* supcls = dynamic_cast<ClassDef*>(type->second.first);
-		iceAssert(supcls);
-
-		// this will (should) do a recursive thing where they copy all their superclassed methods into themselves
-		// by the time we see it.
-		superClassType = supcls->createType(cgi)->toStructType();
-
-
-		// if it's a struct, copy its members into ourselves.
-		if(type->second.second == TypeKind::Class)
-		{
-			this->superclass = { supcls, type->first->toStructType() };
-
-			// normal members
-			for(auto mem : supcls->members)
-			{
-				auto pred = [mem](VarDecl* v) -> bool {
-
-					return v->name == mem->name;
-				};
-
-				auto it = std::find_if(this->members.begin(), this->members.end(), pred);
-				if(it != this->members.end())
-				{
-					error(*it, "Fields cannot be overriden, only computed properties can");
-				}
-
-				this->members.push_back(mem);
-			}
-
-			size_t nms = this->nameMap.size();
-			for(auto nm : supcls->nameMap)
-			{
-				this->nameMap[nm.first] = nms;
-				nms++;
-			}
-
-			// functions
-			for(auto fn : supcls->funcs)
-			{
-				auto pred = [fn, cgi](Func* f) -> bool {
-
-					if(fn->decl->params.size() != f->decl->params.size())
-						return false;
-
-					for(size_t i = 0; i < fn->decl->params.size(); i++)
-					{
-						if(cgi->getExprType(fn->decl->params[i]) != cgi->getExprType(f->decl->params[i]))
-							return false;
-					}
-
-					return fn->decl->name == f->decl->name;
-				};
-
-
-				auto it = std::find_if(this->funcs.begin(), this->funcs.end(), pred);
-				if(it != this->funcs.end())
-				{
-					// check for 'override'
-					Func* f = *it;
-					if(!(f->decl->attribs & Attr_Override))
-					{
-						error(f->decl, "Overriding function '%s' in superclass %s requires 'override' keyword",
-							cgi->printAst(f->decl).c_str(), supcls->name.c_str());
-					}
-					else
-					{
-						// don't add the superclass one.
-						continue;
-					}
-				}
-
-				this->funcs.push_back((Func*) cgi->cloneAST(fn));
-			}
-
-
-
-
-
-
-			// computed properties
-			for(auto cp : supcls->cprops)
-			{
-				auto pred = [cp](ComputedProperty* cpr) -> bool {
-
-					return cp->name == cpr->name;
-				};
-
-				auto it = std::find_if(this->cprops.begin(), this->cprops.end(), pred);
-				if(it != this->cprops.end())
-				{
-					// this thing exists.
-					// check if ours has an override
-					ComputedProperty* ours = *it;
-					iceAssert(ours->name == cp->name);
-
-					if(!(ours->attribs & Attr_Override))
-					{
-						error(ours, "Overriding computed property '%s' in superclass %s needs 'override' keyword",
-							ours->name.c_str(), supcls->name.c_str());
-					}
-					else
-					{
-						// we have 'override'.
-						// disable this property, don't add it.
-						continue;
-					}
-				}
-
-				this->cprops.push_back((ComputedProperty*) cgi->cloneAST(cp));
-			}
-		}
-		else
-		{
-			// protcols not supported yet.
-			error(this, "enotsup");
-		}
+		// protcols not supported yet.
+		error(this, "enotsup");
 	}
+
+
 
 
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 	// create a bodyless struct so we can use it
-	std::deque<std::string> fullScope = cgi->getFullScope();
-	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
-	std::string genericTypeMangle;
 
-	if(instantiatedGenericTypes.size() > 0)
-	{
-		for(auto t : instantiatedGenericTypes)
-			genericTypeMangle += "_" + t.first + ":" + t.second->str();
-	}
+	if(cgi->isDuplicateType(this->ident))
+		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
-	this->mangledName += genericTypeMangle;
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident.str(), cgi->getContext());
 
-
-	if(cgi->isDuplicateType(this->mangledName))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
-
-
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext());
-
-
-	this->scope = fullScope;
-	{
-		std::string oldname = this->name;
-
-		// only add the base type if we haven't *ever* created it
-		if(this->createdType == 0)
-			cgi->addNewType(str, this, TypeKind::Class);
-
-		this->name += genericTypeMangle;
-
-		if(genericTypeMangle.length() > 0)
-			cgi->addNewType(str, this, TypeKind::Class);
-
-		this->name = oldname;
-	}
-
-	// cgi->addNewType(str, this, TypeKind::Class);
-
-
-
-	if(superClassType != 0)
-		str->setBaseType(superClassType);
-
-
-
-
+	iceAssert(this->createdType == 0);
+	cgi->addNewType(str, this, TypeKind::Class);
 
 
 	// because we can't (and don't want to) mangle names in the parser,
@@ -679,11 +545,6 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 			func->decl->attribs |= Attr_VisPublic;
 
 		func->decl->parentClass = this;
-		std::string mangled = cgi->mangleFunctionName(func->decl->name, func->decl->params);
-		if(this->nameMap.find(mangled) != this->nameMap.end())
-		{
-			error(this, "Duplicate member '%s'", func->decl->name.c_str());
-		}
 	}
 
 	for(VarDecl* var : this->members)
@@ -699,10 +560,10 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 			error(this, "Cannot have non-pointer member of type self");
 		}
 
-		cgi->applyExtensionToStruct(cgi->mangleWithNamespace(var->type.strType));
+
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->name];
+			int i = this->nameMap[var->ident.name];
 			iceAssert(i >= 0);
 
 			types[i] = cgi->getExprType(var);
@@ -727,10 +588,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 
 	this->createdType = str;
 
-	if(instantiatedGenericTypes.size() > 0)
-		cgi->popGenericTypeStack();
-
-
+	cgi->module->addNamedType(str->getStructName(), str);
 
 	return str;
 }

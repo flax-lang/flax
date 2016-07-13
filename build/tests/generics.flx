@@ -4,25 +4,38 @@
 
 import Foundation
 
-public func foo_generic<T, K>(a: T, b: K)
+
+func foo_generic<T>(a: T, b: T, c: T)
+{
+	printf("foo: triple T\n")
+	(a, b, c)
+}
+
+func foo_generic<T>(a: T, b: T)
+{
+	printf("foo: double T\n")
+	(a, b)
+}
+
+func foo_generic<T, K>(a: T, b: K)
 {
 	let ta = typeof(a)
 	let tb = typeof(b)
 
 
-	if(ta == Type.Int8)
+	if(ta == Type.int8)
 	{
 		printf("foo: (int8)   %d, ", a)
 	}
-	else if(ta == Type.Int16)
+	else if(ta == Type.int16)
 	{
 		printf("foo: (int16)  %d, ", a)
 	}
-	else if(ta == Type.Int32)
+	else if(ta == Type.int32)
 	{
 		printf("foo: (int32)  %d, ", a)
 	}
-	else if(ta == Type.Int64)
+	else if(ta == Type.int64)
 	{
 		printf("foo: (int64)  %d, ", a)
 	}
@@ -32,19 +45,19 @@ public func foo_generic<T, K>(a: T, b: K)
 	}
 
 
-	if(tb == Type.Int8)
+	if(tb == Type.int8)
 	{
 		printf("(int8)   %d\n", b)
 	}
-	else if(tb == Type.Int16)
+	else if(tb == Type.int16)
 	{
 		printf("(int16)  %d\n", b)
 	}
-	else if(tb == Type.Int32)
+	else if(tb == Type.int32)
 	{
 		printf("(int32)  %d\n", b)
 	}
-	else if(tb == Type.Int64)
+	else if(tb == Type.int64)
 	{
 		printf("(int64)  %d\n", b)
 	}
@@ -54,18 +67,13 @@ public func foo_generic<T, K>(a: T, b: K)
 	}
 }
 
-func foo_generic<T>(a: T, b: T, c: T)
-{
-	printf("foo: triple T\n")
-	(a, b, c)
-}
-
-
 public func doGenericsTest()
 {
-	foo_generic(7, 6 as Int8)
-	foo_generic(7, 6 as Int16)
-	foo_generic(7, 6 as Int32)
+	foo_generic(7, 6 as int8)
+	foo_generic(7, 6 as int16)
+	foo_generic(7, 6 as int32)
+
+	// foo_generic(501, 101)
 
 	foo_generic(5, "asdf")
 

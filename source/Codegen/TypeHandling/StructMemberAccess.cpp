@@ -9,7 +9,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
+static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, ClassDef* cls);
 
@@ -22,8 +22,12 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::string name)
 {
-	std::string mangledName = this->mangleMemberFunction(cls, name, std::deque<Ast::Expr*>());
-	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
+	auto tmp = cls->ident.scope;
+	tmp.push_back(cls->ident.name);
+
+	Identifier vid = Identifier(name, tmp, IdKind::Variable);
+
+	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(vid.str()))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.
@@ -33,7 +37,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::stri
 		return Result_t(this->builder.CreateLoad(gv), gv);
 	}
 
-	error(user, "Class '%s' has no such static member '%s'", cls->name.c_str(), name.c_str());
+	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
 
 
@@ -225,14 +229,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(var, "Struct '%s' has no such member '%s'", str->name.c_str(), var->name.c_str());
+				error(var, "Struct '%s' has no such member '%s'", str->ident.name.c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(this, "Type '%s' is not a tuple", str->name.c_str());
+				error(this, "Type '%s' is not a tuple", str->ident.name.c_str());
 			}
 			else
 			{
@@ -283,7 +287,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(dynamic_cast<Number*>(rhs))
 			{
-				error(this, "Type '%s' is not a tuple", cls->name.c_str());
+				error(this, "Type '%s' is not a tuple", cls->ident.name.c_str());
 			}
 			else
 			{
@@ -298,17 +302,17 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			for(auto f : cls->funcs)
 			{
 				FuncPair_t fp = { cls->lfuncs[i], f->decl };
-				if(f->decl->name == fc->name && f->decl->isStatic)
+				if(f->decl->ident.name == fc->name && f->decl->isStatic)
 					candidates.push_back(fp);
 
 				i++;
 			}
 
 			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
-			if(res.resolved) return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, true);
+			if(res.resolved) return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
 
 
-			return doFunctionCall(cgi, fc, isPtr ? self : selfPtr, cls, false);
+			return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
 		}
 		else if(var)
 		{
@@ -321,7 +325,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				ComputedProperty* cprop = nullptr;
 				for(ComputedProperty* c : cls->cprops)
 				{
-					if(c->name == var->name)
+					if(c->ident.name == var->name)
 					{
 						cprop = c;
 						break;
@@ -358,23 +362,11 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	{
 		if(!cprop->setter)
 		{
-			error(var, "Property '%s' of type has no setter and is readonly", cprop->name.c_str());
+			error(var, "Property '%s' of type has no setter and is readonly", cprop->ident.name.c_str());
 		}
 
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			// printf("candidate: %s vs %s\n", cprop->setterFunc->mangledName.c_str(), lf->getName().str().c_str());
-			if(lf->getName() == cprop->setterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!");
-
+		fir::Function* lcallee = cprop->setterFFn;
+		iceAssert(lcallee);
 
 		std::vector<fir::Value*> args { ref, _rhs };
 
@@ -394,18 +386,8 @@ static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedPr
 	}
 	else
 	{
-		fir::Function* lcallee = 0;
-		for(fir::Function* lf : cls->lfuncs)
-		{
-			if(lf->getName() == cprop->getterFunc->mangledName)
-			{
-				lcallee = lf;
-				break;
-			}
-		}
-
-		if(!lcallee)
-			error(var, "?!??!!???");
+		fir::Function* lcallee = cprop->getterFFn;
+		iceAssert(lcallee);
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
 		std::vector<fir::Value*> args { ref };
@@ -429,7 +411,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 	return Result_t(val, ptr);
 }
 
-static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
+static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
 {
 	// make the args first.
 	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
@@ -441,7 +423,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 
 	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromMemberFuncCall(cls, fc);
+	Func* callee = cgi->getFunctionFromMemberFuncCall(ma, cls, fc);
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -453,21 +435,13 @@ static Result_t doFunctionCall(CodegenInstance* cgi, FuncCall* fc, fir::Value* r
 
 	if(callee->decl->isStatic != isStaticFunctionCall)
 	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->name.c_str());
+		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
 	}
 
 
 
 
-	fir::Function* lcallee = 0;
-	for(fir::Function* lf : cls->lfuncs)
-	{
-		if(lf->getName() == callee->decl->mangledName)
-		{
-			lcallee = lf;
-			break;
-		}
-	}
+	fir::Function* lcallee = cls->functionMap[callee];
 
 	if(!lcallee)
 		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
@@ -555,14 +529,10 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			}
 
 			if(found)
-			{
-				// printf("found (1)\n");
 				continue;
-			}
 
-			if(TypePair_t* tp = this->getType(this->mangleWithNamespace(front, nsstrs, false)))
+			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
-				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<ClassDef*>(tp->second.first);
 				curFType = tp->first;
@@ -577,7 +547,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			this->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
-				if(sb.first->name == front)
+				if(sb.first->ident.name == front)
 				{
 					curType = sb.first;
 					curFType = sb.second;
@@ -592,7 +562,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 		std::string lscope = ma->matype == MAType::LeftNamespace ? "namespace" : "type";
 		error(ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
-			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->name.c_str() : "uhm..."));
+			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
 
 
@@ -626,7 +596,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			std::deque<FuncPair_t> flist;
 			for(size_t i = 0; i < curType->funcs.size(); i++)
 			{
-				if(curType->funcs[i]->decl->name == fc->name)
+				if(curType->funcs[i]->decl->ident.name == fc->name)
 					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
 			}
 
@@ -641,7 +611,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 			std::string text;
 			for(auto s : origList)
-				text += (s + "::");
+				text += (s + ".");
 
 			text += fc->name;
 
@@ -712,7 +682,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			// note: check for enum comes first since enum : class, so it's more specific.
 			if(dynamic_cast<EnumDef*>(curType))
 			{
-				TypePair_t* tpair = this->getType(curType->mangledName);
+				TypePair_t* tpair = this->getType(curType->ident);
 				if(!tpair)
 					error(vr, "Invalid class '%s'", vr->name.c_str());
 
@@ -723,15 +693,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				for(auto v : cls->members)
 				{
-					if(v->isStatic && v->name == vr->name)
+					if(v->isStatic && v->ident.name == vr->name)
 					{
 						fir::Type* ltype = this->getExprType(v);
-						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->name) : Result_t(0, 0) }, curFType };
+						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
 					}
 				}
 			}
 
-			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->name.c_str(), vr->name.c_str());
+			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->ident.name.c_str(), vr->name.c_str());
 		}
 	}
 	else
@@ -777,45 +747,44 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 
-Func* CodegenInstance::getFunctionFromMemberFuncCall(ClassDef* str, FuncCall* fc)
+Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
 {
-	std::string full;
-	std::deque<std::string> fs = this->getFullScope();
-	for(auto f : fs)
-		full += f + "::";
+	std::deque<fir::Type*> params;
+	for(auto p : fc->params)
+		params.push_back(this->getExprType(p));
 
-	full += str->name;
+	if(cls->createdType == 0)
+		cls->createType(this);
 
-	std::deque<Expr*> params = fc->params;
-	DummyExpr* fake = new DummyExpr(fc->pin);
-	fake->type = full + "*";
+	iceAssert(cls->createdType);
+	params.push_front(cls->createdType->getPointerTo());
 
-	params.push_front(fake);
 
 	std::deque<FuncPair_t> fns;
-	for(auto f : str->funcs)
+	for(auto f : cls->funcs)
 	{
-		if(f->decl->name == fc->name)
-			fns.push_back({ 0, f->decl });
+		if(f->decl->ident.name == fc->name)
+			fns.push_back({ cls->functionMap[f], 0 });
 	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
 
 	if(!res.resolved)
 	{
-		auto tup = GenError::getPrettyNoSuchFunctionError(this, params, fns);
+		auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
 		std::string argstr = std::get<0>(tup);
 		std::string candstr = std::get<1>(tup);
 		HighlightOptions ops = std::get<2>(tup);
 
+		ops.caret = ma->pin;
+
 		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			str->name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
+			cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 	}
 
-
-	for(auto f : str->funcs)
+	for(auto f : cls->funcs)
 	{
-		if(f->decl == res.t.second)
+		if(cls->functionMap[f] == res.t.first)
 			return f;
 	}
 
@@ -830,7 +799,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto c : cls->cprops)
 		{
-			if(c->name == var->name)
+			if(c->ident.name == var->name)
 			{
 				found = c;
 				break;
@@ -842,7 +811,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 	{
 		for(auto m : str->members)
 		{
-			if(m->name == var->name)
+			if(m->ident.name == var->name)
 			{
 				found = m;
 				break;
@@ -852,7 +821,7 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 
 	if(!found)
 	{
-		GenError::noSuchMember(this, var, str->name, var->name);
+		GenError::noSuchMember(this, var, str->ident.name, var->name);
 	}
 
 	return found;

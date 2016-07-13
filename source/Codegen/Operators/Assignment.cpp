@@ -33,7 +33,7 @@ namespace Operators
 		ComputedProperty* ret = 0;
 		for(auto cp : cls->cprops)
 		{
-			if(cp->name == vrname->name)
+			if(cp->ident.name == vrname->name)
 			{
 				// found
 				ret = cp;
@@ -44,13 +44,10 @@ namespace Operators
 		if(!ret) return 0;
 		if(!ret->setterFunc) return 0;
 
-		for(auto lf : cls->lfuncs)
-		{
-			if(lf->getName() == ret->setterFunc->mangledName)
-				return lf;
-		}
+		// assert here, because it should be had.
+		iceAssert(ret->setterFFn);
 
-		return 0;
+		return ret->setterFFn;
 	}
 
 

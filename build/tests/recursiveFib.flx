@@ -4,7 +4,7 @@
 
 import Foundation
 
-ƒ doRecursiveFib(n: Int, v: Int, prev: Int) -> Int
+ƒ doRecursiveFib(n: int, v: int, prev: int) -> int
 {
 	if n == 0 { return prev }
 	if n == 1 { return v }
@@ -12,7 +12,7 @@ import Foundation
 	return doRecursiveFib(n - 1, v + prev, v)
 }
 
-public ƒ doRecursiveFib(n: Int) -> Int
+public ƒ doRecursiveFib(n: int) -> int
 {
 	return doRecursiveFib(n, 1, 0)
 }

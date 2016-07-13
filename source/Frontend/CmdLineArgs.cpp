@@ -40,8 +40,8 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_MCMODEL								"-mcmodel"
 #define ARG_PRINT_FIR							"-print-fir"
 #define ARG_PRINT_LLVMIR						"-print-lir"
+#define ARG_EMIT_LLVM_IR						"-emit-llvm"
 #define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
-#define ARG_NO_LOWERCASE_BUILTIN				"-no-lowercase-builtin"
 #define ARG_JITPROGRAM							"-jit"
 #define ARG_RUNPROGRAM							"-run"
 #define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS	"-no-auto-gconstr"
@@ -126,21 +126,21 @@ namespace Compiler
 	}
 
 	static std::string mcmodel;
-	std::string getMcModel()
+	std::string getCodeModel()
 	{
 		return mcmodel;
-	}
-
-	static bool noLowercaseTypes;
-	bool getDisableLowercaseBuiltinTypes()
-	{
-		return noLowercaseTypes;
 	}
 
 	static bool printClangOutput;
 	bool getPrintClangOutput()
 	{
 		return printClangOutput;
+	}
+
+	static bool emitLLVMOutput;
+	bool getEmitLLVMOutput()
+	{
+		return emitLLVMOutput;
 	}
 
 	static bool runProgramWithJit;
@@ -269,10 +269,6 @@ namespace Compiler
 				else if(!strcmp(argv[i], ARG_PRINT_FIR))
 				{
 					Compiler::printFIR = true;
-				}
-				else if(!strcmp(argv[i], ARG_NO_LOWERCASE_BUILTIN))
-				{
-					Compiler::noLowercaseTypes = true;
 				}
 				else if(!strcmp(argv[i], ARG_COMPILE_ONLY))
 				{

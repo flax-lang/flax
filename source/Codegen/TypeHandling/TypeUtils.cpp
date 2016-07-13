@@ -20,37 +20,8 @@ namespace Codegen
 		int indirections = 0;
 		type = unwrapPointerType(type, &indirections);
 
-		if(!Compiler::getDisableLowercaseBuiltinTypes())
-		{
-			if(type.length() > 0)
-			{
-				type[0] = toupper(type[0]);
-			}
-		}
-
-		fir::Type* real = 0;
-
-		if(type == "Int8")			real = fir::PrimitiveType::getInt8(this->getContext());
-		else if(type == "Int16")	real = fir::PrimitiveType::getInt16(this->getContext());
-		else if(type == "Int32")	real = fir::PrimitiveType::getInt32(this->getContext());
-		else if(type == "Int64")	real = fir::PrimitiveType::getInt64(this->getContext());
-		else if(type == "Int")		real = fir::PrimitiveType::getInt64(this->getContext());
-
-		else if(type == "Uint8")	real = fir::PrimitiveType::getUint8(this->getContext());
-		else if(type == "Uint16")	real = fir::PrimitiveType::getUint16(this->getContext());
-		else if(type == "Uint32")	real = fir::PrimitiveType::getUint32(this->getContext());
-		else if(type == "Uint64")	real = fir::PrimitiveType::getUint64(this->getContext());
-		else if(type == "Uint")		real = fir::PrimitiveType::getUint64(this->getContext());
-
-		else if(type == "Float32")	real = fir::PrimitiveType::getFloat32(this->getContext());
-		else if(type == "Float")	real = fir::PrimitiveType::getFloat32(this->getContext());
-
-		else if(type == "Float64")	real = fir::PrimitiveType::getFloat64(this->getContext());
-		else if(type == "Double")	real = fir::PrimitiveType::getFloat64(this->getContext());
-
-		else if(type == "Bool")		real = fir::PrimitiveType::getBool(this->getContext());
-		else if(type == "Void")		real = fir::PrimitiveType::getVoid(this->getContext());
-		else return 0;
+		fir::Type* real = fir::Type::fromBuiltin(type);
+		if(!real) return 0;
 
 		iceAssert(real);
 		while(indirections > 0)
@@ -101,6 +72,9 @@ namespace Codegen
 
 	fir::Type* CodegenInstance::getExprType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
+		if(expr->type.ftype != 0)
+			return expr->type.ftype;
+
 		setInferred = false;
 		iceAssert(expr);
 		{
@@ -110,7 +84,7 @@ namespace Codegen
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
-						error(expr, "Invalid variable declaration for %s!", decl->name.c_str());
+						error(expr, "Invalid variable declaration for %s!", decl->ident.name.c_str());
 					}
 
 					iceAssert(decl->inferredLType);
@@ -164,7 +138,7 @@ namespace Codegen
 					Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
 					if(!rt.resolved)
 					{
-						TypePair_t* tp = this->getType(fc->name);
+						TypePair_t* tp = this->getTypeByString(fc->name);
 						if(tp)
 						{
 							return tp->first;
@@ -192,7 +166,7 @@ namespace Codegen
 			}
 			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
-				TypePair_t* type = this->getType(fd->type.strType);
+				TypePair_t* type = this->getTypeByString(fd->type.strType);
 				if(!type)
 				{
 					fir::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
@@ -208,7 +182,7 @@ namespace Codegen
 
 				else
 				{
-					auto tp = this->getType("String");
+					auto tp = this->getTypeByString("String");
 					if(!tp)
 						return fir::PointerType::getInt8Ptr(this->getContext());
 
@@ -263,18 +237,18 @@ namespace Codegen
 					{
 						for(VarDecl* mem : cls->members)
 						{
-							if(mem->name == memberVr->name)
+							if(mem->ident.name == memberVr->name)
 								return this->getExprType(mem);
 						}
 						for(ComputedProperty* c : cls->cprops)
 						{
-							if(c->name == memberVr->name)
+							if(c->ident.name == memberVr->name)
 								return this->getExprTypeFromStringType(c, c->type, allowFail);
 						}
 					}
 					else if(memberFc)
 					{
-						return this->getExprType(this->getFunctionFromMemberFuncCall(cls, memberFc));
+						return this->getExprType(this->getFunctionFromMemberFuncCall(ma, cls, memberFc));
 					}
 				}
 				else if(pair->second.second == TypeKind::Struct)
@@ -289,7 +263,7 @@ namespace Codegen
 					{
 						for(VarDecl* mem : str->members)
 						{
-							if(mem->name == memberVr->name)
+							if(mem->ident.name == memberVr->name)
 								return this->getExprType(mem);
 						}
 					}
@@ -312,7 +286,7 @@ namespace Codegen
 							return this->getExprType(c.second);
 					}
 
-					error(expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+					error(expr, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), enrcase->name.c_str());
 				}
 				else
 				{
@@ -389,26 +363,14 @@ namespace Codegen
 			}
 			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
 			{
-				TypePair_t* type = getType(alloc->type.strType);
-				if(!type)
-				{
-					// check if it ends with pointer, and if we have a type that's un-pointered
-					if(alloc->type.strType.find("::") != std::string::npos)
-					{
-						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getExprTypeFromStringType(alloc, alloc->type, allowFail)->getPointerTo();
-					}
+				fir::Type* base = this->getExprTypeFromStringType(alloc, alloc->type.strType);
 
-					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
-				}
-
-				fir::Type* ret = type->first;
-				if(alloc->counts.size() == 0) return ret->getPointerTo();
+				if(alloc->counts.size() == 0) return base->getPointerTo();
 
 				for(size_t i = 0; i < alloc->counts.size(); i++)
-					 ret = ret->getPointerTo();
+					 base = base->getPointerTo();
 
-				return ret;
+				return base;
 			}
 			else if(Number* nm = dynamic_cast<Number*>(expr))
 			{
@@ -439,7 +401,7 @@ namespace Codegen
 			}
 			else if(dynamic_cast<Typeof*>(expr))
 			{
-				TypePair_t* tp = this->getType("Type");
+				TypePair_t* tp = this->getTypeByString("Type");
 				iceAssert(tp);
 
 				return tp->first;
@@ -481,6 +443,10 @@ namespace Codegen
 				// todo: make this not shit.
 				// edit: ???
 				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
+			}
+			else if(dynamic_cast<NullVal*>(expr))
+			{
+				return fir::ConstantValue::getNull()->getType();
 			}
 			else if(dynamic_cast<PostfixUnaryOp*>(expr))
 			{
@@ -524,7 +490,7 @@ namespace Codegen
 			}
 
 			if(candidate == 0)
-				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
+				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->ident.name.c_str());
 
 			return candidate;
 		}
@@ -536,7 +502,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "Type '%s' cannot have initialisers", sb->name.c_str());
+			error(user, "Type '%s' cannot have initialisers", sb->ident.name.c_str());
 		}
 	}
 
@@ -623,12 +589,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isStructType() && from->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& from->isStructType() && from->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isStructType() && to->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& to->isStructType() && to->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
@@ -656,14 +622,29 @@ namespace Codegen
 			// any cast is 25.
 			return 25;
 		}
+		else if(this->isTupleType(from) && this->isTupleType(to)
+			&& from->toStructType()->getElementCount() == to->toStructType()->getElementCount())
+		{
+			int sum = 0;
+			for(size_t i = 0; i < from->toStructType()->getElementCount(); i++)
+			{
+				int d = this->getAutoCastDistance(from->toStructType()->getElementN(i), to->toStructType()->getElementN(i));
+				if(d == -1)
+					return -1;		// note: make sure this is the last case
+
+				sum += d;
+			}
+
+			return sum;
+		}
 
 		return -1;
 	}
 
-	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr, int* distance)
+	fir::Value* CodegenInstance::autoCastType(fir::Type* target, fir::Value* from, fir::Value* fromPtr, int* distance)
 	{
-		if(!target || !right)
-			return right;
+		if(!target || !from)
+			return from;
 
 		// casting distance for size is determined by the number of "jumps"
 		// 8 -> 16 = 1
@@ -672,18 +653,22 @@ namespace Codegen
 		// 16 -> 64 = 2
 		// etc.
 
-		fir::Value* retval = right;
+		fir::Value* retval = from;
 
-		if(target->isIntegerType() && right->getType()->isIntegerType()
-			&& target->toPrimitiveType()->getIntegerBitWidth() != right->getType()->toPrimitiveType()->getIntegerBitWidth())
+		if(from->getType() == target)
+		{
+			retval = from;
+		}
+		if(target->isIntegerType() && from->getType()->isIntegerType()
+			&& target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
 			unsigned int lBits = target->toPrimitiveType()->getIntegerBitWidth();
-			unsigned int rBits = right->getType()->toPrimitiveType()->getIntegerBitWidth();
+			unsigned int rBits = from->getType()->toPrimitiveType()->getIntegerBitWidth();
 
 			bool shouldCast = lBits > rBits;
 
 			// check if the RHS is a constant value
-			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(right);
+			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(from);
 			if(constVal)
 			{
 				// check if the number fits in the LHS type
@@ -711,16 +696,16 @@ namespace Codegen
 				// note(behaviour): should this be implicit?
 				// if we should cast, then the bitwidth should already be >=
 
-				if(target->toPrimitiveType()->isSigned() != right->getType()->toPrimitiveType()->isSigned())
+				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
 					if(target->toPrimitiveType()->isSigned())
-						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getIntN(rBits));
+						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
 
 					else
-						right = this->builder.CreateIntSignednessCast(right, fir::PrimitiveType::getUintN(rBits));
+						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
 				}
 
-				retval = this->builder.CreateIntSizeCast(right, target);
+				retval = this->builder.CreateIntSizeCast(from, target);
 			}
 			else if(shouldCast)
 			{
@@ -734,10 +719,10 @@ namespace Codegen
 		}
 
 		// signed to unsigned conversion
-		else if(target->isIntegerType() && right->getType()->isIntegerType()
-			&& (right->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
+		else if(target->isIntegerType() && from->getType()->isIntegerType()
+			&& (from->getType()->toPrimitiveType()->isSigned() != target->toPrimitiveType()->isSigned()))
 		{
-			if(!right->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
+			if(!from->getType()->toPrimitiveType()->isSigned() && target->toPrimitiveType()->isSigned())
 			{
 				// only do it if it preserves all data.
 				// we cannot convert signed to unsigned, but unsigned to signed is okay if the
@@ -749,8 +734,8 @@ namespace Codegen
 				// note(behaviour): check this
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(right, target);
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(from, target);
 			}
 			else
 			{
@@ -758,15 +743,14 @@ namespace Codegen
 				// note(behaviour): check this
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
-				if(target->toPrimitiveType()->getIntegerBitWidth() >= right->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(right, target);
+				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
+					retval = this->builder.CreateIntSizeCast(from, target);
 			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& right->getType()->isStructType()
-				&& right->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName() == "String")
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -775,25 +759,25 @@ namespace Codegen
 
 			// cast the RHS to the LHS
 
-			if(!rhsPtr)
+			if(!fromPtr)
 			{
-				rhsPtr = this->getImmutStackAllocValue(right);
+				fromPtr = this->getImmutStackAllocValue(from);
 			}
 
-			iceAssert(rhsPtr);
-			fir::Value* ret = this->builder.CreateStructGEP(rhsPtr, 0);
+			iceAssert(fromPtr);
+			fir::Value* ret = this->builder.CreateStructGEP(fromPtr, 0);
 			retval = this->builder.CreateLoad(ret);
 		}
-		else if(target->isFloatingPointType() && right->getType()->isIntegerType())
+		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			retval = this->builder.CreateIntToFloatCast(right, target);
+			retval = this->builder.CreateIntToFloatCast(from, target);
 		}
-		else if(target->isStructType() && right->getType()->isStructType() && target->toStructType()->isABaseTypeOf(right->getType()
-						->toStructType()))
+		else if(target->isStructType() && from->getType()->isStructType()
+			&& target->toStructType()->isABaseTypeOf(from->getType()->toStructType()))
 		{
 			fir::StructType* sto = target->toStructType();
-			fir::StructType* sfr = right->getType()->toStructType();
+			fir::StructType* sfr = from->getType()->toStructType();
 
 			iceAssert(sto->isABaseTypeOf(sfr));
 
@@ -801,7 +785,7 @@ namespace Codegen
 			fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
 
 			// store the value into the pointer.
-			this->builder.CreateStore(right, alloca);
+			this->builder.CreateStore(from, alloca);
 
 			// do a pointer type cast.
 			fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
@@ -809,22 +793,49 @@ namespace Codegen
 			// load it.
 			retval = this->builder.CreateLoad(ptr);
 		}
-		else if(target->isPointerType() && right->getType()->isNullPointer())
+		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
 			retval = fir::ConstantValue::getNullValue(target);
+			// fprintf(stderr, "void cast, %s (%zu) // %s (%zu)\n", target->str().c_str(), from->id, retval->getType()->str().c_str(), retval->id);
 		}
-		else if(target->isPointerType() && right->getType()->isPointerType() && target->getPointerElementType()->toStructType()
-				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(right->getType()->getPointerElementType()->toStructType()))
+		else if(target->isPointerType() && from->getType()->isPointerType() && target->getPointerElementType()->toStructType()
+				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(from->getType()->getPointerElementType()->toStructType()))
 		{
-			fir::StructType* sfr = right->getType()->getPointerElementType()->toStructType();
+			fir::StructType* sfr = from->getType()->getPointerElementType()->toStructType();
 			fir::StructType* sto = target->getPointerElementType()->toStructType();
 
 			iceAssert(sfr && sto && sto->isABaseTypeOf(sfr));
-			retval = this->builder.CreatePointerTypeCast(right, sto->getPointerTo());
+			retval = this->builder.CreatePointerTypeCast(from, sto->getPointerTo());
+		}
+		else if(this->isTupleType(from->getType()) && this->isTupleType(target)
+			&& from->getType()->toStructType()->getElementCount() == target->toStructType()->getElementCount())
+		{
+			// somewhat complicated
+			iceAssert(fromPtr);
+
+			fir::Value* tuplePtr = this->getStackAlloc(target);
+			// fprintf(stderr, "tuplePtr = %s\n", tuplePtr->getType()->str().c_str());
+			// fprintf(stderr, "from = %s, to = %s\n", from->getType()->str().c_str(), target->str().c_str());
+
+			for(size_t i = 0; i < from->getType()->toStructType()->getElementCount(); i++)
+			{
+				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
+				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
+
+				// fprintf(stderr, "geps: %s, %s\n", gep->getType()->str().c_str(), fromGep->getType()->str().c_str());
+
+				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->builder.CreateLoad(fromGep), fromGep);
+
+				// fprintf(stderr, "casted = %s\n", casted->getType()->str().c_str());
+
+				this->builder.CreateStore(casted, gep);
+			}
+
+			retval = this->builder.CreateLoad(fromPtr);
 		}
 
 
-		int dist = this->getAutoCastDistance(right->getType(), target);
+		int dist = this->getAutoCastDistance(from->getType(), target);
 		if(distance != 0)
 			*distance = dist;
 
@@ -849,7 +860,7 @@ namespace Codegen
 
 	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
-		std::string sptr = std::string("*");
+		std::string sptr = "*";
 		size_t ptrStrLength = sptr.length();
 
 		int tmp = 0;
@@ -1053,6 +1064,11 @@ namespace Codegen
 
 				if(atype.find("<") != std::string::npos)
 				{
+					error("enotsup (generic structs)");
+
+
+					#if 0
+
 					size_t k = atype.find("<");
 					std::string base = atype.substr(0, k);
 
@@ -1065,13 +1081,6 @@ namespace Codegen
 						// parse that shit.
 						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 						iceAssert(sb);
-
-						// todo: need to mangle name of struct, then find. currently fucks up.
-						// todo: need some way to give less shitty error messages
-
-						if(sb->genericTypes.size() == 0)
-							error(user, "Type %s does not have type parameters, is not generic", sb->name.c_str());
-
 
 						// parse the list of types.
 						std::string glist = atype.substr(k);
@@ -1119,17 +1128,6 @@ namespace Codegen
 								}
 							}
 							types.push_back(curtype);
-
-
-							if(types.size() != sb->genericTypes.size())
-								error(user, "Expected %zu type parameters, got %zu", sb->genericTypes.size(), types.size());
-
-							// ok.
-							for(size_t i = 0; i < types.size(); i++)
-							{
-								fir::Type* inst = this->parseAndGetOrInstantiateType(user, types[i]);
-								instantiatedGenericTypes[sb->genericTypes[i]] = inst;
-							}
 						}
 
 						// todo: ew, goto
@@ -1140,18 +1138,19 @@ namespace Codegen
 						if(allowFail) return 0;
 						else error(user, "Invaild type '%s'", base.c_str());
 					}
+
+					#endif
 				}
 
 				std::string nsstr;
 				for(auto n : ns)
 					nsstr += n + ".";
 
-				if(ns.size() > 0) nsstr = nsstr.substr(1);
+				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
 			}
-
 
 			if(!tp && this->getExprTypeOfBuiltin(atype))
 			{
@@ -1159,23 +1158,10 @@ namespace Codegen
 			}
 			else if(tp)
 			{
-				foundType:
+				// foundType:
 
 				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
-				std::string mangledGeneric = oldSB->name;
-
-				// mangle properly, and find it.
-				{
-					iceAssert(tp);
-					iceAssert(tp->second.first);
-
-					for(auto pair : instantiatedGenericTypes)
-						mangledGeneric += "_" + pair.first + ":" + pair.second->str();
-
-					tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
-					// fprintf(stderr, "mangled: %s // tp: %p\n", mangledGeneric.c_str(), tp);
-				}
-
+				tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 
 				fir::Type* concrete = tp ? tp->first : 0;
 				if(!concrete)
@@ -1183,17 +1169,15 @@ namespace Codegen
 					// generate the type.
 					iceAssert(oldSB);
 
-					if(oldSB->genericTypes.size() > 0 && instantiatedGenericTypes.size() == 0)
-					{
-						error(user, "Type '%s' needs %zu type parameter%s, but none were provided",
-							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
-					}
 
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
 					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
+
+					concrete = getExprTypeFromStringType(user, type, allowFail);
 					iceAssert(concrete);
 
 					if(instantiatedGenericTypes.size() > 0)
@@ -1209,7 +1193,7 @@ namespace Codegen
 					this->namespaceStack = old;
 
 
-					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					if(!tp) tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 					iceAssert(tp);
 				}
 
@@ -1280,7 +1264,7 @@ namespace Codegen
 				return true;
 			}
 
-			TypePair_t* pair = this->getType("Any");
+			TypePair_t* pair = this->getTypeByString("Any");
 			if(!pair) return false;
 			// iceAssert(pair);
 
@@ -1296,7 +1280,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::Enum)
 					return true;
@@ -1318,6 +1302,8 @@ namespace Codegen
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
 
+		if(!res) return false;
+
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
 			return tp->second.second == TypeKind::Enum;
@@ -1330,7 +1316,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::TypeAlias)
 					return true;
@@ -1351,6 +1337,8 @@ namespace Codegen
 		bool res = true;
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
+
+		if(!res) return false;
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
@@ -1402,11 +1390,10 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			std::string str = "ƒ " + fd->name + "(";
+			std::string str = "ƒ " + fd->ident.name + "(";
 			for(auto p : fd->params)
 			{
-				str += p->name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
-				// str += this->printAst(p).substr(4) + ", "; // remove the leading 'val' or 'var'.
+				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -1423,7 +1410,7 @@ namespace Codegen
 		}
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
-			return (vd->immutable ? ("val ") : ("var ")) + vd->name + ": "
+			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
 				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
@@ -1550,7 +1537,7 @@ namespace Codegen
 		else if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
 		{
 			std::string s;
-			s = "class " + cls->name + "\n{\n";
+			s = "class " + cls->ident.name + "\n{\n";
 
 			for(auto m : cls->members)
 				s += this->printAst(m) + "\n";
@@ -1564,7 +1551,7 @@ namespace Codegen
 		else if(StructDef* str = dynamic_cast<StructDef*>(expr))
 		{
 			std::string s;
-			s = "struct " + str->name + "\n{\n";
+			s = "struct " + str->ident.name + "\n{\n";
 
 			for(auto m : str->members)
 				s += this->printAst(m) + "\n";
@@ -1575,7 +1562,7 @@ namespace Codegen
 		else if(EnumDef* enr = dynamic_cast<EnumDef*>(expr))
 		{
 			std::string s;
-			s = "enum " + enr->name + "\n{\n";
+			s = "enum " + enr->ident.name + "\n{\n";
 
 			for(auto m : enr->cases)
 				s += m.first + " " + this->printAst(m.second) + "\n";

@@ -53,19 +53,6 @@ static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 	FunctionTree* ftree = p.first;
 	FunctionTree* pftree = p.second;
 
-
-	if(decl->name == "main")
-	{
-		if(!(decl->attribs & Attr_VisPublic))
-			warn(decl, "main() function should be declared as public, forcing");
-
-		if(decl->attribs & Attr_ForceMangle)
-			warn(decl, "main() function should not be name mangled, disabling @forcemangle");
-
-		decl->attribs |= Attr_VisPublic;
-		decl->isFFI = true;
-	}
-
 	ftree->funcs.push_back({ 0, decl });
 
 	if(decl->attribs & Attr_VisPublic)
@@ -93,9 +80,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
-			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
-			else if(str)			addTypeToFuncTree(cgi, str, str->name, TypeKind::Struct);
-			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
+			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
+			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
+			else if(cls)			addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
@@ -104,14 +91,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	else if(pass == 1)
 	{
 		// pass 1: setup extensions
-		for(Expr* e : expressions)
-		{
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-			if(ext)					ext->mangledName = cgi->mangleWithNamespace(ext->name);
-			else if(ns)				ns->codegenPass(cgi, pass);
-		}
+		// TODO.
 
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.
@@ -121,78 +102,53 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 2)
 	{
-		// pass 2: create types
+		// pass 2: create declarations
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);	// enums are handled, since enum : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
-			if(str)					str->createType(cgi);
-			if(cls)					cls->createType(cgi);
+			if(ffi)					ffi->codegen(cgi);
+			else if(cls)			cls->createType(cgi);
+			else if(str)			str->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
 	else if(pass == 3)
 	{
-		// pass 3: override types with any extensions
+		// start "semantic analysis" before any typechecking needs to happen.
+		// this basically involves knowing what is on the left side of a dot operator
+		// this can be determined once we know all types and namespaces defined.
+		SemAnalysis::rewriteDotOperators(cgi);
+
+		// pass 3: types
 		for(Expr* e : expressions)
 		{
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
+			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
-			if(ext)					ext->createType(cgi);
-			else if(ta)				ta->createType(cgi);
+			if(str)					str->codegen(cgi);
+			else if(cls)			cls->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
+			else if(vd)
+			{
+				vd->isGlobal = true;
+				vd->codegen(cgi);
+			}
 		}
 
-		// step 3: generate the type info.
+		// generate the type info.
 		// now that we have all the types that we need, and they're all fully
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
 	}
 	else if(pass == 4)
 	{
-		// pass 4: create declarations
-		for(Expr* e : expressions)
-		{
-			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
-			Func* func				= dynamic_cast<Func*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-
-			if(ffi)					ffi->codegen(cgi);
-			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(func)
-			{
-				// func->decl->codegen(cgi);
-			}
-		}
-	}
-	else if(pass == 5)
-	{
-		// start semantic analysis before any typechecking needs to happen.
-		SemAnalysis::rewriteDotOperators(cgi);
-
-		// pass 4: everything else
-		for(Expr* e : expressions)
-		{
-			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
-			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
-
-			if(str)					str->codegen(cgi);
-			else if(cls)			cls->codegen(cgi);
-			else if(ext)			ext->codegen(cgi);
-			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(vd)				vd->isGlobal = true, vd->codegen(cgi);
-		}
-	}
-	else if(pass == 6)
-	{
-		// pass 7: functions. for generic shit.
+		// pass 4: functions. for generic shit.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -226,12 +182,10 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 
 Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// cgi->dependencyGraph = SemAnalysis::resolveDependencyGraph(cgi, cgi->rootNode);
-
 	// this is getting quite out of hand.
-	// note: we're using <= to show that there are 6 passes.
+	// note: we're using <= to show that there are N passes.
 	// don't usually do this.
-	for(int pass = 0; pass <= 6; pass++)
+	for(int pass = 0; pass <= 4; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 
 	// run the after-codegen checkers.
