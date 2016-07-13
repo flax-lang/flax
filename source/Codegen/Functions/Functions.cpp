@@ -74,11 +74,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->didCodegen = false;
 			if(isGeneric)
 			{
-				if(!(this->decl->attribs & Attr_VisPublic))
-				{
-					// warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
-				}
-
 				return Result_t(0, 0);
 			}
 			else

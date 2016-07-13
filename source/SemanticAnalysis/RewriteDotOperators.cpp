@@ -83,10 +83,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(leftma->right))
 		{
-			if(vr->name == "Inside" || vr->name == "Something")
-			{
-
-			}
 			// however, if it's a varref, we need to know... sadly.
 			// grab the functree.
 			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
@@ -107,9 +103,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 				fullScope.push_back(s);
 
 
-
-			// if(cgi->getTypeByString(cgi->mangleWithNamespace(vr->name, fullScope, false)))
-			if(cgi->getType(Identifier::createUsingNameAndScope(vr->name, fullScope, Identifier::IdKind::Struct)))
+			if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 			{
 				ma->matype = MAType::LeftTypename;
 				gstate.nestedTypeStrs.push_back(vr->name);
@@ -155,17 +149,11 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 		}
 
-		if(vr->name == "Something")
-		{
-		}
-
-
 		std::deque<std::string> fullScope = gstate.nsstrs;
 		for(auto s : gstate.nestedTypeStrs)
 			fullScope.push_back(s);
 
-		// if(cgi->getTypeByString(cgi->mangleWithNamespace(vr->name, fullScope, false)))
-		if(cgi->getType(Identifier::createUsingNameAndScope(vr->name, fullScope, Identifier::IdKind::Struct)))
+		if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 		{
 			ma->matype = MAType::LeftTypename;
 			gstate.nestedTypeStrs.push_back(vr->name);

@@ -1162,7 +1162,7 @@ namespace Parser
 				{
 					if(t.type == TType::Period && expectingScope)
 					{
-						baseType += "::";
+						baseType += ".";
 						expectingScope = false;
 					}
 					else if(t.type == TType::Identifier && !expectingScope)

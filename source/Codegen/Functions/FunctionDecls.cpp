@@ -127,7 +127,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		lret = types[this->type.strType];
 	}
 
-	std::string genericMangled = cgi->mangleGenericFunctionName("" /*this->ident.name*/, this->params);
+	std::string genericMangled = cgi->mangleGenericParameters(this->params);
 	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled);
 }
 
@@ -188,7 +188,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isMemberFunction = (this->parentClass != nullptr);
 	bool isGeneric = this->genericTypes.size() > 0;
 
-	// this->mangledName = this->name;
+
 	if(isMemberFunction)
 	{
 		iceAssert(!this->isFFI);
@@ -216,10 +216,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(this->ident.str() == "main")
 			this->attribs |= Attr_NoMangle;
 	}
-
-
-	// if(this->isVariadic)
-	// 	this->mangledName += "__VARIADIC";
 
 
 	if(!isGeneric)

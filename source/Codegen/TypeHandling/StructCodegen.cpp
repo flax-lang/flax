@@ -138,9 +138,6 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 	fir::Type** types = new fir::Type*[this->members.size()];
 
 
-	// this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
-
-
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
