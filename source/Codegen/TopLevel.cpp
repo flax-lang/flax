@@ -80,9 +80,9 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
-			else if(ta)				addTypeToFuncTree(cgi, ta, ta->name, TypeKind::TypeAlias);
-			else if(str)			addTypeToFuncTree(cgi, str, str->name, TypeKind::Struct);
-			else if(cls)			addTypeToFuncTree(cgi, cls, cls->name, TypeKind::Class);
+			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
+			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
+			else if(cls)			addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
@@ -111,10 +111,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// pass 2: create declarations
 		for(Expr* e : expressions)
 		{
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ffi)					ffi->codegen(cgi);
+			else if(cls)			cls->createType(cgi);
+			else if(str)			str->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}

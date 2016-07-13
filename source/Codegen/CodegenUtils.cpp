@@ -38,6 +38,15 @@ std::string Identifier::str() const
 	return ret;
 }
 
+Identifier Identifier::createUsingNameAndScope(std::string name, std::deque<std::string> scopes, IdKind kind)
+{
+	Identifier ret;
+	ret.kind = kind;
+	ret.name = name;
+	ret.scope = scopes;
+
+	return ret;
+}
 
 bool Identifier::operator == (const Identifier& other) const
 {
@@ -233,30 +242,24 @@ namespace Codegen
 		FunctionTree* ftree = this->getCurrentFuncTree();
 		iceAssert(ftree);
 
-		if(ftree->types.find(atype->name) != ftree->types.end())
+		if(ftree->types.find(atype->ident.name) != ftree->types.end())
 		{
 			// only if there's an actual, fir::Type* there.
-			if(ftree->types[atype->name].first)
-				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->name.c_str(), ftree->nsName.c_str(), ftree->id);
+			if(ftree->types[atype->ident.name].first)
+				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
 		// if there isn't one, replace it.
-		ftree->types[atype->name] = tpair;
+		ftree->types[atype->ident.name] = tpair;
 
 
-		std::string mangled = this->mangleWithNamespace(atype->name, atype->scope, false);
-		if(atype->mangledName.empty())
-			atype->mangledName = mangled;
-
-		// iceAssert(mangled == atype->mangledName);
-
-		if(this->typeMap.find(mangled) == this->typeMap.end())
+		if(this->typeMap.find(atype->ident.str()) == this->typeMap.end())
 		{
-			this->typeMap[mangled] = tpair;
+			this->typeMap[atype->ident.str()] = tpair;
 		}
 		else
 		{
-			error(atype, "Duplicate type %s", atype->name.c_str());
+			error(atype, "Duplicate type %s (full: %s)", atype->ident.name.c_str(), atype->ident.str().c_str());
 		}
 
 		#if 0
@@ -266,15 +269,13 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::removeType(std::string name)
+	TypePair_t* CodegenInstance::getType(Identifier id)
 	{
-		if(this->typeMap.find(name) == this->typeMap.end())
-			error("Type '%s' does not exist, cannot remove", name.c_str());
-
-		this->typeMap.erase(name);
+		return this->getTypeByString(id.str());
 	}
 
-	TypePair_t* CodegenInstance::getType(std::string name)
+
+	TypePair_t* CodegenInstance::getTypeByString(std::string name)
 	{
 		#if 0
 
@@ -300,7 +301,7 @@ namespace Codegen
 			// only allow one level of implicit use
 			for(auto n : cls->nestedTypes)
 			{
-				if(n.first->name == name)
+				if(n.first->ident.name == name)
 					return this->getType(n.second);
 			}
 		}
@@ -352,9 +353,9 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool CodegenInstance::isDuplicateType(std::string name)
+	bool CodegenInstance::isDuplicateType(Identifier id)
 	{
-		return getType(name) != nullptr;
+		return this->getType(id) != nullptr;
 	}
 
 	void CodegenInstance::popBracedBlock()
@@ -391,7 +392,7 @@ namespace Codegen
 	{
 		std::deque<std::string> full = this->namespaceStack;
 		for(auto s : this->nestedTypeStack)
-			full.push_back(s->name);
+			full.push_back(s->ident.name);
 
 		return full;
 	}
@@ -535,11 +536,11 @@ namespace Codegen
 			{
 				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
 				{
-					clone->types[sb->name] = t.second;
+					clone->types[sb->ident.name] = t.second;
 
 					if(deep)
 					{
-						this->typeMap[sb->mangledName] = t.second;
+						this->typeMap[sb->ident.str()] = t.second;
 
 						// check what kind of struct.
 						if(StructDef* str = dynamic_cast<StructDef*>(sb))
@@ -1426,7 +1427,7 @@ namespace Codegen
 			mangled = mangled.substr(0, mangled.length() - 1);
 		}
 
-		mangled += std::to_string(s->name.length()) + s->name;
+		mangled += std::to_string(s->ident.name.length()) + s->ident.name;
 		mangled += this->mangleFunctionName(std::to_string(orig.length()) + orig + "E", args);
 
 		return mangled;
@@ -1435,7 +1436,7 @@ namespace Codegen
 	std::string CodegenInstance::mangleMemberName(StructBase* s, FuncCall* fc)
 	{
 		std::deque<fir::Type*> largs;
-		iceAssert(this->getType(s->mangledName));
+		iceAssert(this->getType(s->ident));
 
 		bool first = true;
 		for(Expr* e : fc->params)
@@ -1451,12 +1452,12 @@ namespace Codegen
 
 		std::string basename = fc->name + "E";
 		std::string mangledFunc = this->mangleFunctionName(basename, largs);
-		return this->mangleWithNamespace(s->name) + std::to_string(basename.length()) + mangledFunc;
+		return this->mangleWithNamespace(s->ident.name) + std::to_string(basename.length()) + mangledFunc;
 	}
 
 	std::string CodegenInstance::mangleMemberName(StructBase* s, std::string orig)
 	{
-		return this->mangleWithNamespace(s->name) + std::to_string(orig.length()) + orig;
+		return this->mangleWithNamespace(s->ident.name) + std::to_string(orig.length()) + orig;
 	}
 
 
@@ -1587,27 +1588,33 @@ namespace Codegen
 
 	std::string CodegenInstance::mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction)
 	{
-		std::string ret = "_Z";
-		ret += (ns.size() > 0 ? "N" : "");
+	// 	std::string ret = "_Z";
+	// 	ret += (ns.size() > 0 ? "N" : "");
 
-		for(std::string s : ns)
-		{
-			if(s.length() > 0)
-				ret += std::to_string(s.length()) + s;
-		}
+	// 	for(std::string s : ns)
+	// 	{
+	// 		if(s.length() > 0)
+	// 			ret += std::to_string(s.length()) + s;
+	// 	}
 
-		ret += std::to_string(original.length()) + original;
-		if(ns.size() == 0)
-		{
-			ret = original;
-		}
-		else
-		{
-			if(isFunction)
-			{
-				ret += "E";
-			}
-		}
+	// 	ret += std::to_string(original.length()) + original;
+	// 	if(ns.size() == 0)
+	// 	{
+	// 		ret = original;
+	// 	}
+	// 	else
+	// 	{
+	// 		if(isFunction)
+	// 		{
+	// 			ret += "E";
+	// 		}
+	// 	}
+
+		std::string ret;
+		for(auto n : ns)
+			ret += n + ".";
+
+		ret += original;
 
 		return ret;
 	}
@@ -1634,12 +1641,6 @@ namespace Codegen
 			ret += std::to_string(original.length()) + original;
 
 		return ret;
-	}
-
-
-	Result_t CodegenInstance::createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr)
-	{
-		return Result_t(0, 0);
 	}
 
 
@@ -2046,7 +2047,7 @@ namespace Codegen
 			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
 			iceAssert(ta);
 
-			TypePair_t* tp = this->getType(ta->origType);
+			TypePair_t* tp = this->getTypeByString(ta->origType);
 			iceAssert(tp);
 
 			return this->getStructInitialiser(user, tp, vals);
@@ -2077,7 +2078,7 @@ namespace Codegen
 				if(argTypes.size() > 0)
 					argstr = argstr.substr(0, argstr.size() - 2);
 
-				error(user, "No initialiser for class/struct %s taking parameters (%s)", sb->name.c_str(), argstr.c_str());
+				error(user, "No initialiser for class/struct %s taking parameters (%s)", sb->ident.name.c_str(), argstr.c_str());
 			}
 
 			return this->module->getFunction(res.t.first->getName());
@@ -2188,7 +2189,7 @@ namespace Codegen
 
 	Result_t CodegenInstance::makeAnyFromValue(fir::Value* value, fir::Value* valuePtr)
 	{
-		TypePair_t* anyt = this->getType("Any");
+		TypePair_t* anyt = this->getTypeByString("Any");
 		iceAssert(anyt);
 
 		if(!valuePtr)

@@ -182,9 +182,8 @@ namespace Codegen
 
 		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
-
-		void removeType(std::string name);
-		TypePair_t* getType(std::string name);
+		TypePair_t* getTypeByString(std::string name);
+		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
 		FuncPair_t* getOrDeclareLibCFunc(std::string name);
 
@@ -219,7 +218,7 @@ namespace Codegen
 		bool isTupleType(fir::Type* type);
 		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
-		bool isDuplicateType(std::string name);
+		bool isDuplicateType(Identifier id);
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
@@ -272,8 +271,6 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
-
-		Ast::Result_t createStringFromInt8Ptr(fir::StructType* stringType, fir::Value* int8ptr);
 
 		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 

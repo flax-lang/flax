@@ -14,17 +14,11 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	this->createType(cgi);
 
-	if(this->genericTypes.size() > 0 && !this->didCreateType)
-		return Result_t(0, 0);
-
-
 	iceAssert(this->didCreateType);
-	TypePair_t* _type = cgi->getType(this->name);
-	if(!_type)
-		_type = cgi->getType(this->mangledName);
+	TypePair_t* _type = cgi->getType(this->ident);
 
 	if(!_type)
-		GenError::unknownSymbol(cgi, this, this->name + " (mangled: " + this->mangledName + ")", SymbolType::Type);
+		GenError::unknownSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
 
 	// if we're already done, don't.
@@ -56,20 +50,12 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// generate initialiser
 	{
-		fir::Function* defifunc = cgi->module->getOrCreateFunction("__auto_init__" + this->mangledName,
+		fir::Function* defifunc = cgi->module->getOrCreateFunction("__auto_init__" + this->ident.str(),
 			fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(), false), linkageType);
 
 		this->initFuncs.push_back(defifunc);
 
-
-		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
-		fakeSelf->type = this->name + "*";
-
-		FuncDecl* fd = new FuncDecl(this->pin, defifunc->getName(), { fakeSelf }, VOID_TYPE_STRING);
-		cgi->addFunctionToScope({ defifunc, fd });
-
-
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, defifunc);
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defifunc);
 		cgi->builder.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
@@ -86,17 +72,13 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getType(var->type.strType), r.first, r.second, ptr, false);
+			var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
 		}
 
-
-
-
 		cgi->builder.CreateReturnVoid();
-		// fir::verifyFunction(*defifunc);
-
-		cgi->addPublicFunc({ defifunc, fd });
 	}
+
+
 
 
 	// create memberwise initialiser
@@ -107,27 +89,12 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			types.push_back(e);
 
 
-		fir::Function* memifunc = cgi->module->getOrCreateFunction("__auto_mem_init__" + this->mangledName,
+		fir::Function* memifunc = cgi->module->getOrCreateFunction("__auto_mem_init__" + this->ident.str(),
 			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 		this->initFuncs.push_back(memifunc);
 
-		VarDecl* fakeSelf = new VarDecl(this->pin, "self", true);
-		fakeSelf->type = this->name + "*";
-
-		std::deque<VarDecl*> args;
-		args.push_back(fakeSelf);
-
-		for(auto m : this->members)
-			args.push_back(m);
-
-		FuncDecl* fd = new FuncDecl(this->pin, memifunc->getName(), args, VOID_TYPE_STRING);
-		cgi->addFunctionToScope({ memifunc, fd });
-
-
-
-
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser" + this->name, memifunc);
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, memifunc);
 		cgi->builder.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
@@ -144,11 +111,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->builder.CreateStore(v, ptr);
 		}
 
-
 		cgi->builder.CreateReturnVoid();
-		// fir::verifyFunction(*memifunc);
-
-		cgi->addPublicFunc({ memifunc, fd });
 	}
 
 	cgi->builder.setCurrentBlock(curblock);
@@ -166,62 +129,26 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
-
-	if(this->genericTypes.size() > 0 && instantiatedGenericTypes.empty())
-		return 0;
-
-	if(this->didCreateType && instantiatedGenericTypes.size() == 0)
+	if(this->didCreateType)
 		return this->createdType;
 
-
-	if(instantiatedGenericTypes.size() > 0)
-	{
-		cgi->pushGenericTypeStack();
-		for(auto t : instantiatedGenericTypes)
-			cgi->pushGenericType(t.first, t.second);
-	}
-
-
+	this->ident.scope = cgi->getFullScope();
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];
 
+
+	// this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
+
+
+	if(cgi->isDuplicateType(this->ident))
+		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
+
 	// create a bodyless struct so we can use it
-	std::string genericTypeMangle;
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident.str(), cgi->getContext(), this->packed);
 
-	this->mangledName = cgi->mangleWithNamespace(this->name, cgi->getFullScope(), false);
-	if(instantiatedGenericTypes.size() > 0)
-	{
-		for(auto t : instantiatedGenericTypes)
-			genericTypeMangle += "_" + t.first + ":" + t.second->str();
-	}
-
-	this->mangledName += genericTypeMangle;
-
-	if(cgi->isDuplicateType(this->mangledName))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
-
-
-
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->mangledName, cgi->getContext(), this->packed);
-
-	this->scope = cgi->namespaceStack;
-
-	{
-		std::string oldname = this->name;
-
-		// only add the base type if we haven't *ever* created it
-		if(this->createdType == 0)
-			cgi->addNewType(str, this, TypeKind::Struct);
-
-		this->name += genericTypeMangle;
-
-		if(genericTypeMangle.length() > 0)
-			cgi->addNewType(str, this, TypeKind::Struct);
-
-		this->name = oldname;
-	}
-
+	iceAssert(this->createdType == 0);
+	cgi->addNewType(str, this, TypeKind::Struct);
 
 
 
@@ -260,12 +187,6 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 	delete[] types;
 
 	this->createdType = str;
-
-
-	if(instantiatedGenericTypes.size() > 0)
-		cgi->popGenericTypeStack();
-
-
 
 	return str;
 }
