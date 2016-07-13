@@ -127,7 +127,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 		lret = types[this->type.strType];
 	}
 
-	std::string genericMangled = cgi->mangleGenericFunctionName("" /*this->ident.name*/, this->params);
+	std::string genericMangled = cgi->mangleGenericParameters(this->params);
 	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled);
 }
 
@@ -188,7 +188,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isMemberFunction = (this->parentClass != nullptr);
 	bool isGeneric = this->genericTypes.size() > 0;
 
-	// this->mangledName = this->name;
+
 	if(isMemberFunction)
 	{
 		iceAssert(!this->isFFI);
@@ -197,7 +197,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(auto p : this->params)
 			es.push_back(p);
 
-		// std::string mangled = cgi->mangleMemberFunction(this->parentClass, this->ident.name, es);
 
 		if(!this->isStatic)
 		{
@@ -210,67 +209,13 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else if(p->ident.name == "super")
 					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
-
-			VarDecl* implicit_self = new VarDecl(this->pin, "self", true);
-
-			// todo: this is *** moderately *** IFFY
-			// this is to handle generating the type when we need it
-			std::string finalns;
-			for(auto n : this->parentClass->scope)
-				finalns += n + "::";
-
-			finalns += this->parentClass->name + "*";
-			implicit_self->type = finalns;
-
-			// implicit_self->type = this->parentClass->name + "*";
-			this->params.push_front(implicit_self);
 		}
 	}
 	else
 	{
-		bool alreadyMangled = false;
-
 		if(this->ident.str() == "main")
 			this->attribs |= Attr_NoMangle;
-
-
-
-
-		// if we're a normal function, or we're ffi and the type is c++, mangle it
-		// our mangling is compatible with c++ to reduce headache
-
-		// if [ (not ffi) AND (not @nomangle) ] OR [ (is ffi) AND (ffi is cpp) ]
-		if((!this->isFFI && !(this->attribs & Attr_NoMangle)))
-		{
-			alreadyMangled = true;
-
-			bool isNested = false;
-			if(Func* cfs = cgi->getCurrentFunctionScope())
-			{
-				isNested = true;
-				cgi->pushNamespaceScope(cfs->decl->ident.str(), false);
-			}
-
-			// if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->mangledName, this->params);
-			// else			this->mangledName = cgi->mangleFunctionName(this->mangledName, this->params);
-
-			if(isNested)
-			{
-				cgi->popNamespaceScope();
-			}
-		}
-
-		// if (not alreadyMangled) AND [ (not ffi) OR (@nomangle) ] AND (not @nomangle)
-		if(!alreadyMangled && (!this->isFFI || this->attribs & Attr_ForceMangle) && !(this->attribs & Attr_NoMangle))
-		{
-			// if(isGeneric)	this->mangledName = cgi->mangleGenericFunctionName(this->name, this->params);
-			// else			this->mangledName = cgi->mangleFunctionName(this->name, this->params);
-		}
 	}
-
-
-	// if(this->isVariadic)
-	// 	this->mangledName += "__VARIADIC";
 
 
 	if(!isGeneric)
@@ -278,6 +223,15 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		std::deque<fir::Type*> argtypes;
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getExprType(v));
+
+		if(isMemberFunction)
+		{
+			fir::Type* st = this->parentClass->createdType;
+			if(st == 0)
+				st = this->parentClass->createType(cgi);
+
+			argtypes.push_front(st->getPointerTo());
+		}
 
 		this->ident.functionArguments = argtypes;
 

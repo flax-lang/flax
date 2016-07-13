@@ -137,7 +137,7 @@ namespace Operators
 			// error(cgi, this, "Automatic char* -> String casting not yet supported");
 
 			// create a bogus func call.
-			TypePair_t* tp = cgi->getType("String");
+			TypePair_t* tp = cgi->getTypeByString("String");
 			iceAssert(tp);
 
 			std::vector<fir::Value*> args { lhs };
