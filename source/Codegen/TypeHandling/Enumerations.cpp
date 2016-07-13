@@ -35,7 +35,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 
 
 	if(!found)
-		error(user, "Enum '%s' has no such case '%s'", enr->name.c_str(), caseName.c_str());
+		error(user, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), caseName.c_str());
 
 	if(!enr->isStrong)
 		return res;
@@ -60,7 +60,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 	if(!caseName)
 		error(rhs, "Expected identifier after enumeration access");
 
-	TypePair_t* tp = this->getType(enumName->name);
+	TypePair_t* tp = this->getTypeByString(enumName->name);
 	iceAssert(tp);
 	iceAssert(tp->second.second == TypeKind::Enum);
 
@@ -78,10 +78,13 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi, std::map<std::string, fir::
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
 	if(this->didCreateType)
-		return this->createdType;;
+		return this->createdType;
 
-	if(cgi->isDuplicateType(this->name))
-		GenError::duplicateSymbol(cgi, this, this->name, SymbolType::Type);
+
+	this->ident.scope = cgi->getFullScope();
+
+	if(cgi->isDuplicateType(this->ident))
+		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Type);
 
 
 	fir::Type* prev = 0;
@@ -103,14 +106,11 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi, std::map<std::string, fir::
 
 
 	std::deque<std::string> fullScope = cgi->getFullScope();
-	this->mangledName = cgi->mangleWithNamespace(this->name, fullScope, false);
 
-
-	fir::StructType* wrapper = fir::StructType::createNamed(this->mangledName, { prev }, cgi->getContext());
+	fir::StructType* wrapper = fir::StructType::createNamed(this->ident.str(), { prev }, cgi->getContext());
 	// wrapper->setBody(std::vector<fir::Type*>({ prev }));
 
 	// now that they're all the same type:
-	this->scope = fullScope;
 	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
 

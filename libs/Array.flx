@@ -4,11 +4,11 @@
 
 import LibCInterface
 
-public class Array<T>
-{
-	var data: Int8* = 0
+// public class Array<T>
+// {
+// 	var data: int8* = 0
 
-	// init()
-	// {
-	// }
-}
+// 	// init()
+// 	// {
+// 	// }
+// }
