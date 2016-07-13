@@ -151,16 +151,16 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			else
 			{
 				// generate some globals for static variables.
-				// mangle the variable name.
 
-				// a bit hacky, but still well-defined.
-				std::string varname = cgi->mangleMemberFunction(this, var->ident.name, std::deque<Ast::Expr*>());
+				auto tmp = this->ident.scope;
+				tmp.push_back(this->ident.name);
+
+				Identifier vid = Identifier(var->ident.name, tmp, IdKind::Variable);
 
 				// generate a global variable
-				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(varname, var->inferredLType,
+				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid.str(), var->inferredLType,
 					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
-
 
 				if(var->inferredLType->isStructType())
 				{
@@ -168,7 +168,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					iceAssert(cmplxtype);
 
 					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
-					cgi->addGlobalConstructor(varname, init);
+					cgi->addGlobalConstructor(vid.str(), init);
 				}
 				else
 				{
@@ -205,12 +205,14 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		for(auto fn : this->funcs)
 		{
-			if(f != fn)
+			if(f != fn && f->decl->ident.name == fn->decl->ident.name)
 			{
-				std::string f1 = cgi->mangleFunctionName(fn->decl->ident.name, fn->decl->params);
-				std::string f2 = cgi->mangleFunctionName(f->decl->ident.name, f->decl->params);
+				int d = 0;
+				std::deque<fir::Type*> ps;
+				for(auto e : fn->decl->params)
+					ps.push_back(cgi->getExprType(e));
 
-				if(f1 == f2)
+				if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 				{
 					info(fn->decl, "Previous declaration was here: %s", fn->decl->ident.name.c_str());
 					error(f->decl, "Duplicate member function: %s", f->decl->ident.name.c_str());

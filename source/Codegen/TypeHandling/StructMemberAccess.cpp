@@ -22,8 +22,12 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::string name)
 {
-	std::string mangledName = this->mangleMemberFunction(cls, name, std::deque<Ast::Expr*>());
-	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(mangledName))
+	auto tmp = cls->ident.scope;
+	tmp.push_back(cls->ident.name);
+
+	Identifier vid = Identifier(name, tmp, IdKind::Variable);
+
+	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(vid.str()))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.
@@ -525,14 +529,10 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			}
 
 			if(found)
-			{
-				// printf("found (1)\n");
 				continue;
-			}
 
-			if(TypePair_t* tp = this->getTypeByString(this->mangleWithNamespace(front, nsstrs, false)))
+			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
-				// printf("got type %s (%zu)\n", front.c_str(), list.size());
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<ClassDef*>(tp->second.first);
 				curFType = tp->first;
@@ -611,7 +611,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 			std::string text;
 			for(auto s : origList)
-				text += (s + "::");
+				text += (s + ".");
 
 			text += fc->name;
 

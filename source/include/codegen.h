@@ -222,25 +222,7 @@ namespace Codegen
 
 		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
-		std::string mangleType(fir::Type* t);
-
-		std::string mangleRawNamespace(std::string original);
-		std::string mangleWithNamespace(std::string original, bool isFunction = true);
-		std::string mangleWithNamespace(std::string original, std::deque<std::string> ns, bool isFunction = true);
-
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::Expr*> args, std::deque<std::string> ns);
-		std::string mangleMemberFunction(Ast::StructBase* s, std::string orig, std::deque<Ast::VarDecl*> args, std::deque<std::string> ns,
-			bool isStatic = false);
-
-		std::string mangleMemberName(Ast::StructBase* s, std::string orig);
-		std::string mangleMemberName(Ast::StructBase* s, Ast::FuncCall* fc);
-
-		std::string mangleFunctionName(std::string base, std::deque<Ast::Expr*> args);
-		std::string mangleFunctionName(std::string base, std::deque<fir::Type*> args);
-		std::string mangleFunctionName(std::string base, std::deque<std::string> args);
-		std::string mangleFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
-		std::string mangleGenericFunctionName(std::string base, std::deque<Ast::VarDecl*> args);
+		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
 
 		std::string getReadableType(Ast::Expr* expr);
