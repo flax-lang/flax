@@ -290,36 +290,28 @@ namespace fir
 		int indirections = 0;
 		builtin = Codegen::unwrapPointerType(builtin, &indirections);
 
-		if(!Compiler::getDisableLowercaseBuiltinTypes())
-		{
-			if(builtin.length() > 0)
-			{
-				builtin[0] = toupper(builtin[0]);
-			}
-		}
-
 		Type* real = 0;
 
-		if(builtin == "Int8")			real = PrimitiveType::getInt8(tc);
-		else if(builtin == "Int16")		real = PrimitiveType::getInt16(tc);
-		else if(builtin == "Int32")		real = PrimitiveType::getInt32(tc);
-		else if(builtin == "Int64")		real = PrimitiveType::getInt64(tc);
-		else if(builtin == "Int")		real = PrimitiveType::getInt64(tc);
+		if(builtin == INT8_TYPE_STRING)				real = PrimitiveType::getInt8(tc);
+		else if(builtin == INT16_TYPE_STRING)		real = PrimitiveType::getInt16(tc);
+		else if(builtin == INT32_TYPE_STRING)		real = PrimitiveType::getInt32(tc);
+		else if(builtin == INT64_TYPE_STRING)		real = PrimitiveType::getInt64(tc);
+		else if(builtin == INTUNSPEC_TYPE_STRING)	real = PrimitiveType::getInt64(tc);
 
-		else if(builtin == "Uint8")		real = PrimitiveType::getUint8(tc);
-		else if(builtin == "Uint16")	real = PrimitiveType::getUint16(tc);
-		else if(builtin == "Uint32")	real = PrimitiveType::getUint32(tc);
-		else if(builtin == "Uint64")	real = PrimitiveType::getUint64(tc);
-		else if(builtin == "Uint")		real = PrimitiveType::getUint64(tc);
+		else if(builtin == UINT8_TYPE_STRING)		real = PrimitiveType::getUint8(tc);
+		else if(builtin == UINT16_TYPE_STRING)		real = PrimitiveType::getUint16(tc);
+		else if(builtin == UINT32_TYPE_STRING)		real = PrimitiveType::getUint32(tc);
+		else if(builtin == UINT64_TYPE_STRING)		real = PrimitiveType::getUint64(tc);
+		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = PrimitiveType::getUint64(tc);
 
-		else if(builtin == "Float32")	real = PrimitiveType::getFloat32(tc);
-		else if(builtin == "Float")		real = PrimitiveType::getFloat32(tc);
+		else if(builtin == FLOAT32_TYPE_STRING)		real = PrimitiveType::getFloat32(tc);
 
-		else if(builtin == "Float64")	real = PrimitiveType::getFloat64(tc);
-		else if(builtin == "Double")	real = PrimitiveType::getFloat64(tc);
+		// float is implicit double.
+		else if(builtin == FLOAT64_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
+		else if(builtin == FLOAT_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
 
-		else if(builtin == "Bool")		real = PrimitiveType::getBool(tc);
-		else if(builtin == "Void")		real = PrimitiveType::getVoid(tc);
+		else if(builtin == BOOL_TYPE_STRING)		real = PrimitiveType::getBool(tc);
+		else if(builtin == VOID_TYPE_STRING)		real = PrimitiveType::getVoid(tc);
 		else return 0;
 
 		iceAssert(real);
@@ -331,110 +323,6 @@ namespace fir
 
 	Type* Type::fromLlvmType(fir::Type* ltype, std::deque<bool> signage)
 	{
-		// Type* type = 0;
-
-		// // printf("FROM LLVM: %s\n", ((Codegen::CodegenInstance*) 0)->getReadableType(ltype).c_str());
-
-		// if(ltype->isPointerTy())
-		// 	return fromLlvmType(ltype->getPointerElementType(), signage)->getPointerTo();
-
-
-		// if(!type) type = new Type();
-
-		// type->isTypeSigned = false;
-		// type->isTypeVoid = false;
-		// type->bitWidth = 0;
-
-
-		// // 1a. int types
-		// if(ltype->isIntegerTy())
-		// {
-		// 	type->typeKind = FTypeKind::Integer;
-		// 	type->ptrBaseTypeKind = FTypeKind::Integer;
-
-		// 	type->bitWidth = ltype->getIntegerBitWidth();
-		// 	type->isTypeSigned = (signage.size() > 0 ? signage.front() : false);
-		// }
-
-		// // 1b. float types
-		// else if(ltype->isFloatingPointTy())
-		// {
-		// 	type->typeKind = FTypeKind::Floating;
-		// 	type->ptrBaseTypeKind = FTypeKind::Floating;
-
-		// 	if(ltype->isFloatTy()) type->bitWidth = 32;
-		// 	else if(ltype->isDoubleTy()) type->bitWidth = 64;
-		// 	else iceAssert(0 && "??? unsupported floating type");
-		// }
-
-		// // 2a. named structs
-		// else if(ltype->isStructTy() && !fir::cast<fir::StructType>(ltype)->isLiteral())
-		// {
-		// 	if(ltype->getStructName() == "String")
-		// 		error("POOOP");
-
-		// 	fir::StructType* lstype = fir::cast<fir::StructType>(ltype);
-
-		// 	type->typeKind = FTypeKind::NamedStruct;
-		// 	type->ptrBaseTypeKind = FTypeKind::NamedStruct;
-
-		// 	type->structName = lstype->getName();
-		// 	type->isTypeLiteralStruct = false;
-
-		// 	if(signage.size() != lstype->getNumElements())
-		// 	{
-		// 		printf("expected %d, got %zu\n", lstype->getNumElements(), signage.size());
-		// 		iceAssert(!"missing information (not enough signs)");
-		// 	}
-
-		// 	size_t i = 0;
-		// 	for(auto m : lstype->elements())
-		// 		type->structMembers.push_back(Type::fromLlvmType(m, { signage[i] })), i++;
-		// }
-
-		// // 2b. literal structs
-		// else if(ltype->isStructTy())
-		// {
-		// 	fir::StructType* lstype = fir::cast<fir::StructType>(ltype);
-
-		// 	type->typeKind = FTypeKind::LiteralStruct;
-		// 	type->ptrBaseTypeKind = FTypeKind::LiteralStruct;
-
-		// 	type->structName = "__LITERAL_STRUCT__";
-		// 	type->isTypeLiteralStruct = true;
-
-		// 	if(signage.size() != lstype->getNumElements())
-		// 	{
-		// 		printf("expected %d, got %zu\n", lstype->getNumElements(), signage.size());
-		// 		iceAssert(!"missing information (not enough signs)");
-		// 	}
-
-		// 	size_t i = 0;
-		// 	for(auto m : lstype->elements())
-		// 		type->structMembers.push_back(Type::fromLlvmType(m, { signage[i] })), i++;
-		// }
-
-		// // 3. array types
-		// else if(ltype->isArrayTy())
-		// {
-		// 	iceAssert(0);
-		// }
-
-		// // 4. function types
-		// else if(ltype->isFunctionTy())
-		// {
-		// 	iceAssert(0);
-		// }
-
-		// if(type->indirections > 0)
-		// 	type->typeKind = FTypeKind::Pointer;
-
-		// type = getDefaultFTContext()->normaliseType(type);	// todo: proper.
-		// // printf("RETURNING: %p\n", type);
-
-		// return type;
-
-		// return fir::Type::getVoidTy(fir::getGlobalContext());
 		iceAssert(0);
 		return PrimitiveType::getVoid();
 	}

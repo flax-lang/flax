@@ -34,6 +34,14 @@ namespace fir
 		GlobalVariable* createGlobalVariable(std::string name, Type* type, bool isImmut, LinkageType linkage);
 		GlobalVariable* declareGlobalVariable(std::string name, Type* type, bool isImmut);
 
+
+		GlobalVariable* createGlobalVariable(Identifier id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
+		GlobalVariable* createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage);
+		GlobalVariable* declareGlobalVariable(Identifier id, Type* type, bool isImmut);
+		GlobalVariable* tryGetGlobalVariable(Identifier id);
+		GlobalVariable* getGlobalVariable(Identifier id);
+
+
 		GlobalVariable* createGlobalString(std::string str);
 
 		void deleteGlobalVariable(std::string name);
@@ -47,14 +55,25 @@ namespace fir
 
 		StructType* getNamedType(std::string name);
 		void addNamedType(std::string name, StructType* type);
-		void deleteNamedType(std::string name);
+
+		void addExtensionType(std::string name, StructType* type);
+
+		void addFunction(Function* func);
 
 		void declareFunction(std::string name, FunctionType* ftype);
-		void addFunction(Function* func);
 		void deleteFunction(std::string name);
 		Function* getFunction(std::string name);
-
 		Function* getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage);
+
+
+		void declareFunction(Identifier id, FunctionType* ftype);
+		void deleteFunction(Identifier id);
+		Function* getFunction(Identifier id);
+		Function* getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage);
+
+
+
+
 
 		std::string getModuleName();
 		void setModuleName(std::string name);
@@ -69,6 +88,8 @@ namespace fir
 		std::map<std::string, GlobalVariable*> globals;
 		std::map<std::string, StructType*> namedTypes;
 		std::map<std::string, Function*> functions;
+
+		std::map<std::string, StructType*> extensionTypes;
 	};
 
 

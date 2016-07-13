@@ -14,6 +14,7 @@
 
 #include <deque>
 #include <vector>
+#include <fstream>
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
@@ -22,12 +23,19 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Instrumentation.h"
+#include "llvm/CodeGen/MIRParser/MIRParser.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 
@@ -39,6 +47,14 @@
 
 #include "compiler.h"
 
+#include <stdio.h>
+#include <spawn.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 
 namespace Compiler
 {
@@ -49,6 +65,7 @@ namespace Compiler
 	static void runProgramWithJit(llvm::Module* mod);
 	static void compileBinary(std::string filename, std::string outname, CompiledData data, llvm::Module* mod);
 
+	extern "C" char** environ;
 
 	void compileToLlvm(std::string filename, std::string outname, CompiledData data)
 	{
@@ -98,7 +115,7 @@ namespace Compiler
 
 
 		for(auto s : data.fileList)
-			remove(s.c_str());
+			std::remove(s.c_str());
 
 
 		// cleanup
@@ -266,14 +283,10 @@ namespace Compiler
 
 	static void optimiseLlvmModule(llvm::Module* mod)
 	{
-		// llvm::FunctionPassManager fpm = llvm::FunctionPassManager(mod);
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		if(Compiler::getOptimisationLevel() > 0)
 		{
-			// Provide basic AliasAnalysis support for GVN.
-			// fpm.add(llvm::createBasicAliasAnalysisPass());
-
 			// Do simple "peephole" optimisations and bit-twiddling optzns.
 			fpm.add(llvm::createInstructionCombiningPass());
 
@@ -326,6 +339,179 @@ namespace Compiler
 		}
 
 		fpm.run(*mod);
+	}
+
+
+
+
+
+
+
+	void writeBitcode(std::string oname, llvm::Module* module)
+	{
+		std::error_code e;
+		llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+		llvm::raw_fd_ostream rso(oname.c_str(), e, of);
+
+		llvm::WriteBitcodeToFile(module, rso);
+		rso.close();
+	}
+
+
+	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname)
+	{
+		std::string tgt;
+		if(!getTarget().empty())
+			tgt = "-target " + getTarget();
+
+
+		if(!Compiler::getIsCompileOnly() && !module->getFunction("main"))
+		{
+			error(0, "No main() function, a program cannot be compiled.");
+		}
+
+
+
+		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
+		llvm::verifyModule(*module, &llvm::errs());
+
+
+		if(Compiler::getEmitLLVMOutput())
+		{
+			Compiler::writeBitcode(oname + ".bc", module);
+			auto it = std::find(filelist.begin(), filelist.end(), oname + ".bc");
+			iceAssert(it != filelist.end());
+
+			filelist.erase(it);
+		}
+		else
+		{
+			llvm::InitializeAllTargets();
+			llvm::InitializeAllTargetMCs();
+			llvm::InitializeAllAsmParsers();
+			llvm::InitializeAllAsmPrinters();
+
+			llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
+			llvm::initializeCore(*Registry);
+			llvm::initializeCodeGen(*Registry);
+
+			llvm::Triple targetTriple;
+			targetTriple.setTriple(Compiler::getTarget().empty() ? llvm::sys::getDefaultTargetTriple() : Compiler::getTarget());
+
+
+
+			std::string err_str;
+			const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
+			if(!theTarget)
+			{
+				error("error creating target: (wanted: '%s');\n"
+						"llvm error: %s", targetTriple.str().c_str(), err_str.c_str());
+			}
+
+
+			// get the mcmodel
+			llvm::CodeModel::Model codeModel;
+			if(Compiler::getCodeModel() == "kernel")
+			{
+				codeModel = llvm::CodeModel::Kernel;
+			}
+			else if(Compiler::getCodeModel() == "small")
+			{
+				codeModel = llvm::CodeModel::Small;
+			}
+			else if(Compiler::getCodeModel() == "medium")
+			{
+				codeModel = llvm::CodeModel::Medium;
+			}
+			else if(Compiler::getCodeModel() == "large")
+			{
+				codeModel = llvm::CodeModel::Large;
+			}
+			else if(Compiler::getCodeModel().empty())
+			{
+				codeModel = llvm::CodeModel::Default;
+			}
+			else
+			{
+				error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", Compiler::getCodeModel().c_str());
+			}
+
+
+			llvm::TargetOptions targetOptions;
+
+			if(Compiler::getIsPositionIndependent())
+				targetOptions.PositionIndependentExecutable = true;
+
+
+			std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
+				targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
+
+
+
+
+			module->setDataLayout(targetMachine->createDataLayout());
+			{
+				llvm::SmallVector<char, 0> memoryBuffer;
+				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
+				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
+
+
+				llvm::legacy::PassManager pm = llvm::legacy::PassManager();
+				targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+				pm.run(*module);
+
+				// flush and kill it.
+				rawStream->flush();
+
+
+				if(Compiler::getIsCompileOnly())
+				{
+					// if we are compile-only, we need to write the .o file
+
+					// now memoryBuffer should contain the .object file
+					std::ofstream objectOutput(oname + ".o", std::ios::binary | std::ios::out);
+					objectOutput.write(memoryBuffer.data(), memoryBuffer.size_in_bytes());
+					objectOutput.close();
+				}
+				else
+				{
+					// else we just do everything in-memory
+					// yea right, lol
+
+					char templ[] = "/tmp/fileXXXXXX";
+					int fd = mkstemp(templ);
+
+					write(fd, memoryBuffer.data(), memoryBuffer.size_in_bytes());
+
+					const char* argv[5];
+
+					argv[0] = "cc";
+					argv[1] = "-o";
+					argv[2] = oname.c_str();
+					argv[3] = templ;
+					argv[4] = 0;
+
+
+					pid_t pid = fork();
+					if(pid == 0)
+					{
+						// in child, pid == 0.
+
+						execvp(argv[0], (char* const*) argv);
+						exit(1);
+					}
+					else
+					{
+						// wait for child to finish, then we can continue cleanup
+						int stat = 0;
+						waitpid(pid, &stat, 0);
+					}
+
+					// delete the temp file
+					std::remove(templ);
+				}
+			}
+		}
 	}
 }
 

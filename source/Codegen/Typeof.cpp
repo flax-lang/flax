@@ -60,7 +60,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error(this, "invalid shit!");
 
 
-	TypePair_t* tp = cgi->getType("Type");
+	TypePair_t* tp = cgi->getTypeByString("Type");
 	iceAssert(tp);
 
 	EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);

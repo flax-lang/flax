@@ -58,6 +58,56 @@ namespace fir
 		return this->globals[name];
 	}
 
+	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	{
+		return this->createGlobalVariable(id.str(), type, initVal, isImmut, linkage);
+	}
+
+	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage)
+	{
+		return this->createGlobalVariable(id.str(), type, isImmut, linkage);
+	}
+
+	GlobalVariable* Module::declareGlobalVariable(Identifier id, Type* type, bool isImmut)
+	{
+		return this->declareGlobalVariable(id.str(), type, isImmut);
+	}
+
+	GlobalVariable* Module::tryGetGlobalVariable(Identifier id)
+	{
+		return this->tryGetGlobalVariable(id.str());
+	}
+
+	GlobalVariable* Module::getGlobalVariable(Identifier id)
+	{
+		return this->getGlobalVariable(id.str());
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -74,15 +124,14 @@ namespace fir
 		if(this->namedTypes.find(name) != this->namedTypes.end())
 			error("ICE: type %s exists already", name.c_str());
 
+		// fprintf(stderr, "add named type %s, %s\n", name.c_str(), type->str().c_str());
 		this->namedTypes[name] = type;
 	}
 
-	void Module::deleteNamedType(std::string name)
+	void Module::addExtensionType(std::string name, StructType* type)
 	{
-		if(this->namedTypes.find(name) == this->namedTypes.end())
-			error("ICE: no such type with name %s", name.c_str());
-
-		this->namedTypes.erase(name);
+		// the target type doesn't need to exist in *this* module, which makes it slightly iffy
+		this->extensionTypes[name] = type;
 	}
 
 	void Module::declareFunction(std::string name, FunctionType* ftype)
@@ -149,6 +198,54 @@ namespace fir
 
 		return this->functions[name];
 	}
+
+
+
+	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	{
+		this->declareFunction(id.str(), ftype);
+	}
+
+	void Module::deleteFunction(Identifier id)
+	{
+		this->deleteFunction(id.str());
+	}
+
+	Function* Module::getFunction(Identifier id)
+	{
+		return this->getFunction(id.str());
+	}
+
+	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
+	{
+		return this->getOrCreateFunction(id.str(), ftype, linkage);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{

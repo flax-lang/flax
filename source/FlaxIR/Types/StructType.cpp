@@ -127,6 +127,9 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
+			if(this->structMembers.size() == 0)
+				return this->structName + "<???>";
+
 			auto s = typeListToString(this->structMembers);
 			return this->structName + "<{" + s.substr(2, s.length() - 4) + "}>";
 		}
@@ -258,6 +261,8 @@ namespace fir
 
 	bool StructType::isABaseTypeOf(Type* ot)
 	{
+		if(!ot) return false;
+
 		StructType* ost = ot->toStructType();
 		if(!ost) return false;
 
@@ -275,6 +280,8 @@ namespace fir
 
 	bool StructType::isADerivedTypeOf(Type* ot)
 	{
+		if(!ot) return false;
+
 		StructType* ost = ot->toStructType();
 		if(!ost) return false;
 

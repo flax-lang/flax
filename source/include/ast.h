@@ -17,6 +17,78 @@ namespace fir
 	struct StructType;
 }
 
+#define INTUNSPEC_TYPE_STRING	"int"
+#define INT8_TYPE_STRING		"int8"
+#define INT16_TYPE_STRING		"int16"
+#define INT32_TYPE_STRING		"int32"
+#define INT64_TYPE_STRING		"int64"
+
+#define UINTUNSPEC_TYPE_STRING	"uint"
+#define UINT8_TYPE_STRING		"uint8"
+#define UINT16_TYPE_STRING		"uint16"
+#define UINT32_TYPE_STRING		"uint32"
+#define UINT64_TYPE_STRING		"uint64"
+
+#define FLOAT32_TYPE_STRING		"float32"
+#define FLOAT64_TYPE_STRING		"float64"
+
+#define FLOAT_TYPE_STRING		"float"
+
+#define BOOL_TYPE_STRING		"bool"
+#define VOID_TYPE_STRING		"void"
+
+#define FUNC_KEYWORD_STRING		"func"
+
+
+
+// todo: name overhaul
+// stop using std::string for names
+// it's stupid and inflexible
+// and *DO NOT* mangle function args during codegen to FIR
+// name mangling should only be done at one location: when creating the actual function.
+
+// note: debate moving FIR over to an identifier system like this
+// FIR should do the argument type mangling, anyway
+
+// here: store the scope and args (if applicable) of a function
+// for foo::bar::qux::some_function(a: int, b: string)
+// scope would contain { foo, bar, qux }
+// actualname would contain { some_function }
+// args would contain { int, string }
+
+
+enum class IdKind
+{
+	Invalid,
+	Variable,
+	Function,
+	Struct,
+};
+
+struct Identifier
+{
+	std::string name;
+	std::deque<std::string> scope;
+	IdKind kind = IdKind::Invalid;
+
+	std::deque<fir::Type*> functionArguments;
+
+	// defined in CodegenUtils.cpp
+	bool operator == (const Identifier& other) const;
+	std::string str() const;
+
+	Identifier() { }
+	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
+	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
+};
+
+
+
+
+
+
+
+
 namespace Ast
 {
 	enum class ArithmeticOp
@@ -78,8 +150,7 @@ namespace Ast
 
 	enum class FFIType
 	{
-		C,
-		Cpp,
+		C
 	};
 
 	extern uint64_t Attr_Invalid;
@@ -119,6 +190,7 @@ namespace Ast
 		std::string strType;
 
 		Expr* type = 0;
+		fir::Type* ftype = 0;
 
 		ExprType() : isLiteral(true), strType(""), type(0) { }
 		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
@@ -126,6 +198,12 @@ namespace Ast
 		void operator=(std::string stryp)
 		{
 			this->strType = stryp;
+			this->isLiteral = true;
+		}
+
+		void operator=(fir::Type* ft)
+		{
+			this->ftype = ft;
 			this->isLiteral = true;
 		}
 	};
@@ -193,6 +271,10 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 	};
 
+
+
+
+
 	struct VarRef : Expr
 	{
 		~VarRef();
@@ -202,18 +284,26 @@ namespace Ast
 		std::string name;
 	};
 
+
+
 	struct VarDecl : Expr
 	{
 		~VarDecl();
-		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), name(name), immutable(immut) { }
+		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
+		{
+			ident.name = name;
+			ident.kind = IdKind::Variable;
+		}
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab);
 
 		void inferType(Codegen::CodegenInstance* cgi);
 
-		std::string name;
-		std::string mangledName;
+		Identifier ident;
+		std::string _name;
+
 		bool immutable = false;
 
 		bool isStatic = false;
@@ -235,6 +325,9 @@ namespace Ast
 		std::string setterArgName;
 		BracedBlock* getter = 0;
 		BracedBlock* setter = 0;
+
+		fir::Function* getterFFn = 0;
+		fir::Function* setterFFn = 0;
 	};
 
 	struct BinOp : Expr
@@ -254,8 +347,12 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
-		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), name(id), params(params)
-		{ this->type.strType = ret; }
+		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), params(params)
+		{
+			this->type.strType = ret;
+			this->ident.name = id;
+			this->ident.kind = IdKind::Function;
+		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
@@ -274,9 +371,8 @@ namespace Ast
 
 		StructBase* parentClass = 0;
 		FFIType ffiType = FFIType::C;
-		std::string name;
-		std::string mangledName;
-		std::string mangledNamespaceOnly;
+
+		Identifier ident;
 
 		std::deque<VarDecl*> params;
 		std::deque<std::string> genericTypes;
@@ -284,6 +380,13 @@ namespace Ast
 		fir::Type* instantiatedGenericReturnType = 0;
 		std::deque<fir::Type*> instantiatedGenericTypes;
 	};
+
+
+
+
+
+
+
 
 	struct DeferredExpr;
 	struct BracedBlock : Expr
@@ -493,20 +596,20 @@ namespace Ast
 	struct StructBase : Expr
 	{
 		virtual ~StructBase();
-		StructBase(Parser::Pin pos, std::string name) : Expr(pos), name(name) { }
+		StructBase(Parser::Pin pos, std::string name) : Expr(pos)
+		{
+			this->ident.name = name;
+			this->ident.kind = IdKind::Struct;
+		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
-
-		std::deque<std::string> genericTypes;
 
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
 
-		std::string name;
-		std::string mangledName;
+		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 	};
@@ -520,26 +623,30 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
-		std::deque<ExtensionDef*> extensions;
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::pair<ClassDef*, fir::StructType*> superclass;
 		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
+
+		std::map<Func*, fir::Function*> functionMap;
 
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
-	// extends class, because it's basically a class, except we need to apply it to an existing class
-	struct ExtensionDef : ClassDef
+
+	struct ExtensionDef : StructBase
 	{
 		~ExtensionDef();
-		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
+		ExtensionDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
-		fir::Function* createAutomaticInitialiser(Codegen::CodegenInstance* cgi, fir::StructType* stype, int extIndex);
+		std::deque<Func*> funcs;
+		std::deque<std::string> protocolstrs;
+		std::deque<ComputedProperty*> cprops;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
 
 
