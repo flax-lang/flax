@@ -56,26 +56,30 @@ namespace fir
 // actualname would contain { some_function }
 // args would contain { int, string }
 
+
+enum class IdKind
+{
+	Invalid,
+	Variable,
+	Function,
+	Struct,
+};
+
 struct Identifier
 {
-	enum class IdKind
-	{
-		Variable,
-		Function
-	};
-
-
 	std::string name;
 	std::deque<std::string> scope;
-	IdKind kind;
+	IdKind kind = IdKind::Invalid;
 
 	std::deque<fir::Type*> functionArguments;
-
-	std::string mangled;
 
 	// defined in CodegenUtils.cpp
 	bool operator == (const Identifier& other) const;
 	std::string str() const;
+
+	Identifier() { }
+	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
+	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
 };
 
 
@@ -186,6 +190,7 @@ namespace Ast
 		std::string strType;
 
 		Expr* type = 0;
+		fir::Type* ftype = 0;
 
 		ExprType() : isLiteral(true), strType(""), type(0) { }
 		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
@@ -193,6 +198,12 @@ namespace Ast
 		void operator=(std::string stryp)
 		{
 			this->strType = stryp;
+			this->isLiteral = true;
+		}
+
+		void operator=(fir::Type* ft)
+		{
+			this->ftype = ft;
 			this->isLiteral = true;
 		}
 	};
@@ -281,7 +292,7 @@ namespace Ast
 		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
 		{
 			ident.name = name;
-			ident.kind = Identifier::IdKind::Variable;
+			ident.kind = IdKind::Variable;
 		}
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
@@ -340,7 +351,7 @@ namespace Ast
 		{
 			this->type.strType = ret;
 			this->ident.name = id;
-			this->ident.kind = Identifier::IdKind::Function;
+			this->ident.kind = IdKind::Function;
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
@@ -585,20 +596,20 @@ namespace Ast
 	struct StructBase : Expr
 	{
 		virtual ~StructBase();
-		StructBase(Parser::Pin pos, std::string name) : Expr(pos), name(name) { }
+		StructBase(Parser::Pin pos, std::string name) : Expr(pos)
+		{
+			this->ident.name = name;
+			this->ident.kind = IdKind::Struct;
+		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
-
-		std::deque<std::string> genericTypes;
 
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
 
-		std::string name;
-		std::string mangledName;
+		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::deque<std::string> scope;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 	};

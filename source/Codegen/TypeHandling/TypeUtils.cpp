@@ -72,6 +72,9 @@ namespace Codegen
 
 	fir::Type* CodegenInstance::getExprType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
+		if(expr->type.ftype != 0)
+			return expr->type.ftype;
+
 		setInferred = false;
 		iceAssert(expr);
 		{
@@ -135,7 +138,7 @@ namespace Codegen
 					Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
 					if(!rt.resolved)
 					{
-						TypePair_t* tp = this->getType(fc->name);
+						TypePair_t* tp = this->getTypeByString(fc->name);
 						if(tp)
 						{
 							return tp->first;
@@ -163,7 +166,7 @@ namespace Codegen
 			}
 			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
-				TypePair_t* type = this->getType(fd->type.strType);
+				TypePair_t* type = this->getTypeByString(fd->type.strType);
 				if(!type)
 				{
 					fir::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
@@ -179,7 +182,7 @@ namespace Codegen
 
 				else
 				{
-					auto tp = this->getType("String");
+					auto tp = this->getTypeByString("String");
 					if(!tp)
 						return fir::PointerType::getInt8Ptr(this->getContext());
 
@@ -283,7 +286,7 @@ namespace Codegen
 							return this->getExprType(c.second);
 					}
 
-					error(expr, "Enum '%s' has no such case '%s'", enr->name.c_str(), enrcase->name.c_str());
+					error(expr, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), enrcase->name.c_str());
 				}
 				else
 				{
@@ -360,26 +363,14 @@ namespace Codegen
 			}
 			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
 			{
-				TypePair_t* type = getType(alloc->type.strType);
-				if(!type)
-				{
-					// check if it ends with pointer, and if we have a type that's un-pointered
-					if(alloc->type.strType.find("::") != std::string::npos)
-					{
-						alloc->type.strType = this->mangleRawNamespace(alloc->type.strType);
-						return this->getExprTypeFromStringType(alloc, alloc->type, allowFail)->getPointerTo();
-					}
+				fir::Type* base = this->getExprTypeFromStringType(alloc, alloc->type.strType);
 
-					return this->parseAndGetOrInstantiateType(alloc, alloc->type.strType)->getPointerTo();
-				}
-
-				fir::Type* ret = type->first;
-				if(alloc->counts.size() == 0) return ret->getPointerTo();
+				if(alloc->counts.size() == 0) return base->getPointerTo();
 
 				for(size_t i = 0; i < alloc->counts.size(); i++)
-					 ret = ret->getPointerTo();
+					 base = base->getPointerTo();
 
-				return ret;
+				return base;
 			}
 			else if(Number* nm = dynamic_cast<Number*>(expr))
 			{
@@ -410,7 +401,7 @@ namespace Codegen
 			}
 			else if(dynamic_cast<Typeof*>(expr))
 			{
-				TypePair_t* tp = this->getType("Type");
+				TypePair_t* tp = this->getTypeByString("Type");
 				iceAssert(tp);
 
 				return tp->first;
@@ -499,7 +490,7 @@ namespace Codegen
 			}
 
 			if(candidate == 0)
-				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->name.c_str());
+				error(user, "Struct %s has no default initialiser taking 0 parameters", cls->ident.name.c_str());
 
 			return candidate;
 		}
@@ -511,7 +502,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "Type '%s' cannot have initialisers", sb->name.c_str());
+			error(user, "Type '%s' cannot have initialisers", sb->ident.name.c_str());
 		}
 	}
 
@@ -598,12 +589,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isStructType() && from->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& from->isStructType() && from->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isStructType() && to->toStructType()->getStructName() == this->mangleWithNamespace("String", { }, false))
+			&& to->isStructType() && to->toStructType()->getStructName() == "String")
 		{
 			return 2;
 		}
@@ -759,8 +750,7 @@ namespace Codegen
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isStructType()
-				&& from->getType()->toStructType()->getStructName() == this->mangleWithNamespace("String", std::deque<std::string>()))
+				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName() == "String")
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -1074,6 +1064,11 @@ namespace Codegen
 
 				if(atype.find("<") != std::string::npos)
 				{
+					error("enotsup (generic structs)");
+
+
+					#if 0
+
 					size_t k = atype.find("<");
 					std::string base = atype.substr(0, k);
 
@@ -1086,13 +1081,6 @@ namespace Codegen
 						// parse that shit.
 						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 						iceAssert(sb);
-
-						// todo: need to mangle name of struct, then find. currently fucks up.
-						// todo: need some way to give less shitty error messages
-
-						if(sb->genericTypes.size() == 0)
-							error(user, "Type %s does not have type parameters, is not generic", sb->name.c_str());
-
 
 						// parse the list of types.
 						std::string glist = atype.substr(k);
@@ -1140,17 +1128,6 @@ namespace Codegen
 								}
 							}
 							types.push_back(curtype);
-
-
-							if(types.size() != sb->genericTypes.size())
-								error(user, "Expected %zu type parameters, got %zu", sb->genericTypes.size(), types.size());
-
-							// ok.
-							for(size_t i = 0; i < types.size(); i++)
-							{
-								fir::Type* inst = this->parseAndGetOrInstantiateType(user, types[i]);
-								instantiatedGenericTypes[sb->genericTypes[i]] = inst;
-							}
 						}
 
 						// todo: ew, goto
@@ -1161,13 +1138,15 @@ namespace Codegen
 						if(allowFail) return 0;
 						else error(user, "Invaild type '%s'", base.c_str());
 					}
+
+					#endif
 				}
 
 				std::string nsstr;
 				for(auto n : ns)
 					nsstr += n + ".";
 
-				if(ns.size() > 0) nsstr = nsstr.substr(1);
+				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
 				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
@@ -1179,23 +1158,10 @@ namespace Codegen
 			}
 			else if(tp)
 			{
-				foundType:
+				// foundType:
 
 				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
-				std::string mangledGeneric = oldSB->name;
-
-				// mangle properly, and find it.
-				{
-					iceAssert(tp);
-					iceAssert(tp->second.first);
-
-					for(auto pair : instantiatedGenericTypes)
-						mangledGeneric += "_" + pair.first + ":" + pair.second->str();
-
-					tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
-					// fprintf(stderr, "mangled: %s // tp: %p\n", mangledGeneric.c_str(), tp);
-				}
-
+				tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 
 				fir::Type* concrete = tp ? tp->first : 0;
 				if(!concrete)
@@ -1203,11 +1169,6 @@ namespace Codegen
 					// generate the type.
 					iceAssert(oldSB);
 
-					if(oldSB->genericTypes.size() > 0 && instantiatedGenericTypes.size() == 0)
-					{
-						error(user, "Type '%s' needs %zu type parameter%s, but none were provided",
-							oldSB->name.c_str(), oldSB->genericTypes.size(), oldSB->genericTypes.size() == 1 ? "" : "s");
-					}
 
 					// temporarily hijack the main scope
 					auto old = this->namespaceStack;
@@ -1232,7 +1193,7 @@ namespace Codegen
 					this->namespaceStack = old;
 
 
-					if(!tp) tp = this->findTypeInFuncTree(ns, mangledGeneric).first;
+					if(!tp) tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 					iceAssert(tp);
 				}
 
@@ -1303,7 +1264,7 @@ namespace Codegen
 				return true;
 			}
 
-			TypePair_t* pair = this->getType("Any");
+			TypePair_t* pair = this->getTypeByString("Any");
 			if(!pair) return false;
 			// iceAssert(pair);
 
@@ -1319,7 +1280,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::Enum)
 					return true;
@@ -1341,6 +1302,8 @@ namespace Codegen
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
 
+		if(!res) return false;
+
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
 			return tp->second.second == TypeKind::Enum;
@@ -1353,7 +1316,7 @@ namespace Codegen
 		if(type.isLiteral)
 		{
 			TypePair_t* tp = 0;
-			if((tp = this->getType(this->mangleWithNamespace(type.strType))))
+			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
 			{
 				if(tp->second.second == TypeKind::TypeAlias)
 					return true;
@@ -1374,6 +1337,8 @@ namespace Codegen
 		bool res = true;
 		if(!type->isStructType())								res = false;
 		if(res && type->toStructType()->getElementCount() != 1)	res = false;
+
+		if(!res) return false;
 
 		TypePair_t* tp = 0;
 		if((tp = this->getType(type)))
@@ -1572,7 +1537,7 @@ namespace Codegen
 		else if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
 		{
 			std::string s;
-			s = "class " + cls->name + "\n{\n";
+			s = "class " + cls->ident.name + "\n{\n";
 
 			for(auto m : cls->members)
 				s += this->printAst(m) + "\n";
@@ -1586,7 +1551,7 @@ namespace Codegen
 		else if(StructDef* str = dynamic_cast<StructDef*>(expr))
 		{
 			std::string s;
-			s = "struct " + str->name + "\n{\n";
+			s = "struct " + str->ident.name + "\n{\n";
 
 			for(auto m : str->members)
 				s += this->printAst(m) + "\n";
@@ -1597,7 +1562,7 @@ namespace Codegen
 		else if(EnumDef* enr = dynamic_cast<EnumDef*>(expr))
 		{
 			std::string s;
-			s = "enum " + enr->name + "\n{\n";
+			s = "enum " + enr->ident.name + "\n{\n";
 
 			for(auto m : enr->cases)
 				s += m.first + " " + this->printAst(m.second) + "\n";

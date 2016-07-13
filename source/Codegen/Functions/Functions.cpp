@@ -74,11 +74,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->didCodegen = false;
 			if(isGeneric)
 			{
-				if(!(this->decl->attribs & Attr_VisPublic))
-				{
-					// warn(this, "Function %s is never called (%s)", this->decl->name.c_str(), this->decl->mangledName.c_str());
-				}
-
 				return Result_t(0, 0);
 			}
 			else
@@ -118,10 +113,21 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	// unfortunately, because we have to clear the symtab above, we need to add the param vars here
-	for(size_t i = 0; i < func->getArgumentCount(); i++)
+	std::deque<VarDecl*> vprs = decl->params;
+	if(this->decl->params.size() + 1 == func->getArgumentCount())
 	{
-		func->getArguments()[i]->setName(this->decl->params[i]->ident.name);
+		// we need to add the self param.
+		iceAssert(this->decl->parentClass && this->decl->parentClass->createdType);
+
+		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
+		fake->type.ftype = this->decl->parentClass->createdType->getPointerTo();
+
+		vprs.push_front(fake);
+	}
+
+	for(size_t i = 0; i < vprs.size(); i++)
+	{
+		func->getArguments()[i]->setName(vprs[i]->ident.name);
 
 		if(isGeneric)
 		{
@@ -129,11 +135,11 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(this->decl->params[i]));
+			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(vprs[i]));
 		}
 
 		fir::Value* ai = 0;
-		if(!this->decl->params[i]->immutable)
+		if(!vprs[i]->immutable)
 		{
 			ai = cgi->getStackAlloc(func->getArguments()[i]->getType());
 			cgi->builder.CreateStore(func->getArguments()[i], ai);
@@ -143,7 +149,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			ai = cgi->getImmutStackAllocValue(func->getArguments()[i]);
 		}
 
-		cgi->addSymbol(this->decl->params[i]->ident.name, ai, this->decl->params[i]);
+		cgi->addSymbol(vprs[i]->ident.name, ai, vprs[i]);
 		func->getArguments()[i]->setValue(ai);
 	}
 

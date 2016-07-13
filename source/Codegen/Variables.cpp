@@ -100,7 +100,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 
 
-		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->name == "Any" || cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->ident.name == "Any"
+										|| cgi->isAnyType(val->getType())))
 		{
 			// this only works if we don't call a constructor
 
