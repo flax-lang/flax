@@ -122,11 +122,11 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(checkCVarArg && arg->getType()->isStructType())
 			{
 				fir::StructType* st = arg->getType()->toStructType();
-				if(!st->isLiteralStruct() && st->getStructName() != "String")
+				if(!st->isLiteralStruct() && st->getStructName().str() != "String")
 				{
 					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
 				}
-				else if(!st->isLiteralStruct() && st->getStructName() == "String")
+				else if(!st->isLiteralStruct() && st->getStructName().str() == "String")
 				{
 					// this function knows what to do.
 					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);

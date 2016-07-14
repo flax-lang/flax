@@ -102,7 +102,7 @@ namespace Operators
 			}
 			else
 			{
-				error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().c_str(),
+				error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().str().c_str(),
 					lhs->getType()->str().c_str());
 			}
 		}
@@ -119,7 +119,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 			return cgi->extractValueFromAny(rtype, lhsPtr);
 		}
-		else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName() == "String"
+		else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName().str() == "String"
 			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
 		{
 			// string to int8*.
@@ -131,7 +131,7 @@ namespace Operators
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
 		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
-			&& rtype->isStructType() && rtype->toStructType()->getStructName() == "String")
+			&& rtype->isStructType() && rtype->toStructType()->getStructName().str() == "String")
 		{
 			// support this shit.
 			// error(cgi, this, "Automatic char* -> String casting not yet supported");
