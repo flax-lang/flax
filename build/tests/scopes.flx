@@ -23,6 +23,11 @@ class Something
 	class Inside
 	{
 		static var Another = 511
+
+		ƒ insideFoo() -> int64
+		{
+			return 10
+		}
 	}
 
 	enum InsideEnum

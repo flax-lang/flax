@@ -120,7 +120,7 @@ namespace fir
 			bool didfn = false;
 			if(op->getType()->isFunctionType())
 			{
-				ops += "@" + op->getName();
+				ops += "@" + op->getName().str();
 				if(this->opKind == OpKind::Value_CallFunction)
 				{
 					ops += ", (";
@@ -141,7 +141,7 @@ namespace fir
 			}
 			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
 			{
-				ops += "$" + ib->getName();
+				ops += "$" + ib->getName().str();
 			}
 			else
 			{

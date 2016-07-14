@@ -29,10 +29,110 @@ std::string Identifier::str() const
 
 	ret += name;
 
-	if(this->kind == IdKind::Function)
+	if(this->kind == IdKind::Function || this->kind == IdKind::Method || this->kind == IdKind::Getter || this->kind == IdKind::Setter
+		|| this->kind == IdKind::AutoGenFunc)
 	{
 		for(auto t : this->functionArguments)
 			ret += "_" + t->str();
+	}
+
+	return ret;
+}
+
+static std::string mangleScopeOnly(Identifier id)
+{
+	std::string ret;
+	for(auto s : id.scope)
+		ret += std::to_string(s.length()) + s;
+
+	ret += std::to_string(id.name.length()) + id.name;
+	return ret;
+}
+
+static std::string mangleType(fir::Type* t)
+{
+	if(t->isPrimitiveType())
+	{
+		return t->encodedStr();
+	}
+	else if(t->isArrayType())
+	{
+		return "AR" + std::to_string(t->toArrayType()->getArraySize()) + mangleType(t->toArrayType()->getElementType());
+	}
+	else if(t->isLLVariableArrayType())
+	{
+		return "VA" + mangleType(t->toLLVariableArray()->getElementType());
+	}
+	else if(t->isVoidType())
+	{
+		return "v";
+	}
+	else if(t->isFunctionType())
+	{
+		std::string ret = "FN" + std::to_string(t->toFunctionType()->getArgumentTypes().size()) + "FA";
+		for(auto a : t->toFunctionType()->getArgumentTypes())
+		{
+			auto mt = mangleType(a);
+			ret += std::to_string(mt.length()) + mt;
+		}
+
+		if(t->toFunctionType()->getArgumentTypes().empty())
+			ret += "v";
+
+		return ret;
+	}
+	else if(t->isNamedStruct())
+	{
+		return mangleScopeOnly(t->toStructType()->getStructName());
+	}
+	else if(t->isLiteralStruct())
+	{
+		std::string ret = "ST" + std::to_string(t->toStructType()->getElementCount()) + "SM";
+		for(auto m : t->toStructType()->getElements())
+		{
+			auto mt = mangleType(m);
+			ret += std::to_string(mt.length()) + mt;
+		}
+
+		return ret;
+	}
+	else if(t->isPointerType())
+	{
+		return "PT" + mangleType(t->getPointerElementType());
+	}
+	else
+	{
+		iceAssert(0);
+	}
+}
+
+std::string Identifier::mangled() const
+{
+	if(this->kind == IdKind::Name)
+		return this->name;
+
+	std::string ret = "_F";
+
+	if(this->kind == IdKind::Function)					ret += "F";
+	else if(this->kind == IdKind::Method)				ret += "M";
+	else if(this->kind == IdKind::Getter)				ret += "G";
+	else if(this->kind == IdKind::Setter)				ret += "S";
+	else if(this->kind == IdKind::Variable)				ret += "V";
+	else if(this->kind == IdKind::Struct)				ret += "C";
+	else if(this->kind == IdKind::AutoGenFunc)			ret += "B";
+	else if(this->kind == IdKind::ModuleConstructor)	ret += "Y";
+	else												ret += "U";
+
+	ret += mangleScopeOnly(*this);
+
+	if(this->kind == IdKind::Function || this->kind == IdKind::Method || this->kind == IdKind::Getter || this->kind == IdKind::Setter
+		|| this->kind == IdKind::AutoGenFunc)
+	{
+		ret += "_FA";
+		for(auto t : this->functionArguments)
+		{
+			ret += "_" + mangleType(t);
+		}
 	}
 
 	return ret;
@@ -44,6 +144,16 @@ bool Identifier::operator == (const Identifier& other) const
 		&& this->scope == other.scope
 		&& this->functionArguments == other.functionArguments;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -200,29 +310,7 @@ namespace Codegen
 
 	bool CodegenInstance::areEqualTypes(fir::Type* a, fir::Type* b)
 	{
-		if(a == b) return true;
-		else if(a->isStructType() && b->isStructType())
-		{
-			fir::StructType* sa = a->toStructType();
-			fir::StructType* sb = b->toStructType();
-
-			// get the first part of the name.
-			if(!sa->isLiteralStruct() && !sb->isLiteralStruct())
-			{
-				std::string an = sa->getStructName();
-				std::string bn = sb->getStructName();
-
-				std::string fan = an.substr(0, an.find_first_of('.'));
-				std::string fbn = bn.substr(0, bn.find_first_of('.'));
-
-				if(fan != fbn) return false;
-			}
-
-			// return sa->isLayoutIdentical(sb);
-			return sa->isTypeEqual(sb);
-		}
-
-		return false;
+		return a == b;
 	}
 
 	void CodegenInstance::addNewType(fir::Type* ltype, StructBase* atype, TypeKind e)
@@ -898,7 +986,7 @@ namespace Codegen
 					return _isDupe(f, fp);
 				};
 
-				if((f.second ? f.second->ident.name : f.first->getName()) == basename)
+				if((f.second ? f.second->ident.name : f.first->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -1774,13 +1862,16 @@ namespace Codegen
 		if(this->isBuiltinType(pair->first))
 		{
 			iceAssert(pair->second.first == 0);
-			std::string fnName = "__builtin_primitive_init_" + this->getReadableType(pair->first);
 
 			std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
 			fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
 
-			this->module->declareFunction(fnName, ft);
-			fir::Function* fn = this->module->getFunction(fnName);
+			Identifier fnId = Identifier("__builtin_primitive_init_" + this->getReadableType(pair->first), IdKind::AutoGenFunc);
+			fnId.functionArguments = ft->getArgumentTypes();
+
+
+			this->module->declareFunction(fnId, ft);
+			fir::Function* fn = this->module->getFunction(fnId);
 
 			if(fn->getBlockList().size() == 0)
 			{
