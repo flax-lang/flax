@@ -99,7 +99,7 @@ namespace Codegen
 
 		} globalConstructors;
 
-		void addGlobalConstructor(std::string name, fir::Function* constructor);
+		void addGlobalConstructor(Identifier name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 

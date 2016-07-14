@@ -11,9 +11,9 @@ using namespace Codegen;
 
 namespace Codegen
 {
-	void CodegenInstance::addGlobalConstructor(std::string name, fir::Function* constructor)
+	void CodegenInstance::addGlobalConstructor(Identifier id, fir::Function* constructor)
 	{
-		fir::GlobalVariable* gv = this->module->getGlobalVariable(name);
+		fir::GlobalVariable* gv = this->module->getGlobalVariable(id);
 		iceAssert(gv);
 
 		this->globalConstructors.funcs[gv] = constructor;
@@ -57,8 +57,10 @@ namespace Codegen
 	{
 		// generate initialiser
 		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
-		fir::Function* defaultInitFunc = this->module->getOrCreateFunction("__global_constructor__" + this->module->getModuleName(), ft,
-			fir::LinkageType::External);
+		auto id = Identifier(this->module->getModuleName(), IdKind::ModuleConstructor);
+		id.functionArguments = ft->getArgumentTypes();
+
+		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(id, ft, fir::LinkageType::External);
 
 		fir::IRBlock* iblock = this->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
 		this->builder.setCurrentBlock(iblock);
