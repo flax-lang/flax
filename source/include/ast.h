@@ -66,6 +66,7 @@ enum class IdKind
 	Method,
 	Getter,
 	Setter,
+	Operator,
 	AutoGenFunc,
 	ModuleConstructor,
 	Struct,

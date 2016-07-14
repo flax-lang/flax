@@ -30,7 +30,7 @@ std::string Identifier::str() const
 	ret += name;
 
 	if(this->kind == IdKind::Function || this->kind == IdKind::Method || this->kind == IdKind::Getter || this->kind == IdKind::Setter
-		|| this->kind == IdKind::AutoGenFunc)
+		|| this->kind == IdKind::AutoGenFunc || this->kind == IdKind::Operator)
 	{
 		for(auto t : this->functionArguments)
 			ret += "_" + t->str();
@@ -117,16 +117,17 @@ std::string Identifier::mangled() const
 	else if(this->kind == IdKind::Method)				ret += "M";
 	else if(this->kind == IdKind::Getter)				ret += "G";
 	else if(this->kind == IdKind::Setter)				ret += "S";
-	else if(this->kind == IdKind::Variable)				ret += "V";
+	else if(this->kind == IdKind::Operator)				ret += "O";
 	else if(this->kind == IdKind::Struct)				ret += "C";
 	else if(this->kind == IdKind::AutoGenFunc)			ret += "B";
 	else if(this->kind == IdKind::ModuleConstructor)	ret += "Y";
+	else if(this->kind == IdKind::Variable)				ret += "V";
 	else												ret += "U";
 
 	ret += mangleScopeOnly(*this);
 
 	if(this->kind == IdKind::Function || this->kind == IdKind::Method || this->kind == IdKind::Getter || this->kind == IdKind::Setter
-		|| this->kind == IdKind::AutoGenFunc)
+		|| this->kind == IdKind::AutoGenFunc || this->kind == IdKind::Operator)
 	{
 		ret += "_FA";
 		for(auto t : this->functionArguments)
