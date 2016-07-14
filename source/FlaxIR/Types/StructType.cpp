@@ -7,7 +7,7 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked)
+	StructType::StructType(Identifier name, std::deque<Type*> mems, bool islit, bool ispacked)
 		: Type(islit ? FTypeKind::LiteralStruct : FTypeKind::NamedStruct)
 	{
 		this->structName = name;
@@ -15,7 +15,7 @@ namespace fir
 		this->isTypePacked = ispacked;
 	}
 
-	StructType* StructType::createNamed(std::string name, std::deque<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(Identifier name, std::deque<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -31,7 +31,7 @@ namespace fir
 				if(!areTypeListsEqual(members, t->toStructType()->structMembers))
 				{
 					std::string mstr = typeListToString(members);
-					error("Conflicting types for named struct %s:\n%s vs %s", name.c_str(), t->str().c_str(), mstr.c_str());
+					error("Conflicting types for named struct %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
 				}
 
 				// ok.
@@ -42,7 +42,7 @@ namespace fir
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
-	StructType* StructType::createNamedWithoutBody(std::string name, FTContext* tc, bool isPacked)
+	StructType* StructType::createNamedWithoutBody(Identifier name, FTContext* tc, bool isPacked)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -58,7 +58,7 @@ namespace fir
 		return createNamed(name, { }, tc, isPacked);
 	}
 
-	StructType* StructType::createNamed(std::string name, std::vector<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(Identifier name, std::vector<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -70,7 +70,7 @@ namespace fir
 		return StructType::createNamed(name, dmems, tc, packed);
 	}
 
-	StructType* StructType::createNamed(std::string name, std::initializer_list<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::createNamed(Identifier name, std::initializer_list<Type*> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -88,7 +88,7 @@ namespace fir
 
 		iceAssert(members.size() > 0 && "literal struct must have body at init");
 
-		StructType* type = new StructType("__LITERAL_STRUCT__", members, true, packed);
+		StructType* type = new StructType(Identifier("__LITERAL_STRUCT__", IdKind::Struct), members, true, packed);
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
@@ -128,10 +128,10 @@ namespace fir
 		if(this->isNamedStruct())
 		{
 			if(this->structMembers.size() == 0)
-				return this->structName + "<???>";
+				return this->structName.name + "<???>";
 
 			auto s = typeListToString(this->structMembers);
-			return this->structName + "<{" + s.substr(2, s.length() - 4) + "}>";
+			return this->structName.name + "<{" + s.substr(2, s.length() - 4) + "}>";
 		}
 		else if(this->isLiteralStruct())
 		{
@@ -147,7 +147,7 @@ namespace fir
 	{
 		if(this->isNamedStruct())
 		{
-			return this->structName;
+			return this->structName.str();
 		}
 		else if(this->isLiteralStruct())
 		{
@@ -185,7 +185,7 @@ namespace fir
 
 
 	// struct stuff
-	std::string StructType::getStructName()
+	Identifier StructType::getStructName()
 	{
 		iceAssert(this->typeKind == FTypeKind::NamedStruct && "not named struct");
 		return this->structName;

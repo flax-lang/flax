@@ -808,14 +808,14 @@ namespace fir
 		{
 			// check here, to stop llvm dying
 			if(args.size() != fn->getArgumentCount())
-				error("Calling function %s with the wrong number of arguments (needs %zu, have %zu)", fn->getName().c_str(),
+				error("Calling function %s with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str().c_str(),
 					fn->getArgumentCount(), args.size());
 
 			for(size_t i = 0; i < args.size(); i++)
 			{
 				if(args[i]->getType() != fn->getArguments()[i]->getType())
 				{
-					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().c_str(),
+					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
 						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 				}
 			}
