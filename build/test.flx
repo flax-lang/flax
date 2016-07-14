@@ -185,6 +185,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 
 
+	println()
 
 	return ret
 }
@@ -198,6 +199,11 @@ extension String
 	{
 		return 4913
 	}
+}
+
+@nomangle func mtest(k: int, g: int)
+{
+	printf("(%d, %d)\n", k, g)
 }
 
 
@@ -214,6 +220,8 @@ public func main(argc: int32, argv: int8**) -> int
 	println("%b", "a" != "b")
 
 	parseFormatOptions("{401:x}")
+
+	mtest(10, 41)
 
 	// var arr8: Array<Int8>
 	// var arr32: Array<Int32>
