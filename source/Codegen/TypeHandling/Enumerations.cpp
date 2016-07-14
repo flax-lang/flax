@@ -107,7 +107,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi, std::map<std::string, fir::
 
 	std::deque<std::string> fullScope = cgi->getFullScope();
 
-	fir::StructType* wrapper = fir::StructType::createNamed(this->ident.str(), { prev }, cgi->getContext());
+	fir::StructType* wrapper = fir::StructType::createNamed(this->ident, { prev }, cgi->getContext());
 	// wrapper->setBody(std::vector<fir::Type*>({ prev }));
 
 	// now that they're all the same type:

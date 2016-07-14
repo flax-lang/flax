@@ -19,12 +19,12 @@ namespace TypeInfo
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				iceAssert(strt);
 
-				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName())
+				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName().str())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName(),
+		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName().str(),
 			stype, etype));
 	}
 

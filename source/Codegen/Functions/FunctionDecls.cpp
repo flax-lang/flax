@@ -41,7 +41,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 
 
 static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::deque<fir::Type*> argtypes, fir::Type* rettype,
-	std::string genericMangling)
+	std::string genericMangling, bool mangle)
 {
 	fir::FunctionType* ft = 0;
 
@@ -72,10 +72,24 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		{
 			iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
 			func = cgi->module->getOrCreateFunction(fd->ident, ft, linkageType);
+
+			// fprintf(stderr, "gen function (1) %s\n", fd->ident.str().c_str());
 		}
-		else
+		else if(mangle)
 		{
-			func = cgi->module->getOrCreateFunction(genericMangling, ft, linkageType);
+			auto id = Identifier(genericMangling, IdKind::Function);
+			id.functionArguments = ft->getArgumentTypes();
+
+			func = cgi->module->getOrCreateFunction(id, ft, linkageType);
+
+			// fprintf(stderr, "gen function (2) %s // %s\n", id.str().c_str(), genericMangling.c_str());
+		}
+		else if(!mangle)
+		{
+			auto id = Identifier(genericMangling, IdKind::Name);
+			func = cgi->module->getOrCreateFunction(id, ft, linkageType);
+
+			// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
 		}
 
 
@@ -128,7 +142,7 @@ Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std
 	}
 
 	std::string genericMangled = cgi->mangleGenericParameters(this->params);
-	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled);
+	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled, true);
 }
 
 
@@ -236,7 +250,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		this->ident.functionArguments = argtypes;
 
 		bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
-		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), disableMangle ? this->ident.name : "");
+		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), disableMangle ? this->ident.name : "", !disableMangle);
 	}
 	else
 	{
