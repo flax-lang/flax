@@ -27,7 +27,7 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::stri
 
 	Identifier vid = Identifier(name, tmp, IdKind::Variable);
 
-	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(vid.str()))
+	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(vid))
 	{
 		// todo: another kinda hacky thing.
 		// this is present in some parts of the code, i don't know how many.

@@ -15,6 +15,11 @@ static fir::Function* generateMemberFunctionDecl(CodegenInstance* cgi, ClassDef*
 {
 	fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
+	fn->decl->ident.kind = IdKind::Method;
+	fn->decl->ident.scope = cls->ident.scope;
+	fn->decl->ident.scope.push_back(cls->ident.name);
+
+
 	fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).result.first);
 
 	cgi->builder.setCurrentBlock(ob);
@@ -124,8 +129,13 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::StructType* str = this->createdType;
 
 	// generate initialiser
-	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction("__auto_init__" + str->getStructName(),
-		fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+	auto defaultInitId = this->ident;
+	defaultInitId.kind = IdKind::AutoGenFunc;
+	defaultInitId.name = "init_" + defaultInitId.name;
+	defaultInitId.functionArguments = { str->getPointerTo() };
+
+	fir::Function* defaultInitFunc = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
+		fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 	{
 		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
@@ -158,7 +168,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				Identifier vid = Identifier(var->ident.name, tmp, IdKind::Variable);
 
 				// generate a global variable
-				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid.str(), var->inferredLType,
+				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->inferredLType,
 					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
@@ -168,7 +178,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					iceAssert(cmplxtype);
 
 					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
-					cgi->addGlobalConstructor(vid.str(), init);
+					cgi->addGlobalConstructor(vid, init);
 				}
 				else
 				{
@@ -527,7 +537,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident.str(), cgi->getContext());
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident, cgi->getContext());
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(str, this, TypeKind::Class);
