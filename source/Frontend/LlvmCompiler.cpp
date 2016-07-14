@@ -229,11 +229,11 @@ namespace Compiler
 			{
 				if(pair.second->globalConstructorTrampoline != 0)
 				{
-					llvm::Function* constr = mod->getFunction(pair.second->globalConstructorTrampoline->getName());
+					llvm::Function* constr = mod->getFunction(pair.second->globalConstructorTrampoline->getName().mangled());
 					if(!constr)
 					{
 						error("required global constructor %s was not found in the module!",
-							pair.second->globalConstructorTrampoline->getName().c_str());
+							pair.second->globalConstructorTrampoline->getName().str().c_str());
 					}
 					else
 					{

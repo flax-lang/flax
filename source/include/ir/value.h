@@ -58,8 +58,9 @@ namespace fir
 
 
 		// methods
-		void setName(std::string name);
-		std::string getName();
+		void setName(Identifier idt);
+		void setName(std::string s);
+		Identifier getName();
 
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
@@ -77,8 +78,8 @@ namespace fir
 		// fields
 		bool immut = 0;
 
+		Identifier ident;
 		Type* valueType;
-		std::string valueName;
 		FValueKind valueKind;
 		std::deque<Value*> users;
 	};
@@ -101,7 +102,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
+		GlobalVariable(Identifier idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 
 		protected:

@@ -11,76 +11,40 @@ namespace fir
 		this->moduleName = nm;
 	}
 
-	GlobalVariable* Module::createGlobalVariable(std::string name, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(Identifier ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
-		GlobalVariable* gv = new GlobalVariable(name, this, type, isImmut, linkage, initVal);
-		if(this->globals.find(name) != this->globals.end())
-			error("ICE: Already have a global with name %s", name.c_str());
+		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
+		if(this->globals.find(ident) != this->globals.end())
+			error("ICE: Already have a global with name %s", ident.str().c_str());
 
-		this->globals[name] = gv;
+		this->globals[ident] = gv;
 		return gv;
-	}
-
-	GlobalVariable* Module::createGlobalVariable(std::string name, Type* type, bool isImmut, LinkageType linkage)
-	{
-		return this->createGlobalVariable(name, type, 0, isImmut, linkage);
-	}
-
-	GlobalVariable* Module::declareGlobalVariable(std::string name, Type* type, bool isImmut)
-	{
-		return this->createGlobalVariable(name, type, 0, isImmut, LinkageType::External);
-	}
-
-	void Module::deleteGlobalVariable(std::string name)
-	{
-		if(this->globals.find(name) == this->globals.end())
-			error("ICE: no such global with name %s", name.c_str());
-
-		// GlobalValue* gv = this->globals[name];
-		this->globals.erase(name);
-
-		// delete gv;
-	}
-
-	GlobalVariable* Module::tryGetGlobalVariable(std::string name)
-	{
-		if(this->globals.find(name) == this->globals.end())
-			return 0;
-
-		return this->globals[name];
-	}
-
-	GlobalVariable* Module::getGlobalVariable(std::string name)
-	{
-		if(this->globals.find(name) == this->globals.end())
-			error("ICE: no such global with name %s", name.c_str());
-
-		return this->globals[name];
-	}
-
-	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
-	{
-		return this->createGlobalVariable(id.str(), type, initVal, isImmut, linkage);
 	}
 
 	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage)
 	{
-		return this->createGlobalVariable(id.str(), type, isImmut, linkage);
+		return this->createGlobalVariable(id, type, 0, isImmut, linkage);
 	}
 
 	GlobalVariable* Module::declareGlobalVariable(Identifier id, Type* type, bool isImmut)
 	{
-		return this->declareGlobalVariable(id.str(), type, isImmut);
+		return this->createGlobalVariable(id, type, 0, isImmut, LinkageType::External);
 	}
 
 	GlobalVariable* Module::tryGetGlobalVariable(Identifier id)
 	{
-		return this->tryGetGlobalVariable(id.str());
+		if(this->globals.find(id) == this->globals.end())
+			return 0;
+
+		return this->globals[id];
 	}
 
 	GlobalVariable* Module::getGlobalVariable(Identifier id)
 	{
-		return this->getGlobalVariable(id.str());
+		if(this->globals.find(id) == this->globals.end())
+			error("ICE: no such global with name %s", id.str().c_str());
+
+		return this->globals[id];
 	}
 
 
@@ -111,55 +75,21 @@ namespace fir
 
 
 
-	StructType* Module::getNamedType(std::string name)
+	StructType* Module::getNamedType(Identifier id)
 	{
-		if(this->namedTypes.find(name) == this->namedTypes.end())
-			error("ICE: no such type with name %s", name.c_str());
+		if(this->namedTypes.find(id) == this->namedTypes.end())
+			error("ICE: no such type with name %s", id.str().c_str());
 
-		return this->namedTypes[name];
+		return this->namedTypes[id];
 	}
 
-	void Module::addNamedType(std::string name, StructType* type)
+	void Module::addNamedType(Identifier id, StructType* type)
 	{
-		if(this->namedTypes.find(name) != this->namedTypes.end())
-			error("ICE: type %s exists already", name.c_str());
+		if(this->namedTypes.find(id) != this->namedTypes.end())
+			error("ICE: type %s exists already", id.str().c_str());
 
-		// fprintf(stderr, "add named type %s, %s\n", name.c_str(), type->str().c_str());
-		this->namedTypes[name] = type;
+		this->namedTypes[id] = type;
 	}
-
-	void Module::addExtensionType(std::string name, StructType* type)
-	{
-		// the target type doesn't need to exist in *this* module, which makes it slightly iffy
-		this->extensionTypes[name] = type;
-	}
-
-	void Module::declareFunction(std::string name, FunctionType* ftype)
-	{
-		this->getOrCreateFunction(name, ftype, LinkageType::External);
-	}
-
-	Function* Module::getOrCreateFunction(std::string name, FunctionType* ftype, LinkageType linkage)
-	{
-		if(this->functions.find(name) != this->functions.end())
-		{
-			if(!this->functions[name]->getType()->isTypeEqual(ftype))
-			{
-				error("function %s redeclared with different type (have %s, new %s)", name.c_str(),
-					this->functions[name]->getType()->str().c_str(), ftype->str().c_str());
-			}
-
-			// fprintf(stderr, "returning existing function %s (id = %zu)\n", name.c_str(), this->functions[name]->id);
-			return this->functions[name];
-		}
-
-		Function* f = new Function(name, ftype, this, linkage);
-		this->functions[name] = f;
-
-		// fprintf(stderr, "returning new function %s (id = %zu) (mod %s)\n", name.c_str(), f->id, this->moduleName.c_str());
-		return f;
-	}
-
 
 
 
@@ -174,53 +104,52 @@ namespace fir
 	void Module::addFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) != this->functions.end())
-			error("function %s exists already", func->getName().c_str());
+			error("function %s exists already", func->getName().str().c_str());
 
 		this->functions[func->getName()] = func;
 	}
 
-	void Module::deleteFunction(std::string name)
-	{
-		if(this->functions.find(name) == this->functions.end())
-			error("function %s does not exist", name.c_str());
-
-		// Function* f = this->functions[name];
-		this->functions.erase(name);
-	}
-
-	Function* Module::getFunction(std::string name)
-	{
-		if(this->functions.find(name) == this->functions.end())
-		{
-			return 0;
-			// error("function %s does not exist", name.c_str());
-		}
-
-		return this->functions[name];
-	}
-
-
-
 	void Module::declareFunction(Identifier id, FunctionType* ftype)
 	{
-		this->declareFunction(id.str(), ftype);
-	}
-
-	void Module::deleteFunction(Identifier id)
-	{
-		this->deleteFunction(id.str());
+		this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
 	Function* Module::getFunction(Identifier id)
 	{
-		return this->getFunction(id.str());
+		if(this->functions.find(id) == this->functions.end())
+		{
+			return 0;
+		}
+
+		return this->functions[id];
 	}
 
 	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
 	{
-		return this->getOrCreateFunction(id.str(), ftype, linkage);
+		if(this->functions.find(id) != this->functions.end())
+		{
+			if(!this->functions[id]->getType()->isTypeEqual(ftype))
+			{
+				error("function %s redeclared with different type (have %s, new %s)", id.str().c_str(),
+					this->functions[id]->getType()->str().c_str(), ftype->str().c_str());
+			}
+
+			return this->functions[id];
+		}
+
+		Function* f = new Function(id, ftype, this, linkage);
+		this->functions[id] = f;
+
+		return f;
 	}
 
+
+
+	void Module::addExtensionType(Identifier id, StructType* type)
+	{
+		// the target type doesn't need to exist in *this* module, which makes it slightly iffy
+		this->extensionTypes[id] = type;
+	}
 
 
 
@@ -249,12 +178,15 @@ namespace fir
 
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{
+		static int stringId = 0;
+
 		if(this->globalStrings.find(str) != this->globalStrings.end())
 			return this->globalStrings[str];
 
-		GlobalVariable* gs = new GlobalVariable(str, this, PointerType::getInt8Ptr(), true, LinkageType::Internal, 0);
-		this->globalStrings[str] = gs;
+		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
+			PointerType::getInt8Ptr(), true, LinkageType::Internal, 0);
 
+		this->globalStrings[str] = gs;
 		return gs;
 	}
 
@@ -286,7 +218,7 @@ namespace fir
 
 		for(auto global : this->globals)
 		{
-			ret += "global " + global.first + " (%" + std::to_string(global.second->id) + ") :: "
+			ret += "global " + global.first.str() + " (%" + std::to_string(global.second->id) + ") :: "
 				+ global.second->getType()->getPointerElementType()->str() + "\n";
 		}
 
@@ -307,7 +239,7 @@ namespace fir
 
 			std::string decl;
 
-			decl += "func: " + ffn->getName() + "(";
+			decl += "func: " + ffn->getName().str() + "(";
 			for(auto a : ffn->getArguments())
 			{
 				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
@@ -335,7 +267,7 @@ namespace fir
 
 			for(auto block : ffn->getBlockList())
 			{
-				ret += "\n    (%" + std::to_string(block->id) + ") " + block->getName() + ":\n";
+				ret += "\n    (%" + std::to_string(block->id) + ") " + block->getName().str() + ":\n";
 
 				for(auto inst : block->instructions)
 					ret += "        " + inst->str() + "\n";

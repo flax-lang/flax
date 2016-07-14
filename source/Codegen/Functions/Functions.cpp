@@ -67,7 +67,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else
 	{
 		bool notMangling = (this->decl->attribs & Attr_NoMangle || this->decl->isFFI);
-		func = notMangling ? cgi->module->getFunction(this->decl->ident.name) : cgi->module->getFunction(this->decl->ident);
+		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
+							: cgi->module->getFunction(this->decl->ident);
 
 		if(!func)
 		{
@@ -127,7 +128,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	for(size_t i = 0; i < vprs.size(); i++)
 	{
-		func->getArguments()[i]->setName(vprs[i]->ident.name);
+		func->getArguments()[i]->setName(vprs[i]->ident);
 
 		if(isGeneric)
 		{

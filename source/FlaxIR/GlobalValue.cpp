@@ -16,10 +16,10 @@ namespace fir
 	}
 
 
-	GlobalVariable::GlobalVariable(std::string name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
+	GlobalVariable::GlobalVariable(Identifier name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
 		: GlobalValue(module, type, lt)
 	{
-		this->valueName = name;
+		this->ident = name;
 		this->immut = immutable;
 		this->initValue = initValue;
 	}
