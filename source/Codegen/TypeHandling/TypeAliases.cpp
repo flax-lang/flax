@@ -26,7 +26,7 @@ fir::Type* TypeAlias::createType(CodegenInstance* cgi, std::map<std::string, fir
 	}
 	else
 	{
-		targetType = fir::StructType::createNamed(this->ident.str(), { cgi->getExprTypeFromStringType(this, this->origType) });
+		targetType = fir::StructType::createNamed(this->ident, { cgi->getExprTypeFromStringType(this, this->origType) });
 		warn(this, "Strong type aliases are still iffy, use at your own risk");
 	}
 

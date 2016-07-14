@@ -283,7 +283,7 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		std::string getStructName();
+		Identifier getStructName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
 		std::vector<Type*> getElements();
@@ -307,27 +307,27 @@ namespace fir
 
 		// protected constructor
 		protected:
-		StructType(std::string name, std::deque<Type*> mems, bool islit, bool ispacked);
+		StructType(Identifier name, std::deque<Type*> mems, bool islit, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
 		StructType* baseType = 0;
 		bool isTypePacked;
-		std::string structName;
+		Identifier structName;
 		std::deque<Type*> structMembers;
 
 
 		// static funcs
 		public:
-		static StructType* createNamedWithoutBody(std::string name, FTContext* tc = 0, bool isPacked = false);
+		static StructType* createNamedWithoutBody(Identifier name, FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* createNamed(std::string name, std::initializer_list<Type*> members,
+		static StructType* createNamed(Identifier name, std::initializer_list<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* createNamed(std::string name, std::deque<Type*> members,
+		static StructType* createNamed(Identifier name, std::deque<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
-		static StructType* createNamed(std::string name, std::vector<Type*> members,
+		static StructType* createNamed(Identifier name, std::vector<Type*> members,
 			FTContext* tc = 0, bool isPacked = false);
 
 		static StructType* getLiteral(std::initializer_list<Type*> members, FTContext* tc = 0, bool isPacked = false);

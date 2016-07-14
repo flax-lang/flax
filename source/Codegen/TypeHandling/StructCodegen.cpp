@@ -50,8 +50,13 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// generate initialiser
 	{
-		fir::Function* defifunc = cgi->module->getOrCreateFunction("__auto_init__" + this->ident.str(),
-			fir::FunctionType::get({ str->getPointerTo() }, fir::PrimitiveType::getVoid(), false), linkageType);
+		auto defaultInitId = this->ident;
+		defaultInitId.kind = IdKind::AutoGenFunc;
+		defaultInitId.name = "init_" + defaultInitId.name;
+		defaultInitId.functionArguments = { str->getPointerTo() };
+
+		fir::Function* defifunc = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
+			fir::PrimitiveType::getVoid(), false), linkageType);
 
 		this->initFuncs.push_back(defifunc);
 
@@ -89,7 +94,11 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			types.push_back(e);
 
 
-		fir::Function* memifunc = cgi->module->getOrCreateFunction("__auto_mem_init__" + this->ident.str(),
+		auto memid = this->ident;
+		memid.kind = IdKind::AutoGenFunc;
+		memid.name = "meminit_" + memid.name;
+
+		fir::Function* memifunc = cgi->module->getOrCreateFunction(memid,
 			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 		this->initFuncs.push_back(memifunc);
@@ -142,7 +151,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
 	// create a bodyless struct so we can use it
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident.str(), cgi->getContext(), this->packed);
+	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident, cgi->getContext(), this->packed);
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(str, this, TypeKind::Struct);

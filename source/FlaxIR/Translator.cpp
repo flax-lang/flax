@@ -22,9 +22,10 @@
 #include "ir/module.h"
 #include "ir/constant.h"
 
+
 namespace fir
 {
-	static std::unordered_map<std::string, llvm::StructType*> createdTypes;
+	static std::map<Identifier, llvm::StructType*> createdTypes;
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
 		auto& gc = llvm::getGlobalContext();
@@ -56,14 +57,11 @@ namespace fir
 			}
 			else
 			{
-
-				// if(mod->getTypeByName(st->getStructName()) != 0)
-				// 	return mod->getTypeByName(st->getStructName());
-
 				if(createdTypes.find(st->getStructName()) != createdTypes.end())
 					return createdTypes[st->getStructName()];
 
-				return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName(), st->isPackedStruct());
+				return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
+					st->isPackedStruct());
 			}
 		}
 		else if(FunctionType* ft = type->toFunctionType())
@@ -217,7 +215,8 @@ namespace fir
 			valueMap[fv->id] = v;
 			// printf("adding value %zu\n", fv->id);
 
-			v->setName(fv->getName());
+			if(!v->getType()->isVoidTy())
+				v->setName(fv->getName().mangled());
 		};
 
 
@@ -226,9 +225,11 @@ namespace fir
 		static size_t strn = 0;
 		for(auto string : this->globalStrings)
 		{
+			std::string id = "_FV_STR" + std::to_string(strn);
+
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "global_string_" + std::to_string(strn));
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, id);
 
 			valueMap[string.second->id] = gv;
 
@@ -244,7 +245,7 @@ namespace fir
 			}
 
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
-				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first);
+				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first.mangled());
 
 			valueMap[global.second->id] = gv;
 		}
@@ -271,7 +272,7 @@ namespace fir
 				error("enotsup");
 
 			llvm::Function* func = llvm::Function::Create(llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)), link,
-				ffn->getName(), module);
+				ffn->getName().mangled(), module);
 
 			valueMap[ffn->id] = func;
 
@@ -286,7 +287,7 @@ namespace fir
 
 			for(auto b : ffn->blocks)
 			{
-				llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), b->getName(), func);
+				llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), b->getName().mangled(), func);
 				valueMap[b->id] = bb;
 
 				// fprintf(stderr, "adding block %zu\n", b->id);
@@ -307,7 +308,7 @@ namespace fir
 		{
 			Function* ffn = fp.second;
 
-			llvm::Function* func = module->getFunction(fp.second->getName());
+			llvm::Function* func = module->getFunction(fp.second->getName().mangled());
 			iceAssert(func);
 
 			DUMP_INSTR("%s%s", ffn->getBlockList().size() == 0 ? "declare " : "", ffn->getName().c_str());
