@@ -48,7 +48,7 @@ namespace Codegen
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(user, "Invalid type '%s'!", bst->getStructName().c_str());
+				error(user, "Invalid type '%s'!", bst->getStructName().str().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
@@ -589,12 +589,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isStructType() && from->toStructType()->getStructName() == "String")
+			&& from->isStructType() && from->toStructType()->getStructName().str() == "String")
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isStructType() && to->toStructType()->getStructName() == "String")
+			&& to->isStructType() && to->toStructType()->getStructName().str() == "String")
 		{
 			return 2;
 		}
@@ -750,7 +750,7 @@ namespace Codegen
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName() == "String")
+				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName().str() == "String")
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -1259,7 +1259,7 @@ namespace Codegen
 	{
 		if(type->isStructType())
 		{
-			if(!type->toStructType()->isLiteralStruct() && type->toStructType()->getStructName() == "Any")
+			if(!type->toStructType()->isLiteralStruct() && type->toStructType()->getStructName().str() == "Any")
 			{
 				return true;
 			}

@@ -60,8 +60,14 @@ namespace fir
 enum class IdKind
 {
 	Invalid,
+	Name,
 	Variable,
 	Function,
+	Method,
+	Getter,
+	Setter,
+	AutoGenFunc,
+	ModuleConstructor,
 	Struct,
 };
 
@@ -75,7 +81,11 @@ struct Identifier
 
 	// defined in CodegenUtils.cpp
 	bool operator == (const Identifier& other) const;
+	bool operator != (const Identifier& other) const { return !(*this == other); }
+	bool operator < (const Identifier& other) const { return this->str() < other.str(); }
+
 	std::string str() const;
+	std::string mangled() const;
 
 	Identifier() { }
 	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
