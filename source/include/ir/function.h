@@ -56,7 +56,6 @@ namespace fir
 		bool isCStyleVarArg();
 		bool isVariadic();
 
-		std::string getName();
 		Type* getReturnType();
 		size_t getArgumentCount();
 		std::deque<Argument*> getArguments();
@@ -70,7 +69,7 @@ namespace fir
 
 		// fields
 		protected:
-		Function(std::string name, FunctionType* fnType, Module* module, LinkageType linkage);
+		Function(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
 	};
