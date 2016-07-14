@@ -351,6 +351,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
 		aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+		aoo->func->decl->ident.kind = IdKind::Operator;
 		aoo->func->decl->parentClass = this;
 
 		if(this->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
@@ -406,6 +407,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				soo->decl->params, soo->decl->type.strType);
 
 			decl->parentClass = this;
+			decl->ident.kind = IdKind::Operator;
 
 			if(this->attribs & Attr_VisPublic)
 				decl->attribs |= Attr_VisPublic;
@@ -445,6 +447,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, VOID_TYPE_STRING);
 
 			decl->parentClass = this;
+			decl->ident.kind = IdKind::Operator;
 
 			if(this->attribs & Attr_VisPublic)
 				decl->attribs |= Attr_VisPublic;
