@@ -157,8 +157,8 @@ namespace Parser
 				iceAssert(0);	// note: handled above, should not reach here
 				break;
 
-
 			case TType::Identifier:
+			case TType::UnicodeSymbol:
 				if(ps.cgi->customOperatorMapRev.find(ps.front().text) != ps.cgi->customOperatorMapRev.end())
 				{
 					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[ps.front().text]].second;
@@ -408,7 +408,7 @@ namespace Parser
 					ps.skipNewline();
 					Token op = ps.front();
 
-					if(op.type == TType::Identifier)
+					if(op.type == TType::Identifier || op.type == TType::UnicodeSymbol)
 					{
 						size_t opNum = ps.cgi->customOperatorMap.size();
 
@@ -453,7 +453,6 @@ namespace Parser
 					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
 				}
 			}
-
 		};
 
 		findOperators(ps);
@@ -611,6 +610,7 @@ namespace Parser
 					return parseParenthesised(ps);
 
 				case TType::Identifier:
+				case TType::UnicodeSymbol:
 					if(tok.text == "init")
 						return parseInitFunc(ps);
 
@@ -821,7 +821,7 @@ namespace Parser
 		if(ps.front().text != "init" && ps.front().text.find("operator") != 0)
 			iceAssert(ps.eat().type == TType::Func);
 
-		if(ps.front().type != TType::Identifier)
+		if(ps.front().type != TType::Identifier && ps.front().type != TType::UnicodeSymbol)
 			parserError("Expected identifier, but got token of type %d", ps.front().type);
 
 		Token func_id = ps.eat();
@@ -837,7 +837,6 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			// todo: handle parsing nested generics -- << >> would parse as '<<' and '>>', not '<' '<' and '>' '>'.
 			Expr* inner = parseType(ps);
 			iceAssert(inner->type.isLiteral);
 
@@ -878,7 +877,6 @@ namespace Parser
 		while(ps.tokens.size() > 0 && ps.front().type != TType::RParen)
 		{
 			Token tok_id;
-			bool immutable = true;
 			if((tok_id = ps.eat()).type != TType::Identifier)
 			{
 				if(tok_id.type == TType::Ellipsis)
@@ -889,17 +887,6 @@ namespace Parser
 
 					break;
 				}
-				else if(tok_id.type == TType::Var)
-				{
-					immutable = false;
-					tok_id = ps.eat();
-				}
-				else if(tok_id.type == TType::Val)
-				{
-					immutable = false;
-					tok_id = ps.eat();
-					parserWarn("Function parameters are immutable by default, 'val' is redundant");
-				}
 				else
 				{
 					parserError("Expected identifier");
@@ -907,7 +894,7 @@ namespace Parser
 			}
 
 			std::string id = tok_id.text;
-			VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
+			VarDecl* v = CreateAST(VarDecl, tok_id, id, true);
 
 			// expect a colon
 			if(ps.eat().type != TType::Colon)
@@ -919,7 +906,7 @@ namespace Parser
 
 
 
-			// NOTE: FUCKING. GHETTO.
+			// NOTE(ghetto): FUCKING. GHETTO.
 			if(v->type.strType.find("[...]") != std::string::npos)
 			{
 				isVariableArg = true;

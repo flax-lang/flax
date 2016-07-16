@@ -30,6 +30,7 @@ namespace Ast
 	struct VarDecl;
 	struct FuncDecl;
 	struct OpOverload;
+	struct ExtensionDef;
 	struct BreakableBracedBlock;
 }
 
@@ -100,8 +101,9 @@ namespace Codegen
 		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
-		std::map<std::string, SymbolPair_t> vars;
 		std::map<std::string, TypePair_t> types;
+		std::map<std::string, SymbolPair_t> vars;
+		std::map<std::string, Ast::ExtensionDef*> extensions;
 	};
 
 	struct Resolved_t

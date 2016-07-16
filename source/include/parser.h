@@ -140,6 +140,7 @@ namespace Parser
 
 		// other stuff.
 		Identifier,
+		UnicodeSymbol,
 		Integer,
 		Decimal,
 		StringLiteral,

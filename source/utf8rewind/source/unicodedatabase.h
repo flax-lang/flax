@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -37,7 +37,7 @@
 
 typedef struct {
 	unicode_t codepoint;
-	size_t offset;
+	uint32_t length_and_offset;
 } DecompositionRecord;
 
 typedef struct {
@@ -46,10 +46,13 @@ typedef struct {
 } CompositionRecord;
 
 extern const size_t* GeneralCategoryIndexPtr;
-extern const uint8_t* GeneralCategoryDataPtr;
+extern const uint32_t* GeneralCategoryDataPtr;
 
 extern const size_t* CanonicalCombiningClassIndexPtr;
 extern const uint8_t* CanonicalCombiningClassDataPtr;
+
+extern const size_t* QuickCheckCaseMappedIndexPtr;
+extern const uint8_t* QuickCheckCaseMappedDataPtr;
 
 extern const size_t* QuickCheckNFCIndexPtr;
 extern const uint8_t* QuickCheckNFCDataPtr;
@@ -100,6 +103,10 @@ extern const uint32_t* LowercaseDataPtr;
 extern const uint32_t* TitlecaseIndex1Ptr;
 extern const uint32_t* TitlecaseIndex2Ptr;
 extern const uint32_t* TitlecaseDataPtr;
+
+extern const uint32_t* CaseFoldingIndex1Ptr;
+extern const uint32_t* CaseFoldingIndex2Ptr;
+extern const uint32_t* CaseFoldingDataPtr;
 
 extern const char* CompressedStringData;
 extern const size_t CompressedStringDataLength;

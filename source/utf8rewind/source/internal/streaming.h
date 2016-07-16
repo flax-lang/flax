@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -75,7 +75,7 @@ uint8_t stream_initialize(StreamState* state, const char* input, size_t inputSiz
 
 uint8_t stream_read(StreamState* state, const size_t* propertyIndex, const uint8_t* propertyData);
 
-uint8_t stream_write(StreamState* state, char* output, size_t outputSize, uint8_t* bytesWritten);
+uint8_t stream_write(StreamState* state, char** output, size_t* outputSize, uint8_t* bytesWritten);
 
 uint8_t stream_reorder(StreamState* state);
 

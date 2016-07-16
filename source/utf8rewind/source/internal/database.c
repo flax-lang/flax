@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -26,40 +26,35 @@
 #include "database.h"
 
 #include "../unicodedatabase.h"
+#include "codepoint.h"
 
 #define DECOMPOSE_INDEX1_SHIFT (12)
 #define DECOMPOSE_INDEX2_SHIFT (5)
 
+static const unicode_t DECOMPOSE_INDEX1_MASK = MAX_LEGAL_UNICODE;
 static const unicode_t DECOMPOSE_INDEX2_MASK = (1 << DECOMPOSE_INDEX1_SHIFT) - 1;
 static const unicode_t DECOMPOSE_DATA_MASK = (1 << DECOMPOSE_INDEX2_SHIFT) - 1;
 
-const char* database_querydecomposition(
-	unicode_t codepoint,
-	const uint32_t* index1Array, const uint32_t* index2Array, const uint32_t* dataArray,
-	uint8_t* length)
+const char* database_querydecomposition(unicode_t codepoint, const uint32_t* index1Array, const uint32_t* index2Array, const uint32_t* dataArray, uint8_t* length)
 {
-	size_t index = index2Array[
-		index1Array[codepoint >> DECOMPOSE_INDEX1_SHIFT] +
-		((codepoint & DECOMPOSE_INDEX2_MASK) >> DECOMPOSE_INDEX2_SHIFT)] +
-			(codepoint & DECOMPOSE_DATA_MASK);
+	uint32_t index;
+	uint32_t data;
+
+	index = index1Array[codepoint >> DECOMPOSE_INDEX1_SHIFT];
+	index = index2Array[index + ((codepoint & DECOMPOSE_INDEX2_MASK) >> DECOMPOSE_INDEX2_SHIFT)];
+	index = index + (codepoint & DECOMPOSE_DATA_MASK);
 
 	if (index == 0 ||
-		dataArray[index] == 0)
+		(data = dataArray[index]) == 0)
 	{
-		if (length != 0)
-		{
-			*length = 0;
-		}
+		*length = 0;
 
 		return 0;
 	}
 
-	if (length != 0)
-	{
-		*length = (uint8_t)((dataArray[index] & 0xFF000000) >> 24);
-	}
+	*length = (uint8_t)((data & 0xFF000000) >> 24);
 
-	return CompressedStringData + (dataArray[index] & 0x00FFFFFF);
+	return CompressedStringData + (data & 0x00FFFFFF);
 }
 
 unicode_t database_querycomposition(unicode_t left, unicode_t right)
