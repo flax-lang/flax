@@ -7,6 +7,8 @@ if [ -n "$1" -a "$1" == "compile" ]; then
 	build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot -o build/test build/test.flx
 	echo -e "\n\n-----------------\n\n"
 	build/test
+elif [ -n "$1" -a "$1" == "dump" ]; then
+	build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot -c -print-lir build/test.flx
 else
 	build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot -jit build/test.flx
 fi

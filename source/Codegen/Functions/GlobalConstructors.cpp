@@ -56,7 +56,7 @@ namespace Codegen
 	void CodegenInstance::finishGlobalConstructors()
 	{
 		// generate initialiser
-		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(fir::getDefaultFTContext()), false);
+		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(), false);
 		auto id = Identifier(this->module->getModuleName(), IdKind::ModuleConstructor);
 		id.functionArguments = ft->getArgumentTypes();
 

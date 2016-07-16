@@ -35,10 +35,12 @@ public func Utf8CharLength(char: int8*) -> uint64
 
 // returns a pointer to the beginning of the pos'th utf8 codepoint
 // in the buffer at text
-public func Utf8Index(_text: int8*, var pos: uint64) -> int8*
+public func Utf8Index(_text: int8*, _pos: uint64) -> int8*
 {
-	pos += 1
 	var text = _text
+	var pos = _pos
+
+	pos += 1
 
 	while #text != 0
 	{
