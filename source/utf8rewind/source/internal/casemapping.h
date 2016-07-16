@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -37,22 +37,30 @@
 
 typedef struct {
 	const char* src;
-	size_t src_size;
 	char* dst;
+	size_t src_size;
 	size_t dst_size;
-	uint8_t last_general_category;
+	size_t total_bytes_needed;
+	unicode_t last_code_point;
+	size_t locale;
 	const uint32_t* property_index1;
 	const uint32_t* property_index2;
 	const uint32_t* property_data;
+	uint32_t last_general_category;
+	uint8_t last_code_point_size;
+	uint8_t last_canonical_combining_class;
+	uint8_t quickcheck_flags;
 } CaseMappingState;
 
 uint8_t casemapping_initialize(
 	CaseMappingState* state,
 	const char* input, size_t inputSize,
 	char* target, size_t targetSize,
-	const uint32_t* propertyIndex1, const uint32_t* propertyIndex2, const uint32_t* propertyData);
+	const uint32_t* propertyIndex1, const uint32_t* propertyIndex2, const uint32_t* propertyData,
+	uint8_t quickCheck, size_t locale,
+	int32_t* errors);
 
-size_t casemapping_execute(CaseMappingState* state);
+size_t casemapping_execute(CaseMappingState* state, int32_t* errors);
 
 /*! \endcond */
 

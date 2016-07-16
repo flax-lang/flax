@@ -9,13 +9,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	warn("lol");
-	return Result_t(0, 0);
-}
-
-
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	return 0;
@@ -24,6 +17,13 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 
 
 
+
+
+Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+
+	return Result_t(0, 0);
+}
 
 
 

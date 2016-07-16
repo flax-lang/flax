@@ -238,6 +238,12 @@ public func main(argc: int32, argv: int8**) -> int
 	let smth = alloc[4] Math.Vector2
 	smth[0].x = 10
 
+	let v1 = Math.Vector2(1.0, 4.0)
+	let v2 = Math.Vector2(3.0, 7.0)
+
+	let vr = v1•v2
+	printf("vr = %f\n", vr)
+
 	var lol: String = "HELLO"
 	printf("%d\n", lol[1].hasData())
 	printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
@@ -273,7 +279,7 @@ public func main(argc: int32, argv: int8**) -> int
 	// >>> multiple, dynamic dispatch
 
 
-	printf("\n<< done >>\n");
+	printf("\n<< done >>\n")
 	return 0
 }
 

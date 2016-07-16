@@ -654,8 +654,10 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
+		std::deque<fir::Function*> lfuncs;
 		std::deque<std::string> protocolstrs;
 		std::deque<ComputedProperty*> cprops;
+		std::map<Func*, fir::Function*> functionMap;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 	};
