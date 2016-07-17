@@ -72,7 +72,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::ClassDef*> nestedTypeStack;
+		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 
@@ -158,7 +158,7 @@ namespace Codegen
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
-		void pushNestedTypeScope(Ast::ClassDef* nest);
+		void pushNestedTypeScope(Ast::StructBase* nest);
 		void popNestedTypeScope();
 
 

@@ -21,24 +21,23 @@ static std::pair<FunctionTree*, FunctionTree*> getFuncTrees(CodegenInstance* cgi
 	return { ftree, pftree };
 }
 
-static void addExtensionToFuncTree(CodegenInstance* cgi, ExtensionDef* ext)
-{
-	auto p = getFuncTrees(cgi);
-	FunctionTree* ftree = p.first;
-	FunctionTree* pftree = p.second;
+// static void addExtensionToFuncTree(CodegenInstance* cgi, ExtensionDef* ext)
+// {
+// 	auto p = getFuncTrees(cgi);
+// 	FunctionTree* ftree = p.first;
+// 	FunctionTree* pftree = p.second;
 
-	if(ftree->extensions.find(ext->ident.name) != ftree->extensions.end())
-	{
-		error(ext, "Only one extension for a given type can be defined in one module for now, please consolidate the"
-			"extensions into a single declaration.");
-	}
+// 	if(ftree->extensions.find(ext->ident.name) != ftree->extensions.end())
+// 	{
+// 		error(ext, "Only one extension for a given type can be defined in one module for now, please consolidate the"
+// 			"extensions into a single declaration.");
+// 	}
 
+// 	ftree->extensions[ext->ident.name] = ext;
 
-	ftree->extensions[ext->ident.name] = ext;
-
-	if(ext->attribs & Attr_VisPublic)
-		pftree->extensions[ext->ident.name] = ext;
-}
+// 	if(ext->attribs & Attr_VisPublic)
+// 		pftree->extensions[ext->ident.name] = ext;
+// }
 
 static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
 {
@@ -95,7 +94,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
@@ -104,7 +102,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
-			else if(ext)			addExtensionToFuncTree(cgi, ext);
 		}
 	}
 	else if(pass == 1)
@@ -122,12 +119,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
 			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ffi)					ffi->codegen(cgi);
 			else if(cls)			cls->createType(cgi);
 			else if(str)			str->createType(cgi);
+			else if(ext)			ext->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}

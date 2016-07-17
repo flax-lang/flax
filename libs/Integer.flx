@@ -7,8 +7,16 @@ import String
 
 extension String
 {
-	func foo() -> int64
+	func toInteger() -> int64
 	{
 		return 67
+	}
+}
+
+extension String
+{
+	func lol() -> int64
+	{
+		return 14
 	}
 }

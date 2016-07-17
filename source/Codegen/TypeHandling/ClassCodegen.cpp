@@ -224,8 +224,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 				{
+					errorNoExit(f->decl, "Duplicate member function: %s", f->decl->ident.name.c_str());
 					info(fn->decl, "Previous declaration was here: %s", fn->decl->ident.name.c_str());
-					error(f->decl, "Duplicate member function: %s", f->decl->ident.name.c_str());
+					doTheExit();
 				}
 			}
 		}
@@ -519,15 +520,6 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir:
 		cgi->pushNestedTypeScope(this);
 		nested.second = nested.first->createType(cgi);
 		cgi->popNestedTypeScope();
-	}
-
-
-
-	// check protocols
-	for(auto super : this->protocolstrs)
-	{
-		// protcols not supported yet.
-		error(this, "enotsup");
 	}
 
 
