@@ -110,7 +110,7 @@ namespace GenError
 }
 
 
-__attribute__ ((noreturn)) static void doTheExit()
+__attribute__ ((noreturn)) void doTheExit()
 {
 	fprintf(stderr, "There were errors, compilation cannot continue\n");
 	abort();
