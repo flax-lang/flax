@@ -29,6 +29,8 @@ struct HighlightOptions
 
 Parser::Pin getHighlightExtent(Ast::Expr* e);
 
+void doTheExit() __attribute__ ((noreturn));
+
 void __error_gen(HighlightOptions ops, const char* msg, const char* type,
 	bool doExit, va_list ap);
 

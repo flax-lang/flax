@@ -623,6 +623,8 @@ namespace Ast
 		std::deque<VarDecl*> members;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
+
+		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
 
 	struct ExtensionDef;
@@ -637,7 +639,6 @@ namespace Ast
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
 
 		std::map<Func*, fir::Function*> functionMap;
 
@@ -653,13 +654,15 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
+		bool isDuplicate = false;
+
 		std::deque<Func*> funcs;
 		std::deque<fir::Function*> lfuncs;
 		std::deque<std::string> protocolstrs;
 		std::deque<ComputedProperty*> cprops;
 		std::map<Func*, fir::Function*> functionMap;
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
 	};
 
 

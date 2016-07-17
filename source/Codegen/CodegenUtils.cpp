@@ -233,7 +233,7 @@ namespace Codegen
 		// find nested types.
 		if(this->nestedTypeStack.size() > 0)
 		{
-			ClassDef* cls = this->nestedTypeStack.back();
+			StructBase* cls = this->nestedTypeStack.back();
 
 			// only allow one level of implicit use
 			for(auto n : cls->nestedTypes)
@@ -314,7 +314,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::pushNestedTypeScope(ClassDef* nest)
+	void CodegenInstance::pushNestedTypeScope(StructBase* nest)
 	{
 		this->nestedTypeStack.push_back(nest);
 	}

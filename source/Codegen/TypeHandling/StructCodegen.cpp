@@ -42,6 +42,17 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.first->codegen(cgi);
+		cgi->popNestedTypeScope();
+	}
+
+
+
 	fir::StructType* str = this->createdType;
 	cgi->module->addNamedType(str->getStructName(), str);
 
@@ -142,6 +153,19 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 		return this->createdType;
 
 	this->ident.scope = cgi->getFullScope();
+
+
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.second = nested.first->createType(cgi);
+		cgi->popNestedTypeScope();
+	}
+
+
+
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];

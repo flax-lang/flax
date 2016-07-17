@@ -474,7 +474,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	std::deque<std::string> list;
 
 	fir::Type* curFType = 0;
-	ClassDef* curType = 0;
+	StructBase* curType = 0;
 
 	MemberAccess* cur = ma;
 	while(MemberAccess* cleft = dynamic_cast<MemberAccess*>(cur->left))
@@ -591,16 +591,23 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		}
 		else
 		{
-			iceAssert(curType->funcs.size() == curType->lfuncs.size());
-
-			std::deque<FuncPair_t> flist;
-			for(size_t i = 0; i < curType->funcs.size(); i++)
+			if(ClassDef* clsd = dynamic_cast<ClassDef*>(curType))
 			{
-				if(curType->funcs[i]->decl->ident.name == fc->name)
-					flist.push_back(FuncPair_t(curType->lfuncs[i], curType->funcs[i]->decl));
-			}
+				iceAssert(clsd->funcs.size() == clsd->lfuncs.size());
 
-			res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
+				std::deque<FuncPair_t> flist;
+				for(size_t i = 0; i < clsd->funcs.size(); i++)
+				{
+					if(clsd->funcs[i]->decl->ident.name == fc->name)
+						flist.push_back(FuncPair_t(clsd->lfuncs[i], clsd->funcs[i]->decl));
+				}
+
+				res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
+			}
+			else
+			{
+				error(fc, "error");
+			}
 		}
 
 		if(!res.resolved)
