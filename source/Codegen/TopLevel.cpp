@@ -21,7 +21,23 @@ static std::pair<FunctionTree*, FunctionTree*> getFuncTrees(CodegenInstance* cgi
 	return { ftree, pftree };
 }
 
+// static void addExtensionToFuncTree(CodegenInstance* cgi, ExtensionDef* ext)
+// {
+// 	auto p = getFuncTrees(cgi);
+// 	FunctionTree* ftree = p.first;
+// 	FunctionTree* pftree = p.second;
 
+// 	if(ftree->extensions.find(ext->ident.name) != ftree->extensions.end())
+// 	{
+// 		error(ext, "Only one extension for a given type can be defined in one module for now, please consolidate the"
+// 			"extensions into a single declaration.");
+// 	}
+
+// 	ftree->extensions[ext->ident.name] = ext;
+
+// 	if(ext->attribs & Attr_VisPublic)
+// 		pftree->extensions[ext->ident.name] = ext;
+// }
 
 static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
 {
@@ -74,7 +90,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
@@ -82,18 +98,15 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
-			else if(cls)			addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
+			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
+				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 		}
 	}
 	else if(pass == 1)
 	{
-		// pass 1: setup extensions
-
-		// TODO.
-
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.
 
@@ -106,7 +119,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
@@ -127,18 +140,12 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(cls)			cls->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(vd)
-			{
-				vd->isGlobal = true;
-				vd->codegen(cgi);
-			}
 		}
 
 		// generate the type info.
@@ -147,6 +154,21 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		TypeInfo::generateTypeInfo(cgi);
 	}
 	else if(pass == 4)
+	{
+		for(Expr* e : expressions)
+		{
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
+
+			if(ns)					ns->codegenPass(cgi, pass);
+			else if(vd)
+			{
+				vd->isGlobal = true;
+				vd->codegen(cgi);
+			}
+		}
+	}
+	else if(pass == 5)
 	{
 		// pass 4: functions. for generic shit.
 		for(Expr* e : expressions)
@@ -185,7 +207,7 @@ Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// this is getting quite out of hand.
 	// note: we're using <= to show that there are N passes.
 	// don't usually do this.
-	for(int pass = 0; pass <= 4; pass++)
+	for(int pass = 0; pass <= 5; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 
 	// run the after-codegen checkers.

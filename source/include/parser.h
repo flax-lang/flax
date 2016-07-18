@@ -5,6 +5,8 @@
 #pragma once
 
 #include "ast.h"
+#include "errors.h"
+
 #include <string>
 #include <sstream>
 #include <deque>
@@ -140,6 +142,7 @@ namespace Parser
 
 		// other stuff.
 		Identifier,
+		UnicodeSymbol,
 		Integer,
 		Decimal,
 		StringLiteral,
@@ -157,26 +160,6 @@ namespace Parser
 		std::string text;
 		TType type = TType::Invalid;
 	};
-
-
-
-
-	void parserError(const char* msg, ...) __attribute__((noreturn));
-	void parserWarn(const char* msg, ...);
-
-
-	struct ParserState;
-	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((noreturn));
-	void parserWarn(ParserState& ps, Token tok, const char* msg, ...);
-
-	void parserError(ParserState& ps, const char* msg, ...) __attribute__((noreturn));
-	void parserWarn(ParserState& ps, const char* msg, ...);
-
-	void parserError(Token tok, const char* msg, ...) __attribute__((noreturn));
-	void parserWarn(Token tok, const char* msg, ...);
-
-	void parserError(Pin po, const char* msg, ...) __attribute__((noreturn));
-	void parserWarn(Pin po, const char* msg, ...);
 
 
 	typedef std::deque<Token> TokenList;
