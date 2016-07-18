@@ -2096,6 +2096,10 @@ namespace Parser
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				parserError(cprop->pin, "Structs cannot contain properties");
+			}
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
@@ -2272,19 +2276,13 @@ namespace Parser
 		BracedBlock* body = parseBracedBlock(ps);
 		for(Expr* stmt : body->statements)
 		{
-			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				ext->cprops.push_back(cprop);
+			}
+			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				parserError(var->pin, "Extensions cannot delcare new instance members");
-			}
-			else if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
-			{
-				for(ComputedProperty* c : ext->cprops)
-				{
-					if(c->ident.name == cprop->ident.name)
-						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
-				}
-
-				ext->cprops.push_back(cprop);
 			}
 			else if(Func* fn = dynamic_cast<Func*>(stmt))
 			{
@@ -2297,6 +2295,10 @@ namespace Parser
 			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
 			{
 				ext->subscriptOverloads.push_back(soo);
+			}
+			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
+			{
+				ext->nestedTypes.push_back({ sb, 0 });
 			}
 			else
 			{

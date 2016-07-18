@@ -6,12 +6,15 @@
 #include "ast.h"
 #include "codegen.h"
 
+#include "classbase.h"
+
 using namespace Ast;
 using namespace Codegen;
 
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	this->ident.scope = cgi->getFullScope();
+	this->parentRoot = cgi->rootNode;
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -37,48 +40,13 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 	{
 		ExtensionDef* ext = ft->extensions[this->ident.name];
 
-		{
-			std::unordered_map<std::string, std::deque<FuncDecl*>> map;
-			for(auto fe : ext->funcs)
-				map[fe->decl->ident.name].push_back(fe->decl);
-
-			for(auto ft : this->funcs)
-			{
-				if(map.find(ft->decl->ident.name) != map.end())
-				{
-					// check if they're the same
-					for(auto efd : map[ft->decl->ident.str()])
-					{
-						int d = 0;
-						std::deque<fir::Type*> ps;
-						for(auto e : efd->params)
-							ps.push_back(cgi->getExprType(e));
-
-						if(cgi->isValidFuncOverload({ 0, ft->decl }, ps, &d, true))
-						{
-							errorNoExit(ft->decl, "Duplicate method delcaration: %s", ft->decl->ident.name.c_str());
-							info(efd, "Previous declaration was here.");
-							doTheExit();
-						}
-					}
-				}
-			}
-
-			ext->funcs.insert(ext->funcs.end(), this->funcs.begin(), this->funcs.end());
-		}
-
-
-		// no choice but to O(n^2) this
-		{
-
-			ext->assignmentOverloads.insert(ext->assignmentOverloads.end(), this->assignmentOverloads.begin(), this->assignmentOverloads.end());
-		}
-
-
-
+		ext->funcs.insert(ext->funcs.end(), this->funcs.begin(), this->funcs.end());
+		ext->cprops.insert(ext->cprops.end(), this->cprops.begin(), this->cprops.end());
 		ext->subscriptOverloads.insert(ext->subscriptOverloads.end(), this->subscriptOverloads.begin(), this->subscriptOverloads.end());
+		ext->assignmentOverloads.insert(ext->assignmentOverloads.end(), this->assignmentOverloads.begin(), this->assignmentOverloads.end());
 
 
+		// doing nested type check here because it's unweidly elsewhere
 		{
 			std::unordered_map<std::string, StructBase*> map;
 			for(auto te : ext->nestedTypes)
@@ -98,30 +66,6 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 			ext->nestedTypes.insert(ext->nestedTypes.end(), this->nestedTypes.begin(), this->nestedTypes.end());
 		}
 
-
-
-		{
-			std::unordered_map<std::string, ComputedProperty*> map;
-			for(auto ce : ext->cprops)
-				map[ce->ident.name] = ce;
-
-			for(auto ct : this->cprops)
-			{
-				if(map.find(ct->ident.name) != map.end())
-				{
-					errorNoExit(ct, "Another extension already declared a property '%s'", ct->ident.name.c_str());
-					info(map[ct->ident.name], "The existing declaration is here.");
-					doTheExit();
-				}
-			}
-
-			ext->cprops.insert(ext->cprops.end(), this->cprops.begin(), this->cprops.end());
-		}
-
-
-
-
-
 		this->isDuplicate = true;
 	}
 	else
@@ -131,18 +75,80 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 			cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree)->extensions[this->ident.name] = this;
 	}
 
-	// we can't return anything useful
-	return 0;
+	this->didCreateType = true;
+
+	TypePair_t* tp = cgi->getType(this->ident);
+	if(!tp) error(this, "Type %s does not exist in the scope %s", this->ident.name.c_str(), this->ident.str().c_str());
+
+	iceAssert(tp->first);
+	this->createdType = tp->first->toStructType();
+
+
+	return tp->first;
 }
+
+
+
+
 
 Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	if(this->isDuplicate)
+	if(this->isDuplicate || this->didCodegen)
 		return Result_t(0, 0);
 
+	this->didCodegen = true;
+	iceAssert(this->didCreateType);
 
 
 	// do the thing
+	fir::LinkageType linkageType;
+	if(this->attribs & Attr_VisPublic)
+	{
+		linkageType = fir::LinkageType::External;
+	}
+	else
+	{
+		linkageType = fir::LinkageType::Internal;
+	}
+
+
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.first->codegen(cgi);
+		cgi->popNestedTypeScope();
+	}
+
+	TypePair_t* tp = cgi->getType(this->ident);
+	iceAssert(tp);
+	iceAssert(tp->first);
+	iceAssert(tp->second.first);
+
+	fir::StructType* fstr = tp->first->toStructType();
+	StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
+
+	iceAssert(fstr);
+	iceAssert(astr);
+
+	doCodegenForMemberFunctions(cgi, this);
+	doCodegenForComputedProperties(cgi, this);
+
+	iceAssert(astr->defaultInitialiser);
+	fir::Function* defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
+		astr->defaultInitialiser->linkageType);
+
+	for(Func* f : this->funcs)
+	{
+		generateMemberFunctionBody(cgi, this, f, defaultInit);
+	}
+
+
+	doCodegenForAssignmentOperators(cgi, this);
+	doCodegenForSubscriptOperators(cgi, this);
+
+
 	return Result_t(0, 0);
 }
 
