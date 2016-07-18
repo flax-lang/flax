@@ -249,6 +249,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			iceAssert(i >= 0);
 			return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
 		}
+		else if(fc)
+		{
+			error(rhs, "calling func on struct type?");
+		}
 		else
 		{
 			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
@@ -331,6 +335,26 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 						break;
 					}
 				}
+
+				if(cprop == 0)
+				{
+					auto exts = cgi->getExtensionsForType(cls);
+					for(auto ext : exts)
+					{
+						for(auto cp : ext->cprops)
+						{
+							if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
+							{
+								if(cp->ident.name == var->name)
+								{
+									cprop = cp;
+									break;
+								}
+							}
+						}
+					}
+				}
+
 
 				iceAssert(cprop);
 				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr, cls);
@@ -423,7 +447,8 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 
 
 	// now we need to determine if it exists, and its params.
-	Func* callee = cgi->getFunctionFromMemberFuncCall(ma, cls, fc);
+	auto pair = cgi->resolveMemberFuncCall(ma, cls, fc);
+	Func* callee = pair.first;
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -438,13 +463,8 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
 	}
 
-
-
-
-	fir::Function* lcallee = cls->functionMap[callee];
-
-	if(!lcallee)
-		error(fc, "(%s:%d) -> Internal check failed: failed to find function %s", __FILE__, __LINE__, fc->name.c_str());
+	fir::Function* lcallee = pair.second;
+	iceAssert(lcallee);
 
 	lcallee = cgi->module->getFunction(lcallee->getName());
 	iceAssert(lcallee);
@@ -754,7 +774,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 
-Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
+std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
 {
 	std::deque<fir::Type*> params;
 	for(auto p : fc->params)
@@ -772,6 +792,17 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 	{
 		if(f->decl->ident.name == fc->name)
 			fns.push_back({ cls->functionMap[f], 0 });
+	}
+
+
+	std::deque<ExtensionDef*> exts = this->getExtensionsForType(cls);
+	for(auto ext : exts)
+	{
+		for(auto f : ext->funcs)
+		{
+			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode))
+				fns.push_back({ ext->functionMap[f], 0 });
+		}
 	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
@@ -792,8 +823,19 @@ Func* CodegenInstance::getFunctionFromMemberFuncCall(MemberAccess* ma, ClassDef*
 	for(auto f : cls->funcs)
 	{
 		if(cls->functionMap[f] == res.t.first)
-			return f;
+			return { f, res.t.first };
 	}
+
+	// check extensions
+	for(auto ext : exts)
+	{
+		for(auto f : ext->funcs)
+		{
+			if(ext->functionMap[f] == res.t.first)
+				return { f, res.t.first };
+		}
+	}
+
 
 	iceAssert(0);
 }
@@ -813,6 +855,28 @@ Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)
 			}
 		}
 	}
+
+
+	if(!found)
+	{
+		auto exts = this->getExtensionsForType(str);
+		for(auto ext : exts)
+		{
+			for(auto cp : ext->cprops)
+			{
+				if(cp->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
+				{
+					if(cp->ident.name == var->name)
+					{
+						found = cp;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+
 
 	if(!found)
 	{
