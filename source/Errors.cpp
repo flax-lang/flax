@@ -109,11 +109,17 @@ namespace GenError
 	}
 }
 
+#define DEBUG 1
 
 __attribute__ ((noreturn)) void doTheExit()
 {
 	fprintf(stderr, "There were errors, compilation cannot continue\n");
-	abort();
+
+	#if DEBUG
+		abort();
+	#else
+		exit(1);
+	#endif
 }
 
 void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list ap)

@@ -96,10 +96,6 @@ struct Identifier
 
 
 
-
-
-
-
 namespace Ast
 {
 	enum class ArithmeticOp
@@ -858,6 +854,13 @@ namespace Ast
 }
 
 
+
+namespace Parser
+{
+	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
+	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+}
 
 
 
