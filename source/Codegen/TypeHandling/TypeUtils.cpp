@@ -245,10 +245,23 @@ namespace Codegen
 							if(c->ident.name == memberVr->name)
 								return this->getExprTypeFromStringType(c, c->type, allowFail);
 						}
+
+						auto exts = this->getExtensionsForType(cls);
+						for(auto ext : exts)
+						{
+							for(auto cp : ext->cprops)
+							{
+								if(cp->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
+								{
+									if(cp->ident.name == memberVr->name)
+										return this->getExprType(cp);
+								}
+							}
+						}
 					}
 					else if(memberFc)
 					{
-						return this->getExprType(this->getFunctionFromMemberFuncCall(ma, cls, memberFc));
+						return this->resolveMemberFuncCall(ma, cls, memberFc).second->getReturnType();
 					}
 				}
 				else if(pair->second.second == TypeKind::Struct)
@@ -265,6 +278,19 @@ namespace Codegen
 						{
 							if(mem->ident.name == memberVr->name)
 								return this->getExprType(mem);
+						}
+
+						auto exts = this->getExtensionsForType(str);
+						for(auto ext : exts)
+						{
+							for(auto cp : ext->cprops)
+							{
+								if(cp->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
+								{
+									if(cp->ident.name == memberVr->name)
+										return this->getExprType(cp);
+								}
+							}
 						}
 					}
 					else if(memberFc)

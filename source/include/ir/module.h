@@ -47,8 +47,6 @@ namespace fir
 		StructType* getNamedType(Identifier name);
 		void addNamedType(Identifier name, StructType* type);
 
-		void addExtensionType(Identifier name, StructType* type);
-
 		void addFunction(Function* func);
 
 		void declareFunction(Identifier id, FunctionType* ftype);
