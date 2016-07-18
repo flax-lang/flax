@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/type.h"
+#include "errors.h"
 
 namespace fir
 {

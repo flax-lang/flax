@@ -5,6 +5,8 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
+
 #include <string>
 #include <map>
 #include <unordered_map>
@@ -30,6 +32,7 @@ namespace Ast
 	struct VarDecl;
 	struct FuncDecl;
 	struct OpOverload;
+	struct ExtensionDef;
 	struct BreakableBracedBlock;
 }
 
@@ -100,8 +103,9 @@ namespace Codegen
 		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
-		std::map<std::string, SymbolPair_t> vars;
 		std::map<std::string, TypePair_t> types;
+		std::map<std::string, SymbolPair_t> vars;
+		std::map<std::string, Ast::ExtensionDef*> extensions;
 	};
 
 	struct Resolved_t
@@ -113,6 +117,21 @@ namespace Codegen
 		bool resolved;
 	};
 }
+
+
+inline void error_and_exit(const char* s, ...) __attribute__((noreturn));
+inline void error_and_exit(const char* s, ...)
+{
+	va_list ap;
+	va_start(ap, s);
+	vfprintf(stderr, s, ap);
+	va_end(ap);
+	abort();
+}
+
+#define __nothing
+#define iceAssert(x)		((x) ? ((void) (0)) : error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
+
 
 
 
