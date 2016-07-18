@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -102,6 +102,9 @@ uint8_t stream_read(StreamState* state, const size_t* propertyIndex, const uint8
 		{
 			if (state->src_size <= state->last_length)
 			{
+				state->src += state->src_size;
+				state->src_size = 0;
+
 				break;
 			}
 
@@ -142,9 +145,9 @@ uint8_t stream_read(StreamState* state, const size_t* propertyIndex, const uint8
 	{
 		/* Insert COMBINING GRAPHEME JOINER into output */
 
-		state->codepoint[state->filled]                  = 0x034F;
-		state->quick_check[state->filled]                = 0;
-		state->canonical_combining_class[state->filled]  = 0;
+		state->codepoint[state->filled]                  = CP_COMBINING_GRAPHEME_JOINER;
+		state->quick_check[state->filled]                = QuickCheckResult_Yes;
+		state->canonical_combining_class[state->filled]  = CCC_NOT_REORDERED;
 
 		state->filled++;
 	}
@@ -152,7 +155,7 @@ uint8_t stream_read(StreamState* state, const size_t* propertyIndex, const uint8
 	return 1;
 }
 
-uint8_t stream_write(StreamState* state, char* output, size_t outputSize, uint8_t* bytesWritten)
+uint8_t stream_write(StreamState* state, char** output, size_t* outputSize, uint8_t* bytesWritten)
 {
 	uint8_t i;
 
@@ -160,14 +163,16 @@ uint8_t stream_write(StreamState* state, char* output, size_t outputSize, uint8_
 	{
 		/* Nothing to write */
 
-		return 0;
+		*bytesWritten = 0;
+
+		return 1;
 	}
 
-	/* Encode codepoints as UTF-8 */
+	/* Encode code points as UTF-8 */
 
 	for (i = 0; i < state->current; ++i)
 	{
-		uint8_t encoded_size = codepoint_write(state->codepoint[i], &output, &outputSize);
+		uint8_t encoded_size = codepoint_write(state->codepoint[i], output, outputSize);
 		if (encoded_size == 0)
 		{
 			/* Not enough space */

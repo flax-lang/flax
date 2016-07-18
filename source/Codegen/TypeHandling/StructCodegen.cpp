@@ -42,6 +42,17 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.first->codegen(cgi);
+		cgi->popNestedTypeScope();
+	}
+
+
+
 	fir::StructType* str = this->createdType;
 	cgi->module->addNamedType(str->getStructName(), str);
 
@@ -55,16 +66,16 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInitId.name = "init_" + defaultInitId.name;
 		defaultInitId.functionArguments = { str->getPointerTo() };
 
-		fir::Function* defifunc = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
+		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
 			fir::PrimitiveType::getVoid(), false), linkageType);
 
-		this->initFuncs.push_back(defifunc);
+		this->initFuncs.push_back(this->defaultInitialiser);
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defifunc);
+		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
 		cgi->builder.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
-		fir::Value* self = defifunc->getArguments().front();
+		fir::Value* self = this->defaultInitialiser->getArguments().front();
 
 		for(VarDecl* var : this->members)
 		{
@@ -142,6 +153,19 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir
 		return this->createdType;
 
 	this->ident.scope = cgi->getFullScope();
+
+
+
+	// see if we have nested types
+	for(auto nested : this->nestedTypes)
+	{
+		cgi->pushNestedTypeScope(this);
+		nested.second = nested.first->createType(cgi);
+		cgi->popNestedTypeScope();
+	}
+
+
+
 
 	// check our inheritances??
 	fir::Type** types = new fir::Type*[this->members.size()];

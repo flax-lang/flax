@@ -23,13 +23,13 @@ Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* ex
 }
 
 
-
-
 Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(!this->didCodegen)
 	{
 		this->didCodegen = true;
+		this->func->decl->ident.kind = IdKind::Operator;
+		this->func->decl->ident.name = this->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 
 		auto res = this->func->codegen(cgi);
 		this->lfunc = dynamic_cast<fir::Function*>(res.result.first);
