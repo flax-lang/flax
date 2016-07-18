@@ -72,7 +72,7 @@ namespace Codegen
 
 		std::deque<std::string> namespaceStack;
 		std::deque<BracedBlockScope> blockStack;
-		std::deque<Ast::ClassDef*> nestedTypeStack;
+		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 
@@ -148,6 +148,9 @@ namespace Codegen
 		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
 		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
 
+
+		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
+
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, fir::Type* things.
 
@@ -158,7 +161,7 @@ namespace Codegen
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
-		void pushNestedTypeScope(Ast::ClassDef* nest);
+		void pushNestedTypeScope(Ast::StructBase* nest);
 		void popNestedTypeScope();
 
 
@@ -238,7 +241,7 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		Ast::Func* getFunctionFromMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
+		std::pair<Ast::Func*, fir::Function*> resolveMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
 		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
 
 		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
@@ -283,9 +286,6 @@ namespace Codegen
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
 		Ast::Result_t callBinaryOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
-
-
-		Ast::Expr* cloneAST(Ast::Expr* e);
 
 
 		~CodegenInstance();

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "parser.h"
 #include "codegen.h"
 #include "operators.h"
 

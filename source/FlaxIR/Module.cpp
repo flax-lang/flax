@@ -145,12 +145,6 @@ namespace fir
 
 
 
-	void Module::addExtensionType(Identifier id, StructType* type)
-	{
-		// the target type doesn't need to exist in *this* module, which makes it slightly iffy
-		this->extensionTypes[id] = type;
-	}
-
 
 
 
