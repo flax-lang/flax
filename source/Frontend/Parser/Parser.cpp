@@ -157,8 +157,8 @@ namespace Parser
 				iceAssert(0);	// note: handled above, should not reach here
 				break;
 
-
 			case TType::Identifier:
+			case TType::UnicodeSymbol:
 				if(ps.cgi->customOperatorMapRev.find(ps.front().text) != ps.cgi->customOperatorMapRev.end())
 				{
 					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[ps.front().text]].second;
@@ -340,7 +340,7 @@ namespace Parser
 					{
 						ps.skipNewline();
 						if(ps.front().type != TType::LSquare)
-							parserError(ps, ps.front(), "Expected '[' after @operator");
+							parserError(ps.front(), "Expected '[' after @operator");
 
 						ps.pop_front();
 						ps.skipNewline();
@@ -370,18 +370,18 @@ namespace Parser
 							}
 							else
 							{
-								parserError(ps, ps.front(), "Expected either ']' or ',' after identifier in @operator");
+								parserError(ps.front(), "Expected either ']' or ',' after identifier in @operator");
 							}
 						}
 
 
 
 						if(num.type != TType::Integer)
-							parserError(ps, num, "Expected integer as first attribute within @operator[]");
+							parserError(num, "Expected integer as first attribute within @operator[]");
 
 						curPrec = std::stod(num.text);
 						if(curPrec <= 0)
-							parserError(ps, num, "Precedence must be greater than 0");
+							parserError(num, "Precedence must be greater than 0");
 
 						ps.skipNewline();
 
@@ -391,12 +391,12 @@ namespace Parser
 						{
 							ps.pop_front();
 							if(ps.eat().type != TType::Identifier)
-								parserError(ps, ps.front(), "Expected identifier after comma");
+								parserError(ps.front(), "Expected identifier after comma");
 						}
 
 
 						if(ps.front().type != TType::RSquare)
-							parserError(ps, ps.front(), "Expected closing ']'");
+							parserError(ps.front(), "Expected closing ']'");
 
 
 						ps.pop_front();
@@ -408,12 +408,12 @@ namespace Parser
 					ps.skipNewline();
 					Token op = ps.front();
 
-					if(op.type == TType::Identifier)
+					if(op.type == TType::Identifier || op.type == TType::UnicodeSymbol)
 					{
 						size_t opNum = ps.cgi->customOperatorMap.size();
 
 						if(curPrec <= 0)
-							parserError(ps, t, "Custom operators must have a precedence, use @operator[x]");
+							parserError(t, "Custom operators must have a precedence, use @operator[x]");
 
 						// check if it exists.
 						if(ps.cgi->customOperatorMapRev.find(op.text) == ps.cgi->customOperatorMapRev.end())
@@ -428,9 +428,9 @@ namespace Parser
 
 							if(pair.second != curPrec)
 							{
-								parserWarn(op, "Operator '%s' was previously defined with a different precedence (%d). Due to the way"
-									" the flax compiler is engineered, all custom operators using the same identifier will be bound to the"
-									" first precedence defined.", pair.first.c_str(), pair.second);
+								parserMessage(Err::Warn, op, "Operator '%s' was previously defined with a different precedence (%d)."
+									"Due to the way the flax compiler is engineered, all custom operators using the same identifier will be"
+									"bound to the first precedence defined.", pair.first.c_str(), pair.second);
 							}
 						}
 
@@ -450,10 +450,9 @@ namespace Parser
 				}
 				else if(curPrec > 0)
 				{
-					parserError(ps, ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
+					parserError(ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
 				}
 			}
-
 		};
 
 		findOperators(ps);
@@ -611,6 +610,7 @@ namespace Parser
 					return parseParenthesised(ps);
 
 				case TType::Identifier:
+				case TType::UnicodeSymbol:
 					if(tok.text == "init")
 						return parseInitFunc(ps);
 
@@ -734,7 +734,7 @@ namespace Parser
 					return parsePrimary(ps);
 
 				case TType::LBrace:
-					parserWarn("Anonymous blocks are ignored; to run, preface with 'do'");
+					parserMessage(Err::Warn, "Anonymous blocks are ignored; to run, preface with 'do'");
 					parseBracedBlock(ps);		// parse it, but throw it away
 					return CreateAST(DummyExpr, ps.front());
 
@@ -821,7 +821,7 @@ namespace Parser
 		if(ps.front().text != "init" && ps.front().text.find("operator") != 0)
 			iceAssert(ps.eat().type == TType::Func);
 
-		if(ps.front().type != TType::Identifier)
+		if(ps.front().type != TType::Identifier && ps.front().type != TType::UnicodeSymbol)
 			parserError("Expected identifier, but got token of type %d", ps.front().type);
 
 		Token func_id = ps.eat();
@@ -837,7 +837,6 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			// todo: handle parsing nested generics -- << >> would parse as '<<' and '>>', not '<' '<' and '>' '>'.
 			Expr* inner = parseType(ps);
 			iceAssert(inner->type.isLiteral);
 
@@ -878,7 +877,6 @@ namespace Parser
 		while(ps.tokens.size() > 0 && ps.front().type != TType::RParen)
 		{
 			Token tok_id;
-			bool immutable = true;
 			if((tok_id = ps.eat()).type != TType::Identifier)
 			{
 				if(tok_id.type == TType::Ellipsis)
@@ -889,17 +887,6 @@ namespace Parser
 
 					break;
 				}
-				else if(tok_id.type == TType::Var)
-				{
-					immutable = false;
-					tok_id = ps.eat();
-				}
-				else if(tok_id.type == TType::Val)
-				{
-					immutable = false;
-					tok_id = ps.eat();
-					parserWarn("Function parameters are immutable by default, 'val' is redundant");
-				}
 				else
 				{
 					parserError("Expected identifier");
@@ -907,7 +894,7 @@ namespace Parser
 			}
 
 			std::string id = tok_id.text;
-			VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
+			VarDecl* v = CreateAST(VarDecl, tok_id, id, true);
 
 			// expect a colon
 			if(ps.eat().type != TType::Colon)
@@ -919,7 +906,7 @@ namespace Parser
 
 
 
-			// NOTE: FUCKING. GHETTO.
+			// NOTE(ghetto): FUCKING. GHETTO.
 			if(v->type.strType.find("[...]") != std::string::npos)
 			{
 				isVariableArg = true;
@@ -959,7 +946,7 @@ namespace Parser
 			delete ctype;
 
 			if(ret == VOID_TYPE_STRING)
-				parserWarn("Explicitly specifying 'Void' as the return type is redundant");
+				parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
 		}
 		else
 		{
@@ -2109,10 +2096,18 @@ namespace Parser
 		int i = 0;
 		for(Expr* stmt : body->statements)
 		{
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				parserError(cprop->pin, "Structs cannot contain properties");
+			}
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
-					parserError("Duplicate member '%s'", var->ident.name.c_str());
+				{
+					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
+					parserMessage(Err::Info, str->members[str->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					doTheExit();
+				}
 
 				str->members.push_back(var);
 
@@ -2141,7 +2136,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type %s in struct", typeid(*stmt).name());
 			}
 		}
 
@@ -2196,22 +2191,19 @@ namespace Parser
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
 			{
-				for(ComputedProperty* c : cls->cprops)
-				{
-					if(c->ident.name == cprop->ident.name)
-						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
-				}
-
 				cls->cprops.push_back(cprop);
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				if(cls->nameMap.find(var->ident.name) != cls->nameMap.end())
-					parserError("Duplicate member '%s'", var->ident.name.c_str());
+				{
+					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
+					parserMessage(Err::Info, cls->members[cls->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					doTheExit();
+				}
 
 				cls->members.push_back(var);
 
-				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
 					cls->nameMap[var->ident.name] = i;
@@ -2224,11 +2216,7 @@ namespace Parser
 			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
-				if(ClassDef* nested = dynamic_cast<ClassDef*>(sb))
-					cls->nestedTypes.push_back({ nested, 0 });
-
-				else
-					parserError("Only class definitions can be nested within other types");
+				cls->nestedTypes.push_back({ sb, 0 });
 			}
 			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
 			{
@@ -2244,7 +2232,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Found invalid expression type %s in class", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
 			}
 		}
 
@@ -2288,19 +2276,13 @@ namespace Parser
 		BracedBlock* body = parseBracedBlock(ps);
 		for(Expr* stmt : body->statements)
 		{
-			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				ext->cprops.push_back(cprop);
+			}
+			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
 				parserError(var->pin, "Extensions cannot delcare new instance members");
-			}
-			else if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
-			{
-				for(ComputedProperty* c : ext->cprops)
-				{
-					if(c->ident.name == cprop->ident.name)
-						parserError("Duplicate member '%s'", cprop->ident.name.c_str());
-				}
-
-				ext->cprops.push_back(cprop);
 			}
 			else if(Func* fn = dynamic_cast<Func*>(stmt))
 			{
@@ -2313,6 +2295,10 @@ namespace Parser
 			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
 			{
 				ext->subscriptOverloads.push_back(soo);
+			}
+			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
+			{
+				ext->nestedTypes.push_back({ sb, 0 });
 			}
 			else
 			{
@@ -2480,17 +2466,17 @@ namespace Parser
 		else if(id.text == ATTR_STR_RAW)			attr |= Attr_RawString;
 		else if(id.text == "public")
 		{
-			parserWarn("Attribute 'public' is a keyword, usage as an attribute is deprecated");
+			parserMessage(Err::Warn, "Attribute 'public' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisPublic;
 		}
 		else if(id.text == "internal")
 		{
-			parserWarn("Attribute 'internal' is a keyword, usage as an attribute is deprecated");
+			parserMessage(Err::Warn, "Attribute 'internal' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisInternal;
 		}
 		else if(id.text == "private")
 		{
-			parserWarn("Attribute 'private' is a keyword, usage as an attribute is deprecated");
+			parserMessage(Err::Warn, "Attribute 'private' is a keyword, usage as an attribute is deprecated");
 			attr |= Attr_VisPrivate;
 		}
 		else if(id.text == "operator")
@@ -2863,7 +2849,7 @@ namespace Parser
 			ao = ArithmeticOp::Subscript;
 
 			Token fake;
-			fake.pin = ps.currentPos;
+			fake.pin = op.pin;
 			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
@@ -2910,7 +2896,7 @@ namespace Parser
 			AssignOpOverload* aoo = CreateAST(AssignOpOverload, op, ao);
 
 			Token fake;
-			fake.pin = ps.currentPos;
+			fake.pin = op.pin;
 			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
@@ -2978,166 +2964,120 @@ namespace Parser
 		return oo;
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	static HighlightOptions pinToHO(Pin p)
-	{
-		HighlightOptions ops;
-		ops.caret = p;
-
-		return ops;
-	}
-
-
-	// come on man
-	void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-	void parserError(const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(staticState->curtok.pin), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	// grr
-	void parserWarn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-	void parserWarn(const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(staticState->curtok.pin), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-	void parserError(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(ParserState& ps, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(ps.curtok.pin), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserWarn(ParserState& ps, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(ps.curtok.pin), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-
-
-
-	void parserError(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserWarn(Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-
-
-	void parserError(Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserError(Pin pin, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(pin), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-	void parserWarn(Pin pin, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(pin), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
-
-
-
-
-
-	void parserError(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-	void parserError(ParserState& ps, Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
-
-		va_end(ap);
-		abort();
-	}
-
-	void parserWarn(ParserState& ps, Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-	void parserWarn(ParserState& ps, Token tok, const char* msg, ...)
-	{
-		va_list ap;
-		va_start(ap, msg);
-
-		__error_gen(pinToHO(tok.pin), msg, "Warning", false, ap);
-
-		va_end(ap);
-	}
 }
 
+using namespace Parser;
+
+static HighlightOptions pinToHO(Pin p)
+{
+	HighlightOptions ops;
+	ops.caret = p;
+
+	return ops;
+}
+
+
+
+
+void parserMessage(Err sev, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void parserMessage(Err sev, const char* msg, ...)
+{
+	std::string str = "??";
+	if(sev == Err::Info)		str = "Note";
+	else if(sev == Err::Warn)	str = "Warning";
+	else if(sev == Err::Error)	str = "Error";
+
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(staticState->curtok.pin), msg, str.c_str(), false, ap);
+	va_end(ap);
+}
+
+void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...)
+{
+
+	std::string str = "??";
+	if(sev == Err::Info)		str = "Note";
+	else if(sev == Err::Warn)	str = "Warning";
+	else if(sev == Err::Error)	str = "Error";
+
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(pin), msg, str.c_str(), false, ap);
+	va_end(ap);
+}
+
+void parserMessage(Err sev, Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, Parser::Token tok, const char* msg, ...)
+{
+
+	std::string str = "??";
+	if(sev == Err::Info)		str = "Note";
+	else if(sev == Err::Warn)	str = "Warning";
+	else if(sev == Err::Error)	str = "Error";
+
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(tok.pin), msg, str.c_str(), false, ap);
+	va_end(ap);
+}
+
+void parserMessage(Err sev, Parser::ParserState& ps, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, Parser::ParserState& ps, const char* msg, ...)
+{
+
+	std::string str = "??";
+	if(sev == Err::Info)		str = "Note";
+	else if(sev == Err::Warn)	str = "Warning";
+	else if(sev == Err::Error)	str = "Error";
+
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(ps.curtok.pin), msg, str.c_str(), false, ap);
+	va_end(ap);
+}
+
+
+void parserError(const char* msg, ...) __attribute__((format(printf, 1, 2), noreturn));
+void parserError(const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(staticState->curtok.pin), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
+
+void parserError(Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(Parser::Pin pin, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(pin), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
+
+void parserError(Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(Parser::Token tok, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(tok.pin), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
+
+void parserError(Parser::ParserState& ps, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(Parser::ParserState& ps, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+	__error_gen(pinToHO(ps.curtok.pin), msg, "Error", true, ap);
+	va_end(ap);
+	abort();
+}
 
 
 
