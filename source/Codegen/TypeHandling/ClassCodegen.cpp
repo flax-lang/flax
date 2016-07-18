@@ -224,8 +224,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 				{
-					errorNoExit(f->decl, "Duplicate member function: %s", f->decl->ident.name.c_str());
-					info(fn->decl, "Previous declaration was here: %s", fn->decl->ident.name.c_str());
+					errorNoExit(f->decl, "Duplicate method declaration: %s", f->decl->ident.name.c_str());
+					info(fn->decl, "Previous declaration was here.");
 					doTheExit();
 				}
 			}
@@ -248,6 +248,16 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// from the getters/setters.
 	for(ComputedProperty* c : this->cprops)
 	{
+		for(auto cp : this->cprops)
+		{
+			if(c != cp && c->ident.name == cp->ident.name)
+			{
+				errorNoExit(c, "Duplicate property in class: %s", c->ident.name.c_str());
+				info(cp, "Previous declaration was here.");
+				doTheExit();
+			}
+		}
+
 		std::string lenstr = std::to_string(c->ident.name.length()) + c->ident.name;
 
 		if(c->getter)
@@ -349,6 +359,24 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// note(anti-confusion): decl->codegen() looks at parentClass
 		// and inserts an implicit self, so we don't need to do it.
 
+		for(auto a : this->assignmentOverloads)
+		{
+			if(a != aoo && a->op == aoo->op)
+			{
+				int d = 0;
+				std::deque<fir::Type*> ps;
+				for(auto e : a->func->decl->params)
+					ps.push_back(cgi->getExprType(e));
+
+				if(cgi->isValidFuncOverload({ 0, aoo->func->decl }, ps, &d, true))
+				{
+					errorNoExit(a->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, a->op).c_str());
+					info(aoo->func->decl, "Previous declaration was here.");
+					doTheExit();
+				}
+			}
+		}
+
 		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
 		aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
@@ -393,6 +421,25 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	for(SubscriptOpOverload* soo : this->subscriptOverloads)
 	{
+		for(auto s : this->subscriptOverloads)
+		{
+			if(s != soo)
+			{
+				int d = 0;
+				std::deque<fir::Type*> ps;
+				for(auto e : s->decl->params)
+					ps.push_back(cgi->getExprType(e));
+
+				if(cgi->isValidFuncOverload({ 0, soo->decl }, ps, &d, true))
+				{
+					errorNoExit(s->decl, "Duplicate subscript operator");
+					info(soo->decl, "Previous declaration was here.");
+					doTheExit();
+				}
+			}
+		}
+
+
 		// note(anti-confusion): decl->codegen() looks at parentClass
 		// and inserts an implicit self, so we don't need to do it.
 

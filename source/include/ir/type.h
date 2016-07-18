@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include "errors.h"
+#include "ast.h"
 
 #include <string>
 #include <vector>

@@ -197,6 +197,26 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
+class TestClass
+{
+	operator [] (other: int32) -> String
+	{
+		return ""
+	}
+
+	operator [] (other: int32) -> String
+	{
+		return "lol"
+	}
+
+	var k: int
+	{
+		get { 10 }
+		set { }
+	}
+}
+
+
 public func main(argc: int32, argv: int8**) -> int
 {
 	runTests()

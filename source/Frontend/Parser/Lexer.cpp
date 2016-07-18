@@ -316,11 +316,11 @@ namespace Parser
 				}
 				catch(const std::out_of_range&)
 				{
-					Parser::parserError("Number '%s' is out of range (of even uint64)", num.c_str());
+					parserError("Number '%s' is out of range (of even uint64)", num.c_str());
 				}
 				catch(const std::exception&)
 				{
-					Parser::parserError("Invalid number '%s' (%s)\n", num.c_str());
+					parserError("Invalid number '%s'\n", num.c_str());
 				}
 
 				if(base == 16)
@@ -346,7 +346,7 @@ namespace Parser
 					}
 					else
 					{
-						Parser::parserError("Expected more numbers after '.'");
+						parserError("Expected more numbers after '.'");
 					}
 				}
 				else
@@ -360,13 +360,13 @@ namespace Parser
 					}
 					catch(std::exception)
 					{
-						Parser::parserError("Invalid number");
+						parserError("Invalid number");
 					}
 				}
 			}
 			else
 			{
-				Parser::parserError("Decimals in hexadecimal representation are not supported");
+				parserError("Decimals in hexadecimal representation are not supported");
 			}
 
 
@@ -376,7 +376,7 @@ namespace Parser
 			stream = stream.substr(num.length());
 
 			if(stream.length() > 0 && isalpha(stream[0]))
-				Parser::parserError("Malformed integer literal");
+				parserError("Malformed integer literal");
 
 			read = 0;		// done above
 			tok.text = num;
@@ -480,7 +480,7 @@ namespace Parser
 
 				ss << stream[i];
 				if(i == stream.size() - 1 || stream[i] == '\n')
-					Parser::parserError(tok, "Expected closing '\"'");
+					parserError(tok, "Expected closing '\"'");
 			}
 
 			tok.type = TType::StringLiteral;
@@ -524,8 +524,7 @@ namespace Parser
 					case '#':	tok.type = TType::Pound;				break;
 
 					default:
-						Parser::parserError(tok, "Unknown token '%c'", stream[0]);
-						exit(-1);
+						parserError(tok, "Unknown token '%c'", stream[0]);
 				}
 
 				tok.text = stream[0];
@@ -540,7 +539,7 @@ namespace Parser
 			}
 			else
 			{
-				Parser::parserError(tok, "Unknown token '%s'", stream.substr(0, 10).c_str());
+				parserError(tok, "Unknown token '%s'", stream.substr(0, 10).c_str());
 			}
 		}
 

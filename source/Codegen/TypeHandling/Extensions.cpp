@@ -37,43 +37,89 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, 
 	{
 		ExtensionDef* ext = ft->extensions[this->ident.name];
 
-		ext->funcs.insert(ext->funcs.end(), this->funcs.begin(), this->funcs.end());
-		ext->assignmentOverloads.insert(ext->assignmentOverloads.end(), this->assignmentOverloads.begin(), this->assignmentOverloads.end());
+		{
+			std::unordered_map<std::string, std::deque<FuncDecl*>> map;
+			for(auto fe : ext->funcs)
+				map[fe->decl->ident.name].push_back(fe->decl);
+
+			for(auto ft : this->funcs)
+			{
+				if(map.find(ft->decl->ident.name) != map.end())
+				{
+					// check if they're the same
+					for(auto efd : map[ft->decl->ident.str()])
+					{
+						int d = 0;
+						std::deque<fir::Type*> ps;
+						for(auto e : efd->params)
+							ps.push_back(cgi->getExprType(e));
+
+						if(cgi->isValidFuncOverload({ 0, ft->decl }, ps, &d, true))
+						{
+							errorNoExit(ft->decl, "Duplicate method delcaration: %s", ft->decl->ident.name.c_str());
+							info(efd, "Previous declaration was here.");
+							doTheExit();
+						}
+					}
+				}
+			}
+
+			ext->funcs.insert(ext->funcs.end(), this->funcs.begin(), this->funcs.end());
+		}
+
+
+		// no choice but to O(n^2) this
+		{
+
+			ext->assignmentOverloads.insert(ext->assignmentOverloads.end(), this->assignmentOverloads.begin(), this->assignmentOverloads.end());
+		}
+
+
+
 		ext->subscriptOverloads.insert(ext->subscriptOverloads.end(), this->subscriptOverloads.begin(), this->subscriptOverloads.end());
 
 
-		for(auto te : ext->nestedTypes)
 		{
+			std::unordered_map<std::string, StructBase*> map;
+			for(auto te : ext->nestedTypes)
+				map[te.first->ident.name] = te.first;
+
 			for(auto tt : this->nestedTypes)
 			{
-				if(te.first->ident.name == tt.first->ident.name)
+				if(map.find(tt.first->ident.name) != map.end())
 				{
-					errorNoExit(tt.first, "Another extension already declared a nested type '%s'", te.first->ident.name.c_str());
-					info(te.first, "The existing declaration is here.");
+					auto te = map[tt.first->ident.name];
+					errorNoExit(tt.first, "Another extension already declared a nested type '%s'", te->ident.name.c_str());
+					info(te, "The existing declaration is here.");
 					doTheExit();
 				}
 			}
+
+			ext->nestedTypes.insert(ext->nestedTypes.end(), this->nestedTypes.begin(), this->nestedTypes.end());
 		}
 
-		ext->nestedTypes.insert(ext->nestedTypes.end(), this->nestedTypes.begin(), this->nestedTypes.end());
 
 
-
-
-		for(auto ce : ext->cprops)
 		{
+			std::unordered_map<std::string, ComputedProperty*> map;
+			for(auto ce : ext->cprops)
+				map[ce->ident.name] = ce;
+
 			for(auto ct : this->cprops)
 			{
-				if(ce->ident.name == ct->ident.name)
+				if(map.find(ct->ident.name) != map.end())
 				{
 					errorNoExit(ct, "Another extension already declared a property '%s'", ct->ident.name.c_str());
-					info(ce, "The existing declaration is here.");
+					info(map[ct->ident.name], "The existing declaration is here.");
 					doTheExit();
 				}
 			}
+
+			ext->cprops.insert(ext->cprops.end(), this->cprops.begin(), this->cprops.end());
 		}
 
-		ext->cprops.insert(ext->cprops.end(), this->cprops.begin(), this->cprops.end());
+
+
 
 
 		this->isDuplicate = true;
