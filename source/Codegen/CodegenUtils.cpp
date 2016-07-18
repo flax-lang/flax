@@ -532,22 +532,32 @@ namespace Codegen
 				}
 			}
 
-			if(!found && deep)
+			if(ext.second->attribs & Attr_VisPublic)
 			{
-				ft->extensions[ext.first] = ext.second;
-
-				ExtensionDef* ed = ft->extensions[ext.first];
-				for(auto& ff : ed->functionMap)
+				if(!found && deep)
 				{
-					auto newff = cloneFunctionIntoCurrentTree(this, ff.second, ff.first->decl, clone);
-					std::replace(ed->lfuncs.begin(), ed->lfuncs.end(), ff.second, newff);
+					clone->extensions[ext.first] = ext.second;
 
-					ff.second = newff;
+					ExtensionDef* ed = ext.second;
+					for(auto& ff : ed->functionMap)
+					{
+						if(ff.first->decl->attribs & Attr_VisPublic)
+						{
+							auto newff = cloneFunctionIntoCurrentTree(this, ff.second, ff.first->decl, clone);
+							std::replace(ed->lfuncs.begin(), ed->lfuncs.end(), ff.second, newff);
+
+							ff.second = newff;
+						}
+						else
+						{
+							// do nothing
+						}
+					}
 				}
-			}
-			else if(!found)
-			{
-				ft->extensions[ext.first] = ext.second;
+				else if(!found)
+				{
+					clone->extensions[ext.first] = ext.second;
+				}
 			}
 		}
 
@@ -566,15 +576,17 @@ namespace Codegen
 				}
 			}
 
-			if(deep)
+			if(oo->attribs & Attr_VisPublic)
 			{
-				// todo: do we need this?
-				oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, clone);
-			}
-
-			if(!found)
-			{
-				clone->operators.push_back(oo);
+				if(deep)
+				{
+					// todo: do we need this?
+					oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, clone);
+				}
+				if(!found)
+				{
+					clone->operators.push_back(oo);
+				}
 			}
 		}
 
@@ -1740,9 +1752,20 @@ namespace Codegen
 
 
 
+	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
+	{
+		FunctionTree* ft = this->getCurrentFuncTree(&cls->ident.scope);
+		iceAssert(ft);
 
+		std::deque<ExtensionDef*> ret;
+		for(auto ext : ft->extensions)
+		{
+			if(ext.first == cls->ident.name)
+				ret.push_back(ext.second);
+		}
 
-
+		return ret;
+	}
 
 	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals)
 	{
@@ -1818,6 +1841,28 @@ namespace Codegen
 			for(auto f : sb->initFuncs)
 				fns.push_back({ f, 0 });
 
+			std::deque<ExtensionDef*> exts = this->getExtensionsForType(sb);
+			for(auto ext : exts)
+			{
+				// note: check that either it's a public extension, *or* we're in the same rootnode.
+				// naturally private extensions can still be used in the same file, if not they'd be useless
+				for(auto f : ext->initFuncs)
+				{
+					Func* func = 0;
+					for(auto fn : ext->functionMap)
+					{
+						if(fn.second == f)
+							func = fn.first;
+					}
+					iceAssert(func);
+
+					if(func->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
+					{
+						fns.push_back({ f, 0 });
+					}
+				}
+			}
+
 			std::deque<fir::Type*> argTypes;
 			for(auto v : vals)
 				argTypes.push_back(v->getType());
@@ -1833,10 +1878,13 @@ namespace Codegen
 				if(argTypes.size() > 0)
 					argstr = argstr.substr(0, argstr.size() - 2);
 
-				error(user, "No initialiser for class/struct %s taking parameters (%s)", sb->ident.name.c_str(), argstr.c_str());
+				error(user, "No initialiser for type '%s' taking parameters (%s)", sb->ident.name.c_str(), argstr.c_str());
 			}
 
-			return this->module->getFunction(res.t.first->getName());
+			auto ret = this->module->getFunction(res.t.first->getName());
+			iceAssert(ret);
+
+			return ret;
 		}
 		else
 		{
@@ -2255,70 +2303,6 @@ namespace Codegen
 		}
 
 		return false;
-	}
-
-	Expr* CodegenInstance::cloneAST(Expr* expr)
-	{
-		#if 0
-		if(expr == 0) return 0;
-
-		if(ComputedProperty* cp = dynamic_cast<ComputedProperty*>(expr))
-		{
-			ComputedProperty* clone = new ComputedProperty(cp->pin, cp->ident.name);
-
-			// copy the rest.
-			clone->getterFunc		= (FuncDecl*) this->cloneAST(cp->getterFunc);
-			clone->setterFunc		= (FuncDecl*) this->cloneAST(cp->setterFunc);
-
-			// there's no need to actually clone the block.
-			clone->getter			= cp->getter;
-			clone->setter			= cp->setter;
-
-			clone->setterArgName	= cp->setterArgName;
-
-			clone->inferredLType	= cp->inferredLType;
-			clone->initVal			= cp->initVal;
-			clone->attribs			= cp->attribs;
-			clone->type				= cp->type;
-
-			return clone;
-		}
-		else if(Func* fn = dynamic_cast<Func*>(expr))
-		{
-			FuncDecl* cdecl = (FuncDecl*) this->cloneAST(fn->decl);
-			BracedBlock* cblock = fn->block;
-
-			Func* clone = new Func(fn->pin, cdecl, cblock);
-
-			clone->instantiatedGenericVersions = fn->instantiatedGenericVersions;
-			clone->type	= fn->type;
-
-			return clone;
-		}
-		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
-		{
-			FuncDecl* clone = new FuncDecl(fd->pin, fd->ident.name, fd->params, fd->type.strType);
-
-			// copy the rest
-			clone->mangledName						= fd->mangledName;
-			clone->parentClass						= fd->parentClass;
-			clone->mangledNamespaceOnly				= fd->mangledNamespaceOnly;
-			clone->genericTypes						= fd->genericTypes;
-			clone->instantiatedGenericReturnType	= fd->instantiatedGenericReturnType;
-			clone->instantiatedGenericTypes			= fd->instantiatedGenericTypes;
-			clone->type								= fd->type;
-			clone->attribs							= fd->attribs;
-
-			return clone;
-		}
-		else
-		{
-			error(expr, "cannot clone, enotsup (%s)", typeid(*expr).name());
-		}
-
-		#endif
-
-		error("cannot clone AST");
 	}
 
 

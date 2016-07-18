@@ -98,10 +98,11 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
-			else if(cls)			addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
+			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
+				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 		}
 	}
 	else if(pass == 1)
@@ -118,29 +119,17 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
-			ExtensionDef* ext		= dynamic_cast<ExtensionDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ffi)					ffi->codegen(cgi);
 			else if(cls)			cls->createType(cgi);
 			else if(str)			str->createType(cgi);
-			else if(ext)			ext->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
 	else if(pass == 3)
-	{
-		// setup extensions
-
-		for(Expr* e : expressions)
-		{
-			if(ExtensionDef* ext = dynamic_cast<ExtensionDef*>(e))
-				ext->codegen(cgi);
-		}
-	}
-	else if(pass == 4)
 	{
 		// start "semantic analysis" before any typechecking needs to happen.
 		// this basically involves knowing what is on the left side of a dot operator
@@ -151,24 +140,33 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// again, enums are handled since enum : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
-			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
 
 			if(str)					str->codegen(cgi);
 			else if(cls)			cls->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
-			else if(vd)
-			{
-				vd->isGlobal = true;
-				vd->codegen(cgi);
-			}
 		}
 
 		// generate the type info.
 		// now that we have all the types that we need, and they're all fully
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
+	}
+	else if(pass == 4)
+	{
+		for(Expr* e : expressions)
+		{
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			VarDecl* vd				= dynamic_cast<VarDecl*>(e);
+
+			if(ns)					ns->codegenPass(cgi, pass);
+			else if(vd)
+			{
+				vd->isGlobal = true;
+				vd->codegen(cgi);
+			}
+		}
 	}
 	else if(pass == 5)
 	{

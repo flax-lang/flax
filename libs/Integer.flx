@@ -5,18 +5,31 @@
 import IntegerLimits
 import String
 
-extension String
+public extension String
 {
 	func toInteger() -> int64
 	{
 		return 67
 	}
+
+	init(x: int)
+	{
+		#self = "TEN"
+	}
+
+
+	var kappa: int
+	{
+		get { 30 }
+		set { printf("lol\n") }
+	}
 }
 
 extension String
 {
-	func lol() -> int64
+	var cp: int
 	{
-		return 14
+		get { 10 }
+		set { printf("lol\n") }
 	}
 }

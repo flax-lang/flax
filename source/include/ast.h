@@ -620,10 +620,12 @@ namespace Ast
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 
+		fir::Function* defaultInitialiser;
+
 		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
 
-	struct ExtensionDef;
+
 	struct ClassDef : StructBase
 	{
 		~ClassDef();
@@ -635,30 +637,22 @@ namespace Ast
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-
 		std::map<Func*, fir::Function*> functionMap;
-
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
 	};
 
 
-	struct ExtensionDef : StructBase
+	struct Root;
+	struct ExtensionDef : ClassDef
 	{
 		~ExtensionDef();
-		ExtensionDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool isDuplicate = false;
-
-		std::deque<Func*> funcs;
-		std::deque<fir::Function*> lfuncs;
-		std::deque<std::string> protocolstrs;
-		std::deque<ComputedProperty*> cprops;
-		std::map<Func*, fir::Function*> functionMap;
-		std::deque<AssignOpOverload*> assignmentOverloads;
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		Root* parentRoot = 0;
 	};
 
 

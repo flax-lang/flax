@@ -197,25 +197,6 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
-class TestClass
-{
-	operator [] (other: int32) -> String
-	{
-		return ""
-	}
-
-	operator [] (other: int32) -> String
-	{
-		return "lol"
-	}
-
-	var k: int
-	{
-		get { 10 }
-		set { }
-	}
-}
-
 
 public func main(argc: int32, argv: int8**) -> int
 {
@@ -232,6 +213,16 @@ public func main(argc: int32, argv: int8**) -> int
 	parseFormatOptions("{401:x}")
 
 	mtest(10, 41)
+
+
+
+	let g = String(10)
+	let k = g.toInteger()
+	printf("%s, %d\n", g, g.kappa)
+
+
+
+
 
 	// var arr8: Array<Int8>
 	// var arr32: Array<Int32>
