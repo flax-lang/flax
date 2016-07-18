@@ -10,6 +10,7 @@
 #include <cinttypes>
 
 #include <sys/stat.h>
+#include "errors.h"
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
@@ -53,7 +54,7 @@ namespace Compiler
 
 		if(imp->module.find("*") != (size_t) -1)
 		{
-			Parser::parserError("Wildcard imports are currently not supported (trying to import %s)", imp->module.c_str());
+			parserError(imp->pin, "Wildcard imports are currently not supported (trying to import %s)", imp->module.c_str());
 		}
 
 		// first check the current directory.

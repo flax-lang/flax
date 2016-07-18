@@ -84,7 +84,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 	finalOutput %> \out -> do
 		need ["copyLibraries"]
 
-		cs <- getDirectoryFiles "" ["source//*.cpp"]
+		cs <- getDirectoryFiles "" ["source//*.cpp", "source//*.c"]
 		let os = [c ++ ".o" | c <- cs]
 		need os
 
@@ -120,6 +120,24 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		needMakefileDependencies m
 
 
+
+	"source//*.c.o" %> \out -> do
+		let c = dropExtension out
+		let m = out ++ ".m"
+
+		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
+		let lconf = maybelconf
+
+		let ccFlags = "-std=c11 -O0 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wnooverlength-strings -Wnomissing-variable-declarations"
+
+		maybeCC <- getEnvWithDefault "clang" "CC"
+		let cc = maybeCC
+
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
+
+		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MF" [m]
+
+		needMakefileDependencies m
 
 
 

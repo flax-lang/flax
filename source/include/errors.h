@@ -8,11 +8,17 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#include "parser.h"
+#include "defs.h"
 
 namespace Ast
 {
 	struct Expr;
+}
+
+namespace Parser
+{
+	struct Token;
+	struct ParserState;
 }
 
 struct HighlightOptions
@@ -28,6 +34,8 @@ struct HighlightOptions
 };
 
 Parser::Pin getHighlightExtent(Ast::Expr* e);
+
+void doTheExit() __attribute__ ((noreturn));
 
 void __error_gen(HighlightOptions ops, const char* msg, const char* type,
 	bool doExit, va_list ap);
@@ -49,5 +57,35 @@ void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3
 void info(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 
-#define __nothing
-#define iceAssert(x)		((x) ? (void) (0) : error("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
+
+enum class Err
+{
+	Info,
+	Warn,
+	Error,
+};
+
+void parserMessage(Err severity, const char* msg, ...)							__attribute__((format(printf, 2, 3)));
+void parserMessage(Err severity, Parser::Pin pin, const char* msg, ...)			__attribute__((format(printf, 3, 4)));
+void parserMessage(Err severity, Parser::Token tok, const char* msg, ...)		__attribute__((format(printf, 3, 4)));
+void parserMessage(Err severity, Parser::ParserState& ps, const char* msg, ...)	__attribute__((format(printf, 3, 4)));
+
+void parserError(const char* msg, ...)											__attribute__((format(printf, 1, 2), noreturn));
+void parserError(Parser::Pin pin, const char* msg, ...)							__attribute__((format(printf, 2, 3), noreturn));
+void parserError(Parser::Token tok, const char* msg, ...)						__attribute__((format(printf, 2, 3), noreturn));
+void parserError(Parser::ParserState& ps, const char* msg, ...)					__attribute__((format(printf, 2, 3), noreturn));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

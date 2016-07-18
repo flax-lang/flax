@@ -32,12 +32,18 @@ public operator - (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3 { Math.Vect
 public operator • (a: Math.Vector3, b: Math.Vector3) -> float64 { (a.x * b.x) + (a.y * b.y) + (a.z * b.z) }
 
 @operator[100]
-public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
+public operator ⨯ (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
 {
 	Math.Vector3(
 				(a.y * b.z) - (a.z * b.y),
 				(a.z * b.x) - (a.x * b.z),
 				(a.x * b.y) - (a.y * b.x))
+}
+
+@operator[100]
+public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3	// this is ascii 'x' (24th letter)
+{
+	a ⨯ b
 }
 
 

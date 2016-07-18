@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -202,8 +202,55 @@
 */
 #define HANGUL_S_COUNT                       11172 /* LCount * NCount */
 
+#define CP_LATIN_CAPITAL_LETTER_I                 0x0049
+#define CP_LATIN_CAPITAL_LETTER_J                 0x004A
+#define CP_LATIN_SMALL_LETTER_I                   0x0069
+#define CP_LATIN_SMALL_LETTER_J                   0x006A
+#define CP_LATIN_CAPITAL_LETTER_I_WITH_GRAVE      0x00CC
+#define CP_LATIN_CAPITAL_LETTER_I_WITH_ACUTE      0x00CD
+#define CP_LATIN_CAPITAL_LETTER_I_WITH_TILDE      0x0128
+#define CP_LATIN_CAPITAL_LETTER_I_WITH_OGONEK     0x012E
+#define CP_LATIN_SMALL_LETTER_I_WITH_OGONEK       0x012F
+#define CP_LATIN_CAPITAL_LETTER_I_WITH_DOT_ABOVE  0x0130
+#define CP_LATIN_SMALL_LETTER_DOTLESS_I           0x0131
+#define CP_COMBINING_GRAVE_ACCENT                 0x0300
+#define CP_COMBINING_ACUTE_ACCENT                 0x0301
+#define CP_COMBINING_TILDE_ACCENT                 0x0303
+#define CP_COMBINING_DOT_ABOVE                    0x0307
+#define CP_COMBINING_GREEK_YPOGEGRAMMENI          0x0345
+#define CP_COMBINING_GRAPHEME_JOINER              0x034F
+#define CP_GREEK_CAPITAL_LETTER_SIGMA             0x03A3
+
+#define CCC_NOT_REORDERED                         0
+#define CCC_OVERLAY                               1
+#define CCC_NUKTA                                 7
+#define CCC_KANA_VOICING                          8
+#define CCC_VIRAMA                                9
+#define CCC_FIXED_POSITION_START                  10
+#define CCC_FIXED_POSITION_END                    199
+#define CCC_ATTACHED_BELOW_LEFT                   200
+#define CCC_ATTACHED_BELOW                        202
+#define CCC_ATTACHED_BOTTOM_RIGHT                 204
+#define CCC_ATTACHED_LEFT                         208
+#define CCC_ATTACHED_RIGHT                        210
+#define CCC_ATTACHED_TOP_LEFT                     212
+#define CCC_ATTACHED_ABOVE                        214
+#define CCC_ATTACHED_ABOVE_RIGHT                  216
+#define CCC_BELOW_LEFT                            218
+#define CCC_BELOW                                 220
+#define CCC_BELOW_RIGHT                           222
+#define CCC_LEFT                                  224
+#define CCC_RIGHT                                 226
+#define CCC_ABOVE_LEFT                            228
+#define CCC_ABOVE                                 230
+#define CCC_ABOVE_RIGHT                           232
+#define CCC_DOUBLE_BELOW                          233
+#define CCC_DOUBLE_ABOVE                          234
+#define CCC_IOTA_SUBSCRIPT                        240
+#define CCC_INVALID                               255
+
 /*!
-	\brief Get the number of bytes used for encoding a codepoint.
+	\brief Get the number of bytes used for encoding a code point.
 
 	\param[in]  byte  Encoded byte
 
@@ -212,20 +259,11 @@
 extern const uint8_t codepoint_decoded_length[256];
 
 /*!
-	\brief Get the number of bytes needed to encode a codepoint.
-
-	\param[in]  codepoint  Unicode codepoint
-
-	\return Number of bytes needed for encoding or 0 if input is illegal.
-*/
-uint8_t codepoint_encoded_length(unicode_t codepoint);
-
-/*!
-	\brief Write Unicode codepoint to UTF-8 encoded string.
+	\brief Write Unicode code point to UTF-8 encoded string.
 
 	Target buffer and size is modified by encoded size.
 
-	\param[in]      encoded     Unicode codepoint
+	\param[in]      encoded     Unicode code point
 	\param[in,out]  target      Target buffer
 	\param[in,out]  targetSize  Size of output buffer in bytes
 
@@ -234,7 +272,7 @@ uint8_t codepoint_encoded_length(unicode_t codepoint);
 uint8_t codepoint_write(unicode_t encoded, char** target, size_t* targetSize);
 
 /*!
-	\brief Read Unicode codepoint from UTF-8 encoded string.
+	\brief Read Unicode code point from UTF-8 encoded string.
 
 	\param[in]   input      Input buffer
 	\param[in]   inputSize  Size of input buffer in bytes
