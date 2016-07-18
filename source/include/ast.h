@@ -66,6 +66,7 @@ enum class IdKind
 	Method,
 	Getter,
 	Setter,
+	Operator,
 	AutoGenFunc,
 	ModuleConstructor,
 	Struct,
@@ -91,10 +92,6 @@ struct Identifier
 	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
 	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
 };
-
-
-
-
 
 
 
@@ -622,9 +619,13 @@ namespace Ast
 		std::deque<VarDecl*> members;
 		std::map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
+
+		fir::Function* defaultInitialiser;
+
+		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
 
-	struct ExtensionDef;
+
 	struct ClassDef : StructBase
 	{
 		~ClassDef();
@@ -636,27 +637,22 @@ namespace Ast
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::deque<std::pair<ClassDef*, fir::Type*>> nestedTypes;
-
 		std::map<Func*, fir::Function*> functionMap;
-
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
 	};
 
 
-	struct ExtensionDef : StructBase
+	struct Root;
+	struct ExtensionDef : ClassDef
 	{
 		~ExtensionDef();
-		ExtensionDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
-		std::deque<Func*> funcs;
-		std::deque<std::string> protocolstrs;
-		std::deque<ComputedProperty*> cprops;
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
-		std::deque<AssignOpOverload*> assignmentOverloads;
+		bool isDuplicate = false;
+		Root* parentRoot = 0;
 	};
 
 
@@ -852,6 +848,13 @@ namespace Ast
 }
 
 
+
+namespace Parser
+{
+	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
+	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+}
 
 
 

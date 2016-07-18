@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014-2015 Quinten Lansu
+	Copyright (C) 2014-2016 Quinten Lansu
 
 	Permission is hereby granted, free of charge, to any person
 	obtaining a copy of this software and associated documentation
@@ -108,7 +108,7 @@ uint8_t decompose_execute(DecomposeState* state)
 		while (state->cache_current < state->cache_filled)
 		{
 			if (state->output->current > 0 &&
-				state->cache_canonical_combining_class[state->cache_current] == 0)
+				state->cache_canonical_combining_class[state->cache_current] == CCC_NOT_REORDERED)
 			{
 				/* Sequence ends on next non-starter or end of data */
 
@@ -166,7 +166,7 @@ uint8_t decompose_execute(DecomposeState* state)
 			if (uncached)
 			{
 				*dst_codepoint++ = *src_codepoint;
-				*dst_canonical_combining_class++ = 0;
+				*dst_canonical_combining_class++ = CCC_NOT_REORDERED;
 				*dst_quick_check++ = QuickCheckResult_Yes;
 
 				state->output->current++;
@@ -174,7 +174,7 @@ uint8_t decompose_execute(DecomposeState* state)
 			else
 			{
 				state->cache_codepoint[state->cache_filled] = *src_codepoint;
-				state->cache_canonical_combining_class[state->cache_filled] = 0;
+				state->cache_canonical_combining_class[state->cache_filled] = CCC_NOT_REORDERED;
 
 				state->cache_filled++;
 			}
@@ -195,7 +195,7 @@ uint8_t decompose_execute(DecomposeState* state)
 			if (uncached)
 			{
 				*dst_codepoint++ = HANGUL_L_FIRST + (s_index / HANGUL_N_COUNT);
-				*dst_canonical_combining_class++ = 0;
+				*dst_canonical_combining_class++ = CCC_NOT_REORDERED;
 				*dst_quick_check++ = QuickCheckResult_Yes;
 
 				state->output->current++;
@@ -203,7 +203,7 @@ uint8_t decompose_execute(DecomposeState* state)
 			else
 			{
 				state->cache_codepoint[state->cache_filled] = HANGUL_L_FIRST + (s_index / HANGUL_N_COUNT);
-				state->cache_canonical_combining_class[state->cache_filled] = 0;
+				state->cache_canonical_combining_class[state->cache_filled] = CCC_NOT_REORDERED;
 
 				state->cache_filled++;
 			}
@@ -213,14 +213,14 @@ uint8_t decompose_execute(DecomposeState* state)
 			uncached = 0;
 
 			state->cache_codepoint[state->cache_filled] = HANGUL_V_FIRST + (s_index % HANGUL_N_COUNT) / HANGUL_T_COUNT;
-			state->cache_canonical_combining_class[state->cache_filled] = 0;
+			state->cache_canonical_combining_class[state->cache_filled] = CCC_NOT_REORDERED;
 
 			state->cache_filled++;
 
 			if ((s_index % HANGUL_T_COUNT) != 0)
 			{
 				state->cache_codepoint[state->cache_filled] = HANGUL_T_FIRST + (s_index % HANGUL_T_COUNT);
-				state->cache_canonical_combining_class[state->cache_filled] = 0;
+				state->cache_canonical_combining_class[state->cache_filled] = CCC_NOT_REORDERED;
 
 				state->cache_filled++;
 			}
@@ -260,7 +260,7 @@ uint8_t decompose_execute(DecomposeState* state)
 
 					if (uncached &&
 						state->output->current > 0 &&
-						decoded_canonical_combining_class == 0)
+						decoded_canonical_combining_class == CCC_NOT_REORDERED)
 					{
 						uncached = 0;
 					}
