@@ -112,7 +112,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 
-Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
+Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> types)
 {
 	iceAssert(types.size() == this->genericTypes.size());
 

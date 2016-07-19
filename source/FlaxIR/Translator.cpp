@@ -25,7 +25,7 @@
 
 namespace fir
 {
-	static std::map<Identifier, llvm::StructType*> createdTypes;
+	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
 		auto& gc = llvm::getGlobalContext();

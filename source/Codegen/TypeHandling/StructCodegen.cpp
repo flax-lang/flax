@@ -147,7 +147,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* StructDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(this->didCreateType)
 		return this->createdType;
