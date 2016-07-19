@@ -73,7 +73,7 @@ Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Type* EnumDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* EnumDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?

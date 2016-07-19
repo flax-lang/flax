@@ -216,7 +216,9 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-	let g = String(10)
+	var g = String(10)
+	g = 40
+	g.kappa = 10
 	let k = g.toInteger()
 	printf("%s, %d\n", g, g.kappa)
 

@@ -154,6 +154,26 @@ namespace Codegen
 							candidates.push_back({ atr, aso->lfunc });
 						}
 					}
+
+					for(auto ext : this->getExtensionsForType(cls))
+					{
+						for(auto aso : ext->assignmentOverloads)
+						{
+							if(aso->op == op)
+							{
+								Attribs atr;
+
+								atr.op				= op;
+								atr.isBinOp			= true;
+								atr.isPrefixUnary	= false;
+								atr.isCommutative	= false;
+								atr.needsSwap		= false;
+
+								iceAssert(aso->lfunc);
+								candidates.push_back({ atr, aso->lfunc });
+							}
+						}
+					}
 				}
 			}
 

@@ -62,13 +62,11 @@ namespace fir
 
 		private:
 		std::string moduleName;
-		std::map<std::string, GlobalVariable*> globalStrings;
+		std::unordered_map<std::string, GlobalVariable*> globalStrings;
 
-		std::map<Identifier, GlobalVariable*> globals;
-		std::map<Identifier, StructType*> namedTypes;
-		std::map<Identifier, Function*> functions;
-
-		std::map<Identifier, StructType*> extensionTypes;
+		std::unordered_map<Identifier, GlobalVariable*> globals;
+		std::unordered_map<Identifier, StructType*> namedTypes;
+		std::unordered_map<Identifier, Function*> functions;
 	};
 
 

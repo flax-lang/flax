@@ -128,7 +128,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let ccFlags = "-std=c11 -O0 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wnooverlength-strings -Wnomissing-variable-declarations"
+		let ccFlags = "-std=c11 -O0 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations"
 
 		maybeCC <- getEnvWithDefault "clang" "CC"
 		let cc = maybeCC
