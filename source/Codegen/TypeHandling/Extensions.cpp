@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	this->ident.scope = cgi->getFullScope();
 	this->parentRoot = cgi->rootNode;
