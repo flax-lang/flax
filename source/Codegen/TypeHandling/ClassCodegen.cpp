@@ -239,7 +239,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* ClassDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	if(this->didCreateType)
 		return this->createdType;

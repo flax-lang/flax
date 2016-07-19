@@ -83,7 +83,6 @@ struct Identifier
 	// defined in CodegenUtils.cpp
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const { return !(*this == other); }
-	bool operator < (const Identifier& other) const { return this->str() < other.str(); }
 
 	std::string str() const;
 	std::string mangled() const;
@@ -384,7 +383,7 @@ namespace Ast
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
-		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
+		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> types);
 
 		Parser::Pin returnTypePos;
 
@@ -631,7 +630,7 @@ namespace Ast
 			this->ident.kind = IdKind::Struct;
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
 
 		bool didCreateType = false;
 		fir::StructType* createdType = 0;
@@ -639,7 +638,7 @@ namespace Ast
 		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::map<std::string, int> nameMap;
+		std::unordered_map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 
 		fir::Function* defaultInitialiser;
@@ -653,15 +652,15 @@ namespace Ast
 		~ClassDef();
 		ClassDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<Func*> funcs;
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
-		std::map<Func*, fir::Function*> functionMap;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::unordered_map<Func*, fir::Function*> functionMap;
 	};
 
 
@@ -671,7 +670,7 @@ namespace Ast
 		~ExtensionDef();
 		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool isDuplicate = false;
 		Root* parentRoot = 0;
@@ -685,7 +684,7 @@ namespace Ast
 		~StructDef();
 		StructDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool packed = false;
 	};
@@ -695,7 +694,7 @@ namespace Ast
 		~EnumDef();
 		EnumDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		std::deque<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
@@ -706,7 +705,7 @@ namespace Ast
 		~Tuple();
 		Tuple(Parser::Pin pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 		fir::StructType* getType(Codegen::CodegenInstance* cgi);
 
 		std::vector<Expr*> values;
@@ -790,7 +789,7 @@ namespace Ast
 		~TypeAlias();
 		TypeAlias(Parser::Pin pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool isStrong = false;
 		std::string origType;
