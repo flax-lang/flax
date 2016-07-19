@@ -581,7 +581,7 @@ namespace Parser
 					[[clang::fallthrough]];
 
 				default:	// wip: skip shit we don't know/care about for now
-					parserError("Unknown token '%s'", tok.text.c_str());
+					parserError(tok, "Unknown token '%s'", tok.text.c_str());
 			}
 		}
 	}
@@ -739,7 +739,7 @@ namespace Parser
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
-					parserError("Unexpected token '%s'\n", tok.text.c_str());
+					parserError(tok, "Unexpected token '%s'\n", tok.text.c_str());
 			}
 		}
 

@@ -82,6 +82,7 @@ namespace Parser
 		Module,
 		Namespace,
 		Override,
+		Protocol,
 
 		// symbols
 		LBrace,
