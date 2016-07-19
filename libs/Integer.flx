@@ -23,6 +23,11 @@ public extension String
 		get { 30 }
 		set { printf("lol\n") }
 	}
+
+	operator = (other: int)
+	{
+		self.init(other)
+	}
 }
 
 extension String

@@ -139,14 +139,14 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Function* defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
 		astr->defaultInitialiser->linkageType);
 
+	doCodegenForAssignmentOperators(cgi, this);
+	doCodegenForSubscriptOperators(cgi, this);
+
+
 	for(Func* f : this->funcs)
 	{
 		generateMemberFunctionBody(cgi, this, f, defaultInit);
 	}
-
-
-	doCodegenForAssignmentOperators(cgi, this);
-	doCodegenForSubscriptOperators(cgi, this);
 
 
 	return Result_t(0, 0);

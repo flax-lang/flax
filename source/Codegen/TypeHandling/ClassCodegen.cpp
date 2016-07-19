@@ -149,6 +149,11 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// from the getters/setters.
 	doCodegenForComputedProperties(cgi, this);
 
+	// same reasoning for operators -- we need to 1. be able to call methods in the operator, and 2. call operators from the methods
+	doCodegenForAssignmentOperators(cgi, this);
+	doCodegenForSubscriptOperators(cgi, this);
+
+
 	// pass 2
 	for(Func* f : this->funcs)
 	{
@@ -200,12 +205,6 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	cgi->addPublicFunc({ this->defaultInitialiser, 0 });
-
-
-	doCodegenForAssignmentOperators(cgi, this);
-	doCodegenForSubscriptOperators(cgi, this);
-
-
 
 	return Result_t(0, 0);
 }

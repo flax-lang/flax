@@ -206,6 +206,7 @@ namespace Codegen
 			cgi->builder.setCurrentBlock(ob);
 
 			aoo->lfunc = dynamic_cast<fir::Function*>(val);
+			iceAssert(aoo->lfunc);
 
 			if(!aoo->lfunc->getReturnType()->isVoidType())
 			{
