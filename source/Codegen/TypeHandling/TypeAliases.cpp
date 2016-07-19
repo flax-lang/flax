@@ -14,7 +14,7 @@ Result_t TypeAlias::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Type* TypeAlias::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* TypeAlias::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	this->ident.scope = cgi->getFullScope();
 

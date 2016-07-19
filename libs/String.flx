@@ -108,7 +108,7 @@ public class String
 		self.data = malloc(32)
 		self.allocated = 32
 
-		self.setString(@raw "")
+		#self = @raw ""
 	}
 
 	init(str: int8*)

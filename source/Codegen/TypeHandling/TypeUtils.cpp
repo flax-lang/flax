@@ -1081,7 +1081,7 @@ namespace Codegen
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
 
-			std::map<std::string, fir::Type*> instantiatedGenericTypes;
+			std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
