@@ -41,13 +41,29 @@ namespace Operators
 			}
 		}
 
+		if(!ret)
+		{
+			for(auto ext : cgi->getExtensionsForType(cls))
+			{
+				for(auto cp : ext->cprops)
+				{
+					if(cp->ident.name == vrname->name)
+					{
+						// found
+						ret = cp;
+						break;
+					}
+				}
+			}
+		}
+
 		if(!ret) return 0;
 		if(!ret->setterFunc) return 0;
 
 		// assert here, because it should be had.
 		iceAssert(ret->setterFFn);
 
-		return ret->setterFFn;
+		return cgi->module->getFunction(ret->setterFFn->getName());
 	}
 
 

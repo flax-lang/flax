@@ -17,16 +17,14 @@ namespace fir
 
 	Type* FTContext::normaliseType(Type* type)
 	{
+		if(Type::areTypesEqual(type, this->voidType))
+			return this->voidType;
+
 		size_t ind = 0;
 		if(type->isPointerType())
 			ind = type->toPointerType()->getIndirections();
 
-
-		if(Type::areTypesEqual(type, this->voidType))
-			return this->voidType;
-
-
-		std::vector<Type*>& list = typeCache[ind];
+		std::vector<Type*>& list = this->typeCache[ind];
 
 		// find in the list.
 		// todo: make this more efficient
@@ -35,7 +33,6 @@ namespace fir
 			if(Type::areTypesEqual(t, type))
 				return t;
 		}
-
 
 		list.push_back(type);
 		return type;

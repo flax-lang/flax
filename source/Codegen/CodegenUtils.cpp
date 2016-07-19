@@ -1452,7 +1452,7 @@ namespace Codegen
 	{
 		// try and resolve shit
 		std::deque<FuncDecl*> candidates;
-		std::map<std::string, fir::Type*> tm;
+		std::unordered_map<std::string, fir::Type*> tm;
 
 		std::deque<Func*> bodiesFound;
 		auto fpcands = this->resolveFunctionName(fc->name, &bodiesFound);
