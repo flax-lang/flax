@@ -36,7 +36,7 @@ fir::StructType* Tuple::getType(CodegenInstance* cgi)
 	return this->cachedLlvmType;
 }
 
-fir::Type* Tuple::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* Tuple::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	(void) cgi;
 	return 0;

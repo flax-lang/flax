@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
 	this->ident.scope = cgi->getFullScope();
 	this->parentRoot = cgi->rootNode;
@@ -139,14 +139,14 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Function* defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
 		astr->defaultInitialiser->linkageType);
 
+	doCodegenForAssignmentOperators(cgi, this);
+	doCodegenForSubscriptOperators(cgi, this);
+
+
 	for(Func* f : this->funcs)
 	{
 		generateMemberFunctionBody(cgi, this, f, defaultInit);
 	}
-
-
-	doCodegenForAssignmentOperators(cgi, this);
-	doCodegenForSubscriptOperators(cgi, this);
 
 
 	return Result_t(0, 0);
