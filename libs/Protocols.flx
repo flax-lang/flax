@@ -4,19 +4,19 @@
 
 import String
 
-protocol StringConvertible
-{
-	func toString() -> String
-}
+// protocol StringConvertible
+// {
+// 	func toString() -> String
+// }
 
-protocol Equatable
-{
-}
+// protocol Equatable
+// {
+// }
 
-protocol Comparable
-{
-}
+// protocol Comparable
+// {
+// }
 
-protocol Numeric
-{
-}
+// protocol Numeric
+// {
+// }
