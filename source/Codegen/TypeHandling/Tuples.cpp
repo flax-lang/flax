@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-fir::StructType* Tuple::getType(CodegenInstance* cgi)
+fir::TupleType* Tuple::getType(CodegenInstance* cgi)
 {
 	// todo: handle named tuples.
 	// would probably just be handled as implicit anon structs
@@ -25,15 +25,15 @@ fir::StructType* Tuple::getType(CodegenInstance* cgi)
 			this->ltypes.push_back(cgi->getExprType(e));
 
 		this->ident.name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
-		this->cachedLlvmType = fir::StructType::getLiteral(this->ltypes, cgi->getContext());
+		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
 		this->didCreateType = true;
 
 		// todo: debate, should we add this?
 		// edit: no.
-		cgi->addNewType(this->cachedLlvmType, this, TypeKind::Tuple);
+		// cgi->addNewType(this->createdType, this, TypeKind::Tuple);
 	}
 
-	return this->cachedLlvmType;
+	return this->createdType;
 }
 
 fir::Type* Tuple::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
@@ -48,13 +48,13 @@ Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool c
 	iceAssert(num);
 
 	fir::Type* type = selfPtr->getType()->getPointerElementType();
-	iceAssert(type->isStructType());
+	iceAssert(type->isTupleType());
 
 	// quite simple, just get the number (make sure it's a Ast::Number)
 	// and do a structgep.
 
-	if((size_t) num->ival >= type->toStructType()->getElementCount())
-		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toStructType()->getElementCount());
+	if((size_t) num->ival >= type->toTupleType()->getElementCount())
+		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
 
 	fir::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
 	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
@@ -74,15 +74,15 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	iceAssert(gep);
 
-	fir::StructType* strtype = gep->getType()->getPointerElementType()->toStructType();;
-	iceAssert(strtype);
+	fir::TupleType* tuptype = gep->getType()->getPointerElementType()->toTupleType();
+	iceAssert(tuptype);
 
 	// set all the values.
 	// do the gep for each.
 
-	iceAssert(strtype->getElementCount() == this->values.size());
+	iceAssert(tuptype->getElementCount() == this->values.size());
 
-	for(unsigned int i = 0; i < strtype->getElementCount(); i++)
+	for(unsigned int i = 0; i < tuptype->getElementCount(); i++)
 	{
 		fir::Value* member = cgi->builder.CreateStructGEP(gep, i);
 		fir::Value* val = this->values[i]->codegen(cgi).result.first;

@@ -65,11 +65,11 @@ static std::string mangleType(fir::Type* t)
 
 		return ret;
 	}
-	else if(t->isNamedStruct())
+	else if(t->isStructType())
 	{
 		return mangleScopeOnly(t->toStructType()->getStructName());
 	}
-	else if(t->isLiteralStruct())
+	else if(t->isTupleType())
 	{
 		std::string ret = "ST" + std::to_string(t->toStructType()->getElementCount()) + "SM";
 		for(auto m : t->toStructType()->getElements())

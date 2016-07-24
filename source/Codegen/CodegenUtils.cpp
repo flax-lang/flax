@@ -169,12 +169,6 @@ namespace Codegen
 		this->getSymTab()[name] = sp;
 	}
 
-
-	bool CodegenInstance::areEqualTypes(fir::Type* a, fir::Type* b)
-	{
-		return a == b;
-	}
-
 	void CodegenInstance::addNewType(fir::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));

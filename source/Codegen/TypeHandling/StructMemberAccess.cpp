@@ -87,7 +87,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	if(!type->isStructType())
+	if(!type->isStructType() && !type->isTupleType())
 	{
 		if(type->isPointerType() && type->getPointerElementType()->isStructType())
 		{
@@ -171,19 +171,16 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	fir::StructType* st = type->toStructType();
-
+	fir::TupleType* tt = type->toTupleType();
 	TypePair_t* pair = cgi->getType(type);
-	if(!pair && (!st || !st->isLiteralStruct()))
+
+	if(!pair && !st && !tt)
 	{
 		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}
-	else if(st && st->isLiteralStruct())
-	{
-		type = st;
-	}
 
 
-	if((st && cgi->isTupleType(st)) || (pair->second.second == TypeKind::Tuple))
+	if(tt)
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
@@ -202,7 +199,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->doTupleAccess(selfPtr, n, !immut);
 	}
-	else if(pair->second.second == TypeKind::Struct)
+	else if(st && pair->second.second == TypeKind::Struct)
 	{
 		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
 
@@ -223,9 +220,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(var)
 		{
-			if(str->nameMap.find(var->name) != str->nameMap.end())
+			if(st->hasElementWithName(var->name))
 			{
-				i = str->nameMap[var->name];
+				i = st->getElementIndex(var->name);
 			}
 			else
 			{
@@ -258,7 +255,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
 		}
 	}
-	else if(pair->second.second == TypeKind::Class)
+	else if(st && pair->second.second == TypeKind::Class)
 	{
 		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
 
@@ -278,9 +275,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(var)
 		{
-			if(cls->nameMap.find(var->name) != cls->nameMap.end())
+			if(st->hasElementWithName(var->name))
 			{
-				i = cls->nameMap[var->name];
+				i = st->getElementIndex(var->name);
 			}
 			else
 			{
