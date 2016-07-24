@@ -204,10 +204,8 @@ namespace Codegen
 		fir::Value* autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
 		__attribute__ ((warn_unused_result));
 
-
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isPtr(Ast::Expr* e);
 		bool isEnum(Ast::ExprType type);
 		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
@@ -218,8 +216,6 @@ namespace Codegen
 		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
-		bool isTupleType(fir::Type* type);
-		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
 		bool isDuplicateType(Identifier id);
 

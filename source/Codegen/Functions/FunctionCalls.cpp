@@ -119,14 +119,14 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
 
-			if(checkCVarArg && arg->getType()->isStructType())
+			if(checkCVarArg && (arg->getType()->isStructType() || arg->getType()->isTupleType()))
 			{
 				fir::StructType* st = arg->getType()->toStructType();
-				if(!st->isLiteralStruct() && st->getStructName().str() != "String")
+				if(st->isStructType() && st->getStructName().str() != "String")
 				{
 					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
 				}
-				else if(!st->isLiteralStruct() && st->getStructName().str() == "String")
+				else if(st->isStructType() && st->getStructName().str() == "String")
 				{
 					// this function knows what to do.
 					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
@@ -222,10 +222,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 
-	target = cgi->module->getFunction(target->getName());
-	iceAssert(target);
-
-	return Result_t(cgi->builder.CreateCall(target, args), 0);
+	auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+	return Result_t(cgi->builder.CreateCall(thistarget, args), 0);
 }
 
 

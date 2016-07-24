@@ -19,13 +19,12 @@ namespace TypeInfo
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				iceAssert(strt);
 
-				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName().str())
+				if(std::get<0>(k) == strt->toStructType()->getStructName().str())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName().str(),
-			stype, etype));
+		cgi->rootNode->typeList.push_back(std::make_tuple(stype->toStructType()->getStructName().str(), stype, etype));
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)
@@ -88,8 +87,8 @@ namespace TypeInfo
 				VarDecl* data = new VarDecl(Parser::Pin(), "value", false);
 				data->type.strType = std::string(INT8_TYPE_STRING) + "*";
 
-				any->members.push_back(type);		any->nameMap["type"] = 0;
-				any->members.push_back(data);		any->nameMap["value"] = 1;
+				any->members.push_back(type);
+				any->members.push_back(data);
 			}
 
 			any->codegen(cgi);

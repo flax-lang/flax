@@ -907,29 +907,62 @@ namespace fir
 		error("enotsup");
 	}
 
+
+
+
+	// structs and tuples have the same member names.
+	template <typename T>
+	static Instruction* doGEPOnCompoundType(T* type, Value* ptr, Value* ptrIndex, size_t memberIndex)
+	{
+		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
+
+		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, type->getElementN(memberIndex)->getPointerTo(),
+			{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
+
+		// disallow storing to members of immut structs
+		if(ptr->isImmutable())
+			instr->realOutput->makeImmutable();
+
+		return instr;
+	}
+
+	template <typename T>
+	static Instruction* doGEPOnCompoundType(T* type, Value* structPtr, size_t memberIndex)
+	{
+		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
+
+		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, type->getElementN(memberIndex)->getPointerTo(),
+			{ structPtr, ConstantInt::getUint64(memberIndex) });
+
+		// disallow storing to members of immut structs
+		if(structPtr->isImmutable())
+			instr->realOutput->makeImmutable();
+
+		return instr;
+	}
+
+
 	Value* IRBuilder::CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname)
 	{
 		iceAssert(ptr->getType()->isPointerType() && "ptr is not a pointer");
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not an integer type");
 
+		// todo: consolidate
 		if(StructType* st = dynamic_cast<StructType*>(ptr->getType()->getPointerElementType()))
 		{
-			iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
-
-			Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, st->getElementN(memberIndex)->getPointerTo(),
-				{ ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
-
-			// disallow storing to members of immut structs
-			if(ptr->isImmutable())
-				instr->realOutput->immut = true;
-
-			return this->addInstruction(instr, vname);
+			return this->addInstruction(doGEPOnCompoundType(st, ptr, ptrIndex, memberIndex), vname);
+		}
+		else if(TupleType* tt = dynamic_cast<TupleType*>(ptr->getType()->getPointerElementType()))
+		{
+			return this->addInstruction(doGEPOnCompoundType(tt, ptr, ptrIndex, memberIndex), vname);
 		}
 		else
 		{
 			error("type %s is not a valid type to GEP into", ptr->getType()->getPointerElementType()->str().c_str());
 		}
 	}
+
+
 
 
 	// equivalent to CreateStructGEP()
@@ -939,16 +972,11 @@ namespace fir
 
 		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
 		{
-			iceAssert(st->getElementCount() > memberIndex && "struct does not have so many members");
-
-			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElementN(memberIndex)->getPointerTo(),
-				{ structPtr, ConstantInt::getUint64(memberIndex) });
-
-			// disallow storing to members of immut structs
-			if(structPtr->isImmutable())
-				instr->realOutput->immut = true;
-
-			return this->addInstruction(instr, vname);
+			return this->addInstruction(doGEPOnCompoundType(st, structPtr, memberIndex), vname);
+		}
+		else if(TupleType* tt = dynamic_cast<TupleType*>(structPtr->getType()->getPointerElementType()))
+		{
+			return this->addInstruction(doGEPOnCompoundType(tt, structPtr, memberIndex), vname);
 		}
 		else if(LLVariableArrayType* llat = dynamic_cast<LLVariableArrayType*>(structPtr->getType()->getPointerElementType()))
 		{

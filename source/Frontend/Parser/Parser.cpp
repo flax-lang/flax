@@ -2093,7 +2093,8 @@ namespace Parser
 
 		// parse a block.
 		BracedBlock* body = parseBracedBlock(ps);
-		int i = 0;
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
 		for(Expr* stmt : body->statements)
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
@@ -2102,10 +2103,10 @@ namespace Parser
 			}
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
+				if(nameMap.find(var->ident.name) != nameMap.end())
 				{
 					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
-					parserMessage(Err::Info, str->members[str->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					parserMessage(Err::Info, nameMap[var->ident.name]->pin, "Previous declaration was here.");
 					doTheExit();
 				}
 
@@ -2114,8 +2115,7 @@ namespace Parser
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					str->nameMap[var->ident.name] = i;
-					i++;
+					nameMap[var->ident.name] = var;
 				}
 				else
 				{
@@ -2186,7 +2186,8 @@ namespace Parser
 
 		// parse a block.
 		BracedBlock* body = parseBracedBlock(ps);
-		int i = 0;
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
 		for(Expr* stmt : body->statements)
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
@@ -2195,10 +2196,10 @@ namespace Parser
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(cls->nameMap.find(var->ident.name) != cls->nameMap.end())
+				if(nameMap.find(var->ident.name) != nameMap.end())
 				{
 					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
-					parserMessage(Err::Info, cls->members[cls->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					parserMessage(Err::Info, nameMap[var->ident.name]->pin, "Previous declaration was here.");
 					doTheExit();
 				}
 
@@ -2206,8 +2207,7 @@ namespace Parser
 
 				if(!var->isStatic)
 				{
-					cls->nameMap[var->ident.name] = i;
-					i++;
+					nameMap[var->ident.name] = var;
 				}
 			}
 			else if(Func* func = dynamic_cast<Func*>(stmt))
