@@ -139,7 +139,7 @@ namespace fir
 		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
 
 
-		protected:
+		// protected:
 		OpKind opKind;
 
 		Value* realOutput;

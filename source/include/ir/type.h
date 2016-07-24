@@ -30,6 +30,8 @@ namespace fir
 	struct PointerType;
 	struct StructType;
 	struct ArrayType;
+	struct TupleType;
+	struct ClassType;
 	struct LLVariableArrayType;
 
 	struct FTContext
@@ -61,8 +63,9 @@ namespace fir
 		Void,
 		Pointer,
 
-		NamedStruct,
-		LiteralStruct,
+		Tuple,
+		Struct,
+		Class,
 
 		Integer,
 		Floating,
@@ -100,21 +103,16 @@ namespace fir
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
 		StructType* toStructType();
+		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		LLVariableArrayType* toLLVariableArray();
 
+		bool isPointerTo(Type* other);
+		bool isPointerElementOf(Type* other);
 
-		// bool isPointerTo(Type* other, FTContext* tc = 0);
-		// bool isArrayElementOf(Type* other, FTContext* tc = 0);
-		// bool isPointerElementOf(Type* other, FTContext* tc = 0);
-
-
-
+		bool isTupleType();
 		bool isStructType();
-		bool isNamedStruct();
-		bool isLiteralStruct();
 		bool isPackedStruct();
-
 
 		bool isArrayType();
 		bool isIntegerType();
@@ -159,7 +157,12 @@ namespace fir
 			Type* ret);
 
 		static std::string typeListToString(std::deque<Type*> types);
+		static std::string typeListToString(std::vector<Type*> types);
+		static std::string typeListToString(std::initializer_list<Type*> types);
+
 		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
+		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
+		static bool areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b);
 	};
 
 
@@ -286,54 +289,90 @@ namespace fir
 		Identifier getStructName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
+		Type* getElement(std::string name);
+		bool hasElementWithName(std::string name);
+		size_t getElementIndex(std::string name);
 		std::vector<Type*> getElements();
 
-		void setBody(std::initializer_list<Type*> members);
-		void setBody(std::vector<Type*> members);
-		void setBody(std::deque<Type*> members);
-
-		void deleteType(FTContext* tc = 0);
+		void setBody(std::deque<std::pair<std::string, Type*>> members);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
-		void setBaseType(StructType* base);
-		bool isABaseTypeOf(Type* other);
-		bool isADerivedTypeOf(Type* other);
-
-		void clearBaseType();
-		StructType* getBaseType();
-
 		// protected constructor
 		protected:
-		StructType(Identifier name, std::deque<Type*> mems, bool islit, bool ispacked);
+		StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
-		StructType* baseType = 0;
 		bool isTypePacked;
 		Identifier structName;
-		std::deque<Type*> structMembers;
-
+		std::vector<Type*> typeList;
+		std::unordered_map<std::string, size_t> indexMap;
+		std::unordered_map<std::string, Type*> structMembers;
 
 		// static funcs
 		public:
-		static StructType* createNamedWithoutBody(Identifier name, FTContext* tc = 0, bool isPacked = false);
-
-		static StructType* createNamed(Identifier name, std::initializer_list<Type*> members,
-			FTContext* tc = 0, bool isPacked = false);
-
-		static StructType* createNamed(Identifier name, std::deque<Type*> members,
-			FTContext* tc = 0, bool isPacked = false);
-
-		static StructType* createNamed(Identifier name, std::vector<Type*> members,
-			FTContext* tc = 0, bool isPacked = false);
-
-		static StructType* getLiteral(std::initializer_list<Type*> members, FTContext* tc = 0, bool isPacked = false);
-		static StructType* getLiteral(std::deque<Type*> members, FTContext* tc = 0, bool isPacked = false);
-		static StructType* getLiteral(std::vector<Type*> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* createWithoutBody(Identifier name, FTContext* tc = 0, bool isPacked = false);
+		static StructType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0, bool isPacked = false);
 	};
+
+
+
+	struct TupleType : Type
+	{
+		friend struct Type;
+
+		// methods
+		size_t getElementCount();
+		Type* getElementN(size_t n);
+		std::vector<Type*> getElements();
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		// protected constructor
+		protected:
+		TupleType(std::vector<Type*> mems);
+		virtual ~TupleType() override { }
+
+		// fields (protected)
+		std::vector<Type*> members;
+
+		public:
+		static TupleType* get(std::initializer_list<Type*> members, FTContext* tc = 0);
+		static TupleType* get(std::deque<Type*> members, FTContext* tc = 0);
+		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
+	};
+
+	// struct ClassType : Type
+	// {
+	// 	friend struct Type;
+
+	// 	// methods
+	// 	Identifier getName();
+
+
+	// 	virtual std::string str() override;
+	// 	virtual std::string encodedStr() override;
+	// 	virtual bool isTypeEqual(Type* other) override;
+
+	// 	// protected constructor
+	// 	protected:
+	// 	ClassType(Identifier name, std::deque<Type*> mems, std::deque<FunctionType*> methods, bool islit, bool ispacked);
+	// 	virtual ~ClassType() override { }
+
+	// 	// fields (protected)
+	// 	bool isTypePacked;
+	// 	Identifier structName;
+	// 	std::deque<Type*> structMembers;
+
+	// 	// static funcs
+	// 	public:
+	// 	static ClassType* create(Identifier name, FTContext* tc = 0);
+	// };
 
 	struct ArrayType : Type
 	{

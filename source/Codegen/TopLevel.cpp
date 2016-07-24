@@ -21,24 +21,6 @@ static std::pair<FunctionTree*, FunctionTree*> getFuncTrees(CodegenInstance* cgi
 	return { ftree, pftree };
 }
 
-// static void addExtensionToFuncTree(CodegenInstance* cgi, ExtensionDef* ext)
-// {
-// 	auto p = getFuncTrees(cgi);
-// 	FunctionTree* ftree = p.first;
-// 	FunctionTree* pftree = p.second;
-
-// 	if(ftree->extensions.find(ext->ident.name) != ftree->extensions.end())
-// 	{
-// 		error(ext, "Only one extension for a given type can be defined in one module for now, please consolidate the"
-// 			"extensions into a single declaration.");
-// 	}
-
-// 	ftree->extensions[ext->ident.name] = ext;
-
-// 	if(ext->attribs & Attr_VisPublic)
-// 		pftree->extensions[ext->ident.name] = ext;
-// }
-
 static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
 {
 	auto p = getFuncTrees(cgi);

@@ -78,7 +78,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(!var->isStatic)
 			{
-				int i = this->nameMap[var->ident.name];
+				// int i = this->nameMap[var->ident.name];
+				size_t i = str->getElementIndex(var->ident.name);
 				iceAssert(i >= 0);
 
 				fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
@@ -247,6 +248,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 	this->ident.scope = cgi->getFullScope();
 
+
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
@@ -257,23 +259,18 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 
 
-
-	fir::Type** types = new fir::Type*[this->members.size()];
+	std::deque<std::pair<std::string, fir::Type*>> types;
 
 	// create a bodyless struct so we can use it
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident, cgi->getContext());
+
+	fir::StructType* str = fir::StructType::createWithoutBody(this->ident, cgi->getContext());
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(str, this, TypeKind::Class);
-
-
-	// because we can't (and don't want to) mangle names in the parser,
-	// we could only build an incomplete name -> index map
-	// finish it here.
 
 
 	for(Func* func : this->funcs)
@@ -288,44 +285,25 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		// fir::Type* type = cgi->getExprType(var);
-
 		iceAssert(var->inferredLType != 0);
+
 		fir::Type* type = var->inferredLType;
 
 		if(type == str)
 		{
-			error(this, "Cannot have non-pointer member of type self");
+			error(var, "Cannot have non-pointer member of type self");
 		}
-
 
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->ident.name];
-			iceAssert(i >= 0);
-
-			types[i] = cgi->getExprType(var);
+			types.push_back({ var->ident.name, cgi->getExprType(var) });
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-	std::vector<fir::Type*> vec(types, types + this->nameMap.size());
-	str->setBody(vec);
-
+	str->setBody(types);
 	this->didCreateType = true;
 
-	delete[] types;
-
 	this->createdType = str;
-
 	cgi->module->addNamedType(str->getStructName(), str);
 
 	return str;

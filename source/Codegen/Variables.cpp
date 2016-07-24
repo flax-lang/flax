@@ -58,7 +58,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->getExprType(this)->isPointerType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);
@@ -260,7 +260,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			iceAssert(val);
 			cgi->addGlobalConstructedValue(ai, val);
 		}
-		else if(ltype->isStructType() && !cgi->isTupleType(ltype))
+		else if(ltype->isStructType() && !ltype->isTupleType())
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -272,15 +272,16 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Function* candidate = cgi->getDefaultConstructor(this, ai->getType(), sb);
 			cgi->addGlobalConstructor(ai, candidate);
 		}
-		else if(cgi->isTupleType(ltype))
+		else if(ltype->isTupleType())
 		{
-			fir::StructType* stype = dynamic_cast<fir::StructType*>(ltype);
+			fir::TupleType* stype = dynamic_cast<fir::TupleType*>(ltype);
 
 			int i = 0;
 			for(fir::Type* t : stype->getElements())
 			{
-				if(cgi->isTupleType(t))
+				if(t->isTupleType())
 				{
+					// todo(missing): why?
 					error(this, "global nested tuples not supported yet");
 				}
 				else if(t->isStructType())

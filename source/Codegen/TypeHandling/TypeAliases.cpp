@@ -16,22 +16,23 @@ Result_t TypeAlias::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* TypeAlias::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
 {
-	this->ident.scope = cgi->getFullScope();
+	iceAssert(0);
+// 	this->ident.scope = cgi->getFullScope();
 
-	fir::Type* targetType = 0;
+// 	fir::Type* targetType = 0;
 
-	if(!this->isStrong)
-	{
-		targetType = cgi->getExprTypeFromStringType(this, this->origType);
-	}
-	else
-	{
-		targetType = fir::StructType::createNamed(this->ident, { cgi->getExprTypeFromStringType(this, this->origType) });
-		warn(this, "Strong type aliases are still iffy, use at your own risk");
-	}
+// 	if(!this->isStrong)
+// 	{
+// 		targetType = cgi->getExprTypeFromStringType(this, this->origType);
+// 	}
+// 	else
+// 	{
+// 		targetType = fir::StructType::create(this->ident, { cgi->getExprTypeFromStringType(this, this->origType) });
+// 		warn(this, "Strong type aliases are still iffy, use at your own risk");
+// 	}
 
-	cgi->addNewType(targetType, this, TypeKind::TypeAlias);
-	return targetType;
+// 	cgi->addNewType(targetType, this, TypeKind::TypeAlias);
+// 	return targetType;
 }
 
 

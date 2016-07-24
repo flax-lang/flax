@@ -51,18 +51,19 @@ namespace fir
 			for(auto a : st->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			if(st->isLiteralStruct())
-			{
-				return llvm::StructType::get(gc, lmems, st->isPackedStruct());
-			}
-			else
-			{
-				if(createdTypes.find(st->getStructName()) != createdTypes.end())
-					return createdTypes[st->getStructName()];
+			if(createdTypes.find(st->getStructName()) != createdTypes.end())
+				return createdTypes[st->getStructName()];
 
-				return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
-					st->isPackedStruct());
-			}
+			return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
+				st->isPackedStruct());
+		}
+		else if(TupleType* tt = type->toTupleType())
+		{
+			std::vector<llvm::Type*> lmems;
+			for(auto a : tt->getElements())
+				lmems.push_back(typeToLlvm(a, mod));
+
+			return llvm::StructType::get(gc, lmems);
 		}
 		else if(FunctionType* ft = type->toFunctionType())
 		{

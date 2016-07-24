@@ -13,8 +13,8 @@
 
 namespace fir
 {
-	struct PHINode;
 	struct StructType;
+	struct TupleType;
 }
 
 #define INTUNSPEC_TYPE_STRING	"int"
@@ -368,7 +368,6 @@ namespace Ast
 		Expr* right = 0;
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
-		fir::PHINode* phi = 0;
 	};
 
 	struct StructBase;
@@ -638,7 +637,6 @@ namespace Ast
 		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::unordered_map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 
 		fir::Function* defaultInitialiser;
@@ -706,12 +704,12 @@ namespace Ast
 		Tuple(Parser::Pin pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
-		fir::StructType* getType(Codegen::CodegenInstance* cgi);
+		fir::TupleType* getType(Codegen::CodegenInstance* cgi);
 
 		std::vector<Expr*> values;
 		std::vector<fir::Type*> ltypes;
 
-		fir::StructType* cachedLlvmType = 0;
+		fir::TupleType* createdType = 0;
 	};
 
 

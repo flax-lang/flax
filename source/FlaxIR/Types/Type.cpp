@@ -177,7 +177,17 @@ namespace fir
 
 
 
+	std::string Type::typeListToString(std::initializer_list<Type*> types)
+	{
+		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
+	}
+
 	std::string Type::typeListToString(std::deque<Type*> types)
+	{
+		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
+	}
+
+	std::string Type::typeListToString(std::vector<Type*> types)
 	{
 		// print types
 		std::string str = "{ ";
@@ -190,7 +200,8 @@ namespace fir
 		return str + " }";
 	}
 
-	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
+
+	bool Type::areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b)
 	{
 		if(a.size() != b.size()) return false;
 		if(a.size() == 0 && b.size() == 0) return true;
@@ -203,6 +214,17 @@ namespace fir
 
 		return true;
 	}
+
+	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
+	{
+		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
+	}
+
+	bool Type::areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b)
+	{
+		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
+	}
+
 
 
 	Type* Type::getPointerTo(FTContext* tc)
@@ -327,6 +349,19 @@ namespace fir
 
 
 
+
+
+
+	bool Type::isPointerTo(Type* other)
+	{
+		return other->getPointerTo() == this;
+	}
+
+	bool Type::isPointerElementOf(Type* other)
+	{
+		return this->getPointerTo() == other;
+	}
+
 	PrimitiveType* Type::toPrimitiveType()
 	{
 		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) return 0;
@@ -347,8 +382,14 @@ namespace fir
 
 	StructType* Type::toStructType()
 	{
-		if(this->typeKind != FTypeKind::NamedStruct && this->typeKind != FTypeKind::LiteralStruct) return 0;
+		if(this->typeKind != FTypeKind::Struct) return 0;
 		return dynamic_cast<StructType*>(this);
+	}
+
+	TupleType* Type::toTupleType()
+	{
+		if(this->typeKind != FTypeKind::Tuple) return 0;
+		return dynamic_cast<TupleType*>(this);
 	}
 
 	ArrayType* Type::toArrayType()
@@ -386,22 +427,16 @@ namespace fir
 		return this->toStructType() != 0;
 	}
 
-	bool Type::isNamedStruct()
+	bool Type::isTupleType()
 	{
-		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::NamedStruct);
-	}
-
-	bool Type::isLiteralStruct()
-	{
-		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::LiteralStruct);
+		return this->toTupleType() != 0
+			&& (this->typeKind == FTypeKind::Tuple);
 	}
 
 	bool Type::isPackedStruct()
 	{
 		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct)
+			&& (this->typeKind == FTypeKind::Struct)
 			&& (this->toStructType()->isTypePacked);
 	}
 
