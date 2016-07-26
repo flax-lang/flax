@@ -281,7 +281,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				iceAssert(cgi->getStructMemberByName(cls, var));
+				if(!cgi->getStructMemberByName(cls, var))
+					error(this, "Class '%s' has no such member %s", cls->ident.str().c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)

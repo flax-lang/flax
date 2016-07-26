@@ -78,11 +78,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(!var->isStatic)
 			{
-				// int i = this->nameMap[var->ident.name];
-				size_t i = str->getElementIndex(var->ident.name);
-				iceAssert(i >= 0);
-
-				fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+				fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 				var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
