@@ -75,7 +75,7 @@ namespace fir
 
 
 
-	StructType* Module::getNamedType(Identifier id)
+	Type* Module::getNamedType(Identifier id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
 			error("ICE: no such type with name %s", id.str().c_str());
@@ -83,7 +83,7 @@ namespace fir
 		return this->namedTypes[id];
 	}
 
-	void Module::addNamedType(Identifier id, StructType* type)
+	void Module::addNamedType(Identifier id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
 			error("ICE: type %s exists already", id.str().c_str());
@@ -293,9 +293,9 @@ namespace fir
 		return ret;
 	}
 
-	std::deque<StructType*> Module::getNamedTypes()
+	std::deque<Type*> Module::getNamedTypes()
 	{
-		std::deque<StructType*> ret;
+		std::deque<Type*> ret;
 		for(auto g : this->namedTypes)
 			ret.push_back(g.second);
 

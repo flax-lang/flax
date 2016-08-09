@@ -119,7 +119,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 			return cgi->extractValueFromAny(rtype, lhsPtr);
 		}
-		else if(lhs->getType()->isStructType() && lhs->getType()->toStructType()->getStructName().str() == "String"
+		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
 			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
 		{
 			// string to int8*.
@@ -131,7 +131,7 @@ namespace Operators
 			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
 		}
 		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
-			&& rtype->isStructType() && rtype->toStructType()->getStructName().str() == "String")
+			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
 		{
 			// support this shit.
 			// error(cgi, this, "Automatic char* -> String casting not yet supported");

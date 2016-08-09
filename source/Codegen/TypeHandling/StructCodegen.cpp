@@ -53,7 +53,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	fir::StructType* str = this->createdType;
+	fir::StructType* str = this->createdType->toStructType();
 	cgi->module->addNamedType(str->getStructName(), str);
 
 

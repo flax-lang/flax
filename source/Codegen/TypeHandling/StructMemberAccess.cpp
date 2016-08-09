@@ -87,9 +87,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	if(!type->isStructType() && !type->isTupleType())
+	if(!type->isStructType() && !type->isClassType() && !type->isTupleType())
 	{
-		if(type->isPointerType() && type->getPointerElementType()->isStructType())
+		if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
 		{
 			type = type->getPointerElementType(), isPtr = true;
 		}
@@ -170,17 +170,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	fir::StructType* st = type->toStructType();
-	fir::TupleType* tt = type->toTupleType();
 	TypePair_t* pair = cgi->getType(type);
 
-	if(!pair && !st && !tt)
+	if(!pair && !type->isClassType() && !type->isStructType() && !type->isTupleType())
 	{
 		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
 	}
 
 
-	if(tt)
+	if(type->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
@@ -199,9 +197,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->doTupleAccess(selfPtr, n, !immut);
 	}
-	else if(st && pair->second.second == TypeKind::Struct)
+	else if(type->isStructType() && pair->second.second == TypeKind::Struct)
 	{
 		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
+		fir::StructType* st = type->toStructType();
 
 		iceAssert(str);
 		iceAssert(self);
@@ -255,9 +254,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
 		}
 	}
-	else if(st && pair->second.second == TypeKind::Class)
+	else if(type->isClassType() && pair->second.second == TypeKind::Class)
 	{
 		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
+		fir::ClassType* ct = type->toClassType();
 
 		iceAssert(cls);
 		iceAssert(self);
@@ -275,9 +275,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(var)
 		{
-			if(st->hasElementWithName(var->name))
+			if(ct->hasElementWithName(var->name))
 			{
-				i = st->getElementIndex(var->name);
+				i = ct->getElementIndex(var->name);
 			}
 			else
 			{

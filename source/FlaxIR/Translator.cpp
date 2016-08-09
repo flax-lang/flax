@@ -29,8 +29,10 @@ namespace fir
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
 		auto& gc = llvm::getGlobalContext();
-		if(PrimitiveType* pt = type->toPrimitiveType())
+		if(type->isPrimitiveType())
 		{
+			PrimitiveType* pt = type->toPrimitiveType();
+
 			// signed/unsigned is lost.
 			if(pt->isIntegerType())
 			{
@@ -45,8 +47,10 @@ namespace fir
 					return llvm::Type::getDoubleTy(gc);
 			}
 		}
-		else if(StructType* st = type->toStructType())
+		else if(type->isStructType())
 		{
+			StructType* st = type->toStructType();
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : st->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
@@ -57,24 +61,41 @@ namespace fir
 			return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
 				st->isPackedStruct());
 		}
-		else if(TupleType* tt = type->toTupleType())
+		else if(type->isClassType())
 		{
+			ClassType* ct = type->toClassType();
+
+			std::vector<llvm::Type*> lmems;
+			for(auto a : ct->getElements())
+				lmems.push_back(typeToLlvm(a, mod));
+
+			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
+				return createdTypes[ct->getClassName()];
+
+			return createdTypes[ct->getClassName()] = llvm::StructType::create(gc, lmems, ct->getClassName().mangled());
+		}
+		else if(type->isTupleType())
+		{
+			TupleType* tt = type->toTupleType();
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : tt->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
 			return llvm::StructType::get(gc, lmems);
 		}
-		else if(FunctionType* ft = type->toFunctionType())
+		else if(type->isFunctionType())
 		{
+			FunctionType* ft = type->toFunctionType();
 			std::vector<llvm::Type*> largs;
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
 
 			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg());
 		}
-		else if(ArrayType* at = type->toArrayType())
+		else if(type->isArrayType())
 		{
+			ArrayType* at = type->toArrayType();
 			return llvm::ArrayType::get(typeToLlvm(at->getElementType(), mod), at->getArraySize());
 		}
 		else if(type->isPointerType())
@@ -89,8 +110,9 @@ namespace fir
 		{
 			return llvm::Type::getVoidTy(gc);
 		}
-		else if(LLVariableArrayType* llat = type->toLLVariableArray())
+		else if(type->isLLVariableArrayType())
 		{
+			LLVariableArrayType* llat = type->toLLVariableArray();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));

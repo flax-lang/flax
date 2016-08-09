@@ -1955,7 +1955,7 @@ namespace Codegen
 		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
 		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
-		if(type->isStructType())
+		if(type->isStructType() || type->isClassType())
 		{
 			// use pointer stuff
 			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());

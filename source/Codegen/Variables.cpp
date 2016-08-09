@@ -185,7 +185,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		this->inferredLType = vartype;
 
-		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructType())
+		if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
 			this->type = cgi->getReadableType(this->initVal);
 	}
 	else
@@ -230,7 +230,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		ValPtr_t r;
 
-		if(isGlobal && this->inferredLType->isStructType())
+		if(isGlobal && (this->inferredLType->isStructType() || this->inferredLType->isClassType()))
 		{
 			// can't call directly for globals, since we cannot call the function directly.
 			// todo: if it's a struct, and we need to call a constructor...
@@ -260,7 +260,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			iceAssert(val);
 			cgi->addGlobalConstructedValue(ai, val);
 		}
-		else if(ltype->isStructType() && !ltype->isTupleType())
+		else if(ltype->isStructType() || ltype->isClassType())
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -284,7 +284,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 					// todo(missing): why?
 					error(this, "global nested tuples not supported yet");
 				}
-				else if(t->isStructType())
+				else if(t->isStructType() || t->isClassType())
 				{
 					TypePair_t* tp = cgi->getType(t);
 					iceAssert(tp);
