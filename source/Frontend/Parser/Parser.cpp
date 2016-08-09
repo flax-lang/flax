@@ -2126,13 +2126,9 @@ namespace Parser
 			{
 				parserError(fn->pin, "Structs cannot contain functions");
 			}
-			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			else if(dynamic_cast<AssignOpOverload*>(stmt) || dynamic_cast<SubscriptOpOverload*>(stmt))
 			{
-				parserError(aoo->pin, "Structs cannot contain operator overloads");
-			}
-			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
-			{
-				parserError(soo->pin, "Structs cannot contain operator overloads");
+				parserError(stmt->pin, "Structs cannot contain operator overloads");
 			}
 			else
 			{

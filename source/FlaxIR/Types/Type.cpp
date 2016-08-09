@@ -386,6 +386,12 @@ namespace fir
 		return dynamic_cast<StructType*>(this);
 	}
 
+	ClassType* Type::toClassType()
+	{
+		if(this->typeKind != FTypeKind::Class) return 0;
+		return dynamic_cast<ClassType*>(this);
+	}
+
 	TupleType* Type::toTupleType()
 	{
 		if(this->typeKind != FTypeKind::Tuple) return 0;
@@ -424,13 +430,20 @@ namespace fir
 
 	bool Type::isStructType()
 	{
-		return this->toStructType() != 0;
+		return this->toStructType() != 0
+			&& (this->typeKind == FTypeKind::Struct);
 	}
 
 	bool Type::isTupleType()
 	{
 		return this->toTupleType() != 0
 			&& (this->typeKind == FTypeKind::Tuple);
+	}
+
+	bool Type::isClassType()
+	{
+		return this->toClassType() != 0
+			&& (this->typeKind == FTypeKind::Class);
 	}
 
 	bool Type::isPackedStruct()
