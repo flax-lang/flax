@@ -103,6 +103,7 @@ namespace fir
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
 		StructType* toStructType();
+		ClassType* toClassType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		LLVariableArrayType* toLLVariableArray();
@@ -111,6 +112,7 @@ namespace fir
 		bool isPointerElementOf(Type* other);
 
 		bool isTupleType();
+		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
 
@@ -347,32 +349,55 @@ namespace fir
 		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
 	};
 
-	// struct ClassType : Type
-	// {
-	// 	friend struct Type;
-
-	// 	// methods
-	// 	Identifier getName();
 
 
-	// 	virtual std::string str() override;
-	// 	virtual std::string encodedStr() override;
-	// 	virtual bool isTypeEqual(Type* other) override;
+	struct ClassType : Type
+	{
+		friend struct Type;
 
-	// 	// protected constructor
-	// 	protected:
-	// 	ClassType(Identifier name, std::deque<Type*> mems, std::deque<FunctionType*> methods, bool islit, bool ispacked);
-	// 	virtual ~ClassType() override { }
+		// methods
+		Identifier getClassName();
+		size_t getElementCount();
+		Type* getElementN(size_t n);
+		Type* getElement(std::string name);
+		bool hasElementWithName(std::string name);
+		size_t getElementIndex(std::string name);
+		std::vector<Type*> getElements();
 
-	// 	// fields (protected)
-	// 	bool isTypePacked;
-	// 	Identifier structName;
-	// 	std::deque<Type*> structMembers;
+		std::vector<Function*> getMethods();
+		std::vector<Function*> getMethodsWithName(std::string id);
+		Function* getMethodWithType(FunctionType* ftype);
 
-	// 	// static funcs
-	// 	public:
-	// 	static ClassType* create(Identifier name, FTContext* tc = 0);
-	// };
+		void setMembers(std::deque<std::pair<std::string, Type*>> members);
+		void setMethods(std::deque<Function*> methods);
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		// protected constructor
+		protected:
+		ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
+		virtual ~ClassType() override { }
+
+		// fields (protected)
+		Identifier className;
+		std::vector<Type*> typeList;
+		std::vector<Function*> methodList;
+
+		std::unordered_map<std::string, size_t> indexMap;
+		std::unordered_map<std::string, Type*> classMembers;
+		std::unordered_map<std::string, std::deque<Function*>> classMethodMap;
+
+		// static funcs
+		public:
+		static ClassType* createWithoutBody(Identifier name, FTContext* tc = 0);
+		static ClassType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members,
+			std::deque<Function*> methods, FTContext* tc = 0);
+	};
+
+
+
 
 	struct ArrayType : Type
 	{
