@@ -19,12 +19,24 @@ namespace TypeInfo
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				iceAssert(strt);
 
-				if(std::get<0>(k) == strt->toStructType()->getStructName().str())
+				if(std::get<0>(k) == strt->getStructName().str())
+					return;
+			}
+			else if(stype->isClassType())
+			{
+				fir::ClassType* clst = dynamic_cast<fir::ClassType*>(stype);
+				iceAssert(clst);
+
+				if(std::get<0>(k) == clst->getClassName().str())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(stype->toStructType()->getStructName().str(), stype, etype));
+		std::string id;
+		if(stype->isStructType()) id = stype->toStructType()->getStructName().str();
+		else if(stype->isClassType()) id = stype->toClassType()->getClassName().str();
+
+		cgi->rootNode->typeList.push_back(std::make_tuple(id, stype, etype));
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)

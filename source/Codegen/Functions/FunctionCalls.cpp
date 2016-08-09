@@ -119,17 +119,17 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
 
-			if(checkCVarArg && (arg->getType()->isStructType() || arg->getType()->isTupleType()))
+			if(checkCVarArg && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
-				fir::StructType* st = arg->getType()->toStructType();
-				if(st->isStructType() && st->getStructName().str() != "String")
-				{
-					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
-				}
-				else if(st->isStructType() && st->getStructName().str() == "String")
+				fir::Type* st = arg->getType();
+				if(st->isClassType() && st->toClassType()->getClassName().str() == "String")
 				{
 					// this function knows what to do.
 					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
+				}
+				else if(st->isClassType() || st->isStructType())
+				{
+					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
 				}
 			}
 
