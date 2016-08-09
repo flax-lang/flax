@@ -81,7 +81,7 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std
 	if(!tp) error(this, "Type %s does not exist in the scope %s", this->ident.name.c_str(), this->ident.str().c_str());
 
 	iceAssert(tp->first);
-	this->createdType = tp->first->toStructType();
+	this->createdType = tp->first->toClassType();
 
 
 	return tp->first;
@@ -126,7 +126,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	iceAssert(tp->first);
 	iceAssert(tp->second.first);
 
-	fir::StructType* fstr = tp->first->toStructType();
+	fir::ClassType* fstr = tp->first->toClassType();
 	StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
 
 	iceAssert(fstr);

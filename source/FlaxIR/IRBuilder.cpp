@@ -943,6 +943,10 @@ namespace fir
 		{
 			return this->addInstruction(doGEPOnCompoundType(st, ptr, ptrIndex, memberIndex), vname);
 		}
+		else if(ClassType* st = dynamic_cast<ClassType*>(ptr->getType()->getPointerElementType()))
+		{
+			return this->addInstruction(doGEPOnCompoundType(st, ptr, ptrIndex, memberIndex), vname);
+		}
 		else if(TupleType* tt = dynamic_cast<TupleType*>(ptr->getType()->getPointerElementType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(tt, ptr, ptrIndex, memberIndex), vname);
@@ -962,6 +966,10 @@ namespace fir
 		iceAssert(structPtr->getType()->isPointerType() && "ptr is not a pointer");
 
 		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
+		{
+			return this->addInstruction(doGEPOnCompoundType(st, structPtr, memberIndex), vname);
+		}
+		if(ClassType* st = dynamic_cast<ClassType*>(structPtr->getType()->getPointerElementType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(st, structPtr, memberIndex), vname);
 		}
@@ -999,6 +1007,18 @@ namespace fir
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, st->getElement(memberName)->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(st->getElementIndex(memberName)) });
+
+			if(structPtr->isImmutable())
+				instr->realOutput->immut = true;
+
+			return this->addInstruction(instr, memberName);
+		}
+		else if(ClassType* ct = dynamic_cast<ClassType*>(structPtr->getType()->getPointerElementType()))
+		{
+			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
+
+			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, ct->getElement(memberName)->getPointerTo(),
+				{ structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName)) });
 
 			if(structPtr->isImmutable())
 				instr->realOutput->immut = true;

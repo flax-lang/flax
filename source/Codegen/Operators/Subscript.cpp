@@ -221,7 +221,7 @@ namespace Operators
 
 		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
 		{
-			if(atype->isStructType())
+			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
 
 			error(user, "Can only index on pointer or array types, got %s", atype->str().c_str());
@@ -240,7 +240,7 @@ namespace Operators
 		fir::Value* gep = nullptr;
 		fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
 
-		if(atype->isStructType() || atype->isArrayType())
+		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
 		{
 			gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
 		}

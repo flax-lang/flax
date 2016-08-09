@@ -69,6 +69,10 @@ static std::string mangleType(fir::Type* t)
 	{
 		return mangleScopeOnly(t->toStructType()->getStructName());
 	}
+	else if(t->isClassType())
+	{
+		return mangleScopeOnly(t->toClassType()->getClassName());
+	}
 	else if(t->isTupleType())
 	{
 		std::string ret = "ST" + std::to_string(t->toStructType()->getElementCount()) + "SM";

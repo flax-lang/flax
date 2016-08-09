@@ -632,7 +632,7 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
 
 		bool didCreateType = false;
-		fir::StructType* createdType = 0;
+		fir::Type* createdType = 0;
 
 		Identifier ident;
 

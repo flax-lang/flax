@@ -54,18 +54,19 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	fir::StructType* str = this->createdType;
+	fir::ClassType* cls = this->createdType->toClassType();
 
 	// generate initialiser
-	auto defaultInitId = this->ident;
-	defaultInitId.kind = IdKind::AutoGenFunc;
-	defaultInitId.name = "init_" + defaultInitId.name;
-	defaultInitId.functionArguments = { str->getPointerTo() };
-
-	this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
-		fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
-
 	{
+		auto defaultInitId = this->ident;
+		defaultInitId.kind = IdKind::AutoGenFunc;
+		defaultInitId.name = "init_" + defaultInitId.name;
+		defaultInitId.functionArguments = { cls->getPointerTo() };
+
+		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
+			fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+
+
 		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
 
 		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
@@ -97,7 +98,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-				if(var->inferredLType->isStructType())
+				if(var->inferredLType->isStructType() || var->inferredLType->isClassType())
 				{
 					TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
 					iceAssert(cmplxtype);
@@ -137,6 +138,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// pass 1
 	doCodegenForMemberFunctions(cgi, this);
+	{
+		cls->setMethods(this->lfuncs);
+	}
 
 
 	// do comprops here:
@@ -257,16 +261,20 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 	std::deque<std::pair<std::string, fir::Type*>> types;
 
+
+
 	// create a bodyless struct so we can use it
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
-
-	fir::StructType* str = fir::StructType::createWithoutBody(this->ident, cgi->getContext());
+	fir::ClassType* cls = fir::ClassType::createWithoutBody(this->ident, cgi->getContext());
 
 	iceAssert(this->createdType == 0);
-	cgi->addNewType(str, this, TypeKind::Class);
+	cgi->addNewType(cls, this, TypeKind::Class);
+
+
+
 
 
 	for(Func* func : this->funcs)
@@ -285,7 +293,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 		fir::Type* type = var->inferredLType;
 
-		if(type == str)
+		if(type == cls)
 		{
 			error(var, "Cannot have non-pointer member of type self");
 		}
@@ -296,13 +304,13 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 		}
 	}
 
-	str->setBody(types);
+	cls->setMembers(types);
 	this->didCreateType = true;
 
-	this->createdType = str;
-	cgi->module->addNamedType(str->getStructName(), str);
+	this->createdType = cls;
+	cgi->module->addNamedType(cls->getClassName(), cls);
 
-	return str;
+	return cls;
 }
 
 
