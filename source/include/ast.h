@@ -674,6 +674,26 @@ namespace Ast
 		Root* parentRoot = 0;
 	};
 
+	struct ProtocolDef : Expr
+	{
+		~ProtocolDef();
+		ProtocolDef(Parser::Pin pos, std::string name) : Expr(pos)
+		{
+			this->ident.name = name;
+			this->ident.kind = IdKind::Struct;
+		}
+
+		fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { });
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+
+		Identifier ident;
+
+		std::deque<std::string> protocolstrs;
+
+		std::deque<Func*> funcs;
+		std::deque<AssignOpOverload*> assignmentOverloads;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+	};
 
 
 
@@ -711,6 +731,14 @@ namespace Ast
 
 		fir::TupleType* createdType = 0;
 	};
+
+
+
+
+
+
+
+
 
 
 	enum class MAType

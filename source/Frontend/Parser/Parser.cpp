@@ -517,6 +517,10 @@ namespace Parser
 					ps.rootNode->topLevelExpressions.push_back(parseClass(ps));
 					break;
 
+				case TType::Protocol:
+					ps.rootNode->topLevelExpressions.push_back(parseProtocol(ps));
+					break;
+
 				case TType::Enum:
 					ps.rootNode->topLevelExpressions.push_back(parseEnum(ps));
 					break;
@@ -633,6 +637,9 @@ namespace Parser
 
 				case TType::Class:
 					return parseClass(ps);
+
+				case TType::Protocol:
+					return parseProtocol(ps);
 
 				case TType::Enum:
 					return parseEnum(ps);
@@ -1053,9 +1060,14 @@ namespace Parser
 		Token front = ps.front();
 		FuncDecl* decl = parseFuncDecl(ps);
 
-		auto ret = CreateAST(Func, front, decl, parseBracedBlock(ps));
-
-		return ret;
+		if(ps.front().type == TType::LBrace)
+		{
+			return CreateAST(Func, front, decl, parseBracedBlock(ps));
+		}
+		else
+		{
+			return CreateAST(Func, front, decl, 0);
+		}
 	}
 
 
@@ -2024,7 +2036,7 @@ namespace Parser
 		return ret;
 	}
 
-	static void parseGenericTypeList(ParserState& ps, StructBase* sb)
+	static void parseGenericTypeList(ParserState& ps, Expr* sb)
 	{
 		while(true)
 		{
@@ -2148,7 +2160,7 @@ namespace Parser
 	ClassDef* parseClass(ParserState& ps)
 	{
 		Token tok_cls = ps.eat();
-		iceAssert(tok_cls.type == TType::Class || tok_cls.type == TType::Extension);
+		iceAssert(tok_cls.type == TType::Class);
 
 		ps.isParsingStruct = true;
 		Token tok_id = ps.eat();
@@ -2174,10 +2186,6 @@ namespace Parser
 			ps.eat();
 			cls->protocolstrs = parseInheritanceList(ps, cls->ident.name);
 		}
-
-
-
-
 
 
 		// parse a block.
@@ -2239,7 +2247,6 @@ namespace Parser
 
 	ExtensionDef* parseExtension(ParserState& ps)
 	{
-
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Extension);
 
@@ -2263,8 +2270,6 @@ namespace Parser
 			ps.eat();
 			ext->protocolstrs = parseInheritanceList(ps, ext->ident.name);
 		}
-
-
 
 
 
@@ -2305,29 +2310,88 @@ namespace Parser
 		ps.isParsingStruct = false;
 		delete body;
 		return ext;
+	}
 
 
 
-		#if 0
-		Token tok_ext = ps.front();
-		iceAssert(tok_ext.type == TType::Extension);
 
-		ExtensionDef* ext = CreateAST(ExtensionDef, tok_ext, "");
-		ClassDef* cls = parseClass(ps);
 
-		ext->attribs				= cls->attribs;
-		ext->funcs					= cls->funcs;
-		ext->members				= cls->members;
-		ext->nameMap				= cls->nameMap;
-		ext->name					= cls->name;
-		ext->cprops					= cls->cprops;
-		ext->protocolstrs			= cls->protocolstrs;
-		ext->assignmentOverloads	= cls->assignmentOverloads;
-		ext->subscriptOverloads		= cls->subscriptOverloads;
 
-		delete cls;
-		return ext;
-		#endif
+
+	ProtocolDef* parseProtocol(ParserState& ps)
+	{
+		Token tok_cls = ps.eat();
+		iceAssert(tok_cls.type == TType::Protocol);
+
+		ps.isParsingStruct = true;
+		Token tok_id = ps.eat();
+
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier (got %s)", tok_id.text.c_str());
+
+		std::string id = tok_id.text;
+		ProtocolDef* prot = CreateAST(ProtocolDef, tok_id, id);
+
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		prot->attribs = attr;
+
+		// check for a colon.
+		ps.skipNewline();
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			parseGenericTypeList(ps, prot);
+		}
+		if(ps.front().type == TType::Colon)
+		{
+			ps.eat();
+			prot->protocolstrs = parseInheritanceList(ps, prot->ident.name);
+		}
+
+
+
+
+
+
+		// parse a block.
+		BracedBlock* body = parseBracedBlock(ps);
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
+		for(Expr* stmt : body->statements)
+		{
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				parserError(cprop->pin, "Protocols cannot contain properties (yet?)");
+			}
+			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			{
+				parserError(var->pin, "Protocols cannot contain properties (yet?)");
+			}
+			else if(Func* func = dynamic_cast<Func*>(stmt))
+			{
+				prot->funcs.push_back(func);
+			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				prot->assignmentOverloads.push_back(aoo);
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				prot->subscriptOverloads.push_back(soo);
+			}
+			else if(dynamic_cast<DummyExpr*>(stmt))
+			{
+				continue;
+			}
+			else
+			{
+				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+			}
+		}
+
+		ps.isParsingStruct = false;
+		delete body;
+		return prot;
 	}
 
 

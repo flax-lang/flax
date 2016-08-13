@@ -252,6 +252,7 @@ namespace Parser
 	Ast::Number*			parseNumber(ParserState& tokens);
 	Ast::VarDecl*			parseVarDecl(ParserState& tokens);
 	Ast::Dealloc*			parseDealloc(ParserState& tokens);
+	Ast::ProtocolDef*		parseProtocol(ParserState& tokens);
 	Ast::Expr*				parseInitFunc(ParserState& tokens);
 	Ast::Continue*			parseContinue(ParserState& tokens);
 	Ast::FuncDecl*			parseFuncDecl(ParserState& tokens);

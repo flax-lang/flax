@@ -4,10 +4,12 @@
 
 import String
 
-// protocol StringConvertible
-// {
-// 	func toString() -> String
-// }
+protocol StringConvertible
+{
+	func toString() -> String
+	func toString1() -> String
+	func toString2() -> String
+}
 
 // protocol Equatable
 // {

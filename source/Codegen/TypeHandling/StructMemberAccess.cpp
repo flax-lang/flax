@@ -301,6 +301,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			size_t i = 0;
 			std::deque<FuncPair_t> candidates;
+
 			for(auto f : cls->funcs)
 			{
 				FuncPair_t fp = { cls->lfuncs[i], f->decl };
