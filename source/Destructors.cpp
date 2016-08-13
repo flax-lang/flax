@@ -31,6 +31,10 @@ namespace Ast
 	{
 	}
 
+	ProtocolDef::~ProtocolDef()
+	{
+	}
+
 	VarRef::~VarRef()
 	{
 
