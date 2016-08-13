@@ -191,6 +191,23 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
+class TestingClass : StringConvertible
+{
+	init()
+	{
+	}
+
+	func toString() -> String
+	{
+		"hello"
+	}
+
+	func returnSelf() -> TestingClass
+	{
+		return TestingClass()
+	}
+}
+
 @nomangle func mtest(k: int, g: int)
 {
 	printf("(%d, %d)\n", k, g)

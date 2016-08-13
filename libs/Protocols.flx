@@ -4,11 +4,10 @@
 
 import String
 
-protocol StringConvertible
+public protocol StringConvertible
 {
 	func toString() -> String
-	func toString1() -> String
-	func toString2() -> String
+	func returnSelf() -> Self
 }
 
 // protocol Equatable
