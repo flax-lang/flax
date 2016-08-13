@@ -1,4 +1,4 @@
-// FuncCodegen.cpp
+// Function.cpp
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -92,6 +92,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		didRecurse = false;
 	}
+
+	if(this->block == 0)
+		error(this, "Function needs a body in this context");
 
 
 
