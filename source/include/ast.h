@@ -644,7 +644,6 @@ namespace Ast
 		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
 
-
 	struct ClassDef : StructBase
 	{
 		~ClassDef();
@@ -659,6 +658,8 @@ namespace Ast
 		std::deque<AssignOpOverload*> assignmentOverloads;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::unordered_map<Func*, fir::Function*> functionMap;
+
+		std::deque<ProtocolDef*> conformedProtocols;
 	};
 
 
@@ -685,6 +686,8 @@ namespace Ast
 
 		fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { });
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+
+		bool checkClassConformity(Codegen::CodegenInstance* cgi, ClassDef* cls);
 
 		Identifier ident;
 
