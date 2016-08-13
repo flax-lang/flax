@@ -12,6 +12,8 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
+		if(stype == 0) return;
+
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(stype->isStructType())

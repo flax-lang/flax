@@ -183,7 +183,7 @@ namespace Codegen
 				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
-		// if there isn't one, replace it.
+		// if there isn't one, add it.
 		ftree->types[atype->ident.name] = tpair;
 
 
@@ -648,6 +648,17 @@ namespace Codegen
 
 			if(!found/* && gf.first->attribs & Attr_VisPublic*/)
 				clone->genericFunctions.push_back(gf);
+		}
+
+		for(auto prot : ft->protocols)
+		{
+			for(auto cprot : clone->protocols)
+			{
+				if(prot.first == cprot.first && prot.second != cprot.second)
+					error(prot.second, "conflicting protocols with same names");
+			}
+
+			clone->protocols[prot.first] = prot.second;
 		}
 
 
