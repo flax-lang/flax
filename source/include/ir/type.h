@@ -9,13 +9,12 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include "ast.h"
-
 #include <string>
 #include <vector>
 #include <deque>
 #include <unordered_map>
 
+#include "ir/identifier.h"
 
 namespace fir
 {
@@ -33,6 +32,8 @@ namespace fir
 	struct TupleType;
 	struct ClassType;
 	struct LLVariableArrayType;
+
+	struct Function;
 
 	struct FTContext
 	{

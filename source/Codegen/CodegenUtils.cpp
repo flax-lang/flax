@@ -1437,6 +1437,41 @@ namespace Codegen
 		}
 	}
 
+	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
+	{
+		std::deque<std::string> nses = this->unwrapNamespacedType(protstr);
+		std::string protname = nses.back();
+		nses.pop_back();
+
+		auto curDepth = nses;
+		ProtocolDef* prot = 0;
+		for(size_t i = 0; i <= nses.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto& f : ft->protocols)
+			{
+				if(f.first == protname)
+				{
+					prot = f.second;
+					break;
+				}
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		if(!prot)
+			error(user, "Undeclared protocol '%s'", protname.c_str());
+
+		return prot;
+	}
+
+
+
+
 
 
 
@@ -1487,10 +1522,9 @@ namespace Codegen
 				int pos = 0;
 				for(auto p : candidate->params)
 				{
-					fir::Type* ltype = this->getExprType(p, true, false);	// allowFail = true, setInferred = false
-					if(!ltype)
+					std::string s = p->type.strType;
+					if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
 					{
-						std::string s = p->type.strType;
 						typePositions[s].push_back(pos);
 					}
 					else
@@ -1503,7 +1537,7 @@ namespace Codegen
 
 
 				// this needs to be basically a fully manual check.
-				// 1. check that the generic types match.
+				// 1. check that the generic types match (ie. all the Ts are the same type, all the Ks are the same, etc.)
 				for(auto pair : typePositions)
 				{
 					fir::Type* ftype = this->getExprType(fc->params[pair.second[0]]);
@@ -1513,6 +1547,7 @@ namespace Codegen
 							goto fail;	// ew goto
 					}
 				}
+
 
 				// 2. check that the concrete types match.
 				for(int k : nonGenericTypes)
@@ -1535,6 +1570,33 @@ namespace Codegen
 				{
 					tm[pair.first] = this->getExprType(fc->params[pair.second[0]]);
 				}
+
+
+				// last phase: ensure the type constraints are met
+				for(auto cst : tm)
+				{
+					TypeConstraints_t constr = candidate->genericTypes[cst.first];
+					if((constr.pointerDegree > 0 && !cst.second->isPointerType())
+						&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
+					{
+						goto fail;
+					}
+
+					for(auto protstr : constr.protocols)
+					{
+						ProtocolDef* prot = this->resolveProtocolName(candidate, protstr);
+						iceAssert(prot);
+
+						bool doesConform = prot->checkTypeConformity(this, cst.second);
+						fprintf(stderr, "checking conformity to %s: %d\n", protstr.c_str(), doesConform);
+
+
+						if(!doesConform)
+							goto fail;
+					}
+				}
+
+
 
 
 				goto success;
