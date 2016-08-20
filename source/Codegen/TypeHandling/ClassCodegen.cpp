@@ -171,34 +171,10 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	for(auto protstr : this->protocolstrs)
 	{
-		std::deque<std::string> nses = cgi->unwrapNamespacedType(protstr);
-		std::string protname = nses.back();
-		nses.pop_back();
+		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
+		iceAssert(prot);
 
-		auto curDepth = nses;
-		ProtocolDef* prot = 0;
-		for(size_t i = 0; i <= nses.size(); i++)
-		{
-			FunctionTree* ft = cgi->getCurrentFuncTree(&curDepth, cgi->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto& f : ft->protocols)
-			{
-				if(f.first == protname)
-				{
-					prot = f.second;
-					break;
-				}
-			}
-
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
-		}
-
-		if(!prot)
-			error(this, "Unknown protocol '%s'", protname.c_str());
-
-		iceAssert(prot->checkClassConformity(cgi, this));
+		iceAssert(prot->checkTypeConformity(cgi, cls));
 		this->conformedProtocols.push_back(prot);
 	}
 

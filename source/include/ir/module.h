@@ -8,8 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include "errors.h"
-
 #include <map>
 #include <deque>
 #include <string>

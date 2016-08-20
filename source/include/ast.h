@@ -10,6 +10,7 @@
 
 #include "typeinfo.h"
 #include "defs.h"
+#include "ir/identifier.h"
 
 namespace fir
 {
@@ -17,101 +18,7 @@ namespace fir
 	struct TupleType;
 }
 
-#define INTUNSPEC_TYPE_STRING	"int"
-#define INT8_TYPE_STRING		"int8"
-#define INT16_TYPE_STRING		"int16"
-#define INT32_TYPE_STRING		"int32"
-#define INT64_TYPE_STRING		"int64"
 
-#define UINTUNSPEC_TYPE_STRING	"uint"
-#define UINT8_TYPE_STRING		"uint8"
-#define UINT16_TYPE_STRING		"uint16"
-#define UINT32_TYPE_STRING		"uint32"
-#define UINT64_TYPE_STRING		"uint64"
-
-#define FLOAT32_TYPE_STRING		"float32"
-#define FLOAT64_TYPE_STRING		"float64"
-
-#define FLOAT_TYPE_STRING		"float"
-
-#define BOOL_TYPE_STRING		"bool"
-#define VOID_TYPE_STRING		"void"
-
-#define FUNC_KEYWORD_STRING		"func"
-
-
-
-// todo: name overhaul
-// stop using std::string for names
-// it's stupid and inflexible
-// and *DO NOT* mangle function args during codegen to FIR
-// name mangling should only be done at one location: when creating the actual function.
-
-// note: debate moving FIR over to an identifier system like this
-// FIR should do the argument type mangling, anyway
-
-// here: store the scope and args (if applicable) of a function
-// for foo::bar::qux::some_function(a: int, b: string)
-// scope would contain { foo, bar, qux }
-// actualname would contain { some_function }
-// args would contain { int, string }
-
-
-enum class IdKind
-{
-	Invalid,
-	Name,
-	Variable,
-	Function,
-	Method,
-	Getter,
-	Setter,
-	Operator,
-	AutoGenFunc,
-	ModuleConstructor,
-	Struct,
-};
-
-struct Identifier
-{
-	std::string name;
-	std::deque<std::string> scope;
-	IdKind kind = IdKind::Invalid;
-
-	std::deque<fir::Type*> functionArguments;
-
-	// defined in CodegenUtils.cpp
-	bool operator == (const Identifier& other) const;
-	bool operator != (const Identifier& other) const { return !(*this == other); }
-
-	std::string str() const;
-	std::string mangled() const;
-
-	Identifier() { }
-	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
-	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
-};
-
-namespace std
-{
-	template<>
-	struct hash<Identifier>
-	{
-		std::size_t operator()(const Identifier& k) const
-		{
-			using std::size_t;
-			using std::hash;
-			using std::string;
-
-			// Compute individual hash values for first,
-			// second and third and combine them using XOR
-			// and bit shifting:
-
-			// return ((hash<string>()(k.name) ^ (hash<std::deque<std::string>>()(k.scope) << 1)) >> 1) ^ (hash<int>()(k.third) << 1);
-			return hash<string>()(k.str());
-		}
-	};
-}
 
 
 
@@ -394,7 +301,6 @@ namespace Ast
 
 		bool isFFI = false;
 		bool isStatic = false;
-		bool wasCalled = false;
 
 		StructBase* parentClass = 0;
 		FFIType ffiType = FFIType::C;
@@ -402,7 +308,7 @@ namespace Ast
 		Identifier ident;
 
 		std::deque<VarDecl*> params;
-		std::deque<std::string> genericTypes;
+		std::map<std::string, TypeConstraints_t> genericTypes;
 	};
 
 
@@ -681,7 +587,8 @@ namespace Ast
 		fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { });
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
-		bool checkClassConformity(Codegen::CodegenInstance* cgi, ClassDef* cls);
+		bool checkTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
+		void assertTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
 
 		Identifier ident;
 

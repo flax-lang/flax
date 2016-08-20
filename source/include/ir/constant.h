@@ -9,8 +9,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include "errors.h"
-
 #include <string>
 #include <vector>
 #include <deque>

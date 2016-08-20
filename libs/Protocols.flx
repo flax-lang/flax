@@ -7,6 +7,10 @@ import String
 public protocol StringConvertible
 {
 	func toString() -> String
+}
+
+public protocol SelfReturning
+{
 	func returnSelf() -> Self
 }
 
