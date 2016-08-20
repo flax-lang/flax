@@ -489,6 +489,32 @@ namespace fir
 		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 	};
+
+
+
+
+
+
+
+	struct ProtocolType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		// protected constructor
+		protected:
+		ProtocolType(Identifier id);
+		virtual ~ProtocolType() override { }
+
+		Identifier protocolName;
+
+		// static funcs
+		public:
+		static ProtocolType* get(std::deque<Type*> args, Type* ret, FTContext* tc = 0);
+	};
 }
 
 
