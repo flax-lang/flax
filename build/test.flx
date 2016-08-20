@@ -57,8 +57,8 @@ import tests.limits
 	// generics
 	printf("*** GENERICS TEST ***\n")
 	doGenericsTest()
-	// let s = generic_test(5, "HELLO WORLD #")
-	// printf("s = %s\n", s)
+	let s = generic_test(5, "HELLO WORLD #")
+	printf("s = %s\n", s)
 	printf("\n\n")
 
 
@@ -191,7 +191,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
-class TestingClass : StringConvertible
+class TestingClass : SelfReturning
 {
 	init()
 	{
@@ -209,16 +209,21 @@ class TestingClass : StringConvertible
 }
 
 
-// func takeStringConvertible<T : StringConvertible>(thing: T) -> String
-// {
-// 	return thing.toString()
-// }
+func takeStringConvertible<T : StringConvertible & SelfReturning>(thing: T) -> String
+{
+	return thing.toString()
+}
 
 
 
 @nomangle func mtest(k: int, g: int)
 {
 	printf("(%d, %d)\n", k, g)
+
+	let x = TestingClass()
+	let y = TestingClass()
+
+	printf("(%s, %s)\n", takeStringConvertible(x), takeStringConvertible(y))
 }
 
 

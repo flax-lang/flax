@@ -269,6 +269,8 @@ namespace Codegen
 
 
 
+		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
+
 
 
 

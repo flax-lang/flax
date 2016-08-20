@@ -10,39 +10,85 @@ using namespace Ast;
 using namespace Codegen;
 
 
-bool ProtocolDef::checkClassConformity(CodegenInstance* cgi, ClassDef* cls)
+static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* type, std::deque<FuncDecl*>* missing,
+	Expr** user, std::string* name)
 {
-	std::deque<FuncDecl*> missing;
+	TypePair_t* tp = cgi->getType(type);
 
-	for(Func* f : this->funcs)
+	if(tp && tp->second.second == TypeKind::Class)
 	{
-		FuncDecl* fn = f->decl;
+		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		iceAssert(cls);
 
+		*user = cls;
+		*name = cls->ident.name;
+
+		// first check if we're even listed -- don't allow implicit conformity
 		bool found = false;
-		for(auto cf : cls->funcs)
+		for(auto ps : cls->protocolstrs)
 		{
-			fir::Function* fcf = cls->functionMap[cf];
-
-			// fcf's first argument is self -- remove that.
-			auto tl = fcf->getType()->getArgumentTypes();
-			tl.pop_front();
-
-			int _ = 0;
-			if(fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
-				&& ((fn->type.strType == "Self" && cls->createdType == fcf->getReturnType()) || cgi->getExprType(fn) == fcf->getReturnType()))
+			if(cgi->resolveProtocolName(cls, ps) == prot)
 			{
 				found = true;
 				break;
 			}
 		}
 
-		if(!found)
-			missing.push_back(fn);
+		if(!found) return false;
+
+
+		for(Func* f : prot->funcs)
+		{
+			FuncDecl* fn = f->decl;
+
+			bool found = false;
+			for(auto cf : cls->funcs)
+			{
+				fir::Function* fcf = cls->functionMap[cf];
+
+				// fcf's first argument is self -- remove that.
+				auto tl = fcf->getType()->getArgumentTypes();
+				tl.pop_front();
+
+				int _ = 0;
+				if(fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
+					&& ((fn->type.strType == "Self" && cls->createdType == fcf->getReturnType()) || cgi->getExprType(fn) == fcf->getReturnType()))
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if(!found)
+				(*missing).push_back(fn);
+		}
+
+		return (*missing).size() == 0;
 	}
+
+	return false;
+}
+
+
+bool ProtocolDef::checkTypeConformity(CodegenInstance* cgi, fir::Type* type)
+{
+	Expr* __ = 0;
+	std::string ___;
+
+	std::deque<FuncDecl*> _;
+	return _checkConform(cgi, this, type, &_, &__, &___);
+}
+
+void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
+{
+	std::string name;
+	Expr* user = 0;
+	std::deque<FuncDecl*> missing;
+	_checkConform(cgi, this, type, &missing, &user, &name);
 
 	if(missing.size() > 0)
 	{
-		errorNoExit(cls, "Class '%s' does not conform to protocol '%s'", cls->ident.name.c_str(), this->ident.name.c_str());
+		errorNoExit(user, "Class '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
 
 		std::string list;
 		for(auto d : missing)
@@ -52,8 +98,6 @@ bool ProtocolDef::checkClassConformity(CodegenInstance* cgi, ClassDef* cls)
 
 		doTheExit();
 	}
-
-	return true;
 }
 
 

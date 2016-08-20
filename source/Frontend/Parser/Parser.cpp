@@ -33,7 +33,7 @@ namespace Parser
 	#define ATTR_STR_RAW				"raw"
 	#define ATTR_STR_OPERATOR			"operator"
 
-	static ParserState* staticState;
+	static ParserState* staticState = 0;
 
 	std::string getModuleName(std::string filename)
 	{
@@ -834,7 +834,7 @@ namespace Parser
 		Token func_id = ps.eat();
 		std::string id = func_id.text;
 
-		std::deque<std::string> genericTypes;
+		std::map<std::string, TypeConstraints_t> genericTypes;
 
 		// expect a left bracket
 		Token paren = ps.eat();
@@ -844,34 +844,72 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			Expr* inner = parseType(ps);
-			iceAssert(inner->type.isLiteral);
+			if(ps.front().type == TType::RAngle)
+				parserError("Empty type parameter list");
 
-			genericTypes.push_back(inner->type.strType);
-
-			Token angleOrComma = ps.eat();
-			if(angleOrComma.type == TType::Comma)
+			while(ps.front().type != TType::RAngle)
 			{
-				// parse more.
-				Token tok;
-				while(true)
+				if(ps.front().type == TType::Identifier)
 				{
-					Expr* gtype = parseType(ps);
-					iceAssert(gtype->type.isLiteral);
+					std::string gt = ps.eat().text;
+					TypeConstraints_t constrs;
 
-					genericTypes.push_back(gtype->type.strType);
+					if(ps.front().type == TType::Colon)
+					{
+						ps.eat();
+						if(ps.front().type != TType::Identifier)
+							parserError("Expected identifier after beginning of type constraint list");
 
-					tok = ps.eat();
-					if(tok.type == TType::Comma)		continue;
-					else if(tok.type == TType::RAngle)	break;
-					else								parserError("Expected '>' or ','");
+						while(ps.front().type == TType::Identifier)
+						{
+							constrs.protocols.push_back(ps.eat().text);
+
+							if(ps.front().type == TType::Ampersand)
+							{
+								ps.eat();
+							}
+							else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+							{
+								parserError("Expected ',' or '>' to end type parameter list (1)");
+							}
+						}
+					}
+					else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+					{
+						parserError("Expected ',' or '>' to end type parameter list (2)");
+					}
+
+					for(size_t i = gt.size() - 1; i > 0; i--)
+					{
+						if(gt[i] == '*')
+							constrs.pointerDegree++;
+					}
+
+					gt = gt.substr(0, gt.size() - constrs.pointerDegree);
+
+					genericTypes[gt] = constrs;
+				}
+				else if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+				}
+				else if(ps.front().type != TType::RAngle)
+				{
+					parserError("Expected '>' to end type parameter list");
 				}
 			}
-			else if(angleOrComma.type != TType::RAngle)
-				parserError("Expected '>' or ','");
 
-			ps.eat();
+			iceAssert(ps.eat().type == TType::RAngle);
+
+			if(ps.eat().type != TType::LParen)
+				parserError("Expected '(' after function name");
+
 		}
+
+
+
+
+
 
 		bool isCVA = false;
 		bool isVariableArg = false;
@@ -896,7 +934,7 @@ namespace Parser
 				}
 				else
 				{
-					parserError("Expected identifier");
+					parserError(tok_id, "Expected identifier (got '%s')", tok_id.text.c_str());
 				}
 			}
 

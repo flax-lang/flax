@@ -16,6 +16,8 @@
 
 #define TAB_WIDTH	4
 
+#include "iceassert.h"
+
 // forward declarations.
 namespace fir
 {
@@ -121,19 +123,16 @@ namespace Codegen
 }
 
 
-inline void error_and_exit(const char* s, ...) __attribute__((noreturn));
-inline void error_and_exit(const char* s, ...)
+struct TypeConstraints_t
 {
-	va_list ap;
-	va_start(ap, s);
-	vfprintf(stderr, s, ap);
-	va_end(ap);
-	abort();
-}
+	std::deque<std::string> protocols;
+	int pointerDegree = 0;
 
-#define __nothing
-#define iceAssert(x)		((x) ? ((void) (0)) : error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false", __FILE__, __LINE__, #x))
-
+	bool operator == (const TypeConstraints_t& other) const
+	{
+		return this->protocols == other.protocols && this->pointerDegree == other.pointerDegree;
+	}
+};
 
 
 
