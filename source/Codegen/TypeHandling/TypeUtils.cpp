@@ -104,9 +104,7 @@ namespace Codegen
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
-				{
-					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
-				}
+					GenError::unknownSymbol(this, expr, ref->name, SymbolType::Variable);
 
 				auto x = this->getExprType(decl, allowFail);
 				return x;
@@ -143,9 +141,12 @@ namespace Codegen
 						}
 						else
 						{
-							fir::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
-							if(genericMaybe)
-								return genericMaybe->getReturnType();
+							auto genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
+							if(genericMaybe.first)
+							{
+								fc->cachedResolveTarget = Resolved_t(genericMaybe);
+								return genericMaybe.first->getReturnType();
+							}
 
 							GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params);
 						}
