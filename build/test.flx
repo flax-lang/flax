@@ -208,6 +208,14 @@ class TestingClass : StringConvertible
 	}
 }
 
+
+func takeStringConvertible<T : StringConvertible>(thing: T) -> String
+{
+	return thing.toString()
+}
+
+
+
 @nomangle func mtest(k: int, g: int)
 {
 	printf("(%d, %d)\n", k, g)
