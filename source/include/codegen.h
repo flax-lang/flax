@@ -74,19 +74,20 @@ namespace Codegen
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
+
+		// generic stuff
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
+		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
+
 
 		TypeMap_t typeMap;
 
 		// custom operator stuff
 		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
-
 		std::deque<Ast::Func*> funcScopeStack;
 
 		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
-
-		DependencyGraph* dependencyGraph = 0;
 
 
 		struct
@@ -155,9 +156,11 @@ namespace Codegen
 		// legitimate, fir::Type* things.
 
 		void pushGenericTypeStack();
-		void pushGenericType(std::string id, fir::Type* type);
-		fir::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
+		void pushGenericType(std::string id, fir::Type* type);
+		void pushGenericTypeMap(std::map<std::string, fir::Type*> types);
+		fir::Type* resolveGenericType(std::string id);
+
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
@@ -175,11 +178,13 @@ namespace Codegen
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
-		std::deque<FuncPair_t> resolveFunctionName(std::string basename, std::deque<Ast::Func*>* bodiesFound = 0);
+		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<fir::Type*> params, bool exactMatch = false);
+
+		std::deque<Ast::Func*> findGenericFunctions(std::string basename);
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 
@@ -253,7 +258,7 @@ namespace Codegen
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
-		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
+		FuncPair_t tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
 
 

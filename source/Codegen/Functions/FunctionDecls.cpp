@@ -112,7 +112,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 
-Result_t FuncDecl::generateDeclForGenericType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> types)
+Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
 {
 	iceAssert(types.size() == this->genericTypes.size());
 
@@ -163,39 +163,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->ident.scope.empty())
 		this->ident.scope = cgi->getFullScope();
 
-
-	if(this->genericTypes.size() > 0)
-	{
-		std::map<std::string, bool> usage;
-
-		for(auto gtype : this->genericTypes)
-		{
-			// check if we actually use it.
-
-			usage[gtype] = false;
-			for(auto v : this->params)
-			{
-				if(v->type.isLiteral && v->type.strType == gtype)
-				{
-					usage[gtype] = true;
-					break;
-				}
-			}
-
-			if(this->type.isLiteral && this->type.strType == gtype)
-			{
-				usage[gtype] = true;
-			}
-		}
-
-		for(auto pair : usage)
-		{
-			if(!pair.second)
-			{
-				warn(this, "Generic type '%s' is unused", pair.first.c_str());
-			}
-		}
-	}
 
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
