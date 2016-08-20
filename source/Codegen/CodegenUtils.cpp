@@ -634,6 +634,7 @@ namespace Codegen
 			}
 		}
 
+
 		for(auto gf : ft->genericFunctions)
 		{
 			bool found = false;
@@ -650,12 +651,14 @@ namespace Codegen
 				clone->genericFunctions.push_back(gf);
 		}
 
+
+
 		for(auto prot : ft->protocols)
 		{
 			for(auto cprot : clone->protocols)
 			{
 				if(prot.first == cprot.first && prot.second != cprot.second)
-					error(prot.second, "conflicting protocols with same names");
+					error(prot.second, "conflicting protocols with the same name");
 			}
 
 			clone->protocols[prot.first] = prot.second;
@@ -845,7 +848,7 @@ namespace Codegen
 			cur->funcs.erase(it);
 	}
 
-	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename, std::deque<Func*>* bodiesFound)
+	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
 		std::deque<FuncPair_t> candidates;
@@ -906,42 +909,6 @@ namespace Codegen
 				}
 			}
 
-
-
-			for(auto f : ft->genericFunctions)
-			{
-				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
-					return _isDupe({ 0, f.first }, fp);
-				};
-
-				if(f.first->ident.name == basename)
-				{
-					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-					{
-						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-						candidates.push_back({ 0, f.first });
-						if(bodiesFound) bodiesFound->push_back(f.second);
-					}
-
-					if(bodiesFound)
-					{
-						bool found = false;
-						for(auto b : *bodiesFound)
-						{
-							if(b == f.second)
-							{
-								found = true;
-								break;
-							}
-						}
-
-						if(!found)
-						{
-							bodiesFound->push_back(f.second);
-						}
-					}
-				}
-			}
 
 
 			if(curDepth.size() > 0)
@@ -1042,6 +1009,37 @@ namespace Codegen
 		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
 		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
+
+
+
+
+
+
+	std::deque<Func*> CodegenInstance::findGenericFunctions(std::string basename)
+	{
+		std::deque<std::string> curDepth = this->namespaceStack;
+		std::deque<Func*> ret;
+
+		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto f : ft->genericFunctions)
+			{
+				iceAssert(f.first->genericTypes.size() > 0);
+
+				if(f.first->ident.name == basename)
+					ret.push_back({ f.second });
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		return ret;
+	}
+
 
 
 
@@ -1453,34 +1451,22 @@ namespace Codegen
 
 
 
-	fir::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
+	FuncPair_t CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
 	{
 		// try and resolve shit
-		std::deque<FuncDecl*> candidates;
-		std::unordered_map<std::string, fir::Type*> tm;
-
-		std::deque<Func*> bodiesFound;
-		auto fpcands = this->resolveFunctionName(fc->name, &bodiesFound);
-		// printf("trying to resolve and instantiate: %s // %zu\n", fc->name.c_str(), fpcands.size());
-
-
-		for(FuncPair_t fp : fpcands)
-		{
-			if(fp.second->genericTypes.size() > 0)
-				candidates.push_back(fp.second);
-		}
-
-		// fprintf(stderr, "phase 1: %zu cands // %zu // %zu\n", candidates.size(), bodiesFound.size(), fpcands.size());
+		std::map<std::string, fir::Type*> tm;
+		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 
 		if(candidates.size() == 0)
 		{
-			return 0;	// do nothing.
+			return { 0, 0 };	// just fail
 		}
+
 
 		auto it = candidates.begin();
 		while(it != candidates.end())
 		{
-			FuncDecl* candidate = *it;
+			FuncDecl* candidate = (*it)->decl;
 
 			// now check if we *can* instantiate it.
 			// first check the number of arguments.
@@ -1567,7 +1553,7 @@ namespace Codegen
 
 		if(candidates.size() == 0)
 		{
-			return 0;
+			return { 0, 0 };
 		}
 		else if(candidates.size() > 1)
 		{
@@ -1579,19 +1565,8 @@ namespace Codegen
 				candidates.size(), cands.c_str());
 		}
 
-		FuncDecl* candidate = candidates[0];
-
-		Func* theFn = 0;
-		for(auto body : bodiesFound)
-		{
-			if(body->decl == candidate)
-			{
-				// we've got it.
-				theFn = body;
-				break;
-			}
-		}
-
+		Func* theFn = candidates[0];
+		FuncDecl* candidate = theFn->decl;
 
 
 
@@ -1602,15 +1577,8 @@ namespace Codegen
 
 
 		bool needToCodegen = true;
-		for(std::deque<fir::Type*> inst : theFn->instantiatedGenericVersions)
-		{
-			if(inst == instantiatedTypes)
-			{
-				needToCodegen = false;
-				break;
-			}
-		}
-
+		if(this->reifiedGenericFunctions.find({ theFn, tm }) != this->reifiedGenericFunctions.end())
+			needToCodegen = false;
 
 
 
@@ -1625,12 +1593,13 @@ namespace Codegen
 			this->pushGenericType(pair.first, pair.second);
 
 
-
 		fir::Function* ffunc = nullptr;
 		if(needToCodegen)
 		{
-			Result_t res = candidate->generateDeclForGenericType(this, tm);
+			Result_t res = candidate->generateDeclForGenericFunction(this, tm);
 			ffunc = (fir::Function*) res.result.first;
+
+			this->reifiedGenericFunctions[{ theFn, tm }] = ffunc;
 		}
 		else
 		{
@@ -1648,8 +1617,6 @@ namespace Codegen
 
 		iceAssert(ffunc);
 
-		fc->cachedGenericFuncTarget = ffunc;
-
 
 		// i've written this waaayyy too many times... but this. is. super. fucking.
 		// SUBOPTIMAL. SLOW. SHITTY. O(INFINITY) TIME COMPLEXITY.
@@ -1663,19 +1630,15 @@ namespace Codegen
 
 		if(needToCodegen)
 		{
-			theFn->decl->instantiatedGenericTypes = instantiatedTypes;
-			theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
-
 			// dirty: use 'lhsPtr' to pass the version we want.
 			theFn->codegen(this, ffunc);
-			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
 		}
 
 
 		this->removeFunctionFromScope({ 0, candidate });
 		this->popGenericTypeStack();
 
-		return ffunc;
+		return { ffunc, candidate };
 	}
 
 

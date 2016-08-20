@@ -46,17 +46,19 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	this->didCodegen = true;
 
-	// bool isPublic = this->decl->attribs & Attr_VisPublic;
+
+
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
-
-	if(isGeneric)
+	if(isGeneric && !extra)
 	{
 		FunctionTree* cft = cgi->getCurrentFuncTree();
 		iceAssert(cft);
 
 		cft->genericFunctions.push_back(std::make_pair(this->decl, this));
 	}
+
+
 
 	fir::Function* func = 0;
 
@@ -133,11 +135,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		func->getArguments()[i]->setName(vprs[i]->ident);
 
-		if(isGeneric)
-		{
-			iceAssert(func->getArguments()[i]->getType() == this->decl->instantiatedGenericTypes[i]);
-		}
-		else
+		if(!isGeneric)
 		{
 			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(vprs[i]));
 		}
@@ -174,7 +172,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->decl->type.strType != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
-		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
+		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, func->getReturnType());
 
 
 		if(counter != this->block->statements.size())
@@ -205,7 +203,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// verify again, this type checking the types
-	cgi->verifyAllPathsReturn(this, nullptr, true, isGeneric ? this->decl->instantiatedGenericReturnType : 0);
+	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
 		cgi->builder.CreateReturnVoid();

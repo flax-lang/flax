@@ -73,8 +73,6 @@ public func doGenericsTest()
 	foo_generic(7, 6 as int16)
 	foo_generic(7, 6 as int32)
 
-	// foo_generic(501, 101)
-
 	foo_generic(5, "asdf")
 
 	foo_generic(1, 4, 9)

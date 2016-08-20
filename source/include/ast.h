@@ -382,7 +382,7 @@ namespace Ast
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
-		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> types);
+		Result_t generateDeclForGenericFunction(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
 
 		Parser::Pin returnTypePos;
 
@@ -403,9 +403,6 @@ namespace Ast
 
 		std::deque<VarDecl*> params;
 		std::deque<std::string> genericTypes;
-
-		fir::Type* instantiatedGenericReturnType = 0;
-		std::deque<fir::Type*> instantiatedGenericTypes;
 	};
 
 
@@ -434,8 +431,6 @@ namespace Ast
 
 		FuncDecl* decl = 0;
 		BracedBlock* block = 0;
-
-		std::deque<std::deque<fir::Type*>> instantiatedGenericVersions;
 	};
 
 	struct FuncCall : Expr
@@ -447,7 +442,6 @@ namespace Ast
 		std::string name;
 		std::deque<Expr*> params;
 
-		fir::Function* cachedGenericFuncTarget = 0;
 		Codegen::Resolved_t cachedResolveTarget;
 	};
 

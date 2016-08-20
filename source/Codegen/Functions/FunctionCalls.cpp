@@ -39,56 +39,45 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	std::vector<fir::Value*> args;
 
 	fir::Function* target = 0;
-	if(this->cachedGenericFuncTarget == 0)
+
+
+
+	// we're not a generic function.
+	if(!this->cachedResolveTarget.resolved)
 	{
-		// we're not a generic function.
-		if(!this->cachedResolveTarget.resolved)
+		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+		if(!rt.resolved)
 		{
-			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
-
-			if(!rt.resolved)
-			{
-				// todo. do generic.
-				this->cachedGenericFuncTarget = cgi->tryResolveAndInstantiateGenericFunction(this);
-				if(this->cachedGenericFuncTarget != 0)
-				{
-					rt.resolved = true;
-					rt.t.first = this->cachedGenericFuncTarget;
-					target = this->cachedGenericFuncTarget;
-				}
-			}
-
-			if(!rt.resolved && !target)
-			{
-				// label
-				failedToFind:
-
-				GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
-			}
-
-			if(rt.t.first == 0)
-			{
-				// generate it.
-				rt.t.second->codegen(cgi);
-
-				// printf("expediting function call to %s\n", this->name.c_str());
-
-				rt = cgi->resolveFunction(this, this->name, this->params);
-
-				if(!rt.resolved) error("nani???");
-				if(rt.t.first == 0) goto failedToFind;
-			}
-
-			this->cachedResolveTarget = rt;
+			rt = Resolved_t(cgi->tryResolveAndInstantiateGenericFunction(this));
 		}
 
-		target = this->cachedResolveTarget.t.first;
-		this->cachedResolveTarget.resolved = false;
+
+
+		if(!rt.resolved)
+		{
+			// label
+			failedToFind:
+
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+		}
+
+		if(rt.t.first == 0)
+		{
+			// generate it.
+			rt.t.second->codegen(cgi);
+
+			// printf("expediting function call to %s\n", this->name.c_str());
+
+			rt = cgi->resolveFunction(this, this->name, this->params);
+
+			if(!rt.resolved) error("nani???");
+			if(rt.t.first == 0) goto failedToFind;
+		}
+
+		this->cachedResolveTarget = rt;
 	}
-	else
-	{
-		target = this->cachedGenericFuncTarget;
-	}
+
+	target = this->cachedResolveTarget.t.first;
 
 
 
