@@ -77,14 +77,22 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std
 
 	this->didCreateType = true;
 
-	TypePair_t* tp = cgi->getType(this->ident);
-	if(!tp) error(this, "Type %s does not exist in the scope %s", this->ident.name.c_str(), this->ident.str().c_str());
+	if(cgi->getExprTypeOfBuiltin(this->ident.str()))
+	{
+		this->createdType = cgi->getExprTypeOfBuiltin(this->ident.str());
+		return this->createdType;
+	}
+	else
+	{
+		TypePair_t* tp = cgi->getType(this->ident);
 
-	iceAssert(tp->first);
-	this->createdType = tp->first->toClassType();
+		if(!tp) error(this, "Type %s does not exist in the scope %s", this->ident.name.c_str(), this->ident.str().c_str());
 
+		iceAssert(tp->first);
 
-	return tp->first;
+		this->createdType = tp->first;
+		return tp->first;
+	}
 }
 
 
@@ -121,32 +129,62 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->popNestedTypeScope();
 	}
 
-	TypePair_t* tp = cgi->getType(this->ident);
-	iceAssert(tp);
-	iceAssert(tp->first);
-	iceAssert(tp->second.first);
+	TypePair_t* tp = 0;
+	fir::Type* fstr = cgi->getExprTypeOfBuiltin(this->ident.str());
 
-	fir::ClassType* fstr = tp->first->toClassType();
-	StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
+	if(fstr == 0)
+	{
+		tp = cgi->getType(this->ident);
+		iceAssert(tp);
+		iceAssert(tp->first);
+		iceAssert(tp->second.first);
+
+		fstr = tp->first;
+	}
+
 
 	iceAssert(fstr);
-	iceAssert(astr);
 
 	doCodegenForMemberFunctions(cgi, this);
 	doCodegenForComputedProperties(cgi, this);
 
-	iceAssert(astr->defaultInitialiser);
-	fir::Function* defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
-		astr->defaultInitialiser->linkageType);
 
-	doCodegenForAssignmentOperators(cgi, this);
-	doCodegenForSubscriptOperators(cgi, this);
+	// only allow these funny shennanigans if we're extending a class
+	fir::Function* defaultInit = 0;
+	if(fstr->isClassType())
+	{
+		StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
+		iceAssert(astr);
+
+		iceAssert(astr->defaultInitialiser);
+		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
+			astr->defaultInitialiser->linkageType);
+
+		doCodegenForAssignmentOperators(cgi, this);
+		doCodegenForSubscriptOperators(cgi, this);
+	}
 
 
 	for(Func* f : this->funcs)
 	{
+		if(!fstr->isClassType() && f->decl->ident.name == "init")
+			error(f->decl, "Extended initialisers can only be declared on class types");
+
 		generateMemberFunctionBody(cgi, this, f, defaultInit);
 	}
+
+
+
+	for(auto protstr : this->protocolstrs)
+	{
+		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
+		iceAssert(prot);
+
+		prot->assertTypeConformity(cgi, fstr);
+		this->conformedProtocols.push_back(prot);
+	}
+
+
 
 
 	return Result_t(0, 0);

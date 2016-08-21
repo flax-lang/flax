@@ -224,7 +224,7 @@ namespace Ast
 	struct VarDecl : Expr
 	{
 		~VarDecl();
-		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
+		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), immutable(immut)
 		{
 			ident.name = name;
 			ident.kind = IdKind::Variable;
@@ -237,7 +237,6 @@ namespace Ast
 		void inferType(Codegen::CodegenInstance* cgi);
 
 		Identifier ident;
-		std::string _name;
 
 		bool immutable = false;
 
@@ -481,7 +480,9 @@ namespace Ast
 
 		~OpOverload();
 		OpOverload(Parser::Pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		Result_t codegen(Codegen::CodegenInstance* cgi, std::deque<fir::Type*> args);
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
 		OperatorKind kind = OperatorKind::Invalid;

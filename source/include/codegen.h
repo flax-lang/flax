@@ -150,7 +150,6 @@ namespace Codegen
 		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
 
 
-		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, fir::Type* things.
@@ -258,7 +257,6 @@ namespace Codegen
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
-		FuncPair_t tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
 
 
@@ -268,8 +266,16 @@ namespace Codegen
 		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
 
 
+		FuncPair_t tryResolveGenericFunctionCall(Ast::FuncCall* fc);
+		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
+			Ast::Func* func, std::deque<fir::Type*> params);
+
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
+
+		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
+		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
+		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
 
 

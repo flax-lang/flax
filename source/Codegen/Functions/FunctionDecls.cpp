@@ -221,6 +221,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
+		info(this, "");
 		return Result_t(0, 0);
 	}
 }

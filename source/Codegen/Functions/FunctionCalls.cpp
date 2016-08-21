@@ -43,14 +43,14 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// we're not a generic function.
-	if(!this->cachedResolveTarget.resolved)
+	if(!this->cachedResolveTarget.resolved || this->cachedResolveTarget.t.second->genericTypes.size() > 0)
 	{
 		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+
 		if(!rt.resolved)
 		{
-			rt = Resolved_t(cgi->tryResolveAndInstantiateGenericFunction(this));
+			rt = Resolved_t(cgi->tryResolveGenericFunctionCall(this));
 		}
-
 
 
 		if(!rt.resolved)
@@ -60,6 +60,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 		}
+
 
 		if(rt.t.first == 0)
 		{

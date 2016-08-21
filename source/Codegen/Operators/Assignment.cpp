@@ -18,7 +18,35 @@ namespace Operators
 			return 0;
 
 		fir::Type* leftType = (ma->matype == MAType::LeftVariable ? cgi->getExprType(ma->left) : cgi->resolveStaticDotOperator(ma, false).second);
-		if(!leftType || (!leftType->isStructType() && (leftType->isPointerType() && !leftType->getPointerElementType()->isStructType())
+
+		if(leftType->isPrimitiveType() && cgi->getExtensionsForBuiltinType(leftType).size() > 0)
+		{
+			// great, just great.
+			auto exts = cgi->getExtensionsForBuiltinType(leftType);
+
+			ComputedProperty* prop = 0;
+			for(auto ext : exts)
+			{
+				for(auto c : ext->cprops)
+				{
+					if(c->ident.name == vrname->name)
+					{
+						prop = c;
+						goto out;
+					}
+				}
+			}
+
+			out:
+			if(prop == 0) return 0;
+			if(!prop->setterFunc) return 0;
+
+			// assert here, because it should be had.
+			iceAssert(prop->setterFFn);
+
+			return cgi->module->getOrCreateFunction(prop->setterFFn->getName(), prop->setterFFn->getType(), prop->setterFFn->linkageType);
+		}
+		else if(!leftType || (!leftType->isStructType() && (leftType->isPointerType() && !leftType->getPointerElementType()->isStructType())
 							&& !leftType->isClassType() && (leftType->isPointerType() && !leftType->getPointerElementType()->isClassType())))
 		{
 			return 0;

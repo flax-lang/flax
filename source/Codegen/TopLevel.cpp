@@ -178,7 +178,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 5)
 	{
-		// pass 4: functions. for generic shit.
+		// pass 4: functions.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -189,7 +189,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 				warn(oo, "Placing operator overloads inside a namespace will make them completely inaccessible.");
 
 			if(func && !func->didCodegen)	func->codegen(cgi);
-			if(oo)							oo->codegen(cgi);
+			if(oo)							oo->codegen(cgi, { });
 			if(ns)							ns->codegenPass(cgi, pass);
 		}
 	}
