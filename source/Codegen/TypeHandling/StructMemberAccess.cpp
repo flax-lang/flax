@@ -11,7 +11,7 @@ using namespace Codegen;
 
 static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, ClassDef* cls);
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -109,9 +109,96 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
 			}
 		}
+		else if(cgi->getExtensionsForBuiltinType(type).size() > 0)
+		{
+			// nothing was built to handle this
+			// so we basically need to do it manually
+
+			// todo.
+
+			if(FuncCall* fc = dynamic_cast<FuncCall*>(this->right))
+			{
+				std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
+				std::deque<FuncPair_t> fpcands;
+
+				for(auto ext : cgi->getExtensionsForBuiltinType(type))
+				{
+					for(auto f : ext->funcs)
+					{
+						fcands[f->decl] = { f, ext->functionMap[f] };
+					}
+				}
+
+
+				for(auto it = fcands.begin(); it != fcands.end(); it++)
+				{
+					if((*it).first->ident.name != fc->name)
+						it = fcands.erase(it);
+				}
+
+				for(auto p : fcands)
+					fpcands.push_back({ p.second.second, p.second.first->decl });
+
+				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fc->params);
+				if(!res.resolved)
+					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
+
+				iceAssert(res.t.first);
+
+
+				std::deque<fir::Value*> args;
+				for(auto e : fc->params)
+					args.push_back(e->codegen(cgi).result.first);
+
+
+				// make a new self
+				iceAssert(self);
+
+				fir::Value* newSelfP = cgi->builder.CreateImmutStackAlloc(self->getType(), self);
+				args.push_front(newSelfP);
+
+				// might not be a good thing to always do.
+				// TODO: check this.
+				// makes sure we call the function in our own module, because llvm only allows that.
+
+				fir::Function* target = res.t.first;
+				auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+
+				fir::Value* ret = cgi->builder.CreateCall(thistarget, args);
+				return Result_t(ret, 0);
+			}
+			else if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
+			{
+				std::deque<ComputedProperty*> ccands;
+
+				for(auto ext : cgi->getExtensionsForBuiltinType(type))
+				{
+					for(auto c : ext->cprops)
+					{
+						if(c->ident.name == vr->name)
+							ccands.push_back(c);
+					}
+				}
+
+				if(ccands.size() > 1)
+					error(vr, "Ambiguous access to property '%s' -- extensions declared duplicates?", vr->name.c_str());
+
+				else if(ccands.size() == 0)
+					error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), self->getType()->str().c_str());
+
+
+				// do it
+				ComputedProperty* prop = ccands[0];
+				doComputedProperty(cgi, vr, prop, 0, cgi->builder.CreateImmutStackAlloc(self->getType(), self));
+			}
+			else
+			{
+				error(this->right, "enotsup");
+			}
+		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
+			error(this, "Cannot do member access on non-struct type '%s'", cgi->getReadableType(type).c_str());
 		}
 	}
 
@@ -356,7 +443,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 				iceAssert(cprop);
-				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr, cls);
+				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr);
 			}
 		}
 		else
@@ -379,7 +466,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, ClassDef* cls)
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref)
 {
 	if(_rhs)
 	{

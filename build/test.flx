@@ -191,25 +191,32 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
-class TestingClass : SelfReturning
+class TestingClass
 {
-	init()
+	init(x: int)
 	{
+		self.thing = x
 	}
 
+	var thing: int
+}
+
+
+extension TestingClass : StringConvertible, Equatable
+{
 	func toString() -> String
 	{
 		"hello"
 	}
 
-	func returnSelf() -> TestingClass
+	func isEqual(a: TestingClass) -> bool
 	{
-		return TestingClass()
+		return self.thing == a.thing
 	}
 }
 
 
-func takeStringConvertible<T : StringConvertible & SelfReturning>(thing: T) -> String
+func cts<T : StringConvertible>(thing: T) -> String
 {
 	return thing.toString()
 }
@@ -220,10 +227,11 @@ func takeStringConvertible<T : StringConvertible & SelfReturning>(thing: T) -> S
 {
 	printf("(%d, %d)\n", k, g)
 
-	let x = TestingClass()
-	let y = TestingClass()
+	let x = TestingClass(10)
+	let y = TestingClass(20)
 
-	printf("(%s, %s)\n", takeStringConvertible(x), takeStringConvertible(y))
+
+	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }
 
 
@@ -246,11 +254,9 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-	var g = String(10)
-	g = 40
-	g.kappa = 10
+	var g = "439"
 	let k = g.toInteger()
-	printf("%s, %d\n", g, g.kappa)
+	printf("%s, %d\n", g, k)
 
 
 

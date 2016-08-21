@@ -174,7 +174,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
 		iceAssert(prot);
 
-		iceAssert(prot->checkTypeConformity(cgi, cls));
+		prot->assertTypeConformity(cgi, cls);
 		this->conformedProtocols.push_back(prot);
 	}
 

@@ -22,6 +22,8 @@ func foo_generic<T, K>(a: T, b: K)
 	let ta = typeof(a)
 	let tb = typeof(b)
 
+	let x = T()
+	let y = K()
 
 	if(ta == Type.int8)
 	{
