@@ -9,19 +9,25 @@ public protocol StringConvertible
 	func toString() -> String
 }
 
-public protocol SelfReturning
+public protocol Numeric
 {
-	func returnSelf() -> Self
+
 }
 
-// protocol Equatable
-// {
-// }
+public protocol Equatable
+{
+	func isEqual(other: Self) -> bool
+}
+
+
+public operator == <T: Equatable> (a: T, b: T) -> bool
+{
+	return a.isEqual(b)
+}
+
+
 
 // protocol Comparable
 // {
 // }
 
-// protocol Numeric
-// {
-// }

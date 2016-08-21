@@ -1,4 +1,4 @@
-// Operators.cpp
+// Overloaded.cpp
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -64,8 +64,8 @@ namespace Codegen
 
 
 
-		auto findCandidatesPass1 = [](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
-			std::deque<OpOverload*> list, ArithmeticOp op)
+		auto findCandidatesPass1 = [lhs, rhs](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
+			std::deque<OpOverload*> list, ArithmeticOp op, bool skipGeneric)
 		{
 			for(auto oo : list)
 			{
@@ -79,15 +79,20 @@ namespace Codegen
 				attr.needsSwap		= false;
 
 				fir::Function* lfunc = oo->lfunc;
-				if(!lfunc && !oo->didCodegen)
+
+				// skip the generic ones first.
+				if(!lfunc && !oo->didCodegen && oo->op == op)
 				{
 					// kinda a hack
 					// if we have operators that use other operators, they all should be codegened first.
 					// unless this leads to a stupid loop...
 					// todo: edge case detection/fixing?
 
-					oo->codegen(cgi);
-					lfunc = oo->lfunc;
+					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
+					{
+						oo->codegen(cgi, { lhs, rhs });
+						lfunc = oo->lfunc;
+					}
 				}
 
 				if(!lfunc) continue;
@@ -111,19 +116,17 @@ namespace Codegen
 
 
 		// get the functree, starting from here, up.
+		std::deque<OpOverload*> list;
 		{
 			auto curDepth = this->namespaceStack;
 
-			std::deque<OpOverload*> list;
 			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
 			{
 				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
 				if(!ft) break;
 
 				for(auto f : ft->operators)
-				{
 					list.push_back(f);
-				}
 
 				if(curDepth.size() > 0)
 					curDepth.pop_back();
@@ -178,8 +181,13 @@ namespace Codegen
 			}
 
 
-			findCandidatesPass1(this, &candidates, list, op);
+			findCandidatesPass1(this, &candidates, list, op, true);
 		}
+
+
+		bool didDoGenerics = false;
+
+		resetForGenerics:
 
 
 		// pass 1.5: prune duplicates
@@ -194,11 +202,6 @@ namespace Codegen
 				candidates.push_back(s);
 			}
 		}
-
-
-
-
-
 
 
 		// pass 2: prune based on number of parameters. (binop vs normal)
@@ -291,14 +294,29 @@ namespace Codegen
 
 
 		if(finals.size() > 1)
+		{
 			error(us, "More than one possible operator overload candidate in this expression");
-
+		}
 		else if(finals.size() == 0)
 		{
-			_OpOverloadData ret;
-			ret.found = false;
+			if(didDoGenerics)
+			{
+				_OpOverloadData ret;
+				ret.found = false;
 
-			return ret;
+				return ret;
+			}
+			else
+			{
+				// seriously? goto?
+				// todo(goto): get rid.
+
+				didDoGenerics = true;
+				candidates.clear();
+				findCandidatesPass1(this, &candidates, list, op, false);
+
+				goto resetForGenerics;
+			}
 		}
 
 		auto cand = finals.front();

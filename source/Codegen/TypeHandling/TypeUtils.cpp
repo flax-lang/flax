@@ -141,7 +141,7 @@ namespace Codegen
 						}
 						else
 						{
-							auto genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
+							auto genericMaybe = this->tryResolveGenericFunctionCall(fc);
 							if(genericMaybe.first)
 							{
 								fc->cachedResolveTarget = Resolved_t(genericMaybe);

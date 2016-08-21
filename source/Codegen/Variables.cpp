@@ -53,7 +53,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 
 
-	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
+	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
 	{
 		// ...
 		// handled below
@@ -185,8 +185,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		this->inferredLType = vartype;
 
-		if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
-			this->type = cgi->getReadableType(this->initVal);
+		// if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
+		// 	this->type = cgi->getReadableType(this->initVal);
 	}
 	else
 	{
@@ -215,8 +215,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Value* ai = nullptr;
 
-	if(this->inferredLType == nullptr)
-		this->inferType(cgi);
+	// if(this->inferredLType == nullptr)
+	this->inferType(cgi);
 
 
 	if(!this->isGlobal)
