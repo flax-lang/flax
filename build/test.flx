@@ -231,7 +231,7 @@ func cts<T : StringConvertible>(thing: T) -> String
 	let y = TestingClass(20)
 
 
-	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
+	printf("%d, (%s, %s, %s, %s)\n", x != y, cts(k), cts(x), cts(g), cts(y))
 }
 
 

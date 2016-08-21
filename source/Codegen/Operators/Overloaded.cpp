@@ -81,7 +81,8 @@ namespace Codegen
 				fir::Function* lfunc = oo->lfunc;
 
 				// skip the generic ones first.
-				if(!lfunc && !oo->didCodegen && oo->op == op)
+				if(!lfunc && !oo->didCodegen && (oo->op == op || (oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq)
+					|| (oo->op == ArithmeticOp::CmpNEq && op == ArithmeticOp::CmpEq)))
 				{
 					// kinda a hack
 					// if we have operators that use other operators, they all should be codegened first.
