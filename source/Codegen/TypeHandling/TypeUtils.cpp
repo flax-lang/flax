@@ -332,6 +332,12 @@ namespace Codegen
 				{
 					auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 
+					if(!data.found)
+					{
+						error(bo, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(this, bo->op).c_str(),
+							ltype->str().c_str(), rtype->str().c_str());
+					}
+
 					iceAssert(data.found);
 					return data.opFunc->getReturnType();
 				}

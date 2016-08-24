@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
+#include <set>
 #include <vector>
 #include <memory>
 #include <cfloat>
@@ -520,7 +521,7 @@ namespace Codegen
 			bool found = false;
 			for(auto e : clone->extensions)
 			{
-				if(e.first == ext.first)
+				if(e.second == ext.second)
 				{
 					found = true;
 					break;
@@ -531,7 +532,7 @@ namespace Codegen
 			{
 				if(!found && deep)
 				{
-					clone->extensions[ext.first] = ext.second;
+					clone->extensions.insert(std::make_pair(ext.first, ext.second));
 
 					ExtensionDef* ed = ext.second;
 					for(auto& ff : ed->functionMap)
@@ -551,7 +552,7 @@ namespace Codegen
 				}
 				else if(!found)
 				{
-					clone->extensions[ext.first] = ext.second;
+					clone->extensions.insert(std::make_pair(ext.first, ext.second));
 				}
 			}
 		}
@@ -1574,7 +1575,10 @@ namespace Codegen
 					bool doesConform = prot->checkTypeConformity(cgi, cst.second);
 
 					if(!doesConform)
+					{
+						info("did not conform to %s", protstr.c_str());
 						return false;
+					}
 				}
 			}
 
@@ -1599,7 +1603,11 @@ namespace Codegen
 		if(gtm.empty())
 		{
 			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
-			if(!res) return FuncPair_t(0, 0);
+			if(!res)
+			{
+				warn(user, "failed.");
+				return FuncPair_t(0, 0);
+			}
 		}
 
 
@@ -1787,36 +1795,62 @@ namespace Codegen
 
 
 
+	static std::deque<ExtensionDef*> _findExtensionsByNameInScope(std::string name, FunctionTree* ft)
+	{
+		std::deque<ExtensionDef*> ret;
+		iceAssert(ft);
 
+		auto pair = ft->extensions.equal_range(name);
+		for(auto it = pair.first; it != pair.second; it++)
+		{
+			if((*it).first == name)
+				ret.push_back((*it).second);
+		}
+
+		return ret;
+	}
 
 	std::deque<ExtensionDef*> CodegenInstance::getExtensionsWithName(std::string name)
 	{
 		FunctionTree* ft = this->getCurrentFuncTree();
 		iceAssert(ft);
 
-		std::deque<ExtensionDef*> ret;
-		for(auto ext : ft->extensions)
-		{
-			if(ext.first == name)
-				ret.push_back(ext.second);
-		}
-
-		return ret;
+		return _findExtensionsByNameInScope(name, ft);
 	}
 
 	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
 	{
-		FunctionTree* ft = this->getCurrentFuncTree(&cls->ident.scope);
-		iceAssert(ft);
+		std::set<ExtensionDef*> ret;
 
-		std::deque<ExtensionDef*> ret;
-		for(auto ext : ft->extensions)
+		// 1. look in the current scope
 		{
-			if(ext.first == cls->ident.name)
-				ret.push_back(ext.second);
+			FunctionTree* ft = this->getCurrentFuncTree();
+			iceAssert(ft);
+
+			std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+			ret.insert(res.begin(), res.end());
 		}
 
-		return ret;
+
+		// 2. look in the scope of the type
+		{
+			std::deque<std::string> curDepth = cls->ident.scope;
+
+			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			{
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+				if(!ft) break;
+
+				std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+
+				ret.insert(res.begin(), res.end());
+
+				if(curDepth.size() > 0)
+					curDepth.pop_back();
+			}
+		}
+
+		return std::deque<ExtensionDef*>(ret.begin(), ret.end());
 	}
 
 	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForBuiltinType(fir::Type* type)

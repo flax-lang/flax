@@ -888,6 +888,7 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 		{
 			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode))
 				fns.push_back({ ext->functionMap[f], 0 });
+
 		}
 	}
 

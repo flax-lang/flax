@@ -81,7 +81,7 @@ namespace Codegen
 				fir::Function* lfunc = oo->lfunc;
 
 				// skip the generic ones first.
-				if(!lfunc && !oo->didCodegen && (oo->op == op || (oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq)
+				if((!lfunc || !oo->didCodegen) && (oo->op == op || (oo->op == ArithmeticOp::CmpEq && op == ArithmeticOp::CmpNEq)
 					|| (oo->op == ArithmeticOp::CmpNEq && op == ArithmeticOp::CmpEq)))
 				{
 					// kinda a hack
@@ -91,8 +91,7 @@ namespace Codegen
 
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
-						oo->codegen(cgi, { lhs, rhs });
-						lfunc = oo->lfunc;
+						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).result.first);
 					}
 				}
 
