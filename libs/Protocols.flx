@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Math
 import String
 
 public protocol StringConvertible
@@ -20,6 +21,7 @@ public protocol Equatable
 }
 
 
+
 public operator == <T: Equatable> (a: T, b: T) -> bool
 {
 	return a.isEqual(b)
@@ -27,7 +29,46 @@ public operator == <T: Equatable> (a: T, b: T) -> bool
 
 
 
-// protocol Comparable
-// {
-// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// declare Foundation types as conforming to protocols above
+// most of them already have the necessary functions
+// we need to do this to avoid circular imports
+
+public extension String : Equatable { }
+public extension Character : Equatable { }
+
+namespace Math
+{
+	public extension Vector2 : Equatable { }
+}
+
+
+
+
+
+
+
+
+
+
+
 

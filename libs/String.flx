@@ -63,12 +63,16 @@ public class Character
 		return self.utf8Bytes != null && !(self.utf8Bytes[0] & 0x80)
 	}
 
-
-
-
 	func isDigit() -> bool
 	{
 		return self.isAscii() && self.toAscii() >= 48 && self.toAscii() <= 57
+	}
+
+
+
+	func isEqual(other: Character) -> bool
+	{
+		return self.byteCount == other.byteCount && strncmp(self.utf8Bytes as int8*, other.utf8Bytes as int8*, self.byteCount) == 0
 	}
 }
 
@@ -138,6 +142,21 @@ public class String
 		}
 	}
 
+	func isEqual(other: String) -> bool
+	{
+		return strcmp(self.data, other.data) == 0
+	}
+
+
+
+
+
+
+
+
+
+
+
 	func grow(newSize: uint64)
 	{
 		var needFree = (self.allocated != 0)
@@ -193,6 +212,8 @@ public class String
 	{
 		self.append(char.utf8Bytes as int8*, char.byteCount)
 	}
+
+
 
 
 
@@ -271,19 +292,16 @@ public operator + (lhs: String, rhs: Character) -> String
 
 public operator == (lhs: String, rhs: int8*) -> bool
 {
-	// return false
 	return strcmp(lhs.data, rhs) == 0
 }
 
-public operator == (lhs: String, rhs: String) -> bool
+public operator == (lhs: String, rhs: Character) -> bool
 {
-	return strcmp(lhs.data, rhs.data) == 0
+	return lhs.byteCount == rhs.byteCount && strncmp(lhs.data, rhs.utf8Bytes as int8*, lhs.byteCount) == 0
 }
 
-public operator == (lhs: Character, rhs: Character) -> bool
-{
-	return lhs.byteCount == rhs.byteCount && strncmp(lhs.utf8Bytes as int8*, rhs.utf8Bytes as int8*, lhs.byteCount) == 0
-}
+
+
 
 
 
