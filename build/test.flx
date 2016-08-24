@@ -231,7 +231,7 @@ func cts<T : StringConvertible>(thing: T) -> String
 	let y = TestingClass(20)
 
 
-	printf("%d, (%s, %s, %s, %s)\n", x != y, cts(k), cts(x), cts(g), cts(y))
+	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }
 
 
@@ -281,7 +281,7 @@ public func main(argc: int32, argv: int8**) -> int
 	let v2 = Math.Vector2(3.0, 7.0)
 
 	let vr = v1 ⨯ v2
-	printf("vr = %f\n", vr)
+	printf("(%d), vr = %f\n", v1 == v2, vr)
 
 	var lol: String = "HELLO"
 	printf("%d\n", lol[1].hasData())

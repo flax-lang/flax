@@ -108,7 +108,7 @@ namespace Codegen
 
 		std::map<std::string, TypePair_t> types;
 		std::map<std::string, SymbolPair_t> vars;
-		std::map<std::string, Ast::ExtensionDef*> extensions;
+		std::multimap<std::string, Ast::ExtensionDef*> extensions;
 		std::map<std::string, Ast::ProtocolDef*> protocols;
 	};
 
