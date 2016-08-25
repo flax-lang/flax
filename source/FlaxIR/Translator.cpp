@@ -121,7 +121,7 @@ namespace fir
 		}
 		else
 		{
-			iceAssert(0 && "????");
+			error("ICE: unknown type '%s'", type->str().c_str());
 		}
 	}
 
