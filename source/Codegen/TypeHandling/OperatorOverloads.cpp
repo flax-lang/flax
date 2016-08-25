@@ -40,7 +40,6 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 			if(args.size() > 0)
 			{
 				FuncPair_t res = cgi->instantiateGenericFunctionUsingParameters(this, { }, this->func, args);
-				warn(this, "inst operator with %s, %s (%p)", args[0]->str().c_str(), args[1]->str().c_str(), (void*) res.first);
 
 				this->lfunc = res.first;
 				return Result_t(res.first, 0);

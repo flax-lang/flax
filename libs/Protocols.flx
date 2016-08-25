@@ -53,12 +53,15 @@ public operator == <T: Equatable> (a: T, b: T) -> bool
 // most of them already have the necessary functions
 // we need to do this to avoid circular imports
 
-public extension String : Equatable { }
+public extension String : Equatable, StringConvertible { func toString() -> String { #self } }
 public extension Character : Equatable { }
 
 namespace Math
 {
-	public extension Vector2 : Equatable { }
+	public extension Vector2 : Equatable
+	{
+		operator == (a: Math.Vector2, b: Math.Vector2) { a.x == b.x && a.y == b.y }
+	}
 }
 
 

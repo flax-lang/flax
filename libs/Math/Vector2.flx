@@ -4,18 +4,10 @@
 
 namespace Math
 {
-	public class Vector2
+	public struct Vector2
 	{
-		init(u: float64, v: float64)
-		{
-			self.x = u
-			self.y = v
-		}
-
 		var x: float64
 		var y: float64
-
-		func isEqual(other: Math.Vector2) -> bool { (self.x == other.x) && (self.y == other.y) }
 	}
 }
 

@@ -410,7 +410,11 @@ namespace fir
 		return dynamic_cast<LLVariableArrayType*>(this);
 	}
 
-
+	ParametricType* Type::toParametricType()
+	{
+		if(this->typeKind != FTypeKind::Parametric) error("not type parameter");
+		return dynamic_cast<ParametricType*>(this);
+	}
 
 
 
@@ -510,6 +514,12 @@ namespace fir
 	bool Type::isNullPointer()
 	{
 		return this == PrimitiveType::getVoid()->getPointerTo();
+	}
+
+	bool Type::isParametricType()
+	{
+		return this->typeKind == FTypeKind::Parametric
+			&& dynamic_cast<ParametricType*>(this) != 0;
 	}
 }
 
