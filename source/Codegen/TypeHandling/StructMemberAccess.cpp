@@ -398,11 +398,41 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i++;
 			}
 
-			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
-			if(res.resolved) return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
+			// Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
+			// if(res.resolved)
+			// {
+			// 	error("what");
+			// 	// // now we need to determine if it exists, and its params.
+			// 	// auto pair = cgi->resolveMemberFuncCall(ma, cls, fc);
+			// 	// Func* callee = pair.first;
+			// 	// iceAssert(callee);
+
+			// 	// if(callee->decl->isStatic)
+			// 	// {
+			// 	// 	// remove the 'self' parameter
+			// 	// 	args.erase(args.begin());
+			// 	// }
 
 
-			return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			// 	// if(callee->decl->isStatic != isStaticFunctionCall)
+			// 	// {
+			// 	// 	error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
+			// 	// }
+
+			// 	// fir::Function* lcallee = pair.second;
+			// 	// iceAssert(lcallee);
+
+			// 	// lcallee = cgi->module->getFunction(lcallee->getName());
+			// 	// iceAssert(lcallee);
+
+			// 	// return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
+
+			// 	// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
+			// }
+			// else
+			// {
+				return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			// }
 		}
 		else if(var)
 		{
@@ -647,6 +677,25 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				found = true;
 				continue;
 			}
+			else
+			{
+				for(auto t : ftree->types)
+				{
+					if(t.first == front)
+					{
+						iceAssert(t.second.first);
+						curType = dynamic_cast<ClassDef*>(t.second.second.first);
+						curFType = t.second.first;
+
+						iceAssert(curType);
+
+						found = true;
+						break;
+					}
+				}
+
+				if(found) continue;
+			}
 		}
 		else
 		{
@@ -704,7 +753,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				std::deque<FuncPair_t> flist;
 				for(size_t i = 0; i < clsd->funcs.size(); i++)
 				{
-					if(clsd->funcs[i]->decl->ident.name == fc->name)
+					if(clsd->funcs[i]->decl->ident.name == fc->name && clsd->funcs[i]->decl->isStatic)
 						flist.push_back(FuncPair_t(clsd->lfuncs[i], clsd->funcs[i]->decl));
 				}
 
@@ -752,9 +801,9 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;
-			Result_t res = fc->codegen(this);
+			Result_t result = fc->codegen(this);
 
-			return { { ltype, res }, curFType };
+			return { { ltype, result }, curFType };
 		}
 		else
 		{

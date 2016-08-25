@@ -28,6 +28,11 @@ class Something
 		{
 			return 10
 		}
+
+		static func staticInside() -> int64
+		{
+			return 23
+		}
 	}
 
 	enum InsideEnum
@@ -79,6 +84,14 @@ namespace n1
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
 		}
+
+		class DeepClass
+		{
+			class DeeperClass
+			{
+				static func deepStatic() -> int64 { 23 }
+			}
+		}
 	}
 }
 
@@ -106,7 +119,8 @@ public ƒ doScopeTest(argv: String)
 
 	let x1: int = OutsideEnum.Three
 	let x2: int = Something.InsideEnum.Quadruple
-	printf("x1: %d, x2: %d\n", x1, x2)
+	let x3 = n1.n2.DeepClass.DeeperClass()
+	printf("x1: %d, x2: %d, x3: %d\n", x1, x2, n1.n2.DeepClass.DeeperClass.deepStatic())
 
 
 	n1.n2.m.foo.oor = 968
