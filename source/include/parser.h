@@ -179,10 +179,10 @@ namespace Parser
 
 		Codegen::CodegenInstance* cgi = 0;
 
-		bool isParsingStruct = false;
 		bool didHaveLeftParen = false;
 		int currentOpPrec = 0;
 
+		int structNestLevel = 0;
 
 		Token front()
 		{

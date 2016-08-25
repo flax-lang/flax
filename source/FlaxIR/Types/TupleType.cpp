@@ -68,6 +68,42 @@ namespace fir
 		TupleType* type = new TupleType(mems);
 		return dynamic_cast<TupleType*>(tc->normaliseType(type));
 	}
+
+
+
+
+
+	TupleType* TupleType::reify(std::map<std::string, Type*> reals, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		std::vector<Type*> reified;
+		for(auto mem : this->members)
+		{
+			if(mem->isParametricType())
+			{
+				if(reals.find(mem->toParametricType()->getName()) != reals.end())
+				{
+					auto t = reals[mem->toParametricType()->getName()];
+					if(t->isParametricType())
+					{
+						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
+							mem->toParametricType()->getName().c_str());
+					}
+
+					reified.push_back(t);
+				}
+				else
+				{
+					error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
+				}
+			}
+		}
+
+		iceAssert(reified.size() == this->members.size());
+		return TupleType::get(reified);
+	}
 }
 
 

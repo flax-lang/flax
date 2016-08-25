@@ -92,8 +92,8 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std
 		TypePair_t* tp = cgi->getType(this->ident);
 
 		if(!tp) error(this, "Type %s does not exist in the scope %s", this->ident.name.c_str(), this->ident.str().c_str());
-		else if(tp->second.second != TypeKind::Class)
-			error(this, "Extensions can only be applied to classes");
+		else if(tp->second.second != TypeKind::Class && tp->second.second != TypeKind::Struct)
+			error(this, "Extensions can only be applied to classes or structs");
 
 		iceAssert(tp->first);
 
@@ -158,7 +158,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// only allow these funny shennanigans if we're extending a class
 	fir::Function* defaultInit = 0;
-	if(fstr->isClassType())
+	if(fstr->isClassType() || fstr->isStructType())
 	{
 		StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
 		iceAssert(astr);
