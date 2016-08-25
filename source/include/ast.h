@@ -556,6 +556,7 @@ namespace Ast
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
+		std::deque<OpOverload*> operatorOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::unordered_map<Func*, fir::Function*> functionMap;
@@ -596,6 +597,7 @@ namespace Ast
 		std::deque<std::string> protocolstrs;
 
 		std::deque<Func*> funcs;
+		std::deque<OpOverload*> operatorOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 	};

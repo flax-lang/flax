@@ -1575,10 +1575,7 @@ namespace Codegen
 					bool doesConform = prot->checkTypeConformity(cgi, cst.second);
 
 					if(!doesConform)
-					{
-						info("did not conform to %s", protstr.c_str());
 						return false;
-					}
 				}
 			}
 
@@ -1603,11 +1600,7 @@ namespace Codegen
 		if(gtm.empty())
 		{
 			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
-			if(!res)
-			{
-				warn(user, "failed.");
-				return FuncPair_t(0, 0);
-			}
+			if(!res) return FuncPair_t(0, 0);
 		}
 
 

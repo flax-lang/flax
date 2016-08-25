@@ -160,6 +160,44 @@ namespace fir
 			i++;
 		}
 	}
+
+
+
+
+
+
+
+	StructType* StructType::reify(std::map<std::string, Type*> reals, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		std::deque<std::pair<std::string, Type*>> reified;
+		for(auto mem : this->structMembers)
+		{
+			if(mem.second->isParametricType())
+			{
+				if(reals.find(mem.second->toParametricType()->getName()) != reals.end())
+				{
+					auto t = reals[mem.second->toParametricType()->getName()];
+					if(t->isParametricType())
+					{
+						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
+							mem.second->toParametricType()->getName().c_str());
+					}
+
+					reified.push_back({ mem.first, t });
+				}
+				else
+				{
+					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
+				}
+			}
+		}
+
+		iceAssert(reified.size() == this->structMembers.size());
+		return StructType::create(this->structName, reified);
+	}
 }
 
 

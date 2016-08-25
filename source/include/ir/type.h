@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <limits.h>
 
+#include <map>
 #include <string>
 #include <vector>
 #include <deque>
@@ -31,6 +32,7 @@ namespace fir
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
+	struct ParametricType;
 	struct LLVariableArrayType;
 
 	struct Function;
@@ -74,6 +76,8 @@ namespace fir
 		Array,
 		LowLevelVariableArray,
 		Function,
+
+		Parametric,
 	};
 
 
@@ -95,11 +99,13 @@ namespace fir
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) = 0;
 
 		Type* getPointerTo(FTContext* tc = 0);
 		Type* getPointerElementType(FTContext* tc = 0);
 
 
+		ParametricType* toParametricType();
 		PrimitiveType* toPrimitiveType();
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
@@ -126,6 +132,7 @@ namespace fir
 		bool isNullPointer();
 		bool isLLVariableArrayType();
 
+		bool isParametricType();
 		bool isPrimitiveType();
 		bool isPointerType();
 		bool isVoidType();
@@ -205,6 +212,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual PrimitiveType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -256,6 +264,7 @@ namespace fir
 
 
 		virtual bool isTypeEqual(Type* other) override;
+		virtual PointerType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -284,6 +293,38 @@ namespace fir
 	};
 
 
+
+	struct TupleType : Type
+	{
+		friend struct Type;
+
+		// methods
+		size_t getElementCount();
+		Type* getElementN(size_t n);
+		std::vector<Type*> getElements();
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual TupleType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		TupleType(std::vector<Type*> mems);
+		virtual ~TupleType() override { }
+
+		// fields (protected)
+		std::vector<Type*> members;
+
+		public:
+		static TupleType* get(std::initializer_list<Type*> members, FTContext* tc = 0);
+		static TupleType* get(std::deque<Type*> members, FTContext* tc = 0);
+		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
+	};
+
+
+
+
 	struct StructType : Type
 	{
 		friend struct Type;
@@ -302,6 +343,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual StructType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -322,33 +364,6 @@ namespace fir
 	};
 
 
-
-	struct TupleType : Type
-	{
-		friend struct Type;
-
-		// methods
-		size_t getElementCount();
-		Type* getElementN(size_t n);
-		std::vector<Type*> getElements();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-
-		// protected constructor
-		protected:
-		TupleType(std::vector<Type*> mems);
-		virtual ~TupleType() override { }
-
-		// fields (protected)
-		std::vector<Type*> members;
-
-		public:
-		static TupleType* get(std::initializer_list<Type*> members, FTContext* tc = 0);
-		static TupleType* get(std::deque<Type*> members, FTContext* tc = 0);
-		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
-	};
 
 
 
@@ -375,6 +390,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual ClassType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -411,6 +427,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual ArrayType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -436,6 +453,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual LLVariableArrayType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -463,10 +481,12 @@ namespace fir
 		bool isCStyleVarArg();
 		bool isVariadicFunc();
 
+		bool isGenericFunction();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual FunctionType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
@@ -474,6 +494,7 @@ namespace fir
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
+		bool isGeneric;
 		bool isFnCStyleVarArg;
 		bool isFnVariadic;
 
@@ -497,7 +518,7 @@ namespace fir
 
 
 
-	struct ProtocolType : Type
+	struct ParametricType : Type
 	{
 		friend struct Type;
 
@@ -505,16 +526,20 @@ namespace fir
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
+		virtual ParametricType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		std::string getName();
+
 		// protected constructor
 		protected:
-		ProtocolType(Identifier id);
-		virtual ~ProtocolType() override { }
+		ParametricType(std::string name);
+		virtual ~ParametricType() override { }
 
-		Identifier protocolName;
+		std::string name;
 
 		// static funcs
 		public:
-		static ProtocolType* get(std::deque<Type*> args, Type* ret, FTContext* tc = 0);
+		static ParametricType* get(std::string name, FTContext* tc = 0);
 	};
 }
 

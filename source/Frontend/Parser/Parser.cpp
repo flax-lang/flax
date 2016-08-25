@@ -295,7 +295,7 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.isParsingStruct = 0;
+		ps.structNestLevel = 0;
 		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
@@ -473,7 +473,7 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.isParsingStruct = 0;
+		ps.structNestLevel = 0;
 		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
@@ -798,7 +798,7 @@ namespace Parser
 	Expr* parseStaticDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Static);
-		if(!ps.isParsingStruct)
+		if(ps.structNestLevel == 0)
 			parserError("Static declarations are only allowed inside struct definitions");
 
 		ps.eat();
@@ -1375,7 +1375,7 @@ namespace Parser
 
 	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
 	{
-		if(!ps.isParsingStruct)
+		if(ps.structNestLevel == 0)
 			parserError("Computed properties can only be declared inside classes");
 
 		// computed property, getting and setting
@@ -2110,7 +2110,7 @@ namespace Parser
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Struct);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2186,7 +2186,7 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return str;
 	}
@@ -2200,7 +2200,7 @@ namespace Parser
 		Token tok_cls = ps.eat();
 		iceAssert(tok_cls.type == TType::Class);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2268,6 +2268,10 @@ namespace Parser
 			{
 				cls->subscriptOverloads.push_back(soo);
 			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				cls->operatorOverloads.push_back(oo);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
@@ -2278,7 +2282,7 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return cls;
 	}
@@ -2288,7 +2292,7 @@ namespace Parser
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Extension);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2335,6 +2339,10 @@ namespace Parser
 			{
 				ext->subscriptOverloads.push_back(soo);
 			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				ext->operatorOverloads.push_back(oo);
+			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
 				ext->nestedTypes.push_back({ sb, 0 });
@@ -2345,7 +2353,7 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return ext;
 	}
@@ -2361,7 +2369,7 @@ namespace Parser
 		Token tok_cls = ps.eat();
 		iceAssert(tok_cls.type == TType::Protocol);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2417,6 +2425,10 @@ namespace Parser
 			{
 				prot->subscriptOverloads.push_back(soo);
 			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				prot->operatorOverloads.push_back(oo);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
@@ -2427,7 +2439,7 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return prot;
 	}
@@ -2926,9 +2938,6 @@ namespace Parser
 
 	Expr* parseOpOverload(ParserState& ps)
 	{
-		// if(!ps.isParsingStruct)
-		// 	parserError("Can only overload operators in the context of a named aggregate type");
-
 		iceAssert(ps.eat().text == "operator");
 		Token op = ps.eat();
 

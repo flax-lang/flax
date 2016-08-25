@@ -266,6 +266,9 @@ namespace Compiler
 			{
 				// insert a call at the beginning of main().
 				llvm::Function* mainfunc = mod->getFunction("main");
+				if(!Compiler::getIsCompileOnly() && !mainfunc)
+					error("No main() function");
+
 				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();

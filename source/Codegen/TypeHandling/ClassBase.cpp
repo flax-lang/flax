@@ -21,8 +21,8 @@ namespace Codegen
 		fn->decl->ident.scope = cls->ident.scope;
 		fn->decl->ident.scope.push_back(cls->ident.name);
 
-
 		fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).result.first);
+		iceAssert(lfunc);
 
 		cgi->builder.setCurrentBlock(ob);
 		if(fn->decl->attribs & Attr_VisPublic)
@@ -36,36 +36,39 @@ namespace Codegen
 
 	void generateMemberFunctionBody(CodegenInstance* cgi, ClassDef* cls, Func* fn, fir::Function* defaultInitFunc)
 	{
-		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-
-		fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).result.first);
-		iceAssert(ffn);
-
-
-		if(fn->decl->ident.name == "init")
+		if(fn->decl->genericTypes.size() == 0)
 		{
-			// note: a bit hacky, but better than constantly fucking with creating fake ASTs
-			// get the first block of the function
-			// create a new block *before* that
-			// call the auto init in the new block, then uncond branch to the old block.
+			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
-			fir::IRBlock* beginBlock = ffn->getBlockList().front();
-			fir::IRBlock* newBlock = new fir::IRBlock();
+			fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).result.first);
+			iceAssert(ffn);
 
-			newBlock->setFunction(ffn);
-			newBlock->setName("call_autoinit");
-			ffn->getBlockList().push_front(newBlock);
 
-			cgi->builder.setCurrentBlock(newBlock);
+			if(fn->decl->ident.name == "init")
+			{
+				// note: a bit hacky, but better than constantly fucking with creating fake ASTs
+				// get the first block of the function
+				// create a new block *before* that
+				// call the auto init in the new block, then uncond branch to the old block.
 
-			iceAssert(ffn->getArgumentCount() > 0);
-			fir::Value* selfPtr = ffn->getArguments().front();
+				fir::IRBlock* beginBlock = ffn->getBlockList().front();
+				fir::IRBlock* newBlock = new fir::IRBlock();
 
-			cgi->builder.CreateCall1(defaultInitFunc, selfPtr);
-			cgi->builder.CreateUnCondBranch(beginBlock);
+				newBlock->setFunction(ffn);
+				newBlock->setName("call_autoinit");
+				ffn->getBlockList().push_front(newBlock);
+
+				cgi->builder.setCurrentBlock(newBlock);
+
+				iceAssert(ffn->getArgumentCount() > 0);
+				fir::Value* selfPtr = ffn->getArguments().front();
+
+				cgi->builder.CreateCall1(defaultInitFunc, selfPtr);
+				cgi->builder.CreateUnCondBranch(beginBlock);
+			}
+
+			cgi->builder.setCurrentBlock(ob);
 		}
-
-		cgi->builder.setCurrentBlock(ob);
 	}
 
 
@@ -95,13 +98,16 @@ namespace Codegen
 				}
 			}
 
-			fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
+			if(f->decl->genericTypes.size() == 0)
+			{
+				fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
 
-			if(f->decl->ident.name == "init")
-				cls->initFuncs.push_back(ffn);
+				if(f->decl->ident.name == "init")
+					cls->initFuncs.push_back(ffn);
 
-			cls->lfuncs.push_back(ffn);
-			cls->functionMap[f] = ffn;
+				cls->lfuncs.push_back(ffn);
+				cls->functionMap[f] = ffn;
+			}
 		}
 	}
 
