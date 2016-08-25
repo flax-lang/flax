@@ -1595,15 +1595,12 @@ namespace Codegen
 
 		FuncDecl* fnDecl = func->decl;
 
-
 		std::map<std::string, fir::Type*> gtm = _gtm;
 		if(gtm.empty())
 		{
 			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
 			if(!res) return FuncPair_t(0, 0);
 		}
-
-
 
 
 		bool needToCodegen = true;

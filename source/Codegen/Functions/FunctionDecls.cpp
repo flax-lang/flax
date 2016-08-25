@@ -174,11 +174,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		iceAssert(!this->isFFI);
 
-		std::deque<Expr*> es;
-		for(auto p : this->params)
-			es.push_back(p);
-
-
 		if(!this->isStatic)
 		{
 			// do a check.
@@ -205,7 +200,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(VarDecl* v : this->params)
 			argtypes.push_back(cgi->getExprType(v));
 
-		if(isMemberFunction)
+		if(isMemberFunction && !this->isStatic)
 		{
 			fir::Type* st = this->parentClass->createdType;
 			if(st == 0)

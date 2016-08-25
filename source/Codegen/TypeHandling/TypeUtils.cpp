@@ -1037,11 +1037,21 @@ namespace Codegen
 			std::string atype = ns.back();
 			ns.pop_back();
 
+
+			if(TypePair_t* test = this->getType(Identifier(atype, ns, IdKind::Struct)))
+			{
+				iceAssert(test->first);
+				return test->first;
+			}
+
+
+
+
 			auto pair = this->findTypeInFuncTree(ns, atype);
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
 
-			std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
+			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
@@ -1160,24 +1170,13 @@ namespace Codegen
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
-					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					concrete = oldSB->createType(this);
 					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
 
 					concrete = getExprTypeFromStringType(user, type, allowFail);
 					iceAssert(concrete);
 
-					if(instantiatedGenericTypes.size() > 0)
-					{
-						this->pushGenericTypeStack();
-						for(auto t : instantiatedGenericTypes)
-							this->pushGenericType(t.first, t.second);
-					}
-
-					if(instantiatedGenericTypes.size() > 0)
-						this->popGenericTypeStack();
-
 					this->namespaceStack = old;
-
 
 					if(!tp) tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 					iceAssert(tp);
