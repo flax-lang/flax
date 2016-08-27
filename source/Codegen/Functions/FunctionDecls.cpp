@@ -125,8 +125,8 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 	reified->setName(id);
 	cgi->module->addFunction(reified);
 
-	fprintf(stderr, "reify (%s): %s >> %s\n", reified->getName().str().c_str(), this->generatedFunc->getType()->str().c_str(),
-		reified->getType()->str().c_str());
+	// fprintf(stderr, "reify (%s): %s >> %s\n", reified->getName().str().c_str(), this->generatedFunc->getType()->str().c_str(),
+	// 	reified->getType()->str().c_str());
 
 	return Result_t(reified, 0);
 }
