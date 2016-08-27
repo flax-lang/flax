@@ -55,6 +55,7 @@ namespace fir
 
 		bool isCStyleVarArg();
 		bool isVariadic();
+		bool isGeneric();
 
 		Type* getReturnType();
 		size_t getArgumentCount();

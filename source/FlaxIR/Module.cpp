@@ -140,6 +140,11 @@ namespace fir
 		Function* f = new Function(id, ftype, this, linkage);
 		this->functions[id] = f;
 
+		if(f->getType()->getArgumentTypes().size() > 0 && f->getType()->getArgumentTypes()[0]->isParametricType())
+		{
+			info("1: %s: %s", f->getName().str().c_str(), f->getType()->str().c_str());
+		}
+
 		return f;
 	}
 

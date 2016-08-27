@@ -71,29 +71,29 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isPtr = false;
 	bool isWrapped = false;
 
-	fir::Type* type = self->getType();
-	if(!type)
+	fir::Type* ftype = self->getType();
+	if(!ftype)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
 
 	if(cgi->isTypeAlias(type))
 	{
-		iceAssert(type->isStructType());
-		iceAssert(type->toStructType()->getElementCount() == 1);
-		type = type->toStructType()->getElementN(0);
+		iceAssert(ftype->isStructType());
+		iceAssert(ftype->toStructType()->getElementCount() == 1);
+		ftype = ftype->toStructType()->getElementN(0);
 
 		warn(this, "typealias encountered");
 		isWrapped = true;
 	}
 
 
-	if(!type->isStructType() && !type->isClassType() && !type->isTupleType())
+	if(!ftype->isStructType() && !ftype->isClassType() && !ftype->isTupleType())
 	{
-		if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
+		if(ftype->isPointerType() && (ftype->getPointerElementType()->isStructType() || ftype->getPointerElementType()->isClassType()))
 		{
-			type = type->getPointerElementType(), isPtr = true;
+			ftype = ftype->getPointerElementType(), isPtr = true;
 		}
-		else if(type->isLLVariableArrayType())
+		else if(ftype->isLLVariableArrayType())
 		{
 			// lol, some magic.
 			if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
@@ -109,7 +109,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
 			}
 		}
-		else if(cgi->getExtensionsForBuiltinType(type).size() > 0)
+		else if(cgi->getExtensionsForBuiltinType(ftype).size() > 0)
 		{
 			// nothing was built to handle this
 			// so we basically need to do it manually
@@ -121,7 +121,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
 				std::deque<FuncPair_t> fpcands;
 
-				for(auto ext : cgi->getExtensionsForBuiltinType(type))
+				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
 				{
 					for(auto f : ext->funcs)
 					{
@@ -139,7 +139,12 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				for(auto p : fcands)
 					fpcands.push_back({ p.second.second, p.second.first->decl });
 
-				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fc->params);
+
+				std::deque<fir::Type*> fpars = { ftype->getPointerTo() };
+				for(auto e : fc->params) fpars.push_back(cgi->getExprType(e));
+
+
+				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
 				if(!res.resolved)
 					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
 
@@ -171,7 +176,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				std::deque<ComputedProperty*> ccands;
 
-				for(auto ext : cgi->getExtensionsForBuiltinType(type))
+				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
 				{
 					for(auto c : ext->cprops)
 					{
@@ -198,7 +203,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type '%s'", cgi->getReadableType(type).c_str());
+			error(this, "Cannot do member access on non-struct type '%s'", cgi->getReadableType(ftype).c_str());
 		}
 	}
 
@@ -206,19 +211,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// find out whether we need self or selfptr.
 	if(selfPtr == nullptr && !isPtr)
 	{
-		// we don't have a pointer value for this
-		// it's required for CreateStructGEP, so we'll have to make a temp variable
-		// then store the result of the LHS into it.
-
-		// if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
-		// {
-		// 	selfPtr = lhsPtr;
-		// }
-		// else
-		{
-			selfPtr = cgi->getStackAlloc(type);
-			cgi->builder.CreateStore(self, selfPtr);
-		}
+		selfPtr = cgi->getStackAlloc(ftype);
+		cgi->builder.CreateStore(self, selfPtr);
 	}
 
 
@@ -257,15 +251,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	TypePair_t* pair = cgi->getType(type);
+	TypePair_t* pair = cgi->getType(ftype);
 
-	if(!pair && !type->isClassType() && !type->isStructType() && !type->isTupleType())
+	if(!pair && !ftype->isClassType() && !ftype->isStructType() && !ftype->isTupleType())
 	{
-		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
+		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(ftype).c_str());
 	}
 
 
-	if(type->isTupleType())
+	if(ftype->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
@@ -284,10 +278,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->doTupleAccess(selfPtr, n, !immut);
 	}
-	else if(type->isStructType() && pair->second.second == TypeKind::Struct)
+	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
 		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
-		fir::StructType* st = type->toStructType();
+		fir::StructType* st = ftype->toStructType();
 
 		iceAssert(str);
 		iceAssert(self);
@@ -341,10 +335,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
 		}
 	}
-	else if(type->isClassType() && pair->second.second == TypeKind::Class)
+	else if(ftype->isClassType() && pair->second.second == TypeKind::Class)
 	{
 		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
-		fir::ClassType* ct = type->toClassType();
+		fir::ClassType* ct = ftype->toClassType();
 
 		iceAssert(cls);
 		iceAssert(self);
@@ -953,11 +947,6 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 			}
 
 		}
-	}
-
-	for(auto f : fns)
-	{
-		fprintf(stderr, "thing: %s\n", f.first->getType()->str().c_str());
 	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);

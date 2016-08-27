@@ -100,7 +100,16 @@ namespace fir
 		this->blocks.clear();
 	}
 
+	bool Function::isGeneric()
+	{
+		for(auto p : this->fnArguments)
+		{
+			if(p->getType()->isParametricType())
+				return true;
+		}
 
+		return this->getReturnType()->isParametricType();
+	}
 
 	Function* Function::reify(std::map<std::string, Type*> names, FTContext* tc)
 	{
