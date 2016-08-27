@@ -92,6 +92,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			{
 				if(sub->nsName == vr->name)
 				{
+					gstate.nsstrs.push_back(vr->name);
 					ma->matype = MAType::LeftNamespace;
 					return;
 				}
@@ -108,6 +109,18 @@ static void rewriteDotOperator(MemberAccess* ma)
 				ma->matype = MAType::LeftTypename;
 				gstate.nestedTypeStrs.push_back(vr->name);
 				return;
+			}
+			else
+			{
+				for(auto t : ft->types)
+				{
+					if(t.first == vr->name)
+					{
+						ma->matype = MAType::LeftTypename;
+						gstate.nestedTypeStrs.push_back(vr->name);
+						return;
+					}
+				}
 			}
 
 

@@ -1,5 +1,5 @@
 // LlvmCompiler.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 
@@ -266,6 +266,9 @@ namespace Compiler
 			{
 				// insert a call at the beginning of main().
 				llvm::Function* mainfunc = mod->getFunction("main");
+				if(!Compiler::getIsCompileOnly() && !mainfunc)
+					error("No main() function");
+
 				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();

@@ -155,7 +155,8 @@ namespace Operators
 		{
 			return compareEnumValues(cgi, op, lhs, leftVP.second, rhs, rightVP.second);
 		}
-		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType())
+		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
+			|| lhs->getType()->isClassType() || rhs->getType()->isClassType())
 		{
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)

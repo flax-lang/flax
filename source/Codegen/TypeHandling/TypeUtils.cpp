@@ -42,13 +42,11 @@ namespace Codegen
 		iceAssert(alloca->getType()->isPointerType());
 		fir::Type* baseType = alloca->getType()->getPointerElementType();
 
-		fir::StructType* bst = baseType->toStructType();
-
-		if(bst && (this->isEnum(baseType) || this->isTypeAlias(baseType)))
+		if((baseType->isClassType() || baseType->isStructType()) && (this->isEnum(baseType) || this->isTypeAlias(baseType)))
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(user, "Invalid type '%s'!", bst->getStructName().str().c_str());
+				error(user, "Invalid type (%s)", baseType->str().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
@@ -106,9 +104,7 @@ namespace Codegen
 			{
 				VarDecl* decl = getSymDecl(ref, ref->name);
 				if(!decl)
-				{
-					error(expr, "(%s:%d) -> Internal check failed: invalid var ref to '%s'", __FILE__, __LINE__, ref->name.c_str());
-				}
+					GenError::unknownSymbol(this, expr, ref->name, SymbolType::Variable);
 
 				auto x = this->getExprType(decl, allowFail);
 				return x;
@@ -145,9 +141,12 @@ namespace Codegen
 						}
 						else
 						{
-							fir::Function* genericMaybe = this->tryResolveAndInstantiateGenericFunction(fc);
-							if(genericMaybe)
-								return genericMaybe->getReturnType();
+							auto genericMaybe = this->tryResolveGenericFunctionCall(fc);
+							if(genericMaybe.first)
+							{
+								fc->cachedResolveTarget = Resolved_t(genericMaybe);
+								return genericMaybe.first->getReturnType();
+							}
 
 							GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params);
 						}
@@ -200,30 +199,26 @@ namespace Codegen
 				fir::Type* lhs = this->getExprType(ma->left);
 				TypePair_t* pair = this->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 
-				fir::StructType* st = dynamic_cast<fir::StructType*>(lhs);
-
-				if(!pair && (!st || !st->isLiteralStruct()))
+				if(!pair && !lhs->isTupleType())
 					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
 
-
-				if((st && st->isLiteralStruct()) || (pair->second.second == TypeKind::Tuple))
+				if(lhs->isTupleType())
 				{
 					// values are 1, 2, 3 etc.
 					// for now, assert this.
 
+					fir::TupleType* tt = lhs->toTupleType();
+					iceAssert(tt);
+
 					Number* n = dynamic_cast<Number*>(ma->right);
 					iceAssert(n);
 
-					fir::Type* ttype = pair ? pair->first : st;
-					iceAssert(ttype->isStructType());
-
-					if((size_t) n->ival >= ttype->toStructType()->getElementCount())
+					if((size_t) n->ival >= tt->getElementCount())
 					{
-						error(expr, "Tuple does not have %d elements, only %zd", (int) n->ival + 1,
-							ttype->toStructType()->getElementCount());
+						error(expr, "Tuple does not have %d elements, only %zd", (int) n->ival + 1, tt->getElementCount());
 					}
 
-					return ttype->toStructType()->getElementN(n->ival);
+					return tt->getElementN(n->ival);
 				}
 				else if(pair->second.second == TypeKind::Class)
 				{
@@ -337,6 +332,12 @@ namespace Codegen
 				{
 					auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
 
+					if(!data.found)
+					{
+						error(bo, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(this, bo->op).c_str(),
+							ltype->str().c_str(), rtype->str().c_str());
+					}
+
 					iceAssert(data.found);
 					return data.opFunc->getReturnType();
 				}
@@ -434,10 +435,9 @@ namespace Codegen
 			}
 			else if(Tuple* tup = dynamic_cast<Tuple*>(expr))
 			{
-				fir::Type* tp = tup->cachedLlvmType;
+				fir::Type* tp = tup->createdType;
 				if(!tup->didCreateType)
 					tp = tup->getType(this);
-
 
 				iceAssert(tp);
 				return tp;
@@ -615,12 +615,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isStructType() && from->toStructType()->getStructName().str() == "String")
+			&& from->isClassType() && from->toClassType()->getClassName().str() == "String")
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isStructType() && to->toStructType()->getStructName().str() == "String")
+			&& to->isClassType() && to->toClassType()->getClassName().str() == "String")
 		{
 			return 2;
 		}
@@ -629,32 +629,21 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isStructType() && from->isStructType() && to->toStructType()->isABaseTypeOf(from->toStructType()))
-		{
-			return 20;
-		}
 		else if(to->isPointerType() && from->isNullPointer())
 		{
 			return 5;
-		}
-		else if(to->isPointerType() && from->isPointerType() && from->getPointerElementType()->toStructType()
-				&& to->getPointerElementType()->toStructType() && to->getPointerElementType()->toStructType()
-						->isABaseTypeOf(from->getPointerElementType()->toStructType()))
-		{
-			return 20;
 		}
 		else if(this->isAnyType(to))
 		{
 			// any cast is 25.
 			return 25;
 		}
-		else if(this->isTupleType(from) && this->isTupleType(to)
-			&& from->toStructType()->getElementCount() == to->toStructType()->getElementCount())
+		else if(from->isTupleType() && to->isTupleType() && from->toTupleType()->getElementCount() == to->toTupleType()->getElementCount())
 		{
 			int sum = 0;
-			for(size_t i = 0; i < from->toStructType()->getElementCount(); i++)
+			for(size_t i = 0; i < from->toTupleType()->getElementCount(); i++)
 			{
-				int d = this->getAutoCastDistance(from->toStructType()->getElementN(i), to->toStructType()->getElementN(i));
+				int d = this->getAutoCastDistance(from->toTupleType()->getElementN(i), to->toTupleType()->getElementN(i));
 				if(d == -1)
 					return -1;		// note: make sure this is the last case
 
@@ -776,7 +765,7 @@ namespace Codegen
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isStructType() && from->getType()->toStructType()->getStructName().str() == "String")
+				&& from->getType()->isClassType() && from->getType()->toClassType()->getClassName().str() == "String")
 		{
 			// get the struct gep:
 			// Layout of string:
@@ -799,42 +788,13 @@ namespace Codegen
 			// int-to-float is 10.
 			retval = this->builder.CreateIntToFloatCast(from, target);
 		}
-		else if(target->isStructType() && from->getType()->isStructType()
-			&& target->toStructType()->isABaseTypeOf(from->getType()->toStructType()))
-		{
-			fir::StructType* sto = target->toStructType();
-			fir::StructType* sfr = from->getType()->toStructType();
-
-			iceAssert(sto->isABaseTypeOf(sfr));
-
-			// create alloca, which gets us a pointer.
-			fir::Value* alloca = this->builder.CreateStackAlloc(sfr);
-
-			// store the value into the pointer.
-			this->builder.CreateStore(from, alloca);
-
-			// do a pointer type cast.
-			fir::Value* ptr = this->builder.CreatePointerTypeCast(alloca, sto->getPointerTo());
-
-			// load it.
-			retval = this->builder.CreateLoad(ptr);
-		}
 		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
 			retval = fir::ConstantValue::getNullValue(target);
 			// fprintf(stderr, "void cast, %s (%zu) // %s (%zu)\n", target->str().c_str(), from->id, retval->getType()->str().c_str(), retval->id);
 		}
-		else if(target->isPointerType() && from->getType()->isPointerType() && target->getPointerElementType()->toStructType()
-				&& target->getPointerElementType()->toStructType()->isABaseTypeOf(from->getType()->getPointerElementType()->toStructType()))
-		{
-			fir::StructType* sfr = from->getType()->getPointerElementType()->toStructType();
-			fir::StructType* sto = target->getPointerElementType()->toStructType();
-
-			iceAssert(sfr && sto && sto->isABaseTypeOf(sfr));
-			retval = this->builder.CreatePointerTypeCast(from, sto->getPointerTo());
-		}
-		else if(this->isTupleType(from->getType()) && this->isTupleType(target)
-			&& from->getType()->toStructType()->getElementCount() == target->toStructType()->getElementCount())
+		else if(from->getType()->isTupleType() && target->isTupleType()
+			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
 			// somewhat complicated
 			iceAssert(fromPtr);
@@ -843,7 +803,7 @@ namespace Codegen
 			// fprintf(stderr, "tuplePtr = %s\n", tuplePtr->getType()->str().c_str());
 			// fprintf(stderr, "from = %s, to = %s\n", from->getType()->str().c_str(), target->str().c_str());
 
-			for(size_t i = 0; i < from->getType()->toStructType()->getElementCount(); i++)
+			for(size_t i = 0; i < from->getType()->toTupleType()->getElementCount(); i++)
 			{
 				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
 				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
@@ -953,7 +913,7 @@ namespace Codegen
 			}
 		}
 
-		return fir::StructType::getLiteral(types, cgi->getContext());
+		return fir::TupleType::get(types, cgi->getContext());
 	}
 
 
@@ -1077,11 +1037,21 @@ namespace Codegen
 			std::string atype = ns.back();
 			ns.pop_back();
 
+
+			if(TypePair_t* test = this->getType(Identifier(atype, ns, IdKind::Struct)))
+			{
+				iceAssert(test->first);
+				return test->first;
+			}
+
+
+
+
 			auto pair = this->findTypeInFuncTree(ns, atype);
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
 
-			std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
+			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
@@ -1200,24 +1170,13 @@ namespace Codegen
 					auto old = this->namespaceStack;
 					this->namespaceStack = ns;
 
-					concrete = oldSB->createType(this, instantiatedGenericTypes);
+					concrete = oldSB->createType(this);
 					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
 
 					concrete = getExprTypeFromStringType(user, type, allowFail);
 					iceAssert(concrete);
 
-					if(instantiatedGenericTypes.size() > 0)
-					{
-						this->pushGenericTypeStack();
-						for(auto t : instantiatedGenericTypes)
-							this->pushGenericType(t.first, t.second);
-					}
-
-					if(instantiatedGenericTypes.size() > 0)
-						this->popGenericTypeStack();
-
 					this->namespaceStack = old;
-
 
 					if(!tp) tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
 					iceAssert(tp);
@@ -1275,17 +1234,11 @@ namespace Codegen
 		return false;	// TODO: something about this
 	}
 
-	bool CodegenInstance::isPtr(Expr* expr)
-	{
-		fir::Type* ltype = this->getExprType(expr);
-		return ltype && ltype->isPointerType();
-	}
-
 	bool CodegenInstance::isAnyType(fir::Type* type)
 	{
 		if(type->isStructType())
 		{
-			if(!type->toStructType()->isLiteralStruct() && type->toStructType()->getStructName().str() == "Any")
+			if(type->toStructType()->getStructName().str() == "Any")
 			{
 				return true;
 			}
@@ -1375,18 +1328,22 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(fir::Type* ltype)
 	{
-		return (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		bool ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		if(!ret)
+		{
+			while(ltype->isPointerType())
+				ltype = ltype->getPointerElementType();
+
+			ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		}
+
+		return ret;
 	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
 		fir::Type* ltype = this->getExprType(expr);
 		return this->isBuiltinType(ltype);
-	}
-
-	bool CodegenInstance::isTupleType(fir::Type* type)
-	{
-		return type->isStructType() && type->isLiteralStruct();
 	}
 
 
@@ -1416,7 +1373,18 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			std::string str = "ƒ " + fd->ident.name + "(";
+			std::string str = "func " + fd->ident.name;
+			if(fd->genericTypes.size() > 0)
+			{
+				str += "<";
+				for(auto t : fd->genericTypes)
+					str += t.first + ", ";
+
+				str = str.substr(0, str.length() - 2);
+				str += ">";
+			}
+
+			str += "(";
 			for(auto p : fd->params)
 			{
 				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";

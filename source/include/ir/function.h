@@ -1,5 +1,5 @@
 // function.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
-
-#include "errors.h"
 
 #include <string>
 #include <vector>
@@ -33,6 +31,8 @@ namespace fir
 
 		// methods
 		Argument(Function* fn, Type* type);
+		~Argument();
+
 		Value* getActualValue();
 		Function* getParentFunction();
 
@@ -55,6 +55,7 @@ namespace fir
 
 		bool isCStyleVarArg();
 		bool isVariadic();
+		bool isGeneric();
 
 		Type* getReturnType();
 		size_t getArgumentCount();
@@ -65,6 +66,10 @@ namespace fir
 
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
+		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
+
+
+		static Function* create(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
 
 
 		// fields

@@ -53,12 +53,12 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 
 
-	if(this->initVal && !cmplxtype && this->type.strType != "Inferred" && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
+	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
 	{
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->isPtr(this)))
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->getExprType(this)->isPointerType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);
@@ -185,8 +185,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 		this->inferredLType = vartype;
 
-		if(cgi->isBuiltinType(this->initVal) && !this->inferredLType->isStructType())
-			this->type = cgi->getReadableType(this->initVal);
+		// if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
+		// 	this->type = cgi->getReadableType(this->initVal);
 	}
 	else
 	{
@@ -215,8 +215,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Value* ai = nullptr;
 
-	if(this->inferredLType == nullptr)
-		this->inferType(cgi);
+	// if(this->inferredLType == nullptr)
+	this->inferType(cgi);
 
 
 	if(!this->isGlobal)
@@ -230,7 +230,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		ValPtr_t r;
 
-		if(isGlobal && this->inferredLType->isStructType())
+		if(isGlobal && (this->inferredLType->isStructType() || this->inferredLType->isClassType()))
 		{
 			// can't call directly for globals, since we cannot call the function directly.
 			// todo: if it's a struct, and we need to call a constructor...
@@ -260,7 +260,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			iceAssert(val);
 			cgi->addGlobalConstructedValue(ai, val);
 		}
-		else if(ltype->isStructType() && !cgi->isTupleType(ltype))
+		else if(ltype->isStructType() || ltype->isClassType())
 		{
 			// oopsies. we got to call the struct constructor.
 			TypePair_t* tp = cgi->getType(ltype);
@@ -272,18 +272,19 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Function* candidate = cgi->getDefaultConstructor(this, ai->getType(), sb);
 			cgi->addGlobalConstructor(ai, candidate);
 		}
-		else if(cgi->isTupleType(ltype))
+		else if(ltype->isTupleType())
 		{
-			fir::StructType* stype = dynamic_cast<fir::StructType*>(ltype);
+			fir::TupleType* stype = dynamic_cast<fir::TupleType*>(ltype);
 
 			int i = 0;
 			for(fir::Type* t : stype->getElements())
 			{
-				if(cgi->isTupleType(t))
+				if(t->isTupleType())
 				{
+					// todo(missing): why?
 					error(this, "global nested tuples not supported yet");
 				}
-				else if(t->isStructType())
+				else if(t->isStructType() || t->isClassType())
 				{
 					TypePair_t* tp = cgi->getType(t);
 					iceAssert(tp);

@@ -5,6 +5,36 @@
 import Foundation
 
 
+class SomeClass
+{
+	func gen<T, K>(a: T, b: K) -> K
+	{
+		let m = alloc K
+		printf("instance generic\n")
+		return #m;
+	}
+
+	static func sgen<T, K>(a: T, b: K) -> T
+	{
+		let m = alloc T
+		printf("static generic\n")
+		return #m;
+	}
+}
+
+namespace SomeNS
+{
+	func ngen<T>(a: T) -> T
+	{
+		let m = alloc T
+		printf("namespace generic\n")
+		return #m;
+	}
+}
+
+
+
+
 func foo_generic<T>(a: T, b: T, c: T)
 {
 	printf("foo: triple T\n")
@@ -22,6 +52,8 @@ func foo_generic<T, K>(a: T, b: K)
 	let ta = typeof(a)
 	let tb = typeof(b)
 
+	let x = T()
+	let y = K()
 
 	if(ta == Type.int8)
 	{
@@ -73,11 +105,16 @@ public func doGenericsTest()
 	foo_generic(7, 6 as int16)
 	foo_generic(7, 6 as int32)
 
-	// foo_generic(501, 101)
-
 	foo_generic(5, "asdf")
 
 	foo_generic(1, 4, 9)
+
+
+
+	let sc = SomeClass()
+	sc.gen(10, 20)
+	SomeClass.sgen(10, 20)
+	SomeNS.ngen("foo")
 }
 
 

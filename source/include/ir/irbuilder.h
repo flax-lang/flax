@@ -1,5 +1,5 @@
 // irbuilder.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -7,9 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
-
-
-#include "errors.h"
 
 #include <string>
 #include <vector>
@@ -96,10 +93,10 @@ namespace fir
 		Value* CreateImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-		Value* CreateGetPointerToStructMember(Value* ptr, Value* ptrIndex, Value* memberIndex, std::string vname = "");
 		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
+		Value* CreateGetStructMember(Value* ptr, std::string memberName);
 		Value* CreateStructGEP(Value* structPtr, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, index)

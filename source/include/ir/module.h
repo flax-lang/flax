@@ -1,5 +1,5 @@
 // module.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
-
-#include "errors.h"
 
 #include <map>
 #include <deque>
@@ -41,11 +39,11 @@ namespace fir
 		GlobalVariable* createGlobalString(std::string str);
 
 		std::deque<GlobalVariable*> getGlobalVariables();
-		std::deque<StructType*> getNamedTypes();
 		std::deque<Function*> getAllFunctions();
+		std::deque<Type*> getNamedTypes();
 
-		StructType* getNamedType(Identifier name);
-		void addNamedType(Identifier name, StructType* type);
+		Type* getNamedType(Identifier name);
+		void addNamedType(Identifier name, Type* type);
 
 		void addFunction(Function* func);
 
@@ -65,8 +63,8 @@ namespace fir
 		std::unordered_map<std::string, GlobalVariable*> globalStrings;
 
 		std::unordered_map<Identifier, GlobalVariable*> globals;
-		std::unordered_map<Identifier, StructType*> namedTypes;
 		std::unordered_map<Identifier, Function*> functions;
+		std::unordered_map<Identifier, Type*> namedTypes;
 	};
 
 

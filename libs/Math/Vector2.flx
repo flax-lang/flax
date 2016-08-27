@@ -11,8 +11,6 @@ namespace Math
 	}
 }
 
-public operator == (this: Math.Vector2, other: Math.Vector2) -> bool { (this.x == other.x) && (this.y == other.y) }
-
 @operator[Commutative]
 public operator * (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
 public operator / (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }

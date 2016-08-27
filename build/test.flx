@@ -2,6 +2,24 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+// import String
+// import LibCInterface
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import Foundation
 import Utilities
 import String
@@ -191,9 +209,47 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
+class TestingClass
+{
+	init(x: int)
+	{
+		self.thing = x
+	}
+
+	var thing: int
+}
+
+
+extension TestingClass : StringConvertible, Equatable
+{
+	func toString() -> String
+	{
+		"hello"
+	}
+
+	func isEqual(a: TestingClass) -> bool
+	{
+		return self.thing == a.thing
+	}
+}
+
+
+func cts<T : StringConvertible>(thing: T) -> String
+{
+	return thing.toString()
+}
+
+
+
 @nomangle func mtest(k: int, g: int)
 {
 	printf("(%d, %d)\n", k, g)
+
+	let x = TestingClass(10)
+	let y = TestingClass(20)
+
+
+	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }
 
 
@@ -204,8 +260,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 	println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
-
-
 	printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
 	println("%b", "a" != "b")
@@ -216,11 +270,9 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-	var g = String(10)
-	g = 40
-	g.kappa = 10
+	var g = "439"
 	let k = g.toInteger()
-	printf("%s, %d\n", g, g.kappa)
+	printf("%s, %d\n", g, k)
 
 
 
@@ -245,7 +297,7 @@ public func main(argc: int32, argv: int8**) -> int
 	let v2 = Math.Vector2(3.0, 7.0)
 
 	let vr = v1 ⨯ v2
-	printf("vr = %f\n", vr)
+	printf("(%d), vr = %f\n", v1 • v2, vr)
 
 	var lol: String = "HELLO"
 	printf("%d\n", lol[1].hasData())
@@ -262,6 +314,39 @@ public func main(argc: int32, argv: int8**) -> int
 	// args[0] = "HELLO"
 	// #(args + 1) = 40
 	// args[2] = "GOODBYE"
+
+
+
+
+
+
+	// operator overloading notes:
+	// top-level operators need to stay
+	// method operators need to stay
+	// protocols can dictate needing operators
+	//
+	// protocols first check the class and any extensions to see if the operator is defined
+	// that's it...
+	//
+	// top level operators secretly create an extension on the type to the left, and make a method instead.
+	// this way, protocol resolution can just check the extensions without having to bother with looking at
+	// top-level functions.
+	//
+	// basically, top-level operators will just be syntactic sugar for extensions defining operators.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -285,6 +370,7 @@ public func main(argc: int32, argv: int8**) -> int
 	printf("\n<< done >>\n")
 	return 0
 }
+
 
 
 

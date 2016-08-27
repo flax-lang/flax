@@ -11,7 +11,7 @@ using namespace Codegen;
 
 static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref, ClassDef* cls);
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref);
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -71,29 +71,29 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isPtr = false;
 	bool isWrapped = false;
 
-	fir::Type* type = self->getType();
-	if(!type)
+	fir::Type* ftype = self->getType();
+	if(!ftype)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
 
 	if(cgi->isTypeAlias(type))
 	{
-		iceAssert(type->isStructType());
-		iceAssert(type->toStructType()->getElementCount() == 1);
-		type = type->toStructType()->getElementN(0);
+		iceAssert(ftype->isStructType());
+		iceAssert(ftype->toStructType()->getElementCount() == 1);
+		ftype = ftype->toStructType()->getElementN(0);
 
 		warn(this, "typealias encountered");
 		isWrapped = true;
 	}
 
 
-	if(!type->isStructType())
+	if(!ftype->isStructType() && !ftype->isClassType() && !ftype->isTupleType())
 	{
-		if(type->isPointerType() && type->getPointerElementType()->isStructType())
+		if(ftype->isPointerType() && (ftype->getPointerElementType()->isStructType() || ftype->getPointerElementType()->isClassType()))
 		{
-			type = type->getPointerElementType(), isPtr = true;
+			ftype = ftype->getPointerElementType(), isPtr = true;
 		}
-		else if(type->isLLVariableArrayType())
+		else if(ftype->isLLVariableArrayType())
 		{
 			// lol, some magic.
 			if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
@@ -109,9 +109,101 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
 			}
 		}
+		else if(cgi->getExtensionsForBuiltinType(ftype).size() > 0)
+		{
+			// nothing was built to handle this
+			// so we basically need to do it manually
+
+			// todo.
+
+			if(FuncCall* fc = dynamic_cast<FuncCall*>(this->right))
+			{
+				std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
+				std::deque<FuncPair_t> fpcands;
+
+				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
+				{
+					for(auto f : ext->funcs)
+					{
+						fcands[f->decl] = { f, ext->functionMap[f] };
+					}
+				}
+
+
+				for(auto it = fcands.begin(); it != fcands.end(); it++)
+				{
+					if((*it).first->ident.name != fc->name)
+						it = fcands.erase(it);
+				}
+
+				for(auto p : fcands)
+					fpcands.push_back({ p.second.second, p.second.first->decl });
+
+
+				std::deque<fir::Type*> fpars = { ftype->getPointerTo() };
+				for(auto e : fc->params) fpars.push_back(cgi->getExprType(e));
+
+
+				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
+				if(!res.resolved)
+					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
+
+				iceAssert(res.t.first);
+
+
+				std::deque<fir::Value*> args;
+				for(auto e : fc->params)
+					args.push_back(e->codegen(cgi).result.first);
+
+
+				// make a new self
+				iceAssert(self);
+
+				fir::Value* newSelfP = cgi->builder.CreateImmutStackAlloc(self->getType(), self);
+				args.push_front(newSelfP);
+
+				// might not be a good thing to always do.
+				// TODO: check this.
+				// makes sure we call the function in our own module, because llvm only allows that.
+
+				fir::Function* target = res.t.first;
+				auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+
+				fir::Value* ret = cgi->builder.CreateCall(thistarget, args);
+				return Result_t(ret, 0);
+			}
+			else if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
+			{
+				std::deque<ComputedProperty*> ccands;
+
+				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
+				{
+					for(auto c : ext->cprops)
+					{
+						if(c->ident.name == vr->name)
+							ccands.push_back(c);
+					}
+				}
+
+				if(ccands.size() > 1)
+					error(vr, "Ambiguous access to property '%s' -- extensions declared duplicates?", vr->name.c_str());
+
+				else if(ccands.size() == 0)
+					error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), self->getType()->str().c_str());
+
+
+				// do it
+				ComputedProperty* prop = ccands[0];
+				doComputedProperty(cgi, vr, prop, 0, cgi->builder.CreateImmutStackAlloc(self->getType(), self));
+			}
+			else
+			{
+				error(this->right, "enotsup");
+			}
+		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type %s", cgi->getReadableType(type).c_str());
+			error(this, "Cannot do member access on non-struct type '%s'", cgi->getReadableType(ftype).c_str());
 		}
 	}
 
@@ -119,19 +211,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// find out whether we need self or selfptr.
 	if(selfPtr == nullptr && !isPtr)
 	{
-		// we don't have a pointer value for this
-		// it's required for CreateStructGEP, so we'll have to make a temp variable
-		// then store the result of the LHS into it.
-
-		// if(lhsPtr && lhsPtr->getType() == type->getPointerTo())
-		// {
-		// 	selfPtr = lhsPtr;
-		// }
-		// else
-		{
-			selfPtr = cgi->getStackAlloc(type);
-			cgi->builder.CreateStore(self, selfPtr);
-		}
+		selfPtr = cgi->getStackAlloc(ftype);
+		cgi->builder.CreateStore(self, selfPtr);
 	}
 
 
@@ -170,20 +251,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	fir::StructType* st = type->toStructType();
+	TypePair_t* pair = cgi->getType(ftype);
 
-	TypePair_t* pair = cgi->getType(type);
-	if(!pair && (!st || !st->isLiteralStruct()))
+	if(!pair && !ftype->isClassType() && !ftype->isStructType() && !ftype->isTupleType())
 	{
-		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(type).c_str());
-	}
-	else if(st && st->isLiteralStruct())
-	{
-		type = st;
+		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(ftype).c_str());
 	}
 
 
-	if((st && cgi->isTupleType(st)) || (pair->second.second == TypeKind::Tuple))
+	if(ftype->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
 		iceAssert(n);
@@ -202,9 +278,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->doTupleAccess(selfPtr, n, !immut);
 	}
-	else if(pair->second.second == TypeKind::Struct)
+	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
 		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
+		fir::StructType* st = ftype->toStructType();
 
 		iceAssert(str);
 		iceAssert(self);
@@ -223,9 +300,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(var)
 		{
-			if(str->nameMap.find(var->name) != str->nameMap.end())
+			if(st->hasElementWithName(var->name))
 			{
-				i = str->nameMap[var->name];
+				i = st->getElementIndex(var->name);
 			}
 			else
 			{
@@ -258,9 +335,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
 		}
 	}
-	else if(pair->second.second == TypeKind::Class)
+	else if(ftype->isClassType() && pair->second.second == TypeKind::Class)
 	{
 		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
+		fir::ClassType* ct = ftype->toClassType();
 
 		iceAssert(cls);
 		iceAssert(self);
@@ -278,13 +356,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(var)
 		{
-			if(cls->nameMap.find(var->name) != cls->nameMap.end())
+			if(ct->hasElementWithName(var->name))
 			{
-				i = cls->nameMap[var->name];
+				i = ct->getElementIndex(var->name);
 			}
 			else
 			{
-				iceAssert(cgi->getStructMemberByName(cls, var));
+				if(!cgi->getStructMemberByName(cls, var))
+					error(this, "Class '%s' has no such member %s", cls->ident.str().c_str(), var->name.c_str());
 			}
 		}
 		else if(!var && !fc)
@@ -303,6 +382,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			size_t i = 0;
 			std::deque<FuncPair_t> candidates;
+
 			for(auto f : cls->funcs)
 			{
 				FuncPair_t fp = { cls->lfuncs[i], f->decl };
@@ -312,11 +392,41 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i++;
 			}
 
-			Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
-			if(res.resolved) return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
+			// Resolved_t res = cgi->resolveFunctionFromList(fc, candidates, fc->name, fc->params);
+			// if(res.resolved)
+			// {
+			// 	error("what");
+			// 	// // now we need to determine if it exists, and its params.
+			// 	// auto pair = cgi->resolveMemberFuncCall(ma, cls, fc);
+			// 	// Func* callee = pair.first;
+			// 	// iceAssert(callee);
+
+			// 	// if(callee->decl->isStatic)
+			// 	// {
+			// 	// 	// remove the 'self' parameter
+			// 	// 	args.erase(args.begin());
+			// 	// }
 
 
-			return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			// 	// if(callee->decl->isStatic != isStaticFunctionCall)
+			// 	// {
+			// 	// 	error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
+			// 	// }
+
+			// 	// fir::Function* lcallee = pair.second;
+			// 	// iceAssert(lcallee);
+
+			// 	// lcallee = cgi->module->getFunction(lcallee->getName());
+			// 	// iceAssert(lcallee);
+
+			// 	// return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
+
+			// 	// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, true);
+			// }
+			// else
+			// {
+				return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			// }
 		}
 		else if(var)
 		{
@@ -357,7 +467,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 				iceAssert(cprop);
-				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr, cls);
+				return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr);
 			}
 		}
 		else
@@ -380,7 +490,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref, ClassDef* cls)
+static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref)
 {
 	if(_rhs)
 	{
@@ -561,6 +671,25 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				found = true;
 				continue;
 			}
+			else
+			{
+				for(auto t : ftree->types)
+				{
+					if(t.first == front)
+					{
+						iceAssert(t.second.first);
+						curType = dynamic_cast<ClassDef*>(t.second.second.first);
+						curFType = t.second.first;
+
+						iceAssert(curType);
+
+						found = true;
+						break;
+					}
+				}
+
+				if(found) continue;
+			}
 		}
 		else
 		{
@@ -606,7 +735,21 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				FunctionTree* pubft = this->getCurrentFuncTree(&nsstrs, this->rootNode->publicFuncTree);
 				res = this->resolveFunctionFromList(ma, pubft->funcs, fc->name, fc->params);
 
-				// printf("search ftree %d, nothing\n", ftree->id);
+				if(!res.resolved)
+				{
+					std::deque<Func*> flist;
+					for(auto f : ftree->genericFunctions)
+					{
+						iceAssert(f.first->genericTypes.size() > 0);
+
+						if(f.first->ident.name == fc->name)
+							flist.push_back({ f.second });
+					}
+
+					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(fp.first && fp.second)
+						res = Resolved_t(fp);
+				}
 			}
 		}
 		else
@@ -618,17 +761,34 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				std::deque<FuncPair_t> flist;
 				for(size_t i = 0; i < clsd->funcs.size(); i++)
 				{
-					if(clsd->funcs[i]->decl->ident.name == fc->name)
+					if(clsd->funcs[i]->decl->ident.name == fc->name && clsd->funcs[i]->decl->isStatic)
 						flist.push_back(FuncPair_t(clsd->lfuncs[i], clsd->funcs[i]->decl));
 				}
 
 				res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
+
+				if(!res.resolved)
+				{
+					std::deque<Func*> flist;
+					for(auto f : clsd->funcs)
+					{
+						if(f->decl->ident.name == fc->name && f->decl->genericTypes.size() > 0)
+							flist.push_back(f);
+					}
+
+					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(fp.first && fp.second)
+						res = Resolved_t(fp);
+				}
 			}
 			else
 			{
 				error(fc, "error");
 			}
 		}
+
+
+
 
 		if(!res.resolved)
 		{
@@ -642,7 +802,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 			text += fc->name;
 
-			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text))
+			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text, true))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);
@@ -662,13 +822,13 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = this->getExprType(fc, res);
+		fir::Type* ltype = res.t.first->getReturnType();
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;
-			Result_t res = fc->codegen(this);
+			Result_t result = fc->codegen(this);
 
-			return { { ltype, res }, curFType };
+			return { { ltype, result }, curFType };
 		}
 		else
 		{
@@ -787,11 +947,19 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 	params.push_front(cls->createdType->getPointerTo());
 
 
+	std::deque<Func*> funclist;
+	std::deque<Func*> genericfunclist;
 	std::deque<FuncPair_t> fns;
 	for(auto f : cls->funcs)
 	{
 		if(f->decl->ident.name == fc->name)
-			fns.push_back({ cls->functionMap[f], 0 });
+		{
+			fns.push_back({ cls->functionMap[f], f->decl });
+			funclist.push_back(f);
+
+			if(f->decl->genericTypes.size() > 0)
+				genericfunclist.push_back(f);
+		}
 	}
 
 
@@ -801,7 +969,14 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 		for(auto f : ext->funcs)
 		{
 			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode))
-				fns.push_back({ ext->functionMap[f], 0 });
+			{
+				fns.push_back({ ext->functionMap[f], f->decl });
+				funclist.push_back(f);
+
+				if(f->decl->genericTypes.size() > 0)
+					genericfunclist.push_back(f);
+			}
+
 		}
 	}
 
@@ -809,35 +984,33 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 
 	if(!res.resolved)
 	{
-		auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
-		std::string argstr = std::get<0>(tup);
-		std::string candstr = std::get<1>(tup);
-		HighlightOptions ops = std::get<2>(tup);
-
-		ops.caret = ma->pin;
-
-		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
-	}
-
-	for(auto f : cls->funcs)
-	{
-		if(cls->functionMap[f] == res.t.first)
-			return { f, res.t.first };
-	}
-
-	// check extensions
-	for(auto ext : exts)
-	{
-		for(auto f : ext->funcs)
+		// look for generic ones
+		FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		if(fp.first && fp.second)
 		{
-			if(ext->functionMap[f] == res.t.first)
-				return { f, res.t.first };
+			res = Resolved_t(fp);
+		}
+		else
+		{
+			auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
+			std::string argstr = std::get<0>(tup);
+			std::string candstr = std::get<1>(tup);
+			HighlightOptions ops = std::get<2>(tup);
+
+			ops.caret = ma->pin;
+
+			error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
+				fc->name.c_str(), cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 		}
 	}
 
+	for(auto f : funclist)
+	{
+		if(f->decl == res.t.second)
+			return { f, res.t.first };
+	}
 
-	iceAssert(0);
+	iceAssert("failed to find func?" && 0);
 }
 
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)

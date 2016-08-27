@@ -74,7 +74,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 		fir::Value* pointer = cgi->builder.CreateGetPointer(cgi->builder.CreateLoad(allocmemptr),
 			cgi->builder.CreateLoad(counterPtr), "pointerPtr");
 
-		if(type->isStructType())
+		if(type->isStructType() || type->isClassType())
 		{
 			// call the init func
 			TypePair_t* typePair = 0;
