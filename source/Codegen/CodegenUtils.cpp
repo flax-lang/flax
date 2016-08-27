@@ -1601,6 +1601,13 @@ namespace Codegen
 				}
 			}
 
+			// check that we actually have an entry for every type
+			for(auto t : candidate->genericTypes)
+			{
+				if(thistm.find(t.first) == thistm.end())
+					return false;
+			}
+
 
 			*gtm = thistm;
 			return true;
