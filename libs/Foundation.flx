@@ -4,6 +4,7 @@
 
 import Core
 import Format
+import Protocols
 import LibCInterface
 
 public func min(a: int, b: int) -> int

@@ -74,19 +74,20 @@ namespace Codegen
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
+
+		// generic stuff
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
+		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
+
 
 		TypeMap_t typeMap;
 
 		// custom operator stuff
 		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
-
 		std::deque<Ast::Func*> funcScopeStack;
 
 		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
-
-		DependencyGraph* dependencyGraph = 0;
 
 
 		struct
@@ -149,15 +150,16 @@ namespace Codegen
 		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
 
 
-		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
 
 		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
 		// legitimate, fir::Type* things.
 
 		void pushGenericTypeStack();
-		void pushGenericType(std::string id, fir::Type* type);
-		fir::Type* resolveGenericType(std::string id);
 		void popGenericTypeStack();
+		void pushGenericType(std::string id, fir::Type* type);
+		void pushGenericTypeMap(std::map<std::string, fir::Type*> types);
+		fir::Type* resolveGenericType(std::string id);
+
 
 		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
 
@@ -175,11 +177,13 @@ namespace Codegen
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
-		std::deque<FuncPair_t> resolveFunctionName(std::string basename, std::deque<Ast::Func*>* bodiesFound = 0);
+		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
 			std::deque<fir::Type*> params, bool exactMatch = false);
+
+		std::deque<Ast::Func*> findGenericFunctions(std::string basename);
 
 		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::deque<Ast::Expr*> params, bool exactMatch = false);
 
@@ -204,10 +208,8 @@ namespace Codegen
 		fir::Value* autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
 		__attribute__ ((warn_unused_result));
 
-
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isPtr(Ast::Expr* e);
 		bool isEnum(Ast::ExprType type);
 		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
@@ -218,8 +220,6 @@ namespace Codegen
 		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
-		bool isTupleType(fir::Type* type);
-		bool areEqualTypes(fir::Type* a, fir::Type* b);
 
 		bool isDuplicateType(Identifier id);
 
@@ -257,7 +257,6 @@ namespace Codegen
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
-		fir::Function* tryResolveAndInstantiateGenericFunction(Ast::FuncCall* fc);
 
 
 
@@ -267,6 +266,17 @@ namespace Codegen
 		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
 
 
+		FuncPair_t tryResolveGenericFunctionCall(Ast::FuncCall* fc);
+		FuncPair_t tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
+			Ast::Func* func, std::deque<fir::Type*> params);
+
+
+		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
+
+		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
+		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
+		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
 
 

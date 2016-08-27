@@ -1,5 +1,5 @@
 // ExecutionTarget.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/module.h"
@@ -33,13 +33,14 @@ namespace fir
 		return fir::PrimitiveType::getUintN(this->psize);
 	}
 
-	static size_t getLargestMember(ExecutionTarget* et, StructType* t, size_t largest)
+
+	static size_t getLargestMember(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		for(auto m : t->getElements())
+		for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
 		{
 			size_t c = 0;
-			if(m->isStructType())
-				c = getLargestMember(et, m->toStructType(), largest);
+			if(m->isStructType() || m->isClassType())
+				c = getLargestMember(et, m, largest);
 
 			else
 				c = et->getTypeSizeInBits(m);
@@ -50,11 +51,12 @@ namespace fir
 		return largest;
 	}
 
+
 	static void recursiveGetTypes(Type* t, std::deque<Type*>& types)
 	{
-		if(t->isStructType())
+		if(t->isStructType() || t->isClassType())
 		{
-			for(auto m : t->toStructType()->getElements())
+			for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
 				recursiveGetTypes(m, types);
 		}
 		else
@@ -65,7 +67,7 @@ namespace fir
 
 	static size_t recursiveGetSize(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		if(t->isStructType())
+		if(t->isStructType() || t->isClassType())
 		{
 			size_t total = 0;
 			size_t first = 0;
@@ -111,8 +113,9 @@ namespace fir
 	size_t ExecutionTarget::getTypeSizeInBits(Type* t)
 	{
 		// check.
-		if(StructType* st = t->toStructType())
+		if(t->isStructType())
 		{
+			StructType* st = t->toStructType();
 			if(st->isPackedStruct())
 			{
 				size_t total = 0;
@@ -126,19 +129,26 @@ namespace fir
 				return recursiveGetSize(this, st, getLargestMember(this, st, 0));
 			}
 		}
-		else if(ArrayType* at = t->toArrayType())
+		else if(t->isClassType())
 		{
+			ClassType* ct = t->toClassType();
+			return recursiveGetSize(this, ct, getLargestMember(this, ct, 0));
+		}
+		else if(t->isArrayType())
+		{
+			ArrayType* at = t->toArrayType();
 			return at->getArraySize() * this->getTypeSizeInBits(at->getElementType());
 		}
-		else if(t->toPointerType())
+		else if(t->isPointerType())
 		{
 			return this->psize;
 		}
-		else if(PrimitiveType* prt = t->toPrimitiveType())
+		else if(t->isPrimitiveType())
 		{
+			PrimitiveType* prt = t->toPrimitiveType();
 			return prt->isFloatingPointType() ? prt->getFloatingPointBitWidth() : prt->getIntegerBitWidth();
 		}
-		else if(t->toFunctionType())
+		else if(t->isFunctionType())
 		{
 			return 0;
 		}

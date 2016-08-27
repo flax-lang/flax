@@ -21,24 +21,6 @@ static std::pair<FunctionTree*, FunctionTree*> getFuncTrees(CodegenInstance* cgi
 	return { ftree, pftree };
 }
 
-// static void addExtensionToFuncTree(CodegenInstance* cgi, ExtensionDef* ext)
-// {
-// 	auto p = getFuncTrees(cgi);
-// 	FunctionTree* ftree = p.first;
-// 	FunctionTree* pftree = p.second;
-
-// 	if(ftree->extensions.find(ext->ident.name) != ftree->extensions.end())
-// 	{
-// 		error(ext, "Only one extension for a given type can be defined in one module for now, please consolidate the"
-// 			"extensions into a single declaration.");
-// 	}
-
-// 	ftree->extensions[ext->ident.name] = ext;
-
-// 	if(ext->attribs & Attr_VisPublic)
-// 		pftree->extensions[ext->ident.name] = ext;
-// }
-
 static void addTypeToFuncTree(CodegenInstance* cgi, Expr* type, std::string name, TypeKind tk)
 {
 	auto p = getFuncTrees(cgi);
@@ -75,6 +57,21 @@ static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 		pftree->funcs.push_back({ 0, decl });
 }
 
+static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)
+{
+	auto p = getFuncTrees(cgi);
+	FunctionTree* ftree = p.first;
+	FunctionTree* pftree = p.second;
+
+	if(ftree->protocols.find(prot->ident.name) != ftree->protocols.end())
+		error(prot, "duplicate protocol %s", prot->ident.name.c_str());
+
+	ftree->protocols[prot->ident.name] = prot;
+
+	if(prot->attribs & Attr_VisPublic)
+		pftree->protocols[prot->ident.name] = prot;
+}
+
 
 // N-pass system.
 // there's no point counting at this stage.
@@ -94,6 +91,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
+			ProtocolDef* prot		= dynamic_cast<ProtocolDef*>(e);
 
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
@@ -101,6 +99,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
+			else if(prot)			addProtocolToFuncTree(cgi, prot);
 			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
 				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
 		}
@@ -109,6 +108,15 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	{
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.
+
+		// find all protocols
+		for(Expr* e : expressions)
+		{
+			ProtocolDef* prot = dynamic_cast<ProtocolDef*>(e);
+
+			if(prot) prot->createType(cgi);
+		}
+
 
 		if(!isInsideNamespace)
 			TypeInfo::initialiseTypeInfo(cgi);
@@ -170,7 +178,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 	}
 	else if(pass == 5)
 	{
-		// pass 4: functions. for generic shit.
+		// pass 4: functions.
 		for(Expr* e : expressions)
 		{
 			Func* func				= dynamic_cast<Func*>(e);
@@ -181,7 +189,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 				warn(oo, "Placing operator overloads inside a namespace will make them completely inaccessible.");
 
 			if(func && !func->didCodegen)	func->codegen(cgi);
-			if(oo)							oo->codegen(cgi);
+			if(oo)							oo->codegen(cgi, { });
 			if(ns)							ns->codegenPass(cgi, pass);
 		}
 	}

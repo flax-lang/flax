@@ -1,5 +1,5 @@
-// Type.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// TupleType.cpp
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -8,30 +8,33 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(Identifier name, std::deque<Type*> mems, bool islit, bool ispacked)
-		: Type(islit ? FTypeKind::LiteralStruct : FTypeKind::NamedStruct)
+	StructType::StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked) : Type(FTypeKind::Struct)
 	{
 		this->structName = name;
-		this->structMembers = mems;
 		this->isTypePacked = ispacked;
+
+		this->setBody(mems);
 	}
 
-	StructType* StructType::createNamed(Identifier name, std::deque<Type*> members, FTContext* tc, bool packed)
+	StructType* StructType::create(Identifier name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		StructType* type = new StructType(name, members, false, packed);
+		StructType* type = new StructType(name, members, packed);
 
 		// special: need to check if new type has the same name
 		for(auto t : tc->typeCache[0])
 		{
-			if(t->isStructType() && t->toStructType()->isNamedStruct() && t->toStructType()->getStructName() == name)
+			if(t->isStructType() && t->toStructType()->getStructName() == name)
 			{
 				// check members.
-				if(!areTypeListsEqual(members, t->toStructType()->structMembers))
+				std::deque<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
+				std::deque<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
+
+				if(!areTypeListsEqual(tl1, tl2))
 				{
-					std::string mstr = typeListToString(members);
+					std::string mstr = typeListToString(tl1);
 					error("Conflicting types for named struct %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
 				}
 
@@ -43,7 +46,7 @@ namespace fir
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
-	StructType* StructType::createNamedWithoutBody(Identifier name, FTContext* tc, bool isPacked)
+	StructType* StructType::createWithoutBody(Identifier name, FTContext* tc, bool isPacked)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -51,71 +54,12 @@ namespace fir
 		// special case: if no body, just return a type of the existing name.
 		for(auto t : tc->typeCache[0])
 		{
-			if(t->isStructType() && t->toStructType()->isNamedStruct() && t->toStructType()->getStructName() == name)
+			if(t->isStructType() && t->toStructType()->getStructName() == name)
 				return t->toStructType();
 		}
 
 		// if not, create a new one.
-		return createNamed(name, { }, tc, isPacked);
-	}
-
-	StructType* StructType::createNamed(Identifier name, std::vector<Type*> members, FTContext* tc, bool packed)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		std::deque<Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
-		return StructType::createNamed(name, dmems, tc, packed);
-	}
-
-	StructType* StructType::createNamed(Identifier name, std::initializer_list<Type*> members, FTContext* tc, bool packed)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		std::deque<Type*> dmems = members;
-		return StructType::createNamed(name, dmems, tc, packed);
-	}
-
-
-
-	StructType* StructType::getLiteral(std::deque<Type*> members, FTContext* tc, bool packed)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		iceAssert(members.size() > 0 && "literal struct must have body at init");
-
-		StructType* type = new StructType(Identifier("__LITERAL_STRUCT__", IdKind::Struct), members, true, packed);
-		return dynamic_cast<StructType*>(tc->normaliseType(type));
-	}
-
-	StructType* StructType::getLiteral(std::vector<Type*> members, FTContext* tc, bool packed)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		iceAssert(members.size() > 0 && "literal struct must have body at init");
-
-		std::deque<Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
-		return StructType::getLiteral(dmems, tc, packed);
-	}
-
-	StructType* StructType::getLiteral(std::initializer_list<Type*> members, FTContext* tc, bool packed)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		iceAssert(members.size() > 0 && "literal struct must have body at init");
-
-		std::deque<Type*> dmems = members;
-		return StructType::getLiteral(dmems, tc, packed);
+		return StructType::create(name, { }, tc, isPacked);
 	}
 
 
@@ -126,38 +70,16 @@ namespace fir
 	// various
 	std::string StructType::str()
 	{
-		if(this->isNamedStruct())
-		{
-			if(this->structMembers.size() == 0)
-				return this->structName.name + "<???>";
+		if(this->typeList.size() == 0)
+			return this->structName.name/* + "<struct>"*/;
 
-			auto s = typeListToString(this->structMembers);
-			return this->structName.name + "<{" + s.substr(2, s.length() - 4) + "}>";
-		}
-		else if(this->isLiteralStruct())
-		{
-			return typeListToString(this->structMembers);
-		}
-		else
-		{
-			iceAssert(0);
-		}
+		// auto s = typeListToString(this->typeList);
+		return this->structName.name/* + "<{" + s.substr(2, s.length() - 4) + "}>"*/;
 	}
 
 	std::string StructType::encodedStr()
 	{
-		if(this->isNamedStruct())
-		{
-			return this->structName.str();
-		}
-		else if(this->isLiteralStruct())
-		{
-			return typeListToString(this->structMembers);
-		}
-		else
-		{
-			iceAssert(0);
-		}
+		return this->structName.str();
 	}
 
 
@@ -167,20 +89,9 @@ namespace fir
 		if(!os) return false;
 		if(this->typeKind != os->typeKind) return false;
 		if(this->isTypePacked != os->isTypePacked) return false;
-		if(this->structMembers.size() != os->structMembers.size()) return false;
-		if(this->isLiteralStruct() != os->isLiteralStruct()) return false;
-		if(this->baseType && (!this->baseType->isTypeEqual(os->baseType))) return false;
+		if(this->structName != os->structName) return false;
 
-		// compare names
-		if(!this->isLiteralStruct() && (this->structName != os->structName)) return false;
-
-		for(size_t i = 0; i < this->structMembers.size(); i++)
-		{
-			if(!this->structMembers[i]->isTypeEqual(os->structMembers[i]))
-				return false;
-		}
-
-		return true;
+		return areTypeListsEqual(this->typeList, os->typeList);
 	}
 
 
@@ -188,114 +99,66 @@ namespace fir
 	// struct stuff
 	Identifier StructType::getStructName()
 	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct && "not named struct");
 		return this->structName;
 	}
 
 	size_t StructType::getElementCount()
 	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
-		return this->structMembers.size();
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
+		return this->typeList.size();
 	}
 
 	Type* StructType::getElementN(size_t n)
 	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
-		iceAssert(n < this->structMembers.size() && "out of bounds");
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
+		iceAssert(n < this->typeList.size() && "out of bounds");
 
-		return this->structMembers[n];
+		return this->typeList[n];
+	}
+
+	Type* StructType::getElement(std::string name)
+	{
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
+		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
+
+		return this->structMembers[name];
+	}
+
+	size_t StructType::getElementIndex(std::string name)
+	{
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
+		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
+
+		return this->indexMap[name];
+	}
+
+	bool StructType::hasElementWithName(std::string name)
+	{
+		return this->indexMap.find(name) != this->indexMap.end();
 	}
 
 	std::vector<Type*> StructType::getElements()
 	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
-
-		std::vector<Type*> vmems;
-		for(auto m : this->structMembers)
-			vmems.push_back(m);
-
-		return vmems;
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
+		return this->typeList;
 	}
 
 
-	void StructType::setBody(std::initializer_list<Type*> members)
+	void StructType::setBody(std::deque<std::pair<std::string, Type*>> members)
 	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
+		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 
-		this->structMembers = members;
-	}
-
-	void StructType::setBody(std::vector<Type*> members)
-	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
-
-		std::deque<Type*> dmems;
-		for(auto m : members)
-			dmems.push_back(m);
-
-		this->structMembers = dmems;
-	}
-
-	void StructType::setBody(std::deque<Type*> members)
-	{
-		iceAssert(this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct && "not struct type");
-
-		this->structMembers = members;
-	}
-
-
-
-	void StructType::setBaseType(StructType* base)
-	{
-		this->baseType = base;
-	}
-
-	void StructType::clearBaseType()
-	{
-		this->baseType = 0;
-	}
-
-	StructType* StructType::getBaseType()
-	{
-		return this->baseType;
-	}
-
-	bool StructType::isABaseTypeOf(Type* ot)
-	{
-		if(!ot) return false;
-
-		StructType* ost = ot->toStructType();
-		if(!ost) return false;
-
-		StructType* base = ost->getBaseType();
-		while(base != 0)
+		size_t i = 0;
+		for(auto p : members)
 		{
-			if(base->isTypeEqual(this))
-				return true;
+			// if(this->structMembers.find(p.first) != this->structMembers.end()) iceAssert(0 && "duplicate member");
 
-			base = base->getBaseType();
+			this->structMembers[p.first] = p.second;
+			this->indexMap[p.first] = i;
+			this->typeList.push_back(p.second);
+
+			i++;
 		}
-
-		return false;
-	}
-
-	bool StructType::isADerivedTypeOf(Type* ot)
-	{
-		if(!ot) return false;
-
-		StructType* ost = ot->toStructType();
-		if(!ost) return false;
-
-		StructType* base = this->getBaseType();
-		while(base != 0)
-		{
-			if(base->isTypeEqual(this))
-				return true;
-
-			base = base->getBaseType();
-		}
-
-		return false;
 	}
 
 
@@ -303,24 +166,41 @@ namespace fir
 
 
 
-	void StructType::deleteType(FTContext* tc)
+
+	StructType* StructType::reify(std::map<std::string, Type*> reals, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		if(this->typeKind != FTypeKind::NamedStruct) return;
-
-		for(auto it = tc->typeCache[0].begin(); it != tc->typeCache[0].end(); it++)
+		std::deque<std::pair<std::string, Type*>> reified;
+		for(auto mem : this->structMembers)
 		{
-			if(this->isTypeEqual(*it))
+			if(mem.second->isParametricType())
 			{
-				tc->typeCache[0].erase(it);
-				break;
+				if(reals.find(mem.second->toParametricType()->getName()) != reals.end())
+				{
+					auto t = reals[mem.second->toParametricType()->getName()];
+					if(t->isParametricType())
+					{
+						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
+							mem.second->toParametricType()->getName().c_str());
+					}
+
+					reified.push_back({ mem.first, t });
+				}
+				else
+				{
+					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
+				}
+			}
+			else
+			{
+				reified.push_back({ mem.first, mem.second });
 			}
 		}
 
-		// todo: safe?
-		delete this;
+		iceAssert(reified.size() == this->structMembers.size());
+		return StructType::create(this->structName, reified);
 	}
 }
 

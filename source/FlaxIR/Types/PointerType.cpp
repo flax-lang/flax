@@ -1,5 +1,5 @@
 // Type.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/type.h"
@@ -79,6 +79,35 @@ namespace fir
 	size_t PointerType::getIndirections()
 	{
 		return this->indirections;
+	}
+
+
+
+
+
+	PointerType* PointerType::reify(std::map<std::string, Type*> reals, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// basically return a new version of ourselves
+		if(!this->baseType->isParametricType())
+			error_and_exit("pointer '%s' is not parametric, cannot reify", this->str().c_str());
+
+		ParametricType* tp = this->baseType->toParametricType();
+
+		if(reals.find(tp->getName()) != reals.end())
+		{
+			auto t = reals[tp->getName()];
+			if(t->isParametricType())
+				error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
+
+			return tc->normaliseType(new PointerType(this->indirections, t))->toPointerType();
+		}
+		else
+		{
+			error_and_exit("Failed to reify, no type found for '%s'", tp->getName().c_str());
+		}
 	}
 }
 

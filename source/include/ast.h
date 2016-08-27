@@ -10,108 +10,15 @@
 
 #include "typeinfo.h"
 #include "defs.h"
+#include "ir/identifier.h"
 
 namespace fir
 {
-	struct PHINode;
 	struct StructType;
+	struct TupleType;
 }
 
-#define INTUNSPEC_TYPE_STRING	"int"
-#define INT8_TYPE_STRING		"int8"
-#define INT16_TYPE_STRING		"int16"
-#define INT32_TYPE_STRING		"int32"
-#define INT64_TYPE_STRING		"int64"
 
-#define UINTUNSPEC_TYPE_STRING	"uint"
-#define UINT8_TYPE_STRING		"uint8"
-#define UINT16_TYPE_STRING		"uint16"
-#define UINT32_TYPE_STRING		"uint32"
-#define UINT64_TYPE_STRING		"uint64"
-
-#define FLOAT32_TYPE_STRING		"float32"
-#define FLOAT64_TYPE_STRING		"float64"
-
-#define FLOAT_TYPE_STRING		"float"
-
-#define BOOL_TYPE_STRING		"bool"
-#define VOID_TYPE_STRING		"void"
-
-#define FUNC_KEYWORD_STRING		"func"
-
-
-
-// todo: name overhaul
-// stop using std::string for names
-// it's stupid and inflexible
-// and *DO NOT* mangle function args during codegen to FIR
-// name mangling should only be done at one location: when creating the actual function.
-
-// note: debate moving FIR over to an identifier system like this
-// FIR should do the argument type mangling, anyway
-
-// here: store the scope and args (if applicable) of a function
-// for foo::bar::qux::some_function(a: int, b: string)
-// scope would contain { foo, bar, qux }
-// actualname would contain { some_function }
-// args would contain { int, string }
-
-
-enum class IdKind
-{
-	Invalid,
-	Name,
-	Variable,
-	Function,
-	Method,
-	Getter,
-	Setter,
-	Operator,
-	AutoGenFunc,
-	ModuleConstructor,
-	Struct,
-};
-
-struct Identifier
-{
-	std::string name;
-	std::deque<std::string> scope;
-	IdKind kind = IdKind::Invalid;
-
-	std::deque<fir::Type*> functionArguments;
-
-	// defined in CodegenUtils.cpp
-	bool operator == (const Identifier& other) const;
-	bool operator != (const Identifier& other) const { return !(*this == other); }
-
-	std::string str() const;
-	std::string mangled() const;
-
-	Identifier() { }
-	Identifier(std::string _name, IdKind _kind) : name(_name), scope({ }), kind(_kind) { }
-	Identifier(std::string _name, std::deque<std::string> _scope, IdKind _kind) : name(_name), scope(_scope), kind(_kind) { }
-};
-
-namespace std
-{
-	template<>
-	struct hash<Identifier>
-	{
-		std::size_t operator()(const Identifier& k) const
-		{
-			using std::size_t;
-			using std::hash;
-			using std::string;
-
-			// Compute individual hash values for first,
-			// second and third and combine them using XOR
-			// and bit shifting:
-
-			// return ((hash<string>()(k.name) ^ (hash<std::deque<std::string>>()(k.scope) << 1)) >> 1) ^ (hash<int>()(k.third) << 1);
-			return hash<string>()(k.str());
-		}
-	};
-}
 
 
 
@@ -317,7 +224,7 @@ namespace Ast
 	struct VarDecl : Expr
 	{
 		~VarDecl();
-		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), _name(name), immutable(immut)
+		VarDecl(Parser::Pin pos, std::string name, bool immut) : Expr(pos), immutable(immut)
 		{
 			ident.name = name;
 			ident.kind = IdKind::Variable;
@@ -330,7 +237,6 @@ namespace Ast
 		void inferType(Codegen::CodegenInstance* cgi);
 
 		Identifier ident;
-		std::string _name;
 
 		bool immutable = false;
 
@@ -368,7 +274,6 @@ namespace Ast
 		Expr* right = 0;
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
-		fir::PHINode* phi = 0;
 	};
 
 	struct StructBase;
@@ -383,7 +288,7 @@ namespace Ast
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
-		Result_t generateDeclForGenericType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> types);
+		Result_t generateDeclForGenericFunction(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
 
 		Parser::Pin returnTypePos;
 
@@ -392,10 +297,10 @@ namespace Ast
 		bool isVariadic = false;
 		std::string variadicStrType;
 		fir::Type* variadicType = 0;
+		fir::Function* generatedFunc = 0;
 
 		bool isFFI = false;
 		bool isStatic = false;
-		bool wasCalled = false;
 
 		StructBase* parentClass = 0;
 		FFIType ffiType = FFIType::C;
@@ -403,10 +308,9 @@ namespace Ast
 		Identifier ident;
 
 		std::deque<VarDecl*> params;
-		std::deque<std::string> genericTypes;
+		std::map<std::string, TypeConstraints_t> genericTypes;
 
-		fir::Type* instantiatedGenericReturnType = 0;
-		std::deque<fir::Type*> instantiatedGenericTypes;
+
 	};
 
 
@@ -435,8 +339,6 @@ namespace Ast
 
 		FuncDecl* decl = 0;
 		BracedBlock* block = 0;
-
-		std::deque<std::deque<fir::Type*>> instantiatedGenericVersions;
 	};
 
 	struct FuncCall : Expr
@@ -448,7 +350,6 @@ namespace Ast
 		std::string name;
 		std::deque<Expr*> params;
 
-		fir::Function* cachedGenericFuncTarget = 0;
 		Codegen::Resolved_t cachedResolveTarget;
 	};
 
@@ -582,7 +483,9 @@ namespace Ast
 
 		~OpOverload();
 		OpOverload(Parser::Pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		Result_t codegen(Codegen::CodegenInstance* cgi, std::deque<fir::Type*> args);
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
 		OperatorKind kind = OperatorKind::Invalid;
@@ -633,19 +536,17 @@ namespace Ast
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
 
 		bool didCreateType = false;
-		fir::StructType* createdType = 0;
+		fir::Type* createdType = 0;
 
 		Identifier ident;
 
 		std::deque<VarDecl*> members;
-		std::unordered_map<std::string, int> nameMap;
 		std::deque<fir::Function*> initFuncs;
 
 		fir::Function* defaultInitialiser;
 
 		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
-
 
 	struct ClassDef : StructBase
 	{
@@ -658,9 +559,12 @@ namespace Ast
 		std::deque<fir::Function*> lfuncs;
 		std::deque<ComputedProperty*> cprops;
 		std::deque<std::string> protocolstrs;
+		std::deque<OpOverload*> operatorOverloads;
 		std::deque<AssignOpOverload*> assignmentOverloads;
 		std::deque<SubscriptOpOverload*> subscriptOverloads;
 		std::unordered_map<Func*, fir::Function*> functionMap;
+
+		std::deque<ProtocolDef*> conformedProtocols;
 	};
 
 
@@ -676,6 +580,30 @@ namespace Ast
 		Root* parentRoot = 0;
 	};
 
+	struct ProtocolDef : Expr
+	{
+		~ProtocolDef();
+		ProtocolDef(Parser::Pin pos, std::string name) : Expr(pos)
+		{
+			this->ident.name = name;
+			this->ident.kind = IdKind::Struct;
+		}
+
+		fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { });
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+
+		bool checkTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
+		void assertTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
+
+		Identifier ident;
+
+		std::deque<std::string> protocolstrs;
+
+		std::deque<Func*> funcs;
+		std::deque<OpOverload*> operatorOverloads;
+		std::deque<AssignOpOverload*> assignmentOverloads;
+		std::deque<SubscriptOpOverload*> subscriptOverloads;
+	};
 
 
 
@@ -706,13 +634,21 @@ namespace Ast
 		Tuple(Parser::Pin pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
-		fir::StructType* getType(Codegen::CodegenInstance* cgi);
+		fir::TupleType* getType(Codegen::CodegenInstance* cgi);
 
 		std::vector<Expr*> values;
 		std::vector<fir::Type*> ltypes;
 
-		fir::StructType* cachedLlvmType = 0;
+		fir::TupleType* createdType = 0;
 	};
+
+
+
+
+
+
+
+
 
 
 	enum class MAType

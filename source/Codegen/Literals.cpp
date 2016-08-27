@@ -40,7 +40,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	auto pair = cgi->getTypeByString("String");
 	if(pair && !this->isRaw)
 	{
-		fir::StructType* stringType = dynamic_cast<fir::StructType*>(pair->first);
+		fir::ClassType* stringType = dynamic_cast<fir::ClassType*>(pair->first);
 
 		fir::Value* alloca = cgi->getStackAlloc(stringType);
 
