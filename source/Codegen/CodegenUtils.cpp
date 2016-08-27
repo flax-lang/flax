@@ -855,6 +855,16 @@ namespace Codegen
 			cur->funcs.erase(it);
 	}
 
+
+
+
+
+
+
+
+
+
+
 	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
@@ -1150,23 +1160,23 @@ namespace Codegen
 		bool iscvar = 0;
 		bool isvar = 0;
 
-		if(fp.second)
+		if(fp.first)
 		{
-			for(auto arg : fp.second->params)
-				funcParams.push_back(this->getExprType(arg, true));
-
-			iscvar = fp.second->isCStyleVarArg;
-			isvar = fp.second->isVariadic;
-		}
-		else
-		{
-			iceAssert(fp.first);
-
 			for(auto arg : fp.first->getArguments())
 				funcParams.push_back(arg->getType());
 
 			iscvar = fp.first->isCStyleVarArg();
 			isvar = fp.first->isVariadic();
+		}
+		else
+		{
+			iceAssert(fp.second);
+
+			for(auto arg : fp.second->params)
+				funcParams.push_back(this->getExprType(arg, true));
+
+			iscvar = fp.second->isCStyleVarArg;
+			isvar = fp.second->isVariadic;
 		}
 
 		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
@@ -1633,17 +1643,6 @@ namespace Codegen
 		}
 		else
 		{
-			// std::deque<Expr*> es;
-			// for(auto p : candidate->params) es.push_back(p);
-
-			// Resolved_t rt = this->resolveFunction(fc, candidate->ident.name, es, true); // exact match
-			// iceAssert(rt.resolved);
-
-			// FuncPair_t fp = rt.t;
-
-			// ffunc = fp.first;
-			// iceAssert(ffunc);
-
 			ffunc = this->reifiedGenericFunctions[{ func, gtm }];
 			iceAssert(ffunc);
 		}
@@ -1666,11 +1665,11 @@ namespace Codegen
 		return { ffunc, fnDecl };
 	}
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+
+	FuncPair_t CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
 	{
 		// try and resolve shit
 		std::map<std::string, fir::Type*> gtm;
-		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 
 		if(candidates.size() == 0)
 		{
@@ -1680,8 +1679,6 @@ namespace Codegen
 		std::deque<fir::Type*> fargs;
 		for(auto p : fc->params)
 			fargs.push_back(this->getExprType(p));
-
-
 
 		auto it = candidates.begin();
 		while(it != candidates.end())
@@ -1713,6 +1710,12 @@ namespace Codegen
 		}
 
 		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
+	}
+
+	FuncPair_t CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+	{
+		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
+		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
 	}
 
 

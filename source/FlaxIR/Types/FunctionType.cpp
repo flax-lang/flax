@@ -205,6 +205,10 @@ namespace fir
 					error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 				}
 			}
+			else
+			{
+				reified.push_back(mem);
+			}
 		}
 
 		if(this->functionRetType->isParametricType())

@@ -193,6 +193,10 @@ namespace fir
 					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
 				}
 			}
+			else
+			{
+				reified.push_back({ mem.first, mem.second });
+			}
 		}
 
 		iceAssert(reified.size() == this->structMembers.size());

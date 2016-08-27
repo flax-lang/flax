@@ -2,30 +2,31 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import String
+import String
 import LibCInterface
 
 
 
 
-// class Foo
-// {
+class Foo
+{
 	func generic_test<T>(a: T)
 	{
 		printf("something\n")
+		var x: T
 	}
-// }
+}
 
 
 public func main()
 {
-	// let g = Foo()
+	let g = Foo()
 
-	// g.generic_test("50")
-	// g.generic_test(100)
+	g.generic_test("50")
+	g.generic_test(100)
 
-	generic_test("50")
-	generic_test(100)
+	// generic_test("50")
+	// generic_test(100)
 }
 
 
