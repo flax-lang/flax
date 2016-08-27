@@ -260,6 +260,11 @@ namespace Codegen
 
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::BuiltinType));
 				}
+				else if(possibleGeneric->isParametricType())
+				{
+					// todo(leak): this leaks too
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Parametric));
+				}
 
 				TypePair_t* tp = this->getType(possibleGeneric);
 				iceAssert(tp);
@@ -1608,14 +1613,14 @@ namespace Codegen
 			needToCodegen = false;
 
 
+
+
 		// we need to push a new "generic type stack", and add the types that we resolved into it.
 		// todo: might be inefficient.
 		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
 		// so we don't have to iterate etc etc.
 		// I don't want to access cgi->instantiatedGenericTypeStack directly.
-		this->pushGenericTypeStack();
-		for(auto pair : gtm)
-			this->pushGenericType(pair.first, pair.second);
+
 
 
 		fir::Function* ffunc = nullptr;
@@ -1645,13 +1650,15 @@ namespace Codegen
 
 		iceAssert(ffunc);
 
+		this->pushGenericTypeStack();
+		for(auto pair : gtm)
+			this->pushGenericType(pair.first, pair.second);
 
 		if(needToCodegen)
 		{
 			// dirty: use 'lhsPtr' to pass the version we want.
 			func->codegen(this, ffunc);
 		}
-
 
 		this->removeFunctionFromScope({ 0, fnDecl });
 		this->popGenericTypeStack();
@@ -1665,16 +1672,15 @@ namespace Codegen
 		std::map<std::string, fir::Type*> gtm;
 		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 
+		if(candidates.size() == 0)
+		{
+			return { 0, 0 };	// just fail
+		}
 
 		std::deque<fir::Type*> fargs;
 		for(auto p : fc->params)
 			fargs.push_back(this->getExprType(p));
 
-
-		if(candidates.size() == 0)
-		{
-			return { 0, 0 };	// just fail
-		}
 
 
 		auto it = candidates.begin();

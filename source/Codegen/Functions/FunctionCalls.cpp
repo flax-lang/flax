@@ -49,7 +49,12 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(!rt.resolved)
 		{
-			rt = Resolved_t(cgi->tryResolveGenericFunctionCall(this));
+			auto pair = cgi->tryResolveGenericFunctionCall(this);
+			if(pair.first || pair.second)
+				rt = Resolved_t(pair);
+
+			else
+				rt = Resolved_t();
 		}
 
 

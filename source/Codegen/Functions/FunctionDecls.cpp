@@ -41,7 +41,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 
 
 static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::deque<fir::Type*> argtypes, fir::Type* rettype,
-	std::string genericMangling, bool mangle)
+	bool mangle)
 {
 	fir::FunctionType* ft = 0;
 
@@ -68,35 +68,31 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	}
 	else
 	{
-		if(genericMangling.empty())
+		if(fd->genericTypes.size() == 0)
 		{
-			iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
-			func = cgi->module->getOrCreateFunction(fd->ident, ft, linkageType);
+			if(mangle)
+			{
+				iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
+				func = cgi->module->getOrCreateFunction(fd->ident, ft, linkageType);
 
-			// fprintf(stderr, "gen function (1) %s\n", fd->ident.str().c_str());
-		}
-		else if(mangle)
-		{
-			auto id = Identifier(genericMangling, IdKind::Function);
-			id.functionArguments = ft->getArgumentTypes();
+				// fprintf(stderr, "gen function (1) %s\n", fd->ident.str().c_str());
+			}
+			else
+			{
+				auto id = Identifier(fd->ident.name, IdKind::Name);
+				func = cgi->module->getOrCreateFunction(id, ft, linkageType);
 
-			func = cgi->module->getOrCreateFunction(id, ft, linkageType);
-
-			// fprintf(stderr, "gen function (2) %s // %s\n", id.str().c_str(), genericMangling.c_str());
-		}
-		else if(!mangle)
-		{
-			auto id = Identifier(genericMangling, IdKind::Name);
-			func = cgi->module->getOrCreateFunction(id, ft, linkageType);
-
-			// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
-		}
+				// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
+			}
 
 
-		// not generic -- add the args. generic funcs can't have this.
-		if(genericMangling.empty())
+			// not generic -- add the args. generic funcs can't have this.
 			fd->ident.functionArguments = ft->getArgumentTypes();
-
+		}
+		else
+		{
+			func = fir::Function::create(fd->ident, ft, cgi->module, linkageType);
+		}
 
 		if(fd->attribs & Attr_VisPublic)
 			cgi->addPublicFunc({ func, fd });
@@ -104,7 +100,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		cgi->addFunctionToScope({ func, fd });
 	}
 
-
+	fd->generatedFunc = func;
 	return Result_t(func, 0);
 }
 
@@ -114,35 +110,57 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
 {
-	iceAssert(types.size() == this->genericTypes.size());
+	if(!this->generatedFunc)
+		this->codegen(cgi);
 
-	std::deque<fir::Type*> argtypes;
-	for(size_t i = 0; i < this->params.size(); i++)
+	iceAssert(this->generatedFunc);
+	fir::Function* reified = this->generatedFunc->reify(types);
+
+	Identifier id;
 	{
-		VarDecl* v = this->params[i];
-		fir::Type* ltype = cgi->getExprType(v, true, false);	// allowFail = true, setInferred = false
-
-		if(!ltype && types.find(v->type.strType) != types.end())
-		{
-			// provided.
-			fir::Type* vt = types[v->type.strType];
-			argtypes.push_back(vt);
-		}
-		else
-		{
-			// either not a generic type, or not a legit type -- skip.
-			argtypes.push_back(ltype);
-		}
+		id.scope = this->generatedFunc->getName().scope;
+		id.name = this->generatedFunc->getName().name;
+		id.kind = this->generatedFunc->getName().kind;
+		id.functionArguments = reified->getType()->getArgumentTypes();
 	}
 
-	fir::Type* lret = cgi->getExprType(this, true);
-	if(!lret && types.find(this->type.strType) != types.end())
-	{
-		lret = types[this->type.strType];
-	}
+	reified->setName(id);
 
-	std::string genericMangled = cgi->mangleGenericParameters(this->params);
-	return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled, true);
+	cgi->module->addFunction(reified);
+
+	return Result_t(reified, 0);
+
+	// error("no");
+
+	// iceAssert(types.size() == this->genericTypes.size());
+
+	// std::deque<fir::Type*> argtypes;
+	// for(size_t i = 0; i < this->params.size(); i++)
+	// {
+	// 	VarDecl* v = this->params[i];
+	// 	fir::Type* ltype = cgi->getExprType(v, true, false);	// allowFail = true, setInferred = false
+
+	// 	if(types.find(v->type.strType) != types.end())
+	// 	{
+	// 		// provided.
+	// 		fir::Type* vt = types[v->type.strType];
+	// 		argtypes.push_back(vt);
+	// 	}
+	// 	else
+	// 	{
+	// 		// either not a generic type, or not a legit type -- skip.
+	// 		argtypes.push_back(ltype);
+	// 	}
+	// }
+
+	// fir::Type* lret = cgi->getExprType(this, true);
+	// if(!lret && types.find(this->type.strType) != types.end())
+	// {
+	// 	lret = types[this->type.strType];
+	// }
+
+	// std::string genericMangled = cgi->mangleGenericParameters(this->params);
+	// return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled, true);
 }
 
 
@@ -155,10 +173,8 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// wait until we get specific instances
 	// (where all the typenames, T, U etc. have been replaced with concrete types by callers)
 
-
 	if(this->isCStyleVarArg && (!this->isFFI || this->ffiType != FFIType::C))
 		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
-
 
 	if(this->ident.scope.empty())
 		this->ident.scope = cgi->getFullScope();
@@ -167,7 +183,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentClass != nullptr);
-	bool isGeneric = this->genericTypes.size() > 0;
+	// bool isGeneric = this->genericTypes.size() > 0;
+
+
 
 
 	if(isMemberFunction)
@@ -193,32 +211,32 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->attribs |= Attr_NoMangle;
 	}
 
-
-	if(!isGeneric)
+	std::deque<fir::Type*> argtypes;
+	for(VarDecl* v : this->params)
 	{
-		std::deque<fir::Type*> argtypes;
-		for(VarDecl* v : this->params)
-			argtypes.push_back(cgi->getExprType(v));
+		cgi->pushGenericTypeStack();
 
-		if(isMemberFunction && !this->isStatic)
-		{
-			fir::Type* st = this->parentClass->createdType;
-			if(st == 0)
-				st = this->parentClass->createType(cgi);
+		// if we're not generic, then genericTypes will be empty anyway.
+		for(auto p : this->genericTypes)
+			cgi->pushGenericType(p.first, fir::ParametricType::get(p.first));
 
-			argtypes.push_front(st->getPointerTo());
-		}
+		argtypes.push_back(cgi->getExprType(v));
 
-		this->ident.functionArguments = argtypes;
-
-		bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
-		return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), disableMangle ? this->ident.name : "", !disableMangle);
+		cgi->popGenericTypeStack();
 	}
-	else
+
+	if(isMemberFunction && !this->isStatic)
 	{
-		info(this, "");
-		return Result_t(0, 0);
+		fir::Type* st = this->parentClass->createdType;
+		if(st == 0)
+			st = this->parentClass->createType(cgi);
+
+		argtypes.push_front(st->getPointerTo());
 	}
+
+
+	bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
+	return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), !disableMangle);
 }
 
 

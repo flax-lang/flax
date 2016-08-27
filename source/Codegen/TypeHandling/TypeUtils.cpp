@@ -1328,7 +1328,16 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(fir::Type* ltype)
 	{
-		return (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		bool ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		if(!ret)
+		{
+			while(ltype->isPointerType())
+				ltype = ltype->getPointerElementType();
+
+			ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		}
+
+		return ret;
 	}
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)

@@ -67,6 +67,7 @@ namespace Codegen
 		BuiltinType,
 		Tuple,
 		Protocol,
+		Parametric,
 	};
 
 	typedef std::pair<fir::Value*, Ast::VarDecl*> SymbolPair_t;

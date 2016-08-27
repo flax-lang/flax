@@ -297,6 +297,7 @@ namespace Ast
 		bool isVariadic = false;
 		std::string variadicStrType;
 		fir::Type* variadicType = 0;
+		fir::Function* generatedFunc = 0;
 
 		bool isFFI = false;
 		bool isStatic = false;
@@ -308,6 +309,8 @@ namespace Ast
 
 		std::deque<VarDecl*> params;
 		std::map<std::string, TypeConstraints_t> genericTypes;
+
+
 	};
 
 

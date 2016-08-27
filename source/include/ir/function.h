@@ -31,6 +31,8 @@ namespace fir
 
 		// methods
 		Argument(Function* fn, Type* type);
+		~Argument();
+
 		Value* getActualValue();
 		Function* getParentFunction();
 
@@ -63,6 +65,10 @@ namespace fir
 
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
+		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
+
+
+		static Function* create(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
 
 
 		// fields

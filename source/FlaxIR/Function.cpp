@@ -14,6 +14,11 @@ namespace fir
 		this->realValue = new Value(type);
 	}
 
+	Argument::~Argument()
+	{
+		delete this->realValue;
+	}
+
 	Value* Argument::getActualValue()
 	{
 		if(this->realValue) return this->realValue;
@@ -93,6 +98,28 @@ namespace fir
 	void Function::deleteBody()
 	{
 		this->blocks.clear();
+	}
+
+
+
+	Function* Function::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+
+		if(this->blocks.size() > 0)
+			error("cannot reify already-generated function");
+
+		FunctionType* newft = this->getType()->reify(names, tc);
+		Function* nf = new Function(this->ident, newft, this->parentModule, this->linkageType);
+
+		return nf;
+	}
+
+	Function* Function::create(Identifier name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
+	{
+		return new Function(name, fnType, module, linkage);
 	}
 
 
