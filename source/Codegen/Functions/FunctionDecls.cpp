@@ -70,6 +70,8 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	{
 		if(fd->genericTypes.size() == 0)
 		{
+			fd->ident.functionArguments = ft->getArgumentTypes();
+
 			if(mangle)
 			{
 				iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
@@ -85,9 +87,6 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 				// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
 			}
 
-
-			// not generic -- add the args. generic funcs can't have this.
-			fd->ident.functionArguments = ft->getArgumentTypes();
 		}
 		else
 		{
@@ -125,42 +124,9 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 	}
 
 	reified->setName(id);
-
 	cgi->module->addFunction(reified);
 
 	return Result_t(reified, 0);
-
-	// error("no");
-
-	// iceAssert(types.size() == this->genericTypes.size());
-
-	// std::deque<fir::Type*> argtypes;
-	// for(size_t i = 0; i < this->params.size(); i++)
-	// {
-	// 	VarDecl* v = this->params[i];
-	// 	fir::Type* ltype = cgi->getExprType(v, true, false);	// allowFail = true, setInferred = false
-
-	// 	if(types.find(v->type.strType) != types.end())
-	// 	{
-	// 		// provided.
-	// 		fir::Type* vt = types[v->type.strType];
-	// 		argtypes.push_back(vt);
-	// 	}
-	// 	else
-	// 	{
-	// 		// either not a generic type, or not a legit type -- skip.
-	// 		argtypes.push_back(ltype);
-	// 	}
-	// }
-
-	// fir::Type* lret = cgi->getExprType(this, true);
-	// if(!lret && types.find(this->type.strType) != types.end())
-	// {
-	// 	lret = types[this->type.strType];
-	// }
-
-	// std::string genericMangled = cgi->mangleGenericParameters(this->params);
-	// return generateActualFuncDecl(cgi, this, argtypes, lret, this->ident.str() + "_GNR_" + genericMangled, true);
 }
 
 
@@ -232,8 +198,8 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			st = this->parentClass->createType(cgi);
 
 		argtypes.push_front(st->getPointerTo());
+		info(this, "gen member (%s)", argtypes.size() > 0 ? argtypes[0]->str().c_str() : "no");
 	}
-
 
 	bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
 	return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), !disableMangle);

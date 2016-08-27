@@ -235,13 +235,17 @@ namespace fir
 					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
 				}
 			}
+			else
+			{
+				reifiedMems.push_back({ mem.first, mem.second });
+			}
 		}
 
 		iceAssert(reifiedMems.size() == this->classMembers.size());
 
 
 		// do the methods
-
+		// uh... not yet.
 
 
 
