@@ -1,5 +1,5 @@
 // Type.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -177,7 +177,17 @@ namespace fir
 
 
 
+	std::string Type::typeListToString(std::initializer_list<Type*> types)
+	{
+		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
+	}
+
 	std::string Type::typeListToString(std::deque<Type*> types)
+	{
+		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
+	}
+
+	std::string Type::typeListToString(std::vector<Type*> types)
 	{
 		// print types
 		std::string str = "{ ";
@@ -190,7 +200,8 @@ namespace fir
 		return str + " }";
 	}
 
-	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
+
+	bool Type::areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b)
 	{
 		if(a.size() != b.size()) return false;
 		if(a.size() == 0 && b.size() == 0) return true;
@@ -204,6 +215,17 @@ namespace fir
 		return true;
 	}
 
+	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
+	{
+		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
+	}
+
+	bool Type::areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b)
+	{
+		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
+	}
+
+
 
 	Type* Type::getPointerTo(FTContext* tc)
 	{
@@ -211,7 +233,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		size_t inds = 0;
-		if(this->toPointerType())
+		if(this->isPointerType())
 			inds = this->toPointerType()->indirections;
 
 		PointerType* newType = new PointerType(inds + 1, this);
@@ -327,43 +349,72 @@ namespace fir
 
 
 
+
+
+
+	bool Type::isPointerTo(Type* other)
+	{
+		return other->getPointerTo() == this;
+	}
+
+	bool Type::isPointerElementOf(Type* other)
+	{
+		return this->getPointerTo() == other;
+	}
+
 	PrimitiveType* Type::toPrimitiveType()
 	{
-		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) return 0;
+		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) error("not primitive type");
 		return dynamic_cast<PrimitiveType*>(this);
 	}
 
 	FunctionType* Type::toFunctionType()
 	{
-		if(this->typeKind != FTypeKind::Function) return 0;
+		if(this->typeKind != FTypeKind::Function) error("not function type");
 		return dynamic_cast<FunctionType*>(this);
 	}
 
 	PointerType* Type::toPointerType()
 	{
-		if(this->typeKind != FTypeKind::Pointer) return 0;
+		if(this->typeKind != FTypeKind::Pointer) error("not pointer type");
 		return dynamic_cast<PointerType*>(this);
 	}
 
 	StructType* Type::toStructType()
 	{
-		if(this->typeKind != FTypeKind::NamedStruct && this->typeKind != FTypeKind::LiteralStruct) return 0;
+		if(this->typeKind != FTypeKind::Struct) error("not struct type");
 		return dynamic_cast<StructType*>(this);
+	}
+
+	ClassType* Type::toClassType()
+	{
+		if(this->typeKind != FTypeKind::Class) error("not class type");
+		return dynamic_cast<ClassType*>(this);
+	}
+
+	TupleType* Type::toTupleType()
+	{
+		if(this->typeKind != FTypeKind::Tuple) error("not tuple type");
+		return dynamic_cast<TupleType*>(this);
 	}
 
 	ArrayType* Type::toArrayType()
 	{
-		if(this->typeKind != FTypeKind::Array) return 0;
+		if(this->typeKind != FTypeKind::Array) error("not array type");
 		return dynamic_cast<ArrayType*>(this);
 	}
 
 	LLVariableArrayType* Type::toLLVariableArray()
 	{
-		if(this->typeKind != FTypeKind::LowLevelVariableArray) return 0;
+		if(this->typeKind != FTypeKind::LowLevelVariableArray) error("not llva type");
 		return dynamic_cast<LLVariableArrayType*>(this);
 	}
 
-
+	ParametricType* Type::toParametricType()
+	{
+		if(this->typeKind != FTypeKind::Parametric) error("not type parameter");
+		return dynamic_cast<ParametricType*>(this);
+	}
 
 
 
@@ -383,66 +434,70 @@ namespace fir
 
 	bool Type::isStructType()
 	{
-		return this->toStructType() != 0;
+		return this->typeKind == FTypeKind::Struct
+			&& dynamic_cast<StructType*>(this) != 0;
 	}
 
-	bool Type::isNamedStruct()
+	bool Type::isTupleType()
 	{
-		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::NamedStruct);
+		return this->typeKind == FTypeKind::Tuple
+			&& dynamic_cast<TupleType*>(this) != 0;
 	}
 
-	bool Type::isLiteralStruct()
+	bool Type::isClassType()
 	{
-		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::LiteralStruct);
+		return this->typeKind == FTypeKind::Class
+			&& dynamic_cast<ClassType*>(this) != 0;
 	}
 
 	bool Type::isPackedStruct()
 	{
-		return this->toStructType() != 0
-			&& (this->typeKind == FTypeKind::NamedStruct || this->typeKind == FTypeKind::LiteralStruct)
+		return this->isStructType()
+			&& (this->typeKind == FTypeKind::Struct)
 			&& (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		return this->toArrayType() != 0;
+		return this->typeKind == FTypeKind::Array
+			&& dynamic_cast<ArrayType*>(this) != 0;
 	}
 
 	bool Type::isFloatingPointType()
 	{
 		return this->typeKind == FTypeKind::Floating
-			&& this->toPrimitiveType() != 0;
+			&& dynamic_cast<PrimitiveType*>(this) != 0;
 	}
 
 	bool Type::isIntegerType()
 	{
 		return this->typeKind == FTypeKind::Integer
-			&& this->toPrimitiveType() != 0;
+			&& dynamic_cast<PrimitiveType*>(this) != 0;
 	}
 
 	bool Type::isSignedIntType()
 	{
 		return this->typeKind == FTypeKind::Integer
-			&& this->toPrimitiveType() != 0
+			&& dynamic_cast<PrimitiveType*>(this) != 0
 			&& this->toPrimitiveType()->isSigned();
 	}
 
 	bool Type::isFunctionType()
 	{
 		return this->typeKind == FTypeKind::Function
-			&& this->toFunctionType() != 0;
+			&& dynamic_cast<FunctionType*>(this) != 0;
 	}
 
 	bool Type::isPrimitiveType()
 	{
-		return this->toPrimitiveType() != 0;
+		return (this->typeKind == FTypeKind::Integer || this->typeKind == FTypeKind::Floating)
+			&& dynamic_cast<PrimitiveType*>(this) != 0;
 	}
 
 	bool Type::isPointerType()
 	{
-		return this->toPointerType() != 0;
+		return this->typeKind == FTypeKind::Pointer
+			&& dynamic_cast<PointerType*>(this) != 0;
 	}
 
 	bool Type::isVoidType()
@@ -452,12 +507,19 @@ namespace fir
 
 	bool Type::isLLVariableArrayType()
 	{
-		return this->typeKind == FTypeKind::LowLevelVariableArray;
+		return this->typeKind == FTypeKind::LowLevelVariableArray
+			&& dynamic_cast<LLVariableArrayType*>(this) != 0;
 	}
 
 	bool Type::isNullPointer()
 	{
 		return this == PrimitiveType::getVoid()->getPointerTo();
+	}
+
+	bool Type::isParametricType()
+	{
+		return this->typeKind == FTypeKind::Parametric
+			&& dynamic_cast<ParametricType*>(this) != 0;
 	}
 }
 

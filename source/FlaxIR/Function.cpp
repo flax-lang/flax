@@ -1,5 +1,5 @@
 // Function.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/module.h"
@@ -12,6 +12,11 @@ namespace fir
 	{
 		this->parentFunction = fn;
 		this->realValue = new Value(type);
+	}
+
+	Argument::~Argument()
+	{
+		delete this->realValue;
 	}
 
 	Value* Argument::getActualValue()
@@ -93,6 +98,37 @@ namespace fir
 	void Function::deleteBody()
 	{
 		this->blocks.clear();
+	}
+
+	bool Function::isGeneric()
+	{
+		for(auto p : this->fnArguments)
+		{
+			if(p->getType()->isParametricType())
+				return true;
+		}
+
+		return this->getReturnType()->isParametricType();
+	}
+
+	Function* Function::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+
+		if(this->blocks.size() > 0)
+			error("cannot reify already-generated function");
+
+		FunctionType* newft = this->getType()->reify(names, tc);
+		Function* nf = new Function(this->ident, newft, this->parentModule, this->linkageType);
+
+		return nf;
+	}
+
+	Function* Function::create(Identifier name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
+	{
+		return new Function(name, fnType, module, linkage);
 	}
 
 

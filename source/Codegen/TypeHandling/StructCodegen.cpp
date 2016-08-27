@@ -53,7 +53,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	fir::StructType* str = this->createdType;
+	fir::StructType* str = this->createdType->toStructType();
 	cgi->module->addNamedType(str->getStructName(), str);
 
 
@@ -82,10 +82,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// not supported in structs
 			iceAssert(!var->isStatic);
 
-			int i = this->nameMap[var->ident.name];
-			iceAssert(i >= 0);
-
-			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+			fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
@@ -167,24 +164,19 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 
 
 
-	// check our inheritances??
-	fir::Type** types = new fir::Type*[this->members.size()];
+
+	std::deque<std::pair<std::string, fir::Type*>> types;
 
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
 	// create a bodyless struct so we can use it
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident, cgi->getContext(), this->packed);
+	fir::StructType* str = fir::StructType::createWithoutBody(this->ident, cgi->getContext(), this->packed);
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(str, this, TypeKind::Struct);
 
-
-
-	// because we can't (and don't want to) mangle names in the parser,
-	// we could only build an incomplete name -> index map
-	// finish it here.
 
 	for(VarDecl* var : this->members)
 	{
@@ -197,10 +189,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->ident.name];
-			iceAssert(i >= 0);
-
-			types[i] = cgi->getExprType(var);
+			types.push_back({ var->ident.name, cgi->getExprType(var) });
 		}
 	}
 
@@ -208,13 +197,9 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 
 
 
-
-	std::vector<fir::Type*> vec(types, types + this->nameMap.size());
-	str->setBody(vec);
+	str->setBody(types);
 
 	this->didCreateType = true;
-
-	delete[] types;
 
 	this->createdType = str;
 

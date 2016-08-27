@@ -54,18 +54,19 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	fir::StructType* str = this->createdType;
+	fir::ClassType* cls = this->createdType->toClassType();
 
 	// generate initialiser
-	auto defaultInitId = this->ident;
-	defaultInitId.kind = IdKind::AutoGenFunc;
-	defaultInitId.name = "init_" + defaultInitId.name;
-	defaultInitId.functionArguments = { str->getPointerTo() };
-
-	this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
-		fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
-
 	{
+		auto defaultInitId = this->ident;
+		defaultInitId.kind = IdKind::AutoGenFunc;
+		defaultInitId.name = "init_" + defaultInitId.name;
+		defaultInitId.functionArguments = { cls->getPointerTo() };
+
+		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
+			fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+
+
 		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
 
 		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
@@ -78,10 +79,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(!var->isStatic)
 			{
-				int i = this->nameMap[var->ident.name];
-				iceAssert(i >= 0);
-
-				fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+				fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 				var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
@@ -100,7 +98,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-				if(var->inferredLType->isStructType())
+				if(var->inferredLType->isStructType() || var->inferredLType->isClassType())
 				{
 					TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
 					iceAssert(cmplxtype);
@@ -140,6 +138,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// pass 1
 	doCodegenForMemberFunctions(cgi, this);
+	{
+		cls->setMethods(this->lfuncs);
+	}
 
 
 	// do comprops here:
@@ -162,6 +163,20 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+
+
+
+
+
+
+	for(auto protstr : this->protocolstrs)
+	{
+		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
+		iceAssert(prot);
+
+		prot->assertTypeConformity(cgi, cls);
+		this->conformedProtocols.push_back(prot);
+	}
 
 
 
@@ -247,6 +262,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 	this->ident.scope = cgi->getFullScope();
 
+
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
@@ -257,23 +273,22 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 
 
+	std::deque<std::pair<std::string, fir::Type*>> types;
 
-	fir::Type** types = new fir::Type*[this->members.size()];
+
 
 	// create a bodyless struct so we can use it
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
-	fir::StructType* str = fir::StructType::createNamedWithoutBody(this->ident, cgi->getContext());
+	fir::ClassType* cls = fir::ClassType::createWithoutBody(this->ident, cgi->getContext());
 
 	iceAssert(this->createdType == 0);
-	cgi->addNewType(str, this, TypeKind::Class);
+	cgi->addNewType(cls, this, TypeKind::Class);
 
 
-	// because we can't (and don't want to) mangle names in the parser,
-	// we could only build an incomplete name -> index map
-	// finish it here.
+
 
 
 	for(Func* func : this->funcs)
@@ -288,47 +303,28 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		// fir::Type* type = cgi->getExprType(var);
-
 		iceAssert(var->inferredLType != 0);
+
 		fir::Type* type = var->inferredLType;
 
-		if(type == str)
+		if(type == cls)
 		{
-			error(this, "Cannot have non-pointer member of type self");
+			error(var, "Cannot have non-pointer member of type self");
 		}
-
 
 		if(!var->isStatic)
 		{
-			int i = this->nameMap[var->ident.name];
-			iceAssert(i >= 0);
-
-			types[i] = cgi->getExprType(var);
+			types.push_back({ var->ident.name, cgi->getExprType(var) });
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-	std::vector<fir::Type*> vec(types, types + this->nameMap.size());
-	str->setBody(vec);
-
+	cls->setMembers(types);
 	this->didCreateType = true;
 
-	delete[] types;
+	this->createdType = cls;
+	cgi->module->addNamedType(cls->getClassName(), cls);
 
-	this->createdType = str;
-
-	cgi->module->addNamedType(str->getStructName(), str);
-
-	return str;
+	return cls;
 }
 
 

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
+#include <set>
 #include <vector>
 #include <memory>
 #include <cfloat>
@@ -169,12 +170,6 @@ namespace Codegen
 		this->getSymTab()[name] = sp;
 	}
 
-
-	bool CodegenInstance::areEqualTypes(fir::Type* a, fir::Type* b)
-	{
-		return a == b;
-	}
-
 	void CodegenInstance::addNewType(fir::Type* ltype, StructBase* atype, TypeKind e)
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
@@ -189,7 +184,7 @@ namespace Codegen
 				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
-		// if there isn't one, replace it.
+		// if there isn't one, add it.
 		ftree->types[atype->ident.name] = tpair;
 
 
@@ -223,8 +218,10 @@ namespace Codegen
 			fprintf(stderr, "}\n");
 
 		#endif
-		if(name == "Inferred" || name == "_ZN8Inferred")
-			iceAssert(!"Tried to get type on inferred vardecl!");
+
+		if(name == "Inferred")
+			return 0;
+
 
 		if(this->typeMap.find(name) != this->typeMap.end())
 			return &(this->typeMap[name]);
@@ -259,9 +256,14 @@ namespace Codegen
 				{
 					// create a typepair. allows constructor syntax
 					// only applicable in generic functions.
-					// todo: this will leak...
+					// todo(leak): this will leak...
 
-					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Struct));
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::BuiltinType));
+				}
+				else if(possibleGeneric->isParametricType())
+				{
+					// todo(leak): this leaks too
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Parametric));
 				}
 
 				TypePair_t* tp = this->getType(possibleGeneric);
@@ -399,24 +401,30 @@ namespace Codegen
 		{
 			iceAssert(func);
 
-			// add to the func table
-			auto lf = cgi->module->getFunction(func->getName());
-			if(!lf)
+			fir::Function* f = 0;
+			if(!func->isGeneric())
 			{
-				cgi->module->declareFunction(func->getName(), func->getType());
-				lf = cgi->module->getFunction(func->getName());
+				// add to the func table
+				auto lf = cgi->module->getFunction(func->getName());
+				if(!lf)
+				{
+					cgi->module->declareFunction(func->getName(), func->getType());
+					lf = cgi->module->getFunction(func->getName());
+				}
+
+				f = dynamic_cast<fir::Function*>(lf);
+				f->deleteBody();
+			}
+			else
+			{
+				f = func;
 			}
 
-			fir::Function* f = dynamic_cast<fir::Function*>(lf);
-
-			f->deleteBody();
 			cgi->addFunctionToScope(FuncPair_t(f, decl));
-
 			ret = f;
 		}
 		else if(!func)
 		{
-
 			// note: generic functions are not instantiated
 			if(decl->genericTypes.size() == 0)
 				error(decl, "!func (%s)", decl->ident.str().c_str());
@@ -525,7 +533,7 @@ namespace Codegen
 			bool found = false;
 			for(auto e : clone->extensions)
 			{
-				if(e.first == ext.first)
+				if(e.second == ext.second)
 				{
 					found = true;
 					break;
@@ -536,7 +544,7 @@ namespace Codegen
 			{
 				if(!found && deep)
 				{
-					clone->extensions[ext.first] = ext.second;
+					clone->extensions.insert(std::make_pair(ext.first, ext.second));
 
 					ExtensionDef* ed = ext.second;
 					for(auto& ff : ed->functionMap)
@@ -556,7 +564,7 @@ namespace Codegen
 				}
 				else if(!found)
 				{
-					clone->extensions[ext.first] = ext.second;
+					clone->extensions.insert(std::make_pair(ext.first, ext.second));
 				}
 			}
 		}
@@ -640,6 +648,7 @@ namespace Codegen
 			}
 		}
 
+
 		for(auto gf : ft->genericFunctions)
 		{
 			bool found = false;
@@ -654,6 +663,19 @@ namespace Codegen
 
 			if(!found/* && gf.first->attribs & Attr_VisPublic*/)
 				clone->genericFunctions.push_back(gf);
+		}
+
+
+
+		for(auto prot : ft->protocols)
+		{
+			for(auto cprot : clone->protocols)
+			{
+				if(prot.first == cprot.first && prot.second != cprot.second)
+					error(prot.second, "conflicting protocols with the same name");
+			}
+
+			clone->protocols[prot.first] = prot.second;
 		}
 
 
@@ -840,7 +862,17 @@ namespace Codegen
 			cur->funcs.erase(it);
 	}
 
-	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename, std::deque<Func*>* bodiesFound)
+
+
+
+
+
+
+
+
+
+
+	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
 		std::deque<FuncPair_t> candidates;
@@ -901,42 +933,6 @@ namespace Codegen
 				}
 			}
 
-
-
-			for(auto f : ft->genericFunctions)
-			{
-				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
-					return _isDupe({ 0, f.first }, fp);
-				};
-
-				if(f.first->ident.name == basename)
-				{
-					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-					{
-						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
-						candidates.push_back({ 0, f.first });
-						if(bodiesFound) bodiesFound->push_back(f.second);
-					}
-
-					if(bodiesFound)
-					{
-						bool found = false;
-						for(auto b : *bodiesFound)
-						{
-							if(b == f.second)
-							{
-								found = true;
-								break;
-							}
-						}
-
-						if(!found)
-						{
-							bodiesFound->push_back(f.second);
-						}
-					}
-				}
-			}
 
 
 			if(curDepth.size() > 0)
@@ -1043,6 +1039,37 @@ namespace Codegen
 
 
 
+	std::deque<Func*> CodegenInstance::findGenericFunctions(std::string basename)
+	{
+		std::deque<std::string> curDepth = this->namespaceStack;
+		std::deque<Func*> ret;
+
+		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto f : ft->genericFunctions)
+			{
+				iceAssert(f.first->genericTypes.size() > 0);
+
+				if(f.first->ident.name == basename)
+					ret.push_back({ f.second });
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		return ret;
+	}
+
+
+
+
+
+
+
 
 	static bool _checkFunction(CodegenInstance* cgi, std::deque<fir::Type*> funcParams, std::deque<fir::Type*> args,
 		int* _dist, bool variadic, bool c_variadic, bool exact)
@@ -1140,23 +1167,23 @@ namespace Codegen
 		bool iscvar = 0;
 		bool isvar = 0;
 
-		if(fp.second)
+		if(fp.first)
 		{
-			for(auto arg : fp.second->params)
-				funcParams.push_back(this->getExprType(arg, true));
-
-			iscvar = fp.second->isCStyleVarArg;
-			isvar = fp.second->isVariadic;
-		}
-		else
-		{
-			iceAssert(fp.first);
-
 			for(auto arg : fp.first->getArguments())
 				funcParams.push_back(arg->getType());
 
 			iscvar = fp.first->isCStyleVarArg();
 			isvar = fp.first->isVariadic();
+		}
+		else
+		{
+			iceAssert(fp.second);
+
+			for(auto arg : fp.second->params)
+				funcParams.push_back(this->getExprType(arg, true));
+
+			iscvar = fp.second->isCStyleVarArg;
+			isvar = fp.second->isVariadic;
 		}
 
 		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
@@ -1434,135 +1461,257 @@ namespace Codegen
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	fir::Function* CodegenInstance::tryResolveAndInstantiateGenericFunction(FuncCall* fc)
+	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
-		// try and resolve shit
-		std::deque<FuncDecl*> candidates;
-		std::unordered_map<std::string, fir::Type*> tm;
+		std::deque<std::string> nses = this->unwrapNamespacedType(protstr);
+		std::string protname = nses.back();
+		nses.pop_back();
 
-		std::deque<Func*> bodiesFound;
-		auto fpcands = this->resolveFunctionName(fc->name, &bodiesFound);
-		// printf("trying to resolve and instantiate: %s // %zu\n", fc->name.c_str(), fpcands.size());
-
-
-		for(FuncPair_t fp : fpcands)
+		auto curDepth = nses;
+		ProtocolDef* prot = 0;
+		for(size_t i = 0; i <= nses.size(); i++)
 		{
-			if(fp.second->genericTypes.size() > 0)
-				candidates.push_back(fp.second);
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto& f : ft->protocols)
+			{
+				if(f.first == protname)
+				{
+					prot = f.second;
+					break;
+				}
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
 		}
 
-		// fprintf(stderr, "phase 1: %zu cands // %zu // %zu\n", candidates.size(), bodiesFound.size(), fpcands.size());
+		if(!prot)
+			error(user, "Undeclared protocol '%s'", protname.c_str());
+
+		return prot;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static bool _checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
+		FuncDecl* candidate, std::deque<fir::Type*> args)
+	{
+		std::map<std::string, fir::Type*> thistm;
+
+		// now check if we *can* instantiate it.
+		// first check the number of arguments.
+		if(candidate->params.size() != args.size())
+		{
+			return false;
+		}
+		else
+		{
+			// param count matches...
+			// do a similar thing as the actual mangling -- build a list of
+			// uniquely named types.
+
+			std::map<std::string, std::vector<int>> typePositions;
+			std::vector<int> nonGenericTypes;
+
+			int pos = 0;
+			for(auto p : candidate->params)
+			{
+				std::string s = p->type.strType;
+				if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
+				{
+					typePositions[s].push_back(pos);
+				}
+				else
+				{
+					nonGenericTypes.push_back(pos);
+				}
+
+				pos++;
+			}
+
+
+			// this needs to be basically a fully manual check.
+			// 1. check that the generic types match (ie. all the Ts are the same type, all the Ks are the same, etc.)
+			for(auto pair : typePositions)
+			{
+				fir::Type* ftype = args[pair.second[0]];
+				for(int k : pair.second)
+				{
+					if(args[k] != ftype)
+						return false;
+				}
+			}
+
+
+			// 2. check that the concrete types match.
+			for(int k : nonGenericTypes)
+			{
+				fir::Type* a = args[k];
+				fir::Type* b = cgi->getExprType(candidate->params[k]);
+
+				if(a != b) return false;
+			}
+
+
+
+			// fill in the typemap.
+			// note that it's okay if we just have one -- if we did this loop more
+			// than once and screwed up the tm, that means we have more than one
+			// candidate, and will error anyway.
+
+			for(auto pair : typePositions)
+			{
+				thistm[pair.first] = args[pair.second[0]];
+			}
+
+
+			// last phase: ensure the type constraints are met
+			for(auto cst : thistm)
+			{
+				TypeConstraints_t constr = candidate->genericTypes[cst.first];
+				if((constr.pointerDegree > 0 && !cst.second->isPointerType())
+					&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
+				{
+					return false;
+				}
+
+				for(auto protstr : constr.protocols)
+				{
+					ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
+					iceAssert(prot);
+
+					bool doesConform = prot->checkTypeConformity(cgi, cst.second);
+
+					if(!doesConform)
+						return false;
+				}
+			}
+
+			// check that we actually have an entry for every type
+			for(auto t : candidate->genericTypes)
+			{
+				if(thistm.find(t.first) == thistm.end())
+					return false;
+			}
+
+
+			*gtm = thistm;
+			return true;
+		}
+	}
+
+
+
+	FuncPair_t CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
+		Func* func, std::deque<fir::Type*> params)
+	{
+		iceAssert(func);
+		iceAssert(func->decl);
+
+		FuncDecl* fnDecl = func->decl;
+
+		std::map<std::string, fir::Type*> gtm = _gtm;
+		if(gtm.empty())
+		{
+			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
+			if(!res) return FuncPair_t(0, 0);
+		}
+
+
+		bool needToCodegen = true;
+		if(this->reifiedGenericFunctions.find({ func, gtm }) != this->reifiedGenericFunctions.end())
+			needToCodegen = false;
+
+
+
+
+		// we need to push a new "generic type stack", and add the types that we resolved into it.
+		// todo: might be inefficient.
+		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
+		// so we don't have to iterate etc etc.
+		// I don't want to access cgi->instantiatedGenericTypeStack directly.
+
+
+
+		fir::Function* ffunc = nullptr;
+		if(needToCodegen)
+		{
+			Result_t res = fnDecl->generateDeclForGenericFunction(this, gtm);
+			ffunc = (fir::Function*) res.result.first;
+
+			this->reifiedGenericFunctions[{ func, gtm }] = ffunc;
+		}
+		else
+		{
+			ffunc = this->reifiedGenericFunctions[{ func, gtm }];
+			iceAssert(ffunc);
+		}
+
+		iceAssert(ffunc);
+
+		this->pushGenericTypeStack();
+		for(auto pair : gtm)
+			this->pushGenericType(pair.first, pair.second);
+
+		if(needToCodegen)
+		{
+			// dirty: use 'lhsPtr' to pass the version we want.
+			func->codegen(this, ffunc);
+		}
+
+		this->removeFunctionFromScope({ 0, fnDecl });
+		this->popGenericTypeStack();
+
+		return { ffunc, fnDecl };
+	}
+
+
+	FuncPair_t CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
+	{
+		// try and resolve shit
+		std::map<std::string, fir::Type*> gtm;
 
 		if(candidates.size() == 0)
 		{
-			return 0;	// do nothing.
+			return { 0, 0 };	// just fail
 		}
+
+		std::deque<fir::Type*> fargs;
+		for(auto p : fc->params)
+			fargs.push_back(this->getExprType(p));
 
 		auto it = candidates.begin();
 		while(it != candidates.end())
 		{
-			FuncDecl* candidate = *it;
+			bool result = _checkGenericFunction(this, &gtm, (*it)->decl, fargs);
 
-			// now check if we *can* instantiate it.
-			// first check the number of arguments.
-			if(candidate->params.size() != fc->params.size())
+			if(!result)
 			{
 				it = candidates.erase(it);
-				continue;
 			}
 			else
 			{
-				// param count matches...
-				// do a similar thing as the actual mangling -- build a list of
-				// uniquely named types.
-
-				std::map<std::string, std::vector<int>> typePositions;
-				std::vector<int> nonGenericTypes;
-
-				int pos = 0;
-				for(auto p : candidate->params)
-				{
-					fir::Type* ltype = this->getExprType(p, true, false);	// allowFail = true, setInferred = false
-					if(!ltype)
-					{
-						std::string s = p->type.strType;
-						typePositions[s].push_back(pos);
-					}
-					else
-					{
-						nonGenericTypes.push_back(pos);
-					}
-
-					pos++;
-				}
-
-
-				// this needs to be basically a fully manual check.
-				// 1. check that the generic types match.
-				for(auto pair : typePositions)
-				{
-					fir::Type* ftype = this->getExprType(fc->params[pair.second[0]]);
-					for(int k : pair.second)
-					{
-						if(this->getExprType(fc->params[k]) != ftype)
-							goto fail;	// ew goto
-					}
-				}
-
-				// 2. check that the concrete types match.
-				for(int k : nonGenericTypes)
-				{
-					fir::Type* a = this->getExprType(fc->params[k]);
-					fir::Type* b = this->getExprType(candidate->params[k]);
-
-					if(a != b)
-						goto fail;
-				}
-
-
-
-				// fill in the typemap.
-				// note that it's okay if we just have one -- if we did this loop more
-				// than once and screwed up the tm, that means we have more than one
-				// candidate, and will error anyway.
-
-				for(auto pair : typePositions)
-				{
-					tm[pair.first] = this->getExprType(fc->params[pair.second[0]]);
-				}
-
-
-				goto success;
-				fail:
-				{
-					it = candidates.erase(it);
-					continue;
-				}
-
-				success:
-				{
-					it++;
-				}
+				it++;
 			}
 		}
 
 		if(candidates.size() == 0)
 		{
-			return 0;
+			return { 0, 0 };
 		}
 		else if(candidates.size() > 1)
 		{
@@ -1574,103 +1723,13 @@ namespace Codegen
 				candidates.size(), cands.c_str());
 		}
 
-		FuncDecl* candidate = candidates[0];
+		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
+	}
 
-		Func* theFn = 0;
-		for(auto body : bodiesFound)
-		{
-			if(body->decl == candidate)
-			{
-				// we've got it.
-				theFn = body;
-				break;
-			}
-		}
-
-
-
-
-		iceAssert(theFn);
-		std::deque<fir::Type*> instantiatedTypes;
-		for(auto p : fc->params)
-			instantiatedTypes.push_back(this->getExprType(p));
-
-
-		bool needToCodegen = true;
-		for(std::deque<fir::Type*> inst : theFn->instantiatedGenericVersions)
-		{
-			if(inst == instantiatedTypes)
-			{
-				needToCodegen = false;
-				break;
-			}
-		}
-
-
-
-
-
-		// we need to push a new "generic type stack", and add the types that we resolved into it.
-		// todo: might be inefficient.
-		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
-		// so we don't have to iterate etc etc.
-		// I don't want to access cgi->instantiatedGenericTypeStack directly.
-		this->pushGenericTypeStack();
-		for(auto pair : tm)
-			this->pushGenericType(pair.first, pair.second);
-
-
-
-		fir::Function* ffunc = nullptr;
-		if(needToCodegen)
-		{
-			Result_t res = candidate->generateDeclForGenericType(this, tm);
-			ffunc = (fir::Function*) res.result.first;
-		}
-		else
-		{
-			std::deque<Expr*> es;
-			for(auto p : candidate->params) es.push_back(p);
-
-			Resolved_t rt = this->resolveFunction(fc, candidate->ident.name, es, true); // exact match
-			iceAssert(rt.resolved);
-
-			FuncPair_t fp = rt.t;
-
-			ffunc = fp.first;
-			iceAssert(ffunc);
-		}
-
-		iceAssert(ffunc);
-
-		fc->cachedGenericFuncTarget = ffunc;
-
-
-		// i've written this waaayyy too many times... but this. is. super. fucking.
-		// SUBOPTIMAL. SLOW. SHITTY. O(INFINITY) TIME COMPLEXITY.
-		// FUUUUCK THERE HAS GOT TO BE A BETTER WAY.
-
-		// basically, we can call this function multiple times during the course of codegeneration
-		// and typechecking (BOOOOO, EACH CALL IS LIKE 12812479 SECONDS???)
-
-		// especially during type inference. Basically, given a FuncCall*, we need to be able to possibly
-		// resolve it into an fir::Function* to do shit.
-
-		if(needToCodegen)
-		{
-			theFn->decl->instantiatedGenericTypes = instantiatedTypes;
-			theFn->decl->instantiatedGenericReturnType = ffunc->getReturnType();
-
-			// dirty: use 'lhsPtr' to pass the version we want.
-			theFn->codegen(this, ffunc);
-			theFn->instantiatedGenericVersions.push_back(instantiatedTypes);
-		}
-
-
-		this->removeFunctionFromScope({ 0, candidate });
-		this->popGenericTypeStack();
-
-		return ffunc;
+	FuncPair_t CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+	{
+		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
+		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
 	}
 
 
@@ -1749,23 +1808,111 @@ namespace Codegen
 
 
 
-
-
-
-	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
+	static std::deque<ExtensionDef*> _findExtensionsByNameInScope(std::string name, FunctionTree* ft)
 	{
-		FunctionTree* ft = this->getCurrentFuncTree(&cls->ident.scope);
+		std::deque<ExtensionDef*> ret;
 		iceAssert(ft);
 
-		std::deque<ExtensionDef*> ret;
-		for(auto ext : ft->extensions)
+		auto pair = ft->extensions.equal_range(name);
+		for(auto it = pair.first; it != pair.second; it++)
 		{
-			if(ext.first == cls->ident.name)
-				ret.push_back(ext.second);
+			if((*it).first == name)
+				ret.push_back((*it).second);
 		}
 
 		return ret;
 	}
+
+	std::deque<ExtensionDef*> CodegenInstance::getExtensionsWithName(std::string name)
+	{
+		FunctionTree* ft = this->getCurrentFuncTree();
+		iceAssert(ft);
+
+		return _findExtensionsByNameInScope(name, ft);
+	}
+
+	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
+	{
+		std::set<ExtensionDef*> ret;
+
+		// 1. look in the current scope
+		{
+			FunctionTree* ft = this->getCurrentFuncTree();
+			iceAssert(ft);
+
+			std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+			ret.insert(res.begin(), res.end());
+		}
+
+
+		// 2. look in the scope of the type
+		{
+			std::deque<std::string> curDepth = cls->ident.scope;
+
+			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			{
+				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+				if(!ft) break;
+
+				std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+
+				ret.insert(res.begin(), res.end());
+
+				if(curDepth.size() > 0)
+					curDepth.pop_back();
+			}
+		}
+
+		return std::deque<ExtensionDef*>(ret.begin(), ret.end());
+	}
+
+	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForBuiltinType(fir::Type* type)
+	{
+		if(fir::Type::fromBuiltin(INT8_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT8_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(INT16_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT16_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(INT32_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT32_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(INT64_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT64_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UINT8_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT8_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UINT16_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT16_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UINT32_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT32_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UINT64_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT64_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(FLOAT32_TYPE_STRING) == type)
+			return this->getExtensionsWithName(FLOAT32_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(FLOAT64_TYPE_STRING) == type)
+			return this->getExtensionsWithName(FLOAT64_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(BOOL_TYPE_STRING) == type)
+			return this->getExtensionsWithName(BOOL_TYPE_STRING);
+
+		else
+			return { };
+	}
+
+
+
+
+
+
+
+
+
 
 	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals)
 	{
@@ -1779,43 +1926,85 @@ namespace Codegen
 		{
 			iceAssert(pair->second.first == 0);
 
-			std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
-			fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
-
-			Identifier fnId = Identifier("__builtin_primitive_init_" + this->getReadableType(pair->first), IdKind::AutoGenFunc);
-			fnId.functionArguments = ft->getArgumentTypes();
-
-
-			this->module->declareFunction(fnId, ft);
-			fir::Function* fn = this->module->getFunction(fnId);
-
-			if(fn->getBlockList().size() == 0)
+			if(vals.size() == 1)
 			{
-				fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+				std::vector<fir::Type*> args { pair->first->getPointerTo() };
+				fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
 
-				fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
-				this->builder.setCurrentBlock(block);
+				Identifier fnId = Identifier("__builtin_primitive_init_default_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
+				fnId.functionArguments = ft->getArgumentTypes();
 
-				iceAssert(fn->getArgumentCount() > 1);
+				this->module->declareFunction(fnId, ft);
+				fir::Function* fn = this->module->getFunction(fnId);
 
-				// fir::Value* param = ++fn->arg_begin();
-				this->builder.CreateReturn(fn->getArguments()[1]);
+				if(fn->getBlockList().size() == 0)
+				{
+					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
 
-				this->builder.setCurrentBlock(prevBlock);
-			}
+					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
+					this->builder.setCurrentBlock(block);
 
+					// fir::Value* param = ++fn->arg_begin();
+					this->builder.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
 
-			if(vals.size() != fn->getArgumentCount())
-				GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+					this->builder.setCurrentBlock(prevBlock);
+				}
 
-			for(size_t i = 0; i < fn->getArgumentCount(); i++)
-			{
-				if(vals[i]->getType() != fn->getArguments()[i]->getType())
+				if(vals.size() != fn->getArgumentCount())
 					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+
+				for(size_t i = 0; i < fn->getArgumentCount(); i++)
+				{
+					if(vals[i]->getType() != fn->getArguments()[i]->getType())
+						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+				}
+
+				return fn;
 			}
+			else if(vals.size() == 2)
+			{
+				std::vector<fir::Type*> args { pair->first->getPointerTo(), pair->first };
+				fir::FunctionType* ft = fir::FunctionType::get(args, pair->first, false);
+
+				Identifier fnId = Identifier("__builtin_primitive_init_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
+				fnId.functionArguments = ft->getArgumentTypes();
 
 
-			return fn;
+				this->module->declareFunction(fnId, ft);
+				fir::Function* fn = this->module->getFunction(fnId);
+
+				if(fn->getBlockList().size() == 0)
+				{
+					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+
+					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
+					this->builder.setCurrentBlock(block);
+
+					iceAssert(fn->getArgumentCount() > 1);
+
+					// fir::Value* param = ++fn->arg_begin();
+					this->builder.CreateReturn(fn->getArguments()[1]);
+
+					this->builder.setCurrentBlock(prevBlock);
+				}
+
+
+				if(vals.size() != fn->getArgumentCount())
+					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+
+				for(size_t i = 0; i < fn->getArgumentCount(); i++)
+				{
+					if(vals[i]->getType() != fn->getArguments()[i]->getType())
+						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+				}
+
+
+				return fn;
+			}
+			else
+			{
+				error(user, "Constructor syntax for builtin types requires either 0 or 1 parameters.");
+			}
 		}
 
 
@@ -1961,7 +2150,7 @@ namespace Codegen
 		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
 		fir::Value* loadedval = this->builder.CreateLoad(valgep);
 
-		if(type->isStructType())
+		if(type->isStructType() || type->isClassType())
 		{
 			// use pointer stuff
 			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());

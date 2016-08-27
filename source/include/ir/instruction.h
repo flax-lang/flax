@@ -1,5 +1,5 @@
 // instruction.h
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
-
-#include "errors.h"
 
 #include <string>
 #include <vector>
@@ -139,7 +137,7 @@ namespace fir
 		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
 
 
-		protected:
+		// protected:
 		OpKind opKind;
 
 		Value* realOutput;

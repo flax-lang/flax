@@ -12,6 +12,8 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
+		if(stype == 0) return;
+
 		for(auto k : cgi->rootNode->typeList)
 		{
 			if(stype->isStructType())
@@ -19,13 +21,24 @@ namespace TypeInfo
 				fir::StructType* strt = dynamic_cast<fir::StructType*>(stype);
 				iceAssert(strt);
 
-				if(strt->isNamedStruct() && std::get<0>(k) == strt->toStructType()->getStructName().str())
+				if(std::get<0>(k) == strt->getStructName().str())
+					return;
+			}
+			else if(stype->isClassType())
+			{
+				fir::ClassType* clst = dynamic_cast<fir::ClassType*>(stype);
+				iceAssert(clst);
+
+				if(std::get<0>(k) == clst->getClassName().str())
 					return;
 			}
 		}
 
-		cgi->rootNode->typeList.push_back(std::make_tuple(stype->isLiteralStruct() ? "" : stype->toStructType()->getStructName().str(),
-			stype, etype));
+		std::string id;
+		if(stype->isStructType()) id = stype->toStructType()->getStructName().str();
+		else if(stype->isClassType()) id = stype->toClassType()->getClassName().str();
+
+		cgi->rootNode->typeList.push_back(std::make_tuple(id, stype, etype));
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)
@@ -88,8 +101,8 @@ namespace TypeInfo
 				VarDecl* data = new VarDecl(Parser::Pin(), "value", false);
 				data->type.strType = std::string(INT8_TYPE_STRING) + "*";
 
-				any->members.push_back(type);		any->nameMap["type"] = 0;
-				any->members.push_back(data);		any->nameMap["value"] = 1;
+				any->members.push_back(type);
+				any->members.push_back(data);
 			}
 
 			any->codegen(cgi);

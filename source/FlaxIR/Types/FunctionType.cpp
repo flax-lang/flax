@@ -1,5 +1,5 @@
 // FunctionType.cpp
-// Copyright (c) 2014 - The Foreseeable Future, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/type.h"
@@ -18,6 +18,16 @@ namespace fir
 		this->isFnVariadic = isvariadic;
 
 		this->isFnCStyleVarArg = iscva;
+
+
+		for(auto a : args)
+		{
+			if(a->isParametricType())
+				this->isGeneric = true;
+		}
+
+		if(ret->isParametricType())
+			this->isGeneric = true;
 	}
 
 
@@ -157,6 +167,67 @@ namespace fir
 		}
 
 		return true;
+	}
+
+	bool FunctionType::isGenericFunction()
+	{
+		return this->isGeneric;
+	}
+
+	FunctionType* FunctionType::reify(std::map<std::string, Type*> reals, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		if(this->isCStyleVarArg())
+			error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
+
+		std::deque<Type*> reified;
+		Type* reifiedReturn = 0;
+
+		for(auto mem : this->functionParams)
+		{
+			if(mem->isParametricType())
+			{
+				if(reals.find(mem->toParametricType()->getName()) != reals.end())
+				{
+					auto t = reals[mem->toParametricType()->getName()];
+					if(t->isParametricType())
+					{
+						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
+							mem->toParametricType()->getName().c_str());
+					}
+
+					reified.push_back(t);
+				}
+				else
+				{
+					error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
+				}
+			}
+			else
+			{
+				reified.push_back(mem);
+			}
+		}
+
+		if(this->functionRetType->isParametricType())
+		{
+			if(reals.find(this->functionRetType->toParametricType()->getName()) != reals.end())
+			{
+				reifiedReturn = reals[this->functionRetType->toParametricType()->getName()];
+			}
+			else
+			{
+				error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
+			}
+		}
+		else
+		{
+			reifiedReturn = this->functionRetType;
+		}
+
+		return FunctionType::get(reified, reifiedReturn, this->isVariadicFunc());
 	}
 }
 

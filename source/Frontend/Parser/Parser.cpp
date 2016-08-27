@@ -33,7 +33,7 @@ namespace Parser
 	#define ATTR_STR_RAW				"raw"
 	#define ATTR_STR_OPERATOR			"operator"
 
-	static ParserState* staticState;
+	static ParserState* staticState = 0;
 
 	std::string getModuleName(std::string filename)
 	{
@@ -295,7 +295,7 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.isParsingStruct = 0;
+		ps.structNestLevel = 0;
 		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
@@ -473,7 +473,7 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.isParsingStruct = 0;
+		ps.structNestLevel = 0;
 		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
@@ -515,6 +515,10 @@ namespace Parser
 
 				case TType::Class:
 					ps.rootNode->topLevelExpressions.push_back(parseClass(ps));
+					break;
+
+				case TType::Protocol:
+					ps.rootNode->topLevelExpressions.push_back(parseProtocol(ps));
 					break;
 
 				case TType::Enum:
@@ -581,7 +585,7 @@ namespace Parser
 					[[clang::fallthrough]];
 
 				default:	// wip: skip shit we don't know/care about for now
-					parserError("Unknown token '%s'", tok.text.c_str());
+					parserError(tok, "Unknown token '%s'", tok.text.c_str());
 			}
 		}
 	}
@@ -633,6 +637,9 @@ namespace Parser
 
 				case TType::Class:
 					return parseClass(ps);
+
+				case TType::Protocol:
+					return parseProtocol(ps);
 
 				case TType::Enum:
 					return parseEnum(ps);
@@ -739,7 +746,7 @@ namespace Parser
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
-					parserError("Unexpected token '%s'\n", tok.text.c_str());
+					parserError(tok, "Unexpected token '%s'\n", tok.text.c_str());
 			}
 		}
 
@@ -791,7 +798,7 @@ namespace Parser
 	Expr* parseStaticDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Static);
-		if(!ps.isParsingStruct)
+		if(ps.structNestLevel == 0)
 			parserError("Static declarations are only allowed inside struct definitions");
 
 		ps.eat();
@@ -827,7 +834,7 @@ namespace Parser
 		Token func_id = ps.eat();
 		std::string id = func_id.text;
 
-		std::deque<std::string> genericTypes;
+		std::map<std::string, TypeConstraints_t> genericTypes;
 
 		// expect a left bracket
 		Token paren = ps.eat();
@@ -837,34 +844,72 @@ namespace Parser
 		}
 		else if(paren.type == TType::LAngle)
 		{
-			Expr* inner = parseType(ps);
-			iceAssert(inner->type.isLiteral);
+			if(ps.front().type == TType::RAngle)
+				parserError("Empty type parameter list");
 
-			genericTypes.push_back(inner->type.strType);
-
-			Token angleOrComma = ps.eat();
-			if(angleOrComma.type == TType::Comma)
+			while(ps.front().type != TType::RAngle)
 			{
-				// parse more.
-				Token tok;
-				while(true)
+				if(ps.front().type == TType::Identifier)
 				{
-					Expr* gtype = parseType(ps);
-					iceAssert(gtype->type.isLiteral);
+					std::string gt = ps.eat().text;
+					TypeConstraints_t constrs;
 
-					genericTypes.push_back(gtype->type.strType);
+					if(ps.front().type == TType::Colon)
+					{
+						ps.eat();
+						if(ps.front().type != TType::Identifier)
+							parserError("Expected identifier after beginning of type constraint list");
 
-					tok = ps.eat();
-					if(tok.type == TType::Comma)		continue;
-					else if(tok.type == TType::RAngle)	break;
-					else								parserError("Expected '>' or ','");
+						while(ps.front().type == TType::Identifier)
+						{
+							constrs.protocols.push_back(ps.eat().text);
+
+							if(ps.front().type == TType::Ampersand)
+							{
+								ps.eat();
+							}
+							else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+							{
+								parserError("Expected ',' or '>' to end type parameter list (1)");
+							}
+						}
+					}
+					else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+					{
+						parserError("Expected ',' or '>' to end type parameter list (2)");
+					}
+
+					for(size_t i = gt.size() - 1; i > 0; i--)
+					{
+						if(gt[i] == '*')
+							constrs.pointerDegree++;
+					}
+
+					gt = gt.substr(0, gt.size() - constrs.pointerDegree);
+
+					genericTypes[gt] = constrs;
+				}
+				else if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+				}
+				else if(ps.front().type != TType::RAngle)
+				{
+					parserError("Expected '>' to end type parameter list");
 				}
 			}
-			else if(angleOrComma.type != TType::RAngle)
-				parserError("Expected '>' or ','");
 
-			ps.eat();
+			iceAssert(ps.eat().type == TType::RAngle);
+
+			if(ps.eat().type != TType::LParen)
+				parserError("Expected '(' after function name");
+
 		}
+
+
+
+
+
 
 		bool isCVA = false;
 		bool isVariableArg = false;
@@ -889,7 +934,7 @@ namespace Parser
 				}
 				else
 				{
-					parserError("Expected identifier");
+					parserError(tok_id, "Expected identifier (got '%s')", tok_id.text.c_str());
 				}
 			}
 
@@ -1053,9 +1098,14 @@ namespace Parser
 		Token front = ps.front();
 		FuncDecl* decl = parseFuncDecl(ps);
 
-		auto ret = CreateAST(Func, front, decl, parseBracedBlock(ps));
-
-		return ret;
+		if(ps.front().type == TType::LBrace)
+		{
+			return CreateAST(Func, front, decl, parseBracedBlock(ps));
+		}
+		else
+		{
+			return CreateAST(Func, front, decl, 0);
+		}
 	}
 
 
@@ -1325,7 +1375,7 @@ namespace Parser
 
 	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
 	{
-		if(!ps.isParsingStruct)
+		if(ps.structNestLevel == 0)
 			parserError("Computed properties can only be declared inside classes");
 
 		// computed property, getting and setting
@@ -2024,7 +2074,7 @@ namespace Parser
 		return ret;
 	}
 
-	static void parseGenericTypeList(ParserState& ps, StructBase* sb)
+	static void parseGenericTypeList(ParserState& ps, Expr* sb)
 	{
 		while(true)
 		{
@@ -2060,7 +2110,7 @@ namespace Parser
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Struct);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2093,7 +2143,8 @@ namespace Parser
 
 		// parse a block.
 		BracedBlock* body = parseBracedBlock(ps);
-		int i = 0;
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
 		for(Expr* stmt : body->statements)
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
@@ -2102,10 +2153,10 @@ namespace Parser
 			}
 			if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(str->nameMap.find(var->ident.name) != str->nameMap.end())
+				if(nameMap.find(var->ident.name) != nameMap.end())
 				{
 					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
-					parserMessage(Err::Info, str->members[str->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					parserMessage(Err::Info, nameMap[var->ident.name]->pin, "Previous declaration was here.");
 					doTheExit();
 				}
 
@@ -2114,8 +2165,7 @@ namespace Parser
 				// don't take up space in the struct if it's static.
 				if(!var->isStatic)
 				{
-					str->nameMap[var->ident.name] = i;
-					i++;
+					nameMap[var->ident.name] = var;
 				}
 				else
 				{
@@ -2126,13 +2176,9 @@ namespace Parser
 			{
 				parserError(fn->pin, "Structs cannot contain functions");
 			}
-			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			else if(dynamic_cast<AssignOpOverload*>(stmt) || dynamic_cast<SubscriptOpOverload*>(stmt))
 			{
-				parserError(aoo->pin, "Structs cannot contain operator overloads");
-			}
-			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
-			{
-				parserError(soo->pin, "Structs cannot contain operator overloads");
+				parserError(stmt->pin, "Structs cannot contain operator overloads");
 			}
 			else
 			{
@@ -2140,7 +2186,7 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return str;
 	}
@@ -2152,9 +2198,9 @@ namespace Parser
 	ClassDef* parseClass(ParserState& ps)
 	{
 		Token tok_cls = ps.eat();
-		iceAssert(tok_cls.type == TType::Class || tok_cls.type == TType::Extension);
+		iceAssert(tok_cls.type == TType::Class);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2180,13 +2226,10 @@ namespace Parser
 		}
 
 
-
-
-
-
 		// parse a block.
 		BracedBlock* body = parseBracedBlock(ps);
-		int i = 0;
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
 		for(Expr* stmt : body->statements)
 		{
 			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
@@ -2195,10 +2238,10 @@ namespace Parser
 			}
 			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
 			{
-				if(cls->nameMap.find(var->ident.name) != cls->nameMap.end())
+				if(nameMap.find(var->ident.name) != nameMap.end())
 				{
 					parserMessage(Err::Error, var->pin, "Duplicate member: %s", var->ident.name.c_str());
-					parserMessage(Err::Info, cls->members[cls->nameMap[var->ident.name]]->pin, "Previous declaration was here.");
+					parserMessage(Err::Info, nameMap[var->ident.name]->pin, "Previous declaration was here.");
 					doTheExit();
 				}
 
@@ -2206,8 +2249,7 @@ namespace Parser
 
 				if(!var->isStatic)
 				{
-					cls->nameMap[var->ident.name] = i;
-					i++;
+					nameMap[var->ident.name] = var;
 				}
 			}
 			else if(Func* func = dynamic_cast<Func*>(stmt))
@@ -2226,6 +2268,10 @@ namespace Parser
 			{
 				cls->subscriptOverloads.push_back(soo);
 			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				cls->operatorOverloads.push_back(oo);
+			}
 			else if(dynamic_cast<DummyExpr*>(stmt))
 			{
 				continue;
@@ -2236,18 +2282,17 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return cls;
 	}
 
 	ExtensionDef* parseExtension(ParserState& ps)
 	{
-
 		Token tok_str = ps.eat();
 		iceAssert(tok_str.type == TType::Extension);
 
-		ps.isParsingStruct = true;
+		ps.structNestLevel++;
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
@@ -2267,8 +2312,6 @@ namespace Parser
 			ps.eat();
 			ext->protocolstrs = parseInheritanceList(ps, ext->ident.name);
 		}
-
-
 
 
 
@@ -2296,6 +2339,10 @@ namespace Parser
 			{
 				ext->subscriptOverloads.push_back(soo);
 			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				ext->operatorOverloads.push_back(oo);
+			}
 			else if(StructBase* sb = dynamic_cast<StructBase*>(stmt))
 			{
 				ext->nestedTypes.push_back({ sb, 0 });
@@ -2306,32 +2353,95 @@ namespace Parser
 			}
 		}
 
-		ps.isParsingStruct = false;
+		ps.structNestLevel--;
 		delete body;
 		return ext;
+	}
 
 
 
-		#if 0
-		Token tok_ext = ps.front();
-		iceAssert(tok_ext.type == TType::Extension);
 
-		ExtensionDef* ext = CreateAST(ExtensionDef, tok_ext, "");
-		ClassDef* cls = parseClass(ps);
 
-		ext->attribs				= cls->attribs;
-		ext->funcs					= cls->funcs;
-		ext->members				= cls->members;
-		ext->nameMap				= cls->nameMap;
-		ext->name					= cls->name;
-		ext->cprops					= cls->cprops;
-		ext->protocolstrs			= cls->protocolstrs;
-		ext->assignmentOverloads	= cls->assignmentOverloads;
-		ext->subscriptOverloads		= cls->subscriptOverloads;
 
-		delete cls;
-		return ext;
-		#endif
+
+	ProtocolDef* parseProtocol(ParserState& ps)
+	{
+		Token tok_cls = ps.eat();
+		iceAssert(tok_cls.type == TType::Protocol);
+
+		ps.structNestLevel++;
+		Token tok_id = ps.eat();
+
+		if(tok_id.type != TType::Identifier)
+			parserError("Expected identifier (got %s)", tok_id.text.c_str());
+
+		std::string id = tok_id.text;
+		ProtocolDef* prot = CreateAST(ProtocolDef, tok_id, id);
+
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		prot->attribs = attr;
+
+		// check for a colon.
+		ps.skipNewline();
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			parseGenericTypeList(ps, prot);
+		}
+		if(ps.front().type == TType::Colon)
+		{
+			ps.eat();
+			prot->protocolstrs = parseInheritanceList(ps, prot->ident.name);
+		}
+
+
+
+
+
+
+		// parse a block.
+		BracedBlock* body = parseBracedBlock(ps);
+		std::unordered_map<std::string, VarDecl*> nameMap;
+
+		for(Expr* stmt : body->statements)
+		{
+			if(ComputedProperty* cprop = dynamic_cast<ComputedProperty*>(stmt))
+			{
+				parserError(cprop->pin, "Protocols cannot contain properties (yet?)");
+			}
+			else if(VarDecl* var = dynamic_cast<VarDecl*>(stmt))
+			{
+				parserError(var->pin, "Protocols cannot contain properties (yet?)");
+			}
+			else if(Func* func = dynamic_cast<Func*>(stmt))
+			{
+				prot->funcs.push_back(func);
+			}
+			else if(AssignOpOverload* aoo = dynamic_cast<AssignOpOverload*>(stmt))
+			{
+				prot->assignmentOverloads.push_back(aoo);
+			}
+			else if(SubscriptOpOverload* soo = dynamic_cast<SubscriptOpOverload*>(stmt))
+			{
+				prot->subscriptOverloads.push_back(soo);
+			}
+			else if(OpOverload* oo = dynamic_cast<OpOverload*>(stmt))
+			{
+				prot->operatorOverloads.push_back(oo);
+			}
+			else if(dynamic_cast<DummyExpr*>(stmt))
+			{
+				continue;
+			}
+			else
+			{
+				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+			}
+		}
+
+		ps.structNestLevel--;
+		delete body;
+		return prot;
 	}
 
 
@@ -2828,9 +2938,6 @@ namespace Parser
 
 	Expr* parseOpOverload(ParserState& ps)
 	{
-		// if(!ps.isParsingStruct)
-		// 	parserError("Can only overload operators in the context of a named aggregate type");
-
 		iceAssert(ps.eat().text == "operator");
 		Token op = ps.eat();
 

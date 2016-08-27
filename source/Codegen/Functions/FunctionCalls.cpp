@@ -39,56 +39,51 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	std::vector<fir::Value*> args;
 
 	fir::Function* target = 0;
-	if(this->cachedGenericFuncTarget == 0)
+
+
+
+	// we're not a generic function.
+	if(!this->cachedResolveTarget.resolved)
 	{
-		// we're not a generic function.
-		if(!this->cachedResolveTarget.resolved)
+		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+
+		if(!rt.resolved)
 		{
-			Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+			auto pair = cgi->tryResolveGenericFunctionCall(this);
+			if(pair.first || pair.second)
+				rt = Resolved_t(pair);
 
-			if(!rt.resolved)
-			{
-				// todo. do generic.
-				this->cachedGenericFuncTarget = cgi->tryResolveAndInstantiateGenericFunction(this);
-				if(this->cachedGenericFuncTarget != 0)
-				{
-					rt.resolved = true;
-					rt.t.first = this->cachedGenericFuncTarget;
-					target = this->cachedGenericFuncTarget;
-				}
-			}
-
-			if(!rt.resolved && !target)
-			{
-				// label
-				failedToFind:
-
-				GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
-			}
-
-			if(rt.t.first == 0)
-			{
-				// generate it.
-				rt.t.second->codegen(cgi);
-
-				// printf("expediting function call to %s\n", this->name.c_str());
-
-				rt = cgi->resolveFunction(this, this->name, this->params);
-
-				if(!rt.resolved) error("nani???");
-				if(rt.t.first == 0) goto failedToFind;
-			}
-
-			this->cachedResolveTarget = rt;
+			else
+				rt = Resolved_t();
 		}
 
-		target = this->cachedResolveTarget.t.first;
-		this->cachedResolveTarget.resolved = false;
+
+		if(!rt.resolved)
+		{
+			// label
+			failedToFind:
+
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+		}
+
+
+		if(rt.t.first == 0)
+		{
+			// generate it.
+			rt.t.second->codegen(cgi);
+
+			// printf("expediting function call to %s\n", this->name.c_str());
+
+			rt = cgi->resolveFunction(this, this->name, this->params);
+
+			if(!rt.resolved) error("nani???");
+			if(rt.t.first == 0) goto failedToFind;
+		}
+
+		this->cachedResolveTarget = rt;
 	}
-	else
-	{
-		target = this->cachedGenericFuncTarget;
-	}
+
+	target = this->cachedResolveTarget.t.first;
 
 
 
@@ -119,17 +114,17 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
 
-			if(checkCVarArg && arg->getType()->isStructType())
+			if(checkCVarArg && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
-				fir::StructType* st = arg->getType()->toStructType();
-				if(!st->isLiteralStruct() && st->getStructName().str() != "String")
-				{
-					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
-				}
-				else if(!st->isLiteralStruct() && st->getStructName().str() == "String")
+				fir::Type* st = arg->getType();
+				if(st->isClassType() && st->toClassType()->getClassName().str() == "String")
 				{
 					// this function knows what to do.
 					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
+				}
+				else if(st->isClassType() || st->isStructType())
+				{
+					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
 				}
 			}
 
@@ -222,10 +217,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 
-	target = cgi->module->getFunction(target->getName());
-	iceAssert(target);
-
-	return Result_t(cgi->builder.CreateCall(target, args), 0);
+	auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+	return Result_t(cgi->builder.CreateCall(thistarget, args), 0);
 }
 
 

@@ -82,6 +82,7 @@ namespace Parser
 		Module,
 		Namespace,
 		Override,
+		Protocol,
 
 		// symbols
 		LBrace,
@@ -178,10 +179,10 @@ namespace Parser
 
 		Codegen::CodegenInstance* cgi = 0;
 
-		bool isParsingStruct = false;
 		bool didHaveLeftParen = false;
 		int currentOpPrec = 0;
 
+		int structNestLevel = 0;
 
 		Token front()
 		{
@@ -251,6 +252,7 @@ namespace Parser
 	Ast::Number*			parseNumber(ParserState& tokens);
 	Ast::VarDecl*			parseVarDecl(ParserState& tokens);
 	Ast::Dealloc*			parseDealloc(ParserState& tokens);
+	Ast::ProtocolDef*		parseProtocol(ParserState& tokens);
 	Ast::Expr*				parseInitFunc(ParserState& tokens);
 	Ast::Continue*			parseContinue(ParserState& tokens);
 	Ast::FuncDecl*			parseFuncDecl(ParserState& tokens);
