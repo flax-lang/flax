@@ -61,7 +61,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	fir::Function* func = 0;
-
 	if(isGeneric && extra != 0)
 	{
 		iceAssert(func = dynamic_cast<fir::Function*>(extra));

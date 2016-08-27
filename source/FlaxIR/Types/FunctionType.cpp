@@ -218,6 +218,10 @@ namespace fir
 				error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
 			}
 		}
+		else
+		{
+			reifiedReturn = this->functionRetType;
+		}
 
 		return FunctionType::get(reified, reifiedReturn, this->isVariadicFunc());
 	}
