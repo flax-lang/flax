@@ -922,11 +922,19 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 	params.push_front(cls->createdType->getPointerTo());
 
 
+	std::deque<Func*> funclist;
+	std::deque<Func*> genericfunclist;
 	std::deque<FuncPair_t> fns;
 	for(auto f : cls->funcs)
 	{
 		if(f->decl->ident.name == fc->name)
-			fns.push_back({ cls->functionMap[f], 0 });
+		{
+			fns.push_back({ cls->functionMap[f], f->decl });
+			funclist.push_back(f);
+
+			if(f->decl->genericTypes.size() > 0)
+				genericfunclist.push_back(f);
+		}
 	}
 
 
@@ -936,44 +944,53 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 		for(auto f : ext->funcs)
 		{
 			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode))
-				fns.push_back({ ext->functionMap[f], 0 });
+			{
+				fns.push_back({ ext->functionMap[f], f->decl });
+				funclist.push_back(f);
+
+				if(f->decl->genericTypes.size() > 0)
+					genericfunclist.push_back(f);
+			}
 
 		}
+	}
+
+	for(auto f : fns)
+	{
+		fprintf(stderr, "thing: %s\n", f.first->getType()->str().c_str());
 	}
 
 	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
 
 	if(!res.resolved)
 	{
-		auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
-		std::string argstr = std::get<0>(tup);
-		std::string candstr = std::get<1>(tup);
-		HighlightOptions ops = std::get<2>(tup);
-
-		ops.caret = ma->pin;
-
-		error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s", fc->name.c_str(),
-			cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
-	}
-
-	for(auto f : cls->funcs)
-	{
-		if(cls->functionMap[f] == res.t.first)
-			return { f, res.t.first };
-	}
-
-	// check extensions
-	for(auto ext : exts)
-	{
-		for(auto f : ext->funcs)
+		// look for generic ones
+		FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		if(fp.first && fp.second)
 		{
-			if(ext->functionMap[f] == res.t.first)
-				return { f, res.t.first };
+			res = Resolved_t(fp);
+		}
+		else
+		{
+			auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
+			std::string argstr = std::get<0>(tup);
+			std::string candstr = std::get<1>(tup);
+			HighlightOptions ops = std::get<2>(tup);
+
+			ops.caret = ma->pin;
+
+			error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
+				fc->name.c_str(), cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
 		}
 	}
 
+	for(auto f : funclist)
+	{
+		if(f->decl == res.t.second)
+			return { f, res.t.first };
+	}
 
-	iceAssert(0);
+	iceAssert("failed to find func?" && 0);
 }
 
 Expr* CodegenInstance::getStructMemberByName(StructBase* str, VarRef* var)

@@ -98,16 +98,14 @@ namespace Codegen
 				}
 			}
 
-			if(f->decl->genericTypes.size() == 0)
-			{
-				fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
+			f->decl->parentClass = cls;
+			fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
 
-				if(f->decl->ident.name == "init")
-					cls->initFuncs.push_back(ffn);
+			if(f->decl->ident.name == "init")
+				cls->initFuncs.push_back(ffn);
 
-				cls->lfuncs.push_back(ffn);
-				cls->functionMap[f] = ffn;
-			}
+			cls->lfuncs.push_back(ffn);
+			cls->functionMap[f] = ffn;
 		}
 	}
 
