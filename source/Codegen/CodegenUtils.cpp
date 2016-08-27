@@ -401,19 +401,26 @@ namespace Codegen
 		{
 			iceAssert(func);
 
-			// add to the func table
-			auto lf = cgi->module->getFunction(func->getName());
-			if(!lf)
+			fir::Function* f = 0;
+			if(!func->isGeneric())
 			{
-				cgi->module->declareFunction(func->getName(), func->getType());
-				lf = cgi->module->getFunction(func->getName());
+				// add to the func table
+				auto lf = cgi->module->getFunction(func->getName());
+				if(!lf)
+				{
+					cgi->module->declareFunction(func->getName(), func->getType());
+					lf = cgi->module->getFunction(func->getName());
+				}
+
+				f = dynamic_cast<fir::Function*>(lf);
+				f->deleteBody();
+			}
+			else
+			{
+				f = func;
 			}
 
-			fir::Function* f = dynamic_cast<fir::Function*>(lf);
-
-			f->deleteBody();
 			cgi->addFunctionToScope(FuncPair_t(f, decl));
-
 			ret = f;
 		}
 		else if(!func)
