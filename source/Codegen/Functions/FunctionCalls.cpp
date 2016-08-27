@@ -43,7 +43,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// we're not a generic function.
-	if(!this->cachedResolveTarget.resolved || this->cachedResolveTarget.t.second->genericTypes.size() > 0)
+	if(!this->cachedResolveTarget.resolved)
 	{
 		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 

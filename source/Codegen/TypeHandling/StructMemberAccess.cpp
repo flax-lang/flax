@@ -735,7 +735,21 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				FunctionTree* pubft = this->getCurrentFuncTree(&nsstrs, this->rootNode->publicFuncTree);
 				res = this->resolveFunctionFromList(ma, pubft->funcs, fc->name, fc->params);
 
-				// printf("search ftree %d, nothing\n", ftree->id);
+				if(!res.resolved)
+				{
+					std::deque<Func*> flist;
+					for(auto f : ftree->genericFunctions)
+					{
+						iceAssert(f.first->genericTypes.size() > 0);
+
+						if(f.first->ident.name == fc->name)
+							flist.push_back({ f.second });
+					}
+
+					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(fp.first && fp.second)
+						res = Resolved_t(fp);
+				}
 			}
 		}
 		else
@@ -752,12 +766,29 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				}
 
 				res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
+
+				if(!res.resolved)
+				{
+					std::deque<Func*> flist;
+					for(auto f : clsd->funcs)
+					{
+						if(f->decl->ident.name == fc->name && f->decl->genericTypes.size() > 0)
+							flist.push_back(f);
+					}
+
+					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(fp.first && fp.second)
+						res = Resolved_t(fp);
+				}
 			}
 			else
 			{
 				error(fc, "error");
 			}
 		}
+
+
+
 
 		if(!res.resolved)
 		{
@@ -771,7 +802,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 			text += fc->name;
 
-			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text))
+			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text, true))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);
@@ -791,7 +822,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = this->getExprType(fc, res);
+		fir::Type* ltype = res.t.first->getReturnType();
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;

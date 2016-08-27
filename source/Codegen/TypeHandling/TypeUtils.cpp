@@ -1373,7 +1373,18 @@ namespace Codegen
 		}
 		else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 		{
-			std::string str = "ƒ " + fd->ident.name + "(";
+			std::string str = "func " + fd->ident.name;
+			if(fd->genericTypes.size() > 0)
+			{
+				str += "<";
+				for(auto t : fd->genericTypes)
+					str += t.first + ", ";
+
+				str = str.substr(0, str.length() - 2);
+				str += ">";
+			}
+
+			str += "(";
 			for(auto p : fd->params)
 			{
 				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
