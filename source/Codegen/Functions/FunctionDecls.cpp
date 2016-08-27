@@ -86,7 +86,6 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 				// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
 			}
-
 		}
 		else
 		{
@@ -125,6 +124,9 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 
 	reified->setName(id);
 	cgi->module->addFunction(reified);
+
+	fprintf(stderr, "reify (%s): %s >> %s\n", reified->getName().str().c_str(), this->generatedFunc->getType()->str().c_str(),
+		reified->getType()->str().c_str());
 
 	return Result_t(reified, 0);
 }
@@ -178,18 +180,20 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	std::deque<fir::Type*> argtypes;
-	for(VarDecl* v : this->params)
+	fir::Type* returnType = 0;
+	cgi->pushGenericTypeStack();
 	{
-		cgi->pushGenericTypeStack();
-
 		// if we're not generic, then genericTypes will be empty anyway.
 		for(auto p : this->genericTypes)
 			cgi->pushGenericType(p.first, fir::ParametricType::get(p.first));
 
-		argtypes.push_back(cgi->getExprType(v));
+		for(VarDecl* v : this->params)
+			argtypes.push_back(cgi->getExprType(v));
 
-		cgi->popGenericTypeStack();
+		returnType = cgi->getExprType(this);
 	}
+	cgi->popGenericTypeStack();
+
 
 	if(isMemberFunction && !this->isStatic)
 	{
@@ -198,11 +202,11 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			st = this->parentClass->createType(cgi);
 
 		argtypes.push_front(st->getPointerTo());
-		info(this, "gen member (%s)", argtypes.size() > 0 ? argtypes[0]->str().c_str() : "no");
+		// info(this, "gen member (%s)", argtypes.size() > 0 ? argtypes[0]->str().c_str() : "no");
 	}
 
 	bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
-	return generateActualFuncDecl(cgi, this, argtypes, cgi->getExprType(this), !disableMangle);
+	return generateActualFuncDecl(cgi, this, argtypes, returnType, !disableMangle);
 }
 
 

@@ -45,14 +45,16 @@ namespace Operators
 		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
 		// todo: MULIPLE SUBSCRIPTS
-		std::deque<Expr*> params = { ari->index };
-		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), cgi->getExprType(ari->index) };
+		std::deque<Expr*> eparams = { ari->index };
+
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
 
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 			std::string argstr = std::get<0>(tup);
 			std::string candstr = std::get<1>(tup);
 			HighlightOptions ops = std::get<2>(tup);
@@ -86,7 +88,7 @@ namespace Operators
 			// -2 to exclude the first param, and the rhs param.
 			for(size_t i = 0; i < fn->getArgumentCount() - 2; i++)
 			{
-				fir::Value* arg = params[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -119,6 +121,11 @@ namespace Operators
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 		if(!cls) { return 0; }
 
+		fir::Type* ftype = cls->createdType;
+		if(!ftype) cls->createType(cgi);
+
+		iceAssert(ftype);
+
 
 		std::deque<FuncPair_t> cands;
 
@@ -127,8 +134,11 @@ namespace Operators
 
 		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
-		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
-		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
+		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
+			fparams.push_back(cgi->getExprType(e));
+
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
 		if(res.resolved) return res.t.first;
 		else return 0;
@@ -157,12 +167,17 @@ namespace Operators
 
 		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
 
-		std::deque<Expr*> params = std::deque<Expr*>(args.begin() + 1, args.end());
-		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, params, false);
+		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
+		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
+		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
+			fparams.push_back(cgi->getExprType(e));
+
+
+		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, params, cands);
+			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
 			std::string argstr = std::get<0>(tup);
 			std::string candstr = std::get<1>(tup);
 			HighlightOptions ops = std::get<2>(tup);
@@ -186,7 +201,7 @@ namespace Operators
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
 			{
-				fir::Value* arg = params[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
