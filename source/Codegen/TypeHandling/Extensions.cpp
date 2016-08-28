@@ -167,6 +167,9 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
 			astr->defaultInitialiser->linkageType);
 
+		generateDeclForOperators(cgi, this);
+
+		doCodegenForGeneralOperators(cgi, this);
 		doCodegenForAssignmentOperators(cgi, this);
 		doCodegenForSubscriptOperators(cgi, this);
 	}

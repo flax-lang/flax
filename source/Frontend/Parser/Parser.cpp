@@ -3041,6 +3041,7 @@ namespace Parser
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
 		oo->func = parseFunc(ps);
 		oo->func->decl->attribs = attr & ~Attr_CommutativeOp;
+		oo->func->decl->pin = op.pin;
 
 		oo->attribs = attr;
 
@@ -3049,11 +3050,16 @@ namespace Parser
 
 		if(attr & Attr_CommutativeOp)
 		{
-			oo->kind = OpOverload::OperatorKind::CommBinary;
-			if(oo->func->decl->params.size() != 2)
+			if(oo->func->decl->params.size() == 2 || (ps.structNestLevel > 0 && oo->func->decl->params.size() == 1))
+			{
+				oo->kind = OpOverload::OperatorKind::CommBinary;
+			}
+			else
+			{
 				parserError("Expected exactly 2 arguments for binary op (marked commutative, must be binary op)");
+			}
 		}
-		else if(oo->func->decl->params.size() == 2)
+		else if(oo->func->decl->params.size() == 2 || (ps.structNestLevel > 0 && oo->func->decl->params.size() == 1))
 		{
 			oo->kind = OpOverload::OperatorKind::NonCommBinary;
 		}

@@ -510,6 +510,9 @@ namespace Ast
 
 		fir::Function* getterFunc = 0;
 		fir::Function* setterFunc = 0;
+
+		Func* getterFn = 0;
+		Func* setterFn = 0;
 	};
 
 	struct AssignOpOverload : Expr

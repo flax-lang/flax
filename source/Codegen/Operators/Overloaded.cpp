@@ -57,6 +57,8 @@ namespace Codegen
 
 			bool needsBooleanNOT = 0;
 			bool needsSwap = 0;
+
+			bool isMember = 0;
 		};
 
 
@@ -75,6 +77,7 @@ namespace Codegen
 				attr.isBinOp		= oo->kind == OpOverload::OperatorKind::CommBinary || oo->kind == OpOverload::OperatorKind::NonCommBinary;
 				attr.isCommutative	= oo->kind == OpOverload::OperatorKind::CommBinary;
 				attr.isPrefixUnary	= oo->kind == OpOverload::OperatorKind::PrefixUnary;
+				attr.isMember		= oo->func->decl->parentClass != 0;
 
 				attr.needsSwap		= false;
 
@@ -133,11 +136,11 @@ namespace Codegen
 			}
 
 			// if we're assigning things, we need to get the assignfuncs as well.
-			if(this->isArithmeticOpAssignment(op))
-			{
-				TypePair_t* tp = this->getType(lhs);
-				iceAssert(tp);
+			// if(this->isArithmeticOpAssignment(op))
 
+
+			if(TypePair_t* tp = this->getType(lhs))
+			{
 				ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 				if(cls)
 				{
@@ -152,6 +155,7 @@ namespace Codegen
 							atr.isPrefixUnary	= false;
 							atr.isCommutative	= false;
 							atr.needsSwap		= false;
+							atr.isMember		= true;
 
 							iceAssert(aso->lfunc);
 							candidates.push_back({ atr, aso->lfunc });
@@ -171,9 +175,53 @@ namespace Codegen
 								atr.isPrefixUnary	= false;
 								atr.isCommutative	= false;
 								atr.needsSwap		= false;
+								atr.isMember		= true;
 
 								iceAssert(aso->lfunc);
 								candidates.push_back({ atr, aso->lfunc });
+							}
+						}
+					}
+
+
+
+
+
+					for(auto ovl : cls->operatorOverloads)
+					{
+						if(ovl->op == op)
+						{
+							Attribs atr;
+
+							atr.op				= op;
+							atr.isBinOp			= true;
+							atr.isPrefixUnary	= false;
+							atr.isCommutative	= false;
+							atr.needsSwap		= false;
+							atr.isMember		= true;
+
+							iceAssert(ovl->lfunc);
+							candidates.push_back({ atr, ovl->lfunc });
+						}
+					}
+
+					for(auto ext : this->getExtensionsForType(cls))
+					{
+						for(auto ovl : ext->operatorOverloads)
+						{
+							if(ovl->op == op)
+							{
+								Attribs atr;
+
+								atr.op				= op;
+								atr.isBinOp			= true;
+								atr.isPrefixUnary	= false;
+								atr.isCommutative	= false;
+								atr.needsSwap		= false;
+								atr.isMember		= true;
+
+								iceAssert(ovl->lfunc);
+								candidates.push_back({ atr, ovl->lfunc });
 							}
 						}
 					}
@@ -223,23 +271,21 @@ namespace Codegen
 		set = candidates;
 		candidates.clear();
 
-		bool hasSelf = (this->isArithmeticOpAssignment(op) || op == ArithmeticOp::Subscript);
-		if(hasSelf) lhs = lhs->getPointerTo();
-
 		for(auto cand : set)
 		{
 			fir::Type* targL = cand.second->getArguments()[0]->getType();
 			fir::Type* targR = cand.second->getArguments()[1]->getType();
 
+			fir::Type* thelhs = (cand.first.isMember ? lhs->getPointerTo() : lhs);
 
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
 			{
-				if(targL == lhs && targR == rhs)
+				if(targL == thelhs && targR == rhs)
 				{
 					candidates.push_back(cand);
 				}
-				else if(cand.first.isCommutative && targR == lhs && targL == rhs)
+				else if(cand.first.isCommutative && targR == thelhs && targL == rhs)
 				{
 					cand.first.needsSwap = true;
 					candidates.push_back(cand);
@@ -311,6 +357,9 @@ namespace Codegen
 				// seriously? goto?
 				// todo(goto): get rid.
 
+				// the point of this is to try "specific" operators before generic ones.
+				// so some general op == ($T, $T) won't be preferred over a more specific op == (type1, type2).
+
 				didDoGenerics = true;
 				candidates.clear();
 				findCandidatesPass1(this, &candidates, list, op, false);
@@ -328,6 +377,7 @@ namespace Codegen
 		ret.isPrefix = cand.first.first.isPrefixUnary;
 		ret.needsSwap = cand.first.first.needsSwap;
 		ret.needsNot = cand.first.first.needsBooleanNOT;
+		ret.isMember = cand.first.first.isMember;
 
 		ret.opFunc = cand.first.second;
 
@@ -367,7 +417,7 @@ namespace Codegen
 		bool isBinOp	= data.isBinOp;
 		bool needsSwap	= data.needsSwap;
 		bool needsNot	= data.needsNot;
-
+		bool isMember	= data.isMember;
 
 		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
 
@@ -381,7 +431,7 @@ namespace Codegen
 			fir::Value* larg = 0;
 			fir::Value* rarg = 0;
 
-			if(this->isArithmeticOpAssignment(op))
+			if(isMember)
 			{
 				if(needsSwap)
 				{
