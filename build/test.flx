@@ -310,10 +310,10 @@ public func main(argc: int32, argv: int8**) -> int
 
 	lol.data = null
 
-	// var args = alloc[10] Any
-	// args[0] = "HELLO"
-	// #(args + 1) = 40
-	// args[2] = "GOODBYE"
+	var args = alloc[10] Any
+	args[0] = "HELLO"
+	#(args + 1) = 40
+	args[2] = "GOODBYE"
 
 
 
