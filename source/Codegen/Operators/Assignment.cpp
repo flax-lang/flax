@@ -246,7 +246,7 @@ namespace Operators
 		}
 
 
-		if(lhs->getType()->isStructType() || lhs->getType()->isClassType())
+		if((lhs->getType()->isStructType() || lhs->getType()->isClassType()) && !cgi->isAnyType(lhs->getType()))
 		{
 			TypePair_t* tp = cgi->getType(lhs->getType());
 			iceAssert(tp);
@@ -276,7 +276,7 @@ namespace Operators
 			}
 			else if(tp->second.second == TypeKind::Struct)
 			{
-				// for structs, we just assgin the members.
+				// for structs, we just assign the members.
 				cgi->builder.CreateStore(rhs, lhsPtr);
 				return Result_t(0, 0);
 			}
