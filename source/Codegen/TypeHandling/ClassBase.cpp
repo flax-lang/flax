@@ -169,9 +169,60 @@ namespace Codegen
 	}
 
 
-
-	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls)
+	void generateDeclForOperators(CodegenInstance* cgi, ClassDef* cls)
 	{
+		for(OpOverload* overl : cls->operatorOverloads)
+		{
+			for(auto oo : cls->operatorOverloads)
+			{
+				if(oo != overl && oo->op == overl->op)
+				{
+					int d = 0;
+					std::deque<fir::Type*> ps;
+					for(auto e : oo->func->decl->params)
+						ps.push_back(cgi->getExprType(e));
+
+					if(cgi->isValidFuncOverload({ 0, overl->func->decl }, ps, &d, true))
+					{
+						errorNoExit(oo->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, oo->op).c_str());
+						info(overl->func->decl, "Previous declaration was here.");
+						doTheExit();
+					}
+				}
+			}
+
+
+			// note(anti-confusion): decl->codegen() looks at parentClass
+			// and inserts an implicit self, so we don't need to do it.
+
+			overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			overl->func->decl->ident.kind = IdKind::Operator;
+			overl->func->decl->parentClass = cls;
+
+			if(cls->attribs & Attr_VisPublic && !(overl->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+				overl->func->decl->attribs |= Attr_VisPublic;
+
+			overl->func->decl->codegen(cgi);
+
+			// fir::Value* val = overl->func->decl->codegen(cgi).result.first;
+			// cgi->builder.setCurrentBlock(ob);
+
+			// overl->lfunc = dynamic_cast<fir::Function*>(val);
+			// iceAssert(overl->lfunc);
+
+			// if(overl->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
+			// 	cgi->addPublicFunc({ overl->lfunc, overl->func->decl });
+
+			// ob = cgi->builder.getCurrentBlock();
+
+			// overl->func->codegen(cgi);
+
+			// cgi->builder.setCurrentBlock(ob);
+		}
+
+
+
+
 		for(AssignOpOverload* aoo : cls->assignmentOverloads)
 		{
 			// note(anti-confusion): decl->codegen() looks at parentClass
@@ -195,20 +246,14 @@ namespace Codegen
 				}
 			}
 
-			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-
 			aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->parentClass = cls;
 
 			if(cls->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
-			{
 				aoo->func->decl->attribs |= Attr_VisPublic;
-			}
 
 			fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
-			cgi->builder.setCurrentBlock(ob);
-
 			aoo->lfunc = dynamic_cast<fir::Function*>(val);
 			iceAssert(aoo->lfunc);
 
@@ -229,20 +274,13 @@ namespace Codegen
 
 			if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 				cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
-
-			ob = cgi->builder.getCurrentBlock();
-
-			aoo->func->codegen(cgi);
-
-			cgi->builder.setCurrentBlock(ob);
 		}
 
 
 
-	}
 
-	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls)
-	{
+
+
 		for(SubscriptOpOverload* soo : cls->subscriptOverloads)
 		{
 			for(auto s : cls->subscriptOverloads)
@@ -289,19 +327,11 @@ namespace Codegen
 
 				cgi->builder.setCurrentBlock(ob);
 
-				Func* fn = new Func(decl->pin, decl, body);
+				soo->getterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 					cgi->addPublicFunc({ soo->getterFunc, decl });
-
-				ob = cgi->builder.getCurrentBlock();
-				fn->codegen(cgi);
-
-				cgi->builder.setCurrentBlock(ob);
 			}
-
-
-
 
 			if(soo->setterBody)
 			{
@@ -329,16 +359,82 @@ namespace Codegen
 
 				cgi->builder.setCurrentBlock(ob);
 
-				Func* fn = new Func(decl->pin, decl, body);
+				soo->setterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 					cgi->addPublicFunc({ soo->setterFunc, decl });
+			}
+		}
+	}
 
-				ob = cgi->builder.getCurrentBlock();
-				fn->codegen(cgi);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+	void doCodegenForGeneralOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(OpOverload* overl : cls->operatorOverloads)
+		{
+			overl->codegen(cgi);
+		}
+	}
+
+
+	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(AssignOpOverload* aoo : cls->assignmentOverloads)
+		{
+			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+			aoo->func->codegen(cgi);
+			cgi->builder.setCurrentBlock(ob);
+		}
+	}
+
+	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(SubscriptOpOverload* soo : cls->subscriptOverloads)
+		{
+			// note(anti-confusion): decl->codegen() looks at parentClass
+			// and inserts an implicit self, so we don't need to do it.
+
+			iceAssert(soo->getterBody);
+			{
+				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+				soo->getterFn->codegen(cgi);
+				cgi->builder.setCurrentBlock(ob);
+			}
+
+			if(soo->setterBody)
+			{
+				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+				soo->setterFn->codegen(cgi);
 				cgi->builder.setCurrentBlock(ob);
 			}
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+

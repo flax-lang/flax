@@ -71,7 +71,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 				}
 			}
 
-			info("no extensions for %s conformed to %s", type->str().c_str(), prot->ident.name.c_str());
+			// info("no extensions for %s conformed to %s", type->str().c_str(), prot->ident.name.c_str());
 		}
 
 		out:
@@ -115,6 +115,36 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 			if(!found)
 				(*missing).push_back(fn);
 		}
+
+
+
+		fir::Type* ftype = cls->createdType;
+		iceAssert(ftype);
+
+		for(auto ovl : prot->operatorOverloads)
+		{
+			if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
+			{
+				// exclude self.
+				iceAssert(ovl->func->decl->params.size() == 1);
+
+				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), cgi->getExprType(ovl->func->decl->params[0]));
+				if(!dat.found)
+				{
+					// nothing to push
+					(*missing).push_back(ovl->func->decl);
+					break;
+				}
+			}
+			else
+			{
+				error("enotsup");
+			}
+		}
+
+
+
+
 
 		return (*missing).size() == 0;
 	}
@@ -202,11 +232,11 @@ fir::Type* ProtocolDef::createType(CodegenInstance* cgi, std::unordered_map<std:
 			error(f, "Default protocol implementations not (yet) supported");
 	}
 
-	for(auto e : this->subscriptOverloads)
-		error(e, "Protocol subscript oevrloads not (yet) supported");
+	// for(auto e : this->subscriptOverloads)
+	// 	error(e, "Protocol subscript oevrloads not (yet) supported");
 
-	for(auto e : this->assignmentOverloads)
-		error(e, "Protocol assignment oevrloads not (yet) supported");
+	// for(auto e : this->assignmentOverloads)
+	// 	error(e, "Protocol assignment oevrloads not (yet) supported");
 
 	return 0;
 }
