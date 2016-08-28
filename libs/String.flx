@@ -262,43 +262,59 @@ public class String
 	{
 		self.append(other)
 	}
+
+
+
+
 }
 
-
-
-public operator + (lhs: String, rhs: String) -> String
+public protocol testprot
 {
-	var ret = String(lhs.data)
-	ret += rhs
-
-	return ret
+	operator + (rhs: int) -> int
 }
 
-public operator + (lhs: String, rhs: int8*) -> String
+public operator + (lhs: String*, rhs: int) -> int { 10 }
+
+public extension String : testprot
 {
-	var ret = String(lhs.data)
-	ret += rhs
+	operator == (rhs: int8*) -> bool
+	{
+		return strcmp(self.data, rhs) == 0
+	}
 
-	return ret
+	operator == (rhs: Character) -> bool
+	{
+		return self.byteCount == rhs.byteCount && strncmp(self.data, rhs.utf8Bytes as int8*, self.byteCount) == 0
+	}
+
+	operator + (rhs: Character) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
+
+	operator + (rhs: String) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
+
+	operator + (rhs: int8*) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
 }
 
-public operator + (lhs: String, rhs: Character) -> String
-{
-	var ret = String(lhs.data)
-	ret += rhs
 
-	return ret
-}
 
-public operator == (lhs: String, rhs: int8*) -> bool
-{
-	return strcmp(lhs.data, rhs) == 0
-}
 
-public operator == (lhs: String, rhs: Character) -> bool
-{
-	return lhs.byteCount == rhs.byteCount && strncmp(lhs.data, rhs.utf8Bytes as int8*, lhs.byteCount) == 0
-}
 
 
 

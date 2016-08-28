@@ -151,6 +151,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	doCodegenForComputedProperties(cgi, this);
 
 	// same reasoning for operators -- we need to 1. be able to call methods in the operator, and 2. call operators from the methods
+	generateDeclForOperators(cgi, this);
+
+	doCodegenForGeneralOperators(cgi, this);
 	doCodegenForAssignmentOperators(cgi, this);
 	doCodegenForSubscriptOperators(cgi, this);
 
