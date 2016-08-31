@@ -70,7 +70,7 @@ public class Character
 
 
 
-	func isEqual(other: Character) -> bool
+	operator == (other: Character) -> bool
 	{
 		return self.byteCount == other.byteCount && strncmp(self.utf8Bytes as int8*, other.utf8Bytes as int8*, self.byteCount) == 0
 	}
@@ -112,7 +112,7 @@ public class String
 		self.data = malloc(32)
 		self.allocated = 32
 
-		#self = @raw ""
+		memset(self.data, 0, 32)
 	}
 
 	init(str: int8*)
@@ -212,13 +212,11 @@ public class String
 	{
 		self.append(char.utf8Bytes as int8*, char.byteCount)
 	}
+}
 
 
-
-
-
-
-
+public extension String
+{
 	// operators
 
 	operator [] (index: uint64) -> Character
@@ -234,9 +232,6 @@ public class String
 			return ret
 		}
 	}
-
-
-
 
 	operator = (other: int8*)
 	{
@@ -263,20 +258,11 @@ public class String
 		self.append(other)
 	}
 
+	operator == (rhs: String) -> bool
+	{
+		return strcmp(self.data, rhs.data) == 0
+	}
 
-
-
-}
-
-public protocol testprot
-{
-	operator + (rhs: int) -> int
-}
-
-public operator + (lhs: String*, rhs: int) -> int { 10 }
-
-public extension String : testprot
-{
 	operator == (rhs: int8*) -> bool
 	{
 		return strcmp(self.data, rhs) == 0
