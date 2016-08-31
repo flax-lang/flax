@@ -765,6 +765,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 						flist.push_back(FuncPair_t(clsd->lfuncs[i], clsd->funcs[i]->decl));
 				}
 
+				for(auto e : this->getExtensionsForType(clsd))
+				{
+					for(size_t i = 0; i < clsd->funcs.size(); i++)
+					{
+						if(e->funcs[i]->decl->ident.name == fc->name && e->funcs[i]->decl->isStatic)
+							flist.push_back(FuncPair_t(e->lfuncs[i], e->funcs[i]->decl));
+					}
+				}
+
 				res = this->resolveFunctionFromList(ma, flist, fc->name, fc->params);
 
 				if(!res.resolved)

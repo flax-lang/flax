@@ -277,7 +277,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
 	// var arr8: Array<Int8>
 	// var arr32: Array<Int32>
 

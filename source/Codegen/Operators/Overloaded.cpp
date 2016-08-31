@@ -139,6 +139,9 @@ namespace Codegen
 			// if we're assigning things, we need to get the assignfuncs as well.
 			// if(this->isArithmeticOpAssignment(op))
 
+			if(lhs->isPointerType() && (lhs->getPointerElementType()->isStructType() || lhs->getPointerElementType()->isClassType()))
+				lhs = lhs->getPointerElementType();
+
 			if(TypePair_t* tp = this->getType(lhs))
 			{
 				ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
@@ -184,9 +187,6 @@ namespace Codegen
 					}
 
 
-
-
-
 					for(auto ovl : cls->operatorOverloads)
 						list.push_back(ovl);
 
@@ -204,7 +204,6 @@ namespace Codegen
 
 
 		bool didDoGenerics = false;
-
 		resetForGenerics:
 
 
