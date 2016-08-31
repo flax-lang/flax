@@ -149,7 +149,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 				// exclude self.
 				iceAssert(ovl->func->decl->params.size() == 1);
 
-				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype, cgi->getExprType(ovl->func->decl->params[0]));
+				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), cgi->getExprType(ovl->func->decl->params[0]));
 				if(!dat.found)
 				{
 					// nothing to push

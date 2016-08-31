@@ -29,6 +29,7 @@ namespace Parser
 
 
 	// warning: messy function
+	// edit: haha, if you think this is messy, welcome to the *REAL WORLD*
 	Token getNextToken(std::string& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
@@ -190,9 +191,7 @@ namespace Parser
 					tok.pin.col += removed.length() - removed.find_last_of("\n");
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
-
-					if(currentNest > 1)
-						currentNest++;
+					currentNest++;
 				}
 
 
@@ -211,7 +210,7 @@ namespace Parser
 				}
 				else
 				{
-					parserError("Expected closing '*/'");
+					parserError(Token(), "Expected closing '*/' (reached EOF without finding it)");
 				}
 			}
 
