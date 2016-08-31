@@ -20,9 +20,15 @@ namespace Operators
 			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
 
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		size_t s = cls->subscriptOverloads.size();
 
-		if(cls->subscriptOverloads.size() == 0)
+		for(auto ext : cgi->getExtensionsForType(cls))
+			s += ext->subscriptOverloads.size();
+
+		if(s == 0)
+		{
 			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+		}
 
 		return { cls, subscripteeType };
 	}
@@ -42,7 +48,16 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->setterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->setterFunc, f->decl });
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
+
 
 		// todo: MULIPLE SUBSCRIPTS
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), cgi->getExprType(ari->index) };
@@ -132,7 +147,16 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->getterFunc, f->decl });
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
+
 
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
 		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
@@ -165,7 +189,16 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->getterFunc, f->decl });
+		}
+
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
 
 		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };

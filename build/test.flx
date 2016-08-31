@@ -227,7 +227,7 @@ extension TestingClass : StringConvertible, Equatable
 		"hello"
 	}
 
-	func isEqual(a: TestingClass) -> bool
+	operator == (a: TestingClass) -> bool
 	{
 		return self.thing == a.thing
 	}
@@ -307,6 +307,8 @@ public func main(argc: int32, argv: int8**) -> int
 	// k = Math.Vector2(1.0, 4.0)
 
 	// printf("k = (%f, %f)\n", k.x, k.y);
+
+
 
 	lol.data = null
 
