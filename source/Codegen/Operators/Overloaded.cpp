@@ -94,6 +94,7 @@ namespace Codegen
 
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
+						info(oo->func->decl, "generating");
 						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).result.first);
 					}
 				}
@@ -138,7 +139,6 @@ namespace Codegen
 			// if we're assigning things, we need to get the assignfuncs as well.
 			// if(this->isArithmeticOpAssignment(op))
 
-
 			if(TypePair_t* tp = this->getType(lhs))
 			{
 				ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
@@ -157,7 +157,7 @@ namespace Codegen
 							atr.needsSwap		= false;
 							atr.isMember		= true;
 
-							iceAssert(aso->lfunc);
+							// iceAssert(aso->lfunc);
 							candidates.push_back({ atr, aso->lfunc });
 						}
 					}
@@ -177,7 +177,7 @@ namespace Codegen
 								atr.needsSwap		= false;
 								atr.isMember		= true;
 
-								iceAssert(aso->lfunc);
+								// iceAssert(aso->lfunc);
 								candidates.push_back({ atr, aso->lfunc });
 							}
 						}
@@ -188,42 +188,12 @@ namespace Codegen
 
 
 					for(auto ovl : cls->operatorOverloads)
-					{
-						if(ovl->op == op)
-						{
-							Attribs atr;
-
-							atr.op				= op;
-							atr.isBinOp			= true;
-							atr.isPrefixUnary	= false;
-							atr.isCommutative	= false;
-							atr.needsSwap		= false;
-							atr.isMember		= true;
-
-							iceAssert(ovl->lfunc);
-							candidates.push_back({ atr, ovl->lfunc });
-						}
-					}
+						list.push_back(ovl);
 
 					for(auto ext : this->getExtensionsForType(cls))
 					{
 						for(auto ovl : ext->operatorOverloads)
-						{
-							if(ovl->op == op)
-							{
-								Attribs atr;
-
-								atr.op				= op;
-								atr.isBinOp			= true;
-								atr.isPrefixUnary	= false;
-								atr.isCommutative	= false;
-								atr.needsSwap		= false;
-								atr.isMember		= true;
-
-								iceAssert(ovl->lfunc);
-								candidates.push_back({ atr, ovl->lfunc });
-							}
-						}
+							list.push_back(ovl);
 					}
 				}
 			}

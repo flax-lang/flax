@@ -10,11 +10,34 @@ using namespace Ast;
 using namespace Codegen;
 
 
+struct raiiThing
+{
+	raiiThing(CodegenInstance* cgi, fir::Type* t)
+	{
+		this->c = cgi;
+		this->c->pushGenericTypeStack();
+		this->c->pushGenericType("Self", t);
+
+		// info("push");
+	}
+
+	~raiiThing()
+	{
+		this->c->popGenericTypeStack();
+
+		// error("pop");
+	}
+
+	CodegenInstance* c = 0;
+};
+
+
 static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* type, std::deque<FuncDecl*>* missing,
 	Expr** user, std::string* name)
 {
 	TypePair_t* tp = cgi->getType(type);
 
+	// push a new type for "self"
 
 	auto testFunc = [cgi](FuncDecl* fn, Func* cf, fir::Function* fcf, fir::Type* created) -> bool {
 
@@ -23,15 +46,11 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 		tl.pop_front();
 
 
-		// push a new type for "self"
-		cgi->pushGenericTypeStack();
-		cgi->pushGenericType("Self", created);
 
 		int _ = 0;
 		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
 			&& ((fn->type.strType == "Self" && created == fcf->getReturnType()) || cgi->getExprType(fn) == fcf->getReturnType()));
 
-		cgi->popGenericTypeStack();
 		return ret;
 	};
 
@@ -45,6 +64,8 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 		*user = cls;
 		*name = cls->ident.name;
+
+		raiiThing keep(cgi, cls->createdType);
 
 		// first check if we're even listed -- don't allow implicit conformity
 		bool found = false;
@@ -128,7 +149,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 				// exclude self.
 				iceAssert(ovl->func->decl->params.size() == 1);
 
-				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), cgi->getExprType(ovl->func->decl->params[0]));
+				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype, cgi->getExprType(ovl->func->decl->params[0]));
 				if(!dat.found)
 				{
 					// nothing to push
