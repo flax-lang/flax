@@ -1514,8 +1514,13 @@ namespace Codegen
 
 		// now check if we *can* instantiate it.
 		// first check the number of arguments.
-		if(candidate->params.size() != args.size())
+		if(candidate->params.size() != args.size() && !candidate->isVariadic)
 		{
+			return false;
+		}
+		else if(candidate->isVariadic)
+		{
+			info(candidate, "");
 			return false;
 		}
 		else
@@ -1747,9 +1752,6 @@ namespace Codegen
 		this->removeFunctionFromScope({ 0, fnDecl });
 		this->popGenericTypeStack();
 
-		warn(fnDecl, "ret: %p, %p", (void*) ffunc, (void*) fnDecl);
-		if(fnDecl->ident.name == "pt")
-			info("");
 		return { ffunc, fnDecl };
 	}
 
@@ -1797,7 +1799,6 @@ namespace Codegen
 				candidates.size(), cands.c_str());
 		}
 
-		info(candidates[0], "inst");
 		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
 	}
 
