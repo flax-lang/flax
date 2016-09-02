@@ -233,8 +233,13 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		size_t inds = 0;
-		if(this->isPointerType())
-			inds = this->toPointerType()->indirections;
+		fir::Type* base = this;
+
+		while(base->isPointerType())
+		{
+			base = base->getPointerElementType();
+			inds++;
+		}
 
 		PointerType* newType = new PointerType(inds + 1, this);
 
