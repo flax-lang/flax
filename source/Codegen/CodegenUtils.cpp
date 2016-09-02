@@ -1524,16 +1524,23 @@ namespace Codegen
 			// do a similar thing as the actual mangling -- build a list of
 			// uniquely named types.
 
-			std::map<std::string, std::vector<int>> typePositions;
+			// string is name, map is a map from position to indirs.
+			std::map<std::string, std::map<int, int>> typePositions;
+			std::map<int, std::pair<std::string, int>> revTypePositions;
+
 			std::vector<int> nonGenericTypes;
 
 			int pos = 0;
 			for(auto p : candidate->params)
 			{
+				int indirs = 0;
 				std::string s = p->type.strType;
+				s = unwrapPointerType(s, &indirs);
+
 				if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
 				{
-					typePositions[s].push_back(pos);
+					typePositions[s][pos] = indirs;
+					revTypePositions[pos] = { s, indirs };
 				}
 				else
 				{
@@ -1544,27 +1551,81 @@ namespace Codegen
 			}
 
 
-			// this needs to be basically a fully manual check.
-			// 1. check that the generic types match (ie. all the Ts are the same type, all the Ks are the same, etc.)
-			for(auto pair : typePositions)
+
+			std::map<std::string, fir::Type*> checked;
+			for(size_t i = 0; i < args.size(); i++)
 			{
-				fir::Type* ftype = args[pair.second[0]];
-				for(int k : pair.second)
+				if(revTypePositions.find(i) != revTypePositions.end())
 				{
-					if(args[k] != ftype)
+					// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
+					std::string s = revTypePositions[i].first;
+					int indirs = revTypePositions[i].second;
+
+					fir::Type* ftype = args[i];
+					// fir::Type* oftype = ftype;
+
+					int givenindrs = 0;
+					while(ftype->isPointerType())
+					{
+						ftype = ftype->getPointerElementType();
+						givenindrs++;
+					}
+
+					// check that the base types match
+					// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
+					// ftype here has been reduced.
+
+					if(checked.find(s) != checked.end())
+					{
+						if(ftype != checked[s])
+							return false;
+					}
+					else
+					{
+						checked[s] = ftype;
+					}
+
+
+					// check that we have 'enough' pointerness
+					// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
+					if(givenindrs < indirs)
 						return false;
+				}
+				else
+				{
+					// check normal types.
+					fir::Type* a = args[i];
+					fir::Type* b = cgi->getExprType(candidate->params[i]);
+
+					if(a != b) return false;
 				}
 			}
 
 
-			// 2. check that the concrete types match.
-			for(int k : nonGenericTypes)
-			{
-				fir::Type* a = args[k];
-				fir::Type* b = cgi->getExprType(candidate->params[k]);
 
-				if(a != b) return false;
-			}
+			// for(auto pair : typePositions)
+			// {
+			// 	fir::Type* ftype = args[pair.second[0]];
+			// 	ftype = ftype->getIndirectedType(pair.second[0].second);
+
+			// 	for(auto k : pair.second)
+			// 	{
+			// 		fprintf(stderr, "match %s vs. %s\n", args[k.first]->str().c_str(), ftype->str().c_str());
+
+			// 		if(args[k.first] != ftype)
+			// 			return false;
+			// 	}
+			// }
+
+
+			// // 2. check that the concrete types match.
+			// for(int k : nonGenericTypes)
+			// {
+			// 	fir::Type* a = args[k];
+			// 	fir::Type* b = cgi->getExprType(candidate->params[k]);
+
+			// 	if(a != b) return false;
+			// }
 
 
 
@@ -1575,7 +1636,17 @@ namespace Codegen
 
 			for(auto pair : typePositions)
 			{
-				thistm[pair.first] = args[pair.second[0]];
+				// thistm[pair.first] = args[pair.second[0].first]->getIndirectedType(pair.second[0].second);
+				// thistm[pair.first] =
+
+				int pos = pair.second.begin()->first;
+				int indrs = pair.second.begin()->second;
+
+				fir::Type* t = args[pos];
+				for(int i = 0; i < indrs; i++)
+					t = t->getPointerElementType();
+
+				thistm[pair.first] = t;
 			}
 
 
@@ -1583,11 +1654,11 @@ namespace Codegen
 			for(auto cst : thistm)
 			{
 				TypeConstraints_t constr = candidate->genericTypes[cst.first];
-				if((constr.pointerDegree > 0 && !cst.second->isPointerType())
-					&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
-				{
-					return false;
-				}
+				// if((constr.pointerDegree > 0 && !cst.second->isPointerType())
+				// 	&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
+				// {
+				// 	return false;
+				// }
 
 				for(auto protstr : constr.protocols)
 				{
@@ -1676,6 +1747,9 @@ namespace Codegen
 		this->removeFunctionFromScope({ 0, fnDecl });
 		this->popGenericTypeStack();
 
+		warn(fnDecl, "ret: %p, %p", (void*) ffunc, (void*) fnDecl);
+		if(fnDecl->ident.name == "pt")
+			info("");
 		return { ffunc, fnDecl };
 	}
 
@@ -1723,6 +1797,7 @@ namespace Codegen
 				candidates.size(), cands.c_str());
 		}
 
+		info(candidates[0], "inst");
 		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
 	}
 
@@ -2342,11 +2417,17 @@ namespace Codegen
 			{
 				have = r->actualReturnValue->getType();
 			}
-
 			if(!have)
 			{
 				have = cgi->getExprType(r->val);
 			}
+
+			if(have->isParametricType())
+			{
+				if(fir::Type* t = cgi->resolveGenericType(have->toParametricType()->getName()))
+					have = t;
+			}
+
 
 
 			if(retType == 0)

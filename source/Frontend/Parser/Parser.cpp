@@ -741,8 +741,8 @@ namespace Parser
 					return parsePrimary(ps);
 
 				case TType::LBrace:
-					parserMessage(Err::Warn, "Anonymous blocks are ignored; to run, preface with 'do'");
-					parseBracedBlock(ps);		// parse it, but throw it away
+					// parse it, but throw it away
+					parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
@@ -878,14 +878,6 @@ namespace Parser
 					{
 						parserError("Expected ',' or '>' to end type parameter list (2)");
 					}
-
-					for(size_t i = gt.size() - 1; i > 0; i--)
-					{
-						if(gt[i] == '*')
-							constrs.pointerDegree++;
-					}
-
-					gt = gt.substr(0, gt.size() - constrs.pointerDegree);
 
 					genericTypes[gt] = constrs;
 				}

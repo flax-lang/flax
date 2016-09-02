@@ -46,9 +46,17 @@ namespace fir
 
 
 
-	ParametricType* ParametricType::reify(std::map<std::string, Type*> names, FTContext* tc)
+	Type* ParametricType::reify(std::map<std::string, Type*> names, FTContext* tc)
 	{
-		error_and_exit("should not happen");
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+
+		if(names.find(this->name) == names.end())
+			error_and_exit("Failed to reify, no type found for '%s'", this->name.c_str());
+
+
+		return tc->normaliseType(names[this->name]);
 	}
 }
 
