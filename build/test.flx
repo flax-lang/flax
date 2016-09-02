@@ -220,6 +220,10 @@ func pt<T>(a: T, b: T*) -> T
 	return a
 }
 
+func vt<T>(a: int, b: T[...])
+{
+}
+
 
 @nomangle func mtest(k: int, g: int)
 {
@@ -230,6 +234,8 @@ func pt<T>(a: T, b: T*) -> T
 
 	let g = 10
 	pt(10, &g)
+
+	vt(10, 30, 40, 50, 60)
 
 	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }
