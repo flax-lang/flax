@@ -1055,7 +1055,7 @@ namespace Codegen
 			if(indirections == -1)
 			{
 				// try generic.
-				fir::Type* ret = this->resolveGenericType(type.strType);
+				fir::Type* ret = this->resolveGenericType(atype);
 				if(ret) return ret;
 
 				if(atype.find("<") != std::string::npos)

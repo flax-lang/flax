@@ -57,7 +57,7 @@ namespace fir
 
 		// basically return a new version of ourselves
 		if(!this->arrayElementType->isParametricType())
-			error_and_exit("llvarray '%s' is not parametric, cannot reify", this->str().c_str());
+			return this;
 
 		ParametricType* tp = this->arrayElementType->toParametricType();
 

@@ -96,33 +96,8 @@ import tests.limits
 
 // name idea: mill
 
-// syntax thingy
-// do we follow swift, in doing this:
-// ƒ foo(fmt: String, args: Any...)
 
-// or, something like this (since it is conceptually an array-like structure)
-// ƒ foo(fmt: String, args: Any[...])
 
-// both require some amount of parsing patches, but should be equally doable.
-// i'm personally a fan of the secound.
-
-// it should be possible, theoretically, to implement this as a kind of array??
-// with a whole "length" and "data" thing. possibly.
-// not entirely sure how that will work...
-// we don't even have a length property, i don't think, for arrays right now.
-// we can statically type check **CONSTANT** indexes into fixed-length arrays at compile time.
-// aka it's basically useless.
-
-// but i don't think it will be possible to do that for vararg functions
-// so we def. need a length property or something.
-// i kinda want varargs first,
-// although it would be possibel to move the slipshod array system into a generic Array<> thing, once it's implemented
-// (if ever)
-
-// that has a lot more friction though, so i'm more keen to get the non-generic varargs thing working first.
-// first, the Any[...] implementation.
-// theoretically it should also be possible not to restrict it to Any, and have Int[...], String[...] and so on.
-// the array mechanics should work, and typeof() isn't necessary.
 
 
 
@@ -150,6 +125,7 @@ struct FormatOptions
 	var type: String
 	var argNum: int64
 }
+
 
 
 
@@ -239,6 +215,10 @@ func cts<T : StringConvertible>(thing: T) -> String
 	return thing.toString()
 }
 
+func pt<T>(a: T, b: T*) -> T
+{
+	return a
+}
 
 
 @nomangle func mtest(k: int, g: int)
@@ -248,10 +228,41 @@ func cts<T : StringConvertible>(thing: T) -> String
 	let x = TestingClass(10)
 	let y = TestingClass(20)
 
+	let g = 10
+	pt(10, &g)
 
 	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }
 
+
+
+
+// although it would be possible to move the slipshod array system into a generic Array<> thing, once it's implemented
+// sidenote: oh look, it works for arbitrary types.
+// sometimes, i'm impressed by the things i've implemented.
+
+// i think this form of varargs should *stay*, since it's basically a compiler primitive.
+// once we have an Array<> type, then it'd be as simple as having the Array<T> class define an initialiser with T[...],
+// since we can forward LLVarArrays effortlessly. then it's as easy as let arr = Array(b), and you can have all the Array<> class
+// niceties with varargs, without compromising freestanding functionality.
+
+// imho it's not worth it to have the compiler do the same thing as with String, because 1. String is not generic, and 2. varargs isn't
+// a "core" language feature, so to speak.
+
+func variadicTest(a: String, b: int[...])
+{
+	printf("%s: [", a)
+	var i = 0
+	while i < b.length
+	{
+		printf("%d", b[i])
+		i += 1
+
+		if i != b.length { printf(", ") }
+	}
+
+	printf("]\n")
+}
 
 
 public func main(argc: int32, argv: int8**) -> int
@@ -259,62 +270,78 @@ public func main(argc: int32, argv: int8**) -> int
 	runTests()
 
 
-	println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
-	printf("pi = %.16lf, %s\n", Math.π(), "lol")
+	do
+	{
+		println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
+		printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
-	println("%b", "a" != "b")
+		println("%b", "a" != "b")
 
-	parseFormatOptions("{401:x}")
+		parseFormatOptions("{401:x}")
 
-	mtest(10, 41)
-
-
-
-	var g = "439"
-	let k = g.toInteger()
-	printf("%s, %d\n", g, k)
+		mtest(10, 41)
+	}
 
 
 
-
-	// var arr8: Array<Int8>
-	// var arr32: Array<Int32>
-
-	// arr8.data = alloc[3] Int8
-	// arr32.data = alloc[30] Int8
-	// printf("data8  = %p\n", arr8.data);
-	// printf("data32 = %p\n", arr32.data);
-
+	do
+	{
+		var g = "439"
+		let k = g.toInteger()
+		printf("%s, %d\n", g, k)
+	}
 
 
 	printf("\n\n====================\n\n")
 
-	let smth = alloc[4] Math.Vector2
-	smth[0].x = 10
+	do
+	{
+		let v1 = Math.Vector2(1.0, 4.0)
+		let v2 = Math.Vector2(3.0, 7.0)
 
-	let v1 = Math.Vector2(1.0, 4.0)
-	let v2 = Math.Vector2(3.0, 7.0)
+		let vr = v1 ⨯ v2
+		printf("(%.2f), vr = %.2f\n", v1 • v2, vr)
 
-	let vr = v1 ⨯ v2
-	printf("(%d), vr = %f\n", v1 • v2, vr)
+		var lol: String = "HELLO"
+		printf("%d\n", lol[1].hasData())
+		printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
 
-	var lol: String = "HELLO"
-	printf("%d\n", lol[1].hasData())
-	printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
-
-	// var k: Math.Vector2
-	// k = Math.Vector2(1.0, 4.0)
-
-	// printf("k = (%f, %f)\n", k.x, k.y);
+		lol.data = null
+	}
 
 
+	struct Foo
+	{
+		var a: int
+	}
 
-	lol.data = null
+	do
+	{
+		var k: Math.Vector2
+		k = Math.Vector2(1.0, 4.0)
 
-	var args = alloc[10] Any
-	args[0] = "HELLO"
-	#(args + 1) = 40
-	args[2] = "GOODBYE"
+		printf("k = (%.2f, %.2f)\n", k.x, k.y);
+
+		let x = Foo(30)
+		var y: Foo = Foo()
+		y.a = 10
+
+		y = x
+		printf("%d\n", y.a)
+	}
+
+
+
+	do
+	{
+		var args = alloc[10] Any
+		args[0] = "HELLO"
+		#(args + 1) = 40
+		args[2] = "GOODBYE"
+	}
+
+
+	variadicTest("ints", 10, 20, 30, 40, 50, 60)
 
 
 

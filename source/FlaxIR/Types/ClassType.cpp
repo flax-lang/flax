@@ -217,28 +217,11 @@ namespace fir
 
 		for(auto mem : this->classMembers)
 		{
-			if(mem.second->isParametricType())
-			{
-				if(reals.find(mem.second->toParametricType()->getName()) != reals.end())
-				{
-					auto t = reals[mem.second->toParametricType()->getName()];
-					if(t->isParametricType())
-					{
-						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
-							mem.second->toParametricType()->getName().c_str());
-					}
+			auto rfd = mem.second->reify(reals);
+			if(rfd->isParametricType())
+				error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
 
-					reifiedMems.push_back({ mem.first, t });
-				}
-				else
-				{
-					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
-				}
-			}
-			else
-			{
-				reifiedMems.push_back({ mem.first, mem.second });
-			}
+			reifiedMems.push_back({ mem.first, rfd });
 		}
 
 		iceAssert(reifiedMems.size() == this->classMembers.size());
@@ -246,10 +229,6 @@ namespace fir
 
 		// do the methods
 		// uh... not yet.
-
-
-
-
 
 
 		return ret;
