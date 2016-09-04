@@ -165,7 +165,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 		// special case: we can directly forward the arguments
-		if(cgi->getExprType(params.back())->isLLVariableArrayType())
+		if(cgi->getExprType(params.back())->isLLVariableArrayType()
+			&& cgi->getExprType(params.back())->toLLVariableArray()->getElementType() == target->getArguments().back()->getType()->toLLVariableArray()->getElementType())
 		{
 			args.push_back(params.back()->codegen(cgi).result.first);
 		}

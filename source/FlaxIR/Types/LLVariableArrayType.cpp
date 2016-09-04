@@ -10,6 +10,7 @@ namespace fir
 	LLVariableArrayType::LLVariableArrayType(Type* elmType) : Type(FTypeKind::LowLevelVariableArray)
 	{
 		this->arrayElementType = elmType;
+		iceAssert(this->arrayElementType);
 	}
 
 	Type* LLVariableArrayType::getElementType()

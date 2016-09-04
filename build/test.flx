@@ -220,8 +220,15 @@ func pt<T>(a: T, b: T*) -> T
 	return a
 }
 
-func vt<T>(a: int, b: T[...])
+func vt<T>(b: T[...])
 {
+	var i = 0
+
+	while i < b.length
+	{
+		printf("%d\n", b[i])
+		i += 1
+	}
 }
 
 
@@ -369,9 +376,28 @@ public func main(argc: int32, argv: int8**) -> int
 	// basically, top-level operators will just be syntactic sugar for extensions defining operators.
 
 
+	// structs vs classes
+	// structs:
+	// methods. members. no intialisers.
+	// extensions cannot have initialisers or stored properties
+	// can conform to protocols.
+	// vtable handling is done by having global vtable per type. for structs these are immutable.
+	// looked up via type id.
+
+	// classes:
+	// everything. methods, members, properties, initialisers.
+	// vtable is stored *in object*.
+	// can be copied and modified at runtime for shits and giggles.
 
 
 
+
+	// note: when we get protocol types working
+	// eg. let x = String()
+	// func foo(x: SomeProtocol) { ... }
+	// foo(x)
+	//
+	// comparing fir::Type pointers isn't going to work any more.
 
 
 
