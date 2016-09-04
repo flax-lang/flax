@@ -941,6 +941,13 @@ namespace Codegen
 					std::string arr = actualType.substr(k);
 					fir::Type* btype = this->parseAndGetOrInstantiateType(user, base, allowFail);
 
+					if(btype == 0)
+					{
+						if(allowFail) return 0;
+						else
+							error("Unknown type '%s'", base.c_str());
+					}
+
 
 					std::vector<int> sizes;
 					while(arr.length() > 0 && arr.front() == '[')
@@ -1061,81 +1068,6 @@ namespace Codegen
 				if(atype.find("<") != std::string::npos)
 				{
 					error("enotsup (generic structs)");
-
-
-					#if 0
-
-					size_t k = atype.find("<");
-					std::string base = atype.substr(0, k);
-
-					pair = this->findTypeInFuncTree(ns, base);
-					tp = pair.first;
-					indirections = pair.second;
-
-					if(tp && indirections >= 0)
-					{
-						// parse that shit.
-						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-						iceAssert(sb);
-
-						// parse the list of types.
-						std::string glist = atype.substr(k);
-						{
-							iceAssert(glist.size() > 0 && glist[0] == '<');
-							glist = glist.substr(1);
-
-							iceAssert(glist.back() == '>');
-							glist.pop_back();
-
-
-							// to allow for nesting generic types in generic types,
-							// eg. Foo<Bar<Int>,Qux<Double,Int>>, we need to be smart
-							// iterate through the string manually.
-							// if we encounter a '<', increase nesting.
-							// if we encounter a '>', decrease nesting.
-							// if we encounter a ',' while nesting > 0, ignore.
-							// if we encounter a ',' while nesting == 0, split the string there.
-
-							int nesting = 0;
-							std::deque<std::string> types;
-
-							std::string curtype;
-							for(size_t i = 0; i < glist.length(); i++)
-							{
-								if(glist[i] == '<')
-								{
-									nesting++;
-									curtype += glist[i];
-								}
-								else if(glist[i] == '>')
-								{
-									if(nesting == 0) error(user, "mismatched angle brackets in generic type parameter list");
-									nesting--;
-									curtype += glist[i];
-								}
-								else if(glist[i] == ',' && nesting == 0)
-								{
-									types.push_back(curtype);
-									curtype = "";
-								}
-								else
-								{
-									curtype += glist[i];
-								}
-							}
-							types.push_back(curtype);
-						}
-
-						// todo: ew, goto
-						goto foundType;
-					}
-					else
-					{
-						if(allowFail) return 0;
-						else error(user, "Invaild type '%s'", base.c_str());
-					}
-
-					#endif
 				}
 
 				std::string nsstr;
