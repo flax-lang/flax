@@ -1130,6 +1130,20 @@ namespace Codegen
 				}
 			}
 
+			// check for direct forwarding case
+			if(args.size() == funcParams.size())
+			{
+				if(args.back()->isLLVariableArrayType() && funcParams.back()->isLLVariableArrayType()
+					&& args.back()->toLLVariableArray()->getElementType() == funcParams.back()->toLLVariableArray()->getElementType())
+				{
+					// yes, do that (where that == nothing)
+					*_dist += 0;
+					return true;
+				}
+			}
+
+
+
 
 			// 3. get the type of the vararg array.
 			fir::Type* funcLLType = funcParams.back();
@@ -1180,7 +1194,12 @@ namespace Codegen
 			iceAssert(fp.second);
 
 			for(auto arg : fp.second->params)
-				funcParams.push_back(this->getExprType(arg, true));
+			{
+				auto t = this->getExprType(arg, true);
+				if(!t) return false;
+
+				funcParams.push_back(t);
+			}
 
 			iscvar = fp.second->isCStyleVarArg;
 			isvar = fp.second->isVariadic;
@@ -1518,11 +1537,6 @@ namespace Codegen
 		{
 			return false;
 		}
-		else if(candidate->isVariadic)
-		{
-			info(candidate, "");
-			return false;
-		}
 		else
 		{
 			// param count matches...
@@ -1534,6 +1548,19 @@ namespace Codegen
 			std::map<int, std::pair<std::string, int>> revTypePositions;
 
 			std::vector<int> nonGenericTypes;
+
+
+
+			// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
+			// so we only check the first n - 1 parameters.
+			VarDecl* varParam = 0;
+			if(candidate->isVariadic)
+			{
+				varParam = candidate->params.back();
+				candidate->params.pop_back();
+			}
+
+
 
 			int pos = 0;
 			for(auto p : candidate->params)
@@ -1556,9 +1583,10 @@ namespace Codegen
 			}
 
 
-
+			// since this is bound by the size of the candidates, we'll only check the non-var parameters
+			// this ensures we don't array out of bounds.
 			std::map<std::string, fir::Type*> checked;
-			for(size_t i = 0; i < args.size(); i++)
+			for(size_t i = 0; i < candidate->params.size(); i++)
 			{
 				if(revTypePositions.find(i) != revTypePositions.end())
 				{
@@ -1567,7 +1595,6 @@ namespace Codegen
 					int indirs = revTypePositions[i].second;
 
 					fir::Type* ftype = args[i];
-					// fir::Type* oftype = ftype;
 
 					int givenindrs = 0;
 					while(ftype->isPointerType())
@@ -1608,30 +1635,6 @@ namespace Codegen
 
 
 
-			// for(auto pair : typePositions)
-			// {
-			// 	fir::Type* ftype = args[pair.second[0]];
-			// 	ftype = ftype->getIndirectedType(pair.second[0].second);
-
-			// 	for(auto k : pair.second)
-			// 	{
-			// 		fprintf(stderr, "match %s vs. %s\n", args[k.first]->str().c_str(), ftype->str().c_str());
-
-			// 		if(args[k.first] != ftype)
-			// 			return false;
-			// 	}
-			// }
-
-
-			// // 2. check that the concrete types match.
-			// for(int k : nonGenericTypes)
-			// {
-			// 	fir::Type* a = args[k];
-			// 	fir::Type* b = cgi->getExprType(candidate->params[k]);
-
-			// 	if(a != b) return false;
-			// }
-
 
 
 			// fill in the typemap.
@@ -1641,9 +1644,6 @@ namespace Codegen
 
 			for(auto pair : typePositions)
 			{
-				// thistm[pair.first] = args[pair.second[0].first]->getIndirectedType(pair.second[0].second);
-				// thistm[pair.first] =
-
 				int pos = pair.second.begin()->first;
 				int indrs = pair.second.begin()->second;
 
@@ -1659,11 +1659,6 @@ namespace Codegen
 			for(auto cst : thistm)
 			{
 				TypeConstraints_t constr = candidate->genericTypes[cst.first];
-				// if((constr.pointerDegree > 0 && !cst.second->isPointerType())
-				// 	&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
-				// {
-				// 	return false;
-				// }
 
 				for(auto protstr : constr.protocols)
 				{
@@ -1676,6 +1671,106 @@ namespace Codegen
 						return false;
 				}
 			}
+
+
+			// if we're variadic -- check it.
+			if(varParam != 0)
+			{
+				// add it back first.
+				candidate->params.push_back(varParam);
+
+				// get the type.
+				std::string strt = varParam->type.strType;
+				size_t k = strt.find("[");
+				iceAssert(k != std::string::npos);
+
+				int indirs = 0;
+				std::string base = strt.substr(0, k);
+				base = unwrapPointerType(base, &indirs);
+
+
+				if(typePositions.find(base) != typePositions.end())
+				{
+					// already have it
+					// ensure it matches with the ones we've already found.
+
+					fir::Type* resolved = thistm[base];
+					iceAssert(resolved);
+
+
+
+					if(args.size() >= candidate->params.size())
+					{
+						// again, check the direct forwarding case
+						if(args.size() == candidate->params.size() && args.back()->isLLVariableArrayType()
+							&& args.back()->toLLVariableArray()->getElementType() == resolved)
+						{
+							// direct.
+							// do nothing.
+						}
+						else
+						{
+							for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+							{
+								if(args[i] != resolved)
+									return false;
+							}
+
+							// should be fine now.
+						}
+					}
+					else
+					{
+						// no varargs were even given
+						// since we have already inferred the type from the other parameters,
+						// we can give this a free pass.
+					}
+				}
+				else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
+				{
+					// ok, we need to be able to deduce the type from the vararg only.
+					// so if none were provided, then give up.
+
+					if(args.size() < candidate->params.size())
+						return false;
+
+
+					// great, now just deduce it.
+					// we just need to make sure all the Ts match, and the number of indirections
+					// match *and* are greater than or equal to the specified level.
+
+					fir::Type* first = args[candidate->params.size() - 1];
+
+					// first, make sure the indirections tally
+					int givenindrs = 0;
+					if(first->isPointerType())
+						givenindrs = first->toPointerType()->getIndirections();
+
+					if(givenindrs < indirs)
+						return false;
+
+
+					// ok, check the type itself
+					for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+					{
+						if(args[i] != first)
+							return false;
+					}
+
+					// ok now.
+					fir::Type* reduced = first;
+					while(reduced->isPointerType())
+						reduced = reduced->getPointerElementType();
+
+					thistm[base] = reduced;
+				}
+			}
+
+
+
+
+
+
 
 			// check that we actually have an entry for every type
 			for(auto t : candidate->genericTypes)
@@ -2590,3 +2685,6 @@ namespace Codegen
 
 
 }
+
+
+
