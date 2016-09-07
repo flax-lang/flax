@@ -3,10 +3,11 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "ir/type.h"
 
-namespace pts
+namespace Codegen
 {
-	static std::string unwrapPointerType(std::string type, int* _indirections)
+	std::string unwrapPointerType(std::string type, int* _indirections)
 	{
 		std::string sptr = "*";
 		size_t ptrStrLength = sptr.length();
@@ -26,6 +27,10 @@ namespace pts
 
 		return actualType;
 	}
+}
+
+namespace pts
+{
 
 	static pts::Type* recursivelyParseTuple(std::string str, int* used)
 	{
@@ -105,7 +110,7 @@ namespace pts
 				pts::Type* ret = 0;
 
 				int indirections = 0;
-				std::string actualType = unwrapPointerType(type, &indirections);
+				std::string actualType = Codegen::unwrapPointerType(type, &indirections);
 
 				if(actualType.find("[") != std::string::npos)
 				{
@@ -221,6 +226,7 @@ namespace pts
 	}
 
 
+
 	pts::Type* parseType(std::string type)
 	{
 		return parseTypeUsingBase(0, type);
@@ -233,14 +239,96 @@ namespace pts
 
 
 
+	NamedType* Type::toNamedType()
+	{
+		return dynamic_cast<NamedType*>(this);
+	}
+
+	PointerType* Type::toPointerType()
+	{
+		return dynamic_cast<PointerType*>(this);
+	}
+
+	TupleType* Type::toTupleType()
+	{
+		return dynamic_cast<TupleType*>(this);
+	}
+
+	FixedArrayType* Type::toFixedArrayType()
+	{
+		return dynamic_cast<FixedArrayType*>(this);
+	}
+
+	DynamicArrayType* Type::toDynamicArrayType()
+	{
+		return dynamic_cast<DynamicArrayType*>(this);
+	}
+
+	VariadicArrayType* Type::toVariadicArrayType()
+	{
+		return dynamic_cast<VariadicArrayType*>(this);
+	}
+
+	FunctionType* Type::toFunctionType()
+	{
+		return dynamic_cast<FunctionType*>(this);
+	}
+
+
+	bool Type::isNamedType()
+	{
+		return dynamic_cast<NamedType*>(this) != 0;
+	}
+
+	bool Type::isPointerType()
+	{
+		return dynamic_cast<PointerType*>(this) != 0;
+	}
+
+	bool Type::isTupleType()
+	{
+		return dynamic_cast<TupleType*>(this) != 0;
+	}
+
+	bool Type::isFixedArrayType()
+	{
+		return dynamic_cast<FixedArrayType*>(this) != 0;
+	}
+
+	bool Type::isDynamicArrayType()
+	{
+		return dynamic_cast<DynamicArrayType*>(this) != 0;
+	}
+
+	bool Type::isVariadicArrayType()
+	{
+		return dynamic_cast<VariadicArrayType*>(this) != 0;
+	}
+
+	bool Type::isFunctionType()
+	{
+		return dynamic_cast<FunctionType*>(this) != 0;
+	}
 
 
 
 
 
 
+	std::string Type::str()
+	{
+		iceAssert(resolvedFType);
+		return resolvedFType->str();
+	}
 
 
+	static InferredType* it = 0;
+	InferredType* InferredType::get()
+	{
+		if(it) return it;
+
+		return (it = new InferredType());
+	}
 
 
 	std::string NamedType::str()

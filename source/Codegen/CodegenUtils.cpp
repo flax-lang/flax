@@ -923,7 +923,7 @@ namespace Codegen
 					return _isDupe(f, fp);
 				};
 
-				if((f.second ? f.second->ident.name : f.first->getName().str()) == basename)
+				if(f.second->genericTypes.size() == 0 && (f.second ? f.second->ident.name : f.first->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -1254,47 +1254,47 @@ namespace Codegen
 
 		if(!fp)
 		{
-			std::string retType;
+			pts::Type* retType;
 			std::deque<VarDecl*> params;
 			if(name == "malloc")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd->type = UINT64_TYPE_STRING;
+				fakefdmvd->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
 				params.push_back(fakefdmvd);
 
-				retType = std::string(INT8_TYPE_STRING) + "*";
+				retType = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 			}
 			else if(name == "free")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
+				fakefdmvd->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 				params.push_back(fakefdmvd);
 
-				retType = std::string(INT8_TYPE_STRING) + "*";
+				retType = pts::NamedType::create(VOID_TYPE_STRING);
 			}
 			else if(name == "strlen")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
-				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
+				fakefdmvd->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 				params.push_back(fakefdmvd);
 
-				retType = INT64_TYPE_STRING;
+				retType = pts::NamedType::create(INT64_TYPE_STRING);
 			}
 			else if(name == "memset")
 			{
 				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd1->type = std::string(INT8_TYPE_STRING) + "*";
+				fakefdmvd1->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 				params.push_back(fakefdmvd1);
 
 				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
-				fakefdmvd2->type = std::string(INT8_TYPE_STRING) + "*";
+				fakefdmvd2->ptype = pts::NamedType::create(INT32_TYPE_STRING);
 				params.push_back(fakefdmvd2);
 
 				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd3->type = UINT64_TYPE_STRING;
+				fakefdmvd3->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
 				params.push_back(fakefdmvd3);
 
-				retType = std::string(INT8_TYPE_STRING) + "*";
+				retType = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 			}
 			else
 			{
@@ -1390,7 +1390,7 @@ namespace Codegen
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
-				std::string st = arg->type.strType;
+				std::string st = arg->ptype->str();
 				if(uniqueGenericTypes.find(st) == uniqueGenericTypes.end())
 				{
 					uniqueGenericTypes[st] = runningTypeIndex;
@@ -1408,7 +1408,7 @@ namespace Codegen
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
-				std::string st = arg->type.strType;
+				std::string st = arg->ptype->str();
 				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
 
 				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]);
@@ -1566,7 +1566,7 @@ namespace Codegen
 			for(auto p : candidate->params)
 			{
 				int indirs = 0;
-				std::string s = p->type.strType;
+				std::string s = p->ptype->str();
 				s = unwrapPointerType(s, &indirs);
 
 				if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
@@ -1680,12 +1680,8 @@ namespace Codegen
 				candidate->params.push_back(varParam);
 
 				// get the type.
-				std::string strt = varParam->type.strType;
-				size_t k = strt.find("[");
-				iceAssert(k != std::string::npos);
-
 				int indirs = 0;
-				std::string base = strt.substr(0, k);
+				std::string base = varParam->ptype->toVariadicArrayType()->base->str();
 				base = unwrapPointerType(base, &indirs);
 
 
@@ -2181,14 +2177,16 @@ namespace Codegen
 
 		if(pair->second.second == TypeKind::TypeAlias)
 		{
-			iceAssert(pair->second.second == TypeKind::TypeAlias);
-			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
-			iceAssert(ta);
+			// iceAssert(pair->second.second == TypeKind::TypeAlias);
+			// TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
+			// iceAssert(ta);
 
-			TypePair_t* tp = this->getTypeByString(ta->origType);
-			iceAssert(tp);
+			// TypePair_t* tp = this->getTypeByString(ta->origType);
+			// iceAssert(tp);
 
-			return this->getStructInitialiser(user, tp, vals);
+			// return this->getStructInitialiser(user, tp, vals);
+
+			iceAssert(0);
 		}
 		else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 		{
@@ -2627,7 +2625,7 @@ namespace Codegen
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
 			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->type.strType.c_str(), this->printAst(func->decl).c_str());
+				func->decl->ptype->str().c_str(), this->printAst(func->decl).c_str());
 		}
 		else if(isVoid)
 		{

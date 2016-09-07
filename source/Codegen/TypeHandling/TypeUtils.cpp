@@ -70,15 +70,15 @@ namespace Codegen
 
 	fir::Type* CodegenInstance::getExprType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
 	{
-		if(expr->type.ftype != 0)
-			return expr->type.ftype;
+		if(expr->ptype && expr->ptype->resolvedFType)
+			return expr->ptype->resolvedFType;
 
 		setInferred = false;
 		iceAssert(expr);
 		{
 			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
 			{
-				if(decl->type.strType == "Inferred")
+				if(decl->ptype == pts::InferredType::get())
 				{
 					if(!decl->inferredLType)		// todo: better error detection for this
 					{
@@ -94,7 +94,7 @@ namespace Codegen
 					if(decl->inferredLType)
 						return decl->inferredLType;
 
-					fir::Type* ret = this->parseAndGetOrInstantiateType(decl, decl->type.strType, allowFail);
+					fir::Type* ret = this->getTypeFromParserType(decl, decl->ptype, allowFail);
 					if(setInferred) decl->inferredLType = ret;
 
 					return ret;
@@ -165,14 +165,25 @@ namespace Codegen
 			}
 			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
 			{
-				TypePair_t* type = this->getTypeByString(fd->type.strType);
-				if(!type)
-				{
-					fir::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
-					return ret;
-				}
+				fir::Type* t = this->getTypeFromParserType(fd, fd->ptype, allowFail);
+				if(t)
+					return t;
 
-				return type->first;
+				else if(!t && allowFail)
+					return 0;
+
+				else
+					error(fd, "Unknown type '%s'", fd->ptype->str().c_str());
+
+
+				// TypePair_t* type = this->getType(t);
+				// if(!type && allowFail)
+				// 	return 0;
+
+				// else if(!type)
+				// 	error(fd, "Unknown type '%s'", fd->ptype->str().c_str());
+
+				// return type->first;
 			}
 			else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
 			{
@@ -238,7 +249,7 @@ namespace Codegen
 						for(ComputedProperty* c : cls->cprops)
 						{
 							if(c->ident.name == memberVr->name)
-								return this->getExprTypeFromStringType(c, c->type, allowFail);
+								return this->getTypeFromParserType(c, c->ptype, allowFail);
 						}
 
 						auto exts = this->getExtensionsForType(cls);
@@ -390,7 +401,7 @@ namespace Codegen
 			}
 			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
 			{
-				fir::Type* base = this->getExprTypeFromStringType(alloc, alloc->type.strType);
+				fir::Type* base = this->getTypeFromParserType(alloc, alloc->ptype);
 
 				if(alloc->counts.size() == 0) return base->getPointerTo();
 
@@ -413,14 +424,7 @@ namespace Codegen
 			}
 			else if(DummyExpr* dum = dynamic_cast<DummyExpr*>(expr))
 			{
-				if(dum->type.isLiteral)
-				{
-					return this->parseAndGetOrInstantiateType(expr, dum->type.strType);
-				}
-				else
-				{
-					return this->getExprType(dum->type.type);
-				}
+				return this->getTypeFromParserType(expr, dum->ptype);
 			}
 			else if(dynamic_cast<IfStmt*>(expr))
 			{
@@ -844,79 +848,242 @@ namespace Codegen
 
 
 
-	std::string unwrapPointerType(std::string type, int* _indirections)
+	// std::string unwrapPointerType(std::string type, int* _indirections)
+	// {
+	// 	std::string sptr = "*";
+	// 	size_t ptrStrLength = sptr.length();
+
+	// 	int tmp = 0;
+	// 	if(!_indirections)
+	// 		_indirections = &tmp;
+
+	// 	std::string actualType = type;
+	// 	if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+	// 	{
+	// 		int& indirections = *_indirections;
+
+	// 		while(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+	// 			actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
+	// 	}
+
+	// 	return actualType;
+	// }
+
+	// static fir::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
+	// {
+	// 	iceAssert(str.length() > 0);
+	// 	iceAssert(str[0] == '(');
+
+	// 	str = str.substr(1);
+	// 	char front = str.front();
+	// 	if(front == ')')
+	// 		error(user, "Empty tuples are not supported");
+
+	// 	std::vector<fir::Type*> types;
+	// 	while(front != ')')
+	// 	{
+	// 		std::string cur;
+	// 		while(front != ',' && front != '(' && front != ')')
+	// 		{
+	// 			cur += front;
+
+	// 			str.erase(str.begin());
+	// 			front = str.front();
+	// 		}
+
+	// 		if(front == ',' || front == ')')
+	// 		{
+	// 			bool shouldBreak = (front == ')');
+	// 			fir::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
+	// 			iceAssert(ty);
+
+	// 			types.push_back(ty);
+
+	// 			str.erase(str.begin());
+	// 			front = str.front();
+
+	// 			if(shouldBreak)
+	// 				break;
+	// 		}
+	// 		else if(front == '(')
+	// 		{
+	// 			iceAssert(str.front() == '(');
+	// 			types.push_back(recursivelyParseTuple(cgi, user, str, allowFail));
+
+	// 			if(str.front() == ',')
+	// 				str.erase(str.begin());
+
+	// 			front = str.front();
+	// 		}
+	// 	}
+
+	// 	return fir::TupleType::get(types, cgi->getContext());
+	// }
+
+
+	static fir::Type* _recursivelyConvertType(CodegenInstance* cgi, bool allowFail, Expr* user, pts::Type* pt)
 	{
-		std::string sptr = "*";
-		size_t ptrStrLength = sptr.length();
-
-		int tmp = 0;
-		if(!_indirections)
-			_indirections = &tmp;
-
-		std::string actualType = type;
-		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+		if(pt->isPointerType())
 		{
-			int& indirections = *_indirections;
-
-			while(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
-				actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
+			return _recursivelyConvertType(cgi, allowFail, user, pt->toPointerType()->base)->getPointerTo();
 		}
+		else if(pt->isFixedArrayType())
+		{
+			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toFixedArrayType()->base);
+			return fir::ArrayType::get(base, pt->toFixedArrayType()->size);
+		}
+		else if(pt->isVariadicArrayType())
+		{
+			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toVariadicArrayType()->base);
+			return fir::LLVariableArrayType::get(base);
+		}
+		else if(pt->isDynamicArrayType())
+		{
+			error("dynamic arrays not supported");
+		}
+		else if(pt->isTupleType())
+		{
+			std::deque<fir::Type*> types;
+			for(auto t : pt->toTupleType()->types)
+				types.push_back(_recursivelyConvertType(cgi, allowFail, user, t));
 
-		return actualType;
+			return fir::TupleType::get(types);
+		}
+		else if(pt->isNamedType())
+		{
+			// the bulk.
+			std::string strtype = pt->toNamedType()->name;
+
+			if(strtype == "T")
+			{
+
+			}
+
+			fir::Type* ret = cgi->getExprTypeOfBuiltin(strtype);
+			if(ret) return ret;
+
+			// not so lucky
+			std::deque<std::string> ns = cgi->unwrapNamespacedType(strtype);
+			std::string atype = ns.back();
+			ns.pop_back();
+
+
+			if(TypePair_t* test = cgi->getType(Identifier(atype, ns, IdKind::Struct)))
+			{
+				iceAssert(test->first);
+				return test->first;
+			}
+
+
+
+			auto pair = cgi->findTypeInFuncTree(ns, atype);
+			TypePair_t* tp = pair.first;
+			int indirections = pair.second;
+
+			iceAssert(indirections == -1 || indirections == 0);
+
+			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
+			if(indirections == -1)
+			{
+				// try generic.
+				fir::Type* ret = cgi->resolveGenericType(atype);
+				if(ret) return ret;
+
+				if(atype.find("<") != std::string::npos)
+				{
+					error("enotsup (generic structs)");
+				}
+
+				std::string nsstr;
+				for(auto n : ns)
+					nsstr += n + ".";
+
+				// if(ns.size() > 0) nsstr = nsstr.substr(1);
+
+				if(allowFail) return 0;
+				GenError::unknownSymbol(cgi, user, atype + " in namespace " + nsstr, SymbolType::Type);
+			}
+
+			if(!tp && cgi->getExprTypeOfBuiltin(atype))
+			{
+				return cgi->getExprTypeOfBuiltin(atype);
+			}
+			else if(tp)
+			{
+				// foundType:
+
+				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
+				tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
+
+				fir::Type* concrete = tp ? tp->first : 0;
+				if(!concrete)
+				{
+					// generate the type.
+					iceAssert(oldSB);
+
+
+					// temporarily hijack the main scope
+					auto old = cgi->namespaceStack;
+					cgi->namespaceStack = ns;
+
+					concrete = oldSB->createType(cgi);
+					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
+
+					// do recursively, to ensure it's found...???
+					// concrete = cgi->getExprTypeFromStringType(user, type, allowFail);
+					// concrete = cgi->getTypeFromParserType(user, pt, allowFail);
+
+					iceAssert(concrete);
+
+					cgi->namespaceStack = old;
+
+					if(!tp) tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
+					iceAssert(tp);
+				}
+
+				fir::Type* ret = tp->first;
+				while(indirections > 0)
+				{
+					ret = ret->getPointerTo();
+					indirections--;
+				}
+
+				return ret;
+			}
+			else if(!allowFail)
+			{
+				error(user, "Unknown type '%s'", strtype.c_str());
+			}
+			else
+			{
+				return 0;
+			}
+		}
+		else
+		{
+			iceAssert(0);
+		}
 	}
 
-	static fir::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
+	fir::Type* CodegenInstance::getTypeFromParserType(Expr* user, pts::Type* type, bool allowFail)
 	{
-		iceAssert(str.length() > 0);
-		iceAssert(str[0] == '(');
-
-		str = str.substr(1);
-		char front = str.front();
-		if(front == ')')
-			error(user, "Empty tuples are not supported");
-
-		std::vector<fir::Type*> types;
-		while(front != ')')
-		{
-			std::string cur;
-			while(front != ',' && front != '(' && front != ')')
-			{
-				cur += front;
-
-				str.erase(str.begin());
-				front = str.front();
-			}
-
-			if(front == ',' || front == ')')
-			{
-				bool shouldBreak = (front == ')');
-				fir::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
-				iceAssert(ty);
-
-				types.push_back(ty);
-
-				str.erase(str.begin());
-				front = str.front();
-
-				if(shouldBreak)
-					break;
-			}
-			else if(front == '(')
-			{
-				iceAssert(str.front() == '(');
-				types.push_back(recursivelyParseTuple(cgi, user, str, allowFail));
-
-				if(str.front() == ',')
-					str.erase(str.begin());
-
-				front = str.front();
-			}
-		}
-
-		return fir::TupleType::get(types, cgi->getContext());
+		// pts basically did all the dirty work for us, so...
+		return _recursivelyConvertType(this, allowFail, user, type);
 	}
 
 
+
+
+
+
+
+
+
+
+
+
+
+	#if 0
 
 	fir::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
 	{
@@ -1032,6 +1199,9 @@ namespace Codegen
 		}
 	}
 
+
+
+
 	fir::Type* CodegenInstance::getExprTypeFromStringType(Ast::Expr* user, ExprType type, bool allowFail)
 	{
 		if(type.isLiteral)
@@ -1137,6 +1307,7 @@ namespace Codegen
 			error(user, "enotsup");
 		}
 	}
+	#endif
 
 
 
@@ -1186,25 +1357,6 @@ namespace Codegen
 		return false;
 	}
 
-	bool CodegenInstance::isEnum(ExprType type)
-	{
-		if(type.isLiteral)
-		{
-			TypePair_t* tp = 0;
-			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
-			{
-				if(tp->second.second == TypeKind::Enum)
-					return true;
-			}
-
-			return false;
-		}
-		else
-		{
-			error("enotsup");
-		}
-	}
-
 	bool CodegenInstance::isEnum(fir::Type* type)
 	{
 		if(!type) return false;
@@ -1220,25 +1372,6 @@ namespace Codegen
 			return tp->second.second == TypeKind::Enum;
 
 		return res;
-	}
-
-	bool CodegenInstance::isTypeAlias(ExprType type)
-	{
-		if(type.isLiteral)
-		{
-			TypePair_t* tp = 0;
-			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
-			{
-				if(tp->second.second == TypeKind::TypeAlias)
-					return true;
-			}
-
-			return false;
-		}
-		else
-		{
-			error("enotsup");
-		}
 	}
 
 	bool CodegenInstance::isTypeAlias(fir::Type* type)
@@ -1319,7 +1452,7 @@ namespace Codegen
 			str += "(";
 			for(auto p : fd->params)
 			{
-				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
+				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->ptype->str()) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -1327,7 +1460,7 @@ namespace Codegen
 			if(fd->params.size() > 0)
 				str = str.substr(0, str.length() - 2);
 
-			str +=  ") -> " + fd->type.strType;
+			str +=  ") -> " + fd->ptype->str();
 			return str;
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))
@@ -1337,7 +1470,7 @@ namespace Codegen
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
 			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
-				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
+				+ (vd->inferredLType ? this->getReadableType(vd) : vd->ptype->str());
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
@@ -1510,7 +1643,7 @@ namespace Codegen
 			for(auto c : al->counts)
 				ret += "[" + this->printAst(c) + "]";
 
-			return ret + al->type.strType;
+			return ret + al->ptype->str();
 		}
 
 		error(expr, "Unknown shit (%s)", typeid(*expr).name());

@@ -202,7 +202,7 @@ namespace Codegen
 		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
 		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
 		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
 		__attribute__ ((warn_unused_result));
@@ -212,14 +212,12 @@ namespace Codegen
 
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isEnum(Ast::ExprType type);
 		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(fir::Type* e);
-		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
 
@@ -239,7 +237,7 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
+		// fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
