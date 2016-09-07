@@ -972,7 +972,7 @@ namespace Codegen
 							sizes.push_back(-1);
 							iceAssert(arr.find("]") == 3);
 
-							arr = arr.substr(3);
+							arr = arr.substr(4);
 
 							if(arr.length() > 0 && arr.front() == '[')
 								error(user, "Variadic array '[...]' must be the last dimension.");
