@@ -25,10 +25,6 @@ using namespace Ast;
 
 int main(int argc, char* argv[])
 {
-	auto p = pts::parseType("(int***,int*[...]*)*[40]*[10]**[3]*");
-	fprintf(stderr, "test: %s\n", p->str().c_str());
-
-
 	// parse arguments
 	auto names = Compiler::parseCmdLineArgs(argc, argv);
 
