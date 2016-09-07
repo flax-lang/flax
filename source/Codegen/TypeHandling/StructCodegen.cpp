@@ -85,7 +85,9 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
+			var->inferType(cgi);
+
+			var->doInitialValue(cgi, cgi->getType(var->inferredLType), r.first, r.second, ptr, false);
 		}
 
 		cgi->builder.CreateReturnVoid();

@@ -938,18 +938,18 @@ namespace Parser
 				parserError("Expected ':' followed by a type");
 
 			Expr* ctype = parseType(ps);
-			v->type = ctype->type;
+			v->ptype = ctype->ptype;
 			delete ctype;		// cleanup
 
 
 
 			// NOTE(ghetto): FUCKING. GHETTO.
-			if(v->type.strType.find("[...]") != std::string::npos)
-			{
+			if(isVariableArg && v->ptype->isVariadicArrayType())
+				parserError("Vararg must be last in the function declaration");
+
+			else if(v->ptype->isVariadicArrayType())
 				isVariableArg = true;
-				if(ps.front().type != TType::RParen)
-					parserError("Vararg must be last in the function declaration");
-			}
+
 
 
 			if(!nameCheck[v->ident.name])
@@ -971,7 +971,7 @@ namespace Parser
 		ps.eat();
 
 		// get return type.
-		std::string ret;
+		pts::Type* ret = 0;
 		Pin retPin;
 		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
 		{
@@ -979,15 +979,15 @@ namespace Parser
 			retPin = ps.front().pin;
 
 			Expr* ctype = parseType(ps);
-			ret = ctype->type.strType;
+			ret = ctype->ptype;
 			delete ctype;
 
-			if(ret == VOID_TYPE_STRING)
+			if(ret->str() == VOID_TYPE_STRING)
 				parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
 		}
 		else
 		{
-			ret = VOID_TYPE_STRING;
+			ret = pts::NamedType::create(VOID_TYPE_STRING);
 		}
 
 		ps.skipNewline();
@@ -1235,11 +1235,14 @@ namespace Parser
 	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
 	static std::string parseStringType(ParserState& ps)
 	{
-		Token front = ps.eat();
+		// note: use of pop_front() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
+		// conflated with the current type being parsed.
+		Token front = ps.front();
 
 		if(front.type == TType::Identifier)
 		{
 			std::string ret = front.text;
+			ps.pop_front();
 
 			while(true)
 			{
@@ -1253,7 +1256,8 @@ namespace Parser
 				}
 				else if(ps.front().type == TType::Identifier)
 				{
-					ret += ps.eat().text;
+					ret += ps.front().text;
+					ps.pop_front();
 				}
 				else
 				{
@@ -1269,6 +1273,8 @@ namespace Parser
 		}
 		else if(front.type == TType::LParen)
 		{
+			ps.eat();
+
 			// parse a tuple.
 			std::deque<std::string> types;
 			while(ps.front().type != TType::RParen)
@@ -1319,15 +1325,20 @@ namespace Parser
 
 	Expr* parseType(ParserState& ps)
 	{
-		Token tmp = ps.front();
+		Expr* ret = CreateAST(DummyExpr, ps.front());
+		// fprintf(stderr, "parsed: (%s, %s)", ps.front().text.c_str(), ps.tokens[1].text.c_str());
 
-		ParserState nps = ps;
-		fprintf(stderr, "parsed: %s\n", parseStringType(nps).c_str());
+		auto s = parseStringType(ps);
+		// fprintf(stderr, " <> %s\n", s.c_str());
+
+		ret->ptype = pts::parseType(s);
+		ps.skipNewline();
+
+		return ret;
 
 
-		ps.eat();
 
-		#if 1
+		#if 0
 
 		if(tmp.type == TType::Identifier)
 		{
@@ -1518,7 +1529,7 @@ namespace Parser
 
 
 
-	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
+	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, pts::Type* type, uint64_t attribs, Token tok_id)
 	{
 		if(ps.structNestLevel == 0)
 			parserError("Computed properties can only be declared inside classes");
@@ -1530,7 +1541,7 @@ namespace Parser
 
 		iceAssert(ps.eat().type == TType::LBrace);
 
-		cprop->type = type;
+		cprop->ptype = type;
 		cprop->attribs = attribs;
 
 		bool didGetter = false;
@@ -1639,7 +1650,7 @@ namespace Parser
 		if(colon.type == TType::Colon)
 		{
 			Expr* ctype = parseType(ps);
-			v->type = ctype->type;
+			v->ptype = ctype->ptype;
 
 			auto typep = ctype->pin;
 
@@ -1647,12 +1658,12 @@ namespace Parser
 
 			if(ps.front().type == TType::LBrace)
 			{
-				return parseComputedProperty(ps, v->ident.name, v->type.strType, v->attribs, tok_id);
+				return parseComputedProperty(ps, v->ident.name, v->ptype, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
 		{
-			v->type = "Inferred";
+			v->ptype = pts::InferredType::get();
 
 			// make sure the init value parser below works, push the colon back onto the stack
 			ps.tokens.push_front(colon);
@@ -1974,16 +1985,19 @@ namespace Parser
 
 
 		auto ct = parseType(ps);
-		std::string type = ct->type.strType;
+		pts::Type* type = ct->ptype;
 
 		if(ps.front().type == TType::LParen)
 		{
 			// alloc[...] Foo(...)
-			FuncCall* fc = parseFuncCall(ps, type, ct->pin);
+			if(!type->isNamedType())
+				parserError("Only class or struct types can be used in an alloc-construct expression");
+
+			FuncCall* fc = parseFuncCall(ps, type->str(), ct->pin);
 			ret->params = fc->params;
 		}
 
-		ret->type = type;
+		ret->ptype = type;
 
 		delete ct;
 		return ret;
@@ -2012,11 +2026,11 @@ namespace Parser
 			if(iv.second)
 			{
 				n->needUnsigned = true;
-				n->type = UINT64_TYPE_STRING;
+				n->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
 			}
 			else
 			{
-				n->type = INT64_TYPE_STRING;
+				n->ptype = pts::NamedType::create(INT64_TYPE_STRING);
 			}
 		}
 		else if(ps.front().type == TType::Decimal)
@@ -2024,8 +2038,8 @@ namespace Parser
 			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
-			if(n->dval < (double) FLT_MAX)	n->type = FLOAT32_TYPE_STRING;
-			else							n->type = FLOAT64_TYPE_STRING;
+			if(n->dval < (double) FLT_MAX)	n->ptype = pts::NamedType::create(FLOAT32_TYPE_STRING);
+			else							n->ptype = pts::NamedType::create(FLOAT64_TYPE_STRING);
 		}
 		else
 		{
@@ -2883,14 +2897,12 @@ namespace Parser
 		if(ps.eat().type != TType::Equal)
 			parserError("Expected '='");
 
-
-		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
-
 		Expr* ct = parseType(ps);
 		iceAssert(ct);
 
-		ret->origType = ct->type.strType;
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, ct->ptype);
 		delete ct;
+
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)
@@ -3108,13 +3120,13 @@ namespace Parser
 			ps.tokens.push_front(fake);
 			FuncDecl* fd = parseFuncDecl(ps);
 
-			if(fd->type.strType == VOID_TYPE_STRING)
+			if(fd->ptype == pts::NamedType::create(VOID_TYPE_STRING))
 				parserError("Subscript operator must return a value");
 
 			if(fd->params.size() == 0)
 				parserError("Subscript operator must take at least one argument");
 
-			std::string type = fd->type.strType;
+			pts::Type* type = fd->ptype;
 
 			// subscript operator is done a bit differently
 			// i suspect some others like deref ('#') operator will be too
