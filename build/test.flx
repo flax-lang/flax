@@ -281,7 +281,7 @@ public func main(argc: int32, argv: int8**) -> int
 	do
 	{
 		var bar = (10, 20)
-		// var foo: (int, int)* = &bar
+		var foo: (float, float)**[10]**[3]**
 	}
 
 	do

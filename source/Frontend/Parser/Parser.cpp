@@ -1169,14 +1169,165 @@ namespace Parser
 
 
 
+	static std::string parseStringTypeIndirections(ParserState& ps)
+	{
+		std::string ret;
 
+		// handle pointers.
+		while(ps.front().type == TType::Asterisk)
+		{
+			ret += "*";
+			ps.eat();
+		}
+
+
+		// handle arrays
+		// check if the next token is a '['.
+		while(ps.front().type == TType::LSquare)
+		{
+			ps.eat();
+
+			// this parses multi-dim array types.
+			Token n = ps.eat();
+			std::string dims;
+
+			if(n.type == TType::Integer)
+			{
+				dims = "[" + n.text + "]";
+			}
+			else if(n.type == TType::Ellipsis)
+			{
+				dims = "[...]";
+			}
+			else if(n.type == TType::RSquare)
+			{
+				dims = "[]";
+			}
+			else
+			{
+				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for"
+					"a variadic function argument.");
+			}
+
+			bool isVarArray = false;
+			if(n.type == TType::Ellipsis)
+				isVarArray = true;
+
+
+			n = ps.eat();
+			if(n.type != TType::RSquare)
+				parserError(n, "Expected ']' in type specifier, have '%s'", n.text.c_str());
+
+			ret += dims;
+
+			if(isVarArray && ps.front().type == TType::LSquare)
+				parserError("Variadic array must be the last dimension");
+		}
+
+		if(ps.front().type == TType::Asterisk)
+			ret += parseStringTypeIndirections(ps);
+
+		return ret;
+	}
+
+
+	// todo(ugly): this is quite stupid
+	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
+	static std::string parseStringType(ParserState& ps)
+	{
+		Token front = ps.eat();
+
+		if(front.type == TType::Identifier)
+		{
+			std::string ret = front.text;
+
+			while(true)
+			{
+				if(ps.front().type == TType::Period)
+				{
+					if(ret.back() == '.')
+						parserError("Extraneous '.' in scoped type specifier");
+
+					ret += ".";
+					ps.eat();
+				}
+				else if(ps.front().type == TType::Identifier)
+				{
+					ret += ps.eat().text;
+				}
+				else
+				{
+					break;
+				}
+			}
+
+
+			// check to see if we have even more stuff
+			// eg. T**[10]*[3]**
+
+			return ret + parseStringTypeIndirections(ps);
+		}
+		else if(front.type == TType::LParen)
+		{
+			// parse a tuple.
+			std::deque<std::string> types;
+			while(ps.front().type != TType::RParen)
+			{
+				// do things.
+				std::string ret = parseStringType(ps);
+
+				if(ps.front().type != TType::Comma && ps.front().type != TType::RParen)
+					parserError("Unexpected token '%s' in type specifier, expected either ',' or ')'", ps.front().text.c_str());
+
+				else if(ps.front().type == TType::Comma)
+					ps.eat();
+
+
+				types.push_back(ret);
+			}
+
+			if(types.size() == 0)
+				parserError("Empty tuples '()' are not supported");
+
+			std::string ret = "(";
+			for(auto t : types)
+				ret += t + ",";
+
+			if(ret.size() > 1)
+				ret.pop_back();
+
+			ret += ")";
+
+
+			if(ps.eat().type != TType::RParen)
+				parserError("Expected ')' to end tuple type specifier, found '%s' instead", ps.front().text.c_str());
+
+
+			// ok, now check if we have more things behind this.
+			// eg. (int, int)**[10]*
+
+			return ret + parseStringTypeIndirections(ps);
+		}
+		else
+		{
+			parserError("Expected type specifier, found invalid token '%s' instead", front.text.c_str());
+		}
+	}
 
 
 
 
 	Expr* parseType(ParserState& ps)
 	{
-		Token tmp = ps.eat();
+		Token tmp = ps.front();
+
+		ParserState nps = ps;
+		fprintf(stderr, "parsed: %s\n", parseStringType(nps).c_str());
+
+
+		ps.eat();
+
+		#if 1
 
 		if(tmp.type == TType::Identifier)
 		{
@@ -1360,6 +1511,8 @@ namespace Parser
 		{
 			parserError("Expected type for variable declaration, got %s", tmp.text.c_str());
 		}
+
+		#endif
 	}
 
 
