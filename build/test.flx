@@ -2,24 +2,6 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import String
-// import LibCInterface
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import Foundation
 import Utilities
 import String
@@ -296,6 +278,11 @@ public func main(argc: int32, argv: int8**) -> int
 	}
 
 
+	do
+	{
+		var bar = (10, 20)
+		// var foo: (int, int)* = &bar
+	}
 
 	do
 	{

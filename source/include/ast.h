@@ -12,6 +12,8 @@
 #include "defs.h"
 #include "ir/identifier.h"
 
+#include "pts.h"
+
 namespace fir
 {
 	struct StructType;
@@ -107,7 +109,6 @@ namespace Ast
 	{
 		explicit Result_t(ValPtr_t vp) : result(vp), type(ResultType::Normal) { }
 
-
 		Result_t(fir::Value* val, fir::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
 		Result_t(fir::Value* val, fir::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
 
@@ -116,6 +117,7 @@ namespace Ast
 		ValPtr_t result;
 		ResultType type;
 	};
+
 
 
 	// not to be confused with TypeKind
@@ -145,6 +147,7 @@ namespace Ast
 
 
 
+
 	struct Expr
 	{
 		explicit Expr(Parser::Pin pos) : pin(pos) { }
@@ -155,7 +158,9 @@ namespace Ast
 		bool didCodegen = false;
 		uint64_t attribs = 0;
 		Parser::Pin pin;
+
 		ExprType type;
+		pts::Type* ptype = 0;
 	};
 
 	struct DummyExpr : Expr
@@ -282,9 +287,11 @@ namespace Ast
 		~FuncDecl();
 		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), params(params)
 		{
-			this->type.strType = ret;
 			this->ident.name = id;
 			this->ident.kind = IdKind::Function;
+
+			this->type = ret;
+			this->ptype = pts::parseType(ret);
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
@@ -806,6 +813,23 @@ namespace Ast
 		fir::Function* globalConstructorTrampoline = 0;
 	};
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
