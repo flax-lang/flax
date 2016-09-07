@@ -135,7 +135,7 @@ namespace Codegen
 			if(c->getter)
 			{
 				std::deque<VarDecl*> params;
-				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->type.strType);
+				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->ptype);
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
 				fakeDecl->parentClass = cls;
@@ -150,10 +150,10 @@ namespace Codegen
 			if(c->setter)
 			{
 				VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
-				setterArg->type = c->type;
+				setterArg->ptype = c->ptype;
 
 				std::deque<VarDecl*> params { setterArg };
-				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, VOID_TYPE_STRING);
+				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, pts::NamedType::create(VOID_TYPE_STRING));
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 				fakeDecl->parentClass = cls;
@@ -314,7 +314,7 @@ namespace Codegen
 				// do getter.
 				BracedBlock* body = soo->getterBody;
 				FuncDecl* decl = new FuncDecl(body->pin, "_get" + std::to_string(opString.length()) + opString,
-					soo->decl->params, soo->decl->type.strType);
+					soo->decl->params, soo->decl->ptype);
 
 				decl->parentClass = cls;
 				decl->ident.kind = IdKind::Operator;
@@ -338,7 +338,7 @@ namespace Codegen
 				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
 				VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
-				setterArg->type = soo->decl->type;
+				setterArg->ptype = soo->decl->ptype;
 
 				std::deque<VarDecl*> params;
 				params = soo->decl->params;
@@ -346,7 +346,8 @@ namespace Codegen
 
 				// do getter.
 				BracedBlock* body = soo->setterBody;
-				FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, VOID_TYPE_STRING);
+				FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params,
+					pts::NamedType::create(VOID_TYPE_STRING));
 
 				decl->parentClass = cls;
 				decl->ident.kind = IdKind::Operator;

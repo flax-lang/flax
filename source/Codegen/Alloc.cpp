@@ -167,7 +167,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Type* allocType = 0;
 
-	allocType = cgi->getExprTypeFromStringType(this, this->type);
+	allocType = cgi->getTypeFromParserType(this, this->ptype);
 	iceAssert(allocType);
 
 

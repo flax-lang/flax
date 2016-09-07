@@ -44,7 +44,7 @@ namespace Operators
 		fir::Type* rtype = cgi->getExprType(args[1]);
 		if(!rtype)
 		{
-			GenError::unknownSymbol(cgi, user, args[1]->type.strType, SymbolType::Type);
+			GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
 		}
 
 

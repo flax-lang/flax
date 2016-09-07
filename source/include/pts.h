@@ -14,6 +14,10 @@ namespace Ast
 	struct Expr;
 }
 
+namespace fir
+{
+	struct Type;
+}
 
 // Parser Type System
 // why in the ever-living fuck does this even exist?
@@ -23,23 +27,72 @@ namespace Ast
 // so i'm gonna use a bunch of shortcuts -- dynamic_cast everywhere, direct constructing, etc.
 namespace pts
 {
+	struct NamedType;
+	struct PointerType;
+	struct TupleType;
+	struct FixedArrayType;
+	struct DynamicArrayType;
+	struct VariadicArrayType;
+	struct FunctionType;
+
+
 	struct Type
 	{
 		virtual ~Type() { }
-		virtual std::string str() = 0;
+		explicit Type(fir::Type* ft) : resolvedFType(ft) { }
+
+		virtual std::string str();
+
+		fir::Type* resolvedFType = 0;
+
+
+		NamedType* toNamedType();
+		PointerType* toPointerType();
+		TupleType* toTupleType();
+		FixedArrayType* toFixedArrayType();
+		DynamicArrayType* toDynamicArrayType();
+		VariadicArrayType* toVariadicArrayType();
+		FunctionType* toFunctionType();
+
+
+		bool isNamedType();
+		bool isPointerType();
+		bool isTupleType();
+		bool isFixedArrayType();
+		bool isDynamicArrayType();
+		bool isVariadicArrayType();
+		bool isFunctionType();
+
+		protected:
+			Type() { }
+	};
+
+
+	struct InferredType : Type
+	{
+		virtual ~InferredType() { }
+		InferredType() { }
+
+		virtual std::string str() override { return "?"; }
+
+
+		static InferredType* get();
 	};
 
 
 	struct NamedType : Type
 	{
 		virtual ~NamedType() { }
-		explicit NamedType(std::string n) : name(n) { }
 
 		virtual std::string str() override;
 		std::string name;
 
 
 		static NamedType* create(std::string s);
+
+
+		private:
+		explicit NamedType(std::string n) : name(n) { }
 	};
 
 

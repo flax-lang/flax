@@ -125,7 +125,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(this->decl->parentClass && this->decl->parentClass->createdType);
 
 		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
-		fake->type.ftype = this->decl->parentClass->createdType->getPointerTo();
+		fake->ptype = new pts::Type(this->decl->parentClass->createdType->getPointerTo());
 
 		vprs.push_front(fake);
 	}
@@ -168,7 +168,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
 	// bool premature = false;
-	if(this->decl->type.strType != VOID_TYPE_STRING)
+	if(this->decl->ptype->str() != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
 		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, func->getReturnType());

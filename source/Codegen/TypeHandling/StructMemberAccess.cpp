@@ -76,15 +76,15 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("(%s:%d) -> Internal check failed: invalid type encountered", __FILE__, __LINE__);
 
 
-	if(cgi->isTypeAlias(type))
-	{
-		iceAssert(ftype->isStructType());
-		iceAssert(ftype->toStructType()->getElementCount() == 1);
-		ftype = ftype->toStructType()->getElementN(0);
+	// if(cgi->isTypeAlias(type))
+	// {
+	// 	iceAssert(ftype->isStructType());
+	// 	iceAssert(ftype->toStructType()->getElementCount() == 1);
+	// 	ftype = ftype->toStructType()->getElementN(0);
 
-		warn(this, "typealias encountered");
-		isWrapped = true;
-	}
+	// 	warn(this, "typealias encountered");
+	// 	isWrapped = true;
+	// }
 
 
 	if(!ftype->isStructType() && !ftype->isClassType() && !ftype->isTupleType())
@@ -811,7 +811,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 			text += fc->name;
 
-			if(fir::Type* ltype = this->getExprTypeFromStringType(ma, text, true))
+			if(fir::Type* ltype = this->getTypeFromParserType(ma, pts::NamedType::create(text), true))
 			{
 				TypePair_t* tp = this->getType(ltype);
 				iceAssert(tp);

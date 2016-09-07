@@ -165,7 +165,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 void VarDecl::inferType(CodegenInstance* cgi)
 {
-	if(this->type.strType == "Inferred")
+	if(this->ptype == pts::InferredType::get())
 	{
 		if(this->initVal == nullptr)
 			error(this, "Type inference requires an initial assignment to infer type");
@@ -190,8 +190,8 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	}
 	else
 	{
-		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
-		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
+		this->inferredLType = cgi->getTypeFromParserType(this, this->ptype);
+		if(!this->inferredLType) error(this, "invalid type %s", this->ptype->str().c_str());
 
 		iceAssert(this->inferredLType);
 	}
@@ -309,7 +309,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else
 	{
 		TypePair_t* cmplxtype = 0;
-		if(this->type.strType != "Inferred")
+		if(this->ptype != pts::InferredType::get())
 		{
 			iceAssert(this->inferredLType);
 			cmplxtype = cgi->getType(this->inferredLType);

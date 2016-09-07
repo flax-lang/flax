@@ -25,7 +25,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 		VarDecl* decl = cgi->getSymDecl(this, vr->name);
 		if(!decl)
 		{
-			type = cgi->getExprTypeFromStringType(this, vr->name);
+			type = cgi->getTypeFromParserType(this, pts::NamedType::create(vr->name));
 
 			if(!type)
 				GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);

@@ -121,29 +121,29 @@ namespace Ast
 
 
 	// not to be confused with TypeKind
-	struct ExprType
-	{
-		bool isLiteral = true;
-		std::string strType;
+	// struct ExprType
+	// {
+	// 	bool isLiteral = true;
+	// 	std::string strType;
 
-		Expr* type = 0;
-		fir::Type* ftype = 0;
+	// 	Expr* type = 0;
+	// 	fir::Type* ftype = 0;
 
-		ExprType() : isLiteral(true), strType(""), type(0) { }
-		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
+	// 	ExprType() : isLiteral(true), strType(""), type(0) { }
+	// 	ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
 
-		void operator=(std::string stryp)
-		{
-			this->strType = stryp;
-			this->isLiteral = true;
-		}
+	// 	void operator=(std::string stryp)
+	// 	{
+	// 		this->strType = stryp;
+	// 		this->isLiteral = true;
+	// 	}
 
-		void operator=(fir::Type* ft)
-		{
-			this->ftype = ft;
-			this->isLiteral = true;
-		}
-	};
+	// 	void operator=(fir::Type* ft)
+	// 	{
+	// 		this->ftype = ft;
+	// 		this->isLiteral = true;
+	// 	}
+	// };
 
 
 
@@ -159,7 +159,7 @@ namespace Ast
 		uint64_t attribs = 0;
 		Parser::Pin pin;
 
-		ExprType type;
+		// ExprType type;
 		pts::Type* ptype = 0;
 	};
 
@@ -285,13 +285,12 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
-		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), params(params)
+		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, pts::Type* ret) : Expr(pos), params(params)
 		{
 			this->ident.name = id;
 			this->ident.kind = IdKind::Function;
 
-			this->type = ret;
-			this->ptype = pts::parseType(ret);
+			this->ptype = ret;
 		}
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
@@ -733,12 +732,12 @@ namespace Ast
 	struct TypeAlias : StructBase
 	{
 		~TypeAlias();
-		TypeAlias(Parser::Pin pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
+		TypeAlias(Parser::Pin pos, std::string _alias, pts::Type* _origType) : StructBase(pos, _alias), origType(_origType) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
 
 		bool isStrong = false;
-		std::string origType;
+		pts::Type* origType;
 	};
 
 	struct Alloc : Expr
