@@ -47,6 +47,8 @@ namespace Parser
 		return modname;
 	}
 
+	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps);
+
 	static bool checkHasMore(ParserState& ps)
 	{
 		return ps.tokens.size() > 0;
@@ -847,55 +849,10 @@ namespace Parser
 			if(ps.front().type == TType::RAngle)
 				parserError("Empty type parameter list");
 
-			while(ps.front().type != TType::RAngle)
-			{
-				if(ps.front().type == TType::Identifier)
-				{
-					std::string gt = ps.eat().text;
-					TypeConstraints_t constrs;
-
-					if(ps.front().type == TType::Colon)
-					{
-						ps.eat();
-						if(ps.front().type != TType::Identifier)
-							parserError("Expected identifier after beginning of type constraint list");
-
-						while(ps.front().type == TType::Identifier)
-						{
-							constrs.protocols.push_back(ps.eat().text);
-
-							if(ps.front().type == TType::Ampersand)
-							{
-								ps.eat();
-							}
-							else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-							{
-								parserError("Expected ',' or '>' to end type parameter list (1)");
-							}
-						}
-					}
-					else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-					{
-						parserError("Expected ',' or '>' to end type parameter list (2)");
-					}
-
-					genericTypes[gt] = constrs;
-				}
-				else if(ps.front().type == TType::Comma)
-				{
-					ps.eat();
-				}
-				else if(ps.front().type != TType::RAngle)
-				{
-					parserError("Expected '>' to end type parameter list");
-				}
-			}
-
-			iceAssert(ps.eat().type == TType::RAngle);
+			genericTypes = parseGenericTypeList(ps);
 
 			if(ps.eat().type != TType::LParen)
 				parserError("Expected '(' after function name");
-
 		}
 
 
@@ -1312,6 +1269,108 @@ namespace Parser
 			// ok, now check if we have more things behind this.
 			// eg. (int, int)**[10]*
 
+			return ret + parseStringTypeIndirections(ps);
+		}
+		else if(front.type == TType::LSquare)
+		{
+			// function type specifiers have this form:
+			// [<T, U> (a: T, b: U) -> X]
+			// HOWEVER, on the PTS system, we use {<T, U>(...) -> ...}.
+			// basically, [ -> { and ] -> }.
+			// this is to disambiguate from the array thing.
+
+			std::string ret = "{";
+
+			ps.eat();
+			std::map<std::string, TypeConstraints_t> genericTypes;
+
+			if(ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
+			{
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+			}
+			else if(ps.front().type == TType::LAngle)
+			{
+				ps.eat();
+				genericTypes = parseGenericTypeList(ps);
+			}
+
+			if(genericTypes.size() > 0)
+			{
+				ret += "<";
+				for(auto g : genericTypes)
+				{
+					ret += g.first;
+					if(g.second.protocols.size() > 0)
+						ret += ":";
+
+					for(auto p : g.second.protocols)
+						ret += p + "&";
+
+					if(ret.back() == '&')
+						ret.pop_back();
+
+					ret += ",";
+				}
+
+				if(ret.back() == ',')
+					ret.pop_back();
+
+				if(ret.back() == '<')
+					parserError("Empty generic type lists are not supported");
+
+				ret += ">";
+			}
+
+
+			// ok, add the actual function shit now.
+			ret += "(";
+
+			if(ps.front().type != TType::LParen)
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+
+			ps.eat();
+
+			// start. basically we take a list of types only, no names.
+			while(ps.front().type != TType::RParen)
+			{
+				ret += parseStringType(ps);
+
+				if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+					ret += ",";
+				}
+				else if(ps.front().type != TType::RParen)
+				{
+					parserError("Expected ')' to end argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+				}
+			}
+
+			if(ret.back() == ',')
+				ret.pop_back();
+
+			iceAssert(ps.eat().type == TType::RParen);
+			ret += ")";
+
+			if(ps.front().type != TType::Arrow)
+			{
+				parserMessage(Err::Error, "Expected '->' to specify return type of function type specifier, got '%s'", ps.front().text.c_str());
+				parserMessage(Err::Info, "Note: void returns must be made explicit in type specifiers");
+
+				doTheExit();
+			}
+
+			ps.eat();
+
+			ret += "->" + parseStringType(ps) + "}";
+
+			if(ps.front().type != TType::RSquare)
+				parserError("Expected ']' to end function type specifier, got '%s' instead", ps.front().text.c_str());
+
+			ps.eat();
+
+
+			// see if we have... more.
 			return ret + parseStringTypeIndirections(ps);
 		}
 		else
@@ -2040,30 +2099,57 @@ namespace Parser
 		return ret;
 	}
 
-	static void parseGenericTypeList(ParserState& ps, Expr* sb)
+	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps)
 	{
-		while(true)
+		std::map<std::string, TypeConstraints_t> ret;
+
+		while(ps.front().type != TType::RAngle)
 		{
-			Token type = ps.eat();
+			if(ps.front().type == TType::Identifier)
+			{
+				std::string gt = ps.eat().text;
+				TypeConstraints_t constrs;
 
-			#if 0
-			if(std::find(sb->genericTypes.begin(), sb->genericTypes.end(), type.text) != sb->genericTypes.end())
-				parserError("Duplicate generic type %s", type.text.c_str());
+				if(ps.front().type == TType::Colon)
+				{
+					ps.eat();
+					if(ps.front().type != TType::Identifier)
+						parserError("Expected identifier after beginning of type constraint list");
 
-			sb->genericTypes.push_back(type.text);
-			#endif
+					while(ps.front().type == TType::Identifier)
+					{
+						constrs.protocols.push_back(ps.eat().text);
 
-			if(ps.front().type == TType::Comma)
+						if(ps.front().type == TType::Ampersand)
+						{
+							ps.eat();
+						}
+						else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+						{
+							parserError("Expected ',' or '>' to end type parameter list (1)");
+						}
+					}
+				}
+				else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+				{
+					parserError("Expected ',' or '>' to end type parameter list (2)");
+				}
+
+				ret[gt] = constrs;
+			}
+			else if(ps.front().type == TType::Comma)
+			{
 				ps.eat();
-
-			else if(ps.front().type == TType::RAngle)
-				break;
-
-			else
-				parserError("Unexpected token %s in generic type list", ps.front().text.c_str());
+			}
+			else if(ps.front().type != TType::RAngle)
+			{
+				parserError("Expected '>' to end type parameter list");
+			}
 		}
 
 		iceAssert(ps.eat().type == TType::RAngle);
+
+		return ret;
 	}
 
 
@@ -2090,21 +2176,6 @@ namespace Parser
 			str->packed = true;
 
 		str->attribs = attr;
-
-		// check for a colon.
-		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, str);
-		}
-		if(ps.front().type == TType::Colon)
-		{
-			parserError("Structs cannot inherit from anything");
-		}
-
-
-
 
 
 		// parse a block.
@@ -2180,11 +2251,6 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, cls);
-		}
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
@@ -2349,11 +2415,6 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, prot);
-		}
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();

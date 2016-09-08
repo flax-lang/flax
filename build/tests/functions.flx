@@ -1,0 +1,29 @@
+// functions.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+import Foundation
+
+
+
+
+
+
+public func doFunctionTest()
+{
+	var fn: [<KK: AA & BB, TT: CC & DD & EE, UU: FF & GG>(int[10], (int, float[10], (int, int)), int) -> void]*
+	// var k: (int, (int, int), int[10])
+}
+
+
+
+
+
+
+
+
+func each(arr: int*, length: int)
+{
+
+}

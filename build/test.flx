@@ -14,6 +14,7 @@ import tests.arraytest
 import tests.generics
 import tests.limits
 
+import tests.functions
 
 
 ƒ runTests()
