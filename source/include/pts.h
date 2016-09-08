@@ -9,6 +9,8 @@
 #include <string>
 #include <deque>
 
+#include "defs.h"
+
 namespace Ast
 {
 	struct Expr;
@@ -156,6 +158,7 @@ namespace pts
 		explicit FunctionType(std::deque<pts::Type*> args, pts::Type* ret) : argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
+		std::map<std::string, TypeConstraints_t> genericTypes;
 		std::deque<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};

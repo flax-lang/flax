@@ -881,11 +881,6 @@ namespace Codegen
 			// the bulk.
 			std::string strtype = pt->toNamedType()->name;
 
-			if(strtype == "T")
-			{
-
-			}
-
 			fir::Type* ret = cgi->getExprTypeOfBuiltin(strtype);
 			if(ret) return ret;
 
@@ -985,6 +980,27 @@ namespace Codegen
 			{
 				return 0;
 			}
+		}
+		else if(pt->isFunctionType())
+		{
+			auto ft = pt->toFunctionType();
+
+			std::deque<fir::Type*> args;
+			// temporarily push a new generic stack
+			cgi->pushGenericTypeStack();
+
+			for(auto gt : ft->genericTypes)
+				cgi->pushGenericType(gt.first, fir::ParametricType::get(gt.first));
+
+			for(auto arg : ft->argTypes)
+				args.push_back(_recursivelyConvertType(cgi, allowFail, user, arg));
+
+			fir::Type* retty = _recursivelyConvertType(cgi, allowFail, user, ft->returnType);
+
+			auto ret = fir::FunctionType::get(args, retty, args.size() > 0 && args.back()->isLLVariableArrayType());
+			info("%s", ret->str().c_str());
+
+			return ret;
 		}
 		else
 		{
