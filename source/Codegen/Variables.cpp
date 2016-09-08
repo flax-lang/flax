@@ -58,7 +58,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->getExprType(this)->isPointerType()))
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this)
+		|| cgi->getExprType(this)->isTupleType() || cgi->getExprType(this)->isPointerType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);

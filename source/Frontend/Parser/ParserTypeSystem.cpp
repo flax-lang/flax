@@ -37,12 +37,57 @@ namespace pts
 		iceAssert(str.length() > 0);
 		iceAssert(str[0] == '(');
 
+
+		size_t origLength = str.length();
+
+
 		str = str.substr(1);
 		char front = str.front();
 		if(front == ')')
 			return new pts::TupleType({ });
 
 		std::deque<pts::Type*> types;
+
+		for(size_t i = 0, nest = 0; i < str.size();)
+		{
+			if(str[i] == '(')
+			{
+				nest++;
+			}
+			else if(str[i] == ',' && nest == 0)
+			{
+				types.push_back(parseType(str.substr(0, i)));
+				str = str.substr(i + 1);
+				i = 0;
+
+				// skip the increment.
+				continue;
+			}
+			else if(str[i] == ')')
+			{
+				if(nest == 0)
+				{
+					types.push_back(parseType(str.substr(0, i)));
+					str = str.substr(i);
+
+					break;
+				}
+				else
+				{
+					nest--;
+				}
+			}
+
+			 i++;
+		}
+
+		iceAssert(str.front() == ')');
+		str.substr(1);
+
+		*used = origLength - str.length();
+
+
+		#if 0
 		while(front != ')')
 		{
 			std::string cur;
@@ -86,6 +131,8 @@ namespace pts
 			}
 		}
 
+		#endif
+
 		(*used)++;
 		return new pts::TupleType(types);
 	}
@@ -96,7 +143,17 @@ namespace pts
 	{
 		if(type.length() > 0)
 		{
-			if(type[0] == '(')
+			if(type[0] == '*')
+			{
+				iceAssert(base);
+				size_t i = 0;
+				for(; i < type.size() && type[i] == '*'; i++)
+					base = new pts::PointerType(base);
+
+				type = type.substr(i);
+				return parseTypeUsingBase(base, type);
+			}
+			else if(type[0] == '(')
 			{
 				// parse a tuple.
 				int used = 0;
@@ -104,6 +161,123 @@ namespace pts
 
 				type = type.substr(used);
 				return parseTypeUsingBase(parsed, type);
+			}
+			else if(type[0] == '{')
+			{
+				// see if we have generic parts
+				std::map<std::string, TypeConstraints_t> genericTypes;
+				if(type[1] == '<')
+				{
+					size_t i = 2;
+					for(; i < type.size(); i++)
+					{
+						std::string name;
+						while(type[i] != ':' && type[i] != '>' && type[i] != '&' && i < type.size())
+							name += type[i], i++;
+
+						// constraints
+						std::deque<std::string> prots;
+						if(type[i] == ':')
+						{
+							i++;
+
+							prots.push_back("");
+
+							again:
+							while(type[i] != '&' && type[i] != ',' && type[i] != '>')
+								prots.back() += type[i], i++;
+
+							// todo(goto): lol
+							// mostly because i'm lazy to structure it nicely
+							// and it's completely clear and easy to understand what's going on here.
+
+							if(type[i] == '&')
+							{
+								i++;
+								prots.push_back("");
+
+								goto again;
+							}
+						}
+
+						genericTypes[name].protocols = prots;
+
+						if(type[i] == '>')
+							break;
+					}
+
+					iceAssert(type[i] == '>');
+					i++;
+
+					type = type.substr(i);
+				}
+
+				// ok, time for the param list.
+				// note: the reason these are asserts is because the input (std::string type) comes from the parser,
+				// and is generated, not user-inputted.
+				// the parser should already error on malformed things.
+				iceAssert(type[0] == '(');
+				type = type.substr(1);
+
+				std::deque<pts::Type*> argTypes;
+
+				for(size_t i = 0, nest = 0; i < type.size();)
+				{
+					// we need to isolate the string of the next type.
+					// if we encounter a '(', then nest; if a ')', un-nest.
+					// if nest == 0 and we get a ',' or a ')', former means parse and continue, latter means break and continue.
+
+
+					if(type[i] == '(')
+					{
+						nest++;
+					}
+					else if(type[i] == ',' && nest == 0)
+					{
+						argTypes.push_back(parseType(type.substr(0, i)));
+						type = type.substr(i + 1);
+						i = 0;
+
+						continue;
+					}
+					else if(type[i] == ')')
+					{
+						if(nest == 0)
+						{
+							argTypes.push_back(parseType(type.substr(0, i)));
+							type = type.substr(i);
+
+							break;
+						}
+						else
+						{
+							nest--;
+						}
+					}
+
+
+
+					i++;
+				}
+
+				iceAssert(type.compare(0, 3, ")->") == 0);
+				type = type.substr(3);
+
+				// parse the type next. the rearmost '}' should be ours.
+				// (note: the function can return a function, we need to handle that, hence this.)
+
+				size_t k = type.find_last_of("}");
+				std::string retty = type.substr(0, k);
+
+				pts::Type* rtype = parseType(retty);
+
+				pts::FunctionType* ft = new pts::FunctionType(argTypes, rtype);
+				ft->genericTypes = genericTypes;
+
+
+				// remove the } too.
+				type = type.substr(k + 1);
+				return parseTypeUsingBase(ft, type);
 			}
 			else
 			{
@@ -203,6 +377,7 @@ namespace pts
 				else
 				{
 					ret = pts::NamedType::create(actualType);
+					// debuglog("maked named = %s\n", ret->str().c_str());
 				}
 
 
@@ -221,6 +396,7 @@ namespace pts
 		}
 		else
 		{
+			debuglog("%s\n", type.c_str());
 			iceAssert(0);
 		}
 	}
@@ -384,7 +560,26 @@ namespace pts
 
 	std::string FunctionType::str()
 	{
-		std::string ret = "[(";
+		std::string ret = "{";
+
+		for(auto g : this->genericTypes)
+		{
+			ret += g.first;
+			if(g.second.protocols.size() > 0) ret += ":";
+
+			for(auto p : g.second.protocols)
+				ret += p + "&";
+
+			if(ret.back() == '&')
+				ret.pop_back();
+
+			ret += ",";
+		}
+
+		if(ret.back() == ',')
+			ret.pop_back();
+
+
 		for(auto t : this->argTypes)
 			ret += t->str() + ", ";
 
@@ -394,7 +589,7 @@ namespace pts
 			ret.pop_back();
 		}
 
-		return ret + ") -> " + this->returnType->str() + "]";
+		return ret + ") -> " + this->returnType->str() + "}";
 	}
 }
 
