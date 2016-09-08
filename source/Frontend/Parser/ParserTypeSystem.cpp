@@ -172,7 +172,7 @@ namespace pts
 					for(; i < type.size(); i++)
 					{
 						std::string name;
-						while(type[i] != ':' && type[i] != '>' && type[i] != '&' && i < type.size())
+						while(i < type.size() && type[i] != ':' && type[i] != '>' && type[i] != '&' && type[i] != ',')
 							name += type[i], i++;
 
 						// constraints
