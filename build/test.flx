@@ -213,6 +213,12 @@ func vt<T>(b: T[...])
 	}
 }
 
+func vt2<T>(a: T, b: int[...])
+{
+	// do something.
+	variadicTest(a, b)
+}
+
 
 @nomangle func mtest(k: int, g: int)
 {
@@ -225,6 +231,7 @@ func vt<T>(b: T[...])
 	pt(10, &g)
 
 	vt(10, 30, 40, 50, 60)
+	vt2("hi", 1, 2, 3, 4)
 
 	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
 }

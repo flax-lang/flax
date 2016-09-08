@@ -469,6 +469,24 @@ namespace fir
 	};
 
 
+	struct ProtocolType : Type
+	{
+		friend struct Type;
+
+		// methods
+
+
+		// protected constructor
+
+
+		// fields
+
+
+		// static funcs
+		public:
+	};
+
+
 	struct FunctionType : Type
 	{
 		friend struct Type;

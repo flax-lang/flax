@@ -301,9 +301,6 @@ namespace Codegen
 		~CodegenInstance();
 	};
 
-
-	std::string unwrapPointerType(std::string type, int* indirections);
-
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 }
 
