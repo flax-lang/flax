@@ -9,12 +9,14 @@ import Foundation
 
 
 
+func foo(a: int)
+{
+	printf("a: %d\n", a)
+}
 
 public func doFunctionTest()
 {
-	var fn: [<T, K>(T, K) -> int]
-
-
+	var f: [(int) -> void] = foo
 }
 
 
@@ -24,7 +26,7 @@ public func doFunctionTest()
 
 
 
-func each(arr: int*, length: int)
+func each(arr: int*, length: int, f: [(int) -> void])
 {
 
 }
