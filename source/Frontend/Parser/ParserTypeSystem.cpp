@@ -211,6 +211,10 @@ namespace pts
 
 					type = type.substr(i);
 				}
+				else
+				{
+					type = type.substr(1);
+				}
 
 				// ok, time for the param list.
 				// note: the reason these are asserts is because the input (std::string type) comes from the parser,
