@@ -124,6 +124,20 @@ namespace fir
 		return this->functions[id];
 	}
 
+	std::deque<Function*> Module::getFunctionsWithName(Identifier id)
+	{
+		// todo: *very* inefficient.
+
+		std::deque<Function*> ret;
+		for(auto fn : this->functions)
+		{
+			if(fn.first.name == id.name && fn.first.scope == id.scope)
+				ret.push_back(fn.second);
+		}
+
+		return ret;
+	}
+
 	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
 	{
 		if(this->functions.find(id) != this->functions.end())
@@ -147,6 +161,7 @@ namespace fir
 
 		return f;
 	}
+
 
 
 
