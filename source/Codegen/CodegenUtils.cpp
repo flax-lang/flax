@@ -2,17 +2,11 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include <stdint.h>
+
 #include <map>
 #include <set>
-#include <vector>
-#include <memory>
-#include <cfloat>
-#include <utility>
-#include <fstream>
-#include <stdint.h>
-#include <typeinfo>
-#include <iostream>
-#include <cinttypes>
+
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
@@ -2252,6 +2246,58 @@ namespace Codegen
 
 
 
+
+
+
+
+
+	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
+	{
+		auto list = this->module->getFunctionsWithName(id);
+		if(list.empty())
+			error(user, "Using undeclared function '%s'", id.str().c_str());
+
+		else if(list.size() > 1)
+			error(user, "Searched for ambiguous function by name '%s'", id.str().c_str());
+
+		return list.front();
+	}
+
+	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Expr* user)
+	{
+		auto list = this->module->getFunctionsWithName(id);
+
+		if(list.empty())
+		{
+			error(user, "Using undeclared function '%s'", id.str().c_str());
+		}
+		else if(list.size() == 1)
+		{
+			if(list.front()->getType() == ft)
+				return list.front();
+
+			else
+				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.str().c_str(), ft->str().c_str());
+		}
+
+		// more than one.
+		std::deque<fir::Function*> ret;
+
+		for(auto f : list)
+		{
+			if(f->getType() == ft)
+				ret.push_back(f);
+		}
+
+		if(ret.size() == 0)
+			error(user, "No function with name '%s', matching type '%s'", id.str().c_str(), ft->str().c_str());
+
+		else if(ret.size() > 1)
+			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.str().c_str(), ft->str().c_str());
+
+		else
+			return ret[0];
+	}
 
 
 

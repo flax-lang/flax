@@ -259,6 +259,11 @@ namespace Codegen
 
 
 
+		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
+
+
+
 
 		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
 		Ast::Result_t indexLLVariableArray(fir::Value* arr, fir::Value* index);
