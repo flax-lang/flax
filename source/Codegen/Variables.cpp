@@ -16,7 +16,10 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
+	{
+		// if we're passed the type, (aka extra), and the type is a function, look for a function by this name.
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+	}
 
 	return Result_t(cgi->builder.CreateLoad(val), val);
 }
