@@ -199,8 +199,8 @@ namespace Codegen
 
 
 
-		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+		// fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		// fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
 		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
@@ -227,10 +227,6 @@ namespace Codegen
 
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
-
-		std::string getReadableType(Ast::Expr* expr);
-		std::string getReadableType(fir::Type* type);
-		std::string getReadableType(fir::Value* val);
 
 		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
 		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");

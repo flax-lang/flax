@@ -13,6 +13,13 @@ using namespace Codegen;
 
 
 
+fir::Type* ClassDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
 
 Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -259,7 +266,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ClassDef::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return this->createdType;
@@ -319,7 +326,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 		if(!var->isStatic)
 		{
-			types.push_back({ var->ident.name, cgi->getExprType(var) });
+			types.push_back({ var->ident.name, var->getType(cgi) });
 		}
 	}
 

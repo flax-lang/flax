@@ -20,6 +20,13 @@ Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
+fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return cgi->getTypeFromParserType(this, this->ptype);
+}
+
+
+
 Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::string name)
 {
 	auto tmp = cls->ident.scope;
@@ -39,6 +46,146 @@ Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::stri
 
 	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
+
+
+
+
+
+
+
+
+
+
+
+
+fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->matype == MAType::LeftNamespace || this->matype == MAType::LeftTypename)
+		return cgi->resolveStaticDotOperator(this, false).first.first;
+
+	// first, get the type of the lhs
+	fir::Type* lhs = this->left->getType(cgi);
+	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
+
+	if(!pair && !lhs->isTupleType())
+		error(this, "Invalid type '%s' for dot-operator-access", lhs->str().c_str());
+
+	if(lhs->isTupleType())
+	{
+		// values are 1, 2, 3 etc.
+		// for now, assert this.
+
+		fir::TupleType* tt = lhs->toTupleType();
+		iceAssert(tt);
+
+		Number* n = dynamic_cast<Number*>(this->right);
+		iceAssert(n);
+
+		if((size_t) n->ival >= tt->getElementCount())
+		{
+			error(this, "Tuple does not have %d elements, only %zd", (int) n->ival + 1, tt->getElementCount());
+		}
+
+		return tt->getElementN(n->ival);
+	}
+	else if(pair->second.second == TypeKind::Class)
+	{
+		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
+		iceAssert(cls);
+
+		VarRef* memberVr = dynamic_cast<VarRef*>(this->right);
+		FuncCall* memberFc = dynamic_cast<FuncCall*>(this->right);
+
+		if(memberVr)
+		{
+			for(VarDecl* mem : cls->members)
+			{
+				if(mem->ident.name == memberVr->name)
+					return mem->getType(cgi);
+			}
+			for(ComputedProperty* c : cls->cprops)
+			{
+				if(c->ident.name == memberVr->name)
+					return c->getType(cgi);
+			}
+
+			auto exts = cgi->getExtensionsForType(cls);
+			for(auto ext : exts)
+			{
+				for(auto cp : ext->cprops)
+				{
+					if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
+					{
+						if(cp->ident.name == memberVr->name)
+							return cp->getType(cgi);
+					}
+				}
+			}
+		}
+		else if(memberFc)
+		{
+			return cgi->resolveMemberFuncCall(this, cls, memberFc).second->getReturnType();
+		}
+	}
+	else if(pair->second.second == TypeKind::Struct)
+	{
+		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
+		iceAssert(str);
+
+		VarRef* memberVr = dynamic_cast<VarRef*>(this->right);
+		FuncCall* memberFc = dynamic_cast<FuncCall*>(this->right);
+
+		if(memberVr)
+		{
+			for(VarDecl* mem : str->members)
+			{
+				if(mem->ident.name == memberVr->name)
+					return mem->getType(cgi);
+			}
+
+			auto exts = cgi->getExtensionsForType(str);
+			for(auto ext : exts)
+			{
+				for(auto cp : ext->cprops)
+				{
+					if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
+					{
+						if(cp->ident.name == memberVr->name)
+							return cp->getType(cgi);
+					}
+				}
+			}
+		}
+		else if(memberFc)
+		{
+			error(memberFc, "Tried to call method on struct");
+		}
+	}
+	else if(pair->second.second == TypeKind::Enum)
+	{
+		EnumDef* enr = dynamic_cast<EnumDef*>(pair->second.first);
+		iceAssert(enr);
+
+		VarRef* enrcase = dynamic_cast<VarRef*>(this->right);
+		iceAssert(enrcase);
+
+		for(auto c : enr->cases)
+		{
+			if(c.first == enrcase->name)
+				return c.second->getType(cgi);
+		}
+
+		error(this, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), enrcase->name.c_str());
+	}
+	else
+	{
+		error(this, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+	}
+
+	iceAssert(0);
+}
+
+
 
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -141,7 +288,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 				std::deque<fir::Type*> fpars = { ftype->getPointerTo() };
-				for(auto e : fc->params) fpars.push_back(cgi->getExprType(e));
+				for(auto e : fc->params) fpars.push_back(e->getType(cgi));
 
 
 				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
@@ -203,7 +350,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type '%s'", cgi->getReadableType(ftype).c_str());
+			error(this, "Cannot do member access on non-struct type '%s'", ftype->str().c_str());
 		}
 	}
 
@@ -255,7 +402,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(!pair && !ftype->isClassType() && !ftype->isStructType() && !ftype->isTupleType())
 	{
-		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, cgi->getReadableType(ftype).c_str());
+		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, ftype->str().c_str());
 	}
 
 
@@ -891,7 +1038,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				{
 					if(v->isStatic && v->ident.name == vr->name)
 					{
-						fir::Type* ltype = this->getExprType(v);
+						fir::Type* ltype = v->getType(this);
 						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
 					}
 				}
@@ -947,7 +1094,7 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 {
 	std::deque<fir::Type*> params;
 	for(auto p : fc->params)
-		params.push_back(this->getExprType(p));
+		params.push_back(p->getType(this));
 
 	if(cls->createdType == 0)
 		cls->createType(this);

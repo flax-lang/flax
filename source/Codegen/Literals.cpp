@@ -11,29 +11,63 @@ using namespace Codegen;
 Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// check builtin type
-	if(!this->decimal)
-	{
-		if(this->needUnsigned)
-			return Result_t(fir::ConstantInt::getUint64((uint64_t) this->ival), 0);
-
-		else
-			return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
-	}
-	else
-	{
+	if(this->decimal)
 		return Result_t(fir::ConstantFP::getFloat64(this->dval), 0);
-	}
+
+	else if(this->needUnsigned)
+		return Result_t(fir::ConstantInt::getUint64((uint64_t) this->ival), 0);
+
+	else
+		return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
 }
+
+fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->decimal)
+		return fir::PrimitiveType::getFloat64();
+
+	else if(this->needUnsigned)
+		return fir::PrimitiveType::getUint64();
+
+	else
+		return fir::PrimitiveType::getInt64();
+}
+
+
+
+
+
 
 Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(fir::ConstantInt::getBool(this->val), 0);
 }
 
+fir::Type* BoolVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return fir::PrimitiveType::getBool();
+}
+
+
+
+
+
+
+
 Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return Result_t(fir::ConstantValue::getNull(), 0);
 }
+
+fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return fir::PrimitiveType::getVoid()->getPointerTo();
+}
+
+
+
+
+
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -82,6 +116,30 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
+fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	auto pair = cgi->getTypeByString("String");
+	if(pair && !this->isRaw)
+	{
+		iceAssert(pair->first);
+		return pair->first;
+	}
+	else
+	{
+		return fir::PointerType::getInt8Ptr();
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
 
 Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -99,7 +157,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		tp = cgi->getExprType(this->values.front());
+		tp = this->values.front()->getType(cgi);
 
 		for(Expr* e : this->values)
 		{
@@ -112,7 +170,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 				if(vals.back()->getType() != tp)
 				{
 					error(e, "Array members must have the same type, got %s and %s",
-						cgi->getReadableType(tp).c_str(), cgi->getReadableType(vals.back()->getType()).c_str());
+						tp->str().c_str(), vals.back()->getType()->str().c_str());
 				}
 			}
 			else
@@ -128,6 +186,11 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	cgi->builder.CreateStore(val, alloc);
 	return Result_t(val, alloc);
+}
+
+fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return fir::ArrayType::get(this->values.front()->getType(cgi), this->values.size());
 }
 
 

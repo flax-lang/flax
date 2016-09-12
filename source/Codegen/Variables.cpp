@@ -24,6 +24,15 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(cgi->builder.CreateLoad(val), val);
 }
 
+fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	VarDecl* decl = cgi->getSymDecl(this, this->name);
+	if(!decl)
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+
+	return decl->getType(cgi, allowFail);
+}
+
 
 
 
@@ -62,7 +71,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		// handled below
 	}
 	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this)
-		|| cgi->getExprType(this)->isTupleType() || cgi->getExprType(this)->isPointerType()))
+		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);
@@ -175,7 +184,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			error(this, "Type inference requires an initial assignment to infer type");
 
 
-		fir::Type* vartype = cgi->getExprType(this->initVal);
+		fir::Type* vartype = this->initVal->getType(cgi);
 		if(vartype == nullptr || vartype->isVoidType())
 			GenError::nullValue(cgi, this->initVal);
 
@@ -188,9 +197,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		}
 
 		this->inferredLType = vartype;
-
-		// if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
-		// 	this->type = cgi->getReadableType(this->initVal);
 	}
 	else
 	{
@@ -332,6 +338,27 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		return Result_t(0, ai);
 }
 
+fir::Type* VarDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->ptype == pts::InferredType::get())
+	{
+		if(!this->inferredLType)		// todo: better error detection for this
+		{
+			error(this, "Invalid variable declaration for %s!", this->ident.name.c_str());
+		}
+
+		iceAssert(this->inferredLType);
+		return this->inferredLType;
+	}
+	else
+	{
+		// if we already "inferred" the type, don't bother doing it again.
+		if(this->inferredLType)
+			return this->inferredLType;
+
+		return cgi->getTypeFromParserType(this, this->ptype, allowFail);
+	}
+}
 
 
 

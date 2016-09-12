@@ -17,15 +17,11 @@ struct raiiThing
 		this->c = cgi;
 		this->c->pushGenericTypeStack();
 		this->c->pushGenericType("Self", t);
-
-		// info("push");
 	}
 
 	~raiiThing()
 	{
 		this->c->popGenericTypeStack();
-
-		// error("pop");
 	}
 
 	CodegenInstance* c = 0;
@@ -45,11 +41,9 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 		auto tl = fcf->getType()->getArgumentTypes();
 		tl.pop_front();
 
-
-
 		int _ = 0;
 		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
-			&& ((fn->ptype->str() == "Self" && created == fcf->getReturnType()) || cgi->getExprType(fn) == fcf->getReturnType()));
+			&& ((fn->ptype->str() == "Self" && created == fcf->getReturnType()) || fn->getType(cgi) == fcf->getReturnType()));
 
 		return ret;
 	};
@@ -97,6 +91,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 		out:
 		if(!found) return false;
+
 
 		for(Func* f : prot->funcs)
 		{
@@ -149,11 +144,12 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 				// exclude self.
 				iceAssert(ovl->func->decl->params.size() == 1);
 
-				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), cgi->getExprType(ovl->func->decl->params[0]));
+				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), ovl->func->decl->params[0]->getType(cgi));
 				if(!dat.found)
 				{
 					// nothing to push
 					(*missing).push_back(ovl->func->decl);
+
 					break;
 				}
 			}
@@ -245,7 +241,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 
 
 
-fir::Type* ProtocolDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ProtocolDef::createType(CodegenInstance* cgi)
 {
 	for(Func* f : this->funcs)
 	{
@@ -260,6 +256,11 @@ fir::Type* ProtocolDef::createType(CodegenInstance* cgi, std::unordered_map<std:
 	// 	error(e, "Protocol assignment oevrloads not (yet) supported");
 
 	return 0;
+}
+
+fir::Type* ProtocolDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
 }
 
 Result_t ProtocolDef::codegen(CodegenInstance* cgi, fir::Value* extra)

@@ -37,6 +37,14 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return lastval;
 }
 
+fir::Type* BracedBlock::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	static bool didRecurse = false;
@@ -136,7 +144,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(!isGeneric)
 		{
-			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(vprs[i]));
+			iceAssert(func->getArguments()[i]->getType() == vprs[i]->getType(cgi));
 		}
 
 		fir::Value* ai = 0;
@@ -229,6 +237,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* Func::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return this->decl->getType(cgi);
+}
 
 
 

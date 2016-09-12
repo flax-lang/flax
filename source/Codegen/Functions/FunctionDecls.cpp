@@ -188,9 +188,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->pushGenericType(p.first, fir::ParametricType::get(p.first));
 
 		for(VarDecl* v : this->params)
-			argtypes.push_back(cgi->getExprType(v));
+			argtypes.push_back(v->getType(cgi));
 
-		returnType = cgi->getExprType(this);
+		returnType = this->getType(cgi);
 	}
 	cgi->popGenericTypeStack();
 
@@ -214,6 +214,15 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* FuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	fir::Type* t = cgi->getTypeFromParserType(this, this->ptype);
+	if(t)
+		return t;
+
+	else
+		error(this, "Unknown type '%s'", this->ptype->str().c_str());
+}
 
 
 
@@ -246,10 +255,23 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
-
+fir::Type* ForeignFuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return this->decl->codegen(cgi);
 }
+
+
+
+
+
+
+
+
+
+
+
