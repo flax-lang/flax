@@ -39,12 +39,16 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		this->cachedResolveTarget.resolved = true;
 
-		info("%s", cgi->builder.CreateLoad(fv)->getType()->str().c_str());
+		if(!fv->getType()->getPointerElementType()->isFunctionType())
+			error("'%s' is not a function, and cannot be called", this->name.c_str());
 
-		auto f = dynamic_cast<fir::Function*>(cgi->builder.CreateLoad(fv));
-		iceAssert(f);
+		fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
+		iceAssert(ft);
 
-		this->cachedResolveTarget.t.first = f;
+		fir::Value* fn = cgi->builder.CreateLoad(fv);
+		cgi->builder.CreateCallToFunctionPointer(fn, ft, { });
+
+		return Result_t(0, 0);
 	}
 
 

@@ -105,6 +105,7 @@ namespace fir
 		Value_Store,
 		Value_StackAlloc,
 		Value_CallFunction,
+		Value_CallFunctionPointer,
 		Value_Return,
 		Value_PointerAddition,
 		Value_PointerSubtraction,

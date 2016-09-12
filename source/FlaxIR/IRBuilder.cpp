@@ -772,6 +772,9 @@ namespace fir
 		if(ptr->isImmutable())
 			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
 
+		if(v->getType()->isFunctionType())
+			info("store function %s into %p", v->getType()->str().c_str(), (void*) ptr);
+
 		Instruction* instr = new Instruction(OpKind::Value_Store, PrimitiveType::getVoid(), { v, ptr });
 		return this->addInstruction(instr, "");
 	}
@@ -846,6 +849,40 @@ namespace fir
 
 		return this->CreateCall(fn, dargs, vname);
 	}
+
+
+
+
+
+	Value* IRBuilder::CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname)
+	{
+		// we can't really check anything.
+		args.push_front(fn);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, ft->getReturnType(), args);
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
