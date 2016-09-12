@@ -9,6 +9,50 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+
+Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->expr });
+}
+
+fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->op == ArithmeticOp::Deref)
+	{
+		fir::Type* ltype = this->expr->getType(cgi);
+		if(!ltype->isPointerType())
+			error(expr, "Attempted to dereference a non-pointer type '%s'", ltype->str().c_str());
+
+		return ltype->getPointerElementType();
+	}
+
+	else if(this->op == ArithmeticOp::AddrOf)
+		return this->expr->getType(cgi)->getPointerTo();
+
+	else
+		return this->expr->getType(cgi);
+}
+
+
+
+
+Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+fir::Type* PostfixUnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
+
+
+
 namespace Operators
 {
 	Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)

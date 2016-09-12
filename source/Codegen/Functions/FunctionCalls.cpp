@@ -165,8 +165,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 		// special case: we can directly forward the arguments
-		if(cgi->getExprType(params.back())->isLLVariableArrayType()
-			&& cgi->getExprType(params.back())->toLLVariableArray()->getElementType() == target->getArguments().back()->getType()->toLLVariableArray()->getElementType())
+		if(params.back()->getType(cgi)->isLLVariableArrayType()
+			&& params.back()->getType(cgi)->toLLVariableArray()->getElementType() == target->getArguments().back()->getType()->toLLVariableArray()->getElementType())
 		{
 			args.push_back(params.back()->codegen(cgi).result.first);
 		}
@@ -224,7 +224,31 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+	if(!rt.resolved)
+	{
+		TypePair_t* tp = cgi->getTypeByString(this->name);
+		if(tp)
+		{
+			return tp->first;
+		}
+		else
+		{
+			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);
+			if(genericMaybe.first)
+			{
+				this->cachedResolveTarget = Resolved_t(genericMaybe);
+				return genericMaybe.first->getReturnType();
+			}
 
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+		}
+	}
+
+	return rt.t.second->getType(cgi);
+}
 
 
 

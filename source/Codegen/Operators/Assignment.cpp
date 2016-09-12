@@ -17,7 +17,7 @@ namespace Operators
 		if(!(vrname = dynamic_cast<VarRef*>(ma->right)))
 			return 0;
 
-		fir::Type* leftType = (ma->matype == MAType::LeftVariable ? cgi->getExprType(ma->left) : cgi->resolveStaticDotOperator(ma, false).second);
+		fir::Type* leftType = (ma->matype == MAType::LeftVariable ? ma->left->getType(cgi) : cgi->resolveStaticDotOperator(ma, false).second);
 
 		if(leftType->isPrimitiveType() && cgi->getExtensionsForBuiltinType(leftType).size() > 0)
 		{
@@ -165,7 +165,7 @@ namespace Operators
 		else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(args[0]))
 		{
 			// also check if the left side is a subscript on a type.
-			fir::Type* t = cgi->getExprType(ai->arr);
+			fir::Type* t = ai->arr->getType(cgi);
 
 			// todo: do we need to add the LLVariableArray thing?
 			if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
@@ -207,8 +207,8 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 
-		fir::Type* ltype = cgi->getExprType(args[0]);
-		fir::Type* rtype = cgi->getExprType(args[1]);
+		fir::Type* ltype = args[0]->getType(cgi);
+		fir::Type* rtype = args[1]->getType(cgi);
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{

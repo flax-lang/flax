@@ -16,7 +16,7 @@ func foo(a: int)
 
 public func doFunctionTest()
 {
-	var f: [(int) -> void] = foo
+	// var f: [(int) -> void] = foo
 }
 
 

@@ -210,6 +210,30 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
+fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	fir::Type* base = cgi->getTypeFromParserType(this, this->ptype);
+
+	if(this->counts.size() == 0) return base->getPointerTo();
+
+	for(size_t i = 0; i < this->counts.size(); i++)
+		 base = base->getPointerTo();
+
+	return base;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -251,6 +275,10 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
+fir::Type* Dealloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 
 

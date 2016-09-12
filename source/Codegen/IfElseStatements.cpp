@@ -157,6 +157,10 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
+fir::Type* IfStmt::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 
 

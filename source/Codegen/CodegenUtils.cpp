@@ -888,7 +888,7 @@ namespace Codegen
 				for(size_t i = 0; i < a.second->params.size(); i++)
 				{
 					// allowFail = true
-					if(this->getExprType(a.second->params[i], true) != this->getExprType(b.second->params[i], true))
+					if(a.second->params[i]->getType(this, true) != b.second->params[i]->getType(this, true))
 						return false;
 				}
 
@@ -943,7 +943,7 @@ namespace Codegen
 	{
 		std::deque<fir::Type*> argTypes;
 		for(auto e : params)
-			argTypes.push_back(this->getExprType(e, true));
+			argTypes.push_back(e->getType(this, true));
 
 		return this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
 	}
@@ -1189,7 +1189,7 @@ namespace Codegen
 
 			for(auto arg : fp.second->params)
 			{
-				auto t = this->getExprType(arg, true);
+				auto t = arg->getType(this, true);
 				if(!t) return false;
 
 				funcParams.push_back(t);
@@ -1379,7 +1379,7 @@ namespace Codegen
 		int runningTypeIndex = 0;
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
@@ -1397,7 +1397,7 @@ namespace Codegen
 
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
@@ -1462,8 +1462,8 @@ namespace Codegen
 			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.second).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
 			{
-				info(res.t.second, "%zu: %s, %s", i, this->getReadableType(decl->params[i]).c_str(),
-					this->getReadableType(res.t.second->params[i]).c_str());
+				info(res.t.second, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
+					res.t.second->params[i]->getType(this)->str().c_str());
 			}
 
 			return true;
@@ -1621,7 +1621,7 @@ namespace Codegen
 				{
 					// check normal types.
 					fir::Type* a = args[i];
-					fir::Type* b = cgi->getExprType(candidate->params[i]);
+					fir::Type* b = candidate->params[i]->getType(cgi);
 
 					if(a != b) return false;
 				}
@@ -1853,7 +1853,7 @@ namespace Codegen
 
 		std::deque<fir::Type*> fargs;
 		for(auto p : fc->params)
-			fargs.push_back(this->getExprType(p));
+			fargs.push_back(p->getType(this));
 
 		auto it = candidates.begin();
 		while(it != candidates.end())
@@ -2112,12 +2112,12 @@ namespace Codegen
 				}
 
 				if(vals.size() != fn->getArgumentCount())
-					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+					GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 
 				for(size_t i = 0; i < fn->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != fn->getArguments()[i]->getType())
-						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+						GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 				}
 
 				return fn;
@@ -2151,12 +2151,12 @@ namespace Codegen
 
 
 				if(vals.size() != fn->getArgumentCount())
-					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+					GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 
 				for(size_t i = 0; i < fn->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != fn->getArguments()[i]->getType())
-						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+						GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 				}
 
 
@@ -2559,7 +2559,7 @@ namespace Codegen
 			}
 			if(!have)
 			{
-				have = cgi->getExprType(r->val);
+				have = r->val->getType(cgi);
 			}
 
 			if(have->isParametricType())
@@ -2572,7 +2572,7 @@ namespace Codegen
 
 			if(retType == 0)
 			{
-				expected = cgi->getExprType(f->decl);
+				expected = f->decl->getType(cgi);
 			}
 			else
 			{
@@ -2583,9 +2583,10 @@ namespace Codegen
 			int dist = cgi->getAutoCastDistance(have, expected);
 
 			if(dist == -1)
+			{
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
-					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
-
+					expected->str().c_str(), have->str().c_str());
+			}
 
 			return true;
 		}
@@ -2665,7 +2666,7 @@ namespace Codegen
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getExprType(func) : retType)->isVoidType();
+		bool isVoid = (retType == 0 ? func->getType(this) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
@@ -2698,13 +2699,13 @@ namespace Codegen
 				break;
 		}
 
-		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(this->getExprType(final), this->getExprType(func)) != -1))
+		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(final->getType(this), func->getType(this)) != -1))
 			return true;
 
 		if(!ret)
 		{
 			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				this->getExprType(func)->str().c_str(), this->getExprType(final)->str().c_str());
+				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
 		}
 
 		if(checkType)

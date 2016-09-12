@@ -26,6 +26,17 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
+fir::Type* Break::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
+
+
+
 Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
@@ -42,6 +53,14 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->builder.CreateUnCondBranch(cs->second.first);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
+
+fir::Type* Continue::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
 
 Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -63,11 +82,29 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
+fir::Type* Return::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->val) return this->val->getType(cgi);
+	else return fir::PrimitiveType::getVoid();
+}
+
+
 
 Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return expr->codegen(cgi);
 }
+
+fir::Type* DeferredExpr::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return this->expr->getType(cgi);
+}
+
+
+
+
+
+
 
 Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -110,5 +147,14 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	return Result_t(0, 0);
 }
+
+fir::Type* WhileLoop::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
+
+
+
+
 
 
