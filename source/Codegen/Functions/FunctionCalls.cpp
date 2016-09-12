@@ -35,6 +35,18 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->callTypeInitialiser(tp, this, args);
 	}
+	else if(fir::Value* fv = cgi->getSymInst(this, this->name))
+	{
+		this->cachedResolveTarget.resolved = true;
+
+		info("%s", cgi->builder.CreateLoad(fv)->getType()->str().c_str());
+
+		auto f = dynamic_cast<fir::Function*>(cgi->builder.CreateLoad(fv));
+		iceAssert(f);
+
+		this->cachedResolveTarget.t.first = f;
+	}
+
 
 	std::vector<fir::Value*> args;
 

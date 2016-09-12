@@ -50,7 +50,7 @@ namespace fir
 
 		void addFunction(Function* func);
 
-		void declareFunction(Identifier id, FunctionType* ftype);
+		Function* declareFunction(Identifier id, FunctionType* ftype);
 		Function* getFunction(Identifier id);
 		Function* getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage);
 
