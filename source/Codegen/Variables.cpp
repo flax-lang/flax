@@ -186,6 +186,9 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->ident.name, ai, this);
 
+	if(val->getType() != ai->getType()->getPointerElementType())
+		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
+
 	cgi->builder.CreateStore(val, ai);
 	return val;
 }
