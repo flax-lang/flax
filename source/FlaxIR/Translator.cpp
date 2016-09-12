@@ -91,7 +91,13 @@ namespace fir
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
 
-			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg());
+			// note(workaround): THIS IS A HACK.
+			// we *ALWAYS* return a pointer to function, because llvm is stupid.
+			// when we create an llvm::Function using this type, we always dereference the pointer type.
+			// however, everywhere else (eg. function variables, parameters, etc.) we need pointers, because
+			// llvm doesn't let FunctionType be a raw type (of a variable or param), but i'll let fir be less stupid,
+			// so it transparently works without fir having to need pointers.
+			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg())->getPointerTo();
 		}
 		else if(type->isArrayType())
 		{
@@ -294,8 +300,8 @@ namespace fir
 			else
 				error("enotsup");
 
-			llvm::Function* func = llvm::Function::Create(llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)), link,
-				ffn->getName().mangled(), module);
+			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
+			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
 
 			valueMap[ffn->id] = func;
 
@@ -912,6 +918,34 @@ namespace fir
 
 							llvm::Value* ret = builder.CreateCall(a, args);
 							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_CallFunctionPointer:
+						{
+							iceAssert(inst->operands.size() >= 1);
+							llvm::Value* fn = getOperand(inst, 0);
+
+							std::vector<llvm::Value*> args;
+
+							std::deque<Value*> fargs = inst->operands;
+							fargs.pop_front();
+
+							for(auto arg : fargs)
+								args.push_back(getValue(arg));
+
+							llvm::Type* lft = typeToLlvm(inst->operands.front()->getType(), module);
+
+							iceAssert(lft->isPointerTy());
+							iceAssert(lft->getPointerElementType()->isFunctionTy());
+
+							llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(lft->getPointerElementType());
+							iceAssert(ft);
+
+							llvm::Value* ret = builder.CreateCall(ft, fn, args);
+
+							addValueToMap(ret, inst->realOutput);
+
 							break;
 						}
 

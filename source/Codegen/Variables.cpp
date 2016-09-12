@@ -16,9 +16,31 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
+	{
+		// check for functions
+		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
+		{
+			return Result_t(fn, 0);
+		}
+
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+	}
 
 	return Result_t(cgi->builder.CreateLoad(val), val);
+}
+
+fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	VarDecl* decl = cgi->getSymDecl(this, this->name);
+	if(!decl)
+	{
+		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
+			return fn->getType();
+
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+	}
+
+	return decl->getType(cgi, allowFail);
 }
 
 
@@ -58,7 +80,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || cgi->getExprType(this)->isPointerType()))
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this)
+		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);
@@ -124,9 +147,17 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 		else if(!cmplxtype && !this->initVal)
 		{
-			iceAssert(val);
-			cgi->builder.CreateStore(val, ai);
-			return val;
+			if(ai->getType()->getPointerElementType()->isFunctionType())
+			{
+				error(this, "Variables of function type (have '%s') need to be initialised at the declaration site",
+					ai->getType()->getPointerElementType()->str().c_str());
+			}
+			else
+			{
+				iceAssert(val);
+				cgi->builder.CreateStore(val, ai);
+				return val;
+			}
 		}
 		else if(cmplxtype && this->initVal)
 		{
@@ -155,6 +186,9 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->ident.name, ai, this);
 
+	if(val->getType() != ai->getType()->getPointerElementType())
+		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
+
 	cgi->builder.CreateStore(val, ai);
 	return val;
 }
@@ -165,13 +199,13 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 void VarDecl::inferType(CodegenInstance* cgi)
 {
-	if(this->type.strType == "Inferred")
+	if(this->ptype == pts::InferredType::get())
 	{
 		if(this->initVal == nullptr)
 			error(this, "Type inference requires an initial assignment to infer type");
 
 
-		fir::Type* vartype = cgi->getExprType(this->initVal);
+		fir::Type* vartype = this->initVal->getType(cgi);
 		if(vartype == nullptr || vartype->isVoidType())
 			GenError::nullValue(cgi, this->initVal);
 
@@ -184,14 +218,11 @@ void VarDecl::inferType(CodegenInstance* cgi)
 		}
 
 		this->inferredLType = vartype;
-
-		// if(cgi->isBuiltinType(this->initVal) && !(this->inferredLType->isStructType() || this->inferredLType->isClassType()))
-		// 	this->type = cgi->getReadableType(this->initVal);
 	}
 	else
 	{
-		this->inferredLType = cgi->parseAndGetOrInstantiateType(this, this->type.strType);
-		if(!this->inferredLType) error(this, "invalid type %s", this->type.strType.c_str());
+		this->inferredLType = cgi->getTypeFromParserType(this, this->ptype);
+		if(!this->inferredLType) error(this, "invalid type %s", this->ptype->str().c_str());
 
 		iceAssert(this->inferredLType);
 	}
@@ -309,7 +340,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else
 	{
 		TypePair_t* cmplxtype = 0;
-		if(this->type.strType != "Inferred")
+		if(this->ptype != pts::InferredType::get())
 		{
 			iceAssert(this->inferredLType);
 			cmplxtype = cgi->getType(this->inferredLType);
@@ -328,6 +359,27 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		return Result_t(0, ai);
 }
 
+fir::Type* VarDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->ptype == pts::InferredType::get())
+	{
+		if(!this->inferredLType)		// todo: better error detection for this
+		{
+			error(this, "Invalid variable declaration for %s!", this->ident.name.c_str());
+		}
+
+		iceAssert(this->inferredLType);
+		return this->inferredLType;
+	}
+	else
+	{
+		// if we already "inferred" the type, don't bother doing it again.
+		if(this->inferredLType)
+			return this->inferredLType;
+
+		return cgi->getTypeFromParserType(this, this->ptype, allowFail);
+	}
+}
 
 
 

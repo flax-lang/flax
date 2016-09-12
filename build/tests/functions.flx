@@ -1,0 +1,83 @@
+// functions.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+// import Foundation
+import LibCInterface
+
+
+
+
+func foo(a: int)
+{
+	printf("foo: %d\n", a)
+}
+
+func bar(a: int)
+{
+	printf("bar: %d\n", a)
+}
+
+func qux()
+{
+	printf("qux\n")
+}
+
+public func doFunctionTest()
+{
+	var f: [() -> void] = qux
+	f()
+
+	var g: [(int) -> void] = foo
+	g(10)
+
+	g = bar
+	g(20)
+
+
+	printf("each test\n")
+	let arr = alloc[4] int
+	arr[0] = 11
+	arr[1] = 22
+	arr[2] = 33
+	arr[3] = 44
+
+	each(arr, 4, foo)
+}
+
+
+
+func each(arr: int*, length: int, f: [(int) -> void])
+{
+	var i = 0
+
+	while i < length
+	{
+		f(arr[i])
+		i += 1
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

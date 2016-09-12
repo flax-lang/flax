@@ -64,6 +64,9 @@ namespace fir
 		std::deque<IRBlock*>& getBlockList();
 		void deleteBody();
 
+		bool wasDeclaredWithBodyElsewhere();
+		void setHadBodyElsewhere();
+
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
@@ -77,6 +80,8 @@ namespace fir
 		Function(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
+
+		bool hadBodyElsewhere = false;
 	};
 }
 

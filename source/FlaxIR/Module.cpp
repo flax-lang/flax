@@ -109,9 +109,9 @@ namespace fir
 		this->functions[func->getName()] = func;
 	}
 
-	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	Function* Module::declareFunction(Identifier id, FunctionType* ftype)
 	{
-		this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
+		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
 	Function* Module::getFunction(Identifier id)
@@ -122,6 +122,20 @@ namespace fir
 		}
 
 		return this->functions[id];
+	}
+
+	std::deque<Function*> Module::getFunctionsWithName(Identifier id)
+	{
+		// todo: *very* inefficient.
+
+		std::deque<Function*> ret;
+		for(auto fn : this->functions)
+		{
+			if(fn.first.name == id.name && fn.first.scope == id.scope)
+				ret.push_back(fn.second);
+		}
+
+		return ret;
 	}
 
 	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
@@ -147,6 +161,7 @@ namespace fir
 
 		return f;
 	}
+
 
 
 

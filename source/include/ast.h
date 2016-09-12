@@ -12,12 +12,15 @@
 #include "defs.h"
 #include "ir/identifier.h"
 
-namespace fir
-{
-	struct StructType;
-	struct TupleType;
-}
+#include "pts.h"
 
+// namespace fir
+// {
+// 	struct StructType;
+// 	struct TupleType;
+// }
+
+#include "ir/type.h"
 
 
 
@@ -107,7 +110,6 @@ namespace Ast
 	{
 		explicit Result_t(ValPtr_t vp) : result(vp), type(ResultType::Normal) { }
 
-
 		Result_t(fir::Value* val, fir::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
 		Result_t(fir::Value* val, fir::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
 
@@ -118,30 +120,7 @@ namespace Ast
 	};
 
 
-	// not to be confused with TypeKind
-	struct ExprType
-	{
-		bool isLiteral = true;
-		std::string strType;
 
-		Expr* type = 0;
-		fir::Type* ftype = 0;
-
-		ExprType() : isLiteral(true), strType(""), type(0) { }
-		ExprType(std::string s) : isLiteral(true), strType(s), type(0) { }
-
-		void operator=(std::string stryp)
-		{
-			this->strType = stryp;
-			this->isLiteral = true;
-		}
-
-		void operator=(fir::Type* ft)
-		{
-			this->ftype = ft;
-			this->isLiteral = true;
-		}
-	};
 
 
 
@@ -150,25 +129,25 @@ namespace Ast
 		explicit Expr(Parser::Pin pos) : pin(pos) { }
 		virtual ~Expr() { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) = 0;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) = 0;
+
 		virtual bool isBreaking() { return false; }
 
 		bool didCodegen = false;
 		uint64_t attribs = 0;
 		Parser::Pin pin;
-		ExprType type;
+
+		// ExprType type;
+		pts::Type* ptype = 0;
 	};
 
 	struct DummyExpr : Expr
 	{
 		explicit DummyExpr(Parser::Pin pos) : Expr(pos) { }
 		~DummyExpr();
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override { return Result_t(0, 0); }
-	};
 
-	struct VarArg : Expr
-	{
-		~VarArg();
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override { return Result_t(0, 0); }
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 	};
 
 
@@ -177,7 +156,9 @@ namespace Ast
 		~Number();
 		Number(Parser::Pin pos, double val) : Expr(pos), dval(val) { this->decimal = true; }
 		Number(Parser::Pin pos, int64_t val) : Expr(pos), ival(val) { this->decimal = false; }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		bool needUnsigned = false;
 		bool decimal = false;
@@ -194,7 +175,9 @@ namespace Ast
 	{
 		~BoolVal();
 		BoolVal(Parser::Pin pos, bool val) : Expr(pos), val(val) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		bool val = false;
 	};
@@ -203,7 +186,9 @@ namespace Ast
 	{
 		~NullVal();
 		NullVal(Parser::Pin pos) : Expr(pos) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 	};
 
 
@@ -214,7 +199,9 @@ namespace Ast
 	{
 		~VarRef();
 		VarRef(Parser::Pin pos, std::string name) : Expr(pos), name(name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::string name;
 	};
@@ -231,6 +218,7 @@ namespace Ast
 		}
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab);
 
@@ -252,7 +240,9 @@ namespace Ast
 	{
 		~ComputedProperty();
 		ComputedProperty(Parser::Pin pos, std::string name) : VarDecl(pos, name, false) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		FuncDecl* getterFunc = 0;
 		FuncDecl* setterFunc = 0;
@@ -268,7 +258,9 @@ namespace Ast
 	{
 		~BinOp();
 		BinOp(Parser::Pin pos, Expr* lhs, ArithmeticOp operation, Expr* rhs) : Expr(pos), left(lhs), right(rhs), op(operation) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* left = 0;
 		Expr* right = 0;
@@ -280,13 +272,16 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
-		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, std::string ret) : Expr(pos), params(params)
+		FuncDecl(Parser::Pin pos, std::string id, std::deque<VarDecl*> params, pts::Type* ret) : Expr(pos), params(params)
 		{
-			this->type.strType = ret;
 			this->ident.name = id;
 			this->ident.kind = IdKind::Function;
+
+			this->ptype = ret;
 		}
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Result_t generateDeclForGenericFunction(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
 
@@ -325,7 +320,9 @@ namespace Ast
 	{
 		explicit BracedBlock(Parser::Pin pos) : Expr(pos) { }
 		~BracedBlock();
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::deque<Expr*> statements;
 		std::deque<DeferredExpr*> deferredStatements;
@@ -335,7 +332,9 @@ namespace Ast
 	{
 		~Func();
 		Func(Parser::Pin pos, FuncDecl* funcdecl, BracedBlock* block) : Expr(pos), decl(funcdecl), block(block) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		FuncDecl* decl = 0;
 		BracedBlock* block = 0;
@@ -345,7 +344,9 @@ namespace Ast
 	{
 		~FuncCall();
 		FuncCall(Parser::Pin pos, std::string target, std::deque<Expr*> args) : Expr(pos), name(target), params(args) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::string name;
 		std::deque<Expr*> params;
@@ -357,7 +358,9 @@ namespace Ast
 	{
 		~Return();
 		Return(Parser::Pin pos, Expr* e) : Expr(pos), val(e) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual bool isBreaking() override { return true; }
 
 		Expr* val = 0;
@@ -368,7 +371,9 @@ namespace Ast
 	{
 		~Import();
 		Import(Parser::Pin pos, std::string name) : Expr(pos), module(name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override { return Result_t(0, 0); }
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override { return 0; };
 
 		std::string module;
 	};
@@ -377,7 +382,9 @@ namespace Ast
 	{
 		~ForeignFuncDecl();
 		ForeignFuncDecl(Parser::Pin pos, FuncDecl* func) : Expr(pos), decl(func) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		FuncDecl* decl = 0;
 	};
@@ -388,6 +395,7 @@ namespace Ast
 		~DeferredExpr();
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* expr = 0;
 	};
@@ -405,6 +413,7 @@ namespace Ast
 			final(ecase), cases(cases), _cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 
 		BracedBlock* final = 0;
@@ -419,6 +428,7 @@ namespace Ast
 			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* cond = 0;
 		BracedBlock* body = 0;
@@ -445,7 +455,9 @@ namespace Ast
 	{
 		~Break();
 		explicit Break(Parser::Pin pos) : Expr(pos) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual bool isBreaking() override { return true; }
 	};
 
@@ -453,7 +465,9 @@ namespace Ast
 	{
 		~Continue();
 		explicit Continue(Parser::Pin pos) : Expr(pos) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual bool isBreaking() override { return true; }
 	};
 
@@ -461,7 +475,9 @@ namespace Ast
 	{
 		~UnaryOp();
 		UnaryOp(Parser::Pin pos, ArithmeticOp op, Expr* expr) : Expr(pos), op(op), expr(expr) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		ArithmeticOp op;
 		Expr* expr = 0;
@@ -485,6 +501,8 @@ namespace Ast
 		OpOverload(Parser::Pin pos, ArithmeticOp op) : Expr(pos), op(op) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+
 		Result_t codegen(Codegen::CodegenInstance* cgi, std::deque<fir::Type*> args);
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
@@ -499,7 +517,9 @@ namespace Ast
 	{
 		~SubscriptOpOverload();
 		SubscriptOpOverload(Parser::Pin pos) : Expr(pos) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::string setterArgName;
 
@@ -510,13 +530,18 @@ namespace Ast
 
 		fir::Function* getterFunc = 0;
 		fir::Function* setterFunc = 0;
+
+		Func* getterFn = 0;
+		Func* setterFn = 0;
 	};
 
 	struct AssignOpOverload : Expr
 	{
 		~AssignOpOverload();
 		AssignOpOverload(Parser::Pin pos, ArithmeticOp o) : Expr(pos), op(o) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Func* func = 0;
 		ArithmeticOp op;
@@ -532,8 +557,10 @@ namespace Ast
 			this->ident.name = name;
 			this->ident.kind = IdKind::Struct;
 		}
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override = 0;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) = 0;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override = 0;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
 		bool didCreateType = false;
 		fir::Type* createdType = 0;
@@ -552,8 +579,10 @@ namespace Ast
 	{
 		~ClassDef();
 		ClassDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<Func*> funcs;
 		std::deque<fir::Function*> lfuncs;
@@ -573,8 +602,10 @@ namespace Ast
 	{
 		~ExtensionDef();
 		ExtensionDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool isDuplicate = false;
 		Root* parentRoot = 0;
@@ -589,7 +620,9 @@ namespace Ast
 			this->ident.kind = IdKind::Struct;
 		}
 
-		fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { });
+
+		fir::Type* createType(Codegen::CodegenInstance* cgi);
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 
 		bool checkTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
@@ -611,8 +644,10 @@ namespace Ast
 	{
 		~StructDef();
 		StructDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool packed = false;
 	};
@@ -621,8 +656,10 @@ namespace Ast
 	{
 		~EnumDef();
 		EnumDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		std::deque<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
@@ -632,9 +669,10 @@ namespace Ast
 	{
 		~Tuple();
 		Tuple(Parser::Pin pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
-		fir::TupleType* getType(Codegen::CodegenInstance* cgi);
+		virtual fir::TupleType* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		std::vector<Expr*> values;
 		std::vector<fir::Type*> ltypes;
@@ -664,7 +702,9 @@ namespace Ast
 	{
 		~MemberAccess();
 		MemberAccess(Parser::Pin pos, Expr* _left, Expr* _right) : Expr(pos), left(_left), right(_right) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		bool disableStaticChecking = false;
 		Result_t cachedCodegenResult = Result_t(0, 0);
@@ -680,9 +720,10 @@ namespace Ast
 	struct NamespaceDecl : Expr
 	{
 		~NamespaceDecl();
-		NamespaceDecl(Parser::Pin pos, std::string _name, BracedBlock* inside) : Expr(pos), innards(inside), name(_name)
-		{ }
+		NamespaceDecl(Parser::Pin pos, std::string _name, BracedBlock* inside) : Expr(pos), innards(inside), name(_name) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override { return Result_t(0, 0); }
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override { return 0; };
 
 		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
@@ -695,7 +736,9 @@ namespace Ast
 	{
 		~ArrayIndex();
 		ArrayIndex(Parser::Pin pos, Expr* v, Expr* index) : Expr(pos), arr(v), index(index) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* arr = 0;
 		Expr* index = 0;
@@ -705,7 +748,9 @@ namespace Ast
 	{
 		~StringLiteral();
 		StringLiteral(Parser::Pin pos, std::string str) : Expr(pos), str(str) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		bool isRaw = false;
 		std::string str;
@@ -715,7 +760,9 @@ namespace Ast
 	{
 		~ArrayLiteral();
 		ArrayLiteral(Parser::Pin pos, std::deque<Expr*> values) : Expr(pos), values(values) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::deque<Expr*> values;
 	};
@@ -723,19 +770,23 @@ namespace Ast
 	struct TypeAlias : StructBase
 	{
 		~TypeAlias();
-		TypeAlias(Parser::Pin pos, std::string _alias, std::string _origType) : StructBase(pos, _alias), origType(_origType) { }
+		TypeAlias(Parser::Pin pos, std::string _alias, pts::Type* _origType) : StructBase(pos, _alias), origType(_origType) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes = { }) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
 		bool isStrong = false;
-		std::string origType;
+		pts::Type* origType;
 	};
 
 	struct Alloc : Expr
 	{
 		~Alloc();
 		explicit Alloc(Parser::Pin pos) : Expr(pos) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::deque<Expr*> counts;
 		std::deque<Expr*> params;
@@ -745,7 +796,9 @@ namespace Ast
 	{
 		~Dealloc();
 		Dealloc(Parser::Pin pos, Expr* _expr) : Expr(pos), expr(_expr) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* expr = 0;
 	};
@@ -754,7 +807,9 @@ namespace Ast
 	{
 		~Typeof();
 		Typeof(Parser::Pin pos, Expr* _inside) : Expr(pos), inside(_inside) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* inside = 0;
 	};
@@ -764,14 +819,15 @@ namespace Ast
 		enum class Kind
 		{
 			Invalid,
-			ArrayIndex,
 			Increment,
 			Decrement
 		};
 
 		~PostfixUnaryOp();
 		PostfixUnaryOp(Parser::Pin pos, Expr* e, Kind k) : Expr(pos), kind(k), expr(e) { }
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Kind kind;
 		Expr* expr = 0;
@@ -782,7 +838,9 @@ namespace Ast
 	{
 		Root() : Expr(Parser::Pin()) { }
 		~Root();
+
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override { return 0; };
 
 		Codegen::FunctionTree* rootFuncStack = new Codegen::FunctionTree("__#root");
 
@@ -803,6 +861,23 @@ namespace Ast
 		fir::Function* globalConstructorTrampoline = 0;
 	};
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
