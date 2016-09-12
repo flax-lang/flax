@@ -28,6 +28,12 @@ public func doFunctionTest()
 {
 	var f: [() -> void] = qux
 	f()
+
+	var g: [(int) -> void] = foo
+	g(10)
+
+	g = bar
+	g(20)
 }
 
 
