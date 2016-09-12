@@ -175,28 +175,11 @@ namespace fir
 		std::deque<std::pair<std::string, Type*>> reified;
 		for(auto mem : this->structMembers)
 		{
-			if(mem.second->isParametricType())
-			{
-				if(reals.find(mem.second->toParametricType()->getName()) != reals.end())
-				{
-					auto t = reals[mem.second->toParametricType()->getName()];
-					if(t->isParametricType())
-					{
-						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
-							mem.second->toParametricType()->getName().c_str());
-					}
+			auto rfd = mem.second->reify(reals);
+			if(rfd->isParametricType())
+				error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
 
-					reified.push_back({ mem.first, t });
-				}
-				else
-				{
-					error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
-				}
-			}
-			else
-			{
-				reified.push_back({ mem.first, mem.second });
-			}
+			reified.push_back({ mem.first, rfd });
 		}
 
 		iceAssert(reified.size() == this->structMembers.size());

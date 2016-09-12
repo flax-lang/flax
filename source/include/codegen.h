@@ -59,6 +59,8 @@ namespace Codegen
 		bool isPrefix				= 0;
 		bool needsSwap				= 0;
 		bool needsNot				= 0;
+		bool isMember				= 0;
+
 		fir::Function* opFunc		= 0;
 	};
 
@@ -197,10 +199,10 @@ namespace Codegen
 
 
 
-		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
+		// fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
+		// fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
-		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
 		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
 		__attribute__ ((warn_unused_result));
@@ -210,14 +212,12 @@ namespace Codegen
 
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isEnum(Ast::ExprType type);
 		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(fir::Type* e);
-		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
 
@@ -228,16 +228,12 @@ namespace Codegen
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
 
-		std::string getReadableType(Ast::Expr* expr);
-		std::string getReadableType(fir::Type* type);
-		std::string getReadableType(fir::Value* val);
-
 		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
 		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 
-		fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
+		// fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
@@ -256,6 +252,11 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
+
+
+
+		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
 
 
 
@@ -300,9 +301,6 @@ namespace Codegen
 
 		~CodegenInstance();
 	};
-
-
-	std::string unwrapPointerType(std::string type, int* indirections);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 }

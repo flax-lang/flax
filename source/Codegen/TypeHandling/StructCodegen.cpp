@@ -10,6 +10,15 @@ using namespace Ast;
 using namespace Codegen;
 
 
+
+fir::Type* StructDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
+
 Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	this->createType(cgi);
@@ -85,7 +94,9 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
+			var->inferType(cgi);
+
+			var->doInitialValue(cgi, cgi->getType(var->inferredLType), r.first, r.second, ptr, false);
 		}
 
 		cgi->builder.CreateReturnVoid();
@@ -144,7 +155,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* StructDef::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return this->createdType;
@@ -181,7 +192,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		fir::Type* type = cgi->getExprType(var);
+		fir::Type* type = var->getType(cgi);
 		if(type == str)
 		{
 			error(this, "Cannot have non-pointer member of type self");
@@ -189,7 +200,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 
 		if(!var->isStatic)
 		{
-			types.push_back({ var->ident.name, cgi->getExprType(var) });
+			types.push_back({ var->ident.name, var->getType(cgi) });
 		}
 	}
 

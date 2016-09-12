@@ -166,7 +166,7 @@ namespace Operators
 			else
 			{
 				error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-					cgi->getReadableType(lhs).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), cgi->getReadableType(rhs).c_str());
+					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
 		else

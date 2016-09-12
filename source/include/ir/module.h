@@ -42,12 +42,15 @@ namespace fir
 		std::deque<Function*> getAllFunctions();
 		std::deque<Type*> getNamedTypes();
 
+		// note: only looks at the name + scope, excludes the parameter list.
+		std::deque<Function*> getFunctionsWithName(Identifier id);
+
 		Type* getNamedType(Identifier name);
 		void addNamedType(Identifier name, Type* type);
 
 		void addFunction(Function* func);
 
-		void declareFunction(Identifier id, FunctionType* ftype);
+		Function* declareFunction(Identifier id, FunctionType* ftype);
 		Function* getFunction(Identifier id);
 		Function* getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage);
 

@@ -126,6 +126,24 @@ namespace fir
 		return nf;
 	}
 
+
+	bool Function::wasDeclaredWithBodyElsewhere()
+	{
+		return this->hadBodyElsewhere;
+	}
+
+	void Function::setHadBodyElsewhere()
+	{
+		this->hadBodyElsewhere = true;
+	}
+
+
+
+
+
+
+
+
 	Function* Function::create(Identifier name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
 	{
 		return new Function(name, fnType, module, linkage);

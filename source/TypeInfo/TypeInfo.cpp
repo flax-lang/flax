@@ -4,6 +4,7 @@
 
 #include "codegen.h"
 #include "typeinfo.h"
+#include "pts.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -96,10 +97,10 @@ namespace TypeInfo
 			StructDef* any = new StructDef(Parser::Pin(), "Any");
 			{
 				VarDecl* type = new VarDecl(Parser::Pin(), "type", false);
-				type->type.strType = "Type";
+				type->ptype = pts::NamedType::create("Type");
 
 				VarDecl* data = new VarDecl(Parser::Pin(), "value", false);
-				data->type.strType = std::string(INT8_TYPE_STRING) + "*";
+				data->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 
 				any->members.push_back(type);
 				any->members.push_back(data);

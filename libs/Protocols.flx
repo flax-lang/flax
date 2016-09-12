@@ -17,16 +17,8 @@ public protocol Numeric
 
 public protocol Equatable
 {
-	func isEqual(other: Self) -> bool
+	operator == (other: Self) -> bool
 }
-
-
-
-public operator == <T: Equatable> (a: T, b: T) -> bool
-{
-	return a.isEqual(b)
-}
-
 
 
 

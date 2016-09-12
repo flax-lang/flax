@@ -11,10 +11,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
-}
 
 
 Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -23,24 +19,86 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->left, this->right });
 }
 
-
-Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->expr });
-}
+	fir::Type* ltype = this->left->getType(cgi);
+	fir::Type* rtype = this->right->getType(cgi);
 
-Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	if(this->kind == Kind::ArrayIndex)
+	if(this->op == ArithmeticOp::CmpLT || this->op == ArithmeticOp::CmpGT || this->op == ArithmeticOp::CmpLEq
+	|| this->op == ArithmeticOp::CmpGEq || this->op == ArithmeticOp::CmpEq || this->op == ArithmeticOp::CmpNEq)
 	{
-		ArrayIndex* fake = new ArrayIndex(this->pin, this->expr, this->args.front());
-		return fake->codegen(cgi, extra);
+		return fir::PrimitiveType::getBool(cgi->getContext());
+	}
+	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
+	{
+		return this->right->getType(cgi);
+	}
+	else if(this->op >= ArithmeticOp::UserDefined)
+	{
+		auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+
+		if(!data.found)
+		{
+			error(this, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(cgi, this->op).c_str(),
+				ltype->str().c_str(), rtype->str().c_str());
+		}
+
+		iceAssert(data.found);
+		return data.opFunc->getReturnType();
 	}
 	else
 	{
-		error(this, "enotsup");
+		// check if both are integers
+		if(ltype->isIntegerType() && rtype->isIntegerType())
+		{
+			if(ltype->toPrimitiveType()->getIntegerBitWidth() > rtype->toPrimitiveType()->getIntegerBitWidth())
+				return ltype;
+
+			return rtype;
+		}
+		else if(ltype->isIntegerType() && rtype->isFloatingPointType())
+		{
+			return rtype;
+		}
+		else if(ltype->isFloatingPointType() && rtype->isIntegerType())
+		{
+			return ltype;
+		}
+		else if(ltype->isFloatingPointType() && rtype->isFloatingPointType())
+		{
+			if(ltype->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
+				return ltype;
+
+			return rtype;
+		}
+		else
+		{
+			if(ltype->isPointerType() && rtype->isIntegerType())
+			{
+				// pointer arith??
+				return ltype;
+			}
+
+			auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+			if(data.found)
+			{
+				return data.opFunc->getReturnType();
+			}
+			else
+			{
+				error(this, "No such operator overload for operator '%s' accepting types %s and %s.",
+					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->str().c_str(), rtype->str().c_str());
+			}
+		}
 	}
 }
+
+
+
+
+
+
+
 
 
 namespace Codegen
@@ -57,6 +115,8 @@ namespace Codegen
 
 			bool needsBooleanNOT = 0;
 			bool needsSwap = 0;
+
+			bool isMember = 0;
 		};
 
 
@@ -75,6 +135,7 @@ namespace Codegen
 				attr.isBinOp		= oo->kind == OpOverload::OperatorKind::CommBinary || oo->kind == OpOverload::OperatorKind::NonCommBinary;
 				attr.isCommutative	= oo->kind == OpOverload::OperatorKind::CommBinary;
 				attr.isPrefixUnary	= oo->kind == OpOverload::OperatorKind::PrefixUnary;
+				attr.isMember		= oo->func->decl->parentClass != 0;
 
 				attr.needsSwap		= false;
 
@@ -91,6 +152,7 @@ namespace Codegen
 
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
+						info(oo->func->decl, "generating");
 						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).result.first);
 					}
 				}
@@ -133,11 +195,13 @@ namespace Codegen
 			}
 
 			// if we're assigning things, we need to get the assignfuncs as well.
-			if(this->isArithmeticOpAssignment(op))
-			{
-				TypePair_t* tp = this->getType(lhs);
-				iceAssert(tp);
+			// if(this->isArithmeticOpAssignment(op))
 
+			if(lhs->isPointerType() && (lhs->getPointerElementType()->isStructType() || lhs->getPointerElementType()->isClassType()))
+				lhs = lhs->getPointerElementType();
+
+			if(TypePair_t* tp = this->getType(lhs))
+			{
 				ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 				if(cls)
 				{
@@ -152,8 +216,9 @@ namespace Codegen
 							atr.isPrefixUnary	= false;
 							atr.isCommutative	= false;
 							atr.needsSwap		= false;
+							atr.isMember		= true;
 
-							iceAssert(aso->lfunc);
+							// iceAssert(aso->lfunc);
 							candidates.push_back({ atr, aso->lfunc });
 						}
 					}
@@ -171,11 +236,22 @@ namespace Codegen
 								atr.isPrefixUnary	= false;
 								atr.isCommutative	= false;
 								atr.needsSwap		= false;
+								atr.isMember		= true;
 
-								iceAssert(aso->lfunc);
+								// iceAssert(aso->lfunc);
 								candidates.push_back({ atr, aso->lfunc });
 							}
 						}
+					}
+
+
+					for(auto ovl : cls->operatorOverloads)
+						list.push_back(ovl);
+
+					for(auto ext : this->getExtensionsForType(cls))
+					{
+						for(auto ovl : ext->operatorOverloads)
+							list.push_back(ovl);
 					}
 				}
 			}
@@ -186,7 +262,6 @@ namespace Codegen
 
 
 		bool didDoGenerics = false;
-
 		resetForGenerics:
 
 
@@ -223,23 +298,21 @@ namespace Codegen
 		set = candidates;
 		candidates.clear();
 
-		bool hasSelf = (this->isArithmeticOpAssignment(op) || op == ArithmeticOp::Subscript);
-		if(hasSelf) lhs = lhs->getPointerTo();
-
 		for(auto cand : set)
 		{
 			fir::Type* targL = cand.second->getArguments()[0]->getType();
 			fir::Type* targR = cand.second->getArguments()[1]->getType();
 
+			fir::Type* thelhs = (cand.first.isMember ? lhs->getPointerTo() : lhs);
 
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
 			{
-				if(targL == lhs && targR == rhs)
+				if(targL == thelhs && targR == rhs)
 				{
 					candidates.push_back(cand);
 				}
-				else if(cand.first.isCommutative && targR == lhs && targL == rhs)
+				else if(cand.first.isCommutative && targR == thelhs && targL == rhs)
 				{
 					cand.first.needsSwap = true;
 					candidates.push_back(cand);
@@ -311,6 +384,9 @@ namespace Codegen
 				// seriously? goto?
 				// todo(goto): get rid.
 
+				// the point of this is to try "specific" operators before generic ones.
+				// so some general op == ($T, $T) won't be preferred over a more specific op == (type1, type2).
+
 				didDoGenerics = true;
 				candidates.clear();
 				findCandidatesPass1(this, &candidates, list, op, false);
@@ -328,6 +404,7 @@ namespace Codegen
 		ret.isPrefix = cand.first.first.isPrefixUnary;
 		ret.needsSwap = cand.first.first.needsSwap;
 		ret.needsNot = cand.first.first.needsBooleanNOT;
+		ret.isMember = cand.first.first.isMember;
 
 		ret.opFunc = cand.first.second;
 
@@ -367,7 +444,7 @@ namespace Codegen
 		bool isBinOp	= data.isBinOp;
 		bool needsSwap	= data.needsSwap;
 		bool needsNot	= data.needsNot;
-
+		bool isMember	= data.isMember;
 
 		fir::Function* opFunc = data.opFunc ? this->module->getFunction(data.opFunc->getName()) : 0;
 
@@ -381,7 +458,7 @@ namespace Codegen
 			fir::Value* larg = 0;
 			fir::Value* rarg = 0;
 
-			if(this->isArithmeticOpAssignment(op))
+			if(isMember)
 			{
 				if(needsSwap)
 				{

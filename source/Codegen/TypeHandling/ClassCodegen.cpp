@@ -13,6 +13,13 @@ using namespace Codegen;
 
 
 
+fir::Type* ClassDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
 
 Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -82,7 +89,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
 
 				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-				var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
+				var->inferType(cgi);
+
+				var->doInitialValue(cgi, cgi->getType(var->inferredLType), r.first, r.second, ptr, false);
 			}
 			else
 			{
@@ -151,6 +160,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	doCodegenForComputedProperties(cgi, this);
 
 	// same reasoning for operators -- we need to 1. be able to call methods in the operator, and 2. call operators from the methods
+	generateDeclForOperators(cgi, this);
+
+	doCodegenForGeneralOperators(cgi, this);
 	doCodegenForAssignmentOperators(cgi, this);
 	doCodegenForSubscriptOperators(cgi, this);
 
@@ -254,7 +266,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ClassDef::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return this->createdType;
@@ -314,7 +326,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 		if(!var->isStatic)
 		{
-			types.push_back({ var->ident.name, cgi->getExprType(var) });
+			types.push_back({ var->ident.name, var->getType(cgi) });
 		}
 	}
 

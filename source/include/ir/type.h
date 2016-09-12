@@ -469,6 +469,24 @@ namespace fir
 	};
 
 
+	struct ProtocolType : Type
+	{
+		friend struct Type;
+
+		// methods
+
+
+		// protected constructor
+
+
+		// fields
+
+
+		// static funcs
+		public:
+	};
+
+
 	struct FunctionType : Type
 	{
 		friend struct Type;
@@ -526,7 +544,7 @@ namespace fir
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
-		virtual ParametricType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		std::string getName();
 

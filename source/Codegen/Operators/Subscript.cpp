@@ -9,20 +9,62 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+
+
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
+}
+
+fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	fir::Type* t = this->arr->getType(cgi);
+	if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
+	{
+		// todo: multiple subscripts
+		fir::Function* getter = Operators::getOperatorSubscriptGetter(cgi, this, t, { this, this->index });
+		if(!getter)
+		{
+			error(this, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
+				this->index->getType(cgi)->str().c_str());
+		}
+
+		return getter->getReturnType();
+	}
+	else
+	{
+		if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
+		else if(t->isPointerType()) return t->getPointerElementType();
+		else return t->toArrayType()->getElementType();
+	}
+}
+
+
+
+
+
+
 namespace Operators
 {
 	static std::pair<ClassDef*, fir::Type*> getClassDef(CodegenInstance* cgi, Expr* user, Expr* subscriptee)
 	{
-		fir::Type* subscripteeType = cgi->getExprType(subscriptee);
+		fir::Type* subscripteeType = subscriptee->getType(cgi);
 
 		TypePair_t* tp = cgi->getType(subscripteeType);
 		if(!tp || !dynamic_cast<ClassDef*>(tp->second.first))
 			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
 
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		size_t s = cls->subscriptOverloads.size();
 
-		if(cls->subscriptOverloads.size() == 0)
+		for(auto ext : cgi->getExtensionsForType(cls))
+			s += ext->subscriptOverloads.size();
+
+		if(s == 0)
+		{
 			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+		}
 
 		return { cls, subscripteeType };
 	}
@@ -42,10 +84,19 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->setterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->setterFunc, f->decl });
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
+
 
 		// todo: MULIPLE SUBSCRIPTS
-		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), cgi->getExprType(ari->index) };
+		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi) };
 		std::deque<Expr*> eparams = { ari->index };
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
@@ -110,7 +161,6 @@ namespace Operators
 
 
 
-	// note: only used by getExprType(), we don't use it ourselves here.
 	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::deque<Ast::Expr*> args)
 	{
 		iceAssert(args.size() >= 1);
@@ -132,11 +182,20 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->getterFunc, f->decl });
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
+
 
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
 		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
-			fparams.push_back(cgi->getExprType(e));
+			fparams.push_back(e->getType(cgi));
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
@@ -165,12 +224,21 @@ namespace Operators
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back({ soo->getterFunc, soo->decl });
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back({ f->getterFunc, f->decl });
+		}
+
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().second->ident.name;
 
 		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
 		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
-			fparams.push_back(cgi->getExprType(e));
+			fparams.push_back(e->getType(cgi));
 
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
@@ -232,7 +300,7 @@ namespace Operators
 		Expr* subscriptIndex = args[1];
 
 		// get our array type
-		fir::Type* atype = cgi->getExprType(subscriptee);
+		fir::Type* atype = subscriptee->getType(cgi);
 
 		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
 		{
