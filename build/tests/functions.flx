@@ -11,13 +11,18 @@ import LibCInterface
 
 func foo(a: int)
 {
-	printf("a: %d\n", a)
+	printf("foo: %d\n", a)
+}
+
+func bar(a: int)
+{
+	printf("bar: %d\n", a)
 }
 
 public func doFunctionTest()
 {
 	var f: [(int) -> void] = foo
-	foo(10)
+	f(10)
 }
 
 
