@@ -561,7 +561,6 @@ namespace Codegen
 			fir::Type* retty = _recursivelyConvertType(cgi, allowFail, user, ft->returnType);
 
 			auto ret = fir::FunctionType::get(args, retty, args.size() > 0 && args.back()->isLLVariableArrayType());
-			info("%s", ret->str().c_str());
 
 			return ret;
 		}

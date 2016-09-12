@@ -109,9 +109,9 @@ namespace fir
 		this->functions[func->getName()] = func;
 	}
 
-	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	Function* Module::declareFunction(Identifier id, FunctionType* ftype)
 	{
-		this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
+		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
 	Function* Module::getFunction(Identifier id)

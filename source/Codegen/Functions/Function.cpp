@@ -79,6 +79,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
 							: cgi->module->getFunction(this->decl->ident);
 
+
 		if(!func)
 		{
 			this->didCodegen = false;
@@ -105,6 +106,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->block == 0)
 		error(this, "Function needs a body in this context");
 
+
+	iceAssert(func);
+	if(func->wasDeclaredWithBodyElsewhere())
+		error(this->decl, "Function '%s' was already declared with a body in another, imported, module", this->decl->ident.name.c_str());
 
 
 	// we need to clear all previous blocks' symbols
