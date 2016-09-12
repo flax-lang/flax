@@ -34,22 +34,43 @@ public func doFunctionTest()
 
 	g = bar
 	g(20)
+
+
+	printf("each test\n")
+	let arr = alloc[4] int
+	arr[0] = 11
+	arr[1] = 22
+	arr[2] = 33
+	arr[3] = 44
+
+	each(arr, 4, foo)
 }
 
 
-// public func main()
-// {
-// 	doFunctionTest()
-// }
+
+func each(arr: int*, length: int, f: [(int) -> void])
+{
+	var i = 0
+
+	while i < length
+	{
+		f(arr[i])
+		i += 1
+	}
+}
 
 
 
 
 
-// func each(arr: int*, length: int, f: [(int) -> void])
-// {
 
-// }
+
+
+
+
+
+
+
 
 
 
