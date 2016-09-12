@@ -340,13 +340,7 @@ namespace GenError
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
-		// note: HACK
-		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
-		// the 'this' pointer (it doesn't) we'll be fine.
-		// thus, we don't check whether cgi is null.
-
-		error(e, "Invalid assignment from type %s to %s", cgi->getReadableType(b).c_str(),
-			cgi->getReadableType(a).c_str());
+		error(e, "Invalid assignment from type %s to %s", b->str().c_str(), a->str().c_str());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
@@ -362,7 +356,7 @@ namespace GenError
 			if(!v || args[0] == v)
 				continue;
 
-			args_str += ", " + cgi->getReadableType(v->getType());
+			args_str += ", " + v->getType()->str();
 		}
 
 		// remove leading commas
@@ -413,7 +407,7 @@ namespace GenError
 	{
 		std::string prs = "";
 		for(auto p : ps)
-			prs += cgi->getReadableType(p) + ", ";
+			prs += p->getType(cgi)->str() + ", ";
 
 		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
 
@@ -457,7 +451,7 @@ namespace GenError
 
 		for(auto a : args)
 		{
-			argtypes.push_back(cgi->getReadableType(a).c_str());
+			argtypes.push_back(a->getType(cgi)->str().c_str());
 
 			auto ext = getHighlightExtent(a);
 			ext.col += 1;						// no idea why, but fix it.

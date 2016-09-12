@@ -16,12 +16,33 @@ Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value*
 	return Result_t(0, 0);
 }
 
+fir::Type* SubscriptOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
 
 Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
 
+fir::Type* AssignOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
+
+
+
+
+fir::Type* OpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 {

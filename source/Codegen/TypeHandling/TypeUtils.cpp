@@ -63,6 +63,7 @@ namespace Codegen
 		return alloca;
 	}
 
+	#if 0
 	fir::Type* CodegenInstance::getExprType(Expr* expr, bool allowFail, bool setInferred)
 	{
 		return this->getExprType(expr, Resolved_t(), allowFail, setInferred);
@@ -75,6 +76,15 @@ namespace Codegen
 
 		setInferred = false;
 		iceAssert(expr);
+
+
+		auto ret = expr->getType(this, allowFail);
+		if(!ret && allowFail) return 0;
+
+		iceAssert(ret);
+		return ret;
+
+
 		{
 			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
 			{
@@ -174,28 +184,17 @@ namespace Codegen
 
 				else
 					error(fd, "Unknown type '%s'", fd->ptype->str().c_str());
-
-
-				// TypePair_t* type = this->getType(t);
-				// if(!type && allowFail)
-				// 	return 0;
-
-				// else if(!type)
-				// 	error(fd, "Unknown type '%s'", fd->ptype->str().c_str());
-
-				// return type->first;
 			}
 			else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
 			{
 				if(sl->isRaw)
+				{
 					return fir::PointerType::getInt8Ptr(this->getContext());
-
+				}
 				else
 				{
 					auto tp = this->getTypeByString("String");
-					if(!tp)
-						return fir::PointerType::getInt8Ptr(this->getContext());
-
+					if(!tp) return fir::PointerType::getInt8Ptr(this->getContext());
 
 					return tp->first;
 				}
@@ -204,7 +203,6 @@ namespace Codegen
 			{
 				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
 					return this->resolveStaticDotOperator(ma, false).first.first;
-
 
 				// first, get the type of the lhs
 				fir::Type* lhs = this->getExprType(ma->left);
@@ -484,8 +482,10 @@ namespace Codegen
 			}
 		}
 
-		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
+
+		// error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
 	}
+	#endif
 
 	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
@@ -500,7 +500,7 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
-		return fir::ConstantValue::getNullValue(this->getExprType(e));
+		return fir::ConstantValue::getNullValue(e->getType(this));
 	}
 
 	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)
@@ -538,7 +538,7 @@ namespace Codegen
 
 
 
-
+	#if 0
 	std::string CodegenInstance::getReadableType(fir::Type* type)
 	{
 		if(type == 0)
@@ -557,6 +557,7 @@ namespace Codegen
 	{
 		return this->getReadableType(this->getExprType(expr));
 	}
+	#endif
 
 	int CodegenInstance::getAutoCastDistance(fir::Type* from, fir::Type* to)
 	{
@@ -850,7 +851,11 @@ namespace Codegen
 
 	static fir::Type* _recursivelyConvertType(CodegenInstance* cgi, bool allowFail, Expr* user, pts::Type* pt)
 	{
-		if(pt->isPointerType())
+		if(pt->resolvedFType)
+		{
+			return pt->resolvedFType;
+		}
+		else if(pt->isPointerType())
 		{
 			return _recursivelyConvertType(cgi, allowFail, user, pt->toPointerType()->base)->getPointerTo();
 		}
@@ -1038,14 +1043,14 @@ namespace Codegen
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getExprType(e);
+		fir::Type* ltype = e->getType(this);
 		return ltype && ltype->isArrayType();
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getExprType(e);
+		fir::Type* ltype = e->getType(this);
 		return ltype && ltype->isIntegerType();
 	}
 
@@ -1124,7 +1129,7 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
-		fir::Type* ltype = this->getExprType(expr);
+		fir::Type* ltype = expr->getType(this);
 		return this->isBuiltinType(ltype);
 	}
 
@@ -1169,7 +1174,7 @@ namespace Codegen
 			str += "(";
 			for(auto p : fd->params)
 			{
-				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->ptype->str()) + ", ";
+				str += p->ident.name + ": " + (p->inferredLType ? p->inferredLType->str() : p->ptype->str()) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -1187,7 +1192,7 @@ namespace Codegen
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
 			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
-				+ (vd->inferredLType ? this->getReadableType(vd) : vd->ptype->str());
+				+ (vd->inferredLType ? vd->getType(this)->str() : vd->ptype->str());
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
@@ -1380,6 +1385,13 @@ namespace Codegen
 
 
 
+namespace Ast
+{
+	fir::Type* DummyExpr::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+	{
+		return cgi->getTypeFromParserType(this, this->ptype);
+	}
+}
 
 
 

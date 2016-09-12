@@ -87,7 +87,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : fn->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 					{
@@ -180,7 +180,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : oo->func->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, overl->func->decl }, ps, &d, true))
 					{
@@ -235,7 +235,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : a->func->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, aoo->func->decl }, ps, &d, true))
 					{
@@ -290,7 +290,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : s->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, soo->decl }, ps, &d, true))
 					{

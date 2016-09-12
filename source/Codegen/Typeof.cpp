@@ -32,12 +32,12 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			type = cgi->getExprType(decl);
+			type = decl->getType(cgi);
 		}
 	}
 	else
 	{
-		type = cgi->getExprType(this->inside);
+		type = this->inside->getType(cgi);
 	}
 
 
@@ -71,6 +71,14 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
 	return Result_t(cgi->builder.CreateLoad(wrapper), wrapper);
+}
+
+fir::Type* Typeof::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	TypePair_t* tp = cgi->getTypeByString("Type");
+	iceAssert(tp);
+
+	return tp->first;
 }
 
 

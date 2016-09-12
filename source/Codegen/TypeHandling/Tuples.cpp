@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-fir::TupleType* Tuple::getType(CodegenInstance* cgi)
+fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	// todo: handle named tuples.
 	// would probably just be handled as implicit anon structs
@@ -22,7 +22,7 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi)
 		iceAssert(!this->didCreateType);
 
 		for(Expr* e : this->values)
-			this->ltypes.push_back(cgi->getExprType(e));
+			this->ltypes.push_back(e->getType(cgi));
 
 		this->ident.name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
 		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
@@ -36,7 +36,7 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi)
 	return this->createdType;
 }
 
-fir::Type* Tuple::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* Tuple::createType(CodegenInstance* cgi)
 {
 	(void) cgi;
 	return 0;
@@ -87,12 +87,11 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Value* member = cgi->builder.CreateStructGEP(gep, i);
 		fir::Value* val = this->values[i]->codegen(cgi).result.first;
 
-		// printf("%s -> %s\n", cgi->getReadableType(val).c_str(), cgi->getReadableType(member->getType()->getPointerElementType()).c_str());
 		val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
 
 		if(val->getType() != member->getType()->getPointerElementType())
 			error(this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
-				cgi->getReadableType(member->getType()->getPointerElementType()).c_str(), cgi->getReadableType(val).c_str());
+				member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
 
 		cgi->builder.CreateStore(val, member);
 	}

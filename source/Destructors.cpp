@@ -12,11 +12,6 @@ namespace Ast
 
 	}
 
-	VarArg::~VarArg()
-	{
-
-	}
-
 	Number::~Number()
 	{
 

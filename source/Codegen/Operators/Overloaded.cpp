@@ -11,10 +11,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
-}
 
 
 Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -23,24 +19,86 @@ Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->left, this->right });
 }
 
-
-Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->expr });
-}
+	fir::Type* ltype = this->left->getType(cgi);
+	fir::Type* rtype = this->right->getType(cgi);
 
-Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	if(this->kind == Kind::ArrayIndex)
+	if(this->op == ArithmeticOp::CmpLT || this->op == ArithmeticOp::CmpGT || this->op == ArithmeticOp::CmpLEq
+	|| this->op == ArithmeticOp::CmpGEq || this->op == ArithmeticOp::CmpEq || this->op == ArithmeticOp::CmpNEq)
 	{
-		ArrayIndex* fake = new ArrayIndex(this->pin, this->expr, this->args.front());
-		return fake->codegen(cgi, extra);
+		return fir::PrimitiveType::getBool(cgi->getContext());
+	}
+	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
+	{
+		return this->right->getType(cgi);
+	}
+	else if(this->op >= ArithmeticOp::UserDefined)
+	{
+		auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+
+		if(!data.found)
+		{
+			error(this, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(cgi, this->op).c_str(),
+				ltype->str().c_str(), rtype->str().c_str());
+		}
+
+		iceAssert(data.found);
+		return data.opFunc->getReturnType();
 	}
 	else
 	{
-		error(this, "enotsup");
+		// check if both are integers
+		if(ltype->isIntegerType() && rtype->isIntegerType())
+		{
+			if(ltype->toPrimitiveType()->getIntegerBitWidth() > rtype->toPrimitiveType()->getIntegerBitWidth())
+				return ltype;
+
+			return rtype;
+		}
+		else if(ltype->isIntegerType() && rtype->isFloatingPointType())
+		{
+			return rtype;
+		}
+		else if(ltype->isFloatingPointType() && rtype->isIntegerType())
+		{
+			return ltype;
+		}
+		else if(ltype->isFloatingPointType() && rtype->isFloatingPointType())
+		{
+			if(ltype->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
+				return ltype;
+
+			return rtype;
+		}
+		else
+		{
+			if(ltype->isPointerType() && rtype->isIntegerType())
+			{
+				// pointer arith??
+				return ltype;
+			}
+
+			auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+			if(data.found)
+			{
+				return data.opFunc->getReturnType();
+			}
+			else
+			{
+				error(this, "No such operator overload for operator '%s' accepting types %s and %s.",
+					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->str().c_str(), rtype->str().c_str());
+			}
+		}
 	}
 }
+
+
+
+
+
+
+
 
 
 namespace Codegen
