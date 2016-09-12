@@ -847,6 +847,40 @@ namespace fir
 		return this->CreateCall(fn, dargs, vname);
 	}
 
+
+
+
+
+	Value* IRBuilder::CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname)
+	{
+		// we can't really check anything.
+		args.push_front(fn);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, ft->getReturnType(), args);
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_Return, PrimitiveType::getVoid(), { v });

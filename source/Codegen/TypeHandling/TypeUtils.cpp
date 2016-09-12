@@ -63,425 +63,6 @@ namespace Codegen
 		return alloca;
 	}
 
-	fir::Type* CodegenInstance::getExprType(Expr* expr, bool allowFail, bool setInferred)
-	{
-		return this->getExprType(expr, Resolved_t(), allowFail, setInferred);
-	}
-
-	fir::Type* CodegenInstance::getExprType(Expr* expr, Resolved_t preResolvedFn, bool allowFail, bool setInferred)
-	{
-		if(expr->type.ftype != 0)
-			return expr->type.ftype;
-
-		setInferred = false;
-		iceAssert(expr);
-		{
-			if(VarDecl* decl = dynamic_cast<VarDecl*>(expr))
-			{
-				if(decl->type.strType == "Inferred")
-				{
-					if(!decl->inferredLType)		// todo: better error detection for this
-					{
-						error(expr, "Invalid variable declaration for %s!", decl->ident.name.c_str());
-					}
-
-					iceAssert(decl->inferredLType);
-					return decl->inferredLType;
-				}
-				else
-				{
-					// if we already "inferred" the type, don't bother doing it again.
-					if(decl->inferredLType)
-						return decl->inferredLType;
-
-					fir::Type* ret = this->parseAndGetOrInstantiateType(decl, decl->type.strType, allowFail);
-					if(setInferred) decl->inferredLType = ret;
-
-					return ret;
-				}
-			}
-			else if(VarRef* ref = dynamic_cast<VarRef*>(expr))
-			{
-				VarDecl* decl = getSymDecl(ref, ref->name);
-				if(!decl)
-					GenError::unknownSymbol(this, expr, ref->name, SymbolType::Variable);
-
-				auto x = this->getExprType(decl, allowFail);
-				return x;
-			}
-			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(expr))
-			{
-				if(uo->op == ArithmeticOp::Deref)
-				{
-					fir::Type* ltype = this->getExprType(uo->expr);
-					if(!ltype->isPointerType())
-						error(expr, "Attempted to dereference a non-pointer type '%s'", this->getReadableType(ltype).c_str());
-
-					return this->getExprType(uo->expr)->getPointerElementType();
-				}
-
-				else if(uo->op == ArithmeticOp::AddrOf)
-					return this->getExprType(uo->expr)->getPointerTo();
-
-				else
-					return this->getExprType(uo->expr);
-			}
-			else if(FuncCall* fc = dynamic_cast<FuncCall*>(expr))
-			{
-				Resolved_t& res = preResolvedFn;
-				if(!res.resolved)
-				{
-					Resolved_t rt = this->resolveFunction(expr, fc->name, fc->params);
-					if(!rt.resolved)
-					{
-						TypePair_t* tp = this->getTypeByString(fc->name);
-						if(tp)
-						{
-							return tp->first;
-						}
-						else
-						{
-							auto genericMaybe = this->tryResolveGenericFunctionCall(fc);
-							if(genericMaybe.first)
-							{
-								fc->cachedResolveTarget = Resolved_t(genericMaybe);
-								return genericMaybe.first->getReturnType();
-							}
-
-							GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params);
-						}
-					}
-					else
-					{
-						res = rt;
-					}
-				}
-
-				return getExprType(res.t.second);
-			}
-			else if(Func* f = dynamic_cast<Func*>(expr))
-			{
-				return getExprType(f->decl);
-			}
-			else if(FuncDecl* fd = dynamic_cast<FuncDecl*>(expr))
-			{
-				TypePair_t* type = this->getTypeByString(fd->type.strType);
-				if(!type)
-				{
-					fir::Type* ret = this->parseAndGetOrInstantiateType(fd, fd->type.strType, allowFail);
-					return ret;
-				}
-
-				return type->first;
-			}
-			else if(StringLiteral* sl = dynamic_cast<StringLiteral*>(expr))
-			{
-				if(sl->isRaw)
-					return fir::PointerType::getInt8Ptr(this->getContext());
-
-				else
-				{
-					auto tp = this->getTypeByString("String");
-					if(!tp)
-						return fir::PointerType::getInt8Ptr(this->getContext());
-
-
-					return tp->first;
-				}
-			}
-			else if(MemberAccess* ma = dynamic_cast<MemberAccess*>(expr))
-			{
-				if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
-					return this->resolveStaticDotOperator(ma, false).first.first;
-
-
-				// first, get the type of the lhs
-				fir::Type* lhs = this->getExprType(ma->left);
-				TypePair_t* pair = this->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
-
-				if(!pair && !lhs->isTupleType())
-					error(expr, "Invalid type '%s' for dot-operator-access", this->getReadableType(lhs).c_str());
-
-				if(lhs->isTupleType())
-				{
-					// values are 1, 2, 3 etc.
-					// for now, assert this.
-
-					fir::TupleType* tt = lhs->toTupleType();
-					iceAssert(tt);
-
-					Number* n = dynamic_cast<Number*>(ma->right);
-					iceAssert(n);
-
-					if((size_t) n->ival >= tt->getElementCount())
-					{
-						error(expr, "Tuple does not have %d elements, only %zd", (int) n->ival + 1, tt->getElementCount());
-					}
-
-					return tt->getElementN(n->ival);
-				}
-				else if(pair->second.second == TypeKind::Class)
-				{
-					ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
-					iceAssert(cls);
-
-					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
-					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
-
-					if(memberVr)
-					{
-						for(VarDecl* mem : cls->members)
-						{
-							if(mem->ident.name == memberVr->name)
-								return this->getExprType(mem);
-						}
-						for(ComputedProperty* c : cls->cprops)
-						{
-							if(c->ident.name == memberVr->name)
-								return this->getExprTypeFromStringType(c, c->type, allowFail);
-						}
-
-						auto exts = this->getExtensionsForType(cls);
-						for(auto ext : exts)
-						{
-							for(auto cp : ext->cprops)
-							{
-								if(cp->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
-								{
-									if(cp->ident.name == memberVr->name)
-										return this->getExprType(cp);
-								}
-							}
-						}
-					}
-					else if(memberFc)
-					{
-						return this->resolveMemberFuncCall(ma, cls, memberFc).second->getReturnType();
-					}
-				}
-				else if(pair->second.second == TypeKind::Struct)
-				{
-					StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
-					iceAssert(str);
-
-					VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
-					FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
-
-					if(memberVr)
-					{
-						for(VarDecl* mem : str->members)
-						{
-							if(mem->ident.name == memberVr->name)
-								return this->getExprType(mem);
-						}
-
-						auto exts = this->getExtensionsForType(str);
-						for(auto ext : exts)
-						{
-							for(auto cp : ext->cprops)
-							{
-								if(cp->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
-								{
-									if(cp->ident.name == memberVr->name)
-										return this->getExprType(cp);
-								}
-							}
-						}
-					}
-					else if(memberFc)
-					{
-						error(memberFc, "Tried to call method on struct");
-					}
-				}
-				else if(pair->second.second == TypeKind::Enum)
-				{
-					EnumDef* enr = dynamic_cast<EnumDef*>(pair->second.first);
-					iceAssert(enr);
-
-					VarRef* enrcase = dynamic_cast<VarRef*>(ma->right);
-					iceAssert(enrcase);
-
-					for(auto c : enr->cases)
-					{
-						if(c.first == enrcase->name)
-							return this->getExprType(c.second);
-					}
-
-					error(expr, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), enrcase->name.c_str());
-				}
-				else
-				{
-					error(expr, "Invalid expr type (%s)", typeid(*pair->second.first).name());
-				}
-			}
-			else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
-			{
-				fir::Type* ltype = this->getExprType(bo->left);
-				fir::Type* rtype = this->getExprType(bo->right);
-
-				if(bo->op == ArithmeticOp::CmpLT || bo->op == ArithmeticOp::CmpGT || bo->op == ArithmeticOp::CmpLEq
-				|| bo->op == ArithmeticOp::CmpGEq || bo->op == ArithmeticOp::CmpEq || bo->op == ArithmeticOp::CmpNEq)
-				{
-					return fir::PrimitiveType::getBool(this->getContext());
-				}
-				else if(bo->op == ArithmeticOp::Cast || bo->op == ArithmeticOp::ForcedCast)
-				{
-					return this->getExprType(bo->right);
-				}
-				else if(bo->op >= ArithmeticOp::UserDefined)
-				{
-					auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
-
-					if(!data.found)
-					{
-						error(bo, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(this, bo->op).c_str(),
-							ltype->str().c_str(), rtype->str().c_str());
-					}
-
-					iceAssert(data.found);
-					return data.opFunc->getReturnType();
-				}
-				else
-				{
-					// check if both are integers
-					if(ltype->isIntegerType() && rtype->isIntegerType())
-					{
-						if(ltype->toPrimitiveType()->getIntegerBitWidth() > rtype->toPrimitiveType()->getIntegerBitWidth())
-							return ltype;
-
-						return rtype;
-					}
-					else if(ltype->isIntegerType() && rtype->isFloatingPointType())
-					{
-						return rtype;
-					}
-					else if(ltype->isFloatingPointType() && rtype->isIntegerType())
-					{
-						return ltype;
-					}
-					else if(ltype->isFloatingPointType() && rtype->isFloatingPointType())
-					{
-						if(ltype->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
-							return ltype;
-
-						return rtype;
-					}
-					else
-					{
-						if(ltype->isPointerType() && rtype->isIntegerType())
-						{
-							// pointer arith??
-							return ltype;
-						}
-
-						auto data = this->getBinaryOperatorOverload(bo, bo->op, ltype, rtype);
-						if(data.found)
-						{
-							return data.opFunc->getReturnType();
-						}
-						else
-						{
-							error(expr, "No such operator overload for operator '%s' accepting types %s and %s.",
-								Parser::arithmeticOpToString(this, bo->op).c_str(), this->getReadableType(ltype).c_str(),
-								this->getReadableType(rtype).c_str());
-						}
-					}
-				}
-			}
-			else if(Alloc* alloc = dynamic_cast<Alloc*>(expr))
-			{
-				fir::Type* base = this->getExprTypeFromStringType(alloc, alloc->type.strType);
-
-				if(alloc->counts.size() == 0) return base->getPointerTo();
-
-				for(size_t i = 0; i < alloc->counts.size(); i++)
-					 base = base->getPointerTo();
-
-				return base;
-			}
-			else if(Number* nm = dynamic_cast<Number*>(expr))
-			{
-				return nm->codegen(this).result.first->getType();
-			}
-			else if(dynamic_cast<BoolVal*>(expr))
-			{
-				return fir::PrimitiveType::getBool(getContext());
-			}
-			else if(Return* retr = dynamic_cast<Return*>(expr))
-			{
-				return this->getExprType(retr->val);
-			}
-			else if(DummyExpr* dum = dynamic_cast<DummyExpr*>(expr))
-			{
-				if(dum->type.isLiteral)
-				{
-					return this->parseAndGetOrInstantiateType(expr, dum->type.strType);
-				}
-				else
-				{
-					return this->getExprType(dum->type.type);
-				}
-			}
-			else if(dynamic_cast<IfStmt*>(expr))
-			{
-				return fir::PrimitiveType::getVoid(getContext());
-			}
-			else if(dynamic_cast<Typeof*>(expr))
-			{
-				TypePair_t* tp = this->getTypeByString("Type");
-				iceAssert(tp);
-
-				return tp->first;
-			}
-			else if(Tuple* tup = dynamic_cast<Tuple*>(expr))
-			{
-				fir::Type* tp = tup->createdType;
-				if(!tup->didCreateType)
-					tp = tup->getType(this);
-
-				iceAssert(tp);
-				return tp;
-			}
-			else if(ArrayIndex* ai = dynamic_cast<ArrayIndex*>(expr))
-			{
-				fir::Type* t = this->getExprType(ai->arr);
-				if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
-				{
-					// todo: multiple subscripts
-					fir::Function* getter = Operators::getOperatorSubscriptGetter(this, expr, t, { expr, ai->index });
-					if(!getter)
-					{
-						error(expr, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
-							this->getReadableType(ai->index).c_str());
-					}
-
-					return getter->getReturnType();
-				}
-				else
-				{
-					if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
-					else if(t->isPointerType()) return t->getPointerElementType();
-					else return t->toArrayType()->getElementType();
-				}
-			}
-			else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
-			{
-				// todo: make this not shit.
-				// edit: ???
-				return fir::ArrayType::get(this->getExprType(al->values.front()), al->values.size());
-			}
-			else if(dynamic_cast<NullVal*>(expr))
-			{
-				return fir::ConstantValue::getNull()->getType();
-			}
-			else if(dynamic_cast<PostfixUnaryOp*>(expr))
-			{
-				iceAssert(0);
-			}
-		}
-
-		error(expr, "(%s:%d) -> Internal check failed: failed to determine type '%s'", __FILE__, __LINE__, typeid(*expr).name());
-	}
 
 	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
@@ -496,7 +77,7 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
-		return fir::ConstantValue::getNullValue(this->getExprType(e));
+		return fir::ConstantValue::getNullValue(e->getType(this));
 	}
 
 	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)
@@ -535,24 +116,6 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::getReadableType(fir::Type* type)
-	{
-		if(type == 0)
-			return "(null)";
-
-		return type->str();
-	}
-
-	std::string CodegenInstance::getReadableType(fir::Value* val)
-	{
-		if(val == 0) return "(null)";
-		return this->getReadableType(val->getType());
-	}
-
-	std::string CodegenInstance::getReadableType(Expr* expr)
-	{
-		return this->getReadableType(this->getExprType(expr));
-	}
 
 	int CodegenInstance::getAutoCastDistance(fir::Type* from, fir::Type* to)
 	{
@@ -844,201 +407,53 @@ namespace Codegen
 
 
 
-	std::string unwrapPointerType(std::string type, int* _indirections)
+	static fir::Type* _recursivelyConvertType(CodegenInstance* cgi, bool allowFail, Expr* user, pts::Type* pt)
 	{
-		std::string sptr = "*";
-		size_t ptrStrLength = sptr.length();
-
-		int tmp = 0;
-		if(!_indirections)
-			_indirections = &tmp;
-
-		std::string actualType = type;
-		if(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
+		if(pt->resolvedFType)
 		{
-			int& indirections = *_indirections;
-
-			while(actualType.length() > ptrStrLength && std::equal(sptr.rbegin(), sptr.rend(), actualType.rbegin()))
-				actualType = actualType.substr(0, actualType.length() - ptrStrLength), indirections++;
+			return pt->resolvedFType;
 		}
-
-		return actualType;
-	}
-
-	static fir::Type* recursivelyParseTuple(CodegenInstance* cgi, Expr* user, std::string& str, bool allowFail)
-	{
-		iceAssert(str.length() > 0);
-		iceAssert(str[0] == '(');
-
-		str = str.substr(1);
-		char front = str.front();
-		if(front == ')')
-			error(user, "Empty tuples are not supported");
-
-		std::vector<fir::Type*> types;
-		while(front != ')')
+		else if(pt->isPointerType())
 		{
-			std::string cur;
-			while(front != ',' && front != '(' && front != ')')
-			{
-				cur += front;
-
-				str.erase(str.begin());
-				front = str.front();
-			}
-
-			if(front == ',' || front == ')')
-			{
-				bool shouldBreak = (front == ')');
-				fir::Type* ty = cgi->parseAndGetOrInstantiateType(user, cur, allowFail);
-				iceAssert(ty);
-
-				types.push_back(ty);
-
-				str.erase(str.begin());
-				front = str.front();
-
-				if(shouldBreak)
-					break;
-			}
-			else if(front == '(')
-			{
-				iceAssert(str.front() == '(');
-				types.push_back(recursivelyParseTuple(cgi, user, str, allowFail));
-
-				if(str.front() == ',')
-					str.erase(str.begin());
-
-				front = str.front();
-			}
+			return _recursivelyConvertType(cgi, allowFail, user, pt->toPointerType()->base)->getPointerTo();
 		}
-
-		return fir::TupleType::get(types, cgi->getContext());
-	}
-
-
-
-	fir::Type* CodegenInstance::parseAndGetOrInstantiateType(Expr* user, std::string type, bool allowFail)
-	{
-		if(type.length() > 0)
+		else if(pt->isFixedArrayType())
 		{
-			if(type[0] == '(')
-			{
-				// parse a tuple.
-				fir::Type* parsed = recursivelyParseTuple(this, user, type, allowFail);
-				return parsed;
-			}
-			else
-			{
-				int indirections = 0;
-
-				std::string actualType = unwrapPointerType(type, &indirections);
-				if(actualType.find("[") != std::string::npos)
-				{
-					size_t k = actualType.find("[");
-					std::string base = actualType.substr(0, k);
-
-					std::string arr = actualType.substr(k);
-					fir::Type* btype = this->parseAndGetOrInstantiateType(user, base, allowFail);
-
-
-					std::vector<int> sizes;
-					while(arr.length() > 0 && arr.front() == '[')
-					{
-						arr = arr.substr(1);
-
-						// get the size
-						const char* c = arr.c_str();
-						char* final = 0;
-
-
-						if(arr.find("]") == 0)
-						{
-							// variable array.
-							sizes.push_back(0);
-							iceAssert(arr.find("]") == 1);
-
-							arr = arr.substr(1);
-						}
-						else if(arr.find("...") == 0)
-						{
-							sizes.push_back(-1);
-							iceAssert(arr.find("]") == 3);
-
-							arr = arr.substr(3);
-
-							if(arr.length() > 0 && arr.front() == '[')
-								error(user, "Variadic array '[...]' must be the last dimension.");
-						}
-						else
-						{
-							size_t asize = strtoll(c, &final, 0);
-							size_t numlen = final - c;
-
-							arr = arr.substr(numlen);
-							sizes.push_back(asize);
-
-
-							// get the closing.
-							iceAssert(arr.length() > 0 && arr.front() == ']');
-							arr = arr.substr(1);
-						}
-					}
-
-					for(auto i : sizes)
-					{
-						if(i > 0)
-						{
-							btype = fir::ArrayType::get(btype, i);
-						}
-						else if(i == -1)
-						{
-							btype = fir::LLVariableArrayType::get(btype);
-						}
-						else
-						{
-							btype = btype->getPointerTo();
-						}
-					}
-
-					return btype;
-				}
-				else
-				{
-					fir::Type* ret = this->getExprTypeFromStringType(user, ExprType(actualType), allowFail);
-					if(ret)
-					{
-						while(indirections > 0)
-						{
-							ret = ret->getPointerTo();
-							indirections--;
-						}
-					}
-
-					return ret;
-				}
-			}
+			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toFixedArrayType()->base);
+			return fir::ArrayType::get(base, pt->toFixedArrayType()->size);
 		}
-		else
+		else if(pt->isVariadicArrayType())
 		{
-			return nullptr;
+			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toVariadicArrayType()->base);
+			return fir::LLVariableArrayType::get(base);
 		}
-	}
-
-	fir::Type* CodegenInstance::getExprTypeFromStringType(Ast::Expr* user, ExprType type, bool allowFail)
-	{
-		if(type.isLiteral)
+		else if(pt->isDynamicArrayType())
 		{
-			fir::Type* ret = this->getExprTypeOfBuiltin(type.strType);
+			error("dynamic arrays not supported");
+		}
+		else if(pt->isTupleType())
+		{
+			std::deque<fir::Type*> types;
+			for(auto t : pt->toTupleType()->types)
+				types.push_back(_recursivelyConvertType(cgi, allowFail, user, t));
+
+			return fir::TupleType::get(types);
+		}
+		else if(pt->isNamedType())
+		{
+			// the bulk.
+			std::string strtype = pt->toNamedType()->name;
+
+			fir::Type* ret = cgi->getExprTypeOfBuiltin(strtype);
 			if(ret) return ret;
 
 			// not so lucky
-			std::deque<std::string> ns = this->unwrapNamespacedType(type.strType);
+			std::deque<std::string> ns = cgi->unwrapNamespacedType(strtype);
 			std::string atype = ns.back();
 			ns.pop_back();
 
 
-			if(TypePair_t* test = this->getType(Identifier(atype, ns, IdKind::Struct)))
+			if(TypePair_t* test = cgi->getType(Identifier(atype, ns, IdKind::Struct)))
 			{
 				iceAssert(test->first);
 				return test->first;
@@ -1046,96 +461,22 @@ namespace Codegen
 
 
 
-
-			auto pair = this->findTypeInFuncTree(ns, atype);
+			auto pair = cgi->findTypeInFuncTree(ns, atype);
 			TypePair_t* tp = pair.first;
 			int indirections = pair.second;
+
+			iceAssert(indirections == -1 || indirections == 0);
 
 			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
-				fir::Type* ret = this->resolveGenericType(type.strType);
+				fir::Type* ret = cgi->resolveGenericType(atype);
 				if(ret) return ret;
 
 				if(atype.find("<") != std::string::npos)
 				{
 					error("enotsup (generic structs)");
-
-
-					#if 0
-
-					size_t k = atype.find("<");
-					std::string base = atype.substr(0, k);
-
-					pair = this->findTypeInFuncTree(ns, base);
-					tp = pair.first;
-					indirections = pair.second;
-
-					if(tp && indirections >= 0)
-					{
-						// parse that shit.
-						StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
-						iceAssert(sb);
-
-						// parse the list of types.
-						std::string glist = atype.substr(k);
-						{
-							iceAssert(glist.size() > 0 && glist[0] == '<');
-							glist = glist.substr(1);
-
-							iceAssert(glist.back() == '>');
-							glist.pop_back();
-
-
-							// to allow for nesting generic types in generic types,
-							// eg. Foo<Bar<Int>,Qux<Double,Int>>, we need to be smart
-							// iterate through the string manually.
-							// if we encounter a '<', increase nesting.
-							// if we encounter a '>', decrease nesting.
-							// if we encounter a ',' while nesting > 0, ignore.
-							// if we encounter a ',' while nesting == 0, split the string there.
-
-							int nesting = 0;
-							std::deque<std::string> types;
-
-							std::string curtype;
-							for(size_t i = 0; i < glist.length(); i++)
-							{
-								if(glist[i] == '<')
-								{
-									nesting++;
-									curtype += glist[i];
-								}
-								else if(glist[i] == '>')
-								{
-									if(nesting == 0) error(user, "mismatched angle brackets in generic type parameter list");
-									nesting--;
-									curtype += glist[i];
-								}
-								else if(glist[i] == ',' && nesting == 0)
-								{
-									types.push_back(curtype);
-									curtype = "";
-								}
-								else
-								{
-									curtype += glist[i];
-								}
-							}
-							types.push_back(curtype);
-						}
-
-						// todo: ew, goto
-						goto foundType;
-					}
-					else
-					{
-						if(allowFail) return 0;
-						else error(user, "Invaild type '%s'", base.c_str());
-					}
-
-					#endif
 				}
 
 				std::string nsstr;
@@ -1145,19 +486,19 @@ namespace Codegen
 				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
-				GenError::unknownSymbol(this, user, atype + " in namespace " + nsstr, SymbolType::Type);
+				GenError::unknownSymbol(cgi, user, atype + " in namespace " + nsstr, SymbolType::Type);
 			}
 
-			if(!tp && this->getExprTypeOfBuiltin(atype))
+			if(!tp && cgi->getExprTypeOfBuiltin(atype))
 			{
-				return this->getExprTypeOfBuiltin(atype);
+				return cgi->getExprTypeOfBuiltin(atype);
 			}
 			else if(tp)
 			{
 				// foundType:
 
 				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
-				tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
+				tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
 
 				fir::Type* concrete = tp ? tp->first : 0;
 				if(!concrete)
@@ -1167,18 +508,21 @@ namespace Codegen
 
 
 					// temporarily hijack the main scope
-					auto old = this->namespaceStack;
-					this->namespaceStack = ns;
+					auto old = cgi->namespaceStack;
+					cgi->namespaceStack = ns;
 
-					concrete = oldSB->createType(this);
+					concrete = oldSB->createType(cgi);
 					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
 
-					concrete = getExprTypeFromStringType(user, type, allowFail);
+					// do recursively, to ensure it's found...???
+					// concrete = cgi->getExprTypeFromStringType(user, type, allowFail);
+					// concrete = cgi->getTypeFromParserType(user, pt, allowFail);
+
 					iceAssert(concrete);
 
-					this->namespaceStack = old;
+					cgi->namespaceStack = old;
 
-					if(!tp) tp = this->findTypeInFuncTree(ns, oldSB->ident.name).first;
+					if(!tp) tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
 					iceAssert(tp);
 				}
 
@@ -1193,18 +537,56 @@ namespace Codegen
 			}
 			else if(!allowFail)
 			{
-				error(user, "Unknown type '%s'", type.strType.c_str());
+				error(user, "Unknown type '%s'", strtype.c_str());
 			}
 			else
 			{
 				return 0;
 			}
 		}
+		else if(pt->isFunctionType())
+		{
+			auto ft = pt->toFunctionType();
+
+			std::deque<fir::Type*> args;
+			// temporarily push a new generic stack
+			cgi->pushGenericTypeStack();
+
+			for(auto gt : ft->genericTypes)
+				cgi->pushGenericType(gt.first, fir::ParametricType::get(gt.first));
+
+			for(auto arg : ft->argTypes)
+				args.push_back(_recursivelyConvertType(cgi, allowFail, user, arg));
+
+			fir::Type* retty = _recursivelyConvertType(cgi, allowFail, user, ft->returnType);
+
+			auto ret = fir::FunctionType::get(args, retty, args.size() > 0 && args.back()->isLLVariableArrayType());
+
+			return ret;
+		}
 		else
 		{
-			error(user, "enotsup");
+			iceAssert(0);
 		}
 	}
+
+	fir::Type* CodegenInstance::getTypeFromParserType(Expr* user, pts::Type* type, bool allowFail)
+	{
+		// pts basically did all the dirty work for us, so...
+		return _recursivelyConvertType(this, allowFail, user, type);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1218,14 +600,14 @@ namespace Codegen
 	bool CodegenInstance::isArrayType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getExprType(e);
+		fir::Type* ltype = e->getType(this);
 		return ltype && ltype->isArrayType();
 	}
 
 	bool CodegenInstance::isIntegerType(Expr* e)
 	{
 		iceAssert(e);
-		fir::Type* ltype = this->getExprType(e);
+		fir::Type* ltype = e->getType(this);
 		return ltype && ltype->isIntegerType();
 	}
 
@@ -1254,25 +636,6 @@ namespace Codegen
 		return false;
 	}
 
-	bool CodegenInstance::isEnum(ExprType type)
-	{
-		if(type.isLiteral)
-		{
-			TypePair_t* tp = 0;
-			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
-			{
-				if(tp->second.second == TypeKind::Enum)
-					return true;
-			}
-
-			return false;
-		}
-		else
-		{
-			error("enotsup");
-		}
-	}
-
 	bool CodegenInstance::isEnum(fir::Type* type)
 	{
 		if(!type) return false;
@@ -1288,25 +651,6 @@ namespace Codegen
 			return tp->second.second == TypeKind::Enum;
 
 		return res;
-	}
-
-	bool CodegenInstance::isTypeAlias(ExprType type)
-	{
-		if(type.isLiteral)
-		{
-			TypePair_t* tp = 0;
-			if((tp = this->getType(Identifier(type.strType, { }, IdKind::Struct))))
-			{
-				if(tp->second.second == TypeKind::TypeAlias)
-					return true;
-			}
-
-			return false;
-		}
-		else
-		{
-			error("enotsup");
-		}
 	}
 
 	bool CodegenInstance::isTypeAlias(fir::Type* type)
@@ -1342,7 +686,7 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(Expr* expr)
 	{
-		fir::Type* ltype = this->getExprType(expr);
+		fir::Type* ltype = expr->getType(this);
 		return this->isBuiltinType(ltype);
 	}
 
@@ -1387,7 +731,7 @@ namespace Codegen
 			str += "(";
 			for(auto p : fd->params)
 			{
-				str += p->ident.name + ": " + (p->inferredLType ? this->getReadableType(p->inferredLType) : p->type.strType) + ", ";
+				str += p->ident.name + ": " + (p->inferredLType ? p->inferredLType->str() : p->ptype->str()) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -1395,7 +739,7 @@ namespace Codegen
 			if(fd->params.size() > 0)
 				str = str.substr(0, str.length() - 2);
 
-			str +=  ") -> " + fd->type.strType;
+			str +=  ") -> " + fd->ptype->str();
 			return str;
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(expr))
@@ -1405,7 +749,7 @@ namespace Codegen
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
 			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
-				+ (vd->inferredLType ? this->getReadableType(vd) : vd->type.strType);
+				+ (vd->inferredLType ? vd->getType(this)->str() : vd->ptype->str());
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
@@ -1578,7 +922,7 @@ namespace Codegen
 			for(auto c : al->counts)
 				ret += "[" + this->printAst(c) + "]";
 
-			return ret + al->type.strType;
+			return ret + al->ptype->str();
 		}
 
 		error(expr, "Unknown shit (%s)", typeid(*expr).name());
@@ -1598,6 +942,13 @@ namespace Codegen
 
 
 
+namespace Ast
+{
+	fir::Type* DummyExpr::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+	{
+		return cgi->getTypeFromParserType(this, this->ptype);
+	}
+}
 
 
 

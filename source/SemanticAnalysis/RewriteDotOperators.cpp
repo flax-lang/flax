@@ -288,6 +288,9 @@ static void findDotOperator(Expr* expr)
 				findDotOperator(mem->initVal);
 		}
 
+		for(auto op : cls->operatorOverloads)
+			findDotOperator(op->func);
+
 		for(auto op : cls->assignmentOverloads)
 			findDotOperator(op->func);
 

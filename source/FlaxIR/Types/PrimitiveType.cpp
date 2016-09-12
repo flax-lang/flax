@@ -274,7 +274,8 @@ namespace fir
 
 	PrimitiveType* PrimitiveType::reify(std::map<std::string, Type*> names, FTContext* tc)
 	{
-		error_and_exit("Cannot reify primitive types");
+		// do nothing
+		return this;
 	}
 }
 

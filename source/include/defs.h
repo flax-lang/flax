@@ -121,6 +121,8 @@ namespace Codegen
 		FuncPair_t t;
 		bool resolved;
 	};
+
+	std::string unwrapPointerType(std::string type, int* indirections);
 }
 
 

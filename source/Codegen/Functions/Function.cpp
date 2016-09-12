@@ -37,6 +37,14 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return lastval;
 }
 
+fir::Type* BracedBlock::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	static bool didRecurse = false;
@@ -71,6 +79,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
 							: cgi->module->getFunction(this->decl->ident);
 
+
 		if(!func)
 		{
 			this->didCodegen = false;
@@ -97,6 +106,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->block == 0)
 		error(this, "Function needs a body in this context");
 
+
+	iceAssert(func);
+	if(func->wasDeclaredWithBodyElsewhere())
+		error(this->decl, "Function '%s' was already declared with a body in another, imported, module", this->decl->ident.name.c_str());
 
 
 	// we need to clear all previous blocks' symbols
@@ -125,7 +138,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(this->decl->parentClass && this->decl->parentClass->createdType);
 
 		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
-		fake->type.ftype = this->decl->parentClass->createdType->getPointerTo();
+		fake->ptype = new pts::Type(this->decl->parentClass->createdType->getPointerTo());
 
 		vprs.push_front(fake);
 	}
@@ -136,7 +149,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(!isGeneric)
 		{
-			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(vprs[i]));
+			iceAssert(func->getArguments()[i]->getType() == vprs[i]->getType(cgi));
 		}
 
 		fir::Value* ai = 0;
@@ -168,7 +181,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
 	// bool premature = false;
-	if(this->decl->type.strType != VOID_TYPE_STRING)
+	if(this->decl->ptype->str() != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
 		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, func->getReturnType());
@@ -229,6 +242,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* Func::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return this->decl->getType(cgi);
+}
 
 
 

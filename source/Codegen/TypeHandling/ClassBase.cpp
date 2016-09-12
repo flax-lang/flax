@@ -87,7 +87,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : fn->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 					{
@@ -135,7 +135,7 @@ namespace Codegen
 			if(c->getter)
 			{
 				std::deque<VarDecl*> params;
-				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->type.strType);
+				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->ptype);
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
 				fakeDecl->parentClass = cls;
@@ -150,10 +150,10 @@ namespace Codegen
 			if(c->setter)
 			{
 				VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
-				setterArg->type = c->type;
+				setterArg->ptype = c->ptype;
 
 				std::deque<VarDecl*> params { setterArg };
-				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, VOID_TYPE_STRING);
+				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, pts::NamedType::create(VOID_TYPE_STRING));
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 				fakeDecl->parentClass = cls;
@@ -169,9 +169,60 @@ namespace Codegen
 	}
 
 
-
-	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls)
+	void generateDeclForOperators(CodegenInstance* cgi, ClassDef* cls)
 	{
+		for(OpOverload* overl : cls->operatorOverloads)
+		{
+			for(auto oo : cls->operatorOverloads)
+			{
+				if(oo != overl && oo->op == overl->op)
+				{
+					int d = 0;
+					std::deque<fir::Type*> ps;
+					for(auto e : oo->func->decl->params)
+						ps.push_back(e->getType(cgi));
+
+					if(cgi->isValidFuncOverload({ 0, overl->func->decl }, ps, &d, true))
+					{
+						errorNoExit(oo->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, oo->op).c_str());
+						info(overl->func->decl, "Previous declaration was here.");
+						doTheExit();
+					}
+				}
+			}
+
+
+			// note(anti-confusion): decl->codegen() looks at parentClass
+			// and inserts an implicit self, so we don't need to do it.
+
+			overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			overl->func->decl->ident.kind = IdKind::Operator;
+			overl->func->decl->parentClass = cls;
+
+			if(cls->attribs & Attr_VisPublic && !(overl->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
+				overl->func->decl->attribs |= Attr_VisPublic;
+
+			overl->func->decl->codegen(cgi);
+
+			// fir::Value* val = overl->func->decl->codegen(cgi).result.first;
+			// cgi->builder.setCurrentBlock(ob);
+
+			// overl->lfunc = dynamic_cast<fir::Function*>(val);
+			// iceAssert(overl->lfunc);
+
+			// if(overl->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
+			// 	cgi->addPublicFunc({ overl->lfunc, overl->func->decl });
+
+			// ob = cgi->builder.getCurrentBlock();
+
+			// overl->func->codegen(cgi);
+
+			// cgi->builder.setCurrentBlock(ob);
+		}
+
+
+
+
 		for(AssignOpOverload* aoo : cls->assignmentOverloads)
 		{
 			// note(anti-confusion): decl->codegen() looks at parentClass
@@ -184,7 +235,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : a->func->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, aoo->func->decl }, ps, &d, true))
 					{
@@ -195,20 +246,14 @@ namespace Codegen
 				}
 			}
 
-			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
-
 			aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->parentClass = cls;
 
 			if(cls->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
-			{
 				aoo->func->decl->attribs |= Attr_VisPublic;
-			}
 
 			fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
-			cgi->builder.setCurrentBlock(ob);
-
 			aoo->lfunc = dynamic_cast<fir::Function*>(val);
 			iceAssert(aoo->lfunc);
 
@@ -229,20 +274,13 @@ namespace Codegen
 
 			if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 				cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
-
-			ob = cgi->builder.getCurrentBlock();
-
-			aoo->func->codegen(cgi);
-
-			cgi->builder.setCurrentBlock(ob);
 		}
 
 
 
-	}
 
-	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls)
-	{
+
+
 		for(SubscriptOpOverload* soo : cls->subscriptOverloads)
 		{
 			for(auto s : cls->subscriptOverloads)
@@ -252,7 +290,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : s->decl->params)
-						ps.push_back(cgi->getExprType(e));
+						ps.push_back(e->getType(cgi));
 
 					if(cgi->isValidFuncOverload({ 0, soo->decl }, ps, &d, true))
 					{
@@ -276,7 +314,7 @@ namespace Codegen
 				// do getter.
 				BracedBlock* body = soo->getterBody;
 				FuncDecl* decl = new FuncDecl(body->pin, "_get" + std::to_string(opString.length()) + opString,
-					soo->decl->params, soo->decl->type.strType);
+					soo->decl->params, soo->decl->ptype);
 
 				decl->parentClass = cls;
 				decl->ident.kind = IdKind::Operator;
@@ -289,26 +327,18 @@ namespace Codegen
 
 				cgi->builder.setCurrentBlock(ob);
 
-				Func* fn = new Func(decl->pin, decl, body);
+				soo->getterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 					cgi->addPublicFunc({ soo->getterFunc, decl });
-
-				ob = cgi->builder.getCurrentBlock();
-				fn->codegen(cgi);
-
-				cgi->builder.setCurrentBlock(ob);
 			}
-
-
-
 
 			if(soo->setterBody)
 			{
 				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
 
 				VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
-				setterArg->type = soo->decl->type;
+				setterArg->ptype = soo->decl->ptype;
 
 				std::deque<VarDecl*> params;
 				params = soo->decl->params;
@@ -316,7 +346,8 @@ namespace Codegen
 
 				// do getter.
 				BracedBlock* body = soo->setterBody;
-				FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params, VOID_TYPE_STRING);
+				FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params,
+					pts::NamedType::create(VOID_TYPE_STRING));
 
 				decl->parentClass = cls;
 				decl->ident.kind = IdKind::Operator;
@@ -329,16 +360,82 @@ namespace Codegen
 
 				cgi->builder.setCurrentBlock(ob);
 
-				Func* fn = new Func(decl->pin, decl, body);
+				soo->setterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 					cgi->addPublicFunc({ soo->setterFunc, decl });
+			}
+		}
+	}
 
-				ob = cgi->builder.getCurrentBlock();
-				fn->codegen(cgi);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+	void doCodegenForGeneralOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(OpOverload* overl : cls->operatorOverloads)
+		{
+			overl->codegen(cgi);
+		}
+	}
+
+
+	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(AssignOpOverload* aoo : cls->assignmentOverloads)
+		{
+			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+			aoo->func->codegen(cgi);
+			cgi->builder.setCurrentBlock(ob);
+		}
+	}
+
+	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls)
+	{
+		for(SubscriptOpOverload* soo : cls->subscriptOverloads)
+		{
+			// note(anti-confusion): decl->codegen() looks at parentClass
+			// and inserts an implicit self, so we don't need to do it.
+
+			iceAssert(soo->getterBody);
+			{
+				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+				soo->getterFn->codegen(cgi);
+				cgi->builder.setCurrentBlock(ob);
+			}
+
+			if(soo->setterBody)
+			{
+				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+
+				soo->setterFn->codegen(cgi);
 				cgi->builder.setCurrentBlock(ob);
 			}
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+

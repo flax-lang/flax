@@ -24,8 +24,8 @@ namespace Operators
 		else
 		{
 			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				cgi->getReadableType(leftVP.first).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
-				cgi->getReadableType(rightVP.first).c_str());
+				leftVP.first->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
+				rightVP.first->getType()->str().c_str());
 		}
 	}
 
@@ -41,10 +41,10 @@ namespace Operators
 		fir::Value* lhs = leftVP.first;
 		fir::Value* lhsPtr = leftVP.second;
 
-		fir::Type* rtype = cgi->getExprType(args[1]);
+		fir::Type* rtype = args[1]->getType(cgi);
 		if(!rtype)
 		{
-			GenError::unknownSymbol(cgi, user, args[1]->type.strType, SymbolType::Type);
+			GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
 		}
 
 
@@ -157,8 +157,8 @@ namespace Operators
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
-			std::string lstr = cgi->getReadableType(lhs).c_str();
-			std::string rstr = cgi->getReadableType(rtype).c_str();
+			std::string lstr = lhs->getType()->str();
+			std::string rstr = rtype->str();
 
 			error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
 		}

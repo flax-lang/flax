@@ -28,7 +28,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 			}
 			else
 			{
-				return Result_t(fir::ConstantValue::getNullValue(this->getExprType(p.second)), 0);
+				return Result_t(fir::ConstantValue::getNullValue(p.second->getType(this)), 0);
 			}
 		}
 	}
@@ -73,7 +73,15 @@ Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Type* EnumDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* EnumDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
+
+fir::Type* EnumDef::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
@@ -91,13 +99,12 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi, std::unordered_map<std::str
 	for(auto pair : this->cases)
 	{
 		if(!prev)
-			prev = cgi->getExprType(pair.second);
+			prev = pair.second->getType(cgi);
 
 
-		fir::Type* t = cgi->getExprType(pair.second);
+		fir::Type* t = pair.second->getType(cgi);
 		if(t != prev)
-			error(pair.second, "Enumeration values must have the same type, have %s and %s", cgi->getReadableType(pair.second).c_str(),
-				cgi->getReadableType(prev).c_str());
+			error(pair.second, "Enumeration values must have the same type, have %s and %s", t->str().c_str(), prev->str().c_str());
 
 
 		prev = t;

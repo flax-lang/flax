@@ -11,7 +11,15 @@
 using namespace Ast;
 using namespace Codegen;
 
-fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ExtensionDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
+
+fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 {
 	this->ident.scope = cgi->getFullScope();
 	this->parentRoot = cgi->rootNode;
@@ -36,43 +44,6 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi, std::unordered_map<std
 
 
 	FunctionTree* ft = cgi->getCurrentFuncTree();
-
-	// if(ft->extensions.find(this->ident.name) != ft->extensions.end())
-	// {
-	// 	// ExtensionDef* ext = ft->extensions[this->ident.name];
-
-	// 	warn(this, "merging extension %s", this->ident.str().c_str());
-	// 	info(ext, "with him");
-
-	// 	ext->funcs.insert(ext->funcs.end(), this->funcs.begin(), this->funcs.end());
-	// 	ext->cprops.insert(ext->cprops.end(), this->cprops.begin(), this->cprops.end());
-	// 	ext->subscriptOverloads.insert(ext->subscriptOverloads.end(), this->subscriptOverloads.begin(), this->subscriptOverloads.end());
-	// 	ext->assignmentOverloads.insert(ext->assignmentOverloads.end(), this->assignmentOverloads.begin(), this->assignmentOverloads.end());
-
-	// 	// doing nested type check here because it's unweidly elsewhere
-	// 	{
-	// 		std::unordered_map<std::string, StructBase*> map;
-	// 		for(auto te : ext->nestedTypes)
-	// 			map[te.first->ident.name] = te.first;
-
-	// 		for(auto tt : this->nestedTypes)
-	// 		{
-	// 			if(map.find(tt.first->ident.name) != map.end())
-	// 			{
-	// 				auto te = map[tt.first->ident.name];
-	// 				errorNoExit(tt.first, "Another extension already declared a nested type '%s'", te->ident.name.c_str());
-	// 				info(te, "The existing declaration is here.");
-	// 				doTheExit();
-	// 			}
-	// 		}
-
-	// 		ext->nestedTypes.insert(ext->nestedTypes.end(), this->nestedTypes.begin(), this->nestedTypes.end());
-	// 	}
-
-	// 	this->isDuplicate = true;
-	// }
-	// else
-
 	{
 		ft->extensions.insert(std::make_pair(this->ident.name, this));
 
@@ -167,6 +138,9 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
 			astr->defaultInitialiser->linkageType);
 
+		generateDeclForOperators(cgi, this);
+
+		doCodegenForGeneralOperators(cgi, this);
 		doCodegenForAssignmentOperators(cgi, this);
 		doCodegenForSubscriptOperators(cgi, this);
 	}

@@ -4,21 +4,41 @@
 
 import Foundation
 
-
-class SomeClass
+class Outer
 {
-	func gen<T, K>(a: T, b: K) -> K
+	class SomeClass
 	{
-		let m = alloc K
-		printf("instance generic\n")
-		return #m;
-	}
+		func gen<T, K>(a: T, b: K) -> K
+		{
+			let m = alloc K
+			printf("instance generic\n")
+			return #m;
+		}
 
-	static func sgen<T, K>(a: T, b: K) -> T
+		static func sgen<T, K>(a: T, b: K) -> T
+		{
+			let m = alloc T
+			printf("static generic\n")
+			return #m;
+		}
+	}
+}
+
+extension Outer
+{
+	extension SomeClass
 	{
-		let m = alloc T
-		printf("static generic\n")
-		return #m;
+		func egen<T>(a: T)
+		{
+			let m = alloc T
+			printf("extension generic\n")
+		}
+
+		static func segen()
+		{
+			// let m = alloc T
+			printf("static extension generic\n")
+		}
 	}
 }
 
@@ -111,9 +131,11 @@ public func doGenericsTest()
 
 
 
-	let sc = SomeClass()
+	let sc = Outer.SomeClass()
 	sc.gen(10, 20)
-	SomeClass.sgen(10, 20)
+	sc.egen(47)
+	Outer.SomeClass.segen()
+	Outer.SomeClass.sgen(10, 20)
 	SomeNS.ngen("foo")
 }
 
