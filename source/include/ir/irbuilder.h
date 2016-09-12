@@ -84,6 +84,8 @@ namespace fir
 		Value* CreateCall(Function* fn, std::vector<Value*> args, std::string vname = "");
 		Value* CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname = "");
 
+		Value* CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname = "");
+
 		Value* CreateReturn(Value* v);
 		Value* CreateReturnVoid();
 

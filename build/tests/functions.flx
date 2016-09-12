@@ -19,20 +19,38 @@ func bar(a: int)
 	printf("bar: %d\n", a)
 }
 
+func qux()
+{
+	printf("qux\n")
+}
+
 public func doFunctionTest()
 {
-	var f: [(int) -> void] = foo
-	f(10)
+	var f: [() -> void] = qux
+	f()
 }
 
 
+// public func main()
+// {
+// 	doFunctionTest()
+// }
+
+
+
+
+
+// func each(arr: int*, length: int, f: [(int) -> void])
+// {
+
+// }
 
 
 
 
 
 
-func each(arr: int*, length: int, f: [(int) -> void])
-{
 
-}
+
+
+
