@@ -17,7 +17,12 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
 	{
-		// if we're passed the type, (aka extra), and the type is a function, look for a function by this name.
+		// check for functions
+		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
+		{
+			return Result_t(fn, 0);
+		}
+
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 	}
 
@@ -28,7 +33,12 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 {
 	VarDecl* decl = cgi->getSymDecl(this, this->name);
 	if(!decl)
+	{
+		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
+			return fn->getType();
+
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+	}
 
 	return decl->getType(cgi, allowFail);
 }
@@ -137,9 +147,17 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 		else if(!cmplxtype && !this->initVal)
 		{
-			iceAssert(val);
-			cgi->builder.CreateStore(val, ai);
-			return val;
+			if(ai->getType()->getPointerElementType()->isFunctionType())
+			{
+				error(this, "Variables of function type (have '%s') need to be initialised at the declaration site",
+					ai->getType()->getPointerElementType()->str().c_str());
+			}
+			else
+			{
+				iceAssert(val);
+				cgi->builder.CreateStore(val, ai);
+				return val;
+			}
 		}
 		else if(cmplxtype && this->initVal)
 		{

@@ -3,8 +3,8 @@
 // Licensed under the Apache License Version 2.0.
 
 
-import Foundation
-
+// import Foundation
+import LibCInterface
 
 
 
@@ -16,7 +16,7 @@ func foo(a: int)
 
 public func doFunctionTest()
 {
-	// var f: [(int) -> void] = foo
+	var f: [(int) -> void] = foo
 }
 
 

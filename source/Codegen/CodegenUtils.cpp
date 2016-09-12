@@ -399,14 +399,15 @@ namespace Codegen
 			if(!func->isGeneric())
 			{
 				// add to the func table
+
 				auto lf = cgi->module->getFunction(func->getName());
 				if(!lf)
 				{
-					cgi->module->declareFunction(func->getName(), func->getType());
-					lf = cgi->module->getFunction(func->getName());
+					lf = cgi->module->declareFunction(func->getName(), func->getType());
+					lf->setHadBodyElsewhere();
 				}
 
-				f = dynamic_cast<fir::Function*>(lf);
+				f = lf;
 				f->deleteBody();
 			}
 			else
@@ -2095,8 +2096,7 @@ namespace Codegen
 				Identifier fnId = Identifier("__builtin_primitive_init_default_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
 				fnId.functionArguments = ft->getArgumentTypes();
 
-				this->module->declareFunction(fnId, ft);
-				fir::Function* fn = this->module->getFunction(fnId);
+				fir::Function* fn = this->module->declareFunction(fnId, ft);
 
 				if(fn->getBlockList().size() == 0)
 				{
@@ -2130,9 +2130,7 @@ namespace Codegen
 				Identifier fnId = Identifier("__builtin_primitive_init_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
 				fnId.functionArguments = ft->getArgumentTypes();
 
-
-				this->module->declareFunction(fnId, ft);
-				fir::Function* fn = this->module->getFunction(fnId);
+				fir::Function* fn = this->module->declareFunction(fnId, ft);
 
 				if(fn->getBlockList().size() == 0)
 				{
@@ -2254,8 +2252,7 @@ namespace Codegen
 	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
-		if(list.empty())
-			error(user, "Using undeclared function '%s'", id.str().c_str());
+		if(list.empty()) return 0;
 
 		else if(list.size() > 1)
 			error(user, "Searched for ambiguous function by name '%s'", id.str().c_str());
