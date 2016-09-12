@@ -223,45 +223,46 @@ namespace pts
 				iceAssert(type[0] == '(');
 				type = type.substr(1);
 
+
 				std::deque<pts::Type*> argTypes;
-
-				for(size_t i = 0, nest = 0; i < type.size();)
+				if(type[0] != ')')
 				{
-					// we need to isolate the string of the next type.
-					// if we encounter a '(', then nest; if a ')', un-nest.
-					// if nest == 0 and we get a ',' or a ')', former means parse and continue, latter means break and continue.
+					for(size_t i = 0, nest = 0; i < type.size();)
+					{
+						// we need to isolate the string of the next type.
+						// if we encounter a '(', then nest; if a ')', un-nest.
+						// if nest == 0 and we get a ',' or a ')', former means parse and continue, latter means break and continue.
 
 
-					if(type[i] == '(')
-					{
-						nest++;
-					}
-					else if(type[i] == ',' && nest == 0)
-					{
-						argTypes.push_back(parseType(type.substr(0, i)));
-						type = type.substr(i + 1);
-						i = 0;
-
-						continue;
-					}
-					else if(type[i] == ')')
-					{
-						if(nest == 0)
+						if(type[i] == '(')
+						{
+							nest++;
+						}
+						else if(type[i] == ',' && nest == 0)
 						{
 							argTypes.push_back(parseType(type.substr(0, i)));
-							type = type.substr(i);
+							type = type.substr(i + 1);
+							i = 0;
 
-							break;
+							continue;
 						}
-						else
+						else if(type[i] == ')')
 						{
-							nest--;
+							if(nest == 0)
+							{
+								argTypes.push_back(parseType(type.substr(0, i)));
+								type = type.substr(i);
+
+								break;
+							}
+							else
+							{
+								nest--;
+							}
 						}
+
+						i++;
 					}
-
-
-
-					i++;
 				}
 
 				iceAssert(type.compare(0, 3, ")->") == 0);
@@ -400,7 +401,7 @@ namespace pts
 		}
 		else
 		{
-			debuglog("%s\n", type.c_str());
+			debuglog(">> %s\n", type.c_str());
 			iceAssert(0);
 		}
 	}

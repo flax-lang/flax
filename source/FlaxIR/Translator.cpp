@@ -921,6 +921,34 @@ namespace fir
 							break;
 						}
 
+						case OpKind::Value_CallFunctionPointer:
+						{
+							iceAssert(inst->operands.size() >= 1);
+							llvm::Value* fn = getOperand(inst, 0);
+
+							std::vector<llvm::Value*> args;
+
+							std::deque<Value*> fargs = inst->operands;
+							fargs.pop_front();
+
+							for(auto arg : fargs)
+								args.push_back(getValue(arg));
+
+							llvm::Type* lft = typeToLlvm(inst->operands.front()->getType(), module);
+
+							iceAssert(lft->isPointerTy());
+							iceAssert(lft->getPointerElementType()->isFunctionTy());
+
+							llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(lft->getPointerElementType());
+							iceAssert(ft);
+
+							llvm::Value* ret = builder.CreateCall(ft, fn, args);
+
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
+
 						case OpKind::Value_Return:
 						{
 							llvm::Value* ret = 0;
