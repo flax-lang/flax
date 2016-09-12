@@ -69,6 +69,12 @@ import tests.functions
 	printf("\n\n")
 
 
+	// first-class-functions
+	printf("*** FUNCTIONS TEST ***\n")
+	doFunctionTest()
+	printf("\n\n")
+
+
 	// fin.
 	printf("========= TESTS COMPLETE =========\n\n")
 }
