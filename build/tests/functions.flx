@@ -7,8 +7,6 @@
 import LibCInterface
 
 
-
-
 func foo(a: int)
 {
 	printf("foo: %d\n", a)
@@ -24,26 +22,85 @@ func qux()
 	printf("qux\n")
 }
 
+class SomeClass
+{
+	func foo(a: int)
+	{
+		printf("foo in class: %p %d\n", self, a)
+	}
+
+	static func bar(a: int)
+	{
+		printf("static bar in class: %d\n", a)
+	}
+}
+
+namespace SomeNS
+{
+	func foo(a: int)
+	{
+		printf("foo in namespace: %d\n", a)
+	}
+
+	class NestedClass
+	{
+		func foo(a: int)
+		{
+			printf("foo in nested class: %p %d\n", self, a)
+		}
+
+		static func bar(a: int)
+		{
+			printf("static bar in nested class: %d\n", a)
+		}
+	}
+}
+
+
+
+func et(a: int) { printf(" %d", a) }
+
 public func doFunctionTest()
 {
-	var f: [() -> void] = qux
+	var f = qux
 	f()
 
-	var g: [(int) -> void] = foo
+	var g = foo
 	g(10)
 
 	g = bar
 	g(20)
 
-
-	printf("each test\n")
+	printf("each test:")
 	let arr = alloc[4] int
 	arr[0] = 11
 	arr[1] = 22
 	arr[2] = 33
 	arr[3] = 44
 
-	each(arr, 4, foo)
+	each(arr, 4, et)
+
+
+
+	printf("\n\nscope test\n")
+
+	g = SomeClass.bar
+	g(10)
+
+	g = SomeNS.NestedClass.bar
+	g(20)
+
+	g = SomeNS.foo
+	g(30)
+
+
+	var method = SomeClass.foo
+	let sc = SomeClass()
+	method(&sc, 40)
+
+	var method2 = SomeNS.NestedClass.foo
+	let nc = SomeNS.NestedClass()
+	method2(&nc, 50)
 }
 
 
