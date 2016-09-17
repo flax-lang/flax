@@ -1004,6 +1004,12 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			}
 			else
 			{
+				for(auto f : ftree->funcs)
+				{
+					if(f.second->ident.name == vr->name)
+						return { { f.first->getType(), Result_t(f.first, 0) }, 0 };
+				}
+
 				error(vr, "namespace %s does not contain a variable %s",
 					ftree->nsName.c_str(), vr->name.c_str());
 			}
@@ -1040,6 +1046,14 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 					{
 						fir::Type* ltype = v->getType(this);
 						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
+					}
+				}
+				for(auto f : cls->funcs)
+				{
+					if(f->decl->ident.name == vr->name)
+					{
+						fir::Type* ltype = cls->functionMap[f]->getType();
+						return { { ltype, Result_t(cls->functionMap[f], 0) }, curFType };
 					}
 				}
 			}
