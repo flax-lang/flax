@@ -98,6 +98,33 @@ namespace Codegen
 				}
 			}
 
+			for(auto m : cls->members)
+			{
+				if(f->decl->ident.name == m->ident.name)
+				{
+					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
+						m->ident.name.c_str(), m->concretisedType->str().c_str());
+
+					info(m, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+
+
+			for(auto m : cls->cprops)
+			{
+				if(f->decl->ident.name == m->ident.name)
+				{
+					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
+						m->ident.name.c_str(), m->getType(cgi)->str().c_str());
+
+					info(m, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+
+
+
 			f->decl->parentClass = cls;
 			fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
 

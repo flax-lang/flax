@@ -233,12 +233,17 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		// fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
+
+
+		std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
+		unwrapStaticDotOperator(Ast::MemberAccess* ma);
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		std::pair<Ast::Func*, fir::Function*> resolveMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
-		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
+
+		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
+		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
 
 		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
 

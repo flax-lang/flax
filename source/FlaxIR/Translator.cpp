@@ -51,28 +51,35 @@ namespace fir
 		{
 			StructType* st = type->toStructType();
 
+			if(createdTypes.find(st->getStructName()) != createdTypes.end())
+				return createdTypes[st->getStructName()];
+
+			// to allow recursion, declare the type first.
+			createdTypes[st->getStructName()] = llvm::StructType::create(gc, st->getStructName().mangled());
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : st->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			if(createdTypes.find(st->getStructName()) != createdTypes.end())
-				return createdTypes[st->getStructName()];
-
-			return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
-				st->isPackedStruct());
+			createdTypes[st->getStructName()]->setBody(lmems, st->isPackedStruct());
+			return createdTypes[st->getStructName()];
 		}
 		else if(type->isClassType())
 		{
 			ClassType* ct = type->toClassType();
 
+			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
+				return createdTypes[ct->getClassName()];
+
+			// to allow recursion, declare the type first.
+			createdTypes[ct->getClassName()] = llvm::StructType::create(gc, ct->getClassName().mangled());
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : ct->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
-				return createdTypes[ct->getClassName()];
-
-			return createdTypes[ct->getClassName()] = llvm::StructType::create(gc, lmems, ct->getClassName().mangled());
+			createdTypes[ct->getClassName()]->setBody(lmems);
+			return createdTypes[ct->getClassName()];
 		}
 		else if(type->isTupleType())
 		{

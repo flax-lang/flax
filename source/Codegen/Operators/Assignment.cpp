@@ -249,6 +249,7 @@ namespace Operators
 
 
 
+
 		// check function assign
 		if(lhs->getType()->isFunctionType() && rhs->getType()->isFunctionType())
 		{
@@ -261,8 +262,39 @@ namespace Operators
 				fir::Function* oldf = dynamic_cast<fir::Function*>(rhs);
 				iceAssert(oldf);
 
+				std::deque<Func*> cands;
+				if(MemberAccess* ma = dynamic_cast<MemberAccess*>(rightExpr))
+				{
+					FunctionTree* ftree = 0;
+					StructBase* curType = 0;
+
+					std::tie(ftree, std::ignore, std::ignore, curType, std::ignore) = cgi->unwrapStaticDotOperator(ma);
+					if(curType)
+					{
+						ClassDef* cd = 0;
+						iceAssert(cd = dynamic_cast<ClassDef*>(curType));
+						// for(auto f : cd->funcs)
+						{
+							// if(f->decl->ident.name == f->decl->genericTypes.size() > 0)
+							{
+
+							}
+						}
+					}
+					else
+					{
+					}
+
+					error("");
+				}
+				else
+				{
+					cands = cgi->findGenericFunctions(rhs->getName().name);
+				}
+
+
 				FuncPair_t fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
-					cgi->findGenericFunctions(rhs->getName().name), lhs->getType()->toFunctionType());
+					cands, lhs->getType()->toFunctionType());
 
 				if(fp.first && fp.second)
 				{

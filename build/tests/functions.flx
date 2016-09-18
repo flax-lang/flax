@@ -39,11 +39,11 @@ func gen<T>(a: T) -> T
 {
 	if(typeof(a) == typeof(int))
 	{
-		printf("<%d>\n", a)
+		printf("int: %d\n", a)
 	}
 	else if(typeof(a) == typeof(float64))
 	{
-		printf("<%lf>\n", a)
+		printf("float: %lf\n", a)
 	}
 
 	return a + 1
@@ -53,6 +53,30 @@ func et(a: int)
 {
 	printf(" %d", a)
 }
+
+func et1(a: int) -> int
+{
+	printf(" %d", a)
+	return a
+}
+
+
+class SomeStruct
+{
+	var fn: [(SomeStruct*, int) -> int]
+	func fun(a: String) -> int
+	{
+		printf("method: %s\n", a)
+		return 40
+	}
+
+	static func sfn(self: SomeStruct*, a: int) -> int
+	{
+		printf("static: %p, %d\n", self, a);
+		return a;
+	}
+}
+
 
 public func doFunctionTest()
 {
@@ -104,21 +128,32 @@ public func doFunctionTest()
 
 	printf("\ngeneric test\n")
 	do {
-
 		var gf: [(int) -> int] = gen
 		var gff: [(float) -> float] = gen
 
 		gf(100)
 		gff(3.1415926536)
 
-		gf = SomeNS.ngen
+		// gf = SomeNS.ngen
 		gf(200)
 
 
-		// var smth = gen
+		// reassignment
+		printf("\nclass test\n")
+		do {
+			var gf2: [(int) -> int] = et1
+			printf("et:") gf2(300) printf("\n")
+			gf2 = gen
+			gf2(400)
+
+			var s = SomeStruct()
+
+			let gf3 = SomeStruct.sfn
+			gf3(&s, 500)
+			s.fn(600)
+		}
 	}
 }
-
 
 
 func each(arr: int*, length: int, f: [(int) -> void])
@@ -131,8 +166,6 @@ func each(arr: int*, length: int, f: [(int) -> void])
 		i += 1
 	}
 }
-
-
 
 
 
