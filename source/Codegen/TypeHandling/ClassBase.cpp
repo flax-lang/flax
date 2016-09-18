@@ -87,7 +87,7 @@ namespace Codegen
 					int d = 0;
 					std::deque<fir::Type*> ps;
 					for(auto e : fn->decl->params)
-						ps.push_back(e->getType(cgi));
+						ps.push_back(e->getType(cgi, true));
 
 					if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
 					{

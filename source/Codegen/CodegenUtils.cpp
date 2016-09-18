@@ -345,8 +345,11 @@ namespace Codegen
 	void CodegenInstance::pushGenericType(std::string id, fir::Type* type)
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
-		if(this->resolveGenericType(id) != 0)
-			error(0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
+		for(auto g : this->instantiatedGenericTypeStack.back())
+		{
+			if(g.first == id)
+				error("Error: generic type %s already exists in the current stack frame", id.c_str());
+		}
 
 		this->instantiatedGenericTypeStack.back()[id] = type;
 	}
@@ -1881,7 +1884,7 @@ namespace Codegen
 			for(auto c : candidates)
 				cands += this->printAst(c) + "\n";
 
-			error(fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
+			error(fc, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
@@ -1893,6 +1896,38 @@ namespace Codegen
 		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
 	}
+
+
+	FuncPair_t CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
+		fir::FunctionType* ft)
+	{
+		std::deque<FuncPair_t> ret;
+		for(auto fn : candidates)
+		{
+			auto fp = this->instantiateGenericFunctionUsingParameters(user, { }, fn, ft->getArgumentTypes());
+			if(fp.first && fp.second)
+				ret.push_back(fp);
+		}
+
+		if(ret.empty())
+		{
+			return { 0, 0 };
+		}
+		else if(candidates.size() > 1)
+		{
+			std::string cands;
+			for(auto c : candidates)
+				cands += this->printAst(c) + "\n";
+
+			error(user, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n",
+				ret.front().second->ident.name.c_str(), candidates.size(), cands.c_str());
+		}
+
+		return ret.front();
+	}
+
+
+
 
 
 

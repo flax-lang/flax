@@ -18,7 +18,7 @@ inline void error_and_exit(const char* s, ...)
 	abort();
 }
 
-
+inline void debuglog(const char* s, ...) __attribute__((format(printf, 1, 2)));
 inline void debuglog(const char* s, ...)
 {
 	va_list ap;
