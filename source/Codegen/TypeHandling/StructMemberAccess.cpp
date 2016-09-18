@@ -12,6 +12,49 @@ using namespace Codegen;
 static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref);
+static std::tuple<Ast::Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInstance* cgi, MemberAccess* ma,
+	ClassDef* cls, FuncCall* fc, fir::Value* ref);
+
+static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
+{
+	auto tmp = cls->ident.scope;
+	tmp.push_back(cls->ident.name);
+
+	Identifier vid = Identifier(name, tmp, IdKind::Variable);
+
+	if(fir::GlobalVariable* gv = cgi->module->getGlobalVariable(vid))
+	{
+		// todo: another kinda hacky thing.
+		// this is present in some parts of the code, i don't know how many.
+		// basically, if the thing is supposed to be immutable, we're not going to return
+		// the ptr/ref value.
+
+		return Result_t(cgi->builder.CreateLoad(gv), gv);
+	}
+
+	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
+}
+
+static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num, bool createPtr)
+{
+	iceAssert(selfPtr);
+	iceAssert(num);
+
+	fir::Type* type = selfPtr->getType()->getPointerElementType();
+	iceAssert(type->isTupleType());
+
+	// quite simple, just get the number (make sure it's a Ast::Number)
+	// and do a structgep.
+
+	if((size_t) num->ival >= type->toTupleType()->getElementCount())
+		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
+
+	fir::Value* gep = cgi->builder.CreateStructGEP(selfPtr, num->ival);
+	return Result_t(cgi->builder.CreateLoad(gep), createPtr ? gep : 0);
+}
+
+
+
 
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -26,26 +69,6 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 }
 
 
-
-Result_t CodegenInstance::getStaticVariable(Expr* user, ClassDef* cls, std::string name)
-{
-	auto tmp = cls->ident.scope;
-	tmp.push_back(cls->ident.name);
-
-	Identifier vid = Identifier(name, tmp, IdKind::Variable);
-
-	if(fir::GlobalVariable* gv = this->module->getGlobalVariable(vid))
-	{
-		// todo: another kinda hacky thing.
-		// this is present in some parts of the code, i don't know how many.
-		// basically, if the thing is supposed to be immutable, we're not going to return
-		// the ptr/ref value.
-
-		return Result_t(this->builder.CreateLoad(gv), gv);
-	}
-
-	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
-}
 
 
 
@@ -126,7 +149,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		}
 		else if(memberFc)
 		{
-			return cgi->resolveMemberFuncCall(this, cls, memberFc).second->getReturnType();
+			return std::get<2>(resolveMemberFuncCall(cgi, this, cls, memberFc, 0));
 		}
 	}
 	else if(pair->second.second == TypeKind::Struct)
@@ -451,7 +474,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			immut = vd->immutable;
 		}
 
-		return cgi->doTupleAccess(selfPtr, n, !immut);
+		return doTupleAccess(cgi, selfPtr, n, !immut);
 	}
 	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
@@ -682,8 +705,8 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 
 
 	// now we need to determine if it exists, and its params.
-	auto pair = cgi->resolveMemberFuncCall(ma, cls, fc);
-	Func* callee = pair.first;
+	auto tup = resolveMemberFuncCall(cgi, ma, cls, fc, ref);
+	Func* callee = std::get<0>(tup);
 	iceAssert(callee);
 
 	if(callee->decl->isStatic)
@@ -698,7 +721,7 @@ static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall*
 		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
 	}
 
-	fir::Function* lcallee = pair.second;
+	fir::Function* lcallee = std::get<1>(tup);
 	iceAssert(lcallee);
 
 	lcallee = cgi->module->getFunction(lcallee->getName());
@@ -1057,7 +1080,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 					if(v->isStatic && v->ident.name == vr->name)
 					{
 						fir::Type* ltype = v->getType(this);
-						return { { ltype, actual ? this->getStaticVariable(vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
+						return { { ltype, actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
 					}
 				}
 				for(auto f : cls->funcs)
@@ -1182,14 +1205,15 @@ fir::Function* CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, VarRe
 
 
 
-std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(MemberAccess* ma, ClassDef* cls, FuncCall* fc)
+std::tuple<Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInstance* cgi, MemberAccess* ma,
+	ClassDef* cls, FuncCall* fc, fir::Value* ref)
 {
 	std::deque<fir::Type*> params;
 	for(auto p : fc->params)
-		params.push_back(p->getType(this));
+		params.push_back(p->getType(cgi));
 
 	if(cls->createdType == 0)
-		cls->createType(this);
+		cls->createType(cgi);
 
 	iceAssert(cls->createdType);
 	params.push_front(cls->createdType->getPointerTo());
@@ -1213,12 +1237,12 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 
 
 
-	std::deque<ExtensionDef*> exts = this->getExtensionsForType(cls);
+	std::deque<ExtensionDef*> exts = cgi->getExtensionsForType(cls);
 	for(auto ext : exts)
 	{
 		for(auto f : ext->funcs)
 		{
-			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode))
+			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode))
 			{
 				fns.push_back({ ext->functionMap[f], f->decl });
 				funclist.push_back(f);
@@ -1230,12 +1254,12 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 		}
 	}
 
-	Resolved_t res = this->resolveFunctionFromList(fc, fns, fc->name, params);
+	Resolved_t res = cgi->resolveFunctionFromList(fc, fns, fc->name, params);
 
 	if(!res.resolved)
 	{
 		// look for generic ones
-		FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		FuncPair_t fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
 		if(fp.first && fp.second)
 		{
 			res = Resolved_t(fp);
@@ -1243,9 +1267,29 @@ std::pair<Ast::Func*, fir::Function*> CodegenInstance::resolveMemberFuncCall(Mem
 		else
 		{
 			// try members
+			{
+				fir::Value* theFunction = 0;
+				for(auto m : cls->members)
+				{
+					if(m->ident.name == fc->name && m->concretisedType && m->concretisedType->isFunctionType())
+					{
+						if(ref == 0)
+						{
+							// wtf??
+							return std::make_tuple((Func*) 0, (fir::Function*) 0, m->concretisedType->toFunctionType()->getReturnType());
+						}
+						else
+						{
+							// make the function.
+							auto vr = new VarRef(fc->pin, fc->name);
+							auto res = doVariable(cgi, vr, ref, cls, cls->createdType->toClassType()->getElementIndex(m->ident.name));
+						}
+					}
+				}
+			}
 
 
-			auto tup = GenError::getPrettyNoSuchFunctionError(this, fc->params, fns);
+			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, fc->params, fns);
 			std::string argstr = std::get<0>(tup);
 			std::string candstr = std::get<1>(tup);
 			HighlightOptions ops = std::get<2>(tup);
