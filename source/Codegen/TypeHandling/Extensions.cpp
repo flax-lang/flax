@@ -123,6 +123,122 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	iceAssert(fstr);
 
+
+
+	// check for duplicates in other extensions
+	for(auto ext : (fstr->isClassType() || fstr->isStructType()
+		? cgi->getExtensionsForType(dynamic_cast<StructBase*>(tp->second.first)) : cgi->getExtensionsForBuiltinType(fstr)))
+	{
+		if(ext == this) continue;
+
+		for(auto e : ext->cprops)
+		{
+			for(auto cp : this->cprops)
+			{
+				if(e->ident.name == cp->ident.name)
+				{
+					errorNoExit(cp, "Property '%s' was previously declared in another extension", cp->ident.name.c_str());
+					info(e, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+		}
+
+		for(auto f : ext->funcs)
+		{
+			FuncPair_t fp = { 0, f->decl };
+			for(auto tf : this->funcs)
+			{
+				if(f->decl->ident.name == tf->decl->ident.name)
+				{
+					std::deque<fir::Type*> ps;
+					for(auto p : tf->decl->params)
+						ps.push_back(p->getType(cgi, true));	// allow fail
+
+					int _ = 0;
+					if(cgi->isValidFuncOverload(fp, ps, &_, true))
+					{
+						errorNoExit(tf->decl, "Function '%s' was previously declared in another extension, with an identical type",
+							tf->decl->ident.name.c_str());
+
+						info(f->decl, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+			}
+		}
+
+		for(auto f : ext->operatorOverloads)
+		{
+			FuncPair_t fp = { 0, f->func->decl };
+			for(auto tf : this->operatorOverloads)
+			{
+				if(f->op == tf->op)
+				{
+					std::deque<fir::Type*> ps;
+					for(auto p : tf->func->decl->params)
+						ps.push_back(p->getType(cgi, true));	// allow fail
+
+					int _ = 0;
+					if(cgi->isValidFuncOverload(fp, ps, &_, true))
+					{
+						errorNoExit(tf->func->decl, "Operator overload for '%s' was previously declared in another extension",
+							Parser::arithmeticOpToString(cgi, tf->op).c_str());
+
+						info(f->func->decl, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+			}
+		}
+
+		for(auto f : ext->subscriptOverloads)
+		{
+			FuncPair_t fp = { 0, f->decl };
+			for(auto tf : this->subscriptOverloads)
+			{
+				std::deque<fir::Type*> ps;
+				for(auto p : tf->decl->params)
+					ps.push_back(p->getType(cgi, true));	// allow fail
+
+				int _ = 0;
+				if(cgi->isValidFuncOverload(fp, ps, &_, true))
+				{
+					errorNoExit(tf->decl, "Subscript operator was previously declared in another extension");
+					info(f->decl, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+		}
+
+		for(auto f : ext->assignmentOverloads)
+		{
+			FuncPair_t fp = { 0, f->func->decl };
+			for(auto tf : this->assignmentOverloads)
+			{
+				std::deque<fir::Type*> ps;
+				for(auto p : tf->func->decl->params)
+					ps.push_back(p->getType(cgi, true));	// allow fail
+
+				int _ = 0;
+				if(cgi->isValidFuncOverload(fp, ps, &_, true))
+				{
+					errorNoExit(tf->func->decl, "Assignment operator was previously declared in another extension");
+					info(f->func->decl, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+		}
+	}
+
+
+
+
+
+
+
+
+
 	doCodegenForMemberFunctions(cgi, this);
 	doCodegenForComputedProperties(cgi, this);
 
@@ -133,6 +249,124 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		StructBase* astr = dynamic_cast<StructBase*>(tp->second.first);
 		iceAssert(astr);
+
+		// note: poor copy-pasta
+
+		for(auto e : astr->members)
+		{
+			for(auto cp : this->cprops)
+			{
+				if(e->ident.name == cp->ident.name)
+				{
+					errorNoExit(cp, "Property '%s' already exists in the base type", cp->ident.name.c_str());
+					info(e, "Previous declaration was here:");
+					doTheExit();
+				}
+			}
+		}
+
+		if(ClassDef* cd = dynamic_cast<ClassDef*>(astr))
+		{
+			for(auto f : cd->funcs)
+			{
+				FuncPair_t fp = { 0, f->decl };
+				for(auto tf : this->funcs)
+				{
+					if(f->decl->ident.name == tf->decl->ident.name)
+					{
+						std::deque<fir::Type*> ps;
+						for(auto p : tf->decl->params)
+							ps.push_back(p->getType(cgi, true));	// allow fail
+
+						int _ = 0;
+						if(cgi->isValidFuncOverload(fp, ps, &_, true))
+						{
+							errorNoExit(tf->decl, "Function '%s' already exists in the base type taking identical arguments",
+								tf->decl->ident.name.c_str());
+
+							info(f->decl, "Previous declaration was here:");
+							doTheExit();
+						}
+					}
+				}
+			}
+
+			for(auto f : cd->operatorOverloads)
+			{
+				FuncPair_t fp = { 0, f->func->decl };
+				for(auto tf : this->operatorOverloads)
+				{
+					if(f->op == tf->op)
+					{
+						std::deque<fir::Type*> ps;
+						for(auto p : tf->func->decl->params)
+							ps.push_back(p->getType(cgi, true));	// allow fail
+
+						int _ = 0;
+						if(cgi->isValidFuncOverload(fp, ps, &_, true))
+						{
+							errorNoExit(tf->func->decl, "Operator overload for '%s' already exists in the base type",
+								Parser::arithmeticOpToString(cgi, tf->op).c_str());
+
+							info(f->func->decl, "Previous declaration was here:");
+							doTheExit();
+						}
+					}
+				}
+			}
+
+			for(auto f : cd->subscriptOverloads)
+			{
+				FuncPair_t fp = { 0, f->decl };
+				for(auto tf : this->subscriptOverloads)
+				{
+					std::deque<fir::Type*> ps;
+					for(auto p : tf->decl->params)
+						ps.push_back(p->getType(cgi, true));	// allow fail
+
+					int _ = 0;
+					if(cgi->isValidFuncOverload(fp, ps, &_, true))
+					{
+						errorNoExit(tf->decl, "Subscript operator already exists in the base type");
+						info(f->decl, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+			}
+
+			for(auto f : cd->assignmentOverloads)
+			{
+				FuncPair_t fp = { 0, f->func->decl };
+				for(auto tf : this->assignmentOverloads)
+				{
+					std::deque<fir::Type*> ps;
+					for(auto p : tf->func->decl->params)
+						ps.push_back(p->getType(cgi, true));	// allow fail
+
+					int _ = 0;
+					if(cgi->isValidFuncOverload(fp, ps, &_, true))
+					{
+						errorNoExit(tf->func->decl, "Assignment operator already exists in the base type");
+						info(f->func->decl, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		iceAssert(astr->defaultInitialiser);
 		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),

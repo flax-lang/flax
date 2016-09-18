@@ -150,7 +150,9 @@ public func doFunctionTest()
 
 			let gf3 = SomeStruct.sfn
 			gf3(&s, 500)
-			s.fn(600)
+			// s.fn(600)
+
+			printf("%d\n", Some().a())
 		}
 	}
 }
@@ -171,7 +173,22 @@ func each(arr: int*, length: int, f: [(int) -> void])
 
 
 
+class Some
+{
+	var y: int = 40
+	func a() -> int { 100 }
+}
 
+extension Some
+{
+	// var x: int { get { 10 } set { } }
+	func a() -> int { 200 }
+}
+
+extension Some
+{
+	// var x: int { get { 20 } set { } }
+}
 
 
 
