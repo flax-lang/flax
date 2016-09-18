@@ -146,8 +146,18 @@ namespace Codegen
 			{
 				if(c != cp && c->ident.name == cp->ident.name)
 				{
-					errorNoExit(c, "Duplicate property in class: %s", c->ident.name.c_str());
+					errorNoExit(c, "Duplicate property '%s' in class", c->ident.name.c_str());
 					info(cp, "Previous declaration was here.");
+					doTheExit();
+				}
+			}
+
+			for(auto m : cls->members)
+			{
+				if(m->ident.name == c->ident.name)
+				{
+					errorNoExit(c, "Property '%s' was previously declared as a field", c->ident.name.c_str());
+					info(m, "Previous declaration was here.");
 					doTheExit();
 				}
 			}
