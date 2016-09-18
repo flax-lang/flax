@@ -240,30 +240,18 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		std::pair<Ast::Func*, fir::Function*> resolveMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
-
 		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
 
-		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
-
-
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
-
-
-		Ast::Result_t doTupleAccess(fir::Value* selfPtr, Ast::Number* num, bool createPtr);
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
-
-
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
-
-
 
 
 		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
