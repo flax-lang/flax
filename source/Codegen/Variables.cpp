@@ -18,8 +18,6 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(!val)
 	{
 		// check for functions
-		// fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this);
-
 		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
 		std::deque<fir::Function*> cands;
 
@@ -47,13 +45,14 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 		}
 
-		if(cands.size() > 1)
-			error(this, "Ambiguous reference to function with name '%s'", this->name.c_str());
 
-		else if(cands.size() == 0)
+		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, cands, extra);
+		if(fn == 0)
+		{
 			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+		}
 
-		return Result_t(cands.front(), 0);
+		return Result_t(fn, 0);
 	}
 
 	return Result_t(cgi->builder.CreateLoad(val), val);
@@ -89,13 +88,11 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 			}
 		}
 
-		if(cands.size() > 1)
-			error(this, "Ambiguous reference to function with name '%s'", this->name.c_str());
-
-		else if(cands.size() == 0)
+		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, cands, extra);
+		if(fn == 0)
 			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
-		return cands.front()->getType();
+		return fn->getType();
 	}
 
 	return decl->getType(cgi, allowFail);
@@ -207,8 +204,10 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		{
 			if(ai->getType()->getPointerElementType()->isFunctionType())
 			{
-				error(this, "Variables of function type (have '%s') need to be initialised at the declaration site",
-					ai->getType()->getPointerElementType()->str().c_str());
+				// error(this, "Variables of function type (have '%s') need to be initialised at the declaration site",
+				// 	ai->getType()->getPointerElementType()->str().c_str());
+
+				return 0;
 			}
 			else
 			{
