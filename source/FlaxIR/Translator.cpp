@@ -125,6 +125,10 @@ namespace fir
 
 			return llvm::StructType::get(gc, mems, false);
 		}
+		else if(type->isParametricType())
+		{
+			error("Cannot convert parametric type %s into LLVM, something went wrong", type->str().c_str());
+		}
 		else
 		{
 			error("ICE: unknown type '%s'", type->str().c_str());

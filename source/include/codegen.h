@@ -269,6 +269,9 @@ namespace Codegen
 
 		FuncPair_t tryResolveGenericFunctionCall(Ast::FuncCall* fc);
 		FuncPair_t tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncPair_t tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
+			fir::FunctionType* ft);
+
 		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params);
 

@@ -187,7 +187,7 @@
 			<key>name</key>
 			<string>keyword.operator.bitwise.flax</string>
 		</dict>
-		<key>block-comment</key>
+		<!-- <key>block-comment</key>
 		<dict>
 			<key>begin</key>
 			<string>/\*</string>
@@ -211,6 +211,23 @@
 					<string>punctuation.definition.comment.block.end.flax</string>
 				</dict>
 			</dict>
+			<key>name</key>
+			<string>comment.block.flax</string>
+		</dict> -->
+		<key>block-comment</key>
+		<dict>
+			<key>begin</key>
+			<string>/\*</string>
+			<key>end</key>
+			<string>\*/</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<!-- recurse to support nested comments -->
+					<string>#block-comment</string>
+				</dict>
+			</array>
 			<key>name</key>
 			<string>comment.block.flax</string>
 		</dict>
