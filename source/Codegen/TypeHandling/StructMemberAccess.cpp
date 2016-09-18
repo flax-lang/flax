@@ -1006,8 +1006,26 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				for(auto f : ftree->funcs)
 				{
-					if(f.second->ident.name == vr->name)
+					if(f.second->ident.name == vr->name && f.second->genericTypes.size() == 0)
 						return { { f.first->getType(), Result_t(f.first, 0) }, 0 };
+				}
+
+
+
+
+
+				for(auto gf : ftree->genericFunctions)
+				{
+					if(gf.first->ident.name == vr->name)
+					{
+						if(!gf.first->generatedFunc)
+							gf.first->codegen(this);
+
+						fir::Function* fn = gf.first->generatedFunc;
+						iceAssert(fn);
+
+						return { { fn->getType(), Result_t(fn, 0) }, 0 };
+					}
 				}
 
 				error(vr, "namespace %s does not contain a variable %s",

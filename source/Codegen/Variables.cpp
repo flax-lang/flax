@@ -18,12 +18,42 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(!val)
 	{
 		// check for functions
-		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
+		// fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this);
+
+		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		std::deque<fir::Function*> cands;
+
+		for(auto fn : fns)
 		{
-			return Result_t(fn, 0);
+			// check that the function we found wasn't an instantiation -- we can't access those directly,
+			// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
+			// that one will return an already-generated version if the types match up.
+
+			if(!fn->isGenericInstantiation())
+				cands.push_back(fn);
 		}
 
-		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+		// if it's a generic function, it won't be in the module
+		// check the scope.
+		for(auto f : cgi->getCurrentFuncTree()->genericFunctions)
+		{
+			if(f.first->ident.name == this->name)
+			{
+				if(!f.first->generatedFunc)
+					f.first->codegen(cgi);
+
+				iceAssert(f.first->generatedFunc);
+				cands.push_back(f.first->generatedFunc);
+			}
+		}
+
+		if(cands.size() > 1)
+			error(this, "Ambiguous reference to function with name '%s'", this->name.c_str());
+
+		else if(cands.size() == 0)
+			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+
+		return Result_t(cands.front(), 0);
 	}
 
 	return Result_t(cgi->builder.CreateLoad(val), val);
@@ -34,10 +64,38 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 	VarDecl* decl = cgi->getSymDecl(this, this->name);
 	if(!decl)
 	{
-		if(fir::Function* fn = cgi->getFunctionFromModuleWithName(Identifier(this->name, IdKind::Function), this))
-			return fn->getType();
+		// check for functions
 
-		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		std::deque<fir::Function*> cands;
+
+		for(auto fn : fns)
+		{
+			if(!fn->isGenericInstantiation())
+				cands.push_back(fn);
+		}
+
+		// if it's a generic function, it won't be in the module
+		// check the scope.
+		for(auto f : cgi->getCurrentFuncTree()->genericFunctions)
+		{
+			if(f.first->ident.name == this->name)
+			{
+				if(!f.first->generatedFunc)
+					f.first->codegen(cgi);
+
+				iceAssert(f.first->generatedFunc);
+				cands.push_back(f.first->generatedFunc);
+			}
+		}
+
+		if(cands.size() > 1)
+			error(this, "Ambiguous reference to function with name '%s'", this->name.c_str());
+
+		else if(cands.size() == 0)
+			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+
+		return cands.front()->getType();
 	}
 
 	return decl->getType(cgi, allowFail);
@@ -64,11 +122,11 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	}
 
 
-	iceAssert(this->inferredLType);
+	iceAssert(this->concretisedType);
 	if(val != 0)
 	{
 		// cast.
-		val = cgi->autoCastType(this->inferredLType, val, valptr);
+		val = cgi->autoCastType(this->concretisedType, val, valptr);
 	}
 
 
@@ -89,8 +147,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	else
 	{
 		iceAssert(ai);
-		iceAssert(this->inferredLType);
-		cmplxtype = cgi->getType(this->inferredLType);
+		iceAssert(this->concretisedType);
+		cmplxtype = cgi->getType(this->concretisedType);
 
 		if(cmplxtype)
 		{
@@ -180,8 +238,47 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		}
 	}
 
-
 	iceAssert(ai);
+
+
+
+	// check if we're a generic function
+	if(val->getType()->isFunctionType() && val->getType()->toFunctionType()->isGenericFunction())
+	{
+		// if we are, we need concrete types to be able to reify the function
+		// we cannot have a variable hold a parametric function in the raw form, since calling it
+		// later will be very troublesome (different return types, etc.)
+
+		iceAssert(this->concretisedType && this->concretisedType->isFunctionType());
+		if(this->concretisedType->toFunctionType()->isGenericFunction())
+		{
+			error(this, "Unable to infer the instantiation of parametric function (type '%s'); explicit type specifier must be given",
+				this->concretisedType->str().c_str());
+		}
+		else
+		{
+			// concretised function is *not* generic.
+			// hooray.
+
+			fir::Function* oldf = dynamic_cast<fir::Function*>(val);
+			iceAssert(oldf);
+
+			FuncPair_t fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
+				cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
+
+
+			if(fp.first && fp.second)
+			{
+				// rewrite history
+				val = fp.first;
+			}
+			else
+			{
+				error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'", oldf->getType()->str().c_str(),
+					this->concretisedType->str().c_str());
+			}
+		}
+	}
 
 	if(!didAddToSymtab && shouldAddToSymtab)
 		cgi->addSymbol(this->ident.name, ai, this);
@@ -217,14 +314,14 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
-		this->inferredLType = vartype;
+		this->concretisedType = vartype;
 	}
 	else
 	{
-		this->inferredLType = cgi->getTypeFromParserType(this, this->ptype);
-		if(!this->inferredLType) error(this, "invalid type %s", this->ptype->str().c_str());
+		this->concretisedType = cgi->getTypeFromParserType(this, this->ptype);
+		if(!this->concretisedType) error(this, "invalid type %s", this->ptype->str().c_str());
 
-		iceAssert(this->inferredLType);
+		iceAssert(this->concretisedType);
 	}
 }
 
@@ -246,14 +343,14 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Value* ai = nullptr;
 
-	// if(this->inferredLType == nullptr)
+	// if(this->concretisedType == nullptr)
 	this->inferType(cgi);
 
 
 	if(!this->isGlobal)
 	{
-		ai = cgi->getStackAlloc(this->inferredLType);
-		iceAssert(ai->getType()->getPointerElementType() == this->inferredLType);
+		ai = cgi->getStackAlloc(this->concretisedType);
+		iceAssert(ai->getType()->getPointerElementType() == this->concretisedType);
 	}
 
 
@@ -261,7 +358,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		ValPtr_t r;
 
-		if(isGlobal && (this->inferredLType->isStructType() || this->inferredLType->isClassType()))
+		if(isGlobal && (this->concretisedType->isStructType() || this->concretisedType->isClassType()))
 		{
 			// can't call directly for globals, since we cannot call the function directly.
 			// todo: if it's a struct, and we need to call a constructor...
@@ -281,7 +378,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		ai = cgi->module->createGlobalVariable(this->ident, this->inferredLType, fir::ConstantValue::getNullValue(this->inferredLType),
+		ai = cgi->module->createGlobalVariable(this->ident, this->concretisedType, fir::ConstantValue::getNullValue(this->concretisedType),
 			this->immutable, (this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = ai->getType()->getPointerElementType();
@@ -342,8 +439,8 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		TypePair_t* cmplxtype = 0;
 		if(this->ptype != pts::InferredType::get())
 		{
-			iceAssert(this->inferredLType);
-			cmplxtype = cgi->getType(this->inferredLType);
+			iceAssert(this->concretisedType);
+			cmplxtype = cgi->getType(this->concretisedType);
 		}
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
@@ -363,19 +460,19 @@ fir::Type* VarDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 {
 	if(this->ptype == pts::InferredType::get())
 	{
-		if(!this->inferredLType)		// todo: better error detection for this
+		if(!this->concretisedType)		// todo: better error detection for this
 		{
 			error(this, "Invalid variable declaration for %s!", this->ident.name.c_str());
 		}
 
-		iceAssert(this->inferredLType);
-		return this->inferredLType;
+		iceAssert(this->concretisedType);
+		return this->concretisedType;
 	}
 	else
 	{
 		// if we already "inferred" the type, don't bother doing it again.
-		if(this->inferredLType)
-			return this->inferredLType;
+		if(this->concretisedType)
+			return this->concretisedType;
 
 		return cgi->getTypeFromParserType(this, this->ptype, allowFail);
 	}

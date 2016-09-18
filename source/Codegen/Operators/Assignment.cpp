@@ -240,10 +240,43 @@ namespace Operators
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
 
+
 		if(lhsPtr && lhsPtr->isImmutable())
 		{
 			GenError::assignToImmutable(cgi, user, leftExpr);
 		}
+
+
+
+
+		// check function assign
+		if(lhs->getType()->isFunctionType() && rhs->getType()->isFunctionType())
+		{
+			// rhs is a generic function, we need to concretise the left side.
+			// the left side can't be generic, because that doesn't make sense.
+			iceAssert(!lhs->getType()->toFunctionType()->isGenericFunction());
+
+			if(rhs->getType()->toFunctionType()->isGenericFunction())
+			{
+				fir::Function* oldf = dynamic_cast<fir::Function*>(rhs);
+				iceAssert(oldf);
+
+				FuncPair_t fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
+					cgi->findGenericFunctions(rhs->getName().name), lhs->getType()->toFunctionType());
+
+				if(fp.first && fp.second)
+				{
+					// rewrite history
+					rhs = fp.first;
+				}
+				else
+				{
+					error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
+						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
+				}
+			}
+		}
+
 
 
 		if((lhs->getType()->isStructType() || lhs->getType()->isClassType()) && !cgi->isAnyType(lhs->getType()))

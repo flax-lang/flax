@@ -91,7 +91,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 				var->inferType(cgi);
 
-				var->doInitialValue(cgi, cgi->getType(var->inferredLType), r.first, r.second, ptr, false);
+				var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.first, r.second, ptr, false);
 			}
 			else
 			{
@@ -103,13 +103,13 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				Identifier vid = Identifier(var->ident.name, tmp, IdKind::Variable);
 
 				// generate a global variable
-				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->inferredLType,
-					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
+				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->concretisedType,
+					fir::ConstantValue::getNullValue(var->concretisedType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-				if(var->inferredLType->isStructType() || var->inferredLType->isClassType())
+				if(var->concretisedType->isStructType() || var->concretisedType->isClassType())
 				{
-					TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
+					TypePair_t* cmplxtype = cgi->getType(var->concretisedType);
 					iceAssert(cmplxtype);
 
 					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
@@ -315,9 +315,9 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		iceAssert(var->inferredLType != 0);
+		iceAssert(var->concretisedType != 0);
 
-		fir::Type* type = var->inferredLType;
+		fir::Type* type = var->concretisedType;
 
 		if(type == cls)
 		{
