@@ -9,12 +9,9 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall);
+
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref);
-static std::tuple<Ast::Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInstance* cgi, MemberAccess* ma,
-	ClassDef* cls, FuncCall* fc, fir::Value* ref);
-
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
 {
 	auto tmp = cls->ident.scope;
@@ -53,6 +50,9 @@ static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number*
 	return Result_t(cgi->builder.CreateLoad(gep), createPtr ? gep : 0);
 }
 
+// returns: Ast::Func, function, return type of function, return value of function
+static std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
+	ClassDef* cls, FuncCall* fc, fir::Value* ref);
 
 
 
@@ -149,7 +149,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		}
 		else if(memberFc)
 		{
-			return std::get<2>(resolveMemberFuncCall(cgi, this, cls, memberFc, 0));
+			return std::get<2>(callMemberFunction(cgi, this, cls, memberFc, 0));
 		}
 	}
 	else if(pair->second.second == TypeKind::Struct)
@@ -610,7 +610,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i++;
 			}
 
-			return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
+			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfPtr);
+			return Result_t(std::get<3>(result), 0);
 		}
 		else
 		{
@@ -691,43 +693,6 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 		ptr = 0;
 
 	return Result_t(val, ptr);
-}
-
-static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
-{
-	// make the args first.
-	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
-	// we codegen first, then use the codegen value to get the type.
-	std::vector<fir::Value*> args { ref };
-
-	for(Expr* e : fc->params)
-		args.push_back(e->codegen(cgi).result.first);
-
-
-	// now we need to determine if it exists, and its params.
-	auto tup = resolveMemberFuncCall(cgi, ma, cls, fc, ref);
-	Func* callee = std::get<0>(tup);
-	iceAssert(callee);
-
-	if(callee->decl->isStatic)
-	{
-		// remove the 'self' parameter
-		args.erase(args.begin());
-	}
-
-
-	if(callee->decl->isStatic != isStaticFunctionCall)
-	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
-	}
-
-	fir::Function* lcallee = std::get<1>(tup);
-	iceAssert(lcallee);
-
-	lcallee = cgi->module->getFunction(lcallee->getName());
-	iceAssert(lcallee);
-
-	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 }
 
 
@@ -1203,9 +1168,47 @@ fir::Function* CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, VarRe
 
 
 
+#if 0
+static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
+{
+	// make the args first.
+	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
+	// we codegen first, then use the codegen value to get the type.
+	std::vector<fir::Value*> args { ref };
+
+	for(Expr* e : fc->params)
+		args.push_back(e->codegen(cgi).result.first);
 
 
-std::tuple<Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInstance* cgi, MemberAccess* ma,
+	// now we need to determine if it exists, and its params.
+	auto tup = callMemberFunction(cgi, ma, cls, fc, ref);
+	Func* callee = std::get<0>(tup);
+	iceAssert(callee);
+
+	if(callee->decl->isStatic)
+	{
+		// remove the 'self' parameter
+		args.erase(args.begin());
+	}
+
+
+	if(callee->decl->isStatic != isStaticFunctionCall)
+	{
+		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
+	}
+
+	fir::Function* lcallee = std::get<1>(tup);
+	iceAssert(lcallee);
+
+	lcallee = cgi->module->getFunction(lcallee->getName());
+	iceAssert(lcallee);
+
+	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
+}
+#endif
+
+
+std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
 	ClassDef* cls, FuncCall* fc, fir::Value* ref)
 {
 	std::deque<fir::Type*> params;
@@ -1273,18 +1276,111 @@ std::tuple<Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInsta
 				{
 					if(m->ident.name == fc->name && m->concretisedType && m->concretisedType->isFunctionType())
 					{
+						if(m->concretisedType->toFunctionType()->isGenericFunction())
+							error("not sup (1)");
+
 						if(ref == 0)
 						{
 							// wtf??
-							return std::make_tuple((Func*) 0, (fir::Function*) 0, m->concretisedType->toFunctionType()->getReturnType());
+							return std::make_tuple((Func*) 0, (fir::Function*) 0,
+								m->concretisedType->toFunctionType()->getReturnType(), (fir::Value*) 0);
 						}
 						else
 						{
 							// make the function.
 							auto vr = new VarRef(fc->pin, fc->name);
 							auto res = doVariable(cgi, vr, ref, cls, cls->createdType->toClassType()->getElementIndex(m->ident.name));
+
+							delete vr;
+
+							iceAssert(res.result.first);
+							iceAssert(res.result.first->getType()->isFunctionType());
+
+							theFunction = res.result.first;
+							break;
 						}
 					}
+				}
+
+				if(theFunction == 0)
+				{
+					// check properties
+					for(auto p : cls->cprops)
+					{
+						if(p->ident.name == fc->name && p->concretisedType && p->concretisedType->isFunctionType())
+						{
+							if(p->concretisedType->toFunctionType()->isGenericFunction())
+								error("not sup (2)");
+
+							if(ref == 0)
+							{
+								return std::make_tuple((Func*) 0, (fir::Function*) 0,
+									p->concretisedType->toFunctionType()->getReturnType(), (fir::Value*) 0);
+							}
+							else
+							{
+								auto vr = new VarRef(fc->pin, fc->name);
+								auto res = doComputedProperty(cgi, vr, p, 0, ref);
+
+								delete vr;
+
+								iceAssert(res.result.first);
+								iceAssert(res.result.first->getType()->isFunctionType());
+
+								theFunction = res.result.first;
+								break;
+							}
+						}
+					}
+
+					// check extensions
+					if(theFunction == 0)
+					{
+						for(auto ext : cgi->getExtensionsForType(cls))
+						{
+							bool stop = false;
+							for(auto p : ext->cprops)
+							{
+								if(p->concretisedType->toFunctionType()->isGenericFunction())
+									error("not sup (2)");
+
+								if(p->ident.name == fc->name && p->concretisedType && p->concretisedType->isFunctionType())
+								{
+									if(ref == 0)
+									{
+										return std::make_tuple((Func*) 0, (fir::Function*) 0,
+											p->concretisedType->toFunctionType()->getReturnType(), (fir::Value*) 0);
+									}
+									else
+									{
+										auto vr = new VarRef(fc->pin, fc->name);
+										auto res = doComputedProperty(cgi, vr, p, 0, ref);
+
+										delete vr;
+
+										iceAssert(res.result.first);
+										iceAssert(res.result.first->getType()->isFunctionType());
+
+										theFunction = res.result.first;
+										stop = true;
+										break;
+									}
+								}
+							}
+
+							if(stop) break;
+						}
+					}
+				}
+
+
+				if(theFunction && ref)
+				{
+					// call the function pointer
+					fir::Value* result = fc->codegen(cgi, theFunction).result.first;
+					iceAssert(result);
+
+					return std::make_tuple((Func*) 0, (fir::Function*) 0, theFunction->getType()->toFunctionType()->getReturnType(), result);
 				}
 			}
 
@@ -1301,13 +1397,51 @@ std::tuple<Func*, fir::Function*, fir::Type*> resolveMemberFuncCall(CodegenInsta
 		}
 	}
 
+
+	iceAssert(res.resolved);
+
+	// if ref is not 0, we need to call the function
+	// this part handles vanilla member function calls.
+	fir::Value* result = 0;
+	Func* callee = 0;
+
 	for(auto f : funclist)
 	{
 		if(f->decl == res.t.second)
-			return { f, res.t.first };
+		{
+			callee = f;
+			break;
+		}
 	}
 
-	iceAssert("failed to find func?" && 0);
+	iceAssert(callee && "??");
+	if(ref != 0)
+	{
+		std::vector<fir::Value*> args { ref };
+
+		for(Expr* e : fc->params)
+			args.push_back(e->codegen(cgi).result.first);
+
+
+		// now we need to determine if it exists, and its params.
+		iceAssert(callee);
+
+		if(callee->decl->isStatic)
+		{
+			// remove the 'self' parameter
+			args.erase(args.begin());
+		}
+
+		fir::Function* lcallee = res.t.first;
+		iceAssert(lcallee);
+
+		lcallee = cgi->module->getFunction(lcallee->getName());
+		iceAssert(lcallee);
+
+		result = cgi->builder.CreateCall(lcallee, args);
+	}
+
+	return std::make_tuple(callee, res.t.first, res.t.first->getReturnType(), result);
 }
 
 

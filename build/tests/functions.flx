@@ -150,7 +150,9 @@ public func doFunctionTest()
 
 			let gf3 = SomeStruct.sfn
 			gf3(&s, 500)
-			s.fn(600)
+
+			s.fn = gf3
+			s.fn(&s, 600)
 		}
 	}
 }

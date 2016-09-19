@@ -198,6 +198,19 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return Result_t(ret, 0);
 	}
+	else if(extra && extra->getType()->isFunctionType())
+	{
+		this->cachedResolveTarget.resolved = true;
+
+		fir::FunctionType* ft = extra->getType()->toFunctionType();
+		iceAssert(ft);
+
+		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
+
+		fir::Value* ret = cgi->builder.CreateCallToFunctionPointer(extra, ft, args);
+
+		return Result_t(ret, 0);
+	}
 
 
 
