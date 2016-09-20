@@ -1542,252 +1542,274 @@ namespace Codegen
 
 		// now check if we *can* instantiate it.
 		// first check the number of arguments.
-		if(candidate->params.size() != args.size() && !candidate->isVariadic)
+
+		bool didSelfParam = false;
+		fir::Type* originalFirstParam = 0;
+
+		if(candidate->params.size() != args.size())
 		{
-			return false;
+			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
+			// then there's no reason for the parameters to mismatch.
+			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
+				return false;
+
+			else if(candidate->parentClass && !candidate->isStatic)
+			{
+				// make sure it's only one off
+				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
+					return false;
+
+				didSelfParam = true;
+				iceAssert(args.front()->isPointerType() && args.front()->getPointerElementType()->isClassType() && "what, no.");
+
+				originalFirstParam = args.front();
+				args.pop_front();
+
+				iceAssert(candidate->params.size() == args.size());
+			}
 		}
-		else
+
+
+
+		// param count matches...
+		// do a similar thing as the actual mangling -- build a list of
+		// uniquely named types.
+
+		// string is name, map is a map from position to indirs.
+		std::map<std::string, std::map<int, int>> typePositions;
+		std::map<int, std::pair<std::string, int>> revTypePositions;
+
+		std::vector<int> nonGenericTypes;
+
+
+
+		// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
+		// so we only check the first n - 1 parameters.
+		VarDecl* varParam = 0;
+		if(candidate->isVariadic)
 		{
-			// param count matches...
-			// do a similar thing as the actual mangling -- build a list of
-			// uniquely named types.
-
-			// string is name, map is a map from position to indirs.
-			std::map<std::string, std::map<int, int>> typePositions;
-			std::map<int, std::pair<std::string, int>> revTypePositions;
-
-			std::vector<int> nonGenericTypes;
+			varParam = candidate->params.back();
+			candidate->params.pop_back();
+		}
 
 
 
-			// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
-			// so we only check the first n - 1 parameters.
-			VarDecl* varParam = 0;
-			if(candidate->isVariadic)
+		int pos = 0;
+		for(auto p : candidate->params)
+		{
+			int indirs = 0;
+			std::string s = p->ptype->str();
+			s = unwrapPointerType(s, &indirs);
+
+			if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
 			{
-				varParam = candidate->params.back();
-				candidate->params.pop_back();
+				typePositions[s][pos] = indirs;
+				revTypePositions[pos] = { s, indirs };
+			}
+			else
+			{
+				nonGenericTypes.push_back(pos);
 			}
 
+			pos++;
+		}
 
 
-			int pos = 0;
-			for(auto p : candidate->params)
+		// since this is bound by the size of the candidates, we'll only check the non-var parameters
+		// this ensures we don't array out of bounds.
+		std::map<std::string, fir::Type*> checked;
+		for(size_t i = 0; i < candidate->params.size(); i++)
+		{
+			if(revTypePositions.find(i) != revTypePositions.end())
 			{
-				int indirs = 0;
-				std::string s = p->ptype->str();
-				s = unwrapPointerType(s, &indirs);
+				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
+				std::string s = revTypePositions[i].first;
+				int indirs = revTypePositions[i].second;
 
-				if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
+				fir::Type* ftype = args[i];
+
+				int givenindrs = 0;
+				while(ftype->isPointerType())
 				{
-					typePositions[s][pos] = indirs;
-					revTypePositions[pos] = { s, indirs };
+					ftype = ftype->getPointerElementType();
+					givenindrs++;
 				}
-				else
+
+				// check that the base types match
+				// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
+				// ftype here has been reduced.
+
+				if(checked.find(s) != checked.end())
 				{
-					nonGenericTypes.push_back(pos);
-				}
-
-				pos++;
-			}
-
-
-			// since this is bound by the size of the candidates, we'll only check the non-var parameters
-			// this ensures we don't array out of bounds.
-			std::map<std::string, fir::Type*> checked;
-			for(size_t i = 0; i < candidate->params.size(); i++)
-			{
-				if(revTypePositions.find(i) != revTypePositions.end())
-				{
-					// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
-					std::string s = revTypePositions[i].first;
-					int indirs = revTypePositions[i].second;
-
-					fir::Type* ftype = args[i];
-
-					int givenindrs = 0;
-					while(ftype->isPointerType())
-					{
-						ftype = ftype->getPointerElementType();
-						givenindrs++;
-					}
-
-					// check that the base types match
-					// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
-					// ftype here has been reduced.
-
-					if(checked.find(s) != checked.end())
-					{
-						if(ftype != checked[s])
-							return false;
-					}
-					else
-					{
-						checked[s] = ftype;
-					}
-
-
-					// check that we have 'enough' pointerness
-					// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
-					if(givenindrs < indirs)
+					if(ftype != checked[s])
 						return false;
 				}
 				else
 				{
-					// check normal types.
-					fir::Type* a = args[i];
-					fir::Type* b = candidate->params[i]->getType(cgi);
-
-					if(a != b) return false;
+					checked[s] = ftype;
 				}
-			}
 
 
-
-
-
-			// fill in the typemap.
-			// note that it's okay if we just have one -- if we did this loop more
-			// than once and screwed up the tm, that means we have more than one
-			// candidate, and will error anyway.
-
-			for(auto pair : typePositions)
-			{
-				int pos = pair.second.begin()->first;
-				int indrs = pair.second.begin()->second;
-
-				fir::Type* t = args[pos];
-				for(int i = 0; i < indrs; i++)
-					t = t->getPointerElementType();
-
-				thistm[pair.first] = t;
-			}
-
-
-			// last phase: ensure the type constraints are met
-			for(auto cst : thistm)
-			{
-				TypeConstraints_t constr = candidate->genericTypes[cst.first];
-
-				for(auto protstr : constr.protocols)
-				{
-					ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
-					iceAssert(prot);
-
-					bool doesConform = prot->checkTypeConformity(cgi, cst.second);
-
-					if(!doesConform)
-						return false;
-				}
-			}
-
-
-			// if we're variadic -- check it.
-			if(varParam != 0)
-			{
-				// add it back first.
-				candidate->params.push_back(varParam);
-
-				// get the type.
-				int indirs = 0;
-				std::string base = varParam->ptype->toVariadicArrayType()->base->str();
-				base = unwrapPointerType(base, &indirs);
-
-
-				if(typePositions.find(base) != typePositions.end())
-				{
-					// already have it
-					// ensure it matches with the ones we've already found.
-
-					fir::Type* resolved = thistm[base];
-					iceAssert(resolved);
-
-
-
-					if(args.size() >= candidate->params.size())
-					{
-						// again, check the direct forwarding case
-						if(args.size() == candidate->params.size() && args.back()->isLLVariableArrayType()
-							&& args.back()->toLLVariableArray()->getElementType() == resolved)
-						{
-							// direct.
-							// do nothing.
-						}
-						else
-						{
-							for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-							{
-								if(args[i] != resolved)
-									return false;
-							}
-
-							// should be fine now.
-						}
-					}
-					else
-					{
-						// no varargs were even given
-						// since we have already inferred the type from the other parameters,
-						// we can give this a free pass.
-					}
-				}
-				else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
-				{
-					// ok, we need to be able to deduce the type from the vararg only.
-					// so if none were provided, then give up.
-
-					if(args.size() < candidate->params.size())
-						return false;
-
-
-					// great, now just deduce it.
-					// we just need to make sure all the Ts match, and the number of indirections
-					// match *and* are greater than or equal to the specified level.
-
-					fir::Type* first = args[candidate->params.size() - 1];
-
-					// first, make sure the indirections tally
-					int givenindrs = 0;
-					if(first->isPointerType())
-						givenindrs = first->toPointerType()->getIndirections();
-
-					if(givenindrs < indirs)
-						return false;
-
-
-					// ok, check the type itself
-					for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-					{
-						if(args[i] != first)
-							return false;
-					}
-
-					// ok now.
-					fir::Type* reduced = first;
-					while(reduced->isPointerType())
-						reduced = reduced->getPointerElementType();
-
-					thistm[base] = reduced;
-				}
-			}
-
-
-
-
-
-
-
-			// check that we actually have an entry for every type
-			for(auto t : candidate->genericTypes)
-			{
-				if(thistm.find(t.first) == thistm.end())
+				// check that we have 'enough' pointerness
+				// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
+				if(givenindrs < indirs)
 					return false;
 			}
+			else
+			{
+				// check normal types.
+				fir::Type* a = args[i];
+				fir::Type* b = candidate->params[i]->getType(cgi);
 
-
-			*gtm = thistm;
-			return true;
+				if(a != b) return false;
+			}
 		}
+
+
+
+
+
+		// fill in the typemap.
+		// note that it's okay if we just have one -- if we did this loop more
+		// than once and screwed up the tm, that means we have more than one
+		// candidate, and will error anyway.
+
+		for(auto pair : typePositions)
+		{
+			int pos = pair.second.begin()->first;
+			int indrs = pair.second.begin()->second;
+
+			fir::Type* t = args[pos];
+			for(int i = 0; i < indrs; i++)
+				t = t->getPointerElementType();
+
+			thistm[pair.first] = t;
+		}
+
+
+		// last phase: ensure the type constraints are met
+		for(auto cst : thistm)
+		{
+			TypeConstraints_t constr = candidate->genericTypes[cst.first];
+
+			for(auto protstr : constr.protocols)
+			{
+				ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
+				iceAssert(prot);
+
+				bool doesConform = prot->checkTypeConformity(cgi, cst.second);
+
+				if(!doesConform)
+					return false;
+			}
+		}
+
+
+		// if we're variadic -- check it.
+		if(varParam != 0)
+		{
+			// add it back first.
+			candidate->params.push_back(varParam);
+
+			// get the type.
+			int indirs = 0;
+			std::string base = varParam->ptype->toVariadicArrayType()->base->str();
+			base = unwrapPointerType(base, &indirs);
+
+
+			if(typePositions.find(base) != typePositions.end())
+			{
+				// already have it
+				// ensure it matches with the ones we've already found.
+
+				fir::Type* resolved = thistm[base];
+				iceAssert(resolved);
+
+
+
+				if(args.size() >= candidate->params.size())
+				{
+					// again, check the direct forwarding case
+					if(args.size() == candidate->params.size() && args.back()->isLLVariableArrayType()
+						&& args.back()->toLLVariableArray()->getElementType() == resolved)
+					{
+						// direct.
+						// do nothing.
+					}
+					else
+					{
+						for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+						{
+							if(args[i] != resolved)
+								return false;
+						}
+
+						// should be fine now.
+					}
+				}
+				else
+				{
+					// no varargs were even given
+					// since we have already inferred the type from the other parameters,
+					// we can give this a free pass.
+				}
+			}
+			else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
+			{
+				// ok, we need to be able to deduce the type from the vararg only.
+				// so if none were provided, then give up.
+
+				if(args.size() < candidate->params.size())
+					return false;
+
+
+				// great, now just deduce it.
+				// we just need to make sure all the Ts match, and the number of indirections
+				// match *and* are greater than or equal to the specified level.
+
+				fir::Type* first = args[candidate->params.size() - 1];
+
+				// first, make sure the indirections tally
+				int givenindrs = 0;
+				if(first->isPointerType())
+					givenindrs = first->toPointerType()->getIndirections();
+
+				if(givenindrs < indirs)
+					return false;
+
+
+				// ok, check the type itself
+				for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+				{
+					if(args[i] != first)
+						return false;
+				}
+
+				// ok now.
+				fir::Type* reduced = first;
+				while(reduced->isPointerType())
+					reduced = reduced->getPointerElementType();
+
+				thistm[base] = reduced;
+			}
+		}
+
+
+
+
+
+
+
+		// check that we actually have an entry for every type
+		for(auto t : candidate->genericTypes)
+		{
+			if(thistm.find(t.first) == thistm.end())
+				return false;
+		}
+
+
+		*gtm = thistm;
+		return true;
 	}
 
 

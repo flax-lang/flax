@@ -46,7 +46,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 
 
-		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, cands, extra);
+		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, this->name, cands, extra);
 		if(fn == 0)
 		{
 			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
@@ -88,7 +88,7 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 			}
 		}
 
-		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, cands, extra);
+		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, this->name, cands, extra);
 		if(fn == 0)
 			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
@@ -259,17 +259,30 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			// concretised function is *not* generic.
 			// hooray.
 
+
 			fir::Function* oldf = dynamic_cast<fir::Function*>(val);
 			iceAssert(oldf);
 
-			FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
-				cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
+			fir::Function* fn = 0;
+
+			if(MemberAccess* ma = dynamic_cast<MemberAccess*>(this->initVal))
+			{
+				auto fp = cgi->resolveAndInstantiateGenericFunctionReference(this, oldf, this->concretisedType->toFunctionType(), ma);
+				fn = fp;
+			}
+			else
+			{
+				auto fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
+					cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
+
+				fn = fp.firFunc;
+			}
 
 
-			if(!fp.isEmpty())
+			if(fn != 0)
 			{
 				// rewrite history
-				val = fp.firFunc;
+				val = fn;
 			}
 			else
 			{
