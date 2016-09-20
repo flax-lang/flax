@@ -42,24 +42,6 @@ fir::Type* Tuple::createType(CodegenInstance* cgi)
 	return 0;
 }
 
-Result_t CodegenInstance::doTupleAccess(fir::Value* selfPtr, Number* num, bool createPtr)
-{
-	iceAssert(selfPtr);
-	iceAssert(num);
-
-	fir::Type* type = selfPtr->getType()->getPointerElementType();
-	iceAssert(type->isTupleType());
-
-	// quite simple, just get the number (make sure it's a Ast::Number)
-	// and do a structgep.
-
-	if((size_t) num->ival >= type->toTupleType()->getElementCount())
-		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
-
-	fir::Value* gep = this->builder.CreateStructGEP(selfPtr, num->ival);
-	return Result_t(this->builder.CreateLoad(gep), createPtr ? gep : 0);
-}
-
 Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Value* gep = 0;

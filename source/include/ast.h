@@ -232,7 +232,7 @@ namespace Ast
 		bool isGlobal = false;
 		bool disableAutoInit = false;
 		Expr* initVal = 0;
-		fir::Type* inferredLType = 0;
+		fir::Type* concretisedType = 0;
 	};
 
 	struct BracedBlock;
@@ -284,6 +284,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Result_t generateDeclForGenericFunction(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> types);
+		Result_t generateDeclForGenericFunctionUsingFunctionType(Codegen::CodegenInstance* cgi, fir::FunctionType* ft);
 
 		Parser::Pin returnTypePos;
 

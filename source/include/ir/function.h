@@ -67,9 +67,13 @@ namespace fir
 		bool wasDeclaredWithBodyElsewhere();
 		void setHadBodyElsewhere();
 
+		bool isGenericInstantiation();
+		void setIsGenericInstantiation();
+
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
+		Function* reifyUsingFunctionType(FunctionType* ft, FTContext* tc = 0);
 
 
 		static Function* create(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
@@ -82,6 +86,7 @@ namespace fir
 		std::deque<IRBlock*> blocks;
 
 		bool hadBodyElsewhere = false;
+		bool wasGenericInstantiation = false;
 	};
 }
 

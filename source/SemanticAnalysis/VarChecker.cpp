@@ -38,7 +38,7 @@ namespace SemAnalysis
 		}
 
 		// not found
-		// warn(cgi, user, "Could not check var ref '%s'", name.c_str());
+		// warn(user, "Could not check var ref '%s'", name.c_str());
 		return *new VarDef();
 	}
 

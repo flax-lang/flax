@@ -102,13 +102,7 @@ namespace fir
 
 	bool Function::isGeneric()
 	{
-		for(auto p : this->fnArguments)
-		{
-			if(p->getType()->isParametricType())
-				return true;
-		}
-
-		return this->getReturnType()->isParametricType();
+		return this->getType()->isGenericFunction();
 	}
 
 	Function* Function::reify(std::map<std::string, Type*> names, FTContext* tc)
@@ -116,13 +110,65 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-
 		if(this->blocks.size() > 0)
 			error("cannot reify already-generated function");
 
 		FunctionType* newft = this->getType()->reify(names, tc);
 		Function* nf = new Function(this->ident, newft, this->parentModule, this->linkageType);
 
+		nf->setIsGenericInstantiation();
+		return nf;
+	}
+
+	Function* Function::reifyUsingFunctionType(FunctionType* ft, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		if(ft->isGenericFunction())
+			error("Cannot reify function using another parametric function type");
+
+		// check that the function type is actually legit
+		bool fail = false;
+
+		if(ft->getArgumentTypes().size() != this->getArguments().size())
+			fail = true;
+
+
+		// fuck, we need to go through all the arguments one by one -- make sure the types match
+		std::map<std::string, Type*> foundTypes;
+
+		for(size_t i = 0; i < this->fnArguments.size(); i++)
+		{
+			auto arg = this->fnArguments[i];
+			if(arg->getType()->isParametricType())
+			{
+				if(foundTypes.find(arg->getType()->toParametricType()->getName()) != foundTypes.end()
+					&& foundTypes[arg->getType()->toParametricType()->getName()] != ft->getArgumentN(i))
+				{
+					error("Mismatched argument (%zu) in reifying function of type '%s' with concrete type of '%s'; "
+						"previously encountered type '%s' as '%s', found conflicting type '%s'", i, this->getType()->str().c_str(),
+						ft->str().c_str(), arg->getType()->str().c_str(),
+						foundTypes[arg->getType()->toParametricType()->getName()]->str().c_str(), ft->getArgumentN(i)->str().c_str());
+				}
+
+				foundTypes[arg->getType()->toParametricType()->getName()] = ft->getArgumentN(i);
+			}
+		}
+
+		if(this->getReturnType()->isParametricType()
+			&& foundTypes.find(this->getReturnType()->toParametricType()->getName()) != foundTypes.end()
+			&& foundTypes[this->getReturnType()->toParametricType()->getName()] != ft->getReturnType())
+		{
+			error("Mismatched return type in reifying function of type '%s' with concrete type of '%s'; "
+				"previously encountered type '%s' as '%s', found conflicting type '%s'", this->getType()->str().c_str(),
+				ft->str().c_str(), this->getReturnType()->str().c_str(),
+				foundTypes[this->getReturnType()->toParametricType()->getName()]->str().c_str(), ft->getReturnType()->str().c_str());
+		}
+
+		Function* nf = new Function(this->ident, ft, this->parentModule, this->linkageType);
+
+		nf->setIsGenericInstantiation();
 		return nf;
 	}
 
@@ -136,6 +182,19 @@ namespace fir
 	{
 		this->hadBodyElsewhere = true;
 	}
+
+
+
+	bool Function::isGenericInstantiation()
+	{
+		return this->wasGenericInstantiation;
+	}
+
+	void Function::setIsGenericInstantiation()
+	{
+		this->wasGenericInstantiation = true;
+	}
+
 
 
 
