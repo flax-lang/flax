@@ -384,14 +384,15 @@ namespace Codegen
 
 
 	// funcs
-	void CodegenInstance::addPublicFunc(FuncPair_t fp)
+	void CodegenInstance::addPublicFunc(FuncDefPair fp)
 	{
 		this->addFunctionToScope(fp, this->rootNode->publicFuncTree);
 	}
 
 
 
-	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* decl, FunctionTree* target)
+	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* funcdecl, Func* funcdef,
+		FunctionTree* target)
 	{
 		fir::Function* ret = func;
 		if(func && func->linkageType == fir::LinkageType::External)
@@ -418,14 +419,14 @@ namespace Codegen
 				f = func;
 			}
 
-			cgi->addFunctionToScope(FuncPair_t(f, decl));
+			cgi->addFunctionToScope(FuncDefPair(f, funcdecl, funcdef));
 			ret = f;
 		}
 		else if(!func)
 		{
 			// note: generic functions are not instantiated
-			if(decl->genericTypes.size() == 0)
-				error(decl, "!func (%s)", decl->ident.str().c_str());
+			if(funcdecl->genericTypes.size() == 0)
+				error(funcdecl, "!func (%s)", funcdecl->ident.str().c_str());
 		}
 
 		return ret;
@@ -440,8 +441,8 @@ namespace Codegen
 			bool existing = false;
 			for(auto f : clone->funcs)
 			{
-				if((f.first && pair.first && (f.first == pair.first))
-					|| (f.second && pair.second && (f.second->ident == pair.second->ident)))
+				if((f.firFunc && pair.firFunc && (f.firFunc == pair.firFunc))
+					|| (f.funcDecl && pair.funcDecl && (f.funcDecl->ident == pair.funcDecl->ident)))
 				{
 					existing = true;
 					break;
@@ -451,7 +452,7 @@ namespace Codegen
 
 			if(deep)
 			{
-				pair.first = cloneFunctionIntoCurrentTree(this, pair.first, pair.second, clone);
+				pair.firFunc = cloneFunctionIntoCurrentTree(this, pair.firFunc, pair.funcDecl, pair.funcDef, clone);
 			}
 
 			if(!existing)
@@ -549,7 +550,7 @@ namespace Codegen
 					{
 						if(ff.first->decl->attribs & Attr_VisPublic)
 						{
-							auto newff = cloneFunctionIntoCurrentTree(this, ff.second, ff.first->decl, clone);
+							auto newff = cloneFunctionIntoCurrentTree(this, ff.second, ff.first->decl, ff.first, clone);
 							std::replace(ed->lfuncs.begin(), ed->lfuncs.end(), ff.second, newff);
 
 							ff.second = newff;
@@ -587,7 +588,7 @@ namespace Codegen
 				if(deep)
 				{
 					// todo: do we need this?
-					oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, clone);
+					oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, oo->func, clone);
 				}
 				if(!found)
 				{
@@ -826,7 +827,7 @@ namespace Codegen
 		this->namespaceStack.pop_back();
 	}
 
-	void CodegenInstance::addFunctionToScope(FuncPair_t func, FunctionTree* root)
+	void CodegenInstance::addFunctionToScope(FuncDefPair func, FunctionTree* root)
 	{
 		FunctionTree* cur = root;
 		if(!cur)
@@ -834,14 +835,20 @@ namespace Codegen
 
 		iceAssert(cur);
 
-		for(FuncPair_t& fp : cur->funcs)
+		for(FuncDefPair& fp : cur->funcs)
 		{
-			if(fp.first == 0 && fp.second == func.second)
+			if(fp.firFunc == 0 && fp.funcDecl == func.funcDecl)
 			{
-				fp.first = func.first;
+				fp.firFunc = func.firFunc;
 				return;
 			}
-			else if(fp.first == func.first && fp.second == func.second)
+			// else if(fp.funcDef == 0 && fp.funcDecl == func.funcDecl)
+			// {
+			// 	fp.funcDef = func.funcDef;
+			// 	if(fp.firFunc == 0)
+			// 		fp.firFunc = func.firFunc;
+			// }
+			else if(fp.firFunc == func.firFunc && fp.funcDef == func.funcDef)
 			{
 				return;
 			}
@@ -850,7 +857,7 @@ namespace Codegen
 		cur->funcs.push_back(func);
 	}
 
-	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
+	void CodegenInstance::removeFunctionFromScope(FuncDefPair func)
 	{
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
@@ -870,41 +877,41 @@ namespace Codegen
 
 
 
-	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
+	std::deque<FuncDefPair> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
-		std::deque<FuncPair_t> candidates;
+		std::deque<FuncDefPair> candidates;
 
 
-		auto _isDupe = [this](FuncPair_t a, FuncPair_t b) -> bool {
+		auto _isDupe = [this](FuncDefPair a, FuncDefPair b) -> bool {
 
-			if(a.first == 0 || b.first == 0)
+			if(a.firFunc == 0 || b.firFunc == 0)
 			{
-				iceAssert(a.second);
-				iceAssert(b.second);
+				iceAssert(a.funcDecl);
+				iceAssert(b.funcDecl);
 
-				if(a.second->params.size() != b.second->params.size()) return false;
-				if(a.second->genericTypes.size() > 0 && b.second->genericTypes.size() > 0)
+				if(a.funcDecl->params.size() != b.funcDecl->params.size()) return false;
+				if(a.funcDecl->genericTypes.size() > 0 && b.funcDecl->genericTypes.size() > 0)
 				{
-					if(a.second->genericTypes != b.second->genericTypes) return false;
+					if(a.funcDecl->genericTypes != b.funcDecl->genericTypes) return false;
 				}
 
-				for(size_t i = 0; i < a.second->params.size(); i++)
+				for(size_t i = 0; i < a.funcDecl->params.size(); i++)
 				{
 					// allowFail = true
-					if(a.second->params[i]->getType(this, true) != b.second->params[i]->getType(this, true))
+					if(a.funcDecl->params[i]->getType(this, true) != b.funcDecl->params[i]->getType(this, true))
 						return false;
 				}
 
 				return true;
 			}
-			else if(a.first == b.first || a.second == b.second)
+			else if(a.firFunc == b.firFunc || a.funcDecl == b.funcDecl)
 			{
 				return true;
 			}
 			else
 			{
-				return a.first->getType() == b.first->getType();
+				return a.firFunc->getType() == b.firFunc->getType();
 			}
 		};
 
@@ -917,11 +924,12 @@ namespace Codegen
 
 			for(auto f : ft->funcs)
 			{
-				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
+				auto isDupe = [this, f, _isDupe](FuncDefPair fp) -> bool {
 					return _isDupe(f, fp);
 				};
 
-				if(f.second->genericTypes.size() == 0 && (f.second ? f.second->ident.name : f.first->getName().str()) == basename)
+				if(f.funcDecl->genericTypes.size() == 0
+					&& (f.funcDecl ? f.funcDecl->ident.name : f.firFunc->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -942,7 +950,7 @@ namespace Codegen
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
 		std::deque<Expr*> params, bool exactMatch)
 	{
 		std::deque<fir::Type*> argTypes;
@@ -954,23 +962,20 @@ namespace Codegen
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
 		std::deque<fir::Type*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = list;
+		std::deque<FuncDefPair> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
 
-		std::deque<std::pair<FuncPair_t, int>> finals;
+		std::deque<std::pair<FuncDefPair, int>> finals;
 		for(auto c : candidates)
 		{
 			int distance = 0;
 
 			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
-			if((c.second ? c.second->ident.name : basename) == basename
-				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
-			{
+			if((c.funcDecl ? c.funcDecl->ident.name : basename) == basename && this->isValidFuncOverload(c, params, &distance, exactMatch))
 				finals.push_back({ c, distance });
-			}
 		}
 
 		// disambiguate this.
@@ -978,7 +983,7 @@ namespace Codegen
 		if(finals.size() > 1)
 		{
 			// go through each.
-			std::deque<std::pair<FuncPair_t, int>> mostViable;
+			std::deque<std::pair<FuncDefPair, int>> mostViable;
 			for(auto f : finals)
 			{
 				if(mostViable.size() == 0 || mostViable.front().second > f.second)
@@ -1010,8 +1015,8 @@ namespace Codegen
 				std::string cstr;
 				for(auto c : finals)
 				{
-					if(c.first.second)
-						cstr += this->printAst(c.first.second) + "\n";
+					if(c.first.funcDef)
+						cstr += this->printAst(c.first.funcDecl) + "\n";
 				}
 
 				error(user, "Ambiguous function call to function %s with parameters: (%s), have %zu candidates:\n%s",
@@ -1028,7 +1033,7 @@ namespace Codegen
 
 	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		std::deque<FuncDefPair> candidates = this->resolveFunctionName(basename);
 		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
@@ -1170,7 +1175,7 @@ namespace Codegen
 		}
 	}
 
-	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
+	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
 		std::deque<fir::Type*> funcParams;
@@ -1179,19 +1184,19 @@ namespace Codegen
 		bool iscvar = 0;
 		bool isvar = 0;
 
-		if(fp.first)
+		if(fp.firFunc)
 		{
-			for(auto arg : fp.first->getArguments())
+			for(auto arg : fp.firFunc->getArguments())
 				funcParams.push_back(arg->getType());
 
-			iscvar = fp.first->isCStyleVarArg();
-			isvar = fp.first->isVariadic();
+			iscvar = fp.firFunc->isCStyleVarArg();
+			isvar = fp.firFunc->isVariadic();
 		}
 		else
 		{
-			iceAssert(fp.second);
+			iceAssert(fp.funcDecl);
 
-			for(auto arg : fp.second->params)
+			for(auto arg : fp.funcDecl->params)
 			{
 				auto t = arg->getType(this, true);
 				if(!t) return false;
@@ -1199,8 +1204,8 @@ namespace Codegen
 				funcParams.push_back(t);
 			}
 
-			iscvar = fp.second->isCStyleVarArg;
-			isvar = fp.second->isVariadic;
+			iscvar = fp.funcDecl->isCStyleVarArg;
+			isvar = fp.funcDecl->isVariadic;
 		}
 
 		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
@@ -1235,22 +1240,24 @@ namespace Codegen
 
 
 
-	FuncPair_t* CodegenInstance::getOrDeclareLibCFunc(std::string name)
+	FuncDefPair CodegenInstance::getOrDeclareLibCFunc(std::string name)
 	{
-		std::deque<FuncPair_t> fps = this->resolveFunctionName(name);
-		FuncPair_t* fp = 0;
+		std::deque<FuncDefPair> fps = this->resolveFunctionName(name);
+		auto fp = FuncDefPair::empty();
 
+		bool found = false;
 		for(auto f : fps)
 		{
-			iceAssert(f.second->ident.name == name);
-			if(f.second->isFFI)
+			iceAssert(f.funcDecl->ident.name == name);
+			if(f.funcDecl->isFFI)
 			{
-				fp = &f;
+				fp = f;
+				found = true;
 				break;
 			}
 		}
 
-		if(!fp)
+		if(!found)
 		{
 			pts::Type* retType;
 			std::deque<VarDecl*> params;
@@ -1302,6 +1309,10 @@ namespace Codegen
 			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
 			fakefm->isFFI = true;
 			fakefm->codegen(this);
+
+
+			// note(recursion): if the above fails, we die in an infinite loop.
+			return this->getOrDeclareLibCFunc(name);
 		}
 
 		return fp;
@@ -1461,13 +1472,13 @@ namespace Codegen
 		for(auto p : decl->params) es.push_back(p);
 
 		Resolved_t res = this->resolveFunction(decl, decl->ident.name, es, true);
-		if(res.resolved && res.t.first != 0)
+		if(res.resolved && res.t.firFunc != 0 && res.t.funcDecl != decl)
 		{
-			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.second).c_str());
-			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
+			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
+			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
 			{
-				info(res.t.second, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
-					res.t.second->params[i]->getType(this)->str().c_str());
+				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
+					res.t.funcDecl->params[i]->getType(this)->str().c_str());
 			}
 
 			return true;
@@ -1781,7 +1792,7 @@ namespace Codegen
 
 
 
-	FuncPair_t CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
+	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
 		Func* func, std::deque<fir::Type*> params)
 	{
 		iceAssert(func);
@@ -1793,7 +1804,7 @@ namespace Codegen
 		if(gtm.empty())
 		{
 			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
-			if(!res) return FuncPair_t(0, 0);
+			if(!res) return FuncDefPair::empty();
 		}
 
 
@@ -1838,21 +1849,21 @@ namespace Codegen
 			func->codegen(this, ffunc);
 		}
 
-		this->removeFunctionFromScope({ 0, fnDecl });
+		this->removeFunctionFromScope(FuncDefPair(0, func->decl, func));
 		this->popGenericTypeStack();
 
-		return { ffunc, fnDecl };
+		return FuncDefPair(ffunc, func->decl, func);
 	}
 
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
 	{
 		// try and resolve shit
 		std::map<std::string, fir::Type*> gtm;
 
 		if(candidates.size() == 0)
 		{
-			return { 0, 0 };	// just fail
+			return FuncDefPair::empty();	// just fail
 		}
 
 		std::deque<fir::Type*> fargs;
@@ -1876,7 +1887,7 @@ namespace Codegen
 
 		if(candidates.size() == 0)
 		{
-			return { 0, 0 };
+			return FuncDefPair::empty();
 		}
 		else if(candidates.size() > 1)
 		{
@@ -1891,27 +1902,27 @@ namespace Codegen
 		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
 	}
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
 	{
 		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
 	}
 
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
 		fir::FunctionType* ft)
 	{
-		std::deque<FuncPair_t> ret;
+		std::deque<FuncDefPair> ret;
 		for(auto fn : candidates)
 		{
 			auto fp = this->instantiateGenericFunctionUsingParameters(user, { }, fn, ft->getArgumentTypes());
-			if(fp.first && fp.second)
+			if(fp.firFunc && fp.funcDef)
 				ret.push_back(fp);
 		}
 
 		if(ret.empty())
 		{
-			return { 0, 0 };
+			return FuncDefPair::empty();
 		}
 		else if(candidates.size() > 1)
 		{
@@ -1920,7 +1931,7 @@ namespace Codegen
 				cands += this->printAst(c) + "\n";
 
 			error(user, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n",
-				ret.front().second->ident.name.c_str(), candidates.size(), cands.c_str());
+				ret.front().funcDecl->ident.name.c_str(), candidates.size(), cands.c_str());
 		}
 
 		return ret.front();
@@ -2222,9 +2233,9 @@ namespace Codegen
 
 			// use function overload operator for this.
 
-			std::deque<FuncPair_t> fns;
+			std::deque<FuncDefPair> fns;
 			for(auto f : sb->initFuncs)
-				fns.push_back({ f, 0 });
+				fns.push_back(FuncDefPair(f, 0, 0));
 
 			std::deque<ExtensionDef*> exts = this->getExtensionsForType(sb);
 			for(auto ext : exts)
@@ -2243,7 +2254,7 @@ namespace Codegen
 
 					if(func->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
 					{
-						fns.push_back({ f, 0 });
+						fns.push_back(FuncDefPair(f, 0, 0));
 					}
 				}
 			}
@@ -2266,7 +2277,7 @@ namespace Codegen
 				error(user, "No initialiser for type '%s' taking parameters (%s)", sb->ident.name.c_str(), argstr.c_str());
 			}
 
-			auto ret = this->module->getFunction(res.t.first->getName());
+			auto ret = this->module->getFunction(res.t.firFunc->getName());
 			iceAssert(ret);
 
 			return ret;

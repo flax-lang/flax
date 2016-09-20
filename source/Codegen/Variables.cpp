@@ -262,14 +262,14 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			fir::Function* oldf = dynamic_cast<fir::Function*>(val);
 			iceAssert(oldf);
 
-			FuncPair_t fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
+			FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
 				cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
 
 
-			if(fp.first && fp.second)
+			if(!fp.isEmpty())
 			{
 				// rewrite history
-				val = fp.first;
+				val = fp.firFunc;
 			}
 			else
 			{

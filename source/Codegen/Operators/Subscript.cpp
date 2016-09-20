@@ -79,20 +79,20 @@ namespace Operators
 		ClassDef* cls = p.first;
 		fir::Type* ftype = p.second;
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->setterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
 
 		for(auto ext : cgi->getExtensionsForType(cls))
 		{
 			for(auto f : ext->subscriptOverloads)
-				cands.push_back({ f->setterFunc, f->decl });
+				cands.push_back(FuncDefPair(f->setterFunc, f->setterFn->decl, f->setterFn));
 		}
 
 		std::string basename;
 		if(cands.size() > 0)
-			basename = cands.front().second->ident.name;
+			basename = cands.front().funcDecl->ident.name;
 
 
 		// todo: MULIPLE SUBSCRIPTS
@@ -115,7 +115,7 @@ namespace Operators
 		}
 		else
 		{
-			if(res.t.first == 0)
+			if(res.t.firFunc == 0)
 			{
 				error(user, "Class %s does not have a subscript operator with a setter", ftype->str().c_str());
 			}
@@ -132,7 +132,7 @@ namespace Operators
 
 			fargs.push_back(lhsPtr);
 
-			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			fir::Function* fn = cgi->module->getFunction(res.t.firFunc->getName());
 			iceAssert(fn);
 
 			// gen args.
@@ -177,20 +177,20 @@ namespace Operators
 		iceAssert(ftype);
 
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->getterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 
 		for(auto ext : cgi->getExtensionsForType(cls))
 		{
 			for(auto f : ext->subscriptOverloads)
-				cands.push_back({ f->getterFunc, f->decl });
+				cands.push_back(FuncDefPair(f->getterFunc, f->getterFn->decl, f->getterFn));
 		}
 
 		std::string basename;
 		if(cands.size() > 0)
-			basename = cands.front().second->ident.name;
+			basename = cands.front().funcDecl->ident.name;
 
 
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
@@ -199,7 +199,7 @@ namespace Operators
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
-		if(res.resolved) return res.t.first;
+		if(res.resolved) return res.t.firFunc;
 		else return 0;
 	}
 
@@ -219,21 +219,21 @@ namespace Operators
 		ClassDef* cls = p.first;
 		fir::Type* ftype = p.second;
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->getterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 
 		for(auto ext : cgi->getExtensionsForType(cls))
 		{
 			for(auto f : ext->subscriptOverloads)
-				cands.push_back({ f->getterFunc, f->decl });
+				cands.push_back(FuncDefPair(f->getterFunc, f->getterFn->decl, f->getterFn));
 		}
 
 
 		std::string basename;
 		if(cands.size() > 0)
-			basename = cands.front().second->ident.name;
+			basename = cands.front().funcDecl->ident.name;
 
 		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
@@ -264,7 +264,7 @@ namespace Operators
 			fargs.push_back(lhsPtr);
 
 			// gen args.
-			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			fir::Function* fn = cgi->module->getFunction(res.t.firFunc->getName());
 			iceAssert(fn);
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)

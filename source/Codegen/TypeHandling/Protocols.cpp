@@ -42,7 +42,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 		tl.pop_front();
 
 		int _ = 0;
-		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
+		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload(FuncDefPair(0, cf->decl, cf), tl, &_, true)
 			&& ((fn->ptype->str() == "Self" && created == fcf->getReturnType()) || fn->getType(cgi) == fcf->getReturnType()));
 
 		return ret;

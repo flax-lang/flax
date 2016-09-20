@@ -59,7 +59,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	// check for redef
 	fir::Function* func = nullptr;
-	if(fd->genericTypes.size() == 0 && (cgi->isDuplicateFuncDecl(fd) || cgi->module->getFunction(fd->ident) != 0))
+	if(fd->genericTypes.size() == 0 && (/*cgi->isDuplicateFuncDecl(fd) || */cgi->module->getFunction(fd->ident) != 0))
 	{
 		GenError::duplicateSymbol(cgi, fd, fd->ident.str(), SymbolType::Function);
 	}
@@ -87,9 +87,9 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 		if(fd->attribs & Attr_VisPublic)
-			cgi->addPublicFunc({ func, fd });
+			cgi->addPublicFunc(FuncDefPair(func, fd, 0));
 
-		cgi->addFunctionToScope({ func, fd });
+		cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
 	}
 
 	fd->generatedFunc = func;
