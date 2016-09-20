@@ -731,7 +731,7 @@ namespace Codegen
 			str += "(";
 			for(auto p : fd->params)
 			{
-				str += p->ident.name + ": " + (p->inferredLType ? p->inferredLType->str() : p->ptype->str()) + ", ";
+				str += p->ident.name + ": " + (p->concretisedType ? p->concretisedType->str() : p->ptype->str()) + ", ";
 			}
 
 			if(fd->isCStyleVarArg) str += "..., ";
@@ -749,7 +749,7 @@ namespace Codegen
 		else if(VarDecl* vd = dynamic_cast<VarDecl*>(expr))
 		{
 			return (vd->immutable ? ("val ") : ("var ")) + vd->ident.name + ": "
-				+ (vd->inferredLType ? vd->getType(this)->str() : vd->ptype->str());
+				+ (vd->concretisedType ? vd->getType(this)->str() : vd->ptype->str());
 		}
 		else if(BinOp* bo = dynamic_cast<BinOp*>(expr))
 		{
