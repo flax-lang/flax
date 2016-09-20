@@ -153,6 +153,8 @@ public func doFunctionTest()
 
 			s.fn = gf3
 			s.fn(&s, 600)
+
+			let gf4: [(int) -> int] = SomeNS.NestedClass.smgen
 		}
 	}
 }
