@@ -145,7 +145,9 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 				}
 			}
 
-			return cgi->tryGetMemberFunctionOfClass(cls, memberVr, extra)->getType();
+			auto ret = cgi->tryGetMemberFunctionOfClass(cls, memberVr, extra)->getType();
+			if(ret == 0) error(memberVr, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), memberVr->name.c_str());
+			return ret;
 		}
 		else if(memberFc)
 		{
@@ -587,7 +589,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				if(!cprop)
 				{
-					return Result_t(cgi->tryGetMemberFunctionOfClass(cls, var, extra), 0);
+					auto ret = cgi->tryGetMemberFunctionOfClass(cls, var, extra);
+					if(ret == 0) error(var, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), var->name.c_str());
+
+					return Result_t(ret, 0);
 				}
 				else
 				{
@@ -838,6 +843,33 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 
 	return { ftree, nsstrs, origList, curType, curFType };
 }
+
+
+
+// gets name from the original function
+FuncPair_t CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
+	fir::FunctionType* instantiatedFT, MemberAccess* ma)
+{
+	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instnatiate generic function with another generic function");
+
+	if(ma)
+	{
+		// have fun: first we must decide if this is a static reference or a instance reference
+		return { 0, 0 };
+	}
+	else
+	{
+		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
+			this->findGenericFunctions(oldf->getName().name), instantiatedFT);
+	}
+}
+
+
+
+
+
+
+
 
 
 std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)

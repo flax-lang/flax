@@ -78,7 +78,6 @@ namespace Codegen
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 
 	typedef std::pair<fir::Function*, Ast::FuncDecl*> FuncPair_t;
-	// typedef std::map<std::string, FuncPair_t> FuncMap_t;
 
 	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<fir::IRBlock*, fir::IRBlock*>> BracedBlockScope;
 

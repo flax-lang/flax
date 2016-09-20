@@ -240,9 +240,6 @@ namespace Codegen
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
-		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
-
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
 
@@ -267,6 +264,12 @@ namespace Codegen
 
 		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params);
+
+		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
+		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
+
+		FuncPair_t resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
