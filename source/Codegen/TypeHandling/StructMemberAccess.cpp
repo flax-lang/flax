@@ -319,7 +319,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(FuncCall* fc = dynamic_cast<FuncCall*>(this->right))
 			{
 				std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
-				std::deque<FuncPair_t> fpcands;
+				std::deque<FuncDefPair> fpcands;
 
 				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
 				{
@@ -337,7 +337,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				}
 
 				for(auto p : fcands)
-					fpcands.push_back({ p.second.second, p.second.first->decl });
+					fpcands.push_back(FuncDefPair(p.second.second, p.second.first->decl, p.second.first));
 
 
 				std::deque<fir::Type*> fpars = { ftype->getPointerTo() };
@@ -348,7 +348,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				if(!res.resolved)
 					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
 
-				iceAssert(res.t.first);
+				iceAssert(res.t.firFunc);
 
 
 				std::deque<fir::Value*> args;
@@ -366,7 +366,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// TODO: check this.
 				// makes sure we call the function in our own module, because llvm only allows that.
 
-				fir::Function* target = res.t.first;
+				fir::Function* target = res.t.firFunc;
 				auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
 
 				fir::Value* ret = cgi->builder.CreateCall(thistarget, args);
@@ -604,11 +604,11 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		else if(fc)
 		{
 			size_t i = 0;
-			std::deque<FuncPair_t> candidates;
+			std::deque<FuncDefPair> candidates;
 
 			for(auto f : cls->funcs)
 			{
-				FuncPair_t fp = { cls->lfuncs[i], f->decl };
+				FuncDefPair fp(cls->lfuncs[i], f->decl, f);
 				if(f->decl->ident.name == fc->name && f->decl->isStatic)
 					candidates.push_back(fp);
 
@@ -847,7 +847,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 
 
 // gets name from the original function
-FuncPair_t CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
+FuncDefPair CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
 	fir::FunctionType* instantiatedFT, MemberAccess* ma)
 {
 	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instnatiate generic function with another generic function");
@@ -855,7 +855,7 @@ FuncPair_t CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* 
 	if(ma)
 	{
 		// have fun: first we must decide if this is a static reference or a instance reference
-		return { 0, 0 };
+		return FuncDefPair::empty();
 	}
 	else
 	{
@@ -910,9 +910,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 							flist.push_back({ f.second });
 					}
 
-					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
-					if(fp.first && fp.second)
-						res = Resolved_t(fp);
+					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(!fp.isEmpty()) res = Resolved_t(fp);
 				}
 			}
 		}
@@ -922,11 +921,11 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				iceAssert(clsd->funcs.size() == clsd->lfuncs.size());
 
-				std::deque<FuncPair_t> flist;
+				std::deque<FuncDefPair> flist;
 				for(size_t i = 0; i < clsd->funcs.size(); i++)
 				{
 					if(clsd->funcs[i]->decl->ident.name == fc->name && clsd->funcs[i]->decl->isStatic)
-						flist.push_back(FuncPair_t(clsd->lfuncs[i], clsd->funcs[i]->decl));
+						flist.push_back(FuncDefPair(clsd->lfuncs[i], clsd->funcs[i]->decl, clsd->funcs[i]));
 				}
 
 				for(auto e : this->getExtensionsForType(clsd))
@@ -934,7 +933,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 					for(size_t i = 0; i < clsd->funcs.size(); i++)
 					{
 						if(e->funcs[i]->decl->ident.name == fc->name && e->funcs[i]->decl->isStatic)
-							flist.push_back(FuncPair_t(e->lfuncs[i], e->funcs[i]->decl));
+							flist.push_back(FuncDefPair(e->lfuncs[i], e->funcs[i]->decl, e->funcs[i]));
 					}
 				}
 
@@ -949,9 +948,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 							flist.push_back(f);
 					}
 
-					FuncPair_t fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
-					if(fp.first && fp.second)
-						res = Resolved_t(fp);
+					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					if(!fp.isEmpty()) res = Resolved_t(fp);
 				}
 			}
 			else
@@ -995,7 +993,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = res.t.first->getReturnType();
+		fir::Type* ltype = res.t.firFunc->getReturnType();
 		if(actual)
 		{
 			fc->cachedResolveTarget = res;
@@ -1023,8 +1021,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				for(auto f : ftree->funcs)
 				{
-					if(f.second->ident.name == vr->name && f.second->genericTypes.size() == 0)
-						return { { f.first->getType(), Result_t(f.first, 0) }, 0 };
+					if(f.funcDecl->ident.name == vr->name && f.funcDecl->genericTypes.size() == 0)
+						return { { f.firFunc->getType(), Result_t(f.firFunc, 0) }, 0 };
 				}
 
 
@@ -1257,12 +1255,12 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 	std::deque<Func*> funclist;
 
 	std::deque<Func*> genericfunclist;
-	std::deque<FuncPair_t> fns;
+	std::deque<FuncDefPair> fns;
 	for(auto f : cls->funcs)
 	{
 		if(f->decl->ident.name == fc->name)
 		{
-			fns.push_back({ cls->functionMap[f], f->decl });
+			fns.push_back(FuncDefPair(cls->functionMap[f], f->decl, f));
 			funclist.push_back(f);
 
 			if(f->decl->genericTypes.size() > 0)
@@ -1279,7 +1277,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 		{
 			if(f->decl->ident.name == fc->name && (f->decl->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode))
 			{
-				fns.push_back({ ext->functionMap[f], f->decl });
+				fns.push_back(FuncDefPair(ext->functionMap[f], f->decl, f));
 				funclist.push_back(f);
 
 				if(f->decl->genericTypes.size() > 0)
@@ -1294,8 +1292,8 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 	if(!res.resolved)
 	{
 		// look for generic ones
-		FuncPair_t fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
-		if(fp.first && fp.second)
+		FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		if(!fp.isEmpty())
 		{
 			res = Resolved_t(fp);
 		}
@@ -1439,7 +1437,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 	for(auto f : funclist)
 	{
-		if(f->decl == res.t.second)
+		if(f == res.t.funcDef)
 		{
 			callee = f;
 			break;
@@ -1464,7 +1462,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 			args.erase(args.begin());
 		}
 
-		fir::Function* lcallee = res.t.first;
+		fir::Function* lcallee = res.t.firFunc;
 		iceAssert(lcallee);
 
 		lcallee = cgi->module->getFunction(lcallee->getName());
@@ -1473,7 +1471,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 		result = cgi->builder.CreateCall(lcallee, args);
 	}
 
-	return std::make_tuple(callee, res.t.first, res.t.first->getReturnType(), result);
+	return std::make_tuple(callee, res.t.firFunc, res.t.firFunc->getReturnType(), result);
 }
 
 

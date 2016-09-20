@@ -27,7 +27,7 @@ namespace Codegen
 		cgi->builder.setCurrentBlock(ob);
 		if(fn->decl->attribs & Attr_VisPublic)
 		{
-			cgi->addPublicFunc({ lfunc, fn->decl });
+			cgi->addPublicFunc(FuncDefPair(lfunc, fn->decl, fn));
 		}
 
 		return lfunc;
@@ -89,7 +89,7 @@ namespace Codegen
 					for(auto e : fn->decl->params)
 						ps.push_back(e->getType(cgi, true));
 
-					if(cgi->isValidFuncOverload({ 0, f->decl }, ps, &d, true))
+					if(cgi->isValidFuncOverload(FuncDefPair(0, f->decl, f), ps, &d, true))
 					{
 						errorNoExit(f->decl, "Duplicate method declaration: %s", f->decl->ident.name.c_str());
 						info(fn->decl, "Previous declaration was here.");
@@ -219,7 +219,7 @@ namespace Codegen
 					for(auto e : oo->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
-					if(cgi->isValidFuncOverload({ 0, overl->func->decl }, ps, &d, true))
+					if(cgi->isValidFuncOverload(FuncDefPair(0, overl->func->decl, overl->func), ps, &d, true))
 					{
 						errorNoExit(oo->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, oo->op).c_str());
 						info(overl->func->decl, "Previous declaration was here.");
@@ -274,7 +274,7 @@ namespace Codegen
 					for(auto e : a->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
-					if(cgi->isValidFuncOverload({ 0, aoo->func->decl }, ps, &d, true))
+					if(cgi->isValidFuncOverload(FuncDefPair(0, aoo->func->decl, aoo->func), ps, &d, true))
 					{
 						errorNoExit(a->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, a->op).c_str());
 						info(aoo->func->decl, "Previous declaration was here.");
@@ -310,7 +310,7 @@ namespace Codegen
 			}
 
 			if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-				cgi->addPublicFunc({ aoo->lfunc, aoo->func->decl });
+				cgi->addPublicFunc(FuncDefPair(aoo->lfunc, aoo->func->decl, aoo->func));
 		}
 
 
@@ -329,7 +329,7 @@ namespace Codegen
 					for(auto e : s->decl->params)
 						ps.push_back(e->getType(cgi));
 
-					if(cgi->isValidFuncOverload({ 0, soo->decl }, ps, &d, true))
+					if(cgi->isValidFuncOverload(FuncDefPair(0, soo->getterFn->decl, soo->getterFn), ps, &d, true))
 					{
 						errorNoExit(s->decl, "Duplicate subscript operator");
 						info(soo->decl, "Previous declaration was here.");
@@ -367,7 +367,7 @@ namespace Codegen
 				soo->getterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-					cgi->addPublicFunc({ soo->getterFunc, decl });
+					cgi->addPublicFunc(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 			}
 
 			if(soo->setterBody)
@@ -400,7 +400,7 @@ namespace Codegen
 				soo->setterFn = new Func(decl->pin, decl, body);
 
 				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-					cgi->addPublicFunc({ soo->setterFunc, decl });
+					cgi->addPublicFunc(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
 			}
 		}
 	}

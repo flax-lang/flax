@@ -444,7 +444,8 @@ namespace GenError
 
 
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args,
+		std::deque<FuncDefPair> cands)
 	{
 		std::vector<std::string> argtypes;
 		HighlightOptions ops;
@@ -466,12 +467,12 @@ namespace GenError
 			argstr = argstr.substr(2);
 
 		std::string candidates;
-		std::deque<FuncPair_t> reses;
+		std::deque<FuncDefPair> reses;
 
 		for(auto fs : cands)
 		{
-			if(fs.second)
-				candidates += cgi->printAst(fs.second) + "\n";
+			if(fs.funcDef)
+				candidates += cgi->printAst(fs.funcDecl) + "\n";
 		}
 
 		return std::make_tuple(argstr, candidates, ops);

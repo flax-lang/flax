@@ -146,7 +146,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(auto f : ext->funcs)
 		{
-			FuncPair_t fp = { 0, f->decl };
+			FuncDefPair fp(0, f->decl, f);
 			for(auto tf : this->funcs)
 			{
 				if(f->decl->ident.name == tf->decl->ident.name)
@@ -170,7 +170,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(auto f : ext->operatorOverloads)
 		{
-			FuncPair_t fp = { 0, f->func->decl };
+			FuncDefPair fp(0, f->func->decl, f->func);
 			for(auto tf : this->operatorOverloads)
 			{
 				if(f->op == tf->op)
@@ -194,7 +194,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(auto f : ext->subscriptOverloads)
 		{
-			FuncPair_t fp = { 0, f->decl };
+			FuncDefPair fp(0, f->getterFn->decl, f->getterFn);
 			for(auto tf : this->subscriptOverloads)
 			{
 				std::deque<fir::Type*> ps;
@@ -213,7 +213,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(auto f : ext->assignmentOverloads)
 		{
-			FuncPair_t fp = { 0, f->func->decl };
+			FuncDefPair fp(0, f->func->decl, f->func);
 			for(auto tf : this->assignmentOverloads)
 			{
 				std::deque<fir::Type*> ps;
@@ -269,7 +269,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			for(auto f : cd->funcs)
 			{
-				FuncPair_t fp = { 0, f->decl };
+				FuncDefPair fp(0, f->decl, f);
 				for(auto tf : this->funcs)
 				{
 					if(f->decl->ident.name == tf->decl->ident.name)
@@ -293,7 +293,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			for(auto f : cd->operatorOverloads)
 			{
-				FuncPair_t fp = { 0, f->func->decl };
+				FuncDefPair fp(0, f->func->decl, f->func);
 				for(auto tf : this->operatorOverloads)
 				{
 					if(f->op == tf->op)
@@ -317,7 +317,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			for(auto f : cd->subscriptOverloads)
 			{
-				FuncPair_t fp = { 0, f->decl };
+				FuncDefPair fp(0, f->getterFn->decl, f->getterFn);
 				for(auto tf : this->subscriptOverloads)
 				{
 					std::deque<fir::Type*> ps;
@@ -336,7 +336,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			for(auto f : cd->assignmentOverloads)
 			{
-				FuncPair_t fp = { 0, f->func->decl };
+				FuncDefPair fp(0, f->func->decl, f->func);
 				for(auto tf : this->assignmentOverloads)
 				{
 					std::deque<fir::Type*> ps;

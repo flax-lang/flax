@@ -18,9 +18,9 @@ using namespace Codegen;
 static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
 {
-	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
+	FuncDefPair fp = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
 
-	fir::Function* mallocf = fp->first;
+	fir::Function* mallocf = fp.firFunc;
 	iceAssert(mallocf);
 
 	mallocf = cgi->module->getFunction(mallocf->getName());
@@ -261,10 +261,10 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	// call 'free'
-	FuncPair_t* fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+	FuncDefPair fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
 
 
-	fir::Function* freef = fp->first;
+	fir::Function* freef = fp.firFunc;
 	iceAssert(freef);
 
 	freef = cgi->module->getFunction(freef->getName());

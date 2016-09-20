@@ -303,13 +303,13 @@ namespace Operators
 				}
 
 
-				FuncPair_t fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
+				FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
 					cands, lhs->getType()->toFunctionType());
 
-				if(fp.first && fp.second)
+				if(!fp.isEmpty())
 				{
 					// rewrite history
-					rhs = fp.first;
+					rhs = fp.firFunc;
 				}
 				else
 				{

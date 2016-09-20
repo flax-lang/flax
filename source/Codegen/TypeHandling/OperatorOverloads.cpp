@@ -60,10 +60,10 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 			// yes, yes we are.
 			if(args.size() > 0)
 			{
-				FuncPair_t res = cgi->instantiateGenericFunctionUsingParameters(this, { }, this->func, args);
+				FuncDefPair res = cgi->instantiateGenericFunctionUsingParameters(this, { }, this->func, args);
 
-				this->lfunc = res.first;
-				return Result_t(res.first, 0);
+				this->lfunc = res.firFunc;
+				return Result_t(res.firFunc, 0);
 			}
 			else
 			{

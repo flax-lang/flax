@@ -39,7 +39,7 @@ namespace GenError
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncPair_t> cands);
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncDefPair> cands);
 
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args) __attribute__((noreturn));
 }
@@ -142,9 +142,9 @@ namespace Codegen
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addPublicFunc(FuncPair_t func);
-		void addFunctionToScope(FuncPair_t func, FunctionTree* root = 0);
-		void removeFunctionFromScope(FuncPair_t func);
+		void addPublicFunc(FuncDefPair func);
+		void addFunctionToScope(FuncDefPair func, FunctionTree* root = 0);
+		void removeFunctionFromScope(FuncDefPair func);
 		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
@@ -177,12 +177,12 @@ namespace Codegen
 
 
 		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
-		bool isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
+		bool isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
-		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		std::deque<FuncDefPair> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncDefPair> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncDefPair> list, std::string basename,
 			std::deque<fir::Type*> params, bool exactMatch = false);
 
 		std::deque<Ast::Func*> findGenericFunctions(std::string basename);
@@ -194,13 +194,9 @@ namespace Codegen
 		TypePair_t* getTypeByString(std::string name);
 		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
-		FuncPair_t* getOrDeclareLibCFunc(std::string name);
+		FuncDefPair getOrDeclareLibCFunc(std::string name);
 
 
-
-
-		// fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		// fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
 
 		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
@@ -257,18 +253,18 @@ namespace Codegen
 		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
 
 
-		FuncPair_t tryResolveGenericFunctionCall(Ast::FuncCall* fc);
-		FuncPair_t tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
-		FuncPair_t tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
+		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
 			fir::FunctionType* ft);
 
-		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
+		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params);
 
 		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
 
-		FuncPair_t resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+		FuncDefPair resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 
