@@ -225,7 +225,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(!rt.resolved)
 		{
 			auto pair = cgi->tryResolveGenericFunctionCall(this);
-			if(pair.first || pair.second)
+			if(pair.firFunc || pair.funcDef)
 				rt = Resolved_t(pair);
 
 			else
@@ -242,23 +242,24 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 
 
-		if(rt.t.first == 0)
+		if(rt.t.firFunc == 0)
 		{
 			// generate it.
-			rt.t.second->codegen(cgi);
+			iceAssert(rt.t.funcDecl);
+			rt.t.funcDecl->codegen(cgi);
 
 			// printf("expediting function call to %s\n", this->name.c_str());
 
 			rt = cgi->resolveFunction(this, this->name, this->params);
 
 			if(!rt.resolved) error("nani???");
-			if(rt.t.first == 0) goto failedToFind;
+			if(rt.t.firFunc == 0) goto failedToFind;
 		}
 
 		this->cachedResolveTarget = rt;
 	}
 
-	target = this->cachedResolveTarget.t.first;
+	target = this->cachedResolveTarget.t.firFunc;
 
 
 
@@ -415,17 +416,17 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 		else
 		{
 			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);
-			if(genericMaybe.first)
+			if(genericMaybe.firFunc)
 			{
 				this->cachedResolveTarget = Resolved_t(genericMaybe);
-				return genericMaybe.first->getReturnType();
+				return genericMaybe.firFunc->getReturnType();
 			}
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 		}
 	}
 
-	return rt.t.second->getType(cgi);
+	return rt.t.funcDecl->getType(cgi);
 }
 
 
