@@ -145,9 +145,9 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 				}
 			}
 
-			auto ret = cgi->tryGetMemberFunctionOfClass(cls, memberVr, extra)->getType();
-			if(ret == 0) error(memberVr, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), memberVr->name.c_str());
-			return ret;
+			auto ret = cgi->tryGetMemberFunctionOfClass(cls, memberVr, memberVr->name, extra);
+			if(ret.isEmpty()) error(memberVr, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), memberVr->name.c_str());
+			return ret.firFunc->getType();
 		}
 		else if(memberFc)
 		{
@@ -325,15 +325,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					for(auto f : ext->funcs)
 					{
-						fcands[f->decl] = { f, ext->functionMap[f] };
+						if(f->decl->ident.name == fc->name)
+							fcands[f->decl] = { f, ext->functionMap[f] };
 					}
-				}
-
-
-				for(auto it = fcands.begin(); it != fcands.end(); it++)
-				{
-					if((*it).first->ident.name != fc->name)
-						it = fcands.erase(it);
 				}
 
 				for(auto p : fcands)
@@ -589,10 +583,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				if(!cprop)
 				{
-					auto ret = cgi->tryGetMemberFunctionOfClass(cls, var, extra);
-					if(ret == 0) error(var, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), var->name.c_str());
+					auto ret = cgi->tryGetMemberFunctionOfClass(cls, var, var->name, extra);
+					if(ret.isEmpty()) error(var, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), var->name.c_str());
 
-					return Result_t(ret, 0);
+					return Result_t(ret.firFunc, 0);
 				}
 				else
 				{
@@ -846,26 +840,6 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 
 
 
-// gets name from the original function
-FuncDefPair CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
-	fir::FunctionType* instantiatedFT, MemberAccess* ma)
-{
-	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instnatiate generic function with another generic function");
-
-	if(ma)
-	{
-		// have fun: first we must decide if this is a static reference or a instance reference
-		return FuncDefPair::empty();
-	}
-	else
-	{
-		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
-			this->findGenericFunctions(oldf->getName().name), instantiatedFT);
-	}
-}
-
-
-
 
 
 
@@ -1099,7 +1073,17 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 
-fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra)
+
+
+
+
+
+
+
+
+
+fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* usr, std::string name,
+	std::deque<fir::Function*> cands, fir::Value* extra)
 {
 	if(cands.size() == 0)
 	{
@@ -1108,7 +1092,7 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(VarRef*
 	else if(cands.size() > 1 && (extra == 0 || (!extra->getType()->isPointerType()
 					|| extra->getType()->getPointerTo()->isFunctionType())))
 	{
-		error(vr, "Ambiguous reference to function with name '%s' (multiple overloads)", vr->name.c_str());
+		error(usr, "Ambiguous reference to function with name '%s' (multiple overloads)", name.c_str());
 	}
 	else if(cands.size() > 1)
 	{
@@ -1129,8 +1113,8 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(VarRef*
 			cstr += "func " + c->getName().str() + s.substr(1, s.length() - 2) + "\n";
 		}
 
-		error(vr, "No matching function with name '%s' with type '%s', have %zu candidates:\n%s",
-			vr->name.c_str(), ft->str().c_str(), cands.size(), cstr.c_str());
+		error(usr, "No matching function with name '%s' with type '%s', have %zu candidates:\n%s",
+			name.c_str(), ft->str().c_str(), cands.size(), cstr.c_str());
 	}
 	else
 	{
@@ -1140,30 +1124,32 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(VarRef*
 	}
 }
 
-fir::Function* CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, VarRef* vr, fir::Value* extra)
+FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* user, std::string name, fir::Value* extra)
 {
 	// find functions
 	std::deque<fir::Function*> cands;
+	std::map<fir::Function*, std::pair<FuncDecl*, Func*>> map;
+
 	for(auto f : cls->funcs)
 	{
-		if(f->decl->ident.name == vr->name)
-			cands.push_back(cls->functionMap[f]);
+		if(f->decl->ident.name == name)
+			cands.push_back(cls->functionMap[f]), map[cls->functionMap[f]] = { f->decl, f };
 	}
 
 	for(auto ext : this->getExtensionsForType(cls))
 	{
 		for(auto f : ext->funcs)
 		{
-			if(f->decl->ident.name == vr->name)
-				cands.push_back(ext->functionMap[f]);
+			if(f->decl->ident.name == name)
+				cands.push_back(ext->functionMap[f]), map[ext->functionMap[f]] = { f->decl, f };
 		}
 	}
 
-	fir::Function* ret = this->tryDisambiguateFunctionVariableUsingType(vr, cands, extra);
-	if(ret == 0)
-		error(vr, "Class '%s' has no such member '%s'", cls->ident.name.c_str(), vr->name.c_str());
+	fir::Function* ret = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, extra);
+	if(ret == 0) return FuncDefPair::empty();
 
-	return ret;
+	auto p = map[ret];
+	return FuncDefPair(ret, p.first, p.second);
 }
 
 
@@ -1173,69 +1159,154 @@ fir::Function* CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, VarRe
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if 0
-static Result_t doFunctionCall(CodegenInstance* cgi, MemberAccess* ma, FuncCall* fc, fir::Value* ref, ClassDef* cls, bool isStaticFunctionCall)
+fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
+	fir::FunctionType* instantiatedFT, MemberAccess* ma)
 {
-	// make the args first.
-	// since getting the type of a MemberAccess can't be done without codegening the Ast itself,
-	// we codegen first, then use the codegen value to get the type.
-	std::vector<fir::Value*> args { ref };
+	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instantiate generic function with another generic function");
 
-	for(Expr* e : fc->params)
-		args.push_back(e->codegen(cgi).result.first);
+	std::string name = oldf->getName().name;
 
-
-	// now we need to determine if it exists, and its params.
-	auto tup = callMemberFunction(cgi, ma, cls, fc, ref);
-	Func* callee = std::get<0>(tup);
-	iceAssert(callee);
-
-	if(callee->decl->isStatic)
+	if(ma)
 	{
-		// remove the 'self' parameter
-		args.erase(args.begin());
+		if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
+		{
+			// do the thing
+
+			FunctionTree* ftree = 0;
+			StructBase* strType = 0;
+			fir::Type* strFType = 0;
+
+			std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+
+
+			std::map<fir::Function*, Func*> map;
+
+			if(strType != 0)
+			{
+				// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
+				// a namespace) with a concrete type
+				// so, we don't need to look at members or anything else, just functions.
+				//
+				// eg.
+				//
+				// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
+				//
+				// ... (somewhere else)
+				//
+				// class SomeClass
+				// {
+				//     func someMethod<T>(a: T) -> T { ... }
+				// }
+				//
+				// we can't (and probably won't) have generic function types
+				// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
+				// since there's no easy way to be type-safe about them.
+
+
+				// static function
+				ClassDef* cd = dynamic_cast<ClassDef*>(strType);
+				iceAssert(cd);
+
+				for(auto f : cd->funcs)
+				{
+					if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+						map[cd->functionMap[f]] = f;
+				}
+
+
+				for(auto ext : this->getExtensionsForType(cd))
+				{
+					for(auto f : ext->funcs)
+					{
+						if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+							map[ext->functionMap[f]] = f;
+					}
+				}
+			}
+			else
+			{
+				iceAssert(ftree);
+
+				for(auto f : ftree->genericFunctions)
+				{
+					if(!f.first->generatedFunc)
+						f.first->codegen(this);
+
+					iceAssert(f.first->generatedFunc);
+					map[f.first->generatedFunc] = f.second;
+				}
+			}
+
+			// failed to find
+			if(map.empty()) return 0;
+
+
+			std::deque<fir::Function*> cands;
+
+			// set up
+			for(auto p : map)
+				cands.push_back(p.first);
+
+			auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
+			if(res == 0) return 0;
+
+			// ok.
+			Func* fnbody = map[res];
+			iceAssert(fnbody);
+			{
+				// instantiate it.
+
+				FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT);
+
+				iceAssert(fp.firFunc);
+				return fp.firFunc;
+			}
+		}
+		else
+		{
+			error(user, "not supported??");
+		}
 	}
-
-
-	if(callee->decl->isStatic != isStaticFunctionCall)
+	else
 	{
-		error(fc, "Cannot call instance method '%s' without an instance", callee->decl->ident.name.c_str());
+		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
+			this->findGenericFunctions(oldf->getName().name), instantiatedFT).firFunc;
 	}
-
-	fir::Function* lcallee = std::get<1>(tup);
-	iceAssert(lcallee);
-
-	lcallee = cgi->module->getFunction(lcallee->getName());
-	iceAssert(lcallee);
-
-	return Result_t(cgi->builder.CreateCall(lcallee, args), 0);
 }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
