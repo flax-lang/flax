@@ -155,7 +155,7 @@ public func doFunctionTest()
 			let gf4 = s.fn
 			gf4(&s, 600)
 
-			printf("\n")
+			printf("\ngeneric member test\n")
 
 			let gf5: [(int) -> int] = SomeNS.NestedClass.smgen
 			gf5(10)
@@ -165,6 +165,10 @@ public func doFunctionTest()
 
 			let nc = SomeNS.NestedClass()
 			gf6(&nc, 10)
+
+
+			printf("\ndirect field calling\n")
+			let res1 = s.fn(&s, 10)
 		}
 	}
 }
