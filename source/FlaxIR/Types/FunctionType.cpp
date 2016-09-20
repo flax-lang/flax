@@ -19,6 +19,7 @@ namespace fir
 
 		this->isFnCStyleVarArg = iscva;
 
+		this->isGeneric = false;
 
 		for(auto a : args)
 		{

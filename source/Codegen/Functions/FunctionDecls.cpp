@@ -59,7 +59,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	// check for redef
 	fir::Function* func = nullptr;
-	if(fd->genericTypes.size() == 0 && (cgi->isDuplicateFuncDecl(fd) || cgi->module->getFunction(fd->ident) != 0))
+	if(fd->genericTypes.size() == 0 && (/*cgi->isDuplicateFuncDecl(fd) || */cgi->module->getFunction(fd->ident) != 0))
 	{
 		GenError::duplicateSymbol(cgi, fd, fd->ident.str(), SymbolType::Function);
 	}
@@ -87,9 +87,9 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 		if(fd->attribs & Attr_VisPublic)
-			cgi->addPublicFunc({ func, fd });
+			cgi->addPublicFunc(FuncDefPair(func, fd, 0));
 
-		cgi->addFunctionToScope({ func, fd });
+		cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
 	}
 
 	fd->generatedFunc = func;
@@ -100,6 +100,21 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 
 
+static Result_t _dogeneric(CodegenInstance* cgi, fir::Function* reified, Identifier oldid)
+{
+	Identifier id;
+	{
+		id.scope = oldid.scope;
+		id.name = oldid.name;
+		id.kind = oldid.kind;
+		id.functionArguments = reified->getType()->getArgumentTypes();
+	}
+
+	reified->setName(id);
+	cgi->module->addFunction(reified);
+
+	return Result_t(reified, 0);
+}
 
 Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
 {
@@ -109,18 +124,18 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 	iceAssert(this->generatedFunc);
 	fir::Function* reified = this->generatedFunc->reify(types);
 
-	Identifier id;
-	{
-		id.scope = this->generatedFunc->getName().scope;
-		id.name = this->generatedFunc->getName().name;
-		id.kind = this->generatedFunc->getName().kind;
-		id.functionArguments = reified->getType()->getArgumentTypes();
-	}
+	return _dogeneric(cgi, reified, this->generatedFunc->getName());
+}
 
-	reified->setName(id);
-	cgi->module->addFunction(reified);
+Result_t FuncDecl::generateDeclForGenericFunctionUsingFunctionType(CodegenInstance* cgi, fir::FunctionType* ft)
+{
+	if(!this->generatedFunc)
+		this->codegen(cgi);
 
-	return Result_t(reified, 0);
+	iceAssert(this->generatedFunc);
+	fir::Function* reified = this->generatedFunc->reifyUsingFunctionType(ft);
+
+	return _dogeneric(cgi, reified, this->generatedFunc->getName());
 }
 
 
@@ -152,9 +167,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(p->ident.name == "self")
 					error(this, "Cannot have a parameter named 'self' in a method declaration");
-
-				else if(p->ident.name == "super")
-					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 		}
 	}

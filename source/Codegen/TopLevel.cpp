@@ -51,10 +51,10 @@ static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 	FunctionTree* ftree = p.first;
 	FunctionTree* pftree = p.second;
 
-	ftree->funcs.push_back({ 0, decl });
+	ftree->funcs.push_back(FuncDefPair(0, decl, 0));
 
 	if(decl->attribs & Attr_VisPublic)
-		pftree->funcs.push_back({ 0, decl });
+		pftree->funcs.push_back(FuncDefPair(0, decl, 0));
 }
 
 static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)

@@ -102,6 +102,7 @@ namespace fir
 			case OpKind::Value_Load: 						name = "load"; break;
 			case OpKind::Value_StackAlloc: 					name = "stackAlloc"; break;
 			case OpKind::Value_CallFunction: 				name = "call"; break;
+			case OpKind::Value_CallFunctionPointer:			name = "callfp"; break;
 			case OpKind::Value_Return: 						name = "ret"; break;
 			case OpKind::Value_GetPointerToStructMember: 	name = "gep"; break;
 			case OpKind::Value_GetStructMember: 			name = "gep"; break;
