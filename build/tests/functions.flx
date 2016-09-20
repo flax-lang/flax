@@ -152,12 +152,23 @@ public func doFunctionTest()
 			gf3(&s, 500)
 
 			s.fn = gf3
-			s.fn(&s, 600)
+			let gf4 = s.fn
+			gf4(&s, 600)
 
-			let gf4: [(int) -> int] = SomeNS.NestedClass.smgen
+			printf("\n")
+
+			let gf5: [(int) -> int] = SomeNS.NestedClass.smgen
+			gf5(10)
+
+			var gf6: [(SomeNS.NestedClass*, int) -> int]
+			gf6 = SomeNS.NestedClass.mgen
+
+			let nc = SomeNS.NestedClass()
+			gf6(&nc, 10)
 		}
 	}
 }
+
 
 
 func each(arr: int*, length: int, f: [(int) -> void])

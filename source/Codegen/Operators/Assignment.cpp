@@ -262,54 +262,30 @@ namespace Operators
 				fir::Function* oldf = dynamic_cast<fir::Function*>(rhs);
 				iceAssert(oldf);
 
-				std::deque<Func*> cands;
 
 				// if it's a dot operator, we need to do the appropriate thing.
+
+				fir::Function* res = 0;
 				if(MemberAccess* ma = dynamic_cast<MemberAccess*>(rightExpr))
 				{
-					FunctionTree* ftree = 0;
-					StructBase* curType = 0;
-
-					if(ma->matype == MAType::LeftTypename || ma->matype == MAType::LeftNamespace)
-					{
-						std::tie(ftree, std::ignore, std::ignore, curType, std::ignore) = cgi->unwrapStaticDotOperator(ma);
-						if(curType)
-						{
-							ClassDef* cd = 0;
-							iceAssert(cd = dynamic_cast<ClassDef*>(curType));
-							// for(auto f : cd->funcs)
-							{
-								// if(f->decl->ident.name ==  f->decl->genericTypes.size() > 0)
-								{
-
-								}
-							}
-						}
-						else
-						{
-						}
-					}
-					else
-					{
-						// variable access
-
-					}
-
-					error("");
+					res = cgi->resolveAndInstantiateGenericFunctionReference(rightExpr, oldf, lhs->getType()->toFunctionType(), ma);
 				}
 				else
 				{
-					cands = cgi->findGenericFunctions(rhs->getName().name);
+					auto cands = cgi->findGenericFunctions(rhs->getName().name);
+
+					FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
+						cands, lhs->getType()->toFunctionType());
+
+					res = fp.firFunc;
 				}
 
 
-				FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
-					cands, lhs->getType()->toFunctionType());
 
-				if(!fp.isEmpty())
+				if(res != 0)
 				{
 					// rewrite history
-					rhs = fp.firFunc;
+					rhs = res;
 				}
 				else
 				{

@@ -261,10 +261,11 @@ namespace Codegen
 		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params);
 
-		fir::Function* tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::VarRef* vr, fir::Value* extra);
-		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::VarRef* vr, std::deque<fir::Function*> cands, fir::Value* extra);
+		FuncDefPair tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::Expr* user, std::string name, fir::Value* extra);
+		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::deque<fir::Function*> cands,
+			fir::Value* extra);
 
-		FuncDefPair resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 

@@ -167,9 +167,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(p->ident.name == "self")
 					error(this, "Cannot have a parameter named 'self' in a method declaration");
-
-				else if(p->ident.name == "super")
-					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 		}
 	}
