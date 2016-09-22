@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	PointerType::PointerType(size_t inds, Type* base) : Type(FTypeKind::Pointer)
+	PointerType::PointerType(size_t inds, Type* base)
 	{
 		this->indirections = inds;
 		this->baseType = base;

@@ -217,7 +217,7 @@ fir::Type* FuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 		return t;
 
 	else
-		error(this, "Unknown type '%s'", this->ptype->str().c_str());
+		error(this, "Unknown type '%s'", this->ptype->cstr());
 }
 
 

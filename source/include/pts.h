@@ -43,6 +43,7 @@ namespace pts
 		virtual ~Type() { }
 		explicit Type(fir::Type* ft) : resolvedFType(ft) { }
 
+		const char* cstr() { return this->str().c_str(); }
 		virtual std::string str();
 
 		fir::Type* resolvedFType = 0;

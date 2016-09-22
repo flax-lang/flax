@@ -6,9 +6,10 @@
 
 namespace fir
 {
-	PrimitiveType::PrimitiveType(size_t bits, FTypeKind kind) : Type(kind)
+	PrimitiveType::PrimitiveType(size_t bits, Kind kind)
 	{
 		this->bitWidth = bits;
+		this->primKind = kind;
 	}
 
 
@@ -56,7 +57,7 @@ namespace fir
 		for(auto t : types)
 		{
 			iceAssert(t->bitWidth == bits);
-			if((t->isSigned() == issigned) && !t->isFloatingPointType())
+			if(t->isIntegerType() && !t->isFloatingPointType() && (t->isSigned() == issigned))
 				return t;
 		}
 
@@ -200,14 +201,14 @@ namespace fir
 		// is primitive.
 		std::string ret;
 
-		if(this->typeKind == FTypeKind::Integer)
+		if(this->primKind == Kind::Integer)
 		{
 			if(this->isSigned())	ret = "i";
 			else					ret = "u";
 
 			ret += std::to_string(this->getIntegerBitWidth());
 		}
-		else if(this->typeKind == FTypeKind::Floating)
+		else if(this->primKind == Kind::Floating)
 		{
 			// todo: bitWidth is applicable to both floats and ints,
 			// but getIntegerBitWidth (obviously) works only for ints.
@@ -220,10 +221,14 @@ namespace fir
 			else
 				iceAssert(!"????");
 		}
-		else
+		else if(this->primKind == Kind::Void)
 		{
 			// iceAssert(0);
 			ret = "void";
+		}
+		else
+		{
+			ret = "??";
 		}
 
 		return ret;
@@ -239,7 +244,7 @@ namespace fir
 	{
 		PrimitiveType* po = dynamic_cast<PrimitiveType*>(other);
 		if(!po) return false;
-		if(this->typeKind != po->typeKind) return false;
+		if(this->primKind != po->primKind) return false;
 		if(this->bitWidth != po->bitWidth) return false;
 		if(this->isTypeSigned != po->isTypeSigned) return false;
 
@@ -251,13 +256,13 @@ namespace fir
 
 	bool PrimitiveType::isSigned()
 	{
-		iceAssert(this->typeKind == FTypeKind::Integer && "not integer type");
+		iceAssert(this->primKind == Kind::Integer && "not integer type");
 		return this->isTypeSigned;
 	}
 
 	size_t PrimitiveType::getIntegerBitWidth()
 	{
-		iceAssert(this->typeKind == FTypeKind::Integer && "not integer type");
+		iceAssert(this->primKind == Kind::Integer && "not integer type");
 		return this->bitWidth;
 	}
 
@@ -265,7 +270,7 @@ namespace fir
 	// float stuff
 	size_t PrimitiveType::getFloatingPointBitWidth()
 	{
-		iceAssert(this->typeKind == FTypeKind::Floating && "not floating point type");
+		iceAssert(this->primKind == Kind::Floating && "not floating point type");
 		return this->bitWidth;
 	}
 

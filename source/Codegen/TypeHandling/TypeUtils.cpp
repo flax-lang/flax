@@ -37,7 +37,7 @@ namespace Codegen
 	fir::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, fir::Value* alloca)
 	{
 		if(!alloca->getType()->isPointerType())
-			error("expected pointer, got %s", alloca->getType()->str().c_str());
+			error("expected pointer, got %s", alloca->getType()->cstr());
 
 		iceAssert(alloca->getType()->isPointerType());
 		fir::Type* baseType = alloca->getType()->getPointerElementType();
@@ -46,7 +46,7 @@ namespace Codegen
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(user, "Invalid type (%s)", baseType->str().c_str());
+				error(user, "Invalid type (%s)", baseType->cstr());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
@@ -354,7 +354,6 @@ namespace Codegen
 		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
 			retval = fir::ConstantValue::getNullValue(target);
-			// fprintf(stderr, "void cast, %s (%zu) // %s (%zu)\n", target->str().c_str(), from->id, retval->getType()->str().c_str(), retval->id);
 		}
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
@@ -363,19 +362,13 @@ namespace Codegen
 			iceAssert(fromPtr);
 
 			fir::Value* tuplePtr = this->getStackAlloc(target);
-			// fprintf(stderr, "tuplePtr = %s\n", tuplePtr->getType()->str().c_str());
-			// fprintf(stderr, "from = %s, to = %s\n", from->getType()->str().c_str(), target->str().c_str());
 
 			for(size_t i = 0; i < from->getType()->toTupleType()->getElementCount(); i++)
 			{
 				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
 				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
 
-				// fprintf(stderr, "geps: %s, %s\n", gep->getType()->str().c_str(), fromGep->getType()->str().c_str());
-
 				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->builder.CreateLoad(fromGep), fromGep);
-
-				// fprintf(stderr, "casted = %s\n", casted->getType()->str().c_str());
 
 				this->builder.CreateStore(casted, gep);
 			}

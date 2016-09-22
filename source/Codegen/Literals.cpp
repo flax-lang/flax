@@ -170,7 +170,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 				if(vals.back()->getType() != tp)
 				{
 					error(e, "Array members must have the same type, got %s and %s",
-						tp->str().c_str(), vals.back()->getType()->str().c_str());
+						tp->cstr(), vals.back()->getType()->cstr());
 				}
 			}
 			else
