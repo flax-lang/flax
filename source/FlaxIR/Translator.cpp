@@ -140,6 +140,20 @@ namespace fir
 
 			return llvm::StructType::get(gc, mems, false);
 		}
+		else if(type->isStringType())
+		{
+			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
+			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
+
+			auto id = Identifier("__@string", IdKind::Struct);
+			if(createdTypes.find(id) != createdTypes.end())
+				return createdTypes[id];
+
+			auto str = llvm::StructType::create(gc, id.mangled());
+			str->setBody({ i8ptrtype, i64type });
+
+			return createdTypes[id] = str;
+		}
 		else if(type->isParametricType())
 		{
 			error("Cannot convert parametric type %s into LLVM, something went wrong", type->cstr());
@@ -890,6 +904,10 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
+							if(a->getType() != b->getType()->getPointerElementType())
+							{
+								error("cannot store %s into %s", inst->operands[0]->getType()->cstr(), inst->operands[1]->getType()->cstr());
+							}
 							llvm::Value* ret = builder.CreateStore(a, b);
 							addValueToMap(ret, inst->realOutput);
 							break;
