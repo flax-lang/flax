@@ -112,6 +112,10 @@ namespace fir
 			case OpKind::Branch_Cond: 						name = "branch"; break;
 			case OpKind::Value_PointerAddition:				name = "ptradd"; break;
 			case OpKind::Value_PointerSubtraction:			name = "ptrsub"; break;
+			case OpKind::String_GetData:					name = "getstrdat"; break;
+			case OpKind::String_SetData:					name = "setstrdat"; break;
+			case OpKind::String_GetLength:					name = "getstrlen"; break;
+			case OpKind::String_SetLength:					name = "setstrlen"; break;
 			case OpKind::Invalid:							name = "unknown"; break;
 		}
 

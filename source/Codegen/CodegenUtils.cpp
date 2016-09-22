@@ -637,8 +637,8 @@ namespace Codegen
 						if(potentialGV->getType() != var.second.first->getType())
 						{
 							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
-								var.second.second->ident.str().c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
-								potentialGV->getType()->getPointerElementType()->str().c_str());
+								var.second.second->ident.cstr(), var.second.first->getType()->getPointerElementType()->cstr(),
+								potentialGV->getType()->getPointerElementType()->cstr());
 						}
 
 						clone->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
@@ -1091,8 +1091,6 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
-
 				if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
@@ -1477,8 +1475,8 @@ namespace Codegen
 			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
 			{
-				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
-					res.t.funcDecl->params[i]->getType(this)->str().c_str());
+				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->cstr(),
+					res.t.funcDecl->params[i]->getType(this)->cstr());
 			}
 
 			return true;
@@ -2342,7 +2340,7 @@ namespace Codegen
 				return list.front();
 
 			else
-				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.str().c_str(), ft->str().c_str());
+				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.cstr(), ft->cstr());
 		}
 
 		// more than one.
@@ -2355,10 +2353,10 @@ namespace Codegen
 		}
 
 		if(ret.size() == 0)
-			error(user, "No function with name '%s', matching type '%s'", id.str().c_str(), ft->str().c_str());
+			error(user, "No function with name '%s', matching type '%s'", id.cstr(), ft->cstr());
 
 		else if(ret.size() > 1)
-			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.str().c_str(), ft->str().c_str());
+			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.cstr(), ft->cstr());
 
 		else
 			return ret[0];
@@ -2650,7 +2648,7 @@ namespace Codegen
 			if(dist == -1)
 			{
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
-					expected->str().c_str(), have->str().c_str());
+					expected->cstr(), have->cstr());
 			}
 
 			return true;
@@ -2737,7 +2735,7 @@ namespace Codegen
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
 			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->ptype->str().c_str(), this->printAst(func->decl).c_str());
+				func->decl->ptype->cstr(), this->printAst(func->decl).c_str());
 		}
 		else if(isVoid)
 		{
@@ -2770,7 +2768,7 @@ namespace Codegen
 		if(!ret)
 		{
 			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
+				func->getType(this)->cstr(), final->getType(this)->cstr());
 		}
 
 		if(checkType)

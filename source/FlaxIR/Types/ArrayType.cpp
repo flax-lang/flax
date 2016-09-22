@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	ArrayType::ArrayType(Type* elm, size_t num) : Type(FTypeKind::Array)
+	ArrayType::ArrayType(Type* elm, size_t num)
 	{
 		this->arrayElementType = elm;
 		this->arraySize = num;
@@ -52,13 +52,11 @@ namespace fir
 	// array stuff
 	Type* ArrayType::getElementType()
 	{
-		iceAssert(this->typeKind == FTypeKind::Array && "not array type");
 		return this->arrayElementType;
 	}
 
 	size_t ArrayType::getArraySize()
 	{
-		iceAssert(this->typeKind == FTypeKind::Array && "not array type");
 		return this->arraySize;
 	}
 

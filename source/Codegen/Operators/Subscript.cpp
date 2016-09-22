@@ -26,8 +26,8 @@ fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 		fir::Function* getter = Operators::getOperatorSubscriptGetter(cgi, this, t, { this, this->index });
 		if(!getter)
 		{
-			error(this, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
-				this->index->getType(cgi)->str().c_str());
+			error(this, "Invalid subscript on type %s, with index type %s", t->cstr(),
+				this->index->getType(cgi)->cstr());
 		}
 
 		return getter->getReturnType();
@@ -53,7 +53,7 @@ namespace Operators
 
 		TypePair_t* tp = cgi->getType(subscripteeType);
 		if(!tp || !dynamic_cast<ClassDef*>(tp->second.first))
-			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
+			error(user, "Cannot subscript on type %s", subscripteeType->cstr());
 
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 		size_t s = cls->subscriptOverloads.size();
@@ -63,7 +63,7 @@ namespace Operators
 
 		if(s == 0)
 		{
-			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->cstr());
 		}
 
 		return { cls, subscripteeType };
@@ -111,13 +111,13 @@ namespace Operators
 			HighlightOptions ops = std::get<2>(tup);
 
 			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
-				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
+				ftype->cstr(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
 		{
 			if(res.t.firFunc == 0)
 			{
-				error(user, "Class %s does not have a subscript operator with a setter", ftype->str().c_str());
+				error(user, "Class %s does not have a subscript operator with a setter", ftype->cstr());
 			}
 
 
@@ -251,7 +251,7 @@ namespace Operators
 			HighlightOptions ops = std::get<2>(tup);
 
 			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
-				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
+				ftype->cstr(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
 		{
@@ -307,7 +307,7 @@ namespace Operators
 			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
 
-			error(user, "Can only index on pointer or array types, got %s", atype->str().c_str());
+			error(user, "Can only index on pointer or array types, got %s", atype->cstr());
 		}
 
 

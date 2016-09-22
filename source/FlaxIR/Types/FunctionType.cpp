@@ -11,7 +11,7 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva) : Type(FTypeKind::Function)
+	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;

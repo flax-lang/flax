@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	ParametricType::ParametricType(std::string nm) : Type(FTypeKind::Parametric)
+	ParametricType::ParametricType(std::string nm)
 	{
 		this->name = nm;
 	}

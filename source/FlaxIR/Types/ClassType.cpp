@@ -9,7 +9,7 @@
 namespace fir
 {
 	// structs
-	ClassType::ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods) : Type(FTypeKind::Class)
+	ClassType::ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods)
 	{
 		this->className = name;
 
@@ -37,7 +37,7 @@ namespace fir
 				if(!areTypeListsEqual(tl1, tl2))
 				{
 					std::string mstr = typeListToString(tl1);
-					error("Conflicting types for class %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
+					error("Conflicting types for class %s:\n%s vs %s", name.cstr(), t->cstr(), mstr.c_str());
 				}
 
 				// ok.
@@ -74,10 +74,9 @@ namespace fir
 	std::string ClassType::str()
 	{
 		if(this->typeList.size() == 0)
-			return this->className.name/* + "<class>"*/;
+			return this->className.name;
 
-		// auto s = typeListToString(this->typeList);
-		return this->className.name/* + "<class: {" + s.substr(2, s.length() - 4) + "}>"*/;
+		return this->className.name;
 	}
 
 	std::string ClassType::encodedStr()
@@ -90,7 +89,6 @@ namespace fir
 	{
 		ClassType* os = dynamic_cast<ClassType*>(other);
 		if(!os) return false;
-		if(this->typeKind != os->typeKind) return false;
 		if(this->className != os->className) return false;
 
 		return true;
@@ -106,13 +104,11 @@ namespace fir
 
 	size_t ClassType::getElementCount()
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
 		return this->typeList.size();
 	}
 
 	Type* ClassType::getElementN(size_t n)
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
 		iceAssert(n < this->typeList.size() && "out of bounds");
 
 		return this->typeList[n];
@@ -120,7 +116,6 @@ namespace fir
 
 	Type* ClassType::getElement(std::string name)
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
 		iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
 
 		return this->classMembers[name];
@@ -128,7 +123,6 @@ namespace fir
 
 	size_t ClassType::getElementIndex(std::string name)
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
 		iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
 
 		return this->indexMap[name];
@@ -141,7 +135,6 @@ namespace fir
 
 	std::vector<Type*> ClassType::getElements()
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
 		return this->typeList;
 	}
 
@@ -171,14 +164,12 @@ namespace fir
 				return f;
 		}
 
-		error("no such function with type %s", ftype->str().c_str());
+		error("no such function with type %s", ftype->cstr());
 	}
 
 
 	void ClassType::setMembers(std::deque<std::pair<std::string, Type*>> members)
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
-
 		size_t i = 0;
 		for(auto p : members)
 		{
@@ -192,8 +183,6 @@ namespace fir
 
 	void ClassType::setMethods(std::deque<Function*> methods)
 	{
-		iceAssert(this->typeKind == FTypeKind::Class && "not class type");
-
 		for(auto m : methods)
 		{
 			this->methodList.push_back(m);

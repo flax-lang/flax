@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	TupleType::TupleType(std::vector<Type*> mems) : Type(FTypeKind::Tuple), members(mems)
+	TupleType::TupleType(std::vector<Type*> mems) : members(mems)
 	{
 	}
 

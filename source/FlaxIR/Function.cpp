@@ -147,9 +147,9 @@ namespace fir
 					&& foundTypes[arg->getType()->toParametricType()->getName()] != ft->getArgumentN(i))
 				{
 					error("Mismatched argument (%zu) in reifying function of type '%s' with concrete type of '%s'; "
-						"previously encountered type '%s' as '%s', found conflicting type '%s'", i, this->getType()->str().c_str(),
-						ft->str().c_str(), arg->getType()->str().c_str(),
-						foundTypes[arg->getType()->toParametricType()->getName()]->str().c_str(), ft->getArgumentN(i)->str().c_str());
+						"previously encountered type '%s' as '%s', found conflicting type '%s'", i, this->getType()->cstr(),
+						ft->cstr(), arg->getType()->cstr(),
+						foundTypes[arg->getType()->toParametricType()->getName()]->cstr(), ft->getArgumentN(i)->cstr());
 				}
 
 				foundTypes[arg->getType()->toParametricType()->getName()] = ft->getArgumentN(i);
@@ -161,9 +161,9 @@ namespace fir
 			&& foundTypes[this->getReturnType()->toParametricType()->getName()] != ft->getReturnType())
 		{
 			error("Mismatched return type in reifying function of type '%s' with concrete type of '%s'; "
-				"previously encountered type '%s' as '%s', found conflicting type '%s'", this->getType()->str().c_str(),
-				ft->str().c_str(), this->getReturnType()->str().c_str(),
-				foundTypes[this->getReturnType()->toParametricType()->getName()]->str().c_str(), ft->getReturnType()->str().c_str());
+				"previously encountered type '%s' as '%s', found conflicting type '%s'", this->getType()->cstr(),
+				ft->cstr(), this->getReturnType()->cstr(),
+				foundTypes[this->getReturnType()->toParametricType()->getName()]->cstr(), ft->getReturnType()->cstr());
 		}
 
 		Function* nf = new Function(this->ident, ft, this->parentModule, this->linkageType);
