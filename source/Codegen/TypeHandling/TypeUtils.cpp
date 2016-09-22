@@ -178,12 +178,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isClassType() && from->toClassType()->getClassName().str() == "String")
+			&& from->isStringType())
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isClassType() && to->toClassType()->getClassName().str() == "String")
+			&& to->isStringType())
 		{
 			return 2;
 		}
@@ -328,23 +328,14 @@ namespace Codegen
 
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isClassType() && from->getType()->toClassType()->getClassName().str() == "String")
+				&& from->getType()->isStringType())
 		{
-			// get the struct gep:
-			// Layout of string:
-			// var data: Int8*
-			// var allocated: Uint64
-
-			// cast the RHS to the LHS
-
+			// GEP needs a pointer
 			if(!fromPtr)
-			{
 				fromPtr = this->getImmutStackAllocValue(from);
-			}
 
 			iceAssert(fromPtr);
-			fir::Value* ret = this->builder.CreateStructGEP(fromPtr, 0);
-			retval = this->builder.CreateLoad(ret);
+			retval = this->builder.CreateGetStringData(fromPtr);
 		}
 		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{
@@ -460,7 +451,6 @@ namespace Codegen
 
 			iceAssert(indirections == -1 || indirections == 0);
 
-			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
