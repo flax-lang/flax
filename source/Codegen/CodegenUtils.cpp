@@ -2475,6 +2475,24 @@ namespace Codegen
 
 
 
+	Result_t CodegenInstance::makeEmptyString()
+	{
+		fir::Value* strp = this->builder.CreateStackAlloc(fir::StringType::get());
+
+		fir::Value* empty = this->module->createGlobalString("");
+		empty = this->builder.CreateConstGEP2(empty, 0, 0);
+
+		fir::Value* len = fir::ConstantInt::getInt64(0);
+
+		this->builder.CreateSetStringData(strp, empty);
+		this->builder.CreateSetStringLength(strp, len);
+
+		strp->makeImmutable();
+		return Result_t(this->builder.CreateLoad(strp), strp);
+	}
+
+
+
 	Result_t CodegenInstance::createLLVariableArray(fir::Value* ptr, fir::Value* length)
 	{
 		iceAssert(ptr->getType()->isPointerType());
