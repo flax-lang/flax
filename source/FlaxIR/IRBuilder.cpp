@@ -1160,7 +1160,7 @@ namespace fir
 
 	Value* IRBuilder::CreateGetStringData(Value* ptr, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || ptr->getType()->getPointerElementType()->isStringType())
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, fir::PrimitiveType::getInt8()->getPointerTo(), { ptr });
@@ -1169,7 +1169,7 @@ namespace fir
 
 	Value* IRBuilder::CreateSetStringData(Value* ptr, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || ptr->getType()->getPointerElementType()->isStringType())
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
 
 		if(val->getType() != fir::PrimitiveType::getInt8()->getPointerTo())
@@ -1182,7 +1182,7 @@ namespace fir
 
 	Value* IRBuilder::CreateGetStringLength(Value* ptr, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || ptr->getType()->getPointerElementType()->isStringType())
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
 
 		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt64(), { ptr });
@@ -1191,7 +1191,7 @@ namespace fir
 
 	Value* IRBuilder::CreateSetStringLength(Value* ptr, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || ptr->getType()->getPointerElementType()->isStringType())
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
 
 		if(val->getType() != fir::PrimitiveType::getInt64())

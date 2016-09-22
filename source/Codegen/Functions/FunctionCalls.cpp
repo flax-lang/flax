@@ -46,7 +46,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			if(cvar && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
 				fir::Type* st = arg->getType();
-				if(st->isClassType() && st->toClassType()->getClassName().str() == "String")
+				if(st->isStringType())
 				{
 					// this function knows what to do.
 					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
