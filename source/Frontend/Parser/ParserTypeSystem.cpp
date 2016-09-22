@@ -373,7 +373,6 @@ namespace pts
 					// check if we have more
 					if(arr.size() > 0)
 					{
-						// fprintf(stderr, "base: %s : %s : %s\n", arr.c_str(), type.c_str(), actualType.c_str());
 						base = parseTypeUsingBase(base, arr);
 					}
 
@@ -382,7 +381,6 @@ namespace pts
 				else
 				{
 					ret = pts::NamedType::create(actualType);
-					// debuglog("maked named = %s\n", ret->str().c_str());
 				}
 
 

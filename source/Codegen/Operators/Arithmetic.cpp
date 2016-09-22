@@ -166,13 +166,13 @@ namespace Operators
 			else
 			{
 				error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
+					lhs->getType()->cstr(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->cstr());
 			}
 		}
 		else
 		{
 			error(user, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+				lhs->getType()->cstr(), rhs->getType()->cstr());
 		}
 	}
 }

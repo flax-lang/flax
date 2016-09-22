@@ -104,7 +104,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 
 		fir::Type* t = pair.second->getType(cgi);
 		if(t != prev)
-			error(pair.second, "Enumeration values must have the same type, have %s and %s", t->str().c_str(), prev->str().c_str());
+			error(pair.second, "Enumeration values must have the same type, have %s and %s", t->cstr(), prev->cstr());
 
 
 		prev = t;

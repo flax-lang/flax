@@ -40,7 +40,7 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 		if(!data.found)
 		{
 			error(this, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(cgi, this->op).c_str(),
-				ltype->str().c_str(), rtype->str().c_str());
+				ltype->cstr(), rtype->cstr());
 		}
 
 		iceAssert(data.found);
@@ -87,7 +87,7 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 			else
 			{
 				error(this, "No such operator overload for operator '%s' accepting types %s and %s.",
-					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->str().c_str(), rtype->str().c_str());
+					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->cstr(), rtype->cstr());
 			}
 		}
 	}

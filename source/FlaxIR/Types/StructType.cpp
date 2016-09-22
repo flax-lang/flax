@@ -8,7 +8,7 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked) : Type(FTypeKind::Struct)
+	StructType::StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked)
 	{
 		this->structName = name;
 		this->isTypePacked = ispacked;
@@ -35,7 +35,7 @@ namespace fir
 				if(!areTypeListsEqual(tl1, tl2))
 				{
 					std::string mstr = typeListToString(tl1);
-					error("Conflicting types for named struct %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
+					error("Conflicting types for named struct %s:\n%s vs %s", name.cstr(), t->cstr(), mstr.c_str());
 				}
 
 				// ok.
@@ -87,7 +87,6 @@ namespace fir
 	{
 		StructType* os = dynamic_cast<StructType*>(other);
 		if(!os) return false;
-		if(this->typeKind != os->typeKind) return false;
 		if(this->isTypePacked != os->isTypePacked) return false;
 		if(this->structName != os->structName) return false;
 
@@ -104,13 +103,11 @@ namespace fir
 
 	size_t StructType::getElementCount()
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 		return this->typeList.size();
 	}
 
 	Type* StructType::getElementN(size_t n)
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 		iceAssert(n < this->typeList.size() && "out of bounds");
 
 		return this->typeList[n];
@@ -118,7 +115,6 @@ namespace fir
 
 	Type* StructType::getElement(std::string name)
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
 
 		return this->structMembers[name];
@@ -126,7 +122,6 @@ namespace fir
 
 	size_t StructType::getElementIndex(std::string name)
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
 
 		return this->indexMap[name];
@@ -139,20 +134,15 @@ namespace fir
 
 	std::vector<Type*> StructType::getElements()
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
 		return this->typeList;
 	}
 
 
 	void StructType::setBody(std::deque<std::pair<std::string, Type*>> members)
 	{
-		iceAssert(this->typeKind == FTypeKind::Struct && "not struct type");
-
 		size_t i = 0;
 		for(auto p : members)
 		{
-			// if(this->structMembers.find(p.first) != this->structMembers.end()) iceAssert(0 && "duplicate member");
-
 			this->structMembers[p.first] = p.second;
 			this->indexMap[p.first] = i;
 			this->typeList.push_back(p.second);

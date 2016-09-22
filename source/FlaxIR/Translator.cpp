@@ -38,13 +38,21 @@ namespace fir
 			{
 				return llvm::IntegerType::getIntNTy(gc, pt->getIntegerBitWidth());
 			}
-			else
+			else if(pt->isFloatingPointType())
 			{
 				if(pt->getFloatingPointBitWidth() == 32)
 					return llvm::Type::getFloatTy(gc);
 
 				else
 					return llvm::Type::getDoubleTy(gc);
+			}
+			else if(pt->isVoidType())
+			{
+				return llvm::Type::getVoidTy(gc);
+			}
+			else
+			{
+				iceAssert(0);
 			}
 		}
 		else if(type->isStructType())
@@ -134,11 +142,11 @@ namespace fir
 		}
 		else if(type->isParametricType())
 		{
-			error("Cannot convert parametric type %s into LLVM, something went wrong", type->str().c_str());
+			error("Cannot convert parametric type %s into LLVM, something went wrong", type->cstr());
 		}
 		else
 		{
-			error("ICE: unknown type '%s'", type->str().c_str());
+			error("ICE: unknown type '%s'", type->cstr());
 		}
 	}
 
@@ -361,7 +369,7 @@ namespace fir
 				size_t i = 0;
 				for(auto arg : ffn->getArguments())
 				{
-					DUMP_INSTR("%%%zu :: %s", arg->id, arg->getType()->str().c_str());
+					DUMP_INSTR("%%%zu :: %s", arg->id, arg->getType()->cstr());
 					i++;
 
 					(void) arg;
@@ -374,7 +382,7 @@ namespace fir
 			}
 			else
 			{
-				DUMP_INSTR(" :: %s\n", ffn->getType()->str().c_str());
+				DUMP_INSTR(" :: %s\n", ffn->getType()->cstr());
 			}
 
 			for(auto block : ffn->getBlockList())
@@ -386,7 +394,7 @@ namespace fir
 
 				for(auto inst : block->instructions)
 				{
-					DUMP_INSTR("        %s\n", inst->str().c_str());
+					DUMP_INSTR("        %s\n", inst->cstr());
 
 					// good god.
 					switch(inst->opKind)
@@ -1215,6 +1223,68 @@ namespace fir
 							break;
 						}
 
+
+
+						case OpKind::String_GetData:
+						case OpKind::String_GetLength:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							llvm::Value* ret = builder.CreateStructGEP(a->getType()->getPointerElementType(), a,
+								inst->opKind == OpKind::String_GetData ? 0 : 1);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+						case OpKind::String_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
+
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							builder.CreateStore(b, data);
+
+							llvm::Value* ret = builder.CreateLoad(data);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+						case OpKind::String_SetLength:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
+							builder.CreateStore(b, len);
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
 
 
 

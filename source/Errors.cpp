@@ -340,7 +340,7 @@ namespace GenError
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
-		error(e, "Invalid assignment from type %s to %s", b->str().c_str(), a->str().c_str());
+		error(e, "Invalid assignment from type %s to %s", b->cstr(), a->cstr());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
@@ -452,7 +452,7 @@ namespace GenError
 
 		for(auto a : args)
 		{
-			argtypes.push_back(a->getType(cgi)->str().c_str());
+			argtypes.push_back(a->getType(cgi)->str());
 
 			auto ext = getHighlightExtent(a);
 			ext.col += 1;						// no idea why, but fix it.

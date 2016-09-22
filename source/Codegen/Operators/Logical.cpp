@@ -34,7 +34,7 @@ namespace Operators
 		// always codegen left.
 		fir::Value* lhs = args[0]->codegen(cgi).result.first;
 		if(lhs->getType() != fir::PrimitiveType::getBool())
-			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->cstr());
 
 		// branch to either setTrue or merge.
 		cgi->builder.CreateCondBranch(lhs, checkRight, merge);
@@ -47,7 +47,7 @@ namespace Operators
 		fir::Value* rhs = args[1]->codegen(cgi).result.first;
 
 		if(lhs->getType() != fir::PrimitiveType::getBool())
-			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->cstr());
 
 		cgi->builder.CreateCondBranch(rhs, setTrue, merge);
 
@@ -90,7 +90,7 @@ namespace Operators
 		// always codegen left.
 		fir::Value* lhs = args[0]->codegen(cgi).result.first;
 		if(lhs->getType() != fir::PrimitiveType::getBool())
-			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->cstr());
 
 		// branch to either setTrue or merge.
 		cgi->builder.CreateCondBranch(lhs, setTrue, checkRight);
@@ -103,7 +103,7 @@ namespace Operators
 		fir::Value* rhs = args[1]->codegen(cgi).result.first;
 
 		if(lhs->getType() != fir::PrimitiveType::getBool())
-			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
+			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->cstr());
 
 		cgi->builder.CreateCondBranch(rhs, setTrue, merge);
 

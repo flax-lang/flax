@@ -66,13 +66,13 @@ namespace fir
 		// fill in primitives
 
 		// void.
-		tc->voidType = new PrimitiveType(0, FTypeKind::Void);
+		tc->voidType = new PrimitiveType(0, PrimitiveType::Kind::Void);
 		tc->voidType->isTypeVoid = true;
 
 
 		// bool
 		{
-			PrimitiveType* t = new PrimitiveType(1, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
@@ -84,7 +84,7 @@ namespace fir
 
 		// int8
 		{
-			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -92,7 +92,7 @@ namespace fir
 		}
 		// int16
 		{
-			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -100,7 +100,7 @@ namespace fir
 		}
 		// int32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -108,7 +108,7 @@ namespace fir
 		}
 		// int64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -120,7 +120,7 @@ namespace fir
 
 		// uint8
 		{
-			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -128,7 +128,7 @@ namespace fir
 		}
 		// uint16
 		{
-			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -136,7 +136,7 @@ namespace fir
 		}
 		// uint32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -144,7 +144,7 @@ namespace fir
 		}
 		// uint64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -154,7 +154,7 @@ namespace fir
 
 		// float32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Floating);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -162,7 +162,7 @@ namespace fir
 		}
 		// float64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Floating);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -255,7 +255,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(!this->isPointerType())
-			error("type is not a pointer (%s)", this->str().c_str());
+			error("type is not a pointer (%s)", this->cstr());
 
 
 		PointerType* ptrthis = dynamic_cast<PointerType*>(this);
@@ -264,15 +264,11 @@ namespace fir
 		Type* newType = ptrthis->baseType;
 		newType = tc->normaliseType(newType);
 
-		// iceAssert(newType->indirections == this->indirections - 1);
-		// printf("POINTER ELM: %p\n", newType);
 		return newType;
 	}
 
 	bool Type::areTypesEqual(Type* a, Type* b)
 	{
-		if(a->typeKind != b->typeKind) return false;
-
 		return a->isTypeEqual(b);
 	}
 
@@ -290,8 +286,6 @@ namespace fir
 			{
 				// auto old = ret;
 				ret = ret->getPointerTo();
-
-				// printf("ret: %s // %s\n", old->str().c_str(), ret->str().c_str());
 			}
 		}
 		else if(times < 0)
@@ -369,58 +363,73 @@ namespace fir
 
 	PrimitiveType* Type::toPrimitiveType()
 	{
-		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) error("not primitive type");
-		return dynamic_cast<PrimitiveType*>(this);
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		if(t == 0) error("not primitive type");
+		return t;
 	}
 
 	FunctionType* Type::toFunctionType()
 	{
-		if(this->typeKind != FTypeKind::Function) error("not function type");
-		return dynamic_cast<FunctionType*>(this);
+		auto t = dynamic_cast<FunctionType*>(this);
+		if(t == 0) error("not function type");
+		return t;
 	}
 
 	PointerType* Type::toPointerType()
 	{
-		if(this->typeKind != FTypeKind::Pointer) error("not pointer type");
-		return dynamic_cast<PointerType*>(this);
+		auto t = dynamic_cast<PointerType*>(this);
+		if(t == 0) error("not pointer type");
+		return t;
 	}
 
 	StructType* Type::toStructType()
 	{
-		if(this->typeKind != FTypeKind::Struct) error("not struct type");
-		return dynamic_cast<StructType*>(this);
+		auto t = dynamic_cast<StructType*>(this);
+		if(t == 0) error("not struct type");
+		return t;
 	}
 
 	ClassType* Type::toClassType()
 	{
-		if(this->typeKind != FTypeKind::Class) error("not class type");
-		return dynamic_cast<ClassType*>(this);
+		auto t = dynamic_cast<ClassType*>(this);
+		if(t == 0) error("not class type");
+		return t;
 	}
 
 	TupleType* Type::toTupleType()
 	{
-		if(this->typeKind != FTypeKind::Tuple) error("not tuple type");
-		return dynamic_cast<TupleType*>(this);
+		auto t = dynamic_cast<TupleType*>(this);
+		if(t == 0) error("not tuple type");
+		return t;
 	}
 
 	ArrayType* Type::toArrayType()
 	{
-		if(this->typeKind != FTypeKind::Array) error("not array type");
-		return dynamic_cast<ArrayType*>(this);
+		auto t = dynamic_cast<ArrayType*>(this);
+		if(t == 0) error("not array type");
+		return t;
 	}
 
 	LLVariableArrayType* Type::toLLVariableArray()
 	{
-		if(this->typeKind != FTypeKind::LowLevelVariableArray) error("not llva type");
-		return dynamic_cast<LLVariableArrayType*>(this);
+		auto t = dynamic_cast<LLVariableArrayType*>(this);
+		if(t == 0) error("not llva type");
+		return t;
 	}
 
 	ParametricType* Type::toParametricType()
 	{
-		if(this->typeKind != FTypeKind::Parametric) error("not type parameter");
-		return dynamic_cast<ParametricType*>(this);
+		auto t = dynamic_cast<ParametricType*>(this);
+		if(t == 0) error("not type parameter");
+		return t;
 	}
 
+	StringType* Type::toStringType()
+	{
+		auto t = dynamic_cast<StringType*>(this);
+		if(t == 0) error("not string type");
+		return t;
+	}
 
 
 
@@ -439,70 +448,61 @@ namespace fir
 
 	bool Type::isStructType()
 	{
-		return this->typeKind == FTypeKind::Struct
-			&& dynamic_cast<StructType*>(this) != 0;
+		return dynamic_cast<StructType*>(this) != 0;
 	}
 
 	bool Type::isTupleType()
 	{
-		return this->typeKind == FTypeKind::Tuple
-			&& dynamic_cast<TupleType*>(this) != 0;
+		return dynamic_cast<TupleType*>(this) != 0;
 	}
 
 	bool Type::isClassType()
 	{
-		return this->typeKind == FTypeKind::Class
-			&& dynamic_cast<ClassType*>(this) != 0;
+		return dynamic_cast<ClassType*>(this) != 0;
 	}
 
 	bool Type::isPackedStruct()
 	{
 		return this->isStructType()
-			&& (this->typeKind == FTypeKind::Struct)
 			&& (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		return this->typeKind == FTypeKind::Array
-			&& dynamic_cast<ArrayType*>(this) != 0;
+		return dynamic_cast<ArrayType*>(this) != 0;
 	}
 
 	bool Type::isFloatingPointType()
 	{
-		return this->typeKind == FTypeKind::Floating
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Floating;
 	}
 
 	bool Type::isIntegerType()
 	{
-		return this->typeKind == FTypeKind::Integer
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer;
 	}
 
 	bool Type::isSignedIntType()
 	{
-		return this->typeKind == FTypeKind::Integer
-			&& dynamic_cast<PrimitiveType*>(this) != 0
-			&& this->toPrimitiveType()->isSigned();
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer && t->isSigned();
 	}
 
 	bool Type::isFunctionType()
 	{
-		return this->typeKind == FTypeKind::Function
-			&& dynamic_cast<FunctionType*>(this) != 0;
+		return dynamic_cast<FunctionType*>(this) != 0;
 	}
 
 	bool Type::isPrimitiveType()
 	{
-		return (this->typeKind == FTypeKind::Integer || this->typeKind == FTypeKind::Floating)
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		return dynamic_cast<PrimitiveType*>(this) != 0;
 	}
 
 	bool Type::isPointerType()
 	{
-		return this->typeKind == FTypeKind::Pointer
-			&& dynamic_cast<PointerType*>(this) != 0;
+		return dynamic_cast<PointerType*>(this) != 0;
 	}
 
 	bool Type::isVoidType()
@@ -512,8 +512,7 @@ namespace fir
 
 	bool Type::isLLVariableArrayType()
 	{
-		return this->typeKind == FTypeKind::LowLevelVariableArray
-			&& dynamic_cast<LLVariableArrayType*>(this) != 0;
+		return dynamic_cast<LLVariableArrayType*>(this) != 0;
 	}
 
 	bool Type::isNullPointer()
@@ -523,8 +522,12 @@ namespace fir
 
 	bool Type::isParametricType()
 	{
-		return this->typeKind == FTypeKind::Parametric
-			&& dynamic_cast<ParametricType*>(this) != 0;
+		return dynamic_cast<ParametricType*>(this) != 0;
+	}
+
+	bool Type::isStringType()
+	{
+		return dynamic_cast<StringType*>(this) != 0;
 	}
 }
 

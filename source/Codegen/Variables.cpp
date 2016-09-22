@@ -204,10 +204,12 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		{
 			if(ai->getType()->getPointerElementType()->isFunctionType())
 			{
-				// error(this, "Variables of function type (have '%s') need to be initialised at the declaration site",
-				// 	ai->getType()->getPointerElementType()->str().c_str());
+				// stuff
+				// just return 0
 
-				return 0;
+				auto n = fir::ConstantValue::getNullValue(ai->getType()->getPointerElementType());
+				cgi->builder.CreateStore(n, ai);
+				return n;
 			}
 			else
 			{
@@ -252,7 +254,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 		if(this->concretisedType->toFunctionType()->isGenericFunction())
 		{
 			error(this, "Unable to infer the instantiation of parametric function (type '%s'); explicit type specifier must be given",
-				this->concretisedType->str().c_str());
+				this->concretisedType->cstr());
 		}
 		else
 		{
@@ -286,8 +288,8 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			}
 			else
 			{
-				error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'", oldf->getType()->str().c_str(),
-					this->concretisedType->str().c_str());
+				error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'", oldf->getType()->cstr(),
+					this->concretisedType->cstr());
 			}
 		}
 	}
@@ -331,7 +333,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	else
 	{
 		this->concretisedType = cgi->getTypeFromParserType(this, this->ptype);
-		if(!this->concretisedType) error(this, "invalid type %s", this->ptype->str().c_str());
+		if(!this->concretisedType) error(this, "invalid type %s", this->ptype->cstr());
 
 		iceAssert(this->concretisedType);
 	}

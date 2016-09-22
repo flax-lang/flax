@@ -73,7 +73,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(val->getType() != member->getType()->getPointerElementType())
 			error(this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
-				member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
+				member->getType()->getPointerElementType()->cstr(), val->getType()->cstr());
 
 		cgi->builder.CreateStore(val, member);
 	}
