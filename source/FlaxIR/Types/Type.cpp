@@ -328,6 +328,8 @@ namespace fir
 		else if(builtin == FLOAT64_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
 		else if(builtin == FLOAT_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
 
+		else if(builtin == STRING_TYPE_STRING)		real = StringType::get();
+
 		else if(builtin == BOOL_TYPE_STRING)		real = PrimitiveType::getBool(tc);
 		else if(builtin == VOID_TYPE_STRING)		real = PrimitiveType::getVoid(tc);
 		else return 0;

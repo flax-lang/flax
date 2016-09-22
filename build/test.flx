@@ -300,12 +300,13 @@ ffi func printf(fmt: int8*, ...)
 
 public func main() -> int
 {
-	let k = "hello"
-	printf(@raw "%s\n", k)
+	let k: string = "hello"
+	var g: string = "world"
+
+	printf(@raw "[%s], [%s]\n", k, g)
 
 	return 0
 }
-
 
 
 
