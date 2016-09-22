@@ -293,10 +293,15 @@ public func main(argc: int32, argv: int8**) -> int
 
 */
 
+
+// import LibCInterface
+
+ffi func printf(fmt: int8*, ...)
+
 public func main() -> int
 {
 	let k = "hello"
-	printf("%s\n", k)
+	printf(@raw "%s\n", k)
 
 	return 0
 }

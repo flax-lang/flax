@@ -145,15 +145,24 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	auto pair = cgi->getTypeByString("String");
-	if(pair && !this->isRaw)
+	// auto pair = cgi->getTypeByString("String");
+	// if(pair && !this->isRaw)
+	// {
+	// 	iceAssert(pair->first);
+	// 	return pair->first;
+	// }
+	// else
+	// {
+	// 	return fir::PointerType::getInt8Ptr();
+	// }
+
+	if(this->isRaw)
 	{
-		iceAssert(pair->first);
-		return pair->first;
+		return fir::PointerType::getInt8Ptr();
 	}
 	else
 	{
-		return fir::PointerType::getInt8Ptr();
+		return fir::StringType::get();
 	}
 }
 
