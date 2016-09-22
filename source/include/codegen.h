@@ -243,6 +243,8 @@ namespace Codegen
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
+		Ast::Result_t makeEmptyString();
+
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
 
@@ -274,7 +276,6 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
-
 
 
 

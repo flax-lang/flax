@@ -92,6 +92,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->builder.CreateSetStringData(alloca, stringVal);
 		cgi->builder.CreateSetStringLength(alloca, stringLen);
 
+		alloca->makeImmutable();
 		return Result_t(cgi->builder.CreateLoad(alloca), alloca);
 	}
 

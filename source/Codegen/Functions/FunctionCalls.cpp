@@ -35,30 +35,35 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 	{
 		std::vector<fir::Value*> argPtrs;
 
+		size_t cur = 0;
 		for(Expr* e : params)
 		{
+			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
+
 			ValPtr_t res = e->codegen(cgi).result;
 			fir::Value* arg = res.first;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
 
-			if(cvar && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
+			if(checkcv && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
 				fir::Type* st = arg->getType();
-				if(st->isStringType())
-				{
-					// this function knows what to do.
-					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
-				}
-				else if(st->isClassType() || st->isStructType())
+				if(st->isClassType() || st->isStructType())
 				{
 					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
 				}
 			}
+			else if(checkcv && arg->getType()->isStringType())
+			{
+				// this function knows what to do.
+				arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
+			}
 
 			args.push_back(arg);
 			argPtrs.push_back(res.second);
+
+			cur++;
 		}
 
 

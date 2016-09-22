@@ -145,7 +145,7 @@ namespace fir
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
 			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 
-			auto id = Identifier("__@string", IdKind::Struct);
+			auto id = Identifier("__string", IdKind::Struct);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -1253,8 +1253,10 @@ namespace fir
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							llvm::Value* ret = builder.CreateStructGEP(a->getType()->getPointerElementType(), a,
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a,
 								inst->opKind == OpKind::String_GetData ? 0 : 1);
+
+							llvm::Value* ret = builder.CreateLoad(gep);
 
 							addValueToMap(ret, inst->realOutput);
 							break;
