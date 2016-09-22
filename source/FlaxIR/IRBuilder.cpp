@@ -1172,7 +1172,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
 
-		if(val->getType() != fir::PrimitiveType::getInt8()->getPointerTo())
+		if(val->getType() != fir::PointerType::getInt8Ptr())
 			error("val is not an int8*");
 
 		Instruction* instr = new Instruction(OpKind::String_SetData, fir::PrimitiveType::getVoid(), { ptr, val });
