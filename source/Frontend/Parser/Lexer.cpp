@@ -180,8 +180,8 @@ namespace Parser
 				{
 					std::string removed = stream.substr(0, n);
 
-					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.pin.col += removed.length() - removed.find_last_of("\n");
+					pos.line += std::count(removed.begin(), removed.end(), '\n');
+					pos.col += removed.length() - removed.find_last_of("\n");
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
 					currentNest++;
@@ -194,8 +194,8 @@ namespace Parser
 				{
 					std::string removed = stream.substr(0, n);
 
-					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.pin.col += removed.length() - removed.find_last_of("\n");
+					pos.line += std::count(removed.begin(), removed.end(), '\n');
+					pos.col += removed.length() - removed.find_last_of("\n");
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
 

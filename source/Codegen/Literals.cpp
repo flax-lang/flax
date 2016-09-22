@@ -71,6 +71,32 @@ fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	if(this->isRaw)
+	{
+		// good old Int8*
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
+		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
+
+		return Result_t(stringVal, 0);
+	}
+	else
+	{
+		fir::StringType* str = fir::StringType::get();
+		fir::Value* alloca = cgi->getStackAlloc(str);
+
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
+		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
+
+		fir::Value* stringLen = fir::ConstantInt::getInt64(this->str.length());
+
+		cgi->builder.CreateSetStringData(alloca, stringVal);
+		cgi->builder.CreateSetStringLength(alloca, stringLen);
+
+		return Result_t(cgi->builder.CreateLoad(alloca), alloca);
+	}
+
+
+	#if 0
 	auto pair = cgi->getTypeByString("String");
 	if(pair && !this->isRaw)
 	{
@@ -114,6 +140,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return Result_t(stringVal, 0);
 	}
+	#endif
 }
 
 fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
