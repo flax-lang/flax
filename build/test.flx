@@ -13,6 +13,7 @@ import tests.operators
 import tests.arraytest
 import tests.generics
 import tests.limits
+import tests.misc
 
 import tests.functions
 
@@ -20,63 +21,92 @@ import tests.functions
 ƒ runTests()
 {
 	// fib
-	printf("*** FIBONACII SEQUENCE ***\n")
+	let fibTitle		= "       *** FIBONACII SEQUENCE ***       \n"
+	let fizzbuzzTitle	= "            *** FIZZBUZZ ***            \n"
+	let intLimitsTitle	= "       *** PRINTING INT LIMITS ***      \n"
+	let scopeTitle		= "*** SCOPE RESOLUTION REGRESSION TEST ***\n"
+	let operatorTitle	= " *** OPERATOR/TUPLE REGRESSION TEST *** \n"
+	let arrayTitle		= "      *** ARRAY REGRESSION TEST ***     \n"
+	let genericsTitle	= "    *** GENERICS REGRESSION TEST ***    \n"
+	let functionsTitle	= "    *** FUNCTION REGRESSION TEST ***    \n"
+	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
+	let thinLine		= "----------------------------------------\n"
+	let endTitle		= "============ TESTS COMPLETE ============\n"
 
-	var n = 0
-	while n < 20
-	{
-		printf("%d: %lld\n", n, doRecursiveFib(n))
-		n += 1
+
+
+
+	printf("%s%s", fibTitle, thinLine)
+	do {
+		var n = 1
+		while n < 20
+		{
+			printf("%lld", doRecursiveFib(n))
+			n += 1
+
+			if n != 20
+			{
+				printf(", ")
+			}
+		}
+		printf("\n\n\n")
 	}
-	printf("\n\n");
 
 
 	// fizzbuzz
-	printf("*** FIZZBUZZ ***\n")
-	doFizzBuzz(15);
-	printf("\n\n");
-
-
-	// scopes
-	printf("*** SCOPE RESOLUTION REGRESSION TEST ***\n")
-	doScopeTest("__llvm_jit__build/test")
-	printf("\n\n");
-
-
-	// operators and tuples (vectors type, mainly)
-	printf("*** OPERATORS/TUPLE REGRESSION TEST ***\n")
-	doOperatorTupleTest()
-	printf("\n\n");
-
-
-	// arrays
-	printf("*** ARRAY REGRESSION TEST ***\n")
-	doArrayTest()
-	printf("\n\n")
-
-
-	// generics
-	printf("*** GENERICS TEST ***\n")
-	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
-	printf("\n\n")
+	printf("%s%s", fizzbuzzTitle, thinLine)
+	doFizzBuzz(15)
+	printf("\n\n\n")
 
 
 	// int limits
-	printf("*** PRINTING INT LIMITS ***\n")
+	printf("%s%s", intLimitsTitle, thinLine)
 	printIntegerLimits()
-	printf("\n\n")
+	printf("\n\n\n")
+
+
+	// scopes
+	printf("%s%s", scopeTitle, thinLine)
+	doScopeTest("__llvm_jit__build/test")
+	printf("\n\n\n")
+
+
+	// operators and tuples (vectors type, mainly)
+	printf("%s%s", operatorTitle, thinLine)
+	doOperatorTupleTest()
+	printf("\n\n\n")
+
+
+	// arrays
+	printf("%s%s", arrayTitle, thinLine)
+	doArrayTest()
+	printf("\n\n\n")
+
+
+	// generics
+	printf("%s%s", genericsTitle, thinLine)
+	doGenericsTest()
+	let s = generic_test(5, "HELLO WORLD #")
+	printf("s = %s\n", s)
+	printf("\n\n\n")
 
 
 	// first-class-functions
-	printf("*** FUNCTIONS TEST ***\n")
+	printf("%s%s", functionsTitle, thinLine)
 	doFunctionTest()
-	printf("\n\n")
+	printf("\n\n\n")
+
+
+
+	// misc tests
+	printf("%s%s", miscTitle, thinLine)
+	doFunctionTest()
+	printf("\n\n\n")
+
 
 
 	// fin.
-	printf("========= TESTS COMPLETE =========\n\n")
+	printf("%s\n\n\n\n\n", endTitle)
 }
 
 
@@ -84,25 +114,6 @@ import tests.functions
 
 
 // name idea: mill
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 struct FormatOptions
@@ -174,104 +185,6 @@ func parseFormatOptions(str: String) -> FormatOptions
 }
 
 
-class TestingClass
-{
-	init(x: int)
-	{
-		self.thing = x
-	}
-
-	var thing: int
-}
-
-
-extension TestingClass : StringConvertible, Equatable
-{
-	func toString() -> String
-	{
-		"hello"
-	}
-
-	operator == (a: TestingClass) -> bool
-	{
-		return self.thing == a.thing
-	}
-}
-
-
-func cts<T : StringConvertible>(thing: T) -> String
-{
-	return thing.toString()
-}
-
-func pt<T>(a: T, b: T*) -> T
-{
-	return a
-}
-
-func vt<T>(b: T[...])
-{
-	var i = 0
-
-	while i < b.length
-	{
-		printf("%d\n", b[i])
-		i += 1
-	}
-}
-
-func vt2<T>(a: T, b: int[...])
-{
-	// do something.
-	variadicTest(a, b)
-}
-
-
-@nomangle func mtest(k: int, g: int)
-{
-	printf("(%d, %d)\n", k, g)
-
-	let x = TestingClass(10)
-	let y = TestingClass(20)
-
-	let g = 10
-	pt(10, &g)
-
-	vt(10, 30, 40, 50, 60)
-	vt2("hi", 1, 2, 3, 4)
-
-	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
-}
-
-
-
-
-// although it would be possible to move the slipshod array system into a generic Array<> thing, once it's implemented
-// sidenote: oh look, it works for arbitrary types.
-// sometimes, i'm impressed by the things i've implemented.
-
-// i think this form of varargs should *stay*, since it's basically a compiler primitive.
-// once we have an Array<> type, then it'd be as simple as having the Array<T> class define an initialiser with T[...],
-// since we can forward LLVarArrays effortlessly. then it's as easy as let arr = Array(b), and you can have all the Array<> class
-// niceties with varargs, without compromising freestanding functionality.
-
-// imho it's not worth it to have the compiler do the same thing as with String, because 1. String is not generic, and 2. varargs isn't
-// a "core" language feature, so to speak.
-
-func variadicTest(a: String, b: int[...])
-{
-	printf("%s: [", a)
-	var i = 0
-	while i < b.length
-	{
-		printf("%d", b[i])
-		i += 1
-
-		if i != b.length { printf(", ") }
-	}
-
-	printf("]\n")
-}
 
 
 
@@ -280,83 +193,14 @@ public func main(argc: int32, argv: int8**) -> int
 	runTests()
 
 
-	do
-	{
+	do {
 		println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 		printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
 		println("%b", "a" != "b")
 
 		parseFormatOptions("{401:x}")
-
-		mtest(10, 41)
 	}
-
-
-	do
-	{
-		var bar = (10, 20)
-		var foo: (float, float)**[10]**[3]**
-	}
-
-	do
-	{
-		var g = "439"
-		let k = g.toInteger()
-		printf("%s, %d\n", g, k)
-	}
-
-
-	printf("\n\n====================\n\n")
-
-	do
-	{
-		let v1 = Math.Vector2(1.0, 4.0)
-		let v2 = Math.Vector2(3.0, 7.0)
-
-		let vr = v1 ⨯ v2
-		printf("(%.2f), vr = %.2f\n", v1 • v2, vr)
-
-		var lol: String = "HELLO"
-		printf("%d\n", lol[1].hasData())
-		printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
-
-		lol.data = null
-	}
-
-
-	struct Foo
-	{
-		var a: int
-	}
-
-	do
-	{
-		var k: Math.Vector2
-		k = Math.Vector2(1.0, 4.0)
-
-		printf("k = (%.2f, %.2f)\n", k.x, k.y);
-
-		let x = Foo(30)
-		var y: Foo = Foo()
-		y.a = 10
-
-		y = x
-		printf("%d\n", y.a)
-	}
-
-
-
-	do
-	{
-		var args = alloc[10] Any
-		args[0] = "HELLO"
-		#(args + 1) = 40
-		args[2] = "GOODBYE"
-	}
-
-
-	variadicTest("ints", 10, 20, 30, 40, 50, 60)
 
 
 
