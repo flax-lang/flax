@@ -341,6 +341,98 @@ namespace fir
 					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.i64", ft);
 			}
+			else if(intr.first.str() == "memcmp")
+			{
+				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
+
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+
+				fn = module->getOrInsertFunction("fir.intrinsic.memcmp", ft);
+
+
+				llvm::Function* func = module->getFunction("fir.intrinsic.memcmp");
+				iceAssert(fn == func);
+
+				// ok... now make the function, right here.
+				{
+					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+
+					builder.SetInsertPoint(entry);
+
+					/*
+						basically:
+
+						int counter = 0;
+						while(counter < size)
+						{
+							i8 c1 = s1[counter];
+							i8 c2 = s2[counter];
+
+							if(c1 != c2)
+								return c1 - c2;
+
+							counter++;
+						}
+					*/
+
+					llvm::Value* res = builder.CreateAlloca(llvm::Type::getInt32Ty(gc));
+					llvm::Value* ptr1 = 0;
+					llvm::Value* ptr2 = 0;
+					llvm::Value* cmplen = 0;
+					{
+						// llvm is stupid.
+						auto it = func->arg_begin();
+						ptr1 = it.getNodePtrUnchecked();
+						it++;
+
+						ptr2 = it.getNodePtrUnchecked();
+						it++;
+
+						cmplen = it.getNodePtrUnchecked();
+					}
+
+					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
+
+					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					builder.CreateStore(zeroconst, ctr);
+
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+
+
+					// explicit branch to loopcond
+					builder.CreateBr(loopcond);
+
+					builder.SetInsertPoint(loopcond);
+					{
+						// bounds check
+						llvm::Value* cond = builder.CreateICmpSLT(ctr, cmplen);
+						builder.CreateCondBr(cond, loopbody, merge);
+					}
+
+					builder.SetInsertPoint(loopbody);
+					{
+						llvm::Value* ctrval = builder.CreateLoad(ctr);
+
+						llvm::Value* ch1 = builder.CreateLoad(builder.CreateGEP(ptr1, ctrval));
+						llvm::Value* ch2 = builder.CreateLoad(builder.CreateGEP(ptr2, ctrval));
+
+						llvm::Value* diff = builder.CreateSub(ch1, ch2);
+						builder.CreateStore(diff, res);
+
+						builder.CreateStore(builder.CreateAdd(ctrval, llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true))), ctr);
+						builder.CreateCondBr(builder.CreateICmpEQ(diff, zeroconst), loopcond, merge);
+					}
+
+					builder.SetInsertPoint(merge);
+					{
+						builder.CreateRet(builder.CreateLoad(res));
+					}
+				}
+			}
 			else
 			{
 				error("unknown intrinsic %s", intr.first.str().c_str());

@@ -322,8 +322,14 @@ public func main() -> int
 
 
 	bar()
+	qux()
 
 	return 0
+}
+
+func qux()
+{
+	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
 }
 
 func bar()
