@@ -139,6 +139,36 @@ namespace Operators
 				return compareIntegers(cgi, op, lhs, rhs);
 			}
 		}
+		else if(lhs->getType()->isStringType() && rhs->getType()->isStringType())
+		{
+			// yay, builtin string operators.
+			if(!isComparisonOp(op) && op != ArithmeticOp::Add)
+				error(user, "Operator '%s' cannot be applied on two strings", Parser::arithmeticOpToString(cgi, op).c_str());
+
+			if(isComparisonOp(op))
+			{
+				// compare two strings...
+				// lexicographically
+			}
+			else
+			{
+				// add two strings
+				// steps:
+				//
+				// 1. get the size of the left string
+				// 2. get the size of the right string
+				// 3. add them together
+				// 4. malloc a string of that size + 1
+				// 5. make a new string
+				// 6. set the buffer to the malloced buffer
+				// 7. set the length to a + b
+				// 8. return.
+
+				// refcounted strings???
+			}
+
+			error("enotsup");
+		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
 			fir::Value* tryop = cgi->builder.CreateBinaryOp(op, lhs, rhs);
@@ -166,13 +196,13 @@ namespace Operators
 			else
 			{
 				error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-					lhs->getType()->cstr(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->cstr());
+					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
 		else
 		{
-			error(user, "Unsupported operator '%s' on types %s and %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				lhs->getType()->cstr(), rhs->getType()->cstr());
+			error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+				lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 		}
 	}
 }

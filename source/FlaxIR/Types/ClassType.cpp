@@ -37,7 +37,7 @@ namespace fir
 				if(!areTypeListsEqual(tl1, tl2))
 				{
 					std::string mstr = typeListToString(tl1);
-					error("Conflicting types for class %s:\n%s vs %s", name.cstr(), t->cstr(), mstr.c_str());
+					error("Conflicting types for class %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
 				}
 
 				// ok.
@@ -164,7 +164,7 @@ namespace fir
 				return f;
 		}
 
-		error("no such function with type %s", ftype->cstr());
+		error("no such function with type %s", ftype->str().c_str());
 	}
 
 

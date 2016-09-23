@@ -303,6 +303,8 @@ public func main() -> int
 	let k: string = "hello"
 	var g: string = "world"
 
+	// k + g
+
 	printf(@raw "[%s], [%s]\n", k, g)
 
 	return 0

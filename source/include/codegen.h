@@ -243,7 +243,12 @@ namespace Codegen
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
-		Ast::Result_t makeEmptyString();
+		Ast::Result_t getNullString();
+		Ast::Result_t getEmptyString();
+		Ast::Result_t makeStringLiteral(std::string str);
+
+		void incrementStringRefCount(fir::Value* strp);
+		void decrementStringRefCount(fir::Value* strp);
 
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);

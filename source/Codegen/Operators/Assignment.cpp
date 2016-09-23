@@ -290,7 +290,7 @@ namespace Operators
 				else
 				{
 					error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
-						oldf->getType()->cstr(), lhs->getType()->cstr(), rhs->getName().name.c_str());
+						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
 				}
 			}
 		}
@@ -321,8 +321,8 @@ namespace Operators
 				}
 				else
 				{
-					error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->cstr(),
-						lhs->getType()->cstr());
+					error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+						lhs->getType()->str().c_str());
 				}
 			}
 			else if(tp->second.second == TypeKind::Struct)
@@ -333,7 +333,7 @@ namespace Operators
 			}
 			else
 			{
-				error(user, "wtf? %s", lhs->getType()->cstr());
+				error(user, "wtf? %s", lhs->getType()->str().c_str());
 			}
 		}
 
@@ -384,7 +384,7 @@ namespace Operators
 
 
 		if(lhs->getType() != rhs->getType())
-			error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->cstr(), rhs->getType()->cstr());
+			error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 
 
 		// check if the left side is a simple var

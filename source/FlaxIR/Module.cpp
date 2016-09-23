@@ -145,7 +145,7 @@ namespace fir
 			if(!this->functions[id]->getType()->isTypeEqual(ftype))
 			{
 				error("function %s redeclared with different type (have %s, new %s)", id.str().c_str(),
-					this->functions[id]->getType()->cstr(), ftype->cstr());
+					this->functions[id]->getType()->str().c_str(), ftype->str().c_str());
 			}
 
 			return this->functions[id];
@@ -156,7 +156,7 @@ namespace fir
 
 		if(f->getType()->getArgumentTypes().size() > 0 && f->getType()->getArgumentTypes()[0]->isParametricType())
 		{
-			info("1: %s: %s", f->getName().cstr(), f->getType()->cstr());
+			info("1: %s: %s", f->getName().str().c_str(), f->getType()->str().c_str());
 		}
 
 		return f;

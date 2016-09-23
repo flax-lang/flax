@@ -328,7 +328,7 @@ namespace fir
 	Value* IRBuilder::CreateAdd(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating add instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating add instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Add;
@@ -411,7 +411,7 @@ namespace fir
 	Value* IRBuilder::CreateSub(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating sub instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating sub instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Sub;
@@ -425,7 +425,7 @@ namespace fir
 	Value* IRBuilder::CreateMul(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating mul instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating mul instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mul;
@@ -439,7 +439,7 @@ namespace fir
 	Value* IRBuilder::CreateDiv(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating div instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating div instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 
 		OpKind ok = OpKind::Invalid;
@@ -454,7 +454,7 @@ namespace fir
 	Value* IRBuilder::CreateMod(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating mod instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating mod instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mod;
@@ -490,7 +490,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpNEQ(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating cmp neq instruction with non-equal types (%s vs %s)", a->getType()->cstr(), b->getType()->cstr());
+			error("creating cmp neq instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, fir::PrimitiveType::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
@@ -755,7 +755,7 @@ namespace fir
 	Value* IRBuilder::CreateLoad(Value* ptr, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not pointer type (got %s)", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_Load, ptr->getType()->getPointerElementType(), { ptr });
 		return this->addInstruction(instr, vname);
@@ -764,10 +764,10 @@ namespace fir
 	Value* IRBuilder::CreateStore(Value* v, Value* ptr)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not pointer type (got %s)", ptr->getType()->str().c_str());
 
 		if(v->getType()->getPointerTo() != ptr->getType())
-			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->cstr(), ptr->getType()->cstr());
+			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->str().c_str(), ptr->getType()->str().c_str());
 
 		if(ptr->isImmutable())
 			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
@@ -816,7 +816,7 @@ namespace fir
 				if(args[i]->getType() != fn->getArguments()[i]->getType())
 				{
 					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
-						fn->getArguments()[i]->getType()->cstr(), args[i]->getType()->cstr());
+						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 				}
 			}
 		}
@@ -987,7 +987,7 @@ namespace fir
 		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", ptr->getType()->getPointerElementType()->cstr());
+			error("type %s is not a valid type to GEP into", ptr->getType()->getPointerElementType()->str().c_str());
 		}
 	}
 
@@ -1028,7 +1028,7 @@ namespace fir
 		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->cstr());
+			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str().c_str());
 		}
 	}
 
@@ -1061,7 +1061,7 @@ namespace fir
 		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->cstr());
+			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str().c_str());
 		}
 	}
 
@@ -1071,7 +1071,7 @@ namespace fir
 	Value* IRBuilder::CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
 		auto ptri = ConstantInt::getUint64(ptrIndex);
 		auto elmi = ConstantInt::getUint64(elmIndex);
@@ -1083,7 +1083,7 @@ namespace fir
 	Value* IRBuilder::CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
 		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
@@ -1106,10 +1106,10 @@ namespace fir
 	Value* IRBuilder::CreateGetPointer(Value* ptr, Value* ptrIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
 		if(!ptrIndex->getType()->isIntegerType())
-			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->cstr());
+			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, ptr->getType(), { ptr, ptrIndex });
 
@@ -1125,10 +1125,10 @@ namespace fir
 	Value* IRBuilder::CreatePointerAdd(Value* ptr, Value* num, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
 		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got %s)", num->getType()->cstr());
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
@@ -1137,10 +1137,10 @@ namespace fir
 	Value* IRBuilder::CreatePointerSub(Value* ptr, Value* num, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->cstr());
+			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
 
 		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got %s)", num->getType()->cstr());
+			error("num is not an integer type (got %s)", num->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
@@ -1154,14 +1154,15 @@ namespace fir
 	// struct
 	// {
 	//     int8* data;
-	//     int64 length;
+	//     int32 length;
+	//     int32 refcount;
 	// }
 
 
 	Value* IRBuilder::CreateGetStringData(Value* ptr, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, fir::PrimitiveType::getInt8()->getPointerTo(), { ptr });
 		return this->addInstruction(instr, vname);
@@ -1170,7 +1171,7 @@ namespace fir
 	Value* IRBuilder::CreateSetStringData(Value* ptr, Value* val, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
 		if(val->getType() != fir::PointerType::getInt8Ptr())
 			error("val is not an int8*");
@@ -1183,24 +1184,46 @@ namespace fir
 	Value* IRBuilder::CreateGetStringLength(Value* ptr, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt64(), { ptr });
+		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt32(), { ptr });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateSetStringLength(Value* ptr, Value* val, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->cstr());
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PrimitiveType::getInt64())
-			error("val is not an int64");
+		if(val->getType() != fir::PrimitiveType::getInt32())
+			error("val is not an int32");
 
 		Instruction* instr = new Instruction(OpKind::String_SetLength, fir::PrimitiveType::getVoid(), { ptr, val });
 		return this->addInstruction(instr, vname);
 	}
 
+
+
+	Value* IRBuilder::CreateGetStringRefCount(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::String_GetRefCount, fir::PrimitiveType::getInt32(), { ptr });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetStringRefCount(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::PrimitiveType::getInt32())
+			error("val is not an int32");
+
+		Instruction* instr = new Instruction(OpKind::String_SetRefCount, fir::PrimitiveType::getVoid(), { ptr, val });
+		return this->addInstruction(instr, vname);
+	}
 
 
 
