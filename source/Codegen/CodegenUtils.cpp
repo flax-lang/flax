@@ -2521,6 +2521,15 @@ namespace Codegen
 	{
 		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
+		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+		iceAssert(printffn);
+
+		// debug.
+		fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
+		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+		this->irb.CreateCall1(printffn, tmpstr);
+
+
 		fir::Value* curRc = this->irb.CreateGetStringRefCount(strp);
 
 		// never increment the refcount if this is a string literal
@@ -2539,15 +2548,7 @@ namespace Codegen
 		fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
 		this->irb.CreateSetStringRefCount(strp, newRc);
 
-		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-		iceAssert(printffn);
 
-		// debug.
-
-		fir::Value* tmpstr = this->module->createGlobalString("incr refcount");
-		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-		this->irb.CreateCall1(printffn, tmpstr);
 
 		this->irb.CreateUnCondBranch(merge);
 		this->irb.setCurrentBlock(merge);
@@ -2560,6 +2561,10 @@ namespace Codegen
 		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
 		iceAssert(printffn);
 
+		// debug.
+		fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + "\n");
+		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+		this->irb.CreateCall1(printffn, tmpstr);
 
 
 
@@ -2614,11 +2619,6 @@ namespace Codegen
 
 			// ok, done.
 		}
-
-		fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + "\n");
-		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-		this->irb.CreateCall1(printffn, tmpstr);
 	}
 
 
