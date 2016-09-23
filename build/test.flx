@@ -305,9 +305,28 @@ public func main() -> int
 
 	// k + g
 
+
+
+
+
 	printf(@raw "[%s], [%s]\n", k, g)
+	foo()
 
 	return 0
+}
+
+
+func foo()
+{
+	var i = 0
+	while i < 10
+	{
+		defer printf("kappa\n")
+
+		printf("lol")
+
+		i += 1
+	}
 }
 
 

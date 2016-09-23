@@ -166,15 +166,35 @@ namespace Parser
 		}
 		else if(stream.compare(0, 2, "/*") == 0)
 		{
-			// TODO: BLOCK COMMENTS ARE FUCKING BUGGY AND IFFY
-
 			int currentNest = 1;
+
 			// support nested, so basically we have to loop until we find either a /* or a */
 			stream = stream.substr(2);
-			tok.pin.col += 2;
 
-			while(currentNest > 0)
+			pos.col += 2;
+
+			Pin opening = pos;
+			Pin curpos = pos;
+
+			size_t k = 0;
+			while(currentNest > 0 && k < stream.size())
 			{
+				if(k + 1 == stream.size())
+					parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
+
+				if(stream[k] == '\n')
+					curpos.line++;
+
+				if(stream[k] == '/' && stream[k + 1] == '*')
+					currentNest++, k++, curpos.col++, opening = curpos;
+
+				else if(stream[k] == '*' && stream[k + 1] == '/')
+					currentNest--, k++, curpos.col++;
+
+				k++;
+				curpos.col++;
+
+				#if 0
 				size_t n = stream.find("/*");
 				if(n != std::string::npos)
 				{
@@ -185,8 +205,9 @@ namespace Parser
 
 					stream = stream.substr(n + 2);	// include the '*' as well.
 					currentNest++;
-				}
 
+					curStart = pos;
+				}
 
 
 				n = stream.find("*/");
@@ -200,13 +221,22 @@ namespace Parser
 					stream = stream.substr(n + 2);	// include the '*' as well.
 
 					currentNest--;
+
+					debuglog("nest: %d\n", currentNest);
 				}
 				else
 				{
-					parserError(Token(), "Expected closing '*/' (reached EOF without finding it)");
+					parserMessage(Err::Error, Token(), "Expected closing '*/' (reached EOF without finding it)");
+					// parserMessage(Err::Info, curStart, "For block comment starting here: %s", stream.c_str());
+					// exit(1);
+					doTheExit();
 				}
+
+				#endif
 			}
 
+
+			stream = stream.substr(k);
 			return getNextToken(stream, pos);
 		}
 		else if(stream.compare(0, 2, "*/") == 0)
