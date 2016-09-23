@@ -41,7 +41,6 @@ struct Identifier
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const { return !(*this == other); }
 
-	const char* cstr() { return this->str().c_str(); }
 	std::string str() const;
 	std::string mangled() const;
 

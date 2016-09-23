@@ -637,8 +637,8 @@ namespace Codegen
 						if(potentialGV->getType() != var.second.first->getType())
 						{
 							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
-								var.second.second->ident.cstr(), var.second.first->getType()->getPointerElementType()->cstr(),
-								potentialGV->getType()->getPointerElementType()->cstr());
+								var.second.second->ident.str().c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
+								potentialGV->getType()->getPointerElementType()->str().c_str());
 						}
 
 						clone->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
@@ -1475,8 +1475,8 @@ namespace Codegen
 			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
 			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
 			{
-				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->cstr(),
-					res.t.funcDecl->params[i]->getType(this)->cstr());
+				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
+					res.t.funcDecl->params[i]->getType(this)->str().c_str());
 			}
 
 			return true;
@@ -2340,7 +2340,7 @@ namespace Codegen
 				return list.front();
 
 			else
-				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.cstr(), ft->cstr());
+				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.str().c_str(), ft->str().c_str());
 		}
 
 		// more than one.
@@ -2353,10 +2353,10 @@ namespace Codegen
 		}
 
 		if(ret.size() == 0)
-			error(user, "No function with name '%s', matching type '%s'", id.cstr(), ft->cstr());
+			error(user, "No function with name '%s', matching type '%s'", id.str().c_str(), ft->str().c_str());
 
 		else if(ret.size() > 1)
-			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.cstr(), ft->cstr());
+			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.str().c_str(), ft->str().c_str());
 
 		else
 			return ret[0];
@@ -2475,21 +2475,98 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::makeEmptyString()
+	Result_t CodegenInstance::makeStringLiteral(std::string str)
 	{
+		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
 		fir::Value* strp = this->builder.CreateStackAlloc(fir::StringType::get());
 
-		fir::Value* empty = this->module->createGlobalString("");
+		fir::Value* empty = this->module->createGlobalString(str);
 		empty = this->builder.CreateConstGEP2(empty, 0, 0);
 
-		fir::Value* len = fir::ConstantInt::getInt64(0);
+		fir::Value* len = fir::ConstantInt::getInt32(str.length());
+		fir::Value* rc = fir::ConstantInt::getInt32(1);
 
 		this->builder.CreateSetStringData(strp, empty);
 		this->builder.CreateSetStringLength(strp, len);
+		this->builder.CreateSetStringRefCount(strp, rc);
 
 		strp->makeImmutable();
 		return Result_t(this->builder.CreateLoad(strp), strp);
 	}
+
+
+
+	Result_t CodegenInstance::getEmptyString()
+	{
+		return this->makeStringLiteral("");
+	}
+
+	Result_t CodegenInstance::getNullString()
+	{
+		return this->makeStringLiteral("(null)");
+	}
+
+	void CodegenInstance::incrementStringRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+		fir::Value* curRc = this->builder.CreateGetStringRefCount(strp);
+		fir::Value* newRc = this->builder.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
+
+		this->builder.CreateSetStringRefCount(strp, newRc);
+	}
+
+	void CodegenInstance::decrementStringRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+		// needs to handle freeing the thing.
+		fir::Value* curRc = this->builder.CreateGetStringRefCount(strp);
+		fir::Value* newRc = this->builder.CreateSub(curRc, fir::ConstantInt::getInt32(1));
+
+		this->builder.CreateSetStringRefCount(strp, newRc);
+
+
+		// check.
+		{
+			fir::Value* cond = this->builder.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
+
+			fir::Function* func = this->builder.getCurrentBlock()->getParentFunction();
+			fir::IRBlock* dealloc = this->builder.addNewBlockInFunction("deallocate", func);
+			fir::IRBlock* merge = this->builder.addNewBlockInFunction("merge", func);
+
+			this->builder.CreateCondBranch(cond, dealloc, merge);
+
+
+			this->builder.setCurrentBlock(dealloc);
+
+			// call free on the buffer.
+			fir::Value* bufp = this->builder.CreateGetStringData(strp);
+
+			fir::Function* freefn = this->getOrDeclareLibCFunc("free").firFunc;
+			iceAssert(freefn);
+
+			freefn = this->module->getFunction(freefn->getName());
+			iceAssert(freefn);
+
+			this->builder.CreateCall1(freefn, bufp);
+			this->builder.CreateUnCondBranch(merge);
+
+			this->builder.setCurrentBlock(merge);
+
+			// ok, done.
+			// store the null string back into the pointer.
+			this->builder.CreateStore(this->getNullString().result.first, strp);
+		}
+	}
+
+
+
+
+
+
+
+
 
 
 
@@ -2666,7 +2743,7 @@ namespace Codegen
 			if(dist == -1)
 			{
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
-					expected->cstr(), have->cstr());
+					expected->str().c_str(), have->str().c_str());
 			}
 
 			return true;
@@ -2753,7 +2830,7 @@ namespace Codegen
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
 			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->ptype->cstr(), this->printAst(func->decl).c_str());
+				func->decl->ptype->str().c_str(), this->printAst(func->decl).c_str());
 		}
 		else if(isVoid)
 		{
@@ -2786,7 +2863,7 @@ namespace Codegen
 		if(!ret)
 		{
 			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				func->getType(this)->cstr(), final->getType(this)->cstr());
+				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
 		}
 
 		if(checkType)

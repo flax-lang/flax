@@ -35,7 +35,7 @@ namespace fir
 				if(!areTypeListsEqual(tl1, tl2))
 				{
 					std::string mstr = typeListToString(tl1);
-					error("Conflicting types for named struct %s:\n%s vs %s", name.cstr(), t->cstr(), mstr.c_str());
+					error("Conflicting types for named struct %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
 				}
 
 				// ok.

@@ -24,8 +24,8 @@ namespace Operators
 		else
 		{
 			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				leftVP.first->getType()->cstr(), Parser::arithmeticOpToString(cgi, op).c_str(),
-				rightVP.first->getType()->cstr());
+				leftVP.first->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
+				rightVP.first->getType()->str().c_str());
 		}
 	}
 
@@ -102,8 +102,8 @@ namespace Operators
 			}
 			else
 			{
-				error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().cstr(),
-					lhs->getType()->cstr());
+				error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().str().c_str(),
+					lhs->getType()->str().c_str());
 			}
 		}
 		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)

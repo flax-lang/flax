@@ -340,7 +340,7 @@ namespace GenError
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
-		error(e, "Invalid assignment from type %s to %s", b->cstr(), a->cstr());
+		error(e, "Invalid assignment from type %s to %s", b->str().c_str(), a->str().c_str());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)

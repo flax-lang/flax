@@ -125,6 +125,8 @@ namespace fir
 		Value* CreateGetStringLength(Value* ptr, std::string vname = "");
 		Value* CreateSetStringLength(Value* ptr, Value* val, std::string vname = "");
 
+		Value* CreateGetStringRefCount(Value* ptr, std::string vname = "");
+		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
 
 
 

@@ -37,7 +37,7 @@ namespace Codegen
 	fir::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, fir::Value* alloca)
 	{
 		if(!alloca->getType()->isPointerType())
-			error("expected pointer, got %s", alloca->getType()->cstr());
+			error("expected pointer, got %s", alloca->getType()->str().c_str());
 
 		iceAssert(alloca->getType()->isPointerType());
 		fir::Type* baseType = alloca->getType()->getPointerElementType();
@@ -46,7 +46,7 @@ namespace Codegen
 		{
 			TypePair_t* tp = this->getType(baseType);
 			if(!tp)
-				error(user, "Invalid type (%s)", baseType->cstr());
+				error(user, "Invalid type (%s)", baseType->str().c_str());
 
 			iceAssert(tp->second.second == TypeKind::Enum);
 			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
@@ -78,8 +78,8 @@ namespace Codegen
 	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
 		fir::Type* t = e->getType(this);
-		if(t->isStringType())
-			return this->makeEmptyString().result.first;
+
+		if(t->isStringType()) return this->getEmptyString().result.first;
 
 		return fir::ConstantValue::getNullValue(e->getType(this));
 	}
