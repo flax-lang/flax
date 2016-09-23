@@ -367,6 +367,9 @@ namespace fir
 			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
 			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
 
+			if(ffn->isAlwaysInlined())
+				func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+
 			valueMap[ffn->id] = func;
 
 			size_t i = 0;

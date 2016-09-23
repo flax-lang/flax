@@ -263,7 +263,7 @@ namespace fir
 
 			std::string decl;
 
-			decl += "func: " + ffn->getName().str() + "(";
+			decl += (ffn->isAlwaysInlined() ? "inline func: " : "func: ") + ffn->getName().str() + "(";
 			for(auto a : ffn->getArguments())
 			{
 				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();

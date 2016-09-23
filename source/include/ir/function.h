@@ -70,6 +70,9 @@ namespace fir
 		bool isGenericInstantiation();
 		void setIsGenericInstantiation();
 
+		bool isAlwaysInlined();
+		void setAlwaysInline();
+
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
@@ -85,6 +88,7 @@ namespace fir
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
 
+		bool alwaysInlined = false;
 		bool hadBodyElsewhere = false;
 		bool wasGenericInstantiation = false;
 	};
