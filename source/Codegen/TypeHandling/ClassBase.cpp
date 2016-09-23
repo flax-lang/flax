@@ -103,7 +103,7 @@ namespace Codegen
 				if(f->decl->ident.name == m->ident.name)
 				{
 					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
-						m->ident.name.c_str(), m->concretisedType->cstr());
+						m->ident.name.c_str(), m->concretisedType->str().c_str());
 
 					info(m, "Previous declaration was here:");
 					doTheExit();
@@ -116,7 +116,7 @@ namespace Codegen
 				if(f->decl->ident.name == m->ident.name)
 				{
 					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
-						m->ident.name.c_str(), m->getType(cgi)->cstr());
+						m->ident.name.c_str(), m->getType(cgi)->str().c_str());
 
 					info(m, "Previous declaration was here:");
 					doTheExit();
@@ -306,7 +306,7 @@ namespace Codegen
 				}
 
 				error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)",
-					aoo->lfunc->getReturnType()->cstr());
+					aoo->lfunc->getReturnType()->str().c_str());
 			}
 
 			if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)

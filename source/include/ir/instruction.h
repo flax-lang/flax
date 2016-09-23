@@ -116,9 +116,13 @@ namespace fir
 
 		// string-specific things
 		String_GetData,
-		String_GetLength,
 		String_SetData,
+
+		String_GetLength,
 		String_SetLength,
+
+		String_GetRefCount,
+		String_SetRefCount,
 
 		Branch_UnCond,
 		Branch_Cond,

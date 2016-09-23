@@ -76,8 +76,6 @@ namespace fir
 		static bool areTypesEqual(Type* a, Type* b);
 
 		// various
-		const char* cstr() { return this->str().c_str(); }
-
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;

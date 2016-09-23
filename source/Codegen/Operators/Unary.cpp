@@ -22,7 +22,7 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 	{
 		fir::Type* ltype = this->expr->getType(cgi);
 		if(!ltype->isPointerType())
-			error(expr, "Attempted to dereference a non-pointer type '%s'", ltype->cstr());
+			error(expr, "Attempted to dereference a non-pointer type '%s'", ltype->str().c_str());
 
 		return ltype->getPointerElementType();
 	}
@@ -74,7 +74,7 @@ namespace Operators
 	{
 		auto res = args[0]->codegen(cgi).result;
 		if(!res.first->getType()->isIntegerType())
-			error(user, "Cannot perform bitwise NOT (~) on a non-integer type (have type '%s')", res.first->getType()->cstr());
+			error(user, "Cannot perform bitwise NOT (~) on a non-integer type (have type '%s')", res.first->getType()->str().c_str());
 
 		return Result_t(cgi->builder.CreateBitwiseNOT(res.first), res.second);
 	}
@@ -84,7 +84,7 @@ namespace Operators
 		auto res = args[0]->codegen(cgi).result;
 
 		if(!res.second)
-			error(user, "Cannot take the address of literal (have type '%s')", res.first->getType()->cstr());
+			error(user, "Cannot take the address of literal (have type '%s')", res.first->getType()->str().c_str());
 
 		return Result_t(res.second, 0);
 	}
@@ -94,7 +94,7 @@ namespace Operators
 		auto res = args[0]->codegen(cgi).result;
 
 		if(!res.first->getType()->isPointerType())
-			error(user, "Cannot dereference non-pointer type (have type '%s')", res.first->getType()->cstr());
+			error(user, "Cannot dereference non-pointer type (have type '%s')", res.first->getType()->str().c_str());
 
 		return Result_t(cgi->builder.CreateLoad(res.first), res.first);
 	}

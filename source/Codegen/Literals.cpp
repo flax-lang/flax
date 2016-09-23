@@ -81,19 +81,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		fir::StringType* str = fir::StringType::get();
-		fir::Value* alloca = cgi->getStackAlloc(str);
-
-		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
-
-		fir::Value* stringLen = fir::ConstantInt::getInt64(this->str.length());
-
-		cgi->builder.CreateSetStringData(alloca, stringVal);
-		cgi->builder.CreateSetStringLength(alloca, stringLen);
-
-		alloca->makeImmutable();
-		return Result_t(cgi->builder.CreateLoad(alloca), alloca);
+		return cgi->makeStringLiteral(this->str);
 	}
 
 
@@ -207,7 +195,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 				if(vals.back()->getType() != tp)
 				{
 					error(e, "Array members must have the same type, got %s and %s",
-						tp->cstr(), vals.back()->getType()->cstr());
+						tp->str().c_str(), vals.back()->getType()->str().c_str());
 				}
 			}
 			else

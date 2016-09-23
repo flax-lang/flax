@@ -116,6 +116,8 @@ namespace fir
 			case OpKind::String_SetData:					name = "setstrdat"; break;
 			case OpKind::String_GetLength:					name = "getstrlen"; break;
 			case OpKind::String_SetLength:					name = "setstrlen"; break;
+			case OpKind::String_GetRefCount:				name = "getstrrc"; break;
+			case OpKind::String_SetRefCount:				name = "setstrrc"; break;
 			case OpKind::Invalid:							name = "unknown"; break;
 		}
 

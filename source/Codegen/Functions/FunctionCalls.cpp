@@ -75,7 +75,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			if(ft->getArgumentN(i) != args[i]->getType())
 			{
 				error(fc, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
-					ft->getArgumentN(i)->cstr(), args[i]->getType()->cstr());
+					ft->getArgumentN(i)->str().c_str(), args[i]->getType()->str().c_str());
 			}
 		}
 	}

@@ -91,7 +91,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 
 	if(!pair && !lhs->isTupleType())
-		error(this, "Invalid type '%s' for dot-operator-access", lhs->cstr());
+		error(this, "Invalid type '%s' for dot-operator-access", lhs->str().c_str());
 
 	if(lhs->isTupleType())
 	{
@@ -383,7 +383,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 					error(vr, "Ambiguous access to property '%s' -- extensions declared duplicates?", vr->name.c_str());
 
 				else if(ccands.size() == 0)
-					error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), self->getType()->cstr());
+					error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), self->getType()->str().c_str());
 
 
 				// do it
@@ -397,7 +397,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type '%s'", ftype->cstr());
+			error(this, "Cannot do member access on non-struct type '%s'", ftype->str().c_str());
 		}
 	}
 
@@ -449,7 +449,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(!pair && !ftype->isClassType() && !ftype->isStructType() && !ftype->isTupleType())
 	{
-		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, ftype->cstr());
+		error("(%s:%d) -> Internal check failed: failed to retrieve type (%s)", __FILE__, __LINE__, ftype->str().c_str());
 	}
 
 
@@ -1114,7 +1114,7 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* u
 		}
 
 		error(usr, "No matching function with name '%s' with type '%s', have %zu candidates:\n%s",
-			name.c_str(), ft->cstr(), cands.size(), cstr.c_str());
+			name.c_str(), ft->str().c_str(), cands.size(), cstr.c_str());
 	}
 	else
 	{
