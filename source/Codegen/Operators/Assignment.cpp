@@ -157,7 +157,7 @@ namespace Operators
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
 
-				cgi->builder.CreateCall2(setter, lhsPtr, rhsVal);
+				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
 				return Result_t(0, 0);
 			}
@@ -328,7 +328,7 @@ namespace Operators
 			else if(tp->second.second == TypeKind::Struct)
 			{
 				// for structs, we just assign the members.
-				cgi->builder.CreateStore(rhs, lhsPtr);
+				cgi->irb.CreateStore(rhs, lhsPtr);
 				return Result_t(0, 0);
 			}
 			else
@@ -364,7 +364,7 @@ namespace Operators
 			iceAssert(rhsPtr);
 			Result_t res = cgi->extractValueFromAny(lhs->getType(), rhsPtr);
 
-			cgi->builder.CreateStore(res.result.first, lhsPtr);
+			cgi->irb.CreateStore(res.result.first, lhsPtr);
 
 			// assign returns nothing.
 			return Result_t(0, 0);
@@ -399,7 +399,7 @@ namespace Operators
 				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
 
 			// store it, and return 0.
-			cgi->builder.CreateStore(rhs, lhsPtr);
+			cgi->irb.CreateStore(rhs, lhsPtr);
 			return Result_t(0, 0);
 		}
 		else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
@@ -411,12 +411,29 @@ namespace Operators
 			iceAssert(lhsPtr);
 			iceAssert(rhsPtr);
 
-			fir::Value* lhsGEP = cgi->builder.CreateStructGEP(lhsPtr, 0);
-			fir::Value* rhsGEP = cgi->builder.CreateStructGEP(rhsPtr, 0);
+			fir::Value* lhsGEP = cgi->irb.CreateStructGEP(lhsPtr, 0);
+			fir::Value* rhsGEP = cgi->irb.CreateStructGEP(rhsPtr, 0);
 
-			fir::Value* rhsVal = cgi->builder.CreateLoad(rhsGEP);
-			cgi->builder.CreateStore(rhsVal, lhsGEP);
+			fir::Value* rhsVal = cgi->irb.CreateLoad(rhsGEP);
+			cgi->irb.CreateStore(rhsVal, lhsGEP);
 
+			return Result_t(0, 0);
+		}
+		else if(lhs->getType()->isStringType())
+		{
+			iceAssert(lhsPtr);
+
+			// deref the lhs, since it's going to die real soon
+			cgi->decrementStringRefCount(lhsPtr);
+
+			// ref the right side
+			if(rhs->getType()->isStringType())
+			{
+				iceAssert(rhsPtr);
+				cgi->incrementStringRefCount(rhsPtr);
+			}
+
+			cgi->irb.CreateStore(rhs, lhsPtr);
 			return Result_t(0, 0);
 		}
 		else
@@ -425,7 +442,7 @@ namespace Operators
 			iceAssert(rhs);
 			iceAssert(lhsPtr);
 
-			cgi->builder.CreateStore(rhs, lhsPtr);
+			cgi->irb.CreateStore(rhs, lhsPtr);
 
 			return Result_t(0, 0);
 		}

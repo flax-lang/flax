@@ -66,7 +66,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->module->addNamedType(str->getStructName(), str);
 
 
-	fir::IRBlock* curblock = cgi->builder.getCurrentBlock();
+	fir::IRBlock* curblock = cgi->irb.getCurrentBlock();
 
 	// generate initialiser
 	{
@@ -80,8 +80,8 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		this->initFuncs.push_back(this->defaultInitialiser);
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = this->defaultInitialiser->getArguments().front();
@@ -91,7 +91,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// not supported in structs
 			iceAssert(!var->isStatic);
 
-			fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
+			fir::Value* ptr = cgi->irb.CreateGetStructMember(self, var->ident.name);
 
 			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 			var->inferType(cgi);
@@ -99,7 +99,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.first, r.second, ptr, false);
 		}
 
-		cgi->builder.CreateReturnVoid();
+		cgi->irb.CreateReturnVoid();
 	}
 
 
@@ -122,8 +122,8 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		this->initFuncs.push_back(memifunc);
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, memifunc);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, memifunc);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = memifunc->getArguments().front();
@@ -134,15 +134,15 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Value* v = memifunc->getArguments()[i + 1];
 
 			v->setName("memberPtr_" + std::to_string(i));
-			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+			fir::Value* ptr = cgi->irb.CreateStructGEP(self, i);
 
-			cgi->builder.CreateStore(v, ptr);
+			cgi->irb.CreateStore(v, ptr);
 		}
 
-		cgi->builder.CreateReturnVoid();
+		cgi->irb.CreateReturnVoid();
 	}
 
-	cgi->builder.setCurrentBlock(curblock);
+	cgi->irb.setCurrentBlock(curblock);
 
 
 	return Result_t(0, 0);

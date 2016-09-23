@@ -318,6 +318,37 @@ namespace fir
 			typeToLlvm(type.second, module);
 		}
 
+		for(auto intr : this->intrinsicFunctions)
+		{
+			auto& gc = llvm::getGlobalContext();
+			llvm::Constant* fn = 0;
+
+			if(intr.first.str() == "memcpy")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memmove")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memset")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.i64", ft);
+			}
+			else
+			{
+				error("unknown intrinsic %s", intr.first.str().c_str());
+			}
+
+			valueMap[intr.second->id] = fn;
+		}
+
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : this->functions)
 		{

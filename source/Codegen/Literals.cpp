@@ -75,7 +75,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		// good old Int8*
 		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
+		stringVal = cgi->irb.CreateConstGEP2(stringVal, 0, 0);
 
 		return Result_t(stringVal, 0);
 	}
@@ -86,17 +86,17 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			iceAssert(extra->getType()->getPointerElementType()->isStringType());
 
 			fir::Value* thestring = cgi->module->createGlobalString(this->str);
-			thestring = cgi->builder.CreateConstGEP2(thestring, 0, 0);
+			thestring = cgi->irb.CreateConstGEP2(thestring, 0, 0);
 
 			fir::Value* len = fir::ConstantInt::getInt32(this->str.length());
-			fir::Value* rc = fir::ConstantInt::getInt32(0);
+			fir::Value* rc = fir::ConstantInt::getInt32(-1);
 
-			cgi->builder.CreateSetStringData(extra, thestring);
-			cgi->builder.CreateSetStringLength(extra, len);
-			cgi->builder.CreateSetStringRefCount(extra, rc);
+			cgi->irb.CreateSetStringData(extra, thestring);
+			cgi->irb.CreateSetStringLength(extra, len);
+			cgi->irb.CreateSetStringRefCount(extra, rc);
 
 			cgi->addRefCountedValue(extra);
-			return Result_t(cgi->builder.CreateLoad(extra), extra);
+			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
 
 		return cgi->makeStringLiteral(this->str);
@@ -163,10 +163,10 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
-	fir::Value* alloc = cgi->builder.CreateStackAlloc(atype);
+	fir::Value* alloc = cgi->irb.CreateStackAlloc(atype);
 	fir::Value* val = fir::ConstantArray::get(atype, vals);
 
-	cgi->builder.CreateStore(val, alloc);
+	cgi->irb.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
 

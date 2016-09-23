@@ -18,8 +18,8 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 
 	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
-	this->builder.CreateCall(initfunc, args);
-	fir::Value* val = this->builder.CreateLoad(ai);
+	this->irb.CreateCall(initfunc, args);
+	fir::Value* val = this->irb.CreateLoad(ai);
 
 	return Result_t(val, ai);
 }
@@ -136,11 +136,11 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 			for(size_t i = 0; i < variadics.size(); i++)
 			{
-				auto gep = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, i);
-				cgi->builder.CreateStore(variadics[i], gep);
+				auto gep = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, i);
+				cgi->irb.CreateStore(variadics[i], gep);
 			}
 
-			fir::Value* arrPtr = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, 0);
+			fir::Value* arrPtr = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
 			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).result.first;
 			args.push_back(llar);
 		}
@@ -198,8 +198,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
 
-		fir::Value* fn = cgi->builder.CreateLoad(fv);
-		fir::Value* ret = cgi->builder.CreateCallToFunctionPointer(fn, ft, args);
+		fir::Value* fn = cgi->irb.CreateLoad(fv);
+		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(fn, ft, args);
 
 		return Result_t(ret, 0);
 	}
@@ -212,7 +212,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
 
-		fir::Value* ret = cgi->builder.CreateCallToFunctionPointer(extra, ft, args);
+		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extra, ft, args);
 
 		return Result_t(ret, 0);
 	}
@@ -291,7 +291,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// makes sure we call the function in our own module, because llvm only allows that.
 
 	auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
-	return Result_t(cgi->builder.CreateCall(thistarget, args), 0);
+	return Result_t(cgi->irb.CreateCall(thistarget, args), 0);
 }
 
 
