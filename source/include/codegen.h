@@ -77,6 +77,9 @@ namespace Codegen
 		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 
+		// refcounting, holds a stack of *POINTERS* to refcounted types
+		std::deque<std::deque<fir::Value*>> refCountingStack;
+
 		// generic stuff
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
@@ -135,6 +138,8 @@ namespace Codegen
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
 		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
+		void addRefCountedValue(fir::Value* ptr);
+		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
@@ -216,6 +221,7 @@ namespace Codegen
 		bool isBuiltinType(fir::Type* e);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
+		bool isRefCountedType(fir::Type* type);
 
 		bool isDuplicateType(Identifier id);
 

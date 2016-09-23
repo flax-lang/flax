@@ -12,7 +12,7 @@ function callCompiler
 	set compile "-jit"
 
 	if contains "noopt" $argv
-		set opt "-Ox"
+		set opt "-O0"
 	end
 
 	if contains "dump" $argv

@@ -675,6 +675,11 @@ namespace Codegen
 		return this->isBuiltinType(ltype);
 	}
 
+	bool CodegenInstance::isRefCountedType(fir::Type* type)
+	{
+		// right now this is the only thing that's refcounted.
+		return type->isStringType();
+	}
 
 
 

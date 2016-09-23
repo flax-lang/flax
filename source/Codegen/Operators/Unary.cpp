@@ -26,12 +26,18 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 		return ltype->getPointerElementType();
 	}
-
 	else if(this->op == ArithmeticOp::AddrOf)
-		return this->expr->getType(cgi)->getPointerTo();
+	{
+		fir::Type* t = this->expr->getType(cgi);
+		if(cgi->isRefCountedType(t))
+			error(this, "Reference counted types (of which '%s' is one) cannot have their address taken", t->str().c_str());
 
+		return t->getPointerTo();
+	}
 	else
+	{
 		return this->expr->getType(cgi);
+	}
 }
 
 

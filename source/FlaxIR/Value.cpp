@@ -16,7 +16,7 @@ namespace fir
 		this->ident = Identifier("v#" + std::to_string(vnames), IdKind::Name);
 		vnames++;
 
-		if(this->id == 232)
+		if(this->id == 0)
 		{
 			// abort();
 		}

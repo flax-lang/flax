@@ -18,18 +18,26 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(Expr* e : this->statements)
 	{
 		if(!broke)
-		{
 			lastval = e->codegen(cgi);
-		}
 
 		if(lastval.type == ResultType::BreakCodegen)
 			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
 	}
 
-	// ok, now do the deferred expressions.
-	for(auto e : this->deferredStatements)
-		e->codegen(cgi);
+	if(!broke)
+	{
+		// ok, now do the deferred expressions.
+		for(auto e : this->deferredStatements)
+			e->codegen(cgi);
 
+		// ok, now decrement all the refcounted vars
+		for(auto v : cgi->getRefCountedValues())
+		{
+			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+			if(v->getType()->getPointerElementType()->isStringType())
+				cgi->decrementStringRefCount(v);
+		}
+	}
 
 	cgi->popScope();
 	return lastval;
@@ -57,6 +65,14 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// evaluate all deferred statements
 	for(auto e : cs->first->body->deferredStatements)
 		e->codegen(cgi);
+
+	// ok, now decrement all the refcounted vars
+	for(auto v : cgi->getRefCountedValues())
+	{
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		if(v->getType()->getPointerElementType()->isStringType())
+			cgi->decrementStringRefCount(v);
+	}
 
 	// for break, we go to the ending block
 	cgi->builder.CreateUnCondBranch(cs->second.second);
@@ -91,6 +107,14 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// evaluate all deferred statements
 	for(auto e : cs->first->body->deferredStatements)
 		e->codegen(cgi);
+
+	// ok, now decrement all the refcounted vars
+	for(auto v : cgi->getRefCountedValues())
+	{
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		if(v->getType()->getPointerElementType()->isStringType())
+			cgi->decrementStringRefCount(v);
+	}
 
 
 	// for continue, we go to the beginning (loop) block
@@ -134,6 +158,15 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(auto e : bb->deferredStatements)
 			e->codegen(cgi);
+	}
+
+
+	// 4. now, do the refcounting magic
+	for(auto v : cgi->getRefCountedValues())
+	{
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		if(v->getType()->getPointerElementType()->isStringType())
+			cgi->decrementStringRefCount(v);
 	}
 
 
