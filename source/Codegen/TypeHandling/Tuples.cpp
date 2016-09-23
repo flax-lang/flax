@@ -66,7 +66,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	for(unsigned int i = 0; i < tuptype->getElementCount(); i++)
 	{
-		fir::Value* member = cgi->builder.CreateStructGEP(gep, i);
+		fir::Value* member = cgi->irb.CreateStructGEP(gep, i);
 		fir::Value* val = this->values[i]->codegen(cgi).result.first;
 
 		val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
@@ -75,10 +75,10 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(this, "Element %d of tuple is mismatched, expected '%s' but got '%s'", i,
 				member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
 
-		cgi->builder.CreateStore(val, member);
+		cgi->irb.CreateStore(val, member);
 	}
 
-	return Result_t(cgi->builder.CreateLoad(gep), gep);
+	return Result_t(cgi->irb.CreateLoad(gep), gep);
 }
 
 

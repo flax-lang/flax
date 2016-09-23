@@ -91,10 +91,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
 	// and fuck shit up big time
-	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
+	fir::IRBlock* prevBlock = cgi->irb.getCurrentBlock();
 
-	fir::IRBlock* irblock = cgi->builder.addNewBlockInFunction(this->decl->ident.name + "_entry", func);
-	cgi->builder.setCurrentBlock(irblock);
+	fir::IRBlock* irblock = cgi->irb.addNewBlockInFunction(this->decl->ident.name + "_entry", func);
+	cgi->irb.setCurrentBlock(irblock);
 
 
 
@@ -123,7 +123,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(!vprs[i]->immutable)
 		{
 			ai = cgi->getStackAlloc(func->getArguments()[i]->getType());
-			cgi->builder.CreateStore(func->getArguments()[i], ai);
+			cgi->irb.CreateStore(func->getArguments()[i], ai);
 		}
 		else
 		{
@@ -185,7 +185,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
-		cgi->builder.CreateReturnVoid();
+		cgi->irb.CreateReturnVoid();
 
 	else if(isImplicitReturn)
 	{
@@ -193,7 +193,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(lastval.result.first->getType() != needed)
 			lastval.result.first = cgi->autoCastType(func->getReturnType(), lastval.result.first, lastval.result.second);
 
-		cgi->builder.CreateReturn(lastval.result.first);
+		cgi->irb.CreateReturn(lastval.result.first);
 	}
 
 
@@ -201,7 +201,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->popScope();
 
 	if(prevBlock)
-		cgi->builder.setCurrentBlock(prevBlock);
+		cgi->irb.setCurrentBlock(prevBlock);
 
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);

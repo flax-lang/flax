@@ -153,7 +153,7 @@ namespace Operators
 			fargs.push_back(rhs);
 
 
-			cgi->builder.CreateCall(fn, fargs);
+			cgi->irb.CreateCall(fn, fargs);
 
 			return Result_t(0, 0);
 		}
@@ -278,8 +278,8 @@ namespace Operators
 				fargs.push_back(arg);
 			}
 
-			fir::Value* val = cgi->builder.CreateCall(fn, fargs);
-			fir::Value* ret = cgi->builder.CreateImmutStackAlloc(fn->getReturnType(), val);
+			fir::Value* val = cgi->irb.CreateCall(fn, fargs);
+			fir::Value* ret = cgi->irb.CreateImmutStackAlloc(fn->getReturnType(), val);
 			return Result_t(val, ret);
 		}
 	}
@@ -325,21 +325,21 @@ namespace Operators
 
 		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
 		{
-			gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+			gep = cgi->irb.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isLLVariableArrayType())
 		{
-			fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
-			fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhs, 0);
+			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
-			gep = cgi->builder.CreateGetPointer(data, ind);
+			gep = cgi->irb.CreateGetPointer(data, ind);
 		}
 		else
 		{
-			gep = cgi->builder.CreateGetPointer(lhs, ind);
+			gep = cgi->irb.CreateGetPointer(lhs, ind);
 		}
 
-		return Result_t(cgi->builder.CreateLoad(gep), gep);
+		return Result_t(cgi->irb.CreateLoad(gep), gep);
 	}
 }
 

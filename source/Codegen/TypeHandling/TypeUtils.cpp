@@ -57,7 +57,7 @@ namespace Codegen
 				return alloca;		// fail.
 			}
 
-			return this->builder.CreateStructGEP(alloca, 0);
+			return this->irb.CreateStructGEP(alloca, 0);
 		}
 
 		return alloca;
@@ -66,12 +66,12 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
-		return this->builder.CreateStackAlloc(type, name);
+		return this->irb.CreateStackAlloc(type, name);
 	}
 
 	fir::Value* CodegenInstance::getImmutStackAllocValue(fir::Value* initValue, std::string name)
 	{
-		return this->builder.CreateImmutStackAlloc(initValue->getType(), initValue, name);
+		return this->irb.CreateImmutStackAlloc(initValue->getType(), initValue, name);
 	}
 
 
@@ -281,13 +281,13 @@ namespace Codegen
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
 					if(target->toPrimitiveType()->isSigned())
-						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
+						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
 
 					else
-						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
+						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
 				}
 
-				retval = this->builder.CreateIntSizeCast(from, target);
+				retval = this->irb.CreateIntSizeCast(from, target);
 			}
 			else if(shouldCast)
 			{
@@ -317,7 +317,7 @@ namespace Codegen
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(from, target);
+					retval = this->irb.CreateIntSizeCast(from, target);
 			}
 			else
 			{
@@ -326,7 +326,7 @@ namespace Codegen
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(from, target);
+					retval = this->irb.CreateIntSizeCast(from, target);
 			}
 		}
 
@@ -337,12 +337,12 @@ namespace Codegen
 			if(fromPtr == 0) fromPtr = this->getImmutStackAllocValue(from);
 
 			iceAssert(fromPtr);
-			retval = this->builder.CreateGetStringData(fromPtr);
+			retval = this->irb.CreateGetStringData(fromPtr);
 		}
 		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			retval = this->builder.CreateIntToFloatCast(from, target);
+			retval = this->irb.CreateIntToFloatCast(from, target);
 		}
 		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
@@ -358,15 +358,15 @@ namespace Codegen
 
 			for(size_t i = 0; i < from->getType()->toTupleType()->getElementCount(); i++)
 			{
-				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
-				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
+				fir::Value* gep = this->irb.CreateStructGEP(tuplePtr, i);
+				fir::Value* fromGep = this->irb.CreateStructGEP(fromPtr, i);
 
-				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->builder.CreateLoad(fromGep), fromGep);
+				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->irb.CreateLoad(fromGep), fromGep);
 
-				this->builder.CreateStore(casted, gep);
+				this->irb.CreateStore(casted, gep);
 			}
 
-			retval = this->builder.CreateLoad(fromPtr);
+			retval = this->irb.CreateLoad(fromPtr);
 		}
 
 

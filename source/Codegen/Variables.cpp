@@ -55,7 +55,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		return Result_t(fn, 0);
 	}
 
-	return Result_t(cgi->builder.CreateLoad(val), val);
+	return Result_t(cgi->irb.CreateLoad(val), val);
 }
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
@@ -166,7 +166,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
 					iceAssert(initfunc);
 
-					val = cgi->builder.CreateCall(initfunc, args);
+					val = cgi->irb.CreateCall(initfunc, args);
 				}
 			}
 		}
@@ -192,7 +192,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			this->immutable = false;
 
 			auto vr = new VarRef(this->pin, this->ident.name);
-			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->builder.CreateLoad(ai),
+			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
 				ai, val, valptr);
 
 			delete vr;
@@ -208,13 +208,13 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 				// just return 0
 
 				auto n = fir::ConstantValue::getNullValue(ai->getType()->getPointerElementType());
-				cgi->builder.CreateStore(n, ai);
+				cgi->irb.CreateStore(n, ai);
 				return n;
 			}
 			else
 			{
 				iceAssert(val);
-				cgi->builder.CreateStore(val, ai);
+				cgi->irb.CreateStore(val, ai);
 				return val;
 			}
 		}
@@ -226,13 +226,13 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 			if(ai->getType()->getPointerElementType() != val->getType())
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
-			cgi->builder.CreateStore(val, ai);
+			cgi->irb.CreateStore(val, ai);
 			return val;
 		}
 		else
 		{
 			if(valptr)
-				val = cgi->builder.CreateLoad(valptr);
+				val = cgi->irb.CreateLoad(valptr);
 
 			else
 				return val;
@@ -300,7 +300,7 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val->getType() != ai->getType()->getPointerElementType())
 		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
-	cgi->builder.CreateStore(val, ai);
+	cgi->irb.CreateStore(val, ai);
 	return val;
 }
 
@@ -461,7 +461,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		ai->makeImmutable();
 
 	if(!this->isGlobal)
-		return Result_t(cgi->builder.CreateLoad(ai), ai);
+		return Result_t(cgi->irb.CreateLoad(ai), ai);
 
 	else
 		return Result_t(0, ai);

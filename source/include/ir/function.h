@@ -88,6 +88,14 @@ namespace fir
 		bool hadBodyElsewhere = false;
 		bool wasGenericInstantiation = false;
 	};
+
+
+	enum class Intrinsics
+	{
+		memcpy,
+		memset,
+		memmove,
+	};
 }
 
 

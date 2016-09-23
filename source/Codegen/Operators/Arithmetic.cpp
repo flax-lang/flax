@@ -25,12 +25,12 @@ namespace Operators
 	{
 		switch(op)
 		{
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateFCmpEQ_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateFCmpNEQ_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateFCmpLT_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateFCmpGT_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateFCmpLEQ_ORD(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateFCmpGEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->irb.CreateFCmpEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->irb.CreateFCmpNEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->irb.CreateFCmpLT_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->irb.CreateFCmpGT_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->irb.CreateFCmpLEQ_ORD(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->irb.CreateFCmpGEQ_ORD(lhs, rhs), 0);
 
 			default:	iceAssert(0);
 		}
@@ -40,12 +40,12 @@ namespace Operators
 	{
 		switch(op)
 		{
-			case ArithmeticOp::CmpEq:		return Result_t(cgi->builder.CreateICmpEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpNEq:		return Result_t(cgi->builder.CreateICmpNEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpLT:		return Result_t(cgi->builder.CreateICmpLT(lhs, rhs), 0);
-			case ArithmeticOp::CmpGT:		return Result_t(cgi->builder.CreateICmpGT(lhs, rhs), 0);
-			case ArithmeticOp::CmpLEq:		return Result_t(cgi->builder.CreateICmpLEQ(lhs, rhs), 0);
-			case ArithmeticOp::CmpGEq:		return Result_t(cgi->builder.CreateICmpGEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpEq:		return Result_t(cgi->irb.CreateICmpEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpNEq:		return Result_t(cgi->irb.CreateICmpNEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpLT:		return Result_t(cgi->irb.CreateICmpLT(lhs, rhs), 0);
+			case ArithmeticOp::CmpGT:		return Result_t(cgi->irb.CreateICmpGT(lhs, rhs), 0);
+			case ArithmeticOp::CmpLEq:		return Result_t(cgi->irb.CreateICmpLEQ(lhs, rhs), 0);
+			case ArithmeticOp::CmpGEq:		return Result_t(cgi->irb.CreateICmpGEQ(lhs, rhs), 0);
 
 			default:	iceAssert(0);
 		}
@@ -65,12 +65,12 @@ namespace Operators
 		fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
 
 		if(rhs->getType() != ptrIntType)
-			rhs = cgi->builder.CreateIntSizeCast(rhs, ptrIntType);
+			rhs = cgi->irb.CreateIntSizeCast(rhs, ptrIntType);
 
 		// do the actual thing.
 		fir::Value* ret = 0;
-		if(op == ArithmeticOp::Add)	ret = cgi->builder.CreatePointerAdd(lhs, rhs);
-		else						ret = cgi->builder.CreatePointerSub(lhs, rhs);
+		if(op == ArithmeticOp::Add)	ret = cgi->irb.CreatePointerAdd(lhs, rhs);
+		else						ret = cgi->irb.CreatePointerSub(lhs, rhs);
 
 		return Result_t(ret, 0);
 	}
@@ -82,21 +82,21 @@ namespace Operators
 		iceAssert(lhsPtr);
 		iceAssert(rhsPtr);
 
-		fir::Value* gepL = cgi->builder.CreateStructGEP(lhsPtr, 0);
-		fir::Value* gepR = cgi->builder.CreateStructGEP(rhsPtr, 0);
+		fir::Value* gepL = cgi->irb.CreateStructGEP(lhsPtr, 0);
+		fir::Value* gepR = cgi->irb.CreateStructGEP(rhsPtr, 0);
 
-		fir::Value* l = cgi->builder.CreateLoad(gepL);
-		fir::Value* r = cgi->builder.CreateLoad(gepR);
+		fir::Value* l = cgi->irb.CreateLoad(gepL);
+		fir::Value* r = cgi->irb.CreateLoad(gepR);
 
 		fir::Value* res = 0;
 
 		if(op == ArithmeticOp::CmpEq)
 		{
-			res = cgi->builder.CreateICmpEQ(l, r);
+			res = cgi->irb.CreateICmpEQ(l, r);
 		}
 		else if(op == ArithmeticOp::CmpNEq)
 		{
-			res = cgi->builder.CreateICmpNEQ(l, r);
+			res = cgi->irb.CreateICmpNEQ(l, r);
 		}
 
 		return Result_t(res, 0);
@@ -149,6 +149,8 @@ namespace Operators
 			{
 				// compare two strings...
 				// lexicographically
+
+				error("string comparison not supported yet");
 			}
 			else
 			{
@@ -164,14 +166,60 @@ namespace Operators
 				// 7. set the length to a + b
 				// 8. return.
 
-				// refcounted strings???
+				// get an empty string
+				auto r = cgi->getEmptyString();
+				fir::Value* newstrp = r.result.second;
+
+				fir::Value* lhsptr = leftVP.second;
+				fir::Value* rhsptr = rightVP.second;
+
+				iceAssert(lhsptr);
+				iceAssert(rhsptr);
+
+				fir::Value* lhslen = cgi->irb.CreateGetStringLength(lhsptr);
+				fir::Value* rhslen = cgi->irb.CreateGetStringLength(rhsptr);
+
+				fir::Value* lhsbuf = cgi->irb.CreateGetStringData(lhsptr);
+				fir::Value* rhsbuf = cgi->irb.CreateGetStringData(rhsptr);
+
+
+				// ok. combine the lengths
+				fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
+				newlen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt32(1));		// space for null
+
+				// now malloc.
+				fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc").firFunc->getName());
+				iceAssert(mallocf);
+
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(newlen, fir::PrimitiveType::getInt64()));
+
+				// now memcpy
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction(fir::Intrinsics::memcpy);
+				cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, cgi->irb.CreateIntSizeCast(lhslen, fir::PrimitiveType::getInt64()),
+					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+				fir::Value* offsetbuf = cgi->irb.CreatePointerAdd(buf, lhslen);
+				cgi->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, cgi->irb.CreateIntSizeCast(rhslen, fir::PrimitiveType::getInt64()),
+					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+				// null terminator
+				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
+				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+
+				// ok, now fix it
+				cgi->irb.CreateSetStringData(newstrp, buf);
+				cgi->irb.CreateSetStringLength(newstrp, newlen);
+				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt32(1));
+
+				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);
 			}
 
 			error("enotsup");
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
-			fir::Value* tryop = cgi->builder.CreateBinaryOp(op, lhs, rhs);
+			fir::Value* tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
 			iceAssert(tryop);
 
 			return Result_t(tryop, 0);

@@ -75,7 +75,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	// for break, we go to the ending block
-	cgi->builder.CreateUnCondBranch(cs->second.second);
+	cgi->irb.CreateUnCondBranch(cs->second.second);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
@@ -118,7 +118,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// for continue, we go to the beginning (loop) block
-	cgi->builder.CreateUnCondBranch(cs->second.first);
+	cgi->irb.CreateUnCondBranch(cs->second.first);
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
@@ -177,16 +177,16 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		auto res = this->val->codegen(cgi).result;
 		fir::Value* left = res.first;
 
-		fir::Function* f = cgi->builder.getCurrentBlock()->getParentFunction();
+		fir::Function* f = cgi->irb.getCurrentBlock()->getParentFunction();
 		iceAssert(f);
 
 		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), left, res.second);
 
-		return Result_t(cgi->builder.CreateReturn(this->actualReturnValue), res.second, ResultType::BreakCodegen);
+		return Result_t(cgi->irb.CreateReturn(this->actualReturnValue), res.second, ResultType::BreakCodegen);
 	}
 	else
 	{
-		return Result_t(cgi->builder.CreateReturnVoid(), 0, ResultType::BreakCodegen);
+		return Result_t(cgi->irb.CreateReturnVoid(), 0, ResultType::BreakCodegen);
 	}
 }
 
