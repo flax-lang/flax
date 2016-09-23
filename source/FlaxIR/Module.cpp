@@ -306,6 +306,39 @@ namespace fir
 
 
 
+	Function* Module::getIntrinsicFunction(Intrinsics id)
+	{
+		Identifier name;
+		FunctionType* ft = 0;
+		switch(id)
+		{
+			case Intrinsics::memcpy:
+				name = Identifier("memcpy", IdKind::Name);
+				ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
+					fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+					fir::PrimitiveType::getVoid(), false);
+				break;
+
+			case Intrinsics::memmove:
+				name = Identifier("memove", IdKind::Name);
+				ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
+					fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+					fir::PrimitiveType::getVoid(), false);
+				break;
+
+			case Intrinsics::memset:
+				name = Identifier("memset", IdKind::Name);
+				ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PrimitiveType::getInt8(),
+					fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+					fir::PrimitiveType::getVoid(), false);
+				break;
+		}
+
+		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())
+			return this->intrinsicFunctions[name];
+
+		return this->intrinsicFunctions[name] = new Function(name, ft, this, LinkageType::External);
+	}
 
 
 

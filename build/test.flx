@@ -305,17 +305,26 @@ struct SomeStruct
 
 public func main() -> int
 {
-	let k: string = "hello"
-	var g: string = "world"
+	// let k: string = "hello"
+	// var g: string = "world"
 
-	// k + g
-	g = k
+	// // k + g
+	// g = k
+	// printf(@raw "something\n");
+
+	// printf(@raw "[%s], [%s]\n", k, g)
+	// foo()
+
+	var ss = SomeStruct()
+	ss.str = "hello"
 
 
+	let k: string = "ohmy"
+	let g: string = "gosh"
 
+	let s = k + g
 
-	printf(@raw "[%s], [%s]\n", k, g)
-	foo()
+	printf(@raw "[%s], [%s]\n", ss.str, s)
 
 	return 0
 }

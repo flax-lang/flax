@@ -59,33 +59,33 @@ namespace Operators
 
 		if(lhs->getType()->isIntegerType() && rtype->isIntegerType())
 		{
-			return Result_t(cgi->builder.CreateIntSizeCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntSizeCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isIntegerType() && rtype->isFloatingPointType())
 		{
-			return Result_t(cgi->builder.CreateIntToFloatCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntToFloatCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isFloatingPointType() && rtype->isFloatingPointType())
 		{
 			// printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
 
 			if(lhs->getType()->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
-				return Result_t(cgi->builder.CreateFTruncate(lhs, rtype), 0);
+				return Result_t(cgi->irb.CreateFTruncate(lhs, rtype), 0);
 
 			else
-				return Result_t(cgi->builder.CreateFExtend(lhs, rtype), 0);
+				return Result_t(cgi->irb.CreateFExtend(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isPointerType() && rtype->isPointerType())
 		{
-			return Result_t(cgi->builder.CreatePointerTypeCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreatePointerTypeCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isPointerType() && rtype->isIntegerType())
 		{
-			return Result_t(cgi->builder.CreatePointerToIntCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreatePointerToIntCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isIntegerType() && rtype->isPointerType())
 		{
-			return Result_t(cgi->builder.CreateIntToPointerCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntToPointerCast(lhs, rtype), 0);
 		}
 		else if(cgi->isEnum(rtype))
 		{
@@ -95,10 +95,10 @@ namespace Operators
 			{
 				fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
 
-				fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
-				cgi->builder.CreateStore(lhs, gep);
+				fir::Value* gep = cgi->irb.CreateStructGEP(tmp, 0);
+				cgi->irb.CreateStore(lhs, gep);
 
-				return Result_t(cgi->builder.CreateLoad(tmp), tmp);
+				return Result_t(cgi->irb.CreateLoad(tmp), tmp);
 			}
 			else
 			{
@@ -109,8 +109,8 @@ namespace Operators
 		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
 		{
 			iceAssert(lhsPtr);
-			fir::Value* gep = cgi->builder.CreateStructGEP(lhsPtr, 0);
-			fir::Value* val = cgi->builder.CreateLoad(gep);
+			fir::Value* gep = cgi->irb.CreateStructGEP(lhsPtr, 0);
+			fir::Value* val = cgi->irb.CreateLoad(gep);
 
 			return Result_t(val, gep);
 		}
@@ -126,9 +126,9 @@ namespace Operators
 			// just access the data pointer.
 
 			iceAssert(lhsPtr);
-			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsPtr, 0);
+			fir::Value* stringPtr = cgi->irb.CreateStructGEP(lhsPtr, 0);
 
-			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
+			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
 		}
 		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
 			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
@@ -152,7 +152,7 @@ namespace Operators
 
 			iceAssert(lhsPtr);
 
-			fir::Value* lhsRawPtr = cgi->builder.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
@@ -163,7 +163,7 @@ namespace Operators
 			error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
 		}
 
-		return Result_t(cgi->builder.CreateBitcast(lhs, rtype), 0);
+		return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
 	}
 }
 

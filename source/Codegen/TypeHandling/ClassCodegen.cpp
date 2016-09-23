@@ -74,10 +74,10 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
 
 
-		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
+		fir::IRBlock* currentblock = cgi->irb.getCurrentBlock();
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = this->defaultInitialiser->getArguments().front();
@@ -86,7 +86,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(!var->isStatic)
 			{
-				fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
+				fir::Value* ptr = cgi->irb.CreateGetStructMember(self, var->ident.name);
 
 				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
 				var->inferType(cgi);
@@ -131,8 +131,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 		}
 
-		cgi->builder.CreateReturnVoid();
-		cgi->builder.setCurrentBlock(currentblock);
+		cgi->irb.CreateReturnVoid();
+		cgi->irb.setCurrentBlock(currentblock);
 	}
 
 

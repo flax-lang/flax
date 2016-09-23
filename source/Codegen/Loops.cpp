@@ -15,15 +15,15 @@ using namespace Codegen;
 
 Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	fir::Function* parentFunc = cgi->builder.getCurrentBlock()->getParentFunction();
+	fir::Function* parentFunc = cgi->irb.getCurrentBlock()->getParentFunction();
 	iceAssert(parentFunc);
 
-	fir::IRBlock* setupBlock = cgi->builder.addNewBlockInFunction("loopSetup", parentFunc);
-	fir::IRBlock* loopBody = cgi->builder.addNewBlockInFunction("loopBody", parentFunc);
-	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", parentFunc);
+	fir::IRBlock* setupBlock = cgi->irb.addNewBlockInFunction("loopSetup", parentFunc);
+	fir::IRBlock* loopBody = cgi->irb.addNewBlockInFunction("loopBody", parentFunc);
+	fir::IRBlock* loopEnd = cgi->irb.addNewBlockInFunction("loopEnd", parentFunc);
 
-	cgi->builder.CreateUnCondBranch(setupBlock);
-	cgi->builder.setCurrentBlock(setupBlock);
+	cgi->irb.CreateUnCondBranch(setupBlock);
+	cgi->irb.setCurrentBlock(setupBlock);
 
 	fir::Value* condOutside = this->cond->codegen(cgi).result.first;
 
@@ -31,13 +31,13 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// if we're a do-while, don't check the condition the first time
 	// else we should
 	if(this->isDoWhileVariant)
-		cgi->builder.CreateUnCondBranch(loopBody);
+		cgi->irb.CreateUnCondBranch(loopBody);
 
 	else
-		cgi->builder.CreateCondBranch(condOutside, loopBody, loopEnd);
+		cgi->irb.CreateCondBranch(condOutside, loopBody, loopEnd);
 
 
-	cgi->builder.setCurrentBlock(loopBody);
+	cgi->irb.setCurrentBlock(loopBody);
 	cgi->pushBracedBlock(this, loopBody, loopEnd);
 
 	this->body->codegen(cgi);
@@ -46,11 +46,11 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// put a branch to see if we will go back
 	fir::Value* condInside = this->cond->codegen(cgi).result.first;
-	cgi->builder.CreateCondBranch(condInside, loopBody, loopEnd);
+	cgi->irb.CreateCondBranch(condInside, loopBody, loopEnd);
 
 
 	// parentFunc->getBasicBlockList().push_back(loopEnd);
-	cgi->builder.setCurrentBlock(loopEnd);
+	cgi->irb.setCurrentBlock(loopEnd);
 
 	return Result_t(0, 0);
 }

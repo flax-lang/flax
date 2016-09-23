@@ -30,7 +30,7 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 	{
 		fir::Type* t = this->expr->getType(cgi);
 		if(cgi->isRefCountedType(t))
-			error(this, "Reference counted types (of which '%s' is one) cannot have their address taken", t->str().c_str());
+			error(this, "Reference counted types (such as '%s') cannot have their address taken", t->str().c_str());
 
 		return t->getPointerTo();
 	}
@@ -73,7 +73,7 @@ namespace Operators
 	{
 		auto res = args[0]->codegen(cgi).result;
 
-		return Result_t(cgi->builder.CreateNeg(res.first), res.second);
+		return Result_t(cgi->irb.CreateNeg(res.first), res.second);
 	}
 
 	Result_t operatorBitwiseNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
@@ -82,7 +82,7 @@ namespace Operators
 		if(!res.first->getType()->isIntegerType())
 			error(user, "Cannot perform bitwise NOT (~) on a non-integer type (have type '%s')", res.first->getType()->str().c_str());
 
-		return Result_t(cgi->builder.CreateBitwiseNOT(res.first), res.second);
+		return Result_t(cgi->irb.CreateBitwiseNOT(res.first), res.second);
 	}
 
 	Result_t operatorAddressOf(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
@@ -102,6 +102,6 @@ namespace Operators
 		if(!res.first->getType()->isPointerType())
 			error(user, "Cannot dereference non-pointer type (have type '%s')", res.first->getType()->str().c_str());
 
-		return Result_t(cgi->builder.CreateLoad(res.first), res.first);
+		return Result_t(cgi->irb.CreateLoad(res.first), res.first);
 	}
 }

@@ -92,7 +92,7 @@ namespace Codegen
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
 		std::deque<Ast::Func*> funcScopeStack;
 
-		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
+		fir::IRBuilder irb = fir::IRBuilder(fir::getDefaultFTContext());
 
 
 		struct

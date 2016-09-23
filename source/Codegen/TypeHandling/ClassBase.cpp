@@ -15,7 +15,7 @@ namespace Codegen
 {
 	static fir::Function* generateMemberFunctionDecl(CodegenInstance* cgi, ClassDef* cls, Func* fn)
 	{
-		fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+		fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 		fn->decl->ident.kind = IdKind::Method;
 		fn->decl->ident.scope = cls->ident.scope;
@@ -24,7 +24,7 @@ namespace Codegen
 		fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).result.first);
 		iceAssert(lfunc);
 
-		cgi->builder.setCurrentBlock(ob);
+		cgi->irb.setCurrentBlock(ob);
 		if(fn->decl->attribs & Attr_VisPublic)
 		{
 			cgi->addPublicFunc(FuncDefPair(lfunc, fn->decl, fn));
@@ -38,7 +38,7 @@ namespace Codegen
 	{
 		if(fn->decl->genericTypes.size() == 0)
 		{
-			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+			fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 			fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).result.first);
 			iceAssert(ffn);
@@ -58,16 +58,16 @@ namespace Codegen
 				newBlock->setName("call_autoinit");
 				ffn->getBlockList().push_front(newBlock);
 
-				cgi->builder.setCurrentBlock(newBlock);
+				cgi->irb.setCurrentBlock(newBlock);
 
 				iceAssert(ffn->getArgumentCount() > 0);
 				fir::Value* selfPtr = ffn->getArguments().front();
 
-				cgi->builder.CreateCall1(defaultInitFunc, selfPtr);
-				cgi->builder.CreateUnCondBranch(beginBlock);
+				cgi->irb.CreateCall1(defaultInitFunc, selfPtr);
+				cgi->irb.CreateUnCondBranch(beginBlock);
 			}
 
-			cgi->builder.setCurrentBlock(ob);
+			cgi->irb.setCurrentBlock(ob);
 		}
 	}
 
@@ -242,7 +242,7 @@ namespace Codegen
 			overl->func->decl->codegen(cgi);
 
 			// fir::Value* val = overl->func->decl->codegen(cgi).result.first;
-			// cgi->builder.setCurrentBlock(ob);
+			// cgi->irb.setCurrentBlock(ob);
 
 			// overl->lfunc = dynamic_cast<fir::Function*>(val);
 			// iceAssert(overl->lfunc);
@@ -250,11 +250,11 @@ namespace Codegen
 			// if(overl->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
 			// 	cgi->addPublicFunc({ overl->lfunc, overl->func->decl });
 
-			// ob = cgi->builder.getCurrentBlock();
+			// ob = cgi->irb.getCurrentBlock();
 
 			// overl->func->codegen(cgi);
 
-			// cgi->builder.setCurrentBlock(ob);
+			// cgi->irb.setCurrentBlock(ob);
 		}
 
 
@@ -346,7 +346,7 @@ namespace Codegen
 
 			iceAssert(soo->getterBody);
 			{
-				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+				fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 				// do getter.
 				BracedBlock* body = soo->getterBody;
@@ -362,7 +362,7 @@ namespace Codegen
 				soo->getterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).result.first);
 				iceAssert(soo->getterFunc);
 
-				cgi->builder.setCurrentBlock(ob);
+				cgi->irb.setCurrentBlock(ob);
 
 				soo->getterFn = new Func(decl->pin, decl, body);
 
@@ -372,7 +372,7 @@ namespace Codegen
 
 			if(soo->setterBody)
 			{
-				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+				fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 				VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
 				setterArg->ptype = soo->decl->ptype;
@@ -395,7 +395,7 @@ namespace Codegen
 				soo->setterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).result.first);
 				iceAssert(soo->setterFunc);
 
-				cgi->builder.setCurrentBlock(ob);
+				cgi->irb.setCurrentBlock(ob);
 
 				soo->setterFn = new Func(decl->pin, decl, body);
 
@@ -432,10 +432,10 @@ namespace Codegen
 	{
 		for(AssignOpOverload* aoo : cls->assignmentOverloads)
 		{
-			fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+			fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 			aoo->func->codegen(cgi);
-			cgi->builder.setCurrentBlock(ob);
+			cgi->irb.setCurrentBlock(ob);
 		}
 	}
 
@@ -448,18 +448,18 @@ namespace Codegen
 
 			iceAssert(soo->getterBody);
 			{
-				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+				fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 				soo->getterFn->codegen(cgi);
-				cgi->builder.setCurrentBlock(ob);
+				cgi->irb.setCurrentBlock(ob);
 			}
 
 			if(soo->setterBody)
 			{
-				fir::IRBlock* ob = cgi->builder.getCurrentBlock();
+				fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
 				soo->setterFn->codegen(cgi);
-				cgi->builder.setCurrentBlock(ob);
+				cgi->irb.setCurrentBlock(ob);
 			}
 		}
 	}

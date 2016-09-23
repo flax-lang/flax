@@ -44,6 +44,7 @@ namespace fir
 
 		// note: only looks at the name + scope, excludes the parameter list.
 		std::deque<Function*> getFunctionsWithName(Identifier id);
+		Function* getIntrinsicFunction(Intrinsics id);
 
 		Type* getNamedType(Identifier name);
 		void addNamedType(Identifier name, Type* type);
@@ -68,6 +69,8 @@ namespace fir
 		std::unordered_map<Identifier, GlobalVariable*> globals;
 		std::unordered_map<Identifier, Function*> functions;
 		std::unordered_map<Identifier, Type*> namedTypes;
+
+		std::unordered_map<Identifier, Function*> intrinsicFunctions;
 	};
 
 
