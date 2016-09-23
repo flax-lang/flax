@@ -2506,6 +2506,12 @@ namespace Codegen
 		return this->makeStringLiteral("(null)");
 	}
 
+
+
+
+	// not used
+	// at all, really. oops.
+
 	void CodegenInstance::incrementStringRefCount(fir::Value* strp)
 	{
 		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
@@ -2514,6 +2520,15 @@ namespace Codegen
 		fir::Value* newRc = this->builder.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
 
 		this->builder.CreateSetStringRefCount(strp, newRc);
+
+		fir::Function* printffn = this->module->declareFunction(Identifier("printf", IdKind::Function), fir::FunctionType::getCVariadicFunc({ fir::PointerType::getInt8Ptr() }, fir::PrimitiveType::getInt32()));
+
+		// debug.
+
+		fir::Value* tmpstr = this->module->createGlobalString("incr refcount");
+		tmpstr = this->builder.CreateConstGEP2(tmpstr, 0, 0);
+
+		this->builder.CreateCall1(printffn, tmpstr);
 	}
 
 	void CodegenInstance::decrementStringRefCount(fir::Value* strp)
@@ -2558,6 +2573,13 @@ namespace Codegen
 			// store the null string back into the pointer.
 			this->builder.CreateStore(this->getNullString().result.first, strp);
 		}
+
+		fir::Function* printffn = this->module->declareFunction(Identifier("printf", IdKind::Function), fir::FunctionType::getCVariadicFunc({ fir::PointerType::getInt8Ptr() }, fir::PrimitiveType::getInt32()));
+
+		fir::Value* tmpstr = this->module->createGlobalString("decr refcount");
+		tmpstr = this->builder.CreateConstGEP2(tmpstr, 0, 0);
+
+		this->builder.CreateCall1(printffn, tmpstr);
 	}
 
 
