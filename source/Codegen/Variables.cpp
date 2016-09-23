@@ -349,7 +349,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(cgi->isDuplicateSymbol(this->ident.name))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Variable);
 
-
 	this->ident.scope = cgi->getFullScope();
 
 	fir::Value* val = nullptr;
@@ -357,9 +356,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Value* ai = nullptr;
 
-	// if(this->concretisedType == nullptr)
 	this->inferType(cgi);
-
 
 	if(!this->isGlobal)
 	{
