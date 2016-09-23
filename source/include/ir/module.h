@@ -44,7 +44,7 @@ namespace fir
 
 		// note: only looks at the name + scope, excludes the parameter list.
 		std::deque<Function*> getFunctionsWithName(Identifier id);
-		Function* getIntrinsicFunction(Intrinsics id);
+		Function* getIntrinsicFunction(std::string id);
 
 		Type* getNamedType(Identifier name);
 		void addNamedType(Identifier name, Type* type);

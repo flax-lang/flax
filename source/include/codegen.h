@@ -288,6 +288,9 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
+		fir::Function* getStringRefCountIncrementFunction();
+		fir::Function* getStringRefCountDecrementFunction();
+		fir::Function* getStringCompareFunction();
 
 
 

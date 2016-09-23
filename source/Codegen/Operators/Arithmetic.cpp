@@ -147,10 +147,58 @@ namespace Operators
 
 			if(isComparisonOp(op))
 			{
-				// compare two strings...
-				// lexicographically
+				// compare two strings
 
-				error("string comparison not supported yet");
+				fir::Value* lhsptr = leftVP.second;
+				fir::Value* rhsptr = rightVP.second;
+
+				iceAssert(lhsptr);
+				iceAssert(rhsptr);
+
+
+				fir::Function* cmpf = cgi->getStringCompareFunction();
+				iceAssert(cmpf);
+
+				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhsptr, rhsptr);
+
+				// we need to convert the int return into booleans
+				// if ret < 0, then a < b and a <= b should be 1, and the rest be 0
+				// if ret == 0, then a == b, a <= b, and a >= b should be 1, and the rest be 0
+				// if ret > 0, then a > b and a >= b should be 1, and the rest be 0
+
+				// basically we should actually just have separate routines for each operation
+				fir::Value* ret = 0;
+				if(op == ArithmeticOp::CmpLT)
+				{
+					ret = cgi->irb.CreateICmpLT(val, fir::ConstantInt::getInt64(0));
+				}
+				else if(op == ArithmeticOp::CmpLEq)
+				{
+					ret = cgi->irb.CreateICmpLEQ(val, fir::ConstantInt::getInt64(0));
+				}
+				else if(op == ArithmeticOp::CmpGT)
+				{
+					ret = cgi->irb.CreateICmpGT(val, fir::ConstantInt::getInt64(0));
+				}
+				else if(op == ArithmeticOp::CmpGEq)
+				{
+					ret = cgi->irb.CreateICmpGEQ(val, fir::ConstantInt::getInt64(0));
+				}
+				else if(op == ArithmeticOp::CmpEq)
+				{
+					ret = cgi->irb.CreateICmpEQ(val, fir::ConstantInt::getInt64(0));
+				}
+				else if(op == ArithmeticOp::CmpNEq)
+				{
+					ret = cgi->irb.CreateICmpNEQ(val, fir::ConstantInt::getInt64(0));
+				}
+				else
+				{
+					error("???");
+				}
+
+
+				return Result_t(ret, 0);
 			}
 			else
 			{
@@ -195,7 +243,7 @@ namespace Operators
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(newlen, fir::PrimitiveType::getInt64()));
 
 				// now memcpy
-				fir::Function* memcpyf = cgi->module->getIntrinsicFunction(fir::Intrinsics::memcpy);
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
 				cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, cgi->irb.CreateIntSizeCast(lhslen, fir::PrimitiveType::getInt64()),
 					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 
