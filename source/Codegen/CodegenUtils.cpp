@@ -2530,6 +2530,8 @@ namespace Codegen
 			fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
 			fir::LinkageType::Internal);
 
+		func->setAlwaysInline();
+
 		fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 		cgi->irb.setCurrentBlock(entry);
 
@@ -2568,6 +2570,8 @@ namespace Codegen
 		fir::Function* func = cgi->module->getOrCreateFunction(Identifier(STRINGREF_DECR_FUNC_NAME, IdKind::Name),
 			fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
 			fir::LinkageType::Internal);
+
+		func->setAlwaysInline();
 
 		fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 		cgi->irb.setCurrentBlock(entry);
