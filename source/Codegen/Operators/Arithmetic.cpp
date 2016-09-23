@@ -169,6 +169,7 @@ namespace Operators
 				// get an empty string
 				auto r = cgi->getEmptyString();
 				fir::Value* newstrp = r.result.second;
+				newstrp->setName("newstrp");
 
 				fir::Value* lhsptr = leftVP.second;
 				fir::Value* rhsptr = rightVP.second;
@@ -206,12 +207,12 @@ namespace Operators
 				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-
 				// ok, now fix it
 				cgi->irb.CreateSetStringData(newstrp, buf);
 				cgi->irb.CreateSetStringLength(newstrp, newlen);
 				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt32(1));
 
+				cgi->addRefCountedValue(newstrp);
 				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);
 			}
 
