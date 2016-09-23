@@ -403,8 +403,10 @@ namespace Ast
 
 	struct BreakableBracedBlock : Expr
 	{
-		explicit BreakableBracedBlock(Parser::Pin pos) : Expr(pos) { }
+		explicit BreakableBracedBlock(Parser::Pin pos, BracedBlock* _body) : Expr(pos), body(_body) { }
 		~BreakableBracedBlock();
+
+		BracedBlock* body = 0;
 	};
 
 	struct IfStmt : Expr
@@ -425,17 +427,17 @@ namespace Ast
 	struct WhileLoop : BreakableBracedBlock
 	{
 		~WhileLoop();
-		WhileLoop(Parser::Pin pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos),
-			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
+		WhileLoop(Parser::Pin pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos, _body),
+			cond(_cond), isDoWhileVariant(dowhile) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* cond = 0;
-		BracedBlock* body = 0;
 		bool isDoWhileVariant = false;
 	};
 
+	#if 0
 	struct ForLoop : BreakableBracedBlock
 	{
 		~ForLoop();
@@ -451,6 +453,7 @@ namespace Ast
 	{
 
 	};
+	#endif
 
 	struct Break : Expr
 	{
