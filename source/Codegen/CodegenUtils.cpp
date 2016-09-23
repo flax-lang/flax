@@ -2514,8 +2514,119 @@ namespace Codegen
 
 
 
+
+
+	#define STRINGREF_INCR_FUNC_NAME "__.stringref_incr"
+	#define STRINGREF_DECR_FUNC_NAME "__.stringref_decr"
+
+
 	// not used
 	// at all, really. oops.
+	static void _makeIncrementStringRefCountFunction(CodegenInstance* cgi)
+	{
+		auto restore = cgi->irb.getCurrentBlock();
+
+		fir::Function* func = cgi->module->getOrCreateFunction(Identifier(STRINGREF_INCR_FUNC_NAME, IdKind::Name),
+			fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+			fir::LinkageType::Internal);
+
+		fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+		cgi->irb.setCurrentBlock(entry);
+
+		fir::Value* curRc = cgi->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+		// never increment the refcount if cgi is a string literal
+		// how do we know? the refcount was -1 to begin with.
+
+		// check.
+		fir::IRBlock* doadd = cgi->irb.addNewBlockInFunction("doref", func);
+		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+		{
+			fir::Value* cond = cgi->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
+			cgi->irb.CreateCondBranch(cond, merge, doadd);
+		}
+
+		cgi->irb.setCurrentBlock(doadd);
+		fir::Value* newRc = cgi->irb.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
+		cgi->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+		cgi->irb.CreateUnCondBranch(merge);
+		cgi->irb.setCurrentBlock(merge);
+		cgi->irb.CreateReturnVoid();
+
+		cgi->irb.setCurrentBlock(restore);
+	}
+
+
+
+
+
+	static void _makeDecrementStringRefCountFunction(CodegenInstance* cgi)
+	{
+		auto restore = cgi->irb.getCurrentBlock();
+
+		fir::Function* func = cgi->module->getOrCreateFunction(Identifier(STRINGREF_DECR_FUNC_NAME, IdKind::Name),
+			fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+			fir::LinkageType::Internal);
+
+		fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+		cgi->irb.setCurrentBlock(entry);
+
+
+		// needs to handle freeing the thing.
+		fir::Value* curRc = cgi->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+		// note:
+		// what happens for string literals is that refcount is set to -1 to begin with
+		// thus, when we do the branch, we first compare to -1 so we know never to call free() on those
+		// duh, we cannot free string literals.
+
+
+		// check.
+		fir::IRBlock* dotest = cgi->irb.addNewBlockInFunction("dotest", func);
+		fir::IRBlock* dealloc = cgi->irb.addNewBlockInFunction("deallocate", func);
+		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+		{
+			fir::Value* cond = cgi->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
+			cgi->irb.CreateCondBranch(cond, merge, dotest);
+		}
+
+
+		cgi->irb.setCurrentBlock(dotest);
+		fir::Value* newRc = cgi->irb.CreateSub(curRc, fir::ConstantInt::getInt32(1));
+		cgi->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+		{
+			fir::Value* cond = cgi->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
+			cgi->irb.CreateCondBranch(cond, dealloc, merge);
+
+
+			cgi->irb.setCurrentBlock(dealloc);
+
+			// call free on the buffer.
+			fir::Value* bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
+
+			fir::Function* freefn = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("free").firFunc->getName());
+			iceAssert(freefn);
+
+			cgi->irb.CreateCall1(freefn, bufp);
+
+			fir::Value* tmpstr = cgi->module->createGlobalString("free\n");
+			tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+			cgi->irb.CreateCall1(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr);
+			cgi->irb.CreateUnCondBranch(merge);
+		}
+
+		cgi->irb.setCurrentBlock(merge);
+		cgi->irb.CreateReturnVoid();
+
+
+
+		cgi->irb.setCurrentBlock(restore);
+	}
+
+
 
 	void CodegenInstance::incrementStringRefCount(fir::Value* strp)
 	{
@@ -2523,35 +2634,21 @@ namespace Codegen
 
 		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
 		iceAssert(printffn);
-
-		// debug.
 		fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
 		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
 		this->irb.CreateCall1(printffn, tmpstr);
 
 
-		fir::Value* curRc = this->irb.CreateGetStringRefCount(strp);
 
-		// never increment the refcount if this is a string literal
-		// how do we know? the refcount was -1 to begin with.
-
-		// check.
-		fir::Function* func = this->irb.getCurrentBlock()->getParentFunction();
-		fir::IRBlock* doadd = this->irb.addNewBlockInFunction("doref", func);
-		fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+		fir::Function* incrf = this->module->getFunction(Identifier(STRINGREF_INCR_FUNC_NAME, IdKind::Name));
+		if(!incrf)
 		{
-			fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
-			this->irb.CreateCondBranch(cond, merge, doadd);
+			_makeIncrementStringRefCountFunction(this);
+			incrf = this->module->getFunction(Identifier(STRINGREF_INCR_FUNC_NAME, IdKind::Name));
 		}
 
-		this->irb.setCurrentBlock(doadd);
-		fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
-		this->irb.CreateSetStringRefCount(strp, newRc);
-
-
-
-		this->irb.CreateUnCondBranch(merge);
-		this->irb.setCurrentBlock(merge);
+		iceAssert(incrf);
+		this->irb.CreateCall1(incrf, strp);
 	}
 
 	void CodegenInstance::decrementStringRefCount(fir::Value* strp)
@@ -2567,58 +2664,15 @@ namespace Codegen
 		this->irb.CreateCall1(printffn, tmpstr);
 
 
-
-		// needs to handle freeing the thing.
-		fir::Value* curRc = this->irb.CreateGetStringRefCount(strp);
-
-		// note:
-		// what happens for string literals is that refcount is set to -1 to begin with
-		// thus, when we do the branch, we first compare to -1 so we know never to call free() on those
-		// duh, we cannot free string literals.
-
-
-		// check.
-		fir::Function* func = this->irb.getCurrentBlock()->getParentFunction();
-		fir::IRBlock* dotest = this->irb.addNewBlockInFunction("dotest", func);
-		fir::IRBlock* dealloc = this->irb.addNewBlockInFunction("deallocate", func);
-		fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+		fir::Function* decrf = this->module->getFunction(Identifier(STRINGREF_DECR_FUNC_NAME, IdKind::Name));
+		if(!decrf)
 		{
-			fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
-			this->irb.CreateCondBranch(cond, merge, dotest);
+			_makeDecrementStringRefCountFunction(this);
+			decrf = this->module->getFunction(Identifier(STRINGREF_DECR_FUNC_NAME, IdKind::Name));
 		}
 
-
-		this->irb.setCurrentBlock(dotest);
-		fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt32(1));
-		this->irb.CreateSetStringRefCount(strp, newRc);
-
-		{
-			fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
-			this->irb.CreateCondBranch(cond, dealloc, merge);
-
-
-			this->irb.setCurrentBlock(dealloc);
-
-			// call free on the buffer.
-			fir::Value* bufp = this->irb.CreateGetStringData(strp);
-
-			fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
-			iceAssert(freefn);
-
-			this->irb.CreateCall1(freefn, bufp);
-
-			fir::Value* tmpstr = this->module->createGlobalString("free: " + strp->getName().str() + "\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-			this->irb.CreateCall1(printffn, tmpstr);
-
-
-			this->irb.CreateUnCondBranch(merge);
-
-			this->irb.setCurrentBlock(merge);
-
-			// ok, done.
-		}
+		iceAssert(decrf);
+		this->irb.CreateCall1(decrf, strp);
 	}
 
 
