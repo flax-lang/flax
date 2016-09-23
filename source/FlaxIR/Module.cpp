@@ -227,7 +227,17 @@ namespace fir
 		for(auto string : this->globalStrings)
 		{
 			ret += "global string (%" + std::to_string(string.second->id);
-			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + string.first + "\"\n";
+
+			std::string copy;
+			for(auto c : string.first)
+			{
+				if(c == '\r') copy += "\\r";
+				else if(c == '\n') copy += "\\n";
+				else if(c == '\t') copy += "\\t";
+				else copy += c;
+			}
+
+			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + copy + "\"\n";
 		}
 
 		for(auto global : this->globals)
@@ -265,7 +275,7 @@ namespace fir
 			if(ffn->blocks.size() == 0)
 			{
 				decl += ") -> ";
-				decl += "@" + ffn->getReturnType()->str();
+				decl += ffn->getReturnType()->str();
 				decl += "\n";
 
 				ret += "declare " + decl;
@@ -275,7 +285,7 @@ namespace fir
 			ret += decl;
 
 			ret += ") -> ";
-			ret += "@" + ffn->getReturnType()->str();
+			ret += ffn->getReturnType()->str();
 			ret += "\n{";
 
 

@@ -298,13 +298,18 @@ public func main(argc: int32, argv: int8**) -> int
 
 ffi func printf(fmt: int8*, ...)
 
+struct SomeStruct
+{
+	var str: string = "bar"
+}
+
 public func main() -> int
 {
 	let k: string = "hello"
 	var g: string = "world"
 
 	// k + g
-
+	g = k
 
 
 
@@ -318,14 +323,14 @@ public func main() -> int
 
 func foo()
 {
-	defer printf("fuck\n")
+	defer printf(@raw "fuck\n")
 
 	var i = 0
 	while i < 10
 	{
-		defer printf("kappa\n")
+		defer printf(@raw "kappa\n")
 
-		printf("lol")
+		printf(@raw "lol")
 
 		if i == 4 { return }
 

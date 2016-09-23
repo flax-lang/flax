@@ -360,7 +360,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(!this->isGlobal)
 	{
-		ai = cgi->getStackAlloc(this->concretisedType);
+		ai = cgi->getStackAlloc(this->concretisedType, this->ident.name);
 		iceAssert(ai->getType()->getPointerElementType() == this->concretisedType);
 	}
 

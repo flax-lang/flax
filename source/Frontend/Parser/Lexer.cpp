@@ -235,8 +235,9 @@ namespace Parser
 				#endif
 			}
 
-
 			stream = stream.substr(k);
+			pos = curpos;
+
 			return getNextToken(stream, pos);
 		}
 		else if(stream.compare(0, 2, "*/") == 0)

@@ -87,18 +87,33 @@ namespace Codegen
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
+		this->refCountingStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		this->symTabStack.clear();
+		this->refCountingStack.clear();
 		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
 		this->symTabStack.push_back(SymTab_t());
+		this->refCountingStack.push_back({ });
 	}
+
+	void CodegenInstance::addRefCountedValue(fir::Value* ptr)
+	{
+		iceAssert(ptr->getType()->isPointerType() && "refcounted value must be a pointer");
+		this->refCountingStack.back().push_back(ptr);
+	}
+
+	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
+	{
+		return this->refCountingStack.back();
+	}
+
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
@@ -2484,13 +2499,15 @@ namespace Codegen
 		empty = this->builder.CreateConstGEP2(empty, 0, 0);
 
 		fir::Value* len = fir::ConstantInt::getInt32(str.length());
-		fir::Value* rc = fir::ConstantInt::getInt32(1);
+		fir::Value* rc = fir::ConstantInt::getInt32(0);
 
 		this->builder.CreateSetStringData(strp, empty);
 		this->builder.CreateSetStringLength(strp, len);
 		this->builder.CreateSetStringRefCount(strp, rc);
 
 		strp->makeImmutable();
+		// this->addRefCountedValue(strp);
+
 		return Result_t(this->builder.CreateLoad(strp), strp);
 	}
 
@@ -2542,6 +2559,12 @@ namespace Codegen
 		this->builder.CreateSetStringRefCount(strp, newRc);
 
 
+		// note:
+		// what happens for string literals is that refcount is set to 0 to begin with
+		// so, when we subtract one (above), it becomes -1
+		// that obviously doesn't compare equal to 0, so we don't call free.
+
+
 		// check.
 		{
 			fir::Value* cond = this->builder.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
@@ -2571,12 +2594,14 @@ namespace Codegen
 
 			// ok, done.
 			// store the null string back into the pointer.
+			strp->makeNotImmutable();
 			this->builder.CreateStore(this->getNullString().result.first, strp);
+			strp->makeImmutable();
 		}
 
-		fir::Function* printffn = this->module->declareFunction(Identifier("printf", IdKind::Function), fir::FunctionType::getCVariadicFunc({ fir::PointerType::getInt8Ptr() }, fir::PrimitiveType::getInt32()));
+		fir::Function* printffn = this->module->declareFunction(Identifier("printf", IdKind::Function), fir::FunctionType::getCVariadicFunc({ fir::PointerType::getInt8Ptr() }, fir::PrimitiveType::getVoid()));
 
-		fir::Value* tmpstr = this->module->createGlobalString("decr refcount");
+		fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + "\n");
 		tmpstr = this->builder.CreateConstGEP2(tmpstr, 0, 0);
 
 		this->builder.CreateCall1(printffn, tmpstr);
