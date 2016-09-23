@@ -81,78 +81,35 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		return cgi->makeStringLiteral(this->str);
-	}
-
-
-	#if 0
-	auto pair = cgi->getTypeByString("String");
-	if(pair && !this->isRaw)
-	{
-		fir::ClassType* stringType = dynamic_cast<fir::ClassType*>(pair->first);
-
-		fir::Value* alloca = cgi->getStackAlloc(stringType);
-
-		// String layout:
-		// var data: Int8*
-		// var allocated: Uint64
-
-
-		fir::Value* stringPtr = cgi->builder.CreateStructGEP(alloca, 0);
-		fir::Value* allocdPtr = cgi->builder.CreateStructGEP(alloca, 1);
-
-		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
-
-		cgi->builder.CreateStore(stringVal, stringPtr);
-		cgi->builder.CreateStore(fir::ConstantInt::getUint64(0, cgi->getContext()), allocdPtr);
-
-		fir::Value* val = cgi->builder.CreateLoad(alloca);
-		alloca->makeImmutable();
-
-		return Result_t(val, alloca);
-	}
-	else
-	{
-		// todo: dirty.
-		static bool didWarn = false;
-
-		if(!this->isRaw && !didWarn)
+		if(extra)
 		{
-			warn(this, "String type not available, using Int8* for string literal (will not warn again)");
-			didWarn = true;
+			iceAssert(extra->getType()->getPointerElementType()->isStringType());
+
+			fir::Value* thestring = cgi->module->createGlobalString(this->str);
+			thestring = cgi->builder.CreateConstGEP2(thestring, 0, 0);
+
+			fir::Value* len = fir::ConstantInt::getInt32(this->str.length());
+			fir::Value* rc = fir::ConstantInt::getInt32(0);
+
+			cgi->builder.CreateSetStringData(extra, thestring);
+			cgi->builder.CreateSetStringLength(extra, len);
+			cgi->builder.CreateSetStringRefCount(extra, rc);
+
+			cgi->addRefCountedValue(extra);
+			return Result_t(cgi->builder.CreateLoad(extra), extra);
 		}
 
-		// good old Int8*
-		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
-
-		return Result_t(stringVal, 0);
+		return cgi->makeStringLiteral(this->str);
 	}
-	#endif
 }
 
 fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	// auto pair = cgi->getTypeByString("String");
-	// if(pair && !this->isRaw)
-	// {
-	// 	iceAssert(pair->first);
-	// 	return pair->first;
-	// }
-	// else
-	// {
-	// 	return fir::PointerType::getInt8Ptr();
-	// }
-
 	if(this->isRaw)
-	{
 		return fir::PointerType::getInt8Ptr();
-	}
+
 	else
-	{
 		return fir::StringType::get();
-	}
 }
 
 
