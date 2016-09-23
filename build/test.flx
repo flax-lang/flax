@@ -318,12 +318,16 @@ public func main() -> int
 
 func foo()
 {
+	defer printf("fuck\n")
+
 	var i = 0
 	while i < 10
 	{
 		defer printf("kappa\n")
 
 		printf("lol")
+
+		if i == 4 { return }
 
 		i += 1
 	}

@@ -8,39 +8,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	Result_t lastval(0, 0);
-	cgi->pushScope();
-
-	bool broke = false;
-	for(Expr* e : this->statements)
-	{
-		if(e->isBreaking() && cgi->getCurrentFunctionScope()->block->deferredStatements.size() > 0)
-		{
-			for(Expr* e : cgi->getCurrentFunctionScope()->block->deferredStatements)
-			{
-				e->codegen(cgi);
-			}
-		}
-
-		if(!broke)
-		{
-			lastval = e->codegen(cgi);
-		}
-
-		if(lastval.type == ResultType::BreakCodegen)
-			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
-	}
-
-	cgi->popScope();
-	return lastval;
-}
-
-fir::Type* BracedBlock::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
-{
-	iceAssert(0);
-}
 
 
 
