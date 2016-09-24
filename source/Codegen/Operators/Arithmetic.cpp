@@ -168,36 +168,16 @@ namespace Operators
 
 				// basically we should actually just have separate routines for each operation
 				fir::Value* ret = 0;
-				if(op == ArithmeticOp::CmpLT)
-				{
-					ret = cgi->irb.CreateICmpLT(val, fir::ConstantInt::getInt64(0));
-				}
-				else if(op == ArithmeticOp::CmpLEq)
-				{
-					ret = cgi->irb.CreateICmpLEQ(val, fir::ConstantInt::getInt64(0));
-				}
-				else if(op == ArithmeticOp::CmpGT)
-				{
-					ret = cgi->irb.CreateICmpGT(val, fir::ConstantInt::getInt64(0));
-				}
-				else if(op == ArithmeticOp::CmpGEq)
-				{
-					ret = cgi->irb.CreateICmpGEQ(val, fir::ConstantInt::getInt64(0));
-				}
-				else if(op == ArithmeticOp::CmpEq)
-				{
-					ret = cgi->irb.CreateICmpEQ(val, fir::ConstantInt::getInt64(0));
-				}
-				else if(op == ArithmeticOp::CmpNEq)
-				{
-					ret = cgi->irb.CreateICmpNEQ(val, fir::ConstantInt::getInt64(0));
-				}
-				else
-				{
-					error("???");
-				}
+				auto zero = fir::ConstantInt::getInt64(0);
 
+				if(op == ArithmeticOp::CmpLT)			ret = cgi->irb.CreateICmpLT(val, zero);
+				else if(op == ArithmeticOp::CmpLEq)		ret = cgi->irb.CreateICmpLEQ(val, zero);
+				else if(op == ArithmeticOp::CmpGT)		ret = cgi->irb.CreateICmpGT(val, zero);
+				else if(op == ArithmeticOp::CmpGEq)		ret = cgi->irb.CreateICmpGEQ(val, zero);
+				else if(op == ArithmeticOp::CmpEq)		ret = cgi->irb.CreateICmpEQ(val, zero);
+				else if(op == ArithmeticOp::CmpNEq)		ret = cgi->irb.CreateICmpNEQ(val, zero);
 
+				iceAssert(ret);
 				return Result_t(ret, 0);
 			}
 			else
@@ -263,8 +243,6 @@ namespace Operators
 				cgi->addRefCountedValue(newstrp);
 				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);
 			}
-
-			error("enotsup");
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
