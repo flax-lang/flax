@@ -248,22 +248,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// todo: look into these.
 
 	// >>> universal function call syntax -- use dot-operator calling on everything.
@@ -278,20 +262,282 @@ public func main(argc: int32, argv: int8**) -> int
 	return 0
 }
 
+*/
+
+
+
+
+/*
+
+semantics and design
+
+A. MEMORY MODEL
+{
+	I. VALUE TYPES
+	{
+		note: this is becoming very much like c++, which makes me get slightly uncomfortable.
+
+		1. LVALUES
+		{
+			simple. in terms of the IR, these are either globals, or stack-allocated variables
+			in other words, lvalues will always have a pointer (ie. memory location) associated with the actual value.
+		}
+
+		2. RVALUES
+		{
+			again, in terms of the IR, these are normal values, with no memory location.
+
+			rvalues can be assigned to lvalues, by virtue of storing the value into the memory location
+			in places where we need an lvalue, but only have an rvalue, an error will be thrown
+
+			i can think of several places in the compiler where we generate an lvalue from an rvalue by doing a stackalloc+store,
+			which needs to be eradicated.
+		}
+
+		3. FWVALUES
+		{
+			name is tentative; "function-wrapped values"
+
+			basically the getter/setter construct we see in some places, like subscript operators and computed properties.
+			fwvalues provide a getter function, and optionally a setter function.
+
+			like with any function, the getter function returns an rvalue, while the setter function takes rvalue arguments.
+		}
+
+
+		hopefully without reference types, these 3 categories are easier to grok than the crazy value categories of c++.
+
+
+
+		scenarios:
+
+		1. var x
+		2. foo(...)
+		3. x = foo[...], or x = foo.p where p is a computed property
+		4. foo[...] = x, or foo.p = x where p is a computed property
+		5. x = foo(...)
+
+
+		1.	- x is an lvalue. if x is referenced by name (ie. VarRef AST), then an lvalue is generated.
+		2.	- the result of calling a function is always an rvalue.
+		3/4.- subscripts and computed propertiees are special constructs
+			- the result of such an operation is an fwvalue.
+			- depending on whether the expression is used on the left or right, either the getter or setter is called.
+			- obviously if no setter is available and the expression is on the left side, an error is thrown.
+
+		5.	- function calls result in an rvalue.
+			- x must be an lvalue for this statement to be valid.
+	}
+
+
+
+
+	II. COPY
+	{
+		1. copy constructor can be defined for classes, not for structs
+		2. structs cannot have copy constructors nor assignment operator overloading. shallow assigns are always done.
+
+		form:
+
+		/*
+			class Foo
+			{
+				copy(other: Foo)
+				{
+					// initialise self
+
+					self.x = other.x
+					<bla bla>
+				}
+			}
+		*/
+
+
+		scenarios:
+		1. foo = x
+		2. foo(x)
+		3. return x
+		4. foo(bar())
+
+		copy constructor is called in the first 3 scenarios, and the new values are used.
+		the argument passed to the copy constructor is x, by-value. the rvalue of x is passed directly to the copy constructor,
+		obviously without caling the copy constructor itself to get a copy of x. that would be dumb.
+
+
+		scenario 4: since functions return an rvalue, and functions take rvalue as arguments, no copy constructor is called.
+		the rvalue result of the call to bar() is passed directly to foo().
+
+
+
+		if no copy constructor is provided, none will be provided for you by the state
+		if a copy constructor is needed and it's not given, the compiler will throw an error
+		prevents unexpected behaviour, i hope?
+
+
+		todo: look into whether is is a net detriment to convenience and programmer burden
+	}
+
+	III. MOVE
+	{
+		todo: find out if this is relevant at all for what i want to do
+		todo: find out what i want to do
+
+
+		preliminary:
+		like the copy constructor, the move constructor can only be defined for classes
+		note that while the copy and move constructor have similar syntax, they should do entirely different things.
+
+		if the class in question "owns" resources, eg. a memory buffer, a file, etc. then the copy constructor needs to copy the
+		resource. in cases where this is impossible (eg. you cannot 'copy' a file descriptor per-se), then the copy-constructor
+		is simply not declared.
+
+		in these cases, typically a move constructor is useful, to "move" the resource from one object to another.
+		for example:
+
+		`let x = openFileFromPathUsingMode("somefile.txt", "rw").`
+
+		the return value of the function is an rvalue, and it is 'moved' into the lvalue of x. However, something like this:
+
+		`let y = x`
+
+		would attempt to call the copy constructor. since it would not make sense to define such a constructor for a file object, its
+		declaration would simply be omitted, and the compiler will generate an error.
 
 
 
 
 
+		form:
+
+		/*
+			class Foo
+			{
+				move(other: Foo)
+				{
+					// initialise self
+					self.x = other.x
+					<bla bla>
+				}
+			}
+		*/
 
 
 
+		scenarios:
+
+		1. x = foo(...)
+		2. x = foo[...], or x = foo.p where p is a computed property
+		3. x = (x <expr>)
+		4. foo[...] = bar()
 
 
+		1.	- functions return an rvalue. if the type of x has a move constructor defined, then it is called.
+			- x must be an lvalue, so we can call methods fine. this is obvious, since x is assigned to.
+			- if the move constructor exists, it is called, using the lvalue of x as the object instance, and the result of the call
+			  as the value to move from.
+
+			- if the move constructor does not exist, then the copy constructor is called. (they have the same syntax)
+			- if the copy constructor does not exist, the compiler throws an error.
+
+		2.	- fwvalue operations cannot be moved from, even through they return rvalues.
+			- the parent class (of the property or subscript) is said to "own" whatever resource that is being accessed
+			- hence, calling foo[] or foo.p, where the result of these (the return type of operator [] or the type of p) has a move
+			  constructor, will not result in said constructor being called.
+			- if the copy constructor for such a type is not defined, then an error is thrown.
+
+		3.	- if the <expr> in question is some kind of, for instance, operator overload, then the result of such an expression
+			  would be an rvalue.
+			- semantics are identical to calling a function.
+
+		4.	- similar to calling a function with the result of another function, no constructor is called at all in this scenario if
+			  foo[...] results in an fwvalue.
+			- the rvalue of bar() is directly given to the setter function.
+	}
+
+	IV. REFCOUNTING
+	{
+		base: since the copy-constructor is sometimes needed, only classes can be refcounted
+		besides, since structs are supposed to be value types, they shouldn't be managing any kind of memory or other "owned data".
+
+		refcounting a certain type creates a wrapper, with a pointer to the actual data (thus facilitating lvalue operations), and
+		of course a reference count.
 
 
+		scenarios:
+		1. foo = rc
+		2. foo.x = rc
+		3. foo(rc)
+		4. rc = foo(...)
+		5. return rc
+
+
+		1.	- refcount of original value of foo is decreased
+			- refcount of rc is increased
+
+		2.	- refcount of original value of foo.x is decreased
+			- refcount of rc is increased
+
+		3.	- new instance of rc is created; refcount is 1, and copy constructor of underlying type is called
+			- original rc in current scope remains untouched
+
+		4.	- refcount of original value of rc is decreased
+			- new value of rc is taken as-is from the return value
+			- see "return rc" below
+			- this should result in the new refcount of rc = 1.
+
+		5.	- increases refcount of rc
+			- returns it.
+			- since scope exit decreases the refcount, this artificially inflates it such that the return value
+			  will live to actually get returned.
+
+
+		i don't think there's a scenario where the move-constructor of the type needs to be called?
+	}
+
+	V. STRINGS
+	{
+		basically handles like recounting. when the copy-constructor is supposed to be called, the memory buffer in the string
+		is copied instead.
+	}
+}
 
 */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // import LibCInterface
@@ -303,8 +549,48 @@ struct SomeStruct
 	var str: string = "bar"
 }
 
+class A
+{
+	init(a: int) { self.x = a }
+	init() { }
+
+	var x = 10
+
+	operator = (other: A)
+	{
+		self.x = other.x
+	}
+}
+
+struct B
+{
+	var x = 20
+}
+
+operator == (a: B, b: B) -> bool { return a.x == b.x }
+
 public func main() -> int
 {
+	do {
+		var a: A
+		a = A()
+
+		let b = A(3)
+		a = b
+
+		printf(@raw "%d\n", a.x)
+	}
+
+	do {
+		var x = B()
+		let y = B(40)
+
+		x = y
+
+		printf(@raw "%d, %d\n", x.x, x == y)
+	}
+
+
 	// let k: string = "hello"
 	// var g: string = "world"
 
