@@ -23,7 +23,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	f->setFunction(func);
 
 
-	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;
+	fir::Value* cond = pairs.front().first->codegen(cgi).value;
 	cond = cgi->irb.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
 
 
@@ -35,7 +35,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	{
 		cgi->pushScope();
 		blockResult = pairs.front().second->codegen(cgi);
-		val = blockResult.result.first;
+		val = blockResult.value;
 		cgi->popScope();
 	}
 
@@ -63,7 +63,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->cases.size() > 0);
 
-	fir::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
+	fir::Value* firstCond = this->cases[0].first->codegen(cgi).value;
 	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
 
 
@@ -91,7 +91,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// generate the statements inside
 		Result_t cresult = this->cases[0].second->codegen(cgi);
-		truev = cresult.result.first;
+		truev = cresult.value;
 		cgi->popScope();
 
 		if(cresult.type != ResultType::BreakCodegen)
@@ -132,7 +132,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 		elseResult = this->final->codegen(cgi);
 		cgi->popScope();
 
-		fir::Value* v = elseResult.result.first;
+		fir::Value* v = elseResult.value;
 
 		if(phi)
 			phi->addIncoming(v, falseb);

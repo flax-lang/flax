@@ -76,7 +76,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 			this->didCodegen = true;
 
 			auto res = this->func->codegen(cgi);
-			this->lfunc = dynamic_cast<fir::Function*>(res.result.first);
+			this->lfunc = dynamic_cast<fir::Function*>(res.value);
 
 			return res;
 		}

@@ -43,10 +43,8 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(cgi->isAnyType(type))
 	{
-		ValPtr_t vp = this->inside->codegen(cgi).result;
-		fir::Value* ptr = vp.second;
-
-		return getTypeOfAny(cgi, ptr);
+		auto r = this->inside->codegen(cgi);
+		return getTypeOfAny(cgi, r.pointer);
 	}
 	else
 	{
@@ -69,7 +67,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Value* wrapper = cgi->getStackAlloc(tp->first, "typeof_tmp");
 	fir::Value* gep = cgi->irb.CreateStructGEP(wrapper, 0);
 
-	cgi->irb.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
+	cgi->irb.CreateStore(enr->cases[index - 1].second->codegen(cgi).value, gep);
 	return Result_t(cgi->irb.CreateLoad(wrapper), wrapper);
 }
 

@@ -112,11 +112,11 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-		ValPtr_t leftVP = args[0]->codegen(cgi).result;
-		ValPtr_t rightVP = args[1]->codegen(cgi).result;
+		auto leftr = args[0]->codegen(cgi);
+		auto rightr = args[1]->codegen(cgi);
 
-		fir::Value* lhs = leftVP.first;
-		fir::Value* rhs = rightVP.first;
+		fir::Value* lhs = leftr.value;
+		fir::Value* rhs = rightr.value;
 
 		rhs = cgi->autoCastType(lhs, rhs);
 
@@ -149,8 +149,8 @@ namespace Operators
 			{
 				// compare two strings
 
-				fir::Value* lhsptr = leftVP.second;
-				fir::Value* rhsptr = rightVP.second;
+				fir::Value* lhsptr = leftr.pointer;
+				fir::Value* rhsptr = rightr.pointer;
 
 				iceAssert(lhsptr);
 				iceAssert(rhsptr);
@@ -195,21 +195,20 @@ namespace Operators
 				// 8. return.
 
 				// get an empty string
-				auto r = cgi->getEmptyString();
-				fir::Value* newstrp = r.result.second;
+				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::StringType::get());
 				newstrp->setName("newstrp");
 
-				fir::Value* lhsptr = leftVP.second;
-				fir::Value* rhsptr = rightVP.second;
+				fir::Value* lhsptr = leftr.pointer;
+				fir::Value* rhsptr = rightr.pointer;
 
 				iceAssert(lhsptr);
 				iceAssert(rhsptr);
 
-				fir::Value* lhslen = cgi->irb.CreateGetStringLength(lhsptr);
-				fir::Value* rhslen = cgi->irb.CreateGetStringLength(rhsptr);
+				fir::Value* lhslen = cgi->irb.CreateGetStringLength(lhsptr, "l1");
+				fir::Value* rhslen = cgi->irb.CreateGetStringLength(rhsptr, "l2");
 
-				fir::Value* lhsbuf = cgi->irb.CreateGetStringData(lhsptr);
-				fir::Value* rhsbuf = cgi->irb.CreateGetStringData(rhsptr);
+				fir::Value* lhsbuf = cgi->irb.CreateGetStringData(lhsptr, "d1");
+				fir::Value* rhsbuf = cgi->irb.CreateGetStringData(rhsptr, "d2");
 
 
 				// ok. combine the lengths
@@ -221,6 +220,13 @@ namespace Operators
 				iceAssert(mallocf);
 
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(newlen, fir::PrimitiveType::getInt64()));
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p\n");
+					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+					cgi->irb.CreateCall2(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, buf);
+				}
+
 
 				// now memcpy
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
@@ -258,7 +264,7 @@ namespace Operators
 		}
 		else if((op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq) && cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
 		{
-			return compareEnumValues(cgi, op, lhs, leftVP.second, rhs, rightVP.second);
+			return compareEnumValues(cgi, op, lhs, leftr.pointer, rhs, rightr.pointer);
 		}
 		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
 			|| lhs->getType()->isClassType() || rhs->getType()->isClassType())
@@ -266,7 +272,7 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)
 			{
-				return cgi->callBinaryOperatorOverload(data, lhs, leftVP.second, rhs, rightVP.second, op);
+				return cgi->callBinaryOperatorOverload(data, lhs, leftr.pointer, rhs, rightr.pointer, op);
 			}
 			else
 			{

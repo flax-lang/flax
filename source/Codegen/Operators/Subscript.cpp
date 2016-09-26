@@ -124,7 +124,7 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self (note: uses the ArrayIndex AST)
-			fir::Value* lhsPtr = ari->arr->codegen(cgi).result.second;
+			fir::Value* lhsPtr = ari->arr->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			if(lhsPtr->isImmutable())
@@ -139,7 +139,7 @@ namespace Operators
 			// -2 to exclude the first param, and the rhs param.
 			for(size_t i = 0; i < fn->getArgumentCount() - 2; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).value;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -258,7 +258,7 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self.
-			fir::Value* lhsPtr = args[0]->codegen(cgi).result.second;
+			fir::Value* lhsPtr = args[0]->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			fargs.push_back(lhsPtr);
@@ -269,7 +269,7 @@ namespace Operators
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).pointer;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -314,14 +314,14 @@ namespace Operators
 		Result_t lhsp = subscriptee->codegen(cgi);
 
 		fir::Value* lhs = 0;
-		if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
-		else												lhs = lhsp.result.second;
+		if(lhsp.pointer->getType()->isPointerType())	lhs = lhsp.value;
+		else											lhs = lhsp.pointer;
 
 
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
-		fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
+		fir::Value* ind = subscriptIndex->codegen(cgi).value;
 
 		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
 		{
@@ -339,7 +339,7 @@ namespace Operators
 			gep = cgi->irb.CreateGetPointer(lhs, ind);
 		}
 
-		return Result_t(cgi->irb.CreateLoad(gep), gep);
+		return Result_t(cgi->irb.CreateLoad(gep), gep, ValueKind::LValue);
 	}
 }
 

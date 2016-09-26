@@ -32,7 +32,7 @@ namespace Operators
 		cgi->irb.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 		// always codegen left.
-		fir::Value* lhs = args[0]->codegen(cgi).result.first;
+		fir::Value* lhs = args[0]->codegen(cgi).value;
 		if(lhs->getType() != fir::PrimitiveType::getBool())
 			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
@@ -44,7 +44,7 @@ namespace Operators
 		// so if the second condition is also true, then we can jump to merge.
 		cgi->irb.setCurrentBlock(checkRight);
 
-		fir::Value* rhs = args[1]->codegen(cgi).result.first;
+		fir::Value* rhs = args[1]->codegen(cgi).value;
 
 		if(lhs->getType() != fir::PrimitiveType::getBool())
 			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
@@ -88,7 +88,7 @@ namespace Operators
 		cgi->irb.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 		// always codegen left.
-		fir::Value* lhs = args[0]->codegen(cgi).result.first;
+		fir::Value* lhs = args[0]->codegen(cgi).value;
 		if(lhs->getType() != fir::PrimitiveType::getBool())
 			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
@@ -100,7 +100,7 @@ namespace Operators
 		// so if the second condition is also true, then we can jump to merge.
 		cgi->irb.setCurrentBlock(checkRight);
 
-		fir::Value* rhs = args[1]->codegen(cgi).result.first;
+		fir::Value* rhs = args[1]->codegen(cgi).value;
 
 		if(lhs->getType() != fir::PrimitiveType::getBool())
 			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
@@ -127,8 +127,8 @@ namespace Operators
 		if(args.size() != 1)
 			error(user, "Expected 1 argument for logical not, have %zu", args.size());
 
-		auto res = args[0]->codegen(cgi).result;
-		return Result_t(cgi->irb.CreateLogicalNot(res.first), res.second);
+		auto res = args[0]->codegen(cgi);
+		return Result_t(cgi->irb.CreateLogicalNot(res.value), res.pointer);
 	}
 }
 
