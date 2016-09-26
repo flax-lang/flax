@@ -88,10 +88,10 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				fir::Value* ptr = cgi->irb.CreateGetStructMember(self, var->ident.name);
 
-				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-				var->inferType(cgi);
+				auto r = var->initVal ? var->initVal->codegen(cgi) : Result_t(0, 0);
 
-				var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.first, r.second, ptr, false);
+				var->inferType(cgi);
+				var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.value, r.pointer, ptr, false, r.valueKind);
 			}
 			else
 			{
@@ -118,7 +118,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(var->initVal);
-					fir::Value* val = var->initVal->codegen(cgi, gv).result.first;
+					fir::Value* val = var->initVal->codegen(cgi, gv).value;
 					if(dynamic_cast<fir::ConstantValue*>(val))
 					{
 						gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));

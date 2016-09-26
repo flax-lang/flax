@@ -190,10 +190,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else if(isImplicitReturn)
 	{
 		fir::Type* needed = func->getReturnType();
-		if(lastval.result.first->getType() != needed)
-			lastval.result.first = cgi->autoCastType(func->getReturnType(), lastval.result.first, lastval.result.second);
+		if(lastval.value->getType() != needed)
+			lastval.value = cgi->autoCastType(func->getReturnType(), lastval.value, lastval.pointer);
 
-		cgi->irb.CreateReturn(lastval.result.first);
+		cgi->irb.CreateReturn(lastval.value);
 	}
 
 

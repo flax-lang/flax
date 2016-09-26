@@ -9,10 +9,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-
-
-
-
 Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	fir::Function* parentFunc = cgi->irb.getCurrentBlock()->getParentFunction();
@@ -25,7 +21,7 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->irb.CreateUnCondBranch(setupBlock);
 	cgi->irb.setCurrentBlock(setupBlock);
 
-	fir::Value* condOutside = this->cond->codegen(cgi).result.first;
+	fir::Value* condOutside = this->cond->codegen(cgi).value;
 
 	// branch to the body, since we don't allow unforced fallthroughs in the ir
 	// if we're a do-while, don't check the condition the first time
@@ -45,7 +41,7 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->popBracedBlock();
 
 	// put a branch to see if we will go back
-	fir::Value* condInside = this->cond->codegen(cgi).result.first;
+	fir::Value* condInside = this->cond->codegen(cgi).value;
 	cgi->irb.CreateCondBranch(condInside, loopBody, loopEnd);
 
 

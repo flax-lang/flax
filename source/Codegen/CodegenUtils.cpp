@@ -1850,7 +1850,7 @@ namespace Codegen
 		if(needToCodegen)
 		{
 			Result_t res = fnDecl->generateDeclForGenericFunction(this, gtm);
-			ffunc = (fir::Function*) res.result.first;
+			ffunc = (fir::Function*) res.value;
 
 			this->reifiedGenericFunctions[{ func, gtm }] = ffunc;
 		}
@@ -2626,10 +2626,10 @@ namespace Codegen
 
 				this->irb.CreateCall1(freefn, bufp);
 
-				fir::Value* tmpstr = this->module->createGlobalString("free\n");
+				fir::Value* tmpstr = this->module->createGlobalString("free %p\n");
 				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
 
-				this->irb.CreateCall1(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr);
+				this->irb.CreateCall2(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp);
 				this->irb.CreateUnCondBranch(merge);
 			}
 
@@ -2742,37 +2742,70 @@ namespace Codegen
 
 
 
-	void CodegenInstance::incrementStringRefCount(fir::Value* strp)
+	void CodegenInstance::incrementRefCount(fir::Value* strp)
 	{
-		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-		iceAssert(printffn);
-		fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
-		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-		this->irb.CreateCall1(printffn, tmpstr);
+			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			iceAssert(printffn);
+			fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall1(printffn, tmpstr);
 
-		fir::Function* incrf = this->getStringRefCountIncrementFunction();
-		this->irb.CreateCall1(incrf, strp);
+			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			this->irb.CreateCall1(incrf, strp);
+		}
+		else
+		{
+			error("no");
+		}
 	}
 
-	void CodegenInstance::decrementStringRefCount(fir::Value* strp)
+	void CodegenInstance::decrementRefCount(fir::Value* strp)
 	{
-		iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-		fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-		iceAssert(printffn);
+			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			iceAssert(printffn);
 
-		// debug.
-		fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + "\n");
-		tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-		this->irb.CreateCall1(printffn, tmpstr);
+			// debug.
+			fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + " %p\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall2(printffn, tmpstr, this->irb.CreateGetStringData(strp));
 
+			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			this->irb.CreateCall1(decrf, strp);
 
-		fir::Function* decrf = this->getStringRefCountDecrementFunction();
-		this->irb.CreateCall1(decrf, strp);
+			tmpstr = this->module->createGlobalString("decremented\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall1(printffn, tmpstr);
+		}
+		else
+		{
+			error("no");
+		}
 	}
 
+
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, ValueKind rhsVK)
+	{
+		// right.
+		if(!this->isRefCountedType(val->getType()))
+		{
+			this->irb.CreateStore(val, target);
+			return;
+		}
+
+
+
+		warn(user, "thing");
+	}
 
 
 

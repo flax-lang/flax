@@ -55,7 +55,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		return Result_t(fn, 0);
 	}
 
-	return Result_t(cgi->irb.CreateLoad(val), val);
+	return Result_t(cgi->irb.CreateLoad(val), val, ValueKind::LValue);
 }
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
@@ -106,8 +106,8 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 
 
 
-fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* cmplxtype, fir::Value* val, fir::Value* valptr,
-	fir::Value* storage, bool shouldAddToSymtab)
+fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype, fir::Value* val, fir::Value* valptr,
+	fir::Value* storage, bool shouldAddToSymtab, ValueKind vk)
 {
 	fir::Value* ai = storage;
 	bool didAddToSymtab = false;
@@ -193,12 +193,12 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 
 			auto vr = new VarRef(this->pin, this->ident.name);
 			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
-				ai, val, valptr);
+				ai, val, valptr, vk);
 
 			delete vr;
 
 			this->immutable = wasImmut;
-			return res.result.first;
+			return res.value;
 		}
 		else if(!cmplxtype && !this->initVal)
 		{
@@ -300,6 +300,21 @@ fir::Value* VarDecl::doInitialValue(Codegen::CodegenInstance* cgi, TypePair_t* c
 	if(val->getType() != ai->getType()->getPointerElementType())
 		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 
+
+
+	// strings 'n' stuff
+	if(cgi->isRefCountedType(val->getType()))
+	{
+		// can't store directly.
+		// need to do refcounting nonsense.
+
+		// check if the right side is an rvalue
+		// if so, we need to do a copy.
+
+		cgi->assignRefCountedExpression(this, val, valptr, ai, vk);
+	}
+
+
 	cgi->irb.CreateStore(val, ai);
 	return val;
 }
@@ -365,10 +380,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
+	ValueKind vk = ValueKind::RValue;
+
 	if(this->initVal)
 	{
-		ValPtr_t r;
-
 		if(isGlobal && (this->concretisedType->isStructType() || this->concretisedType->isClassType()))
 		{
 			// can't call directly for globals, since we cannot call the function directly.
@@ -377,12 +392,14 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			r = this->initVal->codegen(cgi, ai).result;
-		}
+			auto r = this->initVal->codegen(cgi, ai);
 
-		val = r.first;
-		valptr = r.second;
+			val = r.value;
+			valptr = r.pointer;
+			vk = r.valueKind;
+		}
 	}
+
 
 
 
@@ -454,7 +471,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cmplxtype = cgi->getType(this->concretisedType);
 		}
 
-		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true);
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true, vk);
 	}
 
 	if(this->immutable)

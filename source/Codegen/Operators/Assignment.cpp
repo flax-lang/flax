@@ -103,7 +103,7 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-
+		ValueKind vk = ValueKind::RValue;
 		fir::Value* rhsPtr = 0;
 		fir::Value* rhs = 0;
 
@@ -129,10 +129,11 @@ namespace Operators
 			// note: when we reach this, it means that we didn't find a specific operator overload
 			// in the "generalCompoundAssignmentOperator" function.
 			Result_t res = OperatorMap::get().call(actualOp, cgi, user, args);
-			iceAssert(res.result.first);
+			iceAssert(res.value);
 
-			rhs = res.result.first;
-			rhsPtr = res.result.second;
+			rhs = res.value;
+			rhsPtr = res.pointer;
+			vk = res.valueKind;
 
 			op = ArithmeticOp::Assign;
 		}
@@ -148,10 +149,10 @@ namespace Operators
 			{
 				iceAssert(setter->getArgumentCount() == 2 && "invalid setter");
 
-				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi).result.first;
+				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi).value;
 
-				auto lres = ma->left->codegen(cgi).result;
-				fir::Value* lhsPtr = lres.first->getType()->isPointerType() ? lres.first : lres.second;
+				auto lres = ma->left->codegen(cgi);
+				fir::Value* lhsPtr = lres.value->getType()->isPointerType() ? lres.value : lres.pointer;
 
 				iceAssert(lhsPtr);
 				if(lhsPtr->isImmutable())
@@ -169,16 +170,17 @@ namespace Operators
 
 			// todo: do we need to add the LLVariableArray thing?
 			if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
-				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).result.first, args[1]);
+				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).value, args[1]);
 		}
 
 
 
 
 		// else, we should be safe to codegen both sides
-		auto leftVP = args[0]->codegen(cgi).result;
-		fir::Value* lhsPtr = leftVP.second;
-		fir::Value* lhs = leftVP.first;
+		auto leftr = args[0]->codegen(cgi);
+
+		fir::Value* lhs = leftr.value;
+		fir::Value* lhsPtr = leftr.pointer;
 
 
 		// this is to allow handling of compound assignment operators
@@ -188,14 +190,16 @@ namespace Operators
 			iceAssert(rhs == 0);
 			iceAssert(rhsPtr == 0);
 
-			auto rightVP = args[1]->codegen(cgi).result;
-			rhsPtr = rightVP.second;
-			rhs = rightVP.first;
+			auto rightr = args[1]->codegen(cgi);
+
+			rhs = rightr.value;
+			rhsPtr = rightr.pointer;
+			vk = rightr.valueKind;
 		}
 
 
 		// the bulk of the work is still done here
-		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsPtr, rhs, rhsPtr);
+		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsPtr, rhs, rhsPtr, vk);
 	}
 
 
@@ -216,10 +220,10 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
-				auto leftvp = args[0]->codegen(cgi).result;
-				auto rightvp = args[1]->codegen(cgi).result;
+				auto leftvp = args[0]->codegen(cgi);
+				auto rightvp = args[1]->codegen(cgi);
 
-				cgi->callBinaryOperatorOverload(data, leftvp.first, leftvp.second, rightvp.first, rightvp.second, op);
+				cgi->callBinaryOperatorOverload(data, leftvp.value, leftvp.pointer, rightvp.value, rightvp.pointer, op);
 				return Result_t(0, 0);
 			}
 
@@ -235,7 +239,7 @@ namespace Operators
 
 
 	Result_t performActualAssignment(CodegenInstance* cgi, Expr* user, Expr* leftExpr, Expr* rightExpr, ArithmeticOp op, fir::Value* lhs,
-		fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
+		fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr, ValueKind vk)
 	{
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
@@ -364,7 +368,7 @@ namespace Operators
 			iceAssert(rhsPtr);
 			Result_t res = cgi->extractValueFromAny(lhs->getType(), rhsPtr);
 
-			cgi->irb.CreateStore(res.result.first, lhsPtr);
+			cgi->irb.CreateStore(res.value, lhsPtr);
 
 			// assign returns nothing.
 			return Result_t(0, 0);
@@ -384,11 +388,33 @@ namespace Operators
 
 
 		if(lhs->getType() != rhs->getType())
-			error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+		{
+			error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->str().c_str(),
+				rhs->getType()->str().c_str());
+		}
 
 
-		// check if the left side is a simple var
-		if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
+
+
+
+		if(lhs->getType()->isStringType())
+		{
+			iceAssert(lhsPtr);
+
+			// deref the lhs, since it's going to die real soon
+			cgi->decrementRefCount(lhsPtr);
+
+			// ref the right side
+			if(rhs->getType()->isStringType())
+			{
+				iceAssert(rhsPtr);
+				cgi->incrementRefCount(rhsPtr);
+			}
+
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk);
+			return Result_t(0, 0);
+		}
+		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{
 			VarDecl* vdecl = cgi->getSymDecl(user, v->name);
 
@@ -417,23 +443,6 @@ namespace Operators
 			fir::Value* rhsVal = cgi->irb.CreateLoad(rhsGEP);
 			cgi->irb.CreateStore(rhsVal, lhsGEP);
 
-			return Result_t(0, 0);
-		}
-		else if(lhs->getType()->isStringType())
-		{
-			iceAssert(lhsPtr);
-
-			// deref the lhs, since it's going to die real soon
-			cgi->decrementStringRefCount(lhsPtr);
-
-			// ref the right side
-			if(rhs->getType()->isStringType())
-			{
-				iceAssert(rhsPtr);
-				cgi->incrementStringRefCount(rhsPtr);
-			}
-
-			cgi->irb.CreateStore(rhs, lhsPtr);
 			return Result_t(0, 0);
 		}
 		else

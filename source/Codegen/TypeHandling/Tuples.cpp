@@ -67,7 +67,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(unsigned int i = 0; i < tuptype->getElementCount(); i++)
 	{
 		fir::Value* member = cgi->irb.CreateStructGEP(gep, i);
-		fir::Value* val = this->values[i]->codegen(cgi).result.first;
+		fir::Value* val = this->values[i]->codegen(cgi).value;
 
 		val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
 

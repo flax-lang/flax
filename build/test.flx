@@ -366,14 +366,16 @@ public func main() -> int
 	// printf(@raw "[%s], [%s]\n", k, g)
 	// foo()
 
-	var ss = SomeStruct()
-	ss.str = "hello"
+	// var ss = SomeStruct()
+	// ss.str = "hello"
 
-	printf(@raw "[%s]\n", ss.str)
+	// printf(@raw "[%s]\n", ss.str)
 
+
+	// bar()
+	// qux()
 
 	bar()
-	qux()
 
 	return 0
 }
@@ -385,11 +387,21 @@ func qux()
 
 func bar()
 {
-	let a = "ohmy"
-	let b = "gosh"
+	// let a = "ohmy"
+	// let b = "gosh"
 
-	let x = a + b
-	printf(@raw "[%s]\n", x)
+	// let x = a + b
+	// printf(@raw "[%s]\n", x)
+
+	bar1()
+}
+
+func bar1()
+{
+	var y = "str"
+	let x = y + "ing"
+	y = x + "ing"
+	printf(@raw "[%s], [%s]\n", x, y)
 }
 
 

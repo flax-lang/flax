@@ -32,7 +32,7 @@ static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cl
 	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
 
-static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num, bool createPtr)
+static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num)
 {
 	iceAssert(selfPtr);
 	iceAssert(num);
@@ -47,7 +47,7 @@ static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number*
 		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
 
 	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
-	return Result_t(cgi->irb.CreateLoad(gep), createPtr ? gep : 0);
+	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
 }
 
 // returns: Ast::Func, function, return type of function, return value of function
@@ -262,7 +262,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// gen the var ref on the left.
 	Result_t res = this->cachedCodegenResult;
-	if(res.result.first == 0 && res.result.second == 0)
+	if(res.value == 0 && res.pointer == 0)
 	{
 		res = this->left->codegen(cgi);
 	}
@@ -271,10 +271,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("wtf");
 	}
 
-	ValPtr_t p = res.result;
-
-	fir::Value* self = p.first;
-	fir::Value* selfPtr = p.second;
+	fir::Value* self = res.value;
+	fir::Value* selfPtr = res.pointer;
 
 
 	bool isPtr = false;
@@ -347,7 +345,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				std::deque<fir::Value*> args;
 				for(auto e : fc->params)
-					args.push_back(e->codegen(cgi).result.first);
+					args.push_back(e->codegen(cgi).value);
 
 
 				// make a new self
@@ -460,17 +458,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
-		bool immut = false;
-
-		if(VarRef* vr = dynamic_cast<VarRef*>(this->left))
-		{
-			VarDecl* vd = cgi->getSymDecl(this, vr->name);
-			iceAssert(vd);
-
-			immut = vd->immutable;
-		}
-
-		return doTupleAccess(cgi, selfPtr, n, !immut);
+		return doTupleAccess(cgi, selfPtr, n);
 	}
 	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
@@ -691,7 +679,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 	if(str->members[i]->immutable)
 		ptr = 0;
 
-	return Result_t(val, ptr);
+	return Result_t(val, ptr, ValueKind::LValue);
 }
 
 
@@ -954,7 +942,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 				std::vector<fir::Value*> args;
 				for(Expr* e : fc->params)
-					args.push_back(e->codegen(this).result.first);
+					args.push_back(e->codegen(this).value);
 
 				return { { ltype, this->callTypeInitialiser(tp, ma, args) }, curFType };
 			}
@@ -1024,7 +1012,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				{
 					ptr->getType()->getPointerElementType(),
-					actual ? Result_t(this->irb.CreateLoad(ptr), ptr) : Result_t(0, 0)
+					actual ? Result_t(this->irb.CreateLoad(ptr), ptr, ValueKind::LValue) : Result_t(0, 0)
 				},
 				curFType
 			};
@@ -1040,7 +1028,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 					error(vr, "Invalid class '%s'", vr->name.c_str());
 
 				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
-				return { { res.result.first->getType(), res }, curFType };
+				return { { res.value->getType(), res }, curFType };
 			}
 			else if(ClassDef* cls = dynamic_cast<ClassDef*>(curType))
 			{
@@ -1049,7 +1037,9 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 					if(v->isStatic && v->ident.name == vr->name)
 					{
 						fir::Type* ltype = v->getType(this);
-						return { { ltype, actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0) }, curFType };
+						auto r = actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0);
+
+						return { { ltype, Result_t(r.value, r.pointer, ValueKind::LValue) }, curFType };
 					}
 				}
 				for(auto f : cls->funcs)
@@ -1394,10 +1384,10 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 							delete vr;
 
-							iceAssert(res.result.first);
-							iceAssert(res.result.first->getType()->isFunctionType());
+							iceAssert(res.value);
+							iceAssert(res.value->getType()->isFunctionType());
 
-							theFunction = res.result.first;
+							theFunction = res.value;
 							break;
 						}
 					}
@@ -1425,10 +1415,10 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 								delete vr;
 
-								iceAssert(res.result.first);
-								iceAssert(res.result.first->getType()->isFunctionType());
+								iceAssert(res.value);
+								iceAssert(res.value->getType()->isFunctionType());
 
-								theFunction = res.result.first;
+								theFunction = res.value;
 								break;
 							}
 						}
@@ -1459,10 +1449,10 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 										delete vr;
 
-										iceAssert(res.result.first);
-										iceAssert(res.result.first->getType()->isFunctionType());
+										iceAssert(res.value);
+										iceAssert(res.value->getType()->isFunctionType());
 
-										theFunction = res.result.first;
+										theFunction = res.value;
 										stop = true;
 										break;
 									}
@@ -1478,7 +1468,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 				if(theFunction && ref)
 				{
 					// call the function pointer
-					fir::Value* result = fc->codegen(cgi, theFunction).result.first;
+					fir::Value* result = fc->codegen(cgi, theFunction).value;
 					iceAssert(result);
 
 					return std::make_tuple((Func*) 0, (fir::Function*) 0, theFunction->getType()->toFunctionType()->getReturnType(), result);
@@ -1521,7 +1511,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 		std::vector<fir::Value*> args { ref };
 
 		for(Expr* e : fc->params)
-			args.push_back(e->codegen(cgi).result.first);
+			args.push_back(e->codegen(cgi).value);
 
 
 		// now we need to determine if it exists, and its params.

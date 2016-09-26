@@ -40,8 +40,8 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		{
 			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
 
-			ValPtr_t res = e->codegen(cgi).result;
-			fir::Value* arg = res.first;
+			auto res = e->codegen(cgi);
+			fir::Value* arg = res.value;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
@@ -57,11 +57,11 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			else if(checkcv && arg->getType()->isStringType())
 			{
 				// this function knows what to do.
-				arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
+				arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.pointer);
 			}
 
 			args.push_back(arg);
-			argPtrs.push_back(res.second);
+			argPtrs.push_back(res.pointer);
 
 			cur++;
 		}
@@ -88,8 +88,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		{
 			Expr* ex = params[i];
 
-			ValPtr_t res = ex->codegen(cgi).result;
-			fir::Value* arg = res.first;
+			fir::Value* arg = ex->codegen(cgi).value;
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, ex);
@@ -102,7 +101,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		if(params.back()->getType(cgi)->isLLVariableArrayType() && params.back()->getType(cgi)->toLLVariableArray()->getElementType()
 			== ft->getArgumentTypes().back()->toLLVariableArray()->getElementType())
 		{
-			args.push_back(params.back()->codegen(cgi).result.first);
+			args.push_back(params.back()->codegen(cgi).value);
 		}
 		else
 		{
@@ -112,13 +111,13 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
 			{
-				auto r = params[i]->codegen(cgi).result;
-				fir::Value* val = r.first;
-				fir::Value* valP = r.second;
+				auto r = params[i]->codegen(cgi);
+				fir::Value* val = r.value;
+				fir::Value* valP = r.pointer;
 
 				if(cgi->isAnyType(variadicType))
 				{
-					variadics.push_back(cgi->makeAnyFromValue(val, valP).result.first);
+					variadics.push_back(cgi->makeAnyFromValue(val, valP).value);
 				}
 				else if(variadicType != val->getType())
 				{
@@ -141,7 +140,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			}
 
 			fir::Value* arrPtr = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
-			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).result.first;
+			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).value;
 			args.push_back(llar);
 		}
 	}
@@ -181,7 +180,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
-			args.push_back(e->codegen(cgi).result.first);
+			args.push_back(e->codegen(cgi).value);
 
 		return cgi->callTypeInitialiser(tp, this, args);
 	}

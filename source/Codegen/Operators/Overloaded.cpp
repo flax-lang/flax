@@ -157,7 +157,7 @@ namespace Codegen
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
 						info(oo->func->decl, "generating");
-						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).result.first);
+						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).value);
 					}
 				}
 

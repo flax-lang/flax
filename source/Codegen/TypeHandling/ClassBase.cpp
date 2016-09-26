@@ -21,7 +21,7 @@ namespace Codegen
 		fn->decl->ident.scope = cls->ident.scope;
 		fn->decl->ident.scope.push_back(cls->ident.name);
 
-		fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).result.first);
+		fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).value);
 		iceAssert(lfunc);
 
 		cgi->irb.setCurrentBlock(ob);
@@ -40,7 +40,7 @@ namespace Codegen
 		{
 			fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
-			fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).result.first);
+			fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).value);
 			iceAssert(ffn);
 
 
@@ -290,7 +290,7 @@ namespace Codegen
 			if(cls->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
 				aoo->func->decl->attribs |= Attr_VisPublic;
 
-			fir::Value* val = aoo->func->decl->codegen(cgi).result.first;
+			fir::Value* val = aoo->func->decl->codegen(cgi).value;
 			aoo->lfunc = dynamic_cast<fir::Function*>(val);
 			iceAssert(aoo->lfunc);
 
@@ -359,7 +359,7 @@ namespace Codegen
 				if(cls->attribs & Attr_VisPublic)
 					decl->attribs |= Attr_VisPublic;
 
-				soo->getterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).result.first);
+				soo->getterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).value);
 				iceAssert(soo->getterFunc);
 
 				cgi->irb.setCurrentBlock(ob);
@@ -392,7 +392,7 @@ namespace Codegen
 				if(cls->attribs & Attr_VisPublic)
 					decl->attribs |= Attr_VisPublic;
 
-				soo->setterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).result.first);
+				soo->setterFunc = dynamic_cast<fir::Function*>(decl->codegen(cgi).value);
 				iceAssert(soo->setterFunc);
 
 				cgi->irb.setCurrentBlock(ob);
