@@ -77,6 +77,9 @@ namespace Codegen
 		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 
+		// refcounting, holds a stack of *POINTERS* to refcounted types
+		std::deque<std::deque<fir::Value*>> refCountingStack;
+
 		// generic stuff
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
@@ -89,7 +92,7 @@ namespace Codegen
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
 		std::deque<Ast::Func*> funcScopeStack;
 
-		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
+		fir::IRBuilder irb = fir::IRBuilder(fir::getDefaultFTContext());
 
 
 		struct
@@ -135,6 +138,8 @@ namespace Codegen
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
 		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
+		void addRefCountedValue(fir::Value* ptr);
+		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
@@ -216,6 +221,7 @@ namespace Codegen
 		bool isBuiltinType(fir::Type* e);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
+		bool isRefCountedType(fir::Type* type);
 
 		bool isDuplicateType(Identifier id);
 
@@ -242,6 +248,15 @@ namespace Codegen
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
+
+		Ast::Result_t getNullString();
+		Ast::Result_t getEmptyString();
+		Ast::Result_t makeStringLiteral(std::string str);
+
+		void incrementRefCount(fir::Value* strp);
+		void decrementRefCount(fir::Value* strp);
+
+		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK);
 
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
@@ -275,7 +290,9 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
-
+		fir::Function* getStringRefCountIncrementFunction();
+		fir::Function* getStringRefCountDecrementFunction();
+		fir::Function* getStringCompareFunction();
 
 
 

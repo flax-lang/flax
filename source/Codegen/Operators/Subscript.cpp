@@ -124,7 +124,7 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self (note: uses the ArrayIndex AST)
-			fir::Value* lhsPtr = ari->arr->codegen(cgi).result.second;
+			fir::Value* lhsPtr = ari->arr->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			if(lhsPtr->isImmutable())
@@ -139,7 +139,7 @@ namespace Operators
 			// -2 to exclude the first param, and the rhs param.
 			for(size_t i = 0; i < fn->getArgumentCount() - 2; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).value;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -153,7 +153,7 @@ namespace Operators
 			fargs.push_back(rhs);
 
 
-			cgi->builder.CreateCall(fn, fargs);
+			cgi->irb.CreateCall(fn, fargs);
 
 			return Result_t(0, 0);
 		}
@@ -258,7 +258,7 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self.
-			fir::Value* lhsPtr = args[0]->codegen(cgi).result.second;
+			fir::Value* lhsPtr = args[0]->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			fargs.push_back(lhsPtr);
@@ -269,7 +269,7 @@ namespace Operators
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).pointer;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -278,8 +278,8 @@ namespace Operators
 				fargs.push_back(arg);
 			}
 
-			fir::Value* val = cgi->builder.CreateCall(fn, fargs);
-			fir::Value* ret = cgi->builder.CreateImmutStackAlloc(fn->getReturnType(), val);
+			fir::Value* val = cgi->irb.CreateCall(fn, fargs);
+			fir::Value* ret = cgi->irb.CreateImmutStackAlloc(fn->getReturnType(), val);
 			return Result_t(val, ret);
 		}
 	}
@@ -314,32 +314,32 @@ namespace Operators
 		Result_t lhsp = subscriptee->codegen(cgi);
 
 		fir::Value* lhs = 0;
-		if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
-		else												lhs = lhsp.result.second;
+		if(lhsp.pointer->getType()->isPointerType())	lhs = lhsp.value;
+		else											lhs = lhsp.pointer;
 
 
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
-		fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
+		fir::Value* ind = subscriptIndex->codegen(cgi).value;
 
 		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
 		{
-			gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+			gep = cgi->irb.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isLLVariableArrayType())
 		{
-			fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
-			fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhs, 0);
+			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
-			gep = cgi->builder.CreateGetPointer(data, ind);
+			gep = cgi->irb.CreateGetPointer(data, ind);
 		}
 		else
 		{
-			gep = cgi->builder.CreateGetPointer(lhs, ind);
+			gep = cgi->irb.CreateGetPointer(lhs, ind);
 		}
 
-		return Result_t(cgi->builder.CreateLoad(gep), gep);
+		return Result_t(cgi->irb.CreateLoad(gep), gep, ValueKind::LValue);
 	}
 }
 

@@ -227,7 +227,17 @@ namespace fir
 		for(auto string : this->globalStrings)
 		{
 			ret += "global string (%" + std::to_string(string.second->id);
-			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + string.first + "\"\n";
+
+			std::string copy;
+			for(auto c : string.first)
+			{
+				if(c == '\r') copy += "\\r";
+				else if(c == '\n') copy += "\\n";
+				else if(c == '\t') copy += "\\t";
+				else copy += c;
+			}
+
+			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + copy + "\"\n";
 		}
 
 		for(auto global : this->globals)
@@ -253,7 +263,7 @@ namespace fir
 
 			std::string decl;
 
-			decl += "func: " + ffn->getName().str() + "(";
+			decl += (ffn->isAlwaysInlined() ? "inline func: " : "func: ") + ffn->getName().str() + "(";
 			for(auto a : ffn->getArguments())
 			{
 				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
@@ -265,7 +275,7 @@ namespace fir
 			if(ffn->blocks.size() == 0)
 			{
 				decl += ") -> ";
-				decl += "@" + ffn->getReturnType()->str();
+				decl += ffn->getReturnType()->str();
 				decl += "\n";
 
 				ret += "declare " + decl;
@@ -275,7 +285,7 @@ namespace fir
 			ret += decl;
 
 			ret += ") -> ";
-			ret += "@" + ffn->getReturnType()->str();
+			ret += ffn->getReturnType()->str();
 			ret += "\n{";
 
 
@@ -296,6 +306,47 @@ namespace fir
 
 
 
+	Function* Module::getIntrinsicFunction(std::string id)
+	{
+		Identifier name;
+		FunctionType* ft = 0;
+		if(id == "memcpy")
+		{
+			name = Identifier("memcpy", IdKind::Name);
+			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
+				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+				fir::PrimitiveType::getVoid(), false);
+		}
+		else if(id == "memmove")
+		{
+			name = Identifier("memove", IdKind::Name);
+			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
+				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+				fir::PrimitiveType::getVoid(), false);
+		}
+		else if(id == "memset")
+		{
+			name = Identifier("memset", IdKind::Name);
+			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PrimitiveType::getInt8(),
+				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+				fir::PrimitiveType::getVoid(), false);
+		}
+		else if(id == "memcmp")
+		{
+			// note: memcmp isn't an actual llvm intrinsic, but we support it anyway
+			// at llvm-translate-time, we make a function.
+
+			name = Identifier("memcmp", IdKind::Name);
+			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
+				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
+				fir::PrimitiveType::getInt32(), false);
+		}
+
+		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())
+			return this->intrinsicFunctions[name];
+
+		return this->intrinsicFunctions[name] = new Function(name, ft, this, LinkageType::External);
+	}
 
 
 

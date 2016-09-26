@@ -62,15 +62,15 @@ namespace Codegen
 
 		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(id, ft, fir::LinkageType::External);
 
-		fir::IRBlock* iblock = this->builder.addNewBlockInFunction("initialiser", defaultInitFunc);
-		this->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = this->irb.addNewBlockInFunction("initialiser", defaultInitFunc);
+		this->irb.setCurrentBlock(iblock);
 
 
 		for(auto pair : this->globalConstructors.funcs)
 		{
 			pair.first->makeNotImmutable();
 
-			this->builder.CreateCall1(pair.second, pair.first);
+			this->irb.CreateCall1(pair.second, pair.first);
 
 			pair.first->makeImmutable();
 		}
@@ -83,7 +83,7 @@ namespace Codegen
 			pair.first->makeNotImmutable();
 
 			val = this->autoCastType(gv->getType()->getPointerElementType(), val);
-			this->builder.CreateStore(val, gv);
+			this->irb.CreateStore(val, gv);
 
 			pair.first->makeImmutable();
 		}
@@ -95,8 +95,8 @@ namespace Codegen
 
 			pair.first->makeNotImmutable();
 
-			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
-			this->builder.CreateCall1(ivp.second, gep);
+			fir::Value* gep = this->irb.CreateStructGEP(pair.first, ivp.first);
+			this->irb.CreateCall1(ivp.second, gep);
 
 			pair.first->makeImmutable();
 		}
@@ -107,13 +107,13 @@ namespace Codegen
 
 			pair.first->makeNotImmutable();
 
-			fir::Value* gep = this->builder.CreateStructGEP(pair.first, ivp.first);
-			this->builder.CreateStore(ivp.second, gep);
+			fir::Value* gep = this->irb.CreateStructGEP(pair.first, ivp.first);
+			this->irb.CreateStore(ivp.second, gep);
 
 			pair.first->makeImmutable();
 		}
 
-		this->builder.CreateReturnVoid();
+		this->irb.CreateReturnVoid();
 		this->rootNode->globalConstructorTrampoline = defaultInitFunc;
 	}
 }

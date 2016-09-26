@@ -38,13 +38,21 @@ namespace fir
 			{
 				return llvm::IntegerType::getIntNTy(gc, pt->getIntegerBitWidth());
 			}
-			else
+			else if(pt->isFloatingPointType())
 			{
 				if(pt->getFloatingPointBitWidth() == 32)
 					return llvm::Type::getFloatTy(gc);
 
 				else
 					return llvm::Type::getDoubleTy(gc);
+			}
+			else if(pt->isVoidType())
+			{
+				return llvm::Type::getVoidTy(gc);
+			}
+			else
+			{
+				iceAssert(0);
 			}
 		}
 		else if(type->isStructType())
@@ -131,6 +139,20 @@ namespace fir
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
 
 			return llvm::StructType::get(gc, mems, false);
+		}
+		else if(type->isStringType())
+		{
+			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
+			llvm::Type* i32type = llvm::Type::getInt32Ty(gc);
+
+			auto id = Identifier("__.string", IdKind::Struct);
+			if(createdTypes.find(id) != createdTypes.end())
+				return createdTypes[id];
+
+			auto str = llvm::StructType::create(gc, id.mangled());
+			str->setBody({ i8ptrtype, i32type, i32type });
+
+			return createdTypes[id] = str;
 		}
 		else if(type->isParametricType())
 		{
@@ -296,6 +318,129 @@ namespace fir
 			typeToLlvm(type.second, module);
 		}
 
+		for(auto intr : this->intrinsicFunctions)
+		{
+			auto& gc = llvm::getGlobalContext();
+			llvm::Constant* fn = 0;
+
+			if(intr.first.str() == "memcpy")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memmove")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memset")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memcmp")
+			{
+				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
+
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+
+				fn = module->getOrInsertFunction("fir.intrinsic.memcmp", ft);
+
+
+				llvm::Function* func = module->getFunction("fir.intrinsic.memcmp");
+				iceAssert(fn == func);
+
+				// ok... now make the function, right here.
+				{
+					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+
+					builder.SetInsertPoint(entry);
+
+					/*
+						basically:
+
+						int counter = 0;
+						while(counter < size)
+						{
+							i8 c1 = s1[counter];
+							i8 c2 = s2[counter];
+
+							if(c1 != c2)
+								return c1 - c2;
+
+							counter++;
+						}
+					*/
+
+					llvm::Value* res = builder.CreateAlloca(llvm::Type::getInt32Ty(gc));
+					llvm::Value* ptr1 = 0;
+					llvm::Value* ptr2 = 0;
+					llvm::Value* cmplen = 0;
+					{
+						// llvm is stupid.
+						auto it = func->arg_begin();
+						ptr1 = it.getNodePtrUnchecked();
+						it++;
+
+						ptr2 = it.getNodePtrUnchecked();
+						it++;
+
+						cmplen = it.getNodePtrUnchecked();
+					}
+
+					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
+
+					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					builder.CreateStore(zeroconst, ctr);
+
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+
+
+					// explicit branch to loopcond
+					builder.CreateBr(loopcond);
+
+					builder.SetInsertPoint(loopcond);
+					{
+						// bounds check
+						llvm::Value* cond = builder.CreateICmpSLT(ctr, cmplen);
+						builder.CreateCondBr(cond, loopbody, merge);
+					}
+
+					builder.SetInsertPoint(loopbody);
+					{
+						llvm::Value* ctrval = builder.CreateLoad(ctr);
+
+						llvm::Value* ch1 = builder.CreateLoad(builder.CreateGEP(ptr1, ctrval));
+						llvm::Value* ch2 = builder.CreateLoad(builder.CreateGEP(ptr2, ctrval));
+
+						llvm::Value* diff = builder.CreateSub(ch1, ch2);
+						builder.CreateStore(diff, res);
+
+						builder.CreateStore(builder.CreateAdd(ctrval, llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true))), ctr);
+						builder.CreateCondBr(builder.CreateICmpEQ(diff, zeroconst), loopcond, merge);
+					}
+
+					builder.SetInsertPoint(merge);
+					{
+						builder.CreateRet(builder.CreateLoad(res));
+					}
+				}
+			}
+			else
+			{
+				error("unknown intrinsic %s", intr.first.str().c_str());
+			}
+
+			valueMap[intr.second->id] = fn;
+		}
+
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : this->functions)
 		{
@@ -313,6 +458,9 @@ namespace fir
 
 			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
 			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
+
+			if(ffn->isAlwaysInlined())
+				func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
 
 			valueMap[ffn->id] = func;
 
@@ -882,6 +1030,10 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
+							if(a->getType() != b->getType()->getPointerElementType())
+							{
+								error("cannot store %s into %s", inst->operands[0]->getType()->str().c_str(), inst->operands[1]->getType()->str().c_str());
+							}
 							llvm::Value* ret = builder.CreateStore(a, b);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1214,6 +1366,98 @@ namespace fir
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+
+
+						case OpKind::String_GetData:
+						case OpKind::String_GetLength:
+						case OpKind::String_GetRefCount:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							int ind = 0;
+							if(inst->opKind == OpKind::String_GetData)
+								ind = 0;
+							else if(inst->opKind == OpKind::String_GetLength)
+								ind = 1;
+							else
+								ind = 2;
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							llvm::Value* ret = builder.CreateLoad(gep);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+						case OpKind::String_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
+
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							builder.CreateStore(b, data);
+
+							llvm::Value* ret = builder.CreateLoad(data);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::String_SetLength:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt32Ty(llvm::getGlobalContext()));
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
+							builder.CreateStore(b, len);
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::String_SetRefCount:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt32Ty(llvm::getGlobalContext()));
+
+							llvm::Value* rc = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
+							builder.CreateStore(b, rc);
+
+							llvm::Value* ret = builder.CreateLoad(rc);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
 
 
 

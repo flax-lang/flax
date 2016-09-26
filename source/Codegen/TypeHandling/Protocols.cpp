@@ -85,8 +85,6 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 					}
 				}
 			}
-
-			// info("no extensions for %s conformed to %s", type->str().c_str(), prot->ident.name.c_str());
 		}
 
 		out:

@@ -50,6 +50,9 @@ inline void debuglog(const char* s, ...)
 
 #define FLOAT_TYPE_STRING		"float"
 
+#define STRING_TYPE_STRING		"string"
+#define CHARACTER_TYPE_STRING	"char"
+
 #define BOOL_TYPE_STRING		"bool"
 #define VOID_TYPE_STRING		"void"
 

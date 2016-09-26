@@ -57,7 +57,7 @@ namespace Codegen
 				return alloca;		// fail.
 			}
 
-			return this->builder.CreateStructGEP(alloca, 0);
+			return this->irb.CreateStructGEP(alloca, 0);
 		}
 
 		return alloca;
@@ -66,17 +66,21 @@ namespace Codegen
 
 	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
-		return this->builder.CreateStackAlloc(type, name);
+		return this->irb.CreateStackAlloc(type, name);
 	}
 
 	fir::Value* CodegenInstance::getImmutStackAllocValue(fir::Value* initValue, std::string name)
 	{
-		return this->builder.CreateImmutStackAlloc(initValue->getType(), initValue, name);
+		return this->irb.CreateImmutStackAlloc(initValue->getType(), initValue, name);
 	}
 
 
 	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
 	{
+		fir::Type* t = e->getType(this);
+
+		if(t->isStringType()) return this->getEmptyString().value;
+
 		return fir::ConstantValue::getNullValue(e->getType(this));
 	}
 
@@ -178,12 +182,12 @@ namespace Codegen
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& from->isClassType() && from->toClassType()->getClassName().str() == "String")
+			&& from->isStringType())
 		{
 			return 2;
 		}
 		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-			&& to->isClassType() && to->toClassType()->getClassName().str() == "String")
+			&& to->isStringType())
 		{
 			return 2;
 		}
@@ -277,13 +281,13 @@ namespace Codegen
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
 					if(target->toPrimitiveType()->isSigned())
-						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
+						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
 
 					else
-						from = this->builder.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
+						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
 				}
 
-				retval = this->builder.CreateIntSizeCast(from, target);
+				retval = this->irb.CreateIntSizeCast(from, target);
 			}
 			else if(shouldCast)
 			{
@@ -313,7 +317,7 @@ namespace Codegen
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(from, target);
+					retval = this->irb.CreateIntSizeCast(from, target);
 			}
 			else
 			{
@@ -322,39 +326,27 @@ namespace Codegen
 				// implicit casting -- signed to unsigned of SAME BITWITH IS ALLOWED.
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
-					retval = this->builder.CreateIntSizeCast(from, target);
+					retval = this->irb.CreateIntSizeCast(from, target);
 			}
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(target->isPointerType() && target->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
-				&& from->getType()->isClassType() && from->getType()->toClassType()->getClassName().str() == "String")
+		else if(target == fir::PointerType::getInt8Ptr() && from->getType()->isStringType())
 		{
-			// get the struct gep:
-			// Layout of string:
-			// var data: Int8*
-			// var allocated: Uint64
-
-			// cast the RHS to the LHS
-
-			if(!fromPtr)
-			{
-				fromPtr = this->getImmutStackAllocValue(from);
-			}
+			// GEP needs a pointer
+			if(fromPtr == 0) fromPtr = this->getImmutStackAllocValue(from);
 
 			iceAssert(fromPtr);
-			fir::Value* ret = this->builder.CreateStructGEP(fromPtr, 0);
-			retval = this->builder.CreateLoad(ret);
+			retval = this->irb.CreateGetStringData(fromPtr);
 		}
 		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{
 			// int-to-float is 10.
-			retval = this->builder.CreateIntToFloatCast(from, target);
+			retval = this->irb.CreateIntToFloatCast(from, target);
 		}
 		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
 			retval = fir::ConstantValue::getNullValue(target);
-			// fprintf(stderr, "void cast, %s (%zu) // %s (%zu)\n", target->str().c_str(), from->id, retval->getType()->str().c_str(), retval->id);
 		}
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
@@ -363,24 +355,18 @@ namespace Codegen
 			iceAssert(fromPtr);
 
 			fir::Value* tuplePtr = this->getStackAlloc(target);
-			// fprintf(stderr, "tuplePtr = %s\n", tuplePtr->getType()->str().c_str());
-			// fprintf(stderr, "from = %s, to = %s\n", from->getType()->str().c_str(), target->str().c_str());
 
 			for(size_t i = 0; i < from->getType()->toTupleType()->getElementCount(); i++)
 			{
-				fir::Value* gep = this->builder.CreateStructGEP(tuplePtr, i);
-				fir::Value* fromGep = this->builder.CreateStructGEP(fromPtr, i);
+				fir::Value* gep = this->irb.CreateStructGEP(tuplePtr, i);
+				fir::Value* fromGep = this->irb.CreateStructGEP(fromPtr, i);
 
-				// fprintf(stderr, "geps: %s, %s\n", gep->getType()->str().c_str(), fromGep->getType()->str().c_str());
+				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->irb.CreateLoad(fromGep), fromGep);
 
-				fir::Value* casted = this->autoCastType(gep->getType()->getPointerElementType(), this->builder.CreateLoad(fromGep), fromGep);
-
-				// fprintf(stderr, "casted = %s\n", casted->getType()->str().c_str());
-
-				this->builder.CreateStore(casted, gep);
+				this->irb.CreateStore(casted, gep);
 			}
 
-			retval = this->builder.CreateLoad(fromPtr);
+			retval = this->irb.CreateLoad(fromPtr);
 		}
 
 
@@ -467,7 +453,6 @@ namespace Codegen
 
 			iceAssert(indirections == -1 || indirections == 0);
 
-			// std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes;
 			if(indirections == -1)
 			{
 				// try generic.
@@ -670,15 +655,15 @@ namespace Codegen
 		return res;
 	}
 
-	bool CodegenInstance::isBuiltinType(fir::Type* ltype)
+	bool CodegenInstance::isBuiltinType(fir::Type* t)
 	{
-		bool ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
 		if(!ret)
 		{
-			while(ltype->isPointerType())
-				ltype = ltype->getPointerElementType();
+			while(t->isPointerType())
+				t = t->getPointerElementType();
 
-			ret = (ltype && (ltype->isIntegerType() || ltype->isFloatingPointType()));
+			ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
 		}
 
 		return ret;
@@ -690,6 +675,11 @@ namespace Codegen
 		return this->isBuiltinType(ltype);
 	}
 
+	bool CodegenInstance::isRefCountedType(fir::Type* type)
+	{
+		// right now this is the only thing that's refcounted.
+		return type->isStringType();
+	}
 
 
 

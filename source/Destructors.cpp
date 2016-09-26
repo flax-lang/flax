@@ -94,11 +94,6 @@ namespace Ast
 	{
 	}
 
-	ForLoop::~ForLoop()
-	{
-
-	}
-
 	ComputedProperty::~ComputedProperty()
 	{
 
