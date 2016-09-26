@@ -46,7 +46,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, st
 	fir::Value* alloca = this->getStackAlloc(tp->first);
 	fir::Value* gep = this->irb.CreateStructGEP(alloca, 0);
 
-	this->irb.CreateStore(res.result.first, gep);
+	this->irb.CreateStore(res.value, gep);
 	return Result_t(this->irb.CreateLoad(alloca), alloca);
 }
 

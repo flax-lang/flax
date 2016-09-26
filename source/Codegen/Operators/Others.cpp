@@ -13,19 +13,19 @@ namespace Operators
 {
 	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		ValPtr_t leftVP = args[0]->codegen(cgi).result;
-		ValPtr_t rightVP = args[1]->codegen(cgi).result;
+		auto leftres = args[0]->codegen(cgi);
+		auto rightres = args[1]->codegen(cgi);
 
-		auto data = cgi->getBinaryOperatorOverload(user, op, leftVP.first->getType(), rightVP.first->getType());
+		auto data = cgi->getBinaryOperatorOverload(user, op, leftres.value->getType(), rightres.value->getType());
 		if(data.found)
 		{
-			return cgi->callBinaryOperatorOverload(data, leftVP.first, leftVP.second, rightVP.first, rightVP.second, op);
+			return cgi->callBinaryOperatorOverload(data, leftres.value, leftres.pointer, rightres.value, rightres.pointer, op);
 		}
 		else
 		{
 			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				leftVP.first->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
-				rightVP.first->getType()->str().c_str());
+				leftres.value->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
+				rightres.value->getType()->str().c_str());
 		}
 	}
 
@@ -37,9 +37,9 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 
-		auto leftVP = args[0]->codegen(cgi).result;
-		fir::Value* lhs = leftVP.first;
-		fir::Value* lhsPtr = leftVP.second;
+		auto leftr = args[0]->codegen(cgi);
+		fir::Value* lhs = leftr.value;
+		fir::Value* lhsPtr = leftr.pointer;
 
 		fir::Type* rtype = args[1]->getType(cgi);
 		if(!rtype)

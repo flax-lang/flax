@@ -35,7 +35,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
 			if(v->getType()->getPointerElementType()->isStringType())
-				cgi->decrementStringRefCount(v);
+				cgi->decrementRefCount(v);
 		}
 	}
 
@@ -71,7 +71,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
 		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementStringRefCount(v);
+			cgi->decrementRefCount(v);
 	}
 
 	// for break, we go to the ending block
@@ -113,7 +113,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
 		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementStringRefCount(v);
+			cgi->decrementRefCount(v);
 	}
 
 
@@ -166,7 +166,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
 		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementStringRefCount(v);
+			cgi->decrementRefCount(v);
 	}
 
 
@@ -174,19 +174,22 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(this->val)
 	{
-		auto res = this->val->codegen(cgi).result;
-		fir::Value* left = res.first;
-
+		auto res = this->val->codegen(cgi);
 		fir::Function* f = cgi->irb.getCurrentBlock()->getParentFunction();
 		iceAssert(f);
 
-		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), left, res.second);
+		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), res.value, res.pointer);
+		cgi->irb.CreateReturn(this->actualReturnValue);
 
-		return Result_t(cgi->irb.CreateReturn(this->actualReturnValue), res.second, ResultType::BreakCodegen);
+
+		// return Result_t(cgi->irb.CreateReturn(this->actualReturnValue), res.pointer, ResultType::BreakCodegen);
+		return Result_t(0, 0, ResultType::BreakCodegen);
 	}
 	else
 	{
-		return Result_t(cgi->irb.CreateReturnVoid(), 0, ResultType::BreakCodegen);
+		cgi->irb.CreateReturnVoid();
+
+		return Result_t(0, 0, ResultType::BreakCodegen);
 	}
 }
 

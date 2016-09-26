@@ -79,7 +79,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 			std::vector<fir::Value*> args;
 			args.push_back(pointer);
 			for(Expr* e : params)
-				args.push_back(e->codegen(cgi).result.first);
+				args.push_back(e->codegen(cgi).value);
 
 			typePair = cgi->getType(type);
 			fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
@@ -182,7 +182,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		std::deque<fir::Value*> cnts;
 
 		for(auto c : this->counts)
-			cnts.push_back(c->codegen(cgi).result.first);
+			cnts.push_back(c->codegen(cgi).value);
 
 		fir::Value* firstSize = cnts.front();
 		cnts.pop_front();
@@ -254,7 +254,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		freearg = this->expr->codegen(cgi).result.first;
+		freearg = this->expr->codegen(cgi).value;
 	}
 
 	// call 'free'

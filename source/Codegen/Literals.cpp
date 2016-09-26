@@ -96,10 +96,16 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->irb.CreateSetStringRefCount(extra, rc);
 
 			cgi->addRefCountedValue(extra);
+			extra->setName("lit_<" + this->str + ">");
 			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
+		else
+		{
+			auto r = cgi->makeStringLiteral(this->str);
+			r.pointer->setName("lit_<" + this->str + ">");
 
-		return cgi->makeStringLiteral(this->str);
+			return r;
+		}
 	}
 }
 
@@ -143,7 +149,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(Expr* e : this->values)
 		{
-			fir::Value* v = e->codegen(cgi).result.first;
+			fir::Value* v = e->codegen(cgi).value;
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);

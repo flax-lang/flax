@@ -253,8 +253,10 @@ namespace Codegen
 		Ast::Result_t getEmptyString();
 		Ast::Result_t makeStringLiteral(std::string str);
 
-		void incrementStringRefCount(fir::Value* strp);
-		void decrementStringRefCount(fir::Value* strp);
+		void incrementRefCount(fir::Value* strp);
+		void decrementRefCount(fir::Value* strp);
+
+		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK);
 
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);

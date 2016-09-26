@@ -79,7 +79,7 @@ namespace Codegen
 	{
 		fir::Type* t = e->getType(this);
 
-		if(t->isStringType()) return this->getEmptyString().result.first;
+		if(t->isStringType()) return this->getEmptyString().value;
 
 		return fir::ConstantValue::getNullValue(e->getType(this));
 	}
