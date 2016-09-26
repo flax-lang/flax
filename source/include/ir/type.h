@@ -32,6 +32,7 @@ namespace fir
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
+	struct StringType;
 	struct ParametricType;
 	struct LLVariableArrayType;
 
@@ -58,27 +59,6 @@ namespace fir
 	FTContext* createFTContext();
 	FTContext* getDefaultFTContext();
 	void setDefaultFTContext(FTContext* tc);
-
-	enum class FTypeKind
-	{
-		Invalid,
-
-		Void,
-		Pointer,
-
-		Tuple,
-		Struct,
-		Class,
-
-		Integer,
-		Floating,
-
-		Array,
-		LowLevelVariableArray,
-		Function,
-
-		Parametric,
-	};
 
 
 
@@ -110,6 +90,7 @@ namespace fir
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
 		StructType* toStructType();
+		StringType* toStringType();
 		ClassType* toClassType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
@@ -121,6 +102,7 @@ namespace fir
 		bool isTupleType();
 		bool isClassType();
 		bool isStructType();
+		bool isStringType();
 		bool isPackedStruct();
 
 		bool isArrayType();
@@ -140,20 +122,16 @@ namespace fir
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
 		protected:
-		Type(FTypeKind baseType)
+		Type()
 		{
 			static size_t __id = 0;
 			this->id = __id++;
-
-			this->typeKind = baseType;
 		}
 
 		virtual ~Type() { }
 
 		// base things
 		size_t id = 0;
-
-		FTypeKind typeKind = FTypeKind::Invalid;
 
 		bool isTypeVoid = 0;
 
@@ -208,15 +186,25 @@ namespace fir
 		size_t getIntegerBitWidth();
 		size_t getFloatingPointBitWidth();
 
-
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 		virtual PrimitiveType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
+
+		enum class Kind
+		{
+			Invalid,
+
+			Void,
+			Integer,
+			Floating,
+		};
+
+
 		// protected constructor
 		protected:
-		PrimitiveType(size_t bits, FTypeKind kind);
+		PrimitiveType(size_t bits, Kind _kind);
 		virtual ~PrimitiveType() override { }
 
 
@@ -224,6 +212,7 @@ namespace fir
 		bool isTypeSigned = 0;
 		size_t bitWidth = 0;
 
+		Kind primKind = Kind::Invalid;
 
 		// static funcs
 		protected:
@@ -531,7 +520,24 @@ namespace fir
 	};
 
 
+	struct StringType : Type
+	{
+		friend struct Type;
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		StringType();
+		virtual ~StringType() override { }
+
+		public:
+		static StringType* get(FTContext* tc = 0);
+	};
 
 
 

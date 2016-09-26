@@ -12,7 +12,7 @@ function callCompiler
 	set compile "-jit"
 
 	if contains "noopt" $argv
-		set opt "-Ox"
+		set opt "-O0"
 	end
 
 	if contains "dump" $argv
@@ -21,7 +21,7 @@ function callCompiler
 	else if contains "dumpf" $argv
 		set dump "-print-fir -c"
 		set compile ""
-	else if contains "compile"
+	else if contains "compile" $argv
 		set dump ""
 		set compile "-o build/test"
 	end

@@ -92,7 +92,6 @@ namespace pts
 
 		static NamedType* create(std::string s);
 
-
 		private:
 		explicit NamedType(std::string n) : name(n) { }
 	};

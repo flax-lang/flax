@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+/*
 import Foundation
 import Utilities
 import String
@@ -247,22 +248,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// todo: look into these.
 
 	// >>> universal function call syntax -- use dot-operator calling on everything.
@@ -277,6 +262,7 @@ public func main(argc: int32, argv: int8**) -> int
 	return 0
 }
 
+*/
 
 
 
@@ -292,6 +278,149 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import LibCInterface
+
+ffi func printf(fmt: int8*, ...)
+
+struct SomeStruct
+{
+	var str: string = "bar"
+}
+
+class A
+{
+	init(a: int) { self.x = a }
+	init() { }
+
+	var x = 10
+
+	operator = (other: A)
+	{
+		self.x = other.x
+	}
+}
+
+struct B
+{
+	var x = 20
+}
+
+operator == (a: B, b: B) -> bool { return a.x == b.x }
+
+public func main() -> int
+{
+	do {
+		var a: A
+		a = A()
+
+		let b = A(3)
+		a = b
+
+		printf(@raw "%d\n", a.x)
+	}
+
+	do {
+		var x = B()
+		let y = B(40)
+
+		x = y
+
+		printf(@raw "%d, %d\n", x.x, x == y)
+	}
+
+
+	// let k: string = "hello"
+	// var g: string = "world"
+
+	// // k + g
+	// g = k
+	// printf(@raw "something\n");
+
+	// printf(@raw "[%s], [%s]\n", k, g)
+	// foo()
+
+	// var ss = SomeStruct()
+	// ss.str = "hello"
+
+	// printf(@raw "[%s]\n", ss.str)
+
+
+	// bar()
+	// qux()
+
+	bar()
+
+	return 0
+}
+
+func qux()
+{
+	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
+}
+
+func bar()
+{
+	// let a = "ohmy"
+	// let b = "gosh"
+
+	// let x = a + b
+	// printf(@raw "[%s]\n", x)
+
+	bar1()
+}
+
+func bar1()
+{
+	var y = "str"
+	let x = y + "ing"
+	y = x + "ing"
+	printf(@raw "[%s], [%s]\n", x, y)
+}
+
+
+func foo()
+{
+	defer printf(@raw "fuck\n")
+
+	var i = 0
+	while i < 10
+	{
+		defer printf(@raw "kappa\n")
+
+		printf(@raw "lol")
+
+		if i == 4 { return }
+
+		i += 1
+	}
+}
 
 
 

@@ -1150,7 +1150,80 @@ namespace fir
 
 
 
+	// structure of string:
+	// struct
+	// {
+	//     int8* data;
+	//     int32 length;
+	//     int32 refcount;
+	// }
 
+
+	Value* IRBuilder::CreateGetStringData(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::String_GetData, fir::PrimitiveType::getInt8()->getPointerTo(), { ptr });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetStringData(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::PointerType::getInt8Ptr())
+			error("val is not an int8*");
+
+		Instruction* instr = new Instruction(OpKind::String_SetData, fir::PrimitiveType::getVoid(), { ptr, val });
+		return this->addInstruction(instr, vname);
+	}
+
+
+	Value* IRBuilder::CreateGetStringLength(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt32(), { ptr });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetStringLength(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::PrimitiveType::getInt32())
+			error("val is not an int32");
+
+		Instruction* instr = new Instruction(OpKind::String_SetLength, fir::PrimitiveType::getVoid(), { ptr, val });
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::CreateGetStringRefCount(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::String_GetRefCount, fir::PrimitiveType::getInt32(), { ptr });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetStringRefCount(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
+			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::PrimitiveType::getInt32())
+			error("val is not an int32");
+
+		Instruction* instr = new Instruction(OpKind::String_SetRefCount, fir::PrimitiveType::getVoid(), { ptr, val });
+		return this->addInstruction(instr, vname);
+	}
 
 
 

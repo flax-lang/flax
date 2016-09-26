@@ -119,7 +119,14 @@ namespace fir
 		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
+		Value* CreateGetStringData(Value* ptr, std::string vname = "");
+		Value* CreateSetStringData(Value* ptr, Value* val, std::string vname = "");
 
+		Value* CreateGetStringLength(Value* ptr, std::string vname = "");
+		Value* CreateSetStringLength(Value* ptr, Value* val, std::string vname = "");
+
+		Value* CreateGetStringRefCount(Value* ptr, std::string vname = "");
+		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
 
 
 

@@ -687,9 +687,6 @@ namespace Parser
 				case TType::Loop:
 					return parseWhile(ps);
 
-				case TType::For:
-					return parseFor(ps);
-
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
@@ -2061,14 +2058,6 @@ namespace Parser
 
 			return CreateAST(WhileLoop, tok_while, cond, body, true);
 		}
-	}
-
-	ForLoop* parseFor(ParserState& ps)
-	{
-		Token tok_for = ps.eat();
-		iceAssert(tok_for.type == TType::For);
-
-		return 0;
 	}
 
 

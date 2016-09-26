@@ -195,6 +195,16 @@ namespace fir
 		this->wasGenericInstantiation = true;
 	}
 
+	bool Function::isAlwaysInlined()
+	{
+		return this->alwaysInlined;
+	}
+
+	void Function::setAlwaysInline()
+	{
+		this->alwaysInlined = true;
+	}
+
 
 
 
@@ -219,6 +229,26 @@ namespace fir
 
 		return ft;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 

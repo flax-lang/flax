@@ -11,9 +11,6 @@ using namespace Codegen;
 
 #define MALLOC_FUNC		"malloc"
 #define FREE_FUNC		"free"
-#define MEMSET_FUNC		"memset"
-
-
 
 static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
@@ -27,52 +24,52 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	iceAssert(mallocf);
 
 
-	fir::Value* oneValue = fir::ConstantInt::getUint64(1, cgi->getContext());
-	fir::Value* zeroValue = fir::ConstantInt::getUint64(0, cgi->getContext());
+	fir::Value* oneValue = fir::ConstantInt::getInt64(1, cgi->getContext());
+	fir::Value* zeroValue = fir::ConstantInt::getInt64(0, cgi->getContext());
 
 	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
-	fir::Value* allocsize = fir::ConstantInt::getUint64(typesize, cgi->getContext());
+	fir::Value* allocsize = fir::ConstantInt::getInt64(typesize, cgi->getContext());
 
 	size = cgi->autoCastType(allocsize->getType(), size);
 
-	fir::Value* totalAlloc = cgi->builder.CreateMul(allocsize, size, "totalalloc");
+	fir::Value* totalAlloc = cgi->irb.CreateMul(allocsize, size, "totalalloc");
 	fir::Value* allocmemptr = cgi->getStackAlloc(type->getPointerTo(), "allocmemptr");
 
-	fir::Value* amem = cgi->builder.CreatePointerTypeCast(cgi->builder.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
-	cgi->builder.CreateStore(amem, allocmemptr);
+	fir::Value* amem = cgi->irb.CreatePointerTypeCast(cgi->irb.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
+	cgi->irb.CreateStore(amem, allocmemptr);
 
 
 
-	fir::IRBlock* curbb = cgi->builder.getCurrentBlock();	// store the current bb
-	fir::IRBlock* loopHead = cgi->builder.addNewBlockInFunction("loopHead", curbb->getParentFunction());
-	fir::IRBlock* loopBegin = cgi->builder.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
-	fir::IRBlock* loopEnd = cgi->builder.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
+	fir::IRBlock* curbb = cgi->irb.getCurrentBlock();	// store the current bb
+	fir::IRBlock* loopHead = cgi->irb.addNewBlockInFunction("loopHead", curbb->getParentFunction());
+	fir::IRBlock* loopBegin = cgi->irb.addNewBlockInFunction("loopBegin", curbb->getParentFunction());
+	fir::IRBlock* loopEnd = cgi->irb.addNewBlockInFunction("loopEnd", curbb->getParentFunction());
 
-	fir::IRBlock* allocZeroCase = cgi->builder.addNewBlockInFunction("allocZeroCase", curbb->getParentFunction());
-	fir::IRBlock* loopMerge = cgi->builder.addNewBlockInFunction("loopMerge", curbb->getParentFunction());
+	fir::IRBlock* allocZeroCase = cgi->irb.addNewBlockInFunction("allocZeroCase", curbb->getParentFunction());
+	fir::IRBlock* loopMerge = cgi->irb.addNewBlockInFunction("loopMerge", curbb->getParentFunction());
 
-	cgi->builder.setCurrentBlock(curbb);
-	cgi->builder.CreateUnCondBranch(loopHead);
+	cgi->irb.setCurrentBlock(curbb);
+	cgi->irb.CreateUnCondBranch(loopHead);
 
-	cgi->builder.setCurrentBlock(loopHead);
+	cgi->irb.setCurrentBlock(loopHead);
 
 	// set a counter
-	fir::Value* counterPtr = cgi->builder.CreateStackAlloc(fir::PrimitiveType::getUint64(), "counterPtr");
-	cgi->builder.CreateStore(zeroValue, counterPtr);
+	fir::Value* counterPtr = cgi->irb.CreateStackAlloc(fir::PrimitiveType::getInt64(), "counterPtr");
+	cgi->irb.CreateStore(zeroValue, counterPtr);
 
 	// check for zero.
 	{
-		fir::Value* isZero = cgi->builder.CreateICmpEQ(size, zeroValue, "iszero");
-		cgi->builder.CreateCondBranch(isZero, allocZeroCase, loopBegin);
+		fir::Value* isZero = cgi->irb.CreateICmpEQ(size, zeroValue, "iszero");
+		cgi->irb.CreateCondBranch(isZero, allocZeroCase, loopBegin);
 	}
 
 
 	// begin the loop
-	cgi->builder.setCurrentBlock(loopBegin);
+	cgi->irb.setCurrentBlock(loopBegin);
 	{
 		// get the pointer.
-		fir::Value* pointer = cgi->builder.CreateGetPointer(cgi->builder.CreateLoad(allocmemptr),
-			cgi->builder.CreateLoad(counterPtr), "pointerPtr");
+		fir::Value* pointer = cgi->irb.CreateGetPointer(cgi->irb.CreateLoad(allocmemptr),
+			cgi->irb.CreateLoad(counterPtr), "pointerPtr");
 
 		if(type->isStructType() || type->isClassType())
 		{
@@ -82,13 +79,13 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 			std::vector<fir::Value*> args;
 			args.push_back(pointer);
 			for(Expr* e : params)
-				args.push_back(e->codegen(cgi).result.first);
+				args.push_back(e->codegen(cgi).value);
 
 			typePair = cgi->getType(type);
 			fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
 			iceAssert(initfunc);
 
-			cgi->builder.CreateCall(initfunc, args);
+			cgi->irb.CreateCall(initfunc, args);
 		}
 		else if(type->isPointerType() && sizes.size() > 0)
 		{
@@ -96,44 +93,44 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 			sizes.pop_front();
 
 			fir::Value* rret = recursivelyDoAlloc(cgi, type->getPointerElementType(), front, params, sizes);
-			cgi->builder.CreateStore(rret, pointer);
+			cgi->irb.CreateStore(rret, pointer);
 		}
 		else
 		{
-			cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
+			cgi->irb.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
 		}
 
 
 		// increment counter
-		fir::Value* incremented = cgi->builder.CreateAdd(oneValue, cgi->builder.CreateLoad(counterPtr));
-		cgi->builder.CreateStore(incremented, counterPtr);
+		fir::Value* incremented = cgi->irb.CreateAdd(oneValue, cgi->irb.CreateLoad(counterPtr));
+		cgi->irb.CreateStore(incremented, counterPtr);
 
 
 		// check.
 		// basically this: if counter < size goto loopBegin else goto loopEnd
 
-		cgi->builder.CreateCondBranch(cgi->builder.CreateICmpLT(cgi->builder.CreateLoad(counterPtr), size), loopBegin, loopEnd);
+		cgi->irb.CreateCondBranch(cgi->irb.CreateICmpLT(cgi->irb.CreateLoad(counterPtr), size), loopBegin, loopEnd);
 	}
 
 
 	// in zeroBlock, set the pointer to 0 and branch to merge
-	cgi->builder.setCurrentBlock(allocZeroCase);
+	cgi->irb.setCurrentBlock(allocZeroCase);
 	{
-		cgi->builder.CreateStore(fir::ConstantValue::getNullValue(type->getPointerTo()), allocmemptr);
-		cgi->builder.CreateUnCondBranch(loopMerge);
+		cgi->irb.CreateStore(fir::ConstantValue::getNullValue(type->getPointerTo()), allocmemptr);
+		cgi->irb.CreateUnCondBranch(loopMerge);
 	}
 
 
 
 	// in end block... do nothing.
-	cgi->builder.setCurrentBlock(loopEnd);
+	cgi->irb.setCurrentBlock(loopEnd);
 	{
-		cgi->builder.CreateUnCondBranch(loopMerge);
+		cgi->irb.CreateUnCondBranch(loopMerge);
 	}
 
 
-	cgi->builder.setCurrentBlock(loopMerge);
-	fir::Value* ret = cgi->builder.CreateLoad(allocmemptr, "mem");
+	cgi->irb.setCurrentBlock(loopMerge);
+	fir::Value* ret = cgi->irb.CreateLoad(allocmemptr, "mem");
 
 	return ret;
 }
@@ -176,7 +173,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// call malloc
 
 
-	fir::Value* oneValue = fir::ConstantInt::getUint64(1, cgi->getContext());
+	fir::Value* oneValue = fir::ConstantInt::getInt64(1, cgi->getContext());
 	// fir::Value* zeroValue = fir::ConstantInt::getUint64(0, cgi->getContext());
 
 
@@ -185,7 +182,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		std::deque<fir::Value*> cnts;
 
 		for(auto c : this->counts)
-			cnts.push_back(c->codegen(cgi).result.first);
+			cnts.push_back(c->codegen(cgi).value);
 
 		fir::Value* firstSize = cnts.front();
 		cnts.pop_front();
@@ -252,12 +249,12 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Value* varval = sp->first;
 
 		// therefore, create a Load to get the actual value
-		varval = cgi->builder.CreateLoad(varval);
-		freearg = cgi->builder.CreatePointerTypeCast(varval, fir::PointerType::getInt8Ptr(cgi->getContext()));
+		varval = cgi->irb.CreateLoad(varval);
+		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::PointerType::getInt8Ptr(cgi->getContext()));
 	}
 	else
 	{
-		freearg = this->expr->codegen(cgi).result.first;
+		freearg = this->expr->codegen(cgi).value;
 	}
 
 	// call 'free'
@@ -271,7 +268,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	iceAssert(freef);
 
 
-	cgi->builder.CreateCall1(freef, freearg);
+	cgi->irb.CreateCall1(freef, freearg);
 	return Result_t(0, 0);
 }
 
