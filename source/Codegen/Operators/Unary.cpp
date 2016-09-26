@@ -26,12 +26,18 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 		return ltype->getPointerElementType();
 	}
-
 	else if(this->op == ArithmeticOp::AddrOf)
-		return this->expr->getType(cgi)->getPointerTo();
+	{
+		fir::Type* t = this->expr->getType(cgi);
+		if(cgi->isRefCountedType(t))
+			error(this, "Reference counted types (such as '%s') cannot have their address taken", t->str().c_str());
 
+		return t->getPointerTo();
+	}
 	else
+	{
 		return this->expr->getType(cgi);
+	}
 }
 
 
@@ -57,45 +63,56 @@ namespace Operators
 {
 	Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto res = args[0]->codegen(cgi).result;
+		auto res = args[0]->codegen(cgi);
 
 		// basically a no-op.
-		return Result_t(res.first, res.second);
+		return Result_t(res.value, res.pointer);
 	}
 
 	Result_t operatorUnaryMinus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto res = args[0]->codegen(cgi).result;
+		auto res = args[0]->codegen(cgi);
 
-		return Result_t(cgi->builder.CreateNeg(res.first), res.second);
+		return Result_t(cgi->irb.CreateNeg(res.value), res.pointer);
 	}
 
 	Result_t operatorBitwiseNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto res = args[0]->codegen(cgi).result;
-		if(!res.first->getType()->isIntegerType())
-			error(user, "Cannot perform bitwise NOT (~) on a non-integer type (have type '%s')", res.first->getType()->str().c_str());
+		auto res = args[0]->codegen(cgi);
+		if(!res.value->getType()->isIntegerType())
+			error(user, "Cannot perform bitwise NOT (~) on a non-integer type (have type '%s')", res.value->getType()->str().c_str());
 
-		return Result_t(cgi->builder.CreateBitwiseNOT(res.first), res.second);
+		return Result_t(cgi->irb.CreateBitwiseNOT(res.value), res.pointer);
 	}
 
 	Result_t operatorAddressOf(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto res = args[0]->codegen(cgi).result;
+		auto res = args[0]->codegen(cgi);
 
-		if(!res.second)
-			error(user, "Cannot take the address of literal (have type '%s')", res.first->getType()->str().c_str());
+		if(!res.pointer)
+			error(user, "Cannot take the address of literal (have type '%s')", res.value->getType()->str().c_str());
 
-		return Result_t(res.second, 0);
+		return Result_t(res.pointer, 0);
 	}
 
 	Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto res = args[0]->codegen(cgi).result;
+		auto res = args[0]->codegen(cgi);
 
-		if(!res.first->getType()->isPointerType())
-			error(user, "Cannot dereference non-pointer type (have type '%s')", res.first->getType()->str().c_str());
+		if(!res.value->getType()->isPointerType())
+			error(user, "Cannot dereference non-pointer type (have type '%s')", res.value->getType()->str().c_str());
 
-		return Result_t(cgi->builder.CreateLoad(res.first), res.first);
+		return Result_t(cgi->irb.CreateLoad(res.value), res.value, ValueKind::LValue);
 	}
 }
+
+
+
+
+
+
+
+
+
+
+

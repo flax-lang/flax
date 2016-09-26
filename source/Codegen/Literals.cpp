@@ -71,63 +71,51 @@ fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	auto pair = cgi->getTypeByString("String");
-	if(pair && !this->isRaw)
+	if(this->isRaw)
 	{
-		fir::ClassType* stringType = dynamic_cast<fir::ClassType*>(pair->first);
-
-		fir::Value* alloca = cgi->getStackAlloc(stringType);
-
-		// String layout:
-		// var data: Int8*
-		// var allocated: Uint64
-
-
-		fir::Value* stringPtr = cgi->builder.CreateStructGEP(alloca, 0);
-		fir::Value* allocdPtr = cgi->builder.CreateStructGEP(alloca, 1);
-
+		// good old Int8*
 		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
+		stringVal = cgi->irb.CreateConstGEP2(stringVal, 0, 0);
 
-		cgi->builder.CreateStore(stringVal, stringPtr);
-		cgi->builder.CreateStore(fir::ConstantInt::getUint64(0, cgi->getContext()), allocdPtr);
-
-		fir::Value* val = cgi->builder.CreateLoad(alloca);
-		alloca->makeImmutable();
-
-		return Result_t(val, alloca);
+		return Result_t(stringVal, 0);
 	}
 	else
 	{
-		// todo: dirty.
-		static bool didWarn = false;
-
-		if(!this->isRaw && !didWarn)
+		if(extra)
 		{
-			warn(this, "String type not available, using Int8* for string literal (will not warn again)");
-			didWarn = true;
+			iceAssert(extra->getType()->getPointerElementType()->isStringType());
+
+			fir::Value* thestring = cgi->module->createGlobalString(this->str);
+			thestring = cgi->irb.CreateConstGEP2(thestring, 0, 0);
+
+			fir::Value* len = fir::ConstantInt::getInt32(this->str.length());
+			fir::Value* rc = fir::ConstantInt::getInt32(-1);
+
+			cgi->irb.CreateSetStringData(extra, thestring);
+			cgi->irb.CreateSetStringLength(extra, len);
+			cgi->irb.CreateSetStringRefCount(extra, rc);
+
+			cgi->addRefCountedValue(extra);
+			extra->setName("lit_<" + this->str + ">");
+			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
+		else
+		{
+			auto r = cgi->makeStringLiteral(this->str);
+			r.pointer->setName("lit_<" + this->str + ">");
 
-		// good old Int8*
-		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->builder.CreateConstGEP2(stringVal, 0, 0);
-
-		return Result_t(stringVal, 0);
+			return r;
+		}
 	}
 }
 
 fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	auto pair = cgi->getTypeByString("String");
-	if(pair && !this->isRaw)
-	{
-		iceAssert(pair->first);
-		return pair->first;
-	}
-	else
-	{
+	if(this->isRaw)
 		return fir::PointerType::getInt8Ptr();
-	}
+
+	else
+		return fir::StringType::get();
 }
 
 
@@ -161,7 +149,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		for(Expr* e : this->values)
 		{
-			fir::Value* v = e->codegen(cgi).result.first;
+			fir::Value* v = e->codegen(cgi).value;
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
@@ -181,10 +169,10 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
-	fir::Value* alloc = cgi->builder.CreateStackAlloc(atype);
+	fir::Value* alloc = cgi->irb.CreateStackAlloc(atype);
 	fir::Value* val = fir::ConstantArray::get(atype, vals);
 
-	cgi->builder.CreateStore(val, alloc);
+	cgi->irb.CreateStore(val, alloc);
 	return Result_t(val, alloc);
 }
 

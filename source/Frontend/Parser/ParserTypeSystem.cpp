@@ -87,52 +87,6 @@ namespace pts
 		*used = origLength - str.length();
 
 
-		#if 0
-		while(front != ')')
-		{
-			std::string cur;
-			while(front != ',' && front != '(' && front != ')')
-			{
-				cur += front;
-				(*used)++;
-
-				str.erase(str.begin());
-				front = str.front();
-			}
-
-			if(front == ',' || front == ')')
-			{
-				bool shouldBreak = (front == ')');
-				pts::Type* ty = pts::parseType(cur);
-				iceAssert(ty);
-
-				types.push_back(ty);
-
-				str.erase(str.begin());
-				front = str.front();
-
-				(*used)++;
-
-				if(shouldBreak)
-					break;
-			}
-			else if(front == '(')
-			{
-				iceAssert(str.front() == '(');
-				types.push_back(recursivelyParseTuple(str, used));
-
-				if(str.front() == ',')
-				{
-					str.erase(str.begin());
-					(*used)++;
-				}
-
-				front = str.front();
-			}
-		}
-
-		#endif
-
 		(*used)++;
 		return new pts::TupleType(types);
 	}
@@ -373,7 +327,6 @@ namespace pts
 					// check if we have more
 					if(arr.size() > 0)
 					{
-						// fprintf(stderr, "base: %s : %s : %s\n", arr.c_str(), type.c_str(), actualType.c_str());
 						base = parseTypeUsingBase(base, arr);
 					}
 
@@ -382,7 +335,6 @@ namespace pts
 				else
 				{
 					ret = pts::NamedType::create(actualType);
-					// debuglog("maked named = %s\n", ret->str().c_str());
 				}
 
 
@@ -490,8 +442,6 @@ namespace pts
 	{
 		return dynamic_cast<FunctionType*>(this) != 0;
 	}
-
-
 
 
 

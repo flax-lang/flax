@@ -104,19 +104,20 @@ namespace Ast
 	extern uint64_t Attr_Override;
 	extern uint64_t Attr_CommutativeOp;
 
-	typedef std::pair<fir::Value*, fir::Value*> ValPtr_t;
 	enum class ResultType { Normal, BreakCodegen };
+	enum class ValueKind { RValue, LValue };
 	struct Result_t
 	{
-		explicit Result_t(ValPtr_t vp) : result(vp), type(ResultType::Normal) { }
+		Result_t(fir::Value* val, fir::Value* ptr, ResultType rt, ValueKind vk) : value(val), pointer(ptr), type(rt), valueKind(vk) { }
+		Result_t(fir::Value* val, fir::Value* ptr, ResultType rt) : value(val), pointer(ptr), type(rt), valueKind(ValueKind::RValue) { }
+		Result_t(fir::Value* val, fir::Value* ptr, ValueKind vk) : value(val), pointer(ptr), type(ResultType::Normal), valueKind(vk) { }
+		Result_t(fir::Value* val, fir::Value* ptr) : value(val), pointer(ptr), type(ResultType::Normal), valueKind(ValueKind::RValue) { }
 
-		Result_t(fir::Value* val, fir::Value* ptr, ResultType rt) : result(val, ptr), type(rt) { }
-		Result_t(fir::Value* val, fir::Value* ptr) : result(val, ptr), type(ResultType::Normal) { }
+		fir::Value* value;
+		fir::Value* pointer;
 
-		Result_t(ValPtr_t vp, ResultType rt) : result(vp), type(rt) { }
-
-		ValPtr_t result;
 		ResultType type;
+		ValueKind valueKind;
 	};
 
 
@@ -220,7 +221,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab);
+		fir::Value* doInitialValue(Codegen::CodegenInstance* cgi, Codegen::TypePair_t* type, fir::Value* val, fir::Value* valptr, fir::Value* storage, bool shouldAddToSymtab, ValueKind vk);
 
 		void inferType(Codegen::CodegenInstance* cgi);
 
@@ -403,8 +404,10 @@ namespace Ast
 
 	struct BreakableBracedBlock : Expr
 	{
-		explicit BreakableBracedBlock(Parser::Pin pos) : Expr(pos) { }
+		explicit BreakableBracedBlock(Parser::Pin pos, BracedBlock* _body) : Expr(pos), body(_body) { }
 		~BreakableBracedBlock();
+
+		BracedBlock* body = 0;
 	};
 
 	struct IfStmt : Expr
@@ -425,17 +428,17 @@ namespace Ast
 	struct WhileLoop : BreakableBracedBlock
 	{
 		~WhileLoop();
-		WhileLoop(Parser::Pin pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos),
-			cond(_cond), body(_body), isDoWhileVariant(dowhile) { }
+		WhileLoop(Parser::Pin pos, Expr* _cond, BracedBlock* _body, bool dowhile) : BreakableBracedBlock(pos, _body),
+			cond(_cond), isDoWhileVariant(dowhile) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		Expr* cond = 0;
-		BracedBlock* body = 0;
 		bool isDoWhileVariant = false;
 	};
 
+	#if 0
 	struct ForLoop : BreakableBracedBlock
 	{
 		~ForLoop();
@@ -451,6 +454,7 @@ namespace Ast
 	{
 
 	};
+	#endif
 
 	struct Break : Expr
 	{

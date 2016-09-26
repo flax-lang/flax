@@ -11,8 +11,8 @@ using namespace Codegen;
 
 static Result_t getTypeOfAny(CodegenInstance* cgi, fir::Value* ptr)
 {
-	fir::Value* gep = cgi->builder.CreateStructGEP(ptr, 0);
-	return Result_t(cgi->builder.CreateLoad(gep), gep);
+	fir::Value* gep = cgi->irb.CreateStructGEP(ptr, 0);
+	return Result_t(cgi->irb.CreateLoad(gep), gep);
 }
 
 Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -43,10 +43,8 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(cgi->isAnyType(type))
 	{
-		ValPtr_t vp = this->inside->codegen(cgi).result;
-		fir::Value* ptr = vp.second;
-
-		return getTypeOfAny(cgi, ptr);
+		auto r = this->inside->codegen(cgi);
+		return getTypeOfAny(cgi, r.pointer);
 	}
 	else
 	{
@@ -67,10 +65,10 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 	iceAssert(enr);
 
 	fir::Value* wrapper = cgi->getStackAlloc(tp->first, "typeof_tmp");
-	fir::Value* gep = cgi->builder.CreateStructGEP(wrapper, 0);
+	fir::Value* gep = cgi->irb.CreateStructGEP(wrapper, 0);
 
-	cgi->builder.CreateStore(enr->cases[index - 1].second->codegen(cgi).result.first, gep);
-	return Result_t(cgi->builder.CreateLoad(wrapper), wrapper);
+	cgi->irb.CreateStore(enr->cases[index - 1].second->codegen(cgi).value, gep);
+	return Result_t(cgi->irb.CreateLoad(wrapper), wrapper);
 }
 
 fir::Type* Typeof::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)

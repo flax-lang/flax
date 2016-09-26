@@ -421,7 +421,7 @@ namespace GenError
 
 		ops.underlines.push_back(getHighlightExtent(value));
 
-		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(op).c_str());
+		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
@@ -452,7 +452,7 @@ namespace GenError
 
 		for(auto a : args)
 		{
-			argtypes.push_back(a->getType(cgi)->str().c_str());
+			argtypes.push_back(a->getType(cgi)->str());
 
 			auto ext = getHighlightExtent(a);
 			ext.col += 1;						// no idea why, but fix it.

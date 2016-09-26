@@ -114,6 +114,16 @@ namespace fir
 		Value_GetPointer,					// equivalent to GEP(ptr*, index)
 		Value_GetGEP2,						// equivalent to GEP(ptr*, ptrIndex, elmIndex) -- for arrays/pointers
 
+		// string-specific things
+		String_GetData,
+		String_SetData,
+
+		String_GetLength,
+		String_SetLength,
+
+		String_GetRefCount,
+		String_SetRefCount,
+
 		Branch_UnCond,
 		Branch_Cond,
 	};

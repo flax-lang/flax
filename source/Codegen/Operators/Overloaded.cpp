@@ -71,6 +71,10 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 			return rtype;
 		}
+		else if(ltype->isStringType() && rtype->isStringType())
+		{
+			return ltype;
+		}
 		else
 		{
 			if(ltype->isPointerType() && rtype->isIntegerType())
@@ -153,7 +157,7 @@ namespace Codegen
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
 						info(oo->func->decl, "generating");
-						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).result.first);
+						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).value);
 					}
 				}
 
@@ -426,8 +430,8 @@ namespace Codegen
 
 			iceAssert(lhs);
 
-			fir::Value* ptr = this->builder.CreateStackAlloc(lhs->getType());
-			this->builder.CreateStore(lhs, ptr);
+			fir::Value* ptr = this->irb.CreateStackAlloc(lhs->getType());
+			this->irb.CreateStore(lhs, ptr);
 
 			lref = ptr;
 		}
@@ -435,8 +439,8 @@ namespace Codegen
 		{
 			iceAssert(rhs);
 
-			fir::Value* ptr = this->builder.CreateStackAlloc(rhs->getType());
-			this->builder.CreateStore(rhs, ptr);
+			fir::Value* ptr = this->irb.CreateStackAlloc(rhs->getType());
+			this->irb.CreateStore(rhs, ptr);
 
 			rref = ptr;
 		}
@@ -486,7 +490,7 @@ namespace Codegen
 			}
 
 
-			ret = this->builder.CreateCall2(opFunc, larg, rarg);
+			ret = this->irb.CreateCall2(opFunc, larg, rarg);
 		}
 		else
 		{
@@ -497,7 +501,7 @@ namespace Codegen
 
 		if(needsNot)
 		{
-			ret = this->builder.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
+			ret = this->irb.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
 		}
 
 		return Result_t(ret, 0);

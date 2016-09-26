@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	LLVariableArrayType::LLVariableArrayType(Type* elmType) : Type(FTypeKind::LowLevelVariableArray)
+	LLVariableArrayType::LLVariableArrayType(Type* elmType)
 	{
 		this->arrayElementType = elmType;
 		iceAssert(this->arrayElementType);

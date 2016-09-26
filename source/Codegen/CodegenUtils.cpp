@@ -87,18 +87,33 @@ namespace Codegen
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
+		this->refCountingStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		this->symTabStack.clear();
+		this->refCountingStack.clear();
 		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
 		this->symTabStack.push_back(SymTab_t());
+		this->refCountingStack.push_back({ });
 	}
+
+	void CodegenInstance::addRefCountedValue(fir::Value* ptr)
+	{
+		iceAssert(ptr->getType()->isPointerType() && "refcounted value must be a pointer");
+		this->refCountingStack.back().push_back(ptr);
+	}
+
+	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
+	{
+		return this->refCountingStack.back();
+	}
+
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
@@ -1091,8 +1106,6 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
-
 				if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
@@ -1259,12 +1272,13 @@ namespace Codegen
 
 		if(!found)
 		{
+			bool variadic = false;
 			pts::Type* retType;
 			std::deque<VarDecl*> params;
 			if(name == "malloc")
 			{
 				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
+				fakefdmvd->ptype = pts::NamedType::create(INT64_TYPE_STRING);
 				params.push_back(fakefdmvd);
 
 				retType = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
@@ -1277,29 +1291,15 @@ namespace Codegen
 
 				retType = pts::NamedType::create(VOID_TYPE_STRING);
 			}
-			else if(name == "strlen")
+			else if(name == "printf")
 			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
-				fakefdmvd->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
-				params.push_back(fakefdmvd);
-
-				retType = pts::NamedType::create(INT64_TYPE_STRING);
-			}
-			else if(name == "memset")
-			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
+				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "fmt", false);
 				fakefdmvd1->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
 				params.push_back(fakefdmvd1);
 
-				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
-				fakefdmvd2->ptype = pts::NamedType::create(INT32_TYPE_STRING);
-				params.push_back(fakefdmvd2);
+				retType = pts::NamedType::create(INT32_TYPE_STRING);
 
-				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd3->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
-				params.push_back(fakefdmvd3);
-
-				retType = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
+				variadic = true;
 			}
 			else
 			{
@@ -1308,6 +1308,7 @@ namespace Codegen
 
 			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
 			fakefm->isFFI = true;
+			fakefm->isCStyleVarArg = variadic;
 			fakefm->codegen(this);
 
 
@@ -1849,7 +1850,7 @@ namespace Codegen
 		if(needToCodegen)
 		{
 			Result_t res = fnDecl->generateDeclForGenericFunction(this, gtm);
-			ffunc = (fir::Function*) res.result.first;
+			ffunc = (fir::Function*) res.value;
 
 			this->reifiedGenericFunctions[{ func, gtm }] = ffunc;
 		}
@@ -2168,15 +2169,15 @@ namespace Codegen
 
 				if(fn->getBlockList().size() == 0)
 				{
-					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+					fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
 
-					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
-					this->builder.setCurrentBlock(block);
+					fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+					this->irb.setCurrentBlock(block);
 
 					// fir::Value* param = ++fn->arg_begin();
-					this->builder.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+					this->irb.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
 
-					this->builder.setCurrentBlock(prevBlock);
+					this->irb.setCurrentBlock(prevBlock);
 				}
 
 				if(vals.size() != fn->getArgumentCount())
@@ -2202,17 +2203,17 @@ namespace Codegen
 
 				if(fn->getBlockList().size() == 0)
 				{
-					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+					fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
 
-					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
-					this->builder.setCurrentBlock(block);
+					fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+					this->irb.setCurrentBlock(block);
 
 					iceAssert(fn->getArgumentCount() > 1);
 
 					// fir::Value* param = ++fn->arg_begin();
-					this->builder.CreateReturn(fn->getArguments()[1]);
+					this->irb.CreateReturn(fn->getArguments()[1]);
 
-					this->builder.setCurrentBlock(prevBlock);
+					this->irb.setCurrentBlock(prevBlock);
 				}
 
 
@@ -2377,22 +2378,22 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
+		fir::Value* typegep = this->irb.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
+		typegep = this->irb.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
 		fir::Value* constint = fir::ConstantInt::getUnsigned(typegep->getType()->getPointerElementType(), index);
-		this->builder.CreateStore(constint, typegep);
+		this->irb.CreateStore(constint, typegep);
 
 
 
-		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1);
+		fir::Value* valgep = this->irb.CreateStructGEP(lhsPtr, 1);
 		if(rhsPtr)
 		{
-			fir::Value* casted = this->builder.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
-			this->builder.CreateStore(casted, valgep);
+			fir::Value* casted = this->irb.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
+			this->irb.CreateStore(casted, valgep);
 		}
 		else
 		{
@@ -2402,39 +2403,39 @@ namespace Codegen
 
 			if(rhs->getType()->isIntegerType())
 			{
-				fir::Value* casted = this->builder.CreateIntToPointerCast(rhs, targetType);
-				this->builder.CreateStore(casted, valgep);
+				fir::Value* casted = this->irb.CreateIntToPointerCast(rhs, targetType);
+				this->irb.CreateStore(casted, valgep);
 			}
 			else if(rhs->getType()->isFloatingPointType())
 			{
-				fir::Value* casted = this->builder.CreateBitcast(rhs, fir::PrimitiveType::getUintN(rhs->getType()->toPrimitiveType()->getFloatingPointBitWidth()));
+				fir::Value* casted = this->irb.CreateBitcast(rhs, fir::PrimitiveType::getUintN(rhs->getType()->toPrimitiveType()->getFloatingPointBitWidth()));
 
-				casted = this->builder.CreateIntSizeCast(casted, targetType);
-				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
-				this->builder.CreateStore(casted, valgep);
+				casted = this->irb.CreateIntSizeCast(casted, targetType);
+				casted = this->irb.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
+				this->irb.CreateStore(casted, valgep);
 			}
 			else
 			{
-				fir::Value* casted = this->builder.CreateBitcast(rhs, targetType);
-				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
-				this->builder.CreateStore(casted, valgep);
+				fir::Value* casted = this->irb.CreateBitcast(rhs, targetType);
+				casted = this->irb.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
+				this->irb.CreateStore(casted, valgep);
 			}
 		}
 
-		return Result_t(this->builder.CreateLoad(lhsPtr), lhsPtr);
+		return Result_t(this->irb.CreateLoad(lhsPtr), lhsPtr);
 	}
 
 
 	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
-		fir::Value* loadedval = this->builder.CreateLoad(valgep);
+		fir::Value* valgep = this->irb.CreateStructGEP(ptr, 1);
+		fir::Value* loadedval = this->irb.CreateLoad(valgep);
 
 		if(type->isStructType() || type->isClassType())
 		{
 			// use pointer stuff
-			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());
-			fir::Value* loaded = this->builder.CreateLoad(valptr);
+			fir::Value* valptr = this->irb.CreatePointerTypeCast(loadedval, type->getPointerTo());
+			fir::Value* loaded = this->irb.CreateLoad(valptr);
 
 			return Result_t(loaded, valptr);
 		}
@@ -2442,17 +2443,17 @@ namespace Codegen
 		{
 			// the pointer is actually a literal
 			fir::Type* targetType = type->isIntegerType() ? type : fir::PrimitiveType::getInt64(this->getContext());
-			fir::Value* val = this->builder.CreatePointerToIntCast(loadedval, targetType);
+			fir::Value* val = this->irb.CreatePointerToIntCast(loadedval, targetType);
 
 			if(val->getType() != type)
 			{
 				if(type->isFloatingPointType()
 					&& type->toPrimitiveType()->getFloatingPointBitWidth() != val->getType()->toPrimitiveType()->getIntegerBitWidth())
 				{
-					val = builder.CreateIntSizeCast(val, fir::PrimitiveType::getUintN(type->toPrimitiveType()->getFloatingPointBitWidth()));
+					val = this->irb.CreateIntSizeCast(val, fir::PrimitiveType::getUintN(type->toPrimitiveType()->getFloatingPointBitWidth()));
 				}
 
-				val = this->builder.CreateBitcast(val, type);
+				val = this->irb.CreateBitcast(val, type);
 			}
 
 			return Result_t(val, 0);
@@ -2467,12 +2468,350 @@ namespace Codegen
 		if(!valuePtr)
 		{
 			// valuePtr = this->getStackAlloc(value->getType(), "tempAlloca");
-			// this->builder.CreateStore(value, valuePtr);
+			// this->irb.CreateStore(value, valuePtr);
 		}
 
 		fir::Value* anyptr = this->getStackAlloc(anyt->first, "anyPtr");
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
+
+
+
+
+	Result_t CodegenInstance::makeStringLiteral(std::string str)
+	{
+		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
+		fir::Value* strp = this->irb.CreateStackAlloc(fir::StringType::get());
+
+		fir::Value* empty = this->module->createGlobalString(str);
+		empty = this->irb.CreateConstGEP2(empty, 0, 0);
+
+		fir::Value* len = fir::ConstantInt::getInt32(str.length());
+		fir::Value* rc = fir::ConstantInt::getInt32(-1);
+
+		this->irb.CreateSetStringData(strp, empty);
+		this->irb.CreateSetStringLength(strp, len);
+		this->irb.CreateSetStringRefCount(strp, rc);
+
+		strp->makeImmutable();
+		// this->addRefCountedValue(strp);
+
+		return Result_t(this->irb.CreateLoad(strp), strp);
+	}
+
+
+
+	Result_t CodegenInstance::getEmptyString()
+	{
+		return this->makeStringLiteral("");
+	}
+
+	Result_t CodegenInstance::getNullString()
+	{
+		return this->makeStringLiteral("(null)");
+	}
+
+
+
+
+
+
+	#define BUILTIN_STRINGREF_INCR_FUNC_NAME "__.stringref_incr"
+	#define BUILTIN_STRINGREF_DECR_FUNC_NAME "__.stringref_decr"
+	#define BUILTIN_STRINGCMP_FUNC_NAME "__.stringcmp"
+
+
+
+	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
+	{
+		fir::Function* incrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
+
+		if(!incrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// never increment the refcount if this is a string literal
+			// how do we know? the refcount was -1 to begin with.
+
+			// check.
+			fir::IRBlock* doadd = this->irb.addNewBlockInFunction("doref", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
+				this->irb.CreateCondBranch(cond, merge, doadd);
+			}
+
+			this->irb.setCurrentBlock(doadd);
+			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			this->irb.CreateUnCondBranch(merge);
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			incrf = func;
+		}
+
+		iceAssert(incrf);
+		return incrf;
+	}
+
+
+	fir::Function* CodegenInstance::getStringRefCountDecrementFunction()
+	{
+		fir::Function* decrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
+
+		if(!decrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+
+			// needs to handle freeing the thing.
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// note:
+			// what happens for string literals is that refcount is set to -1 to begin with
+			// thus, when we do the branch, we first compare to -1 so we know never to call free() on those
+			// duh, we cannot free string literals.
+
+
+			// check.
+			fir::IRBlock* dotest = this->irb.addNewBlockInFunction("dotest", func);
+			fir::IRBlock* dealloc = this->irb.addNewBlockInFunction("deallocate", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
+				this->irb.CreateCondBranch(cond, merge, dotest);
+			}
+
+
+			this->irb.setCurrentBlock(dotest);
+			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt32(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			{
+				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
+				this->irb.CreateCondBranch(cond, dealloc, merge);
+
+
+				this->irb.setCurrentBlock(dealloc);
+
+				// call free on the buffer.
+				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
+				iceAssert(freefn);
+
+				this->irb.CreateCall1(freefn, bufp);
+
+				fir::Value* tmpstr = this->module->createGlobalString("free %p\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall2(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp);
+				this->irb.CreateUnCondBranch(merge);
+			}
+
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			decrf = func;
+		}
+
+		iceAssert(decrf);
+		return decrf;
+	}
+
+
+	fir::Function* CodegenInstance::getStringCompareFunction()
+	{
+		fir::Function* cmpf = this->module->getFunction(Identifier(BUILTIN_STRINGCMP_FUNC_NAME, IdKind::Name));
+
+		if(!cmpf)
+		{
+			// great.
+
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGCMP_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo(), fir::StringType::get()->getPointerTo() },
+				fir::PrimitiveType::getInt64(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+			/*
+				int strcmp(const char* s1, const char* s2)
+				{
+					while(*s1 && (*s1 == *s2))
+						s1++, s2++;
+
+					return *(const unsigned char*) s1 - *(const unsigned char*) s2;
+				}
+			*/
+
+			{
+				fir::Value* str1p = this->irb.CreateStackAlloc(fir::PointerType::getInt8Ptr());
+				this->irb.CreateStore(this->irb.CreateGetStringData(s1, "s1"), str1p);
+
+				fir::Value* str2p = this->irb.CreateStackAlloc(fir::PointerType::getInt8Ptr());
+				this->irb.CreateStore(this->irb.CreateGetStringData(s2, "s2"), str2p);
+
+
+				fir::IRBlock* loopcond = this->irb.addNewBlockInFunction("cond1", func);
+				fir::IRBlock* loopincr = this->irb.addNewBlockInFunction("loopincr", func);
+				fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+				this->irb.CreateUnCondBranch(loopcond);
+				this->irb.setCurrentBlock(loopcond);
+				{
+					fir::IRBlock* cond2 = this->irb.addNewBlockInFunction("cond2", func);
+
+					fir::Value* str1 = this->irb.CreateLoad(str1p);
+					fir::Value* str2 = this->irb.CreateLoad(str2p);
+
+					// make sure ptr1 is not null
+					fir::Value* cnd = this->irb.CreateICmpNEQ(this->irb.CreateLoad(str1), fir::ConstantInt::getInt8(0));
+					this->irb.CreateCondBranch(cnd, cond2, merge);
+
+					this->irb.setCurrentBlock(cond2);
+					{
+						// check that they are equal
+						fir::Value* iseq = this->irb.CreateICmpEQ(this->irb.CreateLoad(str1), this->irb.CreateLoad(str2));
+						this->irb.CreateCondBranch(iseq, loopincr, merge);
+					}
+
+
+					this->irb.setCurrentBlock(loopincr);
+					{
+						// increment str1 and str2
+						fir::Value* v1 = this->irb.CreatePointerAdd(str1, fir::ConstantInt::getInt64(1));
+						fir::Value* v2 = this->irb.CreatePointerAdd(str2, fir::ConstantInt::getInt64(1));
+
+						this->irb.CreateStore(v1, str1p);
+						this->irb.CreateStore(v2, str2p);
+
+						this->irb.CreateUnCondBranch(loopcond);
+					}
+				}
+
+				this->irb.setCurrentBlock(merge);
+				fir::Value* ret = this->irb.CreateSub(this->irb.CreateLoad(this->irb.CreateLoad(str1p)),
+					this->irb.CreateLoad(this->irb.CreateLoad(str2p)));
+
+				ret = this->irb.CreateIntSizeCast(ret, func->getReturnType());
+
+				this->irb.CreateReturn(ret);
+			}
+
+			cmpf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
+	}
+
+
+
+	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			iceAssert(printffn);
+			fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall1(printffn, tmpstr);
+
+			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			this->irb.CreateCall1(incrf, strp);
+		}
+		else
+		{
+			error("no");
+		}
+	}
+
+	void CodegenInstance::decrementRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			iceAssert(printffn);
+
+			// debug.
+			fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + " %p\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall2(printffn, tmpstr, this->irb.CreateGetStringData(strp));
+
+			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			this->irb.CreateCall1(decrf, strp);
+
+			tmpstr = this->module->createGlobalString("decremented\n");
+			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			this->irb.CreateCall1(printffn, tmpstr);
+		}
+		else
+		{
+			error("no");
+		}
+	}
+
+
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, ValueKind rhsVK)
+	{
+		// right.
+		if(!this->isRefCountedType(val->getType()))
+		{
+			this->irb.CreateStore(val, target);
+			return;
+		}
+
+
+
+		warn(user, "thing");
+	}
+
+
+
+
+
+
 
 
 
@@ -2485,13 +2824,13 @@ namespace Codegen
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
 		fir::Value* arr = this->getStackAlloc(arrType, "Any_Variadic_Array");
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
-		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arr, 0);
+		fir::Value* lenGEP = this->irb.CreateStructGEP(arr, 1);
 
-		this->builder.CreateStore(ptr, ptrGEP);
-		this->builder.CreateStore(length, lenGEP);
+		this->irb.CreateStore(ptr, ptrGEP);
+		this->irb.CreateStore(length, lenGEP);
 
-		return Result_t(this->builder.CreateLoad(arr), arr);
+		return Result_t(this->irb.CreateLoad(arr), arr);
 	}
 
 	Result_t CodegenInstance::indexLLVariableArray(fir::Value* arr, fir::Value* index)
@@ -2499,13 +2838,13 @@ namespace Codegen
 		iceAssert(arr->getType()->isLLVariableArrayType());
 		iceAssert(index->getType()->isIntegerType());
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
-		fir::Value* ptr = this->builder.CreateLoad(ptrGEP);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arr, 0);
+		fir::Value* ptr = this->irb.CreateLoad(ptrGEP);
 
 		// todo: bounds checking?
 
-		fir::Value* gep = this->builder.CreateGEP2(ptr, fir::ConstantInt::getUint64(0), index);
-		return Result_t(this->builder.CreateLoad(gep), gep);
+		fir::Value* gep = this->irb.CreateGEP2(ptr, fir::ConstantInt::getUint64(0), index);
+		return Result_t(this->irb.CreateLoad(gep), gep);
 	}
 
 	Result_t CodegenInstance::getLLVariableArrayDataPtr(fir::Value* arrPtr)
@@ -2513,8 +2852,8 @@ namespace Codegen
 		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
 		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arrPtr, 0);
-		return Result_t(this->builder.CreateLoad(ptrGEP), ptrGEP);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arrPtr, 0);
+		return Result_t(this->irb.CreateLoad(ptrGEP), ptrGEP);
 	}
 
 	Result_t CodegenInstance::getLLVariableArrayLength(fir::Value* arrPtr)
@@ -2522,8 +2861,8 @@ namespace Codegen
 		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
 		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* lenGEP = this->builder.CreateStructGEP(arrPtr, 1);
-		return Result_t(this->builder.CreateLoad(lenGEP), lenGEP);
+		fir::Value* lenGEP = this->irb.CreateStructGEP(arrPtr, 1);
+		return Result_t(this->irb.CreateLoad(lenGEP), lenGEP);
 	}
 
 
@@ -2582,26 +2921,26 @@ namespace Codegen
 
 		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
 		{
-			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
+			rhs = this->irb.CreateIntSizeCast(rhs, intval->getType());
 		}
 
 
 		// this is the properly adjusted int to add/sub by
-		fir::Value* newrhs = this->builder.CreateMul(rhs, intval);
+		fir::Value* newrhs = this->irb.CreateMul(rhs, intval);
 
 		// convert the lhs pointer to an int value, so we can add/sub on it
-		fir::Value* ptrval = this->builder.CreatePointerToIntCast(lhs, newrhs->getType());
+		fir::Value* ptrval = this->irb.CreatePointerToIntCast(lhs, newrhs->getType());
 
 		// create the add/sub
-		fir::Value* res = this->builder.CreateBinaryOp(op, ptrval, newrhs);
+		fir::Value* res = this->irb.CreateBinaryOp(op, ptrval, newrhs);
 
 		// turn the int back into a pointer, so we can store it back into the var.
 		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
 			lhsPtr : this->getStackAlloc(lhs->getType());
 
 
-		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());
-		this->builder.CreateStore(properres, tempRes);
+		fir::Value* properres = this->irb.CreateIntToPointerCast(res, lhs->getType());
+		this->irb.CreateStore(properres, tempRes);
 		return Result_t(properres, tempRes);
 	}
 
