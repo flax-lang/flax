@@ -109,6 +109,15 @@ namespace Codegen
 		this->refCountingStack.back().push_back(ptr);
 	}
 
+	void CodegenInstance::removeRefCountedValue(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			error("ptr does not exist in refcounting stack, cannot remove");
+
+		this->refCountingStack.back().erase(it);
+	}
+
 	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
 		return this->refCountingStack.back();
@@ -2615,21 +2624,22 @@ namespace Codegen
 				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
 				this->irb.CreateCondBranch(cond, dealloc, merge);
 
-
 				this->irb.setCurrentBlock(dealloc);
 
 				// call free on the buffer.
 				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp, bufp);
+
 
 				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
 				iceAssert(freefn);
 
 				this->irb.CreateCall1(freefn, bufp);
 
-				fir::Value* tmpstr = this->module->createGlobalString("free %p\n");
-				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-				this->irb.CreateCall2(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp);
 				this->irb.CreateUnCondBranch(merge);
 			}
 
@@ -2826,7 +2836,18 @@ namespace Codegen
 			// so we don't do anything to it
 			// instead, decrement the left side
 
-			// this->decrementRefCount(target);
+			this->decrementRefCount(target);
+
+			// to avoid double-freeing, we remove 'val' from the list of refcounted things
+			// since it's an rvalue, it can't be "re-referenced", so to speak.
+
+			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
+			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
+
+			iceAssert(ptr);
+			this->removeRefCountedValue(ptr);
+
+			// now we just store as usual
 
 			// just store
 			this->irb.CreateStore(val, target);
@@ -3101,8 +3122,8 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->ptype->str().c_str(), this->printAst(func->decl).c_str());
+			error(func, "Function %s has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
+				func->decl->ptype->str().c_str());
 		}
 		else if(isVoid)
 		{

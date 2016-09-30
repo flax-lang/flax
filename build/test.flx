@@ -396,6 +396,11 @@ func bar()
 	bar1()
 }
 
+func wat() -> int
+{
+	return 10
+}
+
 func bar1()
 {
 	let xxx = "str"
@@ -403,7 +408,7 @@ func bar1()
 	printf(@raw "[%s], [%s]\n", xxx, yyy)
 
 	var zzz = yyy + "alingadingdong"
-	// zzz =
+	zzz = "russian" + yyy
 
 	printf(@raw "[%s], [%s], [%s]\n", xxx, yyy, zzz)
 }

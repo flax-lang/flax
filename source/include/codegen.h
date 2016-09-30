@@ -139,6 +139,7 @@ namespace Codegen
 		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
 		void addRefCountedValue(fir::Value* ptr);
+		void removeRefCountedValue(fir::Value* ptr);
 		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
