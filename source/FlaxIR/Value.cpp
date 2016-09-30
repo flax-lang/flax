@@ -13,7 +13,7 @@ namespace fir
 		this->valueType = t;
 
 		this->id = vnames;
-		this->ident = Identifier("v#" + std::to_string(vnames), IdKind::Name);
+		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 
 		if(this->id == 0)
