@@ -179,8 +179,17 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(f);
 
 		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), res.value, res.pointer);
-		cgi->irb.CreateReturn(this->actualReturnValue);
 
+		// if it's an rvalue, we make a new one, increment its refcount
+		if(cgi->isRefCountedType(res.value->getType()) && res.valueKind == ValueKind::RValue)
+		{
+			fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(this->actualReturnValue->getType(), this->actualReturnValue);
+			cgi->incrementRefCount(tmp);
+
+			this->actualReturnValue = cgi->irb.CreateLoad(tmp);
+		}
+
+		cgi->irb.CreateReturn(this->actualReturnValue);
 
 		// return Result_t(cgi->irb.CreateReturn(this->actualReturnValue), res.pointer, ResultType::BreakCodegen);
 		return Result_t(0, 0, ResultType::BreakCodegen);
