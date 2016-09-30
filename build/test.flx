@@ -398,10 +398,14 @@ func bar()
 
 func bar1()
 {
-	var y = "str"
-	let x = y + "ing"
-	y = x + "ing"
-	printf(@raw "[%s], [%s]\n", x, y)
+	let xxx = "str"
+	var yyy = xxx + "onk"
+	printf(@raw "[%s], [%s]\n", xxx, yyy)
+
+	var zzz = yyy + "alingadingdong"
+	// zzz =
+
+	printf(@raw "[%s], [%s], [%s]\n", xxx, yyy, zzz)
 }
 
 

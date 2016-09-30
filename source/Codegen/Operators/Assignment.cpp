@@ -400,16 +400,7 @@ namespace Operators
 		if(lhs->getType()->isStringType())
 		{
 			iceAssert(lhsPtr);
-
-			// deref the lhs, since it's going to die real soon
-			cgi->decrementRefCount(lhsPtr);
-
-			// ref the right side
-			if(rhs->getType()->isStringType())
-			{
-				iceAssert(rhsPtr);
-				cgi->incrementRefCount(rhsPtr);
-			}
+			iceAssert(rhsPtr);
 
 			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk);
 			return Result_t(0, 0);

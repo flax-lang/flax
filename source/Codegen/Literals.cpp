@@ -96,7 +96,9 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->irb.CreateSetStringRefCount(extra, rc);
 
 			cgi->addRefCountedValue(extra);
-			extra->setName("lit_<" + this->str + ">");
+			if(!extra->hasName())
+				extra->setName("lit_<" + this->str + ">");
+
 			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
 		else

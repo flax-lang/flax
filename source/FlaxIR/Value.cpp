@@ -29,6 +29,11 @@ namespace fir
 		iceAssert(0 && "Value has no type????");
 	}
 
+	bool Value::hasName()
+	{
+		return this->ident.str() != "";
+	}
+
 	void Value::setName(Identifier name)
 	{
 		this->ident = name;
