@@ -2749,11 +2749,11 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			iceAssert(printffn);
-			fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall1(printffn, tmpstr);
+			// fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			// iceAssert(printffn);
+			// fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
+			// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			// this->irb.CreateCall1(printffn, tmpstr);
 
 			fir::Function* incrf = this->getStringRefCountIncrementFunction();
 			this->irb.CreateCall1(incrf, strp);
@@ -2771,20 +2771,20 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			iceAssert(printffn);
+			// fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
+			// iceAssert(printffn);
 
 			// debug.
-			fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + " %p\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall2(printffn, tmpstr, this->irb.CreateGetStringData(strp));
+			// fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + " %p\n");
+			// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			// this->irb.CreateCall2(printffn, tmpstr, this->irb.CreateGetStringData(strp));
 
 			fir::Function* decrf = this->getStringRefCountDecrementFunction();
 			this->irb.CreateCall1(decrf, strp);
 
-			tmpstr = this->module->createGlobalString("decremented\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall1(printffn, tmpstr);
+			// tmpstr = this->module->createGlobalString("decremented\n");
+			// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+			// this->irb.CreateCall1(printffn, tmpstr);
 		}
 		else
 		{
@@ -2795,16 +2795,42 @@ namespace Codegen
 
 	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, ValueKind rhsVK)
 	{
-		// right.
+		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
 		{
+			if(val->getType() != target->getType()->getPointerElementType())
+				GenError::invalidAssignment(this, user, val->getType(), target->getType()->getPointerElementType());
+
 			this->irb.CreateStore(val, target);
 			return;
 		}
 
+		// ok...
+		// if the rhs is an lvalue, it's simple.
+		// increment its refcount, decrement the left side refcount, store, return.
+		if(rhsVK == ValueKind::LValue)
+		{
+			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
+			this->incrementRefCount(ptr);
 
+			// decrement left side
+			this->decrementRefCount(target);
 
-		warn(user, "thing");
+			// store
+			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+		}
+		else
+		{
+			// the rhs has already been evaluated
+			// as an rvalue, its refcount *SHOULD* be one
+			// so we don't do anything to it
+			// instead, decrement the left side
+
+			// this->decrementRefCount(target);
+
+			// just store
+			this->irb.CreateStore(val, target);
+		}
 	}
 
 

@@ -305,18 +305,20 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	// strings 'n' stuff
 	if(cgi->isRefCountedType(val->getType()))
 	{
-		// can't store directly.
-		// need to do refcounting nonsense.
+		// if the right side was a string literal, we everything is already done
+		// (as an optimisation, the string literal is directly stored into the var)
 
-		// check if the right side is an rvalue
-		// if so, we need to do a copy.
+		if(!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw)
+			cgi->assignRefCountedExpression(this, val, valptr, ai, vk);
 
-		cgi->assignRefCountedExpression(this, val, valptr, ai, vk);
+		// else do nothing
+	}
+	else
+	{
+		cgi->irb.CreateStore(val, ai);
 	}
 
-
-	cgi->irb.CreateStore(val, ai);
-	return val;
+	return cgi->irb.CreateLoad(ai);
 }
 
 
