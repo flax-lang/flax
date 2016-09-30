@@ -213,20 +213,13 @@ namespace Operators
 
 				// ok. combine the lengths
 				fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
-				newlen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt32(1));		// space for null
+				fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt32(1));		// space for null
 
 				// now malloc.
 				fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc").firFunc->getName());
 				iceAssert(mallocf);
 
-				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(newlen, fir::PrimitiveType::getInt64()));
-				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p\n");
-					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-					cgi->irb.CreateCall2(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, buf);
-				}
-
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(malloclen, fir::PrimitiveType::getInt64()));
 
 				// now memcpy
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
@@ -240,6 +233,13 @@ namespace Operators
 				// null terminator
 				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p (%s)\n");
+					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+					cgi->irb.CreateCall3(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, buf, buf);
+				}
 
 				// ok, now fix it
 				cgi->irb.CreateSetStringData(newstrp, buf);
