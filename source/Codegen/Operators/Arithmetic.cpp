@@ -213,13 +213,20 @@ namespace Operators
 
 				// ok. combine the lengths
 				fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
-				fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt32(1));		// space for null
+
+				// space for null + refcount
+				size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::PrimitiveType::getInt64());
+				fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 				// now malloc.
 				fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc").firFunc->getName());
 				iceAssert(mallocf);
 
-				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(malloclen, fir::PrimitiveType::getInt64()));
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
+
+				// move it forward (skip the refcount)
+				auto tmp = buf;
+				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
 
 				// now memcpy
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
@@ -235,16 +242,16 @@ namespace Operators
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
 				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p (%s)\n");
+					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
 					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
-					cgi->irb.CreateCall3(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, buf, buf);
+					cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 				}
 
 				// ok, now fix it
 				cgi->irb.CreateSetStringData(newstrp, buf);
 				cgi->irb.CreateSetStringLength(newstrp, newlen);
-				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt32(1));
+				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
 
 				cgi->addRefCountedValue(newstrp);
 				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);

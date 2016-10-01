@@ -278,7 +278,70 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
+/*
+	how to be stupid:
+	associating reference count with the reference, instead of the object being referenced
+	._.
 
+	new string structure:
+
+	struct string
+	{
+		i8* ptr
+		i64 len
+	}
+
+	ptr actually points 8 bytes ahead of the allocated memory
+	ie. ptr = malloc(len + 1) + 8
+	the refcount is a 64-bit number stored at the beginning of the allocated memory
+
+	THIS TIME, it is actually referring to the number of times the *DATA* is being referenced
+	instead of some arbitrary number that means nothing
+
+	to access it, we just cast ptr to an i64, then pointer arithmetically subtract 1.
+
+	god i am so stupid
+
+	string literals work like they currently do, i guess -- just store -1 in the 8 byte space.
+
+
+
+
+	for arbitrary rc<T>, it's basically the same
+	struct rc<T>
+	{
+		T* ptr
+	}
+
+	exactly the same; refcount is a 64-bit number stored 8 bytes before where ptr points
+	to access it, same thing, cast ptr to an i64*, then subtract 1 with ptr arith.
+
+
+	note: the things above will be done at the llvm level. for strings at least, we'll retain the FIR instructions for
+	accessing data, len and refcount. At the llvm level, data and len will still be struct GEPs, but refcount will do some
+	pointer magic. not a big deal
+
+
+	for rc<T>, it's likely that it'll be a fir::Type, like fir::StringType, with an elementType. in which case, it should be similarly
+	easy to set up the actual work at the llvm level. the type of refcount is always i64, so that shouldn't be a problem for the type
+	system to handle.
+
+	at the llvm level, rc<T> just gets converted to an appropriate struct type. the types are all concrete, so we can just do the
+	same trick as with the strings.
+
+	ezpz.
+
+	this time, i'll stop doing stupid things.
+*/
+
+
+
+/*
+	wtf:
+
+	llvm has extractvalue and insertvalue instructions that can get member fields from non-pointer structs
+	i feel cheated.
+*/
 
 
 
@@ -380,10 +443,10 @@ public func main() -> int
 	return 0
 }
 
-func qux()
-{
-	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
-}
+// func qux()
+// {
+// 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
+// }
 
 func bar()
 {
@@ -401,16 +464,37 @@ func wat() -> int
 	return 10
 }
 
+var gs: string
+
+func takeS(a: string)
+{
+	printf(@raw "str: %s\n", a)
+	gs = a
+}
+
+
 func bar1()
 {
 	let xxx = "str"
+	printf(@raw "do xxx\n")
 	var yyy = xxx + "onk"
+	printf(@raw "do yyy\n")
 	printf(@raw "[%s], [%s]\n", xxx, yyy)
 
 	var zzz = yyy + "alingadingdong"
+	printf(@raw "do zzz 1\n")
 	zzz = "russian" + yyy
+	printf(@raw "do zzz 2\n")
 
-	printf(@raw "[%s], [%s], [%s]\n", xxx, yyy, zzz)
+	var aaa: string
+	aaa = yyy
+	printf(@raw "do aaa\n")
+
+	printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
+
+	takeS(zzz)
+
+	printf(@raw "global: [%s]\n", gs)
 }
 
 

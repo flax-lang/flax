@@ -20,7 +20,7 @@ function callCompiler
 		set compile ""
 	else if contains "dumpf" $argv
 		set dump "-print-fir -c"
-		set compile ""
+		set compile "-jit"
 	else if contains "compile" $argv
 		set dump ""
 		set compile "-o build/test"
