@@ -88,9 +88,13 @@ static std::string mangleType(fir::Type* t)
 	{
 		return "PT" + mangleType(t->getPointerElementType());
 	}
+	else if(t->isStringType())
+	{
+		return "SR";
+	}
 	else
 	{
-		iceAssert(0);
+		iceAssert(0 && "unsupported ir type???");
 	}
 }
 

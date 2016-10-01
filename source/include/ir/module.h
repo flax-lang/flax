@@ -79,6 +79,7 @@ namespace fir
 		size_t getBitsPerByte();
 		size_t getPointerWidthInBits();
 		size_t getTypeSizeInBits(Type* type);
+		size_t getTypeSizeInBytes(Type* type);
 
 		Type* getPointerSizedIntegerType();
 
