@@ -17,6 +17,16 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
 	{
+		// check the global scope for variables
+		auto ft = cgi->getCurrentFuncTree();
+		for(auto v : ft->vars)
+		{
+			if(v.first == this->name)
+				return Result_t(cgi->irb.CreateLoad(v.second.first), v.second.first, ValueKind::LValue);
+		}
+
+
+
 		// check for functions
 		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
 		std::deque<fir::Function*> cands;
@@ -63,6 +73,19 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 	VarDecl* decl = cgi->getSymDecl(this, this->name);
 	if(!decl)
 	{
+		// check the global scope for variables
+		auto ft = cgi->getCurrentFuncTree();
+		for(auto v : ft->vars)
+		{
+			if(v.first == this->name)
+				return v.second.first->getType()->getPointerElementType();
+		}
+
+
+
+
+
+
 		// check for functions
 
 		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
@@ -305,13 +328,23 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	// strings 'n' stuff
 	if(cgi->isRefCountedType(val->getType()))
 	{
-		// if the right side was a string literal, we everything is already done
+		// if the right side was a string literal, everything is already done
 		// (as an optimisation, the string literal is directly stored into the var)
 
-		if(!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw)
+		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
+		{
+			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
+			cgi->irb.CreateStore(cgi->getNullString().value, ai);
 			cgi->assignRefCountedExpression(this, val, valptr, ai, vk);
-
-		// else do nothing
+		}
+		else if(!this->initVal)
+		{
+			cgi->irb.CreateStore(val, ai);
+		}
+		if(shouldAddToSymtab)
+		{
+			cgi->addRefCountedValue(ai);
+		}
 	}
 	else
 	{
@@ -386,7 +419,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(this->initVal)
 	{
-		if(isGlobal && (this->concretisedType->isStructType() || this->concretisedType->isClassType()))
+		if(isGlobal && (this->concretisedType->isStringType() || this->concretisedType->isStructType() || this->concretisedType->isClassType()))
 		{
 			// can't call directly for globals, since we cannot call the function directly.
 			// todo: if it's a struct, and we need to call a constructor...
@@ -417,6 +450,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			iceAssert(val);
 			cgi->addGlobalConstructedValue(ai, val);
+		}
+		else if(ltype->isStringType())
+		{
+			// fk
+			// error("not supported");
+			cgi->addGlobalConstructedValue(ai, fir::ConstantValue::getNullValue(this->concretisedType));
 		}
 		else if(ltype->isStructType() || ltype->isClassType())
 		{

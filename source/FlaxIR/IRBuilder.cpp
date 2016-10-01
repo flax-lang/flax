@@ -1186,7 +1186,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt32(), { ptr });
+		Instruction* instr = new Instruction(OpKind::String_GetLength, fir::PrimitiveType::getInt64(), { ptr });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1195,8 +1195,8 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PrimitiveType::getInt32())
-			error("val is not an int32");
+		if(val->getType() != fir::PrimitiveType::getInt64())
+			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::String_SetLength, fir::PrimitiveType::getVoid(), { ptr, val });
 		return this->addInstruction(instr, vname);
@@ -1209,7 +1209,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::String_GetRefCount, fir::PrimitiveType::getInt32(), { ptr });
+		Instruction* instr = new Instruction(OpKind::String_GetRefCount, fir::PrimitiveType::getInt64(), { ptr });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1218,8 +1218,8 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PrimitiveType::getInt32())
-			error("val is not an int32");
+		if(val->getType() != fir::PrimitiveType::getInt64())
+			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::String_SetRefCount, fir::PrimitiveType::getVoid(), { ptr, val });
 		return this->addInstruction(instr, vname);
