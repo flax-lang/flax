@@ -347,8 +347,58 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
+/*
+	stuff:
 
 
+	foo() results in an rvalue
+	in let x = foo(),
+
+	x is assigned an rvalue
+	as with x = y + "lol"
+
+	it's clear that the refcount of the old value of x must be decremented
+	for y + lol, we remove it from the refcounting list
+	for foo(), if it returns some rc<T>, the refcount of T is increased
+
+
+
+
+	foo() { return x }
+
+	let y = foo()
+
+	y holds a reference to x, rc(x)++
+	so rc(x) == 2
+
+	at the end of scope, y is gone, so rc(x)--
+	x is leaked since refcount remains 1.
+
+
+
+	for lvalue = rvalue, in essence the rvalue is moved to the lvalue
+	so in theory the recount should not change at all
+
+	let y = x + 10
+	x + 10 gets removed from the refcount stack, and rc(y) == 1
+
+	let y = foo()
+	foo() gets removed from the refcount stack, and rc(y) == 1
+
+	this works, i suppose, if funccall doesn't add the result to the list.
+
+
+	what if foo() returns a global?
+
+	if we have
+	let x = foo()
+	let y = foo()
+
+	then the global gets referenced twice, but the refcount remains 1 (assuming no previous references)
+	so it gets freed twice...
+
+
+*/
 
 
 
@@ -468,33 +518,60 @@ var gs: string
 
 func takeS(a: string)
 {
-	printf(@raw "str: %s\n", a)
+	printf(@raw "str: [%s]\n", a)
 	gs = a
 }
 
+func retS() -> string
+{
+	// let r = "goto" + "hell"
+	printf(@raw "ret gs\n")
+	return gs
+}
 
 func bar1()
 {
-	let xxx = "str"
-	printf(@raw "do xxx\n")
-	var yyy = xxx + "onk"
-	printf(@raw "do yyy\n")
-	printf(@raw "[%s], [%s]\n", xxx, yyy)
+	// let xxx = "str"
+	// printf(@raw "do xxx\n")
+	// var yyy = xxx + "onk"
+	// printf(@raw "do yyy\n")
+	// printf(@raw "[%s], [%s]\n", xxx, yyy)
 
-	var zzz = yyy + "alingadingdong"
-	printf(@raw "do zzz 1\n")
-	zzz = "russian" + yyy
-	printf(@raw "do zzz 2\n")
+	// var zzz = yyy + "alingadingdong"
+	// printf(@raw "do zzz 1\n")
+	// zzz = "russian" + yyy
+	// printf(@raw "do zzz 2\n")
 
-	var aaa: string
-	aaa = yyy
-	printf(@raw "do aaa\n")
+	// var aaa: string
+	// aaa = yyy
+	// printf(@raw "do aaa\n")
 
-	printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
+	// printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
 
-	takeS(zzz)
+	takeS("hello" + "world")
 
-	printf(@raw "global: [%s]\n", gs)
+	// printf(@raw "global: [%s]\n", gs)
+
+
+
+	// var bbb: string
+	// var ccc: string
+	// var ddd: string
+	// var eee: string
+
+	// bbb = yyy
+	// ccc = yyy
+	// ddd = yyy
+	// eee = yyy
+
+	printf(@raw "\n\n\n\n")
+
+	let gs1 = retS()
+	let gs2 = retS()
+
+	retS()
+
+	printf(@raw "ret: [%s], [%s]\n", gs1, gs2)
 }
 
 
