@@ -334,13 +334,15 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
 		{
 			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->irb.CreateStore(cgi->getNullString().value, ai);
-			cgi->assignRefCountedExpression(this, val, valptr, ai, vk);
+			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true);
 		}
 		else if(!this->initVal)
 		{
+			// val was the default value
 			cgi->irb.CreateStore(val, ai);
 		}
+
+
 		if(shouldAddToSymtab)
 		{
 			cgi->addRefCountedValue(ai);

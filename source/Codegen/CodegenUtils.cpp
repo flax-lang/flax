@@ -118,6 +118,15 @@ namespace Codegen
 		this->refCountingStack.back().erase(it);
 	}
 
+	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			return;
+
+		this->refCountingStack.back().erase(it);
+	}
+
 	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
 		return this->refCountingStack.back();
@@ -2689,6 +2698,16 @@ namespace Codegen
 			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
 			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(incr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
+
 			this->irb.CreateUnCondBranch(merge);
 			this->irb.setCurrentBlock(merge);
 			this->irb.CreateReturnVoid();
@@ -2753,6 +2772,15 @@ namespace Codegen
 			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
 			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(decr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
 
 			{
 				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
@@ -2769,12 +2797,12 @@ namespace Codegen
 				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
 				this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp, bufp);
 
-
-
 				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
 				iceAssert(freefn);
 
 				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
+
+				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
 
 				this->irb.CreateUnCondBranch(merge);
 			}
@@ -2843,16 +2871,13 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, ValueKind rhsVK)
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
+		ValueKind rhsVK, bool isInit)
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
 		{
-			if(val->getType() != target->getType()->getPointerElementType())
-				GenError::invalidAssignment(this, user, val->getType(), target->getType()->getPointerElementType());
-
-			this->irb.CreateStore(val, target);
-			return;
+			error(user, "not refcounted");
 		}
 
 		// ok...
@@ -2864,15 +2889,8 @@ namespace Codegen
 			this->incrementRefCount(ptr);
 
 			// decrement left side
-			this->decrementRefCount(target);
-
-
-			// fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			// iceAssert(printffn);
-
-			// fir::Value* tmpstr = this->module->createGlobalString("up: " + ptr->getName().str() + " -> %d (%p), down: " + target->getName().str() + " -> %d (%p)\n");
-			// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			// this->irb.CreateCall(printffn, { tmpstr, this->irb.CreateGetStringRefCount(ptr), this->irb.CreateGetStringData(ptr), this->irb.CreateGetStringRefCount(target), this->irb.CreateGetStringData(target) });
+			if(!isInit)
+				this->decrementRefCount(target);
 
 			// store
 			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
@@ -2884,7 +2902,8 @@ namespace Codegen
 			// so we don't do anything to it
 			// instead, decrement the left side
 
-			this->decrementRefCount(target);
+			if(!isInit)
+				this->decrementRefCount(target);
 
 			// to avoid double-freeing, we remove 'val' from the list of refcounted things
 			// since it's an rvalue, it can't be "re-referenced", so to speak.
@@ -2893,8 +2912,7 @@ namespace Codegen
 			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
 
 			if(ptr)
-				this->removeRefCountedValue(ptr);
-
+				this->removeRefCountedValueIfExists(ptr);
 
 			// now we just store as usual
 			this->irb.CreateStore(val, target);

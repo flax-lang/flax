@@ -402,7 +402,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 			iceAssert(rhsPtr);
 
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false);
 			return Result_t(0, 0);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
