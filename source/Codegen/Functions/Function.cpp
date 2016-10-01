@@ -147,7 +147,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// check if we're not returning void
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
-	// bool premature = false;
+
 	if(this->decl->ptype->str() != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
@@ -160,7 +160,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
-			// premature = true;
 		}
 	}
 	else
@@ -185,13 +184,40 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
+	{
 		cgi->irb.CreateReturnVoid();
-
+	}
 	else if(isImplicitReturn)
 	{
 		fir::Type* needed = func->getReturnType();
 		if(lastval.value->getType() != needed)
 			lastval.value = cgi->autoCastType(func->getReturnType(), lastval.value, lastval.pointer);
+
+
+		// do refcounting shit
+		#if 0
+		if(cgi->isRefCountedType(lastval.value->getType()))
+		{
+			if(lastval.valueKind == ValueKind::LValue)
+			{
+				// uh.. should always be there.
+				iceAssert(lastval.pointer);
+
+				// just remove it. if it exists -- then it's probably a variable
+				// if not, then it's most likely a global var, and we shouldn't really mess with that either way.
+				cgi->removeRefCountedValueIfExists(lastval.pointer);
+			}
+			else
+			{
+				// rvalue
+
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(lastval.value->getType(), lastval.value);
+				cgi->incrementRefCount(tmp);
+
+				lastval.value = cgi->irb.CreateLoad(tmp);
+			}
+		}
+		#endif
 
 		cgi->irb.CreateReturn(lastval.value);
 	}
