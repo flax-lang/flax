@@ -424,7 +424,7 @@ ffi func printf(fmt: int8*, ...)
 
 struct SomeStruct
 {
-	var str: string = "bar"
+	var str: string = "bar" + "foob"
 }
 
 class A
@@ -479,16 +479,22 @@ public func main() -> int
 	// printf(@raw "[%s], [%s]\n", k, g)
 	// foo()
 
-	// var ss = SomeStruct()
-	// ss.str = "hello"
+	var ss = SomeStruct()
+	// ss.str = "lol"
 
-	// printf(@raw "[%s]\n", ss.str)
+	// ss.str = "kappa"
+
+	printf(@raw "[%s]\n", ss.str)
 
 
 	// bar()
 	// qux()
 
-	bar()
+	// bar()
+
+	var k: string
+	glob = k
+	printf(@raw "k = [%s], glob = [%s]\n", k, glob)
 
 	return 0
 }
@@ -497,6 +503,7 @@ public func main() -> int
 // {
 // 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
 // }
+
 
 func bar()
 {
@@ -515,6 +522,7 @@ func wat() -> int
 }
 
 var gs: string
+var glob = "foo"
 
 func takeS(a: string)
 {
@@ -524,29 +532,30 @@ func takeS(a: string)
 
 func retS() -> string
 {
-	// let r = "goto" + "hell"
+	let r = "goto" + "hell"
 	printf(@raw "ret gs\n")
-	return gs
+	// return gs
+	return r
 }
 
 func bar1()
 {
-	// let xxx = "str"
-	// printf(@raw "do xxx\n")
-	// var yyy = xxx + "onk"
-	// printf(@raw "do yyy\n")
-	// printf(@raw "[%s], [%s]\n", xxx, yyy)
+	let xxx = "str"
+	printf(@raw "do xxx\n")
+	var yyy = xxx + "onk"
+	printf(@raw "do yyy\n")
+	printf(@raw "[%s], [%s]\n", xxx, yyy)
 
-	// var zzz = yyy + "alingadingdong"
-	// printf(@raw "do zzz 1\n")
-	// zzz = "russian" + yyy
-	// printf(@raw "do zzz 2\n")
+	var zzz = yyy + "alingadingdong"
+	printf(@raw "do zzz 1\n")
+	zzz = "russian" + yyy
+	printf(@raw "do zzz 2\n")
 
-	// var aaa: string
-	// aaa = yyy
-	// printf(@raw "do aaa\n")
+	var aaa: string
+	aaa = yyy
+	printf(@raw "do aaa\n")
 
-	// printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
+	printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
 
 	takeS("hello" + "world")
 

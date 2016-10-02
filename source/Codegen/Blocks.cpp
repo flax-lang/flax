@@ -69,8 +69,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
+		cgi->decrementRefCount(v);
 	}
 
 	// for break, we go to the ending block
@@ -111,8 +110,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
+		cgi->decrementRefCount(v);
 	}
 
 
@@ -197,8 +195,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
+		cgi->decrementRefCount(v);
 	}
 
 
