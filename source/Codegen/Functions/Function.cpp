@@ -193,33 +193,29 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(lastval.value->getType() != needed)
 			lastval.value = cgi->autoCastType(func->getReturnType(), lastval.value, lastval.pointer);
 
+		fir::Value* ret = lastval.value;
 
-		// do refcounting shit
-		#if 0
-		if(cgi->isRefCountedType(lastval.value->getType()))
+		// if it's an rvalue, we make a new one, increment its refcount
+		if(cgi->isRefCountedType(ret->getType()))
 		{
 			if(lastval.valueKind == ValueKind::LValue)
 			{
 				// uh.. should always be there.
 				iceAssert(lastval.pointer);
-
-				// just remove it. if it exists -- then it's probably a variable
-				// if not, then it's most likely a global var, and we shouldn't really mess with that either way.
-				cgi->removeRefCountedValueIfExists(lastval.pointer);
+				cgi->incrementRefCount(lastval.pointer);
 			}
 			else
 			{
 				// rvalue
 
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(lastval.value->getType(), lastval.value);
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
 				cgi->incrementRefCount(tmp);
 
-				lastval.value = cgi->irb.CreateLoad(tmp);
+				ret = cgi->irb.CreateLoad(tmp);
 			}
 		}
-		#endif
 
-		cgi->irb.CreateReturn(lastval.value);
+		cgi->irb.CreateReturn(ret);
 	}
 
 

@@ -342,7 +342,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 			cgi->irb.CreateStore(val, ai);
 		}
 
-
 		if(shouldAddToSymtab)
 		{
 			cgi->addRefCountedValue(ai);
@@ -352,6 +351,11 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	{
 		cgi->irb.CreateStore(val, ai);
 	}
+
+
+
+
+
 
 	return cgi->irb.CreateLoad(ai);
 }
@@ -403,61 +407,46 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	this->ident.scope = cgi->getFullScope();
 
-	fir::Value* val = nullptr;
-	fir::Value* valptr = nullptr;
-
-	fir::Value* ai = nullptr;
-
 	this->inferType(cgi);
-
-	if(!this->isGlobal)
-	{
-		ai = cgi->getStackAlloc(this->concretisedType, this->ident.name);
-		iceAssert(ai->getType()->getPointerElementType() == this->concretisedType);
-	}
-
-
-	ValueKind vk = ValueKind::RValue;
-
-	if(this->initVal)
-	{
-		if(isGlobal && (this->concretisedType->isStringType() || this->concretisedType->isStructType() || this->concretisedType->isClassType()))
-		{
-			// can't call directly for globals, since we cannot call the function directly.
-			// todo: if it's a struct, and we need to call a constructor...
-			error(this, "enotsup");
-		}
-		else
-		{
-			auto r = this->initVal->codegen(cgi, ai);
-
-			val = r.value;
-			valptr = r.pointer;
-			vk = r.valueKind;
-		}
-	}
-
 
 
 
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		ai = cgi->module->createGlobalVariable(this->ident, this->concretisedType, fir::ConstantValue::getNullValue(this->concretisedType),
-			this->immutable, (this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
+		fir::Value* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
+			fir::ConstantValue::getNullValue(this->concretisedType), this->immutable,
+			(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		fir::Type* ltype = ai->getType()->getPointerElementType();
+		fir::Type* ltype = glob->getType()->getPointerElementType();
 
 		if(this->initVal)
 		{
-			iceAssert(val);
-			cgi->addGlobalConstructedValue(ai, val);
+			auto prev = cgi->irb.getCurrentBlock();
+
+			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
+
+			// set it up so the lambda goes straight to writing instructions.
+			cgi->irb.setCurrentBlock(constr->getBlockList().front());
+
+
+			auto res = this->initVal->codegen(cgi, glob);
+			TypePair_t* cmplxtype = 0;
+			if(this->ptype != pts::InferredType::get())
+			{
+				iceAssert(this->concretisedType);
+				cmplxtype = cgi->getType(this->concretisedType);
+			}
+
+			this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
+			cgi->irb.CreateReturnVoid();
+
+			cgi->irb.setCurrentBlock(prev);
 		}
 		else if(ltype->isStringType())
 		{
 			// fk
-			// error("not supported");
-			cgi->addGlobalConstructedValue(ai, fir::ConstantValue::getNullValue(this->concretisedType));
+			cgi->addGlobalConstructedValue(glob, fir::ConstantValue::getNullValue(this->concretisedType));
 		}
 		else if(ltype->isStructType() || ltype->isClassType())
 		{
@@ -468,11 +457,57 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			StructBase* sb = dynamic_cast<StructBase*>(tp->second.first);
 			iceAssert(sb);
 
-			fir::Function* candidate = cgi->getDefaultConstructor(this, ai->getType(), sb);
-			cgi->addGlobalConstructor(ai, candidate);
+			fir::Function* candidate = cgi->getDefaultConstructor(this, glob->getType(), sb);
+			cgi->addGlobalConstructor(glob, candidate);
 		}
 		else if(ltype->isTupleType())
 		{
+			std::function<void(CodegenInstance*, fir::TupleType*, fir::Value*, VarDecl*)> handleTuple
+				= [&handleTuple](CodegenInstance* cgi, fir::TupleType* tt, fir::Value* ai, VarDecl* user) -> void
+			{
+				size_t i = 0;
+				for(fir::Type* t : tt->getElements())
+				{
+					if(t->isTupleType())
+					{
+						fir::Value* p = cgi->irb.CreateStructGEP(ai, i);
+						handleTuple(cgi, t->toTupleType(), p, user);
+					}
+					else if(t->isStructType() || t->isClassType())
+					{
+						TypePair_t* tp = cgi->getType(t);
+						iceAssert(tp);
+
+						fir::Function* structConstr = cgi->getDefaultConstructor(user, t->getPointerTo(),
+							dynamic_cast<StructBase*>(tp->second.first));
+
+						fir::Value* p = cgi->irb.CreateStructGEP(ai, i);
+						cgi->irb.CreateCall1(structConstr, p);
+					}
+					else
+					{
+						fir::Value* p = cgi->irb.CreateStructGEP(ai, i);
+						cgi->irb.CreateStore(fir::ConstantValue::getNullValue(t), p);
+					}
+
+					i++;
+				}
+			};
+
+			auto prev = cgi->irb.getCurrentBlock();
+
+			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
+
+			// set it up so the lambda goes straight to writing instructions.
+			cgi->irb.setCurrentBlock(constr->getBlockList().front());
+			handleTuple(cgi, ltype->toTupleType(), glob, this);
+			cgi->irb.CreateReturnVoid();
+
+			cgi->irb.setCurrentBlock(prev);
+
+
+
+			#if 0
 			fir::TupleType* stype = dynamic_cast<fir::TupleType*>(ltype);
 
 			int i = 0;
@@ -498,15 +533,38 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				i++;
 			}
+			#endif
 		}
 
 		FunctionTree* ft = cgi->getCurrentFuncTree();
 		iceAssert(ft);
 
-		ft->vars[this->ident.name] = { ai, this };
+		ft->vars[this->ident.name] = { glob, this };
+
+		return Result_t(0, glob);
 	}
 	else
 	{
+		fir::Value* val = nullptr;
+		fir::Value* valptr = nullptr;
+
+		fir::Value* ai = nullptr;
+		ValueKind vk = ValueKind::RValue;
+
+
+		ai = cgi->getStackAlloc(this->concretisedType, this->ident.name);
+		iceAssert(ai->getType()->getPointerElementType() == this->concretisedType);
+
+
+		if(this->initVal)
+		{
+			auto r = this->initVal->codegen(cgi, ai);
+
+			val = r.value;
+			valptr = r.pointer;
+			vk = r.valueKind;
+		}
+
 		TypePair_t* cmplxtype = 0;
 		if(this->ptype != pts::InferredType::get())
 		{
@@ -515,16 +573,12 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 
 		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true, vk);
-	}
 
-	if(this->immutable)
-		ai->makeImmutable();
+		if(this->immutable)
+			ai->makeImmutable();
 
-	if(!this->isGlobal)
 		return Result_t(cgi->irb.CreateLoad(ai), ai);
-
-	else
-		return Result_t(0, ai);
+	}
 }
 
 fir::Type* VarDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)

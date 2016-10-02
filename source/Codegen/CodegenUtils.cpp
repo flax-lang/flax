@@ -2651,7 +2651,7 @@ namespace Codegen
 
 
 
-
+	#define DEBUG_ARC 1
 
 	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
 	{
@@ -2698,6 +2698,7 @@ namespace Codegen
 			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
 			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
+			#if DEBUG_ARC
 			{
 				fir::Value* tmpstr = this->module->createGlobalString("(incr) new rc of %p (%s) = %d\n");
 				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
@@ -2707,6 +2708,7 @@ namespace Codegen
 				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
 					newRc });
 			}
+			#endif
 
 			this->irb.CreateUnCondBranch(merge);
 			this->irb.setCurrentBlock(merge);
@@ -2772,6 +2774,7 @@ namespace Codegen
 			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
 			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
+			#if DEBUG_ARC
 			{
 				fir::Value* tmpstr = this->module->createGlobalString("(decr) new rc of %p (%s) = %d\n");
 				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
@@ -2781,6 +2784,7 @@ namespace Codegen
 				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
 					newRc });
 			}
+			#endif
 
 			{
 				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
@@ -2792,10 +2796,16 @@ namespace Codegen
 				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
 
 
+				#if 1
+				{
+					fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
+					tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+					this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr,
+						bufp, bufp);
+				}
+				#endif
 
-				fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
-				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-				this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp, bufp);
+
 
 				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
 				iceAssert(freefn);
@@ -2803,7 +2813,6 @@ namespace Codegen
 				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
 
 				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
-
 				this->irb.CreateUnCondBranch(merge);
 			}
 
@@ -2821,7 +2830,48 @@ namespace Codegen
 
 
 
+	static bool isStructuredAggregate(fir::Type* t)
+	{
+		return t->isStructType() || t->isClassType() || t->isTupleType();
+	}
 
+
+	template <typename T>
+	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
+	{
+		iceAssert(cgi->isRefCountedType(type));
+		iceAssert(value->getType()->isPointerType());
+
+		size_t i = 0;
+		for(auto m : type->getElements())
+		{
+			if(cgi->isRefCountedType(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(incr)
+					cgi->incrementRefCount(mem);
+
+				else
+					cgi->decrementRefCount(mem);
+			}
+			else if(isStructuredAggregate(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(m->isStructType())
+					doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
+
+				else if(m->isClassType())
+					doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
+
+				else if(m->isTupleType())
+					doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
+			}
+
+			i++;
+		}
+	}
 
 	void CodegenInstance::incrementRefCount(fir::Value* strp)
 	{
@@ -2830,14 +2880,20 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			// fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			// iceAssert(printffn);
-			// fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
-			// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			// this->irb.CreateCall1(printffn, tmpstr);
-
 			fir::Function* incrf = this->getStringRefCountIncrementFunction();
 			this->irb.CreateCall1(incrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
+
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
 		}
 		else
 		{
@@ -2854,15 +2910,18 @@ namespace Codegen
 
 			fir::Function* decrf = this->getStringRefCountDecrementFunction();
 			this->irb.CreateCall1(decrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
 
-			{
-				fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-				iceAssert(printffn);
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
 
-				// fir::Value* tmpstr = this->module->createGlobalString("down: %d (%p)\n");
-				// tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-				// this->irb.CreateCall(printffn, { tmpstr, this->irb.CreateGetStringRefCount(strp), this->irb.CreateGetStringData(strp) });
-			}
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
 		}
 		else
 		{
@@ -3016,45 +3075,6 @@ namespace Codegen
 
 
 
-
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs)
-	{
-		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
-		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
-
-		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
-		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
-
-
-		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
-		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-
-		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
-
-		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
-		{
-			rhs = this->irb.CreateIntSizeCast(rhs, intval->getType());
-		}
-
-
-		// this is the properly adjusted int to add/sub by
-		fir::Value* newrhs = this->irb.CreateMul(rhs, intval);
-
-		// convert the lhs pointer to an int value, so we can add/sub on it
-		fir::Value* ptrval = this->irb.CreatePointerToIntCast(lhs, newrhs->getType());
-
-		// create the add/sub
-		fir::Value* res = this->irb.CreateBinaryOp(op, ptrval, newrhs);
-
-		// turn the int back into a pointer, so we can store it back into the var.
-		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
-			lhsPtr : this->getStackAlloc(lhs->getType());
-
-
-		fir::Value* properres = this->irb.CreateIntToPointerCast(res, lhs->getType());
-		this->irb.CreateStore(properres, tempRes);
-		return Result_t(properres, tempRes);
-	}
 
 
 	static void _errorNoReturn(Expr* e)
