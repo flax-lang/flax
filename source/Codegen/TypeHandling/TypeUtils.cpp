@@ -677,8 +677,49 @@ namespace Codegen
 
 	bool CodegenInstance::isRefCountedType(fir::Type* type)
 	{
-		// right now this is the only thing that's refcounted.
-		return type->isStringType();
+		// strings, and structs with rc inside
+		if(type->isStructType())
+		{
+			for(auto m : type->toStructType()->getElements())
+			{
+				if(this->isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isClassType())
+		{
+			for(auto m : type->toClassType()->getElements())
+			{
+				if(this->isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isTupleType())
+		{
+			for(auto m : type->toTupleType()->getElements())
+			{
+				if(this->isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isArrayType())
+		{
+			return this->isRefCountedType(type->toArrayType()->getElementType());
+		}
+		else if(type->isLLVariableArrayType())
+		{
+			return this->isRefCountedType(type->toArrayType()->getElementType());
+		}
+		else
+		{
+			return type->isStringType();
+		}
 	}
 
 

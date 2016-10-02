@@ -11,6 +11,29 @@ using namespace Codegen;
 
 namespace Codegen
 {
+
+	size_t id = 0;
+	fir::Function* CodegenInstance::procureAnonymousConstructorFunction(fir::Value* arg)
+	{
+		auto ident = Identifier(this->module->getModuleName() + "_anon_constr_" + std::to_string(id++), IdKind::ModuleConstructor);
+
+		fir::Function* func = this->module->getOrCreateFunction(ident, fir::FunctionType::get({ arg->getType() },
+			fir::PrimitiveType::getVoid(), false), fir::LinkageType::Internal);
+
+		this->addGlobalConstructor(arg, func);
+
+		// basically returns a "ready-to-use" function
+		fir::IRBlock* entry = new fir::IRBlock(func);
+
+		entry->setName("entry");
+		func->getBlockList().push_back(entry);
+
+		return func;
+	}
+
+
+
+
 	void CodegenInstance::addGlobalConstructor(Identifier id, fir::Function* constructor)
 	{
 		fir::GlobalVariable* gv = this->module->getGlobalVariable(id);
@@ -32,25 +55,6 @@ namespace Codegen
 		iceAssert(val);
 
 		this->globalConstructors.values[ptr] = val;
-	}
-
-	void CodegenInstance::addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val)
-	{
-		iceAssert(ptr);
-		iceAssert(val);
-		iceAssert(index >= 0);
-
-		this->globalConstructors.tupleInitVals[ptr] = { index, val };
-	}
-
-	void CodegenInstance::addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func)
-	{
-		iceAssert(ptr);
-		iceAssert(func);
-		iceAssert(index >= 0);
-
-		fir::Function* inhere = this->module->getFunction(func->getName());
-		this->globalConstructors.tupleInitFuncs[ptr] = { index, inhere };
 	}
 
 	void CodegenInstance::finishGlobalConstructors()
@@ -84,31 +88,6 @@ namespace Codegen
 
 			val = this->autoCastType(gv->getType()->getPointerElementType(), val);
 			this->irb.CreateStore(val, gv);
-
-			pair.first->makeImmutable();
-		}
-
-		for(auto pair : this->globalConstructors.tupleInitFuncs)
-		{
-			std::pair<int, fir::Function*> ivp = pair.second;
-
-
-			pair.first->makeNotImmutable();
-
-			fir::Value* gep = this->irb.CreateStructGEP(pair.first, ivp.first);
-			this->irb.CreateCall1(ivp.second, gep);
-
-			pair.first->makeImmutable();
-		}
-
-		for(auto pair : this->globalConstructors.tupleInitVals)
-		{
-			std::pair<int, fir::Value*> ivp = pair.second;
-
-			pair.first->makeNotImmutable();
-
-			fir::Value* gep = this->irb.CreateStructGEP(pair.first, ivp.first);
-			this->irb.CreateStore(ivp.second, gep);
 
 			pair.first->makeImmutable();
 		}

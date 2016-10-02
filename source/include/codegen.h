@@ -100,17 +100,13 @@ namespace Codegen
 			std::map<fir::Value*, fir::Function*> funcs;
 			std::map<fir::Value*, fir::Value*> values;
 
-			std::map<fir::Value*, std::pair<int, fir::Value*>> tupleInitVals;
-			std::map<fir::Value*, std::pair<int, fir::Function*>> tupleInitFuncs;
-
 		} globalConstructors;
 
 		void addGlobalConstructor(Identifier name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
-		void addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val);
-		void addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func);
+		fir::Function* procureAnonymousConstructorFunction(fir::Value* arg);
 
 		void finishGlobalConstructors();
 
@@ -307,7 +303,6 @@ namespace Codegen
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
-		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);

@@ -225,7 +225,6 @@ namespace Operators
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
 
 				// move it forward (skip the refcount)
-				auto tmp = buf;
 				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
 
 				// now memcpy
@@ -241,12 +240,14 @@ namespace Operators
 				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
+				#if 0
 				{
 					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
 					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
 					cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 				}
+				#endif
 
 				// ok, now fix it
 				cgi->irb.CreateSetStringData(newstrp, buf);
