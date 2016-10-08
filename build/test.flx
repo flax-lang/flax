@@ -277,7 +277,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
 /*
 	how to be stupid:
 	associating reference count with the reference, instead of the object being referenced
@@ -420,6 +419,7 @@ public func main(argc: int32, argv: int8**) -> int
 
 // import LibCInterface
 
+
 ffi func printf(fmt: int8*, ...)
 
 struct SomeStruct
@@ -446,6 +446,14 @@ struct B
 }
 
 operator == (a: B, b: B) -> bool { return a.x == b.x }
+
+extension string
+{
+	func haha()
+	{
+		printf(@raw "haha... (%s)?\n", #self)
+	}
+}
 
 public func main() -> int
 {
@@ -484,7 +492,8 @@ public func main() -> int
 
 	// ss.str = "kappa"
 
-	printf(@raw "[%s]\n", ss.str)
+	printf(@raw "[%s] (%d)\n", ss.str, ss.str == 4)
+	ss.str.haha()
 
 
 	// bar()
@@ -504,6 +513,19 @@ public func main() -> int
 // 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
 // }
 
+protocol eq
+{
+	operator == (other: int) -> bool
+}
+
+extension string : eq
+{
+}
+
+operator == (a: string, b: int) -> bool
+{
+	return b == 1
+}
 
 func bar()
 {
@@ -522,7 +544,7 @@ func wat() -> int
 }
 
 var gs: string
-var glob = "foo"
+var glob = "foo" + "k"
 
 func takeS(a: string)
 {
@@ -600,7 +622,6 @@ func foo()
 		i += 1
 	}
 }
-
 
 
 

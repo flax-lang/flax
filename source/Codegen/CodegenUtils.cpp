@@ -2150,6 +2150,9 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(BOOL_TYPE_STRING) == type)
 			return this->getExtensionsWithName(BOOL_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(STRING_TYPE_STRING) == type)
+			return this->getExtensionsWithName(STRING_TYPE_STRING);
+
 		else
 			return { };
 	}

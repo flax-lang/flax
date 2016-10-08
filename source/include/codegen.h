@@ -61,6 +61,8 @@ namespace Codegen
 		bool needsNot				= 0;
 		bool isMember				= 0;
 
+		bool isBuiltin				= 0;
+
 		fir::Function* opFunc		= 0;
 	};
 
@@ -293,6 +295,8 @@ namespace Codegen
 		fir::Function* getStringRefCountDecrementFunction();
 		fir::Function* getStringCompareFunction();
 
+
+		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
 
 		fir::FTContext* getContext();
