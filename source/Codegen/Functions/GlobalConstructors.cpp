@@ -11,8 +11,7 @@ using namespace Codegen;
 
 namespace Codegen
 {
-
-	size_t id = 0;
+	static size_t id = 0;
 	fir::Function* CodegenInstance::procureAnonymousConstructorFunction(fir::Value* arg)
 	{
 		auto ident = Identifier(this->module->getModuleName() + "_anon_constr_" + std::to_string(id++), IdKind::ModuleConstructor);

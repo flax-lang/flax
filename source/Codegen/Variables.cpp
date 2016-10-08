@@ -349,7 +349,12 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	}
 	else
 	{
+		bool wasimmut = ai->isImmutable();
+
+		ai->makeNotImmutable();
 		cgi->irb.CreateStore(val, ai);
+
+		if(wasimmut) ai->makeImmutable();
 	}
 
 

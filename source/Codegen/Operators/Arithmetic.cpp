@@ -274,8 +274,9 @@ namespace Operators
 		{
 			return compareEnumValues(cgi, op, lhs, leftr.pointer, rhs, rightr.pointer);
 		}
-		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
-			|| lhs->getType()->isClassType() || rhs->getType()->isClassType())
+		// else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
+			// || lhs->getType()->isClassType() || rhs->getType()->isClassType())
+		else
 		{
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)
@@ -288,11 +289,11 @@ namespace Operators
 					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
-		else
-		{
-			error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
-				lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
-		}
+		// else
+		// {
+		// 	error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+		// 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+		// }
 	}
 }
 
