@@ -171,7 +171,18 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 
 
+static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fir::Value* ret)
+{
+	if(cgi->isRefCountedType(ret->getType()))
+	{
+		fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+		cgi->addRefCountedValue(tmp);
 
+		return tmp;
+	}
+
+	return 0;
+}
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -200,7 +211,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Value* fn = cgi->irb.CreateLoad(fv);
 		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(fn, ft, args);
 
-		return Result_t(ret, 0);
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 	}
 	else if(extra && extra->getType()->isFunctionType())
 	{
@@ -213,7 +224,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extra, ft, args);
 
-		return Result_t(ret, 0);
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 	}
 
 
@@ -289,8 +300,11 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 
-	auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
-	return Result_t(cgi->irb.CreateCall(thistarget, args), 0);
+	fir::Function* thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+	fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
+
+
+	return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 }
 
 
@@ -313,6 +327,15 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 				this->cachedResolveTarget = Resolved_t(genericMaybe);
 				return genericMaybe.firFunc->getReturnType();
 			}
+			// else if(genericMaybe.funcDef)
+			// {
+			// 	auto res = cgi->tryResolveGenericFunctionCallUsingCandidates(this, { genericMaybe.funcDef });
+			// 	if(res.firFunc)
+			// 	{
+			// 		this->cachedResolveTarget = Resolved_t(res);
+			// 		return res.firFunc->getReturnType();
+			// 	}
+			// }
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 		}

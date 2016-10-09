@@ -85,18 +85,37 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			iceAssert(extra->getType()->getPointerElementType()->isStringType());
 
-			fir::Value* thestring = cgi->module->createGlobalString(this->str);
+			// note(portability): see CodegenInstance::makeStringLiteral()
+			std::string s = this->str;
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+			s.insert(s.begin(), 0xFF);
+
+
+
+			fir::Value* thestring = cgi->module->createGlobalString(s);
 			thestring = cgi->irb.CreateConstGEP2(thestring, 0, 0);
 
-			fir::Value* len = fir::ConstantInt::getInt32(this->str.length());
-			fir::Value* rc = fir::ConstantInt::getInt32(-1);
+			fir::Value* len = fir::ConstantInt::getInt64(this->str.length());
 
+			thestring = cgi->irb.CreatePointerAdd(thestring, fir::ConstantInt::getInt64(8));
 			cgi->irb.CreateSetStringData(extra, thestring);
 			cgi->irb.CreateSetStringLength(extra, len);
-			cgi->irb.CreateSetStringRefCount(extra, rc);
+
+			// we don't (and can't) set the refcount, because it's probably in read-only memory.
+			// the -1 is reflected in the string literal already.
+			// fir::Value* rc = fir::ConstantInt::getInt64(-1);
+			// cgi->irb.CreateSetStringRefCount(extra, rc);
 
 			cgi->addRefCountedValue(extra);
-			extra->setName("lit_<" + this->str + ">");
+			if(!extra->hasName())
+				extra->setName("lit_<" + this->str + ">");
+
 			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
 		else

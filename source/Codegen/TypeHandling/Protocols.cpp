@@ -167,6 +167,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 	{
 		// todo: not pretty
 		std::deque<ExtensionDef*> exts = cgi->getExtensionsForBuiltinType(type);
+		*name = type->str();
 
 		if(exts.size() > 0)
 		{
@@ -192,6 +193,35 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 				out3:
 				if(!found) (*missing).push_back(fn);
+			}
+
+
+			for(auto ovl : prot->operatorOverloads)
+			{
+				if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
+				{
+					// lol
+					cgi->pushGenericTypeStack();
+					cgi->pushGenericType("Self", type);
+
+					fir::Type* pt = ovl->func->decl->params.front()->getType(cgi);
+
+					bool res = cgi->isValidOperatorForBuiltinTypes(ovl->op, type, pt);
+
+					if(!res)
+					{
+						auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, type, pt);
+
+						if(!dat.found)
+							(*missing).push_back(ovl->func->decl);
+					}
+
+					cgi->popGenericTypeStack();
+				}
+				else
+				{
+					error("??");
+				}
 			}
 		}
 
@@ -220,7 +250,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 
 	if(missing.size() > 0)
 	{
-		errorNoExit(user, "Class '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
+		errorNoExit(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
 
 		std::string list;
 		for(auto d : missing)

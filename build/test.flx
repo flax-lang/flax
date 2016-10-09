@@ -277,15 +277,127 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
+/*
+	how to be stupid:
+	associating reference count with the reference, instead of the object being referenced
+	._.
+
+	new string structure:
+
+	struct string
+	{
+		i8* ptr
+		i64 len
+	}
+
+	ptr actually points 8 bytes ahead of the allocated memory
+	ie. ptr = malloc(len + 1) + 8
+	the refcount is a 64-bit number stored at the beginning of the allocated memory
+
+	THIS TIME, it is actually referring to the number of times the *DATA* is being referenced
+	instead of some arbitrary number that means nothing
+
+	to access it, we just cast ptr to an i64, then pointer arithmetically subtract 1.
+
+	god i am so stupid
+
+	string literals work like they currently do, i guess -- just store -1 in the 8 byte space.
+
+
+
+
+	for arbitrary rc<T>, it's basically the same
+	struct rc<T>
+	{
+		T* ptr
+	}
+
+	exactly the same; refcount is a 64-bit number stored 8 bytes before where ptr points
+	to access it, same thing, cast ptr to an i64*, then subtract 1 with ptr arith.
+
+
+	note: the things above will be done at the llvm level. for strings at least, we'll retain the FIR instructions for
+	accessing data, len and refcount. At the llvm level, data and len will still be struct GEPs, but refcount will do some
+	pointer magic. not a big deal
+
+
+	for rc<T>, it's likely that it'll be a fir::Type, like fir::StringType, with an elementType. in which case, it should be similarly
+	easy to set up the actual work at the llvm level. the type of refcount is always i64, so that shouldn't be a problem for the type
+	system to handle.
+
+	at the llvm level, rc<T> just gets converted to an appropriate struct type. the types are all concrete, so we can just do the
+	same trick as with the strings.
+
+	ezpz.
+
+	this time, i'll stop doing stupid things.
+*/
+
+
+
+/*
+	wtf:
+
+	llvm has extractvalue and insertvalue instructions that can get member fields from non-pointer structs
+	i feel cheated.
+*/
 
 
 
 
 
+/*
+	stuff:
+
+
+	foo() results in an rvalue
+	in let x = foo(),
+
+	x is assigned an rvalue
+	as with x = y + "lol"
+
+	it's clear that the refcount of the old value of x must be decremented
+	for y + lol, we remove it from the refcounting list
+	for foo(), if it returns some rc<T>, the refcount of T is increased
 
 
 
 
+	foo() { return x }
+
+	let y = foo()
+
+	y holds a reference to x, rc(x)++
+	so rc(x) == 2
+
+	at the end of scope, y is gone, so rc(x)--
+	x is leaked since refcount remains 1.
+
+
+
+	for lvalue = rvalue, in essence the rvalue is moved to the lvalue
+	so in theory the recount should not change at all
+
+	let y = x + 10
+	x + 10 gets removed from the refcount stack, and rc(y) == 1
+
+	let y = foo()
+	foo() gets removed from the refcount stack, and rc(y) == 1
+
+	this works, i suppose, if funccall doesn't add the result to the list.
+
+
+	what if foo() returns a global?
+
+	if we have
+	let x = foo()
+	let y = foo()
+
+	then the global gets referenced twice, but the refcount remains 1 (assuming no previous references)
+	so it gets freed twice...
+
+
+*/
 
 
 
@@ -307,11 +419,12 @@ public func main(argc: int32, argv: int8**) -> int
 
 // import LibCInterface
 
+
 ffi func printf(fmt: int8*, ...)
 
 struct SomeStruct
 {
-	var str: string = "bar"
+	var str: string = "bar" + "foob"
 }
 
 class A
@@ -333,6 +446,15 @@ struct B
 }
 
 operator == (a: B, b: B) -> bool { return a.x == b.x }
+
+extension string
+{
+	func haha()
+	{
+		printf(@raw "haha... (%s)?\n", #self)
+	}
+}
+
 
 public func main() -> int
 {
@@ -366,23 +488,51 @@ public func main() -> int
 	// printf(@raw "[%s], [%s]\n", k, g)
 	// foo()
 
-	// var ss = SomeStruct()
-	// ss.str = "hello"
+	var ss = SomeStruct()
+	// ss.str = "lol"
 
-	// printf(@raw "[%s]\n", ss.str)
+	// ss.str = "kappa"
+
+	printf(@raw "[%s] (%d, %d, %d, %d, %d)\n", ss.str, ss.str == 4, cmp(ss.str, 10), cmp(ss.str, 7),
+		cmp(4, 7), cmp(7, 7))
+
+	ss.str.haha()
 
 
 	// bar()
 	// qux()
 
-	bar()
+	// bar()
+
+	var k: string
+	glob = k
+	printf(@raw "k = [%s], glob = [%s]\n", k, glob)
 
 	return 0
 }
 
-func qux()
+func cmp<T: eq>(a: T, b: int) -> bool
 {
-	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
+	return a == b
+}
+// func qux()
+// {
+// 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
+// }
+
+
+protocol eq
+{
+	operator == (other: int) -> bool
+}
+
+extension string : eq
+{
+}
+
+operator == (a: string, b: int) -> bool
+{
+	return b == 7
 }
 
 func bar()
@@ -396,12 +546,71 @@ func bar()
 	bar1()
 }
 
+func wat() -> int
+{
+	return 10
+}
+
+var gs: string
+var glob = "foo" + "k"
+
+func takeS(a: string)
+{
+	printf(@raw "str: [%s]\n", a)
+	gs = a
+}
+
+func retS() -> string
+{
+	let r = "goto" + "hell"
+	printf(@raw "ret gs\n")
+	// return gs
+	return r
+}
+
 func bar1()
 {
-	var y = "str"
-	let x = y + "ing"
-	y = x + "ing"
-	printf(@raw "[%s], [%s]\n", x, y)
+	let xxx = "str"
+	printf(@raw "do xxx\n")
+	var yyy = xxx + "onk"
+	printf(@raw "do yyy\n")
+	printf(@raw "[%s], [%s]\n", xxx, yyy)
+
+	var zzz = yyy + "alingadingdong"
+	printf(@raw "do zzz 1\n")
+	zzz = "russian" + yyy
+	printf(@raw "do zzz 2\n")
+
+	var aaa: string
+	aaa = yyy
+	printf(@raw "do aaa\n")
+
+	printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
+
+	takeS("hello" + "world")
+
+	// printf(@raw "global: [%s]\n", gs)
+
+
+
+	// var bbb: string
+	// var ccc: string
+	// var ddd: string
+	// var eee: string
+
+	// bbb = yyy
+	// ccc = yyy
+	// ddd = yyy
+	// eee = yyy
+
+	printf(@raw "\n\n\n\n")
+
+	let gs1 = retS()
+	let gs2 = retS()
+
+	retS()
+
+	printf(@raw "ret: [%s], [%s]\n", gs1, gs2)
 }
 
 
@@ -421,7 +630,6 @@ func foo()
 		i += 1
 	}
 }
-
 
 
 

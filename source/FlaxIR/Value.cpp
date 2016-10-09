@@ -13,7 +13,7 @@ namespace fir
 		this->valueType = t;
 
 		this->id = vnames;
-		this->ident = Identifier("v#" + std::to_string(vnames), IdKind::Name);
+		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 
 		if(this->id == 0)
@@ -27,6 +27,11 @@ namespace fir
 		if(this->valueType) return this->valueType;
 
 		iceAssert(0 && "Value has no type????");
+	}
+
+	bool Value::hasName()
+	{
+		return this->ident.str() != "";
 	}
 
 	void Value::setName(Identifier name)

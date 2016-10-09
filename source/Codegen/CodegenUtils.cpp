@@ -109,6 +109,24 @@ namespace Codegen
 		this->refCountingStack.back().push_back(ptr);
 	}
 
+	void CodegenInstance::removeRefCountedValue(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			error("ptr does not exist in refcounting stack, cannot remove");
+
+		this->refCountingStack.back().erase(it);
+	}
+
+	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			return;
+
+		this->refCountingStack.back().erase(it);
+	}
+
 	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
 		return this->refCountingStack.back();
@@ -2132,6 +2150,9 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(BOOL_TYPE_STRING) == type)
 			return this->getExtensionsWithName(BOOL_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(STRING_TYPE_STRING) == type)
+			return this->getExtensionsWithName(STRING_TYPE_STRING);
+
 		else
 			return { };
 	}
@@ -2483,19 +2504,34 @@ namespace Codegen
 		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
 		fir::Value* strp = this->irb.CreateStackAlloc(fir::StringType::get());
 
-		fir::Value* empty = this->module->createGlobalString(str);
-		empty = this->irb.CreateConstGEP2(empty, 0, 0);
+		// note(portability): this isn't going to work on non-2's-complement platforms
+		// where FFFFFFFF != -1.
 
-		fir::Value* len = fir::ConstantInt::getInt32(str.length());
-		fir::Value* rc = fir::ConstantInt::getInt32(-1);
+		std::string s = str;
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+
+		fir::Value* empty = this->module->createGlobalString(s);
+
+		empty = this->irb.CreatePointerAdd(this->irb.CreateConstGEP2(empty, 0, 0), fir::ConstantInt::getInt64(8));
+
+		fir::Value* len = fir::ConstantInt::getInt64(str.length());
 
 		this->irb.CreateSetStringData(strp, empty);
 		this->irb.CreateSetStringLength(strp, len);
-		this->irb.CreateSetStringRefCount(strp, rc);
+
+		// we don't (and can't) set the refcount, because it's probably in read-only memory.
+		// the -1 is reflected in the string literal already.
+		// fir::Value* rc = fir::ConstantInt::getInt64(-1);
+		// this->irb.CreateSetStringRefCount(strp, rc);
 
 		strp->makeImmutable();
-		// this->addRefCountedValue(strp);
-
 		return Result_t(this->irb.CreateLoad(strp), strp);
 	}
 
@@ -2519,132 +2555,6 @@ namespace Codegen
 	#define BUILTIN_STRINGREF_INCR_FUNC_NAME "__.stringref_incr"
 	#define BUILTIN_STRINGREF_DECR_FUNC_NAME "__.stringref_decr"
 	#define BUILTIN_STRINGCMP_FUNC_NAME "__.stringcmp"
-
-
-
-	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
-	{
-		fir::Function* incrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
-
-		if(!incrf)
-		{
-			auto restore = this->irb.getCurrentBlock();
-
-			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
-				fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
-			this->irb.setCurrentBlock(entry);
-
-			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
-
-			// never increment the refcount if this is a string literal
-			// how do we know? the refcount was -1 to begin with.
-
-			// check.
-			fir::IRBlock* doadd = this->irb.addNewBlockInFunction("doref", func);
-			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
-			{
-				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
-				this->irb.CreateCondBranch(cond, merge, doadd);
-			}
-
-			this->irb.setCurrentBlock(doadd);
-			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt32(1));
-			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
-
-			this->irb.CreateUnCondBranch(merge);
-			this->irb.setCurrentBlock(merge);
-			this->irb.CreateReturnVoid();
-
-			this->irb.setCurrentBlock(restore);
-
-			incrf = func;
-		}
-
-		iceAssert(incrf);
-		return incrf;
-	}
-
-
-	fir::Function* CodegenInstance::getStringRefCountDecrementFunction()
-	{
-		fir::Function* decrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
-
-		if(!decrf)
-		{
-			auto restore = this->irb.getCurrentBlock();
-
-			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
-				fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
-			this->irb.setCurrentBlock(entry);
-
-
-			// needs to handle freeing the thing.
-			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
-
-			// note:
-			// what happens for string literals is that refcount is set to -1 to begin with
-			// thus, when we do the branch, we first compare to -1 so we know never to call free() on those
-			// duh, we cannot free string literals.
-
-
-			// check.
-			fir::IRBlock* dotest = this->irb.addNewBlockInFunction("dotest", func);
-			fir::IRBlock* dealloc = this->irb.addNewBlockInFunction("deallocate", func);
-			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
-			{
-				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt32(0));
-				this->irb.CreateCondBranch(cond, merge, dotest);
-			}
-
-
-			this->irb.setCurrentBlock(dotest);
-			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt32(1));
-			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
-
-			{
-				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt32(0));
-				this->irb.CreateCondBranch(cond, dealloc, merge);
-
-
-				this->irb.setCurrentBlock(dealloc);
-
-				// call free on the buffer.
-				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
-
-				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
-				iceAssert(freefn);
-
-				this->irb.CreateCall1(freefn, bufp);
-
-				fir::Value* tmpstr = this->module->createGlobalString("free %p\n");
-				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-				this->irb.CreateCall2(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, bufp);
-				this->irb.CreateUnCondBranch(merge);
-			}
-
-			this->irb.setCurrentBlock(merge);
-			this->irb.CreateReturnVoid();
-
-			this->irb.setCurrentBlock(restore);
-
-			decrf = func;
-		}
-
-		iceAssert(decrf);
-		return decrf;
-	}
-
 
 	fir::Function* CodegenInstance::getStringCompareFunction()
 	{
@@ -2742,6 +2652,230 @@ namespace Codegen
 
 
 
+
+
+	#define DEBUG_ARC 1
+
+	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
+	{
+		fir::Function* incrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
+
+		if(!incrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* getref = this->irb.addNewBlockInFunction("getref", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+			this->irb.setCurrentBlock(entry);
+
+			// if ptr is 0, we exit early.
+			{
+				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+
+				this->irb.CreateCondBranch(cond, merge, getref);
+			}
+
+
+			this->irb.setCurrentBlock(getref);
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// never increment the refcount if this is a string literal
+			// how do we know? the refcount was -1 to begin with.
+
+			// check.
+			fir::IRBlock* doadd = this->irb.addNewBlockInFunction("doref", func);
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, merge, doadd);
+			}
+
+			this->irb.setCurrentBlock(doadd);
+			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			#if DEBUG_ARC
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(incr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
+			#endif
+
+			this->irb.CreateUnCondBranch(merge);
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			incrf = func;
+		}
+
+		iceAssert(incrf);
+		return incrf;
+	}
+
+
+	fir::Function* CodegenInstance::getStringRefCountDecrementFunction()
+	{
+		fir::Function* decrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
+
+		if(!decrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* checkneg = this->irb.addNewBlockInFunction("checkneg", func);
+			fir::IRBlock* dotest = this->irb.addNewBlockInFunction("dotest", func);
+			fir::IRBlock* dealloc = this->irb.addNewBlockInFunction("deallocate", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+
+			// note:
+			// if the ptr is 0, we exit immediately
+			// if the refcount is -1, we exit as well.
+
+
+			this->irb.setCurrentBlock(entry);
+			{
+				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+
+				this->irb.CreateCondBranch(cond, merge, checkneg);
+			}
+
+
+			// needs to handle freeing the thing.
+			this->irb.setCurrentBlock(checkneg);
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// check.
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, merge, dotest);
+			}
+
+
+			this->irb.setCurrentBlock(dotest);
+			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			#if DEBUG_ARC
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(decr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
+			#endif
+
+			{
+				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, dealloc, merge);
+
+				this->irb.setCurrentBlock(dealloc);
+
+				// call free on the buffer.
+				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+
+				#if 1
+				{
+					fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
+					tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+					this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr,
+						bufp, bufp);
+				}
+				#endif
+
+
+
+				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
+				iceAssert(freefn);
+
+				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
+
+				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+				this->irb.CreateUnCondBranch(merge);
+			}
+
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			decrf = func;
+		}
+
+		iceAssert(decrf);
+		return decrf;
+	}
+
+
+
+	static bool isStructuredAggregate(fir::Type* t)
+	{
+		return t->isStructType() || t->isClassType() || t->isTupleType();
+	}
+
+
+	template <typename T>
+	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
+	{
+		iceAssert(cgi->isRefCountedType(type));
+		iceAssert(value->getType()->isPointerType());
+
+		size_t i = 0;
+		for(auto m : type->getElements())
+		{
+			if(cgi->isRefCountedType(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(incr)
+					cgi->incrementRefCount(mem);
+
+				else
+					cgi->decrementRefCount(mem);
+			}
+			else if(isStructuredAggregate(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(m->isStructType())
+					doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
+
+				else if(m->isClassType())
+					doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
+
+				else if(m->isTupleType())
+					doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
+			}
+
+			i++;
+		}
+	}
+
 	void CodegenInstance::incrementRefCount(fir::Value* strp)
 	{
 		iceAssert(strp->getType()->isPointerType());
@@ -2749,14 +2883,20 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			iceAssert(printffn);
-			fir::Value* tmpstr = this->module->createGlobalString("incr refcount: " + strp->getName().str() + "\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall1(printffn, tmpstr);
-
 			fir::Function* incrf = this->getStringRefCountIncrementFunction();
 			this->irb.CreateCall1(incrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
+
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
 		}
 		else
 		{
@@ -2771,20 +2911,20 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* printffn = this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName());
-			iceAssert(printffn);
-
-			// debug.
-			fir::Value* tmpstr = this->module->createGlobalString("decr refcount: " + strp->getName().str() + " %p\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall2(printffn, tmpstr, this->irb.CreateGetStringData(strp));
-
 			fir::Function* decrf = this->getStringRefCountDecrementFunction();
 			this->irb.CreateCall1(decrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
 
-			tmpstr = this->module->createGlobalString("decremented\n");
-			tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
-			this->irb.CreateCall1(printffn, tmpstr);
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
+
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
 		}
 		else
 		{
@@ -2793,18 +2933,52 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, ValueKind rhsVK)
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
+		ValueKind rhsVK, bool isInit)
 	{
-		// right.
+		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
 		{
-			this->irb.CreateStore(val, target);
-			return;
+			error(user, "not refcounted");
 		}
 
+		// ok...
+		// if the rhs is an lvalue, it's simple.
+		// increment its refcount, decrement the left side refcount, store, return.
+		if(rhsVK == ValueKind::LValue)
+		{
+			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
+			this->incrementRefCount(ptr);
 
+			// decrement left side
+			if(!isInit)
+				this->decrementRefCount(target);
 
-		warn(user, "thing");
+			// store
+			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+		}
+		else
+		{
+			// the rhs has already been evaluated
+			// as an rvalue, its refcount *SHOULD* be one
+			// so we don't do anything to it
+			// instead, decrement the left side
+
+			if(!isInit)
+				this->decrementRefCount(target);
+
+			// to avoid double-freeing, we remove 'val' from the list of refcounted things
+			// since it's an rvalue, it can't be "re-referenced", so to speak.
+
+			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
+			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
+
+			if(ptr)
+				this->removeRefCountedValueIfExists(ptr);
+
+			// now we just store as usual
+			this->irb.CreateStore(val, target);
+		}
 	}
 
 
@@ -2904,45 +3078,6 @@ namespace Codegen
 
 
 
-
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs)
-	{
-		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
-		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
-
-		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
-		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
-
-
-		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
-		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-
-		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
-
-		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
-		{
-			rhs = this->irb.CreateIntSizeCast(rhs, intval->getType());
-		}
-
-
-		// this is the properly adjusted int to add/sub by
-		fir::Value* newrhs = this->irb.CreateMul(rhs, intval);
-
-		// convert the lhs pointer to an int value, so we can add/sub on it
-		fir::Value* ptrval = this->irb.CreatePointerToIntCast(lhs, newrhs->getType());
-
-		// create the add/sub
-		fir::Value* res = this->irb.CreateBinaryOp(op, ptrval, newrhs);
-
-		// turn the int back into a pointer, so we can store it back into the var.
-		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
-			lhsPtr : this->getStackAlloc(lhs->getType());
-
-
-		fir::Value* properres = this->irb.CreateIntToPointerCast(res, lhs->getType());
-		this->irb.CreateStore(properres, tempRes);
-		return Result_t(properres, tempRes);
-	}
 
 
 	static void _errorNoReturn(Expr* e)
@@ -3075,8 +3210,8 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->ptype->str().c_str(), this->printAst(func->decl).c_str());
+			error(func, "Function %s has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
+				func->decl->ptype->str().c_str());
 		}
 		else if(isVoid)
 		{

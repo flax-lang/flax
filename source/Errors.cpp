@@ -190,7 +190,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", true, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -201,7 +201,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
@@ -225,7 +225,7 @@ void errorNoExit(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Error", false, ap);
 	va_end(ap);
 }
 
@@ -235,7 +235,7 @@ void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", false, ap);
 	va_end(ap);
@@ -263,7 +263,7 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Warning", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -273,7 +273,7 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Warning", false, ap);
 	va_end(ap);
@@ -294,7 +294,7 @@ void info(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Note", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -304,7 +304,7 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Note", false, ap);
 	va_end(ap);
