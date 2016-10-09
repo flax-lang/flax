@@ -160,6 +160,11 @@ namespace fir
 		}
 	}
 
+	size_t ExecutionTarget::getTypeSizeInBytes(fir::Type* type)
+	{
+		return this->getTypeSizeInBits(type) / this->getBitsPerByte();
+	}
+
 
 	ExecutionTarget* ExecutionTarget::getLP64()
 	{

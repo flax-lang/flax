@@ -74,11 +74,10 @@ namespace Compiler
 		// translate to llvm
 		for(auto mod : data.moduleList)
 		{
-			modulelist[mod.first] = mod.second->translateToLlvm();
-
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
 
+			modulelist[mod.first] = mod.second->translateToLlvm();
 			// modulelist[mod.first]->dump();
 		}
 
@@ -98,11 +97,16 @@ namespace Compiler
 
 		doGlobalConstructors(filename, data, data.rootNode, mainModule);
 
-		if(Compiler::getDumpLlvm())
-			mainModule->dump();
+		// if(Compiler::getDumpLlvm())
+		// 	mainModule->dump();
 
 		// once more
 		optimiseLlvmModule(mainModule);
+
+
+		if(Compiler::getDumpLlvm())
+			mainModule->dump();
+
 
 		if(Compiler::getRunProgramWithJit())
 		{

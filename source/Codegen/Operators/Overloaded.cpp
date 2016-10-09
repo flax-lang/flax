@@ -107,6 +107,110 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 namespace Codegen
 {
+	bool CodegenInstance::isValidOperatorForBuiltinTypes(ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
+	{
+		auto fn = &CodegenInstance::isValidOperatorForBuiltinTypes;
+
+		switch(op)
+		{
+			case ArithmeticOp::Add:
+			{
+				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
+				else if(lhs->isStringType() && rhs->isStringType())		return true;
+				else if(lhs->isPointerType() && rhs->isIntegerType())	return true;
+				else if(lhs->isIntegerType() && rhs->isPointerType())	return true;
+
+				return false;
+			}
+
+			case ArithmeticOp::Subtract:
+			{
+				// no strings, and no int - ptr (only ptr - int is valid)
+				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
+				else if(lhs->isPointerType() && rhs->isIntegerType())	return true;
+
+				return false;
+			}
+
+			case ArithmeticOp::Multiply:		// fallthrough
+			case ArithmeticOp::Divide:			// fallthrough
+			case ArithmeticOp::Modulo:			// fallthrough
+			case ArithmeticOp::ShiftLeft:		// fallthrough
+			case ArithmeticOp::ShiftRight:		return (lhs->isPrimitiveType() && rhs->isPrimitiveType());
+
+			case ArithmeticOp::Assign:
+			{
+				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
+				else if(lhs->isStringType() && rhs->isStringType())		return true;
+				else if(lhs->isPointerType() && rhs->isPointerType()
+					&& lhs->getPointerElementType() == rhs->getPointerElementType())	return true;
+
+				return false;
+			}
+
+			case ArithmeticOp::CmpLT:
+			case ArithmeticOp::CmpGT:
+			case ArithmeticOp::CmpLEq:
+			case ArithmeticOp::CmpGEq:
+			case ArithmeticOp::CmpEq:
+			case ArithmeticOp::CmpNEq:
+			{
+				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
+				else if(lhs->isStringType() && rhs->isStringType())		return true;
+				else if(lhs->isPointerType() && rhs->isPointerType()
+					&& lhs->getPointerElementType() == rhs->getPointerElementType())	return true;
+
+				return false;
+			}
+
+			case ArithmeticOp::BitwiseAnd:
+			case ArithmeticOp::BitwiseOr:
+			case ArithmeticOp::BitwiseXor:
+			{
+				return (lhs->isPrimitiveType() && rhs->isPrimitiveType());
+			}
+
+			case ArithmeticOp::LogicalOr:
+			case ArithmeticOp::LogicalAnd:
+			{
+				return lhs->isPrimitiveType() && lhs->toPrimitiveType()->getIntegerBitWidth() == 1 &&  rhs->isPrimitiveType() && rhs->toPrimitiveType()->getIntegerBitWidth() == 1;
+			}
+
+
+			// lol. mfw member function pointer syntax
+			case ArithmeticOp::PlusEquals:
+				return (this->*fn)(ArithmeticOp::Add, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::MinusEquals:
+				return (this->*fn)(ArithmeticOp::Subtract, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::MultiplyEquals:
+				return (this->*fn)(ArithmeticOp::Multiply, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::DivideEquals:
+				return (this->*fn)(ArithmeticOp::Divide, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::ModEquals:
+				return (this->*fn)(ArithmeticOp::Modulo, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::ShiftLeftEquals:
+				return (this->*fn)(ArithmeticOp::ShiftLeft, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::ShiftRightEquals:
+				return (this->*fn)(ArithmeticOp::ShiftRight, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::BitwiseAndEquals:
+				return (this->*fn)(ArithmeticOp::BitwiseAnd, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::BitwiseOrEquals:
+				return (this->*fn)(ArithmeticOp::BitwiseOr, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+			case ArithmeticOp::BitwiseXorEquals:
+				return (this->*fn)(ArithmeticOp::BitwiseXor, lhs, rhs) && (this->*fn)(ArithmeticOp::Assign, lhs, rhs);
+
+			// case ArithmeticOp::Subscript:
+			// {
+			// 	return lhs->isStringType();
+			// }
+
+			default:
+				return false;
+		}
+	}
+
+
+
 	_OpOverloadData CodegenInstance::getBinaryOperatorOverload(Expr* us, ArithmeticOp op, fir::Type* lhs, fir::Type* rhs)
 	{
 		struct Attribs
@@ -122,6 +226,23 @@ namespace Codegen
 
 			bool isMember = 0;
 		};
+
+
+		if(this->isValidOperatorForBuiltinTypes(op, lhs, rhs))
+		{
+			_OpOverloadData ret;
+
+			ret.found				= true;
+			ret.isPrefix			= false;
+			ret.needsSwap			= false;
+			ret.needsNot			= false;
+			ret.isMember			= false;
+			ret.isBuiltin			= true;
+
+			ret.opFunc				= 0;
+
+			return ret;
+		}
 
 
 		std::deque<std::pair<Attribs, fir::Function*>> candidates;
