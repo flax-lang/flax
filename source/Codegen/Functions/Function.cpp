@@ -52,6 +52,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->didCodegen = false;
 			if(isGeneric)
 			{
+				// our primary purpose was to add the generic function to the functree
+				// after that our job is done (clearly we can't generate a generic function without knowing the type parameters)
+
 				return Result_t(0, 0);
 			}
 			else

@@ -327,6 +327,15 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 				this->cachedResolveTarget = Resolved_t(genericMaybe);
 				return genericMaybe.firFunc->getReturnType();
 			}
+			// else if(genericMaybe.funcDef)
+			// {
+			// 	auto res = cgi->tryResolveGenericFunctionCallUsingCandidates(this, { genericMaybe.funcDef });
+			// 	if(res.firFunc)
+			// 	{
+			// 		this->cachedResolveTarget = Resolved_t(res);
+			// 		return res.firFunc->getReturnType();
+			// 	}
+			// }
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 		}
