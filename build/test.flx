@@ -455,10 +455,6 @@ extension string
 	}
 }
 
-func cmp<T: eq>(a: T, b: int) -> bool
-{
-	return a == b
-}
 
 public func main() -> int
 {
@@ -497,7 +493,9 @@ public func main() -> int
 
 	// ss.str = "kappa"
 
-	printf(@raw "[%s] (%d, %d, %d, %d, %d)\n", ss.str, ss.str == 4, cmp(ss.str, 10), cmp(ss.str, 7), cmp(4, 7), cmp(7, 7))
+	printf(@raw "[%s] (%d, %d, %d, %d, %d)\n", ss.str, ss.str == 4, cmp(ss.str, 10), cmp(ss.str, 7),
+		cmp(4, 7), cmp(7, 7))
+
 	ss.str.haha()
 
 
@@ -513,6 +511,10 @@ public func main() -> int
 	return 0
 }
 
+func cmp<T: eq>(a: T, b: int) -> bool
+{
+	return a == b
+}
 // func qux()
 // {
 // 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")

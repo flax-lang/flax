@@ -57,6 +57,20 @@ static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 		pftree->funcs.push_back(FuncDefPair(0, decl, 0));
 }
 
+
+static void addGenericFuncToFuncTree(CodegenInstance* cgi, Func* fn)
+{
+	auto p = getFuncTrees(cgi);
+	FunctionTree* ftree = p.first;
+	FunctionTree* pftree = p.second;
+
+	ftree->genericFunctions.push_back({ fn->decl, fn });
+
+	if(fn->decl->attribs & Attr_VisPublic)
+		pftree->genericFunctions.push_back({ fn->decl, fn });
+}
+
+
 static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)
 {
 	auto p = getFuncTrees(cgi);
@@ -96,12 +110,19 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
-			else if(fn)				addFuncDeclToFuncTree(cgi, fn->decl);
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
 			else if(prot)			addProtocolToFuncTree(cgi, prot);
 			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
+			{
 				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
+			}
+			else if(fn)
+			{
+				addFuncDeclToFuncTree(cgi, fn->decl);
+				if(fn->decl && fn->decl->genericTypes.size() > 0)
+					addGenericFuncToFuncTree(cgi, fn);
+			}
 		}
 	}
 	else if(pass == 1)
