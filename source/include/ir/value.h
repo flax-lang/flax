@@ -61,6 +61,7 @@ namespace fir
 		void setName(Identifier idt);
 		void setName(std::string s);
 		Identifier getName();
+		bool hasName();
 
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);

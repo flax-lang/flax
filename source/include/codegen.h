@@ -61,6 +61,8 @@ namespace Codegen
 		bool needsNot				= 0;
 		bool isMember				= 0;
 
+		bool isBuiltin				= 0;
+
 		fir::Function* opFunc		= 0;
 	};
 
@@ -100,17 +102,13 @@ namespace Codegen
 			std::map<fir::Value*, fir::Function*> funcs;
 			std::map<fir::Value*, fir::Value*> values;
 
-			std::map<fir::Value*, std::pair<int, fir::Value*>> tupleInitVals;
-			std::map<fir::Value*, std::pair<int, fir::Function*>> tupleInitFuncs;
-
 		} globalConstructors;
 
 		void addGlobalConstructor(Identifier name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
-		void addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val);
-		void addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func);
+		fir::Function* procureAnonymousConstructorFunction(fir::Value* arg);
 
 		void finishGlobalConstructors();
 
@@ -139,6 +137,8 @@ namespace Codegen
 		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
 		void addRefCountedValue(fir::Value* ptr);
+		void removeRefCountedValue(fir::Value* ptr);
+		void removeRefCountedValueIfExists(fir::Value* ptr);
 		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
@@ -256,7 +256,8 @@ namespace Codegen
 		void incrementRefCount(fir::Value* strp);
 		void decrementRefCount(fir::Value* strp);
 
-		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK);
+		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
+			bool isInitialAssignment);
 
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
@@ -295,6 +296,8 @@ namespace Codegen
 		fir::Function* getStringCompareFunction();
 
 
+		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
+
 
 		fir::FTContext* getContext();
 		fir::Value* getDefaultValue(Ast::Expr* e);
@@ -304,7 +307,6 @@ namespace Codegen
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
-		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);

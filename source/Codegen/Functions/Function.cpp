@@ -52,6 +52,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->didCodegen = false;
 			if(isGeneric)
 			{
+				// our primary purpose was to add the generic function to the functree
+				// after that our job is done (clearly we can't generate a generic function without knowing the type parameters)
+
 				return Result_t(0, 0);
 			}
 			else
@@ -147,7 +150,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// check if we're not returning void
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
-	// bool premature = false;
+
 	if(this->decl->ptype->str() != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
@@ -160,7 +163,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
-			// premature = true;
 		}
 	}
 	else
@@ -185,15 +187,38 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
+	{
 		cgi->irb.CreateReturnVoid();
-
+	}
 	else if(isImplicitReturn)
 	{
 		fir::Type* needed = func->getReturnType();
 		if(lastval.value->getType() != needed)
 			lastval.value = cgi->autoCastType(func->getReturnType(), lastval.value, lastval.pointer);
 
-		cgi->irb.CreateReturn(lastval.value);
+		fir::Value* ret = lastval.value;
+
+		// if it's an rvalue, we make a new one, increment its refcount
+		if(cgi->isRefCountedType(ret->getType()))
+		{
+			if(lastval.valueKind == ValueKind::LValue)
+			{
+				// uh.. should always be there.
+				iceAssert(lastval.pointer);
+				cgi->incrementRefCount(lastval.pointer);
+			}
+			else
+			{
+				// rvalue
+
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+				cgi->incrementRefCount(tmp);
+
+				ret = cgi->irb.CreateLoad(tmp);
+			}
+		}
+
+		cgi->irb.CreateReturn(ret);
 	}
 
 

@@ -397,22 +397,12 @@ namespace Operators
 
 
 
-		if(lhs->getType()->isStringType())
+		if(cgi->isRefCountedType(lhs->getType()))
 		{
 			iceAssert(lhsPtr);
+			iceAssert(rhsPtr);
 
-			// deref the lhs, since it's going to die real soon
-			cgi->decrementRefCount(lhsPtr);
-
-			// ref the right side
-			if(rhs->getType()->isStringType())
-			{
-				iceAssert(rhsPtr);
-				cgi->incrementRefCount(rhsPtr);
-			}
-
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk);
-			return Result_t(0, 0);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{
@@ -426,7 +416,6 @@ namespace Operators
 
 			// store it, and return 0.
 			cgi->irb.CreateStore(rhs, lhsPtr);
-			return Result_t(0, 0);
 		}
 		else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
 		{
@@ -442,8 +431,6 @@ namespace Operators
 
 			fir::Value* rhsVal = cgi->irb.CreateLoad(rhsGEP);
 			cgi->irb.CreateStore(rhsVal, lhsGEP);
-
-			return Result_t(0, 0);
 		}
 		else
 		{
@@ -452,9 +439,9 @@ namespace Operators
 			iceAssert(lhsPtr);
 
 			cgi->irb.CreateStore(rhs, lhsPtr);
-
-			return Result_t(0, 0);
 		}
+
+		return Result_t(0, 0);
 	}
 }
 

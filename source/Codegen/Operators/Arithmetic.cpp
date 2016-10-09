@@ -213,20 +213,19 @@ namespace Operators
 
 				// ok. combine the lengths
 				fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
-				newlen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt32(1));		// space for null
+
+				// space for null + refcount
+				size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::PrimitiveType::getInt64());
+				fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 				// now malloc.
 				fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc").firFunc->getName());
 				iceAssert(mallocf);
 
-				fir::Value* buf = cgi->irb.CreateCall1(mallocf, cgi->irb.CreateIntSizeCast(newlen, fir::PrimitiveType::getInt64()));
-				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p\n");
-					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
 
-					cgi->irb.CreateCall2(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr, buf);
-				}
-
+				// move it forward (skip the refcount)
+				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
 
 				// now memcpy
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
@@ -241,10 +240,19 @@ namespace Operators
 				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
+				#if 0
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
+					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+					cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+				}
+				#endif
+
 				// ok, now fix it
 				cgi->irb.CreateSetStringData(newstrp, buf);
 				cgi->irb.CreateSetStringLength(newstrp, newlen);
-				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt32(1));
+				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
 
 				cgi->addRefCountedValue(newstrp);
 				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);
@@ -266,8 +274,9 @@ namespace Operators
 		{
 			return compareEnumValues(cgi, op, lhs, leftr.pointer, rhs, rightr.pointer);
 		}
-		else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
-			|| lhs->getType()->isClassType() || rhs->getType()->isClassType())
+		// else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
+			// || lhs->getType()->isClassType() || rhs->getType()->isClassType())
+		else
 		{
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)
@@ -280,11 +289,11 @@ namespace Operators
 					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
-		else
-		{
-			error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
-				lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
-		}
+		// else
+		// {
+		// 	error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+		// 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+		// }
 	}
 }
 

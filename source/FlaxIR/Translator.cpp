@@ -143,14 +143,14 @@ namespace fir
 		else if(type->isStringType())
 		{
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
-			llvm::Type* i32type = llvm::Type::getInt32Ty(gc);
+			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 
 			auto id = Identifier("__.string", IdKind::Struct);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
 			auto str = llvm::StructType::create(gc, id.mangled());
-			str->setBody({ i8ptrtype, i32type, i32type });
+			str->setBody({ i8ptrtype, i64type });
 
 			return createdTypes[id] = str;
 		}
@@ -1371,7 +1371,6 @@ namespace fir
 
 						case OpKind::String_GetData:
 						case OpKind::String_GetLength:
-						case OpKind::String_GetRefCount:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1385,14 +1384,36 @@ namespace fir
 								ind = 0;
 							else if(inst->opKind == OpKind::String_GetLength)
 								ind = 1;
-							else
-								ind = 2;
 
 							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
 							llvm::Value* ret = builder.CreateLoad(gep);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+						case OpKind::String_GetRefCount:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							llvm::Value* dp = builder.CreateLoad(gep);
+
+							// refcount lies 8 bytes behind.
+							auto& gc = llvm::getGlobalContext();
+							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
+							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							llvm::Value* ret = builder.CreateLoad(ptr);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
 
 
 
@@ -1426,10 +1447,11 @@ namespace fir
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							iceAssert(b->getType() == llvm::Type::getInt32Ty(llvm::getGlobalContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
 
 							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
 							builder.CreateStore(b, len);
+
 
 							llvm::Value* ret = builder.CreateLoad(len);
 							addValueToMap(ret, inst->realOutput);
@@ -1446,12 +1468,19 @@ namespace fir
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							iceAssert(b->getType() == llvm::Type::getInt32Ty(llvm::getGlobalContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
 
-							llvm::Value* rc = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
-							builder.CreateStore(b, rc);
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							llvm::Value* dp = builder.CreateLoad(gep);
 
-							llvm::Value* ret = builder.CreateLoad(rc);
+							// refcount lies 8 bytes behind.
+							auto& gc = llvm::getGlobalContext();
+							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
+							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							builder.CreateStore(b, ptr);
+
+							llvm::Value* ret = builder.CreateLoad(ptr);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

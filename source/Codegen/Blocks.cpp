@@ -34,8 +34,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(auto v : cgi->getRefCountedValues())
 		{
 			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-			if(v->getType()->getPointerElementType()->isStringType())
-				cgi->decrementRefCount(v);
+			cgi->decrementRefCount(v);
 		}
 	}
 
@@ -70,8 +69,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
+		cgi->decrementRefCount(v);
 	}
 
 	// for break, we go to the ending block
@@ -112,8 +110,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
+		cgi->decrementRefCount(v);
 	}
 
 
@@ -161,17 +158,8 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	// 4. now, do the refcounting magic
-	for(auto v : cgi->getRefCountedValues())
-	{
-		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		if(v->getType()->getPointerElementType()->isStringType())
-			cgi->decrementRefCount(v);
-	}
 
-
-
-
+	// 4. generate the return value, handling refcount inflation if necessary
 	if(this->val)
 	{
 		auto res = this->val->codegen(cgi);
@@ -179,18 +167,47 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(f);
 
 		this->actualReturnValue = cgi->autoCastType(f->getReturnType(), res.value, res.pointer);
+
+		// if it's an rvalue, we make a new one, increment its refcount
+		if(cgi->isRefCountedType(res.value->getType()))
+		{
+			if(res.valueKind == ValueKind::LValue)
+			{
+				// uh.. should always be there.
+				iceAssert(res.pointer);
+
+				cgi->incrementRefCount(res.pointer);
+			}
+			else
+			{
+				// rvalue
+
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(this->actualReturnValue->getType(), this->actualReturnValue);
+				cgi->incrementRefCount(tmp);
+
+				this->actualReturnValue = cgi->irb.CreateLoad(tmp);
+			}
+		}
+	}
+
+
+	// 5. now, do the refcounting magic
+	for(auto v : cgi->getRefCountedValues())
+	{
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		cgi->decrementRefCount(v);
+	}
+
+
+	// 6. actually return.
+
+	if(this->actualReturnValue)
 		cgi->irb.CreateReturn(this->actualReturnValue);
 
-
-		// return Result_t(cgi->irb.CreateReturn(this->actualReturnValue), res.pointer, ResultType::BreakCodegen);
-		return Result_t(0, 0, ResultType::BreakCodegen);
-	}
 	else
-	{
 		cgi->irb.CreateReturnVoid();
 
-		return Result_t(0, 0, ResultType::BreakCodegen);
-	}
+	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
 fir::Type* Return::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
