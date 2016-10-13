@@ -510,10 +510,9 @@ public func main() -> int
 	printf("lol: %s / %d\n", ss.str.raw, ss.str.length)
 
 
-	// bar()
-	// qux()
+	bar()
+	qux()
 
-	// bar()
 
 	var k: string
 	glob = k
@@ -526,10 +525,11 @@ func cmp<T: eq>(a: T, b: int) -> bool
 {
 	return a == b
 }
-// func qux()
-// {
-// 	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
-// }
+
+func qux()
+{
+	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
+}
 
 
 protocol eq

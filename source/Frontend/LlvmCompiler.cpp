@@ -77,6 +77,12 @@ namespace Compiler
 			if(Compiler::getDumpFir())
 				printf("%s\n\n\n\n", mod.second->print().c_str());
 
+			for(auto f : mod.second->getAllFunctions())
+				f->cullUnusedValues();
+
+			if(Compiler::getDumpFir())
+				printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n%s\n\n\n\n", mod.second->print().c_str());
+
 			modulelist[mod.first] = mod.second->translateToLlvm();
 			// modulelist[mod.first]->dump();
 		}
