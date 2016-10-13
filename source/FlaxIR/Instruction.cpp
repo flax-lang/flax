@@ -10,11 +10,11 @@
 namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, Type* out, std::deque<Value*> vals) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, std::deque<Value*> vals) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
-
+		this->sideEffects = sideeff;
 		this->realOutput = new Value(out);
 
 		for(auto v : vals)
@@ -25,6 +25,11 @@ namespace fir
 	{
 		if(this->realOutput) return this->realOutput;
 		iceAssert(0 && "Calling getActualValue() when not in function! (no real value)");
+	}
+
+	bool Instruction::hasSideEffects()
+	{
+		return this->sideEffects;
 	}
 
 	void Instruction::setValue(Value* v)
@@ -179,8 +184,7 @@ namespace fir
 		else
 		{
 			auto name = this->realOutput->getName().str();
-			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + ") :: "
-				+ this->realOutput->getType()->str() + " = " + instrname + " " + ops;
+			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + " [" + std::to_string(this->realOutput->getUsers().size()) + "]) :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
 		}
 
 		return ret;

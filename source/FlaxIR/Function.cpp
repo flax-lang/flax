@@ -172,6 +172,32 @@ namespace fir
 		return nf;
 	}
 
+	void Function::cullUnusedValues()
+	{
+		for(auto b : this->blocks)
+		{
+			auto instrs = b->getInstructions();
+			for(auto it = instrs.begin(); it != instrs.end();)
+			{
+				if((*it)->realOutput->getUsers().empty() && !(*it)->hasSideEffects())
+				{
+					it = instrs.erase(it);
+				}
+				else
+				{
+					it++;
+				}
+			}
+
+			b->setInstructions(instrs);
+		}
+	}
+
+
+
+
+
+
 
 	bool Function::wasDeclaredWithBodyElsewhere()
 	{

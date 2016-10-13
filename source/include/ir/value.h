@@ -70,7 +70,7 @@ namespace fir
 		void makeImmutable() { this->immut = true; }
 		void makeNotImmutable() { this->immut = false; }
 
-		std::deque<Value*> getUsers() { return this->users; }
+		std::deque<Value*>& getUsers() { return this->users; }
 
 		// protected shit
 		size_t id;
