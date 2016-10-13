@@ -75,6 +75,10 @@ namespace fir
 
 		static bool areTypesEqual(Type* a, Type* b);
 
+		static std::string typeListToString(std::deque<Type*> types);
+		static std::string typeListToString(std::vector<Type*> types);
+		static std::string typeListToString(std::initializer_list<Type*> types);
+
 		// various
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
@@ -143,10 +147,6 @@ namespace fir
 
 		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, size_t inds, bool isva, std::deque<Type*> args,
 			Type* ret);
-
-		static std::string typeListToString(std::deque<Type*> types);
-		static std::string typeListToString(std::vector<Type*> types);
-		static std::string typeListToString(std::initializer_list<Type*> types);
 
 		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
 		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);

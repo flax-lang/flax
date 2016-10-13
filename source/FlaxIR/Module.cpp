@@ -4,6 +4,8 @@
 
 #include "ir/module.h"
 
+#include <sstream>
+
 namespace fir
 {
 	Module::Module(std::string nm)
@@ -217,8 +219,6 @@ namespace fir
 
 
 
-
-
 	std::string Module::print()
 	{
 		std::string ret;
@@ -249,12 +249,13 @@ namespace fir
 		for(auto type : this->namedTypes)
 		{
 			// should just automatically create it.
-			auto c = new char[32];
-			snprintf(c, 32, "%p", (void*) type.second);
+			std::string tl;
+			if(type.second->isStructType()) tl = fir::Type::typeListToString(type.second->toStructType()->getElements());
+			else if(type.second->isClassType()) tl = fir::Type::typeListToString(type.second->toClassType()->getElements());
+			else if(type.second->isTupleType()) tl = fir::Type::typeListToString(type.second->toTupleType()->getElements());
 
-			ret += "declare type :: " + type.second->str() + " :: <" + std::string(c) + ">\n";
 
-			delete[] c;
+			ret += "declare type :: " + type.second->str() + " { " + tl + " }\n";
 		}
 
 		for(auto fp : this->functions)

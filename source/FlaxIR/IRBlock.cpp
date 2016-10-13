@@ -46,14 +46,9 @@ namespace fir
 		iceAssert(0 && "not in function");
 	}
 
-	std::deque<Instruction*> IRBlock::getInstructions()
+	std::deque<Instruction*>& IRBlock::getInstructions()
 	{
 		return this->instructions;
-	}
-
-	void IRBlock::setInstructions(std::deque<Instruction*> instrs)
-	{
-		this->instructions = instrs;
 	}
 }
 
