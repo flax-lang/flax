@@ -13,6 +13,7 @@ namespace fir
 		this->valueType = t;
 
 		this->id = vnames;
+		this->source = 0;
 		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 

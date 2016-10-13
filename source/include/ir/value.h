@@ -43,6 +43,7 @@ namespace fir
 
 	struct ConstantValue;
 	struct GlobalValue;
+	struct Instruction;
 	struct IRBlock;
 
 	struct Value
@@ -72,6 +73,8 @@ namespace fir
 
 		std::deque<Value*>& getUsers() { return this->users; }
 
+		Instruction* getSource() { return this->source; }
+
 		// protected shit
 		size_t id;
 		protected:
@@ -83,6 +86,7 @@ namespace fir
 
 		Identifier ident;
 		Type* valueType;
+		Instruction* source;
 		FValueKind valueKind;
 		std::deque<Value*> users;
 	};

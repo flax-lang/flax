@@ -10,12 +10,14 @@
 namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, std::deque<Value*> vals) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::deque<Value*> vals) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 		this->sideEffects = sideeff;
+		this->parentBlock = parent;
 		this->realOutput = new Value(out);
+		this->realOutput->source = this;
 
 		for(auto v : vals)
 			v->addUser(this);

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 /*
+
 import Foundation
 import Utilities
 import String
@@ -260,15 +261,7 @@ public func main(argc: int32, argv: int8**) -> int
 
 	printf("\n<< done >>\n")
 	return 0
-}
-
-
-
-
-*/
-
-
-
+}*/
 
 
 
@@ -278,6 +271,14 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 /*
+
+
+
+
+
+
+
+
 	how to be stupid:
 	associating reference count with the reference, instead of the object being referenced
 	._.
@@ -331,8 +332,8 @@ public func main(argc: int32, argv: int8**) -> int
 	ezpz.
 
 	this time, i'll stop doing stupid things.
-*/
 
+*/
 
 
 /*
