@@ -6,7 +6,7 @@ import IntegerLimits
 import Protocols
 import String
 
-public extension String
+public extension string
 {
 	func toInteger() -> int64
 	{
@@ -16,35 +16,35 @@ public extension String
 
 public extension int8 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension int16 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension int32 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension int64 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 
 
 public extension uint8 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension uint16 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension uint32 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }
 public extension uint64 : StringConvertible, Numeric
 {
-	func toString() -> String { "40" }
+	func toString() -> string { "40" }
 }

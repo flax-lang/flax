@@ -1139,7 +1139,7 @@
 		<key>type-casting-operator</key>
 		<dict>
 			<key>match</key>
-			<string>\b(is\b|(\*)+|arc\b|raw\b|deref\b|addrof\b|as(\?\B|\b))</string>
+			<string>\b(is\b|(\*)+|as(\?\B|\b))</string>
 			<key>name</key>
 			<string>keyword.operator.type-casting.flax</string>
 		</dict>
