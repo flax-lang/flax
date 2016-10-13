@@ -11,7 +11,7 @@ using namespace Codegen;
 
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* _rhs, fir::Value* ref);
+static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* ref);
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
 {
 	auto tmp = cls->ident.scope;
@@ -76,6 +76,163 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 
+static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
+	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
+{
+	if(type->isLLVariableArrayType())
+	{
+		// lol, some magic.
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name != "length")
+				error(ma, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+
+			if(!actual)
+			{
+				*resultType = fir::PrimitiveType::getInt64();
+				return Result_t(0, 0);
+			}
+
+			// lol, now do the thing.
+			return cgi->getLLVariableArrayLength(ptr);
+		}
+		else
+		{
+			error(ma, "Variadic array only has one member, 'length'. Invalid operator.");
+		}
+	}
+
+	if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+	{
+		// handle builtin ones: 'raw' and 'length'
+		// raw is basically just the string
+		// length is basically just the length.
+
+		// lol
+
+		auto vr = dynamic_cast<VarRef*>(ma->right);
+		iceAssert(vr);
+
+		if(vr->name == "raw")
+		{
+			if(!actual)
+			{
+				*resultType = fir::PointerType::getInt8Ptr();
+				return Result_t(0, 0);
+			}
+			else
+			{
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetStringData(ptr), 0);
+			}
+		}
+		else if(vr->name == "length")
+		{
+			if(!actual)
+			{
+				*resultType = fir::PrimitiveType::getInt64();
+				return Result_t(0, 0);
+			}
+			else
+			{
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
+			}
+		}
+	}
+
+	if(cgi->getExtensionsForBuiltinType(type).size() > 0)
+	{
+		// nothing was built to handle this
+		if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
+			std::deque<FuncDefPair> fpcands;
+
+			for(auto ext : cgi->getExtensionsForBuiltinType(type))
+			{
+				for(auto f : ext->funcs)
+				{
+					if(f->decl->ident.name == fc->name)
+						fcands[f->decl] = { f, ext->functionMap[f] };
+				}
+			}
+
+			for(auto p : fcands)
+				fpcands.push_back(FuncDefPair(p.second.second, p.second.first->decl, p.second.first));
+
+			std::deque<fir::Type*> fpars = { type->getPointerTo() };
+			for(auto e : fc->params) fpars.push_back(e->getType(cgi));
+
+			Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
+			if(!res.resolved)
+				GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
+
+			iceAssert(res.t.firFunc);
+
+			if(!actual)
+			{
+				*resultType = res.t.firFunc->getReturnType();
+				return Result_t(0, 0);
+			}
+
+			std::deque<fir::Value*> args;
+			for(auto e : fc->params)
+				args.push_back(e->codegen(cgi).value);
+
+			// make a new self (that is immutable)
+			iceAssert(val);
+
+			fir::Value* newSelfP = cgi->irb.CreateImmutStackAlloc(val->getType(), val);
+			args.push_front(newSelfP);
+
+			fir::Function* target = res.t.firFunc;
+			auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+
+			fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
+			return Result_t(ret, 0);
+		}
+		else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			std::deque<ComputedProperty*> ccands;
+
+			for(auto ext : cgi->getExtensionsForBuiltinType(type))
+			{
+				for(auto c : ext->cprops)
+				{
+					if(c->ident.name == vr->name)
+						ccands.push_back(c);
+				}
+			}
+
+			if(ccands.size() > 1)
+				error(vr, "Ambiguous access to property '%s' -- extensions declared duplicates?", vr->name.c_str());
+
+			else if(ccands.size() == 0)
+				error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), type->str().c_str());
+
+			// do it
+			if(!actual)
+			{
+				*resultType = ccands[0]->getterFFn->getReturnType();
+				return Result_t(0, 0);
+			}
+
+			ComputedProperty* prop = ccands[0];
+			return callComputedPropertyGetter(cgi, vr, prop, cgi->irb.CreateImmutStackAlloc(val->getType(), val));
+		}
+		else
+		{
+			error(ma->right, "Unsupported RHS for dot-operator on builtin type '%s'", type->str().c_str());
+		}
+	}
+	else
+	{
+		error(ma, "Cannot do member access on non-struct type '%s'", type->str().c_str());
+	}
+}
+
+
 
 
 
@@ -90,8 +247,8 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 	fir::Type* lhs = this->left->getType(cgi);
 	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 
-	if(!pair && !lhs->isTupleType())
-		error(this, "Invalid type '%s' for dot-operator-access", lhs->str().c_str());
+
+
 
 	if(lhs->isTupleType())
 	{
@@ -110,6 +267,13 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		}
 
 		return tt->getElementN(n->ival);
+	}
+	else if(!pair || (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
+	{
+		fir::Type* ret = 0;
+		attemptDotOperatorOnBuiltinTypeOrFail(cgi, lhs, this, false, 0, 0, &ret);
+
+		return ret;
 	}
 	else if(pair->second.second == TypeKind::Class)
 	{
@@ -291,111 +455,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			ftype = ftype->getPointerElementType(), isPtr = true;
 		}
-		else if(ftype->isLLVariableArrayType())
-		{
-			// lol, some magic.
-			if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
-			{
-				if(vr->name != "length")
-					error(this, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
-
-				// lol, now do the thing.
-				return cgi->getLLVariableArrayLength(selfPtr);
-			}
-			else
-			{
-				error(this, "Variadic array only has one member, 'length'. Invalid operator.");
-			}
-		}
-		else if(cgi->getExtensionsForBuiltinType(ftype).size() > 0)
-		{
-			// nothing was built to handle this
-			// so we basically need to do it manually
-
-			// todo.
-
-			if(FuncCall* fc = dynamic_cast<FuncCall*>(this->right))
-			{
-				std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
-				std::deque<FuncDefPair> fpcands;
-
-				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
-				{
-					for(auto f : ext->funcs)
-					{
-						if(f->decl->ident.name == fc->name)
-							fcands[f->decl] = { f, ext->functionMap[f] };
-					}
-				}
-
-				for(auto p : fcands)
-					fpcands.push_back(FuncDefPair(p.second.second, p.second.first->decl, p.second.first));
-
-
-				std::deque<fir::Type*> fpars = { ftype->getPointerTo() };
-				for(auto e : fc->params) fpars.push_back(e->getType(cgi));
-
-
-				Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
-				if(!res.resolved)
-					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
-
-				iceAssert(res.t.firFunc);
-
-
-				std::deque<fir::Value*> args;
-				for(auto e : fc->params)
-					args.push_back(e->codegen(cgi).value);
-
-
-				// make a new self
-				iceAssert(self);
-
-				fir::Value* newSelfP = cgi->irb.CreateImmutStackAlloc(self->getType(), self);
-				args.push_front(newSelfP);
-
-				// might not be a good thing to always do.
-				// TODO: check this.
-				// makes sure we call the function in our own module, because llvm only allows that.
-
-				fir::Function* target = res.t.firFunc;
-				auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
-
-				fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
-				return Result_t(ret, 0);
-			}
-			else if(VarRef* vr = dynamic_cast<VarRef*>(this->right))
-			{
-				std::deque<ComputedProperty*> ccands;
-
-				for(auto ext : cgi->getExtensionsForBuiltinType(ftype))
-				{
-					for(auto c : ext->cprops)
-					{
-						if(c->ident.name == vr->name)
-							ccands.push_back(c);
-					}
-				}
-
-				if(ccands.size() > 1)
-					error(vr, "Ambiguous access to property '%s' -- extensions declared duplicates?", vr->name.c_str());
-
-				else if(ccands.size() == 0)
-					error(vr, "Property '%s' for type '%s' not defined in any extensions", vr->name.c_str(), self->getType()->str().c_str());
-
-
-				// do it
-				ComputedProperty* prop = ccands[0];
-				doComputedProperty(cgi, vr, prop, 0, cgi->irb.CreateImmutStackAlloc(self->getType(), self));
-			}
-			else
-			{
-				error(this->right, "enotsup");
-			}
-		}
 		else
 		{
-			error(this, "Cannot do member access on non-struct type '%s'", ftype->str().c_str());
+			fir::Type* _ = 0;
+			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfPtr, &_);
 		}
 	}
 
@@ -579,7 +642,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(cprop);
-					return doComputedProperty(cgi, var, cprop, 0, isPtr ? self : selfPtr);
+					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfPtr);
 				}
 			}
 		}
@@ -627,43 +690,14 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-static Result_t doComputedProperty(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* _rhs, fir::Value* ref)
+static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, ComputedProperty* cprop, fir::Value* ref)
 {
-	if(_rhs)
-	{
-		if(!cprop->setter)
-		{
-			error(var, "Property '%s' of type has no setter and is readonly", cprop->ident.name.c_str());
-		}
+	fir::Function* lcallee = cprop->getterFFn;
+	iceAssert(lcallee);
 
-		fir::Function* lcallee = cprop->setterFFn;
-		iceAssert(lcallee);
-
-		std::vector<fir::Value*> args { ref, _rhs };
-
-		// todo: rather large hack. since the nature of computed properties
-		// is that they don't have a backing storage in the struct itself, we need
-		// to return something. We're still used in a binOp though, so...
-
-		// create a fake alloca to return to them.
-		lcallee = cgi->module->getFunction(lcallee->getName());
-
-		fir::Value* val = cgi->irb.CreateCall(lcallee, args);
-		fir::Value* fake = cgi->getStackAlloc(_rhs->getType());
-
-		cgi->irb.CreateStore(val, fake);
-
-		return Result_t(val, fake);
-	}
-	else
-	{
-		fir::Function* lcallee = cprop->getterFFn;
-		iceAssert(lcallee);
-
-		lcallee = cgi->module->getFunction(lcallee->getName());
-		std::vector<fir::Value*> args { ref };
-		return Result_t(cgi->irb.CreateCall(lcallee, args), 0);
-	}
+	lcallee = cgi->module->getFunction(lcallee->getName());
+	std::vector<fir::Value*> args { ref };
+	return Result_t(cgi->irb.CreateCall(lcallee, args), 0);
 }
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
@@ -1411,7 +1445,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 							else
 							{
 								auto vr = new VarRef(fc->pin, fc->name);
-								auto res = doComputedProperty(cgi, vr, p, 0, ref);
+								auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
 								delete vr;
 
@@ -1445,7 +1479,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 									else
 									{
 										auto vr = new VarRef(fc->pin, fc->name);
-										auto res = doComputedProperty(cgi, vr, p, 0, ref);
+										auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
 										delete vr;
 

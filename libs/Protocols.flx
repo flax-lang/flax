@@ -7,7 +7,7 @@ import String
 
 public protocol StringConvertible
 {
-	func toString() -> String
+	func toString() -> string
 }
 
 public protocol Numeric
@@ -45,8 +45,8 @@ public protocol Equatable
 // most of them already have the necessary functions
 // we need to do this to avoid circular imports
 
-public extension String : Equatable, StringConvertible { func toString() -> String { #self } }
-public extension Character : Equatable { }
+public extension string : Equatable, StringConvertible { func toString() -> string { #self } }
+// public extension Character : Equatable { }
 
 namespace Math
 {

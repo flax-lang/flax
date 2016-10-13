@@ -262,10 +262,10 @@ public func main(argc: int32, argv: int8**) -> int
 	return 0
 }
 
+
+
+
 */
-
-
-
 
 
 
@@ -455,6 +455,15 @@ extension string
 	}
 }
 
+extension int64
+{
+	func lol() -> string
+	{
+		return "lol"
+	}
+}
+
+import IntegerLimits
 
 public func main() -> int
 {
@@ -497,6 +506,8 @@ public func main() -> int
 		cmp(4, 7), cmp(7, 7))
 
 	ss.str.haha()
+
+	printf("lol: %s / %d\n", ss.str.raw, ss.str.length)
 
 
 	// bar()
