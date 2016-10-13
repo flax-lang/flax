@@ -73,6 +73,8 @@ namespace fir
 		bool isAlwaysInlined();
 		void setAlwaysInline();
 
+		void cullUnusedValues();
+
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);

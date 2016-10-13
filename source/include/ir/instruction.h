@@ -137,13 +137,14 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, Type* out, std::deque<Value*> vals);
+		Instruction(OpKind kind, bool sideEffects, Type* out, std::deque<Value*> vals);
 		std::string str();
 
 		Value* getResult();
 
 		void setValue(Value* v);
 		void clearValue();
+		bool hasSideEffects();
 
 		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
 
@@ -151,6 +152,7 @@ namespace fir
 		// protected:
 		OpKind opKind;
 
+		bool sideEffects;
 		Value* realOutput;
 		std::deque<Value*> operands;
 	};
