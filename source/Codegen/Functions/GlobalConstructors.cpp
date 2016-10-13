@@ -63,7 +63,8 @@ namespace Codegen
 		auto id = Identifier(this->module->getModuleName(), IdKind::ModuleConstructor);
 		id.functionArguments = ft->getArgumentTypes();
 
-		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(id, ft, fir::LinkageType::External);
+		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(Identifier(id.str() + "_constr", IdKind::ModuleConstructor),
+			ft, fir::LinkageType::External);
 
 		fir::IRBlock* iblock = this->irb.addNewBlockInFunction("initialiser", defaultInitFunc);
 		this->irb.setCurrentBlock(iblock);
