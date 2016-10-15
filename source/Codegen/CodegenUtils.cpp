@@ -2505,7 +2505,10 @@ namespace Codegen
 		fir::Value* strp = this->irb.CreateStackAlloc(fir::StringType::get());
 
 		// note(portability): this isn't going to work on non-2's-complement platforms
-		// where FFFFFFFF != -1.
+		// where 0xFFFFFFFFFFFFFFFF != -1.
+
+		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
+		// this simplifies code a lot (generated code, too)
 
 		std::string s = str;
 		s.insert(s.begin(), 0xFF);
@@ -2525,11 +2528,6 @@ namespace Codegen
 
 		this->irb.CreateSetStringData(strp, empty);
 		this->irb.CreateSetStringLength(strp, len);
-
-		// we don't (and can't) set the refcount, because it's probably in read-only memory.
-		// the -1 is reflected in the string literal already.
-		// fir::Value* rc = fir::ConstantInt::getInt64(-1);
-		// this->irb.CreateSetStringRefCount(strp, rc);
 
 		strp->makeImmutable();
 		return Result_t(this->irb.CreateLoad(strp), strp);
@@ -2552,21 +2550,131 @@ namespace Codegen
 
 
 
-	#define BUILTIN_STRINGREF_INCR_FUNC_NAME "__.stringref_incr"
-	#define BUILTIN_STRINGREF_DECR_FUNC_NAME "__.stringref_decr"
-	#define BUILTIN_STRINGCMP_FUNC_NAME "__.stringcmp"
+	#define BUILTIN_STRINGREF_INCR_FUNC_NAME	"__.stringref_incr"
+	#define BUILTIN_STRINGREF_DECR_FUNC_NAME	"__.stringref_decr"
+	#define BUILTIN_STRING_APPEND_FUNC_NAME		"__.stringappend"
+	#define BUILTIN_STRING_CMP_FUNC_NAME		"__.stringcmp"
+
+
+
+
+	fir::Function* CodegenInstance::getStringAppendFunction()
+	{
+		fir::Function* appendf = this->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
+
+		if(!appendf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::StringType::get()->getPointerTo(), fir::StringType::get()->getPointerTo() },
+				fir::StringType::get(), false), fir::LinkageType::Internal);
+
+			// func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+
+
+			// add two strings
+			// steps:
+			//
+			// 1. get the size of the left string
+			// 2. get the size of the right string
+			// 3. add them together
+			// 4. malloc a string of that size + 1
+			// 5. make a new string
+			// 6. set the buffer to the malloced buffer
+			// 7. set the length to a + b
+			// 8. return.
+
+			// get an empty string
+			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::StringType::get());
+			newstrp->setName("newstrp");
+
+			iceAssert(s1);
+			iceAssert(s2);
+
+			fir::Value* lhslen = this->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* rhslen = this->irb.CreateGetStringLength(s2, "l2");
+
+			fir::Value* lhsbuf = this->irb.CreateGetStringData(s1, "d1");
+			fir::Value* rhsbuf = this->irb.CreateGetStringData(s2, "d2");
+
+			// ok. combine the lengths
+			fir::Value* newlen = this->irb.CreateAdd(lhslen, rhslen);
+
+			// space for null + refcount
+			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::PrimitiveType::getInt64());
+			fir::Value* malloclen = this->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
+
+			// now malloc.
+			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc").firFunc->getName());
+			iceAssert(mallocf);
+
+			fir::Value* buf = this->irb.CreateCall1(mallocf, malloclen);
+
+			// move it forward (skip the refcount)
+			buf = this->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+			// now memcpy
+			fir::Function* memcpyf = this->module->getIntrinsicFunction("memcpy");
+			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::PrimitiveType::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			fir::Value* offsetbuf = this->irb.CreatePointerAdd(buf, lhslen);
+			this->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, this->irb.CreateIntSizeCast(rhslen, fir::PrimitiveType::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			// null terminator
+			fir::Value* nt = this->irb.CreateGetPointer(offsetbuf, rhslen);
+			this->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+			#if 0
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("malloc: %p / %p (%s)\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+			}
+			#endif
+
+			// ok, now fix it
+			this->irb.CreateSetStringData(newstrp, buf);
+			this->irb.CreateSetStringLength(newstrp, newlen);
+			this->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+
+			this->irb.CreateReturn(this->irb.CreateLoad(newstrp));
+
+			appendf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(appendf);
+		return appendf;
+	}
+
+
+
+
+
+
+
 
 	fir::Function* CodegenInstance::getStringCompareFunction()
 	{
-		fir::Function* cmpf = this->module->getFunction(Identifier(BUILTIN_STRINGCMP_FUNC_NAME, IdKind::Name));
+		fir::Function* cmpf = this->module->getFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name));
 
 		if(!cmpf)
 		{
 			// great.
-
 			auto restore = this->irb.getCurrentBlock();
 
-			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGCMP_FUNC_NAME, IdKind::Name),
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
 				fir::FunctionType::get({ fir::StringType::get()->getPointerTo(), fir::StringType::get()->getPointerTo() },
 				fir::PrimitiveType::getInt64(), false), fir::LinkageType::Internal);
 

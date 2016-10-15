@@ -294,6 +294,7 @@ namespace Codegen
 		fir::Function* getStringRefCountIncrementFunction();
 		fir::Function* getStringRefCountDecrementFunction();
 		fir::Function* getStringCompareFunction();
+		fir::Function* getStringAppendFunction();
 
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);

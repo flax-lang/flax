@@ -272,13 +272,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 /*
 
-
-
-
-
-
-
-
 	how to be stupid:
 	associating reference count with the reference, instead of the object being referenced
 	._.
@@ -344,63 +337,29 @@ public func main(argc: int32, argv: int8**) -> int
 */
 
 
-
-
-
 /*
-	stuff:
+	more string stuff:
 
+	the current string type stays as it is -- unicode agnostic, doesn't care what you put inside.
+	only knows about bytes, nothing else.
 
-	foo() results in an rvalue
-	in let x = foo(),
+	a new type, ustring/utfstring/utf8string
 
-	x is assigned an rvalue
-	as with x = y + "lol"
+	utf8string would store a series of utf8 bytes
+	basically how the old one worked.
+	indexing would take O(n), codepoint length has to be recomputed on modify, to account for combining characters
+	everything else basically works the same as string?
 
-	it's clear that the refcount of the old value of x must be decremented
-	for y + lol, we remove it from the refcounting list
-	for foo(), if it returns some rc<T>, the refcount of T is increased
+	utf32string, or maybe just utfstring, stores a series of 4-byte codepoints
+	aka utf-32.
 
+	everything works like normal strings, except with 4x the storage requirements
+	faster than utf8 on things like indexing, appending
+	basically space/speed tradeoff here
 
-
-
-	foo() { return x }
-
-	let y = foo()
-
-	y holds a reference to x, rc(x)++
-	so rc(x) == 2
-
-	at the end of scope, y is gone, so rc(x)--
-	x is leaked since refcount remains 1.
-
-
-
-	for lvalue = rvalue, in essence the rvalue is moved to the lvalue
-	so in theory the recount should not change at all
-
-	let y = x + 10
-	x + 10 gets removed from the refcount stack, and rc(y) == 1
-
-	let y = foo()
-	foo() gets removed from the refcount stack, and rc(y) == 1
-
-	this works, i suppose, if funccall doesn't add the result to the list.
-
-
-	what if foo() returns a global?
-
-	if we have
-	let x = foo()
-	let y = foo()
-
-	then the global gets referenced twice, but the refcount remains 1 (assuming no previous references)
-	so it gets freed twice...
-
-
+	still, normal string is best string
+	these unicode things will be quite far into the future i think.
 */
-
-
 
 
 
@@ -515,7 +474,7 @@ public func main() -> int
 	qux()
 
 
-	var k: string
+	var k: string = "teehee"
 	glob = k
 	printf(@raw "k = [%s], glob = [%s]\n", k, glob)
 
