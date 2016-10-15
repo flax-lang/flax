@@ -114,14 +114,14 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			cgi->addRefCountedValue(extra);
 			if(!extra->hasName())
-				extra->setName("lit_<" + this->str + ">");
+				extra->setName("strlit");
 
 			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
 		else
 		{
 			auto r = cgi->makeStringLiteral(this->str);
-			r.pointer->setName("lit_<" + this->str + ">");
+			r.pointer->setName("strlit");
 
 			return r;
 		}
