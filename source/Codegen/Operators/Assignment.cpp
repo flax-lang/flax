@@ -168,9 +168,41 @@ namespace Operators
 			// also check if the left side is a subscript on a type.
 			fir::Type* t = ai->arr->getType(cgi);
 
-			// todo: do we need to add the LLVariableArray thing?
-			if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
+			if(t->isStringType())
+			{
+				// ok.
+				// do some stuff.
+				// check if the string is a literal
+
+				// requires runtime code check
+				auto leftr = ai->arr->codegen(cgi);
+				iceAssert(leftr.pointer);
+
+				fir::Value* ind = ai->index->codegen(cgi).value;
+
+				if(!ind->getType()->isIntegerType())
+					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
+
+				cgi->irb.CreateCall2(cgi->getStringCheckLiteralWriteFunction(), leftr.pointer, ind);
+				cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), leftr.pointer, ind);
+
+				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
+				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
+
+				fir::Value* val = args[1]->codegen(cgi).value;
+
+				if(!val->getType()->isCharType())
+					error(args[1], "Assigning incompatible type '%s' to subscript of string", val->getType()->str().c_str());
+
+				val = cgi->irb.CreateBitcast(val, fir::Type::getInt8());
+
+				cgi->irb.CreateStore(val, ptr);
+				return Result_t(0, 0);
+			}
+			else if(!t->isPointerType() && !t->isArrayType() && !t->isLLVariableArrayType())
+			{
 				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).value, args[1]);
+			}
 		}
 
 

@@ -35,8 +35,7 @@ namespace fir
 		void addInstruction(Instruction* inst);
 		void eraseFromParentFunction();
 
-		std::deque<Instruction*> getInstructions();
-		void setInstructions(std::deque<Instruction*> instr);
+		std::deque<Instruction*>& getInstructions();
 
 		private:
 		Function* parentFunction = 0;

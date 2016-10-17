@@ -27,10 +27,12 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 	if(this->op == ArithmeticOp::CmpLT || this->op == ArithmeticOp::CmpGT || this->op == ArithmeticOp::CmpLEq
 	|| this->op == ArithmeticOp::CmpGEq || this->op == ArithmeticOp::CmpEq || this->op == ArithmeticOp::CmpNEq)
 	{
-		return fir::PrimitiveType::getBool(cgi->getContext());
+		return fir::Type::getBool(cgi->getContext());
 	}
 	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
 	{
+		// assume that the cast is valid
+		// we'll check the validity of this claim later, during codegen.
 		return this->right->getType(cgi);
 	}
 	else if(this->op >= ArithmeticOp::UserDefined)
@@ -277,7 +279,7 @@ namespace Codegen
 
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
-						info(oo->func->decl, "generating");
+						// info(oo->func->decl, "generating");
 						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).value);
 					}
 				}

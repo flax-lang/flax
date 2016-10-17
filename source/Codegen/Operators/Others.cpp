@@ -120,7 +120,7 @@ namespace Operators
 			return cgi->extractValueFromAny(rtype, lhsPtr);
 		}
 		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
-			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
+			&& rtype == fir::Type::getInt8Ptr(cgi->getContext()))
 		{
 			// string to int8*.
 			// just access the data pointer.
@@ -130,7 +130,7 @@ namespace Operators
 
 			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
+		else if(lhs->getType() == fir::Type::getInt8Ptr(cgi->getContext())
 			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
 		{
 			// support this shit.
@@ -155,12 +155,30 @@ namespace Operators
 			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
 		}
+		else if(lhs->getType()->isStringType() && rtype->isCharType())
+		{
+			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(args[0]))
+			{
+				if(sl->str.size() != 1)
+					error(user, "Only single-character string literals can be cast into chars");
+
+				char c = sl->str[0];
+				fir::Value* cc = fir::ConstantChar::get(c);
+
+				return Result_t(cc, 0);
+			}
+			else
+			{
+				error(user, "Non-literal strings cannot be cast into chars; did you mean to subscript?");
+			}
+		}
+		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
+		{
+			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
+		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
-			std::string lstr = lhs->getType()->str();
-			std::string rstr = rtype->str();
-
-			error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			error(user, "Invalid cast from type '%s' to '%s'", lhs->getType()->str().c_str(), rtype->str().c_str());
 		}
 
 		return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);

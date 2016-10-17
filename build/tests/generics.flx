@@ -91,7 +91,7 @@ func foo_generic<T, K>(a: T, b: K)
 	{
 		printf("foo: (int64)  %d, ", a)
 	}
-	else if(ta == Type.String)
+	else if(ta == Type.string)
 	{
 		printf("foo: (string) %s, ", a)
 	}
@@ -113,10 +113,15 @@ func foo_generic<T, K>(a: T, b: K)
 	{
 		printf("(int64)  %d\n", b)
 	}
-	else if(tb == Type.String)
+	else if(tb == Type.string)
 	{
 		printf("(string) %s\n", b)
 	}
+}
+
+func lololtest<T>(a: T)
+{
+	let x = T()
 }
 
 public func doGenericsTest()
@@ -125,11 +130,10 @@ public func doGenericsTest()
 	foo_generic(7, 6 as int16)
 	foo_generic(7, 6 as int32)
 
-	foo_generic(5, "asdf")
+	// foo_generic(5, "asdf")
+	lololtest("asdf")
 
 	foo_generic(1, 4, 9)
-
-
 
 	let sc = Outer.SomeClass()
 	sc.gen(10, 20)

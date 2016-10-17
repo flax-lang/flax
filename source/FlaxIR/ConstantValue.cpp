@@ -14,13 +14,15 @@ namespace fir
 
 	ConstantValue* ConstantValue::getNullValue(Type* type)
 	{
+		iceAssert(!type->isVoidType() && "cannot make void constant");
+
 		auto ret = new ConstantValue(type);
 		return ret;
 	}
 
 	ConstantValue* ConstantValue::getNull()
 	{
-		auto ret = new ConstantValue(fir::PrimitiveType::getVoid()->getPointerTo());
+		auto ret = new ConstantValue(fir::Type::getVoid()->getPointerTo());
 		return ret;
 	}
 
@@ -60,55 +62,55 @@ namespace fir
 
 	ConstantInt* ConstantInt::getBool(bool value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getBool(tc);
+		Type* t = Type::getBool(tc);
 		return ConstantInt::getSigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt8(int8_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getInt8(tc);
+		Type* t = Type::getInt8(tc);
 		return ConstantInt::getSigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt16(int16_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getInt16(tc);
+		Type* t = Type::getInt16(tc);
 		return ConstantInt::getSigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt32(int32_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getInt32(tc);
+		Type* t = Type::getInt32(tc);
 		return ConstantInt::getSigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt64(int64_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getInt64(tc);
+		Type* t = Type::getInt64(tc);
 		return ConstantInt::getSigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint8(uint8_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getUint8(tc);
+		Type* t = Type::getUint8(tc);
 		return ConstantInt::getUnsigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint16(uint16_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getUint16(tc);
+		Type* t = Type::getUint16(tc);
 		return ConstantInt::getUnsigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint32(uint32_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getUint32(tc);
+		Type* t = Type::getUint32(tc);
 		return ConstantInt::getUnsigned(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint64(uint64_t value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getUint64(tc);
+		Type* t = Type::getUint64(tc);
 		return ConstantInt::getUnsigned(t, value);
 	}
 
@@ -169,13 +171,13 @@ namespace fir
 
 	ConstantFP* ConstantFP::getFloat32(float value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getFloat32(tc);
+		Type* t = Type::getFloat32(tc);
 		return ConstantFP::get(t, value);
 	}
 
 	ConstantFP* ConstantFP::getFloat64(double value, FTContext* tc)
 	{
-		Type* t = PrimitiveType::getFloat64(tc);
+		Type* t = Type::getFloat64(tc);
 		return ConstantFP::get(t, value);
 	}
 

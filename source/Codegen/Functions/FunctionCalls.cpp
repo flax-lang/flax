@@ -57,7 +57,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			else if(checkcv && arg->getType()->isStringType())
 			{
 				// this function knows what to do.
-				arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.pointer);
+				arg = cgi->autoCastType(fir::Type::getInt8Ptr(cgi->getContext()), arg, res.pointer);
 			}
 
 			args.push_back(arg);
@@ -98,15 +98,15 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 
 		// special case: we can directly forward the arguments
-		if(params.back()->getType(cgi)->isLLVariableArrayType() && params.back()->getType(cgi)->toLLVariableArray()->getElementType()
-			== ft->getArgumentTypes().back()->toLLVariableArray()->getElementType())
+		if(params.back()->getType(cgi)->isLLVariableArrayType() && params.back()->getType(cgi)->toLLVariableArrayType()->getElementType()
+			== ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType())
 		{
 			args.push_back(params.back()->codegen(cgi).value);
 		}
 		else
 		{
 			// do the last.
-			fir::Type* variadicType = ft->getArgumentTypes().back()->toLLVariableArray()->getElementType();
+			fir::Type* variadicType = ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType();
 			std::deque<fir::Value*> variadics;
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)

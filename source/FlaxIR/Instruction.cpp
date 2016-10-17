@@ -10,12 +10,14 @@
 namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, std::deque<Value*> vals) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::deque<Value*> vals) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 		this->sideEffects = sideeff;
+		this->parentBlock = parent;
 		this->realOutput = new Value(out);
+		this->realOutput->source = this;
 
 		for(auto v : vals)
 			v->addUser(this);
@@ -123,7 +125,8 @@ namespace fir
 			case OpKind::String_SetLength:					instrname = "setstrlen"; break;
 			case OpKind::String_GetRefCount:				instrname = "getstrrc"; break;
 			case OpKind::String_SetRefCount:				instrname = "setstrrc"; break;
-			case OpKind::Invalid:							instrname = "unknown"; break;
+			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
+			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}
 
 		std::string ops;
@@ -147,6 +150,10 @@ namespace fir
 			else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(op))
 			{
 				ops += std::to_string(cf->getValue());
+			}
+			else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
+			{
+				ops += "'" + std::to_string(cc->getValue()) + "'";
 			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{

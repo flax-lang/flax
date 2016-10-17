@@ -2,7 +2,6 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-/*
 import Foundation
 import Utilities
 import String
@@ -87,8 +86,6 @@ import tests.functions
 	// generics
 	printf("%s%s", genericsTitle, thinLine)
 	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
 	printf("\n\n\n")
 
 
@@ -119,37 +116,45 @@ import tests.functions
 
 struct FormatOptions
 {
-	var paddingChar: Character
+	var paddingChar: char
 	var precision: int64
 	var width: int64
 	var paddingKind: int64			// 0 = left, 1 = centre, 2 = right
-	var type: String
+	var type: string
 	var argNum: int64
+}
+
+extension char
+{
+	func isDigit() -> bool
+	{
+		// return #self ==  ||
+		return false
+	}
 }
 
 
 
-
-func parseFormatOptions(str: String) -> FormatOptions
+func parseFormatOptions(str: string) -> FormatOptions
 {
-	let colon		= Character(":")
-	let lbrace		= Character("{")
-	let rbrace		= Character("}")
+	let colon: char		= ":"
+	let lbrace: char	= "{"
+	let rbrace: char	= "}"
 
-	let lettero		= Character("o")
-	let letterx		= Character("x")
-	let letterX		= Character("X")
-	let letterp		= Character("p")
-	let letterb		= Character("b")
+	let lettero: char	= "o"
+	let letterx: char	= "x"
+	let letterX: char	= "X"
+	let letterp: char	= "p"
+	let letterb: char	= "b"
 
-	let larrow		= Character("<")
-	let rarrow		= Character(">")
-	let caret		= Character("^")
+	let larrow: char	= "<"
+	let rarrow: char	= ">"
+	let caret: char		= "^"
 
-	let plus		= Character("+")
-	let pound		= Character("#")
-	let zero		= Character("0")
-	let period		= Character(".")
+	let plus: char		= "+"
+	let pound: char		= "#"
+	let zero: char		= "0"
+	let period: char	= "."
 
 	var ret: FormatOptions
 
@@ -166,7 +171,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 	if cc.isDigit()
 	{
-		var argnum: String
+		var argnum: string
 		var i = 1
 
 		while i < str.length && str[i].isDigit()
@@ -180,7 +185,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 
 
-	println()
+	printf("\n")
 
 	return ret
 }
@@ -195,10 +200,10 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 	do {
-		println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
+		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 		printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
-		println("%b", "a" != "b")
+		// println("%b", "a" != "b")
 
 		parseFormatOptions("{401:x}")
 	}
@@ -265,19 +270,12 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-*/
-
-
-
-
-
-
-
 
 
 
 
 /*
+
 	how to be stupid:
 	associating reference count with the reference, instead of the object being referenced
 	._.
@@ -331,8 +329,8 @@ public func main(argc: int32, argv: int8**) -> int
 	ezpz.
 
 	this time, i'll stop doing stupid things.
-*/
 
+*/
 
 
 /*
@@ -343,60 +341,28 @@ public func main(argc: int32, argv: int8**) -> int
 */
 
 
-
-
-
 /*
-	stuff:
+	more string stuff:
 
+	the current string type stays as it is -- unicode agnostic, doesn't care what you put inside.
+	only knows about bytes, nothing else.
 
-	foo() results in an rvalue
-	in let x = foo(),
+	a new type, ustring/utfstring/utf8string
 
-	x is assigned an rvalue
-	as with x = y + "lol"
+	utf8string would store a series of utf8 bytes
+	basically how the old one worked.
+	indexing would take O(n), codepoint length has to be recomputed on modify, to account for combining characters
+	everything else basically works the same as string?
 
-	it's clear that the refcount of the old value of x must be decremented
-	for y + lol, we remove it from the refcounting list
-	for foo(), if it returns some rc<T>, the refcount of T is increased
+	utf32string, or maybe just utfstring, stores a series of 4-byte codepoints
+	aka utf-32.
 
+	everything works like normal strings, except with 4x the storage requirements
+	faster than utf8 on things like indexing, appending
+	basically space/speed tradeoff here
 
-
-
-	foo() { return x }
-
-	let y = foo()
-
-	y holds a reference to x, rc(x)++
-	so rc(x) == 2
-
-	at the end of scope, y is gone, so rc(x)--
-	x is leaked since refcount remains 1.
-
-
-
-	for lvalue = rvalue, in essence the rvalue is moved to the lvalue
-	so in theory the recount should not change at all
-
-	let y = x + 10
-	x + 10 gets removed from the refcount stack, and rc(y) == 1
-
-	let y = foo()
-	foo() gets removed from the refcount stack, and rc(y) == 1
-
-	this works, i suppose, if funccall doesn't add the result to the list.
-
-
-	what if foo() returns a global?
-
-	if we have
-	let x = foo()
-	let y = foo()
-
-	then the global gets referenced twice, but the refcount remains 1 (assuming no previous references)
-	so it gets freed twice...
-
-
+	still, normal string is best string
+	these unicode things will be quite far into the future i think.
 */
 
 
@@ -413,9 +379,7 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
-
-
+/*
 
 // import LibCInterface
 
@@ -514,9 +478,16 @@ public func main() -> int
 	qux()
 
 
-	var k: string
+	var k: string = "tee" + "hee"
+
+	let lc: char = "f"
+	let ch = k[1]
+
+	k[0] = lc
+	k[1] = "u" as char
+
 	glob = k
-	printf(@raw "k = [%s], glob = [%s]\n", k, glob)
+	printf(@raw "k = [%s], glob = [%s], 'f' = [%c], 'e' = [%c]\n", k, glob, lc, ch)
 
 	return 0
 }
@@ -641,7 +612,7 @@ func foo()
 		i += 1
 	}
 }
-
+*/
 
 
 

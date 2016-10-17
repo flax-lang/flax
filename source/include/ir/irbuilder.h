@@ -129,6 +129,7 @@ namespace fir
 		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
 
 
+		void CreateUnreachable();
 
 
 		IRBlock* addNewBlockInFunction(std::string name, Function* func);
