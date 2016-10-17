@@ -296,6 +296,9 @@ namespace Codegen
 		fir::Function* getStringCompareFunction();
 		fir::Function* getStringAppendFunction();
 
+		fir::Function* getStringBoundsCheckFunction();
+		fir::Function* getStringCheckLiteralWriteFunction();
+
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

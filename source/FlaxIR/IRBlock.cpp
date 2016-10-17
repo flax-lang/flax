@@ -7,12 +7,12 @@
 
 namespace fir
 {
-	IRBlock::IRBlock() : Value(PrimitiveType::getVoid())
+	IRBlock::IRBlock() : Value(Type::getVoid())
 	{
 		this->parentFunction = 0;
 	}
 
-	IRBlock::IRBlock(Function* fn) : Value(PrimitiveType::getVoid())
+	IRBlock::IRBlock(Function* fn) : Value(Type::getVoid())
 	{
 		this->parentFunction = fn;
 		this->addUser(fn);

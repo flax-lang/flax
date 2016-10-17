@@ -89,7 +89,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 			if(!actual)
 			{
-				*resultType = fir::PrimitiveType::getInt64();
+				*resultType = fir::Type::getInt64();
 				return Result_t(0, 0);
 			}
 
@@ -117,7 +117,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		{
 			if(!actual)
 			{
-				*resultType = fir::PointerType::getInt8Ptr();
+				*resultType = fir::Type::getInt8Ptr();
 				return Result_t(0, 0);
 			}
 			else
@@ -130,7 +130,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		{
 			if(!actual)
 			{
-				*resultType = fir::PrimitiveType::getInt64();
+				*resultType = fir::Type::getInt64();
 				return Result_t(0, 0);
 			}
 			else

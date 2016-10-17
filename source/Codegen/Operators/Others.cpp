@@ -120,7 +120,7 @@ namespace Operators
 			return cgi->extractValueFromAny(rtype, lhsPtr);
 		}
 		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
-			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
+			&& rtype == fir::Type::getInt8Ptr(cgi->getContext()))
 		{
 			// string to int8*.
 			// just access the data pointer.
@@ -130,7 +130,7 @@ namespace Operators
 
 			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
+		else if(lhs->getType() == fir::Type::getInt8Ptr(cgi->getContext())
 			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
 		{
 			// support this shit.

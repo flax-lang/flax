@@ -125,7 +125,8 @@ namespace fir
 			case OpKind::String_SetLength:					instrname = "setstrlen"; break;
 			case OpKind::String_GetRefCount:				instrname = "getstrrc"; break;
 			case OpKind::String_SetRefCount:				instrname = "setstrrc"; break;
-			case OpKind::Invalid:							instrname = "unknown"; break;
+			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
+			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}
 
 		std::string ops;
@@ -149,6 +150,10 @@ namespace fir
 			else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(op))
 			{
 				ops += std::to_string(cf->getValue());
+			}
+			else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
+			{
+				ops += "'" + std::to_string(cc->getValue()) + "'";
 			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{

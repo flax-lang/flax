@@ -474,9 +474,15 @@ public func main() -> int
 	qux()
 
 
-	var k: string = "teehee"
+	var k: string = "tee" + "hee"
+
+	let lc: char = "f"
+	let ch = k[1]
+
+	k[10] = lc
+
 	glob = k
-	printf(@raw "k = [%s], glob = [%s]\n", k, glob)
+	printf(@raw "k = [%s], glob = [%s], 'f' = [%c], 'e' = [%c]\n", k, glob, lc, ch)
 
 	return 0
 }

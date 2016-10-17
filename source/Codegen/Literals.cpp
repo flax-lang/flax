@@ -24,13 +24,13 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	if(this->decimal)
-		return fir::PrimitiveType::getFloat64();
+		return fir::Type::getFloat64();
 
 	else if(this->needUnsigned)
-		return fir::PrimitiveType::getUint64();
+		return fir::Type::getUint64();
 
 	else
-		return fir::PrimitiveType::getInt64();
+		return fir::Type::getInt64();
 }
 
 
@@ -45,7 +45,7 @@ Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* BoolVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return fir::PrimitiveType::getBool();
+	return fir::Type::getBool();
 }
 
 
@@ -61,7 +61,7 @@ Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return fir::PrimitiveType::getVoid()->getPointerTo();
+	return fir::Type::getVoid()->getPointerTo();
 }
 
 
@@ -81,7 +81,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		if(extra)
+		if(extra && extra->getType()->getPointerElementType()->isStringType())
 		{
 			iceAssert(extra->getType()->getPointerElementType()->isStringType());
 
@@ -95,8 +95,6 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			s.insert(s.begin(), 0xFF);
 			s.insert(s.begin(), 0xFF);
 			s.insert(s.begin(), 0xFF);
-
-
 
 			fir::Value* thestring = cgi->module->createGlobalString(s);
 			thestring = cgi->irb.CreateConstGEP2(thestring, 0, 0);
@@ -118,6 +116,20 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			return Result_t(cgi->irb.CreateLoad(extra), extra);
 		}
+		else if(extra && extra->getType()->getPointerElementType()->isCharType())
+		{
+			if(this->str.length() == 0)
+				error(this, "Character literal cannot be empty");
+
+			else if(this->str.length() > 1)
+				error(this, "Character literal can have at most 1 (ASCII) character");
+
+			char c = this->str[0];
+			fir::ConstantValue* cv = fir::ConstantChar::get(c);
+			cgi->irb.CreateStore(cv, extra);
+
+			return Result_t(cv, extra);
+		}
 		else
 		{
 			auto r = cgi->makeStringLiteral(this->str);
@@ -131,10 +143,10 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	if(this->isRaw)
-		return fir::PointerType::getInt8Ptr();
+		return fir::Type::getInt8Ptr();
 
 	else
-		return fir::StringType::get();
+		return fir::Type::getStringType();
 }
 
 

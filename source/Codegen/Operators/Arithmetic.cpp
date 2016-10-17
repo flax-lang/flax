@@ -166,7 +166,7 @@ namespace Operators
 				// if ret == 0, then a == b, a <= b, and a >= b should be 1, and the rest be 0
 				// if ret > 0, then a > b and a >= b should be 1, and the rest be 0
 
-				// basically we should actually just have separate routines for each operation
+				// basically we just compare the return value to 0 using the same operator.
 				fir::Value* ret = 0;
 				auto zero = fir::ConstantInt::getInt64(0);
 
@@ -185,7 +185,7 @@ namespace Operators
 				iceAssert(leftr.pointer);
 				iceAssert(rightr.pointer);
 
-				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::StringType::get());
+				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
 				auto apf = cgi->getStringAppendFunction();
 				fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.pointer);
