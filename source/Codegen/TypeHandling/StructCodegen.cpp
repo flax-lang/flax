@@ -76,7 +76,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInitId.functionArguments = { str->getPointerTo() };
 
 		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
-			fir::PrimitiveType::getVoid(), false), linkageType);
+			fir::Type::getVoid(), false), linkageType);
 
 		this->initFuncs.push_back(this->defaultInitialiser);
 
@@ -118,7 +118,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		memid.name = "meminit_" + memid.name;
 
 		fir::Function* memifunc = cgi->module->getOrCreateFunction(memid,
-			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+			fir::FunctionType::get(types, fir::Type::getVoid(cgi->getContext()), false), linkageType);
 
 		this->initFuncs.push_back(memifunc);
 

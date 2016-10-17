@@ -20,7 +20,23 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	fir::Type* t = this->arr->getType(cgi);
-	if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
+	if(t->isLLVariableArrayType())
+	{
+		return t->toLLVariableArrayType()->getElementType();
+	}
+	else if(t->isPointerType())
+	{
+		return t->getPointerElementType();
+	}
+	else if(t->isArrayType())
+	{
+		return t->toArrayType()->getElementType();
+	}
+	else if(t->isStringType())
+	{
+		return fir::Type::getCharType();
+	}
+	else
 	{
 		// todo: multiple subscripts
 		fir::Function* getter = Operators::getOperatorSubscriptGetter(cgi, this, t, { this, this->index });
@@ -31,12 +47,6 @@ fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 		}
 
 		return getter->getReturnType();
-	}
-	else
-	{
-		if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
-		else if(t->isPointerType()) return t->getPointerElementType();
-		else return t->toArrayType()->getElementType();
 	}
 }
 
@@ -302,7 +312,7 @@ namespace Operators
 		// get our array type
 		fir::Type* atype = subscriptee->getType(cgi);
 
-		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType() && !atype->isStringType())
 		{
 			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
@@ -314,29 +324,51 @@ namespace Operators
 		Result_t lhsp = subscriptee->codegen(cgi);
 
 		fir::Value* lhs = 0;
-		if(lhsp.pointer->getType()->isPointerType())	lhs = lhsp.value;
-		else											lhs = lhsp.pointer;
-
+		if(lhsp.pointer && lhsp.pointer->getType()->isPointerType())
+		{
+			lhs = lhsp.value;
+		}
+		else if(lhsp.pointer)
+		{
+			lhs = lhsp.pointer;
+		}
+		else
+		{
+			lhs = lhsp.value;
+		}
 
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
 		fir::Value* ind = subscriptIndex->codegen(cgi).value;
 
-		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
+
+		if(atype->isArrayType())
 		{
-			gep = cgi->irb.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isLLVariableArrayType())
 		{
-			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhs, 0);
+			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhsp.pointer, 0);
 			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
 			gep = cgi->irb.CreateGetPointer(data, ind);
 		}
-		else
+		else if(atype->isStringType())
+		{
+			cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), lhsp.pointer, ind);
+
+			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
+			gep = cgi->irb.CreateGetPointer(dp, ind);
+			gep = cgi->irb.CreatePointerTypeCast(gep, fir::Type::getCharType()->getPointerTo());
+		}
+		else if(atype->isPointerType())
 		{
 			gep = cgi->irb.CreateGetPointer(lhs, ind);
+		}
+		else
+		{
+			error(user, "???");
 		}
 
 		return Result_t(cgi->irb.CreateLoad(gep), gep, ValueKind::LValue);

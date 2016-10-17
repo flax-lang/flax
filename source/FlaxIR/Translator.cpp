@@ -133,7 +133,7 @@ namespace fir
 		}
 		else if(type->isLLVariableArrayType())
 		{
-			LLVariableArrayType* llat = type->toLLVariableArray();
+			LLVariableArrayType* llat = type->toLLVariableArrayType();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
@@ -153,6 +153,10 @@ namespace fir
 			str->setBody({ i8ptrtype, i64type });
 
 			return createdTypes[id] = str;
+		}
+		else if(type->isCharType())
+		{
+			return llvm::Type::getInt8Ty(gc);
 		}
 		else if(type->isParametricType())
 		{
@@ -182,6 +186,11 @@ namespace fir
 			{
 				return llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
+		}
+		else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(c))
+		{
+			llvm::Type* ct = typeToLlvm(c->getType(), mod);
+			return llvm::ConstantInt::get(ct, cc->getValue());
 		}
 		else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(c))
 		{
@@ -1489,7 +1498,11 @@ namespace fir
 
 
 
-
+						case OpKind::Unreachable:
+						{
+							builder.CreateUnreachable();
+							break;
+						}
 
 						case OpKind::Invalid:
 						{

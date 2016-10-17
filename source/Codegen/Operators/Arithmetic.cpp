@@ -139,6 +139,35 @@ namespace Operators
 				return compareIntegers(cgi, op, lhs, rhs);
 			}
 		}
+		else if((lhs->getType()->isPointerType() && rhs->getType() == fir::VoidType::get()->getPointerTo())
+			|| (rhs->getType()->isPointerType() && lhs->getType() == fir::VoidType::get()->getPointerTo()))
+		{
+			error("ol");
+		}
+		else if(lhs->getType()->isCharType() && rhs->getType()->isCharType())
+		{
+			fir::Value* c1 = cgi->irb.CreateBitcast(lhs, fir::Type::getInt8());
+			fir::Value* c2 = cgi->irb.CreateBitcast(rhs, fir::Type::getInt8());
+
+			return compareIntegers(cgi, op, c1, c2);
+		}
+		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
+		{
+			if(op != ArithmeticOp::Add)
+				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", Parser::arithmeticOpToString(cgi, op).c_str());
+
+			iceAssert(leftr.pointer);
+			iceAssert(rightr.value);
+
+			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+
+			auto apf = cgi->getStringCharAppendFunction();
+			fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.value);
+			cgi->irb.CreateStore(app, newstrp);
+
+			cgi->addRefCountedValue(newstrp);
+			return Result_t(app, newstrp);
+		}
 		else if(lhs->getType()->isStringType() && rhs->getType()->isStringType())
 		{
 			// yay, builtin string operators.
@@ -166,7 +195,7 @@ namespace Operators
 				// if ret == 0, then a == b, a <= b, and a >= b should be 1, and the rest be 0
 				// if ret > 0, then a > b and a >= b should be 1, and the rest be 0
 
-				// basically we should actually just have separate routines for each operation
+				// basically we just compare the return value to 0 using the same operator.
 				fir::Value* ret = 0;
 				auto zero = fir::ConstantInt::getInt64(0);
 
@@ -182,80 +211,17 @@ namespace Operators
 			}
 			else
 			{
-				// add two strings
-				// steps:
-				//
-				// 1. get the size of the left string
-				// 2. get the size of the right string
-				// 3. add them together
-				// 4. malloc a string of that size + 1
-				// 5. make a new string
-				// 6. set the buffer to the malloced buffer
-				// 7. set the length to a + b
-				// 8. return.
+				iceAssert(leftr.pointer);
+				iceAssert(rightr.pointer);
 
-				// get an empty string
-				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::StringType::get());
-				newstrp->setName("newstrp");
+				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
-				fir::Value* lhsptr = leftr.pointer;
-				fir::Value* rhsptr = rightr.pointer;
-
-				iceAssert(lhsptr);
-				iceAssert(rhsptr);
-
-				fir::Value* lhslen = cgi->irb.CreateGetStringLength(lhsptr, "l1");
-				fir::Value* rhslen = cgi->irb.CreateGetStringLength(rhsptr, "l2");
-
-				fir::Value* lhsbuf = cgi->irb.CreateGetStringData(lhsptr, "d1");
-				fir::Value* rhsbuf = cgi->irb.CreateGetStringData(rhsptr, "d2");
-
-
-				// ok. combine the lengths
-				fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
-
-				// space for null + refcount
-				size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::PrimitiveType::getInt64());
-				fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
-
-				// now malloc.
-				fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc").firFunc->getName());
-				iceAssert(mallocf);
-
-				fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
-
-				// move it forward (skip the refcount)
-				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
-
-				// now memcpy
-				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memcpy");
-				cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, cgi->irb.CreateIntSizeCast(lhslen, fir::PrimitiveType::getInt64()),
-					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
-
-				fir::Value* offsetbuf = cgi->irb.CreatePointerAdd(buf, lhslen);
-				cgi->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, cgi->irb.CreateIntSizeCast(rhslen, fir::PrimitiveType::getInt64()),
-					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
-
-				// null terminator
-				fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
-				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
-
-				#if 0
-				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-					cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
-				}
-				#endif
-
-				// ok, now fix it
-				cgi->irb.CreateSetStringData(newstrp, buf);
-				cgi->irb.CreateSetStringLength(newstrp, newlen);
-				cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+				auto apf = cgi->getStringAppendFunction();
+				fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.pointer);
+				cgi->irb.CreateStore(app, newstrp);
 
 				cgi->addRefCountedValue(newstrp);
-				return Result_t(cgi->irb.CreateLoad(newstrp), newstrp);
+				return Result_t(app, newstrp);
 			}
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
@@ -289,11 +255,6 @@ namespace Operators
 					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
-		// else
-		// {
-		// 	error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
-		// 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
-		// }
 	}
 }
 
