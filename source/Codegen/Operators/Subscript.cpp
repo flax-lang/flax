@@ -20,7 +20,23 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	fir::Type* t = this->arr->getType(cgi);
-	if(!t->isArrayType() && !t->isPointerType() && !t->isLLVariableArrayType())
+	if(t->isLLVariableArrayType())
+	{
+		return t->toLLVariableArrayType()->getElementType();
+	}
+	else if(t->isPointerType())
+	{
+		return t->getPointerElementType();
+	}
+	else if(t->isArrayType())
+	{
+		return t->toArrayType()->getElementType();
+	}
+	else if(t->isStringType())
+	{
+		return fir::Type::getCharType();
+	}
+	else
 	{
 		// todo: multiple subscripts
 		fir::Function* getter = Operators::getOperatorSubscriptGetter(cgi, this, t, { this, this->index });
@@ -31,12 +47,6 @@ fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 		}
 
 		return getter->getReturnType();
-	}
-	else
-	{
-		if(t->isLLVariableArrayType()) return t->toLLVariableArray()->getElementType();
-		else if(t->isPointerType()) return t->getPointerElementType();
-		else return t->toArrayType()->getElementType();
 	}
 }
 
@@ -302,7 +312,7 @@ namespace Operators
 		// get our array type
 		fir::Type* atype = subscriptee->getType(cgi);
 
-		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType() && !atype->isStringType())
 		{
 			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
@@ -333,6 +343,14 @@ namespace Operators
 			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
 			gep = cgi->irb.CreateGetPointer(data, ind);
+		}
+		else if(atype->isStringType())
+		{
+			cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), lhsp.pointer, ind);
+
+			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
+			gep = cgi->irb.CreateGetPointer(dp, ind);
+			gep = cgi->irb.CreatePointerTypeCast(gep, fir::Type::getCharType()->getPointerTo());
 		}
 		else
 		{

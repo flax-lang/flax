@@ -200,7 +200,7 @@ namespace fir
 			return this->globalStrings[str];
 
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
-			PointerType::getInt8Ptr(), true, LinkageType::Internal, 0);
+			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
 		this->globalStrings[str] = gs;
 		return gs;
@@ -314,23 +314,23 @@ namespace fir
 		if(id == "memcpy")
 		{
 			name = Identifier("memcpy", IdKind::Name);
-			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
-				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
-				fir::PrimitiveType::getVoid(), false);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
 		}
 		else if(id == "memmove")
 		{
 			name = Identifier("memove", IdKind::Name);
-			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
-				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
-				fir::PrimitiveType::getVoid(), false);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
 		}
 		else if(id == "memset")
 		{
 			name = Identifier("memset", IdKind::Name);
-			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PrimitiveType::getInt8(),
-				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
-				fir::PrimitiveType::getVoid(), false);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
 		}
 		else if(id == "memcmp")
 		{
@@ -338,9 +338,9 @@ namespace fir
 			// at llvm-translate-time, we make a function.
 
 			name = Identifier("memcmp", IdKind::Name);
-			ft = FunctionType::get({ fir::PointerType::getInt8Ptr(), fir::PointerType::getInt8Ptr(),
-				fir::PrimitiveType::getInt64(), fir::PrimitiveType::getInt32(), fir::PrimitiveType::getBool() },
-				fir::PrimitiveType::getInt32(), false);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt32(), false);
 		}
 
 		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())

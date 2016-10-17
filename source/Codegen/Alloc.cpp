@@ -54,7 +54,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	cgi->irb.setCurrentBlock(loopHead);
 
 	// set a counter
-	fir::Value* counterPtr = cgi->irb.CreateStackAlloc(fir::PrimitiveType::getInt64(), "counterPtr");
+	fir::Value* counterPtr = cgi->irb.CreateStackAlloc(fir::Type::getInt64(), "counterPtr");
 	cgi->irb.CreateStore(zeroValue, counterPtr);
 
 	// check for zero.
@@ -250,7 +250,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// therefore, create a Load to get the actual value
 		varval = cgi->irb.CreateLoad(varval);
-		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::PointerType::getInt8Ptr(cgi->getContext()));
+		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::Type::getInt8Ptr(cgi->getContext()));
 	}
 	else
 	{

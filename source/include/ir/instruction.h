@@ -126,6 +126,9 @@ namespace fir
 
 		Branch_UnCond,
 		Branch_Cond,
+
+
+		Unreachable,
 	};
 
 
