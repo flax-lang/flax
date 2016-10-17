@@ -28,12 +28,12 @@ namespace Operators
 
 		cgi->irb.setCurrentBlock(currentBlock);
 
-		fir::Value* resPtr = cgi->getStackAlloc(fir::PrimitiveType::getBool());
+		fir::Value* resPtr = cgi->getStackAlloc(fir::Type::getBool());
 		cgi->irb.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 		// always codegen left.
 		fir::Value* lhs = args[0]->codegen(cgi).value;
-		if(lhs->getType() != fir::PrimitiveType::getBool())
+		if(lhs->getType() != fir::Type::getBool())
 			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
 		// branch to either setTrue or merge.
@@ -46,7 +46,7 @@ namespace Operators
 
 		fir::Value* rhs = args[1]->codegen(cgi).value;
 
-		if(lhs->getType() != fir::PrimitiveType::getBool())
+		if(lhs->getType() != fir::Type::getBool())
 			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
 		cgi->irb.CreateCondBranch(rhs, setTrue, merge);
@@ -84,12 +84,12 @@ namespace Operators
 
 		cgi->irb.setCurrentBlock(currentBlock);
 
-		fir::Value* resPtr = cgi->getStackAlloc(fir::PrimitiveType::getBool());
+		fir::Value* resPtr = cgi->getStackAlloc(fir::Type::getBool());
 		cgi->irb.CreateStore(fir::ConstantInt::getBool(false), resPtr);
 
 		// always codegen left.
 		fir::Value* lhs = args[0]->codegen(cgi).value;
-		if(lhs->getType() != fir::PrimitiveType::getBool())
+		if(lhs->getType() != fir::Type::getBool())
 			error(args[0], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
 		// branch to either setTrue or merge.
@@ -102,7 +102,7 @@ namespace Operators
 
 		fir::Value* rhs = args[1]->codegen(cgi).value;
 
-		if(lhs->getType() != fir::PrimitiveType::getBool())
+		if(lhs->getType() != fir::Type::getBool())
 			error(args[1], "Value of type %s cannot be implicitly casted to a boolean", lhs->getType()->str().c_str());
 
 		cgi->irb.CreateCondBranch(rhs, setTrue, merge);

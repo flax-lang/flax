@@ -1168,7 +1168,7 @@ namespace Codegen
 			if(args.size() == funcParams.size())
 			{
 				if(args.back()->isLLVariableArrayType() && funcParams.back()->isLLVariableArrayType()
-					&& args.back()->toLLVariableArray()->getElementType() == funcParams.back()->toLLVariableArray()->getElementType())
+					&& args.back()->toLLVariableArrayType()->getElementType() == funcParams.back()->toLLVariableArrayType()->getElementType())
 				{
 					// yes, do that (where that == nothing)
 					*_dist += 0;
@@ -1183,7 +1183,7 @@ namespace Codegen
 			fir::Type* funcLLType = funcParams.back();
 			iceAssert(funcLLType->isLLVariableArrayType());
 
-			fir::Type* llElmType = funcLLType->toLLVariableArray()->getElementType();
+			fir::Type* llElmType = funcLLType->toLLVariableArrayType()->getElementType();
 
 			// 4. check the variable args.
 			for(size_t i = funcParams.size() - 1; i < args.size(); i++)
@@ -1319,6 +1319,12 @@ namespace Codegen
 
 				variadic = true;
 			}
+			else if(name == "abort")
+			{
+				retType = pts::NamedType::create(VOID_TYPE_STRING);
+
+				variadic = false;
+			}
 			else
 			{
 				error("enotsup: %s", name.c_str());
@@ -1336,9 +1342,6 @@ namespace Codegen
 
 		return fp;
 	}
-
-
-
 
 
 
@@ -1448,7 +1451,7 @@ namespace Codegen
 
 				if(atype->isLLVariableArrayType())
 				{
-					mangled = "V" + atype->toLLVariableArray()->encodedStr();
+					mangled = "V" + atype->toLLVariableArrayType()->encodedStr();
 				}
 
 				while(atype->isPointerType())
@@ -1750,7 +1753,7 @@ namespace Codegen
 				{
 					// again, check the direct forwarding case
 					if(args.size() == candidate->params.size() && args.back()->isLLVariableArrayType()
-						&& args.back()->toLLVariableArray()->getElementType() == resolved)
+						&& args.back()->toLLVariableArrayType()->getElementType() == resolved)
 					{
 						// direct.
 						// do nothing.
@@ -2153,6 +2156,15 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(STRING_TYPE_STRING) == type)
 			return this->getExtensionsWithName(STRING_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(CHARACTER_TYPE_STRING) == type)
+			return this->getExtensionsWithName(CHARACTER_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UNICODE_STRING_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UNICODE_STRING_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UNICODE_CHARACTER_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UNICODE_CHARACTER_TYPE_STRING);
+
 		else
 			return { };
 	}
@@ -2419,7 +2431,7 @@ namespace Codegen
 		else
 		{
 			fir::Type* targetType = rhs->getType()->isIntegerType() ? valgep->getType()->getPointerElementType() :
-				fir::PrimitiveType::getInt64(this->getContext());
+				fir::Type::getInt64(this->getContext());
 
 
 			if(rhs->getType()->isIntegerType())
@@ -2463,7 +2475,7 @@ namespace Codegen
 		else
 		{
 			// the pointer is actually a literal
-			fir::Type* targetType = type->isIntegerType() ? type : fir::PrimitiveType::getInt64(this->getContext());
+			fir::Type* targetType = type->isIntegerType() ? type : fir::Type::getInt64(this->getContext());
 			fir::Value* val = this->irb.CreatePointerToIntCast(loadedval, targetType);
 
 			if(val->getType() != type)
@@ -2502,10 +2514,12 @@ namespace Codegen
 	Result_t CodegenInstance::makeStringLiteral(std::string str)
 	{
 		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
-		fir::Value* strp = this->irb.CreateStackAlloc(fir::StringType::get());
+		fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
 
 		// note(portability): this isn't going to work on non-2's-complement platforms
 		// where 0xFFFFFFFFFFFFFFFF != -1.
+
+		// if this basic assumption fails however, then everything is out the window, and IDGAF anymore.
 
 		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
 		// this simplifies code a lot (generated code, too)
@@ -2550,13 +2564,15 @@ namespace Codegen
 
 
 
-	#define BUILTIN_STRINGREF_INCR_FUNC_NAME	"__.stringref_incr"
-	#define BUILTIN_STRINGREF_DECR_FUNC_NAME	"__.stringref_decr"
-	#define BUILTIN_STRING_APPEND_FUNC_NAME		"__.stringappend"
-	#define BUILTIN_STRING_CMP_FUNC_NAME		"__.stringcmp"
+	#define BUILTIN_STRINGREF_INCR_FUNC_NAME		"__.stringref_incr"
+	#define BUILTIN_STRINGREF_DECR_FUNC_NAME		"__.stringref_decr"
+	#define BUILTIN_STRING_APPEND_FUNC_NAME			"__.string_append"
+	#define BUILTIN_STRING_CMP_FUNC_NAME			"__.string_cmp"
 
+	#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME	"__.string_checkliteralmodify"
+	#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME	"__.string_boundscheck"
 
-
+	#define DEBUG_ARC 0
 
 	fir::Function* CodegenInstance::getStringAppendFunction()
 	{
@@ -2567,10 +2583,10 @@ namespace Codegen
 			auto restore = this->irb.getCurrentBlock();
 
 			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo(), fir::StringType::get()->getPointerTo() },
-				fir::StringType::get(), false), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::Type::getStringType(), false), fir::LinkageType::Internal);
 
-			// func->setAlwaysInline();
+			func->setAlwaysInline();
 
 			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
 			this->irb.setCurrentBlock(entry);
@@ -2593,7 +2609,7 @@ namespace Codegen
 			// 8. return.
 
 			// get an empty string
-			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::StringType::get());
+			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::Type::getStringType());
 			newstrp->setName("newstrp");
 
 			iceAssert(s1);
@@ -2609,7 +2625,7 @@ namespace Codegen
 			fir::Value* newlen = this->irb.CreateAdd(lhslen, rhslen);
 
 			// space for null + refcount
-			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::PrimitiveType::getInt64());
+			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
 			fir::Value* malloclen = this->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
@@ -2623,11 +2639,11 @@ namespace Codegen
 
 			// now memcpy
 			fir::Function* memcpyf = this->module->getIntrinsicFunction("memcpy");
-			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::PrimitiveType::getInt64()),
+			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 
 			fir::Value* offsetbuf = this->irb.CreatePointerAdd(buf, lhslen);
-			this->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, this->irb.CreateIntSizeCast(rhslen, fir::PrimitiveType::getInt64()),
+			this->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, this->irb.CreateIntSizeCast(rhslen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 
 			// null terminator
@@ -2675,8 +2691,8 @@ namespace Codegen
 			auto restore = this->irb.getCurrentBlock();
 
 			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo(), fir::StringType::get()->getPointerTo() },
-				fir::PrimitiveType::getInt64(), false), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::Type::getInt64(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -2697,10 +2713,10 @@ namespace Codegen
 			*/
 
 			{
-				fir::Value* str1p = this->irb.CreateStackAlloc(fir::PointerType::getInt8Ptr());
+				fir::Value* str1p = this->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
 				this->irb.CreateStore(this->irb.CreateGetStringData(s1, "s1"), str1p);
 
-				fir::Value* str2p = this->irb.CreateStackAlloc(fir::PointerType::getInt8Ptr());
+				fir::Value* str2p = this->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
 				this->irb.CreateStore(this->irb.CreateGetStringData(s2, "s2"), str2p);
 
 
@@ -2762,7 +2778,6 @@ namespace Codegen
 
 
 
-	#define DEBUG_ARC 1
 
 	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
 	{
@@ -2773,7 +2788,7 @@ namespace Codegen
 			auto restore = this->irb.getCurrentBlock();
 
 			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -2786,7 +2801,7 @@ namespace Codegen
 			// if ptr is 0, we exit early.
 			{
 				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
 
 				this->irb.CreateCondBranch(cond, merge, getref);
 			}
@@ -2844,7 +2859,7 @@ namespace Codegen
 			auto restore = this->irb.getCurrentBlock();
 
 			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::StringType::get()->getPointerTo() }, fir::PrimitiveType::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -2864,7 +2879,7 @@ namespace Codegen
 			this->irb.setCurrentBlock(entry);
 			{
 				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
 
 				this->irb.CreateCondBranch(cond, merge, checkneg);
 			}
@@ -2907,7 +2922,7 @@ namespace Codegen
 				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
 
 
-				#if 1
+				#if DEBUG_ARC
 				{
 					fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
 					tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
@@ -2923,7 +2938,7 @@ namespace Codegen
 
 				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
 
-				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::PointerType::getInt8Ptr()));
+				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
 				this->irb.CreateUnCondBranch(merge);
 			}
 
@@ -2938,6 +2953,179 @@ namespace Codegen
 		iceAssert(decrf);
 		return decrf;
 	}
+
+
+
+
+	fir::Function* CodegenInstance::getStringBoundsCheckFunction()
+	{
+		fir::Function* fn = this->module->getFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* failb = this->irb.addNewBlockInFunction("fail", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* arg1 = func->getArguments()[0];
+			fir::Value* arg2 = func->getArguments()[1];
+
+			fir::Value* len = this->irb.CreateGetStringLength(arg1);
+			fir::Value* res = this->irb.CreateICmpGEQ(arg2, len);
+
+			this->irb.CreateCondBranch(res, failb, merge);
+			this->irb.setCurrentBlock(failb);
+			{
+				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
+					fir::LinkageType::External);
+
+				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::LinkageType::External);
+
+				// basically:
+				// void* stderr = fdopen(2, "w")
+				// fprintf(stderr, "", bla bla)
+
+				fir::Value* tmpstr = this->module->createGlobalString("w");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				fir::Value* fmtstr = this->module->createGlobalString("Tried to index string at index '%zu'; length is only '%zu'! (max index is thus '%zu')\n");
+				fmtstr = this->irb.CreateConstGEP2(fmtstr, 0, 0);
+
+				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				this->irb.CreateCall(fprintfn, { err, fmtstr, arg2, len, this->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
+
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort").firFunc);
+				this->irb.CreateUnreachable();
+			}
+
+			this->irb.setCurrentBlock(merge);
+			{
+				this->irb.CreateReturnVoid();
+			}
+
+			fn = func;
+
+
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
+
+
+
+	fir::Function* CodegenInstance::getStringCheckLiteralWriteFunction()
+	{
+		fir::Function* fn = this->module->getFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* failb = this->irb.addNewBlockInFunction("fail", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* arg1 = func->getArguments()[0];
+			fir::Value* arg2 = func->getArguments()[1];
+
+			fir::Value* rc = this->irb.CreateGetStringRefCount(arg1);
+			fir::Value* res = this->irb.CreateICmpLT(rc, fir::ConstantInt::getInt64(0));
+
+			this->irb.CreateCondBranch(res, failb, merge);
+			this->irb.setCurrentBlock(failb);
+			{
+				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
+					fir::LinkageType::External);
+
+				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::LinkageType::External);
+
+				// basically:
+				// void* stderr = fdopen(2, "w")
+				// fprintf(stderr, "", bla bla)
+
+				fir::Value* tmpstr = this->module->createGlobalString("w");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				fir::Value* fmtstr = this->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zu'!\n");
+				fmtstr = this->irb.CreateConstGEP2(fmtstr, 0, 0);
+
+				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				fir::Value* dp = this->irb.CreateGetStringData(arg1);
+				this->irb.CreateCall(fprintfn, { err, fmtstr, dp, arg2 });
+
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort").firFunc);
+				this->irb.CreateUnreachable();
+			}
+
+			this->irb.setCurrentBlock(merge);
+			{
+				this->irb.CreateReturnVoid();
+			}
+
+			fn = func;
+
+
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

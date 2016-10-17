@@ -213,7 +213,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* Return::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	if(this->val) return this->val->getType(cgi);
-	else return fir::PrimitiveType::getVoid();
+	else return fir::Type::getVoid();
 }
 
 

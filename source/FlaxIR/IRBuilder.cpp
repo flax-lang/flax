@@ -415,7 +415,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpEQ(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -425,7 +425,7 @@ namespace fir
 		if(a->getType() != b->getType())
 			error("creating cmp neq instruction with non-equal types (%s vs %s)", a->getType()->str().c_str(), b->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -433,7 +433,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpGT(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -441,7 +441,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpLT(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -449,7 +449,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpGEQ(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -457,7 +457,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpLEQ(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -465,7 +465,7 @@ namespace fir
 	Value* IRBuilder::CreateFCmpEQ_ORD(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_ord instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::PrimitiveType::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -474,7 +474,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_uord instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Equal_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -482,7 +482,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_ord instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_ORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -490,7 +490,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_uord instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -498,7 +498,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Greater_ORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -506,7 +506,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Greater_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -514,7 +514,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Less_ORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -522,7 +522,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Less_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -530,7 +530,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_ORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -538,7 +538,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -546,7 +546,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_ORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -554,7 +554,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_UNORD, false, this->currentBlock,
-			fir::PrimitiveType::getBool(this->context), { a, b });
+			fir::Type::getBool(this->context), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -732,7 +732,7 @@ namespace fir
 		if(ptr->isImmutable())
 			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
 
-		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, PrimitiveType::getVoid(), { v, ptr });
+		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { v, ptr });
 		return this->addInstruction(instr, "");
 	}
 
@@ -843,20 +843,20 @@ namespace fir
 
 	Value* IRBuilder::CreateReturn(Value* v)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, PrimitiveType::getVoid(), { v });
+		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { v });
 		return this->addInstruction(instr, "");
 	}
 
 	Value* IRBuilder::CreateReturnVoid()
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, PrimitiveType::getVoid(), { });
+		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { });
 		return this->addInstruction(instr, "");
 	}
 
 
 	Value* IRBuilder::CreateLogicalNot(Value* v, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Logical_Not, false, this->currentBlock, PrimitiveType::getBool(), { v });
+		Instruction* instr = new Instruction(OpKind::Logical_Not, false, this->currentBlock, Type::getBool(), { v });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -880,14 +880,14 @@ namespace fir
 
 	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
 	{
-		Instruction* instr = new Instruction(OpKind::Branch_Cond, true, this->currentBlock, PrimitiveType::getVoid(),
+		Instruction* instr = new Instruction(OpKind::Branch_Cond, true, this->currentBlock, Type::getVoid(),
 			{ condition, trueB, falseB });
 		this->addInstruction(instr, "");
 	}
 
 	void IRBuilder::CreateUnCondBranch(IRBlock* target)
 	{
-		Instruction* instr = new Instruction(OpKind::Branch_UnCond, true, this->currentBlock, PrimitiveType::getVoid(),
+		Instruction* instr = new Instruction(OpKind::Branch_UnCond, true, this->currentBlock, Type::getVoid(),
 			{ target });
 		this->addInstruction(instr, "");
 	}
@@ -978,7 +978,7 @@ namespace fir
 		{
 			iceAssert(memberIndex <= 1 && "LLVariableArrayType only has 2 members");
 
-			Type* ty = (memberIndex == 0 ? llat->getElementType()->getPointerTo() : PrimitiveType::getInt64());
+			Type* ty = (memberIndex == 0 ? llat->getElementType()->getPointerTo() : Type::getInt64());
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock, ty->getPointerTo(),
 				{ structPtr, ConstantInt::getUint64(memberIndex) });
@@ -1120,7 +1120,7 @@ namespace fir
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::PrimitiveType::getInt8()->getPointerTo(), { ptr });
+			fir::Type::getInt8()->getPointerTo(), { ptr });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1130,11 +1130,11 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PointerType::getInt8Ptr())
+		if(val->getType() != fir::Type::getInt8Ptr())
 			error("val is not an int8*");
 
 		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock,
-			fir::PrimitiveType::getVoid(), { ptr, val });
+			fir::Type::getVoid(), { ptr, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1146,7 +1146,7 @@ namespace fir
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetLength, false, this->currentBlock,
-			fir::PrimitiveType::getInt64(), { ptr });
+			fir::Type::getInt64(), { ptr });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1156,11 +1156,11 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PrimitiveType::getInt64())
+		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock,
-			fir::PrimitiveType::getVoid(), { ptr, val });
+			fir::Type::getVoid(), { ptr, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1173,7 +1173,7 @@ namespace fir
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetRefCount, false, this->currentBlock,
-			fir::PrimitiveType::getInt64(), { ptr });
+			fir::Type::getInt64(), { ptr });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1183,16 +1183,20 @@ namespace fir
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
 			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
 
-		if(val->getType() != fir::PrimitiveType::getInt64())
+		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::String_SetRefCount, true, this->currentBlock,
-			fir::PrimitiveType::getVoid(), { ptr, val });
+			fir::Type::getVoid(), { ptr, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
+	void IRBuilder::CreateUnreachable()
+	{
+		this->addInstruction(new Instruction(OpKind::Unreachable, true, this->currentBlock, fir::Type::getVoid(), { }), "");
+	}
 
 
 

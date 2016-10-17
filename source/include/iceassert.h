@@ -33,28 +33,36 @@ inline void debuglog(const char* s, ...)
 #define iceAssert(x)		((x) ? ((void) (0)) : error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 
 
-#define INTUNSPEC_TYPE_STRING	"int"
-#define INT8_TYPE_STRING		"int8"
-#define INT16_TYPE_STRING		"int16"
-#define INT32_TYPE_STRING		"int32"
-#define INT64_TYPE_STRING		"int64"
+#define INTUNSPEC_TYPE_STRING			"int"
+#define INT8_TYPE_STRING				"int8"
+#define INT16_TYPE_STRING				"int16"
+#define INT32_TYPE_STRING				"int32"
+#define INT64_TYPE_STRING				"int64"
 
-#define UINTUNSPEC_TYPE_STRING	"uint"
-#define UINT8_TYPE_STRING		"uint8"
-#define UINT16_TYPE_STRING		"uint16"
-#define UINT32_TYPE_STRING		"uint32"
-#define UINT64_TYPE_STRING		"uint64"
+#define UINTUNSPEC_TYPE_STRING			"uint"
+#define UINT8_TYPE_STRING				"uint8"
+#define UINT16_TYPE_STRING				"uint16"
+#define UINT32_TYPE_STRING				"uint32"
+#define UINT64_TYPE_STRING				"uint64"
 
-#define FLOAT32_TYPE_STRING		"float32"
-#define FLOAT64_TYPE_STRING		"float64"
+#define FLOAT32_TYPE_STRING				"float32"
+#define FLOAT64_TYPE_STRING				"float64"
 
-#define FLOAT_TYPE_STRING		"float"
+#define FLOAT_TYPE_STRING				"float"
 
-#define STRING_TYPE_STRING		"string"
-#define CHARACTER_TYPE_STRING	"char"
+#define STRING_TYPE_STRING				"string"
+#define CHARACTER_TYPE_STRING			"char"
 
-#define BOOL_TYPE_STRING		"bool"
-#define VOID_TYPE_STRING		"void"
+#define UNICODE_STRING_TYPE_STRING		"ustring"
+#define UNICODE_CHARACTER_TYPE_STRING	"rune"
 
-#define FUNC_KEYWORD_STRING		"func"
+#define BOOL_TYPE_STRING				"bool"
+#define VOID_TYPE_STRING				"void"
+
+#define FUNC_KEYWORD_STRING				"func"
+
+
+
+
+
 
