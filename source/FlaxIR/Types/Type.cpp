@@ -57,18 +57,48 @@ namespace fir
 		return defaultFTContext;
 	}
 
+	std::string VoidType::str()
+	{
+		return "void";
+	}
+
+	std::string VoidType::encodedStr()
+	{
+		return "void";
+	}
+
+	bool VoidType::isTypeEqual(Type* other)
+	{
+		return other && other->isVoidType();
+	}
+
+	Type* VoidType::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		// do nothing
+		return this;
+	}
+
+	VoidType::VoidType()
+	{
+		// nothing
+	}
+
+	VoidType* VoidType::get(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->voidType;
+	}
+
 	FTContext* createFTContext()
 	{
 		FTContext* tc = new FTContext();
 
-		// tc->llvmContext = &fir::getGlobalContext();
-
 		// fill in primitives
 
 		// void.
-		tc->voidType = new PrimitiveType(0, PrimitiveType::Kind::Void);
-		tc->voidType->isTypeVoid = true;
-
+		tc->voidType = new VoidType();
 
 		// bool
 		{
@@ -518,7 +548,7 @@ namespace fir
 
 	bool Type::isVoidType()
 	{
-		return this->isTypeVoid;
+		return dynamic_cast<VoidType*>(this) != 0;
 	}
 
 	bool Type::isLLVariableArrayType()
@@ -557,14 +587,15 @@ namespace fir
 
 
 	// static conv. functions
+
+	VoidType* Type::getVoid(FTContext* tc)
+	{
+		return VoidType::get(tc);
+	}
+
 	PrimitiveType* Type::getBool(FTContext* tc)
 	{
 		return PrimitiveType::getBool(tc);
-	}
-
-	PrimitiveType* Type::getVoid(FTContext* tc)
-	{
-		return PrimitiveType::getVoid(tc);
 	}
 
 	PrimitiveType* Type::getInt8(FTContext* tc)

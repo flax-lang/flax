@@ -25,6 +25,7 @@ namespace fir
 
 	struct Type;
 	struct Module;
+	struct VoidType;
 	struct PrimitiveType;
 	struct FunctionType;
 	struct PointerType;
@@ -49,7 +50,7 @@ namespace fir
 		std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
 
 		// special little thing.
-		PrimitiveType* voidType = 0;
+		VoidType* voidType = 0;
 
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
@@ -134,8 +135,9 @@ namespace fir
 
 
 		// convenience
+		static VoidType* getVoid(FTContext* tc = 0);
+
 		static PrimitiveType* getBool(FTContext* tc = 0);
-		static PrimitiveType* getVoid(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);
@@ -175,8 +177,6 @@ namespace fir
 		// base things
 		size_t id = 0;
 
-		bool isTypeVoid = 0;
-
 		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t inds, size_t bits);
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, size_t inds, bool issigned, size_t bits);
 		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t inds, size_t arrsize, Type* elm);
@@ -210,7 +210,24 @@ namespace fir
 
 
 
+	struct VoidType : Type
+	{
+		friend struct Type;
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		VoidType();
+		protected:
+		virtual ~VoidType() override { }
+
+		public:
+		static VoidType* get(FTContext* tc = 0);
+	};
 
 	struct PrimitiveType : Type
 	{
@@ -234,7 +251,6 @@ namespace fir
 		{
 			Invalid,
 
-			Void,
 			Integer,
 			Floating,
 		};
@@ -264,7 +280,6 @@ namespace fir
 		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
-		static PrimitiveType* getVoid(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);

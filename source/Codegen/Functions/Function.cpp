@@ -30,7 +30,12 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		FunctionTree* cft = cgi->getCurrentFuncTree();
 		iceAssert(cft);
 
-		cft->genericFunctions.push_back(std::make_pair(this->decl, this));
+		// we should already be inside somewhere
+		auto it = std::find(cft->genericFunctions.begin(), cft->genericFunctions.end(), std::make_pair(this->decl, this));
+		iceAssert(it != cft->genericFunctions.end());
+
+		// toplevel already added us.
+		// cft->genericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
 

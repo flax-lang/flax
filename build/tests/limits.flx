@@ -11,7 +11,7 @@ public func printIntegerLimits()
 	printf("int32.min  = %d,\t\tint32.max  = %d\n", int32.min, int32.max);
 	printf("int64.min  = %lld,\tint64.max  = %lld\n", int64.min, int64.max);
 
-	println()
+	printf("\n")
 
 	printf("uint8.min  = %hhu,\t\t\t\tuint8.max  = %hhu\n", uint8.min, uint8.max);
 	printf("uint16.min = %hu\t\t\t\tuint16.max = %hu\n", uint16.min, uint16.max);

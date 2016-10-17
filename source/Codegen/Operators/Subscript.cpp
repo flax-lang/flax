@@ -324,22 +324,32 @@ namespace Operators
 		Result_t lhsp = subscriptee->codegen(cgi);
 
 		fir::Value* lhs = 0;
-		if(lhsp.pointer->getType()->isPointerType())	lhs = lhsp.value;
-		else											lhs = lhsp.pointer;
-
+		if(lhsp.pointer && lhsp.pointer->getType()->isPointerType())
+		{
+			lhs = lhsp.value;
+		}
+		else if(lhsp.pointer)
+		{
+			lhs = lhsp.pointer;
+		}
+		else
+		{
+			lhs = lhsp.value;
+		}
 
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
 		fir::Value* ind = subscriptIndex->codegen(cgi).value;
 
-		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
+
+		if(atype->isArrayType())
 		{
-			gep = cgi->irb.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isLLVariableArrayType())
 		{
-			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhs, 0);
+			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhsp.pointer, 0);
 			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
 			gep = cgi->irb.CreateGetPointer(data, ind);
@@ -352,9 +362,13 @@ namespace Operators
 			gep = cgi->irb.CreateGetPointer(dp, ind);
 			gep = cgi->irb.CreatePointerTypeCast(gep, fir::Type::getCharType()->getPointerTo());
 		}
-		else
+		else if(atype->isPointerType())
 		{
 			gep = cgi->irb.CreateGetPointer(lhs, ind);
+		}
+		else
+		{
+			error(user, "???");
 		}
 
 		return Result_t(cgi->irb.CreateLoad(gep), gep, ValueKind::LValue);

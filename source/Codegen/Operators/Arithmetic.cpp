@@ -139,6 +139,35 @@ namespace Operators
 				return compareIntegers(cgi, op, lhs, rhs);
 			}
 		}
+		else if((lhs->getType()->isPointerType() && rhs->getType() == fir::VoidType::get()->getPointerTo())
+			|| (rhs->getType()->isPointerType() && lhs->getType() == fir::VoidType::get()->getPointerTo()))
+		{
+			error("ol");
+		}
+		else if(lhs->getType()->isCharType() && rhs->getType()->isCharType())
+		{
+			fir::Value* c1 = cgi->irb.CreateBitcast(lhs, fir::Type::getInt8());
+			fir::Value* c2 = cgi->irb.CreateBitcast(rhs, fir::Type::getInt8());
+
+			return compareIntegers(cgi, op, c1, c2);
+		}
+		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
+		{
+			if(op != ArithmeticOp::Add)
+				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", Parser::arithmeticOpToString(cgi, op).c_str());
+
+			iceAssert(leftr.pointer);
+			iceAssert(rightr.value);
+
+			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+
+			auto apf = cgi->getStringCharAppendFunction();
+			fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.value);
+			cgi->irb.CreateStore(app, newstrp);
+
+			cgi->addRefCountedValue(newstrp);
+			return Result_t(app, newstrp);
+		}
 		else if(lhs->getType()->isStringType() && rhs->getType()->isStringType())
 		{
 			// yay, builtin string operators.
@@ -226,11 +255,6 @@ namespace Operators
 					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
-		// else
-		// {
-		// 	error(user, "Unsupported operator '%s' on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
-		// 		lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
-		// }
 	}
 }
 

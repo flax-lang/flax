@@ -199,7 +199,7 @@ namespace Codegen
 		TypePair_t* getTypeByString(std::string name);
 		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
-		FuncDefPair getOrDeclareLibCFunc(std::string name);
+		fir::Function* getOrDeclareLibCFunc(std::string name);
 
 
 
@@ -295,6 +295,7 @@ namespace Codegen
 		fir::Function* getStringRefCountDecrementFunction();
 		fir::Function* getStringCompareFunction();
 		fir::Function* getStringAppendFunction();
+		fir::Function* getStringCharAppendFunction();
 
 		fir::Function* getStringBoundsCheckFunction();
 		fir::Function* getStringCheckLiteralWriteFunction();

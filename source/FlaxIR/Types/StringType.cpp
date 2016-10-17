@@ -26,7 +26,8 @@ namespace fir
 
 	Type* StringType::reify(std::map<std::string, Type*> names, FTContext* tc)
 	{
-		error_and_exit("string type cannot be reified");
+		// do nothing
+		return this;
 	}
 
 	StringType::StringType()
@@ -89,7 +90,8 @@ namespace fir
 
 	Type* CharType::reify(std::map<std::string, Type*> names, FTContext* tc)
 	{
-		error_and_exit("char type cannot be reified");
+		// do nothing
+		return this;
 	}
 
 	CharType::CharType()

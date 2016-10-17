@@ -13,7 +13,7 @@ public ffi func memcpy(dest: int8*, source: int8*, length: uint64) -> int8*
 public ffi func memset(dest: int8*, value: int32, length: uint64) -> int8*
 
 // heap
-public ffi func malloc(size: uint64) -> int8*
+public ffi func malloc(size: int64) -> int8*
 public ffi func free(pointer: int8*)
 
 // strings

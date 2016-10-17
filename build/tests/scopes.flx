@@ -78,8 +78,8 @@ namespace n1
 	{
 		var m: Sheep
 
-		var tup: (String, int)
-		func nest() -> (String, int)
+		var tup: (string, int)
+		func nest() -> (string, int)
 		{
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
@@ -95,9 +95,9 @@ namespace n1
 	}
 }
 
-public ƒ doScopeTest(argv: String)
+public ƒ doScopeTest(argv: string)
 {
-	var x = argv.data + 3
+	var x = argv.raw + 3
 
 	let p = 64.4 ÷ 4.1
 

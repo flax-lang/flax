@@ -1271,76 +1271,32 @@ namespace Codegen
 
 
 
-	FuncDefPair CodegenInstance::getOrDeclareLibCFunc(std::string name)
+	fir::Function* CodegenInstance::getOrDeclareLibCFunc(std::string name)
 	{
-		std::deque<FuncDefPair> fps = this->resolveFunctionName(name);
-		auto fp = FuncDefPair::empty();
-
-		bool found = false;
-		for(auto f : fps)
+		if(name == "malloc")
 		{
-			iceAssert(f.funcDecl->ident.name == name);
-			if(f.funcDecl->isFFI)
-			{
-				fp = f;
-				found = true;
-				break;
-			}
+			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
-
-		if(!found)
+		else if(name == "free")
 		{
-			bool variadic = false;
-			pts::Type* retType;
-			std::deque<VarDecl*> params;
-			if(name == "malloc")
-			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd->ptype = pts::NamedType::create(INT64_TYPE_STRING);
-				params.push_back(fakefdmvd);
-
-				retType = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
-			}
-			else if(name == "free")
-			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
-				params.push_back(fakefdmvd);
-
-				retType = pts::NamedType::create(VOID_TYPE_STRING);
-			}
-			else if(name == "printf")
-			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "fmt", false);
-				fakefdmvd1->ptype = new pts::PointerType(pts::NamedType::create(INT8_TYPE_STRING));
-				params.push_back(fakefdmvd1);
-
-				retType = pts::NamedType::create(INT32_TYPE_STRING);
-
-				variadic = true;
-			}
-			else if(name == "abort")
-			{
-				retType = pts::NamedType::create(VOID_TYPE_STRING);
-
-				variadic = false;
-			}
-			else
-			{
-				error("enotsup: %s", name.c_str());
-			}
-
-			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
-			fakefm->isFFI = true;
-			fakefm->isCStyleVarArg = variadic;
-			fakefm->codegen(this);
-
-
-			// note(recursion): if the above fails, we die in an infinite loop.
-			return this->getOrDeclareLibCFunc(name);
+			return this->module->getOrCreateFunction(Identifier("free", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getVoid(), false), fir::LinkageType::External);
 		}
-
-		return fp;
+		else if(name == "printf")
+		{
+			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+				fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
+		}
+		else if(name == "abort")
+		{
+			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
+				fir::FunctionType::get({ }, fir::Type::getVoid(), false), fir::LinkageType::External);
+		}
+		else
+		{
+			error("enotsup: %s", name.c_str());
+		}
 	}
 
 
@@ -1937,7 +1893,7 @@ namespace Codegen
 		{
 			std::string cands;
 			for(auto c : candidates)
-				cands += this->printAst(c) + "\n";
+				cands += this->printAst(c->decl) + "\n";
 
 			error(fc, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
@@ -1972,7 +1928,7 @@ namespace Codegen
 		{
 			std::string cands;
 			for(auto c : candidates)
-				cands += this->printAst(c) + "\n";
+				cands += this->printAst(c->decl) + "\n";
 
 			error(user, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n",
 				ret.front().funcDecl->ident.name.c_str(), candidates.size(), cands.c_str());
@@ -2198,20 +2154,43 @@ namespace Codegen
 				Identifier fnId = Identifier("__builtin_primitive_init_default_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
 				fnId.functionArguments = ft->getArgumentTypes();
 
-				fir::Function* fn = this->module->declareFunction(fnId, ft);
+				fir::Function* fn = this->module->getOrCreateFunction(fnId, ft, fir::LinkageType::Internal);
 
-				if(fn->getBlockList().size() == 0)
+
+				if(vals[0]->getType()->isPointerType() && vals[0]->getType()->getPointerElementType()->isStringType())
 				{
-					fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
+					if(fn->getBlockList().size() == 0)
+					{
+						fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
 
-					fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
-					this->irb.setCurrentBlock(block);
+						fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+						this->irb.setCurrentBlock(block);
 
-					// fir::Value* param = ++fn->arg_begin();
-					this->irb.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+						// fir::Value* param = ++fn->arg_begin();
+						fir::Value* empty = this->getEmptyString().value;
 
-					this->irb.setCurrentBlock(prevBlock);
+						this->irb.CreateStore(empty, fn->getArguments()[0]);
+
+						this->irb.CreateReturn(empty);
+						this->irb.setCurrentBlock(prevBlock);
+					}
 				}
+				else
+				{
+					if(fn->getBlockList().size() == 0)
+					{
+						fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
+
+						fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+						this->irb.setCurrentBlock(block);
+
+						// fir::Value* param = ++fn->arg_begin();
+						this->irb.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+
+						this->irb.setCurrentBlock(prevBlock);
+					}
+				}
+
 
 				if(vals.size() != fn->getArgumentCount())
 					GenError::invalidInitialiser(this, user, pair->first->str(), vals);
@@ -2267,7 +2246,6 @@ namespace Codegen
 				error(user, "Constructor syntax for builtin types requires either 0 or 1 parameters.");
 			}
 		}
-
 
 		if(pair->second.second == TypeKind::TypeAlias)
 		{
@@ -2567,6 +2545,7 @@ namespace Codegen
 	#define BUILTIN_STRINGREF_INCR_FUNC_NAME		"__.stringref_incr"
 	#define BUILTIN_STRINGREF_DECR_FUNC_NAME		"__.stringref_decr"
 	#define BUILTIN_STRING_APPEND_FUNC_NAME			"__.string_append"
+	#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME	"__.string_appendchar"
 	#define BUILTIN_STRING_CMP_FUNC_NAME			"__.string_cmp"
 
 	#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME	"__.string_checkliteralmodify"
@@ -2629,7 +2608,7 @@ namespace Codegen
 			fir::Value* malloclen = this->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
-			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc").firFunc->getName());
+			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc")->getName());
 			iceAssert(mallocf);
 
 			fir::Value* buf = this->irb.CreateCall1(mallocf, malloclen);
@@ -2674,6 +2653,99 @@ namespace Codegen
 		return appendf;
 	}
 
+	fir::Function* CodegenInstance::getStringCharAppendFunction()
+	{
+		fir::Function* appendf = this->module->getFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name));
+
+		if(!appendf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getCharType() },
+				fir::Type::getStringType(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+			// add a char to a string
+			// steps:
+			//
+			// 1. get the size of the left string
+			// 2. malloc a string of that size + 1=2
+			// 3. make a new string
+			// 4. set the buffer to the malloced buffer
+			// 5. memcpy.
+			// 6. set the length to a + b
+			// 7. return.
+
+			// get an empty string
+			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+			newstrp->setName("newstrp");
+
+			iceAssert(s1);
+			iceAssert(s2);
+
+			fir::Value* lhslen = this->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* lhsbuf = this->irb.CreateGetStringData(s1, "d1");
+
+
+			// space for null (1) + refcount (i64size) + the char (another 1)
+			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			fir::Value* malloclen = this->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + i64Size));
+
+			// now malloc.
+			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc")->getName());
+			iceAssert(mallocf);
+
+			fir::Value* buf = this->irb.CreateCall1(mallocf, malloclen);
+
+			// move it forward (skip the refcount)
+			buf = this->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+			// now memcpy
+			fir::Function* memcpyf = this->module->getIntrinsicFunction("memcpy");
+			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			fir::Value* offsetbuf = this->irb.CreatePointerAdd(buf, lhslen);
+
+			// store the char.
+			fir::Value* ch = this->irb.CreateBitcast(s2, fir::Type::getInt8());
+			this->irb.CreateStore(ch, offsetbuf);
+
+			// null terminator
+			fir::Value* nt = this->irb.CreateGetPointer(offsetbuf, fir::ConstantInt::getInt64(1));
+			this->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+			#if 0
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("malloc: %p / %p (%s)\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+			}
+			#endif
+
+			// ok, now fix it
+			this->irb.CreateSetStringData(newstrp, buf);
+			this->irb.CreateSetStringLength(newstrp, this->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
+			this->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+
+			this->irb.CreateReturn(this->irb.CreateLoad(newstrp));
+
+			appendf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(appendf);
+		return appendf;
+	}
 
 
 
@@ -2933,7 +3005,7 @@ namespace Codegen
 
 
 
-				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free").firFunc->getName());
+				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free")->getName());
 				iceAssert(freefn);
 
 				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
@@ -3006,7 +3078,7 @@ namespace Codegen
 
 				this->irb.CreateCall(fprintfn, { err, fmtstr, arg2, len, this->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
 
-				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort").firFunc);
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
 				this->irb.CreateUnreachable();
 			}
 
@@ -3081,7 +3153,7 @@ namespace Codegen
 				fir::Value* dp = this->irb.CreateGetStringData(arg1);
 				this->irb.CreateCall(fprintfn, { err, fmtstr, dp, arg2 });
 
-				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort").firFunc);
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
 				this->irb.CreateUnreachable();
 			}
 

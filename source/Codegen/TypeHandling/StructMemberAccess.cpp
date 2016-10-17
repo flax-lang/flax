@@ -268,7 +268,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 		return tt->getElementN(n->ival);
 	}
-	else if(!pair || (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
+	else if(!pair && (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
 	{
 		fir::Type* ret = 0;
 		attemptDotOperatorOnBuiltinTypeOrFail(cgi, lhs, this, false, 0, 0, &ret);

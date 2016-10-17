@@ -2,8 +2,6 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-/*
-
 import Foundation
 import Utilities
 import String
@@ -88,8 +86,6 @@ import tests.functions
 	// generics
 	printf("%s%s", genericsTitle, thinLine)
 	doGenericsTest()
-	let s = generic_test(5, "HELLO WORLD #")
-	printf("s = %s\n", s)
 	printf("\n\n\n")
 
 
@@ -120,37 +116,45 @@ import tests.functions
 
 struct FormatOptions
 {
-	var paddingChar: Character
+	var paddingChar: char
 	var precision: int64
 	var width: int64
 	var paddingKind: int64			// 0 = left, 1 = centre, 2 = right
-	var type: String
+	var type: string
 	var argNum: int64
+}
+
+extension char
+{
+	func isDigit() -> bool
+	{
+		// return #self ==  ||
+		return false
+	}
 }
 
 
 
-
-func parseFormatOptions(str: String) -> FormatOptions
+func parseFormatOptions(str: string) -> FormatOptions
 {
-	let colon		= Character(":")
-	let lbrace		= Character("{")
-	let rbrace		= Character("}")
+	let colon: char		= ":"
+	let lbrace: char	= "{"
+	let rbrace: char	= "}"
 
-	let lettero		= Character("o")
-	let letterx		= Character("x")
-	let letterX		= Character("X")
-	let letterp		= Character("p")
-	let letterb		= Character("b")
+	let lettero: char	= "o"
+	let letterx: char	= "x"
+	let letterX: char	= "X"
+	let letterp: char	= "p"
+	let letterb: char	= "b"
 
-	let larrow		= Character("<")
-	let rarrow		= Character(">")
-	let caret		= Character("^")
+	let larrow: char	= "<"
+	let rarrow: char	= ">"
+	let caret: char		= "^"
 
-	let plus		= Character("+")
-	let pound		= Character("#")
-	let zero		= Character("0")
-	let period		= Character(".")
+	let plus: char		= "+"
+	let pound: char		= "#"
+	let zero: char		= "0"
+	let period: char	= "."
 
 	var ret: FormatOptions
 
@@ -167,7 +171,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 	if cc.isDigit()
 	{
-		var argnum: String
+		var argnum: string
 		var i = 1
 
 		while i < str.length && str[i].isDigit()
@@ -181,7 +185,7 @@ func parseFormatOptions(str: String) -> FormatOptions
 
 
 
-	println()
+	printf("\n")
 
 	return ret
 }
@@ -196,10 +200,10 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 	do {
-		println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
+		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 		printf("pi = %.16lf, %s\n", Math.π(), "lol")
 
-		println("%b", "a" != "b")
+		// println("%b", "a" != "b")
 
 		parseFormatOptions("{401:x}")
 	}
@@ -261,7 +265,7 @@ public func main(argc: int32, argv: int8**) -> int
 
 	printf("\n<< done >>\n")
 	return 0
-}*/
+}
 
 
 
@@ -375,7 +379,7 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 
-
+/*
 
 // import LibCInterface
 
@@ -608,7 +612,7 @@ func foo()
 		i += 1
 	}
 }
-
+*/
 
 
 

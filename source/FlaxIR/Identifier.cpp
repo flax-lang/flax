@@ -92,6 +92,10 @@ static std::string mangleType(fir::Type* t)
 	{
 		return "SR";
 	}
+	else if(t->isCharType())
+	{
+		return "CH";
+	}
 	else
 	{
 		iceAssert(0 && "unsupported ir type???");
