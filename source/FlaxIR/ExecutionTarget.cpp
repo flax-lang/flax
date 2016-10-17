@@ -152,6 +152,14 @@ namespace fir
 		{
 			return 0;
 		}
+		else if(t->isStringType())
+		{
+			return this->getTypeSizeInBits(fir::Type::getInt8Ptr()) + this->getTypeSizeInBits(fir::Type::getInt64());
+		}
+		else if(t->isCharType())
+		{
+			return this->getTypeSizeInBits(fir::Type::getInt8());
+		}
 		else
 		{
 			if(t->isVoidType()) return 0;

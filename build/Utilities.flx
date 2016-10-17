@@ -5,16 +5,5 @@
 
 import Foundation
 
-public ƒ generic_test<K, T>(a: T, b: K) -> K
-{
-	let ret = alloc[128] int8
-	let ret1 = alloc[64] K
-	let ret2 = alloc[64] T
-
-	sprintf(ret, "%s%d", b, a)
-
-	return K(ret)
-}
-
 
 
