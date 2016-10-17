@@ -155,12 +155,26 @@ namespace Operators
 			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
 		}
+		else if(lhs->getType()->isStringType() && rtype->isCharType())
+		{
+			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(args[0]))
+			{
+				if(sl->str.size() != 1)
+					error(user, "Only single-character string literals can be cast into characters");
+
+				char c = sl->str[0];
+				fir::Value* cc = fir::ConstantChar::get(c);
+
+				return Result_t(cc, 0);
+			}
+			else
+			{
+				error(user, "Strings cannot be cast into chars; did you mean to subscript?");
+			}
+		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
-			std::string lstr = lhs->getType()->str();
-			std::string rstr = rtype->str();
-
-			error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			error(user, "Invalid cast from type '%s' to '%s'", lhs->getType()->str().c_str(), rtype->str().c_str());
 		}
 
 		return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
