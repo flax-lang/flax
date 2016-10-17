@@ -160,7 +160,7 @@ namespace Operators
 			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(args[0]))
 			{
 				if(sl->str.size() != 1)
-					error(user, "Only single-character string literals can be cast into characters");
+					error(user, "Only single-character string literals can be cast into chars");
 
 				char c = sl->str[0];
 				fir::Value* cc = fir::ConstantChar::get(c);
@@ -169,8 +169,12 @@ namespace Operators
 			}
 			else
 			{
-				error(user, "Strings cannot be cast into chars; did you mean to subscript?");
+				error(user, "Non-literal strings cannot be cast into chars; did you mean to subscript?");
 			}
+		}
+		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
+		{
+			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{

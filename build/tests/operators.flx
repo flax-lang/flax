@@ -77,11 +77,9 @@ public func doOperatorTupleTest()
 		let vr = v1 ⨯ v2
 		printf("(%.2f), vr = %.2f\n", v1 • v2, vr)
 
-		var lol: String = "HELLO"
-		printf("%d\n", lol[1].hasData())
-		printf("lol[2]: %c // %d // %s\n", lol[1].toAscii(), lol[1].hasData(), lol)
-
-		lol.data = null
+		var lol: string = "HELLO"
+		printf("%c\n", lol[1])
+		printf("lol[2]: %c // %s\n", lol[1], lol)
 	}
 }
 

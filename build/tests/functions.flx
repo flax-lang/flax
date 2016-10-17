@@ -64,7 +64,7 @@ func et1(a: int) -> int
 class SomeStruct
 {
 	var fn: [(SomeStruct*, int) -> int]
-	func fun(a: String) -> int
+	func fun(a: string) -> int
 	{
 		printf("method: %s\n", a)
 		return 40

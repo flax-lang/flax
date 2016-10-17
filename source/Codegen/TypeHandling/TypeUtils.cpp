@@ -657,13 +657,13 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(fir::Type* t)
 	{
-		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
+		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType() || t->isCharType()));
 		if(!ret)
 		{
 			while(t->isPointerType())
 				t = t->getPointerElementType();
 
-			ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
+			ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType() || t->isCharType()));
 		}
 
 		return ret;

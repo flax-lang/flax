@@ -5,6 +5,7 @@
 
 import Integer
 import Unicode
+import Assert
 import String
 import Array
 import Math

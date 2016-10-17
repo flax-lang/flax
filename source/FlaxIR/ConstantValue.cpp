@@ -14,6 +14,8 @@ namespace fir
 
 	ConstantValue* ConstantValue::getNullValue(Type* type)
 	{
+		iceAssert(!type->isVoidType() && "cannot make void constant");
+
 		auto ret = new ConstantValue(type);
 		return ret;
 	}

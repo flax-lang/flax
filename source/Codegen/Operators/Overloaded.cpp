@@ -31,6 +31,8 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 	}
 	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
 	{
+		// assume that the cast is valid
+		// we'll check the validity of this claim later, during codegen.
 		return this->right->getType(cgi);
 	}
 	else if(this->op >= ArithmeticOp::UserDefined)

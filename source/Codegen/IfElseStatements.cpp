@@ -24,6 +24,12 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 
 
 	fir::Value* cond = pairs.front().first->codegen(cgi).value;
+	if(cond->getType() != fir::Type::getBool())
+	{
+		error(pairs.front().first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+			cond->getType()->str().c_str());
+	}
+
 	cond = cgi->irb.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
 
 
@@ -64,8 +70,13 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	iceAssert(this->cases.size() > 0);
 
 	fir::Value* firstCond = this->cases[0].first->codegen(cgi).value;
-	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
+	if(firstCond->getType() != fir::Type::getBool())
+	{
+		error(this->cases[0].first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+			firstCond->getType()->str().c_str());
+	}
 
+	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
 
 
 	fir::Function* func = cgi->irb.getCurrentBlock()->getParentFunction();
