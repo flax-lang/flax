@@ -71,7 +71,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInitId.functionArguments = { cls->getPointerTo() };
 
 		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
-			fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+			fir::Type::getVoid(cgi->getContext()), false), linkageType);
 
 
 		fir::IRBlock* currentblock = cgi->irb.getCurrentBlock();

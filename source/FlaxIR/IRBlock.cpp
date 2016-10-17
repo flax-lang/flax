@@ -7,12 +7,12 @@
 
 namespace fir
 {
-	IRBlock::IRBlock() : Value(PrimitiveType::getVoid())
+	IRBlock::IRBlock() : Value(Type::getVoid())
 	{
 		this->parentFunction = 0;
 	}
 
-	IRBlock::IRBlock(Function* fn) : Value(PrimitiveType::getVoid())
+	IRBlock::IRBlock(Function* fn) : Value(Type::getVoid())
 	{
 		this->parentFunction = fn;
 		this->addUser(fn);
@@ -46,14 +46,9 @@ namespace fir
 		iceAssert(0 && "not in function");
 	}
 
-	std::deque<Instruction*> IRBlock::getInstructions()
+	std::deque<Instruction*>& IRBlock::getInstructions()
 	{
 		return this->instructions;
-	}
-
-	void IRBlock::setInstructions(std::deque<Instruction*> instrs)
-	{
-		this->instructions = instrs;
 	}
 }
 

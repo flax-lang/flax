@@ -28,16 +28,6 @@ namespace fir
 		return bools.front();
 	}
 
-	PrimitiveType* PrimitiveType::getVoid(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		iceAssert(tc->voidType && "FTContext was not initialised, no void type!");
-		return tc->voidType;
-	}
-
-
 
 
 
@@ -220,11 +210,6 @@ namespace fir
 
 			else
 				iceAssert(!"????");
-		}
-		else if(this->primKind == Kind::Void)
-		{
-			// iceAssert(0);
-			ret = "void";
 		}
 		else
 		{

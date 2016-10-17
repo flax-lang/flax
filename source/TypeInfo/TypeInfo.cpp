@@ -133,6 +133,7 @@ namespace TypeInfo
 		if(!done)
 		{
 			auto kind = TypeKind::BuiltinType;
+
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT8_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT8_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT16_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT16_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT32_TYPE_STRING), kind));
@@ -146,6 +147,15 @@ namespace TypeInfo
 			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT32_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT64_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(BOOL_TYPE_STRING, cgi->getExprTypeOfBuiltin(BOOL_TYPE_STRING), kind));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple(CHARACTER_TYPE_STRING, cgi->getExprTypeOfBuiltin(CHARACTER_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(STRING_TYPE_STRING, cgi->getExprTypeOfBuiltin(STRING_TYPE_STRING), kind));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple(UNICODE_CHARACTER_TYPE_STRING,
+				cgi->getExprTypeOfBuiltin(UNICODE_CHARACTER_TYPE_STRING), kind));
+
+			cgi->rootNode->typeList.push_back(std::make_tuple(UNICODE_STRING_TYPE_STRING,
+				cgi->getExprTypeOfBuiltin(UNICODE_STRING_TYPE_STRING), kind));
 		}
 
 

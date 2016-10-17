@@ -15,9 +15,7 @@ using namespace Codegen;
 static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
 {
-	FuncDefPair fp = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
-
-	fir::Function* mallocf = fp.firFunc;
+	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
 	iceAssert(mallocf);
 
 	mallocf = cgi->module->getFunction(mallocf->getName());
@@ -54,7 +52,7 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	cgi->irb.setCurrentBlock(loopHead);
 
 	// set a counter
-	fir::Value* counterPtr = cgi->irb.CreateStackAlloc(fir::PrimitiveType::getInt64(), "counterPtr");
+	fir::Value* counterPtr = cgi->irb.CreateStackAlloc(fir::Type::getInt64(), "counterPtr");
 	cgi->irb.CreateStore(zeroValue, counterPtr);
 
 	// check for zero.
@@ -250,7 +248,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// therefore, create a Load to get the actual value
 		varval = cgi->irb.CreateLoad(varval);
-		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::PointerType::getInt8Ptr(cgi->getContext()));
+		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::Type::getInt8Ptr(cgi->getContext()));
 	}
 	else
 	{
@@ -258,10 +256,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	// call 'free'
-	FuncDefPair fp = cgi->getOrDeclareLibCFunc(FREE_FUNC);
-
-
-	fir::Function* freef = fp.firFunc;
+	fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
 	iceAssert(freef);
 
 	freef = cgi->module->getFunction(freef->getName());

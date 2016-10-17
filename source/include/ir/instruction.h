@@ -126,6 +126,9 @@ namespace fir
 
 		Branch_UnCond,
 		Branch_Cond,
+
+
+		Unreachable,
 	};
 
 
@@ -137,7 +140,7 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, bool sideEffects, Type* out, std::deque<Value*> vals);
+		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::deque<Value*> vals);
 		std::string str();
 
 		Value* getResult();
@@ -146,7 +149,7 @@ namespace fir
 		void clearValue();
 		bool hasSideEffects();
 
-		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
+		// static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
 
 
 		// protected:
@@ -154,6 +157,7 @@ namespace fir
 
 		bool sideEffects;
 		Value* realOutput;
+		IRBlock* parentBlock;
 		std::deque<Value*> operands;
 	};
 }

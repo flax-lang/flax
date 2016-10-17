@@ -74,22 +74,17 @@ namespace Compiler
 		// translate to llvm
 		for(auto mod : data.moduleList)
 		{
-			if(Compiler::getDumpFir())
-				printf("%s\n\n\n\n", mod.second->print().c_str());
-
 			for(auto f : mod.second->getAllFunctions())
 				f->cullUnusedValues();
 
 			if(Compiler::getDumpFir())
-				printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n%s\n\n\n\n", mod.second->print().c_str());
+				printf("%s\n\n", mod.second->print().c_str());
 
 			modulelist[mod.first] = mod.second->translateToLlvm();
-			// modulelist[mod.first]->dump();
 		}
 
 
 		// link together
-		// llvm::Module* mainModule = modulelist[filename];
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 		llvm::Module* mainModule = new llvm::Module("_empty", llvm::getGlobalContext());

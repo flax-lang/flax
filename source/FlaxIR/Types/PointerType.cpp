@@ -14,42 +14,52 @@ namespace fir
 
 	PointerType* PointerType::getInt8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt8(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt16(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt32(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt64(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint8(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint16(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint32(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint64(tc)->getPointerTo());
+	}
+
+	PointerType* PointerType::getFloat32Ptr(FTContext* tc)
+	{
+		return dynamic_cast<PointerType*>(Type::getFloat32(tc)->getPointerTo());
+	}
+
+	PointerType* PointerType::getFloat64Ptr(FTContext* tc)
+	{
+		return dynamic_cast<PointerType*>(Type::getFloat64(tc)->getPointerTo());
 	}
 
 

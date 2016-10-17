@@ -17,7 +17,7 @@ namespace Codegen
 		auto ident = Identifier(this->module->getModuleName() + "_anon_constr_" + std::to_string(id++), IdKind::ModuleConstructor);
 
 		fir::Function* func = this->module->getOrCreateFunction(ident, fir::FunctionType::get({ arg->getType() },
-			fir::PrimitiveType::getVoid(), false), fir::LinkageType::Internal);
+			fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 		this->addGlobalConstructor(arg, func);
 
@@ -59,11 +59,12 @@ namespace Codegen
 	void CodegenInstance::finishGlobalConstructors()
 	{
 		// generate initialiser
-		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::PrimitiveType::getVoid(), false);
+		fir::FunctionType* ft = fir::FunctionType::get({ }, fir::Type::getVoid(), false);
 		auto id = Identifier(this->module->getModuleName(), IdKind::ModuleConstructor);
 		id.functionArguments = ft->getArgumentTypes();
 
-		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(id, ft, fir::LinkageType::External);
+		fir::Function* defaultInitFunc = this->module->getOrCreateFunction(Identifier(id.str() + "_constr", IdKind::ModuleConstructor),
+			ft, fir::LinkageType::External);
 
 		fir::IRBlock* iblock = this->irb.addNewBlockInFunction("initialiser", defaultInitFunc);
 		this->irb.setCurrentBlock(iblock);

@@ -45,7 +45,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isLLVariableArrayType())
 	{
-		return "VA" + mangleType(t->toLLVariableArray()->getElementType());
+		return "VA" + mangleType(t->toLLVariableArrayType()->getElementType());
 	}
 	else if(t->isVoidType())
 	{
@@ -91,6 +91,10 @@ static std::string mangleType(fir::Type* t)
 	else if(t->isStringType())
 	{
 		return "SR";
+	}
+	else if(t->isCharType())
+	{
+		return "CH";
 	}
 	else
 	{

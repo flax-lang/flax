@@ -181,12 +181,12 @@ namespace Codegen
 			return ret;
 		}
 		// check for string to int8*
-		else if(to->isPointerType() && to->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+		else if(to->isPointerType() && to->getPointerElementType() == fir::Type::getInt8(this->getContext())
 			&& from->isStringType())
 		{
 			return 2;
 		}
-		else if(from->isPointerType() && from->getPointerElementType() == fir::PrimitiveType::getInt8(this->getContext())
+		else if(from->isPointerType() && from->getPointerElementType() == fir::Type::getInt8(this->getContext())
 			&& to->isStringType())
 		{
 			return 2;
@@ -331,7 +331,7 @@ namespace Codegen
 		}
 
 		// check if we're passing a string to a function expecting an Int8*
-		else if(target == fir::PointerType::getInt8Ptr() && from->getType()->isStringType())
+		else if(target == fir::Type::getInt8Ptr() && from->getType()->isStringType())
 		{
 			// GEP needs a pointer
 			if(fromPtr == 0) fromPtr = this->getImmutStackAllocValue(from);
@@ -657,13 +657,13 @@ namespace Codegen
 
 	bool CodegenInstance::isBuiltinType(fir::Type* t)
 	{
-		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
+		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType() || t->isCharType()));
 		if(!ret)
 		{
 			while(t->isPointerType())
 				t = t->getPointerElementType();
 
-			ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType()));
+			ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType() || t->isCharType()));
 		}
 
 		return ret;
