@@ -479,7 +479,8 @@ public func main() -> int
 	let lc: char = "f"
 	let ch = k[1]
 
-	k[10] = lc
+	k[0] = lc
+	k[1] = "u" as char
 
 	glob = k
 	printf(@raw "k = [%s], glob = [%s], 'f' = [%c], 'e' = [%c]\n", k, glob, lc, ch)
