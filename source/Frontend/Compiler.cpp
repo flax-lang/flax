@@ -139,7 +139,7 @@ namespace Compiler
 		}
 	}
 
-	static std::pair<Codegen::CodegenInstance*, std::string> _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
+	static Codegen::CodegenInstance* _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
 	{
 		using namespace Codegen;
 		using namespace Parser;
@@ -165,13 +165,6 @@ namespace Compiler
 
 		Codegen::doCodegen(fpath, root, cgi);
 
-
-		size_t lastdot = fpath.find_last_of(".");
-		std::string oname = (lastdot == std::string::npos ? fpath : fpath.substr(0, lastdot));
-		oname += ".bc";
-
-
-
 		// add the new stuff to the main root
 		// todo: check for duplicates
 		copyRootInnards(rcgi, root, dummyRoot, true);
@@ -179,7 +172,7 @@ namespace Compiler
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
 
-		return { cgi, oname };
+		return cgi;
 	}
 
 
@@ -298,7 +291,6 @@ namespace Compiler
 	{
 		filename = getFullPathOfFile(filename);
 
-		std::vector<std::string> outlist;
 		std::unordered_map<std::string, Root*> rootmap;
 		std::deque<std::pair<std::string, fir::Module*>> modulelist;
 
@@ -323,10 +315,8 @@ namespace Compiler
 			iceAssert(gr.size() == 1);
 			std::string name = Compiler::getFullPathOfFile(gr.front()->name);
 
-			auto pair = _compileFile(name, rcgi, dummyRoot);
-			CodegenInstance* cgi = pair.first;
+			auto cgi = _compileFile(name, rcgi, dummyRoot);
 
-			outlist.push_back(pair.second);
 			modulelist.push_back({ name, cgi->module });
 			rootmap[name] = cgi->rootNode;
 
@@ -336,7 +326,6 @@ namespace Compiler
 		CompiledData ret;
 
 		ret.rootNode = rootmap[Compiler::getFullPathOfFile(filename)];
-		ret.fileList = outlist;
 		ret.rootMap = rootmap;
 		ret.moduleList = modulelist;
 

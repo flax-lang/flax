@@ -227,7 +227,11 @@ namespace Operators
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
 			fir::Value* tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
-			iceAssert(tryop);
+			if(!tryop)
+			{
+				error(user, "Invalid operator '%s' between types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+			}
 
 			return Result_t(tryop, 0);
 		}

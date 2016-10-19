@@ -99,7 +99,16 @@ public func variadicTest(a: string, b: int[...])
 	printf("]\n")
 }
 
+extension string
+{
+	// static func withRaw(r: int8*) -> string
+	// {
+	// 	var s: string
 
+	// 	let len = strlen(r)
+	// 	s.raw = malloc(len + 8 + 1)
+	// }
+}
 
 public func miscellaneousTests()
 {
@@ -114,6 +123,25 @@ public func miscellaneousTests()
 		var g = "439"
 		let k = g.toInteger()
 		printf("%s, %d\n", g, k)
+	}
+
+	do {
+		printf("'4' is digit: %d\n", ("5" as char).isDigit())
+	}
+
+	do {
+		struct winsize
+		{
+			var row: uint16
+			var col: uint16
+			var xpixel: uint16
+			var ypixel: uint16
+		}
+
+		var ws: winsize
+		ioctl(1, 1074295912 as uint64, &ws)
+
+		printf("terminal size: %hdx%hd (chars), %hdx%hd (pixels)\n", ws.col, ws.row, ws.xpixel, ws.ypixel)
 	}
 
 
