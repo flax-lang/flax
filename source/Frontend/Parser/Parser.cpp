@@ -1771,21 +1771,22 @@ namespace Parser
 
 
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
-			if(!rhs)
-				return nullptr;
+			if(!rhs) return nullptr;
 
 			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
 			{
 				rhs = parseRhs(ps, rhs, prec + 1);
-				if(!rhs)
-					return nullptr;
+				if(!rhs) return nullptr;
 			}
 
+
+			// todo: chained relational operators
+			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
+
+
 			ps.currentOpPrec = prec;
-
-
 
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);

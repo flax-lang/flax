@@ -9,6 +9,8 @@
 #include <sys/types.h>
 
 #include <vector>
+
+#include "backend.h"
 #include "compiler.h"
 
 static std::string parseQuotedString(char** argv, int& i)
@@ -47,6 +49,7 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS	"-no-auto-gconstr"
 #define ARG_OPTIMISATION_LEVEL_SELECT			"-O"
 #define ARG_COMPILE_ONLY						"-c"
+#define ARG_BACKEND								"-backend"
 
 #define WARNINGS_AS_ERRORS						"-Werror"
 #define WARNING_DISABLE_ALL						"-w"
@@ -81,19 +84,11 @@ namespace Compiler
 		return printFIR;
 	}
 
-
-	static bool compileOnly = false;
-	bool getIsCompileOnly()
-	{
-		return compileOnly;
-	}
-
 	#define DEFAULT_PREFIX		"/usr/local/lib/flaxlibs/"
 	std::string getPrefix()
 	{
 		return DEFAULT_PREFIX;
 	}
-
 
 	static std::string sysroot;
 	std::string getSysroot()
@@ -105,12 +100,6 @@ namespace Compiler
 	std::string getTarget()
 	{
 		return target;
-	}
-
-	static int optLevel;
-	int getOptimisationLevel()
-	{
-		return optLevel;
 	}
 
 	static uint64_t Flags;
@@ -137,23 +126,33 @@ namespace Compiler
 		return printClangOutput;
 	}
 
-	static bool emitLLVMOutput;
-	bool getEmitLLVMOutput()
-	{
-		return emitLLVMOutput;
-	}
-
-	static bool runProgramWithJit;
-	bool getRunProgramWithJit()
-	{
-		return runProgramWithJit;
-	}
-
 	static bool noAutoGlobalConstructor = false;
 	bool getNoAutoGlobalConstructor()
 	{
 		return noAutoGlobalConstructor;
 	}
+
+
+	static ProgOutputMode outputMode = ProgOutputMode::Program;
+	ProgOutputMode getOutputMode()
+	{
+		return outputMode;
+	}
+
+	static OptimisationLevel optLevel = OptimisationLevel::None;
+	OptimisationLevel getOptimisationLevel()
+	{
+		return optLevel;
+	}
+
+	// llvm by default, duh
+	static BackendOption backendOpt = BackendOption::LLVM;
+	BackendOption getSelectedBackend()
+	{
+		return backendOpt;
+	}
+
+
 
 
 	static std::vector<Warning> enabledWarnings {
@@ -216,6 +215,36 @@ namespace Compiler
 						exit(-1);
 					}
 				}
+
+				if(!strcmp(argv[i], ARG_BACKEND))
+				{
+					if(i != argc - 1)
+					{
+						i++;
+						auto str = parseQuotedString(argv, i);
+
+						if(str == "llvm")
+						{
+							Compiler::backendOpt = BackendOption::LLVM;
+						}
+						else if(str == "x64asm")
+						{
+							Compiler::backendOpt = BackendOption::Assembly_x64;
+						}
+						else
+						{
+							fprintf(stderr, "Error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str.c_str());
+							exit(-1);
+						}
+
+						continue;
+					}
+					else
+					{
+						fprintf(stderr, "Error: Expected backend name after '-backend' option\n");
+						exit(-1);
+					}
+				}
 				else if(!strcmp(argv[i], ARG_OUTPUT_FILE))
 				{
 					if(i != argc - 1)
@@ -272,7 +301,15 @@ namespace Compiler
 				}
 				else if(!strcmp(argv[i], ARG_COMPILE_ONLY))
 				{
-					Compiler::compileOnly = true;
+					if(Compiler::outputMode != ProgOutputMode::RunJit && Compiler::outputMode != ProgOutputMode::LLVMBitcode)
+					{
+						Compiler::outputMode = ProgOutputMode::ObjectFile;
+					}
+					else
+					{
+						fprintf(stderr, "Error: Cannot use '-c' option simultaneously with either '-emit-llvm' or '-jit'\n");
+						exit(-1);
+					}
 				}
 				else if(!strcmp(argv[i], ARG_SHOW_CLANG_OUTPUT))
 				{
@@ -280,7 +317,15 @@ namespace Compiler
 				}
 				else if(!strcmp(argv[i], ARG_JITPROGRAM) || !strcmp(argv[i], ARG_RUNPROGRAM))
 				{
-					Compiler::runProgramWithJit = true;
+					if(Compiler::outputMode != ProgOutputMode::ObjectFile && Compiler::outputMode != ProgOutputMode::LLVMBitcode)
+					{
+						Compiler::outputMode = ProgOutputMode::RunJit;
+					}
+					else
+					{
+						fprintf(stderr, "Error: Cannot use '-jit'/'-run' option simultaneously with either '-emit-llvm' or '-c'\n");
+						exit(-1);
+					}
 				}
 				else if(!strcmp(argv[i], ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS))
 				{
@@ -294,15 +339,30 @@ namespace Compiler
 						fprintf(stderr, "Error: '-O' is not a valid option on its own\n");
 						exit(-1);
 					}
+					else if(strlen(argv[i]) > 3)
+					{
+						fprintf(stderr, "Error: '%s' is not a valid option\n", argv[i]);
+						exit(-1);
+					}
 
 					if(argv[i][2] == 'x')
 					{
 						// literally nothing
-						Compiler::optLevel = -1;
+						Compiler::optLevel = OptimisationLevel::Debug;
 					}
 					else
 					{
-						Compiler::optLevel = argv[i][2] - '0';
+						switch(argv[i][2])
+						{
+							case '0':	Compiler::optLevel = OptimisationLevel::None;		break;
+							case '1':	Compiler::optLevel = OptimisationLevel::Minimal;	break;
+							case '2':	Compiler::optLevel = OptimisationLevel::Normal;		break;
+							case '3':	Compiler::optLevel = OptimisationLevel::Aggressive;	break;
+
+							default:
+								fprintf(stderr, "Error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);
+								exit(-1);
+						}
 					}
 				}
 

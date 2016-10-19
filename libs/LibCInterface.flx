@@ -29,3 +29,4 @@ public ffi func abort()
 
 // file stuff
 public ffi func write(fd: int32, buf: int8*, count: uint64) -> int64
+public ffi func ioctl(fd: int32, cmd: uint64, ...) -> int32

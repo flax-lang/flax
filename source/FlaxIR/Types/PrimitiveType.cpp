@@ -193,6 +193,9 @@ namespace fir
 
 		if(this->primKind == Kind::Integer)
 		{
+			if(!this->isSigned() && this->getIntegerBitWidth() == 1)
+				return "bool";
+
 			if(this->isSigned())	ret = "i";
 			else					ret = "u";
 
