@@ -119,19 +119,13 @@ func foo_generic<T, K>(a: T, b: K)
 	}
 }
 
-func lololtest<T>(a: T)
-{
-	let x = T()
-}
-
 public func doGenericsTest()
 {
 	foo_generic(7, 6 as int8)
 	foo_generic(7, 6 as int16)
 	foo_generic(7, 6 as int32)
 
-	// foo_generic(5, "asdf")
-	lololtest("asdf")
+	foo_generic(5, "asdf")
 
 	foo_generic(1, 4, 9)
 
