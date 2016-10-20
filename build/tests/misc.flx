@@ -144,6 +144,18 @@ public func miscellaneousTests()
 		printf("terminal size: %hdx%hd (chars), %hdx%hd (pixels)\n", ws.col, ws.row, ws.xpixel, ws.ypixel)
 	}
 
+	do {
+
+		func test() -> string
+		{
+			return "hello!"
+		}
+
+		let s = string("hello")
+		string("hello").raw
+		printf("test = %p %d\n", test().raw, int64(10))
+	}
+
 
 	variadicTest("ints", 10, 20, 30, 40, 50, 60)
 }

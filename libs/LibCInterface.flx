@@ -17,7 +17,7 @@ public ffi func malloc(size: int64) -> int8*
 public ffi func free(pointer: int8*)
 
 // strings
-public ffi func strlen(str: int8*) -> uint64
+public ffi func strlen(str: int8*) -> int64
 public ffi func strcmp(str1: int8*, str2: int8*) -> int32
 public ffi func strncmp(str1: int8*, str2: int8*, length: uint64) -> int32
 

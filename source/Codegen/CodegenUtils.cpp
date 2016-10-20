@@ -1293,6 +1293,11 @@ namespace Codegen
 			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
 				fir::FunctionType::get({ }, fir::Type::getVoid(), false), fir::LinkageType::External);
 		}
+		else if(name == "strlen")
+		{
+			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64(), false), fir::LinkageType::External);
+		}
 		else
 		{
 			error("enotsup: %s", name.c_str());
