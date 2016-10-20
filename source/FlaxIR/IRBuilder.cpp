@@ -1105,7 +1105,7 @@ namespace fir
 		if(!num->getType()->isIntegerType())
 			error("num is not an integer type (got %s)", num->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
+		Instruction* instr = new Instruction(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
 	}
 
