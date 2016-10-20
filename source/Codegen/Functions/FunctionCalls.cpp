@@ -195,12 +195,85 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		return cgi->callTypeInitialiser(tp, this, args);
 	}
+	else if(fir::PrimitiveType::fromBuiltin(this->name))
+	{
+		fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
+
+		// get our parameters.
+		if(this->params.size() != 1)
+			error(this, "Builtin type initialisers must be called with exactly one argument (have %zu)", this->params.size());
+
+		auto res = this->params[0]->codegen(cgi);
+		fir::Value* arg = res.value;
+		iceAssert(arg);
+
+
+		// special case for string
+		if(type->isStringType())
+		{
+			// make a string with this.
+			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(this->params[0]))
+			{
+				// lol wtf
+				return cgi->makeStringLiteral(sl->str);
+			}
+
+
+			if(arg->getType() == fir::Type::getInt8Ptr())
+			{
+				// first get the length
+				fir::Function* strlenf = cgi->getOrDeclareLibCFunc("strlen");
+				fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+				fir::Function* memcpyf = cgi->getOrDeclareLibCFunc("memcpy");
+
+				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
+
+				auto i64size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
+
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, alloclen);
+
+				// add 8 bytes to this, skip the refcount
+				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64size));
+
+				// memcpy.
+				cgi->irb.CreateCall(memcpyf, { buf, arg, len, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+				// null terminator
+				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), cgi->irb.CreatePointerAdd(buf, len));
+
+				// ok, store everything.
+				fir::Value* str = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+
+				cgi->irb.CreateSetStringData(str, buf);
+				cgi->irb.CreateSetStringLength(str, len);
+				cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+				cgi->addRefCountedValue(str);
+				return Result_t(cgi->irb.CreateLoad(str), str);
+			}
+			else
+			{
+				return res;
+			}
+		}
+		else if(arg->getType() == type)
+		{
+			// ok, just return the thing.
+			return Result_t(arg, 0);
+		}
+		else
+		{
+			error(this, "Invalid argument type '%s' to builtin type initialiser for type '%s'", arg->getType()->str().c_str(),
+				type->str().c_str());
+		}
+	}
 	else if(fir::Value* fv = cgi->getSymInst(this, this->name))
 	{
 		this->cachedResolveTarget.resolved = true;
 
 		if(!fv->getType()->getPointerElementType()->isFunctionType())
-			error("'%s' is not a function, and cannot be called", this->name.c_str());
+			error(this, "'%s' is not a function, and cannot be called", this->name.c_str());
 
 		fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
 		iceAssert(ft);
@@ -319,6 +392,11 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 		{
 			return tp->first;
 		}
+		else if(fir::PrimitiveType::fromBuiltin(this->name))
+		{
+			fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
+			return type;
+		}
 		else
 		{
 			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);
@@ -327,15 +405,6 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 				this->cachedResolveTarget = Resolved_t(genericMaybe);
 				return genericMaybe.firFunc->getReturnType();
 			}
-			// else if(genericMaybe.funcDef)
-			// {
-			// 	auto res = cgi->tryResolveGenericFunctionCallUsingCandidates(this, { genericMaybe.funcDef });
-			// 	if(res.firFunc)
-			// 	{
-			// 		this->cachedResolveTarget = Resolved_t(res);
-			// 		return res.firFunc->getReturnType();
-			// 	}
-			// }
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
 		}
