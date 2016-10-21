@@ -243,7 +243,7 @@ namespace fir
 
 		createdTypes.clear();
 
-		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
+		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
@@ -255,7 +255,8 @@ namespace fir
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					fprintf(stderr, "failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+
 				iceAssert(lgv);
 				return lgv;
 				// return builder.CreateConstGEP2_32(lgv, 0, 0);

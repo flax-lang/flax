@@ -218,7 +218,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
 				ai, val, valptr, vk);
 
-			delete vr;
+			// delete vr;
 
 			this->immutable = wasImmut;
 			return res.value;

@@ -32,6 +32,7 @@
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/DynamicLibrary.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 // #include "llvm/IRReader/IRReader.h"
@@ -80,7 +81,11 @@ namespace Compiler
 		for(auto mod : this->compiledData.moduleList)
 			modulelist[mod.first] = mod.second->translateToLlvm();
 
-		llvm::Module* mainModule = new llvm::Module("_empty", llvm::getGlobalContext());
+
+		auto s = Compiler::getFilenameFromPath(this->inputFilenames[0]);
+		s = s.substr(0, s.find_last_of("."));
+
+		llvm::Module* mainModule = new llvm::Module(s, llvm::getGlobalContext());
 		llvm::Linker linker = llvm::Linker(*mainModule);
 
 		for(auto mod : modulelist)
@@ -209,32 +214,111 @@ namespace Compiler
 				int fd = mkstemp(templ);
 
 				write(fd, buffer.data(), buffer.size_in_bytes());
+				fsync(fd);
 
-				const char* argv[5];
+
+
+				auto libs = Compiler::getLibrariesToLink();
+				auto libdirs = Compiler::getLibrarySearchPaths();
+
+				auto frames = Compiler::getFrameworksToLink();
+				auto framedirs = Compiler::getFrameworkSearchPaths();
+
+
+				size_t s = 4 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
+				const char** argv = new const char*[s];
+				memset(argv, 0, s * sizeof(const char*));
 
 				argv[0] = "cc";
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
 				argv[3] = templ;
-				argv[4] = 0;
+
+				size_t i = 4;
+
+				for(auto L : libdirs)
+				{
+					argv[i] = "-L";			i++;
+					argv[i] = L.c_str();	i++;
+				}
+
+				for(auto l : libs)
+				{
+					argv[i] = "-l";			i++;
+					argv[i] = l.c_str();	i++;
+				}
+
+				for(auto F : framedirs)
+				{
+					argv[i] = "-F";			i++;
+					argv[i] = F.c_str();	i++;
+				}
+
+				for(auto f : frames)
+				{
+					argv[i] = "-framework";	i++;
+					argv[i] = f.c_str();	i++;
+				}
+
+				argv[s] = 0;
+
+
+
+
+				int outpipe[2];
+				iceAssert(pipe(outpipe) == 0);
+
+				std::string output;
 
 				pid_t pid = fork();
+				int status = 0;
 				if(pid == 0)
 				{
 					// in child, pid == 0.
 
+					close(outpipe[0]);
+					dup2(outpipe[1], 1);
+
 					execvp(argv[0], (char* const*) argv);
-					exit(1);
+					abort();
 				}
 				else
 				{
 					// wait for child to finish, then we can continue cleanup
-					int stat = 0;
-					waitpid(pid, &stat, 0);
+
+					close(outpipe[1]);
+					size_t rd = 0;
+
+					char* buf = new char[66];
+					while(true)
+					{
+						rd = read(outpipe[0], buf, 64);
+						if(rd == 0)
+							break;
+
+						buf[rd] = 0;
+						output += buf;
+					}
+
+					close(outpipe[0]);
+
+					int s = 0;
+					waitpid(pid, &s, 0);
+
+					status = WEXITSTATUS(s);
 				}
 
 				// delete the temp file
 				std::remove(templ);
+
+				delete[] argv;
+
+				if(status != 0 || output.size() != 0)
+				{
+					fprintf(stderr, "%s\n", output.c_str());
+					fprintf(stderr, "linker returned non-zero (status = %d), exiting\n", status);
+					exit(status);
+				}
 			}
 		}
 
@@ -364,6 +448,99 @@ namespace Compiler
 		// all linked already.
 		// dump here, before the output.
 
+
+		// if JIT-ing, we need to load all the framework shit.
+		// note(compat): i think -L -l ordering matters when resolving libraries
+		// we don't support that right now.
+		// now, just add all the paths immediately.
+
+		std::string penv;
+		std::string pfenv;
+
+		char* e = std::getenv("LD_LIBRARY_PATH");
+
+		std::string env;
+		if(e) env = std::string(e);
+
+		penv = env;
+
+		if(!env.empty() && env.back() != ':')
+			env += ":";
+
+		// add all the paths.
+		{
+			for(auto L : Compiler::getLibrarySearchPaths())
+				env += L + ":";
+
+			if(!env.empty() && env.back() == ':')
+				env.pop_back();
+		}
+
+
+
+		std::string fenv;
+
+		char* fe = std::getenv("DYLD_FRAMEWORK_PATH");
+		if(fe) fenv = std::string(fe);
+
+		pfenv = fenv;
+
+		if(!fenv.empty() && fenv.back() != ':')
+			fenv += ":";
+
+		// add framework paths
+		{
+			for(auto F : Compiler::getFrameworkSearchPaths())
+				fenv += F + ":";
+
+			if(!fenv.empty() && fenv.back() == ':')
+				fenv.pop_back();
+		}
+
+
+		// set the things
+		setenv("LD_LIBRARY_PATH", env.c_str(), 1);
+		setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
+
+
+
+		for(auto l : Compiler::getLibrariesToLink())
+		{
+			std::string ext;
+
+			#if defined(__MACH__)
+				ext = ".dylib";
+			#elif defined(WIN32)
+				ext = ".dll";
+			#else
+				ext = ".so";
+			#endif
+
+			std::string err;
+			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
+			if(!dl.isValid())
+			{
+				fprintf(stderr, "Failed to load library '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
+				exit(-1);
+			}
+		}
+
+
+		for(auto l : Compiler::getFrameworksToLink())
+		{
+			std::string name = l + ".framework/" + l;
+
+			std::string err;
+			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
+			if(!dl.isValid())
+			{
+				fprintf(stderr, "Failed to load framework '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
+				exit(-1);
+			}
+		}
+
+
+
 		if(this->linkedModule->getFunction("main") != 0)
 		{
 			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
@@ -384,6 +561,11 @@ namespace Compiler
 		{
 			error_and_exit("No main() function, cannot JIT");
 		}
+
+
+		// restore
+		setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
+		setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
 	}
 
 
@@ -515,353 +697,6 @@ namespace Compiler
 
 
 
-
-
-
-
-#if 0
-namespace Compiler
-{
-
-	static void optimiseLlvmModule(llvm::Module* mod);
-	static void doGlobalConstructors(std::string filename, CompiledData& data, Ast::Root* root, llvm::Module* mod);
-
-	static void runProgramWithJit(llvm::Module* mod);
-	static void compileBinary(std::string filename, std::string outname, CompiledData data, llvm::Module* mod);
-
-	extern "C" char** environ;
-
-	void compileToLlvm(std::string filename, std::string outname, CompiledData data)
-	{
-		std::unordered_map<std::string, llvm::Module*> modulelist;
-
-		// translate to llvm
-		for(auto mod : data.moduleList)
-		{
-			modulelist[mod.first] = mod.second->translateToLlvm();
-		}
-
-
-		// link together
-		llvm::IRBuilder<> builder(llvm::getGlobalContext());
-
-		llvm::Module* mainModule = new llvm::Module("_empty", llvm::getGlobalContext());
-		llvm::Linker linker = llvm::Linker(*mainModule);
-
-		for(auto mod : modulelist)
-		{
-			linker.linkInModule(std::unique_ptr<llvm::Module>(mod.second));
-		}
-
-
-		doGlobalConstructors(filename, data, data.rootNode, mainModule);
-
-		// if(Compiler::getDumpLlvm())
-		// 	mainModule->dump();
-
-		// once more
-		optimiseLlvmModule(mainModule);
-
-
-		if(Compiler::getDumpLlvm())
-			mainModule->dump();
-
-
-		if(Compiler::getRunProgramWithJit())
-		{
-			runProgramWithJit(mainModule);
-		}
-		else
-		{
-			compileBinary(filename, outname, data, mainModule);
-		}
-
-		// cleanup
-		for(auto p : data.rootMap)
-			delete p.second;
-
-	}
-
-	static void doGlobalConstructors(std::string filename, CompiledData& data, Ast::Root* root, llvm::Module* mod)
-	{
-		auto& rootmap = data.rootMap;
-
-		bool needGlobalConstructor = false;
-		if(root->globalConstructorTrampoline != 0) needGlobalConstructor = true;
-		for(auto pair : data.rootMap)
-		{
-			if(pair.second->globalConstructorTrampoline != 0)
-			{
-				needGlobalConstructor = true;
-				break;
-			}
-		}
-
-
-		if(needGlobalConstructor)
-		{
-			std::vector<llvm::Function*> constructors;
-			rootmap[filename] = root;
-
-			for(auto pair : rootmap)
-			{
-				if(pair.second->globalConstructorTrampoline != 0)
-				{
-					llvm::Function* constr = mod->getFunction(pair.second->globalConstructorTrampoline->getName().mangled());
-					if(!constr)
-					{
-						error("required global constructor %s was not found in the module!",
-							pair.second->globalConstructorTrampoline->getName().str().c_str());
-					}
-					else
-					{
-						constructors.push_back(constr);
-					}
-				}
-			}
-
-			rootmap.erase(filename);
-
-			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
-			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
-				"__global_constructor_top_level__", mod);
-
-			llvm::IRBuilder<> builder(llvm::getGlobalContext());
-
-			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
-			builder.SetInsertPoint(iblock);
-
-			for(auto f : constructors)
-			{
-				iceAssert(f);
-				builder.CreateCall(f);
-			}
-
-			builder.CreateRetVoid();
-
-
-			if(!Compiler::getNoAutoGlobalConstructor())
-			{
-				// insert a call at the beginning of main().
-				llvm::Function* mainfunc = mod->getFunction("main");
-				if(!Compiler::getIsCompileOnly() && !mainfunc)
-					error("No main() function");
-
-				iceAssert(mainfunc);
-
-				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-				llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
-
-				f->moveBefore(entry);
-				builder.SetInsertPoint(f);
-				builder.CreateCall(gconstr);
-				builder.CreateBr(entry);
-			}
-		}
-	}
-
-	static void optimiseLlvmModule(llvm::Module* mod)
-	{
-		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
-
-		if(Compiler::getOptimisationLevel() > 0)
-		{
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			fpm.add(llvm::createInstructionCombiningPass());
-
-			// Reassociate expressions.
-			fpm.add(llvm::createReassociatePass());
-
-			// Eliminate Common SubExpressions.
-			fpm.add(llvm::createGVNPass());
-
-
-			// Simplify the control flow graph (deleting unreachable blocks, etc).
-			fpm.add(llvm::createCFGSimplificationPass());
-
-			// hmm.
-			// fuck it, turn everything on.
-			fpm.add(llvm::createConstantHoistingPass());
-			fpm.add(llvm::createLICMPass());
-			fpm.add(llvm::createDelinearizationPass());
-			fpm.add(llvm::createFlattenCFGPass());
-			fpm.add(llvm::createScalarizerPass());
-			fpm.add(llvm::createSinkingPass());
-			fpm.add(llvm::createStructurizeCFGPass());
-			fpm.add(llvm::createInstructionSimplifierPass());
-			fpm.add(llvm::createDeadStoreEliminationPass());
-			fpm.add(llvm::createDeadInstEliminationPass());
-			fpm.add(llvm::createMemCpyOptPass());
-
-			fpm.add(llvm::createSCCPPass());
-
-			fpm.add(llvm::createTailCallEliminationPass());
-			fpm.add(llvm::createAggressiveDCEPass());
-
-
-			// module-level stuff
-			fpm.add(llvm::createMergeFunctionsPass());
-			fpm.add(llvm::createLoopSimplifyPass());
-		}
-
-		// optimisation level -1 disables *everything*
-		// mostly for reading the IR to debug codegen.
-		if(Compiler::getOptimisationLevel() >= 0)
-		{
-			// always do the mem2reg pass, our generated code is too inefficient
-			fpm.add(llvm::createPromoteMemoryToRegisterPass());
-			fpm.add(llvm::createMergedLoadStoreMotionPass());
-			fpm.add(llvm::createScalarReplAggregatesPass());
-			fpm.add(llvm::createConstantPropagationPass());
-			fpm.add(llvm::createDeadCodeEliminationPass());
-			fpm.add(llvm::createLoadCombinePass());
-		}
-
-		fpm.run(*mod);
-	}
-
-	void compileProgram(llvm::Module* module, std::string foldername, std::string outname)
-	{
-		std::string oname = outname.empty() ? (foldername + "/" + module->getModuleIdentifier()).c_str() : outname.c_str();
-
-		if(Compiler::getEmitLLVMOutput())
-		{
-			Compiler::writeBitcode(oname + ".bc", module);
-		}
-		else
-		{
-			llvm::InitializeAllTargets();
-			llvm::InitializeAllTargetMCs();
-			llvm::InitializeAllAsmParsers();
-			llvm::InitializeAllAsmPrinters();
-
-			llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
-			llvm::initializeCore(*Registry);
-			llvm::initializeCodeGen(*Registry);
-
-			llvm::Triple targetTriple;
-			targetTriple.setTriple(Compiler::getTarget().empty() ? llvm::sys::getDefaultTargetTriple() : Compiler::getTarget());
-
-
-
-			std::string err_str;
-			const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
-			if(!theTarget)
-			{
-				fprintf(stderr, "error creating target: (wanted: '%s');\n"
-						"llvm error: %s\n", targetTriple.str().c_str(), err_str.c_str());
-				exit(-1);
-			}
-
-
-			// get the mcmodel
-			llvm::CodeModel::Model codeModel;
-			if(Compiler::getCodeModel() == "kernel")
-			{
-				codeModel = llvm::CodeModel::Kernel;
-			}
-			else if(Compiler::getCodeModel() == "small")
-			{
-				codeModel = llvm::CodeModel::Small;
-			}
-			else if(Compiler::getCodeModel() == "medium")
-			{
-				codeModel = llvm::CodeModel::Medium;
-			}
-			else if(Compiler::getCodeModel() == "large")
-			{
-				codeModel = llvm::CodeModel::Large;
-			}
-			else if(Compiler::getCodeModel().empty())
-			{
-				codeModel = llvm::CodeModel::Default;
-			}
-			else
-			{
-				fprintf(stderr, "Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)\n",
-					Compiler::getCodeModel().c_str());
-
-				exit(-1);
-			}
-
-
-			llvm::TargetOptions targetOptions;
-
-			if(Compiler::getIsPositionIndependent())
-				targetOptions.PositionIndependentExecutable = true;
-
-
-			std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
-				targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
-
-
-
-
-			module->setDataLayout(targetMachine->createDataLayout());
-			{
-				llvm::SmallVector<char, 0> memoryBuffer;
-				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
-				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
-
-				llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-				targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
-				pm.run(*module);
-
-				// flush and kill it.
-				rawStream->flush();
-
-
-				if(Compiler::getIsCompileOnly())
-				{
-					// if we are compile-only, we need to write the .o file
-
-					// now memoryBuffer should contain the .object file
-					std::ofstream objectOutput(oname + ".o", std::ios::binary | std::ios::out);
-					objectOutput.write(memoryBuffer.data(), memoryBuffer.size_in_bytes());
-					objectOutput.close();
-				}
-				else
-				{
-					// else we just do everything in-memory
-					// yea right, lol
-
-					char templ[] = "/tmp/fileXXXXXX";
-					int fd = mkstemp(templ);
-
-					write(fd, memoryBuffer.data(), memoryBuffer.size_in_bytes());
-
-					const char* argv[5];
-
-					argv[0] = "cc";
-					argv[1] = "-o";
-					argv[2] = oname.c_str();
-					argv[3] = templ;
-					argv[4] = 0;
-
-
-					pid_t pid = fork();
-					if(pid == 0)
-					{
-						// in child, pid == 0.
-
-						execvp(argv[0], (char* const*) argv);
-						exit(1);
-					}
-					else
-					{
-						// wait for child to finish, then we can continue cleanup
-						int stat = 0;
-						waitpid(pid, &stat, 0);
-					}
-
-					// delete the temp file
-					std::remove(templ);
-				}
-			}
-		}
-	}
-}
-#endif
 
 
 

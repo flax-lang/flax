@@ -145,7 +145,6 @@ public func miscellaneousTests()
 	}
 
 	do {
-
 		func test() -> string
 		{
 			return "hello!"
@@ -159,6 +158,12 @@ public func miscellaneousTests()
 
 	variadicTest("ints", 10, 20, 30, 40, 50, 60)
 }
+
+
+
+
+
+
 
 
 
