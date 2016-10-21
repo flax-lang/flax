@@ -1416,7 +1416,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 							auto vr = new VarRef(fc->pin, fc->name);
 							auto res = doVariable(cgi, vr, ref, cls, cls->createdType->toClassType()->getElementIndex(m->ident.name));
 
-							delete vr;
+							// delete vr;
 
 							iceAssert(res.value);
 							iceAssert(res.value->getType()->isFunctionType());
@@ -1447,7 +1447,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 								auto vr = new VarRef(fc->pin, fc->name);
 								auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
-								delete vr;
+								// delete vr;
 
 								iceAssert(res.value);
 								iceAssert(res.value->getType()->isFunctionType());
@@ -1481,7 +1481,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 										auto vr = new VarRef(fc->pin, fc->name);
 										auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
-										delete vr;
+										// delete vr;
 
 										iceAssert(res.value);
 										iceAssert(res.value->getType()->isFunctionType());

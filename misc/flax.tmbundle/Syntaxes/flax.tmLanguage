@@ -736,7 +736,7 @@
 					<key>comment</key>
 					<string>other keyword</string>
 					<key>match</key>
-					<string>\b(associativity|didSet|get|infix|inout|left|mutating|none|nonmutating|operator|override|postfix|precedence|prefix|right|set|unowned((un)?safe)?|weak|willSet)\b</string>
+					<string>\b(associativity|didSet|get|infix|inout|mutating|none|nonmutating|operator|override|postfix|precedence|prefix|set|unowned((un)?safe)?|weak|willSet)\b</string>
 					<key>name</key>
 					<string>keyword.other.flax</string>
 				</dict>

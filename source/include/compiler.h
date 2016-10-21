@@ -80,6 +80,10 @@ namespace Compiler
 	std::string getCodeModel();
 	std::string getSysroot();
 
+	std::deque<std::string> getLibrarySearchPaths();
+	std::deque<std::string> getLibrariesToLink();
+	std::deque<std::string> getFrameworksToLink();
+	std::deque<std::string> getFrameworkSearchPaths();
 
 	enum class BackendOption;
 	enum class OptimisationLevel;

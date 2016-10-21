@@ -936,8 +936,8 @@ namespace Parser
 			ret = ctype->ptype;
 			delete ctype;
 
-			if(ret->str() == VOID_TYPE_STRING)
-				parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
+			// if(ret->str() == VOID_TYPE_STRING)
+			// 	parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
 		}
 		else
 		{
