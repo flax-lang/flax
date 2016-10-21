@@ -189,8 +189,8 @@ namespace Ast
 
 	Root::~Root()
 	{
-		for(Expr* e : this->topLevelExpressions)
-			delete e;
+		// for(Expr* e : this->topLevelExpressions)
+		// 	delete e;
 	}
 }
 

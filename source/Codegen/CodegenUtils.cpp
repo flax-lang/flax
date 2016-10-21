@@ -458,7 +458,7 @@ namespace Codegen
 		else if(!func)
 		{
 			// note: generic functions are not instantiated
-			if(funcdecl->genericTypes.size() == 0)
+			if(funcdecl && funcdecl->genericTypes.size() == 0)
 				error(funcdecl, "!func (%s)", funcdecl->ident.str().c_str());
 		}
 
