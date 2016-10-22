@@ -8,8 +8,6 @@
 
 #include "operators.h"
 
-#include <float.h>
-
 using namespace Ast;
 using namespace Codegen;
 
@@ -390,6 +388,19 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
 		}
 
+		if(vartype->isPrimitiveType() && vartype->toPrimitiveType()->isLiteralType())
+		{
+			// make it the largest, by default
+			if(vartype->isIntegerType() && vartype->isSignedIntType())
+				vartype = fir::Type::getInt64();
+
+			else if(vartype->isIntegerType())
+				vartype = fir::Type::getUint64();
+
+			else
+				vartype = fir::Type::getFloat64();
+		}
+
 		this->concretisedType = vartype;
 	}
 	else
@@ -405,19 +416,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 
-#if 0
-static bool floatLiteralFitsIntoType(fir::PrimitiveType* type, double val)
-{
-	if(type->getFloatingPointBitWidth() == 32)
-		return (float) val >= FLT_MIN && (float) val <= FLT_MAX;
-
-	else if(type->getFloatingPointBitWidth() == 64)
-		return val >= DBL_MIN && val <= DBL_MAX;
-
-	else
-		return false;
-}
-#endif
 
 Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -451,7 +449,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			auto res = this->initVal->codegen(cgi, glob);
 
 			// don't be wasting time calling functions if we're constant.
-			if(dynamic_cast<fir::ConstantValue*>(res.value))
+			if(false && dynamic_cast<fir::ConstantValue*>(res.value))
 			{
 				// go back to prev
 				cgi->irb.setCurrentBlock(prev);

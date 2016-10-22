@@ -20,7 +20,7 @@ namespace fir
 {
 	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
 	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
-
+	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, double val);
 
 	struct Value;
 

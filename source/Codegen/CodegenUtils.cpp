@@ -1461,7 +1461,7 @@ namespace Codegen
 
 
 
-
+	#if 0
 	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
 	{
 		if(decl->isFFI) return false;
@@ -1486,6 +1486,7 @@ namespace Codegen
 			return false;
 		}
 	}
+	#endif
 
 	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
@@ -1537,6 +1538,15 @@ namespace Codegen
 		FuncDecl* candidate, std::deque<fir::Type*> args)
 	{
 		std::map<std::string, fir::Type*> thistm;
+
+
+		// get rid of this stupid literal nonsense
+		for(size_t i = 0; i < args.size(); i++)
+		{
+			if(args[i]->isPrimitiveType() && args[i]->toPrimitiveType()->isLiteralType())
+				args[i] = args[i]->toPrimitiveType()->getUnliteralType();
+		}
+
 
 		// now check if we *can* instantiate it.
 		// first check the number of arguments.

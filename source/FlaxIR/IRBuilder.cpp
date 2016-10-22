@@ -805,7 +805,57 @@ namespace fir
 		return this->CreateCall(fn, { p1, p2, p3 }, vname);
 	}
 
+	#if 0
+	fir::ConstantInt* ci = 0;
+	if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+	{
+		if((ci = dynamic_cast<fir::ConstantInt*>(from)))
+		{
+			if(ci->getType()->isSignedIntType())
+			{
+				shouldCast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getSignedValue());
+			}
+			else
+			{
+				shouldCast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getUnsignedValue());
+			}
+		}
+	}
 
+	if(shouldCast)
+	{
+		// if it is a literal, we need to create a new constant with a proper type
+		if(from->getType()->toPrimitiveType()->isLiteralType())
+		{
+			if(ci)
+			{
+				fir::PrimitiveType* real = 0;
+				if(ci->getType()->isSignedIntType())
+					real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
+
+				else
+					real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+				from = fir::ConstantInt::get(real, ci->getSignedValue());
+			}
+			else
+			{
+				// nothing?
+				from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+			}
+
+			retval = from;
+		}
+
+		// check signed to unsigned first
+		if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
+		{
+			from = this->irb.CreateIntSignednessCast(from, from->getType()->toPrimitiveType()->getOppositeSignedType());
+		}
+
+		retval = this->irb.CreateIntSizeCast(from, target);
+	}
+	#endif
 
 
 	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args, std::string vname)
@@ -821,8 +871,64 @@ namespace fir
 
 			for(size_t i = 0; i < args.size(); i++)
 			{
-				if(args[i]->getType() != fn->getArguments()[i]->getType())
+				auto target = fn->getArguments()[i]->getType();
+				if(args[i]->getType() != target)
 				{
+					if(args[i]->getType()->isPrimitiveType() && args[i]->getType()->toPrimitiveType()->isLiteralType())
+					{
+						bool shouldcast = false;
+
+						ConstantInt* ci = 0;
+						ConstantFP* cf = 0;
+						if((ci = dynamic_cast<ConstantInt*>(args[i])))
+						{
+							if(ci->getType()->isSignedIntType())
+							{
+								shouldcast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(),
+									ci->getSignedValue());
+							}
+							else
+							{
+								shouldcast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(),
+									ci->getUnsignedValue());
+							}
+						}
+						else if((cf = dynamic_cast<ConstantFP*>(args[i])))
+						{
+							shouldcast = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), cf->getValue());
+						}
+
+
+
+
+						if(shouldcast)
+						{
+							if(ci)
+							{
+								PrimitiveType* real = 0;
+								if(ci->getType()->isSignedIntType())
+									real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
+
+								else
+									real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+								args[i] = fir::ConstantInt::get(real, ci->getSignedValue());
+							}
+							else if(cf)
+							{
+								args[i] = fir::ConstantFP::get(target, cf->getValue());
+							}
+							else
+							{
+								args[i]->setType(target);
+							}
+						}
+
+
+						if(args[i]->getType() == target)
+							continue;
+					}
+
 					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
 						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 				}

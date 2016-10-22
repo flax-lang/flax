@@ -12,25 +12,86 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// check builtin type
 	if(this->decimal)
-		return Result_t(fir::ConstantFP::getFloat64(this->dval), 0);
-
+	{
+		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), this->dval), 0);
+	}
 	else if(this->needUnsigned)
-		return Result_t(fir::ConstantInt::getUint64((uint64_t) this->ival), 0);
-
+	{
+		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), (uint64_t) this->ival), 0);
+	}
 	else
-		return Result_t(fir::ConstantInt::getInt64(this->ival), 0);
+	{
+		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), this->ival), 0);
+	}
 }
+
+static fir::Type* _makeReal(fir::Type* pt)
+{
+	if(pt->isPrimitiveType() && pt->toPrimitiveType()->isLiteralType())
+	{
+		if(pt->toPrimitiveType()->isFloatingPointType())
+			return fir::Type::getFloat64();
+
+		else if(pt->toPrimitiveType()->isSignedIntType())
+			return fir::Type::getInt64();
+
+		else
+			return fir::Type::getUint64();
+	}
+
+	return pt;
+}
+
+static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
+{
+	if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(cv))
+	{
+		return fir::ConstantInt::get(_makeReal(ci->getType()), ci->getSignedValue());
+	}
+	else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(cv))
+	{
+		return fir::ConstantFP::get(_makeReal(cf->getType()), cf->getValue());
+	}
+	else if(fir::ConstantArray* ca = dynamic_cast<fir::ConstantArray*>(cv))
+	{
+		std::vector<fir::ConstantValue*> vs;
+		for(auto v : ca->getValues())
+			vs.push_back(_makeReal(v));
+
+		return fir::ConstantArray::get(fir::ArrayType::get(vs.front()->getType(), vs.size()), vs);
+	}
+
+	return cv;
+}
+
 
 fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	// if(this->decimal)
+	// {
+	// 	return fir::Type::getFloat64();
+	// }
+	// else if(this->needUnsigned)
+	// {
+	// 	return fir::Type::getUint64();
+	// }
+	// else
+	// {
+	// 	return fir::Type::getInt64();
+	// }
+
 	if(this->decimal)
-		return fir::Type::getFloat64();
-
+	{
+		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
+	}
 	else if(this->needUnsigned)
-		return fir::Type::getUint64();
-
+	{
+		return fir::PrimitiveType::getUnspecifiedLiteralUint();
+	}
 	else
-		return fir::Type::getInt64();
+	{
+		return fir::PrimitiveType::getUnspecifiedLiteralInt();
+	}
 }
 
 
@@ -176,7 +237,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		tp = this->values.front()->getType(cgi);
+		tp = _makeReal(this->values.front()->getType(cgi));
 
 		for(Expr* e : this->values)
 		{
@@ -184,8 +245,8 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
+				vals.push_back(_makeReal(c));
 
-				vals.push_back(c);
 				if(vals.back()->getType() != tp)
 				{
 					error(e, "Array members must have the same type, got %s and %s",
@@ -209,11 +270,90 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return fir::ArrayType::get(this->values.front()->getType(cgi), this->values.size());
+	return fir::ArrayType::get(_makeReal(this->values.front()->getType(cgi)), this->values.size());
 }
 
 
 
+
+
+
+
+
+
+
+fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	// todo: handle named tuples.
+	// would probably just be handled as implicit anon structs
+	// (randomly generated name or something), with appropriate code to handle
+	// assignment to and from.
+
+	if(this->ltypes.size() == 0)
+	{
+		iceAssert(!this->didCreateType);
+
+		for(Expr* e : this->values)
+			this->ltypes.push_back(_makeReal(e->getType(cgi)));
+
+		this->ident.name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
+		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
+		this->didCreateType = true;
+
+		// todo: debate, should we add this?
+		// edit: no.
+		// cgi->addNewType(this->createdType, this, TypeKind::Tuple);
+	}
+
+	return this->createdType;
+}
+
+fir::Type* Tuple::createType(CodegenInstance* cgi)
+{
+	(void) cgi;
+	return 0;
+}
+
+Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	fir::Value* gep = 0;
+	if(extra)
+	{
+		gep = extra;
+	}
+	else
+	{
+		gep = cgi->getStackAlloc(this->getType(cgi));
+	}
+
+	iceAssert(gep);
+
+	fir::TupleType* tuptype = gep->getType()->getPointerElementType()->toTupleType();
+	iceAssert(tuptype);
+
+	// set all the values.
+	// do the gep for each.
+
+	iceAssert(tuptype->getElementCount() == this->values.size());
+
+	for(size_t i = 0; i < tuptype->getElementCount(); i++)
+	{
+		fir::Value* member = cgi->irb.CreateStructGEP(gep, i);
+		fir::Value* val = this->values[i]->codegen(cgi).value;
+
+		val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
+
+		if(val->getType() != member->getType()->getPointerElementType())
+		{
+			error(this, "Element %zu of tuple is mismatched, expected '%s' but got '%s'", i,
+				member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
+		}
+
+		cgi->irb.CreateStore(val, member);
+	}
+
+	return Result_t(cgi->irb.CreateLoad(gep), gep);
+}
 
 
 

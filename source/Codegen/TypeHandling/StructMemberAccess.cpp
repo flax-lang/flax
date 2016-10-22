@@ -696,8 +696,7 @@ static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, Co
 	iceAssert(lcallee);
 
 	lcallee = cgi->module->getFunction(lcallee->getName());
-	std::vector<fir::Value*> args { ref };
-	return Result_t(cgi->irb.CreateCall(lcallee, args), 0);
+	return Result_t(cgi->irb.CreateCall1(lcallee, ref), 0);
 }
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)

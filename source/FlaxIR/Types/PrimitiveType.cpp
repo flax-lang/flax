@@ -6,10 +6,11 @@
 
 namespace fir
 {
-	PrimitiveType::PrimitiveType(size_t bits, Kind kind)
+	PrimitiveType::PrimitiveType(size_t bits, Kind kind, bool islit)
 	{
 		this->bitWidth = bits;
 		this->primKind = kind;
+		this->isUnspecifiedLiteral = islit;
 	}
 
 
@@ -181,6 +182,78 @@ namespace fir
 
 
 
+	PrimitiveType* PrimitiveType::getUnspecifiedLiteralInt(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		auto t = new PrimitiveType(64, Kind::Integer, true);
+		t->isTypeSigned = true;
+
+		return dynamic_cast<PrimitiveType*>(tc->normaliseType(t));
+	}
+
+	PrimitiveType* PrimitiveType::getUnspecifiedLiteralUint(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		auto t = new PrimitiveType(64, Kind::Integer, true);
+		t->isTypeSigned = false;
+
+		return dynamic_cast<PrimitiveType*>(tc->normaliseType(t));
+	}
+
+	PrimitiveType* PrimitiveType::getUnspecifiedLiteralFloat(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return dynamic_cast<PrimitiveType*>(tc->normaliseType(new PrimitiveType(64, Kind::Floating, true)));
+	}
+
+	PrimitiveType* PrimitiveType::getUnliteralType(FTContext* tc)
+	{
+		if(!this->isLiteralType())
+		{
+			return this;
+		}
+
+		// ok
+		if(this->isIntegerType())
+		{
+			if(this->isSigned())
+			{
+				switch(this->getIntegerBitWidth())
+				{
+					case 8:		return fir::Type::getInt8();
+					case 16:	return fir::Type::getInt16();
+					case 32:	return fir::Type::getInt32();
+					case 64:	return fir::Type::getInt64();
+				}
+			}
+			else
+			{
+				switch(this->getIntegerBitWidth())
+				{
+					case 8:		return fir::Type::getUint8();
+					case 16:	return fir::Type::getUint16();
+					case 32:	return fir::Type::getUint32();
+					case 64:	return fir::Type::getUint64();
+				}
+			}
+
+			iceAssert(0);
+		}
+		else
+		{
+			if(this->getFloatingPointBitWidth() == 64)		return fir::Type::getFloat64(tc);
+			else if(this->getFloatingPointBitWidth() == 32)	return fir::Type::getFloat32(tc);
+
+			iceAssert(0);
+		}
+	}
+
 
 
 
@@ -190,6 +263,16 @@ namespace fir
 	{
 		// is primitive.
 		std::string ret;
+
+		if(this->isLiteralType())
+		{
+			if(this->primKind == Kind::Integer)
+				return "int?";
+
+			else
+				return "float?";
+		}
+
 
 		if(this->primKind == Kind::Integer)
 		{
@@ -235,6 +318,7 @@ namespace fir
 		if(this->primKind != po->primKind) return false;
 		if(this->bitWidth != po->bitWidth) return false;
 		if(this->isTypeSigned != po->isTypeSigned) return false;
+		if(this->isUnspecifiedLiteral != po->isUnspecifiedLiteral) return false;
 
 		return true;
 	}
@@ -246,6 +330,11 @@ namespace fir
 	{
 		iceAssert(this->primKind == Kind::Integer && "not integer type");
 		return this->isTypeSigned;
+	}
+
+	bool PrimitiveType::isLiteralType()
+	{
+		return this->isUnspecifiedLiteral;
 	}
 
 	size_t PrimitiveType::getIntegerBitWidth()
@@ -298,7 +387,7 @@ namespace fir
 		}
 		else
 		{
-			error_and_exit("???");
+			return this;
 		}
 	}
 
