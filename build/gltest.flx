@@ -47,7 +47,7 @@ public func main(argc: int32, argv: int8**) -> int
 	while(true)
 	{
 		glClear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
-		glTranslated(0.0, 0.0, -6.0)
+		glTranslated(0.0, 0.0, -5.0)
 
 		glRotated(rotation, 1.0, 1.0, 0.0);
 
@@ -108,8 +108,6 @@ public func main(argc: int32, argv: int8**) -> int
 			{
 				break
 			}
-
-			printf("event\n")
 		}
 
 		SDL_GL_SwapWindow(mw)
