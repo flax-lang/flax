@@ -5,6 +5,8 @@
 #include "ir/value.h"
 #include "ir/constant.h"
 
+#include <float.h>
+
 namespace fir
 {
 	ConstantValue::ConstantValue(Type* t) : Value(t)
@@ -204,7 +206,7 @@ namespace fir
 		iceAssert(type->isIntegerType());
 		if(type->isSigned())
 		{
-			ssize_t max = (1 << (type->getIntegerBitWidth() - 1)) - 1;
+			ssize_t max = ((size_t) 1 << (type->getIntegerBitWidth() - 1)) - 1;
 			ssize_t min = -max - 1;
 
 			return val <= max && val >= min;
@@ -249,6 +251,19 @@ namespace fir
 
 			return val <= max;
 		}
+	}
+
+
+	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, double val)
+	{
+		if(type->getFloatingPointBitWidth() == 32)
+			return (double) ((float) val) == val;
+
+		else if(type->getFloatingPointBitWidth() == 64)
+			return true;
+
+		else
+			iceAssert(0);
 	}
 }
 

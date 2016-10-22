@@ -13,6 +13,8 @@ using namespace Ast;
 using namespace Codegen;
 
 
+// Expr* __debugExpr = 0;
+
 namespace Codegen
 {
 	fir::Type* CodegenInstance::getExprTypeOfBuiltin(std::string type)
@@ -129,6 +131,27 @@ namespace Codegen
 		if(from->isTypeEqual(to))
 			return 0;
 
+		if(from->isPrimitiveType() && to->isPrimitiveType())
+		{
+			auto fprim = from->toPrimitiveType();
+			auto tprim = to->toPrimitiveType();
+
+			if(fprim->isLiteralType() && fprim->isFloatingPointType() && tprim->isFloatingPointType())
+			{
+				return 1;
+			}
+			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isIntegerType())
+			{
+				return 1;
+			}
+			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isFloatingPointType())
+			{
+				return 3;
+			}
+		}
+
+
+
 		int ret = 0;
 		if(from->isIntegerType() && to->isIntegerType()
 			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
@@ -201,6 +224,14 @@ namespace Codegen
 
 			return ret;
 		}
+		// float to float is 1
+		else if(to->isFloatingPointType() && from->isFloatingPointType())
+		{
+			if(to->toPrimitiveType()->getFloatingPointBitWidth() > from->toPrimitiveType()->getFloatingPointBitWidth())
+				return 1;
+
+			return -1;
+		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::Type::getInt8(this->getContext())
 			&& from->isStringType())
@@ -270,12 +301,14 @@ namespace Codegen
 
 
 		if(target->isIntegerType() && from->getType()->isIntegerType()
-			&& target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth())
+			&& (target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth()
+				|| from->getType()->toPrimitiveType()->isLiteralType()))
 		{
 			bool shouldCast = dist >= 0;
-			if(dist == -1)
+			fir::ConstantInt* ci = 0;
+			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
 			{
-				if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(from))
+				if((ci = dynamic_cast<fir::ConstantInt*>(from)))
 				{
 					if(ci->getType()->isSignedIntType())
 					{
@@ -290,10 +323,30 @@ namespace Codegen
 
 			if(shouldCast)
 			{
-				// check signed to unsiged first
-				// note(behaviour): should this be implicit?
-				// if we should cast, then the bitwidth should already be >=
+				// if it is a literal, we need to create a new constant with a proper type
+				if(from->getType()->toPrimitiveType()->isLiteralType())
+				{
+					if(ci)
+					{
+						fir::PrimitiveType* real = 0;
+						if(ci->getType()->isSignedIntType())
+							real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
 
+						else
+							real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+						from = fir::ConstantInt::get(real, ci->getSignedValue());
+					}
+					else
+					{
+						// nothing?
+						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+					}
+
+					retval = from;
+				}
+
+				// check signed to unsigned first
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
 					from = this->irb.CreateIntSignednessCast(from, from->getType()->toPrimitiveType()->getOppositeSignedType());
@@ -330,6 +383,45 @@ namespace Codegen
 
 				if(target->toPrimitiveType()->getIntegerBitWidth() >= from->getType()->toPrimitiveType()->getIntegerBitWidth())
 					retval = this->irb.CreateIntSizeCast(from, target);
+			}
+		}
+
+		// float literals
+		else if(target->isFloatingPointType() && from->getType()->isFloatingPointType())
+		{
+			bool shouldCast = dist >= 0;
+			fir::ConstantFP* cf = 0;
+
+			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+			{
+				if((cf = dynamic_cast<fir::ConstantFP*>(from)))
+				{
+					shouldCast = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), cf->getValue());
+					// warn(__debugExpr, "fits: %d", shouldCast);
+				}
+			}
+
+			if(shouldCast)
+			{
+				// if it is a literal, we need to create a new constant with a proper type
+				if(from->getType()->toPrimitiveType()->isLiteralType())
+				{
+					if(cf)
+					{
+						from = fir::ConstantFP::get(target, cf->getValue());
+						// info(__debugExpr, "(%s / %s)", target->str().c_str(), from->getType()->str().c_str());
+					}
+					else
+					{
+						// nothing.
+						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+					}
+
+					retval = from;
+				}
+
+				if(from->getType()->toPrimitiveType()->getFloatingPointBitWidth() < target->toPrimitiveType()->getFloatingPointBitWidth())
+					retval = this->irb.CreateFExtend(from, target);
 			}
 		}
 

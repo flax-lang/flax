@@ -238,9 +238,11 @@ namespace fir
 
 		// methods
 		bool isSigned();
+		bool isLiteralType();
 		size_t getIntegerBitWidth();
 		size_t getFloatingPointBitWidth();
 		PrimitiveType* getOppositeSignedType();
+		PrimitiveType* getUnliteralType(FTContext* tc = 0);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -259,11 +261,12 @@ namespace fir
 
 		// protected constructor
 		protected:
-		PrimitiveType(size_t bits, Kind _kind);
+		PrimitiveType(size_t bits, Kind _kind, bool islit);
 		virtual ~PrimitiveType() override { }
 
 
 		// fields (protected)
+		bool isUnspecifiedLiteral = 0;
 		bool isTypeSigned = 0;
 		size_t bitWidth = 0;
 
@@ -291,6 +294,10 @@ namespace fir
 		static PrimitiveType* getUint64(FTContext* tc = 0);
 		static PrimitiveType* getFloat32(FTContext* tc = 0);
 		static PrimitiveType* getFloat64(FTContext* tc = 0);
+
+		static PrimitiveType* getUnspecifiedLiteralInt(FTContext* tc = 0);
+		static PrimitiveType* getUnspecifiedLiteralUint(FTContext* tc = 0);
+		static PrimitiveType* getUnspecifiedLiteralFloat(FTContext* tc = 0);
 	};
 
 

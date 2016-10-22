@@ -18,6 +18,18 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 
 	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
+	// for(size_t i = 0; i < initfunc->getArgumentCount(); i++)
+	// {
+	// 	if(args[i]->getType() != initfunc->getArguments()[i]->getType())
+	// 		args[i] = this->autoCastType(initfunc->getArguments()[i]->getType(), args[i]);
+
+	// 	if(args[i]->getType() != initfunc->getArguments()[i]->getType())
+	// 	{
+	// 		error(user, "Argument mismatch (%zu) in call to type initialiser; expected '%s', got '%s'", i + 1,
+	// 			initfunc->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+	// 	}
+	// }
+
 	this->irb.CreateCall(initfunc, args);
 	fir::Value* val = this->irb.CreateLoad(ai);
 
@@ -25,11 +37,14 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 }
 
 
+// extern Expr* __debugExpr;
 
 static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenInstance* cgi, FuncCall* fc, fir::FunctionType* ft,
 	std::deque<Expr*> params, bool variadic, bool cvar)
 {
 	std::deque<fir::Value*> args;
+
+	// __debugExpr = fc;
 
 	if(!variadic)
 	{
@@ -257,15 +272,19 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				return res;
 			}
 		}
-		else if(arg->getType() == type)
-		{
-			// ok, just return the thing.
-			return Result_t(arg, 0);
-		}
 		else
 		{
-			error(this, "Invalid argument type '%s' to builtin type initialiser for type '%s'", arg->getType()->str().c_str(),
-				type->str().c_str());
+			if(arg->getType() != type)
+				arg = cgi->autoCastType(type, arg, res.pointer);
+
+			if(arg->getType() != type)
+			{
+				error(this, "Invalid argument type '%s' to builtin type initialiser for type '%s'", arg->getType()->str().c_str(),
+					type->str().c_str());
+			}
+
+			// ok, just return the thing.
+			return Result_t(arg, 0);
 		}
 	}
 	else if(fir::Value* fv = cgi->getSymInst(this, this->name))
@@ -277,7 +296,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
 		iceAssert(ft);
-
 
 		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
 
