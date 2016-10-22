@@ -169,6 +169,7 @@ namespace Compiler
 		if(sep != std::string::npos)
 			foldername = this->inputFilenames[0].substr(0, sep);
 
+		bool wasEmpty = this->outputFilename.empty();
 		std::string oname = this->outputFilename.empty() ? (foldername + "/" + this->linkedModule->getModuleIdentifier()).c_str()
 			: this->outputFilename.c_str();
 
@@ -204,7 +205,7 @@ namespace Compiler
 				}
 
 				// now memoryBuffer should contain the .object file
-				std::ofstream objectOutput(oname + ".o", std::ios::binary | std::ios::out);
+				std::ofstream objectOutput(oname + (wasEmpty ? ".o" : ""), std::ios::binary | std::ios::out);
 				objectOutput.write(buffer.data(), buffer.size_in_bytes());
 				objectOutput.close();
 			}
@@ -232,37 +233,42 @@ namespace Compiler
 				argv[0] = "cc";
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
-				argv[3] = templ;
 
-				size_t i = 4;
+				size_t i = 3;
 
-				for(auto L : libdirs)
-				{
-					argv[i] = "-L";			i++;
-					argv[i] = L.c_str();	i++;
-				}
 
-				for(auto l : libs)
-				{
-					argv[i] = "-l";			i++;
-					argv[i] = l.c_str();	i++;
-				}
+				// note: these need to be references
+				// if they're not, then the std::string (along with its buffer) is destructed at the end of the loop body
+				// so the pointer in argv[i] becomes invalid
+				// thus we need to make sure the pointed thing is valid until we call execvp; the frames/libs/blabla deques up there
+				// will live for the required duration, so we use a reference.
 
-				for(auto F : framedirs)
+				for(auto& F : framedirs)
 				{
 					argv[i] = "-F";			i++;
 					argv[i] = F.c_str();	i++;
 				}
 
-				for(auto f : frames)
+				for(auto& f : frames)
 				{
 					argv[i] = "-framework";	i++;
 					argv[i] = f.c_str();	i++;
 				}
 
+				for(auto& L : libdirs)
+				{
+					argv[i] = "-L";			i++;
+					argv[i] = L.c_str();	i++;
+				}
+
+				for(auto& l : libs)
+				{
+					argv[i] = "-l";			i++;
+					argv[i] = l.c_str();	i++;
+				}
+
+				argv[s - 1] = templ;
 				argv[s] = 0;
-
-
 
 
 				int outpipe[2];
