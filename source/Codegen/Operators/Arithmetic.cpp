@@ -228,9 +228,17 @@ namespace Operators
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
-			fir::Value* tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
+			if(lhs->getType() != rhs->getType())
+				lhs = cgi->autoCastType(rhs, lhs);
+
+			fir::Value* tryop = 0;
+			if(lhs->getType() != rhs->getType())
+				goto die;
+
+			tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
 			if(!tryop)
 			{
+				die:
 				error(user, "Invalid operator '%s' between types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
 					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 			}

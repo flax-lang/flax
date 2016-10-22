@@ -181,8 +181,6 @@ namespace Codegen
 		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
 
-
-		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncDefPair> resolveFunctionName(std::string basename);
