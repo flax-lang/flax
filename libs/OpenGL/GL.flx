@@ -1,0 +1,1338 @@
+// GL.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public namespace GL
+{
+	public let FALSE: int32										= 0
+	public let TRUE: int32										= 1
+	public let BYTE: int32										= 0x1400
+	public let UNSIGNED_BYTE: int32								= 0x1401
+	public let SHORT: int32										= 0x1402
+	public let UNSIGNED_SHORT: int32							= 0x1403
+	public let INT: int32										= 0x1404
+	public let UNSIGNED_INT: int32								= 0x1405
+	public let FLOAT: int32										= 0x1406
+	public let TWO_BYTES: int32									= 0x1407
+	public let THREE_BYTES: int32								= 0x1408
+	public let FOUR_BYTES: int32								= 0x1409
+	public let DOUBLE: int32									= 0x140A
+	public let POINTS: int32									= 0x0000
+	public let LINES: int32										= 0x0001
+	public let LINE_LOOP: int32									= 0x0002
+	public let LINE_STRIP: int32								= 0x0003
+	public let TRIANGLES: int32									= 0x0004
+	public let TRIANGLE_STRIP: int32							= 0x0005
+	public let TRIANGLE_FAN: int32								= 0x0006
+	public let QUADS: int32										= 0x0007
+	public let QUAD_STRIP: int32								= 0x0008
+	public let POLYGON: int32									= 0x0009
+	public let VERTEX_ARRAY: int32								= 0x8074
+	public let NORMAL_ARRAY: int32								= 0x8075
+	public let COLOR_ARRAY: int32								= 0x8076
+	public let INDEX_ARRAY: int32								= 0x8077
+	public let TEXTURE_COORD_ARRAY: int32						= 0x8078
+	public let EDGE_FLAG_ARRAY: int32							= 0x8079
+	public let VERTEX_ARRAY_SIZE: int32							= 0x807A
+	public let VERTEX_ARRAY_TYPE: int32							= 0x807B
+	public let VERTEX_ARRAY_STRIDE: int32						= 0x807C
+	public let NORMAL_ARRAY_TYPE: int32							= 0x807E
+	public let NORMAL_ARRAY_STRIDE: int32						= 0x807F
+	public let COLOR_ARRAY_SIZE: int32							= 0x8081
+	public let COLOR_ARRAY_TYPE: int32							= 0x8082
+	public let COLOR_ARRAY_STRIDE: int32						= 0x8083
+	public let INDEX_ARRAY_TYPE: int32							= 0x8085
+	public let INDEX_ARRAY_STRIDE: int32						= 0x8086
+	public let TEXTURE_COORD_ARRAY_SIZE: int32					= 0x8088
+	public let TEXTURE_COORD_ARRAY_TYPE: int32					= 0x8089
+	public let TEXTURE_COORD_ARRAY_STRIDE: int32				= 0x808A
+	public let EDGE_FLAG_ARRAY_STRIDE: int32					= 0x808C
+	public let VERTEX_ARRAY_POINTER: int32						= 0x808E
+	public let NORMAL_ARRAY_POINTER: int32						= 0x808F
+	public let COLOR_ARRAY_POINTER: int32						= 0x8090
+	public let INDEX_ARRAY_POINTER: int32						= 0x8091
+	public let TEXTURE_COORD_ARRAY_POINTER: int32				= 0x8092
+	public let EDGE_FLAG_ARRAY_POINTER: int32					= 0x8093
+	public let V2F: int32										= 0x2A20
+	public let V3F: int32										= 0x2A21
+	public let C4UB_V2F: int32									= 0x2A22
+	public let C4UB_V3F: int32									= 0x2A23
+	public let C3F_V3F: int32									= 0x2A24
+	public let N3F_V3F: int32									= 0x2A25
+	public let C4F_N3F_V3F: int32								= 0x2A26
+	public let T2F_V3F: int32									= 0x2A27
+	public let T4F_V4F: int32									= 0x2A28
+	public let T2F_C4UB_V3F: int32								= 0x2A29
+	public let T2F_C3F_V3F: int32								= 0x2A2A
+	public let T2F_N3F_V3F: int32								= 0x2A2B
+	public let T2F_C4F_N3F_V3F: int32							= 0x2A2C
+	public let T4F_C4F_N3F_V4F: int32							= 0x2A2D
+	public let MATRIX_MODE: int32								= 0x0BA0
+	public let MODELVIEW: int32									= 0x1700
+	public let PROJECTION: int32								= 0x1701
+	public let TEXTURE: int32									= 0x1702
+	public let POINT_SMOOTH: int32								= 0x0B10
+	public let POINT_SIZE: int32								= 0x0B11
+	public let POINT_SIZE_GRANULARITY: int32 					= 0x0B13
+	public let POINT_SIZE_RANGE: int32							= 0x0B12
+	public let LINE_SMOOTH: int32								= 0x0B20
+	public let LINE_STIPPLE: int32								= 0x0B24
+	public let LINE_STIPPLE_PATTERN: int32						= 0x0B25
+	public let LINE_STIPPLE_REPEAT: int32						= 0x0B26
+	public let LINE_WIDTH: int32								= 0x0B21
+	public let LINE_WIDTH_GRANULARITY: int32					= 0x0B23
+	public let LINE_WIDTH_RANGE: int32							= 0x0B22
+	public let POINT: int32										= 0x1B00
+	public let LINE: int32										= 0x1B01
+	public let FILL: int32										= 0x1B02
+	public let CW: int32										= 0x0900
+	public let CCW: int32										= 0x0901
+	public let FRONT: int32										= 0x0404
+	public let BACK: int32										= 0x0405
+	public let POLYGON_MODE: int32								= 0x0B40
+	public let POLYGON_SMOOTH: int32							= 0x0B41
+	public let POLYGON_STIPPLE: int32							= 0x0B42
+	public let EDGE_FLAG: int32									= 0x0B43
+	public let CULL_FACE: int32									= 0x0B44
+	public let CULL_FACE_MODE: int32							= 0x0B45
+	public let FRONT_FACE: int32								= 0x0B46
+	public let POLYGON_OFFSET_FACTOR: int32						= 0x8038
+	public let POLYGON_OFFSET_UNITS: int32						= 0x2A00
+	public let POLYGON_OFFSET_POINT: int32						= 0x2A01
+	public let POLYGON_OFFSET_LINE: int32						= 0x2A02
+	public let POLYGON_OFFSET_FILL: int32						= 0x8037
+	public let COMPILE: int32									= 0x1300
+	public let COMPILE_AND_EXECUTE: int32						= 0x1301
+	public let LIST_BASE: int32									= 0x0B32
+	public let LIST_INDEX: int32								= 0x0B33
+	public let LIST_MODE: int32									= 0x0B30
+	public let NEVER: int32										= 0x0200
+	public let LESS: int32										= 0x0201
+	public let EQUAL: int32										= 0x0202
+	public let LEQUAL: int32									= 0x0203
+	public let GREATER: int32									= 0x0204
+	public let NOTEQUAL: int32									= 0x0205
+	public let GEQUAL: int32									= 0x0206
+	public let ALWAYS: int32									= 0x0207
+	public let DEPTH_TEST: int32								= 0x0B71
+	public let DEPTH_BITS: int32								= 0x0D56
+	public let DEPTH_CLEAR_VALUE: int32							= 0x0B73
+	public let DEPTH_FUNC: int32								= 0x0B74
+	public let DEPTH_RANGE: int32								= 0x0B70
+	public let DEPTH_WRITEMASK: int32							= 0x0B72
+	public let DEPTH_COMPONENT: int32							= 0x1902
+	public let LIGHTING: int32									= 0x0B50
+	public let LIGHT0: int32									= 0x4000
+	public let LIGHT1: int32									= 0x4001
+	public let LIGHT2: int32									= 0x4002
+	public let LIGHT3: int32									= 0x4003
+	public let LIGHT4: int32									= 0x4004
+	public let LIGHT5: int32									= 0x4005
+	public let LIGHT6: int32									= 0x4006
+	public let LIGHT7: int32									= 0x4007
+	public let SPOT_EXPONENT: int32								= 0x1205
+	public let SPOT_CUTOFF: int32								= 0x1206
+	public let CONSTANT_ATTENUATION: int32						= 0x1207
+	public let LINEAR_ATTENUATION: int32						= 0x1208
+	public let QUADRATIC_ATTENUATION: int32						= 0x1209
+	public let AMBIENT: int32									= 0x1200
+	public let DIFFUSE: int32									= 0x1201
+	public let SPECULAR: int32									= 0x1202
+	public let SHININESS: int32									= 0x1601
+	public let EMISSION: int32									= 0x1600
+	public let POSITION: int32									= 0x1203
+	public let SPOT_DIRECTION: int32							= 0x1204
+	public let AMBIENT_AND_DIFFUSE: int32						= 0x1602
+	public let COLOR_INDEXES: int32								= 0x1603
+	public let LIGHT_MODEL_TWO_SIDE: int32						= 0x0B52
+	public let LIGHT_MODEL_LOCAL_VIEWER: int32					= 0x0B51
+	public let LIGHT_MODEL_AMBIENT: int32						= 0x0B53
+	public let FRONT_AND_BACK: int32							= 0x0408
+	public let SHADE_MODEL: int32								= 0x0B54
+	public let FLAT: int32										= 0x1D00
+	public let SMOOTH: int32									= 0x1D01
+	public let COLOR_MATERIAL: int32							= 0x0B57
+	public let COLOR_MATERIAL_FACE: int32						= 0x0B55
+	public let COLOR_MATERIAL_PARAMETER: int32					= 0x0B56
+	public let NORMALIZE: int32									= 0x0BA1
+	public let CLIP_PLANE0: int32								= 0x3000
+	public let CLIP_PLANE1: int32								= 0x3001
+	public let CLIP_PLANE2: int32								= 0x3002
+	public let CLIP_PLANE3: int32								= 0x3003
+	public let CLIP_PLANE4: int32								= 0x3004
+	public let CLIP_PLANE5: int32								= 0x3005
+	public let ACCUM_RED_BITS: int32							= 0x0D58
+	public let ACCUM_GREEN_BITS: int32							= 0x0D59
+	public let ACCUM_BLUE_BITS: int32							= 0x0D5A
+	public let ACCUM_ALPHA_BITS: int32							= 0x0D5B
+	public let ACCUM_CLEAR_VALUE: int32							= 0x0B80
+	public let ACCUM: int32										= 0x0100
+	public let ADD: int32										= 0x0104
+	public let LOAD: int32										= 0x0101
+	public let MULT: int32										= 0x0103
+	public let RETURN: int32									= 0x0102
+	public let ALPHA_TEST: int32								= 0x0BC0
+	public let ALPHA_TEST_REF: int32							= 0x0BC2
+	public let ALPHA_TEST_FUNC: int32							= 0x0BC1
+	public let BLEND: int32										= 0x0BE2
+	public let BLEND_SRC: int32									= 0x0BE1
+	public let BLEND_DST: int32									= 0x0BE0
+	public let ZERO: int32										= 0
+	public let ONE: int32										= 1
+	public let SRC_COLOR: int32									= 0x0300
+	public let ONE_MINUS_SRC_COLOR: int32						= 0x0301
+	public let SRC_ALPHA: int32									= 0x0302
+	public let ONE_MINUS_SRC_ALPHA: int32						= 0x0303
+	public let DST_ALPHA: int32									= 0x0304
+	public let ONE_MINUS_DST_ALPHA: int32						= 0x0305
+	public let DST_COLOR: int32									= 0x0306
+	public let ONE_MINUS_DST_COLOR: int32						= 0x0307
+	public let SRC_ALPHA_SATURATE: int32						= 0x0308
+	public let FEEDBACK: int32									= 0x1C01
+	public let RENDER: int32									= 0x1C00
+	public let SELECT: int32									= 0x1C02
+	public let TWO_D: int32										= 0x0600
+	public let THREE_D: int32									= 0x0601
+	public let THREE_D_COLOR: int32									= 0x0602
+	public let THREE_D_COLOR_TEXTURE: int32							= 0x0603
+	public let FOUR_D_COLOR_TEXTURE: int32							= 0x0604
+	public let POINT_TOKEN: int32								= 0x0701
+	public let LINE_TOKEN: int32								= 0x0702
+	public let LINE_RESET_TOKEN: int32							= 0x0707
+	public let POLYGON_TOKEN: int32								= 0x0703
+	public let BITMAP_TOKEN: int32								= 0x0704
+	public let DRAW_PIXEL_TOKEN: int32							= 0x0705
+	public let COPY_PIXEL_TOKEN: int32							= 0x0706
+	public let PASS_THROUGH_TOKEN: int32						= 0x0700
+	public let FEEDBACK_BUFFER_POINTER: int32					= 0x0DF0
+	public let FEEDBACK_BUFFER_SIZE: int32						= 0x0DF1
+	public let FEEDBACK_BUFFER_TYPE: int32						= 0x0DF2
+	public let SELECTION_BUFFER_POINTER: int32					= 0x0DF3
+	public let SELECTION_BUFFER_SIZE: int32						= 0x0DF4
+	public let FOG: int32										= 0x0B60
+	public let FOG_MODE: int32									= 0x0B65
+	public let FOG_DENSITY: int32								= 0x0B62
+	public let FOG_COLOR: int32									= 0x0B66
+	public let FOG_INDEX: int32									= 0x0B61
+	public let FOG_START: int32									= 0x0B63
+	public let FOG_END: int32									= 0x0B64
+	public let LINEAR: int32									= 0x2601
+	public let EXP: int32										= 0x0800
+	public let EXP2: int32										= 0x0801
+	public let LOGIC_OP: int32									= 0x0BF1
+	public let INDEX_LOGIC_OP: int32							= 0x0BF1
+	public let COLOR_LOGIC_OP: int32							= 0x0BF2
+	public let LOGIC_OP_MODE: int32								= 0x0BF0
+	public let CLEAR: int32										= 0x1500
+	public let SET: int32										= 0x150F
+	public let COPY: int32										= 0x1503
+	public let COPY_INVERTED: int32								= 0x150C
+	public let NOOP: int32										= 0x1505
+	public let INVERT: int32									= 0x150A
+	public let AND: int32										= 0x1501
+	public let NAND: int32										= 0x150E
+	public let OR: int32										= 0x1507
+	public let NOR: int32										= 0x1508
+	public let XOR: int32										= 0x1506
+	public let EQUIV: int32										= 0x1509
+	public let AND_REVERSE: int32								= 0x1502
+	public let AND_INVERTED: int32								= 0x1504
+	public let OR_REVERSE: int32								= 0x150B
+	public let OR_INVERTED: int32								= 0x150D
+	public let STENCIL_BITS: int32								= 0x0D57
+	public let STENCIL_TEST: int32								= 0x0B90
+	public let STENCIL_CLEAR_VALUE: int32						= 0x0B91
+	public let STENCIL_FUNC: int32								= 0x0B92
+	public let STENCIL_VALUE_MASK: int32						= 0x0B93
+	public let STENCIL_FAIL: int32								= 0x0B94
+	public let STENCIL_PASS_DEPTH_FAIL: int32					= 0x0B95
+	public let STENCIL_PASS_DEPTH_PASS: int32					= 0x0B96
+	public let STENCIL_REF: int32								= 0x0B97
+	public let STENCIL_WRITEMASK: int32							= 0x0B98
+	public let STENCIL_INDEX: int32								= 0x1901
+	public let KEEP: int32										= 0x1E00
+	public let REPLACE: int32									= 0x1E01
+	public let INCR: int32										= 0x1E02
+	public let DECR: int32										= 0x1E03
+	public let NONE: int32										= 0
+	public let LEFT: int32										= 0x0406
+	public let RIGHT: int32										= 0x0407
+	public let FRONT_LEFT: int32								= 0x0400
+	public let FRONT_RIGHT: int32								= 0x0401
+	public let BACK_LEFT: int32									= 0x0402
+	public let BACK_RIGHT: int32								= 0x0403
+	public let AUX0: int32										= 0x0409
+	public let AUX1: int32										= 0x040A
+	public let AUX2: int32										= 0x040B
+	public let AUX3: int32										= 0x040C
+	public let COLOR_INDEX: int32								= 0x1900
+	public let RED: int32										= 0x1903
+	public let GREEN: int32										= 0x1904
+	public let BLUE: int32										= 0x1905
+	public let ALPHA: int32										= 0x1906
+	public let LUMINANCE: int32									= 0x1909
+	public let LUMINANCE_ALPHA: int32							= 0x190A
+	public let ALPHA_BITS: int32								= 0x0D55
+	public let RED_BITS: int32									= 0x0D52
+	public let GREEN_BITS: int32								= 0x0D53
+	public let BLUE_BITS: int32									= 0x0D54
+	public let INDEX_BITS: int32								= 0x0D51
+	public let SUBPIXEL_BITS: int32								= 0x0D50
+	public let AUX_BUFFERS: int32								= 0x0C00
+	public let READ_BUFFER: int32								= 0x0C02
+	public let DRAW_BUFFER: int32								= 0x0C01
+	public let DOUBLEBUFFER: int32								= 0x0C32
+	public let STEREO: int32									= 0x0C33
+	public let BITMAP: int32									= 0x1A00
+	public let COLOR: int32										= 0x1800
+	public let DEPTH: int32										= 0x1801
+	public let STENCIL: int32									= 0x1802
+	public let DITHER: int32									= 0x0BD0
+	public let RGB: int32										= 0x1907
+	public let RGBA: int32										= 0x1908
+	public let MAX_LIST_NESTING: int32							= 0x0B31
+	public let MAX_EVAL_ORDER: int32							= 0x0D30
+	public let MAX_LIGHTS: int32								= 0x0D31
+	public let MAX_CLIP_PLANES: int32							= 0x0D32
+	public let MAX_TEXTURE_SIZE: int32							= 0x0D33
+	public let MAX_PIXEL_MAP_TABLE: int32						= 0x0D34
+	public let MAX_ATTRIB_STACK_DEPTH: int32					= 0x0D35
+	public let MAX_MODELVIEW_STACK_DEPTH: int32					= 0x0D36
+	public let MAX_NAME_STACK_DEPTH: int32						= 0x0D37
+	public let MAX_PROJECTION_STACK_DEPTH: int32				= 0x0D38
+	public let MAX_TEXTURE_STACK_DEPTH: int32					= 0x0D39
+	public let MAX_VIEWPORT_DIMS: int32							= 0x0D3A
+	public let MAX_CLIENT_ATTRIB_STACK_DEPTH: int32				= 0x0D3B
+	public let ATTRIB_STACK_DEPTH: int32						= 0x0BB0
+	public let CLIENT_ATTRIB_STACK_DEPTH: int32					= 0x0BB1
+	public let COLOR_CLEAR_VALUE: int32							= 0x0C22
+	public let COLOR_WRITEMASK: int32							= 0x0C23
+	public let CURRENT_INDEX: int32								= 0x0B01
+	public let CURRENT_COLOR: int32								= 0x0B00
+	public let CURRENT_NORMAL: int32							= 0x0B02
+	public let CURRENT_RASTER_COLOR: int32						= 0x0B04
+	public let CURRENT_RASTER_DISTANCE: int32					= 0x0B09
+	public let CURRENT_RASTER_INDEX: int32						= 0x0B05
+	public let CURRENT_RASTER_POSITION: int32					= 0x0B07
+	public let CURRENT_RASTER_TEXTURE_COORDS: int32				= 0x0B06
+	public let CURRENT_RASTER_POSITION_VALID: int32				= 0x0B08
+	public let CURRENT_TEXTURE_COORDS: int32					= 0x0B03
+	public let INDEX_CLEAR_VALUE: int32							= 0x0C20
+	public let INDEX_MODE: int32								= 0x0C30
+	public let INDEX_WRITEMASK: int32							= 0x0C21
+	public let MODELVIEW_MATRIX: int32							= 0x0BA6
+	public let MODELVIEW_STACK_DEPTH: int32						= 0x0BA3
+	public let NAME_STACK_DEPTH: int32							= 0x0D70
+	public let PROJECTION_MATRIX: int32							= 0x0BA7
+	public let PROJECTION_STACK_DEPTH: int32					= 0x0BA4
+	public let RENDER_MODE: int32								= 0x0C40
+	public let RGBA_MODE: int32									= 0x0C31
+	public let TEXTURE_MATRIX: int32							= 0x0BA8
+	public let TEXTURE_STACK_DEPTH: int32						= 0x0BA5
+	public let VIEWPORT: int32									= 0x0BA2
+	public let AUTO_NORMAL: int32								= 0x0D80
+	public let MAP1_COLOR_4: int32								= 0x0D90
+	public let MAP1_INDEX: int32								= 0x0D91
+	public let MAP1_NORMAL: int32								= 0x0D92
+	public let MAP1_TEXTURE_COORD_1: int32						= 0x0D93
+	public let MAP1_TEXTURE_COORD_2: int32						= 0x0D94
+	public let MAP1_TEXTURE_COORD_3: int32						= 0x0D95
+	public let MAP1_TEXTURE_COORD_4: int32						= 0x0D96
+	public let MAP1_VERTEX_3: int32								= 0x0D97
+	public let MAP1_VERTEX_4: int32								= 0x0D98
+	public let MAP2_COLOR_4: int32								= 0x0DB0
+	public let MAP2_INDEX: int32								= 0x0DB1
+	public let MAP2_NORMAL: int32								= 0x0DB2
+	public let MAP2_TEXTURE_COORD_1: int32						= 0x0DB3
+	public let MAP2_TEXTURE_COORD_2: int32						= 0x0DB4
+	public let MAP2_TEXTURE_COORD_3: int32						= 0x0DB5
+	public let MAP2_TEXTURE_COORD_4: int32						= 0x0DB6
+	public let MAP2_VERTEX_3: int32								= 0x0DB7
+	public let MAP2_VERTEX_4: int32								= 0x0DB8
+	public let MAP1_GRID_DOMAIN: int32							= 0x0DD0
+	public let MAP1_GRID_SEGMENTS: int32						= 0x0DD1
+	public let MAP2_GRID_DOMAIN: int32							= 0x0DD2
+	public let MAP2_GRID_SEGMENTS: int32						= 0x0DD3
+	public let COEFF: int32										= 0x0A00
+	public let ORDER: int32										= 0x0A01
+	public let DOMAIN: int32									= 0x0A02
+	public let PERSPECTIVE_CORRECTION_HINT: int32				= 0x0C50
+	public let POINT_SMOOTH_HINT: int32							= 0x0C51
+	public let LINE_SMOOTH_HINT: int32							= 0x0C52
+	public let POLYGON_SMOOTH_HINT: int32						= 0x0C53
+	public let FOG_HINT: int32									= 0x0C54
+	public let DONT_CARE: int32									= 0x1100
+	public let FASTEST: int32									= 0x1101
+	public let NICEST: int32									= 0x1102
+	public let SCISSOR_BOX: int32								= 0x0C10
+	public let SCISSOR_TEST: int32								= 0x0C11
+	public let MAP_COLOR: int32									= 0x0D10
+	public let MAP_STENCIL: int32								= 0x0D11
+	public let INDEX_SHIFT: int32								= 0x0D12
+	public let INDEX_OFFSET: int32								= 0x0D13
+	public let RED_SCALE: int32									= 0x0D14
+	public let RED_BIAS: int32									= 0x0D15
+	public let GREEN_SCALE: int32								= 0x0D18
+	public let GREEN_BIAS: int32								= 0x0D19
+	public let BLUE_SCALE: int32								= 0x0D1A
+	public let BLUE_BIAS: int32									= 0x0D1B
+	public let ALPHA_SCALE: int32								= 0x0D1C
+	public let ALPHA_BIAS: int32								= 0x0D1D
+	public let DEPTH_SCALE: int32								= 0x0D1E
+	public let DEPTH_BIAS: int32								= 0x0D1F
+	public let PIXEL_MAP_S_TO_S_SIZE: int32						= 0x0CB1
+	public let PIXEL_MAP_I_TO_I_SIZE: int32						= 0x0CB0
+	public let PIXEL_MAP_I_TO_R_SIZE: int32						= 0x0CB2
+	public let PIXEL_MAP_I_TO_G_SIZE: int32						= 0x0CB3
+	public let PIXEL_MAP_I_TO_B_SIZE: int32						= 0x0CB4
+	public let PIXEL_MAP_I_TO_A_SIZE: int32						= 0x0CB5
+	public let PIXEL_MAP_R_TO_R_SIZE: int32						= 0x0CB6
+	public let PIXEL_MAP_G_TO_G_SIZE: int32						= 0x0CB7
+	public let PIXEL_MAP_B_TO_B_SIZE: int32						= 0x0CB8
+	public let PIXEL_MAP_A_TO_A_SIZE: int32						= 0x0CB9
+	public let PIXEL_MAP_S_TO_S: int32							= 0x0C71
+	public let PIXEL_MAP_I_TO_I: int32							= 0x0C70
+	public let PIXEL_MAP_I_TO_R: int32							= 0x0C72
+	public let PIXEL_MAP_I_TO_G: int32							= 0x0C73
+	public let PIXEL_MAP_I_TO_B: int32							= 0x0C74
+	public let PIXEL_MAP_I_TO_A: int32							= 0x0C75
+	public let PIXEL_MAP_R_TO_R: int32							= 0x0C76
+	public let PIXEL_MAP_G_TO_G: int32							= 0x0C77
+	public let PIXEL_MAP_B_TO_B: int32							= 0x0C78
+	public let PIXEL_MAP_A_TO_A: int32							= 0x0C79
+	public let PACK_ALIGNMENT: int32							= 0x0D05
+	public let PACK_LSB_FIRST: int32							= 0x0D01
+	public let PACK_ROW_LENGTH: int32							= 0x0D02
+	public let PACK_SKIP_PIXELS: int32							= 0x0D04
+	public let PACK_SKIP_ROWS: int32							= 0x0D03
+	public let PACK_SWAP_BYTES: int32							= 0x0D00
+	public let UNPACK_ALIGNMENT: int32							= 0x0CF5
+	public let UNPACK_LSB_FIRST: int32							= 0x0CF1
+	public let UNPACK_ROW_LENGTH: int32							= 0x0CF2
+	public let UNPACK_SKIP_PIXELS: int32						= 0x0CF4
+	public let UNPACK_SKIP_ROWS: int32							= 0x0CF3
+	public let UNPACK_SWAP_BYTES: int32							= 0x0CF0
+	public let ZOOM_X: int32									= 0x0D16
+	public let ZOOM_Y: int32									= 0x0D17
+	public let TEXTURE_ENV: int32								= 0x2300
+	public let TEXTURE_ENV_MODE: int32							= 0x2200
+	public let TEXTURE_1D: int32								= 0x0DE0
+	public let TEXTURE_2D: int32								= 0x0DE1
+	public let TEXTURE_WRAP_S: int32							= 0x2802
+	public let TEXTURE_WRAP_T: int32							= 0x2803
+	public let TEXTURE_MAG_FILTER: int32						= 0x2800
+	public let TEXTURE_MIN_FILTER: int32						= 0x2801
+	public let TEXTURE_ENV_COLOR: int32							= 0x2201
+	public let TEXTURE_GEN_S: int32								= 0x0C60
+	public let TEXTURE_GEN_T: int32								= 0x0C61
+	public let TEXTURE_GEN_R: int32								= 0x0C62
+	public let TEXTURE_GEN_Q: int32								= 0x0C63
+	public let TEXTURE_GEN_MODE: int32							= 0x2500
+	public let TEXTURE_BORDER_COLOR: int32						= 0x1004
+	public let TEXTURE_WIDTH: int32								= 0x1000
+	public let TEXTURE_HEIGHT: int32							= 0x1001
+	public let TEXTURE_BORDER: int32							= 0x1005
+	public let TEXTURE_COMPONENTS: int32						= 0x1003
+	public let TEXTURE_RED_SIZE: int32							= 0x805C
+	public let TEXTURE_GREEN_SIZE: int32						= 0x805D
+	public let TEXTURE_BLUE_SIZE: int32							= 0x805E
+	public let TEXTURE_ALPHA_SIZE: int32						= 0x805F
+	public let TEXTURE_LUMINANCE_SIZE: int32					= 0x8060
+	public let TEXTURE_INTENSITY_SIZE: int32					= 0x8061
+	public let NEAREST_MIPMAP_NEAREST: int32					= 0x2700
+	public let NEAREST_MIPMAP_LINEAR: int32						= 0x2702
+	public let LINEAR_MIPMAP_NEAREST: int32						= 0x2701
+	public let LINEAR_MIPMAP_LINEAR: int32						= 0x2703
+	public let OBJECT_LINEAR: int32								= 0x2401
+	public let OBJECT_PLANE: int32								= 0x2501
+	public let EYE_LINEAR: int32								= 0x2400
+	public let EYE_PLANE: int32									= 0x2502
+	public let SPHERE_MAP: int32								= 0x2402
+	public let DECAL: int32										= 0x2101
+	public let MODULATE: int32									= 0x2100
+	public let NEAREST: int32									= 0x2600
+	public let REPEAT: int32									= 0x2901
+	public let CLAMP: int32										= 0x2900
+	public let S: int32											= 0x2000
+	public let T: int32											= 0x2001
+	public let R: int32											= 0x2002
+	public let Q: int32											= 0x2003
+	public let VENDOR: int32									= 0x1F00
+	public let RENDERER: int32									= 0x1F01
+	public let VERSION: int32									= 0x1F02
+	public let EXTENSIONS: int32								= 0x1F03
+	public let NO_ERROR: int32 									= 0
+	public let INVALID_ENUM: int32								= 0x0500
+	public let INVALID_VALUE: int32								= 0x0501
+	public let INVALID_OPERATION: int32							= 0x0502
+	public let STACK_OVERFLOW: int32							= 0x0503
+	public let STACK_UNDERFLOW: int32							= 0x0504
+	public let OUT_OF_MEMORY: int32								= 0x0505
+	public let CURRENT_BIT: int32								= 0x00000001
+	public let POINT_BIT: int32									= 0x00000002
+	public let LINE_BIT: int32									= 0x00000004
+	public let POLYGON_BIT: int32								= 0x00000008
+	public let POLYGON_STIPPLE_BIT: int32						= 0x00000010
+	public let PIXEL_MODE_BIT: int32							= 0x00000020
+	public let LIGHTING_BIT: int32								= 0x00000040
+	public let FOG_BIT: int32									= 0x00000080
+	public let DEPTH_BUFFER_BIT: int32							= 0x00000100
+	public let ACCUM_BUFFER_BIT: int32							= 0x00000200
+	public let STENCIL_BUFFER_BIT: int32						= 0x00000400
+	public let VIEWPORT_BIT: int32								= 0x00000800
+	public let TRANSFORM_BIT: int32								= 0x00001000
+	public let ENABLE_BIT: int32								= 0x00002000
+	public let COLOR_BUFFER_BIT: int32							= 0x00004000
+	public let HINT_BIT: int32									= 0x00008000
+	public let EVAL_BIT: int32									= 0x00010000
+	public let LIST_BIT: int32									= 0x00020000
+	public let TEXTURE_BIT: int32								= 0x00040000
+	public let SCISSOR_BIT: int32								= 0x00080000
+	public let ALL_ATTRIB_BITS: int32							= 0x000FFFFF
+
+	// OpenGL 1.1
+	public let PROXY_TEXTURE_1D: int32							= 0x8063
+	public let PROXY_TEXTURE_2D: int32							= 0x8064
+	public let TEXTURE_PRIORITY: int32							= 0x8066
+	public let TEXTURE_RESIDENT: int32							= 0x8067
+	public let TEXTURE_BINDING_1D: int32						= 0x8068
+	public let TEXTURE_BINDING_2D: int32						= 0x8069
+	public let TEXTURE_INTERNAL_FORMAT: int32					= 0x1003
+	public let ALPHA4: int32									= 0x803B
+	public let ALPHA8: int32									= 0x803C
+	public let ALPHA12: int32									= 0x803D
+	public let ALPHA16: int32									= 0x803E
+	public let LUMINANCE4: int32								= 0x803F
+	public let LUMINANCE8: int32								= 0x8040
+	public let LUMINANCE12: int32								= 0x8041
+	public let LUMINANCE16: int32								= 0x8042
+	public let LUMINANCE4_ALPHA4: int32							= 0x8043
+	public let LUMINANCE6_ALPHA2: int32							= 0x8044
+	public let LUMINANCE8_ALPHA8: int32							= 0x8045
+	public let LUMINANCE12_ALPHA4: int32						= 0x8046
+	public let LUMINANCE12_ALPHA12: int32						= 0x8047
+	public let LUMINANCE16_ALPHA16: int32						= 0x8048
+	public let INTENSITY: int32									= 0x8049
+	public let INTENSITY4: int32								= 0x804A
+	public let INTENSITY8: int32								= 0x804B
+	public let INTENSITY12: int32								= 0x804C
+	public let INTENSITY16: int32								= 0x804D
+	public let R3_G3_B2: int32									= 0x2A10
+	public let RGB4: int32										= 0x804F
+	public let RGB5: int32										= 0x8050
+	public let RGB8: int32										= 0x8051
+	public let RGB10: int32										= 0x8052
+	public let RGB12: int32										= 0x8053
+	public let RGB16: int32										= 0x8054
+	public let RGBA2: int32										= 0x8055
+	public let RGBA4: int32										= 0x8056
+	public let RGB5_A1: int32									= 0x8057
+	public let RGBA8: int32										= 0x8058
+	public let RGB10_A2: int32									= 0x8059
+	public let RGBA12: int32									= 0x805A
+	public let RGBA16: int32									= 0x805B
+	public let CLIENT_PIXEL_STORE_BIT: int32					= 0x00000001
+	public let CLIENT_VERTEX_ARRAY_BIT: int32					= 0x00000002
+	public let ALL_CLIENT_ATTRIB_BITS: int32 					= 0xFFFFFFFF
+	public let CLIENT_ALL_ATTRIB_BITS: int32 					= 0xFFFFFFFF
+
+
+	// OpenGL 1.2
+	public let RESCALE_NORMAL: int32							= 0x803A
+	public let CLAMP_TO_EDGE: int32								= 0x812F
+	public let MAX_ELEMENTS_VERTICES: int32						= 0x80E8
+	public let MAX_ELEMENTS_INDICES: int32						= 0x80E9
+	public let BGR: int32										= 0x80E0
+	public let BGRA: int32										= 0x80E1
+	public let UNSIGNED_BYTE_3_3_2: int32						= 0x8032
+	public let UNSIGNED_BYTE_2_3_3_REV: int32					= 0x8362
+	public let UNSIGNED_SHORT_5_6_5: int32						= 0x8363
+	public let UNSIGNED_SHORT_5_6_5_REV: int32					= 0x8364
+	public let UNSIGNED_SHORT_4_4_4_4: int32					= 0x8033
+	public let UNSIGNED_SHORT_4_4_4_4_REV: int32				= 0x8365
+	public let UNSIGNED_SHORT_5_5_5_1: int32					= 0x8034
+	public let UNSIGNED_SHORT_1_5_5_5_REV: int32				= 0x8366
+	public let UNSIGNED_INT_8_8_8_8: int32						= 0x8035
+	public let UNSIGNED_INT_8_8_8_8_REV: int32					= 0x8367
+	public let UNSIGNED_INT_10_10_10_2: int32					= 0x8036
+	public let UNSIGNED_INT_2_10_10_10_REV: int32				= 0x8368
+	public let LIGHT_MODEL_COLOR_CONTROL: int32					= 0x81F8
+	public let SINGLE_COLOR: int32								= 0x81F9
+	public let SEPARATE_SPECULAR_COLOR: int32					= 0x81FA
+	public let TEXTURE_MIN_LOD: int32							= 0x813A
+	public let TEXTURE_MAX_LOD: int32							= 0x813B
+	public let TEXTURE_BASE_LEVEL: int32						= 0x813C
+	public let TEXTURE_MAX_LEVEL: int32							= 0x813D
+	public let SMOOTH_POINT_SIZE_RANGE: int32					= 0x0B12
+	public let SMOOTH_POINT_SIZE_GRANULARITY: int32				= 0x0B13
+	public let SMOOTH_LINE_WIDTH_RANGE: int32					= 0x0B22
+	public let SMOOTH_LINE_WIDTH_GRANULARITY: int32				= 0x0B23
+	public let ALIASED_POINT_SIZE_RANGE: int32					= 0x846D
+	public let ALIASED_LINE_WIDTH_RANGE: int32					= 0x846E
+	public let PACK_SKIP_IMAGES: int32							= 0x806B
+	public let PACK_IMAGE_HEIGHT: int32							= 0x806C
+	public let UNPACK_SKIP_IMAGES: int32						= 0x806D
+	public let UNPACK_IMAGE_HEIGHT: int32						= 0x806E
+	public let TEXTURE_3D: int32								= 0x806F
+	public let PROXY_TEXTURE_3D: int32							= 0x8070
+	public let TEXTURE_DEPTH: int32								= 0x8071
+	public let TEXTURE_WRAP_R: int32							= 0x8072
+	public let MAX_3D_TEXTURE_SIZE: int32						= 0x8073
+	public let TEXTURE_BINDING_3D: int32						= 0x806A
+
+
+	// GL_ARB_imaging
+	public let CONSTANT_COLOR: int32							= 0x8001
+	public let ONE_MINUS_NT_COLOR: int32						= 0x8002
+	public let CONSTANT_ALPHA: int32							= 0x8003
+	public let ONE_MINUS_NT_ALPHA: int32						= 0x8004
+	public let COLOR_TABLE: int32								= 0x80D0
+	public let POST_CONVOLUTION_COLOR_TABLE: int32				= 0x80D1
+	public let POST_COLOR_MATRIX_COLOR_TABLE: int32				= 0x80D2
+	public let PROXY_COLOR_TABLE: int32							= 0x80D3
+	public let PROXY_POST_CONVOLUTION_COLOR_TABLE: int32		= 0x80D4
+	public let PROXY_POST_COLOR_MATRIX_COLOR_TABLE: int32		= 0x80D5
+	public let COLOR_TABLE_SCALE: int32							= 0x80D6
+	public let COLOR_TABLE_BIAS: int32							= 0x80D7
+	public let COLOR_TABLE_FORMAT: int32						= 0x80D8
+	public let COLOR_TABLE_WIDTH: int32							= 0x80D9
+	public let COLOR_TABLE_RED_SIZE: int32						= 0x80DA
+	public let COLOR_TABLE_GREEN_SIZE: int32					= 0x80DB
+	public let COLOR_TABLE_BLUE_SIZE: int32						= 0x80DC
+	public let COLOR_TABLE_ALPHA_SIZE: int32					= 0x80DD
+	public let COLOR_TABLE_LUMINANCE_SIZE: int32				= 0x80DE
+	public let COLOR_TABLE_INTENSITY_SIZE: int32				= 0x80DF
+	public let CONVOLUTION_1D: int32							= 0x8010
+	public let CONVOLUTION_2D: int32							= 0x8011
+	public let SEPARABLE_2D: int32								= 0x8012
+	public let CONVOLUTION_BORDER_MODE: int32					= 0x8013
+	public let CONVOLUTION_FILTER_SCALE: int32					= 0x8014
+	public let CONVOLUTION_FILTER_BIAS: int32					= 0x8015
+	public let REDUCE: int32									= 0x8016
+	public let CONVOLUTION_FORMAT: int32						= 0x8017
+	public let CONVOLUTION_WIDTH: int32							= 0x8018
+	public let CONVOLUTION_HEIGHT: int32						= 0x8019
+	public let MAX_CONVOLUTION_WIDTH: int32						= 0x801A
+	public let MAX_CONVOLUTION_HEIGHT: int32					= 0x801B
+	public let POST_CONVOLUTION_RED_SCALE: int32				= 0x801C
+	public let POST_CONVOLUTION_GREEN_SCALE: int32				= 0x801D
+	public let POST_CONVOLUTION_BLUE_SCALE: int32				= 0x801E
+	public let POST_CONVOLUTION_ALPHA_SCALE: int32				= 0x801F
+	public let POST_CONVOLUTION_RED_BIAS: int32					= 0x8020
+	public let POST_CONVOLUTION_GREEN_BIAS: int32				= 0x8021
+	public let POST_CONVOLUTION_BLUE_BIAS: int32				= 0x8022
+	public let POST_CONVOLUTION_ALPHA_BIAS: int32				= 0x8023
+	public let CONSTANT_BORDER: int32							= 0x8151
+	public let REPLICATE_BORDER: int32							= 0x8153
+	public let CONVOLUTION_BORDER_COLOR: int32					= 0x8154
+	public let COLOR_MATRIX: int32								= 0x80B1
+	public let COLOR_MATRIX_STACK_DEPTH: int32					= 0x80B2
+	public let MAX_COLOR_MATRIX_STACK_DEPTH: int32				= 0x80B3
+	public let POST_COLOR_MATRIX_RED_SCALE: int32				= 0x80B4
+	public let POST_COLOR_MATRIX_GREEN_SCALE: int32				= 0x80B5
+	public let POST_COLOR_MATRIX_BLUE_SCALE: int32				= 0x80B6
+	public let POST_COLOR_MATRIX_ALPHA_SCALE: int32				= 0x80B7
+	public let POST_COLOR_MATRIX_RED_BIAS: int32				= 0x80B8
+	public let POST_COLOR_MATRIX_GREEN_BIAS: int32				= 0x80B9
+	public let POST_COLOR_MATRIX_BLUE_BIAS: int32				= 0x80BA
+	public let POST_COLOR_MATRIX_ALPHA_BIAS: int32				= 0x80BB
+	public let HISTOGRAM: int32									= 0x8024
+	public let PROXY_HISTOGRAM: int32							= 0x8025
+	public let HISTOGRAM_WIDTH: int32							= 0x8026
+	public let HISTOGRAM_FORMAT: int32							= 0x8027
+	public let HISTOGRAM_RED_SIZE: int32						= 0x8028
+	public let HISTOGRAM_GREEN_SIZE: int32						= 0x8029
+	public let HISTOGRAM_BLUE_SIZE: int32						= 0x802A
+	public let HISTOGRAM_ALPHA_SIZE: int32						= 0x802B
+	public let HISTOGRAM_LUMINANCE_SIZE: int32					= 0x802C
+	public let HISTOGRAM_SINK: int32							= 0x802D
+	public let MINMAX: int32									= 0x802E
+	public let MINMAX_FORMAT: int32								= 0x802F
+	public let MINMAX_SINK: int32								= 0x8030
+	public let TABLE_TOO_LARGE: int32							= 0x8031
+	public let BLEND_EQUATION: int32							= 0x8009
+	public let MIN: int32										= 0x8007
+	public let MAX: int32										= 0x8008
+	public let FUNC_ADD: int32									= 0x8006
+	public let FUNC_SUBTRACT: int32								= 0x800A
+	public let FUNC_REVERSE_SUBTRACT: int32						= 0x800B
+	public let BLEND_COLOR: int32								= 0x8005
+
+
+
+	// OpenGL 1.3
+	public let TEXTURE0: int32									= 0x84C0
+	public let TEXTURE1: int32									= 0x84C1
+	public let TEXTURE2: int32									= 0x84C2
+	public let TEXTURE3: int32									= 0x84C3
+	public let TEXTURE4: int32									= 0x84C4
+	public let TEXTURE5: int32									= 0x84C5
+	public let TEXTURE6: int32									= 0x84C6
+	public let TEXTURE7: int32									= 0x84C7
+	public let TEXTURE8: int32									= 0x84C8
+	public let TEXTURE9: int32									= 0x84C9
+	public let TEXTURE10: int32									= 0x84CA
+	public let TEXTURE11: int32									= 0x84CB
+	public let TEXTURE12: int32									= 0x84CC
+	public let TEXTURE13: int32									= 0x84CD
+	public let TEXTURE14: int32									= 0x84CE
+	public let TEXTURE15: int32									= 0x84CF
+	public let TEXTURE16: int32									= 0x84D0
+	public let TEXTURE17: int32									= 0x84D1
+	public let TEXTURE18: int32									= 0x84D2
+	public let TEXTURE19: int32									= 0x84D3
+	public let TEXTURE20: int32									= 0x84D4
+	public let TEXTURE21: int32									= 0x84D5
+	public let TEXTURE22: int32									= 0x84D6
+	public let TEXTURE23: int32									= 0x84D7
+	public let TEXTURE24: int32									= 0x84D8
+	public let TEXTURE25: int32									= 0x84D9
+	public let TEXTURE26: int32									= 0x84DA
+	public let TEXTURE27: int32									= 0x84DB
+	public let TEXTURE28: int32									= 0x84DC
+	public let TEXTURE29: int32									= 0x84DD
+	public let TEXTURE30: int32									= 0x84DE
+	public let TEXTURE31: int32									= 0x84DF
+	public let ACTIVE_TEXTURE: int32							= 0x84E0
+	public let CLIENT_ACTIVE_TEXTURE: int32						= 0x84E1
+	public let MAX_TEXTURE_UNITS: int32							= 0x84E2
+	public let NORMAL_MAP: int32								= 0x8511
+	public let REFLECTION_MAP: int32							= 0x8512
+	public let TEXTURE_CUBE_MAP: int32							= 0x8513
+	public let TEXTURE_BINDING_CUBE_MAP: int32					= 0x8514
+	public let TEXTURE_CUBE_MAP_POSITIVE_X: int32				= 0x8515
+	public let TEXTURE_CUBE_MAP_NEGATIVE_X: int32				= 0x8516
+	public let TEXTURE_CUBE_MAP_POSITIVE_Y: int32				= 0x8517
+	public let TEXTURE_CUBE_MAP_NEGATIVE_Y: int32				= 0x8518
+	public let TEXTURE_CUBE_MAP_POSITIVE_Z: int32				= 0x8519
+	public let TEXTURE_CUBE_MAP_NEGATIVE_Z: int32				= 0x851A
+	public let PROXY_TEXTURE_CUBE_MAP: int32					= 0x851B
+	public let MAX_CUBE_MAP_TEXTURE_SIZE: int32					= 0x851C
+	public let COMPRESSED_ALPHA: int32							= 0x84E9
+	public let COMPRESSED_LUMINANCE: int32						= 0x84EA
+	public let COMPRESSED_LUMINANCE_ALPHA: int32				= 0x84EB
+	public let COMPRESSED_INTENSITY: int32						= 0x84EC
+	public let COMPRESSED_RGB: int32							= 0x84ED
+	public let COMPRESSED_RGBA: int32							= 0x84EE
+	public let TEXTURE_COMPRESSION_HINT: int32					= 0x84EF
+	public let TEXTURE_COMPRESSED_IMAGE_SIZE: int32				= 0x86A0
+	public let TEXTURE_COMPRESSED: int32						= 0x86A1
+	public let NUM_COMPRESSED_TEXTURE_FORMATS: int32			= 0x86A2
+	public let COMPRESSED_TEXTURE_FORMATS: int32				= 0x86A3
+	public let MULTISAMPLE: int32								= 0x809D
+	public let SAMPLE_ALPHA_TO_COVERAGE: int32					= 0x809E
+	public let SAMPLE_ALPHA_TO_ONE: int32						= 0x809F
+	public let SAMPLE_COVERAGE: int32							= 0x80A0
+	public let SAMPLE_BUFFERS: int32							= 0x80A8
+	public let SAMPLES: int32									= 0x80A9
+	public let SAMPLE_COVERAGE_VALUE: int32						= 0x80AA
+	public let SAMPLE_COVERAGE_INVERT: int32					= 0x80AB
+	public let MULTISAMPLE_BIT: int32							= 0x20000000
+	public let TRANSPOSE_MODELVIEW_MATRIX: int32				= 0x84E3
+	public let TRANSPOSE_PROJECTION_MATRIX: int32				= 0x84E4
+	public let TRANSPOSE_TEXTURE_MATRIX: int32					= 0x84E5
+	public let TRANSPOSE_COLOR_MATRIX: int32					= 0x84E6
+	public let COMBINE: int32									= 0x8570
+	public let COMBINE_RGB: int32								= 0x8571
+	public let COMBINE_ALPHA: int32								= 0x8572
+	public let SOURCE0_RGB: int32								= 0x8580
+	public let SOURCE1_RGB: int32								= 0x8581
+	public let SOURCE2_RGB: int32								= 0x8582
+	public let SOURCE0_ALPHA: int32								= 0x8588
+	public let SOURCE1_ALPHA: int32								= 0x8589
+	public let SOURCE2_ALPHA: int32								= 0x858A
+	public let OPERAND0_RGB: int32								= 0x8590
+	public let OPERAND1_RGB: int32								= 0x8591
+	public let OPERAND2_RGB: int32								= 0x8592
+	public let OPERAND0_ALPHA: int32							= 0x8598
+	public let OPERAND1_ALPHA: int32							= 0x8599
+	public let OPERAND2_ALPHA: int32							= 0x859A
+	public let RGB_SCALE: int32									= 0x8573
+	public let ADD_SIGNED: int32								= 0x8574
+	public let INTERPOLATE: int32								= 0x8575
+	public let SUBTRACT: int32									= 0x84E7
+	public let NT: int32										= 0x8576
+	public let PRIMARY_COLOR: int32								= 0x8577
+	public let PREVIOUS: int32									= 0x8578
+	public let DOT3_RGB: int32									= 0x86AE
+	public let DOT3_RGBA: int32									= 0x86AF
+	public let CLAMP_TO_BORDER: int32							= 0x812D
+
+	// GL_ARB_multitexture (ARB extension 1 and OpenGL 1.2.1)
+	public let ARB_multitexture: int32							= 1
+	public let TEXTURE0_ARB: int32								= 0x84C0
+	public let TEXTURE1_ARB: int32								= 0x84C1
+	public let TEXTURE2_ARB: int32								= 0x84C2
+	public let TEXTURE3_ARB: int32								= 0x84C3
+	public let TEXTURE4_ARB: int32								= 0x84C4
+	public let TEXTURE5_ARB: int32								= 0x84C5
+	public let TEXTURE6_ARB: int32								= 0x84C6
+	public let TEXTURE7_ARB: int32								= 0x84C7
+	public let TEXTURE8_ARB: int32								= 0x84C8
+	public let TEXTURE9_ARB: int32								= 0x84C9
+	public let TEXTURE10_ARB: int32								= 0x84CA
+	public let TEXTURE11_ARB: int32								= 0x84CB
+	public let TEXTURE12_ARB: int32								= 0x84CC
+	public let TEXTURE13_ARB: int32								= 0x84CD
+	public let TEXTURE14_ARB: int32								= 0x84CE
+	public let TEXTURE15_ARB: int32								= 0x84CF
+	public let TEXTURE16_ARB: int32								= 0x84D0
+	public let TEXTURE17_ARB: int32								= 0x84D1
+	public let TEXTURE18_ARB: int32								= 0x84D2
+	public let TEXTURE19_ARB: int32								= 0x84D3
+	public let TEXTURE20_ARB: int32								= 0x84D4
+	public let TEXTURE21_ARB: int32								= 0x84D5
+	public let TEXTURE22_ARB: int32								= 0x84D6
+	public let TEXTURE23_ARB: int32								= 0x84D7
+	public let TEXTURE24_ARB: int32								= 0x84D8
+	public let TEXTURE25_ARB: int32								= 0x84D9
+	public let TEXTURE26_ARB: int32								= 0x84DA
+	public let TEXTURE27_ARB: int32								= 0x84DB
+	public let TEXTURE28_ARB: int32								= 0x84DC
+	public let TEXTURE29_ARB: int32								= 0x84DD
+	public let TEXTURE30_ARB: int32								= 0x84DE
+	public let TEXTURE31_ARB: int32								= 0x84DF
+	public let ACTIVE_TEXTURE_ARB: int32						= 0x84E0
+	public let CLIENT_ACTIVE_TEXTURE_ARB: int32					= 0x84E1
+	public let MAX_TEXTURE_UNITS_ARB: int32						= 0x84E2
+}
+
+
+// glu
+public ffi func gluPerspective(fovy: float64, aspect: float64, znear: float64, zfar: float64) -> void
+
+
+
+public ffi func glClearIndex(c: float32) -> void
+public ffi func glClearColor(red: float32, green: float32, blue: float32, alpha: float32) -> void
+public ffi func glClear(mask: uint32) -> void
+public ffi func glIndexMask(mask: uint32) -> void
+public ffi func glColorMask(red: bool, green: bool, blue: bool, alpha: bool) -> void
+public ffi func glAlphaFunc(fn: uint32, ref: float32) -> void
+public ffi func glBlendFunc(sfactor: uint32, dfactor: uint32) -> void
+public ffi func glLogicOp(opcode: uint32) -> void
+public ffi func glCullFace(mode: uint32) -> void
+public ffi func glFrontFace(mode: uint32) -> void
+public ffi func glPointSize(size: float32) -> void
+public ffi func glLineWidth(width: float32) -> void
+public ffi func glLineStipple(factor: int32, pattern: uint16) -> void
+public ffi func glPolygonMode(face: uint32, mode: uint32) -> void
+public ffi func glPolygonOffset(factor: float32, units: float32) -> void
+public ffi func glPolygonStipple(mask: uint8*) -> void
+public ffi func glGetPolygonStipple(mask: uint8*) -> void
+public ffi func glEdgeFlag(flag: bool) -> void
+public ffi func glEdgeFlagv(flag: bool*) -> void
+public ffi func glScissor(x: int32, y: int32, width: int32, height: int32) -> void
+public ffi func glClipPlane(plane: uint32, equation: float64*) -> void
+public ffi func glGetClipPlane(plane: uint32, equation: float64*) -> void
+public ffi func glDrawBuffer(mode: uint32) -> void
+public ffi func glReadBuffer(mode: uint32) -> void
+public ffi func glEnable(cap: uint32) -> void
+public ffi func glDisable(cap: uint32) -> void
+public ffi func glIsEnabled(cap: uint32) -> bool
+public ffi func glEnableClientState(cap: uint32) -> void
+public ffi func glDisableClientState(cap: uint32) -> void
+public ffi func glGetBooleanv(pname: uint32, params: bool*) -> void
+public ffi func glGetDoublev(pname: uint32, params: float64*) -> void
+public ffi func glGetFloatv(pname: uint32, params: float32*) -> void
+public ffi func glGetIntegerv(pname: uint32, params: int32*) -> void
+public ffi func glPushAttrib(mask: uint32) -> void
+public ffi func glPopAttrib() -> void
+public ffi func glPushClientAttrib(mask: uint32) -> void
+public ffi func glPopClientAttrib() -> void
+public ffi func glRenderMode(mode: uint32) -> int32
+public ffi func glGetError() -> uint32
+public ffi func glGetString(name: uint32) -> uint8*
+public ffi func glFinish() -> void
+public ffi func glFlush() -> void
+public ffi func glHint(target: uint32, mode: uint32) -> void
+
+// Depth Buffer
+public ffi func glClearDepth(depth: float64) -> void
+public ffi func glDepthFunc(fn: uint32) -> void
+public ffi func glDepthMask(flag: bool) -> void
+public ffi func glDepthRange(near_val: float64, far_val: float64) -> void
+
+// Accumulation Buffer
+public ffi func glClearAccum(red: float32, green: float32, blue: float32, alpha: float32) -> void
+public ffi func glAccum(op: uint32, value: float32) -> void
+
+// Transformation
+public ffi func glMatrixMode(mode: uint32) -> void
+public ffi func glOrtho(left: float64, right: float64, bottom: float64, top: float64, near_val: float64, far_val: float64) -> void
+public ffi func glFrustum(left: float64, right: float64, bottom: float64, top: float64, near_val: float64, far_val: float64) -> void
+public ffi func glViewport(x: int32, y: int32, width: int32, height: int32) -> void
+public ffi func glPushMatrix() -> void
+public ffi func glPopMatrix() -> void
+public ffi func glLoadIdentity() -> void
+public ffi func glLoadMatrixd(m: float64*) -> void
+public ffi func glLoadMatrixf(m: float32*) -> void
+public ffi func glMultMatrixd(m: float64*) -> void
+public ffi func glMultMatrixf(m: float32*) -> void
+public ffi func glRotated(angle: float64, x: float64, y: float64, z: float64) -> void
+public ffi func glRotatef(angle: float32, x: float32, y: float32, z: float32) -> void
+public ffi func glScaled(x: float64, y: float64, z: float64) -> void
+public ffi func glScalef(x: float32, y: float32, z: float32) -> void
+public ffi func glTranslated(x: float64, y: float64, z: float64) -> void
+public ffi func glTranslatef(x: float32, y: float32, z: float32) -> void
+
+
+// Display Lists
+public ffi func glIsList(list: uint32) -> bool
+public ffi func glDeleteLists(list: uint32, range: int32) -> void
+public ffi func glGenLists(range: int32) -> uint32
+public ffi func glNewList(list: uint32, mode: uint32) -> void
+public ffi func glEndList() -> void
+public ffi func glCallList(list: uint32) -> void
+public ffi func glCallLists(n: int32, type: uint32, lists: void*) -> void
+public ffi func glListBase(base: uint32) -> void
+
+// Drawing Functions
+public ffi func glBegin(mode: uint32) -> void
+public ffi func glEnd() -> void
+public ffi func glVertex2d(x: float64, y: float64) -> void
+public ffi func glVertex2f(x: float32, y: float32) -> void
+public ffi func glVertex2i(x: int32, y: int32) -> void
+public ffi func glVertex2s(x: int16, y: int16) -> void
+public ffi func glVertex3d(x: float64, y: float64, z: float64) -> void
+public ffi func glVertex3f(x: float32, y: float32, z: float32) -> void
+public ffi func glVertex3i(x: int32, y: int32, z: int32) -> void
+public ffi func glVertex3s(x: int16, y: int16, z: int16) -> void
+public ffi func glVertex4d(x: float64, y: float64, z: float64, w: float64) -> void
+public ffi func glVertex4f(x: float32, y: float32, z: float32, w: float32) -> void
+public ffi func glVertex4i(x: int32, y: int32, z: int32, w: int32) -> void
+public ffi func glVertex4s(x: int16, y: int16, z: int16, w: int16) -> void
+public ffi func glVertex2dv(v: float64*) -> void
+public ffi func glVertex2fv(v: float32*) -> void
+public ffi func glVertex2iv(v: int32*) -> void
+public ffi func glVertex2sv(v: int16*) -> void
+public ffi func glVertex3dv(v: float64*) -> void
+public ffi func glVertex3fv(v: float32*) -> void
+public ffi func glVertex3iv(v: int32*) -> void
+public ffi func glVertex3sv(v: int16*) -> void
+public ffi func glVertex4dv(v: float64*) -> void
+public ffi func glVertex4fv(v: float32*) -> void
+public ffi func glVertex4iv(v: int32*) -> void
+public ffi func glVertex4sv(v: int16*) -> void
+public ffi func glNormal3b(nx: int8, ny: int8, nz: int8) -> void
+public ffi func glNormal3d(nx: float64, ny: float64, nz: float64) -> void
+public ffi func glNormal3f(nx: float32, ny: float32, nz: float32) -> void
+public ffi func glNormal3i(nx: int32, ny: int32, nz: int32) -> void
+public ffi func glNormal3s(nx: int16, ny: int16, nz: int16) -> void
+public ffi func glNormal3bv(v: int8*) -> void
+public ffi func glNormal3dv(v: float64*) -> void
+public ffi func glNormal3fv(v: float32*) -> void
+public ffi func glNormal3iv(v: int32*) -> void
+public ffi func glNormal3sv(v: int16*) -> void
+public ffi func glIndexd(c: float64) -> void
+public ffi func glIndexf(c: float32) -> void
+public ffi func glIndexi(c: int32) -> void
+public ffi func glIndexs(c: int16) -> void
+public ffi func glIndexub(c: uint8) -> void
+public ffi func glIndexdv(c: float64*) -> void
+public ffi func glIndexfv(c: float32*) -> void
+public ffi func glIndexiv(c: int32*) -> void
+public ffi func glIndexsv(c: int16*) -> void
+public ffi func glIndexubv(c: uint8*) -> void
+public ffi func glColor3b(red: int8, green: int8, blue: int8) -> void
+public ffi func glColor3d(red: float64, green: float64, blue: float64) -> void
+public ffi func glColor3f(red: float32, green: float32, blue: float32) -> void
+public ffi func glColor3i(red: int32, green: int32, blue: int32) -> void
+public ffi func glColor3s(red: int16, green: int16, blue: int16) -> void
+public ffi func glColor3ub(red: uint8, green: uint8, blue: uint8) -> void
+public ffi func glColor3ui(red: uint32, green: uint32, blue: uint32) -> void
+public ffi func glColor3us(red: uint16, green: uint16, blue: uint16) -> void
+public ffi func glColor4b(red: int8, green: int8, blue: int8, alpha: int8) -> void
+public ffi func glColor4d(red: float64, green: float64, blue: float64, alpha: float64) -> void
+public ffi func glColor4f(red: float32, green: float32, blue: float32, alpha: float32) -> void
+public ffi func glColor4i(red: int32, green: int32, blue: int32, alpha: int32) -> void
+public ffi func glColor4s(red: int16, green: int16, blue: int16, alpha: int16) -> void
+public ffi func glColor4ub(red: uint8, green: uint8, blue: uint8, alpha: uint8) -> void
+public ffi func glColor4ui(red: uint32, green: uint32, blue: uint32, alpha: uint32) -> void
+public ffi func glColor4us(red: uint16, green: uint16, blue: uint16, alpha: uint16) -> void
+public ffi func glColor3bv(v: int8*) -> void
+public ffi func glColor3dv(v: float64*) -> void
+public ffi func glColor3fv(v: float32*) -> void
+public ffi func glColor3iv(v: int32*) -> void
+public ffi func glColor3sv(v: int16*) -> void
+public ffi func glColor3ubv(v: uint8*) -> void
+public ffi func glColor3uiv(v: uint32*) -> void
+public ffi func glColor3usv(v: uint16*) -> void
+public ffi func glColor4bv(v: int8*) -> void
+public ffi func glColor4dv(v: float64*) -> void
+public ffi func glColor4fv(v: float32*) -> void
+public ffi func glColor4iv(v: int32*) -> void
+public ffi func glColor4sv(v: int16*) -> void
+public ffi func glColor4ubv(v: uint8*) -> void
+public ffi func glColor4uiv(v: uint32*) -> void
+public ffi func glColor4usv(v: uint16*) -> void
+public ffi func glTexCoord1d(s: float64) -> void
+public ffi func glTexCoord1f(s: float32) -> void
+public ffi func glTexCoord1i(s: int32) -> void
+public ffi func glTexCoord1s(s: int16) -> void
+public ffi func glTexCoord2d(s: float64, t: float64) -> void
+public ffi func glTexCoord2f(s: float32, t: float32) -> void
+public ffi func glTexCoord2i(s: int32, t: int32) -> void
+public ffi func glTexCoord2s(s: int16, t: int16) -> void
+public ffi func glTexCoord3d(s: float64, t: float64, r: float64) -> void
+public ffi func glTexCoord3f(s: float32, t: float32, r: float32) -> void
+public ffi func glTexCoord3i(s: int32, t: int32, r: int32) -> void
+public ffi func glTexCoord3s(s: int16, t: int16, r: int16) -> void
+public ffi func glTexCoord4d(s: float64, t: float64, r: float64, q: float64) -> void
+public ffi func glTexCoord4f(s: float32, t: float32, r: float32, q: float32) -> void
+public ffi func glTexCoord4i(s: int32, t: int32, r: int32, q: int32) -> void
+public ffi func glTexCoord4s(s: int16, t: int16, r: int16, q: int16) -> void
+public ffi func glTexCoord1dv(v: float64*) -> void
+public ffi func glTexCoord1fv(v: float32*) -> void
+public ffi func glTexCoord1iv(v: int32*) -> void
+public ffi func glTexCoord1sv(v: int16*) -> void
+public ffi func glTexCoord2dv(v: float64*) -> void
+public ffi func glTexCoord2fv(v: float32*) -> void
+public ffi func glTexCoord2iv(v: int32*) -> void
+public ffi func glTexCoord2sv(v: int16*) -> void
+public ffi func glTexCoord3dv(v: float64*) -> void
+public ffi func glTexCoord3fv(v: float32*) -> void
+public ffi func glTexCoord3iv(v: int32*) -> void
+public ffi func glTexCoord3sv(v: int16*) -> void
+public ffi func glTexCoord4dv(v: float64*) -> void
+public ffi func glTexCoord4fv(v: float32*) -> void
+public ffi func glTexCoord4iv(v: int32*) -> void
+public ffi func glTexCoord4sv(v: int16*) -> void
+public ffi func glRasterPos2d(x: float64, y: float64) -> void
+public ffi func glRasterPos2f(x: float32, y: float32) -> void
+public ffi func glRasterPos2i(x: int32, y: int32) -> void
+public ffi func glRasterPos2s(x: int16, y: int16) -> void
+public ffi func glRasterPos3d(x: float64, y: float64, z: float64) -> void
+public ffi func glRasterPos3f(x: float32, y: float32, z: float32) -> void
+public ffi func glRasterPos3i(x: int32, y: int32, z: int32) -> void
+public ffi func glRasterPos3s(x: int16, y: int16, z: int16) -> void
+public ffi func glRasterPos4d(x: float64, y: float64, z: float64, w: float64) -> void
+public ffi func glRasterPos4f(x: float32, y: float32, z: float32, w: float32) -> void
+public ffi func glRasterPos4i(x: int32, y: int32, z: int32, w: int32) -> void
+public ffi func glRasterPos4s(x: int16, y: int16, z: int16, w: int16) -> void
+public ffi func glRasterPos2dv(v: float64*) -> void
+public ffi func glRasterPos2fv(v: float32*) -> void
+public ffi func glRasterPos2iv(v: int32*) -> void
+public ffi func glRasterPos2sv(v: int16*) -> void
+public ffi func glRasterPos3dv(v: float64*) -> void
+public ffi func glRasterPos3fv(v: float32*) -> void
+public ffi func glRasterPos3iv(v: int32*) -> void
+public ffi func glRasterPos3sv(v: int16*) -> void
+public ffi func glRasterPos4dv(v: float64*) -> void
+public ffi func glRasterPos4fv(v: float32*) -> void
+public ffi func glRasterPos4iv(v: int32*) -> void
+public ffi func glRasterPos4sv(v: int16*) -> void
+public ffi func glRectd(x1: float64, y1: float64, x2: float64, y2: float64) -> void
+public ffi func glRectf(x1: float32, y1: float32, x2: float32, y2: float32) -> void
+public ffi func glRecti(x1: int32, y1: int32, x2: int32, y2: int32) -> void
+public ffi func glRects(x1: int16, y1: int16, x2: int16, y2: int16) -> void
+public ffi func glRectdv(v1: float64*, v2: float64*) -> void
+public ffi func glRectfv(v1: float32*, v2: float32*) -> void
+public ffi func glRectiv(v1: int32*, v2: int32*) -> void
+public ffi func glRectsv(v1: int16*, v2: int16*) -> void
+
+
+// Vertex Arrays
+public ffi func glVertexPointer(size: int32, type: uint32, stride: int32, ptr: void*) -> void
+public ffi func glNormalPointer(type: uint32, stride: int32, ptr: void*) -> void
+public ffi func glColorPointer(size: int32, type: uint32, stride: int32, ptr: void*) -> void
+public ffi func glIndexPointer(type: uint32, stride: int32, ptr: void*) -> void
+public ffi func glTexCoordPointer(size: int32, type: uint32, stride: int32, ptr: void*) -> void
+public ffi func glEdgeFlagPointer(stride: int32, ptr: void*) -> void
+public ffi func glGetPointerv(pname: uint32, params: void**) -> void
+public ffi func glArrayElement(i: int32) -> void
+public ffi func glDrawArrays(mode: uint32, first: int32, count: int32) -> void
+public ffi func glDrawElements(mode: uint32, count: int32, type: uint32, indices: void*) -> void
+public ffi func glInterleavedArrays(format: uint32, stride: int32, pointer: void*) -> void
+
+// Lighting
+public ffi func glShadeModel(mode: uint32) -> void
+public ffi func glLightf(light: uint32, pname: uint32, param: float32) -> void
+public ffi func glLighti(light: uint32, pname: uint32, param: int32) -> void
+public ffi func glLightfv(light: uint32, pname: uint32, params: float32*) -> void
+public ffi func glLightiv(light: uint32, pname: uint32, params: int32*) -> void
+public ffi func glGetLightfv(light: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetLightiv(light: uint32, pname: uint32, params: int32*) -> void
+public ffi func glLightModelf(pname: uint32, param: float32) -> void
+public ffi func glLightModeli(pname: uint32, param: int32) -> void
+public ffi func glLightModelfv(pname: uint32, params: float32*) -> void
+public ffi func glLightModeliv(pname: uint32, params: int32*) -> void
+public ffi func glMaterialf(face: uint32, pname: uint32, param: float32) -> void
+public ffi func glMateriali(face: uint32, pname: uint32, param: int32) -> void
+public ffi func glMaterialfv(face: uint32, pname: uint32, params: float32*) -> void
+public ffi func glMaterialiv(face: uint32, pname: uint32, params: int32*) -> void
+public ffi func glGetMaterialfv(face: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetMaterialiv(face: uint32, pname: uint32, params: int32*) -> void
+public ffi func glColorMaterial(face: uint32, mode: uint32) -> void
+
+
+// Raster Functions
+public ffi func glPixelZoom(xfactor: float32, yfactor: float32) -> void
+public ffi func glPixelStoref(pname: uint32, param: float32) -> void
+public ffi func glPixelStorei(pname: uint32, param: int32) -> void
+public ffi func glPixelTransferf(pname: uint32, param: float32) -> void
+public ffi func glPixelTransferi(pname: uint32, param: int32) -> void
+public ffi func glPixelMapfv(map: uint32, mapsize: int32, values: float32*) -> void
+public ffi func glPixelMapuiv(map: uint32, mapsize: int32, values: uint32*) -> void
+public ffi func glPixelMapusv(map: uint32, mapsize: int32, values: uint16*) -> void
+public ffi func glGetPixelMapfv(map: uint32, values: float32*) -> void
+public ffi func glGetPixelMapuiv(map: uint32, values: uint32*) -> void
+public ffi func glGetPixelMapusv(map: uint32, values: uint16*) -> void
+public ffi func glBitmap(width: int32, height: int32, xorig: float32, yorig: float32, xmove: float32,
+	ymove: float32, bitmap: uint8*) -> void
+public ffi func glReadPixels(x: int32, y: int32, width: int32, height: int32, format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glDrawPixels(width: int32, height: int32, format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glCopyPixels(x: int32, y: int32, width: int32, height: int32, type: uint32) -> void
+
+// Stenciling
+public ffi func glStencilFunc(fn: uint32, ref: int32, mask: uint32) -> void
+public ffi func glStencilMask(mask: uint32) -> void
+public ffi func glStencilOp(fail: uint32, zfail: uint32, zpass: uint32) -> void
+public ffi func glClearStencil(s: int32) -> void
+
+// Texture Mapping
+public ffi func glTexGend(coord: uint32, pname: uint32, param: float64) -> void
+public ffi func glTexGenf(coord: uint32, pname: uint32, param: float32) -> void
+public ffi func glTexGeni(coord: uint32, pname: uint32, param: int32) -> void
+public ffi func glTexGendv(coord: uint32, pname: uint32, params: float64) -> void
+public ffi func glTexGenfv(coord: uint32, pname: uint32, params: float32) -> void
+public ffi func glTexGeniv(coord: uint32, pname: uint32, params: int32) -> void
+public ffi func glGetTexGendv(coord: uint32, pname: uint32, params: float64) -> void
+public ffi func glGetTexGenfv(coord: uint32, pname: uint32, params: float32) -> void
+public ffi func glGetTexGeniv(coord: uint32, pname: uint32, params: int32) -> void
+public ffi func glTexEnvf(target: uint32, pname: uint32, param: float32) -> void
+public ffi func glTexEnvi(target: uint32, pname: uint32, param: int32) -> void
+public ffi func glTexEnvfv(target: uint32, pname: uint32, params: float32) -> void
+public ffi func glTexEnviv(target: uint32, pname: uint32, params: int32) -> void
+public ffi func glGetTexEnvfv(target: uint32, pname: uint32, params: float32) -> void
+public ffi func glGetTexEnviv(target: uint32, pname: uint32, params: int32) -> void
+public ffi func glTexParameterf(target: uint32, pname: uint32, param: float32) -> void
+public ffi func glTexParameteri(target: uint32, pname: uint32, param: int32) -> void
+public ffi func glTexParameterfv(target: uint32, pname: uint32, params: float32) -> void
+public ffi func glTexParameteriv(target: uint32, pname: uint32, params: int32) -> void
+public ffi func glGetTexParameterfv(target: uint32, pname: uint32, params: float32) -> void
+public ffi func glGetTexParameteriv(target: uint32, pname: uint32, params: int32) -> void
+public ffi func glGetTexLevelParameterfv(target: uint32, level: int32, pname: uint32, params: float32*) -> void
+public ffi func glGetTexLevelParameteriv(target: uint32, level: int32, pname: uint32, params: int32*) -> void
+public ffi func glTexImage1D(target: uint32, level: int32, internalFormat: int32, width: int32, border: int32,
+	format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glTexImage2D(target: uint32, level: int32, internalFormat: int32, width: int32, height: int32,
+	border: int32, format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glGetTexImage(target: uint32, level: int32, format: uint32, type: uint32, pixels: void*) -> void
+
+// OpenGL 1.1 functions
+public ffi func glGenTextures(n: int32, textures: uint32*) -> void
+public ffi func glDeleteTextures(n: int32, textures: uint32*) -> void
+public ffi func glBindTexture(target: uint32, texture: uint32) -> void
+public ffi func glPrioritizeTextures(n: int32, textures: uint32*, priorities: float32*) -> void
+public ffi func glAreTexturesResident(n: int32, textures: uint32*, residences: bool*) -> bool
+public ffi func glIsTexture(texture: uint32) -> bool
+public ffi func glTexSubImage1D(target: uint32, level: int32, xoffset: int32, width: int32, format: uint32,
+	type: uint32, pixels: void*) -> void
+
+public ffi func glTexSubImage2D(target: uint32, level: int32, xoffset: int32, yoffset: int32, width: int32,
+	height: int32, format: uint32, type: uint32, pixels: void*) -> void
+
+public ffi func glCopyTexImage1D(target: uint32, level: int32, internalformat: uint32, x: int32, y: int32,
+	width: int32, border: int32) -> void
+
+public ffi func glCopyTexImage2D(target: uint32, level: int32, internalformat: uint32, x: int32, y: int32,
+	width: int32, height: int32, border: int32) -> void
+
+public ffi func glCopyTexSubImage1D(target: uint32, level: int32, xoffset: int32, x: int32, y: int32, width: int32) -> void
+public ffi func glCopyTexSubImage2D(target: uint32, level: int32, xoffset: int32, yoffset: int32, x: int32, y: int32,
+	width: int32, height: int32) -> void
+
+// Evaluators
+public ffi func glMap1d(target: uint32, u1: float64, u2: float64, stride: int32, order: int32, points: float64*) -> void
+public ffi func glMap1f(target: uint32, u1: float32, u2: float32, stride: int32, order: int32, points: float32*) -> void
+public ffi func glMap2d(target: uint32, u1: float64, u2: float64, ustride: int32, uorder: int32,
+	v1: float64, v2: float64, vstride: int32, vorder: int32, points: float64*) -> void
+public ffi func glMap2f(target: uint32, u1: float32, u2: float32, ustride: int32, uorder: int32,
+	v1: float32, v2: float32, vstride: int32, vorder: int32, points: float32*) -> void
+public ffi func glGetMapdv(target: uint32, query: uint32, v: float64*) -> void
+public ffi func glGetMapfv(target: uint32, query: uint32, v: float32*) -> void
+public ffi func glGetMapiv(target: uint32, query: uint32, v: int32*) -> void
+public ffi func glEvalCoord1d(u: float64) -> void
+public ffi func glEvalCoord1f(u: float32) -> void
+public ffi func glEvalCoord1dv(u: float64*) -> void
+public ffi func glEvalCoord1fv(u: float32*) -> void
+public ffi func glEvalCoord2d(u: float64, v: float64) -> void
+public ffi func glEvalCoord2f(u: float32, v: float32) -> void
+public ffi func glEvalCoord2dv(u: float64*) -> void
+public ffi func glEvalCoord2fv(u: float32*) -> void
+public ffi func glMapGrid1d(un: int32, u1: float64, u2: float64) -> void
+public ffi func glMapGrid1f(un: int32, u1: float32, u2: float32) -> void
+public ffi func glMapGrid2d(un: int32, u1: float64, u2: float64, vn: int32, v1: float64, v2: float64) -> void
+public ffi func glMapGrid2f(un: int32, u1: float32, u2: float32, vn: int32, v1: float32, v2: float32) -> void
+public ffi func glEvalPoint1(i: int32) -> void
+public ffi func glEvalPoint2(i: int32, j: int32) -> void
+public ffi func glEvalMesh1(mode: uint32, i1: int32, i2: int32) -> void
+public ffi func glEvalMesh2(mode: uint32, i1: int32, i2: int32, j1: int32, j2: int32) -> void
+
+// Fog
+public ffi func glFogf(pname: uint32, param: float32) -> void
+public ffi func glFogi(pname: uint32, param: int32) -> void
+public ffi func glFogfv(pname: uint32, params: float32*) -> void
+public ffi func glFogiv(pname: uint32, params: int32*) -> void
+
+// Selection and Feedback
+public ffi func glFeedbackBuffer(size: int32, type: uint32, buffer: float32*) -> void
+public ffi func glPassThrough(token: float32) -> void
+public ffi func glSelectBuffer(size: int32, buffer: uint32*) -> void
+public ffi func glInitNames() -> void
+public ffi func glLoadName(name: uint32) -> void
+public ffi func glPushName(name: uint32) -> void
+public ffi func glPopName() -> void
+public ffi func glDrawRangeElements(mode: uint32, start: uint32, end: uint32, count: int32, type: uint32, indices: void*) -> void
+public ffi func glTexImage3D(target: uint32, level: int32, internalFormat: int32, width: int32, height: int32,
+	depth: int32, border: int32, format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glTexSubImage3D(target: uint32, level: int32, xoffset: int32, yoffset: int32, zoffset: int32, width: int32,
+	height: int32, depth: int32, format: uint32, type: uint32, pixels: void*) -> void
+public ffi func glCopyTexSubImage3D(target: uint32, level: int32, xoffset: int32, yoffset: int32, zoffset: int32, x: int32,
+	y: int32, width: int32, height: int32) -> void
+public ffi func glColorTable(target: uint32, internalformat: uint32, width: int32, format: uint32, type: uint32,
+	table: void*) -> void
+public ffi func glColorSubTable(target: uint32, start: int32, count: int32, format: uint32, type: uint32, data: void*) -> void
+public ffi func glColorTableParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+public ffi func glColorTableParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glCopyColorSubTable(target: uint32, start: int32, x: int32, y: int32, width: int32) -> void
+public ffi func glCopyColorTable(target: uint32, internalformat: uint32, x: int32, y: int32, width: int32) -> void
+public ffi func glGetColorTable(target: uint32, format: uint32, type: uint32, table: void*) -> void
+public ffi func glGetColorTableParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetColorTableParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+public ffi func glBlendEquation(mode: uint32) -> void
+public ffi func glBlendColor(red: float32, green: float32, blue: float32, alpha: float32) -> void
+public ffi func glHistogram(target: uint32, width: int32, internalformat: uint32, sink: bool) -> void
+public ffi func glResetHistogram(target: uint32) -> void
+public ffi func glGetHistogram(target: uint32, reset: bool, format: uint32, type: uint32, values: void*) -> void
+public ffi func glGetHistogramParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetHistogramParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+public ffi func glMinmax(target: uint32, internalformat: uint32, sink: bool) -> void
+public ffi func glResetMinmax(target: uint32) -> void
+public ffi func glGetMinmax(target: uint32, reset: bool, format: uint32, types: uint32, values: void*) -> void
+public ffi func glGetMinmaxParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetMinmaxParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+public ffi func glConvolutionFilter1D(target: uint32, internalformat: uint32, width: int32, format: uint32, type: uint32,
+	image: void*) -> void
+
+public ffi func glConvolutionFilter2D(target: uint32, internalformat: uint32, width: int32, height: int32, format: uint32,
+	type: uint32, image: void*) -> void
+
+public ffi func glConvolutionParameterf(target: uint32, pname: uint32, params: float32) -> void
+public ffi func glConvolutionParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glConvolutionParameteri(target: uint32, pname: uint32, params: int32) -> void
+public ffi func glConvolutionParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+public ffi func glCopyConvolutionFilter1D(target: uint32, internalformat: uint32, x: int32, y: int32, width: int32) -> void
+public ffi func glCopyConvolutionFilter2D(target: uint32, internalformat: uint32, x: int32, y: int32, width: int32,
+	height: int32) -> void
+
+public ffi func glGetConvolutionFilter(target: uint32, format: uint32, type: uint32, image: void*) -> void
+public ffi func glGetConvolutionParameterfv(target: uint32, pname: uint32, params: float32*) -> void
+public ffi func glGetConvolutionParameteriv(target: uint32, pname: uint32, params: int32*) -> void
+
+public ffi func glSeparableFilter2D(target: uint32, internalformat: uint32, width: int32, height: int32, format: uint32,
+	type: uint32, row: void*, column: void*) -> void
+
+public ffi func glGetSeparableFilter(target: uint32, format: uint32, type: uint32, row: void*, column: void*, span: void*) -> void
+
+public ffi func glActiveTexture(texture: uint32) -> void
+public ffi func glClientActiveTexture(texture: uint32) -> void
+
+public ffi func glCompressedTexImage1D(target: uint32, level: int32, internalformat: uint32, width: int32, border: int32,
+	imageSize: int32, data: void*) -> void
+
+public ffi func glCompressedTexImage2D(target: uint32, level: int32, internalformat: uint32, width: int32, height: int32,
+	border: int32, imageSize: int32, data: void*) -> void
+
+public ffi func glCompressedTexImage3D(target: uint32, level: int32, internalformat: uint32, width: int32, height: int32,
+	 voiddepth: int32, border: int32, imageSize: int32, data: void*)
+
+public ffi func glCompressedTexSubImage1D(target: uint32, level: int32, xoffset: int32, width: int32, format: uint32,
+	imageSize: int32, data: void*) -> void
+
+public ffi func glCompressedTexSubImage2D(target: uint32, level: int32, xoffset: int32, yoffset: int32, width: int32,
+	height: int32, format: uint32, imageSize: int32, data: void*) -> void
+
+public ffi func glCompressedTexSubImage3D(target: uint32, level: int32, xoffset: int32, yoffset: int32, zoffset: int32,
+	width: int32, height: int32, depth: int32, format: uint32, imageSize: int32, data: void*) -> void
+
+public ffi func glGetCompressedTexImage(target: uint32, lod: int32, img: void*) -> void
+public ffi func glMultiTexCoord1d(target: uint32, s: float64) -> void
+public ffi func glMultiTexCoord1dv(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord1f(target: uint32, s: float32) -> void
+public ffi func glMultiTexCoord1fv(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord1i(target: uint32, s: int32) -> void
+public ffi func glMultiTexCoord1iv(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord1s(target: uint32, s: int16) -> void
+public ffi func glMultiTexCoord1sv(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord2d(target: uint32, s: float64, t: float64) -> void
+public ffi func glMultiTexCoord2dv(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord2f(target: uint32, s: float32, t: float32) -> void
+public ffi func glMultiTexCoord2fv(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord2i(target: uint32, s: int32, t: int32) -> void
+public ffi func glMultiTexCoord2iv(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord2s(target: uint32, s: int16, t: int16) -> void
+public ffi func glMultiTexCoord2sv(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord3d(target: uint32, s: float64, t: float64, r: float64) -> void
+public ffi func glMultiTexCoord3dv(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord3f(target: uint32, s: float32, t: float32, r: float32) -> void
+public ffi func glMultiTexCoord3fv(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord3i(target: uint32, s: int32, t: int32, r: int32) -> void
+public ffi func glMultiTexCoord3iv(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord3s(target: uint32, s: int16, t: int16, r: int16) -> void
+public ffi func glMultiTexCoord3sv(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord4d(target: uint32, s: float64, t: float64, r: float64, q: float64) -> void
+public ffi func glMultiTexCoord4dv(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord4f(target: uint32, s: float32, t: float32, r: float32, q: float32) -> void
+public ffi func glMultiTexCoord4fv(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord4i(target: uint32, s: int32, t: int32, r: int32, q: int32) -> void
+public ffi func glMultiTexCoord4iv(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord4s(target: uint32, s: int16, t: int16, r: int16, q: int16) -> void
+public ffi func glMultiTexCoord4sv(target: uint32, v: int16*) -> void
+public ffi func glLoadTransposeMatrixd(m: float64[16]) -> void
+public ffi func glLoadTransposeMatrixf(m: float32[16]) -> void
+public ffi func glMultTransposeMatrixd(m: float64[16]) -> void
+public ffi func glMultTransposeMatrixf(m: float32[16]) -> void
+public ffi func glSampleCoverage(value: float32, invert: bool) -> void
+public ffi func glActiveTextureARB(texture: uint32) -> void
+public ffi func glClientActiveTextureARB(texture: uint32) -> void
+public ffi func glMultiTexCoord1dARB(target: uint32, s: float64) -> void
+public ffi func glMultiTexCoord1dvARB(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord1fARB(target: uint32, s: float32) -> void
+public ffi func glMultiTexCoord1fvARB(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord1iARB(target: uint32, s: int32) -> void
+public ffi func glMultiTexCoord1ivARB(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord1sARB(target: uint32, s: int16) -> void
+public ffi func glMultiTexCoord1svARB(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord2dARB(target: uint32, s: float64, t: float64) -> void
+public ffi func glMultiTexCoord2dvARB(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord2fARB(target: uint32, s: float32, t: float32) -> void
+public ffi func glMultiTexCoord2fvARB(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord2iARB(target: uint32, s: int32, t: int32) -> void
+public ffi func glMultiTexCoord2ivARB(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord2sARB(target: uint32, s: int16, t: int16) -> void
+public ffi func glMultiTexCoord2svARB(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord3dARB(target: uint32, s: float64, t: float64, r: float64) -> void
+public ffi func glMultiTexCoord3dvARB(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord3fARB(target: uint32, s: float32, t: float32, r: float32) -> void
+public ffi func glMultiTexCoord3fvARB(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord3iARB(target: uint32, s: int32, t: int32, r: int32) -> void
+public ffi func glMultiTexCoord3ivARB(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord3sARB(target: uint32, s: int16, t: int16, r: int16) -> void
+public ffi func glMultiTexCoord3svARB(target: uint32, v: int16*) -> void
+public ffi func glMultiTexCoord4dARB(target: uint32, s: float64, t: float64, r: float64, q: float64) -> void
+public ffi func glMultiTexCoord4dvARB(target: uint32, v: float64*) -> void
+public ffi func glMultiTexCoord4fARB(target: uint32, s: float32, t: float32, r: float32, q: float32) -> void
+public ffi func glMultiTexCoord4fvARB(target: uint32, v: float32*) -> void
+public ffi func glMultiTexCoord4iARB(target: uint32, s: int32, t: int32, r: int32, q: int32) -> void
+public ffi func glMultiTexCoord4ivARB(target: uint32, v: int32*) -> void
+public ffi func glMultiTexCoord4sARB(target: uint32, s: int16, t: int16, r: int16, q: int16) -> void
+public ffi func glMultiTexCoord4svARB(target: uint32, v: int16*) -> void
+
+
+
+
+
+
+

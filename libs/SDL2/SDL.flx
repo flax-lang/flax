@@ -1,0 +1,63 @@
+// SDL.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+public namespace SDL
+{
+	public let INIT_TIMER: uint32					= 0x00000001
+	public let INIT_AUDIO: uint32					= 0x00000010
+	public let INIT_VIDEO: uint32					= 0x00000020
+	public let INIT_JOYSTICK: uint32				= 0x00000200
+	public let INIT_HAPTIC: uint32					= 0x00001000
+	public let INIT_GAMECONTROLLER: uint32			= 0x00002000
+	public let INIT_EVENTS: uint32					= 0x00004000
+	public let INIT_NOPARACHUTE: uint32				= 0x00100000
+	public let INIT_EVERYTHING: uint32				= SDL.INIT_TIMER | SDL.INIT_AUDIO | SDL.INIT_VIDEO | SDL.INIT_EVENTS |
+														SDL.INIT_JOYSTICK | SDL.INIT_HAPTIC | SDL.INIT_GAMECONTROLLER
+
+	public let GL_RED_SIZE: int32					= 0
+    public let GL_GREEN_SIZE: int32					= 1
+    public let GL_BLUE_SIZE: int32					= 2
+    public let GL_ALPHA_SIZE: int32					= 3
+    public let GL_BUFFER_SIZE: int32				= 4
+    public let GL_DOUBLEBUFFER: int32				= 5
+    public let GL_DEPTH_SIZE: int32					= 6
+    public let GL_STENCIL_SIZE: int32				= 7
+    public let GL_ACCUM_RED_SIZE: int32				= 8
+    public let GL_ACCUM_GREEN_SIZE: int32			= 9
+    public let GL_ACCUM_BLUE_SIZE: int32			= 10
+    public let GL_ACCUM_ALPHA_SIZE: int32			= 11
+    public let GL_STEREO: int32						= 12
+    public let GL_MULTISAMPLEBUFFERS: int32			= 13
+    public let GL_MULTISAMPLESAMPLES: int32			= 14
+    public let GL_ACCELERATED_VISUAL: int32			= 15
+    public let GL_RETAINED_BACKING: int32			= 16
+    public let GL_CONTEXT_MAJOR_VERSION: int32		= 17
+    public let GL_CONTEXT_MINOR_VERSION: int32		= 18
+    public let GL_CONTEXT_EGL: int32				= 19
+    public let GL_CONTEXT_FLAGS: int32				= 20
+    public let GL_CONTEXT_PROFILE_MASK: int32		= 21
+    public let GL_SHARE_WITH_CURRENT_CONTEXT: int32	= 22
+    public let GL_FRAMEBUFFER_SRGB_CAPABLE: int32	= 23
+    public let GL_CONTEXT_RELEASE_BEHAVIOR: int32	= 24
+}
+
+public ffi func SDL_Init(flags: uint32) -> int32
+public ffi func SDL_CreateWindow(title: int8*, xpos: int32, ypos: int32, width: int32, height: int32, flags: uint32) -> void*
+
+
+public ffi func SDL_GL_SetAttribute(attr: int32, value: int32)
+
+public struct SDL_Event
+{
+	var type: uint32
+	var lol: int8[70]
+}
+
+public ffi func SDL_PollEvent(event: SDL_Event*) -> int32
+
+// opengl stuff
+
+public ffi func SDL_GL_CreateContext(window: void*) -> void*
+public ffi func SDL_GL_SwapWindow(window: void*) -> void
