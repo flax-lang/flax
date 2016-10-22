@@ -8,6 +8,7 @@
 
 #include "operators.h"
 
+#include <float.h>
 
 using namespace Ast;
 using namespace Codegen;
@@ -404,6 +405,19 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 
+#if 0
+static bool floatLiteralFitsIntoType(fir::PrimitiveType* type, double val)
+{
+	if(type->getFloatingPointBitWidth() == 32)
+		return (float) val >= FLT_MIN && (float) val <= FLT_MAX;
+
+	else if(type->getFloatingPointBitWidth() == 64)
+		return val >= DBL_MIN && val <= DBL_MAX;
+
+	else
+		return false;
+}
+#endif
 
 Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -419,7 +433,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
-		fir::Value* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
+		fir::GlobalVariable* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
 			fir::ConstantValue::getNullValue(this->concretisedType), this->immutable,
 			(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
@@ -431,22 +445,119 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
 
-			// set it up so the lambda goes straight to writing instructions.
+			// set it up so we go straight to writing instructions.
 			cgi->irb.setCurrentBlock(constr->getBlockList().front());
 
-
 			auto res = this->initVal->codegen(cgi, glob);
-			TypePair_t* cmplxtype = 0;
-			if(this->ptype != pts::InferredType::get())
+
+			// don't be wasting time calling functions if we're constant.
+			if(dynamic_cast<fir::ConstantValue*>(res.value))
 			{
-				iceAssert(this->concretisedType);
-				cmplxtype = cgi->getType(this->concretisedType);
+				// go back to prev
+				cgi->irb.setCurrentBlock(prev);
+
+				// delete the function
+				cgi->module->removeFunction(constr);
+
+				// ok, now. we can call codegen again, since it's constant. no repercussions
+				// we need to call it again, because the old value was created in a deleted function.
+
+				fir::Value* val = this->initVal->codegen(cgi).value;
+				if(val->getType() != glob->getType()->getPointerElementType())
+				{
+					auto vt = val->getType();
+					auto gt = glob->getType()->getPointerElementType();
+
+					fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(val);
+					iceAssert(ci);
+
+					// ok, decide what kind of cast we want
+					if(vt->isIntegerType() && gt->isIntegerType())
+					{
+						// int to int -- either signedness or size
+						// check if we can do a lossless cast
+						int d = cgi->getAutoCastDistance(vt, gt);
+
+						if(d == -1)
+						{
+							// we can't.
+							// check if the value is negative, and we're unsigned
+							if(vt->isSignedIntType() && !gt->isSignedIntType())
+							{
+								if(ci->getSignedValue() < 0)
+								{
+									error(this, "Cannot store negative literal value '%zd' into unsigned type '%s'", ci->getSignedValue(),
+										gt->str().c_str());
+								}
+							}
+
+							// check the sizing
+							bool res = false;
+							if(vt->isSignedIntType())
+								res = fir::checkSignedIntLiteralFitsIntoType(gt->toPrimitiveType(), ci->getSignedValue());
+
+							else
+								res = fir::checkUnsignedIntLiteralFitsIntoType(gt->toPrimitiveType(), ci->getUnsignedValue());
+
+							if(res)
+							{
+								val = fir::ConstantInt::get(gt, ci->getSignedValue());
+							}
+							else
+							{
+								error(this, "Cannot cast '%s' to '%s' without loss", vt->str().c_str(), gt->str().c_str());
+							}
+						}
+						else
+						{
+							// ok, we can.
+							// do the cast.
+							if(vt->isSignedIntType() != gt->isSignedIntType())
+							{
+								// change sign first
+								val = cgi->irb.CreateIntSignednessCast(val, vt->toPrimitiveType()->getOppositeSignedType());
+							}
+
+							// change size
+							val = cgi->irb.CreateIntSizeCast(val, gt);
+						}
+					}
+					else if(vt->isIntegerType() && gt->isFloatingPointType())
+					{
+						// int to float
+						iceAssert(0);
+					}
+					else if(vt->isFloatingPointType() && gt->isIntegerType())
+					{
+						// float to int
+						iceAssert(0);
+					}
+					else
+					{
+						error(this, "Unable to cast value of type '%s' to store in global variable of type '%s'", vt->str().c_str(),
+							gt->str().c_str());
+					}
+				}
+
+				fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(val);
+				iceAssert(cv);
+
+				glob->setInitialValue(cv);
 			}
+			else
+			{
+				TypePair_t* cmplxtype = 0;
+				if(this->ptype != pts::InferredType::get())
+				{
+					iceAssert(this->concretisedType);
+					cmplxtype = cgi->getType(this->concretisedType);
+				}
 
-			this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
-			cgi->irb.CreateReturnVoid();
+				this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
+				cgi->irb.CreateReturnVoid();
 
-			cgi->irb.setCurrentBlock(prev);
+				cgi->irb.setCurrentBlock(prev);
+			}
 		}
 		else if(ltype->isStringType())
 		{
@@ -509,36 +620,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->irb.CreateReturnVoid();
 
 			cgi->irb.setCurrentBlock(prev);
-
-
-
-			#if 0
-			fir::TupleType* stype = dynamic_cast<fir::TupleType*>(ltype);
-
-			int i = 0;
-			for(fir::Type* t : stype->getElements())
-			{
-				if(t->isTupleType())
-				{
-					// todo(missing): why?
-					error(this, "global nested tuples not supported yet");
-				}
-				else if(t->isStructType() || t->isClassType())
-				{
-					TypePair_t* tp = cgi->getType(t);
-					iceAssert(tp);
-
-					cgi->addGlobalTupleConstructor(ai, i, cgi->getDefaultConstructor(this, t->getPointerTo(),
-						dynamic_cast<StructBase*>(tp->second.first)));
-				}
-				else
-				{
-					cgi->addGlobalTupleConstructedValue(ai, i, fir::ConstantValue::getNullValue(t));
-				}
-
-				i++;
-			}
-			#endif
 		}
 
 		FunctionTree* ft = cgi->getCurrentFuncTree();

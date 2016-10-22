@@ -18,6 +18,10 @@
 
 namespace fir
 {
+	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
+	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
+
+
 	struct Value;
 
 	// base class implicitly stores null
@@ -38,8 +42,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantInt* getSigned(Type* intType, ssize_t val);
-		static ConstantInt* getUnsigned(Type* intType, size_t val);
+		static ConstantInt* get(Type* intType, size_t val);
 
 		static ConstantInt* getBool(bool value, FTContext* tc = 0);
 		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);

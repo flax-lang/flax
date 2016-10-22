@@ -262,6 +262,46 @@ namespace fir
 		return this->bitWidth;
 	}
 
+	PrimitiveType* PrimitiveType::getOppositeSignedType()
+	{
+		if(this == Type::getInt8())
+		{
+			return Type::getUint8();
+		}
+		else if(this == Type::getInt16())
+		{
+			return Type::getUint16();
+		}
+		else if(this == Type::getInt32())
+		{
+			return Type::getUint32();
+		}
+		else if(this == Type::getInt64())
+		{
+			return Type::getUint64();
+		}
+		else if(this == Type::getUint8())
+		{
+			return Type::getInt8();
+		}
+		else if(this == Type::getUint16())
+		{
+			return Type::getInt16();
+		}
+		else if(this == Type::getUint32())
+		{
+			return Type::getInt32();
+		}
+		else if(this == Type::getUint64())
+		{
+			return Type::getInt64();
+		}
+		else
+		{
+			error_and_exit("???");
+		}
+	}
+
 
 
 
