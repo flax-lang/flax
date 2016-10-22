@@ -231,7 +231,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->initFuncs.push_back(this->defaultInitialiser);
 	}
 
-	cgi->addPublicFunc(FuncDefPair(this->defaultInitialiser, 0, 0));
+	// cgi->addPublicFunc(FuncDefPair(this->defaultInitialiser, 0, 0));
 
 	return Result_t(0, 0);
 }

@@ -892,23 +892,17 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
 			if(!res.resolved)
 			{
-				FunctionTree* pubft = this->getCurrentFuncTree(&nsstrs, this->rootNode->publicFuncTree);
-				res = this->resolveFunctionFromList(ma, pubft->funcs, fc->name, fc->params);
-
-				if(!res.resolved)
+				std::deque<Func*> flist;
+				for(auto f : ftree->genericFunctions)
 				{
-					std::deque<Func*> flist;
-					for(auto f : ftree->genericFunctions)
-					{
-						iceAssert(f.first->genericTypes.size() > 0);
+					iceAssert(f.first->genericTypes.size() > 0);
 
-						if(f.first->ident.name == fc->name)
-							flist.push_back({ f.second });
-					}
-
-					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
-					if(!fp.isEmpty()) res = Resolved_t(fp);
+					if(f.first->ident.name == fc->name)
+						flist.push_back({ f.second });
 				}
+
+				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+				if(!fp.isEmpty()) res = Resolved_t(fp);
 			}
 		}
 		else

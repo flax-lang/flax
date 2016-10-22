@@ -850,7 +850,7 @@ namespace Ast
 		Codegen::FunctionTree* rootFuncStack = new Codegen::FunctionTree("__#root");
 
 		// public functiondecls and type decls.
-		Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");
+		// Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");
 
 		// top level stuff
 		std::deque<Expr*> topLevelExpressions;
