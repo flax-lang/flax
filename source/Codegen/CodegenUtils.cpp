@@ -2415,7 +2415,7 @@ namespace Codegen
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
-		fir::Value* constint = fir::ConstantInt::getUnsigned(typegep->getType()->getPointerElementType(), index);
+		fir::Value* constint = fir::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
 		this->irb.CreateStore(constint, typegep);
 
 

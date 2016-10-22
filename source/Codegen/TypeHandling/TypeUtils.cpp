@@ -138,9 +138,30 @@ namespace Codegen
 			unsigned int bb = to->toPrimitiveType()->getIntegerBitWidth();
 
 			// we only allow promotion, never truncation (implicitly anyway)
+			// rules:
+			// u8 can fit in u16, u32, u64, i16, i32, i64
+			// u16 can fit in u32, u64, i32, i64
+			// u32 can fit in u64, i64
+			// u64 can only fit in itself.
 
-			// todo: do we?
-			// if(ab > bb) return -1;
+			bool as = from->toPrimitiveType()->isSigned();
+			bool bs = to->toPrimitiveType()->isSigned();
+
+
+			if(as == false && bs == true)
+			{
+				return bb >= 2 * ab;
+			}
+			else if(as == true && bs == false)
+			{
+				// never allow this (signed to unsigned)
+				return -1;
+			}
+
+			// ok, signs are same now.
+			// make sure bitsize >=.
+			if(bb < ab) return -1;
+
 
 			// fk it
 			if(ab == 8)
@@ -237,42 +258,37 @@ namespace Codegen
 
 		fir::Value* retval = from;
 
+		int dist = this->getAutoCastDistance(from->getType(), target);
+		if(distance != 0)
+			*distance = dist;
+
+
 		if(from->getType() == target)
 		{
 			retval = from;
 		}
+
+
 		if(target->isIntegerType() && from->getType()->isIntegerType()
 			&& target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth())
 		{
-			unsigned int lBits = target->toPrimitiveType()->getIntegerBitWidth();
-			unsigned int rBits = from->getType()->toPrimitiveType()->getIntegerBitWidth();
-
-			bool shouldCast = lBits > rBits;
-
-			// check if the RHS is a constant value
-			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(from);
-			if(constVal)
+			bool shouldCast = dist >= 0;
+			if(dist == -1)
 			{
-				// check if the number fits in the LHS type
-
-				if(lBits < 64)	// todo: 64 is the max
+				if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(from))
 				{
-					if(constVal->getSignedValue() < 0)
+					if(ci->getType()->isSignedIntType())
 					{
-						int64_t max = -1 * powl(2, lBits - 1);
-						if(constVal->getSignedValue() >= max)
-							shouldCast = true;
+						shouldCast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getSignedValue());
 					}
 					else
 					{
-						uint64_t max = powl(2, lBits) - 1;
-						if(constVal->getUnsignedValue() <= max)
-							shouldCast = true;
+						shouldCast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getUnsignedValue());
 					}
 				}
 			}
 
-			if(shouldCast && !constVal)
+			if(shouldCast)
 			{
 				// check signed to unsiged first
 				// note(behaviour): should this be implicit?
@@ -280,23 +296,10 @@ namespace Codegen
 
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
-					if(target->toPrimitiveType()->isSigned())
-						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
-
-					else
-						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
+					from = this->irb.CreateIntSignednessCast(from, from->getType()->toPrimitiveType()->getOppositeSignedType());
 				}
 
 				retval = this->irb.CreateIntSizeCast(from, target);
-			}
-			else if(shouldCast)
-			{
-				// return a const, please.
-				if(constVal->getType()->isSignedIntType())
-					retval = fir::ConstantInt::getSigned(target, constVal->getSignedValue());
-
-				else
-					retval = fir::ConstantInt::getUnsigned(target, constVal->getUnsignedValue());
 			}
 		}
 
@@ -371,9 +374,6 @@ namespace Codegen
 		}
 
 
-		int dist = this->getAutoCastDistance(from->getType(), target);
-		if(distance != 0)
-			*distance = dist;
 
 		return retval;
 	}
