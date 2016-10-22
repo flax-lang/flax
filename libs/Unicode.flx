@@ -4,7 +4,7 @@
 
 import LibCInterface
 
-public func Utf8Length(_text: int8*) -> uint64
+public func Utf8Length(_text: int8*) -> int64
 {
 	var len = 0
 	var text = _text
@@ -23,7 +23,7 @@ public func Utf8Length(_text: int8*) -> uint64
 	return len
 }
 
-public func Utf8CharLength(char: int8*) -> uint64
+public func Utf8CharLength(char: int8*) -> int64
 {
 	if char == null { return 0 }
 
@@ -35,7 +35,7 @@ public func Utf8CharLength(char: int8*) -> uint64
 
 // returns a pointer to the beginning of the pos'th utf8 codepoint
 // in the buffer at text
-public func Utf8Index(_text: int8*, _pos: uint64) -> int8*
+public func Utf8Index(_text: int8*, _pos: int64) -> int8*
 {
 	var text = _text
 	var pos = _pos

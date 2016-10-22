@@ -619,8 +619,15 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			return ConstantInt::get(targetType, ci->getSignedValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntSize, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -629,8 +636,15 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			return ConstantInt::get(targetType, ci->getType()->isSignedIntType() ? ci->getSignedValue() : ci->getUnsignedValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -639,8 +653,20 @@ namespace fir
 		iceAssert(v->getType()->isFloatingPointType() && "value is not floating point type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantFP* cfp = dynamic_cast<ConstantFP*>(v))
+		{
+			double _ = 0;
+
+			if(std::modf(cfp->getValue(), &_) != 0.0)
+				warn("Truncating constant '%lf' in constant cast to type '%s'", cfp->getValue(), targetType->str().c_str());
+
+			return ConstantInt::get(targetType, (size_t) cfp->getValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_FloatToInt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -649,8 +675,29 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isFloatingPointType() && "target is not floating point type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			if(targetType == fir::Type::getFloat32())
+			{
+				return ConstantFP::getFloat32((float) ci->getType()->isSignedIntType() ? ci->getSignedValue()
+					: ci->getUnsignedValue());
+			}
+			else if(targetType == fir::Type::getFloat64())
+			{
+				return ConstantFP::getFloat64((double) ci->getType()->isSignedIntType() ? ci->getSignedValue()
+					: ci->getUnsignedValue());
+			}
+			else
+			{
+				error("Unknown floating point type '%s'", targetType->str().c_str());
+			}
+		}
+
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -661,6 +708,7 @@ namespace fir
 
 		Instruction* instr = new Instruction(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 

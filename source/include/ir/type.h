@@ -240,6 +240,7 @@ namespace fir
 		bool isSigned();
 		size_t getIntegerBitWidth();
 		size_t getFloatingPointBitWidth();
+		PrimitiveType* getOppositeSignedType();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
