@@ -113,6 +113,8 @@ namespace Compiler
 	{
 		using namespace Codegen;
 
+
+		// todo: deprecate this shit
 		for(auto v : from->typeList)
 		{
 			bool skip = false;
@@ -134,8 +136,7 @@ namespace Compiler
 
 		if(doClone)
 		{
-			cgi->cloneFunctionTree(from->rootFuncStack, to->rootFuncStack, false);
-			cgi->cloneFunctionTree(from->publicFuncTree, to->publicFuncTree, false);
+			// cgi->cloneFunctionTree(from->rootFuncStack, to->rootFuncStack, false);
 		}
 	}
 
@@ -163,11 +164,14 @@ namespace Compiler
 		// add the previous stuff to our own root
 		copyRootInnards(cgi, dummyRoot, root, true);
 
+		cgi->module = new fir::Module(Parser::getModuleName(fpath));
+		cgi->importOtherCgi(rcgi);
+
 		Codegen::doCodegen(fpath, root, cgi);
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
-		copyRootInnards(rcgi, root, dummyRoot, true);
+		// copyRootInnards(rcgi, root, dummyRoot, true);
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -297,6 +301,8 @@ namespace Compiler
 
 		Root* dummyRoot = new Root();
 		CodegenInstance* rcgi = new CodegenInstance();
+		rcgi->rootNode = dummyRoot;
+		rcgi->module = new fir::Module("dummy");
 
 		rcgi->customOperatorMap = foundOps;
 		rcgi->customOperatorMapRev = foundOpsRev;
@@ -316,6 +322,7 @@ namespace Compiler
 			std::string name = Compiler::getFullPathOfFile(gr.front()->name);
 
 			auto cgi = _compileFile(name, rcgi, dummyRoot);
+			rcgi->importOtherCgi(cgi);
 
 			modulelist.push_back({ name, cgi->module });
 			rootmap[name] = cgi->rootNode;

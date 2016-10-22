@@ -346,7 +346,8 @@ namespace Codegen
 		}
 		else if(target->isPointerType() && from->getType()->isNullPointer())
 		{
-			retval = fir::ConstantValue::getNullValue(target);
+			// retval = fir::ConstantValue::getNullValue(target);
+			retval = this->irb.CreatePointerTypeCast(from, target);
 		}
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())

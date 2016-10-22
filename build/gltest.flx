@@ -1,0 +1,132 @@
+// gltest.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+// import Foundation
+import OpenGL.GL
+import SDL2.SDL
+
+import LibCInterface
+
+public func main(argc: int32, argv: int8**) -> int
+{
+	SDL_Init(SDL.INIT_EVERYTHING)
+	let mw = SDL_CreateWindow("test", 805240832, 805240832, 640, 480, 2)
+
+	if mw == null
+	{
+		printf("omg no\n")
+	}
+	else
+	{
+		printf("window init: %p\n", mw)
+	}
+
+
+	let glc = SDL_GL_CreateContext(mw)
+
+	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLEBUFFERS, 1)
+	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLESAMPLES, 2)
+
+
+	glClearColor(0, 0, 0, 0)
+
+	glMatrixMode(GL.PROJECTION)
+	glLoadIdentity()
+	gluPerspective(45.0, (640.0/480.0), 0.1, 100.0)
+
+	glMatrixMode(GL.MODELVIEW)
+	glLoadIdentity()
+
+	glEnable(GL.MULTISAMPLE)
+
+	glEnable(GL.DEPTH_TEST)
+	glDepthFunc(GL.LESS)
+
+	var rotation: float64 = 0
+	while(true)
+	{
+		glClear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
+		glTranslated(0.0, 0.0, -6.0)
+
+		glRotated(rotation, 1.0, 1.0, 0.0);
+
+		glBegin(GL.QUADS)
+
+		/* Cube Top */
+		glColor4d(1.0, 0.0, 0.0, 1.0)
+		glVertex3d(-1.0, 1.0, 1.0)
+		glVertex3d(-1.0, 1.0, -1.0)
+		glVertex3d(1.0, 1.0, -1.0)
+		glVertex3d(1.0, 1.0, 1.0)
+
+
+		/* Cube Bottom */
+		glColor4d(1.0, 0.5, 0.0, 1.0)
+		glVertex3d(-1.0, -1.0, 1.0)
+		glVertex3d(-1.0, -1.0, -1.0)
+		glVertex3d(1.0, -1.0, -1.0)
+		glVertex3d(1.0, -1.0, 1.0)
+
+		/* Cube Front */
+		glColor4d(0.0, 1.0, 0.0, 1.0)
+		glVertex3d(-1.0, 1.0, 1.0)
+		glVertex3d(1.0, 1.0, 1.0)
+		glVertex3d(1.0, -1.0, 1.0)
+		glVertex3d(-1.0, -1.0, 1.0)
+
+		/* Cube Back */
+		glColor4d(0.0, 1.0, 0.5, 1.0)
+		glVertex3d(-1.0, 1.0, -1.0)
+		glVertex3d(1.0, 1.0, -1.0)
+		glVertex3d(1.0, -1.0, -1.0)
+		glVertex3d(-1.0, -1.0, -1.0)
+
+		/* Cube Left Side */
+		glColor4d(0.5, 0.5, 0.5, 1.0)
+		glVertex3d(-1.0, 1.0, -1.0)
+		glVertex3d(-1.0, 1.0, 1.0)
+		glVertex3d(-1.0, -1.0, 1.0)
+		glVertex3d(-1.0, -1.0, -1.0)
+
+		/* Cube Right Side */
+		glColor4d(0.15, 0.25, 0.75, 1.0)
+		glVertex3d(1.0, 1.0, -1.0)
+		glVertex3d(1.0, 1.0, 1.0)
+		glVertex3d(1.0, -1.0, 1.0)
+		glVertex3d(1.0, -1.0, -1.0)
+
+
+		glEnd()
+		glLoadIdentity()
+
+
+		var e: SDL_Event
+		if SDL_PollEvent(&e) == 1
+		{
+			if e.type == 0x100
+			{
+				break
+			}
+
+			printf("event\n")
+		}
+
+		SDL_GL_SwapWindow(mw)
+
+		usleep((16 * 1000) as uint32)
+		rotation -= 0.5
+	}
+
+	return 0
+}
+
+
+
+
+
+
+
+
+
+

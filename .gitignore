@@ -36,6 +36,7 @@ run
 build/sysroot
 .modifydates
 build/test
+build/gltest
 *.ll
 *.bc
 

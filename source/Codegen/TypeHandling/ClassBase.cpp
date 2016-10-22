@@ -27,7 +27,7 @@ namespace Codegen
 		cgi->irb.setCurrentBlock(ob);
 		if(fn->decl->attribs & Attr_VisPublic)
 		{
-			cgi->addPublicFunc(FuncDefPair(lfunc, fn->decl, fn));
+			// cgi->addPublicFunc(FuncDefPair(lfunc, fn->decl, fn));
 		}
 
 		return lfunc;
@@ -309,8 +309,8 @@ namespace Codegen
 					aoo->lfunc->getReturnType()->str().c_str());
 			}
 
-			if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-				cgi->addPublicFunc(FuncDefPair(aoo->lfunc, aoo->func->decl, aoo->func));
+			// if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
+				// cgi->addPublicFunc(FuncDefPair(aoo->lfunc, aoo->func->decl, aoo->func));
 		}
 
 
@@ -366,8 +366,8 @@ namespace Codegen
 
 				soo->getterFn = new Func(decl->pin, decl, body);
 
-				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-					cgi->addPublicFunc(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
+				// if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
+				// 	cgi->addPublicFunc(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 			}
 
 			if(soo->setterBody)
@@ -399,8 +399,8 @@ namespace Codegen
 
 				soo->setterFn = new Func(decl->pin, decl, body);
 
-				if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-					cgi->addPublicFunc(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
+				// if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
+				// 	cgi->addPublicFunc(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
 			}
 		}
 	}
