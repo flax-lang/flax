@@ -20,7 +20,7 @@ namespace fir
 {
 	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
 	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
-	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, double val);
+	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val);
 
 	struct Value;
 
@@ -85,17 +85,20 @@ namespace fir
 
 		static ConstantFP* get(Type* intType, float val);
 		static ConstantFP* get(Type* intType, double val);
+		static ConstantFP* get(Type* intType, long double val);
 
 		static ConstantFP* getFloat32(float value, FTContext* tc = 0);
 		static ConstantFP* getFloat64(double value, FTContext* tc = 0);
+		static ConstantFP* getFloat80(long double value, FTContext* tc = 0);
 
-		double getValue();
+		long double getValue();
 
 		protected:
 		ConstantFP(Type* type, float val);
 		ConstantFP(Type* type, double val);
+		ConstantFP(Type* type, long double val);
 
-		double value;
+		long double value;
 	};
 
 	struct ConstantArray : ConstantValue

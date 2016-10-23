@@ -19,8 +19,6 @@ namespace Codegen
 		fir::Function* func = this->module->getOrCreateFunction(ident, fir::FunctionType::get({ arg->getType() },
 			fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
-		this->addGlobalConstructor(arg, func);
-
 		// basically returns a "ready-to-use" function
 		fir::IRBlock* entry = new fir::IRBlock(func);
 

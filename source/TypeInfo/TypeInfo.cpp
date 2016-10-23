@@ -138,14 +138,19 @@ namespace TypeInfo
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT16_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT16_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT32_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(INT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT64_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(INT128_TYPE_STRING, cgi->getExprTypeOfBuiltin(INT128_TYPE_STRING), kind));
 
 			cgi->rootNode->typeList.push_back(std::make_tuple(UINT8_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT8_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(UINT16_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT16_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(UINT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT32_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(UINT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT64_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(UINT128_TYPE_STRING, cgi->getExprTypeOfBuiltin(UINT128_TYPE_STRING), kind));
 
 			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT32_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT32_TYPE_STRING), kind));
 			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT64_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT64_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT80_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT80_TYPE_STRING), kind));
+			cgi->rootNode->typeList.push_back(std::make_tuple(FLOAT128_TYPE_STRING, cgi->getExprTypeOfBuiltin(FLOAT128_TYPE_STRING), kind));
+
 			cgi->rootNode->typeList.push_back(std::make_tuple(BOOL_TYPE_STRING, cgi->getExprTypeOfBuiltin(BOOL_TYPE_STRING), kind));
 
 			cgi->rootNode->typeList.push_back(std::make_tuple(CHARACTER_TYPE_STRING, cgi->getExprTypeOfBuiltin(CHARACTER_TYPE_STRING), kind));

@@ -67,19 +67,6 @@ static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
 
 fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	// if(this->decimal)
-	// {
-	// 	return fir::Type::getFloat64();
-	// }
-	// else if(this->needUnsigned)
-	// {
-	// 	return fir::Type::getUint64();
-	// }
-	// else
-	// {
-	// 	return fir::Type::getInt64();
-	// }
-
 	if(this->decimal)
 	{
 		return fir::PrimitiveType::getUnspecifiedLiteralFloat();

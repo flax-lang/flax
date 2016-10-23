@@ -441,6 +441,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			auto prev = cgi->irb.getCurrentBlock();
 
+
 			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
 
 			// set it up so we go straight to writing instructions.
@@ -449,7 +450,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			auto res = this->initVal->codegen(cgi, glob);
 
 			// don't be wasting time calling functions if we're constant.
-			if(false && dynamic_cast<fir::ConstantValue*>(res.value))
+			if(dynamic_cast<fir::ConstantValue*>(res.value))
 			{
 				// go back to prev
 				cgi->irb.setCurrentBlock(prev);
@@ -551,6 +552,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 					cmplxtype = cgi->getType(this->concretisedType);
 				}
 
+
+				// add it.
+				cgi->addGlobalConstructor(glob, constr);
+
 				this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
 				cgi->irb.CreateReturnVoid();
 
@@ -611,6 +616,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			auto prev = cgi->irb.getCurrentBlock();
 
 			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
+			cgi->addGlobalConstructor(glob, constr);
 
 			// set it up so the lambda goes straight to writing instructions.
 			cgi->irb.setCurrentBlock(constr->getBlockList().front());
