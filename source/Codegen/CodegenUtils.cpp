@@ -2118,6 +2118,9 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(INT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(INT64_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(INT128_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT128_TYPE_STRING);
+
 		else if(fir::Type::fromBuiltin(UINT8_TYPE_STRING) == type)
 			return this->getExtensionsWithName(UINT8_TYPE_STRING);
 
@@ -2130,11 +2133,17 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(UINT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(UINT64_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(UINT128_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT128_TYPE_STRING);
+
 		else if(fir::Type::fromBuiltin(FLOAT32_TYPE_STRING) == type)
 			return this->getExtensionsWithName(FLOAT32_TYPE_STRING);
 
 		else if(fir::Type::fromBuiltin(FLOAT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(FLOAT64_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(FLOAT80_TYPE_STRING) == type)
+			return this->getExtensionsWithName(FLOAT80_TYPE_STRING);
 
 		else if(fir::Type::fromBuiltin(BOOL_TYPE_STRING) == type)
 			return this->getExtensionsWithName(BOOL_TYPE_STRING);
@@ -3608,7 +3617,7 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
+			error(func, "Function '%s' has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
 				func->decl->ptype->str().c_str());
 		}
 		else if(isVoid)

@@ -6,46 +6,46 @@ import Foundation
 
 public namespace GLUT
 {
-	public let RGB: int32		= 0
-	public let RGBA: int32		= 0
-	public let INDEX: int32		= 1
+	public let RGB: i32			= 0
+	public let RGBA: i32		= 0
+	public let INDEX: i32		= 1
 
-	public let SINGLE: int32	= 0
-	public let DOUBLE: int32	= 2
-	public let ACCUM: int32		= 4
-	public let ALPHA: int32		= 8
-	public let DEPTH: int32		= 16
-	public let STENCIL: int32	= 32
+	public let SINGLE: i32		= 0
+	public let DOUBLE: i32		= 2
+	public let ACCUM: i32		= 4
+	public let ALPHA: i32		= 8
+	public let DEPTH: i32		= 16
+	public let STENCIL: i32		= 32
 }
 
 
-public ffi func glutInit(argcp: int32*, argv: int8**)
-public ffi func glutInitDisplayMode(mode: uint32)
-public ffi func glutInitDisplayString(str: int8*)
-public ffi func glutInitWindowPosition(x: int32, y: int32)
-public ffi func glutInitWindowSize(width: int32, height: int32);
+public ffi func glutInit(argcp: i32*, argv: i8**)
+public ffi func glutInitDisplayMode(mode: u32)
+public ffi func glutInitDisplayString(str: i8*)
+public ffi func glutInitWindowPosition(x: i32, y: i32)
+public ffi func glutInitWindowSize(width: i32, height: i32);
 public ffi func glutMainLoop()
 
-public ffi func glutCreateWindow(title: int8*) -> int32
-public ffi func glutCreateSubWindow(win: int32, x: int32, y: int32, width: int32, height: int32) -> int32
-public ffi func glutDestroyWindow(win: int32) -> void
+public ffi func glutCreateWindow(title: i8*) -> i32
+public ffi func glutCreateSubWindow(win: i32, x: i32, y: i32, width: i32, height: i32) -> i32
+public ffi func glutDestroyWindow(win: i32) -> void
 public ffi func glutPostRedisplay() -> void
-public ffi func glutPostWindowRedisplay(win: int32) -> void
+public ffi func glutPostWindowRedisplay(win: i32) -> void
 public ffi func glutSwapBuffers() -> void
-public ffi func glutGetWindow() -> int32
-public ffi func glutSetWindow(win: int32) -> void
-public ffi func glutSetWindowTitle(title: int8*) -> void
-public ffi func glutSetIconTitle(title: int8*) -> void
-public ffi func glutPositionWindow(x: int32, y: int32) -> void
-public ffi func glutReshapeWindow(width: int32, height: int32) -> void
+public ffi func glutGetWindow() -> i32
+public ffi func glutSetWindow(win: i32) -> void
+public ffi func glutSetWindowTitle(title: i8*) -> void
+public ffi func glutSetIconTitle(title: i8*) -> void
+public ffi func glutPositionWindow(x: i32, y: i32) -> void
+public ffi func glutReshapeWindow(width: i32, height: i32) -> void
 public ffi func glutPopWindow() -> void
 public ffi func glutPushWindow() -> void
 public ffi func glutIconifyWindow() -> void
 public ffi func glutShowWindow() -> void
 public ffi func glutHideWindow() -> void
 public ffi func glutFullScreen() -> void
-public ffi func glutSetCursor(cursor: int32) -> void
-public ffi func glutWarpPointer(x: int32, y: int32) -> void
+public ffi func glutSetCursor(cursor: i32) -> void
+public ffi func glutWarpPointer(x: i32, y: i32) -> void
 
 
 

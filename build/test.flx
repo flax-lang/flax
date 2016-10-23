@@ -117,11 +117,11 @@ import tests.functions
 struct FormatOptions
 {
 	var paddingChar: char
-	var precision: int64
-	var width: int64
-	var paddingKind: int64			// 0 = left, 1 = centre, 2 = right
+	var precision: i64
+	var width: i64
+	var paddingKind: i64			// 0 = left, 1 = centre, 2 = right
 	var type: string
-	var argNum: int64
+	var argNum: i64
 }
 
 
@@ -185,7 +185,7 @@ func parseFormatOptions(str: string) -> FormatOptions
 
 
 
-public func main(argc: int32, argv: int8**) -> int
+public func main(argc: i32, argv: i8**) -> int
 {
 	runTests()
 
@@ -352,7 +352,7 @@ public func main(argc: int32, argv: int8**) -> int
 // import LibCInterface
 
 
-ffi func printf(fmt: int8*, ...)
+ffi func printf(fmt: i8*, ...)
 
 struct SomeStruct
 {

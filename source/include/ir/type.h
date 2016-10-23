@@ -142,23 +142,30 @@ namespace fir
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);
 		static PrimitiveType* getInt64(FTContext* tc = 0);
+		static PrimitiveType* getInt128(FTContext* tc = 0);
+
 		static PrimitiveType* getUint8(FTContext* tc = 0);
 		static PrimitiveType* getUint16(FTContext* tc = 0);
 		static PrimitiveType* getUint32(FTContext* tc = 0);
 		static PrimitiveType* getUint64(FTContext* tc = 0);
+		static PrimitiveType* getUint128(FTContext* tc = 0);
+
 		static PrimitiveType* getFloat32(FTContext* tc = 0);
 		static PrimitiveType* getFloat64(FTContext* tc = 0);
+		static PrimitiveType* getFloat80(FTContext* tc = 0);
+		static PrimitiveType* getFloat128(FTContext* tc = 0);
 
 		static PointerType* getInt8Ptr(FTContext* tc = 0);
 		static PointerType* getInt16Ptr(FTContext* tc = 0);
 		static PointerType* getInt32Ptr(FTContext* tc = 0);
 		static PointerType* getInt64Ptr(FTContext* tc = 0);
+		static PointerType* getInt128Ptr(FTContext* tc = 0);
+
 		static PointerType* getUint8Ptr(FTContext* tc = 0);
 		static PointerType* getUint16Ptr(FTContext* tc = 0);
 		static PointerType* getUint32Ptr(FTContext* tc = 0);
 		static PointerType* getUint64Ptr(FTContext* tc = 0);
-		static PointerType* getFloat32Ptr(FTContext* tc = 0);
-		static PointerType* getFloat64Ptr(FTContext* tc = 0);
+		static PointerType* getUint128Ptr(FTContext* tc = 0);
 
 		static CharType* getCharType(FTContext* tc = 0);
 		static StringType* getStringType(FTContext* tc = 0);
@@ -288,12 +295,18 @@ namespace fir
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);
 		static PrimitiveType* getInt64(FTContext* tc = 0);
+		static PrimitiveType* getInt128(FTContext* tc = 0);
+
 		static PrimitiveType* getUint8(FTContext* tc = 0);
 		static PrimitiveType* getUint16(FTContext* tc = 0);
 		static PrimitiveType* getUint32(FTContext* tc = 0);
 		static PrimitiveType* getUint64(FTContext* tc = 0);
+		static PrimitiveType* getUint128(FTContext* tc = 0);
+
 		static PrimitiveType* getFloat32(FTContext* tc = 0);
 		static PrimitiveType* getFloat64(FTContext* tc = 0);
+		static PrimitiveType* getFloat80(FTContext* tc = 0);
+		static PrimitiveType* getFloat128(FTContext* tc = 0);
 
 		static PrimitiveType* getUnspecifiedLiteralInt(FTContext* tc = 0);
 		static PrimitiveType* getUnspecifiedLiteralUint(FTContext* tc = 0);
@@ -334,12 +347,13 @@ namespace fir
 		static PointerType* getInt16Ptr(FTContext* tc = 0);
 		static PointerType* getInt32Ptr(FTContext* tc = 0);
 		static PointerType* getInt64Ptr(FTContext* tc = 0);
+		static PointerType* getInt128Ptr(FTContext* tc = 0);
+
 		static PointerType* getUint8Ptr(FTContext* tc = 0);
 		static PointerType* getUint16Ptr(FTContext* tc = 0);
 		static PointerType* getUint32Ptr(FTContext* tc = 0);
 		static PointerType* getUint64Ptr(FTContext* tc = 0);
-		static PointerType* getFloat32Ptr(FTContext* tc = 0);
-		static PointerType* getFloat64Ptr(FTContext* tc = 0);
+		static PointerType* getUint128Ptr(FTContext* tc = 0);
 	};
 
 
