@@ -192,7 +192,11 @@ public func main(argc: i32, argv: i8**) -> int
 
 	do {
 		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
-		printf("pi = %.16lf, %s\n", Math.π(), "lol")
+
+		// something is wrong here.
+		let pi: f64 = Math.π()
+
+		printf("pi = %.5f, %s\n", pi, "lol")
 
 		// println("%b", "a" != "b")
 

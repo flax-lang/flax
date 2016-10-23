@@ -48,5 +48,5 @@ public ffi func glutSetCursor(cursor: i32) -> void
 public ffi func glutWarpPointer(x: i32, y: i32) -> void
 
 
-
+public ffi func glutSolidDodecahedron() -> void
 
