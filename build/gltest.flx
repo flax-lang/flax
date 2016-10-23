@@ -8,7 +8,7 @@ import SDL2.SDL
 
 import LibCInterface
 
-public func main(argc: int32, argv: int8**) -> int
+public func main(argc: i32, argv: i8**) -> int
 {
 	SDL_Init(SDL.INIT_EVERYTHING)
 	let mw = SDL_CreateWindow("test", 805240832, 805240832, 640, 480, 2)
@@ -22,18 +22,16 @@ public func main(argc: int32, argv: int8**) -> int
 		printf("window init: %p\n", mw)
 	}
 
-
 	let glc = SDL_GL_CreateContext(mw)
 
 	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLEBUFFERS, 1)
 	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLESAMPLES, 2)
 
-
 	glClearColor(0, 0, 0, 0)
 
 	glMatrixMode(GL.PROJECTION)
 	glLoadIdentity()
-	gluPerspective(45.0, (640.0/480.0), 0.1, 100.0)
+	gluPerspective(45.0, (640.0 / 480.0), 0.1, 100.0)
 
 	glMatrixMode(GL.MODELVIEW)
 	glLoadIdentity()
@@ -43,13 +41,17 @@ public func main(argc: int32, argv: int8**) -> int
 	glEnable(GL.DEPTH_TEST)
 	glDepthFunc(GL.LESS)
 
-	var rotation: float64 = 0
+	var rx: f64 = 0
+	var ry: f64 = 0
+	var rz: f64 = 0
 	while(true)
 	{
 		glClear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
 		glTranslated(0.0, 0.0, -5.0)
 
-		glRotated(rotation, 1.0, 1.0, 0.0);
+		glRotated(rx, 1, 0, 0);
+		glRotated(ry, 0, 1, 0);
+		glRotated(rz, 0, 0, 1);
 
 		glBegin(GL.QUADS)
 
@@ -112,8 +114,10 @@ public func main(argc: int32, argv: int8**) -> int
 
 		SDL_GL_SwapWindow(mw)
 
-		usleep((16 * 1000) as uint32)
-		rotation -= 0.5
+		usleep((1 * 1000) as u32)
+		rx -= 0.7
+		ry += 0.8
+		rz -= 0.3
 	}
 
 	return 0

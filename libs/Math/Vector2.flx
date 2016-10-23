@@ -6,14 +6,14 @@ namespace Math
 {
 	public struct Vector2
 	{
-		var x: float64
-		var y: float64
+		var x: f64
+		var y: f64
 	}
 }
 
 @operator[Commutative]
-public operator * (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
-public operator / (this: Math.Vector2, other: float64) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
+public operator * (this: Math.Vector2, other: f64) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
+public operator / (this: Math.Vector2, other: f64) -> Math.Vector2 { Math.Vector2(this.x / other, this.y / other) }
 
 @operator[Commutative]
 public operator * (this: Math.Vector2, other: int) -> Math.Vector2 { Math.Vector2(this.x * other, this.y * other) }
@@ -23,12 +23,12 @@ public operator + (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vect
 public operator - (a: Math.Vector2, b: Math.Vector2) -> Math.Vector2 { Math.Vector2(a.x - b.x, a.y - b.y) }
 
 @operator[90]
-public operator • (a: Math.Vector2, b: Math.Vector2) -> float64 { a.x * b.x + a.y * b.y }
+public operator • (a: Math.Vector2, b: Math.Vector2) -> f64 { a.x * b.x + a.y * b.y }
 
 @operator[100]
-public operator ⨯ (a: Math.Vector2, b: Math.Vector2) -> float64 { a.x * b.y - a.y * b.x }	// this is the unicode 'x'
+public operator ⨯ (a: Math.Vector2, b: Math.Vector2) -> f64 { a.x * b.y - a.y * b.x }	// this is the unicode 'x'
 @operator[100]
-public operator x (a: Math.Vector2, b: Math.Vector2) -> float64 { a ⨯ b }	// this is ascii 'x' (24th letter)
+public operator x (a: Math.Vector2, b: Math.Vector2) -> f64 { a ⨯ b }	// this is ascii 'x' (24th letter)
 
 
 

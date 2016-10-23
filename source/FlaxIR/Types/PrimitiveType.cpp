@@ -125,6 +125,14 @@ namespace fir
 		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 64, true);
 	}
 
+	PrimitiveType* PrimitiveType::getInt128(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 128, true);
+	}
+
 
 
 
@@ -161,6 +169,14 @@ namespace fir
 		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 64, false);
 	}
 
+	PrimitiveType* PrimitiveType::getUint128(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 128, false);
+	}
+
 
 
 
@@ -179,6 +195,26 @@ namespace fir
 
 		return PrimitiveType::getFloatWithBitWidth(tc, 64);
 	}
+
+	PrimitiveType* PrimitiveType::getFloat80(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return PrimitiveType::getFloatWithBitWidth(tc, 80);
+	}
+
+	PrimitiveType* PrimitiveType::getFloat128(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return PrimitiveType::getFloatWithBitWidth(tc, 128);
+	}
+
+
+
+
 
 
 
@@ -224,33 +260,16 @@ namespace fir
 		{
 			if(this->isSigned())
 			{
-				switch(this->getIntegerBitWidth())
-				{
-					case 8:		return fir::Type::getInt8();
-					case 16:	return fir::Type::getInt16();
-					case 32:	return fir::Type::getInt32();
-					case 64:	return fir::Type::getInt64();
-				}
+				return fir::PrimitiveType::getIntN(this->getIntegerBitWidth());
 			}
 			else
 			{
-				switch(this->getIntegerBitWidth())
-				{
-					case 8:		return fir::Type::getUint8();
-					case 16:	return fir::Type::getUint16();
-					case 32:	return fir::Type::getUint32();
-					case 64:	return fir::Type::getUint64();
-				}
+				return fir::PrimitiveType::getUintN(this->getIntegerBitWidth());
 			}
-
-			iceAssert(0);
 		}
 		else
 		{
-			if(this->getFloatingPointBitWidth() == 64)		return fir::Type::getFloat64(tc);
-			else if(this->getFloatingPointBitWidth() == 32)	return fir::Type::getFloat32(tc);
-
-			iceAssert(0);
+			return fir::PrimitiveType::getFloatWithBitWidth(tc, this->getFloatingPointBitWidth());
 		}
 	}
 
@@ -286,16 +305,7 @@ namespace fir
 		}
 		else if(this->primKind == Kind::Floating)
 		{
-			// todo: bitWidth is applicable to both floats and ints,
-			// but getIntegerBitWidth (obviously) works only for ints.
-			if(this->bitWidth == 32)
-				ret = "f32";
-
-			else if(this->bitWidth == 64)
-				ret = "f64";
-
-			else
-				iceAssert(!"????");
+			ret = "f" + std::to_string(this->getFloatingPointBitWidth());
 		}
 		else
 		{
@@ -369,6 +379,10 @@ namespace fir
 		{
 			return Type::getUint64();
 		}
+		else if(this == Type::getInt128())
+		{
+			return Type::getUint128();
+		}
 		else if(this == Type::getUint8())
 		{
 			return Type::getInt8();
@@ -384,6 +398,10 @@ namespace fir
 		else if(this == Type::getUint64())
 		{
 			return Type::getInt64();
+		}
+		else if(this == Type::getUint128())
+		{
+			return Type::getInt128();
 		}
 		else
 		{

@@ -242,7 +242,7 @@ namespace Parser
 		}
 		else if(stream.compare(0, 2, "*/") == 0)
 		{
-			parserError("Unexpected '*/'");
+			parserError(tok, "Unexpected '*/'");
 		}
 
 		// unicode stuff
@@ -339,11 +339,11 @@ namespace Parser
 				}
 				catch(const std::out_of_range&)
 				{
-					parserError("Number '%s' is out of range (of even uint64)", num.c_str());
+					parserError(tok, "Number '%s' is out of range of largest representation (u64)", num.c_str());
 				}
 				catch(const std::exception&)
 				{
-					parserError("Invalid number '%s'\n", num.c_str());
+					parserError(tok, "Invalid number '%s'", num.c_str());
 				}
 
 				if(base == 16)
@@ -369,7 +369,7 @@ namespace Parser
 					}
 					else
 					{
-						parserError("Expected more numbers after '.'");
+						parserError(tok, "Expected more digits after '.'");
 					}
 				}
 				else
@@ -379,17 +379,28 @@ namespace Parser
 					try
 					{
 						// makes sure we get the right shit done
-						std::stod(num);
+						std::stold(num);
+
+						// check if we might run out of precision
+						if(num.find(".") != std::string::npos && num.substr(num.find(".")).length() > __LDBL_DIG__)
+						{
+							parserMessage(Err::Warn, tok, "Floating-point constant is most likely too precise for best "
+								"representation (f80); have %zu digits, LDBL_DIG is %d", num.substr(num.find(".")).length(), __LDBL_DIG__);
+						}
 					}
-					catch(std::exception)
+					catch(const std::out_of_range&)
 					{
-						parserError("Invalid number");
+						parserError(tok, "Number '%s' is out of range of largest representation (f80)", num.c_str());
+					}
+					catch(const std::exception&)
+					{
+						parserError(tok, "Invalid number '%s'", num.c_str());
 					}
 				}
 			}
 			else
 			{
-				parserError("Decimals in hexadecimal representation are not supported");
+				parserError(tok, "Decimals in hexadecimal representation are not supported");
 			}
 
 
@@ -399,7 +410,7 @@ namespace Parser
 			stream = stream.substr(num.length());
 
 			if(stream.length() > 0 && isalpha(stream[0]))
-				parserError("Malformed integer literal");
+				parserError(tok, "Malformed integer literal");
 
 			read = 0;		// done above
 			tok.text = num;

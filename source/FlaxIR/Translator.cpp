@@ -43,8 +43,16 @@ namespace fir
 				if(pt->getFloatingPointBitWidth() == 32)
 					return llvm::Type::getFloatTy(gc);
 
-				else
+				else if(pt->getFloatingPointBitWidth() == 64)
 					return llvm::Type::getDoubleTy(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 80)
+					return llvm::Type::getX86_FP80Ty(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 128)
+					return llvm::Type::getFP128Ty(gc);
+
+				iceAssert(0);
 			}
 			else if(pt->isVoidType())
 			{

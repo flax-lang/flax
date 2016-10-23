@@ -7,6 +7,6 @@ import LibCInterface
 
 public func programExit(reason: string)
 {
-	write(2, reason.raw, reason.length as uint64)
+	write(2, reason.raw, reason.length as u64)
 	abort()
 }

@@ -150,17 +150,28 @@ namespace fir
 		return new ConstantFP(type, val);
 	}
 
+	ConstantFP* ConstantFP::get(Type* type, long double val)
+	{
+		iceAssert(type->isFloatingPointType() && "not floating point type");
+		return new ConstantFP(type, val);
+	}
+
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = (double) val;
+		this->value = (long double) val;
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)
 	{
+		this->value = (long double) val;
+	}
+
+	ConstantFP::ConstantFP(Type* type, long double val) : fir::ConstantValue(type)
+	{
 		this->value = val;
 	}
 
-	double ConstantFP::getValue()
+	long double ConstantFP::getValue()
 	{
 		return this->value;
 	}
@@ -174,6 +185,12 @@ namespace fir
 	ConstantFP* ConstantFP::getFloat64(double value, FTContext* tc)
 	{
 		Type* t = Type::getFloat64(tc);
+		return ConstantFP::get(t, value);
+	}
+
+	ConstantFP* ConstantFP::getFloat80(long double value, FTContext* tc)
+	{
+		Type* t = Type::getFloat80(tc);
 		return ConstantFP::get(t, value);
 	}
 
@@ -213,15 +230,16 @@ namespace fir
 		}
 		else
 		{
-			size_t max = 0;
-			switch(type->getIntegerBitWidth())
-			{
-				case 8: 	max = UINT8_MAX; break;
-				case 16:	max = UINT16_MAX; break;
-				case 32:	max = UINT32_MAX; break;
-				case 64:	max = UINT64_MAX; break;
-				default:	iceAssert(0);
-			}
+			size_t max = 2ULL * ((1ULL << (type->getIntegerBitWidth() - 1)) - 1) + 1ULL;
+
+			// switch(type->getIntegerBitWidth())
+			// {
+			// 	case 8: 	max = UINT8_MAX; break;
+			// 	case 16:	max = UINT16_MAX; break;
+			// 	case 32:	max = UINT32_MAX; break;
+			// 	case 64:	max = UINT64_MAX; break;
+			// 	default:	iceAssert(0);
+			// }
 
 			// won't get overflow problems, because short-circuiting makes sure val is positive.
 			return val >= 0 && (size_t) val <= max;
@@ -240,30 +258,51 @@ namespace fir
 		}
 		else
 		{
-			switch(type->getIntegerBitWidth())
-			{
-				case 8: 	max = UINT8_MAX; break;
-				case 16:	max = UINT16_MAX; break;
-				case 32:	max = UINT32_MAX; break;
-				case 64:	max = UINT64_MAX; break;
-				default:	iceAssert(0);
-			}
+			size_t max = 2ULL * ((1ULL << (type->getIntegerBitWidth() - 1)) - 1) + 1ULL;
+			// switch(type->getIntegerBitWidth())
+			// {
+			// 	case 8: 	max = UINT8_MAX; break;
+			// 	case 16:	max = UINT16_MAX; break;
+			// 	case 32:	max = UINT32_MAX; break;
+			// 	case 64:	max = UINT64_MAX; break;
+			// 	default:	iceAssert(0);
+			// }
 
 			return val <= max;
 		}
 	}
 
 
-	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, double val)
+
+	// #define PRECISION_CHECK(x,eps)	(std::fabs((long double) ((double) (x)) - x) < (long double) (eps))
+	#define PRECISION_CHECK(x,eps)		(true)
+
+
+	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val)
 	{
 		if(type->getFloatingPointBitWidth() == 32)
-			return (double) ((float) val) == val;
+		{
+			if(val != 0.0L && (std::fabs(val) < (long double) FLT_MIN || std::fabs(val) > (long double) FLT_MAX))
+				return false;
 
+			return PRECISION_CHECK(val, FLT_EPSILON);
+		}
 		else if(type->getFloatingPointBitWidth() == 64)
-			return true;
+		{
+			if(val != 0.0L && (std::fabs(val) < (long double) DBL_MIN || std::fabs(val) > (long double) DBL_MAX))
+				return false;
 
-		else
-			iceAssert(0);
+			return PRECISION_CHECK(val, DBL_EPSILON);
+		}
+
+		return true;
+		// else if(type->getFloatingPointBitWidth() > 64)
+		// {
+		// 	if(val < LDBL_MIN || val > LDBL_MAX)
+		// 		return false;
+
+		// 	return true;
+		// }
 	}
 }
 

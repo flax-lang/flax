@@ -186,35 +186,12 @@ namespace Codegen
 			if(bb < ab) return -1;
 
 
-			// fk it
-			if(ab == 8)
-			{
-				if(bb == 8)			ret = 0;
-				else if(bb == 16)	ret = 1;
-				else if(bb == 32)	ret = 2;
-				else if(bb == 64)	ret = 3;
-			}
-			if(ab == 16)
-			{
-				if(bb == 8)			ret = 1;
-				else if(bb == 16)	ret = 0;
-				else if(bb == 32)	ret = 1;
-				else if(bb == 64)	ret = 2;
-			}
-			if(ab == 32)
-			{
-				if(bb == 8)			ret = 2;
-				else if(bb == 16)	ret = 1;
-				else if(bb == 32)	ret = 0;
-				else if(bb == 64)	ret = 1;
-			}
-			if(ab == 64)
-			{
-				if(bb == 8)			ret = 3;
-				else if(bb == 16)	ret = 2;
-				else if(bb == 32)	ret = 1;
-				else if(bb == 64)	ret = 0;
-			}
+			double k = bb / ab;
+			if(k < 1) k = 1 / k;
+
+			// base-change
+			k = std::log(k) / std::log(2);
+			ret = (int) std::round(k);
 
 			// check for signed-ness cast.
 			if(from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned())
@@ -564,7 +541,7 @@ namespace Codegen
 				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
-				GenError::unknownSymbol(cgi, user, atype + " in namespace " + nsstr, SymbolType::Type);
+				GenError::unknownSymbol(cgi, user, atype + (nsstr.size() > 0 ? (" in namespace " + nsstr) : ""), SymbolType::Type);
 			}
 
 			if(!tp && cgi->getExprTypeOfBuiltin(atype))

@@ -659,7 +659,7 @@ namespace fir
 			double _ = 0;
 
 			if(std::modf(cfp->getValue(), &_) != 0.0)
-				warn("Truncating constant '%lf' in constant cast to type '%s'", cfp->getValue(), targetType->str().c_str());
+				warn("Truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType->str().c_str());
 
 			return ConstantInt::get(targetType, (size_t) cfp->getValue());
 		}
