@@ -10,9 +10,23 @@ import LibCInterface
 
 ffi func rand() -> i32
 
-func frand() -> f64
+func frand(a: f64, b: f64) -> f64
 {
-    (rand() as f64) / 2147483647.0
+    let r = (rand() as f64) / 2147483647.0
+    let diff = b - a
+
+    let x = r * diff
+    return a + x
+}
+
+ffi func sin(a: f64) -> f64
+ffi func fabs(a: f64) -> f64
+ffi func fmin(a: f64, b: f64) -> f64
+ffi func fmax(a: f64, b: f64) -> f64
+
+func clamp(x: f64, lower: f64, upper: f64) -> f64
+{
+    return fmin(upper, fmax(x, lower))
 }
 
 
@@ -44,70 +58,110 @@ public func main(argc: i32, argv: i8**) -> int
 	glMatrixMode(GL.MODELVIEW)
 	glLoadIdentity()
 
-	glEnable(GL.MULTISAMPLE)
 
+	glEnableClientState(GL.VERTEX_ARRAY)
+	glEnableClientState(GL.TEXTURE_COORD_ARRAY)
+	glEnableClientState(GL.COLOR_ARRAY)
+	glEnableClientState(GL.NORMAL_ARRAY)
+
+	glEnable(GL.MULTISAMPLE)
 	glEnable(GL.DEPTH_TEST)
 	glDepthFunc(GL.LESS)
+
+	glBlendColor(1.0, 1.0, 1.0, 1.0)
 
 	var rx: f64 = 0
 	var ry: f64 = 0
 	var rz: f64 = 0
+
+	let vertices = [	0.0, -0.525731, 0.850651,
+						0.850651, 0.0, 0.525731,
+						0.850651, 0.0, -0.525731,
+						-0.850651, 0.0, -0.525731,
+						-0.850651, 0.0, 0.525731,
+						-0.525731, 0.850651, 0.0,
+						0.525731, 0.850651, 0.0,
+						0.525731, -0.850651, 0.0,
+						-0.525731, -0.850651, 0.0,
+						0.0, -0.525731, -0.850651,
+						0.0, 0.525731, -0.850651,
+						0.0, 0.525731, 0.850651
+					]
+
+	// var colours: f64[36]
+	var colours = alloc[48] f64
+
+	var i = 0
+	while i < 48
+	{
+		colours[i + 0] = frand(0.3, 0.9)
+		colours[i + 1] = frand(0.3, 0.9)
+		colours[i + 2] = frand(0.3, 0.9)
+		colours[i + 3] = 1.0
+		i += 4
+	}
+
+	let indices: u8[60] = [
+							1 as u8,  2 as u8,  6 as u8,
+							1 as u8,  7 as u8,  2 as u8,
+							3 as u8,  4 as u8,  5 as u8,
+							4 as u8,  3 as u8,  8 as u8,
+							6 as u8,  5 as u8,  11 as u8,
+							5 as u8,  6 as u8,  10 as u8,
+							9 as u8,  10 as u8, 2 as u8,
+							10 as u8, 9 as u8,  3 as u8,
+							7 as u8,  8 as u8,  9 as u8,
+							8 as u8,  7 as u8,  0 as u8,
+							11 as u8, 0 as u8,  1 as u8,
+							0 as u8,  11 as u8, 4 as u8,
+							6 as u8,  2 as u8,  10 as u8,
+							1 as u8,  6 as u8,  11 as u8,
+							3 as u8,  5 as u8,  10 as u8,
+							5 as u8,  4 as u8,  11 as u8,
+							2 as u8,  7 as u8,  9 as u8,
+							7 as u8,  1 as u8,  0 as u8,
+							3 as u8,  9 as u8,  8 as u8,
+							4 as u8,  8 as u8,  0 as u8,
+						]
+
+
+	let normals = [
+						0.000000, -0.417775, 0.675974,
+						0.675973, 0.000000, 0.417775,
+						0.675973, -0.000000, -0.417775,
+						-0.675973, 0.000000, -0.417775,
+						-0.675973, -0.000000, 0.417775,
+						-0.417775, 0.675974, 0.000000,
+						0.417775, 0.675973, -0.000000,
+						0.417775, -0.675974, 0.000000,
+						-0.417775, -0.675974, 0.000000,
+						0.000000, -0.417775, -0.675973,
+						0.000000, 0.417775, -0.675974,
+						0.000000, 0.417775, 0.675973
+					]
+
+
+
+
+	var t = 0.0
+	var t1 = 1.0
 	while(true)
 	{
 		glClear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
+		glClearColor(0.109, 0.109, 0.109, 1.0)
 		glTranslated(0.0, 0.0, -5.0)
 
 		glRotated(rx, 1, 0, 0);
 		glRotated(ry, 0, 1, 0);
 		glRotated(rz, 0, 0, 1);
 
-		glBegin(GL.QUADS)
 
-		/* Cube Top */
-		glColor4d(0.42, 0.69, 0.74, 1.0)
-		glVertex3d(-1.0, 1.0, 1.0)
-		glVertex3d(-1.0, 1.0, -1.0)
-		glVertex3d(1.0, 1.0, -1.0)
-		glVertex3d(1.0, 1.0, 1.0)
+		glVertexPointer(3 as i32, GL.DOUBLE, 0 as i32, &(vertices[0]) as void*)
+		glColorPointer(4 as i32, GL.DOUBLE, 0 as i32, colours as void*)
+		glNormalPointer(GL.DOUBLE, 0 as i32, &(normals[0]) as void*)
 
+		glDrawElements(GL.TRIANGLES, 60, GL.UNSIGNED_BYTE, &(indices[0]) as void*)
 
-		/* Cube Bottom */
-		glColor4d(0.75, 0.82, 0.64, 1.0)
-		glVertex3d(-1.0, -1.0, 1.0)
-		glVertex3d(-1.0, -1.0, -1.0)
-		glVertex3d(1.0, -1.0, -1.0)
-		glVertex3d(1.0, -1.0, 1.0)
-
-		/* Cube Front */
-		glColor4d(0.45, 0.44, 0.61, 1.0)
-		glVertex3d(-1.0, 1.0, 1.0)
-		glVertex3d(1.0, 1.0, 1.0)
-		glVertex3d(1.0, -1.0, 1.0)
-		glVertex3d(-1.0, -1.0, 1.0)
-
-		/* Cube Back */
-		glColor4d(0.40, 0.48, 0.32, 1.0)
-		glVertex3d(-1.0, 1.0, -1.0)
-		glVertex3d(1.0, 1.0, -1.0)
-		glVertex3d(1.0, -1.0, -1.0)
-		glVertex3d(-1.0, -1.0, -1.0)
-
-		/* Cube Left Side */
-		glColor4d(0.82, 0.64, 0.76, 1.0)
-		glVertex3d(-1.0, 1.0, -1.0)
-		glVertex3d(-1.0, 1.0, 1.0)
-		glVertex3d(-1.0, -1.0, 1.0)
-		glVertex3d(-1.0, -1.0, -1.0)
-
-		/* Cube Right Side */
-		glColor4d(0.68, 0.45, 0.38, 1.0)
-		glVertex3d(1.0, 1.0, -1.0)
-		glVertex3d(1.0, 1.0, 1.0)
-		glVertex3d(1.0, -1.0, 1.0)
-		glVertex3d(1.0, -1.0, -1.0)
-
-
-		glEnd()
 		glLoadIdentity()
 
 
@@ -123,10 +177,66 @@ public func main(argc: i32, argv: i8**) -> int
 		SDL_GL_SwapWindow(mw)
 
 		usleep((1 * 1000) as u32)
-		rx -= 0.7
-		ry += 0.8
-		rz -= 0.3
+
+		let speed = 4
+		rx -= speed * 1.6
+		ry += speed * 0.8
+		rz -= speed * 0.3
+
+		t += 0.02 * frand(1, 2)
+		t1 += 0.01
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	do {
+		let arr = [ 1, 2, 3, 4, 5 ]
+
+		// this parses wrongly:
+		// should be an easy-ish fix -- disable + literals in the lexer
+		arr[4+1]
+
+
+		// something is wrong here.
+		// idk wtf is going on
+		let pi: f64 = Math.π()
+
+
+		// this parses wrongly:
+		// the first '(' probably triggers tuple-parsing mode wrongly
+		(frand(10, sin(0.3)))
+
+
+		// unary precedence does not exist:
+		// idk how to fix this properly...
+		&arr[0] // <- does not do what C/C++ does, which is &(arr[0]); instead it does (&arr)[0].
+
+
+		// QOL stuff:
+		// be able to convert arrays to pointers (not implicitly, of course)
+		// just a cast would be good, instead of the &arr[0] thing.
+		// eg. arr as i8*
+	}
+
+
+
+
 
 	return 0
 }

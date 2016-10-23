@@ -10,7 +10,7 @@ import Math.Vector3
 
 namespace Math
 {
-	public ƒ π() -> f32 { 3.14159265358979324/*84626*/ }
+	public ƒ π() -> f32 { 3.14159265/*35897932484626*/ }
 	public ƒ √(x: f64) -> f64 { sqrt(x) }
 	public ƒ √(x: int) -> f64 { sqrt(x as f64) }
 
