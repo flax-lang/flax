@@ -77,13 +77,25 @@ namespace Codegen
 	typedef std::pair<fir::Type*, TypedExpr_t> TypePair_t;
 	typedef std::map<std::string, TypePair_t> TypeMap_t;
 
-	typedef std::pair<fir::Function*, Ast::FuncDecl*> FuncPair_t;
-	// typedef std::map<std::string, FuncPair_t> FuncMap_t;
-
 	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<fir::IRBlock*, fir::IRBlock*>> BracedBlockScope;
 
 	struct CodegenInstance;
 	struct FunctionTree;
+
+
+	struct FuncDefPair
+	{
+		explicit FuncDefPair(fir::Function* ffn, Ast::FuncDecl* fdecl, Ast::Func* afn) : firFunc(ffn), funcDecl(fdecl), funcDef(afn) { }
+
+		static FuncDefPair empty() { return FuncDefPair(0, 0, 0); }
+
+		bool isEmpty() { return this->firFunc == 0 && this->funcDef == 0; }
+		bool operator == (const FuncDefPair& other) const { return this->firFunc == other.firFunc && this->funcDef == other.funcDef; }
+
+		fir::Function* firFunc = 0;
+		Ast::FuncDecl* funcDecl = 0;
+		Ast::Func* funcDef = 0;
+	};
 
 
 	struct FunctionTree
@@ -103,7 +115,7 @@ namespace Codegen
 		std::deque<FunctionTree*> subs;
 
 		// things within.
-		std::deque<FuncPair_t> funcs;
+		std::deque<FuncDefPair> funcs;
 		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
@@ -115,12 +127,14 @@ namespace Codegen
 
 	struct Resolved_t
 	{
-		explicit Resolved_t(const FuncPair_t& fp) : t(fp), resolved(true) { }
-		Resolved_t() : resolved(false) { }
+		explicit Resolved_t(const FuncDefPair& fp) : t(fp), resolved(true) { }
+		Resolved_t() : t(FuncDefPair::empty()), resolved(false) { }
 
-		FuncPair_t t;
+		FuncDefPair t;
 		bool resolved;
 	};
+
+	std::string unwrapPointerType(std::string type, int* indirections);
 }
 
 

@@ -84,6 +84,8 @@ namespace fir
 		Value* CreateCall(Function* fn, std::vector<Value*> args, std::string vname = "");
 		Value* CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname = "");
 
+		Value* CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname = "");
+
 		Value* CreateReturn(Value* v);
 		Value* CreateReturnVoid();
 
@@ -117,9 +119,17 @@ namespace fir
 		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
+		Value* CreateGetStringData(Value* ptr, std::string vname = "");
+		Value* CreateSetStringData(Value* ptr, Value* val, std::string vname = "");
+
+		Value* CreateGetStringLength(Value* ptr, std::string vname = "");
+		Value* CreateSetStringLength(Value* ptr, Value* val, std::string vname = "");
+
+		Value* CreateGetStringRefCount(Value* ptr, std::string vname = "");
+		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
 
 
-
+		void CreateUnreachable();
 
 
 		IRBlock* addNewBlockInFunction(std::string name, Function* func);

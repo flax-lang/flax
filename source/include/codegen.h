@@ -39,7 +39,7 @@ namespace GenError
 	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncPair_t> cands);
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncDefPair> cands);
 
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args) __attribute__((noreturn));
 }
@@ -59,6 +59,10 @@ namespace Codegen
 		bool isPrefix				= 0;
 		bool needsSwap				= 0;
 		bool needsNot				= 0;
+		bool isMember				= 0;
+
+		bool isBuiltin				= 0;
+
 		fir::Function* opFunc		= 0;
 	};
 
@@ -75,6 +79,9 @@ namespace Codegen
 		std::deque<Ast::StructBase*> nestedTypeStack;
 		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 
+		// refcounting, holds a stack of *POINTERS* to refcounted types
+		std::deque<std::deque<fir::Value*>> refCountingStack;
+
 		// generic stuff
 		std::deque<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
 		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
@@ -87,7 +94,7 @@ namespace Codegen
 		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
 		std::deque<Ast::Func*> funcScopeStack;
 
-		fir::IRBuilder builder = fir::IRBuilder(fir::getDefaultFTContext());
+		fir::IRBuilder irb = fir::IRBuilder(fir::getDefaultFTContext());
 
 
 		struct
@@ -95,20 +102,18 @@ namespace Codegen
 			std::map<fir::Value*, fir::Function*> funcs;
 			std::map<fir::Value*, fir::Value*> values;
 
-			std::map<fir::Value*, std::pair<int, fir::Value*>> tupleInitVals;
-			std::map<fir::Value*, std::pair<int, fir::Function*>> tupleInitFuncs;
-
 		} globalConstructors;
 
 		void addGlobalConstructor(Identifier name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
-		void addGlobalTupleConstructedValue(fir::Value* ptr, int index, fir::Value* val);
-		void addGlobalTupleConstructor(fir::Value* ptr, int index, fir::Function* func);
+		fir::Function* procureAnonymousConstructorFunction(fir::Value* arg);
 
 		void finishGlobalConstructors();
 
+
+		void importOtherCgi(CodegenInstance* other);
 
 
 
@@ -133,6 +138,10 @@ namespace Codegen
 		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
 		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
 		void popScope();
+		void addRefCountedValue(fir::Value* ptr);
+		void removeRefCountedValue(fir::Value* ptr);
+		void removeRefCountedValueIfExists(fir::Value* ptr);
+		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
 		// function scopes: namespaces, nested functions.
@@ -140,14 +149,13 @@ namespace Codegen
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addPublicFunc(FuncPair_t func);
-		void addFunctionToScope(FuncPair_t func, FunctionTree* root = 0);
-		void removeFunctionFromScope(FuncPair_t func);
+		void addFunctionToScope(FuncDefPair func, FunctionTree* root = 0);
+		void removeFunctionFromScope(FuncDefPair func);
 		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
-		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
-		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
+
+		void importFunctionTreeInto(FunctionTree* orig, FunctionTree* import);
 
 
 
@@ -173,14 +181,12 @@ namespace Codegen
 		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
 
+		bool isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
-		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
-		bool isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
-
-		std::deque<FuncPair_t> resolveFunctionName(std::string basename);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		std::deque<FuncDefPair> resolveFunctionName(std::string basename);
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncDefPair> list, std::string basename,
 			std::deque<Ast::Expr*> params, bool exactMatch = false);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncPair_t> list, std::string basename,
+		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::deque<FuncDefPair> list, std::string basename,
 			std::deque<fir::Type*> params, bool exactMatch = false);
 
 		std::deque<Ast::Func*> findGenericFunctions(std::string basename);
@@ -192,15 +198,11 @@ namespace Codegen
 		TypePair_t* getTypeByString(std::string name);
 		TypePair_t* getType(Identifier id);
 		TypePair_t* getType(fir::Type* type);
-		FuncPair_t* getOrDeclareLibCFunc(std::string name);
+		fir::Function* getOrDeclareLibCFunc(std::string name);
 
 
 
-
-		fir::Type* getExprType(Ast::Expr* expr, bool allowFail = false, bool setInferred = true);
-		fir::Type* getExprType(Ast::Expr* expr, Resolved_t preResolvedFn, bool allowFail = false, bool setInferred = true);
-
-		fir::Type* getExprTypeFromStringType(Ast::Expr* user, Ast::ExprType type, bool allowFail = false);
+		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
 		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
 		__attribute__ ((warn_unused_result));
@@ -210,16 +212,15 @@ namespace Codegen
 
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isEnum(Ast::ExprType type);
 		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(fir::Type* e);
-		bool isTypeAlias(Ast::ExprType type);
 		bool isTypeAlias(fir::Type* type);
 		bool isAnyType(fir::Type* type);
+		bool isRefCountedType(fir::Type* type);
 
 		bool isDuplicateType(Identifier id);
 
@@ -228,36 +229,37 @@ namespace Codegen
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
 
-		std::string getReadableType(Ast::Expr* expr);
-		std::string getReadableType(fir::Type* type);
-		std::string getReadableType(fir::Value* val);
-
 		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
 		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 
-		fir::Type* parseAndGetOrInstantiateType(Ast::Expr* user, std::string type, bool allowFail = false);
+
+
+		std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
+		unwrapStaticDotOperator(Ast::MemberAccess* ma);
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
-		std::pair<Ast::Func*, fir::Function*> resolveMemberFuncCall(Ast::MemberAccess* ma, Ast::ClassDef* str, Ast::FuncCall* fc);
-		Ast::Expr* getStructMemberByName(Ast::StructBase* str, Ast::VarRef* var);
-
-		Ast::Result_t getStaticVariable(Ast::Expr* user, Ast::ClassDef* str, std::string name);
-
-
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
 		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
-
-
-		Ast::Result_t doTupleAccess(fir::Value* selfPtr, Ast::Number* num, bool createPtr);
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
 
+		Ast::Result_t getNullString();
+		Ast::Result_t getEmptyString();
+		Ast::Result_t makeStringLiteral(std::string str);
 
+		void incrementRefCount(fir::Value* strp);
+		void decrementRefCount(fir::Value* strp);
+
+		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
+			bool isInitialAssignment);
+
+		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
 
 
 		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
@@ -266,10 +268,20 @@ namespace Codegen
 		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
 
 
-		FuncPair_t tryResolveGenericFunctionCall(Ast::FuncCall* fc);
-		FuncPair_t tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
-		FuncPair_t instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
+		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
+			fir::FunctionType* ft);
+
+		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params);
+
+		FuncDefPair tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::Expr* user, std::string name, fir::Value* extra);
+		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::deque<fir::Function*> cands,
+			fir::Value* extra);
+
+		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
@@ -278,8 +290,17 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
+		fir::Function* getStringRefCountIncrementFunction();
+		fir::Function* getStringRefCountDecrementFunction();
+		fir::Function* getStringCompareFunction();
+		fir::Function* getStringAppendFunction();
+		fir::Function* getStringCharAppendFunction();
+
+		fir::Function* getStringBoundsCheckFunction();
+		fir::Function* getStringCheckLiteralWriteFunction();
 
 
+		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
 
 		fir::FTContext* getContext();
@@ -290,7 +311,6 @@ namespace Codegen
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
-		Ast::Result_t doPointerArithmetic(Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs);
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
@@ -300,9 +320,6 @@ namespace Codegen
 
 		~CodegenInstance();
 	};
-
-
-	std::string unwrapPointerType(std::string type, int* indirections);
 
 	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
 }

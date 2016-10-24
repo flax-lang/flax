@@ -17,25 +17,31 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	if(pairs.size() == 0)
 		return;
 
-	fir::IRBlock* t = cgi->builder.addNewBlockInFunction("trueCaseR", func);
+	fir::IRBlock* t = cgi->irb.addNewBlockInFunction("trueCaseR", func);
 	fir::IRBlock* f = new fir::IRBlock();
 	f->setName("falseCaseR");
 	f->setFunction(func);
 
 
-	fir::Value* cond = pairs.front().first->codegen(cgi).result.first;
-	cond = cgi->builder.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
+	fir::Value* cond = pairs.front().first->codegen(cgi).value;
+	if(cond->getType() != fir::Type::getBool())
+	{
+		error(pairs.front().first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+			cond->getType()->str().c_str());
+	}
+
+	cond = cgi->irb.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
 
 
-	cgi->builder.CreateCondBranch(cond, t, f);
-	cgi->builder.setCurrentBlock(t);
+	cgi->irb.CreateCondBranch(cond, t, f);
+	cgi->irb.setCurrentBlock(t);
 
 	Result_t blockResult(0, 0);
 	fir::Value* val = nullptr;
 	{
 		cgi->pushScope();
 		blockResult = pairs.front().second->codegen(cgi);
-		val = blockResult.result.first;
+		val = blockResult.value;
 		cgi->popScope();
 	}
 
@@ -44,12 +50,12 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 
 	// check if the last expr of the block is a return
 	if(blockResult.type != ResultType::BreakCodegen)
-		cgi->builder.CreateUnCondBranch(merge), *didCreateMerge = true;
+		cgi->irb.CreateUnCondBranch(merge), *didCreateMerge = true;
 
 
 	// now the false case...
 	// set the insert point to the false case, then go again.
-	cgi->builder.setCurrentBlock(f);
+	cgi->irb.setCurrentBlock(f);
 
 	// recursively call ourselves
 	pairs.pop_front();
@@ -63,20 +69,25 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	iceAssert(this->cases.size() > 0);
 
-	fir::Value* firstCond = this->cases[0].first->codegen(cgi).result.first;
-	firstCond = cgi->builder.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
+	fir::Value* firstCond = this->cases[0].first->codegen(cgi).value;
+	if(firstCond->getType() != fir::Type::getBool())
+	{
+		error(this->cases[0].first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+			firstCond->getType()->str().c_str());
+	}
+
+	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
 
 
-
-	fir::Function* func = cgi->builder.getCurrentBlock()->getParentFunction();
+	fir::Function* func = cgi->irb.getCurrentBlock()->getParentFunction();
 	iceAssert(func);
 
-	fir::IRBlock* trueb = cgi->builder.addNewBlockInFunction("trueCase", func);
-	fir::IRBlock* falseb = cgi->builder.addNewBlockInFunction("falseCase", func);
-	fir::IRBlock* merge = cgi->builder.addNewBlockInFunction("merge", func);
+	fir::IRBlock* trueb = cgi->irb.addNewBlockInFunction("trueCase", func);
+	fir::IRBlock* falseb = cgi->irb.addNewBlockInFunction("falseCase", func);
+	fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
 
 	// create the first conditional
-	cgi->builder.CreateCondBranch(firstCond, trueb, falseb);
+	cgi->irb.CreateCondBranch(firstCond, trueb, falseb);
 
 
 	bool didMerge = false;
@@ -84,18 +95,18 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// emit code for the first block
 	fir::Value* truev = nullptr;
 	{
-		cgi->builder.setCurrentBlock(trueb);
+		cgi->irb.setCurrentBlock(trueb);
 
 		// push a new symtab
 		cgi->pushScope();
 
 		// generate the statements inside
 		Result_t cresult = this->cases[0].second->codegen(cgi);
-		truev = cresult.result.first;
+		truev = cresult.value;
 		cgi->popScope();
 
 		if(cresult.type != ResultType::BreakCodegen)
-			cgi->builder.CreateUnCondBranch(merge), didMerge = true;
+			cgi->irb.CreateUnCondBranch(merge), didMerge = true;
 	}
 
 
@@ -104,13 +115,13 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// to support if-elseif-elseif-elseif-...-else, we need to essentially compound/cascade conditionals in the 'else' block
 	// of the if statement.
 
-	cgi->builder.setCurrentBlock(falseb);
+	cgi->irb.setCurrentBlock(falseb);
 
 	auto c1 = this->cases.front();
 	this->cases.pop_front();
 
-	fir::IRBlock* curblk = cgi->builder.getCurrentBlock();
-	cgi->builder.setCurrentBlock(merge);
+	fir::IRBlock* curblk = cgi->irb.getCurrentBlock();
+	cgi->irb.setCurrentBlock(merge);
 
 	// fir::PHINode* phi = builder.CreatePHI(fir::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
 
@@ -119,7 +130,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(phi)
 		phi->addIncoming(truev, trueb);
 
-	cgi->builder.setCurrentBlock(curblk);
+	cgi->irb.setCurrentBlock(curblk);
 	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
 	// func->getBasicBlockList().push_back(falseb);
@@ -132,7 +143,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 		elseResult = this->final->codegen(cgi);
 		cgi->popScope();
 
-		fir::Value* v = elseResult.result.first;
+		fir::Value* v = elseResult.value;
 
 		if(phi)
 			phi->addIncoming(v, falseb);
@@ -140,12 +151,12 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	if(!this->final || elseResult.type != ResultType::BreakCodegen)
-		cgi->builder.CreateUnCondBranch(merge), didMerge = true;
+		cgi->irb.CreateUnCondBranch(merge), didMerge = true;
 
 
 	if(didMerge)
 	{
-		cgi->builder.setCurrentBlock(merge);
+		cgi->irb.setCurrentBlock(merge);
 	}
 	else
 	{
@@ -157,6 +168,10 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
+fir::Type* IfStmt::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 
 

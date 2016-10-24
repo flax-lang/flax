@@ -43,6 +43,7 @@ namespace fir
 
 	struct ConstantValue;
 	struct GlobalValue;
+	struct Instruction;
 	struct IRBlock;
 
 	struct Value
@@ -55,12 +56,14 @@ namespace fir
 
 		// virtual funcs
 		virtual Type* getType();
+		void setType(Type* t) { this->valueType = t; }
 
 
 		// methods
 		void setName(Identifier idt);
 		void setName(std::string s);
 		Identifier getName();
+		bool hasName();
 
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
@@ -68,6 +71,10 @@ namespace fir
 		bool isImmutable() { return this->immut; }
 		void makeImmutable() { this->immut = true; }
 		void makeNotImmutable() { this->immut = false; }
+
+		std::deque<Value*>& getUsers() { return this->users; }
+
+		Instruction* getSource() { return this->source; }
 
 		// protected shit
 		size_t id;
@@ -80,6 +87,7 @@ namespace fir
 
 		Identifier ident;
 		Type* valueType;
+		Instruction* source;
 		FValueKind valueKind;
 		std::deque<Value*> users;
 	};

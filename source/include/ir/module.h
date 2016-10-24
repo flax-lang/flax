@@ -42,12 +42,17 @@ namespace fir
 		std::deque<Function*> getAllFunctions();
 		std::deque<Type*> getNamedTypes();
 
+		// note: only looks at the name + scope, excludes the parameter list.
+		std::deque<Function*> getFunctionsWithName(Identifier id);
+		Function* getIntrinsicFunction(std::string id);
+
 		Type* getNamedType(Identifier name);
 		void addNamedType(Identifier name, Type* type);
 
 		void addFunction(Function* func);
+		void removeFunction(Function* func);
 
-		void declareFunction(Identifier id, FunctionType* ftype);
+		Function* declareFunction(Identifier id, FunctionType* ftype);
 		Function* getFunction(Identifier id);
 		Function* getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage);
 
@@ -65,6 +70,8 @@ namespace fir
 		std::unordered_map<Identifier, GlobalVariable*> globals;
 		std::unordered_map<Identifier, Function*> functions;
 		std::unordered_map<Identifier, Type*> namedTypes;
+
+		std::unordered_map<Identifier, Function*> intrinsicFunctions;
 	};
 
 
@@ -73,6 +80,7 @@ namespace fir
 		size_t getBitsPerByte();
 		size_t getPointerWidthInBits();
 		size_t getTypeSizeInBits(Type* type);
+		size_t getTypeSizeInBytes(Type* type);
 
 		Type* getPointerSizedIntegerType();
 

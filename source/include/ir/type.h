@@ -25,6 +25,7 @@ namespace fir
 
 	struct Type;
 	struct Module;
+	struct VoidType;
 	struct PrimitiveType;
 	struct FunctionType;
 	struct PointerType;
@@ -32,6 +33,10 @@ namespace fir
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
+	struct StringType;
+	struct CharType;
+	struct UnicodeStringType;
+	struct UnicodeCharType;
 	struct ParametricType;
 	struct LLVariableArrayType;
 
@@ -45,7 +50,7 @@ namespace fir
 		std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
 
 		// special little thing.
-		PrimitiveType* voidType = 0;
+		VoidType* voidType = 0;
 
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
@@ -58,27 +63,6 @@ namespace fir
 	FTContext* createFTContext();
 	FTContext* getDefaultFTContext();
 	void setDefaultFTContext(FTContext* tc);
-
-	enum class FTypeKind
-	{
-		Invalid,
-
-		Void,
-		Pointer,
-
-		Tuple,
-		Struct,
-		Class,
-
-		Integer,
-		Floating,
-
-		Array,
-		LowLevelVariableArray,
-		Function,
-
-		Parametric,
-	};
 
 
 
@@ -95,6 +79,10 @@ namespace fir
 
 		static bool areTypesEqual(Type* a, Type* b);
 
+		static std::string typeListToString(std::deque<Type*> types);
+		static std::string typeListToString(std::vector<Type*> types);
+		static std::string typeListToString(std::initializer_list<Type*> types);
+
 		// various
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
@@ -105,15 +93,17 @@ namespace fir
 		Type* getPointerElementType(FTContext* tc = 0);
 
 
+		LLVariableArrayType* toLLVariableArrayType();
 		ParametricType* toParametricType();
 		PrimitiveType* toPrimitiveType();
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
 		StructType* toStructType();
+		StringType* toStringType();
 		ClassType* toClassType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
-		LLVariableArrayType* toLLVariableArray();
+		CharType* toCharType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -123,13 +113,16 @@ namespace fir
 		bool isStructType();
 		bool isPackedStruct();
 
+		bool isCharType();
+		bool isStringType();
+
 		bool isArrayType();
 		bool isIntegerType();
 		bool isFunctionType();
 		bool isSignedIntType();
 		bool isFloatingPointType();
 
-		bool isNullPointer();
+		bool isVoidPointer();
 		bool isLLVariableArrayType();
 
 		bool isParametricType();
@@ -139,23 +132,57 @@ namespace fir
 
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
+
+
+		// convenience
+		static VoidType* getVoid(FTContext* tc = 0);
+
+		static PrimitiveType* getBool(FTContext* tc = 0);
+		static PrimitiveType* getInt8(FTContext* tc = 0);
+		static PrimitiveType* getInt16(FTContext* tc = 0);
+		static PrimitiveType* getInt32(FTContext* tc = 0);
+		static PrimitiveType* getInt64(FTContext* tc = 0);
+		static PrimitiveType* getInt128(FTContext* tc = 0);
+
+		static PrimitiveType* getUint8(FTContext* tc = 0);
+		static PrimitiveType* getUint16(FTContext* tc = 0);
+		static PrimitiveType* getUint32(FTContext* tc = 0);
+		static PrimitiveType* getUint64(FTContext* tc = 0);
+		static PrimitiveType* getUint128(FTContext* tc = 0);
+
+		static PrimitiveType* getFloat32(FTContext* tc = 0);
+		static PrimitiveType* getFloat64(FTContext* tc = 0);
+		static PrimitiveType* getFloat80(FTContext* tc = 0);
+		static PrimitiveType* getFloat128(FTContext* tc = 0);
+
+		static PointerType* getInt8Ptr(FTContext* tc = 0);
+		static PointerType* getInt16Ptr(FTContext* tc = 0);
+		static PointerType* getInt32Ptr(FTContext* tc = 0);
+		static PointerType* getInt64Ptr(FTContext* tc = 0);
+		static PointerType* getInt128Ptr(FTContext* tc = 0);
+
+		static PointerType* getUint8Ptr(FTContext* tc = 0);
+		static PointerType* getUint16Ptr(FTContext* tc = 0);
+		static PointerType* getUint32Ptr(FTContext* tc = 0);
+		static PointerType* getUint64Ptr(FTContext* tc = 0);
+		static PointerType* getUint128Ptr(FTContext* tc = 0);
+
+		static CharType* getCharType(FTContext* tc = 0);
+		static StringType* getStringType(FTContext* tc = 0);
+
+
+
 		protected:
-		Type(FTypeKind baseType)
+		Type()
 		{
 			static size_t __id = 0;
 			this->id = __id++;
-
-			this->typeKind = baseType;
 		}
 
 		virtual ~Type() { }
 
 		// base things
 		size_t id = 0;
-
-		FTypeKind typeKind = FTypeKind::Invalid;
-
-		bool isTypeVoid = 0;
 
 		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t inds, size_t bits);
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, size_t inds, bool issigned, size_t bits);
@@ -165,10 +192,6 @@ namespace fir
 
 		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, size_t inds, bool isva, std::deque<Type*> args,
 			Type* ret);
-
-		static std::string typeListToString(std::deque<Type*> types);
-		static std::string typeListToString(std::vector<Type*> types);
-		static std::string typeListToString(std::initializer_list<Type*> types);
 
 		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
 		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
@@ -194,7 +217,24 @@ namespace fir
 
 
 
+	struct VoidType : Type
+	{
+		friend struct Type;
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		VoidType();
+		protected:
+		virtual ~VoidType() override { }
+
+		public:
+		static VoidType* get(FTContext* tc = 0);
+	};
 
 	struct PrimitiveType : Type
 	{
@@ -205,25 +245,39 @@ namespace fir
 
 		// methods
 		bool isSigned();
+		bool isLiteralType();
 		size_t getIntegerBitWidth();
 		size_t getFloatingPointBitWidth();
-
+		PrimitiveType* getOppositeSignedType();
+		PrimitiveType* getUnliteralType(FTContext* tc = 0);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 		virtual PrimitiveType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
+
+		enum class Kind
+		{
+			Invalid,
+
+			Integer,
+			Floating,
+		};
+
+
 		// protected constructor
 		protected:
-		PrimitiveType(size_t bits, FTypeKind kind);
+		PrimitiveType(size_t bits, Kind _kind, bool islit);
 		virtual ~PrimitiveType() override { }
 
 
 		// fields (protected)
+		bool isUnspecifiedLiteral = 0;
 		bool isTypeSigned = 0;
 		size_t bitWidth = 0;
 
+		Kind primKind = Kind::Invalid;
 
 		// static funcs
 		protected:
@@ -237,17 +291,26 @@ namespace fir
 		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
-		static PrimitiveType* getVoid(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);
 		static PrimitiveType* getInt64(FTContext* tc = 0);
+		static PrimitiveType* getInt128(FTContext* tc = 0);
+
 		static PrimitiveType* getUint8(FTContext* tc = 0);
 		static PrimitiveType* getUint16(FTContext* tc = 0);
 		static PrimitiveType* getUint32(FTContext* tc = 0);
 		static PrimitiveType* getUint64(FTContext* tc = 0);
+		static PrimitiveType* getUint128(FTContext* tc = 0);
+
 		static PrimitiveType* getFloat32(FTContext* tc = 0);
 		static PrimitiveType* getFloat64(FTContext* tc = 0);
+		static PrimitiveType* getFloat80(FTContext* tc = 0);
+		static PrimitiveType* getFloat128(FTContext* tc = 0);
+
+		static PrimitiveType* getUnspecifiedLiteralInt(FTContext* tc = 0);
+		static PrimitiveType* getUnspecifiedLiteralUint(FTContext* tc = 0);
+		static PrimitiveType* getUnspecifiedLiteralFloat(FTContext* tc = 0);
 	};
 
 
@@ -284,12 +347,13 @@ namespace fir
 		static PointerType* getInt16Ptr(FTContext* tc = 0);
 		static PointerType* getInt32Ptr(FTContext* tc = 0);
 		static PointerType* getInt64Ptr(FTContext* tc = 0);
+		static PointerType* getInt128Ptr(FTContext* tc = 0);
+
 		static PointerType* getUint8Ptr(FTContext* tc = 0);
 		static PointerType* getUint16Ptr(FTContext* tc = 0);
 		static PointerType* getUint32Ptr(FTContext* tc = 0);
 		static PointerType* getUint64Ptr(FTContext* tc = 0);
-		static PointerType* getFloat32Ptr(FTContext* tc = 0);
-		static PointerType* getFloat64Ptr(FTContext* tc = 0);
+		static PointerType* getUint128Ptr(FTContext* tc = 0);
 	};
 
 
@@ -469,6 +533,24 @@ namespace fir
 	};
 
 
+	struct ProtocolType : Type
+	{
+		friend struct Type;
+
+		// methods
+
+
+		// protected constructor
+
+
+		// fields
+
+
+		// static funcs
+		public:
+	};
+
+
 	struct FunctionType : Type
 	{
 		friend struct Type;
@@ -513,6 +595,45 @@ namespace fir
 	};
 
 
+	struct StringType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		StringType();
+		virtual ~StringType() override { }
+
+		public:
+		static StringType* get(FTContext* tc = 0);
+	};
+
+	struct CharType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		CharType();
+		virtual ~CharType() override { }
+
+		public:
+		static CharType* get(FTContext* tc = 0);
+	};
+
+
 
 
 
@@ -526,7 +647,7 @@ namespace fir
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
-		virtual ParametricType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		std::string getName();
 

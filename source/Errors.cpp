@@ -190,7 +190,7 @@ void error(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", true, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -201,7 +201,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
@@ -225,7 +225,7 @@ void errorNoExit(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Error", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Error", false, ap);
 	va_end(ap);
 }
 
@@ -235,7 +235,7 @@ void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", false, ap);
 	va_end(ap);
@@ -263,7 +263,7 @@ void warn(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Warning", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Warning", false, ap);
 	va_end(ap);
 }
 
@@ -273,7 +273,7 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Warning", false, ap);
 	va_end(ap);
@@ -294,7 +294,7 @@ void info(Expr* relevantast, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	__error_gen(HighlightOptions(relevantast->pin), msg, "Note", false, ap);
+	__error_gen(HighlightOptions(relevantast ? relevantast->pin : Parser::Pin()), msg, "Note", false, ap);
 	va_end(ap);
 }
 
@@ -304,7 +304,7 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_start(ap, msg);
 
 	if(ops.caret.file.empty())
-		ops.caret = relevantast->pin;
+		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Note", false, ap);
 	va_end(ap);
@@ -340,13 +340,7 @@ namespace GenError
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
-		// note: HACK
-		// C++ does static function resolution on struct members, so as long as getReadableType() doesn't use
-		// the 'this' pointer (it doesn't) we'll be fine.
-		// thus, we don't check whether cgi is null.
-
-		error(e, "Invalid assignment from type %s to %s", cgi->getReadableType(b).c_str(),
-			cgi->getReadableType(a).c_str());
+		error(e, "Invalid assignment from type %s to %s", b->str().c_str(), a->str().c_str());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
@@ -362,7 +356,7 @@ namespace GenError
 			if(!v || args[0] == v)
 				continue;
 
-			args_str += ", " + cgi->getReadableType(v->getType());
+			args_str += ", " + v->getType()->str();
 		}
 
 		// remove leading commas
@@ -413,7 +407,7 @@ namespace GenError
 	{
 		std::string prs = "";
 		for(auto p : ps)
-			prs += cgi->getReadableType(p) + ", ";
+			prs += p->getType(cgi)->str() + ", ";
 
 		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
 
@@ -427,7 +421,7 @@ namespace GenError
 
 		ops.underlines.push_back(getHighlightExtent(value));
 
-		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(op).c_str());
+		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
@@ -450,14 +444,15 @@ namespace GenError
 
 
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args, std::deque<FuncPair_t> cands)
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args,
+		std::deque<FuncDefPair> cands)
 	{
 		std::vector<std::string> argtypes;
 		HighlightOptions ops;
 
 		for(auto a : args)
 		{
-			argtypes.push_back(cgi->getReadableType(a).c_str());
+			argtypes.push_back(a->getType(cgi)->str());
 
 			auto ext = getHighlightExtent(a);
 			ext.col += 1;						// no idea why, but fix it.
@@ -472,12 +467,12 @@ namespace GenError
 			argstr = argstr.substr(2);
 
 		std::string candidates;
-		std::deque<FuncPair_t> reses;
+		std::deque<FuncDefPair> reses;
 
 		for(auto fs : cands)
 		{
-			if(fs.second)
-				candidates += cgi->printAst(fs.second) + "\n";
+			if(fs.funcDef)
+				candidates += cgi->printAst(fs.funcDecl) + "\n";
 		}
 
 		return std::make_tuple(argstr, candidates, ops);

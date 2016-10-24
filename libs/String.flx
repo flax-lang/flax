@@ -5,6 +5,21 @@
 import Unicode
 import LibCInterface
 
+public extension char
+{
+	func isDigit() -> bool
+	{
+		let zero: char = "0"
+		let nine: char = "9"
+
+		return #self >= zero && #self <= nine
+	}
+}
+
+
+
+
+/*
 public class Character
 {
 	var utf8Bytes: uint8* = null
@@ -70,7 +85,7 @@ public class Character
 
 
 
-	func isEqual(other: Character) -> bool
+	operator == (other: Character) -> bool
 	{
 		return self.byteCount == other.byteCount && strncmp(self.utf8Bytes as int8*, other.utf8Bytes as int8*, self.byteCount) == 0
 	}
@@ -112,7 +127,7 @@ public class String
 		self.data = malloc(32)
 		self.allocated = 32
 
-		#self = @raw ""
+		memset(self.data, 0, 32)
 	}
 
 	init(str: int8*)
@@ -212,13 +227,11 @@ public class String
 	{
 		self.append(char.utf8Bytes as int8*, char.byteCount)
 	}
+}
 
 
-
-
-
-
-
+public extension String
+{
 	// operators
 
 	operator [] (index: uint64) -> Character
@@ -234,9 +247,6 @@ public class String
 			return ret
 		}
 	}
-
-
-
 
 	operator = (other: int8*)
 	{
@@ -262,43 +272,50 @@ public class String
 	{
 		self.append(other)
 	}
+
+	operator == (rhs: String) -> bool
+	{
+		return strcmp(self.data, rhs.data) == 0
+	}
+
+	operator == (rhs: int8*) -> bool
+	{
+		return strcmp(self.data, rhs) == 0
+	}
+
+	operator == (rhs: Character) -> bool
+	{
+		return self.byteCount == rhs.byteCount && strncmp(self.data, rhs.utf8Bytes as int8*, self.byteCount) == 0
+	}
+
+	operator + (rhs: Character) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
+
+	operator + (rhs: String) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
+
+	operator + (rhs: int8*) -> String
+	{
+		var ret = String(self.data)
+		ret += rhs
+
+		return ret
+	}
 }
+*/
 
 
 
-public operator + (lhs: String, rhs: String) -> String
-{
-	var ret = String(lhs.data)
-	ret += rhs
-
-	return ret
-}
-
-public operator + (lhs: String, rhs: int8*) -> String
-{
-	var ret = String(lhs.data)
-	ret += rhs
-
-	return ret
-}
-
-public operator + (lhs: String, rhs: Character) -> String
-{
-	var ret = String(lhs.data)
-	ret += rhs
-
-	return ret
-}
-
-public operator == (lhs: String, rhs: int8*) -> bool
-{
-	return strcmp(lhs.data, rhs) == 0
-}
-
-public operator == (lhs: String, rhs: Character) -> bool
-{
-	return lhs.byteCount == rhs.byteCount && strncmp(lhs.data, rhs.utf8Bytes as int8*, lhs.byteCount) == 0
-}
 
 
 

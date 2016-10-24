@@ -13,6 +13,13 @@ using namespace Codegen;
 
 
 
+fir::Type* ClassDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
 
 Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -64,13 +71,13 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInitId.functionArguments = { cls->getPointerTo() };
 
 		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
-			fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+			fir::Type::getVoid(cgi->getContext()), false), linkageType);
 
 
-		fir::IRBlock* currentblock = cgi->builder.getCurrentBlock();
+		fir::IRBlock* currentblock = cgi->irb.getCurrentBlock();
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = this->defaultInitialiser->getArguments().front();
@@ -79,10 +86,12 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		{
 			if(!var->isStatic)
 			{
-				fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
+				fir::Value* ptr = cgi->irb.CreateGetStructMember(self, var->ident.name);
 
-				auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-				var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
+				auto r = var->initVal ? var->initVal->codegen(cgi) : Result_t(0, 0);
+
+				var->inferType(cgi);
+				var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.value, r.pointer, ptr, false, r.valueKind);
 			}
 			else
 			{
@@ -94,13 +103,13 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				Identifier vid = Identifier(var->ident.name, tmp, IdKind::Variable);
 
 				// generate a global variable
-				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->inferredLType,
-					fir::ConstantValue::getNullValue(var->inferredLType), var->immutable,
+				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->concretisedType,
+					fir::ConstantValue::getNullValue(var->concretisedType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-				if(var->inferredLType->isStructType() || var->inferredLType->isClassType())
+				if(var->concretisedType->isStructType() || var->concretisedType->isClassType())
 				{
-					TypePair_t* cmplxtype = cgi->getType(var->inferredLType);
+					TypePair_t* cmplxtype = cgi->getType(var->concretisedType);
 					iceAssert(cmplxtype);
 
 					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
@@ -109,10 +118,10 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(var->initVal);
-					fir::Value* val = var->initVal->codegen(cgi, gv).result.first;
+					fir::Value* val = var->initVal->codegen(cgi, gv).value;
 					if(dynamic_cast<fir::ConstantValue*>(val))
 					{
-						gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(val));
+						gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(cgi->autoCastType(var->concretisedType, val)));
 					}
 					else
 					{
@@ -122,8 +131,8 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 		}
 
-		cgi->builder.CreateReturnVoid();
-		cgi->builder.setCurrentBlock(currentblock);
+		cgi->irb.CreateReturnVoid();
+		cgi->irb.setCurrentBlock(currentblock);
 	}
 
 
@@ -151,6 +160,9 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	doCodegenForComputedProperties(cgi, this);
 
 	// same reasoning for operators -- we need to 1. be able to call methods in the operator, and 2. call operators from the methods
+	generateDeclForOperators(cgi, this);
+
+	doCodegenForGeneralOperators(cgi, this);
 	doCodegenForAssignmentOperators(cgi, this);
 	doCodegenForSubscriptOperators(cgi, this);
 
@@ -219,7 +231,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->initFuncs.push_back(this->defaultInitialiser);
 	}
 
-	cgi->addPublicFunc({ this->defaultInitialiser, 0 });
+	// cgi->addPublicFunc(FuncDefPair(this->defaultInitialiser, 0, 0));
 
 	return Result_t(0, 0);
 }
@@ -254,7 +266,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ClassDef::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return this->createdType;
@@ -303,9 +315,9 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		iceAssert(var->inferredLType != 0);
+		iceAssert(var->concretisedType != 0);
 
-		fir::Type* type = var->inferredLType;
+		fir::Type* type = var->concretisedType;
 
 		if(type == cls)
 		{
@@ -314,7 +326,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi, std::unordered_map<std::st
 
 		if(!var->isStatic)
 		{
-			types.push_back({ var->ident.name, cgi->getExprType(var) });
+			types.push_back({ var->ident.name, var->getType(cgi) });
 		}
 	}
 

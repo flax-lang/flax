@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	TupleType::TupleType(std::vector<Type*> mems) : Type(FTypeKind::Tuple), members(mems)
+	TupleType::TupleType(std::vector<Type*> mems) : members(mems)
 	{
 	}
 
@@ -81,28 +81,11 @@ namespace fir
 		std::vector<Type*> reified;
 		for(auto mem : this->members)
 		{
-			if(mem->isParametricType())
-			{
-				if(reals.find(mem->toParametricType()->getName()) != reals.end())
-				{
-					auto t = reals[mem->toParametricType()->getName()];
-					if(t->isParametricType())
-					{
-						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
-							mem->toParametricType()->getName().c_str());
-					}
+			auto rfd = mem->reify(reals);
+			if(rfd->isParametricType())
+				error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 
-					reified.push_back(t);
-				}
-				else
-				{
-					error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
-				}
-			}
-			else
-			{
-				reified.push_back(mem);
-			}
+			reified.push_back(rfd);
 		}
 
 		iceAssert(reified.size() == this->members.size());

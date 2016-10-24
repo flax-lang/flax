@@ -16,12 +16,33 @@ Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value*
 	return Result_t(0, 0);
 }
 
+fir::Type* SubscriptOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
 
 Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
 {
 	return Result_t(0, 0);
 }
 
+fir::Type* AssignOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
+}
+
+
+
+
+
+
+
+
+fir::Type* OpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 {
@@ -39,10 +60,10 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 			// yes, yes we are.
 			if(args.size() > 0)
 			{
-				FuncPair_t res = cgi->instantiateGenericFunctionUsingParameters(this, { }, this->func, args);
+				FuncDefPair res = cgi->instantiateGenericFunctionUsingParameters(this, { }, this->func, args);
 
-				this->lfunc = res.first;
-				return Result_t(res.first, 0);
+				this->lfunc = res.firFunc;
+				return Result_t(res.firFunc, 0);
 			}
 			else
 			{
@@ -55,7 +76,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 			this->didCodegen = true;
 
 			auto res = this->func->codegen(cgi);
-			this->lfunc = dynamic_cast<fir::Function*>(res.result.first);
+			this->lfunc = dynamic_cast<fir::Function*>(res.value);
 
 			return res;
 		}

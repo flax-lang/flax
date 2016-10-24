@@ -8,34 +8,9 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
-{
-	Result_t lastval(0, 0);
-	cgi->pushScope();
 
-	bool broke = false;
-	for(Expr* e : this->statements)
-	{
-		if(e->isBreaking() && cgi->getCurrentFunctionScope()->block->deferredStatements.size() > 0)
-		{
-			for(Expr* e : cgi->getCurrentFunctionScope()->block->deferredStatements)
-			{
-				e->codegen(cgi);
-			}
-		}
 
-		if(!broke)
-		{
-			lastval = e->codegen(cgi);
-		}
 
-		if(lastval.type == ResultType::BreakCodegen)
-			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
-	}
-
-	cgi->popScope();
-	return lastval;
-}
 
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -55,7 +30,12 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		FunctionTree* cft = cgi->getCurrentFuncTree();
 		iceAssert(cft);
 
-		cft->genericFunctions.push_back(std::make_pair(this->decl, this));
+		// we should already be inside somewhere
+		auto it = std::find(cft->genericFunctions.begin(), cft->genericFunctions.end(), std::make_pair(this->decl, this));
+		iceAssert(it != cft->genericFunctions.end());
+
+		// toplevel already added us.
+		// cft->genericFunctions.push_back(std::make_pair(this->decl, this));
 	}
 
 
@@ -71,11 +51,15 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
 							: cgi->module->getFunction(this->decl->ident);
 
+
 		if(!func)
 		{
 			this->didCodegen = false;
 			if(isGeneric)
 			{
+				// our primary purpose was to add the generic function to the functree
+				// after that our job is done (clearly we can't generate a generic function without knowing the type parameters)
+
 				return Result_t(0, 0);
 			}
 			else
@@ -98,6 +82,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error(this, "Function needs a body in this context");
 
 
+	iceAssert(func);
+	if(func->wasDeclaredWithBodyElsewhere())
+		error(this->decl, "Function '%s' was already declared with a body in another, imported, module", this->decl->ident.name.c_str());
+
 
 	// we need to clear all previous blocks' symbols
 	// but we can't destroy them, so employ a stack method.
@@ -111,10 +99,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// to support declaring functions inside functions, we need to remember
 	// the previous insert point, or all further codegen will happen inside this function
 	// and fuck shit up big time
-	fir::IRBlock* prevBlock = cgi->builder.getCurrentBlock();
+	fir::IRBlock* prevBlock = cgi->irb.getCurrentBlock();
 
-	fir::IRBlock* irblock = cgi->builder.addNewBlockInFunction(this->decl->ident.name + "_entry", func);
-	cgi->builder.setCurrentBlock(irblock);
+	fir::IRBlock* irblock = cgi->irb.addNewBlockInFunction(this->decl->ident.name + "_entry", func);
+	cgi->irb.setCurrentBlock(irblock);
 
 
 
@@ -125,7 +113,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(this->decl->parentClass && this->decl->parentClass->createdType);
 
 		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
-		fake->type.ftype = this->decl->parentClass->createdType->getPointerTo();
+		fake->ptype = new pts::Type(this->decl->parentClass->createdType->getPointerTo());
 
 		vprs.push_front(fake);
 	}
@@ -136,14 +124,14 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(!isGeneric)
 		{
-			iceAssert(func->getArguments()[i]->getType() == cgi->getExprType(vprs[i]));
+			iceAssert(func->getArguments()[i]->getType() == vprs[i]->getType(cgi));
 		}
 
 		fir::Value* ai = 0;
 		if(!vprs[i]->immutable)
 		{
 			ai = cgi->getStackAlloc(func->getArguments()[i]->getType());
-			cgi->builder.CreateStore(func->getArguments()[i], ai);
+			cgi->irb.CreateStore(func->getArguments()[i], ai);
 		}
 		else
 		{
@@ -167,8 +155,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// check if we're not returning void
 	bool isImplicitReturn = false;
 	bool doRetVoid = false;
-	// bool premature = false;
-	if(this->decl->type.strType != VOID_TYPE_STRING)
+
+	if(this->decl->ptype->str() != VOID_TYPE_STRING)
 	{
 		size_t counter = 0;
 		isImplicitReturn = cgi->verifyAllPathsReturn(this, &counter, false, func->getReturnType());
@@ -180,7 +168,6 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			// cut off the rest.
 			this->block->statements.erase(this->block->statements.begin() + counter, this->block->statements.end());
-			// premature = true;
 		}
 	}
 	else
@@ -205,15 +192,45 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
-		cgi->builder.CreateReturnVoid();
-
+	{
+		cgi->irb.CreateReturnVoid();
+	}
 	else if(isImplicitReturn)
 	{
 		fir::Type* needed = func->getReturnType();
-		if(lastval.result.first->getType() != needed)
-			lastval.result.first = cgi->autoCastType(func->getReturnType(), lastval.result.first, lastval.result.second);
 
-		cgi->builder.CreateReturn(lastval.result.first);
+		fir::Value* ret = lastval.value;
+		if(ret->getType() != needed)
+		{
+			auto tmp = cgi->autoCastType(func->getReturnType(), ret, lastval.pointer);
+
+			// info(this, "retretret (%d / %p) (%s / %s)", ret->getType()->isPrimitiveType() && ret->getType()->toPrimitiveType()->isLiteralType(), (void*) dynamic_cast<fir::ConstantValue*>(ret), needed->str().c_str(), tmp->getType()->str().c_str());
+
+			ret = tmp;
+		}
+
+
+		// if it's an rvalue, we make a new one, increment its refcount
+		if(cgi->isRefCountedType(ret->getType()))
+		{
+			if(lastval.valueKind == ValueKind::LValue)
+			{
+				// uh.. should always be there.
+				iceAssert(lastval.pointer);
+				cgi->incrementRefCount(lastval.pointer);
+			}
+			else
+			{
+				// rvalue
+
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+				cgi->incrementRefCount(tmp);
+
+				ret = cgi->irb.CreateLoad(tmp);
+			}
+		}
+
+		cgi->irb.CreateReturn(ret);
 	}
 
 
@@ -221,7 +238,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->popScope();
 
 	if(prevBlock)
-		cgi->builder.setCurrentBlock(prevBlock);
+		cgi->irb.setCurrentBlock(prevBlock);
 
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);
@@ -229,6 +246,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* Func::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return this->decl->getType(cgi);
+}
 
 
 

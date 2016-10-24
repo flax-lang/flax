@@ -18,10 +18,196 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 
 	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
 
-	this->builder.CreateCall(initfunc, args);
-	fir::Value* val = this->builder.CreateLoad(ai);
+	// for(size_t i = 0; i < initfunc->getArgumentCount(); i++)
+	// {
+	// 	if(args[i]->getType() != initfunc->getArguments()[i]->getType())
+	// 		args[i] = this->autoCastType(initfunc->getArguments()[i]->getType(), args[i]);
+
+	// 	if(args[i]->getType() != initfunc->getArguments()[i]->getType())
+	// 	{
+	// 		error(user, "Argument mismatch (%zu) in call to type initialiser; expected '%s', got '%s'", i + 1,
+	// 			initfunc->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
+	// 	}
+	// }
+
+	this->irb.CreateCall(initfunc, args);
+	fir::Value* val = this->irb.CreateLoad(ai);
 
 	return Result_t(val, ai);
+}
+
+
+// extern Expr* __debugExpr;
+
+static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenInstance* cgi, FuncCall* fc, fir::FunctionType* ft,
+	std::deque<Expr*> params, bool variadic, bool cvar)
+{
+	std::deque<fir::Value*> args;
+
+	// __debugExpr = fc;
+
+	if(!variadic)
+	{
+		std::vector<fir::Value*> argPtrs;
+
+		size_t cur = 0;
+		for(Expr* e : params)
+		{
+			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
+
+			auto res = e->codegen(cgi);
+			fir::Value* arg = res.value;
+
+			if(arg == nullptr || arg->getType()->isVoidType())
+				GenError::nullValue(cgi, e);
+
+			if(checkcv && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
+			{
+				fir::Type* st = arg->getType();
+				if(st->isClassType() || st->isStructType())
+				{
+					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
+				}
+			}
+			else if(checkcv && arg->getType()->isStringType())
+			{
+				// this function knows what to do.
+				arg = cgi->autoCastType(fir::Type::getInt8Ptr(cgi->getContext()), arg, res.pointer);
+			}
+			else if(checkcv)
+			{
+				// check if we need to promote the argument type
+				if(arg->getType() == fir::Type::getFloat32())
+					arg = cgi->irb.CreateFExtend(arg, fir::Type::getFloat64());
+
+				// don't need to worry about signedness for this; if you're smaller than int32,
+				// int32 can represent you even if you're unsigned
+				else if(arg->getType()->isIntegerType() && arg->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
+					arg = cgi->irb.CreateIntSizeCast(arg, fir::Type::getInt32());
+			}
+
+			args.push_back(arg);
+			argPtrs.push_back(res.pointer);
+
+			cur++;
+		}
+
+
+		for(size_t i = 0; i < std::min(args.size(), ft->getArgumentTypes().size()); i++)
+		{
+			if(ft->getArgumentN(i) != args[i]->getType())
+				args[i] = cgi->autoCastType(ft->getArgumentN(i), args[i], argPtrs[i]);
+
+			if(ft->getArgumentN(i) != args[i]->getType())
+			{
+				error(fc, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+					ft->getArgumentN(i)->str().c_str(), args[i]->getType()->str().c_str());
+			}
+		}
+	}
+	else
+	{
+		// variadic.
+		// remember, last argument is the llarray.
+		// do until the penultimate argument.
+		for(size_t i = 0; i < ft->getArgumentTypes().size() - 1; i++)
+		{
+			Expr* ex = params[i];
+
+			fir::Value* arg = ex->codegen(cgi).value;
+
+			if(arg == nullptr || arg->getType()->isVoidType())
+				GenError::nullValue(cgi, ex);
+
+			args.push_back(arg);
+		}
+
+
+		// special case: we can directly forward the arguments
+		if(params.back()->getType(cgi)->isLLVariableArrayType() && params.back()->getType(cgi)->toLLVariableArrayType()->getElementType()
+			== ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType())
+		{
+			args.push_back(params.back()->codegen(cgi).value);
+		}
+		else
+		{
+			// do the last.
+			fir::Type* variadicType = ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType();
+			std::deque<fir::Value*> variadics;
+
+			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
+			{
+				auto r = params[i]->codegen(cgi);
+				fir::Value* val = r.value;
+				fir::Value* valP = r.pointer;
+
+				if(cgi->isAnyType(variadicType))
+				{
+					variadics.push_back(cgi->makeAnyFromValue(val, valP).value);
+				}
+				else if(variadicType != val->getType())
+				{
+					variadics.push_back(cgi->autoCastType(variadicType, val, valP));
+				}
+				else
+				{
+					variadics.push_back(val);
+				}
+			}
+
+			// make the array thing.
+			fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
+			fir::Value* rawArrayPtr = cgi->getStackAlloc(arrtype);
+
+			for(size_t i = 0; i < variadics.size(); i++)
+			{
+				auto gep = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, i);
+				cgi->irb.CreateStore(variadics[i], gep);
+			}
+
+			fir::Value* arrPtr = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
+			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).value;
+			args.push_back(llar);
+		}
+	}
+
+	return args;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fir::Value* ret)
+{
+	if(cgi->isRefCountedType(ret->getType()))
+	{
+		fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+		cgi->addRefCountedValue(tmp);
+
+		return tmp;
+	}
+
+	return 0;
 }
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -31,15 +217,121 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		std::vector<fir::Value*> args;
 		for(Expr* e : this->params)
-			args.push_back(e->codegen(cgi).result.first);
+			args.push_back(e->codegen(cgi).value);
 
 		return cgi->callTypeInitialiser(tp, this, args);
 	}
+	else if(fir::PrimitiveType::fromBuiltin(this->name))
+	{
+		fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
 
-	std::vector<fir::Value*> args;
+		// get our parameters.
+		if(this->params.size() != 1)
+			error(this, "Builtin type initialisers must be called with exactly one argument (have %zu)", this->params.size());
+
+		auto res = this->params[0]->codegen(cgi);
+		fir::Value* arg = res.value;
+		iceAssert(arg);
+
+
+		// special case for string
+		if(type->isStringType())
+		{
+			// make a string with this.
+			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(this->params[0]))
+			{
+				// lol wtf
+				return cgi->makeStringLiteral(sl->str);
+			}
+
+
+			if(arg->getType() == fir::Type::getInt8Ptr())
+			{
+				// first get the length
+				fir::Function* strlenf = cgi->getOrDeclareLibCFunc("strlen");
+				fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+				fir::Function* memcpyf = cgi->getOrDeclareLibCFunc("memcpy");
+
+				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
+
+				auto i64size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
+
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, alloclen);
+
+				// add 8 bytes to this, skip the refcount
+				buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64size));
+
+				// memcpy.
+				cgi->irb.CreateCall(memcpyf, { buf, arg, len, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+				// null terminator
+				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), cgi->irb.CreatePointerAdd(buf, len));
+
+				// ok, store everything.
+				fir::Value* str = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+
+				cgi->irb.CreateSetStringData(str, buf);
+				cgi->irb.CreateSetStringLength(str, len);
+				cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+				cgi->addRefCountedValue(str);
+				return Result_t(cgi->irb.CreateLoad(str), str);
+			}
+			else
+			{
+				return res;
+			}
+		}
+		else
+		{
+			if(arg->getType() != type)
+				arg = cgi->autoCastType(type, arg, res.pointer);
+
+			if(arg->getType() != type)
+			{
+				error(this, "Invalid argument type '%s' to builtin type initialiser for type '%s'", arg->getType()->str().c_str(),
+					type->str().c_str());
+			}
+
+			// ok, just return the thing.
+			return Result_t(arg, 0);
+		}
+	}
+	else if(fir::Value* fv = cgi->getSymInst(this, this->name))
+	{
+		this->cachedResolveTarget.resolved = true;
+
+		if(!fv->getType()->getPointerElementType()->isFunctionType())
+			error(this, "'%s' is not a function, and cannot be called", this->name.c_str());
+
+		fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
+		iceAssert(ft);
+
+		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
+
+		fir::Value* fn = cgi->irb.CreateLoad(fv);
+		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(fn, ft, args);
+
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
+	}
+	else if(extra && extra->getType()->isFunctionType())
+	{
+		this->cachedResolveTarget.resolved = true;
+
+		fir::FunctionType* ft = extra->getType()->toFunctionType();
+		iceAssert(ft);
+
+		auto args = _checkAndCodegenFunctionCallParameters(cgi, this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
+
+		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extra, ft, args);
+
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
+	}
+
+
 
 	fir::Function* target = 0;
-
 
 
 	// we're not a generic function.
@@ -50,7 +342,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(!rt.resolved)
 		{
 			auto pair = cgi->tryResolveGenericFunctionCall(this);
-			if(pair.first || pair.second)
+			if(pair.firFunc || pair.funcDef)
 				rt = Resolved_t(pair);
 
 			else
@@ -67,23 +359,24 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 
 
-		if(rt.t.first == 0)
+		if(rt.t.firFunc == 0)
 		{
 			// generate it.
-			rt.t.second->codegen(cgi);
+			iceAssert(rt.t.funcDecl);
+			rt.t.funcDecl->codegen(cgi);
 
 			// printf("expediting function call to %s\n", this->name.c_str());
 
 			rt = cgi->resolveFunction(this, this->name, this->params);
 
 			if(!rt.resolved) error("nani???");
-			if(rt.t.first == 0) goto failedToFind;
+			if(rt.t.firFunc == 0) goto failedToFind;
 		}
 
 		this->cachedResolveTarget = rt;
 	}
 
-	target = this->cachedResolveTarget.t.first;
+	target = this->cachedResolveTarget.t.firFunc;
 
 
 
@@ -102,128 +395,52 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	if(!checkVariadic)
-	{
-		std::vector<fir::Value*> argPtrs;
-
-		for(Expr* e : this->params)
-		{
-			ValPtr_t res = e->codegen(cgi).result;
-			fir::Value* arg = res.first;
-
-			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, e);
-
-			if(checkCVarArg && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
-			{
-				fir::Type* st = arg->getType();
-				if(st->isClassType() && st->toClassType()->getClassName().str() == "String")
-				{
-					// this function knows what to do.
-					arg = cgi->autoCastType(fir::PointerType::getInt8Ptr(cgi->getContext()), arg, res.second);
-				}
-				else if(st->isClassType() || st->isStructType())
-				{
-					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
-				}
-			}
-
-			args.push_back(arg);
-			argPtrs.push_back(res.second);
-		}
-
-
-		for(size_t i = 0; i < std::min(args.size(), target->getArgumentCount()); i++)
-		{
-			if(target->getArguments()[i]->getType() != args[i]->getType())
-				args[i] = cgi->autoCastType(target->getArguments()[i], args[i], argPtrs[i]);
-
-			if(target->getArguments()[i]->getType() != args[i]->getType())
-			{
-				error(this, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
-					target->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
-			}
-		}
-	}
-	else
-	{
-		// variadic.
-		// remember, last argument is the llarray.
-		// do until the penultimate argument.
-		for(size_t i = 0; i < target->getArgumentCount() - 1; i++)
-		{
-			Expr* ex = params[i];
-
-			ValPtr_t res = ex->codegen(cgi).result;
-			fir::Value* arg = res.first;
-
-			if(arg == nullptr || arg->getType()->isVoidType())
-				GenError::nullValue(cgi, ex);
-
-			args.push_back(arg);
-		}
-
-
-		// special case: we can directly forward the arguments
-		if(cgi->getExprType(params.back())->isLLVariableArrayType())
-		{
-			args.push_back(params.back()->codegen(cgi).result.first);
-		}
-		else
-		{
-			// do the last.
-			fir::Type* variadicType = target->getArguments().back()->getType()->toLLVariableArray()->getElementType();
-			std::deque<fir::Value*> variadics;
-
-			for(size_t i = target->getArgumentCount() - 1; i < params.size(); i++)
-			{
-				auto r = params[i]->codegen(cgi).result;
-				fir::Value* val = r.first;
-				fir::Value* valP = r.second;
-
-				if(cgi->isAnyType(variadicType))
-				{
-					variadics.push_back(cgi->makeAnyFromValue(val, valP).result.first);
-				}
-				else if(variadicType != val->getType())
-				{
-					variadics.push_back(cgi->autoCastType(variadicType, val, valP));
-				}
-				else
-				{
-					variadics.push_back(val);
-				}
-			}
-
-			// make the array thing.
-			fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
-			fir::Value* rawArrayPtr = cgi->getStackAlloc(arrtype);
-
-			for(size_t i = 0; i < variadics.size(); i++)
-			{
-				auto gep = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, i);
-				cgi->builder.CreateStore(variadics[i], gep);
-			}
-
-			fir::Value* arrPtr = cgi->builder.CreateConstGEP2(rawArrayPtr, 0, 0);
-			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).result.first;
-			args.push_back(llar);
-		}
-	}
-
+	auto args = _checkAndCodegenFunctionCallParameters(cgi, this, target->getType(), params, checkVariadic, checkCVarArg);
 
 
 	// might not be a good thing to always do.
 	// TODO: check this.
 	// makes sure we call the function in our own module, because llvm only allows that.
 
-	auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
-	return Result_t(cgi->builder.CreateCall(thistarget, args), 0);
+	fir::Function* thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
+	fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
+
+
+	return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 }
 
 
 
+fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
+	if(!rt.resolved)
+	{
+		TypePair_t* tp = cgi->getTypeByString(this->name);
+		if(tp)
+		{
+			return tp->first;
+		}
+		else if(fir::PrimitiveType::fromBuiltin(this->name))
+		{
+			fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
+			return type;
+		}
+		else
+		{
+			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);
+			if(genericMaybe.firFunc)
+			{
+				this->cachedResolveTarget = Resolved_t(genericMaybe);
+				return genericMaybe.firFunc->getReturnType();
+			}
 
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+		}
+	}
+
+	return rt.t.funcDecl->getType(cgi);
+}
 
 
 

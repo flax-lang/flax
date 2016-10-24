@@ -24,12 +24,12 @@ class Something
 	{
 		static var Another = 511
 
-		ƒ insideFoo() -> int64
+		ƒ insideFoo() -> int
 		{
 			return 10
 		}
 
-		static func staticInside() -> int64
+		static func staticInside() -> int
 		{
 			return 23
 		}
@@ -78,8 +78,8 @@ namespace n1
 	{
 		var m: Sheep
 
-		var tup: (String, int)
-		func nest() -> (String, int)
+		var tup: (string, int)
+		func nest() -> (string, int)
 		{
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
@@ -89,15 +89,15 @@ namespace n1
 		{
 			class DeeperClass
 			{
-				static func deepStatic() -> int64 { 23 }
+				static func deepStatic() -> int { 23 }
 			}
 		}
 	}
 }
 
-public ƒ doScopeTest(argv: String)
+public ƒ doScopeTest(argv: string)
 {
-	var x = argv.data + 3
+	var x = argv.raw + 3
 
 	let p = 64.4 ÷ 4.1
 
