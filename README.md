@@ -10,6 +10,14 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 -----------------------------------------------
 
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/flax-lang/flax/develop/build/d20.gif" />
+</p>
+
+
+
+-----------------------------------------------
+
 #### Disclaimer ####
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
 
