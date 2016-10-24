@@ -596,7 +596,7 @@ namespace fir
 		return dynamic_cast<LLVariableArrayType*>(this) != 0;
 	}
 
-	bool Type::isNullPointer()
+	bool Type::isVoidPointer()
 	{
 		return this == PrimitiveType::getVoid()->getPointerTo();
 	}

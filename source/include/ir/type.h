@@ -122,7 +122,7 @@ namespace fir
 		bool isSignedIntType();
 		bool isFloatingPointType();
 
-		bool isNullPointer();
+		bool isVoidPointer();
 		bool isLLVariableArrayType();
 
 		bool isParametricType();

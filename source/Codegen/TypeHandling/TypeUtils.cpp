@@ -225,7 +225,7 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isPointerType() && from->isNullPointer())
+		else if(to->isPointerType() && from->isVoidPointer())
 		{
 			return 5;
 		}
@@ -416,7 +416,7 @@ namespace Codegen
 			// int-to-float is 10.
 			retval = this->irb.CreateIntToFloatCast(from, target);
 		}
-		else if(target->isPointerType() && from->getType()->isNullPointer())
+		else if(target->isPointerType() && from->getType()->isVoidPointer())
 		{
 			// retval = fir::ConstantValue::getNullValue(target);
 			retval = this->irb.CreatePointerTypeCast(from, target);
