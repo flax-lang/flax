@@ -198,10 +198,17 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	else if(isImplicitReturn)
 	{
 		fir::Type* needed = func->getReturnType();
-		if(lastval.value->getType() != needed)
-			lastval.value = cgi->autoCastType(func->getReturnType(), lastval.value, lastval.pointer);
 
 		fir::Value* ret = lastval.value;
+		if(ret->getType() != needed)
+		{
+			auto tmp = cgi->autoCastType(func->getReturnType(), ret, lastval.pointer);
+
+			// info(this, "retretret (%d / %p) (%s / %s)", ret->getType()->isPrimitiveType() && ret->getType()->toPrimitiveType()->isLiteralType(), (void*) dynamic_cast<fir::ConstantValue*>(ret), needed->str().c_str(), tmp->getType()->str().c_str());
+
+			ret = tmp;
+		}
+
 
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(ret->getType()))

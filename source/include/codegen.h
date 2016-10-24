@@ -113,6 +113,8 @@ namespace Codegen
 		void finishGlobalConstructors();
 
 
+		void importOtherCgi(CodegenInstance* other);
+
 
 
 
@@ -147,14 +149,13 @@ namespace Codegen
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
-		void addPublicFunc(FuncDefPair func);
 		void addFunctionToScope(FuncDefPair func, FunctionTree* root = 0);
 		void removeFunctionFromScope(FuncDefPair func);
 		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
 
 		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
-		FunctionTree* cloneFunctionTree(FunctionTree* orig, bool deep);
-		void cloneFunctionTree(FunctionTree* orig, FunctionTree* clone, bool deep);
+
+		void importFunctionTreeInto(FunctionTree* orig, FunctionTree* import);
 
 
 
@@ -180,8 +181,6 @@ namespace Codegen
 		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
 
-
-		bool isDuplicateFuncDecl(Ast::FuncDecl* decl);
 		bool isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> params, int* castingDistance, bool exactMatch);
 
 		std::deque<FuncDefPair> resolveFunctionName(std::string basename);

@@ -5,6 +5,8 @@
 #include "ir/value.h"
 #include "ir/constant.h"
 
+#include <float.h>
+
 namespace fir
 {
 	ConstantValue::ConstantValue(Type* t) : Value(t)
@@ -28,13 +30,7 @@ namespace fir
 
 
 	// todo: unique these values.
-	ConstantInt* ConstantInt::getSigned(Type* intType, ssize_t val)
-	{
-		iceAssert(intType->isIntegerType() && "not integer type");
-		return new ConstantInt(intType, val);
-	}
-
-	ConstantInt* ConstantInt::getUnsigned(Type* intType, size_t val)
+	ConstantInt* ConstantInt::get(Type* intType, size_t val)
 	{
 		iceAssert(intType->isIntegerType() && "not integer type");
 		return new ConstantInt(intType, val);
@@ -63,55 +59,55 @@ namespace fir
 	ConstantInt* ConstantInt::getBool(bool value, FTContext* tc)
 	{
 		Type* t = Type::getBool(tc);
-		return ConstantInt::getSigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt8(int8_t value, FTContext* tc)
 	{
 		Type* t = Type::getInt8(tc);
-		return ConstantInt::getSigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt16(int16_t value, FTContext* tc)
 	{
 		Type* t = Type::getInt16(tc);
-		return ConstantInt::getSigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt32(int32_t value, FTContext* tc)
 	{
 		Type* t = Type::getInt32(tc);
-		return ConstantInt::getSigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt64(int64_t value, FTContext* tc)
 	{
 		Type* t = Type::getInt64(tc);
-		return ConstantInt::getSigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint8(uint8_t value, FTContext* tc)
 	{
 		Type* t = Type::getUint8(tc);
-		return ConstantInt::getUnsigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint16(uint16_t value, FTContext* tc)
 	{
 		Type* t = Type::getUint16(tc);
-		return ConstantInt::getUnsigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint32(uint32_t value, FTContext* tc)
 	{
 		Type* t = Type::getUint32(tc);
-		return ConstantInt::getUnsigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getUint64(uint64_t value, FTContext* tc)
 	{
 		Type* t = Type::getUint64(tc);
-		return ConstantInt::getUnsigned(t, value);
+		return ConstantInt::get(t, value);
 	}
 
 
@@ -154,17 +150,28 @@ namespace fir
 		return new ConstantFP(type, val);
 	}
 
+	ConstantFP* ConstantFP::get(Type* type, long double val)
+	{
+		iceAssert(type->isFloatingPointType() && "not floating point type");
+		return new ConstantFP(type, val);
+	}
+
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = (double) val;
+		this->value = (long double) val;
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)
 	{
+		this->value = (long double) val;
+	}
+
+	ConstantFP::ConstantFP(Type* type, long double val) : fir::ConstantValue(type)
+	{
 		this->value = val;
 	}
 
-	double ConstantFP::getValue()
+	long double ConstantFP::getValue()
 	{
 		return this->value;
 	}
@@ -178,6 +185,12 @@ namespace fir
 	ConstantFP* ConstantFP::getFloat64(double value, FTContext* tc)
 	{
 		Type* t = Type::getFloat64(tc);
+		return ConstantFP::get(t, value);
+	}
+
+	ConstantFP* ConstantFP::getFloat80(long double value, FTContext* tc)
+	{
+		Type* t = Type::getFloat80(tc);
 		return ConstantFP::get(t, value);
 	}
 
@@ -198,6 +211,98 @@ namespace fir
 	ConstantArray::ConstantArray(Type* type, std::vector<ConstantValue*> vals) : fir::ConstantValue(type)
 	{
 		this->values = vals;
+	}
+
+
+
+
+
+
+	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val)
+	{
+		iceAssert(type->isIntegerType());
+		if(type->isSigned())
+		{
+			ssize_t max = ((size_t) 1 << (type->getIntegerBitWidth() - 1)) - 1;
+			ssize_t min = -max - 1;
+
+			return val <= max && val >= min;
+		}
+		else
+		{
+			size_t max = 2ULL * ((1ULL << (type->getIntegerBitWidth() - 1)) - 1) + 1ULL;
+
+			// switch(type->getIntegerBitWidth())
+			// {
+			// 	case 8: 	max = UINT8_MAX; break;
+			// 	case 16:	max = UINT16_MAX; break;
+			// 	case 32:	max = UINT32_MAX; break;
+			// 	case 64:	max = UINT64_MAX; break;
+			// 	default:	iceAssert(0);
+			// }
+
+			// won't get overflow problems, because short-circuiting makes sure val is positive.
+			return val >= 0 && (size_t) val <= max;
+		}
+	}
+
+	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val)
+	{
+		iceAssert(type->isIntegerType());
+		size_t max = 0;
+
+		if(type->isSigned())
+		{
+			max = (1 << (type->getIntegerBitWidth() - 1)) - 1;
+			return val <= max;
+		}
+		else
+		{
+			size_t max = 2ULL * ((1ULL << (type->getIntegerBitWidth() - 1)) - 1) + 1ULL;
+			// switch(type->getIntegerBitWidth())
+			// {
+			// 	case 8: 	max = UINT8_MAX; break;
+			// 	case 16:	max = UINT16_MAX; break;
+			// 	case 32:	max = UINT32_MAX; break;
+			// 	case 64:	max = UINT64_MAX; break;
+			// 	default:	iceAssert(0);
+			// }
+
+			return val <= max;
+		}
+	}
+
+
+
+	// #define PRECISION_CHECK(x,eps)	(std::fabs((long double) ((double) (x)) - x) < (long double) (eps))
+	#define PRECISION_CHECK(x,eps)		(true)
+
+
+	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val)
+	{
+		if(type->getFloatingPointBitWidth() == 32)
+		{
+			if(val != 0.0L && (std::fabs(val) < (long double) FLT_MIN || std::fabs(val) > (long double) FLT_MAX))
+				return false;
+
+			return PRECISION_CHECK(val, FLT_EPSILON);
+		}
+		else if(type->getFloatingPointBitWidth() == 64)
+		{
+			if(val != 0.0L && (std::fabs(val) < (long double) DBL_MIN || std::fabs(val) > (long double) DBL_MAX))
+				return false;
+
+			return PRECISION_CHECK(val, DBL_EPSILON);
+		}
+
+		return true;
+		// else if(type->getFloatingPointBitWidth() > 64)
+		// {
+		// 	if(val < LDBL_MIN || val > LDBL_MAX)
+		// 		return false;
+
+		// 	return true;
+		// }
 	}
 }
 

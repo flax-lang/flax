@@ -2,44 +2,49 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-public namespace int8
+public namespace i8
 {
-	val min: int8 = -128
-	val max: int8 = +127
+	val min: i8 = -128
+	val max: i8 = +127
 }
-public namespace int16
+public namespace i16
 {
-	val min: int16 = -32768
-	val max: int16 = +32767
+	val min: i16 = -32768
+	val max: i16 = +32767
 }
-public namespace int32
+public namespace i32
 {
-	val min: int32 = -2147483648
-	val max: int32 = +2147483647
+	val min: i32 = -2147483648
+	val max: i32 = +2147483647
 }
-public namespace int64
+public namespace i64
 {
-	val min: int64 = -9223372036854775808
-	val max: int64 = +9223372036854775807
+	val min: i64 = -9223372036854775808
+	val max: i64 = +9223372036854775807
 }
 
-public namespace uint8
+public namespace u8
 {
-	val min: uint8 = 0
-	val max: uint8 = 255
+	val min: u8 = 0
+	val max: u8 = 255
 }
-public namespace uint16
+public namespace u16
 {
-	val min: uint16 = 0
-	val max: uint16 = 65535
+	val min: u16 = 0
+	val max: u16 = 65535
 }
-public namespace uint32
+public namespace u32
 {
-	val min: uint32 = 0
-	val max: uint32 = 4294967295
+	val min: u32 = 0
+	val max: u32 = 4294967295
 }
-public namespace uint64
+public namespace u64
 {
-	val min: uint64 = 0
-	val max: uint64 = 18446744073709551615
+	val min: u64 = 0
+	val max: u64 = 18446744073709551615
 }
+
+
+
+
+

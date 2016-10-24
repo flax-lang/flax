@@ -50,6 +50,7 @@ namespace fir
 		void addNamedType(Identifier name, Type* type);
 
 		void addFunction(Function* func);
+		void removeFunction(Function* func);
 
 		Function* declareFunction(Identifier id, FunctionType* ftype);
 		Function* getFunction(Identifier id);
