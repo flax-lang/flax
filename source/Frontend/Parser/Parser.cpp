@@ -88,7 +88,7 @@ namespace Parser
 		switch(ps.front().type)
 		{
 			case TType::Comma:
-				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
+				return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
 
 			case TType::Period:
 				return 1000;
@@ -297,8 +297,8 @@ namespace Parser
 
 
 		// todo: hacks
+		ps.leftParenNestLevel = 0;
 		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
 		ps.skipNewline();
@@ -475,9 +475,9 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
+		ps.structNestLevel = 0;
+		ps.leftParenNestLevel = 0;
 
 		ps.skipNewline();
 
@@ -1567,7 +1567,6 @@ namespace Parser
 		Token first = ps.front();
 		std::vector<Expr*> values;
 
-
 		values.push_back(lhs);
 
 		Token t = ps.front();
@@ -1592,13 +1591,14 @@ namespace Parser
 	Expr* parseParenthesised(ParserState& ps)
 	{
 		iceAssert(ps.eat().type == TType::LParen);
-		ps.didHaveLeftParen = true;
+		ps.leftParenNestLevel++;
+
 		Expr* within = parseExpr(ps);
 
 		iceAssert(ps.front().type == TType::RParen);
 		ps.eat();
 
-		ps.didHaveLeftParen = false;
+		ps.leftParenNestLevel--;
 		return within;
 	}
 
@@ -1687,10 +1687,13 @@ namespace Parser
 					}
 				}
 			}
-			else if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
+			else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
 			{
-				ps.didHaveLeftParen = false;
-				return parseTuple(ps, lhs);
+				// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
+				auto ret = parseTuple(ps, lhs);
+				// ps.leftParenNestLevel--;
+
+				return ret;
 			}
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
@@ -1922,6 +1925,10 @@ namespace Parser
 
 		std::deque<Expr*> args;
 
+		int save = ps.leftParenNestLevel;
+		ps.leftParenNestLevel = 0;
+
+
 		if(ps.front().type != TType::RParen)
 		{
 			while(true)
@@ -1948,6 +1955,8 @@ namespace Parser
 		{
 			ps.eat();
 		}
+
+		ps.leftParenNestLevel = save;
 
 		auto ret = CreateAST_Pin(FuncCall, id_pos, id, args);
 
