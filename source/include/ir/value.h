@@ -56,6 +56,7 @@ namespace fir
 
 		// virtual funcs
 		virtual Type* getType();
+		void setType(Type* t) { this->valueType = t; }
 
 
 		// methods

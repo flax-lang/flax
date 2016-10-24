@@ -696,8 +696,7 @@ static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, Co
 	iceAssert(lcallee);
 
 	lcallee = cgi->module->getFunction(lcallee->getName());
-	std::vector<fir::Value*> args { ref };
-	return Result_t(cgi->irb.CreateCall(lcallee, args), 0);
+	return Result_t(cgi->irb.CreateCall1(lcallee, ref), 0);
 }
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
@@ -892,23 +891,17 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
 			if(!res.resolved)
 			{
-				FunctionTree* pubft = this->getCurrentFuncTree(&nsstrs, this->rootNode->publicFuncTree);
-				res = this->resolveFunctionFromList(ma, pubft->funcs, fc->name, fc->params);
-
-				if(!res.resolved)
+				std::deque<Func*> flist;
+				for(auto f : ftree->genericFunctions)
 				{
-					std::deque<Func*> flist;
-					for(auto f : ftree->genericFunctions)
-					{
-						iceAssert(f.first->genericTypes.size() > 0);
+					iceAssert(f.first->genericTypes.size() > 0);
 
-						if(f.first->ident.name == fc->name)
-							flist.push_back({ f.second });
-					}
-
-					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
-					if(!fp.isEmpty()) res = Resolved_t(fp);
+					if(f.first->ident.name == fc->name)
+						flist.push_back({ f.second });
 				}
+
+				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+				if(!fp.isEmpty()) res = Resolved_t(fp);
 			}
 		}
 		else
@@ -1416,7 +1409,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 							auto vr = new VarRef(fc->pin, fc->name);
 							auto res = doVariable(cgi, vr, ref, cls, cls->createdType->toClassType()->getElementIndex(m->ident.name));
 
-							delete vr;
+							// delete vr;
 
 							iceAssert(res.value);
 							iceAssert(res.value->getType()->isFunctionType());
@@ -1447,7 +1440,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 								auto vr = new VarRef(fc->pin, fc->name);
 								auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
-								delete vr;
+								// delete vr;
 
 								iceAssert(res.value);
 								iceAssert(res.value->getType()->isFunctionType());
@@ -1481,7 +1474,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 										auto vr = new VarRef(fc->pin, fc->name);
 										auto res = callComputedPropertyGetter(cgi, vr, p, ref);
 
-										delete vr;
+										// delete vr;
 
 										iceAssert(res.value);
 										iceAssert(res.value->getType()->isFunctionType());

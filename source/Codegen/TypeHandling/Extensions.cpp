@@ -46,9 +46,6 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 	FunctionTree* ft = cgi->getCurrentFuncTree();
 	{
 		ft->extensions.insert(std::make_pair(this->ident.name, this));
-
-		if(this->attribs & Attr_VisPublic)
-			cgi->getCurrentFuncTree(0, cgi->rootNode->publicFuncTree)->extensions.insert(std::make_pair(this->ident.name, this));
 	}
 
 	this->didCreateType = true;

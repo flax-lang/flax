@@ -400,14 +400,18 @@ namespace fir
 	Value* IRBuilder::CreateFTruncate(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType, { v });
+		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
+			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateFExtend(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType, { v });
+		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType,
+			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -619,8 +623,15 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			return ConstantInt::get(targetType, ci->getSignedValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntSize, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -629,8 +640,15 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			return ConstantInt::get(targetType, ci->getType()->isSignedIntType() ? ci->getSignedValue() : ci->getUnsignedValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -639,8 +657,20 @@ namespace fir
 		iceAssert(v->getType()->isFloatingPointType() && "value is not floating point type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
+		// make constant result for constant operand
+		if(ConstantFP* cfp = dynamic_cast<ConstantFP*>(v))
+		{
+			double _ = 0;
+
+			if(std::modf(cfp->getValue(), &_) != 0.0)
+				warn("Truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType->str().c_str());
+
+			return ConstantInt::get(targetType, (size_t) cfp->getValue());
+		}
+
 		Instruction* instr = new Instruction(OpKind::Cast_FloatToInt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -649,8 +679,29 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isFloatingPointType() && "target is not floating point type");
 
+		// make constant result for constant operand
+		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		{
+			if(targetType == fir::Type::getFloat32())
+			{
+				return ConstantFP::getFloat32((float) ci->getType()->isSignedIntType() ? ci->getSignedValue()
+					: ci->getUnsignedValue());
+			}
+			else if(targetType == fir::Type::getFloat64())
+			{
+				return ConstantFP::getFloat64((double) ci->getType()->isSignedIntType() ? ci->getSignedValue()
+					: ci->getUnsignedValue());
+			}
+			else
+			{
+				error("Unknown floating point type '%s'", targetType->str().c_str());
+			}
+		}
+
+
 		Instruction* instr = new Instruction(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -661,6 +712,7 @@ namespace fir
 
 		Instruction* instr = new Instruction(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
@@ -757,7 +809,57 @@ namespace fir
 		return this->CreateCall(fn, { p1, p2, p3 }, vname);
 	}
 
+	#if 0
+	fir::ConstantInt* ci = 0;
+	if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+	{
+		if((ci = dynamic_cast<fir::ConstantInt*>(from)))
+		{
+			if(ci->getType()->isSignedIntType())
+			{
+				shouldCast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getSignedValue());
+			}
+			else
+			{
+				shouldCast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getUnsignedValue());
+			}
+		}
+	}
 
+	if(shouldCast)
+	{
+		// if it is a literal, we need to create a new constant with a proper type
+		if(from->getType()->toPrimitiveType()->isLiteralType())
+		{
+			if(ci)
+			{
+				fir::PrimitiveType* real = 0;
+				if(ci->getType()->isSignedIntType())
+					real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
+
+				else
+					real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+				from = fir::ConstantInt::get(real, ci->getSignedValue());
+			}
+			else
+			{
+				// nothing?
+				from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+			}
+
+			retval = from;
+		}
+
+		// check signed to unsigned first
+		if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
+		{
+			from = this->irb.CreateIntSignednessCast(from, from->getType()->toPrimitiveType()->getOppositeSignedType());
+		}
+
+		retval = this->irb.CreateIntSizeCast(from, target);
+	}
+	#endif
 
 
 	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args, std::string vname)
@@ -773,8 +875,64 @@ namespace fir
 
 			for(size_t i = 0; i < args.size(); i++)
 			{
-				if(args[i]->getType() != fn->getArguments()[i]->getType())
+				auto target = fn->getArguments()[i]->getType();
+				if(args[i]->getType() != target)
 				{
+					if(args[i]->getType()->isPrimitiveType() && args[i]->getType()->toPrimitiveType()->isLiteralType())
+					{
+						bool shouldcast = false;
+
+						ConstantInt* ci = 0;
+						ConstantFP* cf = 0;
+						if((ci = dynamic_cast<ConstantInt*>(args[i])))
+						{
+							if(ci->getType()->isSignedIntType())
+							{
+								shouldcast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(),
+									ci->getSignedValue());
+							}
+							else
+							{
+								shouldcast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(),
+									ci->getUnsignedValue());
+							}
+						}
+						else if((cf = dynamic_cast<ConstantFP*>(args[i])))
+						{
+							shouldcast = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), cf->getValue());
+						}
+
+
+
+
+						if(shouldcast)
+						{
+							if(ci)
+							{
+								PrimitiveType* real = 0;
+								if(ci->getType()->isSignedIntType())
+									real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
+
+								else
+									real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+								args[i] = fir::ConstantInt::get(real, ci->getSignedValue());
+							}
+							else if(cf)
+							{
+								args[i] = fir::ConstantFP::get(target, cf->getValue());
+							}
+							else
+							{
+								args[i]->setType(target);
+							}
+						}
+
+
+						if(args[i]->getType() == target)
+							continue;
+					}
+
 					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
 						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 				}
@@ -1105,7 +1263,7 @@ namespace fir
 		if(!num->getType()->isIntegerType())
 			error("num is not an integer type (got %s)", num->getType()->str().c_str());
 
-		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
+		Instruction* instr = new Instruction(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
 	}
 

@@ -12,6 +12,7 @@ namespace fir
 		this->baseType = base;
 	}
 
+
 	PointerType* PointerType::getInt8Ptr(FTContext* tc)
 	{
 		return dynamic_cast<PointerType*>(Type::getInt8(tc)->getPointerTo());
@@ -31,6 +32,12 @@ namespace fir
 	{
 		return dynamic_cast<PointerType*>(Type::getInt64(tc)->getPointerTo());
 	}
+
+	PointerType* PointerType::getInt128Ptr(FTContext* tc)
+	{
+		return dynamic_cast<PointerType*>(Type::getInt128(tc)->getPointerTo());
+	}
+
 
 	PointerType* PointerType::getUint8Ptr(FTContext* tc)
 	{
@@ -52,15 +59,14 @@ namespace fir
 		return dynamic_cast<PointerType*>(Type::getUint64(tc)->getPointerTo());
 	}
 
-	PointerType* PointerType::getFloat32Ptr(FTContext* tc)
+	PointerType* PointerType::getUint128Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getFloat32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint128(tc)->getPointerTo());
 	}
 
-	PointerType* PointerType::getFloat64Ptr(FTContext* tc)
-	{
-		return dynamic_cast<PointerType*>(Type::getFloat64(tc)->getPointerTo());
-	}
+
+
+
 
 
 

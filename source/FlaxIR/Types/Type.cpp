@@ -102,7 +102,7 @@ namespace fir
 
 		// bool
 		{
-			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
@@ -114,7 +114,7 @@ namespace fir
 
 		// int8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -122,7 +122,7 @@ namespace fir
 		}
 		// int16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -130,7 +130,7 @@ namespace fir
 		}
 		// int32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -138,10 +138,18 @@ namespace fir
 		}
 		// int64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// int128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			t->isTypeSigned = true;
+
+			tc->primitiveTypes[128].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
 
@@ -150,7 +158,7 @@ namespace fir
 
 		// uint8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -158,7 +166,7 @@ namespace fir
 		}
 		// uint16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -166,7 +174,7 @@ namespace fir
 		}
 		// uint32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -174,17 +182,27 @@ namespace fir
 		}
 		// uint64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
+		// uint128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[128].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+
+
 
 
 		// float32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -192,10 +210,26 @@ namespace fir
 		}
 		// float64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// float80
+		{
+			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[80].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// float128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[128].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
 
@@ -344,25 +378,31 @@ namespace fir
 		else if(builtin == INT16_TYPE_STRING)		real = Type::getInt16(tc);
 		else if(builtin == INT32_TYPE_STRING)		real = Type::getInt32(tc);
 		else if(builtin == INT64_TYPE_STRING)		real = Type::getInt64(tc);
-		else if(builtin == INTUNSPEC_TYPE_STRING)	real = Type::getInt64(tc);
+		else if(builtin == INT128_TYPE_STRING)		real = Type::getInt128(tc);
 
 		else if(builtin == UINT8_TYPE_STRING)		real = Type::getUint8(tc);
 		else if(builtin == UINT16_TYPE_STRING)		real = Type::getUint16(tc);
 		else if(builtin == UINT32_TYPE_STRING)		real = Type::getUint32(tc);
 		else if(builtin == UINT64_TYPE_STRING)		real = Type::getUint64(tc);
-		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = Type::getUint64(tc);
+		else if(builtin == UINT128_TYPE_STRING)		real = Type::getUint128(tc);
 
 		else if(builtin == FLOAT32_TYPE_STRING)		real = Type::getFloat32(tc);
-
-		// float is implicit double.
 		else if(builtin == FLOAT64_TYPE_STRING)		real = Type::getFloat64(tc);
-		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat64(tc);
+		else if(builtin == FLOAT80_TYPE_STRING)		real = Type::getFloat80(tc);
+		else if(builtin == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
 
 		else if(builtin == STRING_TYPE_STRING)		real = Type::getStringType();
 		else if(builtin == CHARACTER_TYPE_STRING)	real = Type::getCharType();
 
 		else if(builtin == BOOL_TYPE_STRING)		real = Type::getBool(tc);
 		else if(builtin == VOID_TYPE_STRING)		real = Type::getVoid(tc);
+
+		// unspecified things
+		else if(builtin == INTUNSPEC_TYPE_STRING)	real = Type::getInt64(tc);
+		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = Type::getUint64(tc);
+
+		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
+		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
 
 		else return 0;
 
@@ -556,7 +596,7 @@ namespace fir
 		return dynamic_cast<LLVariableArrayType*>(this) != 0;
 	}
 
-	bool Type::isNullPointer()
+	bool Type::isVoidPointer()
 	{
 		return this == PrimitiveType::getVoid()->getPointerTo();
 	}
@@ -618,6 +658,11 @@ namespace fir
 		return PrimitiveType::getInt64(tc);
 	}
 
+	PrimitiveType* Type::getInt128(FTContext* tc)
+	{
+		return PrimitiveType::getInt128(tc);
+	}
+
 	PrimitiveType* Type::getUint8(FTContext* tc)
 	{
 		return PrimitiveType::getUint8(tc);
@@ -638,6 +683,11 @@ namespace fir
 		return PrimitiveType::getUint64(tc);
 	}
 
+	PrimitiveType* Type::getUint128(FTContext* tc)
+	{
+		return PrimitiveType::getUint128(tc);
+	}
+
 	PrimitiveType* Type::getFloat32(FTContext* tc)
 	{
 		return PrimitiveType::getFloat32(tc);
@@ -647,6 +697,17 @@ namespace fir
 	{
 		return PrimitiveType::getFloat64(tc);
 	}
+
+	PrimitiveType* Type::getFloat80(FTContext* tc)
+	{
+		return PrimitiveType::getFloat80(tc);
+	}
+
+	PrimitiveType* Type::getFloat128(FTContext* tc)
+	{
+		return PrimitiveType::getFloat128(tc);
+	}
+
 
 	PointerType* Type::getInt8Ptr(FTContext* tc)
 	{
@@ -666,6 +727,11 @@ namespace fir
 	PointerType* Type::getInt64Ptr(FTContext* tc)
 	{
 		return PointerType::getInt64Ptr(tc);
+	}
+
+	PointerType* Type::getInt128Ptr(FTContext* tc)
+	{
+		return PointerType::getInt128Ptr(tc);
 	}
 
 	PointerType* Type::getUint8Ptr(FTContext* tc)
@@ -688,14 +754,9 @@ namespace fir
 		return PointerType::getUint64Ptr(tc);
 	}
 
-	PointerType* Type::getFloat32Ptr(FTContext* tc)
+	PointerType* Type::getUint128Ptr(FTContext* tc)
 	{
-		return PointerType::getFloat32Ptr(tc);
-	}
-
-	PointerType* Type::getFloat64Ptr(FTContext* tc)
-	{
-		return PointerType::getFloat64Ptr(tc);
+		return PointerType::getUint128Ptr(tc);
 	}
 
 	CharType* Type::getCharType(FTContext* tc)

@@ -147,13 +147,19 @@ namespace Operators
 			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
 		{
 			// array to pointer cast.
-			if(!dynamic_cast<fir::ConstantArray*>(lhs))
-				warn(user, "Casting from non-constant array to pointer is potentially unsafe");
-
 			iceAssert(lhsPtr);
 
 			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
+		}
+		else if(lhs->getType()->isArrayType() && rtype->isVoidPointer())
+		{
+			// array to void* cast.
+			iceAssert(lhsPtr);
+
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* vptr = cgi->irb.CreatePointerTypeCast(lhsRawPtr, fir::Type::getVoid()->getPointerTo());
+			return Result_t(vptr, 0);
 		}
 		else if(lhs->getType()->isStringType() && rtype->isCharType())
 		{

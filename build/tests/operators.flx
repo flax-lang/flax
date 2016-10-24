@@ -22,7 +22,7 @@ class CPTest
 public func doOperatorTupleTest()
 {
 	do {
-		let g: int8 = 100
+		let g: i8 = 100
 		printf("g is: %d\n", g)
 	}
 
