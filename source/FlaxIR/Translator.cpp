@@ -43,8 +43,16 @@ namespace fir
 				if(pt->getFloatingPointBitWidth() == 32)
 					return llvm::Type::getFloatTy(gc);
 
-				else
+				else if(pt->getFloatingPointBitWidth() == 64)
 					return llvm::Type::getDoubleTy(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 80)
+					return llvm::Type::getX86_FP80Ty(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 128)
+					return llvm::Type::getFP128Ty(gc);
+
+				iceAssert(0);
 			}
 			else if(pt->isVoidType())
 			{
@@ -121,7 +129,7 @@ namespace fir
 		}
 		else if(type->isPointerType())
 		{
-			if(type->isNullPointer())
+			if(type->isVoidPointer())
 				return llvm::Type::getInt8PtrTy(gc);
 
 			else
@@ -243,7 +251,7 @@ namespace fir
 
 		createdTypes.clear();
 
-		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
+		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
@@ -255,7 +263,8 @@ namespace fir
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					fprintf(stderr, "failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+
 				iceAssert(lgv);
 				return lgv;
 				// return builder.CreateConstGEP2_32(lgv, 0, 0);
@@ -1336,14 +1345,17 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 
 
-							ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
-							ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
+							// ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
+							// ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
 
-							iceAssert(cb);
-							iceAssert(cc);
+							// iceAssert(cb);
+							// iceAssert(cc);
 
+							// llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
 
-							llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
+							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
+							llvm::Value* ret = builder.CreateGEP(a, indices);
+
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1361,7 +1373,6 @@ namespace fir
 						}
 
 						case OpKind::Value_PointerAddition:
-						case OpKind::Value_PointerSubtraction:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1372,6 +1383,22 @@ namespace fir
 							iceAssert(b->getType()->isIntegerTy());
 
 							llvm::Value* ret = builder.CreateInBoundsGEP(a, b);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_PointerSubtraction:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Value* negb = builder.CreateNeg(b);
+							llvm::Value* ret = builder.CreateInBoundsGEP(a, negb);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

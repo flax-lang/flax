@@ -75,21 +75,21 @@ func foo_generic<T, K>(a: T, b: K)
 	let x = T()
 	let y = K()
 
-	if(ta == Type.int8)
+	if(ta == Type.i8)
 	{
-		printf("foo: (int8)   %d, ", a)
+		printf("foo: (i8)   %d, ", a)
 	}
-	else if(ta == Type.int16)
+	else if(ta == Type.i16)
 	{
-		printf("foo: (int16)  %d, ", a)
+		printf("foo: (i16)  %d, ", a)
 	}
-	else if(ta == Type.int32)
+	else if(ta == Type.i32)
 	{
-		printf("foo: (int32)  %d, ", a)
+		printf("foo: (i32)  %d, ", a)
 	}
-	else if(ta == Type.int64)
+	else if(ta == Type.i64)
 	{
-		printf("foo: (int64)  %d, ", a)
+		printf("foo: (i64)  %d, ", a)
 	}
 	else if(ta == Type.string)
 	{
@@ -97,21 +97,21 @@ func foo_generic<T, K>(a: T, b: K)
 	}
 
 
-	if(tb == Type.int8)
+	if(tb == Type.i8)
 	{
-		printf("(int8)   %d\n", b)
+		printf("(i8)   %d\n", b)
 	}
-	else if(tb == Type.int16)
+	else if(tb == Type.i16)
 	{
-		printf("(int16)  %d\n", b)
+		printf("(i16)  %d\n", b)
 	}
-	else if(tb == Type.int32)
+	else if(tb == Type.i32)
 	{
-		printf("(int32)  %d\n", b)
+		printf("(i32)  %d\n", b)
 	}
-	else if(tb == Type.int64)
+	else if(tb == Type.i64)
 	{
-		printf("(int64)  %d\n", b)
+		printf("(i64)  %d\n", b)
 	}
 	else if(tb == Type.string)
 	{
@@ -119,19 +119,13 @@ func foo_generic<T, K>(a: T, b: K)
 	}
 }
 
-func lololtest<T>(a: T)
-{
-	let x = T()
-}
-
 public func doGenericsTest()
 {
-	foo_generic(7, 6 as int8)
-	foo_generic(7, 6 as int16)
-	foo_generic(7, 6 as int32)
+	foo_generic(7, 6 as i8)
+	foo_generic(7, 6 as i16)
+	foo_generic(7, 6 as i32)
 
-	// foo_generic(5, "asdf")
-	lololtest("asdf")
+	foo_generic(5, "asdf")
 
 	foo_generic(1, 4, 9)
 

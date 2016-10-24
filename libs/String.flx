@@ -5,6 +5,20 @@
 import Unicode
 import LibCInterface
 
+public extension char
+{
+	func isDigit() -> bool
+	{
+		let zero: char = "0"
+		let nine: char = "9"
+
+		return #self >= zero && #self <= nine
+	}
+}
+
+
+
+
 /*
 public class Character
 {

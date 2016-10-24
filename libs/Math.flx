@@ -5,14 +5,14 @@
 import Math.Vector2
 import Math.Vector3
 
-ﬁ ƒ sqrt(x: float64) -> float64
-ﬁ ƒ sqrtf(x: float32) -> float32
+ﬁ ƒ sqrt(x: f64) -> f64
+ﬁ ƒ sqrtf(x: f32) -> f32
 
 namespace Math
 {
-	public ƒ π() -> float64 { 3.1415926535897932384626 }
-	public ƒ √(x: float64) -> float64 { sqrt(x) }
-	public ƒ √(x: int) -> float64 { sqrt(x as float64) }
+	public ƒ π() -> f32 { 3.14159265/*35897932484626*/ }
+	public ƒ √(x: f64) -> f64 { sqrt(x) }
+	public ƒ √(x: int) -> f64 { sqrt(x as f64) }
 
-	public ƒ square(x: float64) -> float64 { x * x }
+	public ƒ square(x: f64) -> f64 { x * x }
 }

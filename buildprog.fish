@@ -27,6 +27,11 @@ function callCompiler
 	end
 
 
+	# copy the libraries
+	eval mkdir -p "build/sysroot/usr/local/lib/flaxlibs/"
+	eval cp "-R" "libs/*" "build/sysroot/usr/local/lib/flaxlibs/"
+
+
 	eval time "build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot" $opt $compile $dump "build/test.flx"
 
 	if [ $compile != "-jit" -a $dump = "" ]

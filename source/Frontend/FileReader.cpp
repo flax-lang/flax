@@ -18,6 +18,8 @@ namespace Compiler
 		Parser::TokenList tokens;
 		std::vector<std::string> lines;
 		std::string contents;
+
+		bool isLexing = false;
 	};
 
 	static std::unordered_map<std::string, FileInnards> fileList;
@@ -60,15 +62,18 @@ namespace Compiler
 
 		pos.file = fullPath;
 
+		FileInnards innards;
+		innards.lines = rawlines;
+		innards.contents = contents;
+		innards.isLexing = true;
+
+		fileList[fullPath] = innards;
+
 		while((curtok = getNextToken(fileContents, pos)).text.size() > 0)
 			ts.push_back(curtok);
 
-		FileInnards innards;
-		innards.tokens = ts;
-		innards.lines = rawlines;
-		innards.contents = contents;
-
-		fileList[fullPath] = innards;
+		fileList[fullPath].tokens = ts;
+		fileList[fullPath].isLexing = false;
 	}
 
 
@@ -78,6 +83,10 @@ namespace Compiler
 		{
 			readFile(fullPath);
 			assert(fileList.find(fullPath) != fileList.end());
+		}
+		else if(fileList[fullPath].isLexing)
+		{
+			error("Cannot get token list of file '%s' while still lexing", fullPath.c_str());
 		}
 
 		return fileList[fullPath].tokens;

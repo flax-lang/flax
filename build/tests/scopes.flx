@@ -24,12 +24,12 @@ class Something
 	{
 		static var Another = 511
 
-		ƒ insideFoo() -> int64
+		ƒ insideFoo() -> int
 		{
 			return 10
 		}
 
-		static func staticInside() -> int64
+		static func staticInside() -> int
 		{
 			return 23
 		}
@@ -89,7 +89,7 @@ namespace n1
 		{
 			class DeeperClass
 			{
-				static func deepStatic() -> int64 { 23 }
+				static func deepStatic() -> int { 23 }
 			}
 		}
 	}
