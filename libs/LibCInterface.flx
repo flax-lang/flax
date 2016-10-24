@@ -3,29 +3,30 @@
 // Licensed under the Apache License Version 2.0.
 
 // printing
-public ffi func puts(x: int8*) -> int32
-public ffi func printf(x: int8*, ...) -> int32
-public ffi func sprintf(x: int8*, y: int8*, ...) -> int32
-public ffi func snprintf(x: int8* l: uint64, y: int8*, ...) -> int32
+public ffi func puts(x: i8*) -> i32
+public ffi func printf(x: i8*, ...) -> i32
+public ffi func sprintf(x: i8*, y: i8*, ...) -> i32
+public ffi func snprintf(x: i8* l: u64, y: i8*, ...) -> i32
 
 // memcpy/set/move
-public ffi func memcpy(dest: int8*, source: int8*, length: uint64) -> int8*
-public ffi func memset(dest: int8*, value: int32, length: uint64) -> int8*
+public ffi func memcpy(dest: i8*, source: i8*, length: u64) -> i8*
+public ffi func memset(dest: i8*, value: i32, length: u64) -> i8*
 
 // heap
-public ffi func malloc(size: int64) -> int8*
-public ffi func free(pointer: int8*)
+public ffi func malloc(size: i64) -> i8*
+public ffi func free(pointer: i8*)
 
 // strings
-public ffi func strlen(str: int8*) -> uint64
-public ffi func strcmp(str1: int8*, str2: int8*) -> int32
-public ffi func strncmp(str1: int8*, str2: int8*, length: uint64) -> int32
+public ffi func strlen(str: i8*) -> i64
+public ffi func strcmp(str1: i8*, str2: i8*) -> i32
+public ffi func strncmp(str1: i8*, str2: i8*, length: u64) -> i32
 
 // random things
-public ffi func usleep(usec: uint32) -> int32
-public ffi func sleep(sec: uint32) -> uint32
+public ffi func usleep(usec: u32) -> i32
+public ffi func sleep(sec: u32) -> u32
 public ffi func abort()
 
 
 // file stuff
-public ffi func write(fd: int32, buf: int8*, count: uint64) -> int64
+public ffi func write(fd: i32, buf: i8*, count: u64) -> i64
+public ffi func ioctl(fd: i32, cmd: u64, ...) -> i32

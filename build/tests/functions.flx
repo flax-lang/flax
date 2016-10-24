@@ -41,7 +41,7 @@ func gen<T>(a: T) -> T
 	{
 		printf("int: %d\n", a)
 	}
-	else if(typeof(a) == typeof(float64))
+	else if(typeof(a) == typeof(f64))
 	{
 		printf("float: %lf\n", a)
 	}
@@ -129,7 +129,7 @@ public func doFunctionTest()
 	printf("\ngeneric test\n")
 	do {
 		var gf: [(int) -> int] = gen
-		var gff: [(float) -> float] = gen
+		var gff: [(f64) -> f64] = gen
 
 		gf(100)
 		gff(3.1415926536)

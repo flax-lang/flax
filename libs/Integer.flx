@@ -8,43 +8,43 @@ import String
 
 public extension string
 {
-	func toInteger() -> int64
+	func toInteger() -> i64
 	{
 		return 67
 	}
 }
 
-public extension int8 : StringConvertible, Numeric
+public extension i8 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension int16 : StringConvertible, Numeric
+public extension i16 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension int32 : StringConvertible, Numeric
+public extension i32 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension int64 : StringConvertible, Numeric
+public extension i64 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
 
 
-public extension uint8 : StringConvertible, Numeric
+public extension u8 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension uint16 : StringConvertible, Numeric
+public extension u16 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension uint32 : StringConvertible, Numeric
+public extension u32 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }
-public extension uint64 : StringConvertible, Numeric
+public extension u64 : StringConvertible, Numeric
 {
 	func toString() -> string { "40" }
 }

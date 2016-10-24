@@ -111,6 +111,15 @@ namespace fir
 		this->functions[func->getName()] = func;
 	}
 
+	void Module::removeFunction(Function* func)
+	{
+		if(this->functions.find(func->getName()) == this->functions.end())
+			error("function %s does not exist, cannot remove", func->getName().str().c_str());
+
+		this->functions.erase(func->getName());
+	}
+
+
 	Function* Module::declareFunction(Identifier id, FunctionType* ftype)
 	{
 		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);

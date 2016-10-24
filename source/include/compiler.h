@@ -36,7 +36,6 @@ namespace Compiler
 	struct CompiledData
 	{
 		Ast::Root* rootNode = 0;
-		std::vector<std::string> fileList;
 
 		std::unordered_map<std::string, Ast::Root*> rootMap;
 		std::deque<std::pair<std::string, fir::Module*>> moduleList;
@@ -59,21 +58,6 @@ namespace Compiler
 	CompiledData compileFile(std::string filename,std::deque<std::deque<Codegen::DepNode*>> groups,
 		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
-	void compileToLlvm(std::string filename, std::string outname, CompiledData data);
-
-
-
-
-
-
-
-
-
-	void writeBitcode(std::string filename, llvm::Module* cgi);
-
-	// final stages
-	void compileProgram(llvm::Module* module, std::vector<std::string> filelist, std::string foldername, std::string outname);
-
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
 
@@ -84,8 +68,6 @@ namespace Compiler
 	std::string getPathFromFile(std::string path);
 	std::string getFilenameFromPath(std::string path);
 	std::string getFullPathOfFile(std::string partial);
-
-
 
 	std::pair<std::string, std::string> parseCmdLineArgs(int argc, char** argv);
 
@@ -98,10 +80,21 @@ namespace Compiler
 	std::string getCodeModel();
 	std::string getSysroot();
 
-	bool getIsCompileOnly();
-	int getOptimisationLevel();
+	std::deque<std::string> getLibrarySearchPaths();
+	std::deque<std::string> getLibrariesToLink();
+	std::deque<std::string> getFrameworksToLink();
+	std::deque<std::string> getFrameworkSearchPaths();
+
+	enum class BackendOption;
+	enum class OptimisationLevel;
+	enum class ProgOutputMode;
+
+
+	ProgOutputMode getOutputMode();
+	BackendOption getSelectedBackend();
+	OptimisationLevel getOptimisationLevel();
+
 	bool getPrintClangOutput();
-	bool getRunProgramWithJit();
 	bool getIsPositionIndependent();
 	bool getNoAutoGlobalConstructor();
 
