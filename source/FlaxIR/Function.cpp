@@ -172,6 +172,11 @@ namespace fir
 		return nf;
 	}
 
+
+
+
+
+	#if 0
 	static void _recursivelyRemoveInstruction(Instruction* instr)
 	{
 		if(instr->hasSideEffects())
@@ -210,15 +215,18 @@ namespace fir
 
 		delete instr;
 	}
+	#endif
 
 
 
 	void Function::cullUnusedValues()
 	{
+		#if 0
 		for(auto b : this->blocks)
 		{
 			auto& instrs = b->getInstructions();
-			for(auto it = instrs.begin(); it != instrs.end();)
+			size_t i = 0;
+			for(auto it = instrs.begin(); it != instrs.end(); i++)
 			{
 				if((*it)->realOutput->getUsers().empty() && !(*it)->hasSideEffects())
 				{
@@ -233,6 +241,7 @@ namespace fir
 				}
 			}
 		}
+		#endif
 	}
 
 
