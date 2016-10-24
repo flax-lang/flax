@@ -10,12 +10,14 @@
 namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, Type* out, std::deque<Value*> vals) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::deque<Value*> vals) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
-
+		this->sideEffects = sideeff;
+		this->parentBlock = parent;
 		this->realOutput = new Value(out);
+		this->realOutput->source = this;
 
 		for(auto v : vals)
 			v->addUser(this);
@@ -25,6 +27,11 @@ namespace fir
 	{
 		if(this->realOutput) return this->realOutput;
 		iceAssert(0 && "Calling getActualValue() when not in function! (no real value)");
+	}
+
+	bool Instruction::hasSideEffects()
+	{
+		return this->sideEffects;
 	}
 
 	void Instruction::setValue(Value* v)
@@ -39,82 +46,91 @@ namespace fir
 
 	std::string Instruction::str()
 	{
-		std::string name;
+		std::string instrname;
 		switch(this->opKind)
 		{
-			case OpKind::Signed_Add: 						name = "sadd"; break;
-			case OpKind::Signed_Sub: 						name = "ssub"; break;
-			case OpKind::Signed_Mul: 						name = "smul"; break;
-			case OpKind::Signed_Div: 						name = "sdiv"; break;
-			case OpKind::Signed_Mod: 						name = "srem"; break;
-			case OpKind::Signed_Neg: 						name = "neg"; break;
-			case OpKind::Unsigned_Add: 						name = "uadd"; break;
-			case OpKind::Unsigned_Sub: 						name = "usub"; break;
-			case OpKind::Unsigned_Mul: 						name = "umul"; break;
-			case OpKind::Unsigned_Div: 						name = "udiv"; break;
-			case OpKind::Unsigned_Mod: 						name = "urem"; break;
-			case OpKind::Floating_Add: 						name = "fadd"; break;
-			case OpKind::Floating_Sub: 						name = "fsub"; break;
-			case OpKind::Floating_Mul: 						name = "fmul"; break;
-			case OpKind::Floating_Div: 						name = "fdiv"; break;
-			case OpKind::Floating_Mod: 						name = "frem"; break;
-			case OpKind::Floating_Neg: 						name = "fneg"; break;
-			case OpKind::Floating_Truncate: 				name = "ftrunc"; break;
-			case OpKind::Floating_Extend: 					name = "fext"; break;
-			case OpKind::ICompare_Equal: 					name = "icmp eq"; break;
-			case OpKind::ICompare_NotEqual: 				name = "icmp ne"; break;
-			case OpKind::ICompare_Greater: 					name = "icmp gt"; break;
-			case OpKind::ICompare_Less: 					name = "icmp lt"; break;
-			case OpKind::ICompare_GreaterEqual: 			name = "icmp ge"; break;
-			case OpKind::ICompare_LessEqual: 				name = "icmp le"; break;
-			case OpKind::FCompare_Equal_ORD: 				name = "fcmp ord eq"; break;
-			case OpKind::FCompare_Equal_UNORD: 				name = "fcmp unord eq"; break;
-			case OpKind::FCompare_NotEqual_ORD: 			name = "fcmp ord ne"; break;
-			case OpKind::FCompare_NotEqual_UNORD: 			name = "fcmp unord ne"; break;
-			case OpKind::FCompare_Greater_ORD: 				name = "fcmp ord gt"; break;
-			case OpKind::FCompare_Greater_UNORD: 			name = "fcmp unord gt"; break;
-			case OpKind::FCompare_Less_ORD: 				name = "fcmp ord lt"; break;
-			case OpKind::FCompare_Less_UNORD: 				name = "fcmp unord lt"; break;
-			case OpKind::FCompare_GreaterEqual_ORD: 		name = "fcmp ord ge"; break;
-			case OpKind::FCompare_GreaterEqual_UNORD: 		name = "fcmp unord ge"; break;
-			case OpKind::FCompare_LessEqual_ORD: 			name = "fcmp ord le"; break;
-			case OpKind::FCompare_LessEqual_UNORD: 			name = "fcmp unord le"; break;
-			case OpKind::Bitwise_Not: 						name = "not"; break;
-			case OpKind::Bitwise_Xor: 						name = "xor"; break;
-			case OpKind::Bitwise_Arithmetic_Shr: 			name = "ashr"; break;
-			case OpKind::Bitwise_Logical_Shr: 				name = "lshr"; break;
-			case OpKind::Bitwise_Shl: 						name = "shl"; break;
-			case OpKind::Bitwise_And: 						name = "and"; break;
-			case OpKind::Bitwise_Or: 						name = "or"; break;
-			case OpKind::Cast_Bitcast: 						name = "bitcast"; break;
-			case OpKind::Cast_IntSize: 						name = "intszcast"; break;
-			case OpKind::Cast_Signedness: 					name = "signedcast"; break;
-			case OpKind::Cast_FloatToInt: 					name = "fptoint"; break;
-			case OpKind::Cast_IntToFloat: 					name = "inttofp"; break;
-			case OpKind::Cast_PointerType: 					name = "ptrcast"; break;
-			case OpKind::Cast_PointerToInt: 				name = "ptrtoint"; break;
-			case OpKind::Cast_IntToPointer: 				name = "inttoptr"; break;
-			case OpKind::Cast_IntSignedness: 				name = "signcast"; break;
-			case OpKind::Integer_ZeroExt: 					name = "izeroext"; break;
-			case OpKind::Integer_Truncate: 					name = "itrunc"; break;
-			case OpKind::Value_Store: 						name = "store"; break;
-			case OpKind::Logical_Not: 						name = "logicalNot"; break;
-			case OpKind::Value_Load: 						name = "load"; break;
-			case OpKind::Value_StackAlloc: 					name = "stackAlloc"; break;
-			case OpKind::Value_CallFunction: 				name = "call"; break;
-			case OpKind::Value_Return: 						name = "ret"; break;
-			case OpKind::Value_GetPointerToStructMember: 	name = "gep"; break;
-			case OpKind::Value_GetStructMember: 			name = "gep"; break;
-			case OpKind::Value_GetPointer: 					name = "gep"; break;
-			case OpKind::Value_GetGEP2: 					name = "gep"; break;
-			case OpKind::Branch_UnCond: 					name = "jump"; break;
-			case OpKind::Branch_Cond: 						name = "branch"; break;
-			case OpKind::Value_PointerAddition:				name = "ptradd"; break;
-			case OpKind::Value_PointerSubtraction:			name = "ptrsub"; break;
-			case OpKind::Invalid:							name = "unknown"; break;
+			case OpKind::Signed_Add: 						instrname = "sadd"; break;
+			case OpKind::Signed_Sub: 						instrname = "ssub"; break;
+			case OpKind::Signed_Mul: 						instrname = "smul"; break;
+			case OpKind::Signed_Div: 						instrname = "sdiv"; break;
+			case OpKind::Signed_Mod: 						instrname = "srem"; break;
+			case OpKind::Signed_Neg: 						instrname = "neg"; break;
+			case OpKind::Unsigned_Add: 						instrname = "uadd"; break;
+			case OpKind::Unsigned_Sub: 						instrname = "usub"; break;
+			case OpKind::Unsigned_Mul: 						instrname = "umul"; break;
+			case OpKind::Unsigned_Div: 						instrname = "udiv"; break;
+			case OpKind::Unsigned_Mod: 						instrname = "urem"; break;
+			case OpKind::Floating_Add: 						instrname = "fadd"; break;
+			case OpKind::Floating_Sub: 						instrname = "fsub"; break;
+			case OpKind::Floating_Mul: 						instrname = "fmul"; break;
+			case OpKind::Floating_Div: 						instrname = "fdiv"; break;
+			case OpKind::Floating_Mod: 						instrname = "frem"; break;
+			case OpKind::Floating_Neg: 						instrname = "fneg"; break;
+			case OpKind::Floating_Truncate: 				instrname = "ftrunc"; break;
+			case OpKind::Floating_Extend: 					instrname = "fext"; break;
+			case OpKind::ICompare_Equal: 					instrname = "icmp eq"; break;
+			case OpKind::ICompare_NotEqual: 				instrname = "icmp ne"; break;
+			case OpKind::ICompare_Greater: 					instrname = "icmp gt"; break;
+			case OpKind::ICompare_Less: 					instrname = "icmp lt"; break;
+			case OpKind::ICompare_GreaterEqual: 			instrname = "icmp ge"; break;
+			case OpKind::ICompare_LessEqual: 				instrname = "icmp le"; break;
+			case OpKind::FCompare_Equal_ORD: 				instrname = "fcmp ord eq"; break;
+			case OpKind::FCompare_Equal_UNORD: 				instrname = "fcmp unord eq"; break;
+			case OpKind::FCompare_NotEqual_ORD: 			instrname = "fcmp ord ne"; break;
+			case OpKind::FCompare_NotEqual_UNORD: 			instrname = "fcmp unord ne"; break;
+			case OpKind::FCompare_Greater_ORD: 				instrname = "fcmp ord gt"; break;
+			case OpKind::FCompare_Greater_UNORD: 			instrname = "fcmp unord gt"; break;
+			case OpKind::FCompare_Less_ORD: 				instrname = "fcmp ord lt"; break;
+			case OpKind::FCompare_Less_UNORD: 				instrname = "fcmp unord lt"; break;
+			case OpKind::FCompare_GreaterEqual_ORD: 		instrname = "fcmp ord ge"; break;
+			case OpKind::FCompare_GreaterEqual_UNORD: 		instrname = "fcmp unord ge"; break;
+			case OpKind::FCompare_LessEqual_ORD: 			instrname = "fcmp ord le"; break;
+			case OpKind::FCompare_LessEqual_UNORD: 			instrname = "fcmp unord le"; break;
+			case OpKind::Bitwise_Not: 						instrname = "not"; break;
+			case OpKind::Bitwise_Xor: 						instrname = "xor"; break;
+			case OpKind::Bitwise_Arithmetic_Shr: 			instrname = "ashr"; break;
+			case OpKind::Bitwise_Logical_Shr: 				instrname = "lshr"; break;
+			case OpKind::Bitwise_Shl: 						instrname = "shl"; break;
+			case OpKind::Bitwise_And: 						instrname = "and"; break;
+			case OpKind::Bitwise_Or: 						instrname = "or"; break;
+			case OpKind::Cast_Bitcast: 						instrname = "bitcast"; break;
+			case OpKind::Cast_IntSize: 						instrname = "intszcast"; break;
+			case OpKind::Cast_Signedness: 					instrname = "signedcast"; break;
+			case OpKind::Cast_FloatToInt: 					instrname = "fptoint"; break;
+			case OpKind::Cast_IntToFloat: 					instrname = "inttofp"; break;
+			case OpKind::Cast_PointerType: 					instrname = "ptrcast"; break;
+			case OpKind::Cast_PointerToInt: 				instrname = "ptrtoint"; break;
+			case OpKind::Cast_IntToPointer: 				instrname = "inttoptr"; break;
+			case OpKind::Cast_IntSignedness: 				instrname = "signcast"; break;
+			case OpKind::Integer_ZeroExt: 					instrname = "izeroext"; break;
+			case OpKind::Integer_Truncate: 					instrname = "itrunc"; break;
+			case OpKind::Value_Store: 						instrname = "store"; break;
+			case OpKind::Logical_Not: 						instrname = "logicalNot"; break;
+			case OpKind::Value_Load: 						instrname = "load"; break;
+			case OpKind::Value_StackAlloc: 					instrname = "stackAlloc"; break;
+			case OpKind::Value_CallFunction: 				instrname = "call"; break;
+			case OpKind::Value_CallFunctionPointer:			instrname = "callfp"; break;
+			case OpKind::Value_Return: 						instrname = "ret"; break;
+			case OpKind::Value_GetPointerToStructMember: 	instrname = "gep"; break;
+			case OpKind::Value_GetStructMember: 			instrname = "gep"; break;
+			case OpKind::Value_GetPointer: 					instrname = "gep"; break;
+			case OpKind::Value_GetGEP2: 					instrname = "gep"; break;
+			case OpKind::Branch_UnCond: 					instrname = "jump"; break;
+			case OpKind::Branch_Cond: 						instrname = "branch"; break;
+			case OpKind::Value_PointerAddition:				instrname = "ptradd"; break;
+			case OpKind::Value_PointerSubtraction:			instrname = "ptrsub"; break;
+			case OpKind::String_GetData:					instrname = "getstrdat"; break;
+			case OpKind::String_SetData:					instrname = "setstrdat"; break;
+			case OpKind::String_GetLength:					instrname = "getstrlen"; break;
+			case OpKind::String_SetLength:					instrname = "setstrlen"; break;
+			case OpKind::String_GetRefCount:				instrname = "getstrrc"; break;
+			case OpKind::String_SetRefCount:				instrname = "setstrrc"; break;
+			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
+			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}
 
 		std::string ops;
+		bool endswithfn = false;
 		for(auto op : this->operands)
 		{
 			bool didfn = false;
@@ -135,6 +151,10 @@ namespace fir
 			{
 				ops += std::to_string(cf->getValue());
 			}
+			else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
+			{
+				ops += "'" + std::to_string(cc->getValue()) + "'";
+			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{
 				ops += "(null %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
@@ -145,14 +165,17 @@ namespace fir
 			}
 			else
 			{
-				ops += "%" + std::to_string(op->id) + " :: " + op->getType()->str();
+				auto name = op->getName().str();
+				ops += name + (name.empty() ? "" : " ") + "(%" + std::to_string(op->id) + ") :: " + op->getType()->str();
 			}
 
 			if(!didfn)
 				ops += ", ";
+
+			endswithfn = didfn;
 		}
 
-		if(ops.length() > 0)
+		if(ops.length() > 0 && !endswithfn)
 			ops = ops.substr(0, ops.length() - 2);
 
 
@@ -163,11 +186,12 @@ namespace fir
 		std::string ret = "";
 		if(this->realOutput->getType()->isVoidType())
 		{
-			ret = name + " " + ops;
+			ret = instrname + " " + ops;
 		}
 		else
 		{
-			ret = "%" + std::to_string(this->realOutput->id) + " :: " + this->realOutput->getType()->str() + " = " + name + " " + ops;
+			auto name = this->realOutput->getName().str();
+			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + " [" + std::to_string(this->realOutput->getUsers().size()) + "]) :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
 		}
 
 		return ret;

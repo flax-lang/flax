@@ -14,17 +14,17 @@ import String
 
 
 
-func anyToString(any: Any, options: String) -> String
+func anyToString(any: Any, options: string) -> string
 {
 	var buffer = alloc[64] int8
 
 
 	let argtype = typeof(any)
 
-	if argtype == typeof(String)
+	if argtype == typeof(string)
 	{
 		dealloc buffer
-		return any as String
+		return any as string
 	}
 	else if argtype == typeof(bool)
 	{
@@ -83,8 +83,7 @@ func anyToString(any: Any, options: String) -> String
 	}
 
 
-
-	let s = String(buffer)
+	let s = string(buffer)
 	dealloc buffer
 
 	return s
@@ -124,7 +123,7 @@ func anyToString(any: Any, options: String) -> String
 // the padding char is specified with ' ' because *we* can look at it and parse, since we don't have compiler help (yet).
 
 
-public func format(fmt: String, args: Any[...]) -> String
+public func format(fmt: string, args: Any[...]) -> string
 {
 	var output: String
 	var argNum: uint64 = 0
@@ -708,12 +707,12 @@ public func format(fmt: String, args: Any[...]) -> String
 
 
 
-public func print(fmt: String, args: Any[...])
+public func print(fmt: string, args: Any[...])
 {
 	printf("%s", format(fmt, args))
 }
 
-public func println(fmt: String, args: Any[...])
+public func println(fmt: string, args: Any[...])
 {
 	print(fmt, args)
 	println()

@@ -59,12 +59,9 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	// check for redef
 	fir::Function* func = nullptr;
-	if(fd->genericTypes.size() == 0 && cgi->module->getFunction(fd->ident) != 0)
+	if(fd->genericTypes.size() == 0 && (/*cgi->isDuplicateFuncDecl(fd) || */cgi->module->getFunction(fd->ident) != 0))
 	{
-		if(!fd->isFFI)
-		{
-			GenError::duplicateSymbol(cgi, fd, fd->ident.str(), SymbolType::Function);
-		}
+		GenError::duplicateSymbol(cgi, fd, fd->ident.str(), SymbolType::Function);
 	}
 	else
 	{
@@ -76,15 +73,11 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 			{
 				iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
 				func = cgi->module->getOrCreateFunction(fd->ident, ft, linkageType);
-
-				// fprintf(stderr, "gen function (1) %s\n", fd->ident.str().c_str());
 			}
 			else
 			{
 				auto id = Identifier(fd->ident.name, IdKind::Name);
 				func = cgi->module->getOrCreateFunction(id, ft, linkageType);
-
-				// fprintf(stderr, "gen function (3) %s\n", id.str().c_str());
 			}
 		}
 		else
@@ -92,19 +85,36 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 			func = fir::Function::create(fd->ident, ft, cgi->module, linkageType);
 		}
 
-		if(fd->attribs & Attr_VisPublic)
-			cgi->addPublicFunc({ func, fd });
 
-		cgi->addFunctionToScope({ func, fd });
+		// if(fd->attribs & Attr_VisPublic)
+		// 	cgi->addPublicFunc(FuncDefPair(func, fd, 0));
+
+		cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
 	}
 
 	fd->generatedFunc = func;
+
 	return Result_t(func, 0);
 }
 
 
 
 
+static Result_t _dogeneric(CodegenInstance* cgi, fir::Function* reified, Identifier oldid)
+{
+	Identifier id;
+	{
+		id.scope = oldid.scope;
+		id.name = oldid.name;
+		id.kind = oldid.kind;
+		id.functionArguments = reified->getType()->getArgumentTypes();
+	}
+
+	reified->setName(id);
+	cgi->module->addFunction(reified);
+
+	return Result_t(reified, 0);
+}
 
 Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*> types)
 {
@@ -114,21 +124,18 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 	iceAssert(this->generatedFunc);
 	fir::Function* reified = this->generatedFunc->reify(types);
 
-	Identifier id;
-	{
-		id.scope = this->generatedFunc->getName().scope;
-		id.name = this->generatedFunc->getName().name;
-		id.kind = this->generatedFunc->getName().kind;
-		id.functionArguments = reified->getType()->getArgumentTypes();
-	}
+	return _dogeneric(cgi, reified, this->generatedFunc->getName());
+}
 
-	reified->setName(id);
-	cgi->module->addFunction(reified);
+Result_t FuncDecl::generateDeclForGenericFunctionUsingFunctionType(CodegenInstance* cgi, fir::FunctionType* ft)
+{
+	if(!this->generatedFunc)
+		this->codegen(cgi);
 
-	// fprintf(stderr, "reify (%s): %s >> %s\n", reified->getName().str().c_str(), this->generatedFunc->getType()->str().c_str(),
-	// 	reified->getType()->str().c_str());
+	iceAssert(this->generatedFunc);
+	fir::Function* reified = this->generatedFunc->reifyUsingFunctionType(ft);
 
-	return Result_t(reified, 0);
+	return _dogeneric(cgi, reified, this->generatedFunc->getName());
 }
 
 
@@ -137,10 +144,6 @@ Result_t FuncDecl::generateDeclForGenericFunction(CodegenInstance* cgi, std::map
 
 Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// if we're a generic function, we can't generate anything
-	// wait until we get specific instances
-	// (where all the typenames, T, U etc. have been replaced with concrete types by callers)
-
 	if(this->isCStyleVarArg && (!this->isFFI || this->ffiType != FFIType::C))
 		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
 
@@ -151,9 +154,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentClass != nullptr);
-	// bool isGeneric = this->genericTypes.size() > 0;
-
-
 
 
 	if(isMemberFunction)
@@ -167,15 +167,12 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(p->ident.name == "self")
 					error(this, "Cannot have a parameter named 'self' in a method declaration");
-
-				else if(p->ident.name == "super")
-					error(this, "Cannot have a parameter named 'super' in a method declaration");
 			}
 		}
 	}
 	else
 	{
-		if(this->ident.str() == "main")
+		if(this->ident.name == "main")
 			this->attribs |= Attr_NoMangle;
 	}
 
@@ -188,9 +185,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			cgi->pushGenericType(p.first, fir::ParametricType::get(p.first));
 
 		for(VarDecl* v : this->params)
-			argtypes.push_back(cgi->getExprType(v));
+			argtypes.push_back(v->getType(cgi));
 
-		returnType = cgi->getExprType(this);
+		returnType = this->getType(cgi);
 	}
 	cgi->popGenericTypeStack();
 
@@ -202,7 +199,6 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			st = this->parentClass->createType(cgi);
 
 		argtypes.push_front(st->getPointerTo());
-		// info(this, "gen member (%s)", argtypes.size() > 0 ? argtypes[0]->str().c_str() : "no");
 	}
 
 	bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
@@ -214,6 +210,15 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
+fir::Type* FuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	fir::Type* t = cgi->getTypeFromParserType(this, this->ptype);
+	if(t)
+		return t;
+
+	else
+		error(this, "Unknown type '%s'", this->ptype->str().c_str());
+}
 
 
 
@@ -246,10 +251,23 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
-
+fir::Type* ForeignFuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return 0;
+}
 
 Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	return this->decl->codegen(cgi);
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -57,22 +57,52 @@ namespace fir
 		return defaultFTContext;
 	}
 
+	std::string VoidType::str()
+	{
+		return "void";
+	}
+
+	std::string VoidType::encodedStr()
+	{
+		return "void";
+	}
+
+	bool VoidType::isTypeEqual(Type* other)
+	{
+		return other && other->isVoidType();
+	}
+
+	Type* VoidType::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		// do nothing
+		return this;
+	}
+
+	VoidType::VoidType()
+	{
+		// nothing
+	}
+
+	VoidType* VoidType::get(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->voidType;
+	}
+
 	FTContext* createFTContext()
 	{
 		FTContext* tc = new FTContext();
 
-		// tc->llvmContext = &fir::getGlobalContext();
-
 		// fill in primitives
 
 		// void.
-		tc->voidType = new PrimitiveType(0, FTypeKind::Void);
-		tc->voidType->isTypeVoid = true;
-
+		tc->voidType = new VoidType();
 
 		// bool
 		{
-			PrimitiveType* t = new PrimitiveType(1, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
@@ -84,7 +114,7 @@ namespace fir
 
 		// int8
 		{
-			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -92,7 +122,7 @@ namespace fir
 		}
 		// int16
 		{
-			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -100,7 +130,7 @@ namespace fir
 		}
 		// int32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -108,10 +138,18 @@ namespace fir
 		}
 		// int64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// int128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			t->isTypeSigned = true;
+
+			tc->primitiveTypes[128].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
 
@@ -120,7 +158,7 @@ namespace fir
 
 		// uint8
 		{
-			PrimitiveType* t = new PrimitiveType(8, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -128,7 +166,7 @@ namespace fir
 		}
 		// uint16
 		{
-			PrimitiveType* t = new PrimitiveType(16, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -136,7 +174,7 @@ namespace fir
 		}
 		// uint32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -144,17 +182,27 @@ namespace fir
 		}
 		// uint64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Integer);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
+		// uint128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[128].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+
+
 
 
 		// float32
 		{
-			PrimitiveType* t = new PrimitiveType(32, FTypeKind::Floating);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -162,10 +210,26 @@ namespace fir
 		}
 		// float64
 		{
-			PrimitiveType* t = new PrimitiveType(64, FTypeKind::Floating);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating, false);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// float80
+		{
+			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[80].push_back(t);
+			tc->typeCache[0].push_back(t);
+		}
+		// float128
+		{
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating, false);
+			t->isTypeSigned = false;
+
+			tc->primitiveTypes[128].push_back(t);
 			tc->typeCache[0].push_back(t);
 		}
 
@@ -233,8 +297,13 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		size_t inds = 0;
-		if(this->isPointerType())
-			inds = this->toPointerType()->indirections;
+		fir::Type* base = this;
+
+		while(base->isPointerType())
+		{
+			base = base->getPointerElementType();
+			inds++;
+		}
 
 		PointerType* newType = new PointerType(inds + 1, this);
 
@@ -259,15 +328,11 @@ namespace fir
 		Type* newType = ptrthis->baseType;
 		newType = tc->normaliseType(newType);
 
-		// iceAssert(newType->indirections == this->indirections - 1);
-		// printf("POINTER ELM: %p\n", newType);
 		return newType;
 	}
 
 	bool Type::areTypesEqual(Type* a, Type* b)
 	{
-		if(a->typeKind != b->typeKind) return false;
-
 		return a->isTypeEqual(b);
 	}
 
@@ -285,8 +350,6 @@ namespace fir
 			{
 				// auto old = ret;
 				ret = ret->getPointerTo();
-
-				// printf("ret: %s // %s\n", old->str().c_str(), ret->str().c_str());
 			}
 		}
 		else if(times < 0)
@@ -311,26 +374,36 @@ namespace fir
 
 		Type* real = 0;
 
-		if(builtin == INT8_TYPE_STRING)				real = PrimitiveType::getInt8(tc);
-		else if(builtin == INT16_TYPE_STRING)		real = PrimitiveType::getInt16(tc);
-		else if(builtin == INT32_TYPE_STRING)		real = PrimitiveType::getInt32(tc);
-		else if(builtin == INT64_TYPE_STRING)		real = PrimitiveType::getInt64(tc);
-		else if(builtin == INTUNSPEC_TYPE_STRING)	real = PrimitiveType::getInt64(tc);
+		if(builtin == INT8_TYPE_STRING)				real = Type::getInt8(tc);
+		else if(builtin == INT16_TYPE_STRING)		real = Type::getInt16(tc);
+		else if(builtin == INT32_TYPE_STRING)		real = Type::getInt32(tc);
+		else if(builtin == INT64_TYPE_STRING)		real = Type::getInt64(tc);
+		else if(builtin == INT128_TYPE_STRING)		real = Type::getInt128(tc);
 
-		else if(builtin == UINT8_TYPE_STRING)		real = PrimitiveType::getUint8(tc);
-		else if(builtin == UINT16_TYPE_STRING)		real = PrimitiveType::getUint16(tc);
-		else if(builtin == UINT32_TYPE_STRING)		real = PrimitiveType::getUint32(tc);
-		else if(builtin == UINT64_TYPE_STRING)		real = PrimitiveType::getUint64(tc);
-		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = PrimitiveType::getUint64(tc);
+		else if(builtin == UINT8_TYPE_STRING)		real = Type::getUint8(tc);
+		else if(builtin == UINT16_TYPE_STRING)		real = Type::getUint16(tc);
+		else if(builtin == UINT32_TYPE_STRING)		real = Type::getUint32(tc);
+		else if(builtin == UINT64_TYPE_STRING)		real = Type::getUint64(tc);
+		else if(builtin == UINT128_TYPE_STRING)		real = Type::getUint128(tc);
 
-		else if(builtin == FLOAT32_TYPE_STRING)		real = PrimitiveType::getFloat32(tc);
+		else if(builtin == FLOAT32_TYPE_STRING)		real = Type::getFloat32(tc);
+		else if(builtin == FLOAT64_TYPE_STRING)		real = Type::getFloat64(tc);
+		else if(builtin == FLOAT80_TYPE_STRING)		real = Type::getFloat80(tc);
+		else if(builtin == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
 
-		// float is implicit double.
-		else if(builtin == FLOAT64_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
-		else if(builtin == FLOAT_TYPE_STRING)		real = PrimitiveType::getFloat64(tc);
+		else if(builtin == STRING_TYPE_STRING)		real = Type::getStringType();
+		else if(builtin == CHARACTER_TYPE_STRING)	real = Type::getCharType();
 
-		else if(builtin == BOOL_TYPE_STRING)		real = PrimitiveType::getBool(tc);
-		else if(builtin == VOID_TYPE_STRING)		real = PrimitiveType::getVoid(tc);
+		else if(builtin == BOOL_TYPE_STRING)		real = Type::getBool(tc);
+		else if(builtin == VOID_TYPE_STRING)		real = Type::getVoid(tc);
+
+		// unspecified things
+		else if(builtin == INTUNSPEC_TYPE_STRING)	real = Type::getInt64(tc);
+		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = Type::getUint64(tc);
+
+		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
+		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
+
 		else return 0;
 
 		iceAssert(real);
@@ -343,7 +416,7 @@ namespace fir
 	Type* Type::fromLlvmType(fir::Type* ltype, std::deque<bool> signage)
 	{
 		iceAssert(0);
-		return PrimitiveType::getVoid();
+		return Type::getVoid();
 	}
 
 
@@ -364,58 +437,80 @@ namespace fir
 
 	PrimitiveType* Type::toPrimitiveType()
 	{
-		if(this->typeKind != FTypeKind::Integer && this->typeKind != FTypeKind::Floating) error("not primitive type");
-		return dynamic_cast<PrimitiveType*>(this);
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		if(t == 0) error("not primitive type");
+		return t;
 	}
 
 	FunctionType* Type::toFunctionType()
 	{
-		if(this->typeKind != FTypeKind::Function) error("not function type");
-		return dynamic_cast<FunctionType*>(this);
+		auto t = dynamic_cast<FunctionType*>(this);
+		if(t == 0) error("not function type");
+		return t;
 	}
 
 	PointerType* Type::toPointerType()
 	{
-		if(this->typeKind != FTypeKind::Pointer) error("not pointer type");
-		return dynamic_cast<PointerType*>(this);
+		auto t = dynamic_cast<PointerType*>(this);
+		if(t == 0) error("not pointer type");
+		return t;
 	}
 
 	StructType* Type::toStructType()
 	{
-		if(this->typeKind != FTypeKind::Struct) error("not struct type");
-		return dynamic_cast<StructType*>(this);
+		auto t = dynamic_cast<StructType*>(this);
+		if(t == 0) error("not struct type");
+		return t;
 	}
 
 	ClassType* Type::toClassType()
 	{
-		if(this->typeKind != FTypeKind::Class) error("not class type");
-		return dynamic_cast<ClassType*>(this);
+		auto t = dynamic_cast<ClassType*>(this);
+		if(t == 0) error("not class type");
+		return t;
 	}
 
 	TupleType* Type::toTupleType()
 	{
-		if(this->typeKind != FTypeKind::Tuple) error("not tuple type");
-		return dynamic_cast<TupleType*>(this);
+		auto t = dynamic_cast<TupleType*>(this);
+		if(t == 0) error("not tuple type");
+		return t;
 	}
 
 	ArrayType* Type::toArrayType()
 	{
-		if(this->typeKind != FTypeKind::Array) error("not array type");
-		return dynamic_cast<ArrayType*>(this);
+		auto t = dynamic_cast<ArrayType*>(this);
+		if(t == 0) error("not array type");
+		return t;
 	}
 
-	LLVariableArrayType* Type::toLLVariableArray()
+	LLVariableArrayType* Type::toLLVariableArrayType()
 	{
-		if(this->typeKind != FTypeKind::LowLevelVariableArray) error("not llva type");
-		return dynamic_cast<LLVariableArrayType*>(this);
+		auto t = dynamic_cast<LLVariableArrayType*>(this);
+		if(t == 0) error("not llva type");
+		return t;
 	}
 
 	ParametricType* Type::toParametricType()
 	{
-		if(this->typeKind != FTypeKind::Parametric) error("not type parameter");
-		return dynamic_cast<ParametricType*>(this);
+		auto t = dynamic_cast<ParametricType*>(this);
+		if(t == 0) error("not type parameter");
+		return t;
 	}
 
+	StringType* Type::toStringType()
+	{
+		auto t = dynamic_cast<StringType*>(this);
+		if(t == 0) error("not string type");
+		return t;
+	}
+
+	CharType* Type::toCharType()
+	{
+		auto t = dynamic_cast<CharType*>(this);
+		if(t == 0) error("not char type");
+		return t;
+	}
 
 
 
@@ -434,93 +529,247 @@ namespace fir
 
 	bool Type::isStructType()
 	{
-		return this->typeKind == FTypeKind::Struct
-			&& dynamic_cast<StructType*>(this) != 0;
+		return dynamic_cast<StructType*>(this) != 0;
 	}
 
 	bool Type::isTupleType()
 	{
-		return this->typeKind == FTypeKind::Tuple
-			&& dynamic_cast<TupleType*>(this) != 0;
+		return dynamic_cast<TupleType*>(this) != 0;
 	}
 
 	bool Type::isClassType()
 	{
-		return this->typeKind == FTypeKind::Class
-			&& dynamic_cast<ClassType*>(this) != 0;
+		return dynamic_cast<ClassType*>(this) != 0;
 	}
 
 	bool Type::isPackedStruct()
 	{
 		return this->isStructType()
-			&& (this->typeKind == FTypeKind::Struct)
 			&& (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		return this->typeKind == FTypeKind::Array
-			&& dynamic_cast<ArrayType*>(this) != 0;
+		return dynamic_cast<ArrayType*>(this) != 0;
 	}
 
 	bool Type::isFloatingPointType()
 	{
-		return this->typeKind == FTypeKind::Floating
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Floating;
 	}
 
 	bool Type::isIntegerType()
 	{
-		return this->typeKind == FTypeKind::Integer
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer;
 	}
 
 	bool Type::isSignedIntType()
 	{
-		return this->typeKind == FTypeKind::Integer
-			&& dynamic_cast<PrimitiveType*>(this) != 0
-			&& this->toPrimitiveType()->isSigned();
+		auto t = dynamic_cast<PrimitiveType*>(this);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer && t->isSigned();
 	}
 
 	bool Type::isFunctionType()
 	{
-		return this->typeKind == FTypeKind::Function
-			&& dynamic_cast<FunctionType*>(this) != 0;
+		return dynamic_cast<FunctionType*>(this) != 0;
 	}
 
 	bool Type::isPrimitiveType()
 	{
-		return (this->typeKind == FTypeKind::Integer || this->typeKind == FTypeKind::Floating)
-			&& dynamic_cast<PrimitiveType*>(this) != 0;
+		return dynamic_cast<PrimitiveType*>(this) != 0;
 	}
 
 	bool Type::isPointerType()
 	{
-		return this->typeKind == FTypeKind::Pointer
-			&& dynamic_cast<PointerType*>(this) != 0;
+		return dynamic_cast<PointerType*>(this) != 0;
 	}
 
 	bool Type::isVoidType()
 	{
-		return this->isTypeVoid;
+		return dynamic_cast<VoidType*>(this) != 0;
 	}
 
 	bool Type::isLLVariableArrayType()
 	{
-		return this->typeKind == FTypeKind::LowLevelVariableArray
-			&& dynamic_cast<LLVariableArrayType*>(this) != 0;
+		return dynamic_cast<LLVariableArrayType*>(this) != 0;
 	}
 
-	bool Type::isNullPointer()
+	bool Type::isVoidPointer()
 	{
 		return this == PrimitiveType::getVoid()->getPointerTo();
 	}
 
 	bool Type::isParametricType()
 	{
-		return this->typeKind == FTypeKind::Parametric
-			&& dynamic_cast<ParametricType*>(this) != 0;
+		return dynamic_cast<ParametricType*>(this) != 0;
 	}
+
+	bool Type::isStringType()
+	{
+		return dynamic_cast<StringType*>(this) != 0;
+	}
+
+	bool Type::isCharType()
+	{
+		return dynamic_cast<CharType*>(this) != 0;
+	}
+
+
+
+
+
+
+
+
+
+
+
+	// static conv. functions
+
+	VoidType* Type::getVoid(FTContext* tc)
+	{
+		return VoidType::get(tc);
+	}
+
+	PrimitiveType* Type::getBool(FTContext* tc)
+	{
+		return PrimitiveType::getBool(tc);
+	}
+
+	PrimitiveType* Type::getInt8(FTContext* tc)
+	{
+		return PrimitiveType::getInt8(tc);
+	}
+
+	PrimitiveType* Type::getInt16(FTContext* tc)
+	{
+		return PrimitiveType::getInt16(tc);
+	}
+
+	PrimitiveType* Type::getInt32(FTContext* tc)
+	{
+		return PrimitiveType::getInt32(tc);
+	}
+
+	PrimitiveType* Type::getInt64(FTContext* tc)
+	{
+		return PrimitiveType::getInt64(tc);
+	}
+
+	PrimitiveType* Type::getInt128(FTContext* tc)
+	{
+		return PrimitiveType::getInt128(tc);
+	}
+
+	PrimitiveType* Type::getUint8(FTContext* tc)
+	{
+		return PrimitiveType::getUint8(tc);
+	}
+
+	PrimitiveType* Type::getUint16(FTContext* tc)
+	{
+		return PrimitiveType::getUint16(tc);
+	}
+
+	PrimitiveType* Type::getUint32(FTContext* tc)
+	{
+		return PrimitiveType::getUint32(tc);
+	}
+
+	PrimitiveType* Type::getUint64(FTContext* tc)
+	{
+		return PrimitiveType::getUint64(tc);
+	}
+
+	PrimitiveType* Type::getUint128(FTContext* tc)
+	{
+		return PrimitiveType::getUint128(tc);
+	}
+
+	PrimitiveType* Type::getFloat32(FTContext* tc)
+	{
+		return PrimitiveType::getFloat32(tc);
+	}
+
+	PrimitiveType* Type::getFloat64(FTContext* tc)
+	{
+		return PrimitiveType::getFloat64(tc);
+	}
+
+	PrimitiveType* Type::getFloat80(FTContext* tc)
+	{
+		return PrimitiveType::getFloat80(tc);
+	}
+
+	PrimitiveType* Type::getFloat128(FTContext* tc)
+	{
+		return PrimitiveType::getFloat128(tc);
+	}
+
+
+	PointerType* Type::getInt8Ptr(FTContext* tc)
+	{
+		return PointerType::getInt8Ptr(tc);
+	}
+
+	PointerType* Type::getInt16Ptr(FTContext* tc)
+	{
+		return PointerType::getInt16Ptr(tc);
+	}
+
+	PointerType* Type::getInt32Ptr(FTContext* tc)
+	{
+		return PointerType::getInt32Ptr(tc);
+	}
+
+	PointerType* Type::getInt64Ptr(FTContext* tc)
+	{
+		return PointerType::getInt64Ptr(tc);
+	}
+
+	PointerType* Type::getInt128Ptr(FTContext* tc)
+	{
+		return PointerType::getInt128Ptr(tc);
+	}
+
+	PointerType* Type::getUint8Ptr(FTContext* tc)
+	{
+		return PointerType::getUint8Ptr(tc);
+	}
+
+	PointerType* Type::getUint16Ptr(FTContext* tc)
+	{
+		return PointerType::getUint16Ptr(tc);
+	}
+
+	PointerType* Type::getUint32Ptr(FTContext* tc)
+	{
+		return PointerType::getUint32Ptr(tc);
+	}
+
+	PointerType* Type::getUint64Ptr(FTContext* tc)
+	{
+		return PointerType::getUint64Ptr(tc);
+	}
+
+	PointerType* Type::getUint128Ptr(FTContext* tc)
+	{
+		return PointerType::getUint128Ptr(tc);
+	}
+
+	CharType* Type::getCharType(FTContext* tc)
+	{
+		return CharType::get(tc);
+	}
+
+	StringType* Type::getStringType(FTContext* tc)
+	{
+		return StringType::get(tc);
+	}
+
+
 }
 
 

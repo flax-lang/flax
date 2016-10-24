@@ -13,19 +13,19 @@ namespace Operators
 {
 	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		ValPtr_t leftVP = args[0]->codegen(cgi).result;
-		ValPtr_t rightVP = args[1]->codegen(cgi).result;
+		auto leftres = args[0]->codegen(cgi);
+		auto rightres = args[1]->codegen(cgi);
 
-		auto data = cgi->getBinaryOperatorOverload(user, op, leftVP.first->getType(), rightVP.first->getType());
+		auto data = cgi->getBinaryOperatorOverload(user, op, leftres.value->getType(), rightres.value->getType());
 		if(data.found)
 		{
-			return cgi->callBinaryOperatorOverload(data, leftVP.first, leftVP.second, rightVP.first, rightVP.second, op);
+			return cgi->callBinaryOperatorOverload(data, leftres.value, leftres.pointer, rightres.value, rightres.pointer, op);
 		}
 		else
 		{
 			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				cgi->getReadableType(leftVP.first).c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
-				cgi->getReadableType(rightVP.first).c_str());
+				leftres.value->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
+				rightres.value->getType()->str().c_str());
 		}
 	}
 
@@ -37,14 +37,14 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 
-		auto leftVP = args[0]->codegen(cgi).result;
-		fir::Value* lhs = leftVP.first;
-		fir::Value* lhsPtr = leftVP.second;
+		auto leftr = args[0]->codegen(cgi);
+		fir::Value* lhs = leftr.value;
+		fir::Value* lhsPtr = leftr.pointer;
 
-		fir::Type* rtype = cgi->getExprType(args[1]);
+		fir::Type* rtype = args[1]->getType(cgi);
 		if(!rtype)
 		{
-			GenError::unknownSymbol(cgi, user, args[1]->type.strType, SymbolType::Type);
+			GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
 		}
 
 
@@ -59,33 +59,33 @@ namespace Operators
 
 		if(lhs->getType()->isIntegerType() && rtype->isIntegerType())
 		{
-			return Result_t(cgi->builder.CreateIntSizeCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntSizeCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isIntegerType() && rtype->isFloatingPointType())
 		{
-			return Result_t(cgi->builder.CreateIntToFloatCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntToFloatCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isFloatingPointType() && rtype->isFloatingPointType())
 		{
 			// printf("float to float: %d -> %d\n", lhs->getType()->getPrimitiveSizeInBits(), rtype->getPrimitiveSizeInBits());
 
 			if(lhs->getType()->toPrimitiveType()->getFloatingPointBitWidth() > rtype->toPrimitiveType()->getFloatingPointBitWidth())
-				return Result_t(cgi->builder.CreateFTruncate(lhs, rtype), 0);
+				return Result_t(cgi->irb.CreateFTruncate(lhs, rtype), 0);
 
 			else
-				return Result_t(cgi->builder.CreateFExtend(lhs, rtype), 0);
+				return Result_t(cgi->irb.CreateFExtend(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isPointerType() && rtype->isPointerType())
 		{
-			return Result_t(cgi->builder.CreatePointerTypeCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreatePointerTypeCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isPointerType() && rtype->isIntegerType())
 		{
-			return Result_t(cgi->builder.CreatePointerToIntCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreatePointerToIntCast(lhs, rtype), 0);
 		}
 		else if(lhs->getType()->isIntegerType() && rtype->isPointerType())
 		{
-			return Result_t(cgi->builder.CreateIntToPointerCast(lhs, rtype), 0);
+			return Result_t(cgi->irb.CreateIntToPointerCast(lhs, rtype), 0);
 		}
 		else if(cgi->isEnum(rtype))
 		{
@@ -95,10 +95,10 @@ namespace Operators
 			{
 				fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
 
-				fir::Value* gep = cgi->builder.CreateStructGEP(tmp, 0);
-				cgi->builder.CreateStore(lhs, gep);
+				fir::Value* gep = cgi->irb.CreateStructGEP(tmp, 0);
+				cgi->irb.CreateStore(lhs, gep);
 
-				return Result_t(cgi->builder.CreateLoad(tmp), tmp);
+				return Result_t(cgi->irb.CreateLoad(tmp), tmp);
 			}
 			else
 			{
@@ -109,8 +109,8 @@ namespace Operators
 		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
 		{
 			iceAssert(lhsPtr);
-			fir::Value* gep = cgi->builder.CreateStructGEP(lhsPtr, 0);
-			fir::Value* val = cgi->builder.CreateLoad(gep);
+			fir::Value* gep = cgi->irb.CreateStructGEP(lhsPtr, 0);
+			fir::Value* val = cgi->irb.CreateLoad(gep);
 
 			return Result_t(val, gep);
 		}
@@ -120,17 +120,17 @@ namespace Operators
 			return cgi->extractValueFromAny(rtype, lhsPtr);
 		}
 		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
-			&& rtype == fir::PointerType::getInt8Ptr(cgi->getContext()))
+			&& rtype == fir::Type::getInt8Ptr(cgi->getContext()))
 		{
 			// string to int8*.
 			// just access the data pointer.
 
 			iceAssert(lhsPtr);
-			fir::Value* stringPtr = cgi->builder.CreateStructGEP(lhsPtr, 0);
+			fir::Value* stringPtr = cgi->irb.CreateStructGEP(lhsPtr, 0);
 
-			return Result_t(cgi->builder.CreateLoad(stringPtr), stringPtr);
+			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
 		}
-		else if(lhs->getType() == fir::PointerType::getInt8Ptr(cgi->getContext())
+		else if(lhs->getType() == fir::Type::getInt8Ptr(cgi->getContext())
 			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
 		{
 			// support this shit.
@@ -147,23 +147,47 @@ namespace Operators
 			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
 		{
 			// array to pointer cast.
-			if(!dynamic_cast<fir::ConstantArray*>(lhs))
-				warn(user, "Casting from non-constant array to pointer is potentially unsafe");
-
 			iceAssert(lhsPtr);
 
-			fir::Value* lhsRawPtr = cgi->builder.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
+		}
+		else if(lhs->getType()->isArrayType() && rtype->isVoidPointer())
+		{
+			// array to void* cast.
+			iceAssert(lhsPtr);
+
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* vptr = cgi->irb.CreatePointerTypeCast(lhsRawPtr, fir::Type::getVoid()->getPointerTo());
+			return Result_t(vptr, 0);
+		}
+		else if(lhs->getType()->isStringType() && rtype->isCharType())
+		{
+			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(args[0]))
+			{
+				if(sl->str.size() != 1)
+					error(user, "Only single-character string literals can be cast into chars");
+
+				char c = sl->str[0];
+				fir::Value* cc = fir::ConstantChar::get(c);
+
+				return Result_t(cc, 0);
+			}
+			else
+			{
+				error(user, "Non-literal strings cannot be cast into chars; did you mean to subscript?");
+			}
+		}
+		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
+		{
+			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
-			std::string lstr = cgi->getReadableType(lhs).c_str();
-			std::string rstr = cgi->getReadableType(rtype).c_str();
-
-			error(user, "Invalid cast from type %s to %s", lstr.c_str(), rstr.c_str());
+			error(user, "Invalid cast from type '%s' to '%s'", lhs->getType()->str().c_str(), rtype->str().c_str());
 		}
 
-		return Result_t(cgi->builder.CreateBitcast(lhs, rtype), 0);
+		return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
 	}
 }
 

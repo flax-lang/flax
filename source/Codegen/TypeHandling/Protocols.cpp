@@ -10,11 +10,30 @@ using namespace Ast;
 using namespace Codegen;
 
 
+struct raiiThing
+{
+	raiiThing(CodegenInstance* cgi, fir::Type* t)
+	{
+		this->c = cgi;
+		this->c->pushGenericTypeStack();
+		this->c->pushGenericType("Self", t);
+	}
+
+	~raiiThing()
+	{
+		this->c->popGenericTypeStack();
+	}
+
+	CodegenInstance* c = 0;
+};
+
+
 static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* type, std::deque<FuncDecl*>* missing,
 	Expr** user, std::string* name)
 {
 	TypePair_t* tp = cgi->getType(type);
 
+	// push a new type for "self"
 
 	auto testFunc = [cgi](FuncDecl* fn, Func* cf, fir::Function* fcf, fir::Type* created) -> bool {
 
@@ -22,16 +41,10 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 		auto tl = fcf->getType()->getArgumentTypes();
 		tl.pop_front();
 
-
-		// push a new type for "self"
-		cgi->pushGenericTypeStack();
-		cgi->pushGenericType("Self", created);
-
 		int _ = 0;
-		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload({ 0, fn }, tl, &_, true)
-			&& ((fn->type.strType == "Self" && created == fcf->getReturnType()) || cgi->getExprType(fn) == fcf->getReturnType()));
+		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload(FuncDefPair(0, cf->decl, cf), tl, &_, true)
+			&& ((fn->ptype->str() == "Self" && created == fcf->getReturnType()) || fn->getType(cgi) == fcf->getReturnType()));
 
-		cgi->popGenericTypeStack();
 		return ret;
 	};
 
@@ -45,6 +58,8 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 		*user = cls;
 		*name = cls->ident.name;
+
+		raiiThing keep(cgi, cls->createdType);
 
 		// first check if we're even listed -- don't allow implicit conformity
 		bool found = false;
@@ -70,12 +85,11 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 					}
 				}
 			}
-
-			info("no extensions for %s conformed to %s", type->str().c_str(), prot->ident.name.c_str());
 		}
 
 		out:
 		if(!found) return false;
+
 
 		for(Func* f : prot->funcs)
 		{
@@ -116,12 +130,44 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 				(*missing).push_back(fn);
 		}
 
+
+
+		fir::Type* ftype = cls->createdType;
+		iceAssert(ftype);
+
+		for(auto ovl : prot->operatorOverloads)
+		{
+			if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
+			{
+				// exclude self.
+				iceAssert(ovl->func->decl->params.size() == 1);
+
+				auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, ftype->getPointerTo(), ovl->func->decl->params[0]->getType(cgi));
+				if(!dat.found)
+				{
+					// nothing to push
+					(*missing).push_back(ovl->func->decl);
+
+					break;
+				}
+			}
+			else
+			{
+				error("enotsup");
+			}
+		}
+
+
+
+
+
 		return (*missing).size() == 0;
 	}
 	else if(cgi->isBuiltinType(type))
 	{
 		// todo: not pretty
 		std::deque<ExtensionDef*> exts = cgi->getExtensionsForBuiltinType(type);
+		*name = type->str();
 
 		if(exts.size() > 0)
 		{
@@ -147,6 +193,35 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 				out3:
 				if(!found) (*missing).push_back(fn);
+			}
+
+
+			for(auto ovl : prot->operatorOverloads)
+			{
+				if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
+				{
+					// lol
+					cgi->pushGenericTypeStack();
+					cgi->pushGenericType("Self", type);
+
+					fir::Type* pt = ovl->func->decl->params.front()->getType(cgi);
+
+					bool res = cgi->isValidOperatorForBuiltinTypes(ovl->op, type, pt);
+
+					if(!res)
+					{
+						auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, type, pt);
+
+						if(!dat.found)
+							(*missing).push_back(ovl->func->decl);
+					}
+
+					cgi->popGenericTypeStack();
+				}
+				else
+				{
+					error("??");
+				}
 			}
 		}
 
@@ -175,7 +250,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 
 	if(missing.size() > 0)
 	{
-		errorNoExit(user, "Class '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
+		errorNoExit(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
 
 		std::string list;
 		for(auto d : missing)
@@ -194,7 +269,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 
 
 
-fir::Type* ProtocolDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* ProtocolDef::createType(CodegenInstance* cgi)
 {
 	for(Func* f : this->funcs)
 	{
@@ -202,13 +277,18 @@ fir::Type* ProtocolDef::createType(CodegenInstance* cgi, std::unordered_map<std:
 			error(f, "Default protocol implementations not (yet) supported");
 	}
 
-	for(auto e : this->subscriptOverloads)
-		error(e, "Protocol subscript oevrloads not (yet) supported");
+	// for(auto e : this->subscriptOverloads)
+	// 	error(e, "Protocol subscript oevrloads not (yet) supported");
 
-	for(auto e : this->assignmentOverloads)
-		error(e, "Protocol assignment oevrloads not (yet) supported");
+	// for(auto e : this->assignmentOverloads)
+	// 	error(e, "Protocol assignment oevrloads not (yet) supported");
 
 	return 0;
+}
+
+fir::Type* ProtocolDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	iceAssert(0);
 }
 
 Result_t ProtocolDef::codegen(CodegenInstance* cgi, fir::Value* extra)

@@ -4,6 +4,8 @@
 
 #include "ir/module.h"
 
+#include <sstream>
+
 namespace fir
 {
 	Module::Module(std::string nm)
@@ -109,9 +111,18 @@ namespace fir
 		this->functions[func->getName()] = func;
 	}
 
-	void Module::declareFunction(Identifier id, FunctionType* ftype)
+	void Module::removeFunction(Function* func)
 	{
-		this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
+		if(this->functions.find(func->getName()) == this->functions.end())
+			error("function %s does not exist, cannot remove", func->getName().str().c_str());
+
+		this->functions.erase(func->getName());
+	}
+
+
+	Function* Module::declareFunction(Identifier id, FunctionType* ftype)
+	{
+		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
 	Function* Module::getFunction(Identifier id)
@@ -122,6 +133,20 @@ namespace fir
 		}
 
 		return this->functions[id];
+	}
+
+	std::deque<Function*> Module::getFunctionsWithName(Identifier id)
+	{
+		// todo: *very* inefficient.
+
+		std::deque<Function*> ret;
+		for(auto fn : this->functions)
+		{
+			if(fn.first.name == id.name && fn.first.scope == id.scope)
+				ret.push_back(fn.second);
+		}
+
+		return ret;
 	}
 
 	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
@@ -175,6 +200,7 @@ namespace fir
 
 
 
+
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{
 		static int stringId = 0;
@@ -183,13 +209,11 @@ namespace fir
 			return this->globalStrings[str];
 
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
-			PointerType::getInt8Ptr(), true, LinkageType::Internal, 0);
+			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
 		this->globalStrings[str] = gs;
 		return gs;
 	}
-
-
 
 
 
@@ -212,7 +236,17 @@ namespace fir
 		for(auto string : this->globalStrings)
 		{
 			ret += "global string (%" + std::to_string(string.second->id);
-			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + string.first + "\"\n";
+
+			std::string copy;
+			for(auto c : string.first)
+			{
+				if(c == '\r') copy += "\\r";
+				else if(c == '\n') copy += "\\n";
+				else if(c == '\t') copy += "\\t";
+				else copy += c;
+			}
+
+			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + copy + "\"\n";
 		}
 
 		for(auto global : this->globals)
@@ -224,12 +258,13 @@ namespace fir
 		for(auto type : this->namedTypes)
 		{
 			// should just automatically create it.
-			auto c = new char[32];
-			snprintf(c, 32, "%p", (void*) type.second);
+			std::string tl;
+			if(type.second->isStructType()) tl = fir::Type::typeListToString(type.second->toStructType()->getElements());
+			else if(type.second->isClassType()) tl = fir::Type::typeListToString(type.second->toClassType()->getElements());
+			else if(type.second->isTupleType()) tl = fir::Type::typeListToString(type.second->toTupleType()->getElements());
 
-			ret += "declare type :: " + type.second->str() + " :: <" + std::string(c) + ">\n";
 
-			delete[] c;
+			ret += "declare type :: " + type.second->str() + " { " + tl + " }\n";
 		}
 
 		for(auto fp : this->functions)
@@ -238,7 +273,7 @@ namespace fir
 
 			std::string decl;
 
-			decl += "func: " + ffn->getName().str() + "(";
+			decl += (ffn->isAlwaysInlined() ? "inline func: " : "func: ") + ffn->getName().str() + "(";
 			for(auto a : ffn->getArguments())
 			{
 				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
@@ -250,7 +285,7 @@ namespace fir
 			if(ffn->blocks.size() == 0)
 			{
 				decl += ") -> ";
-				decl += "@" + ffn->getReturnType()->str();
+				decl += ffn->getReturnType()->str();
 				decl += "\n";
 
 				ret += "declare " + decl;
@@ -260,7 +295,7 @@ namespace fir
 			ret += decl;
 
 			ret += ") -> ";
-			ret += "@" + ffn->getReturnType()->str();
+			ret += ffn->getReturnType()->str();
 			ret += "\n{";
 
 
@@ -281,6 +316,47 @@ namespace fir
 
 
 
+	Function* Module::getIntrinsicFunction(std::string id)
+	{
+		Identifier name;
+		FunctionType* ft = 0;
+		if(id == "memcpy")
+		{
+			name = Identifier("memcpy", IdKind::Name);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
+		}
+		else if(id == "memmove")
+		{
+			name = Identifier("memove", IdKind::Name);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
+		}
+		else if(id == "memset")
+		{
+			name = Identifier("memset", IdKind::Name);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getVoid(), false);
+		}
+		else if(id == "memcmp")
+		{
+			// note: memcmp isn't an actual llvm intrinsic, but we support it anyway
+			// at llvm-translate-time, we make a function.
+
+			name = Identifier("memcmp", IdKind::Name);
+			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt32(), false);
+		}
+
+		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())
+			return this->intrinsicFunctions[name];
+
+		return this->intrinsicFunctions[name] = new Function(name, ft, this, LinkageType::External);
+	}
 
 
 

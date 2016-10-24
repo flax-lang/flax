@@ -10,6 +10,15 @@ using namespace Ast;
 using namespace Codegen;
 
 
+
+fir::Type* StructDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	if(this->createdType == 0)
+		return this->createType(cgi);
+
+	else return this->createdType;
+}
+
 Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	this->createType(cgi);
@@ -57,7 +66,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->module->addNamedType(str->getStructName(), str);
 
 
-	fir::IRBlock* curblock = cgi->builder.getCurrentBlock();
+	fir::IRBlock* curblock = cgi->irb.getCurrentBlock();
 
 	// generate initialiser
 	{
@@ -67,12 +76,12 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		defaultInitId.functionArguments = { str->getPointerTo() };
 
 		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
-			fir::PrimitiveType::getVoid(), false), linkageType);
+			fir::Type::getVoid(), false), linkageType);
 
 		this->initFuncs.push_back(this->defaultInitialiser);
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = this->defaultInitialiser->getArguments().front();
@@ -82,13 +91,15 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// not supported in structs
 			iceAssert(!var->isStatic);
 
-			fir::Value* ptr = cgi->builder.CreateGetStructMember(self, var->ident.name);
+			fir::Value* ptr = cgi->irb.CreateGetStructMember(self, var->ident.name);
 
-			auto r = var->initVal ? var->initVal->codegen(cgi).result : ValPtr_t(0, 0);
-			var->doInitialValue(cgi, cgi->getTypeByString(var->type.strType), r.first, r.second, ptr, false);
+			auto r = var->initVal ? var->initVal->codegen(cgi) : Result_t(0, 0);
+
+			var->inferType(cgi);
+			var->doInitialValue(cgi, cgi->getType(var->concretisedType), r.value, r.pointer, ptr, false, r.valueKind);
 		}
 
-		cgi->builder.CreateReturnVoid();
+		cgi->irb.CreateReturnVoid();
 	}
 
 
@@ -107,12 +118,12 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 		memid.name = "meminit_" + memid.name;
 
 		fir::Function* memifunc = cgi->module->getOrCreateFunction(memid,
-			fir::FunctionType::get(types, fir::PrimitiveType::getVoid(cgi->getContext()), false), linkageType);
+			fir::FunctionType::get(types, fir::Type::getVoid(cgi->getContext()), false), linkageType);
 
 		this->initFuncs.push_back(memifunc);
 
-		fir::IRBlock* iblock = cgi->builder.addNewBlockInFunction("initialiser_" + this->ident.name, memifunc);
-		cgi->builder.setCurrentBlock(iblock);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, memifunc);
+		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
 		fir::Value* self = memifunc->getArguments().front();
@@ -123,15 +134,15 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::Value* v = memifunc->getArguments()[i + 1];
 
 			v->setName("memberPtr_" + std::to_string(i));
-			fir::Value* ptr = cgi->builder.CreateStructGEP(self, i);
+			fir::Value* ptr = cgi->irb.CreateStructGEP(self, i);
 
-			cgi->builder.CreateStore(v, ptr);
+			cgi->irb.CreateStore(v, ptr);
 		}
 
-		cgi->builder.CreateReturnVoid();
+		cgi->irb.CreateReturnVoid();
 	}
 
-	cgi->builder.setCurrentBlock(curblock);
+	cgi->irb.setCurrentBlock(curblock);
 
 
 	return Result_t(0, 0);
@@ -144,7 +155,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::string, fir::Type*> instantiatedGenericTypes)
+fir::Type* StructDef::createType(CodegenInstance* cgi)
 {
 	if(this->didCreateType)
 		return this->createdType;
@@ -181,7 +192,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
-		fir::Type* type = cgi->getExprType(var);
+		fir::Type* type = var->getType(cgi);
 		if(type == str)
 		{
 			error(this, "Cannot have non-pointer member of type self");
@@ -189,7 +200,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi, std::unordered_map<std::s
 
 		if(!var->isStatic)
 		{
-			types.push_back({ var->ident.name, cgi->getExprType(var) });
+			types.push_back({ var->ident.name, var->getType(cgi) });
 		}
 	}
 

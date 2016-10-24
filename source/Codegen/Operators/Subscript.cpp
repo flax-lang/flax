@@ -9,20 +9,72 @@
 using namespace Ast;
 using namespace Codegen;
 
+
+
+
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
+}
+
+fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	fir::Type* t = this->arr->getType(cgi);
+	if(t->isLLVariableArrayType())
+	{
+		return t->toLLVariableArrayType()->getElementType();
+	}
+	else if(t->isPointerType())
+	{
+		return t->getPointerElementType();
+	}
+	else if(t->isArrayType())
+	{
+		return t->toArrayType()->getElementType();
+	}
+	else if(t->isStringType())
+	{
+		return fir::Type::getCharType();
+	}
+	else
+	{
+		// todo: multiple subscripts
+		fir::Function* getter = Operators::getOperatorSubscriptGetter(cgi, this, t, { this, this->index });
+		if(!getter)
+		{
+			error(this, "Invalid subscript on type %s, with index type %s", t->str().c_str(),
+				this->index->getType(cgi)->str().c_str());
+		}
+
+		return getter->getReturnType();
+	}
+}
+
+
+
+
+
+
 namespace Operators
 {
 	static std::pair<ClassDef*, fir::Type*> getClassDef(CodegenInstance* cgi, Expr* user, Expr* subscriptee)
 	{
-		fir::Type* subscripteeType = cgi->getExprType(subscriptee);
+		fir::Type* subscripteeType = subscriptee->getType(cgi);
 
 		TypePair_t* tp = cgi->getType(subscripteeType);
 		if(!tp || !dynamic_cast<ClassDef*>(tp->second.first))
 			error(user, "Cannot subscript on type %s", subscripteeType->str().c_str());
 
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
+		size_t s = cls->subscriptOverloads.size();
 
-		if(cls->subscriptOverloads.size() == 0)
+		for(auto ext : cgi->getExtensionsForType(cls))
+			s += ext->subscriptOverloads.size();
+
+		if(s == 0)
+		{
 			error(user, "Class %s has no subscript operators defined, cannot subscript.", subscripteeType->str().c_str());
+		}
 
 		return { cls, subscripteeType };
 	}
@@ -37,15 +89,24 @@ namespace Operators
 		ClassDef* cls = p.first;
 		fir::Type* ftype = p.second;
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->setterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back(FuncDefPair(f->setterFunc, f->setterFn->decl, f->setterFn));
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().funcDecl->ident.name;
+
 
 		// todo: MULIPLE SUBSCRIPTS
-		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), cgi->getExprType(ari->index) };
+		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi) };
 		std::deque<Expr*> eparams = { ari->index };
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
@@ -64,7 +125,7 @@ namespace Operators
 		}
 		else
 		{
-			if(res.t.first == 0)
+			if(res.t.firFunc == 0)
 			{
 				error(user, "Class %s does not have a subscript operator with a setter", ftype->str().c_str());
 			}
@@ -73,7 +134,7 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self (note: uses the ArrayIndex AST)
-			fir::Value* lhsPtr = ari->arr->codegen(cgi).result.second;
+			fir::Value* lhsPtr = ari->arr->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			if(lhsPtr->isImmutable())
@@ -81,14 +142,14 @@ namespace Operators
 
 			fargs.push_back(lhsPtr);
 
-			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			fir::Function* fn = cgi->module->getFunction(res.t.firFunc->getName());
 			iceAssert(fn);
 
 			// gen args.
 			// -2 to exclude the first param, and the rhs param.
 			for(size_t i = 0; i < fn->getArgumentCount() - 2; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).value;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -102,7 +163,7 @@ namespace Operators
 			fargs.push_back(rhs);
 
 
-			cgi->builder.CreateCall(fn, fargs);
+			cgi->irb.CreateCall(fn, fargs);
 
 			return Result_t(0, 0);
 		}
@@ -110,7 +171,6 @@ namespace Operators
 
 
 
-	// note: only used by getExprType(), we don't use it ourselves here.
 	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::deque<Ast::Expr*> args)
 	{
 		iceAssert(args.size() >= 1);
@@ -127,20 +187,29 @@ namespace Operators
 		iceAssert(ftype);
 
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->getterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back(FuncDefPair(f->getterFunc, f->getterFn->decl, f->getterFn));
+		}
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().funcDecl->ident.name;
+
 
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
 		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
-			fparams.push_back(cgi->getExprType(e));
+			fparams.push_back(e->getType(cgi));
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
-		if(res.resolved) return res.t.first;
+		if(res.resolved) return res.t.firFunc;
 		else return 0;
 	}
 
@@ -160,17 +229,26 @@ namespace Operators
 		ClassDef* cls = p.first;
 		fir::Type* ftype = p.second;
 
-		std::deque<FuncPair_t> cands;
+		std::deque<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
-			cands.push_back({ soo->getterFunc, soo->decl });
+			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 
-		std::string basename = cls->subscriptOverloads[0]->decl->ident.name;
+		for(auto ext : cgi->getExtensionsForType(cls))
+		{
+			for(auto f : ext->subscriptOverloads)
+				cands.push_back(FuncDefPair(f->getterFunc, f->getterFn->decl, f->getterFn));
+		}
+
+
+		std::string basename;
+		if(cands.size() > 0)
+			basename = cands.front().funcDecl->ident.name;
 
 		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
 		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
 		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
-			fparams.push_back(cgi->getExprType(e));
+			fparams.push_back(e->getType(cgi));
 
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
@@ -190,18 +268,18 @@ namespace Operators
 			std::deque<fir::Value*> fargs;
 
 			// gen the self.
-			fir::Value* lhsPtr = args[0]->codegen(cgi).result.second;
+			fir::Value* lhsPtr = args[0]->codegen(cgi).pointer;
 			iceAssert(lhsPtr);
 
 			fargs.push_back(lhsPtr);
 
 			// gen args.
-			fir::Function* fn = cgi->module->getFunction(res.t.first->getName());
+			fir::Function* fn = cgi->module->getFunction(res.t.firFunc->getName());
 			iceAssert(fn);
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).result.first;
+				fir::Value* arg = eparams[i]->codegen(cgi).pointer;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())
@@ -210,8 +288,8 @@ namespace Operators
 				fargs.push_back(arg);
 			}
 
-			fir::Value* val = cgi->builder.CreateCall(fn, fargs);
-			fir::Value* ret = cgi->builder.CreateImmutStackAlloc(fn->getReturnType(), val);
+			fir::Value* val = cgi->irb.CreateCall(fn, fargs);
+			fir::Value* ret = cgi->irb.CreateImmutStackAlloc(fn->getReturnType(), val);
 			return Result_t(val, ret);
 		}
 	}
@@ -232,9 +310,9 @@ namespace Operators
 		Expr* subscriptIndex = args[1];
 
 		// get our array type
-		fir::Type* atype = cgi->getExprType(subscriptee);
+		fir::Type* atype = subscriptee->getType(cgi);
 
-		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType())
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType() && !atype->isStringType())
 		{
 			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
@@ -246,32 +324,54 @@ namespace Operators
 		Result_t lhsp = subscriptee->codegen(cgi);
 
 		fir::Value* lhs = 0;
-		if(lhsp.result.first->getType()->isPointerType())	lhs = lhsp.result.first;
-		else												lhs = lhsp.result.second;
-
+		if(lhsp.pointer && lhsp.pointer->getType()->isPointerType())
+		{
+			lhs = lhsp.value;
+		}
+		else if(lhsp.pointer)
+		{
+			lhs = lhsp.pointer;
+		}
+		else
+		{
+			lhs = lhsp.value;
+		}
 
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
-		fir::Value* ind = subscriptIndex->codegen(cgi).result.first;
+		fir::Value* ind = subscriptIndex->codegen(cgi).value;
 
-		if(atype->isStructType() || atype->isClassType() || atype->isArrayType())
+
+		if(atype->isArrayType())
 		{
-			gep = cgi->builder.CreateGEP2(lhs, fir::ConstantInt::getUint64(0), ind);
+			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isLLVariableArrayType())
 		{
-			fir::Value* dataPtr = cgi->builder.CreateStructGEP(lhs, 0);
-			fir::Value* data = cgi->builder.CreateLoad(dataPtr);
+			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhsp.pointer, 0);
+			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
 
-			gep = cgi->builder.CreateGetPointer(data, ind);
+			gep = cgi->irb.CreateGetPointer(data, ind);
+		}
+		else if(atype->isStringType())
+		{
+			cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), lhsp.pointer, ind);
+
+			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
+			gep = cgi->irb.CreateGetPointer(dp, ind);
+			gep = cgi->irb.CreatePointerTypeCast(gep, fir::Type::getCharType()->getPointerTo());
+		}
+		else if(atype->isPointerType())
+		{
+			gep = cgi->irb.CreateGetPointer(lhs, ind);
 		}
 		else
 		{
-			gep = cgi->builder.CreateGetPointer(lhs, ind);
+			error(user, "???");
 		}
 
-		return Result_t(cgi->builder.CreateLoad(gep), gep);
+		return Result_t(cgi->irb.CreateLoad(gep), gep, ValueKind::LValue);
 	}
 }
 

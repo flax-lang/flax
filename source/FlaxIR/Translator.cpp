@@ -38,41 +38,64 @@ namespace fir
 			{
 				return llvm::IntegerType::getIntNTy(gc, pt->getIntegerBitWidth());
 			}
-			else
+			else if(pt->isFloatingPointType())
 			{
 				if(pt->getFloatingPointBitWidth() == 32)
 					return llvm::Type::getFloatTy(gc);
 
-				else
+				else if(pt->getFloatingPointBitWidth() == 64)
 					return llvm::Type::getDoubleTy(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 80)
+					return llvm::Type::getX86_FP80Ty(gc);
+
+				else if(pt->getFloatingPointBitWidth() == 128)
+					return llvm::Type::getFP128Ty(gc);
+
+				iceAssert(0);
+			}
+			else if(pt->isVoidType())
+			{
+				return llvm::Type::getVoidTy(gc);
+			}
+			else
+			{
+				iceAssert(0);
 			}
 		}
 		else if(type->isStructType())
 		{
 			StructType* st = type->toStructType();
 
+			if(createdTypes.find(st->getStructName()) != createdTypes.end())
+				return createdTypes[st->getStructName()];
+
+			// to allow recursion, declare the type first.
+			createdTypes[st->getStructName()] = llvm::StructType::create(gc, st->getStructName().mangled());
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : st->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			if(createdTypes.find(st->getStructName()) != createdTypes.end())
-				return createdTypes[st->getStructName()];
-
-			return createdTypes[st->getStructName()] = llvm::StructType::create(gc, lmems, st->getStructName().mangled(),
-				st->isPackedStruct());
+			createdTypes[st->getStructName()]->setBody(lmems, st->isPackedStruct());
+			return createdTypes[st->getStructName()];
 		}
 		else if(type->isClassType())
 		{
 			ClassType* ct = type->toClassType();
 
+			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
+				return createdTypes[ct->getClassName()];
+
+			// to allow recursion, declare the type first.
+			createdTypes[ct->getClassName()] = llvm::StructType::create(gc, ct->getClassName().mangled());
+
 			std::vector<llvm::Type*> lmems;
 			for(auto a : ct->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
-				return createdTypes[ct->getClassName()];
-
-			return createdTypes[ct->getClassName()] = llvm::StructType::create(gc, lmems, ct->getClassName().mangled());
+			createdTypes[ct->getClassName()]->setBody(lmems);
+			return createdTypes[ct->getClassName()];
 		}
 		else if(type->isTupleType())
 		{
@@ -91,7 +114,13 @@ namespace fir
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
 
-			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg());
+			// note(workaround): THIS IS A HACK.
+			// we *ALWAYS* return a pointer to function, because llvm is stupid.
+			// when we create an llvm::Function using this type, we always dereference the pointer type.
+			// however, everywhere else (eg. function variables, parameters, etc.) we need pointers, because
+			// llvm doesn't let FunctionType be a raw type (of a variable or param), but i'll let fir be less stupid,
+			// so it transparently works without fir having to need pointers.
+			return llvm::FunctionType::get(typeToLlvm(ft->getReturnType(), mod), largs, ft->isCStyleVarArg())->getPointerTo();
 		}
 		else if(type->isArrayType())
 		{
@@ -100,7 +129,7 @@ namespace fir
 		}
 		else if(type->isPointerType())
 		{
-			if(type->isNullPointer())
+			if(type->isVoidPointer())
 				return llvm::Type::getInt8PtrTy(gc);
 
 			else
@@ -112,12 +141,34 @@ namespace fir
 		}
 		else if(type->isLLVariableArrayType())
 		{
-			LLVariableArrayType* llat = type->toLLVariableArray();
+			LLVariableArrayType* llat = type->toLLVariableArrayType();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
 
 			return llvm::StructType::get(gc, mems, false);
+		}
+		else if(type->isStringType())
+		{
+			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
+			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
+
+			auto id = Identifier("__.string", IdKind::Struct);
+			if(createdTypes.find(id) != createdTypes.end())
+				return createdTypes[id];
+
+			auto str = llvm::StructType::create(gc, id.mangled());
+			str->setBody({ i8ptrtype, i64type });
+
+			return createdTypes[id] = str;
+		}
+		else if(type->isCharType())
+		{
+			return llvm::Type::getInt8Ty(gc);
+		}
+		else if(type->isParametricType())
+		{
+			error("Cannot convert parametric type %s into LLVM, something went wrong", type->str().c_str());
 		}
 		else
 		{
@@ -143,6 +194,11 @@ namespace fir
 			{
 				return llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
+		}
+		else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(c))
+		{
+			llvm::Type* ct = typeToLlvm(c->getType(), mod);
+			return llvm::ConstantInt::get(ct, cc->getValue());
 		}
 		else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(c))
 		{
@@ -195,7 +251,7 @@ namespace fir
 
 		createdTypes.clear();
 
-		std::map<size_t, llvm::Value*>& valueMap = *(new std::map<size_t, llvm::Value*>());
+		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
@@ -207,7 +263,8 @@ namespace fir
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					fprintf(stderr, "failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+
 				iceAssert(lgv);
 				return lgv;
 				// return builder.CreateConstGEP2_32(lgv, 0, 0);
@@ -279,6 +336,129 @@ namespace fir
 			typeToLlvm(type.second, module);
 		}
 
+		for(auto intr : this->intrinsicFunctions)
+		{
+			auto& gc = llvm::getGlobalContext();
+			llvm::Constant* fn = 0;
+
+			if(intr.first.str() == "memcpy")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memmove")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memset")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.i64", ft);
+			}
+			else if(intr.first.str() == "memcmp")
+			{
+				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
+
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+
+				fn = module->getOrInsertFunction("fir.intrinsic.memcmp", ft);
+
+
+				llvm::Function* func = module->getFunction("fir.intrinsic.memcmp");
+				iceAssert(fn == func);
+
+				// ok... now make the function, right here.
+				{
+					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+
+					builder.SetInsertPoint(entry);
+
+					/*
+						basically:
+
+						int counter = 0;
+						while(counter < size)
+						{
+							i8 c1 = s1[counter];
+							i8 c2 = s2[counter];
+
+							if(c1 != c2)
+								return c1 - c2;
+
+							counter++;
+						}
+					*/
+
+					llvm::Value* res = builder.CreateAlloca(llvm::Type::getInt32Ty(gc));
+					llvm::Value* ptr1 = 0;
+					llvm::Value* ptr2 = 0;
+					llvm::Value* cmplen = 0;
+					{
+						// llvm is stupid.
+						auto it = func->arg_begin();
+						ptr1 = it.getNodePtrUnchecked();
+						it++;
+
+						ptr2 = it.getNodePtrUnchecked();
+						it++;
+
+						cmplen = it.getNodePtrUnchecked();
+					}
+
+					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
+
+					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					builder.CreateStore(zeroconst, ctr);
+
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+
+
+					// explicit branch to loopcond
+					builder.CreateBr(loopcond);
+
+					builder.SetInsertPoint(loopcond);
+					{
+						// bounds check
+						llvm::Value* cond = builder.CreateICmpSLT(ctr, cmplen);
+						builder.CreateCondBr(cond, loopbody, merge);
+					}
+
+					builder.SetInsertPoint(loopbody);
+					{
+						llvm::Value* ctrval = builder.CreateLoad(ctr);
+
+						llvm::Value* ch1 = builder.CreateLoad(builder.CreateGEP(ptr1, ctrval));
+						llvm::Value* ch2 = builder.CreateLoad(builder.CreateGEP(ptr2, ctrval));
+
+						llvm::Value* diff = builder.CreateSub(ch1, ch2);
+						builder.CreateStore(diff, res);
+
+						builder.CreateStore(builder.CreateAdd(ctrval, llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true))), ctr);
+						builder.CreateCondBr(builder.CreateICmpEQ(diff, zeroconst), loopcond, merge);
+					}
+
+					builder.SetInsertPoint(merge);
+					{
+						builder.CreateRet(builder.CreateLoad(res));
+					}
+				}
+			}
+			else
+			{
+				error("unknown intrinsic %s", intr.first.str().c_str());
+			}
+
+			valueMap[intr.second->id] = fn;
+		}
+
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : this->functions)
 		{
@@ -294,8 +474,11 @@ namespace fir
 			else
 				error("enotsup");
 
-			llvm::Function* func = llvm::Function::Create(llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)), link,
-				ffn->getName().mangled(), module);
+			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
+			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
+
+			if(ffn->isAlwaysInlined())
+				func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
 
 			valueMap[ffn->id] = func;
 
@@ -865,6 +1048,10 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
+							if(a->getType() != b->getType()->getPointerElementType())
+							{
+								error("cannot store %s into %s", inst->operands[0]->getType()->str().c_str(), inst->operands[1]->getType()->str().c_str());
+							}
 							llvm::Value* ret = builder.CreateStore(a, b);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -912,6 +1099,34 @@ namespace fir
 
 							llvm::Value* ret = builder.CreateCall(a, args);
 							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_CallFunctionPointer:
+						{
+							iceAssert(inst->operands.size() >= 1);
+							llvm::Value* fn = getOperand(inst, 0);
+
+							std::vector<llvm::Value*> args;
+
+							std::deque<Value*> fargs = inst->operands;
+							fargs.pop_front();
+
+							for(auto arg : fargs)
+								args.push_back(getValue(arg));
+
+							llvm::Type* lft = typeToLlvm(inst->operands.front()->getType(), module);
+
+							iceAssert(lft->isPointerTy());
+							iceAssert(lft->getPointerElementType()->isFunctionTy());
+
+							llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(lft->getPointerElementType());
+							iceAssert(ft);
+
+							llvm::Value* ret = builder.CreateCall(ft, fn, args);
+
+							addValueToMap(ret, inst->realOutput);
+
 							break;
 						}
 
@@ -1130,14 +1345,17 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 
 
-							ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
-							ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
+							// ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
+							// ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
 
-							iceAssert(cb);
-							iceAssert(cc);
+							// iceAssert(cb);
+							// iceAssert(cc);
 
+							// llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
 
-							llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
+							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
+							llvm::Value* ret = builder.CreateGEP(a, indices);
+
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1155,7 +1373,6 @@ namespace fir
 						}
 
 						case OpKind::Value_PointerAddition:
-						case OpKind::Value_PointerSubtraction:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1170,8 +1387,149 @@ namespace fir
 							break;
 						}
 
+						case OpKind::Value_PointerSubtraction:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Value* negb = builder.CreateNeg(b);
+							llvm::Value* ret = builder.CreateInBoundsGEP(a, negb);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
 
 
+
+						case OpKind::String_GetData:
+						case OpKind::String_GetLength:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							int ind = 0;
+							if(inst->opKind == OpKind::String_GetData)
+								ind = 0;
+							else if(inst->opKind == OpKind::String_GetLength)
+								ind = 1;
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							llvm::Value* ret = builder.CreateLoad(gep);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::String_GetRefCount:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							llvm::Value* dp = builder.CreateLoad(gep);
+
+							// refcount lies 8 bytes behind.
+							auto& gc = llvm::getGlobalContext();
+							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
+							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							llvm::Value* ret = builder.CreateLoad(ptr);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+						case OpKind::String_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
+
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							builder.CreateStore(b, data);
+
+							llvm::Value* ret = builder.CreateLoad(data);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::String_SetLength:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
+							builder.CreateStore(b, len);
+
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::String_SetRefCount:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							llvm::Value* dp = builder.CreateLoad(gep);
+
+							// refcount lies 8 bytes behind.
+							auto& gc = llvm::getGlobalContext();
+							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
+							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							builder.CreateStore(b, ptr);
+
+							llvm::Value* ret = builder.CreateLoad(ptr);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+						case OpKind::Unreachable:
+						{
+							builder.CreateUnreachable();
+							break;
+						}
 
 						case OpKind::Invalid:
 						{

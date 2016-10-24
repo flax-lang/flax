@@ -7,9 +7,10 @@
 
 namespace fir
 {
-	LLVariableArrayType::LLVariableArrayType(Type* elmType) : Type(FTypeKind::LowLevelVariableArray)
+	LLVariableArrayType::LLVariableArrayType(Type* elmType)
 	{
 		this->arrayElementType = elmType;
+		iceAssert(this->arrayElementType);
 	}
 
 	Type* LLVariableArrayType::getElementType()
@@ -57,7 +58,7 @@ namespace fir
 
 		// basically return a new version of ourselves
 		if(!this->arrayElementType->isParametricType())
-			error_and_exit("llvarray '%s' is not parametric, cannot reify", this->str().c_str());
+			return this;
 
 		ParametricType* tp = this->arrayElementType->toParametricType();
 

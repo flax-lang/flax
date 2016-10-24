@@ -6,51 +6,67 @@
 
 namespace fir
 {
-	PointerType::PointerType(size_t inds, Type* base) : Type(FTypeKind::Pointer)
+	PointerType::PointerType(size_t inds, Type* base)
 	{
 		this->indirections = inds;
 		this->baseType = base;
 	}
 
+
 	PointerType* PointerType::getInt8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt8(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt16(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt32(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getInt64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getInt64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt64(tc)->getPointerTo());
 	}
+
+	PointerType* PointerType::getInt128Ptr(FTContext* tc)
+	{
+		return dynamic_cast<PointerType*>(Type::getInt128(tc)->getPointerTo());
+	}
+
 
 	PointerType* PointerType::getUint8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint8(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint16(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint32(tc)->getPointerTo());
 	}
 
 	PointerType* PointerType::getUint64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(PrimitiveType::getUint64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint64(tc)->getPointerTo());
 	}
+
+	PointerType* PointerType::getUint128Ptr(FTContext* tc)
+	{
+		return dynamic_cast<PointerType*>(Type::getUint128(tc)->getPointerTo());
+	}
+
+
+
+
 
 
 
@@ -92,7 +108,8 @@ namespace fir
 
 		// basically return a new version of ourselves
 		if(!this->baseType->isParametricType())
-			error_and_exit("pointer '%s' is not parametric, cannot reify", this->str().c_str());
+			return this;
+
 
 		ParametricType* tp = this->baseType->toParametricType();
 

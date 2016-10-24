@@ -105,6 +105,7 @@ namespace fir
 		Value_Store,
 		Value_StackAlloc,
 		Value_CallFunction,
+		Value_CallFunctionPointer,
 		Value_Return,
 		Value_PointerAddition,
 		Value_PointerSubtraction,
@@ -113,8 +114,21 @@ namespace fir
 		Value_GetPointer,					// equivalent to GEP(ptr*, index)
 		Value_GetGEP2,						// equivalent to GEP(ptr*, ptrIndex, elmIndex) -- for arrays/pointers
 
+		// string-specific things
+		String_GetData,
+		String_SetData,
+
+		String_GetLength,
+		String_SetLength,
+
+		String_GetRefCount,
+		String_SetRefCount,
+
 		Branch_UnCond,
 		Branch_Cond,
+
+
+		Unreachable,
 	};
 
 
@@ -126,21 +140,24 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, Type* out, std::deque<Value*> vals);
+		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::deque<Value*> vals);
 		std::string str();
 
 		Value* getResult();
 
 		void setValue(Value* v);
 		void clearValue();
+		bool hasSideEffects();
 
-		static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
+		// static Instruction* GetBinaryOpInstruction(Ast::ArithmeticOp ao, Value* lhs, Value* rhs);
 
 
 		// protected:
 		OpKind opKind;
 
+		bool sideEffects;
 		Value* realOutput;
+		IRBlock* parentBlock;
 		std::deque<Value*> operands;
 	};
 }

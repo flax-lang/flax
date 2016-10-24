@@ -45,7 +45,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isLLVariableArrayType())
 	{
-		return "VA" + mangleType(t->toLLVariableArray()->getElementType());
+		return "VA" + mangleType(t->toLLVariableArrayType()->getElementType());
 	}
 	else if(t->isVoidType())
 	{
@@ -88,9 +88,17 @@ static std::string mangleType(fir::Type* t)
 	{
 		return "PT" + mangleType(t->getPointerElementType());
 	}
+	else if(t->isStringType())
+	{
+		return "SR";
+	}
+	else if(t->isCharType())
+	{
+		return "CH";
+	}
 	else
 	{
-		iceAssert(0);
+		iceAssert(0 && "unsupported ir type???");
 	}
 }
 

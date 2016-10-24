@@ -5,8 +5,8 @@
 import String
 import LibCInterface
 
-public func programExit(reason: String)
+public func programExit(reason: string)
 {
-	write(2, reason.data, reason.byteCount)
+	write(2, reason.raw, reason.length as u64)
 	abort()
 }
