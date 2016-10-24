@@ -425,7 +425,12 @@ namespace Codegen
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
 			// somewhat complicated
-			iceAssert(fromPtr);
+
+			if(fromPtr == 0)
+			{
+				fromPtr = this->irb.CreateStackAlloc(from->getType());
+				this->irb.CreateStore(from, fromPtr);
+			}
 
 			fir::Value* tuplePtr = this->getStackAlloc(target);
 
