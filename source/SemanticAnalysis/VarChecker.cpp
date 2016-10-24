@@ -38,7 +38,7 @@ namespace SemAnalysis
 		}
 
 		// not found
-		// warn(cgi, user, "Could not check var ref '%s'", name.c_str());
+		// warn(user, "Could not check var ref '%s'", name.c_str());
 		return *new VarDef();
 	}
 
@@ -224,15 +224,35 @@ namespace SemAnalysis
 				{
 					VarDef& vd = findVarDef(cgi, vr, vr->name);
 
-					// check the right side
-					// todo: more robust
-					if(bo->op == ArithmeticOp::Assign)
+					if(!vd.stateStack.empty())
 					{
-						if(dynamic_cast<Alloc*>(bo->right))
+						// check the right side
+						// todo: more robust
+						if(bo->op == ArithmeticOp::Assign)
 						{
-							vd.stateStack.back() = VarState::ValidAlloc;
+							if(dynamic_cast<Alloc*>(bo->right))
+							{
+								vd.stateStack.back() = VarState::ValidAlloc;
+							}
+							else
+							{
+								if(vd.stateStack.back() == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
+								{
+									warn(vr, "Modifying alloced variable prevents proper deallocation checking");
+									vd.stateStack.back() = VarState::ModifiedAlloc;
+									vd.expr = bo;
+								}
+								else
+								{
+									vd.stateStack.back() = VarState::ValidStack;
+								}
+							}
 						}
-						else
+						else if(bo->op == ArithmeticOp::PlusEquals || bo->op == ArithmeticOp::MinusEquals ||
+								bo->op == ArithmeticOp::MultiplyEquals || bo->op == ArithmeticOp::DivideEquals ||
+								bo->op == ArithmeticOp::ModEquals || bo->op == ArithmeticOp::ShiftLeftEquals ||
+								bo->op == ArithmeticOp::ShiftRightEquals || bo->op == ArithmeticOp::BitwiseAndEquals ||
+								bo->op == ArithmeticOp::BitwiseOrEquals || bo->op == ArithmeticOp::BitwiseXorEquals)
 						{
 							if(vd.stateStack.back() == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
 							{
@@ -240,28 +260,11 @@ namespace SemAnalysis
 								vd.stateStack.back() = VarState::ModifiedAlloc;
 								vd.expr = bo;
 							}
-							else
-							{
-								vd.stateStack.back() = VarState::ValidStack;
-							}
 						}
-					}
-					else if(bo->op == ArithmeticOp::PlusEquals || bo->op == ArithmeticOp::MinusEquals ||
-							bo->op == ArithmeticOp::MultiplyEquals || bo->op == ArithmeticOp::DivideEquals ||
-							bo->op == ArithmeticOp::ModEquals || bo->op == ArithmeticOp::ShiftLeftEquals ||
-							bo->op == ArithmeticOp::ShiftRightEquals || bo->op == ArithmeticOp::BitwiseAndEquals ||
-							bo->op == ArithmeticOp::BitwiseOrEquals || bo->op == ArithmeticOp::BitwiseXorEquals)
-					{
-						if(vd.stateStack.back() == VarState::ValidAlloc && Compiler::getWarningEnabled(Compiler::Warning::UseAfterFree))
+						else
 						{
-							warn(vr, "Modifying alloced variable prevents proper deallocation checking");
-							vd.stateStack.back() = VarState::ModifiedAlloc;
-							vd.expr = bo;
+							complainAboutVarState(cgi, vr, vd);
 						}
-					}
-					else
-					{
-						complainAboutVarState(cgi, vr, vd);
 					}
 				}
 

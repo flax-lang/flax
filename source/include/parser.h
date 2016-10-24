@@ -179,7 +179,7 @@ namespace Parser
 
 		Codegen::CodegenInstance* cgi = 0;
 
-		bool didHaveLeftParen = false;
+		int leftParenNestLevel = 0;
 		int currentOpPrec = 0;
 
 		int structNestLevel = 0;
@@ -233,7 +233,6 @@ namespace Parser
 	Ast::Expr* parsePrimary(ParserState& tokens);
 
 	Ast::Expr* 				parseIf(ParserState& tokens);
-	Ast::ForLoop*			parseFor(ParserState& tokens);
 	Ast::Expr*				parseType(ParserState& tokens);
 	Ast::EnumDef*			parseEnum(ParserState& tokens);
 	Ast::Func*				parseFunc(ParserState& tokens);

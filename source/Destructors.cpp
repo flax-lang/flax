@@ -12,11 +12,6 @@ namespace Ast
 
 	}
 
-	VarArg::~VarArg()
-	{
-
-	}
-
 	Number::~Number()
 	{
 
@@ -97,11 +92,6 @@ namespace Ast
 
 	WhileLoop::~WhileLoop()
 	{
-	}
-
-	ForLoop::~ForLoop()
-	{
-
 	}
 
 	ComputedProperty::~ComputedProperty()
@@ -199,8 +189,8 @@ namespace Ast
 
 	Root::~Root()
 	{
-		for(Expr* e : this->topLevelExpressions)
-			delete e;
+		// for(Expr* e : this->topLevelExpressions)
+		// 	delete e;
 	}
 }
 

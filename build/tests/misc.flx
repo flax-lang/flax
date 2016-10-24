@@ -1,0 +1,172 @@
+// misc.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+class TestingClass
+{
+	init(x: int)
+	{
+		self.thing = x
+	}
+
+	var thing: int
+}
+
+
+extension TestingClass : StringConvertible, Equatable
+{
+	func toString() -> string { "hello" }
+
+	operator == (a: TestingClass) -> bool
+	{
+		return self.thing == a.thing
+	}
+}
+
+
+func cts<T : StringConvertible>(thing: T) -> string
+{
+	return thing.toString()
+}
+
+func pt<T>(a: T, b: T*) -> T
+{
+	return a
+}
+
+func vt<T>(b: T[...])
+{
+	var i = 0
+
+	while i < b.length
+	{
+		printf("%d\n", b[i])
+		i += 1
+	}
+}
+
+func vt2<T>(a: T, b: int[...])
+{
+	// do something.
+	variadicTest(a, b)
+}
+
+
+@nomangle func mtest(k: int, g: int)
+{
+	printf("(%d, %d)\n", k, g)
+
+	let x = TestingClass(10)
+	let y = TestingClass(20)
+
+	let g = 10
+	pt(10, &g)
+
+	vt(10, 30, 40, 50, 60)
+	vt2("hi", 1, 2, 3, 4)
+
+	printf("%d, (%s, %s, %s, %s)\n", x == y, cts(k), cts(x), cts(g), cts(y))
+}
+
+
+
+
+// although it would be possible to move the slipshod array system into a generic Array<> thing, once it's implemented
+// sidenote: oh look, it works for arbitrary types.
+// sometimes, i'm impressed by the things i've implemented.
+
+// i think this form of varargs should *stay*, since it's basically a compiler primitive.
+// once we have an Array<> type, then it'd be as simple as having the Array<T> class define an initialiser with T[...],
+// since we can forward LLVarArrays effortlessly. then it's as easy as let arr = Array(b), and you can have all the Array<> class
+// niceties with varargs, without compromising freestanding functionality.
+
+// imho it's not worth it to have the compiler do the same thing as with String, because 1. String is not generic, and 2. varargs isn't
+// a "core" language feature, so to speak.
+
+public func variadicTest(a: string, b: int[...])
+{
+	printf("%s: [", a)
+	var i = 0
+	while i < b.length
+	{
+		printf("%d", b[i])
+		i += 1
+
+		if i != b.length { printf(", ") }
+	}
+
+	printf("]\n")
+}
+
+extension string
+{
+	// static func withRaw(r: int8*) -> string
+	// {
+	// 	var s: string
+
+	// 	let len = strlen(r)
+	// 	s.raw = malloc(len + 8 + 1)
+	// }
+}
+
+public func miscellaneousTests()
+{
+	mtest(10, 41)
+
+	do {
+		var bar = (10, 20)
+		var foo: (float, float)**[10]**[3]**
+	}
+
+	do {
+		var g = "439"
+		let k = g.toInteger()
+		printf("%s, %d\n", g, k)
+	}
+
+	do {
+		printf("'4' is digit: %d\n", ("5" as char).isDigit())
+	}
+
+	do {
+		struct winsize
+		{
+			var row: u16
+			var col: u16
+			var xpixel: u16
+			var ypixel: u16
+		}
+
+		var ws: winsize
+		ioctl(1, 1074295912 as u64, &ws)
+
+		printf("terminal size: %hdx%hd (chars), %hdx%hd (pixels)\n", ws.col, ws.row, ws.xpixel, ws.ypixel)
+	}
+
+	do {
+		func test() -> string
+		{
+			return "hello!"
+		}
+
+		let s = string("hello")
+		string("hello").raw
+		printf("test = %p %d\n", test().raw, i64(10))
+	}
+
+
+	variadicTest("ints", 10, 20, 30, 40, 50, 60)
+}
+
+
+
+
+
+
+
+
+
+
+
+

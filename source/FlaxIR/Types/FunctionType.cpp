@@ -11,7 +11,7 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva) : Type(FTypeKind::Function)
+	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;
@@ -19,6 +19,7 @@ namespace fir
 
 		this->isFnCStyleVarArg = iscva;
 
+		this->isGeneric = false;
 
 		for(auto a : args)
 		{
@@ -110,9 +111,7 @@ namespace fir
 		if(ret.length() > 0)
 			ret = ret.substr(0, ret.length() - 2); // remove extra comma
 
-		ret = "(" + ret + ") -> " + this->functionRetType->str();
-
-		return ret;
+		return "[(" + ret + ") -> " + this->functionRetType->str() + "]";
 	}
 
 	std::string FunctionType::encodedStr()
@@ -187,45 +186,18 @@ namespace fir
 
 		for(auto mem : this->functionParams)
 		{
-			if(mem->isParametricType())
-			{
-				if(reals.find(mem->toParametricType()->getName()) != reals.end())
-				{
-					auto t = reals[mem->toParametricType()->getName()];
-					if(t->isParametricType())
-					{
-						error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric",
-							mem->toParametricType()->getName().c_str());
-					}
+			auto rfd = mem->reify(reals);
+			if(rfd->isParametricType())
+				error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 
-					reified.push_back(t);
-				}
-				else
-				{
-					error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
-				}
-			}
-			else
-			{
-				reified.push_back(mem);
-			}
+			reified.push_back(rfd);
 		}
 
-		if(this->functionRetType->isParametricType())
-		{
-			if(reals.find(this->functionRetType->toParametricType()->getName()) != reals.end())
-			{
-				reifiedReturn = reals[this->functionRetType->toParametricType()->getName()];
-			}
-			else
-			{
-				error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
-			}
-		}
-		else
-		{
-			reifiedReturn = this->functionRetType;
-		}
+		auto rfd = this->functionRetType->reify(reals);
+		if(rfd->isParametricType())
+			error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
+
+		reifiedReturn = rfd;
 
 		return FunctionType::get(reified, reifiedReturn, this->isVariadicFunc());
 	}

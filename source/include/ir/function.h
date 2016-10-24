@@ -64,9 +64,21 @@ namespace fir
 		std::deque<IRBlock*>& getBlockList();
 		void deleteBody();
 
+		bool wasDeclaredWithBodyElsewhere();
+		void setHadBodyElsewhere();
+
+		bool isGenericInstantiation();
+		void setIsGenericInstantiation();
+
+		bool isAlwaysInlined();
+		void setAlwaysInline();
+
+		void cullUnusedValues();
+
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
+		Function* reifyUsingFunctionType(FunctionType* ft, FTContext* tc = 0);
 
 
 		static Function* create(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
@@ -77,6 +89,10 @@ namespace fir
 		Function(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
+
+		bool alwaysInlined = false;
+		bool hadBodyElsewhere = false;
+		bool wasGenericInstantiation = false;
 	};
 }
 

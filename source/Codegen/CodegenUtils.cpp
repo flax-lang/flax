@@ -2,17 +2,11 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include <stdint.h>
+
 #include <map>
 #include <set>
-#include <vector>
-#include <memory>
-#include <cfloat>
-#include <utility>
-#include <fstream>
-#include <stdint.h>
-#include <typeinfo>
-#include <iostream>
-#include <cinttypes>
+
 #include "parser.h"
 #include "codegen.h"
 #include "compiler.h"
@@ -25,9 +19,8 @@ namespace Codegen
 {
 	void doCodegen(std::string filename, Root* root, CodegenInstance* cgi)
 	{
+		iceAssert(cgi->module);
 		cgi->rootNode = root;
-		cgi->module = new fir::Module(Parser::getModuleName(filename));
-
 
 		// todo: proper.
 		if(sizeof(void*) == 8)
@@ -43,14 +36,16 @@ namespace Codegen
 
 
 		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
-		cgi->rootNode->publicFuncTree->nsName = "__#rootPUB_" + cgi->module->getModuleName();
-
 
 		// rootFuncStack should really be empty, except we know that there should be
 		// stuff inside from imports.
 		// thus, solidify the insides of these, by adding the function to fir::Module.
 
-		cgi->cloneFunctionTree(cgi->rootNode->rootFuncStack, cgi->rootNode->rootFuncStack, true);
+		// wtf is ^ talking about?
+		// todo: specify whether a given import is private, or re-exporting.
+		// ie. if A imports B, will B also get imported to something that imports A.
+
+		// cgi->cloneFunctionTree(cgi->rootNode->rootFuncStack, cgi->rootNode->rootFuncStack, true);
 
 		cgi->rootNode->codegen(cgi);
 
@@ -81,7 +76,6 @@ namespace Codegen
 
 
 
-
 	fir::FTContext* CodegenInstance::getContext()
 	{
 		auto c = fir::getDefaultFTContext();
@@ -93,18 +87,51 @@ namespace Codegen
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
+		this->refCountingStack.pop_back();
 	}
 
 	void CodegenInstance::clearScope()
 	{
 		this->symTabStack.clear();
+		this->refCountingStack.clear();
 		this->clearNamespaceScope();
 	}
 
 	void CodegenInstance::pushScope()
 	{
 		this->symTabStack.push_back(SymTab_t());
+		this->refCountingStack.push_back({ });
 	}
+
+	void CodegenInstance::addRefCountedValue(fir::Value* ptr)
+	{
+		iceAssert(ptr->getType()->isPointerType() && "refcounted value must be a pointer");
+		this->refCountingStack.back().push_back(ptr);
+	}
+
+	void CodegenInstance::removeRefCountedValue(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			error("ptr does not exist in refcounting stack, cannot remove");
+
+		this->refCountingStack.back().erase(it);
+	}
+
+	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* ptr)
+	{
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(it == this->refCountingStack.back().end())
+			return;
+
+		this->refCountingStack.back().erase(it);
+	}
+
+	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
+	{
+		return this->refCountingStack.back();
+	}
+
 
 	Func* CodegenInstance::getCurrentFunctionScope()
 	{
@@ -351,8 +378,11 @@ namespace Codegen
 	void CodegenInstance::pushGenericType(std::string id, fir::Type* type)
 	{
 		iceAssert(this->instantiatedGenericTypeStack.size() > 0);
-		if(this->resolveGenericType(id) != 0)
-			error(0, "Error: generic type %s already exists; types cannot be shadowed", id.c_str());
+		for(auto g : this->instantiatedGenericTypeStack.back())
+		{
+			if(g.first == id)
+				error("Error: generic type %s already exists in the current stack frame", id.c_str());
+		}
 
 		this->instantiatedGenericTypeStack.back()[id] = type;
 	}
@@ -386,33 +416,35 @@ namespace Codegen
 
 
 
-	// funcs
-	void CodegenInstance::addPublicFunc(FuncPair_t fp)
+
+
+
+	void CodegenInstance::importOtherCgi(CodegenInstance* othercgi)
 	{
-		this->addFunctionToScope(fp, this->rootNode->publicFuncTree);
+		this->importFunctionTreeInto(this->rootNode->rootFuncStack, othercgi->rootNode->rootFuncStack);
 	}
 
 
-
-	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* decl, FunctionTree* target)
+	#if 0
+	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* funcdecl, Func* funcdef,
+		FunctionTree* target)
 	{
 		fir::Function* ret = func;
 		if(func && func->linkageType == fir::LinkageType::External)
 		{
-			iceAssert(func);
-
 			fir::Function* f = 0;
 			if(!func->isGeneric())
 			{
 				// add to the func table
+
 				auto lf = cgi->module->getFunction(func->getName());
 				if(!lf)
 				{
-					cgi->module->declareFunction(func->getName(), func->getType());
-					lf = cgi->module->getFunction(func->getName());
+					lf = cgi->module->declareFunction(func->getName(), func->getType());
+					lf->setHadBodyElsewhere();
 				}
 
-				f = dynamic_cast<fir::Function*>(lf);
+				f = lf;
 				f->deleteBody();
 			}
 			else
@@ -420,30 +452,178 @@ namespace Codegen
 				f = func;
 			}
 
-			cgi->addFunctionToScope(FuncPair_t(f, decl));
+			cgi->addFunctionToScope(FuncDefPair(f, funcdecl, funcdef));
 			ret = f;
 		}
 		else if(!func)
 		{
 			// note: generic functions are not instantiated
-			if(decl->genericTypes.size() == 0)
-				error(decl, "!func (%s)", decl->ident.str().c_str());
+			if(funcdecl && funcdecl->genericTypes.size() == 0)
+				error(funcdecl, "!func (%s)", funcdecl->ident.str().c_str());
 		}
 
 		return ret;
 	}
+	#endif
 
-	void CodegenInstance::cloneFunctionTree(FunctionTree* ft, FunctionTree* clone, bool deep)
+
+	void CodegenInstance::importFunctionTreeInto(FunctionTree* ftree, FunctionTree* other)
 	{
-		clone->nsName = ft->nsName;
+		ftree->nsName = other->nsName;
+		for(auto pair : other->funcs)
+		{
+			if(pair.funcDecl->attribs & Attr_VisPublic)
+			{
+				bool existing = false;
+				for(auto f : ftree->funcs)
+				{
+					if(f.firFunc->getName() == pair.firFunc->getName())
+					{
+						existing = true;
+						break;
+					}
+				}
 
-		for(auto pair : ft->funcs)
+				if(!existing)
+				{
+					iceAssert(pair.funcDecl);
+					if(pair.funcDecl->genericTypes.size() == 0)
+					{
+						// declare new one
+						auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(), fir::LinkageType::External);
+						ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
+					}
+					else
+					{
+						// for generics, just push as-is
+						ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
+					}
+				}
+			}
+		}
+
+
+
+
+
+		for(auto t : other->types)
 		{
 			bool existing = false;
-			for(auto f : clone->funcs)
+			for(auto tt : ftree->types)
 			{
-				if((f.first && pair.first && (f.first == pair.first))
-					|| (f.second && pair.second && (f.second->ident == pair.second->ident)))
+				if(tt.first == t.first)
+				{
+					existing = true;
+					break;
+				}
+			}
+
+			if(!existing && t.first != "Type" && t.first != "Any")
+			{
+				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
+				{
+					ftree->types[sb->ident.name] = t.second;
+					this->typeMap[sb->ident.str()] = t.second;
+
+
+					// check what kind of struct.
+					if(StructDef* str = dynamic_cast<StructDef*>(sb))
+					{
+						if(str->attribs & Attr_VisPublic)
+						{
+							for(auto f : str->initFuncs)
+								this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
+						}
+					}
+					else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
+					{
+						if(cls->attribs & Attr_VisPublic)
+						{
+							for(auto f : cls->initFuncs)
+							{
+								this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
+							}
+
+							for(auto ao : cls->assignmentOverloads)
+							{
+								this->module->getOrCreateFunction(ao->lfunc->getName(), ao->lfunc->getType(), fir::LinkageType::External);
+							}
+
+							for(auto so : cls->subscriptOverloads)
+							{
+								this->module->getOrCreateFunction(so->getterFunc->getName(), so->getterFunc->getType(),
+									fir::LinkageType::External);
+
+								if(so->setterFunc)
+								{
+									this->module->getOrCreateFunction(so->setterFunc->getName(), so->setterFunc->getType(),
+										fir::LinkageType::External);
+								}
+							}
+
+							for(auto fp : cls->functionMap)
+							{
+								if(fp.first->decl->attribs & Attr_VisPublic)
+								{
+									this->module->getOrCreateFunction(fp.second->getName(), fp.second->getType(), fir::LinkageType::External);
+								}
+							}
+						}
+					}
+					else if(dynamic_cast<Tuple*>(sb))
+					{
+						// ignore
+					}
+					else
+					{
+						iceAssert(0);
+					}
+				}
+			}
+		}
+
+
+
+
+
+
+		for(auto ext : other->extensions)
+		{
+			bool existing = false;
+			for(auto e : ftree->extensions)
+			{
+				if(e.second == ext.second)
+				{
+					existing = true;
+					break;
+				}
+			}
+
+			if(!existing && ext.second->attribs & Attr_VisPublic)
+			{
+				ftree->extensions.insert(std::make_pair(ext.first, ext.second));
+
+				ExtensionDef* ed = ext.second;
+				for(auto& ff : ed->functionMap)
+				{
+					if(ff.first->decl->attribs & Attr_VisPublic)
+					{
+						this->module->getOrCreateFunction(ff.second->getName(), ff.second->getType(), fir::LinkageType::External);
+					}
+				}
+			}
+		}
+
+
+
+
+
+		for(auto oo : other->operators)
+		{
+			bool existing = false;
+			for(auto ooc : ftree->operators)
+			{
+				if(oo->func->decl->ident == ooc->func->decl->ident)
 				{
 					existing = true;
 					break;
@@ -451,178 +631,34 @@ namespace Codegen
 			}
 
 
-			if(deep)
+			if(!existing && oo->attribs & Attr_VisPublic)
 			{
-				pair.first = cloneFunctionIntoCurrentTree(this, pair.first, pair.second, clone);
-			}
-
-			if(!existing)
-			{
-				clone->funcs.push_back(pair);
+				ftree->operators.push_back(oo);
 			}
 		}
 
-		for(auto t : ft->types)
-		{
-			bool found = false;
-			for(auto tt : clone->types)
-			{
-				if(tt.first == t.first)
-				{
-					if(!(deep && this->typeMap.find(t.first) == this->typeMap.end()))
-					{
-						found = true;
-						break;
-					}
-				}
-			}
 
-			if(!found && t.first != "Type" && t.first != "Any")
-			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
-				{
-					clone->types[sb->ident.name] = t.second;
 
-					if(deep)
-					{
-						this->typeMap[sb->ident.str()] = t.second;
 
-						// check what kind of struct.
-						if(StructDef* str = dynamic_cast<StructDef*>(sb))
-						{
-							if(str->attribs & Attr_VisPublic)
-							{
-								for(auto f : str->initFuncs)
-									this->module->declareFunction(f->getName(), f->getType());
-							}
-						}
-						else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
-						{
-							if(cls->attribs & Attr_VisPublic)
-							{
-								for(auto f : cls->initFuncs)
-									this->module->declareFunction(f->getName(), f->getType());
-
-								for(auto ao : cls->assignmentOverloads)
-									this->module->declareFunction(ao->lfunc->getName(), ao->lfunc->getType());
-
-								for(auto so : cls->subscriptOverloads)
-								{
-									this->module->declareFunction(so->getterFunc->getName(), so->getterFunc->getType());
-
-									if(so->setterFunc)
-										this->module->declareFunction(so->setterFunc->getName(), so->setterFunc->getType());
-								}
-							}
-						}
-						else if(dynamic_cast<Tuple*>(sb))
-						{
-							// ignore
-						}
-						else
-						{
-							iceAssert(0);
-						}
-					}
-				}
-			}
-		}
-
-		for(auto ext : ft->extensions)
-		{
-			bool found = false;
-			for(auto e : clone->extensions)
-			{
-				if(e.second == ext.second)
-				{
-					found = true;
-					break;
-				}
-			}
-
-			if(ext.second->attribs & Attr_VisPublic)
-			{
-				if(!found && deep)
-				{
-					clone->extensions.insert(std::make_pair(ext.first, ext.second));
-
-					ExtensionDef* ed = ext.second;
-					for(auto& ff : ed->functionMap)
-					{
-						if(ff.first->decl->attribs & Attr_VisPublic)
-						{
-							auto newff = cloneFunctionIntoCurrentTree(this, ff.second, ff.first->decl, clone);
-							std::replace(ed->lfuncs.begin(), ed->lfuncs.end(), ff.second, newff);
-
-							ff.second = newff;
-						}
-						else
-						{
-							// do nothing
-						}
-					}
-				}
-				else if(!found)
-				{
-					clone->extensions.insert(std::make_pair(ext.first, ext.second));
-				}
-			}
-		}
-
-		for(auto oo : ft->operators)
-		{
-			bool found = false;
-			for(auto ooc : clone->operators)
-			{
-				if(oo->func->decl->ident == ooc->func->decl->ident)
-				{
-					if(!deep)
-					{
-						found = true;
-						break;
-					}
-				}
-			}
-
-			if(oo->attribs & Attr_VisPublic)
-			{
-				if(deep)
-				{
-					// todo: do we need this?
-					oo->lfunc = cloneFunctionIntoCurrentTree(this, oo->lfunc, oo->func->decl, clone);
-				}
-				if(!found)
-				{
-					clone->operators.push_back(oo);
-				}
-			}
-		}
-
-		for(auto var : ft->vars)
+		for(auto var : other->vars)
 		{
 			if(var.second.second->attribs & Attr_VisPublic)
 			{
-				bool found = false;
-				for(auto v : clone->vars)
+				bool existing = false;
+				for(auto v : ftree->vars)
 				{
 					if(v.second.second->ident == var.second.second->ident)
 					{
-						found = true;
+						existing = true;
 						break;
 					}
 				}
 
-				if(!found && !deep)
-				{
-					clone->vars[var.first] = var.second;
-				}
-				else if(deep)
+
+				if(!existing && var.second.second->attribs & Attr_VisPublic)
 				{
 					// add to the module list
 					// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
-
-					iceAssert(this->module);
-					iceAssert(clone->vars.find(var.first) != clone->vars.end());
 
 					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident);
 
@@ -631,7 +667,7 @@ namespace Codegen
 						auto gv = this->module->declareGlobalVariable(var.second.second->ident,
 							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
 
-						clone->vars[var.first] = SymbolPair_t(gv, var.second.second);
+						ftree->vars[var.first] = SymbolPair_t(gv, var.second.second);
 					}
 					else
 					{
@@ -642,47 +678,58 @@ namespace Codegen
 								potentialGV->getType()->getPointerElementType()->str().c_str());
 						}
 
-						clone->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
+						ftree->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
 					}
 				}
 			}
 		}
 
 
-		for(auto gf : ft->genericFunctions)
+		for(auto gf : other->genericFunctions)
 		{
-			bool found = false;
-			for(auto cgf : clone->genericFunctions)
+			bool existing = false;
+			for(auto cgf : ftree->genericFunctions)
 			{
 				if(cgf.first == gf.first || cgf.second == gf.second)
 				{
-					found = true;
+					existing = true;
 					break;
 				}
 			}
 
-			if(!found/* && gf.first->attribs & Attr_VisPublic*/)
-				clone->genericFunctions.push_back(gf);
+			if(!existing && gf.first->attribs & Attr_VisPublic)
+				ftree->genericFunctions.push_back(gf);
 		}
 
 
 
-		for(auto prot : ft->protocols)
+		for(auto prot : other->protocols)
 		{
-			for(auto cprot : clone->protocols)
+			bool existing = false;
+			for(auto cprot : ftree->protocols)
 			{
 				if(prot.first == cprot.first && prot.second != cprot.second)
+				{
 					error(prot.second, "conflicting protocols with the same name");
+				}
+				else if(prot.first == cprot.first && prot.second == cprot.second)
+				{
+					existing = true;
+					break;
+				}
 			}
 
-			clone->protocols[prot.first] = prot.second;
+			if(!existing)
+			{
+				ftree->protocols[prot.first] = prot.second;
+			}
 		}
 
 
-		for(auto sub : ft->subs)
+		for(auto sub : other->subs)
 		{
 			FunctionTree* found = 0;
-			for(auto s : clone->subs)
+			for(auto s : ftree->subs)
 			{
 				if(s->nsName == sub->nsName)
 				{
@@ -693,21 +740,24 @@ namespace Codegen
 
 			if(found)
 			{
-				this->cloneFunctionTree(sub, found, deep);
+				this->importFunctionTreeInto(found, sub);
 			}
 			else
 			{
-				clone->subs.push_back(this->cloneFunctionTree(sub, deep));
+				auto nft = new FunctionTree();
+				this->importFunctionTreeInto(nft, sub);
+
+				ftree->subs.push_back(nft);
 			}
 		}
 	}
 
-	FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
-	{
-		FunctionTree* clone = new FunctionTree();
-		this->cloneFunctionTree(ft, clone, deep);
-		return clone;
-	}
+	// FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
+	// {
+	// 	FunctionTree* clone = new FunctionTree();
+	// 	this->cloneFunctionTree(ft, clone, deep);
+	// 	return clone;
+	// }
 
 
 	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
@@ -814,9 +864,6 @@ namespace Codegen
 				ft->nsName = namespc;
 
 				existing->subs.push_back(ft);
-
-				FunctionTree* pub = this->getCurrentFuncTree(0, this->rootNode->publicFuncTree);
-				pub->subs.push_back(ft);
 			}
 		}
 
@@ -828,7 +875,7 @@ namespace Codegen
 		this->namespaceStack.pop_back();
 	}
 
-	void CodegenInstance::addFunctionToScope(FuncPair_t func, FunctionTree* root)
+	void CodegenInstance::addFunctionToScope(FuncDefPair func, FunctionTree* root)
 	{
 		FunctionTree* cur = root;
 		if(!cur)
@@ -836,14 +883,20 @@ namespace Codegen
 
 		iceAssert(cur);
 
-		for(FuncPair_t& fp : cur->funcs)
+		for(FuncDefPair& fp : cur->funcs)
 		{
-			if(fp.first == 0 && fp.second == func.second)
+			if(fp.firFunc == 0 && fp.funcDecl == func.funcDecl)
 			{
-				fp.first = func.first;
+				fp.firFunc = func.firFunc;
 				return;
 			}
-			else if(fp.first == func.first && fp.second == func.second)
+			// else if(fp.funcDef == 0 && fp.funcDecl == func.funcDecl)
+			// {
+			// 	fp.funcDef = func.funcDef;
+			// 	if(fp.firFunc == 0)
+			// 		fp.firFunc = func.firFunc;
+			// }
+			else if(fp.firFunc == func.firFunc && fp.funcDef == func.funcDef)
 			{
 				return;
 			}
@@ -852,7 +905,7 @@ namespace Codegen
 		cur->funcs.push_back(func);
 	}
 
-	void CodegenInstance::removeFunctionFromScope(FuncPair_t func)
+	void CodegenInstance::removeFunctionFromScope(FuncDefPair func)
 	{
 		FunctionTree* cur = this->getCurrentFuncTree();
 		iceAssert(cur);
@@ -872,41 +925,41 @@ namespace Codegen
 
 
 
-	std::deque<FuncPair_t> CodegenInstance::resolveFunctionName(std::string basename)
+	std::deque<FuncDefPair> CodegenInstance::resolveFunctionName(std::string basename)
 	{
 		std::deque<std::string> curDepth = this->namespaceStack;
-		std::deque<FuncPair_t> candidates;
+		std::deque<FuncDefPair> candidates;
 
 
-		auto _isDupe = [this](FuncPair_t a, FuncPair_t b) -> bool {
+		auto _isDupe = [this](FuncDefPair a, FuncDefPair b) -> bool {
 
-			if(a.first == 0 || b.first == 0)
+			if(a.firFunc == 0 || b.firFunc == 0)
 			{
-				iceAssert(a.second);
-				iceAssert(b.second);
+				iceAssert(a.funcDecl);
+				iceAssert(b.funcDecl);
 
-				if(a.second->params.size() != b.second->params.size()) return false;
-				if(a.second->genericTypes.size() > 0 && b.second->genericTypes.size() > 0)
+				if(a.funcDecl->params.size() != b.funcDecl->params.size()) return false;
+				if(a.funcDecl->genericTypes.size() > 0 && b.funcDecl->genericTypes.size() > 0)
 				{
-					if(a.second->genericTypes != b.second->genericTypes) return false;
+					if(a.funcDecl->genericTypes != b.funcDecl->genericTypes) return false;
 				}
 
-				for(size_t i = 0; i < a.second->params.size(); i++)
+				for(size_t i = 0; i < a.funcDecl->params.size(); i++)
 				{
 					// allowFail = true
-					if(this->getExprType(a.second->params[i], true) != this->getExprType(b.second->params[i], true))
+					if(a.funcDecl->params[i]->getType(this, true) != b.funcDecl->params[i]->getType(this, true))
 						return false;
 				}
 
 				return true;
 			}
-			else if(a.first == b.first || a.second == b.second)
+			else if(a.firFunc == b.firFunc || a.funcDecl == b.funcDecl)
 			{
 				return true;
 			}
 			else
 			{
-				return a.first->getType() == b.first->getType();
+				return a.firFunc->getType() == b.firFunc->getType();
 			}
 		};
 
@@ -919,11 +972,12 @@ namespace Codegen
 
 			for(auto f : ft->funcs)
 			{
-				auto isDupe = [this, f, _isDupe](FuncPair_t fp) -> bool {
+				auto isDupe = [this, f, _isDupe](FuncDefPair fp) -> bool {
 					return _isDupe(f, fp);
 				};
 
-				if((f.second ? f.second->ident.name : f.first->getName().str()) == basename)
+				if(f.funcDecl->genericTypes.size() == 0
+					&& (f.funcDecl ? f.funcDecl->ident.name : f.firFunc->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
 					{
@@ -944,35 +998,32 @@ namespace Codegen
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
 		std::deque<Expr*> params, bool exactMatch)
 	{
 		std::deque<fir::Type*> argTypes;
 		for(auto e : params)
-			argTypes.push_back(this->getExprType(e, true));
+			argTypes.push_back(e->getType(this, true));
 
 		return this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
 	}
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncPair_t> list, std::string basename,
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
 		std::deque<fir::Type*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = list;
+		std::deque<FuncDefPair> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
 
-		std::deque<std::pair<FuncPair_t, int>> finals;
+		std::deque<std::pair<FuncDefPair, int>> finals;
 		for(auto c : candidates)
 		{
 			int distance = 0;
 
 			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
-			if((c.second ? c.second->ident.name : basename) == basename
-				&& this->isValidFuncOverload(c, params, &distance, exactMatch))
-			{
+			if((c.funcDecl ? c.funcDecl->ident.name : basename) == basename && this->isValidFuncOverload(c, params, &distance, exactMatch))
 				finals.push_back({ c, distance });
-			}
 		}
 
 		// disambiguate this.
@@ -980,7 +1031,7 @@ namespace Codegen
 		if(finals.size() > 1)
 		{
 			// go through each.
-			std::deque<std::pair<FuncPair_t, int>> mostViable;
+			std::deque<std::pair<FuncDefPair, int>> mostViable;
 			for(auto f : finals)
 			{
 				if(mostViable.size() == 0 || mostViable.front().second > f.second)
@@ -1012,8 +1063,8 @@ namespace Codegen
 				std::string cstr;
 				for(auto c : finals)
 				{
-					if(c.first.second)
-						cstr += this->printAst(c.first.second) + "\n";
+					if(c.first.funcDef)
+						cstr += this->printAst(c.first.funcDecl) + "\n";
 				}
 
 				error(user, "Ambiguous function call to function %s with parameters: (%s), have %zu candidates:\n%s",
@@ -1030,7 +1081,7 @@ namespace Codegen
 
 	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
 	{
-		std::deque<FuncPair_t> candidates = this->resolveFunctionName(basename);
+		std::deque<FuncDefPair> candidates = this->resolveFunctionName(basename);
 		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
@@ -1088,8 +1139,6 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				// fprintf(stderr, "%zu: %s vs %s\n", i, t1->str().c_str(), t2->str().c_str());
-
 				if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
@@ -1130,12 +1179,26 @@ namespace Codegen
 				}
 			}
 
+			// check for direct forwarding case
+			if(args.size() == funcParams.size())
+			{
+				if(args.back()->isLLVariableArrayType() && funcParams.back()->isLLVariableArrayType()
+					&& args.back()->toLLVariableArrayType()->getElementType() == funcParams.back()->toLLVariableArrayType()->getElementType())
+				{
+					// yes, do that (where that == nothing)
+					*_dist += 0;
+					return true;
+				}
+			}
+
+
+
 
 			// 3. get the type of the vararg array.
 			fir::Type* funcLLType = funcParams.back();
 			iceAssert(funcLLType->isLLVariableArrayType());
 
-			fir::Type* llElmType = funcLLType->toLLVariableArray()->getElementType();
+			fir::Type* llElmType = funcLLType->toLLVariableArrayType()->getElementType();
 
 			// 4. check the variable args.
 			for(size_t i = funcParams.size() - 1; i < args.size(); i++)
@@ -1158,7 +1221,7 @@ namespace Codegen
 		}
 	}
 
-	bool CodegenInstance::isValidFuncOverload(FuncPair_t fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
+	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
 		std::deque<fir::Type*> funcParams;
@@ -1167,23 +1230,28 @@ namespace Codegen
 		bool iscvar = 0;
 		bool isvar = 0;
 
-		if(fp.first)
+		if(fp.firFunc)
 		{
-			for(auto arg : fp.first->getArguments())
+			for(auto arg : fp.firFunc->getArguments())
 				funcParams.push_back(arg->getType());
 
-			iscvar = fp.first->isCStyleVarArg();
-			isvar = fp.first->isVariadic();
+			iscvar = fp.firFunc->isCStyleVarArg();
+			isvar = fp.firFunc->isVariadic();
 		}
 		else
 		{
-			iceAssert(fp.second);
+			iceAssert(fp.funcDecl);
 
-			for(auto arg : fp.second->params)
-				funcParams.push_back(this->getExprType(arg, true));
+			for(auto arg : fp.funcDecl->params)
+			{
+				auto t = arg->getType(this, true);
+				if(!t) return false;
 
-			iscvar = fp.second->isCStyleVarArg;
-			isvar = fp.second->isVariadic;
+				funcParams.push_back(t);
+			}
+
+			iscvar = fp.funcDecl->isCStyleVarArg;
+			isvar = fp.funcDecl->isVariadic;
 		}
 
 		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
@@ -1218,80 +1286,38 @@ namespace Codegen
 
 
 
-	FuncPair_t* CodegenInstance::getOrDeclareLibCFunc(std::string name)
+	fir::Function* CodegenInstance::getOrDeclareLibCFunc(std::string name)
 	{
-		std::deque<FuncPair_t> fps = this->resolveFunctionName(name);
-		FuncPair_t* fp = 0;
-
-		for(auto f : fps)
+		if(name == "malloc")
 		{
-			iceAssert(f.second->ident.name == name);
-			if(f.second->isFFI)
-			{
-				fp = &f;
-				break;
-			}
+			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
-
-		if(!fp)
+		else if(name == "free")
 		{
-			std::string retType;
-			std::deque<VarDecl*> params;
-			if(name == "malloc")
-			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd->type = UINT64_TYPE_STRING;
-				params.push_back(fakefdmvd);
-
-				retType = std::string(INT8_TYPE_STRING) + "*";
-			}
-			else if(name == "free")
-			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
-				params.push_back(fakefdmvd);
-
-				retType = std::string(INT8_TYPE_STRING) + "*";
-			}
-			else if(name == "strlen")
-			{
-				VarDecl* fakefdmvd = new VarDecl(Parser::Pin(), "str", false);
-				fakefdmvd->type = std::string(INT8_TYPE_STRING) + "*";
-				params.push_back(fakefdmvd);
-
-				retType = INT64_TYPE_STRING;
-			}
-			else if(name == "memset")
-			{
-				VarDecl* fakefdmvd1 = new VarDecl(Parser::Pin(), "ptr", false);
-				fakefdmvd1->type = std::string(INT8_TYPE_STRING) + "*";
-				params.push_back(fakefdmvd1);
-
-				VarDecl* fakefdmvd2 = new VarDecl(Parser::Pin(), "val", false);
-				fakefdmvd2->type = std::string(INT8_TYPE_STRING) + "*";
-				params.push_back(fakefdmvd2);
-
-				VarDecl* fakefdmvd3 = new VarDecl(Parser::Pin(), "size", false);
-				fakefdmvd3->type = UINT64_TYPE_STRING;
-				params.push_back(fakefdmvd3);
-
-				retType = std::string(INT8_TYPE_STRING) + "*";
-			}
-			else
-			{
-				error("enotsup: %s", name.c_str());
-			}
-
-			FuncDecl* fakefm = new FuncDecl(Parser::Pin(), name, params, retType);
-			fakefm->isFFI = true;
-			fakefm->codegen(this);
+			return this->module->getOrCreateFunction(Identifier("free", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getVoid(), false), fir::LinkageType::External);
 		}
-
-		return fp;
+		else if(name == "printf")
+		{
+			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+				fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
+		}
+		else if(name == "abort")
+		{
+			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
+				fir::FunctionType::get({ }, fir::Type::getVoid(), false), fir::LinkageType::External);
+		}
+		else if(name == "strlen")
+		{
+			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64(), false), fir::LinkageType::External);
+		}
+		else
+		{
+			error("enotsup: %s", name.c_str());
+		}
 	}
-
-
-
 
 
 
@@ -1366,12 +1392,12 @@ namespace Codegen
 		int runningTypeIndex = 0;
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
-				std::string st = arg->type.strType;
+				std::string st = arg->ptype->str();
 				if(uniqueGenericTypes.find(st) == uniqueGenericTypes.end())
 				{
 					uniqueGenericTypes[st] = runningTypeIndex;
@@ -1384,12 +1410,12 @@ namespace Codegen
 
 		for(auto arg : args)
 		{
-			fir::Type* atype = this->getExprType(arg, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
 			{
-				std::string st = arg->type.strType;
+				std::string st = arg->ptype->str();
 				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
 
 				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]);
@@ -1401,7 +1427,7 @@ namespace Codegen
 
 				if(atype->isLLVariableArrayType())
 				{
-					mangled = "V" + atype->toLLVariableArray()->encodedStr();
+					mangled = "V" + atype->toLLVariableArrayType()->encodedStr();
 				}
 
 				while(atype->isPointerType())
@@ -1435,7 +1461,7 @@ namespace Codegen
 
 
 
-
+	#if 0
 	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
 	{
 		if(decl->isFFI) return false;
@@ -1444,13 +1470,13 @@ namespace Codegen
 		for(auto p : decl->params) es.push_back(p);
 
 		Resolved_t res = this->resolveFunction(decl, decl->ident.name, es, true);
-		if(res.resolved && res.t.first != 0)
+		if(res.resolved && res.t.firFunc != 0 && res.t.funcDecl != decl)
 		{
-			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.second).c_str());
-			for(size_t i = 0; i < __min(decl->params.size(), res.t.second->params.size()); i++)
+			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
+			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
 			{
-				info(res.t.second, "%zu: %s, %s", i, this->getReadableType(decl->params[i]).c_str(),
-					this->getReadableType(res.t.second->params[i]).c_str());
+				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
+					res.t.funcDecl->params[i]->getType(this)->str().c_str());
 			}
 
 			return true;
@@ -1460,6 +1486,7 @@ namespace Codegen
 			return false;
 		}
 	}
+	#endif
 
 	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
@@ -1512,111 +1539,290 @@ namespace Codegen
 	{
 		std::map<std::string, fir::Type*> thistm;
 
+
+		// get rid of this stupid literal nonsense
+		for(size_t i = 0; i < args.size(); i++)
+		{
+			if(args[i]->isPrimitiveType() && args[i]->toPrimitiveType()->isLiteralType())
+				args[i] = args[i]->toPrimitiveType()->getUnliteralType();
+		}
+
+
 		// now check if we *can* instantiate it.
 		// first check the number of arguments.
+
+		bool didSelfParam = false;
+		fir::Type* originalFirstParam = 0;
+
 		if(candidate->params.size() != args.size())
 		{
-			return false;
-		}
-		else
-		{
-			// param count matches...
-			// do a similar thing as the actual mangling -- build a list of
-			// uniquely named types.
+			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
+			// then there's no reason for the parameters to mismatch.
+			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
+				return false;
 
-			std::map<std::string, std::vector<int>> typePositions;
-			std::vector<int> nonGenericTypes;
-
-			int pos = 0;
-			for(auto p : candidate->params)
+			else if(candidate->parentClass && !candidate->isStatic)
 			{
-				std::string s = p->type.strType;
-				if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
+				// make sure it's only one off
+				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
+					return false;
+
+				didSelfParam = true;
+				iceAssert(args.front()->isPointerType() && args.front()->getPointerElementType()->isClassType() && "what, no.");
+
+				originalFirstParam = args.front();
+				args.pop_front();
+
+				iceAssert(candidate->params.size() == args.size());
+			}
+		}
+
+
+
+		// param count matches...
+		// do a similar thing as the actual mangling -- build a list of
+		// uniquely named types.
+
+		// string is name, map is a map from position to indirs.
+		std::map<std::string, std::map<int, int>> typePositions;
+		std::map<int, std::pair<std::string, int>> revTypePositions;
+
+		std::vector<int> nonGenericTypes;
+
+
+
+		// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
+		// so we only check the first n - 1 parameters.
+		VarDecl* varParam = 0;
+		if(candidate->isVariadic)
+		{
+			varParam = candidate->params.back();
+			candidate->params.pop_back();
+		}
+
+
+
+		int pos = 0;
+		for(auto p : candidate->params)
+		{
+			int indirs = 0;
+			std::string s = p->ptype->str();
+			s = unwrapPointerType(s, &indirs);
+
+			if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
+			{
+				typePositions[s][pos] = indirs;
+				revTypePositions[pos] = { s, indirs };
+			}
+			else
+			{
+				nonGenericTypes.push_back(pos);
+			}
+
+			pos++;
+		}
+
+
+		// since this is bound by the size of the candidates, we'll only check the non-var parameters
+		// this ensures we don't array out of bounds.
+		std::map<std::string, fir::Type*> checked;
+		for(size_t i = 0; i < candidate->params.size(); i++)
+		{
+			if(revTypePositions.find(i) != revTypePositions.end())
+			{
+				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
+				std::string s = revTypePositions[i].first;
+				int indirs = revTypePositions[i].second;
+
+				fir::Type* ftype = args[i];
+
+				int givenindrs = 0;
+				while(ftype->isPointerType())
 				{
-					typePositions[s].push_back(pos);
+					ftype = ftype->getPointerElementType();
+					givenindrs++;
+				}
+
+				// check that the base types match
+				// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
+				// ftype here has been reduced.
+
+				if(checked.find(s) != checked.end())
+				{
+					if(ftype != checked[s])
+						return false;
 				}
 				else
 				{
-					nonGenericTypes.push_back(pos);
+					checked[s] = ftype;
 				}
 
-				pos++;
+
+				// check that we have 'enough' pointerness
+				// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
+				if(givenindrs < indirs)
+					return false;
 			}
-
-
-			// this needs to be basically a fully manual check.
-			// 1. check that the generic types match (ie. all the Ts are the same type, all the Ks are the same, etc.)
-			for(auto pair : typePositions)
+			else
 			{
-				fir::Type* ftype = args[pair.second[0]];
-				for(int k : pair.second)
-				{
-					if(args[k] != ftype)
-						return false;
-				}
-			}
-
-
-			// 2. check that the concrete types match.
-			for(int k : nonGenericTypes)
-			{
-				fir::Type* a = args[k];
-				fir::Type* b = cgi->getExprType(candidate->params[k]);
+				// check normal types.
+				fir::Type* a = args[i];
+				fir::Type* b = candidate->params[i]->getType(cgi);
 
 				if(a != b) return false;
 			}
+		}
 
 
 
-			// fill in the typemap.
-			// note that it's okay if we just have one -- if we did this loop more
-			// than once and screwed up the tm, that means we have more than one
-			// candidate, and will error anyway.
 
-			for(auto pair : typePositions)
+
+		// fill in the typemap.
+		// note that it's okay if we just have one -- if we did this loop more
+		// than once and screwed up the tm, that means we have more than one
+		// candidate, and will error anyway.
+
+		for(auto pair : typePositions)
+		{
+			int pos = pair.second.begin()->first;
+			int indrs = pair.second.begin()->second;
+
+			fir::Type* t = args[pos];
+			for(int i = 0; i < indrs; i++)
+				t = t->getPointerElementType();
+
+			thistm[pair.first] = t;
+		}
+
+
+		// last phase: ensure the type constraints are met
+		for(auto cst : thistm)
+		{
+			TypeConstraints_t constr = candidate->genericTypes[cst.first];
+
+			for(auto protstr : constr.protocols)
 			{
-				thistm[pair.first] = args[pair.second[0]];
-			}
+				ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
+				iceAssert(prot);
 
+				bool doesConform = prot->checkTypeConformity(cgi, cst.second);
 
-			// last phase: ensure the type constraints are met
-			for(auto cst : thistm)
-			{
-				TypeConstraints_t constr = candidate->genericTypes[cst.first];
-				if((constr.pointerDegree > 0 && !cst.second->isPointerType())
-					&& cst.second->isPointerType() && (size_t) constr.pointerDegree != cst.second->toPointerType()->getIndirections())
-				{
+				if(!doesConform)
 					return false;
-				}
+			}
+		}
 
-				for(auto protstr : constr.protocols)
+
+		// if we're variadic -- check it.
+		if(varParam != 0)
+		{
+			// add it back first.
+			candidate->params.push_back(varParam);
+
+			// get the type.
+			int indirs = 0;
+			std::string base = varParam->ptype->toVariadicArrayType()->base->str();
+			base = unwrapPointerType(base, &indirs);
+
+
+			if(typePositions.find(base) != typePositions.end())
+			{
+				// already have it
+				// ensure it matches with the ones we've already found.
+
+				fir::Type* resolved = thistm[base];
+				iceAssert(resolved);
+
+
+
+				if(args.size() >= candidate->params.size())
 				{
-					ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
-					iceAssert(prot);
+					// again, check the direct forwarding case
+					if(args.size() == candidate->params.size() && args.back()->isLLVariableArrayType()
+						&& args.back()->toLLVariableArrayType()->getElementType() == resolved)
+					{
+						// direct.
+						// do nothing.
+					}
+					else
+					{
+						for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+						{
+							if(args[i] != resolved)
+								return false;
+						}
 
-					bool doesConform = prot->checkTypeConformity(cgi, cst.second);
+						// should be fine now.
+					}
+				}
+				else
+				{
+					// no varargs were even given
+					// since we have already inferred the type from the other parameters,
+					// we can give this a free pass.
+				}
+			}
+			else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
+			{
+				// ok, we need to be able to deduce the type from the vararg only.
+				// so if none were provided, then give up.
 
-					if(!doesConform)
+				if(args.size() < candidate->params.size())
+					return false;
+
+
+				// great, now just deduce it.
+				// we just need to make sure all the Ts match, and the number of indirections
+				// match *and* are greater than or equal to the specified level.
+
+				fir::Type* first = args[candidate->params.size() - 1];
+
+				// first, make sure the indirections tally
+				int givenindrs = 0;
+				if(first->isPointerType())
+					givenindrs = first->toPointerType()->getIndirections();
+
+				if(givenindrs < indirs)
+					return false;
+
+
+				// ok, check the type itself
+				for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
+				{
+					if(args[i] != first)
 						return false;
 				}
+
+				// ok now.
+				fir::Type* reduced = first;
+				while(reduced->isPointerType())
+					reduced = reduced->getPointerElementType();
+
+				thistm[base] = reduced;
 			}
-
-			// check that we actually have an entry for every type
-			for(auto t : candidate->genericTypes)
-			{
-				if(thistm.find(t.first) == thistm.end())
-					return false;
-			}
-
-
-			*gtm = thistm;
-			return true;
 		}
+
+
+
+
+
+
+
+		// check that we actually have an entry for every type
+		for(auto t : candidate->genericTypes)
+		{
+			if(thistm.find(t.first) == thistm.end())
+				return false;
+		}
+
+
+		*gtm = thistm;
+		return true;
 	}
 
 
 
-	FuncPair_t CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
+	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
 		Func* func, std::deque<fir::Type*> params)
 	{
 		iceAssert(func);
@@ -1628,7 +1834,7 @@ namespace Codegen
 		if(gtm.empty())
 		{
 			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
-			if(!res) return FuncPair_t(0, 0);
+			if(!res) return FuncDefPair::empty();
 		}
 
 
@@ -1651,7 +1857,7 @@ namespace Codegen
 		if(needToCodegen)
 		{
 			Result_t res = fnDecl->generateDeclForGenericFunction(this, gtm);
-			ffunc = (fir::Function*) res.result.first;
+			ffunc = (fir::Function*) res.value;
 
 			this->reifiedGenericFunctions[{ func, gtm }] = ffunc;
 		}
@@ -1673,26 +1879,26 @@ namespace Codegen
 			func->codegen(this, ffunc);
 		}
 
-		this->removeFunctionFromScope({ 0, fnDecl });
+		this->removeFunctionFromScope(FuncDefPair(0, func->decl, func));
 		this->popGenericTypeStack();
 
-		return { ffunc, fnDecl };
+		return FuncDefPair(ffunc, func->decl, func);
 	}
 
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
 	{
 		// try and resolve shit
 		std::map<std::string, fir::Type*> gtm;
 
 		if(candidates.size() == 0)
 		{
-			return { 0, 0 };	// just fail
+			return FuncDefPair::empty();	// just fail
 		}
 
 		std::deque<fir::Type*> fargs;
 		for(auto p : fc->params)
-			fargs.push_back(this->getExprType(p));
+			fargs.push_back(p->getType(this));
 
 		auto it = candidates.begin();
 		while(it != candidates.end())
@@ -1711,26 +1917,58 @@ namespace Codegen
 
 		if(candidates.size() == 0)
 		{
-			return { 0, 0 };
+			return FuncDefPair::empty();
 		}
 		else if(candidates.size() > 1)
 		{
 			std::string cands;
 			for(auto c : candidates)
-				cands += this->printAst(c) + "\n";
+				cands += this->printAst(c->decl) + "\n";
 
-			error(fc, "Ambiguous call to generic function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
+			error(fc, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
 				candidates.size(), cands.c_str());
 		}
 
 		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
 	}
 
-	FuncPair_t CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
 	{
 		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
 		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
 	}
+
+
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
+		fir::FunctionType* ft)
+	{
+		std::deque<FuncDefPair> ret;
+		for(auto fn : candidates)
+		{
+			auto fp = this->instantiateGenericFunctionUsingParameters(user, { }, fn, ft->getArgumentTypes());
+			if(fp.firFunc && fp.funcDef)
+				ret.push_back(fp);
+		}
+
+		if(ret.empty())
+		{
+			return FuncDefPair::empty();
+		}
+		else if(candidates.size() > 1)
+		{
+			std::string cands;
+			for(auto c : candidates)
+				cands += this->printAst(c->decl) + "\n";
+
+			error(user, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n",
+				ret.front().funcDecl->ident.name.c_str(), candidates.size(), cands.c_str());
+		}
+
+		return ret.front();
+	}
+
+
+
 
 
 
@@ -1880,6 +2118,9 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(INT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(INT64_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(INT128_TYPE_STRING) == type)
+			return this->getExtensionsWithName(INT128_TYPE_STRING);
+
 		else if(fir::Type::fromBuiltin(UINT8_TYPE_STRING) == type)
 			return this->getExtensionsWithName(UINT8_TYPE_STRING);
 
@@ -1892,14 +2133,32 @@ namespace Codegen
 		else if(fir::Type::fromBuiltin(UINT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(UINT64_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(UINT128_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UINT128_TYPE_STRING);
+
 		else if(fir::Type::fromBuiltin(FLOAT32_TYPE_STRING) == type)
 			return this->getExtensionsWithName(FLOAT32_TYPE_STRING);
 
 		else if(fir::Type::fromBuiltin(FLOAT64_TYPE_STRING) == type)
 			return this->getExtensionsWithName(FLOAT64_TYPE_STRING);
 
+		else if(fir::Type::fromBuiltin(FLOAT80_TYPE_STRING) == type)
+			return this->getExtensionsWithName(FLOAT80_TYPE_STRING);
+
 		else if(fir::Type::fromBuiltin(BOOL_TYPE_STRING) == type)
 			return this->getExtensionsWithName(BOOL_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(STRING_TYPE_STRING) == type)
+			return this->getExtensionsWithName(STRING_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(CHARACTER_TYPE_STRING) == type)
+			return this->getExtensionsWithName(CHARACTER_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UNICODE_STRING_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UNICODE_STRING_TYPE_STRING);
+
+		else if(fir::Type::fromBuiltin(UNICODE_CHARACTER_TYPE_STRING) == type)
+			return this->getExtensionsWithName(UNICODE_CHARACTER_TYPE_STRING);
 
 		else
 			return { };
@@ -1934,29 +2193,51 @@ namespace Codegen
 				Identifier fnId = Identifier("__builtin_primitive_init_default_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
 				fnId.functionArguments = ft->getArgumentTypes();
 
-				this->module->declareFunction(fnId, ft);
-				fir::Function* fn = this->module->getFunction(fnId);
+				fir::Function* fn = this->module->getOrCreateFunction(fnId, ft, fir::LinkageType::Internal);
 
-				if(fn->getBlockList().size() == 0)
+
+				if(vals[0]->getType()->isPointerType() && vals[0]->getType()->getPointerElementType()->isStringType())
 				{
-					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+					if(fn->getBlockList().size() == 0)
+					{
+						fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
 
-					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
-					this->builder.setCurrentBlock(block);
+						fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+						this->irb.setCurrentBlock(block);
 
-					// fir::Value* param = ++fn->arg_begin();
-					this->builder.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+						// fir::Value* param = ++fn->arg_begin();
+						fir::Value* empty = this->getEmptyString().value;
 
-					this->builder.setCurrentBlock(prevBlock);
+						this->irb.CreateStore(empty, fn->getArguments()[0]);
+
+						this->irb.CreateReturn(empty);
+						this->irb.setCurrentBlock(prevBlock);
+					}
+				}
+				else
+				{
+					if(fn->getBlockList().size() == 0)
+					{
+						fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
+
+						fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+						this->irb.setCurrentBlock(block);
+
+						// fir::Value* param = ++fn->arg_begin();
+						this->irb.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+
+						this->irb.setCurrentBlock(prevBlock);
+					}
 				}
 
+
 				if(vals.size() != fn->getArgumentCount())
-					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+					GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 
 				for(size_t i = 0; i < fn->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != fn->getArguments()[i]->getType())
-						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+						GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 				}
 
 				return fn;
@@ -1969,33 +2250,31 @@ namespace Codegen
 				Identifier fnId = Identifier("__builtin_primitive_init_" + pair->first->encodedStr(), IdKind::AutoGenFunc);
 				fnId.functionArguments = ft->getArgumentTypes();
 
-
-				this->module->declareFunction(fnId, ft);
-				fir::Function* fn = this->module->getFunction(fnId);
+				fir::Function* fn = this->module->declareFunction(fnId, ft);
 
 				if(fn->getBlockList().size() == 0)
 				{
-					fir::IRBlock* prevBlock = this->builder.getCurrentBlock();
+					fir::IRBlock* prevBlock = this->irb.getCurrentBlock();
 
-					fir::IRBlock* block = this->builder.addNewBlockInFunction("entry", fn);
-					this->builder.setCurrentBlock(block);
+					fir::IRBlock* block = this->irb.addNewBlockInFunction("entry", fn);
+					this->irb.setCurrentBlock(block);
 
 					iceAssert(fn->getArgumentCount() > 1);
 
 					// fir::Value* param = ++fn->arg_begin();
-					this->builder.CreateReturn(fn->getArguments()[1]);
+					this->irb.CreateReturn(fn->getArguments()[1]);
 
-					this->builder.setCurrentBlock(prevBlock);
+					this->irb.setCurrentBlock(prevBlock);
 				}
 
 
 				if(vals.size() != fn->getArgumentCount())
-					GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+					GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 
 				for(size_t i = 0; i < fn->getArgumentCount(); i++)
 				{
 					if(vals[i]->getType() != fn->getArguments()[i]->getType())
-						GenError::invalidInitialiser(this, user, this->getReadableType(pair->first), vals);
+						GenError::invalidInitialiser(this, user, pair->first->str(), vals);
 				}
 
 
@@ -2007,17 +2286,18 @@ namespace Codegen
 			}
 		}
 
-
 		if(pair->second.second == TypeKind::TypeAlias)
 		{
-			iceAssert(pair->second.second == TypeKind::TypeAlias);
-			TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
-			iceAssert(ta);
+			// iceAssert(pair->second.second == TypeKind::TypeAlias);
+			// TypeAlias* ta = dynamic_cast<TypeAlias*>(pair->second.first);
+			// iceAssert(ta);
 
-			TypePair_t* tp = this->getTypeByString(ta->origType);
-			iceAssert(tp);
+			// TypePair_t* tp = this->getTypeByString(ta->origType);
+			// iceAssert(tp);
 
-			return this->getStructInitialiser(user, tp, vals);
+			// return this->getStructInitialiser(user, tp, vals);
+
+			iceAssert(0);
 		}
 		else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 		{
@@ -2026,9 +2306,9 @@ namespace Codegen
 
 			// use function overload operator for this.
 
-			std::deque<FuncPair_t> fns;
+			std::deque<FuncDefPair> fns;
 			for(auto f : sb->initFuncs)
-				fns.push_back({ f, 0 });
+				fns.push_back(FuncDefPair(f, 0, 0));
 
 			std::deque<ExtensionDef*> exts = this->getExtensionsForType(sb);
 			for(auto ext : exts)
@@ -2047,7 +2327,7 @@ namespace Codegen
 
 					if(func->decl->attribs & Attr_VisPublic || ext->parentRoot == this->rootNode)
 					{
-						fns.push_back({ f, 0 });
+						fns.push_back(FuncDefPair(f, 0, 0));
 					}
 				}
 			}
@@ -2070,7 +2350,7 @@ namespace Codegen
 				error(user, "No initialiser for type '%s' taking parameters (%s)", sb->ident.name.c_str(), argstr.c_str());
 			}
 
-			auto ret = this->module->getFunction(res.t.first->getName());
+			auto ret = this->module->getFunction(res.t.firFunc->getName());
 			iceAssert(ret);
 
 			return ret;
@@ -2088,6 +2368,57 @@ namespace Codegen
 
 
 
+	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
+	{
+		auto list = this->module->getFunctionsWithName(id);
+		if(list.empty()) return 0;
+
+		else if(list.size() > 1)
+			error(user, "Searched for ambiguous function by name '%s'", id.str().c_str());
+
+		return list.front();
+	}
+
+	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Expr* user)
+	{
+		auto list = this->module->getFunctionsWithName(id);
+
+		if(list.empty())
+		{
+			error(user, "Using undeclared function '%s'", id.str().c_str());
+		}
+		else if(list.size() == 1)
+		{
+			if(list.front()->getType() == ft)
+				return list.front();
+
+			else
+				error(user, "Found unambiguous function with name '%s', but mismatched type '%s'", id.str().c_str(), ft->str().c_str());
+		}
+
+		// more than one.
+		std::deque<fir::Function*> ret;
+
+		for(auto f : list)
+		{
+			if(f->getType() == ft)
+				ret.push_back(f);
+		}
+
+		if(ret.size() == 0)
+			error(user, "No function with name '%s', matching type '%s'", id.str().c_str(), ft->str().c_str());
+
+		else if(ret.size() > 1)
+			error(user, "Ambiguous functions with name '%s', matching type '%s' (HOW??)", id.str().c_str(), ft->str().c_str());
+
+		else
+			return ret[0];
+	}
+
+
+
+
+
 
 
 
@@ -2097,82 +2428,82 @@ namespace Codegen
 
 	Result_t CodegenInstance::assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr)
 	{
-		fir::Value* typegep = this->builder.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
-		typegep = this->builder.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
+		fir::Value* typegep = this->irb.CreateStructGEP(lhsPtr, 0, "anyGEP");	// Any
+		typegep = this->irb.CreateStructGEP(typegep, 0, "any_TypeGEP");			// Type
 
 		size_t index = TypeInfo::getIndexForType(this, rhs->getType());
 		iceAssert(index > 0);
 
-		fir::Value* constint = fir::ConstantInt::getUnsigned(typegep->getType()->getPointerElementType(), index);
-		this->builder.CreateStore(constint, typegep);
+		fir::Value* constint = fir::ConstantInt::get(typegep->getType()->getPointerElementType(), index);
+		this->irb.CreateStore(constint, typegep);
 
 
 
-		fir::Value* valgep = this->builder.CreateStructGEP(lhsPtr, 1);
+		fir::Value* valgep = this->irb.CreateStructGEP(lhsPtr, 1);
 		if(rhsPtr)
 		{
-			fir::Value* casted = this->builder.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
-			this->builder.CreateStore(casted, valgep);
+			fir::Value* casted = this->irb.CreatePointerTypeCast(rhsPtr, valgep->getType()->getPointerElementType());
+			this->irb.CreateStore(casted, valgep);
 		}
 		else
 		{
 			fir::Type* targetType = rhs->getType()->isIntegerType() ? valgep->getType()->getPointerElementType() :
-				fir::PrimitiveType::getInt64(this->getContext());
+				fir::Type::getInt64(this->getContext());
 
 
 			if(rhs->getType()->isIntegerType())
 			{
-				fir::Value* casted = this->builder.CreateIntToPointerCast(rhs, targetType);
-				this->builder.CreateStore(casted, valgep);
+				fir::Value* casted = this->irb.CreateIntToPointerCast(rhs, targetType);
+				this->irb.CreateStore(casted, valgep);
 			}
 			else if(rhs->getType()->isFloatingPointType())
 			{
-				fir::Value* casted = this->builder.CreateBitcast(rhs, fir::PrimitiveType::getUintN(rhs->getType()->toPrimitiveType()->getFloatingPointBitWidth()));
+				fir::Value* casted = this->irb.CreateBitcast(rhs, fir::PrimitiveType::getUintN(rhs->getType()->toPrimitiveType()->getFloatingPointBitWidth()));
 
-				casted = this->builder.CreateIntSizeCast(casted, targetType);
-				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
-				this->builder.CreateStore(casted, valgep);
+				casted = this->irb.CreateIntSizeCast(casted, targetType);
+				casted = this->irb.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
+				this->irb.CreateStore(casted, valgep);
 			}
 			else
 			{
-				fir::Value* casted = this->builder.CreateBitcast(rhs, targetType);
-				casted = this->builder.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
-				this->builder.CreateStore(casted, valgep);
+				fir::Value* casted = this->irb.CreateBitcast(rhs, targetType);
+				casted = this->irb.CreateIntToPointerCast(casted, valgep->getType()->getPointerElementType());
+				this->irb.CreateStore(casted, valgep);
 			}
 		}
 
-		return Result_t(this->builder.CreateLoad(lhsPtr), lhsPtr);
+		return Result_t(this->irb.CreateLoad(lhsPtr), lhsPtr);
 	}
 
 
 	Result_t CodegenInstance::extractValueFromAny(fir::Type* type, fir::Value* ptr)
 	{
-		fir::Value* valgep = this->builder.CreateStructGEP(ptr, 1);
-		fir::Value* loadedval = this->builder.CreateLoad(valgep);
+		fir::Value* valgep = this->irb.CreateStructGEP(ptr, 1);
+		fir::Value* loadedval = this->irb.CreateLoad(valgep);
 
 		if(type->isStructType() || type->isClassType())
 		{
 			// use pointer stuff
-			fir::Value* valptr = this->builder.CreatePointerTypeCast(loadedval, type->getPointerTo());
-			fir::Value* loaded = this->builder.CreateLoad(valptr);
+			fir::Value* valptr = this->irb.CreatePointerTypeCast(loadedval, type->getPointerTo());
+			fir::Value* loaded = this->irb.CreateLoad(valptr);
 
 			return Result_t(loaded, valptr);
 		}
 		else
 		{
 			// the pointer is actually a literal
-			fir::Type* targetType = type->isIntegerType() ? type : fir::PrimitiveType::getInt64(this->getContext());
-			fir::Value* val = this->builder.CreatePointerToIntCast(loadedval, targetType);
+			fir::Type* targetType = type->isIntegerType() ? type : fir::Type::getInt64(this->getContext());
+			fir::Value* val = this->irb.CreatePointerToIntCast(loadedval, targetType);
 
 			if(val->getType() != type)
 			{
 				if(type->isFloatingPointType()
 					&& type->toPrimitiveType()->getFloatingPointBitWidth() != val->getType()->toPrimitiveType()->getIntegerBitWidth())
 				{
-					val = builder.CreateIntSizeCast(val, fir::PrimitiveType::getUintN(type->toPrimitiveType()->getFloatingPointBitWidth()));
+					val = this->irb.CreateIntSizeCast(val, fir::PrimitiveType::getUintN(type->toPrimitiveType()->getFloatingPointBitWidth()));
 				}
 
-				val = this->builder.CreateBitcast(val, type);
+				val = this->irb.CreateBitcast(val, type);
 			}
 
 			return Result_t(val, 0);
@@ -2187,12 +2518,881 @@ namespace Codegen
 		if(!valuePtr)
 		{
 			// valuePtr = this->getStackAlloc(value->getType(), "tempAlloca");
-			// this->builder.CreateStore(value, valuePtr);
+			// this->irb.CreateStore(value, valuePtr);
 		}
 
 		fir::Value* anyptr = this->getStackAlloc(anyt->first, "anyPtr");
 		return this->assignValueToAny(anyptr, value, valuePtr);
 	}
+
+
+
+
+	Result_t CodegenInstance::makeStringLiteral(std::string str)
+	{
+		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
+		fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+
+		// note(portability): this isn't going to work on non-2's-complement platforms
+		// where 0xFFFFFFFFFFFFFFFF != -1.
+
+		// if this basic assumption fails however, then everything is out the window, and IDGAF anymore.
+
+		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
+		// this simplifies code a lot (generated code, too)
+
+		std::string s = str;
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+		s.insert(s.begin(), 0xFF);
+
+		fir::Value* empty = this->module->createGlobalString(s);
+
+		empty = this->irb.CreatePointerAdd(this->irb.CreateConstGEP2(empty, 0, 0), fir::ConstantInt::getInt64(8));
+
+		fir::Value* len = fir::ConstantInt::getInt64(str.length());
+
+		this->irb.CreateSetStringData(strp, empty);
+		this->irb.CreateSetStringLength(strp, len);
+
+		strp->makeImmutable();
+		return Result_t(this->irb.CreateLoad(strp), strp);
+	}
+
+
+
+	Result_t CodegenInstance::getEmptyString()
+	{
+		return this->makeStringLiteral("");
+	}
+
+	Result_t CodegenInstance::getNullString()
+	{
+		return this->makeStringLiteral("(null)");
+	}
+
+
+
+
+
+
+	#define BUILTIN_STRINGREF_INCR_FUNC_NAME		"__.stringref_incr"
+	#define BUILTIN_STRINGREF_DECR_FUNC_NAME		"__.stringref_decr"
+	#define BUILTIN_STRING_APPEND_FUNC_NAME			"__.string_append"
+	#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME	"__.string_appendchar"
+	#define BUILTIN_STRING_CMP_FUNC_NAME			"__.string_cmp"
+
+	#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME	"__.string_checkliteralmodify"
+	#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME	"__.string_boundscheck"
+
+	#define DEBUG_ARC 0
+
+	fir::Function* CodegenInstance::getStringAppendFunction()
+	{
+		fir::Function* appendf = this->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
+
+		if(!appendf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::Type::getStringType(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+
+
+			// add two strings
+			// steps:
+			//
+			// 1. get the size of the left string
+			// 2. get the size of the right string
+			// 3. add them together
+			// 4. malloc a string of that size + 1
+			// 5. make a new string
+			// 6. set the buffer to the malloced buffer
+			// 7. set the length to a + b
+			// 8. return.
+
+			// get an empty string
+			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+			newstrp->setName("newstrp");
+
+			iceAssert(s1);
+			iceAssert(s2);
+
+			fir::Value* lhslen = this->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* rhslen = this->irb.CreateGetStringLength(s2, "l2");
+
+			fir::Value* lhsbuf = this->irb.CreateGetStringData(s1, "d1");
+			fir::Value* rhsbuf = this->irb.CreateGetStringData(s2, "d2");
+
+			// ok. combine the lengths
+			fir::Value* newlen = this->irb.CreateAdd(lhslen, rhslen);
+
+			// space for null + refcount
+			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			fir::Value* malloclen = this->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
+
+			// now malloc.
+			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc")->getName());
+			iceAssert(mallocf);
+
+			fir::Value* buf = this->irb.CreateCall1(mallocf, malloclen);
+
+			// move it forward (skip the refcount)
+			buf = this->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+			// now memcpy
+			fir::Function* memcpyf = this->module->getIntrinsicFunction("memcpy");
+			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			fir::Value* offsetbuf = this->irb.CreatePointerAdd(buf, lhslen);
+			this->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, this->irb.CreateIntSizeCast(rhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			// null terminator
+			fir::Value* nt = this->irb.CreateGetPointer(offsetbuf, rhslen);
+			this->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+			#if 0
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("malloc: %p / %p (%s)\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+			}
+			#endif
+
+			// ok, now fix it
+			this->irb.CreateSetStringData(newstrp, buf);
+			this->irb.CreateSetStringLength(newstrp, newlen);
+			this->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+
+			this->irb.CreateReturn(this->irb.CreateLoad(newstrp));
+
+			appendf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(appendf);
+		return appendf;
+	}
+
+	fir::Function* CodegenInstance::getStringCharAppendFunction()
+	{
+		fir::Function* appendf = this->module->getFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name));
+
+		if(!appendf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getCharType() },
+				fir::Type::getStringType(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+			// add a char to a string
+			// steps:
+			//
+			// 1. get the size of the left string
+			// 2. malloc a string of that size + 1=2
+			// 3. make a new string
+			// 4. set the buffer to the malloced buffer
+			// 5. memcpy.
+			// 6. set the length to a + b
+			// 7. return.
+
+			// get an empty string
+			fir::Value* newstrp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+			newstrp->setName("newstrp");
+
+			iceAssert(s1);
+			iceAssert(s2);
+
+			fir::Value* lhslen = this->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* lhsbuf = this->irb.CreateGetStringData(s1, "d1");
+
+
+			// space for null (1) + refcount (i64size) + the char (another 1)
+			size_t i64Size = this->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			fir::Value* malloclen = this->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + i64Size));
+
+			// now malloc.
+			fir::Function* mallocf = this->module->getFunction(this->getOrDeclareLibCFunc("malloc")->getName());
+			iceAssert(mallocf);
+
+			fir::Value* buf = this->irb.CreateCall1(mallocf, malloclen);
+
+			// move it forward (skip the refcount)
+			buf = this->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+			// now memcpy
+			fir::Function* memcpyf = this->module->getIntrinsicFunction("memcpy");
+			this->irb.CreateCall(memcpyf, { buf, lhsbuf, this->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			fir::Value* offsetbuf = this->irb.CreatePointerAdd(buf, lhslen);
+
+			// store the char.
+			fir::Value* ch = this->irb.CreateBitcast(s2, fir::Type::getInt8());
+			this->irb.CreateStore(ch, offsetbuf);
+
+			// null terminator
+			fir::Value* nt = this->irb.CreateGetPointer(offsetbuf, fir::ConstantInt::getInt64(1));
+			this->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+
+			#if 0
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("malloc: %p / %p (%s)\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+			}
+			#endif
+
+			// ok, now fix it
+			this->irb.CreateSetStringData(newstrp, buf);
+			this->irb.CreateSetStringLength(newstrp, this->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
+			this->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+
+			this->irb.CreateReturn(this->irb.CreateLoad(newstrp));
+
+			appendf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(appendf);
+		return appendf;
+	}
+
+
+
+
+
+
+
+	fir::Function* CodegenInstance::getStringCompareFunction()
+	{
+		fir::Function* cmpf = this->module->getFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name));
+
+		if(!cmpf)
+		{
+			// great.
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::Type::getInt64(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+			/*
+				int strcmp(const char* s1, const char* s2)
+				{
+					while(*s1 && (*s1 == *s2))
+						s1++, s2++;
+
+					return *(const unsigned char*) s1 - *(const unsigned char*) s2;
+				}
+			*/
+
+			{
+				fir::Value* str1p = this->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
+				this->irb.CreateStore(this->irb.CreateGetStringData(s1, "s1"), str1p);
+
+				fir::Value* str2p = this->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
+				this->irb.CreateStore(this->irb.CreateGetStringData(s2, "s2"), str2p);
+
+
+				fir::IRBlock* loopcond = this->irb.addNewBlockInFunction("cond1", func);
+				fir::IRBlock* loopincr = this->irb.addNewBlockInFunction("loopincr", func);
+				fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+				this->irb.CreateUnCondBranch(loopcond);
+				this->irb.setCurrentBlock(loopcond);
+				{
+					fir::IRBlock* cond2 = this->irb.addNewBlockInFunction("cond2", func);
+
+					fir::Value* str1 = this->irb.CreateLoad(str1p);
+					fir::Value* str2 = this->irb.CreateLoad(str2p);
+
+					// make sure ptr1 is not null
+					fir::Value* cnd = this->irb.CreateICmpNEQ(this->irb.CreateLoad(str1), fir::ConstantInt::getInt8(0));
+					this->irb.CreateCondBranch(cnd, cond2, merge);
+
+					this->irb.setCurrentBlock(cond2);
+					{
+						// check that they are equal
+						fir::Value* iseq = this->irb.CreateICmpEQ(this->irb.CreateLoad(str1), this->irb.CreateLoad(str2));
+						this->irb.CreateCondBranch(iseq, loopincr, merge);
+					}
+
+
+					this->irb.setCurrentBlock(loopincr);
+					{
+						// increment str1 and str2
+						fir::Value* v1 = this->irb.CreatePointerAdd(str1, fir::ConstantInt::getInt64(1));
+						fir::Value* v2 = this->irb.CreatePointerAdd(str2, fir::ConstantInt::getInt64(1));
+
+						this->irb.CreateStore(v1, str1p);
+						this->irb.CreateStore(v2, str2p);
+
+						this->irb.CreateUnCondBranch(loopcond);
+					}
+				}
+
+				this->irb.setCurrentBlock(merge);
+				fir::Value* ret = this->irb.CreateSub(this->irb.CreateLoad(this->irb.CreateLoad(str1p)),
+					this->irb.CreateLoad(this->irb.CreateLoad(str2p)));
+
+				ret = this->irb.CreateIntSizeCast(ret, func->getReturnType());
+
+				this->irb.CreateReturn(ret);
+			}
+
+			cmpf = func;
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
+	}
+
+
+
+
+
+
+	fir::Function* CodegenInstance::getStringRefCountIncrementFunction()
+	{
+		fir::Function* incrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
+
+		if(!incrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* getref = this->irb.addNewBlockInFunction("getref", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+			this->irb.setCurrentBlock(entry);
+
+			// if ptr is 0, we exit early.
+			{
+				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+
+				this->irb.CreateCondBranch(cond, merge, getref);
+			}
+
+
+			this->irb.setCurrentBlock(getref);
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// never increment the refcount if this is a string literal
+			// how do we know? the refcount was -1 to begin with.
+
+			// check.
+			fir::IRBlock* doadd = this->irb.addNewBlockInFunction("doref", func);
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, merge, doadd);
+			}
+
+			this->irb.setCurrentBlock(doadd);
+			fir::Value* newRc = this->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			#if DEBUG_ARC
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(incr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
+			#endif
+
+			this->irb.CreateUnCondBranch(merge);
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			incrf = func;
+		}
+
+		iceAssert(incrf);
+		return incrf;
+	}
+
+
+	fir::Function* CodegenInstance::getStringRefCountDecrementFunction()
+	{
+		fir::Function* decrf = this->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
+
+		if(!decrf)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* checkneg = this->irb.addNewBlockInFunction("checkneg", func);
+			fir::IRBlock* dotest = this->irb.addNewBlockInFunction("dotest", func);
+			fir::IRBlock* dealloc = this->irb.addNewBlockInFunction("deallocate", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+
+			// note:
+			// if the ptr is 0, we exit immediately
+			// if the refcount is -1, we exit as well.
+
+
+			this->irb.setCurrentBlock(entry);
+			{
+				fir::Value* ptr = this->irb.CreateGetStringData(func->getArguments()[0]);
+				fir::Value* cond = this->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+
+				this->irb.CreateCondBranch(cond, merge, checkneg);
+			}
+
+
+			// needs to handle freeing the thing.
+			this->irb.setCurrentBlock(checkneg);
+			fir::Value* curRc = this->irb.CreateGetStringRefCount(func->getArguments()[0]);
+
+			// check.
+			{
+				fir::Value* cond = this->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, merge, dotest);
+			}
+
+
+			this->irb.setCurrentBlock(dotest);
+			fir::Value* newRc = this->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
+			this->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+
+			#if DEBUG_ARC
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("(decr) new rc of %p (%s) = %d\n");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				auto bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+				this->irb.CreateCall(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
+					newRc });
+			}
+			#endif
+
+			{
+				fir::Value* cond = this->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
+				this->irb.CreateCondBranch(cond, dealloc, merge);
+
+				this->irb.setCurrentBlock(dealloc);
+
+				// call free on the buffer.
+				fir::Value* bufp = this->irb.CreateGetStringData(func->getArguments()[0]);
+
+
+				#if DEBUG_ARC
+				{
+					fir::Value* tmpstr = this->module->createGlobalString("free %p (%s)\n");
+					tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+					this->irb.CreateCall3(this->module->getFunction(this->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr,
+						bufp, bufp);
+				}
+				#endif
+
+
+
+				fir::Function* freefn = this->module->getFunction(this->getOrDeclareLibCFunc("free")->getName());
+				iceAssert(freefn);
+
+				this->irb.CreateCall1(freefn, this->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
+
+				this->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+				this->irb.CreateUnCondBranch(merge);
+			}
+
+			this->irb.setCurrentBlock(merge);
+			this->irb.CreateReturnVoid();
+
+			this->irb.setCurrentBlock(restore);
+
+			decrf = func;
+		}
+
+		iceAssert(decrf);
+		return decrf;
+	}
+
+
+
+
+	fir::Function* CodegenInstance::getStringBoundsCheckFunction()
+	{
+		fir::Function* fn = this->module->getFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* failb = this->irb.addNewBlockInFunction("fail", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* arg1 = func->getArguments()[0];
+			fir::Value* arg2 = func->getArguments()[1];
+
+			fir::Value* len = this->irb.CreateGetStringLength(arg1);
+			fir::Value* res = this->irb.CreateICmpGEQ(arg2, len);
+
+			this->irb.CreateCondBranch(res, failb, merge);
+			this->irb.setCurrentBlock(failb);
+			{
+				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
+					fir::LinkageType::External);
+
+				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::LinkageType::External);
+
+				// basically:
+				// void* stderr = fdopen(2, "w")
+				// fprintf(stderr, "", bla bla)
+
+				fir::Value* tmpstr = this->module->createGlobalString("w");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				fir::Value* fmtstr = this->module->createGlobalString("Tried to index string at index '%zu'; length is only '%zu'! (max index is thus '%zu')\n");
+				fmtstr = this->irb.CreateConstGEP2(fmtstr, 0, 0);
+
+				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				this->irb.CreateCall(fprintfn, { err, fmtstr, arg2, len, this->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
+
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
+				this->irb.CreateUnreachable();
+			}
+
+			this->irb.setCurrentBlock(merge);
+			{
+				this->irb.CreateReturnVoid();
+			}
+
+			fn = func;
+
+
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
+
+
+
+	fir::Function* CodegenInstance::getStringCheckLiteralWriteFunction()
+	{
+		fir::Function* fn = this->module->getFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = this->irb.getCurrentBlock();
+
+
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* failb = this->irb.addNewBlockInFunction("fail", func);
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", func);
+
+			this->irb.setCurrentBlock(entry);
+
+			fir::Value* arg1 = func->getArguments()[0];
+			fir::Value* arg2 = func->getArguments()[1];
+
+			fir::Value* rc = this->irb.CreateGetStringRefCount(arg1);
+			fir::Value* res = this->irb.CreateICmpLT(rc, fir::ConstantInt::getInt64(0));
+
+			this->irb.CreateCondBranch(res, failb, merge);
+			this->irb.setCurrentBlock(failb);
+			{
+				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
+					fir::LinkageType::External);
+
+				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::LinkageType::External);
+
+				// basically:
+				// void* stderr = fdopen(2, "w")
+				// fprintf(stderr, "", bla bla)
+
+				fir::Value* tmpstr = this->module->createGlobalString("w");
+				tmpstr = this->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				fir::Value* fmtstr = this->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zu'!\n");
+				fmtstr = this->irb.CreateConstGEP2(fmtstr, 0, 0);
+
+				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				fir::Value* dp = this->irb.CreateGetStringData(arg1);
+				this->irb.CreateCall(fprintfn, { err, fmtstr, dp, arg2 });
+
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
+				this->irb.CreateUnreachable();
+			}
+
+			this->irb.setCurrentBlock(merge);
+			{
+				this->irb.CreateReturnVoid();
+			}
+
+			fn = func;
+
+
+			this->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static bool isStructuredAggregate(fir::Type* t)
+	{
+		return t->isStructType() || t->isClassType() || t->isTupleType();
+	}
+
+
+	template <typename T>
+	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
+	{
+		iceAssert(cgi->isRefCountedType(type));
+		iceAssert(value->getType()->isPointerType());
+
+		size_t i = 0;
+		for(auto m : type->getElements())
+		{
+			if(cgi->isRefCountedType(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(incr)
+					cgi->incrementRefCount(mem);
+
+				else
+					cgi->decrementRefCount(mem);
+			}
+			else if(isStructuredAggregate(m))
+			{
+				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+
+				if(m->isStructType())
+					doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
+
+				else if(m->isClassType())
+					doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
+
+				else if(m->isTupleType())
+					doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
+			}
+
+			i++;
+		}
+	}
+
+	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			this->irb.CreateCall1(incrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
+
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
+		}
+		else
+		{
+			error("no");
+		}
+	}
+
+	void CodegenInstance::decrementRefCount(fir::Value* strp)
+	{
+		iceAssert(strp->getType()->isPointerType());
+		if(strp->getType()->getPointerElementType()->isStringType())
+		{
+			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+
+			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			this->irb.CreateCall1(decrf, strp);
+		}
+		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		{
+			auto ty = strp->getType()->getPointerElementType();
+			if(ty->isStructType())
+				doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
+
+			else if(ty->isClassType())
+				doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
+
+			else if(ty->isTupleType())
+				doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
+		}
+		else
+		{
+			error("no");
+		}
+	}
+
+
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
+		ValueKind rhsVK, bool isInit)
+	{
+		// if you're doing stupid things:
+		if(!this->isRefCountedType(val->getType()))
+		{
+			error(user, "not refcounted");
+		}
+
+		// ok...
+		// if the rhs is an lvalue, it's simple.
+		// increment its refcount, decrement the left side refcount, store, return.
+		if(rhsVK == ValueKind::LValue)
+		{
+			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
+			this->incrementRefCount(ptr);
+
+			// decrement left side
+			if(!isInit)
+				this->decrementRefCount(target);
+
+			// store
+			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+		}
+		else
+		{
+			// the rhs has already been evaluated
+			// as an rvalue, its refcount *SHOULD* be one
+			// so we don't do anything to it
+			// instead, decrement the left side
+
+			if(!isInit)
+				this->decrementRefCount(target);
+
+			// to avoid double-freeing, we remove 'val' from the list of refcounted things
+			// since it's an rvalue, it can't be "re-referenced", so to speak.
+
+			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
+			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
+
+			if(ptr)
+				this->removeRefCountedValueIfExists(ptr);
+
+			// now we just store as usual
+			this->irb.CreateStore(val, target);
+		}
+	}
+
+
+
+
+
+
 
 
 
@@ -2205,13 +3405,13 @@ namespace Codegen
 		fir::LLVariableArrayType* arrType = fir::LLVariableArrayType::get(ptr->getType()->getPointerElementType());
 		fir::Value* arr = this->getStackAlloc(arrType, "Any_Variadic_Array");
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
-		fir::Value* lenGEP = this->builder.CreateStructGEP(arr, 1);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arr, 0);
+		fir::Value* lenGEP = this->irb.CreateStructGEP(arr, 1);
 
-		this->builder.CreateStore(ptr, ptrGEP);
-		this->builder.CreateStore(length, lenGEP);
+		this->irb.CreateStore(ptr, ptrGEP);
+		this->irb.CreateStore(length, lenGEP);
 
-		return Result_t(this->builder.CreateLoad(arr), arr);
+		return Result_t(this->irb.CreateLoad(arr), arr);
 	}
 
 	Result_t CodegenInstance::indexLLVariableArray(fir::Value* arr, fir::Value* index)
@@ -2219,13 +3419,13 @@ namespace Codegen
 		iceAssert(arr->getType()->isLLVariableArrayType());
 		iceAssert(index->getType()->isIntegerType());
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arr, 0);
-		fir::Value* ptr = this->builder.CreateLoad(ptrGEP);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arr, 0);
+		fir::Value* ptr = this->irb.CreateLoad(ptrGEP);
 
 		// todo: bounds checking?
 
-		fir::Value* gep = this->builder.CreateGEP2(ptr, fir::ConstantInt::getUint64(0), index);
-		return Result_t(this->builder.CreateLoad(gep), gep);
+		fir::Value* gep = this->irb.CreateGEP2(ptr, fir::ConstantInt::getUint64(0), index);
+		return Result_t(this->irb.CreateLoad(gep), gep);
 	}
 
 	Result_t CodegenInstance::getLLVariableArrayDataPtr(fir::Value* arrPtr)
@@ -2233,8 +3433,8 @@ namespace Codegen
 		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
 		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* ptrGEP = this->builder.CreateStructGEP(arrPtr, 0);
-		return Result_t(this->builder.CreateLoad(ptrGEP), ptrGEP);
+		fir::Value* ptrGEP = this->irb.CreateStructGEP(arrPtr, 0);
+		return Result_t(this->irb.CreateLoad(ptrGEP), ptrGEP);
 	}
 
 	Result_t CodegenInstance::getLLVariableArrayLength(fir::Value* arrPtr)
@@ -2242,8 +3442,8 @@ namespace Codegen
 		iceAssert(arrPtr->getType()->isPointerType() && "not a pointer type");
 		iceAssert(arrPtr->getType()->getPointerElementType()->isLLVariableArrayType());
 
-		fir::Value* lenGEP = this->builder.CreateStructGEP(arrPtr, 1);
-		return Result_t(this->builder.CreateLoad(lenGEP), lenGEP);
+		fir::Value* lenGEP = this->irb.CreateStructGEP(arrPtr, 1);
+		return Result_t(this->irb.CreateLoad(lenGEP), lenGEP);
 	}
 
 
@@ -2285,45 +3485,6 @@ namespace Codegen
 
 
 
-
-	Result_t CodegenInstance::doPointerArithmetic(ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs)
-	{
-		iceAssert(lhs->getType()->isPointerType() && rhs->getType()->isIntegerType()
-		&& (op == ArithmeticOp::Add || op == ArithmeticOp::Subtract || op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals));
-
-		// first, multiply the RHS by the number of bits the pointer type is, divided by 8
-		// eg. if int16*, then +4 would be +4 int16s, which is (4 * (8 / 4)) = 4 * 2 = 8 bytes
-
-
-		uint64_t ptrWidth = this->execTarget->getPointerWidthInBits();
-		uint64_t typesize = this->execTarget->getTypeSizeInBits(lhs->getType()->getPointerElementType()) / 8;
-
-		fir::Value* intval = fir::ConstantInt::getUnsigned(fir::PrimitiveType::getUintN(ptrWidth, this->getContext()), typesize);
-
-		if(rhs->getType()->toPrimitiveType() != lhs->getType()->toPrimitiveType())
-		{
-			rhs = this->builder.CreateIntSizeCast(rhs, intval->getType());
-		}
-
-
-		// this is the properly adjusted int to add/sub by
-		fir::Value* newrhs = this->builder.CreateMul(rhs, intval);
-
-		// convert the lhs pointer to an int value, so we can add/sub on it
-		fir::Value* ptrval = this->builder.CreatePointerToIntCast(lhs, newrhs->getType());
-
-		// create the add/sub
-		fir::Value* res = this->builder.CreateBinaryOp(op, ptrval, newrhs);
-
-		// turn the int back into a pointer, so we can store it back into the var.
-		fir::Value* tempRes = (lhsPtr && (op == ArithmeticOp::PlusEquals || op == ArithmeticOp::MinusEquals)) ?
-			lhsPtr : this->getStackAlloc(lhs->getType());
-
-
-		fir::Value* properres = this->builder.CreateIntToPointerCast(res, lhs->getType());
-		this->builder.CreateStore(properres, tempRes);
-		return Result_t(properres, tempRes);
-	}
 
 
 	static void _errorNoReturn(Expr* e)
@@ -2342,16 +3503,22 @@ namespace Codegen
 			{
 				have = r->actualReturnValue->getType();
 			}
-
 			if(!have)
 			{
-				have = cgi->getExprType(r->val);
+				have = r->val->getType(cgi);
 			}
+
+			if(have->isParametricType())
+			{
+				if(fir::Type* t = cgi->resolveGenericType(have->toParametricType()->getName()))
+					have = t;
+			}
+
 
 
 			if(retType == 0)
 			{
-				expected = cgi->getExprType(f->decl);
+				expected = f->decl->getType(cgi);
 			}
 			else
 			{
@@ -2362,9 +3529,10 @@ namespace Codegen
 			int dist = cgi->getAutoCastDistance(have, expected);
 
 			if(dist == -1)
+			{
 				error(r, "Function has return type '%s', but return statement returned value of type '%s' instead",
-					cgi->getReadableType(expected).c_str(), cgi->getReadableType(have).c_str());
-
+					expected->str().c_str(), have->str().c_str());
+			}
 
 			return true;
 		}
@@ -2444,13 +3612,13 @@ namespace Codegen
 			*stmtCounter = 0;
 
 
-		bool isVoid = (retType == 0 ? this->getExprType(func) : retType)->isVoidType();
+		bool isVoid = (retType == 0 ? func->getType(this) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function %s has return type '%s', but returns nothing:\n%s", func->decl->ident.name.c_str(),
-				func->decl->type.strType.c_str(), this->printAst(func->decl).c_str());
+			error(func, "Function '%s' has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
+				func->decl->ptype->str().c_str());
 		}
 		else if(isVoid)
 		{
@@ -2477,13 +3645,13 @@ namespace Codegen
 				break;
 		}
 
-		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(this->getExprType(final), this->getExprType(func)) != -1))
+		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(final->getType(this), func->getType(this)) != -1))
 			return true;
 
 		if(!ret)
 		{
 			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				this->getExprType(func)->str().c_str(), this->getExprType(final)->str().c_str());
+				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
 		}
 
 		if(checkType)
@@ -2508,3 +3676,6 @@ namespace Codegen
 
 
 }
+
+
+

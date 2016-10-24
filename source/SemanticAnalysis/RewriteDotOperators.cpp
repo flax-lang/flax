@@ -176,7 +176,12 @@ static void rewriteDotOperator(MemberAccess* ma)
 		ma->matype = MAType::LeftVariable;
 		return;
 	}
-	else if(dynamic_cast<Tuple*>(ma->left))
+	else
+	{
+		ma->matype = MAType::LeftVariable;
+	}
+
+	/*else if(dynamic_cast<Tuple*>(ma->left))
 	{
 		ma->matype = MAType::LeftVariable;
 		return;
@@ -188,12 +193,13 @@ static void rewriteDotOperator(MemberAccess* ma)
 	}
 	else if(dynamic_cast<StringLiteral*>(ma->left))
 	{
-		ma->matype =MAType::LeftVariable;
+		ma->matype = MAType::LeftVariable;
 	}
 	else
 	{
-		error(ma, "?????");
-	}
+		// error(ma, "?????");
+		ma->matype = MAType::LeftVariable;
+	}*/
 }
 
 
@@ -287,6 +293,9 @@ static void findDotOperator(Expr* expr)
 			if(mem->initVal)
 				findDotOperator(mem->initVal);
 		}
+
+		for(auto op : cls->operatorOverloads)
+			findDotOperator(op->func);
 
 		for(auto op : cls->assignmentOverloads)
 			findDotOperator(op->func);

@@ -47,6 +47,8 @@ namespace Parser
 		return modname;
 	}
 
+	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps);
+
 	static bool checkHasMore(ParserState& ps)
 	{
 		return ps.tokens.size() > 0;
@@ -60,6 +62,23 @@ namespace Parser
 	static bool isPostfixUnaryOperator(TType tt)
 	{
 		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
+	}
+
+	static int getOpPrecForUnaryOp(ArithmeticOp op)
+	{
+		switch(op)
+		{
+			case ArithmeticOp::LogicalNot:
+			case ArithmeticOp::Plus:
+			case ArithmeticOp::Minus:
+			case ArithmeticOp::BitwiseNot:
+			case ArithmeticOp::Deref:
+			case ArithmeticOp::AddrOf:
+				return 950;
+
+			default:
+				return -1;
+		}
 	}
 
 	static int getCurOpPrec(ParserState& ps)
@@ -82,19 +101,24 @@ namespace Parser
 				return 100;
 		}
 
-		// note that unary ops do not have precedence.
+		// note that unary ops have precedence handled separately
 		switch(ps.front().type)
 		{
 			case TType::Comma:
-				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
+				return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
+
+			case TType::LSquare:
+				return 1100;
 
 			case TType::Period:
 				return 1000;
 
+			// unary !
+			// unary +/-
+			// bitwise ~
+			// unary &
+			// unary *
 			case TType::As:
-				return 950;
-
-			case TType::LSquare:
 				return 900;
 
 			case TType::DoublePlus:
@@ -295,8 +319,8 @@ namespace Parser
 
 
 		// todo: hacks
+		ps.leftParenNestLevel = 0;
 		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
 		ps.skipNewline();
@@ -473,9 +497,9 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
+		ps.structNestLevel = 0;
+		ps.leftParenNestLevel = 0;
 
 		ps.skipNewline();
 
@@ -685,9 +709,6 @@ namespace Parser
 				case TType::Loop:
 					return parseWhile(ps);
 
-				case TType::For:
-					return parseFor(ps);
-
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
@@ -741,8 +762,8 @@ namespace Parser
 					return parsePrimary(ps);
 
 				case TType::LBrace:
-					parserMessage(Err::Warn, "Anonymous blocks are ignored; to run, preface with 'do'");
-					parseBracedBlock(ps);		// parse it, but throw it away
+					// parse it, but throw it away
+					parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
@@ -780,9 +801,12 @@ namespace Parser
 		if(op != ArithmeticOp::Invalid)
 		{
 			ps.eat();
-			Expr* un = parseUnary(ps);
 
-			return CreateAST(UnaryOp, tk, op, un);
+			int prec = getOpPrecForUnaryOp(op);
+			Expr* un = parseUnary(ps);
+			Expr* thing = parseRhs(ps, un, prec);
+
+			return CreateAST(UnaryOp, tk, op, thing);
 		}
 
 		return parsePrimary(ps);
@@ -847,63 +871,10 @@ namespace Parser
 			if(ps.front().type == TType::RAngle)
 				parserError("Empty type parameter list");
 
-			while(ps.front().type != TType::RAngle)
-			{
-				if(ps.front().type == TType::Identifier)
-				{
-					std::string gt = ps.eat().text;
-					TypeConstraints_t constrs;
-
-					if(ps.front().type == TType::Colon)
-					{
-						ps.eat();
-						if(ps.front().type != TType::Identifier)
-							parserError("Expected identifier after beginning of type constraint list");
-
-						while(ps.front().type == TType::Identifier)
-						{
-							constrs.protocols.push_back(ps.eat().text);
-
-							if(ps.front().type == TType::Ampersand)
-							{
-								ps.eat();
-							}
-							else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-							{
-								parserError("Expected ',' or '>' to end type parameter list (1)");
-							}
-						}
-					}
-					else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-					{
-						parserError("Expected ',' or '>' to end type parameter list (2)");
-					}
-
-					for(size_t i = gt.size() - 1; i > 0; i--)
-					{
-						if(gt[i] == '*')
-							constrs.pointerDegree++;
-					}
-
-					gt = gt.substr(0, gt.size() - constrs.pointerDegree);
-
-					genericTypes[gt] = constrs;
-				}
-				else if(ps.front().type == TType::Comma)
-				{
-					ps.eat();
-				}
-				else if(ps.front().type != TType::RAngle)
-				{
-					parserError("Expected '>' to end type parameter list");
-				}
-			}
-
-			iceAssert(ps.eat().type == TType::RAngle);
+			genericTypes = parseGenericTypeList(ps);
 
 			if(ps.eat().type != TType::LParen)
 				parserError("Expected '(' after function name");
-
 		}
 
 
@@ -946,18 +917,18 @@ namespace Parser
 				parserError("Expected ':' followed by a type");
 
 			Expr* ctype = parseType(ps);
-			v->type = ctype->type;
+			v->ptype = ctype->ptype;
 			delete ctype;		// cleanup
 
 
 
 			// NOTE(ghetto): FUCKING. GHETTO.
-			if(v->type.strType.find("[...]") != std::string::npos)
-			{
+			if(isVariableArg && v->ptype->isVariadicArrayType())
+				parserError("Vararg must be last in the function declaration");
+
+			else if(v->ptype->isVariadicArrayType())
 				isVariableArg = true;
-				if(ps.front().type != TType::RParen)
-					parserError("Vararg must be last in the function declaration");
-			}
+
 
 
 			if(!nameCheck[v->ident.name])
@@ -979,7 +950,7 @@ namespace Parser
 		ps.eat();
 
 		// get return type.
-		std::string ret;
+		pts::Type* ret = 0;
 		Pin retPin;
 		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
 		{
@@ -987,15 +958,15 @@ namespace Parser
 			retPin = ps.front().pin;
 
 			Expr* ctype = parseType(ps);
-			ret = ctype->type.strType;
+			ret = ctype->ptype;
 			delete ctype;
 
-			if(ret == VOID_TYPE_STRING)
-				parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
+			// if(ret->str() == VOID_TYPE_STRING)
+			// 	parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
 		}
 		else
 		{
-			ret = VOID_TYPE_STRING;
+			ret = pts::NamedType::create(VOID_TYPE_STRING);
 		}
 
 		ps.skipNewline();
@@ -1177,203 +1148,276 @@ namespace Parser
 
 
 
-
-
-
-
-
-	Expr* parseType(ParserState& ps)
+	static std::string parseStringTypeIndirections(ParserState& ps)
 	{
-		Token tmp = ps.eat();
+		std::string ret;
 
-		if(tmp.type == TType::Identifier)
+		// handle pointers.
+		while(ps.front().type == TType::Asterisk)
 		{
-			std::string baseType = tmp.text;
+			ret += "*";
+			ps.eat();
+		}
 
-			// parse until we get a non-identifier and non-scoperes
-			if(ps.tokens.size() > 0)
+
+		// handle arrays
+		// check if the next token is a '['.
+		while(ps.front().type == TType::LSquare)
+		{
+			ps.eat();
+
+			// this parses multi-dim array types.
+			Token n = ps.eat();
+			std::string dims;
+
+			if(n.type == TType::Integer)
 			{
-				bool expectingScope = true;
-				Token t = ps.front();
-				while(t.text.length() > 0)
-				{
-					if(t.type == TType::Period && expectingScope)
-					{
-						baseType += ".";
-						expectingScope = false;
-					}
-					else if(t.type == TType::Identifier && !expectingScope)
-					{
-						baseType += t.text;
-						expectingScope = true;
-					}
-					else
-					{
-						break;
-					}
+				dims = "[" + n.text + "]";
+			}
+			else if(n.type == TType::Ellipsis)
+			{
+				dims = "[...]";
+			}
+			else if(n.type == TType::RSquare)
+			{
+				dims = "[]";
+			}
+			else
+			{
+				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for"
+					"a variadic function argument.");
+			}
 
+			bool isVarArray = false;
+			if(n.type == TType::Ellipsis)
+				isVarArray = true;
+
+
+			n = ps.eat();
+			if(n.type != TType::RSquare)
+				parserError(n, "Expected ']' in type specifier, have '%s'", n.text.c_str());
+
+			ret += dims;
+
+			if(isVarArray && ps.front().type == TType::LSquare)
+				parserError("Variadic array must be the last dimension");
+		}
+
+		if(ps.front().type == TType::Asterisk)
+			ret += parseStringTypeIndirections(ps);
+
+		return ret;
+	}
+
+
+	// todo(ugly): this is quite stupid
+	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
+	static std::string parseStringType(ParserState& ps)
+	{
+		// note: use of pop_front() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
+		// conflated with the current type being parsed.
+		Token front = ps.front();
+
+		if(front.type == TType::Identifier)
+		{
+			std::string ret = front.text;
+			ps.pop_front();
+
+			while(true)
+			{
+				if(ps.front().type == TType::Period)
+				{
+					if(ret.back() == '.')
+						parserError("Extraneous '.' in scoped type specifier");
+
+					ret += ".";
 					ps.eat();
-					t = ps.front();
 				}
-			}
-
-
-			if(ps.front().type == TType::LAngle)
-			{
-				ps.eat();
-				baseType += "<";
-
-				while(true)
+				else if(ps.front().type == TType::Identifier)
 				{
-					Expr* e = parseType(ps);
-					baseType += e->type.strType;
-
-					if(ps.front().type == TType::Comma)
-					{
-						baseType += ",";
-						ps.eat();
-					}
-					else if(ps.front().type == TType::RAngle)
-					{
-						break;
-					}
-					else
-					{
-						parserError("Unexpected token %s in generic type list", ps.front().text.c_str());
-					}
-				}
-
-				iceAssert(ps.eat().type == TType::RAngle);
-				baseType += ">";
-			}
-
-
-
-
-
-
-
-
-			std::string ptrAppend = "";
-			if(ps.tokens.size() > 0 && (ps.front().type == TType::Ptr || ps.front().type == TType::Asterisk))
-			{
-				while(ps.front().type == TType::Ptr || ps.front().type == TType::Asterisk)
-					ps.eat(), ptrAppend += "*";
-			}
-
-			// check if the next token is a '['.
-			while(ps.front().type == TType::LSquare)
-			{
-				ps.eat();
-
-				// this parses multi-dim array types.
-				Token n = ps.eat();
-				std::string dims;
-
-				if(n.type == TType::Integer)
-				{
-					dims = "[" + n.text + "]";
-				}
-				else if(n.type == TType::Ellipsis)
-				{
-					dims = "[...]";
-				}
-				else if(n.type == TType::RSquare)
-				{
-					dims = "[]";
+					ret += ps.front().text;
+					ps.pop_front();
 				}
 				else
 				{
-					parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for"
-						"a variadic function argument.");
-				}
-
-				bool isVarArray = false;
-				if(n.type == TType::Ellipsis)
-					isVarArray = true;
-
-
-				n = ps.eat();
-				if(n.type != TType::RSquare)
-					parserError("Expected ']', have %s", n.text.c_str());
-
-				ptrAppend += dims;
-
-				if(isVarArray && ps.front().type == TType::LSquare)
-				{
-					parserError("Variadic array must be the last dimension");
+					break;
 				}
 			}
 
-			std::string ret = baseType + ptrAppend;
-			Expr* ct = CreateAST(DummyExpr, tmp);
-			ct->type.isLiteral = true;
-			ct->type.strType = ret;
 
-			return ct;
+			// check to see if we have even more stuff
+			// eg. T**[10]*[3]**
+
+			return ret + parseStringTypeIndirections(ps);
 		}
-		else if(tmp.type == TType::Typeof)
+		else if(front.type == TType::LParen)
 		{
-			parserError("enotsup");
+			ps.eat();
 
-			Expr* ct = CreateAST(DummyExpr, tmp);
-			ct->type.isLiteral = false;
-			ct->type.strType = "__internal_error__";
-
-			ct->type.type = parseExpr(ps);
-			return ct;
-		}
-		else if(tmp.type == TType::LParen)
-		{
-			// tuple as a type.
-			int parens = 1;
-
-			std::string final = "(";
-			while(parens > 0)
+			// parse a tuple.
+			std::deque<std::string> types;
+			while(ps.front().type != TType::RParen)
 			{
-				Token front = ps.eat();
-				if(front.type == TType::Identifier)
-				{
-					// another hack: re-insert.
-					ps.tokens.push_front(front);
+				// do things.
+				std::string ret = parseStringType(ps);
 
-					Expr* de = parseType(ps);
-					final += de->type.strType;
-					delete de;
-				}
-				else if(front.type == TType::Comma)
+				if(ps.front().type != TType::Comma && ps.front().type != TType::RParen)
+					parserError("Unexpected token '%s' in type specifier, expected either ',' or ')'", ps.front().text.c_str());
+
+				else if(ps.front().type == TType::Comma)
+					ps.eat();
+
+
+				types.push_back(ret);
+			}
+
+			if(types.size() == 0)
+				parserError("Empty tuples '()' are not supported");
+
+			std::string ret = "(";
+			for(auto t : types)
+				ret += t + ",";
+
+			if(ret.size() > 1)
+				ret.pop_back();
+
+			ret += ")";
+
+
+			if(ps.eat().type != TType::RParen)
+				parserError("Expected ')' to end tuple type specifier, found '%s' instead", ps.front().text.c_str());
+
+
+			// ok, now check if we have more things behind this.
+			// eg. (int, int)**[10]*
+
+			return ret + parseStringTypeIndirections(ps);
+		}
+		else if(front.type == TType::LSquare)
+		{
+			// function type specifiers have this form:
+			// [<T, U> (a: T, b: U) -> X]
+			// HOWEVER, on the PTS system, we use {<T, U>(...) -> ...}.
+			// basically, [ -> { and ] -> }.
+			// this is to disambiguate from the array thing.
+
+			std::string ret = "{";
+
+			ps.eat();
+			std::map<std::string, TypeConstraints_t> genericTypes;
+
+			if(ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
+			{
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+			}
+			else if(ps.front().type == TType::LAngle)
+			{
+				ps.eat();
+				genericTypes = parseGenericTypeList(ps);
+			}
+
+			if(genericTypes.size() > 0)
+			{
+				ret += "<";
+				for(auto g : genericTypes)
 				{
-					final += ",";
-				}
-				else if(front.type == TType::LParen)
-				{
-					final += "(";
-					parens++;
+					ret += g.first;
+					if(g.second.protocols.size() > 0)
+						ret += ":";
+
+					for(auto p : g.second.protocols)
+						ret += p + "&";
+
+					if(ret.back() == '&')
+						ret.pop_back();
+
+					ret += ",";
 				}
 
-				else if(front.type == TType::RParen)
+				if(ret.back() == ',')
+					ret.pop_back();
+
+				if(ret.back() == '<')
+					parserError("Empty generic type lists are not supported");
+
+				ret += ">";
+			}
+
+
+			// ok, add the actual function shit now.
+			ret += "(";
+
+			if(ps.front().type != TType::LParen)
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+
+			ps.eat();
+
+			// start. basically we take a list of types only, no names.
+			while(ps.front().type != TType::RParen)
+			{
+				ret += parseStringType(ps);
+
+				if(ps.front().type == TType::Comma)
 				{
-					final += ")";
-					parens--;
+					ps.eat();
+					ret += ",";
+				}
+				else if(ps.front().type != TType::RParen)
+				{
+					parserError("Expected ')' to end argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
 				}
 			}
 
-			Expr* ct = CreateAST(DummyExpr, tmp);
-			ct->type.isLiteral = true;
-			ct->type.strType = final;
+			if(ret.back() == ',')
+				ret.pop_back();
 
-			return ct;
+			iceAssert(ps.eat().type == TType::RParen);
+			ret += ")";
+
+			if(ps.front().type != TType::Arrow)
+			{
+				parserMessage(Err::Error, "Expected '->' to specify return type of function type specifier, got '%s'", ps.front().text.c_str());
+				parserMessage(Err::Info, "Note: void returns must be made explicit in type specifiers");
+
+				doTheExit();
+			}
+
+			ps.eat();
+
+			ret += "->" + parseStringType(ps) + "}";
+
+			if(ps.front().type != TType::RSquare)
+				parserError("Expected ']' to end function type specifier, got '%s' instead", ps.front().text.c_str());
+
+			ps.eat();
+
+
+			// see if we have... more.
+			return ret + parseStringTypeIndirections(ps);
 		}
 		else
 		{
-			parserError("Expected type for variable declaration, got %s", tmp.text.c_str());
+			parserError("Expected type specifier, found invalid token '%s' instead", front.text.c_str());
 		}
 	}
 
 
 
 
-	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, std::string type, uint64_t attribs, Token tok_id)
+	Expr* parseType(ParserState& ps)
+	{
+		Expr* ret = CreateAST(DummyExpr, ps.front());
+
+		ret->ptype = pts::parseType(parseStringType(ps));
+		ps.skipNewline();
+
+		return ret;
+	}
+
+
+
+
+	static ComputedProperty* parseComputedProperty(ParserState& ps, std::string name, pts::Type* type, uint64_t attribs, Token tok_id)
 	{
 		if(ps.structNestLevel == 0)
 			parserError("Computed properties can only be declared inside classes");
@@ -1385,7 +1429,7 @@ namespace Parser
 
 		iceAssert(ps.eat().type == TType::LBrace);
 
-		cprop->type = type;
+		cprop->ptype = type;
 		cprop->attribs = attribs;
 
 		bool didGetter = false;
@@ -1494,7 +1538,7 @@ namespace Parser
 		if(colon.type == TType::Colon)
 		{
 			Expr* ctype = parseType(ps);
-			v->type = ctype->type;
+			v->ptype = ctype->ptype;
 
 			auto typep = ctype->pin;
 
@@ -1502,12 +1546,12 @@ namespace Parser
 
 			if(ps.front().type == TType::LBrace)
 			{
-				return parseComputedProperty(ps, v->ident.name, v->type.strType, v->attribs, tok_id);
+				return parseComputedProperty(ps, v->ident.name, v->ptype, v->attribs, tok_id);
 			}
 		}
 		else if(colon.type == TType::Equal)
 		{
-			v->type = "Inferred";
+			v->ptype = pts::InferredType::get();
 
 			// make sure the init value parser below works, push the colon back onto the stack
 			ps.tokens.push_front(colon);
@@ -1548,7 +1592,6 @@ namespace Parser
 		Token first = ps.front();
 		std::vector<Expr*> values;
 
-
 		values.push_back(lhs);
 
 		Token t = ps.front();
@@ -1573,22 +1616,20 @@ namespace Parser
 	Expr* parseParenthesised(ParserState& ps)
 	{
 		iceAssert(ps.eat().type == TType::LParen);
-		ps.didHaveLeftParen = true;
+		ps.leftParenNestLevel++;
+
 		Expr* within = parseExpr(ps);
 
 		iceAssert(ps.front().type == TType::RParen);
 		ps.eat();
 
-		ps.didHaveLeftParen = false;
+		ps.leftParenNestLevel--;
 		return within;
 	}
 
 	Expr* parseExpr(ParserState& ps)
 	{
 		Expr* lhs = parseUnary(ps);
-		if(!lhs)
-			return nullptr;
-
 		return parseRhs(ps, lhs, 0);
 	}
 
@@ -1668,10 +1709,13 @@ namespace Parser
 					}
 				}
 			}
-			else if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
+			else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
 			{
-				ps.didHaveLeftParen = false;
-				return parseTuple(ps, lhs);
+				// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
+				auto ret = parseTuple(ps, lhs);
+				// ps.leftParenNestLevel--;
+
+				return ret;
 			}
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
@@ -1752,21 +1796,22 @@ namespace Parser
 
 
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
-			if(!rhs)
-				return nullptr;
+			if(!rhs) return nullptr;
 
 			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
 			{
 				rhs = parseRhs(ps, rhs, prec + 1);
-				if(!rhs)
-					return nullptr;
+				if(!rhs) return nullptr;
 			}
 
+
+			// todo: chained relational operators
+			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
+
+
 			ps.currentOpPrec = prec;
-
-
 
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
@@ -1829,16 +1874,19 @@ namespace Parser
 
 
 		auto ct = parseType(ps);
-		std::string type = ct->type.strType;
+		pts::Type* type = ct->ptype;
 
 		if(ps.front().type == TType::LParen)
 		{
 			// alloc[...] Foo(...)
-			FuncCall* fc = parseFuncCall(ps, type, ct->pin);
+			if(!type->isNamedType())
+				parserError("Only class or struct types can be used in an alloc-construct expression");
+
+			FuncCall* fc = parseFuncCall(ps, type->str(), ct->pin);
 			ret->params = fc->params;
 		}
 
-		ret->type = type;
+		ret->ptype = type;
 
 		delete ct;
 		return ret;
@@ -1867,11 +1915,11 @@ namespace Parser
 			if(iv.second)
 			{
 				n->needUnsigned = true;
-				n->type = UINT64_TYPE_STRING;
+				n->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
 			}
 			else
 			{
-				n->type = INT64_TYPE_STRING;
+				n->ptype = pts::NamedType::create(INT64_TYPE_STRING);
 			}
 		}
 		else if(ps.front().type == TType::Decimal)
@@ -1879,8 +1927,8 @@ namespace Parser
 			Token tok = ps.eat();
 			n = CreateAST(Number, tok, getDecimalValue(tok));
 
-			if(n->dval < (double) FLT_MAX)	n->type = FLOAT32_TYPE_STRING;
-			else							n->type = FLOAT64_TYPE_STRING;
+			if(n->dval < (double) FLT_MAX)	n->ptype = pts::NamedType::create(FLOAT32_TYPE_STRING);
+			else							n->ptype = pts::NamedType::create(FLOAT64_TYPE_STRING);
 		}
 		else
 		{
@@ -1898,6 +1946,10 @@ namespace Parser
 		iceAssert(tk.type == TType::LParen);
 
 		std::deque<Expr*> args;
+
+		int save = ps.leftParenNestLevel;
+		ps.leftParenNestLevel = 0;
+
 
 		if(ps.front().type != TType::RParen)
 		{
@@ -1925,6 +1977,8 @@ namespace Parser
 		{
 			ps.eat();
 		}
+
+		ps.leftParenNestLevel = save;
 
 		auto ret = CreateAST_Pin(FuncCall, id_pos, id, args);
 
@@ -2038,14 +2092,6 @@ namespace Parser
 		}
 	}
 
-	ForLoop* parseFor(ParserState& ps)
-	{
-		Token tok_for = ps.eat();
-		iceAssert(tok_for.type == TType::For);
-
-		return 0;
-	}
-
 
 	static std::deque<std::string> parseInheritanceList(ParserState& ps, std::string selfname)
 	{
@@ -2074,30 +2120,57 @@ namespace Parser
 		return ret;
 	}
 
-	static void parseGenericTypeList(ParserState& ps, Expr* sb)
+	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps)
 	{
-		while(true)
+		std::map<std::string, TypeConstraints_t> ret;
+
+		while(ps.front().type != TType::RAngle)
 		{
-			Token type = ps.eat();
+			if(ps.front().type == TType::Identifier)
+			{
+				std::string gt = ps.eat().text;
+				TypeConstraints_t constrs;
 
-			#if 0
-			if(std::find(sb->genericTypes.begin(), sb->genericTypes.end(), type.text) != sb->genericTypes.end())
-				parserError("Duplicate generic type %s", type.text.c_str());
+				if(ps.front().type == TType::Colon)
+				{
+					ps.eat();
+					if(ps.front().type != TType::Identifier)
+						parserError("Expected identifier after beginning of type constraint list");
 
-			sb->genericTypes.push_back(type.text);
-			#endif
+					while(ps.front().type == TType::Identifier)
+					{
+						constrs.protocols.push_back(ps.eat().text);
 
-			if(ps.front().type == TType::Comma)
+						if(ps.front().type == TType::Ampersand)
+						{
+							ps.eat();
+						}
+						else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+						{
+							parserError("Expected ',' or '>' to end type parameter list (1)");
+						}
+					}
+				}
+				else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
+				{
+					parserError("Expected ',' or '>' to end type parameter list (2)");
+				}
+
+				ret[gt] = constrs;
+			}
+			else if(ps.front().type == TType::Comma)
+			{
 				ps.eat();
-
-			else if(ps.front().type == TType::RAngle)
-				break;
-
-			else
-				parserError("Unexpected token %s in generic type list", ps.front().text.c_str());
+			}
+			else if(ps.front().type != TType::RAngle)
+			{
+				parserError("Expected '>' to end type parameter list");
+			}
 		}
 
 		iceAssert(ps.eat().type == TType::RAngle);
+
+		return ret;
 	}
 
 
@@ -2124,21 +2197,6 @@ namespace Parser
 			str->packed = true;
 
 		str->attribs = attr;
-
-		// check for a colon.
-		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, str);
-		}
-		if(ps.front().type == TType::Colon)
-		{
-			parserError("Structs cannot inherit from anything");
-		}
-
-
-
 
 
 		// parse a block.
@@ -2214,11 +2272,6 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, cls);
-		}
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
@@ -2383,11 +2436,6 @@ namespace Parser
 
 		// check for a colon.
 		ps.skipNewline();
-		if(ps.front().type == TType::LAngle)
-		{
-			ps.eat();
-			parseGenericTypeList(ps, prot);
-		}
 		if(ps.front().type == TType::Colon)
 		{
 			ps.eat();
@@ -2738,14 +2786,12 @@ namespace Parser
 		if(ps.eat().type != TType::Equal)
 			parserError("Expected '='");
 
-
-		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, "");
-
 		Expr* ct = parseType(ps);
 		iceAssert(ct);
 
-		ret->origType = ct->type.strType;
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, ct->ptype);
 		delete ct;
+
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)
@@ -2963,13 +3009,13 @@ namespace Parser
 			ps.tokens.push_front(fake);
 			FuncDecl* fd = parseFuncDecl(ps);
 
-			if(fd->type.strType == VOID_TYPE_STRING)
+			if(fd->ptype == pts::NamedType::create(VOID_TYPE_STRING))
 				parserError("Subscript operator must return a value");
 
 			if(fd->params.size() == 0)
 				parserError("Subscript operator must take at least one argument");
 
-			std::string type = fd->type.strType;
+			pts::Type* type = fd->ptype;
 
 			// subscript operator is done a bit differently
 			// i suspect some others like deref ('#') operator will be too
@@ -3041,6 +3087,7 @@ namespace Parser
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
 		oo->func = parseFunc(ps);
 		oo->func->decl->attribs = attr & ~Attr_CommutativeOp;
+		oo->func->decl->pin = op.pin;
 
 		oo->attribs = attr;
 
@@ -3049,11 +3096,16 @@ namespace Parser
 
 		if(attr & Attr_CommutativeOp)
 		{
-			oo->kind = OpOverload::OperatorKind::CommBinary;
-			if(oo->func->decl->params.size() != 2)
+			if(oo->func->decl->params.size() == 2 || (ps.structNestLevel > 0 && oo->func->decl->params.size() == 1))
+			{
+				oo->kind = OpOverload::OperatorKind::CommBinary;
+			}
+			else
+			{
 				parserError("Expected exactly 2 arguments for binary op (marked commutative, must be binary op)");
+			}
 		}
-		else if(oo->func->decl->params.size() == 2)
+		else if(oo->func->decl->params.size() == 2 || (ps.structNestLevel > 0 && oo->func->decl->params.size() == 1))
 		{
 			oo->kind = OpOverload::OperatorKind::NonCommBinary;
 		}

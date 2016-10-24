@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	ArrayType::ArrayType(Type* elm, size_t num) : Type(FTypeKind::Array)
+	ArrayType::ArrayType(Type* elm, size_t num)
 	{
 		this->arrayElementType = elm;
 		this->arraySize = num;
@@ -52,13 +52,11 @@ namespace fir
 	// array stuff
 	Type* ArrayType::getElementType()
 	{
-		iceAssert(this->typeKind == FTypeKind::Array && "not array type");
 		return this->arrayElementType;
 	}
 
 	size_t ArrayType::getArraySize()
 	{
-		iceAssert(this->typeKind == FTypeKind::Array && "not array type");
 		return this->arraySize;
 	}
 
@@ -70,7 +68,7 @@ namespace fir
 
 		// basically return a new version of ourselves
 		if(!this->arrayElementType->isParametricType())
-			error_and_exit("array '%s' is not parametric, cannot reify", this->str().c_str());
+			return this;
 
 		ParametricType* tp = this->arrayElementType->toParametricType();
 

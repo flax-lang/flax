@@ -21,44 +21,66 @@ class CPTest
 
 public func doOperatorTupleTest()
 {
-	let g: int8 = 100
-	printf("g is: %d\n", g)
+	do {
+		let g: i8 = 100
+		printf("g is: %d\n", g)
+	}
 
-	let m = (fa(), fb())
-	printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
+	do {
+		let m = (fa(), fb())
+		printf("m is [(%f, %f, %f), (%f, %f, %f)]\n", m.0.x, m.0.y, m.0.z, m.1.x, m.1.y, m.1.z)
 
+		let dot = m.0 • m.1
+		printf("dot = %f\n", dot);
 
-	let dot = m.0 • m.1
-	printf("dot = %f\n", dot);
+		let v1 = Math.Vector3(1.0, 2.0, 4.0)
+		let v2 = Math.Vector3(3.0, 6.0, 9.0)
 
+		var v = v1 + v2
+		printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+		v += v1
 
-	let v1 = Math.Vector3(1.0, 2.0, 4.0)
-	let v2 = Math.Vector3(3.0, 6.0, 9.0)
+		v = v1 + v2 + v1
 
-	var v = v1 + v2
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	v += v1
+		let vv = 3 * v
+		printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
+		printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
-	v = v1 + v2 + v1
-
-	let vv = 3 * v
-	printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
-	printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
-
-	let cross = m.0 x m.1
-	printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
-
-
-	let crossn = m.1 x m.0
-	printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
+		let cross = m.0 x m.1
+		printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
 
+		let crossn = m.1 x m.0
+		printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
+	}
 
 
+	do {
+		var k = alloc CPTest
+		k.readwrite = 40
+		printf("k: %d\n", k.readwrite)
+	}
 
-	var k = alloc CPTest
-	k.readwrite = 40
-	printf("k: %d\n", k.readwrite)
+
+	do {
+		var args = alloc[10] Any
+		args[0] = "HELLO"
+		#(args + 1) = 40
+		args[2] = "GOODBYE"
+	}
+
+
+	do {
+		let v1 = Math.Vector2(1.0, 4.0)
+		let v2 = Math.Vector2(3.0, 7.0)
+
+		let vr = v1 ⨯ v2
+		printf("(%.2f), vr = %.2f\n", v1 • v2, vr)
+
+		var lol: string = "HELLO"
+		printf("%c\n", lol[1])
+		printf("lol[2]: %c // %s\n", lol[1], lol)
+	}
 }
 
 

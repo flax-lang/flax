@@ -27,8 +27,34 @@ namespace Parser
 		}
 	}
 
+	static Token previousToken;
+	static bool shouldConsiderUnaryLiteral(std::string& stream, Pin& pos)
+	{
+		// check the previous token
+		bool res = (previousToken.type != TType::Invalid && previousToken.pin.file == pos.file &&
+			(previousToken.type != TType::RParen && previousToken.type != TType::RSquare && previousToken.type != TType::Identifier
+			&& previousToken.type != TType::Integer && previousToken.type != TType::Decimal));
+
+		if(!res) return false;
+
+		// check if the current char is a + or -
+		if(stream.length() == 0) return false;
+		if(stream[0] != '+' && stream[0] != '-') return false;
+
+		// check if there's only spaces between this and the number itself
+		for(size_t i = 1; i < stream.length(); i++)
+		{
+			if(isdigit(stream[i])) return true;
+			else if(stream[i] != ' ') return false;
+		}
+
+		return false;
+	}
+
 
 	// warning: messy function
+	// edit: haha, if you think this is messy, welcome to the *REAL WORLD*
+
 	Token getNextToken(std::string& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
@@ -163,63 +189,45 @@ namespace Parser
 			tok.type = TType::Ellipsis;
 			read = 3;
 		}
-		// else if(stream.compare(0, 2, "::") == 0)
-		// {
-		// 	tok.text = "::";
-		// 	tok.type = TType::DoubleColon;
-		// 	read = 2;
-		// }
-		// block comments
 		else if(stream.compare(0, 2, "/*") == 0)
 		{
-			// TODO: BLOCK COMMENTS ARE FUCKING BUGGY AND IFFY
-
 			int currentNest = 1;
+
 			// support nested, so basically we have to loop until we find either a /* or a */
 			stream = stream.substr(2);
-			tok.pin.col += 2;
 
-			while(currentNest > 0)
+			pos.col += 2;
+
+			Pin opening = pos;
+			Pin curpos = pos;
+
+			size_t k = 0;
+			while(currentNest > 0 && k < stream.size())
 			{
-				size_t n = stream.find("/*");
-				if(n != std::string::npos)
-				{
-					std::string removed = stream.substr(0, n);
+				if(k + 1 == stream.size())
+					parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
 
-					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.pin.col += removed.length() - removed.find_last_of("\n");
+				if(stream[k] == '\n')
+					curpos.line++;
 
-					stream = stream.substr(n + 2);	// include the '*' as well.
+				if(stream[k] == '/' && stream[k + 1] == '*')
+					currentNest++, k++, curpos.col++, opening = curpos;
 
-					if(currentNest > 1)
-						currentNest++;
-				}
+				else if(stream[k] == '*' && stream[k + 1] == '/')
+					currentNest--, k++, curpos.col++;
 
-
-
-				n = stream.find("*/");
-				if(n != std::string::npos)
-				{
-					std::string removed = stream.substr(0, n);
-
-					tok.pin.line += std::count(removed.begin(), removed.end(), '\n');
-					tok.pin.col += removed.length() - removed.find_last_of("\n");
-
-					stream = stream.substr(n + 2);	// include the '*' as well.
-
-					currentNest--;
-				}
-				else
-				{
-					parserError("Expected closing '*/'");
-				}
+				k++;
+				curpos.col++;
 			}
+
+			stream = stream.substr(k);
+			pos = curpos;
 
 			return getNextToken(stream, pos);
 		}
 		else if(stream.compare(0, 2, "*/") == 0)
 		{
-			parserError("Unexpected '*/'");
+			parserError(tok, "Unexpected '*/'");
 		}
 
 		// unicode stuff
@@ -271,7 +279,15 @@ namespace Parser
 
 			unicodeLength = 1;
 		}
-		else if(isdigit(stream[0]) || (stream.length() > 2 && ((stream[0] == '-') || (stream[0] == '+')) && isdigit(stream[1])))
+
+		// note some special-casing is needed to differentiate between unary +/- and binary +/-
+		// cases where we want binary:
+		// ...) + 3
+		// ...] + 3
+		// ident + 3
+		// number + 3
+		// so in every other case we want unary +/-.
+		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
 		{
 			std::string num;
 
@@ -301,8 +317,74 @@ namespace Parser
 					num += (char) tmp;
 			}
 
-			if(tmp != '.')
+
+			if(tmp == '.')
 			{
+				num += '.';
+
+				if(base == 2)
+					parserError(tok, "Binary floating-point literals are currently unsupported.");
+
+				else if(base == 16)
+					parserError(tok, "Hexadecimal floating-point literals are currently unsupported.");
+
+				while(isdigit(tmp = str.get()))
+					num += (char) tmp;
+
+
+				// exponent form
+				if(tmp == 'e' || tmp == 'E')
+				{
+					num += "e";
+					while(isdigit(tmp = str.get()))
+						num += (char) tmp;
+				}
+
+
+				if(num.back() == '.')
+				{
+					// what follow after '.' are not digits
+					// pretend like the '.' was never seen, and let the parser handle this
+					// can come into play when tuple members are structs, eg. tupl.0.length()
+					num.pop_back();
+					tok.type = TType::Integer;
+				}
+				else
+				{
+					tok.type = TType::Decimal;
+
+					try
+					{
+						// makes sure we get the right shit done
+						std::stold(num);
+
+						// check if we might run out of precision
+						if(num.find(".") != std::string::npos && num.substr(num.find(".")).length() > __LDBL_DIG__)
+						{
+							parserMessage(Err::Warn, tok, "Floating-point constant is most likely too precise for best "
+								"representation (f80); have %zu digits, LDBL_DIG is %d", num.substr(num.find(".")).length(), __LDBL_DIG__);
+						}
+					}
+					catch(const std::out_of_range&)
+					{
+						parserError(tok, "Number '%s' is out of range of largest representation (f80)", num.c_str());
+					}
+					catch(const std::exception&)
+					{
+						parserError(tok, "Invalid number '%s'", num.c_str());
+					}
+				}
+			}
+			else
+			{
+				// exponent form
+				if(tmp == 'e' || tmp == 'E')
+				{
+					num += "e";
+					while(isdigit(tmp = str.get()))
+						num += (char) tmp;
+				}
+
 				// we're an int, set shit and return
 				tok.type = TType::Integer;
 				try
@@ -316,11 +398,11 @@ namespace Parser
 				}
 				catch(const std::out_of_range&)
 				{
-					parserError("Number '%s' is out of range (of even uint64)", num.c_str());
+					parserError(tok, "Number '%s' is out of range of largest representation (u64)", num.c_str());
 				}
 				catch(const std::exception&)
 				{
-					parserError("Invalid number '%s'\n", num.c_str());
+					parserError(tok, "Invalid number '%s'", num.c_str());
 				}
 
 				if(base == 16)
@@ -329,45 +411,9 @@ namespace Parser
 				else if(base == 2)
 					num = "0b" + num;
 			}
-			else if(base == 10)
-			{
-				num += '.';
 
-				while(isdigit(tmp = str.get()))
-					num += (char) tmp;
 
-				if(num.back() == '.')
-				{
-					if(isalpha(tmp))
-					{
-						tok.type = TType::Integer;
-						num = num.substr(0, num.length() - 1);
-						str.put('.');
-					}
-					else
-					{
-						parserError("Expected more numbers after '.'");
-					}
-				}
-				else
-				{
-					tok.type = TType::Decimal;
 
-					try
-					{
-						// makes sure we get the right shit done
-						std::stod(num);
-					}
-					catch(std::exception)
-					{
-						parserError("Invalid number");
-					}
-				}
-			}
-			else
-			{
-				parserError("Decimals in hexadecimal representation are not supported");
-			}
 
 
 			// make sure the next char is not a letter, prevents things like
@@ -376,7 +422,7 @@ namespace Parser
 			stream = stream.substr(num.length());
 
 			if(stream.length() > 0 && isalpha(stream[0]))
-				parserError("Malformed integer literal");
+				parserError(tok, "Malformed integer literal");
 
 			read = 0;		// done above
 			tok.text = num;
@@ -563,6 +609,7 @@ namespace Parser
 			pos.col = 1;
 		}
 
+		previousToken = tok;
 		return tok;
 	}
 }
