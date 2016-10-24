@@ -64,6 +64,23 @@ namespace Parser
 		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
 	}
 
+	static int getOpPrecForUnaryOp(ArithmeticOp op)
+	{
+		switch(op)
+		{
+			case ArithmeticOp::LogicalNot:
+			case ArithmeticOp::Plus:
+			case ArithmeticOp::Minus:
+			case ArithmeticOp::BitwiseNot:
+			case ArithmeticOp::Deref:
+			case ArithmeticOp::AddrOf:
+				return 950;
+
+			default:
+				return -1;
+		}
+	}
+
 	static int getCurOpPrec(ParserState& ps)
 	{
 		// handle >>, >>=, <<, <<=.
@@ -84,19 +101,24 @@ namespace Parser
 				return 100;
 		}
 
-		// note that unary ops do not have precedence.
+		// note that unary ops have precedence handled separately
 		switch(ps.front().type)
 		{
 			case TType::Comma:
 				return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
 
+			case TType::LSquare:
+				return 1100;
+
 			case TType::Period:
 				return 1000;
 
+			// unary !
+			// unary +/-
+			// bitwise ~
+			// unary &
+			// unary *
 			case TType::As:
-				return 950;
-
-			case TType::LSquare:
 				return 900;
 
 			case TType::DoublePlus:
@@ -779,9 +801,12 @@ namespace Parser
 		if(op != ArithmeticOp::Invalid)
 		{
 			ps.eat();
-			Expr* un = parseUnary(ps);
 
-			return CreateAST(UnaryOp, tk, op, un);
+			int prec = getOpPrecForUnaryOp(op);
+			Expr* un = parseUnary(ps);
+			Expr* thing = parseRhs(ps, un, prec);
+
+			return CreateAST(UnaryOp, tk, op, thing);
 		}
 
 		return parsePrimary(ps);
@@ -1605,9 +1630,6 @@ namespace Parser
 	Expr* parseExpr(ParserState& ps)
 	{
 		Expr* lhs = parseUnary(ps);
-		if(!lhs)
-			return nullptr;
-
 		return parseRhs(ps, lhs, 0);
 	}
 
