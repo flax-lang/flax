@@ -1345,14 +1345,17 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 
 
-							ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
-							ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
+							// ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
+							// ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
 
-							iceAssert(cb);
-							iceAssert(cc);
+							// iceAssert(cb);
+							// iceAssert(cc);
 
+							// llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
 
-							llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
+							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
+							llvm::Value* ret = builder.CreateGEP(a, indices);
+
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

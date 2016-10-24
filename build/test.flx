@@ -193,10 +193,7 @@ public func main(argc: i32, argv: i8**) -> int
 	do {
 		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 
-		// something is wrong here.
-		let pi: f64 = Math.π()
-
-		printf("pi = %.5f, %s\n", pi, "lol")
+		printf("pi = %.5f, %s\n", Math.π(), "lol")
 
 		// println("%b", "a" != "b")
 
@@ -257,8 +254,8 @@ public func main(argc: i32, argv: i8**) -> int
 
 	// >>> multiple, dynamic dispatch
 
-	let x = 6
-	let b: bool = 4 + 1 > 7 - 5
+	// let x = 6
+	// let b: bool = 4 + 1 > 7 - 5
 
 
 	printf("\n<< done >>\n")
