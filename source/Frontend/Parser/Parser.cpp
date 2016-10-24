@@ -64,6 +64,23 @@ namespace Parser
 		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
 	}
 
+	static int getOpPrecForUnaryOp(ArithmeticOp op)
+	{
+		switch(op)
+		{
+			case ArithmeticOp::LogicalNot:
+			case ArithmeticOp::Plus:
+			case ArithmeticOp::Minus:
+			case ArithmeticOp::BitwiseNot:
+			case ArithmeticOp::Deref:
+			case ArithmeticOp::AddrOf:
+				return 950;
+
+			default:
+				return -1;
+		}
+	}
+
 	static int getCurOpPrec(ParserState& ps)
 	{
 		// handle >>, >>=, <<, <<=.
@@ -84,19 +101,24 @@ namespace Parser
 				return 100;
 		}
 
-		// note that unary ops do not have precedence.
+		// note that unary ops have precedence handled separately
 		switch(ps.front().type)
 		{
 			case TType::Comma:
-				return ps.didHaveLeftParen ? 9001 : -1;	// lol x3
+				return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
+
+			case TType::LSquare:
+				return 1100;
 
 			case TType::Period:
 				return 1000;
 
+			// unary !
+			// unary +/-
+			// bitwise ~
+			// unary &
+			// unary *
 			case TType::As:
-				return 950;
-
-			case TType::LSquare:
 				return 900;
 
 			case TType::DoublePlus:
@@ -297,8 +319,8 @@ namespace Parser
 
 
 		// todo: hacks
+		ps.leftParenNestLevel = 0;
 		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
 
 		ps.skipNewline();
@@ -475,9 +497,9 @@ namespace Parser
 
 
 		// todo: hacks
-		ps.structNestLevel = 0;
-		ps.didHaveLeftParen = 0;
 		ps.currentOpPrec = 0;
+		ps.structNestLevel = 0;
+		ps.leftParenNestLevel = 0;
 
 		ps.skipNewline();
 
@@ -779,9 +801,12 @@ namespace Parser
 		if(op != ArithmeticOp::Invalid)
 		{
 			ps.eat();
-			Expr* un = parseUnary(ps);
 
-			return CreateAST(UnaryOp, tk, op, un);
+			int prec = getOpPrecForUnaryOp(op);
+			Expr* un = parseUnary(ps);
+			Expr* thing = parseRhs(ps, un, prec);
+
+			return CreateAST(UnaryOp, tk, op, thing);
 		}
 
 		return parsePrimary(ps);
@@ -936,8 +961,8 @@ namespace Parser
 			ret = ctype->ptype;
 			delete ctype;
 
-			if(ret->str() == VOID_TYPE_STRING)
-				parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
+			// if(ret->str() == VOID_TYPE_STRING)
+			// 	parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
 		}
 		else
 		{
@@ -1567,7 +1592,6 @@ namespace Parser
 		Token first = ps.front();
 		std::vector<Expr*> values;
 
-
 		values.push_back(lhs);
 
 		Token t = ps.front();
@@ -1592,22 +1616,20 @@ namespace Parser
 	Expr* parseParenthesised(ParserState& ps)
 	{
 		iceAssert(ps.eat().type == TType::LParen);
-		ps.didHaveLeftParen = true;
+		ps.leftParenNestLevel++;
+
 		Expr* within = parseExpr(ps);
 
 		iceAssert(ps.front().type == TType::RParen);
 		ps.eat();
 
-		ps.didHaveLeftParen = false;
+		ps.leftParenNestLevel--;
 		return within;
 	}
 
 	Expr* parseExpr(ParserState& ps)
 	{
 		Expr* lhs = parseUnary(ps);
-		if(!lhs)
-			return nullptr;
-
 		return parseRhs(ps, lhs, 0);
 	}
 
@@ -1687,10 +1709,13 @@ namespace Parser
 					}
 				}
 			}
-			else if(tok_op.type == TType::Comma && ps.didHaveLeftParen)
+			else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
 			{
-				ps.didHaveLeftParen = false;
-				return parseTuple(ps, lhs);
+				// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
+				auto ret = parseTuple(ps, lhs);
+				// ps.leftParenNestLevel--;
+
+				return ret;
 			}
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
@@ -1771,21 +1796,22 @@ namespace Parser
 
 
 			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
-			if(!rhs)
-				return nullptr;
+			if(!rhs) return nullptr;
 
 			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
 			{
 				rhs = parseRhs(ps, rhs, prec + 1);
-				if(!rhs)
-					return nullptr;
+				if(!rhs) return nullptr;
 			}
 
+
+			// todo: chained relational operators
+			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
+
+
 			ps.currentOpPrec = prec;
-
-
 
 			if(op == ArithmeticOp::MemberAccess)
 				lhs = CreateAST(MemberAccess, tok_op, lhs, rhs);
@@ -1921,6 +1947,10 @@ namespace Parser
 
 		std::deque<Expr*> args;
 
+		int save = ps.leftParenNestLevel;
+		ps.leftParenNestLevel = 0;
+
+
 		if(ps.front().type != TType::RParen)
 		{
 			while(true)
@@ -1947,6 +1977,8 @@ namespace Parser
 		{
 			ps.eat();
 		}
+
+		ps.leftParenNestLevel = save;
 
 		auto ret = CreateAST_Pin(FuncCall, id_pos, id, args);
 

@@ -13,6 +13,8 @@ using namespace Ast;
 using namespace Codegen;
 
 
+// Expr* __debugExpr = 0;
+
 namespace Codegen
 {
 	fir::Type* CodegenInstance::getExprTypeOfBuiltin(std::string type)
@@ -129,6 +131,27 @@ namespace Codegen
 		if(from->isTypeEqual(to))
 			return 0;
 
+		if(from->isPrimitiveType() && to->isPrimitiveType())
+		{
+			auto fprim = from->toPrimitiveType();
+			auto tprim = to->toPrimitiveType();
+
+			if(fprim->isLiteralType() && fprim->isFloatingPointType() && tprim->isFloatingPointType())
+			{
+				return 1;
+			}
+			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isIntegerType())
+			{
+				return 1;
+			}
+			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isFloatingPointType())
+			{
+				return 3;
+			}
+		}
+
+
+
 		int ret = 0;
 		if(from->isIntegerType() && to->isIntegerType()
 			&& (from->toPrimitiveType()->getIntegerBitWidth() != to->toPrimitiveType()->getIntegerBitWidth()
@@ -138,39 +161,37 @@ namespace Codegen
 			unsigned int bb = to->toPrimitiveType()->getIntegerBitWidth();
 
 			// we only allow promotion, never truncation (implicitly anyway)
+			// rules:
+			// u8 can fit in u16, u32, u64, i16, i32, i64
+			// u16 can fit in u32, u64, i32, i64
+			// u32 can fit in u64, i64
+			// u64 can only fit in itself.
 
-			// todo: do we?
-			// if(ab > bb) return -1;
+			bool as = from->toPrimitiveType()->isSigned();
+			bool bs = to->toPrimitiveType()->isSigned();
 
-			// fk it
-			if(ab == 8)
+
+			if(as == false && bs == true)
 			{
-				if(bb == 8)			ret = 0;
-				else if(bb == 16)	ret = 1;
-				else if(bb == 32)	ret = 2;
-				else if(bb == 64)	ret = 3;
+				return bb >= 2 * ab;
 			}
-			if(ab == 16)
+			else if(as == true && bs == false)
 			{
-				if(bb == 8)			ret = 1;
-				else if(bb == 16)	ret = 0;
-				else if(bb == 32)	ret = 1;
-				else if(bb == 64)	ret = 2;
+				// never allow this (signed to unsigned)
+				return -1;
 			}
-			if(ab == 32)
-			{
-				if(bb == 8)			ret = 2;
-				else if(bb == 16)	ret = 1;
-				else if(bb == 32)	ret = 0;
-				else if(bb == 64)	ret = 1;
-			}
-			if(ab == 64)
-			{
-				if(bb == 8)			ret = 3;
-				else if(bb == 16)	ret = 2;
-				else if(bb == 32)	ret = 1;
-				else if(bb == 64)	ret = 0;
-			}
+
+			// ok, signs are same now.
+			// make sure bitsize >=.
+			if(bb < ab) return -1;
+
+
+			double k = bb / ab;
+			if(k < 1) k = 1 / k;
+
+			// base-change
+			k = std::log(k) / std::log(2);
+			ret = (int) std::round(k);
 
 			// check for signed-ness cast.
 			if(from->toPrimitiveType()->isSigned() != to->toPrimitiveType()->isSigned())
@@ -179,6 +200,14 @@ namespace Codegen
 			}
 
 			return ret;
+		}
+		// float to float is 1
+		else if(to->isFloatingPointType() && from->isFloatingPointType())
+		{
+			if(to->toPrimitiveType()->getFloatingPointBitWidth() > from->toPrimitiveType()->getFloatingPointBitWidth())
+				return 1;
+
+			return -1;
 		}
 		// check for string to int8*
 		else if(to->isPointerType() && to->getPointerElementType() == fir::Type::getInt8(this->getContext())
@@ -196,7 +225,7 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isPointerType() && from->isNullPointer())
+		else if(to->isPointerType() && from->isVoidPointer())
 		{
 			return 5;
 		}
@@ -237,66 +266,70 @@ namespace Codegen
 
 		fir::Value* retval = from;
 
+		int dist = this->getAutoCastDistance(from->getType(), target);
+		if(distance != 0)
+			*distance = dist;
+
+
 		if(from->getType() == target)
 		{
 			retval = from;
 		}
+
+
 		if(target->isIntegerType() && from->getType()->isIntegerType()
-			&& target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth())
+			&& (target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth()
+				|| from->getType()->toPrimitiveType()->isLiteralType()))
 		{
-			unsigned int lBits = target->toPrimitiveType()->getIntegerBitWidth();
-			unsigned int rBits = from->getType()->toPrimitiveType()->getIntegerBitWidth();
-
-			bool shouldCast = lBits > rBits;
-
-			// check if the RHS is a constant value
-			fir::ConstantInt* constVal = dynamic_cast<fir::ConstantInt*>(from);
-			if(constVal)
+			bool shouldCast = dist >= 0;
+			fir::ConstantInt* ci = 0;
+			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
 			{
-				// check if the number fits in the LHS type
-
-				if(lBits < 64)	// todo: 64 is the max
+				if((ci = dynamic_cast<fir::ConstantInt*>(from)))
 				{
-					if(constVal->getSignedValue() < 0)
+					if(ci->getType()->isSignedIntType())
 					{
-						int64_t max = -1 * powl(2, lBits - 1);
-						if(constVal->getSignedValue() >= max)
-							shouldCast = true;
+						shouldCast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getSignedValue());
 					}
 					else
 					{
-						uint64_t max = powl(2, lBits) - 1;
-						if(constVal->getUnsignedValue() <= max)
-							shouldCast = true;
+						shouldCast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getUnsignedValue());
 					}
 				}
 			}
 
-			if(shouldCast && !constVal)
+			if(shouldCast)
 			{
-				// check signed to unsiged first
-				// note(behaviour): should this be implicit?
-				// if we should cast, then the bitwidth should already be >=
+				// if it is a literal, we need to create a new constant with a proper type
+				if(from->getType()->toPrimitiveType()->isLiteralType())
+				{
+					if(ci)
+					{
+						fir::PrimitiveType* real = 0;
+						if(ci->getType()->isSignedIntType())
+							real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
 
+						else
+							real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
+
+						from = fir::ConstantInt::get(real, ci->getSignedValue());
+					}
+					else
+					{
+						// nothing?
+						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+					}
+
+					retval = from;
+				}
+
+				// check signed to unsigned first
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
-					if(target->toPrimitiveType()->isSigned())
-						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getIntN(rBits));
-
-					else
-						from = this->irb.CreateIntSignednessCast(from, fir::PrimitiveType::getUintN(rBits));
+					from = this->irb.CreateIntSignednessCast(from, from->getType()->toPrimitiveType()->getOppositeSignedType());
 				}
 
 				retval = this->irb.CreateIntSizeCast(from, target);
-			}
-			else if(shouldCast)
-			{
-				// return a const, please.
-				if(constVal->getType()->isSignedIntType())
-					retval = fir::ConstantInt::getSigned(target, constVal->getSignedValue());
-
-				else
-					retval = fir::ConstantInt::getUnsigned(target, constVal->getUnsignedValue());
 			}
 		}
 
@@ -330,6 +363,45 @@ namespace Codegen
 			}
 		}
 
+		// float literals
+		else if(target->isFloatingPointType() && from->getType()->isFloatingPointType())
+		{
+			bool shouldCast = dist >= 0;
+			fir::ConstantFP* cf = 0;
+
+			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+			{
+				if((cf = dynamic_cast<fir::ConstantFP*>(from)))
+				{
+					shouldCast = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), cf->getValue());
+					// warn(__debugExpr, "fits: %d", shouldCast);
+				}
+			}
+
+			if(shouldCast)
+			{
+				// if it is a literal, we need to create a new constant with a proper type
+				if(from->getType()->toPrimitiveType()->isLiteralType())
+				{
+					if(cf)
+					{
+						from = fir::ConstantFP::get(target, cf->getValue());
+						// info(__debugExpr, "(%s / %s)", target->str().c_str(), from->getType()->str().c_str());
+					}
+					else
+					{
+						// nothing.
+						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
+					}
+
+					retval = from;
+				}
+
+				if(from->getType()->toPrimitiveType()->getFloatingPointBitWidth() < target->toPrimitiveType()->getFloatingPointBitWidth())
+					retval = this->irb.CreateFExtend(from, target);
+			}
+		}
+
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target == fir::Type::getInt8Ptr() && from->getType()->isStringType())
 		{
@@ -344,15 +416,21 @@ namespace Codegen
 			// int-to-float is 10.
 			retval = this->irb.CreateIntToFloatCast(from, target);
 		}
-		else if(target->isPointerType() && from->getType()->isNullPointer())
+		else if(target->isPointerType() && from->getType()->isVoidPointer())
 		{
-			retval = fir::ConstantValue::getNullValue(target);
+			// retval = fir::ConstantValue::getNullValue(target);
+			retval = this->irb.CreatePointerTypeCast(from, target);
 		}
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
 			// somewhat complicated
-			iceAssert(fromPtr);
+
+			if(fromPtr == 0)
+			{
+				fromPtr = this->irb.CreateStackAlloc(from->getType());
+				this->irb.CreateStore(from, fromPtr);
+			}
 
 			fir::Value* tuplePtr = this->getStackAlloc(target);
 
@@ -370,9 +448,6 @@ namespace Codegen
 		}
 
 
-		int dist = this->getAutoCastDistance(from->getType(), target);
-		if(distance != 0)
-			*distance = dist;
 
 		return retval;
 	}
@@ -471,7 +546,7 @@ namespace Codegen
 				// if(ns.size() > 0) nsstr = nsstr.substr(1);
 
 				if(allowFail) return 0;
-				GenError::unknownSymbol(cgi, user, atype + " in namespace " + nsstr, SymbolType::Type);
+				GenError::unknownSymbol(cgi, user, atype + (nsstr.size() > 0 ? (" in namespace " + nsstr) : ""), SymbolType::Type);
 			}
 
 			if(!tp && cgi->getExprTypeOfBuiltin(atype))

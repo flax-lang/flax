@@ -8,11 +8,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../include/ast.h"
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/compiler.h"
-#include "../include/dependency.h"
+#include "ast.h"
+#include "parser.h"
+#include "backend.h"
+#include "codegen.h"
+#include "compiler.h"
+#include "dependency.h"
 
 #include "llvm/Support/TargetSelect.h"
 
@@ -39,7 +40,6 @@ int main(int argc, char* argv[])
 	iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
 
-
 	Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
 
 	filename = Compiler::getFullPathOfFile(filename);
@@ -49,19 +49,58 @@ int main(int argc, char* argv[])
 	Parser::ParserState pstate(__cgi);
 
 
-
-
 	auto groups = Compiler::checkCyclicDependencies(filename);
 
 	Parser::parseAllCustomOperators(pstate, filename, curpath);
 
 	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<fir::Module*>>
-	auto ret = Compiler::compileFile(filename, groups, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
+	auto cd = Compiler::compileFile(filename, groups, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
 
-	Compiler::compileToLlvm(filename, outname, ret);
+	// do FIR optimisations
+	for(auto mod : cd.moduleList)
+	{
+		for(auto f : mod.second->getAllFunctions())
+			f->cullUnusedValues();
+
+		if(Compiler::getDumpFir())
+			printf("%s\n\n", mod.second->print().c_str());
+	}
+
+
+
+	// check caps that we need
+	using namespace Compiler;
+	int capsneeded = 0;
+	{
+		if(getOutputMode() == ProgOutputMode::RunJit)
+			capsneeded |= BackendCaps::JIT;
+
+		if(getOutputMode() == ProgOutputMode::ObjectFile)
+			capsneeded |= BackendCaps::EmitObject;
+
+		if(getOutputMode() == ProgOutputMode::Program)
+			capsneeded |= BackendCaps::EmitProgram;
+	}
+
+	Backend* backend = Backend::getBackendFromOption(getSelectedBackend(), cd, { filename }, outname);
+
+	if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
+	{
+		backend->performCompilation();
+		backend->optimiseProgram();
+		backend->writeOutput();
+	}
+	else
+	{
+		fprintf(stderr, "Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str().c_str(),
+			capabilitiesToString((BackendCaps::Capabilities) capsneeded).c_str());
+
+		exit(-1);
+	}
 
 	delete __cgi;
 }
+
 
 
 

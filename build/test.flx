@@ -18,6 +18,8 @@ import tests.misc
 import tests.functions
 
 
+
+
 ƒ runTests()
 {
 	// fib
@@ -32,8 +34,6 @@ import tests.functions
 	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine		= "----------------------------------------\n"
 	let endTitle		= "============ TESTS COMPLETE ============\n"
-
-
 
 
 	printf("%s%s", fibTitle, thinLine)
@@ -98,7 +98,7 @@ import tests.functions
 
 	// misc tests
 	printf("%s%s", miscTitle, thinLine)
-	doFunctionTest()
+	miscellaneousTests()
 	printf("\n\n\n")
 
 
@@ -117,20 +117,11 @@ import tests.functions
 struct FormatOptions
 {
 	var paddingChar: char
-	var precision: int64
-	var width: int64
-	var paddingKind: int64			// 0 = left, 1 = centre, 2 = right
+	var precision: i64
+	var width: i64
+	var paddingKind: i64			// 0 = left, 1 = centre, 2 = right
 	var type: string
-	var argNum: int64
-}
-
-extension char
-{
-	func isDigit() -> bool
-	{
-		// return #self ==  ||
-		return false
-	}
+	var argNum: i64
 }
 
 
@@ -193,15 +184,19 @@ func parseFormatOptions(str: string) -> FormatOptions
 
 
 
-
-public func main(argc: int32, argv: int8**) -> int
+public func main(argc: i32, argv: i8**) -> int
 {
 	runTests()
 
 
 	do {
 		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
-		printf("pi = %.16lf, %s\n", Math.π(), "lol")
+
+
+		let arr = [ 1, 2, 3, 4, 5 ]
+		let k = arr as int*
+
+		printf("pi = %.5f, %s, %#x, %d\n", Math.π(), "foo", k, k[2])
 
 		// println("%b", "a" != "b")
 
@@ -262,6 +257,9 @@ public func main(argc: int32, argv: int8**) -> int
 
 	// >>> multiple, dynamic dispatch
 
+	// let x = 6
+	// let b: bool = 4 + 1 > 7 - 5
+
 
 	printf("\n<< done >>\n")
 	return 0
@@ -275,35 +273,6 @@ public func main(argc: int32, argv: int8**) -> int
 
 
 /*
-
-	how to be stupid:
-	associating reference count with the reference, instead of the object being referenced
-	._.
-
-	new string structure:
-
-	struct string
-	{
-		i8* ptr
-		i64 len
-	}
-
-	ptr actually points 8 bytes ahead of the allocated memory
-	ie. ptr = malloc(len + 1) + 8
-	the refcount is a 64-bit number stored at the beginning of the allocated memory
-
-	THIS TIME, it is actually referring to the number of times the *DATA* is being referenced
-	instead of some arbitrary number that means nothing
-
-	to access it, we just cast ptr to an i64, then pointer arithmetically subtract 1.
-
-	god i am so stupid
-
-	string literals work like they currently do, i guess -- just store -1 in the 8 byte space.
-
-
-
-
 	for arbitrary rc<T>, it's basically the same
 	struct rc<T>
 	{
@@ -329,8 +298,10 @@ public func main(argc: int32, argv: int8**) -> int
 	ezpz.
 
 	this time, i'll stop doing stupid things.
-
 */
+
+
+
 
 
 /*
@@ -339,6 +310,7 @@ public func main(argc: int32, argv: int8**) -> int
 	llvm has extractvalue and insertvalue instructions that can get member fields from non-pointer structs
 	i feel cheated.
 */
+
 
 
 /*
@@ -384,7 +356,7 @@ public func main(argc: int32, argv: int8**) -> int
 // import LibCInterface
 
 
-ffi func printf(fmt: int8*, ...)
+ffi func printf(fmt: i8*, ...)
 
 struct SomeStruct
 {

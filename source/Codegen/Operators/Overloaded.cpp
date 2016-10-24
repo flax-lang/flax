@@ -227,6 +227,9 @@ namespace Codegen
 			bool needsSwap = 0;
 
 			bool isMember = 0;
+
+
+			int castedDist = 0;
 		};
 
 
@@ -435,6 +438,10 @@ namespace Codegen
 			// if unary op, only LHS is used.
 			if(cand.first.isBinOp)
 			{
+				int d1 = this->getAutoCastDistance(thelhs, targL);
+				int d2 = this->getAutoCastDistance(rhs, targR);
+
+
 				if(targL == thelhs && targR == rhs)
 				{
 					candidates.push_back(cand);
@@ -442,6 +449,20 @@ namespace Codegen
 				else if(cand.first.isCommutative && targR == thelhs && targL == rhs)
 				{
 					cand.first.needsSwap = true;
+					candidates.push_back(cand);
+				}
+				else if(d1 >= 0 && d2 >= 0)
+				{
+					// check for non-exact matching
+
+					cand.first.castedDist += (d1 + d2);
+					candidates.push_back(cand);
+				}
+				else if(cand.first.isCommutative && this->getAutoCastDistance(thelhs, targR) >= 0 && this->getAutoCastDistance(rhs, targL) >= 0)
+				{
+					cand.first.needsSwap = true;
+
+					cand.first.castedDist += (this->getAutoCastDistance(thelhs, targR) + this->getAutoCastDistance(rhs, targL));
 					candidates.push_back(cand);
 				}
 			}
@@ -491,11 +512,33 @@ namespace Codegen
 		}
 
 
+		// final final step: if we still have more than 1, disambiguate using casting distance.
+		if(finals.size() > 1)
+		{
+			int best = 9999999;
+
+			auto fset = finals;
+			finals.clear();
+
+			for(auto f : fset)
+			{
+				if(f.first.first.castedDist == best)
+					finals.push_back(f);
+
+				else if(f.first.first.castedDist < best)
+					finals.clear(), finals.push_back(f), best = f.first.first.castedDist;
+			}
+		}
+
 
 
 		if(finals.size() > 1)
 		{
-			error(us, "More than one possible operator overload candidate in this expression");
+			errorNoExit(us, "More than one possible operator overload candidate in this expression");
+			for(auto c : finals)
+				info("<%d> %s: %s", c.first.first.castedDist, c.first.second->getName().str().c_str(), c.first.second->getType()->str().c_str());
+
+			doTheExit();
 		}
 		else if(finals.size() == 0)
 		{
@@ -611,6 +654,20 @@ namespace Codegen
 					rarg = rhs;
 				}
 			}
+
+
+			// if(larg->getType() != opFunc->getArguments()[0]->getType())
+			// 	larg = this->autoCastType(opFunc->getArguments()[0]->getType(), larg);
+
+			// if(larg->getType() != opFunc->getArguments()[0]->getType())
+			// 	error("mismatched operator argument 0");
+
+			// if(rarg->getType() != opFunc->getArguments()[1]->getType())
+			// 	rarg = this->autoCastType(opFunc->getArguments()[1]->getType(), rarg);
+
+			// if(rarg->getType() != opFunc->getArguments()[1]->getType())
+			// 	error("mismatched operator argument 1");
+
 
 
 			ret = this->irb.CreateCall2(opFunc, larg, rarg);
