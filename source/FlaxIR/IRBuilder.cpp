@@ -400,14 +400,18 @@ namespace fir
 	Value* IRBuilder::CreateFTruncate(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType, { v });
+		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
+			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateFExtend(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType, { v });
+		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType,
+			{ v, ConstantValue::getNullValue(targetType) });
+
 		return this->addInstruction(instr, vname);
 	}
 

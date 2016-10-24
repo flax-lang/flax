@@ -74,6 +74,17 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 				// this function knows what to do.
 				arg = cgi->autoCastType(fir::Type::getInt8Ptr(cgi->getContext()), arg, res.pointer);
 			}
+			else if(checkcv)
+			{
+				// check if we need to promote the argument type
+				if(arg->getType() == fir::Type::getFloat32())
+					arg = cgi->irb.CreateFExtend(arg, fir::Type::getFloat64());
+
+				// don't need to worry about signedness for this; if you're smaller than int32,
+				// int32 can represent you even if you're unsigned
+				else if(arg->getType()->isIntegerType() && arg->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
+					arg = cgi->irb.CreateIntSizeCast(arg, fir::Type::getInt32());
+			}
 
 			args.push_back(arg);
 			argPtrs.push_back(res.pointer);

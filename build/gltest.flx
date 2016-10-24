@@ -6,6 +6,7 @@
 import OpenGL.GL
 import SDL2.SDL
 
+import Math
 import LibCInterface
 
 ffi func rand() -> i32
@@ -209,23 +210,13 @@ public func main(argc: i32, argv: i8**) -> int
 		let arr = [ 1, 2, 3, 4, 5 ]
 
 		// this parses wrongly:
-		// should be an easy-ish fix -- disable + literals in the lexer
-		arr[4+1]
-
-
-		// something is wrong here.
-		// idk wtf is going on
-		let pi: f64 = Math.π()
-
-
-		// this parses wrongly:
 		// the first '(' probably triggers tuple-parsing mode wrongly
-		(frand(10, sin(0.3)))
+		// (frand(10, sin(0.3)))
 
 
 		// unary precedence does not exist:
 		// idk how to fix this properly...
-		&arr[0] // <- does not do what C/C++ does, which is &(arr[0]); instead it does (&arr)[0].
+		// &arr[0] // <- does not do what C/C++ does, which is &(arr[0]); instead it does (&arr)[0].
 
 
 		// QOL stuff:
