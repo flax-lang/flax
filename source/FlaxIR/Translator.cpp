@@ -129,7 +129,7 @@ namespace fir
 		}
 		else if(type->isPointerType())
 		{
-			if(type->isNullPointer())
+			if(type->isVoidPointer())
 				return llvm::Type::getInt8PtrTy(gc);
 
 			else
