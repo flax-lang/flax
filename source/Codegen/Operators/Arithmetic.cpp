@@ -120,7 +120,7 @@ namespace Operators
 
 		rhs = cgi->autoCastType(lhs, rhs);
 
-		if(isComparisonOp(op) && lhs->getType() == rhs->getType() && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
+		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
 								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
 		{
 			// todo(behaviour): c/c++ states that comparing pointers (>, <, etc) is undefined when the pointers do not
@@ -128,7 +128,14 @@ namespace Operators
 			// we allow it, but should this is changed?
 
 			// if everyone is primitive, autocasting should have made them the same
-			iceAssert(lhs->getType() == rhs->getType());
+			if(lhs->getType() != rhs->getType())
+				lhs = cgi->autoCastType(rhs, lhs);
+
+			if(lhs->getType() != rhs->getType())
+			{
+				error(user, "Operator '%s' cannot be applied on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+			}
 
 			if(lhs->getType()->isFloatingPointType() || rhs->getType()->isFloatingPointType())
 			{
@@ -138,11 +145,6 @@ namespace Operators
 			{
 				return compareIntegers(cgi, op, lhs, rhs);
 			}
-		}
-		else if((lhs->getType()->isPointerType() && rhs->getType() == fir::VoidType::get()->getPointerTo())
-			|| (rhs->getType()->isPointerType() && lhs->getType() == fir::VoidType::get()->getPointerTo()))
-		{
-			error("ol");
 		}
 		else if(lhs->getType()->isCharType() && rhs->getType()->isCharType())
 		{
@@ -226,8 +228,20 @@ namespace Operators
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
-			fir::Value* tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
-			iceAssert(tryop);
+			if(lhs->getType() != rhs->getType())
+				lhs = cgi->autoCastType(rhs, lhs);
+
+			fir::Value* tryop = 0;
+			if(lhs->getType() != rhs->getType())
+				goto die;
+
+			tryop = cgi->irb.CreateBinaryOp(op, lhs, rhs);
+			if(!tryop)
+			{
+				die:
+				error(user, "Invalid operator '%s' between types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+			}
 
 			return Result_t(tryop, 0);
 		}

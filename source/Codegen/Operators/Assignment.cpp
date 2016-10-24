@@ -158,6 +158,16 @@ namespace Operators
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
 
+
+				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
+				// 	rhsVal = cgi->autoCastType(setter->getArguments()[1]->getType(), rhsVal);
+
+				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
+				// {
+				// 	error(user, "Mismatch in argument of setter; expected '%s', got '%s'",
+				// 		setter->getArguments()[1]->getType()->str().c_str(), rhsVal->getType()->str().c_str());
+				// }
+
 				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
 				return Result_t(0, 0);

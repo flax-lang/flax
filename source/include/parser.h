@@ -179,7 +179,7 @@ namespace Parser
 
 		Codegen::CodegenInstance* cgi = 0;
 
-		bool didHaveLeftParen = false;
+		int leftParenNestLevel = 0;
 		int currentOpPrec = 0;
 
 		int structNestLevel = 0;

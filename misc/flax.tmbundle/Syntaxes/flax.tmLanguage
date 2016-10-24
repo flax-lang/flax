@@ -187,33 +187,6 @@
 			<key>name</key>
 			<string>keyword.operator.bitwise.flax</string>
 		</dict>
-		<!-- <key>block-comment</key>
-		<dict>
-			<key>begin</key>
-			<string>/\*</string>
-			<key>beginCaptures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>punctuation.definition.comment.block.begin.flax</string>
-				</dict>
-			</dict>
-			<key>comment</key>
-			<string>Block comment</string>
-			<key>end</key>
-			<string>\*/</string>
-			<key>endCaptures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>punctuation.definition.comment.block.end.flax</string>
-				</dict>
-			</dict>
-			<key>name</key>
-			<string>comment.block.flax</string>
-		</dict> -->
 		<key>block-comment</key>
 		<dict>
 			<key>begin</key>
@@ -736,7 +709,7 @@
 					<key>comment</key>
 					<string>other keyword</string>
 					<key>match</key>
-					<string>\b(associativity|didSet|get|infix|inout|left|mutating|none|nonmutating|operator|override|postfix|precedence|prefix|right|set|unowned((un)?safe)?|weak|willSet)\b</string>
+					<string>\b(associativity|didSet|get|infix|inout|mutating|none|nonmutating|operator|override|postfix|precedence|prefix|set|unowned((un)?safe)?|weak|willSet)\b</string>
 					<key>name</key>
 					<string>keyword.other.flax</string>
 				</dict>
@@ -926,7 +899,7 @@
 			<key>comment</key>
 			<string>Primitive types</string>
 			<key>match</key>
-			<string>\b((u?)int((8|16|32|64)?)|intptr|float((32|64)?)|bool|void|string|char|Any|Type|ffi|ustring|rune)\b</string>
+			<string>\b(((u|i)(8|16|32|64|128))|(u?)int|intptr|f(32|64|80|128)|float|double|bool|void|string|char|Any|Type|ffi|ustring|rune)\b</string>
 			<key>name</key>
 			<string>support.type.flax</string>
 		</dict>
