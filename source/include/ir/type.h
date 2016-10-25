@@ -75,7 +75,6 @@ namespace fir
 
 		// stuff
 		static Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
-		static Type* fromLlvmType(fir::Type* ltype, std::deque<bool> signage);
 
 		static bool areTypesEqual(Type* a, Type* b);
 
@@ -136,6 +135,7 @@ namespace fir
 
 		// convenience
 		static VoidType* getVoid(FTContext* tc = 0);
+		static Type* getVoidPtr(FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
