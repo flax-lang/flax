@@ -8,6 +8,8 @@ public ffi func printf(x: i8*, ...) -> i32
 public ffi func sprintf(x: i8*, y: i8*, ...) -> i32
 public ffi func snprintf(x: i8* l: u64, y: i8*, ...) -> i32
 
+public ffi func fprintf(stream: void*, y: i8*, ...) -> i32
+
 // memcpy/set/move
 public ffi func memcpy(dest: i8*, source: i8*, length: u64) -> i8*
 public ffi func memset(dest: i8*, value: i32, length: u64) -> i8*
@@ -28,5 +30,6 @@ public ffi func abort()
 
 
 // file stuff
+public ffi func fdopen(fd: i32, mode: i8*) -> void*
 public ffi func write(fd: i32, buf: i8*, count: u64) -> i64
 public ffi func ioctl(fd: i32, cmd: u64, ...) -> i32
