@@ -413,11 +413,6 @@ namespace fir
 	}
 
 
-	Type* Type::fromLlvmType(fir::Type* ltype, std::deque<bool> signage)
-	{
-		iceAssert(0);
-		return Type::getVoid();
-	}
 
 
 
@@ -631,6 +626,11 @@ namespace fir
 	VoidType* Type::getVoid(FTContext* tc)
 	{
 		return VoidType::get(tc);
+	}
+
+	Type* Type::getVoidPtr(FTContext* tc)
+	{
+		return VoidType::get(tc)->getPointerTo();
 	}
 
 	PrimitiveType* Type::getBool(FTContext* tc)

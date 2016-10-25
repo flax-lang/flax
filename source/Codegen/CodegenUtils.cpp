@@ -3096,11 +3096,11 @@ namespace Codegen
 			this->irb.setCurrentBlock(failb);
 			{
 				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
-					fir::LinkageType::External);
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
 
 				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
 					fir::LinkageType::External);
 
 				// basically:
@@ -3170,11 +3170,11 @@ namespace Codegen
 			this->irb.setCurrentBlock(failb);
 			{
 				fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
 					fir::LinkageType::External);
 
 				fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getInt8Ptr(), false),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
 					fir::LinkageType::External);
 
 				// basically:

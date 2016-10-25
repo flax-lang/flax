@@ -225,8 +225,7 @@ namespace Compiler
 				auto frames = Compiler::getFrameworksToLink();
 				auto framedirs = Compiler::getFrameworkSearchPaths();
 
-
-				size_t s = 4 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
+				size_t s = 5 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
 				const char** argv = new const char*[s];
 				memset(argv, 0, s * sizeof(const char*));
 
@@ -267,8 +266,8 @@ namespace Compiler
 					argv[i] = l.c_str();	i++;
 				}
 
-				argv[s - 1] = templ;
-				argv[s] = 0;
+				argv[s - 2] = templ;
+				argv[s - 1] = 0;
 
 
 				int outpipe[2];
@@ -609,7 +608,6 @@ namespace Compiler
 		if(needGlobalConstructor)
 		{
 			std::vector<llvm::Function*> constructors;
-			// rootmap[this->inputFilenames[0]] = cd.rootNode;
 
 			for(auto pair : rootmap)
 			{
@@ -628,7 +626,6 @@ namespace Compiler
 				}
 			}
 
-			// rootmap.erase(this->inputFilenames[0]);
 
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
