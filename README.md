@@ -10,8 +10,16 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 -----------------------------------------------
 
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/flax-lang/flax/develop/build/d20.gif" />
+</p>
+
+
+
+-----------------------------------------------
+
 #### Disclaimer ####
-I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
+I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](https://github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
 
 
 #### Language Goals ####
@@ -67,12 +75,11 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Building the Flax compiler ####
 
-- You will need `clang++` (in your $PATH), because only it is capable of compiling LLVM bitcode to object code.
 - Flax uses Shake, available at http://shakebuild.com
 - To summarise: install `ghc`, install `cabal`, `cabal update; cabal install shake`, `runhaskell shakefile.hs` to build Flax.
 - If you don't want to recompile `shakefile.hs` every time, you can also run `ghc shakefile.hs` and call `./shakefile` instead.
 - Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
-- Additionally, default libraries will be copied from './libs' to './build/sysroot/usr/local/lib'
+- Additionally, the (admittedly limited) standard library will be copied from './libs' to './build/sysroot/usr/local/lib/flaxlibs/'
 
 
 -----------------------------------------------
@@ -80,8 +87,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Building Flax Programs ####
 
-- `clang++` must be in your path, since it is called by the compiler (via system() -- ew) to compile the llvm bitcode into an executable.
-- Clang is not called if the compiler is run with `-run`, which uses llvm JIT to run the program.
+- Some form of compiler (`cc` is called via `execvp()`) should be in the `$PATH` to produce object/executable files; not necessary if using JIT
 - Since nobody in their right mind is *actually* using this, please pass `-sysroot build/sysroot` to invocations of the compiler -- else the compiler will default to looking somewhere in `/usr/local/lib` for libraries.
 - Speaking of which, standard libraries (Foundation, String, etc.) are looked for in `<sysroot>/<prefix>/lib/flaxlibs/`. Prefix is set to `/usr/local/` by default.
 
@@ -111,6 +117,7 @@ Flax itself has 3 main passes -- Tokenising and Lexing, Parsing, and finally Cod
 
 This isn't terribly complicated. Each file is naturally only looked at once, and a list of tokens and raw lines are stored somewhere. There's always a nagging feeling that token location reporting is flawed, and it probably is.
 
+EDIT: It is.
 
 
 ##### Parsing #####
@@ -133,7 +140,7 @@ Each AST node is visited, and code generation into the Flax Intermediate Represe
 
 Once the entire compilation unit (file) has been translated into FlaxIR, it is translated into LLVM IR. Since the design of FlaxIR is mostly LLVM except lacking actual code generation, it's fairly straightforward.
 
-Once all modules are LLVM'ed, everything is linked together, and LLVM optimisations are applied. If the compiler is set to JIT, then the LLVM JIT engine is called on the module. If not, then it is compiled to a bitcode file, upon which `clang++` is invoked, to get an executable.
+Once all modules are LLVM'ed, everything is linked together, and LLVM optimisations are applied. If the compiler is set to JIT, then the LLVM JIT engine is called on the module. If not, then it is compiled to an object file, upon which `cc` is invoked, to get an executable.
 
 
 
