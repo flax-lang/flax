@@ -916,10 +916,7 @@ namespace Parser
 			if(ps.eat().type != TType::Colon)
 				parserError("Expected ':' followed by a type");
 
-			Expr* ctype = parseType(ps);
-			v->ptype = ctype->ptype;
-			delete ctype;		// cleanup
-
+			v->ptype = parseType(ps);
 
 
 			// NOTE(ghetto): FUCKING. GHETTO.
@@ -957,12 +954,7 @@ namespace Parser
 			ps.eat();
 			retPin = ps.front().pin;
 
-			Expr* ctype = parseType(ps);
-			ret = ctype->ptype;
-			delete ctype;
-
-			// if(ret->str() == VOID_TYPE_STRING)
-			// 	parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
+			ret = parseType(ps);
 		}
 		else
 		{
@@ -1221,7 +1213,7 @@ namespace Parser
 		if(front.type == TType::Identifier)
 		{
 			std::string ret = front.text;
-			ps.pop_front();
+			ps.eat();
 
 			while(true)
 			{
@@ -1233,10 +1225,10 @@ namespace Parser
 					ret += ".";
 					ps.eat();
 				}
-				else if(ps.front().type == TType::Identifier)
+				else if(ps.front().type == TType::Identifier && (ret.empty() || ret.back() == '.'))
 				{
 					ret += ps.front().text;
-					ps.pop_front();
+					ps.eat();
 				}
 				else
 				{
@@ -1404,14 +1396,9 @@ namespace Parser
 
 
 
-	Expr* parseType(ParserState& ps)
+	pts::Type* parseType(ParserState& ps)
 	{
-		Expr* ret = CreateAST(DummyExpr, ps.front());
-
-		ret->ptype = pts::parseType(parseStringType(ps));
-		ps.skipNewline();
-
-		return ret;
+		return pts::parseType(parseStringType(ps));
 	}
 
 
@@ -1537,12 +1524,7 @@ namespace Parser
 		Token colon = ps.eat();
 		if(colon.type == TType::Colon)
 		{
-			Expr* ctype = parseType(ps);
-			v->ptype = ctype->ptype;
-
-			auto typep = ctype->pin;
-
-			delete ctype;	// cleanup
+			v->ptype = parseType(ps);
 
 			if(ps.front().type == TType::LBrace)
 			{
@@ -1793,23 +1775,24 @@ namespace Parser
 
 
 
-
-
-			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
-			if(!rhs) return nullptr;
+			Expr* rhs = 0;
+			if(tok_op.type == TType::As)
+			{
+				rhs = CreateAST(DummyExpr, tok_op);
+				rhs->ptype = parseType(ps);
+			}
+			else
+			{
+				rhs = parseUnary(ps);
+			}
 
 			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
-			{
 				rhs = parseRhs(ps, rhs, prec + 1);
-				if(!rhs) return nullptr;
-			}
-
 
 			// todo: chained relational operators
 			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
-
 
 			ps.currentOpPrec = prec;
 
@@ -1872,9 +1855,8 @@ namespace Parser
 				parserError("Expected ']', have %s", n.text.c_str());
 		}
 
-
-		auto ct = parseType(ps);
-		pts::Type* type = ct->ptype;
+		auto pin = ps.front().pin;
+		pts::Type* type = parseType(ps);
 
 		if(ps.front().type == TType::LParen)
 		{
@@ -1882,13 +1864,12 @@ namespace Parser
 			if(!type->isNamedType())
 				parserError("Only class or struct types can be used in an alloc-construct expression");
 
-			FuncCall* fc = parseFuncCall(ps, type->str(), ct->pin);
+			FuncCall* fc = parseFuncCall(ps, type->str(), pin);
 			ret->params = fc->params;
 		}
 
 		ret->ptype = type;
 
-		delete ct;
 		return ret;
 	}
 
@@ -2504,7 +2485,15 @@ namespace Parser
 
 		Token tok_id;
 		if((tok_id = ps.eat()).type != TType::Identifier)
+		{
 			parserError("Expected identifier after 'enum'");
+		}
+		if(ps.front().type == TType::Colon)
+		{
+			// parse an explicit type
+			ps.eat();
+		}
+
 
 		if(ps.eat().type != TType::LBrace)
 			parserError("Expected body after 'enum'");
@@ -2786,12 +2775,9 @@ namespace Parser
 		if(ps.eat().type != TType::Equal)
 			parserError("Expected '='");
 
-		Expr* ct = parseType(ps);
-		iceAssert(ct);
+		pts::Type* pt = parseType(ps);
 
-		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, ct->ptype);
-		delete ct;
-
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, pt);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)

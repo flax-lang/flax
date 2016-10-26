@@ -233,7 +233,7 @@ namespace Parser
 	Ast::Expr* parsePrimary(ParserState& tokens);
 
 	Ast::Expr* 				parseIf(ParserState& tokens);
-	Ast::Expr*				parseType(ParserState& tokens);
+	pts::Type*				parseType(ParserState& tokens);
 	Ast::EnumDef*			parseEnum(ParserState& tokens);
 	Ast::Func*				parseFunc(ParserState& tokens);
 	Ast::Expr*				parseExpr(ParserState& tokens);
