@@ -1,0 +1,52 @@
+# Jamfile
+# Copyright (c) 2014 - 2016, zhiayang@gmail.com
+# Licensed under the Apache License Version 2.0.
+
+import path ;
+import notfile ;
+import unit-test ;
+
+using clang : clang
+	: "clang++"
+	: <compileflags>"-Wno-trigraphs" <cflags>"-std=c11" <cxxflags>"-std=c++1z -Weverything -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move -Wno-nullability-completeness -Xclang -fcolor-diagnostics -g" <linkflags>"-g" ;
+
+project flax
+	: default-build clang
+	: source-location "source"
+	: build-dir "build/objs"
+	;
+
+path-constant ROOT			: . ;
+
+bininstall					= "$(ROOT)/build/sysroot/usr/local/bin" ;
+libinstall					= "$(ROOT)/build/sysroot/usr/local/lib/flaxlibs" ;
+
+constant llvm_includes	: [ SHELL "llvm-config-3.8 --includedir | xargs echo -n" ] ;
+constant llvm_libs : [ SHELL "llvm-config-3.8 --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize | xargs echo -n" ] ;
+
+notfile copylibs : @copy ;
+actions copy
+{
+	rm -r "$(ROOT)/build/sysroot/usr/local/lib/flaxlibs" ;
+	cp -R "$(ROOT)/libs" "$(ROOT)/build/sysroot/usr/local/lib/" ;
+	mv -f "$(ROOT)/build/sysroot/usr/local/lib/libs" "$(ROOT)/build/sysroot/usr/local/lib/flaxlibs" ;
+	build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run build/test.flx ;
+}
+
+
+NOTFILE copylibs ;
+
+exe flaxc : [ glob-tree *.cpp ] [ glob-tree *.c ]
+	: <include>source/include <include>source/utf8rewind/include/utf8rewind <include>$(llvm_includes) <linkflags>$(llvm_libs) <debug-symbols>on
+	;
+
+install dist : flaxc
+	: <location>$(bininstall)
+	;
+
+
+
+
+
+
+
