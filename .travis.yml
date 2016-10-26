@@ -8,8 +8,8 @@ install:
     - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo apt-get --force-yes update
     - sudo apt-get --force-yes install llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libedit2 libedit-dev
-    - git clone https://github.com/boostorg/build.git
-    - cd build
+    - git clone https://github.com/boostorg/build.git boost_build
+    - cd boost_build
     - sudo ./bootstrap.sh
     - sudo ./b2 install
     - cd ..
