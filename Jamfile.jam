@@ -4,7 +4,6 @@
 
 import path ;
 import notfile ;
-import unit-test ;
 
 using clang : clang
 	: "clang++"
