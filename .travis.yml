@@ -1,6 +1,14 @@
 language: cpp
 compiler: clang
 
+addons:
+    apt:
+        sources:
+            - llvm-toolchain-precise
+            - ubuntu-toolchain-r-test
+        packages:
+            - clang-3.7
+
 install:
     - echo "LLVM $LLVM_VERSION"
     - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
