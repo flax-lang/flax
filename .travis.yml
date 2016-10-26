@@ -8,11 +8,12 @@ install:
     - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo apt-get --force-yes update
     - sudo apt-get --force-yes install llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libedit2 libedit-dev
-    - wget -O https://sourceforge.net/projects/boost/files/boost/1.61.0/boost_1_61_0.tar.gz
+    - wget -O boost_1_61_0.tar.gz https://sourceforge.net/projects/boost/files/boost/1.61.0/boost_1_61_0.tar.gz
     - tar -xf boost_1_61_0.tar.gz
     - cd boost_1_61_0
     - sudo ./bootstrap.sh
     - sudo ./b2 install
+    - cd ..
 
 script: b2 -j2
 
