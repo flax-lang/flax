@@ -23,8 +23,8 @@ install:
     - cd ..
 
 script:
-    - chmod +x ./travis.s
-    - ./travis.sh
+    - sudo chmod +x ./travis.sh
+    - sudo ./travis.sh
 
 notifications:
     email: false
