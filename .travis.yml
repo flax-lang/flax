@@ -23,8 +23,12 @@ install:
     - cd ..
 
 script:
-    - export CXX=clang++-3.7
-    - export CC=clang-3.7
+    - CLANGCXX=`which clang++`
+    - CLANGC=`which clang`
+    - sudo mv $CLANGCXX /tmp/clang++-old
+    - sudo mv $CLANGC /tmp/clang-old
+    - sudo mv `which clang++-3.7` $CLANGCXX
+    - sudo mv `which clang-3.7` $CLANGC
     - b2 -j2
 
 notifications:
