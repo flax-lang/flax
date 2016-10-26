@@ -63,10 +63,10 @@ public func doOperatorTupleTest()
 
 
 	do {
-		var args = alloc[10] Any
-		args[0] = "HELLO"
-		#(args + 1) = 40
-		args[2] = "GOODBYE"
+		// var args = alloc[10] Any
+		// args[0] = "HELLO"
+		// #(args + 1) = 40
+		// args[2] = "GOODBYE"
 	}
 
 

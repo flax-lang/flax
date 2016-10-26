@@ -507,6 +507,13 @@ namespace fir
 		return t;
 	}
 
+	EnumType* Type::toEnumType()
+	{
+		auto t = dynamic_cast<EnumType*>(this);
+		if(t == 0) error("not enum type");
+		return t;
+	}
+
 
 
 
@@ -609,6 +616,11 @@ namespace fir
 	bool Type::isCharType()
 	{
 		return dynamic_cast<CharType*>(this) != 0;
+	}
+
+	bool Type::isEnumType()
+	{
+		return dynamic_cast<EnumType*>(this) != 0;
 	}
 
 

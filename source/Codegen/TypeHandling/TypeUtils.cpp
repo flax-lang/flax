@@ -36,35 +36,6 @@ namespace Codegen
 	}
 
 
-	fir::Value* CodegenInstance::lastMinuteUnwrapType(Expr* user, fir::Value* alloca)
-	{
-		if(!alloca->getType()->isPointerType())
-			error("expected pointer, got %s", alloca->getType()->str().c_str());
-
-		iceAssert(alloca->getType()->isPointerType());
-		fir::Type* baseType = alloca->getType()->getPointerElementType();
-
-		if((baseType->isClassType() || baseType->isStructType()) && (this->isEnum(baseType) || this->isTypeAlias(baseType)))
-		{
-			TypePair_t* tp = this->getType(baseType);
-			if(!tp)
-				error(user, "Invalid type (%s)", baseType->str().c_str());
-
-			iceAssert(tp->second.second == TypeKind::Enum);
-			EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
-
-			iceAssert(enr);
-			if(enr->isStrong)
-			{
-				return alloca;		// fail.
-			}
-
-			return this->irb.CreateStructGEP(alloca, 0);
-		}
-
-		return alloca;
-	}
-
 
 	fir::Value* CodegenInstance::getStackAlloc(fir::Type* type, std::string name)
 	{
@@ -694,23 +665,6 @@ namespace Codegen
 		}
 
 		return false;
-	}
-
-	bool CodegenInstance::isEnum(fir::Type* type)
-	{
-		if(!type) return false;
-
-		bool res = true;
-		if(!type->isStructType())								res = false;
-		if(res && type->toStructType()->getElementCount() != 1)	res = false;
-
-		if(!res) return false;
-
-		TypePair_t* tp = 0;
-		if((tp = this->getType(type)))
-			return tp->second.second == TypeKind::Enum;
-
-		return res;
 	}
 
 	bool CodegenInstance::isTypeAlias(fir::Type* type)

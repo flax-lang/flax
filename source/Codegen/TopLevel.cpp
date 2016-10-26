@@ -69,7 +69,8 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 			TypeAlias* ta			= dynamic_cast<TypeAlias*>(e);
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);
+			EnumDef* enr			= dynamic_cast<EnumDef*>(e);
 			Func* fn				= dynamic_cast<Func*>(e);
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
@@ -81,6 +82,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
 			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
 			else if(prot)			addProtocolToFuncTree(cgi, prot);
+			else if(enr)			addTypeToFuncTree(cgi, enr, enr->ident.name, TypeKind::Enum);
 			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
 			{
 				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
@@ -116,12 +118,14 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
+			EnumDef* enr			= dynamic_cast<EnumDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// extension : class
 			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(ffi)					ffi->codegen(cgi);
 			else if(cls)			cls->createType(cgi);
+			else if(enr)			enr->createType(cgi);
 			else if(str)			str->createType(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
@@ -137,10 +141,12 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		for(Expr* e : expressions)
 		{
 			StructDef* str			= dynamic_cast<StructDef*>(e);
-			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// enum : class, extension : class
+			EnumDef* enr			= dynamic_cast<EnumDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);		// extension : class
 			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
 
 			if(str)					str->codegen(cgi);
+			else if(enr)			enr->codegen(cgi);
 			else if(cls)			cls->codegen(cgi);
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}

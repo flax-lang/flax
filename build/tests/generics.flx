@@ -69,54 +69,54 @@ func foo_generic<T>(a: T, b: T)
 
 func foo_generic<T, K>(a: T, b: K)
 {
-	let ta = typeof(a)
-	let tb = typeof(b)
+	// let ta = typeof(a)
+	// let tb = typeof(b)
 
 	let x = T()
 	let y = K()
 
-	if(ta == Type.i8)
-	{
-		printf("foo: (i8)   %d, ", a)
-	}
-	else if(ta == Type.i16)
-	{
-		printf("foo: (i16)  %d, ", a)
-	}
-	else if(ta == Type.i32)
-	{
-		printf("foo: (i32)  %d, ", a)
-	}
-	else if(ta == Type.i64)
-	{
-		printf("foo: (i64)  %d, ", a)
-	}
-	else if(ta == Type.string)
-	{
-		printf("foo: (string) %s, ", a)
-	}
+	// if(ta == Type.i8)
+	// {
+	// 	printf("foo: (i8)   %d, ", a)
+	// }
+	// else if(ta == Type.i16)
+	// {
+	// 	printf("foo: (i16)  %d, ", a)
+	// }
+	// else if(ta == Type.i32)
+	// {
+	// 	printf("foo: (i32)  %d, ", a)
+	// }
+	// else if(ta == Type.i64)
+	// {
+	// 	printf("foo: (i64)  %d, ", a)
+	// }
+	// else if(ta == Type.string)
+	// {
+	// 	printf("foo: (string) %s, ", a)
+	// }
 
 
-	if(tb == Type.i8)
-	{
-		printf("(i8)   %d\n", b)
-	}
-	else if(tb == Type.i16)
-	{
-		printf("(i16)  %d\n", b)
-	}
-	else if(tb == Type.i32)
-	{
-		printf("(i32)  %d\n", b)
-	}
-	else if(tb == Type.i64)
-	{
-		printf("(i64)  %d\n", b)
-	}
-	else if(tb == Type.string)
-	{
-		printf("(string) %s\n", b)
-	}
+	// if(tb == Type.i8)
+	// {
+	// 	printf("(i8)   %d\n", b)
+	// }
+	// else if(tb == Type.i16)
+	// {
+	// 	printf("(i16)  %d\n", b)
+	// }
+	// else if(tb == Type.i32)
+	// {
+	// 	printf("(i32)  %d\n", b)
+	// }
+	// else if(tb == Type.i64)
+	// {
+	// 	printf("(i64)  %d\n", b)
+	// }
+	// else if(tb == Type.string)
+	// {
+	// 	printf("(string) %s\n", b)
+	// }
 }
 
 public func doGenericsTest()

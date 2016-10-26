@@ -166,13 +166,17 @@ namespace fir
 		{
 			return llvm::Type::getInt8Ty(gc);
 		}
+		else if(type->isEnumType())
+		{
+			return typeToLlvm(type->toEnumType()->getCaseType(), mod);
+		}
 		else if(type->isParametricType())
 		{
 			error("Cannot convert parametric type %s into LLVM, something went wrong", type->str().c_str());
 		}
 		else
 		{
-			error("ICE: unknown type '%s'", type->str().c_str());
+			error("ICE: Unimplememented type '%s'", type->str().c_str());
 		}
 	}
 
@@ -1190,6 +1194,7 @@ namespace fir
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
+
 							Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 

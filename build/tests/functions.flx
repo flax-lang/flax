@@ -37,14 +37,14 @@ namespace SomeNS
 
 func gen<T>(a: T) -> T
 {
-	if(typeof(a) == typeof(int))
-	{
-		printf("int: %d\n", a)
-	}
-	else if(typeof(a) == typeof(f64))
-	{
-		printf("float: %lf\n", a)
-	}
+	// if(typeof(a) == typeof(int))
+	// {
+	// 	printf("int: %d\n", a)
+	// }
+	// else if(typeof(a) == typeof(f64))
+	// {
+	// 	printf("float: %lf\n", a)
+	// }
 
 	return a + 1
 }

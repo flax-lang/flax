@@ -44,7 +44,7 @@ public namespace SDL
 	public let GL_CONTEXT_RELEASE_BEHAVIOR: i32		= 24
 
 
-	public enum EventType
+	public enum EventType: u32
 	{
 		case FIRSTEVENT									= 0
 
@@ -109,7 +109,7 @@ public namespace SDL
 
 	public struct Event
 	{
-		var type: u32
+		var type: SDL.EventType
 		var lol: i8[52]
 	}
 
@@ -119,13 +119,13 @@ public namespace SDL
 		{
 			// SDL_Scancode scancode
 			var scancode: u32
-			var sym: u32
+			var sym: SDL.Key
 
 			var mod: u16
 			var unused: u32
 		}
 
-		var type: u32
+		var type: SDL.EventType
 		var timestamp: u32
 		var windowid: u32
 		var state: u8
