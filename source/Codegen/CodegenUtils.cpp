@@ -574,6 +574,10 @@ namespace Codegen
 					{
 						// ignore
 					}
+					else if(dynamic_cast<EnumDef*>(sb))
+					{
+						// nothing
+					}
 					else
 					{
 						iceAssert(0);

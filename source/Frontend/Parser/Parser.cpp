@@ -2484,6 +2484,8 @@ namespace Parser
 		iceAssert(ps.eat().type == TType::Enum);
 
 		Token tok_id;
+		pts::Type* explicitType = 0;
+
 		if((tok_id = ps.eat()).type != TType::Identifier)
 		{
 			parserError("Expected identifier after 'enum'");
@@ -2492,23 +2494,23 @@ namespace Parser
 		{
 			// parse an explicit type
 			ps.eat();
+			explicitType = parseType(ps);
 		}
 
 
 		if(ps.eat().type != TType::LBrace)
 			parserError("Expected body after 'enum'");
 
-
 		if(ps.front().type == TType::RBrace)
 			parserError("Empty enumerations are not allowed");
 
 
 		EnumDef* enumer = CreateAST(EnumDef, tok_id, tok_id.text);
+		enumer->ptype = explicitType;
 		Token front = ps.front();
 
-		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
-		if(attr & Attr_StrongTypeAlias)
-			enumer->isStrong = true;
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		enumer->attribs = attr;
 
 		// parse the stuff.
 		bool isFirst = true;
