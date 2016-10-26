@@ -22,7 +22,10 @@ install:
     - sudo ./b2 install
     - cd ..
 
-script: b2 -j2
+script:
+    - export CXX=clang++-3.7
+    - export CC=clang-3.7
+    - b2 -j2
 
 notifications:
     email: false
