@@ -26,20 +26,23 @@ namespace fir
 	struct Type;
 	struct Module;
 	struct VoidType;
-	struct PrimitiveType;
-	struct FunctionType;
-	struct PointerType;
-	struct StructType;
+	struct CharType;
+	struct EnumType;
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
+	struct StructType;
 	struct StringType;
-	struct CharType;
-	struct UnicodeStringType;
-	struct UnicodeCharType;
+	struct PointerType;
+	struct FunctionType;
+	struct PrimitiveType;
 	struct ParametricType;
+	struct UnicodeCharType;
+	struct UnicodeStringType;
 	struct LLVariableArrayType;
 
+	struct ConstantValue;
+	struct ConstantArray;
 	struct Function;
 
 	struct FTContext
@@ -103,6 +106,7 @@ namespace fir
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		CharType* toCharType();
+		EnumType* toEnumType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -115,6 +119,7 @@ namespace fir
 		bool isCharType();
 		bool isStringType();
 
+		bool isEnumType();
 		bool isArrayType();
 		bool isIntegerType();
 		bool isFunctionType();
@@ -479,6 +484,40 @@ namespace fir
 
 
 
+	struct EnumType : Type
+	{
+		friend struct Type;
+
+		ConstantValue* getCaseWithName(std::string name);
+		ConstantArray* getConstantArrayOfValues();
+		Type* getCaseType();
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		Identifier getEnumName();
+
+		// protected constructor
+		protected:
+		EnumType(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
+		virtual ~EnumType() override { }
+
+		Identifier enumName;
+		Type* caseType;
+		std::map<std::string, ConstantValue*> cases;
+
+		// static funcs
+		public:
+		static EnumType* get(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
+	};
+
+
+
+
+
 
 	struct ArrayType : Type
 	{
@@ -632,6 +671,7 @@ namespace fir
 		public:
 		static CharType* get(FTContext* tc = 0);
 	};
+
 
 
 

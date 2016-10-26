@@ -83,7 +83,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 				// don't need to worry about signedness for this; if you're smaller than int32,
 				// int32 can represent you even if you're unsigned
 				else if(arg->getType()->isIntegerType() && arg->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
-					arg = cgi->irb.CreateIntSizeCast(arg, fir::Type::getInt32());
+					arg = cgi->irb.CreateIntSizeCast(arg, arg->getType()->isSignedIntType() ? fir::Type::getInt32() : fir::Type::getUint32());
 			}
 
 			args.push_back(arg);
