@@ -10,8 +10,8 @@ install:
     - sudo apt-get --force-yes install llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libedit2 libedit-dev
     - sudo apt-get --force-yes install ghc cabal-install
     - cabal update
-    - cabal install Cabal --allow-newer
-    - cabal install shake --allow-newer
+    - cabal install --allow-newer Cabal
+    - cabal install --allow-newer shake
 
 script: runhaskell shakefile.hs -j2
 
