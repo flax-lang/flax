@@ -7,7 +7,7 @@ import notfile ;
 
 using clang : clang
 	: "clang++"
-	: <compileflags>"-Wno-trigraphs" <cflags>"-std=c11" <cxxflags>"-std=c++1z -Weverything -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move -Wno-nullability-completeness -Xclang -fcolor-diagnostics -g" <linkflags>"-g" ;
+	: <compileflags>"-Wno-trigraphs" <cflags>"-std=c11" <cxxflags>"-std=c++14 -Weverything -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Xclang -fcolor-diagnostics -g" <linkflags>"-g" ;
 
 project flax
 	: default-build clang

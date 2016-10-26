@@ -68,6 +68,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <wchar.h>
+#include <sys/types.h>
 
 /*!
 	\addtogroup version
