@@ -8,7 +8,7 @@ install:
     - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo apt-get --force-yes update
     - sudo apt-get --force-yes install llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libedit2 libedit-dev
-    - sudo apt-get --force-yes install boost
+    - sudo apt-get --force-yes install libboost-all-dev
 
 script: b2 -j2
 
