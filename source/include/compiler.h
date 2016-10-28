@@ -2,12 +2,13 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#pragma once
+
 #include "ast.h"
 #include <string>
 #include <vector>
 #include <map>
 
-#pragma once
 
 namespace llvm
 {
@@ -75,6 +76,7 @@ namespace Compiler
 	bool getDumpFir();
 	bool getDumpLlvm();
 	bool getEmitLLVMOutput();
+	bool showProfilerOutput();
 	std::string getTarget();
 	std::string getPrefix();
 	std::string getCodeModel();

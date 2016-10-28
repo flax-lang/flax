@@ -47,6 +47,7 @@ namespace Codegen
 
 		// cgi->cloneFunctionTree(cgi->rootNode->rootFuncStack, cgi->rootNode->rootFuncStack, true);
 
+		// auto p = prof::Profile("root codegen (" + Compiler::getFilenameFromPath(filename) + ")");
 		cgi->rootNode->codegen(cgi);
 
 		cgi->popScope();
@@ -421,63 +422,273 @@ namespace Codegen
 
 	void CodegenInstance::importOtherCgi(CodegenInstance* othercgi)
 	{
+		auto p = prof::Profile("importOtherCgi");
 		this->importFunctionTreeInto(this->rootNode->rootFuncStack, othercgi->rootNode->rootFuncStack);
 	}
 
 
-	#if 0
-	static fir::Function* cloneFunctionIntoCurrentTree(CodegenInstance* cgi, fir::Function* func, FuncDecl* funcdecl, Func* funcdef,
-		FunctionTree* target)
-	{
-		fir::Function* ret = func;
-		if(func && func->linkageType == fir::LinkageType::External)
-		{
-			fir::Function* f = 0;
-			if(!func->isGeneric())
-			{
-				// add to the func table
-
-				auto lf = cgi->module->getFunction(func->getName());
-				if(!lf)
-				{
-					lf = cgi->module->declareFunction(func->getName(), func->getType());
-					lf->setHadBodyElsewhere();
-				}
-
-				f = lf;
-				f->deleteBody();
-			}
-			else
-			{
-				f = func;
-			}
-
-			cgi->addFunctionToScope(FuncDefPair(f, funcdecl, funcdef));
-			ret = f;
-		}
-		else if(!func)
-		{
-			// note: generic functions are not instantiated
-			if(funcdecl && funcdecl->genericTypes.size() == 0)
-				error(funcdecl, "!func (%s)", funcdecl->ident.str().c_str());
-		}
-
-		return ret;
-	}
-	#endif
 
 
 	void CodegenInstance::importFunctionTreeInto(FunctionTree* ftree, FunctionTree* other)
 	{
+		// other is the source
+		// ftree is the target
+
 		ftree->nsName = other->nsName;
-		for(auto pair : other->funcs)
 		{
-			if(pair.funcDecl->attribs & Attr_VisPublic)
+			auto p = prof::Profile("import funcs");
+
+			for(auto pair : other->funcs)
+			{
+				if(pair.funcDecl->attribs & Attr_VisPublic)
+				{
+					bool existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+
+					if(!existing)
+					{
+						iceAssert(pair.funcDecl);
+						if(pair.funcDecl->genericTypes.size() == 0)
+						{
+							// declare new one
+							auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(),
+								fir::LinkageType::External);
+
+							ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
+							ftree->funcSet.insert(f->getName());
+						}
+						else
+						{
+							// for generics, just push as-is
+							ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
+							ftree->funcSet.insert(pair.firFunc->getName());
+						}
+					}
+				}
+			}
+		}
+
+
+
+		{
+			auto p = prof::Profile("import types");
+
+			for(auto t : other->types)
+			{
+				bool existing = ftree->types.find(t.first) != ftree->types.end();
+
+				if(!existing && t.first != "Type" && t.first != "Any")
+				{
+					if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
+					{
+						ftree->types[sb->ident.name] = t.second;
+						this->typeMap[sb->ident.str()] = t.second;
+
+
+						// check what kind of struct.
+						if(StructDef* str = dynamic_cast<StructDef*>(sb))
+						{
+							if(str->attribs & Attr_VisPublic)
+							{
+								for(auto f : str->initFuncs)
+									this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
+							}
+						}
+						else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
+						{
+							if(cls->attribs & Attr_VisPublic)
+							{
+								for(auto f : cls->initFuncs)
+								{
+									this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
+								}
+
+								for(auto ao : cls->assignmentOverloads)
+								{
+									this->module->getOrCreateFunction(ao->lfunc->getName(), ao->lfunc->getType(), fir::LinkageType::External);
+								}
+
+								for(auto so : cls->subscriptOverloads)
+								{
+									this->module->getOrCreateFunction(so->getterFunc->getName(), so->getterFunc->getType(),
+										fir::LinkageType::External);
+
+									if(so->setterFunc)
+									{
+										this->module->getOrCreateFunction(so->setterFunc->getName(), so->setterFunc->getType(),
+											fir::LinkageType::External);
+									}
+								}
+
+								for(auto fp : cls->functionMap)
+								{
+									if(fp.first->decl->attribs & Attr_VisPublic)
+									{
+										this->module->getOrCreateFunction(fp.second->getName(), fp.second->getType(), fir::LinkageType::External);
+									}
+								}
+							}
+						}
+						else if(dynamic_cast<Tuple*>(sb))
+						{
+							// ignore
+						}
+						else if(dynamic_cast<EnumDef*>(sb))
+						{
+							// nothing
+						}
+						else
+						{
+							iceAssert(0);
+						}
+					}
+				}
+			}
+		}
+
+
+
+
+
+		{
+			auto p = prof::Profile("import extensions");
+
+			for(auto ext : other->extensions)
 			{
 				bool existing = false;
-				for(auto f : ftree->funcs)
+				for(auto e : ftree->extensions)
 				{
-					if(f.firFunc->getName() == pair.firFunc->getName())
+					if(e.second == ext.second)
+					{
+						existing = true;
+						break;
+					}
+				}
+
+				if(!existing && ext.second->attribs & Attr_VisPublic)
+				{
+					ftree->extensions.insert(std::make_pair(ext.first, ext.second));
+
+					ExtensionDef* ed = ext.second;
+					for(auto& ff : ed->functionMap)
+					{
+						if(ff.first->decl->attribs & Attr_VisPublic)
+						{
+							this->module->getOrCreateFunction(ff.second->getName(), ff.second->getType(), fir::LinkageType::External);
+						}
+					}
+				}
+			}
+		}
+
+
+
+
+
+		{
+			auto p = prof::Profile("import operators");
+
+			for(auto oo : other->operators)
+			{
+				bool existing = false;
+				for(auto ooc : ftree->operators)
+				{
+					if(oo->func->decl->ident == ooc->func->decl->ident)
+					{
+						existing = true;
+						break;
+					}
+				}
+
+
+				if(!existing && oo->attribs & Attr_VisPublic)
+				{
+					ftree->operators.push_back(oo);
+				}
+			}
+		}
+
+
+
+
+
+		{
+			auto p = prof::Profile("import vars");
+
+			for(auto var : other->vars)
+			{
+				if(var.second.second->attribs & Attr_VisPublic)
+				{
+					bool existing = ftree->vars.find(var.first) != ftree->vars.end();
+
+					if(!existing && var.second.second->attribs & Attr_VisPublic)
+					{
+						// add to the module list
+						// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
+
+						fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident);
+
+						if(potentialGV == 0)
+						{
+							auto gv = this->module->declareGlobalVariable(var.second.second->ident,
+								var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
+
+							ftree->vars[var.first] = SymbolPair_t(gv, var.second.second);
+						}
+						else
+						{
+							if(potentialGV->getType() != var.second.first->getType())
+							{
+								error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
+									var.second.second->ident.str().c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
+									potentialGV->getType()->getPointerElementType()->str().c_str());
+							}
+
+							ftree->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
+						}
+					}
+				}
+			}
+		}
+
+
+
+		{
+			auto p = prof::Profile("import generics");
+
+			for(auto gf : other->genericFunctions)
+			{
+				bool existing = false;
+				for(auto cgf : ftree->genericFunctions)
+				{
+					if(cgf.first == gf.first || cgf.second == gf.second)
+					{
+						existing = true;
+						break;
+					}
+				}
+
+				if(!existing && gf.first->attribs & Attr_VisPublic)
+					ftree->genericFunctions.push_back(gf);
+			}
+		}
+
+
+
+
+
+		{
+			auto p = prof::Profile("import protocols");
+
+			for(auto prot : other->protocols)
+			{
+				bool existing = false;
+				for(auto cprot : ftree->protocols)
+				{
+					if(prot.first == cprot.first && prot.second != cprot.second)
+					{
+						error(prot.second, "conflicting protocols with the same name");
+					}
+					else if(prot.first == cprot.first && prot.second == cprot.second)
 					{
 						existing = true;
 						break;
@@ -486,282 +697,36 @@ namespace Codegen
 
 				if(!existing)
 				{
-					iceAssert(pair.funcDecl);
-					if(pair.funcDecl->genericTypes.size() == 0)
-					{
-						// declare new one
-						auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(), fir::LinkageType::External);
-						ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
-					}
-					else
-					{
-						// for generics, just push as-is
-						ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
-					}
+					ftree->protocols[prot.first] = prot.second;
 				}
 			}
 		}
 
 
 
-
-
-		for(auto t : other->types)
 		{
-			bool existing = false;
-			for(auto tt : ftree->types)
+			// auto p = prof::Profile("import subs");
+
+			for(auto sub : other->subs)
 			{
-				if(tt.first == t.first)
+				FunctionTree* found = ftree->subMap[sub->nsName];
+
+				if(found)
 				{
-					existing = true;
-					break;
+					this->importFunctionTreeInto(found, sub);
 				}
-			}
-
-			if(!existing && t.first != "Type" && t.first != "Any")
-			{
-				if(StructBase* sb = dynamic_cast<StructBase*>(t.second.second.first))
+				else
 				{
-					ftree->types[sb->ident.name] = t.second;
-					this->typeMap[sb->ident.str()] = t.second;
+					auto nft = new FunctionTree();
+					this->importFunctionTreeInto(nft, sub);
 
-
-					// check what kind of struct.
-					if(StructDef* str = dynamic_cast<StructDef*>(sb))
-					{
-						if(str->attribs & Attr_VisPublic)
-						{
-							for(auto f : str->initFuncs)
-								this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
-						}
-					}
-					else if(ClassDef* cls = dynamic_cast<ClassDef*>(sb))
-					{
-						if(cls->attribs & Attr_VisPublic)
-						{
-							for(auto f : cls->initFuncs)
-							{
-								this->module->getOrCreateFunction(f->getName(), f->getType(), fir::LinkageType::External);
-							}
-
-							for(auto ao : cls->assignmentOverloads)
-							{
-								this->module->getOrCreateFunction(ao->lfunc->getName(), ao->lfunc->getType(), fir::LinkageType::External);
-							}
-
-							for(auto so : cls->subscriptOverloads)
-							{
-								this->module->getOrCreateFunction(so->getterFunc->getName(), so->getterFunc->getType(),
-									fir::LinkageType::External);
-
-								if(so->setterFunc)
-								{
-									this->module->getOrCreateFunction(so->setterFunc->getName(), so->setterFunc->getType(),
-										fir::LinkageType::External);
-								}
-							}
-
-							for(auto fp : cls->functionMap)
-							{
-								if(fp.first->decl->attribs & Attr_VisPublic)
-								{
-									this->module->getOrCreateFunction(fp.second->getName(), fp.second->getType(), fir::LinkageType::External);
-								}
-							}
-						}
-					}
-					else if(dynamic_cast<Tuple*>(sb))
-					{
-						// ignore
-					}
-					else if(dynamic_cast<EnumDef*>(sb))
-					{
-						// nothing
-					}
-					else
-					{
-						iceAssert(0);
-					}
+					ftree->subMap[sub->nsName] = nft;
+					ftree->subs.push_back(nft);
 				}
-			}
-		}
-
-
-
-
-
-
-		for(auto ext : other->extensions)
-		{
-			bool existing = false;
-			for(auto e : ftree->extensions)
-			{
-				if(e.second == ext.second)
-				{
-					existing = true;
-					break;
-				}
-			}
-
-			if(!existing && ext.second->attribs & Attr_VisPublic)
-			{
-				ftree->extensions.insert(std::make_pair(ext.first, ext.second));
-
-				ExtensionDef* ed = ext.second;
-				for(auto& ff : ed->functionMap)
-				{
-					if(ff.first->decl->attribs & Attr_VisPublic)
-					{
-						this->module->getOrCreateFunction(ff.second->getName(), ff.second->getType(), fir::LinkageType::External);
-					}
-				}
-			}
-		}
-
-
-
-
-
-		for(auto oo : other->operators)
-		{
-			bool existing = false;
-			for(auto ooc : ftree->operators)
-			{
-				if(oo->func->decl->ident == ooc->func->decl->ident)
-				{
-					existing = true;
-					break;
-				}
-			}
-
-
-			if(!existing && oo->attribs & Attr_VisPublic)
-			{
-				ftree->operators.push_back(oo);
-			}
-		}
-
-
-
-
-		for(auto var : other->vars)
-		{
-			if(var.second.second->attribs & Attr_VisPublic)
-			{
-				bool existing = false;
-				for(auto v : ftree->vars)
-				{
-					if(v.second.second->ident == var.second.second->ident)
-					{
-						existing = true;
-						break;
-					}
-				}
-
-
-				if(!existing && var.second.second->attribs & Attr_VisPublic)
-				{
-					// add to the module list
-					// note: we're getting the ptr element type since the Value* stored is the allocated storage, which is a ptr.
-
-					fir::GlobalVariable* potentialGV = this->module->tryGetGlobalVariable(var.second.second->ident);
-
-					if(potentialGV == 0)
-					{
-						auto gv = this->module->declareGlobalVariable(var.second.second->ident,
-							var.second.first->getType()->getPointerElementType(), var.second.second->immutable);
-
-						ftree->vars[var.first] = SymbolPair_t(gv, var.second.second);
-					}
-					else
-					{
-						if(potentialGV->getType() != var.second.first->getType())
-						{
-							error(var.second.second, "Conflicting types for global variable %s: %s vs %s.",
-								var.second.second->ident.str().c_str(), var.second.first->getType()->getPointerElementType()->str().c_str(),
-								potentialGV->getType()->getPointerElementType()->str().c_str());
-						}
-
-						ftree->vars[var.first] = SymbolPair_t(potentialGV, var.second.second);
-					}
-				}
-			}
-		}
-
-
-		for(auto gf : other->genericFunctions)
-		{
-			bool existing = false;
-			for(auto cgf : ftree->genericFunctions)
-			{
-				if(cgf.first == gf.first || cgf.second == gf.second)
-				{
-					existing = true;
-					break;
-				}
-			}
-
-			if(!existing && gf.first->attribs & Attr_VisPublic)
-				ftree->genericFunctions.push_back(gf);
-		}
-
-
-
-		for(auto prot : other->protocols)
-		{
-			bool existing = false;
-			for(auto cprot : ftree->protocols)
-			{
-				if(prot.first == cprot.first && prot.second != cprot.second)
-				{
-					error(prot.second, "conflicting protocols with the same name");
-				}
-				else if(prot.first == cprot.first && prot.second == cprot.second)
-				{
-					existing = true;
-					break;
-				}
-			}
-
-			if(!existing)
-			{
-				ftree->protocols[prot.first] = prot.second;
-			}
-		}
-
-
-		for(auto sub : other->subs)
-		{
-			FunctionTree* found = 0;
-			for(auto s : ftree->subs)
-			{
-				if(s->nsName == sub->nsName)
-				{
-					found = s;
-					break;
-				}
-			}
-
-			if(found)
-			{
-				this->importFunctionTreeInto(found, sub);
-			}
-			else
-			{
-				auto nft = new FunctionTree();
-				this->importFunctionTreeInto(nft, sub);
-
-				ftree->subs.push_back(nft);
 			}
 		}
 	}
 
-	// FunctionTree* CodegenInstance::cloneFunctionTree(FunctionTree* ft, bool deep)
-	// {
-	// 	FunctionTree* clone = new FunctionTree();
-	// 	this->cloneFunctionTree(ft, clone, deep);
-	// 	return clone;
-	// }
 
 
 	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
@@ -853,14 +818,18 @@ namespace Codegen
 		{
 			bool found = false;
 			FunctionTree* existing = this->getCurrentFuncTree();
-			for(auto s : existing->subs)
-			{
-				if(s->nsName == namespc)
-				{
-					found = true;
-					break;
-				}
-			}
+			if(existing->subMap.find(namespc) != existing->subMap.end())
+				found = true;
+
+
+			// for(auto s : existing->subs)
+			// {
+			// 	if(s->nsName == namespc)
+			// 	{
+			// 		found = true;
+			// 		break;
+			// 	}
+			// }
 
 			if(!found)
 			{
@@ -868,6 +837,7 @@ namespace Codegen
 				ft->nsName = namespc;
 
 				existing->subs.push_back(ft);
+				existing->subMap[namespc] = ft;
 			}
 		}
 
@@ -887,19 +857,14 @@ namespace Codegen
 
 		iceAssert(cur);
 
-		for(FuncDefPair& fp : cur->funcs)
+		for(auto& fp : cur->funcs)
 		{
 			if(fp.firFunc == 0 && fp.funcDecl == func.funcDecl)
 			{
 				fp.firFunc = func.firFunc;
+				cur->funcSet.insert(fp.firFunc->getName());
 				return;
 			}
-			// else if(fp.funcDef == 0 && fp.funcDecl == func.funcDecl)
-			// {
-			// 	fp.funcDef = func.funcDef;
-			// 	if(fp.firFunc == 0)
-			// 		fp.firFunc = func.firFunc;
-			// }
 			else if(fp.firFunc == func.firFunc && fp.funcDef == func.funcDef)
 			{
 				return;
@@ -907,6 +872,8 @@ namespace Codegen
 		}
 
 		cur->funcs.push_back(func);
+
+		if(func.firFunc) cur->funcSet.insert(func.firFunc->getName());
 	}
 
 	void CodegenInstance::removeFunctionFromScope(FuncDefPair func)
@@ -917,6 +884,13 @@ namespace Codegen
 		auto it = std::find(cur->funcs.begin(), cur->funcs.end(), func);
 		if(it != cur->funcs.end())
 			cur->funcs.erase(it);
+
+		if(func.firFunc)
+		{
+			auto it = cur->funcSet.find(func.firFunc->getName());
+			if(it != cur->funcSet.end())
+				cur->funcSet.erase(it);
+		}
 	}
 
 

@@ -765,23 +765,32 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 		if(curType == 0)
 		{
 			// check if it's a namespace.
-			for(auto sub : ftree->subs)
+			if(ftree->subMap.find(front) != ftree->subMap.end())
 			{
-				iceAssert(sub);
-				if(sub->nsName == front)
-				{
-					// yes.
-					nsstrs.push_back(front);
-					ftree = this->getCurrentFuncTree(&nsstrs);
-					iceAssert(ftree);
+				// yes.
+				nsstrs.push_back(front);
+				ftree = this->getCurrentFuncTree(&nsstrs);
+				iceAssert(ftree);
 
-					found = true;
-					break;
-				}
+				found = true;
 			}
 
-			if(found)
-				continue;
+			// for(auto sub : ftree->subs)
+			// {
+			// 	iceAssert(sub);
+			// 	if(sub->nsName == front)
+			// 	{
+			// 		// yes.
+			// 		nsstrs.push_back(front);
+			// 		ftree = this->getCurrentFuncTree(&nsstrs);
+			// 		iceAssert(ftree);
+
+			// 		found = true;
+			// 		break;
+			// 	}
+			// }
+
+			if(found) continue;
 
 			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
