@@ -69,8 +69,13 @@ namespace Compiler
 
 		fileList[fullPath] = innards;
 
+
+		auto p = prof::Profile("lex");
 		while((curtok = getNextToken(fileContents, pos)).text.size() > 0)
 			ts.push_back(curtok);
+
+		p.finish();
+
 
 		fileList[fullPath].tokens = ts;
 		fileList[fullPath].isLexing = false;

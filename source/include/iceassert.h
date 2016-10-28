@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "profile.h"
+
 inline void error_and_exit(const char* s, ...) __attribute__((noreturn));
 inline void error_and_exit(const char* s, ...)
 {

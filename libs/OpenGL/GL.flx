@@ -888,7 +888,7 @@ public ffi func glCallLists(n: i32, type: u32, lists: void*) -> void
 public ffi func glListBase(base: u32) -> void
 
 // Drawing Functions
-public ffi func glBegin(mode: u32) -> void
+public ffi func glBegin(mode: GL) -> void
 public ffi func glEnd() -> void
 public ffi func glVertex2d(x: f64, y: f64) -> void
 public ffi func glVertex2f(x: f32, y: f32) -> void
