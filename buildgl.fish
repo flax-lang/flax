@@ -24,6 +24,9 @@ function callCompiler
 	else if contains "compile" $argv
 		set dump ""
 		set compile "-o build/gltest"
+	else if contains "nolink" $argv
+		set dump ""
+		set compile "-c"
 	end
 
 
@@ -35,7 +38,7 @@ function callCompiler
 	eval time "build/sysroot/usr/local/bin/flaxc -framework OpenGL -framework GLUT -lsdl2 -sysroot build/sysroot" $opt $compile $dump "build/gltest.flx"
 
 	if [ $compile != "-jit" -a $dump = "" ]
-		build/test
+		# build/test
 	end
 end
 

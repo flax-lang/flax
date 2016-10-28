@@ -10,6 +10,7 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <deque>
 
 #include <sys/types.h>
@@ -17,6 +18,7 @@
 #define TAB_WIDTH	4
 
 #include "iceassert.h"
+#include "ir/identifier.h"
 
 // forward declarations.
 namespace fir
@@ -112,15 +114,20 @@ namespace Codegen
 		id_t id;
 
 		std::string nsName;
+
 		std::deque<FunctionTree*> subs;
+		std::unordered_map<std::string, FunctionTree*> subMap;	// purely for fast duplicate checking
 
 		// things within.
 		std::deque<FuncDefPair> funcs;
+		std::unordered_set<Identifier> funcSet;		// purely for fast duplicate checking during import
+
+
 		std::deque<Ast::OpOverload*> operators;
 		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
-		std::map<std::string, TypePair_t> types;
-		std::map<std::string, SymbolPair_t> vars;
+		std::unordered_map<std::string, TypePair_t> types;
+		std::unordered_map<std::string, SymbolPair_t> vars;
 		std::multimap<std::string, Ast::ExtensionDef*> extensions;
 		std::map<std::string, Ast::ProtocolDef*> protocols;
 	};

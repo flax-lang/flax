@@ -142,6 +142,8 @@ namespace Compiler
 
 	static Codegen::CodegenInstance* _compileFile(std::string fpath, Codegen::CodegenInstance* rcgi, Root* dummyRoot)
 	{
+		auto p = prof::Profile("compileFile");
+
 		using namespace Codegen;
 		using namespace Parser;
 

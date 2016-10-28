@@ -24,6 +24,9 @@ function callCompiler
 	else if contains "compile" $argv
 		set dump ""
 		set compile "-o build/test"
+	else if contains "nolink" $argv
+		set dump ""
+		set compile "-c"
 	end
 
 
@@ -33,11 +36,6 @@ function callCompiler
 
 
 	eval time "build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot" $opt $compile $dump "build/test.flx"
-
-	if [ $compile != "-jit" -a $dump = "" ]
-		echo -e "\n\n-----------------\n\n"
-		build/test
-	end
 end
 
 
