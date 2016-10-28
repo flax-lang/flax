@@ -344,9 +344,9 @@ namespace Parser
 					Import* imp = parseImport(ps);
 					std::string file = Compiler::resolveImport(imp, Compiler::getFullPathOfFile(filename));
 
-					if(!ps.visited[file])
+					if(ps.visited.find(file) == ps.visited.end())
 					{
-						ps.visited[file] = true;
+						ps.visited.insert(file);
 
 						ParserState fakePs(ps.cgi);
 						parseAllCustomOperators(fakePs, file, curpath);
@@ -1215,7 +1215,7 @@ namespace Parser
 			std::string ret = front.text;
 			ps.eat();
 
-			while(true)
+			while(ps.hasTokens())
 			{
 				if(ps.front().type == TType::Period)
 				{
@@ -1248,7 +1248,7 @@ namespace Parser
 
 			// parse a tuple.
 			std::deque<std::string> types;
-			while(ps.front().type != TType::RParen)
+			while(ps.hasTokens() && ps.front().type != TType::RParen)
 			{
 				// do things.
 				std::string ret = parseStringType(ps);
@@ -1298,11 +1298,11 @@ namespace Parser
 			ps.eat();
 			std::map<std::string, TypeConstraints_t> genericTypes;
 
-			if(ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
+			if(ps.hasTokens() && ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
 			{
 				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
 			}
-			else if(ps.front().type == TType::LAngle)
+			else if(ps.hasTokens() && ps.front().type == TType::LAngle)
 			{
 				ps.eat();
 				genericTypes = parseGenericTypeList(ps);
@@ -1345,7 +1345,7 @@ namespace Parser
 			ps.eat();
 
 			// start. basically we take a list of types only, no names.
-			while(ps.front().type != TType::RParen)
+			while(ps.hasTokens() && ps.front().type != TType::RParen)
 			{
 				ret += parseStringType(ps);
 

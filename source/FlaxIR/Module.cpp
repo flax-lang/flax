@@ -128,9 +128,7 @@ namespace fir
 	Function* Module::getFunction(Identifier id)
 	{
 		if(this->functions.find(id) == this->functions.end())
-		{
 			return 0;
-		}
 
 		return this->functions[id];
 	}
