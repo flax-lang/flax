@@ -121,13 +121,23 @@ namespace fir
 
 		Value* CreateGetStringData(Value* ptr, std::string vname = "");
 		Value* CreateSetStringData(Value* ptr, Value* val, std::string vname = "");
-
 		Value* CreateGetStringLength(Value* ptr, std::string vname = "");
 		Value* CreateSetStringLength(Value* ptr, Value* val, std::string vname = "");
-
 		Value* CreateGetStringRefCount(Value* ptr, std::string vname = "");
 		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
 
+
+		Value* CreateGetDynamicArrayData(Value* ptr, std::string vname = "");
+		Value* CreateSetDynamicArrayData(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayLength(Value* ptr, std::string vname = "");
+		Value* CreateSetDynamicArrayLength(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayCapacity(Value* ptr, std::string vname = "");
+		Value* CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname = "");
+
+		Value* CreateGetParameterPackData(Value* ptr, std::string vname = "");
+		Value* CreateSetParameterPackData(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetParameterPackLength(Value* ptr, std::string vname = "");
+		Value* CreateSetParameterPackLength(Value* ptr, Value* val, std::string vname = "");
 
 		void CreateUnreachable();
 

@@ -30,13 +30,32 @@ public ƒ doArrayTest()
 		printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
 	}
 
+	dynamicArrays()
+}
 
+func dynamicArrays()
+{
 	do {
-
-		let x: int[] = alloc[8] int
-
+		let y = 10
+		// let x: int[] = alloc[8] int
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
