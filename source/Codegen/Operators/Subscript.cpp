@@ -20,9 +20,9 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	fir::Type* t = this->arr->getType(cgi);
-	if(t->isLLVariableArrayType())
+	if(t->isParameterPackType())
 	{
-		return t->toLLVariableArrayType()->getElementType();
+		return t->toParameterPackType()->getElementType();
 	}
 	else if(t->isPointerType())
 	{
@@ -312,7 +312,7 @@ namespace Operators
 		// get our array type
 		fir::Type* atype = subscriptee->getType(cgi);
 
-		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isLLVariableArrayType() && !atype->isStringType())
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isParameterPackType() && !atype->isStringType())
 		{
 			if(atype->isStructType() || atype->isClassType())
 				return operatorOverloadedSubscript(cgi, op, user, args);
@@ -347,12 +347,19 @@ namespace Operators
 		{
 			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
-		else if(atype->isLLVariableArrayType())
+		else if(atype->isParameterPackType())
 		{
-			fir::Value* dataPtr = cgi->irb.CreateStructGEP(lhsp.pointer, 0);
-			fir::Value* data = cgi->irb.CreateLoad(dataPtr);
+			fir::Function* checkf = cgi->getArrayBoundsCheckFunction();
+			iceAssert(checkf);
 
+			fir::Value* max = cgi->irb.CreateGetParameterPackLength(lhsp.pointer);
+			cgi->irb.CreateCall2(checkf, max, ind);
+
+			fir::Value* data = cgi->irb.CreateGetParameterPackData(lhsp.pointer);
 			gep = cgi->irb.CreateGetPointer(data, ind);
+
+			if(lhsp.pointer->isImmutable())
+				gep->makeImmutable();
 		}
 		else if(atype->isStringType())
 		{

@@ -479,10 +479,17 @@ namespace fir
 		return t;
 	}
 
-	LLVariableArrayType* Type::toLLVariableArrayType()
+	DynamicArrayType* Type::toDynamicArrayType()
 	{
-		auto t = dynamic_cast<LLVariableArrayType*>(this);
-		if(t == 0) error("not llva type");
+		auto t = dynamic_cast<DynamicArrayType*>(this);
+		if(t == 0) error("not dynamic array type");
+		return t;
+	}
+
+	ParameterPackType* Type::toParameterPackType()
+	{
+		auto t = dynamic_cast<ParameterPackType*>(this);
+		if(t == 0) error("not parameter pack type");
 		return t;
 	}
 
@@ -593,9 +600,14 @@ namespace fir
 		return dynamic_cast<VoidType*>(this) != 0;
 	}
 
-	bool Type::isLLVariableArrayType()
+	bool Type::isDynamicArrayType()
 	{
-		return dynamic_cast<LLVariableArrayType*>(this) != 0;
+		return dynamic_cast<DynamicArrayType*>(this) != 0;
+	}
+
+	bool Type::isParameterPackType()
+	{
+		return dynamic_cast<ParameterPackType*>(this) != 0;
 	}
 
 	bool Type::isVoidPointer()
