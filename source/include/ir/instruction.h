@@ -117,12 +117,22 @@ namespace fir
 		// string-specific things
 		String_GetData,
 		String_SetData,
-
 		String_GetLength,
 		String_SetLength,
-
 		String_GetRefCount,
 		String_SetRefCount,
+
+		DynamicArray_GetData,
+		DynamicArray_SetData,
+		DynamicArray_GetLength,
+		DynamicArray_SetLength,
+		DynamicArray_GetCapacity,
+		DynamicArray_SetCapacity,
+
+		ParamPack_GetData,
+		ParamPack_SetData,
+		ParamPack_GetLength,
+		ParamPack_SetLength,
 
 		Branch_UnCond,
 		Branch_Cond,

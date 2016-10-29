@@ -123,12 +123,13 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=c++1z -O2 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics" -- " -fsanitize=address"
+		let cxxFlags = "-std=c++1z -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics" -- " -fsanitize=address"
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX
 
-		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
+		progress <- getProgress
+		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
 
 		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
 
@@ -143,12 +144,13 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let ccFlags = "-std=c11 -O3 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations" -- " -fsanitize=address"
+		let ccFlags = "-std=c11 -O0 -g -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations" -- " -fsanitize=address"
 
 		maybeCC <- getEnvWithDefault "clang" "CC"
 		let cc = maybeCC
 
-		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
+		progress <- getProgress
+		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
 
 		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MF" [m]
 

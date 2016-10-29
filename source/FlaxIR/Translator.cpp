@@ -139,11 +139,21 @@ namespace fir
 		{
 			return llvm::Type::getVoidTy(gc);
 		}
-		else if(type->isLLVariableArrayType())
+		else if(type->isParameterPackType())
 		{
-			LLVariableArrayType* llat = type->toLLVariableArrayType();
+			ParameterPackType* packt = type->toParameterPackType();
+			std::vector<llvm::Type*> mems;
+			mems.push_back(typeToLlvm(packt->getElementType()->getPointerTo(), mod));
+			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
+
+			return llvm::StructType::get(gc, mems, false);
+		}
+		else if(type->isDynamicArrayType())
+		{
+			DynamicArrayType* llat = type->toDynamicArrayType();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
+			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
 
 			return llvm::StructType::get(gc, mems, false);
@@ -1349,15 +1359,6 @@ namespace fir
 							iceAssert(inst->operands.size() == 3);
 							llvm::Value* a = getOperand(inst, 0);
 
-
-							// ConstantInt* cb = dynamic_cast<ConstantInt*>(inst->operands[1]);
-							// ConstantInt* cc = dynamic_cast<ConstantInt*>(inst->operands[2]);
-
-							// iceAssert(cb);
-							// iceAssert(cc);
-
-							// llvm::Value* ret = builder.CreateConstGEP2_64(a, cb->getUnsignedValue(), cc->getUnsignedValue());
-
 							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
 							llvm::Value* ret = builder.CreateGEP(a, indices);
 
@@ -1525,6 +1526,167 @@ namespace fir
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+
+
+
+
+
+
+
+						case OpKind::DynamicArray_GetData:
+						case OpKind::DynamicArray_GetLength:
+						case OpKind::DynamicArray_GetCapacity:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							int ind = 0;
+							if(inst->opKind == OpKind::DynamicArray_GetData)
+								ind = 0;
+							else if(inst->opKind == OpKind::DynamicArray_GetLength)
+								ind = 1;
+							else
+								ind = 2;
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							llvm::Value* ret = builder.CreateLoad(gep);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+						case OpKind::DynamicArray_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getPointerElementType()->
+								toDynamicArrayType()->getElementType()->getPointerTo(), module));
+
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							builder.CreateStore(b, data);
+
+							llvm::Value* ret = builder.CreateLoad(data);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case OpKind::DynamicArray_SetLength:
+						case OpKind::DynamicArray_SetCapacity:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+							int ind = 0;
+							if(inst->opKind == OpKind::DynamicArray_SetLength)
+								ind = 1;
+							else
+								ind = 2;
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							builder.CreateStore(b, len);
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
+						case OpKind::ParamPack_GetData:
+						case OpKind::ParamPack_GetLength:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							int ind = 0;
+							if(inst->opKind == OpKind::ParamPack_GetData)
+								ind = 0;
+							else
+								ind = 1;
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							llvm::Value* ret = builder.CreateLoad(gep);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case OpKind::ParamPack_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getPointerElementType()->
+								toParameterPackType()->getElementType()->getPointerTo(), module));
+
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
+							builder.CreateStore(b, data);
+
+							llvm::Value* ret = builder.CreateLoad(data);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ParamPack_SetLength:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
+							builder.CreateStore(b, len);
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
+
 
 
 

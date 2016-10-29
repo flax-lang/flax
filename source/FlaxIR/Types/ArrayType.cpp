@@ -25,12 +25,12 @@ namespace fir
 	// various
 	std::string ArrayType::str()
 	{
-		return "[" + std::to_string(this->getArraySize()) + " x " + this->arrayElementType->str() + "]";
+		return this->arrayElementType->str() + "[" + std::to_string(this->getArraySize()) + "]";
 	}
 
 	std::string ArrayType::encodedStr()
 	{
-		return "[" + std::to_string(this->getArraySize()) + "x" + this->arrayElementType->encodedStr() + "]";
+		return this->arrayElementType->encodedStr() + "[" + std::to_string(this->getArraySize()) + "]";
 	}
 
 
