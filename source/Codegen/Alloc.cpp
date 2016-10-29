@@ -237,7 +237,11 @@ fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 
 
-
+// note: i'm quite proud of this function
+// took a good 15 minutes of brain-ing to figure out
+// basically, a function from nest = N to nest = 0 will be generated
+// functions with nest > 0 will call (and generate if needed) the function for nest = N - 1
+// aka recursion... in recursion!
 static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Type* type, int nest)
 {
 	std::string name = "__recursive_dealloc_" + type->encodedStr() + "_N" + std::to_string(nest);
