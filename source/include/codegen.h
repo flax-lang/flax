@@ -212,7 +212,6 @@ namespace Codegen
 
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 
-		bool isEnum(fir::Type* type);
 		bool isArrayType(Ast::Expr* e);
 		bool isSignedType(Ast::Expr* e);
 		bool isBuiltinType(Ast::Expr* e);
@@ -223,8 +222,6 @@ namespace Codegen
 		bool isRefCountedType(fir::Type* type);
 
 		bool isDuplicateType(Identifier id);
-
-		fir::Value* lastMinuteUnwrapType(Ast::Expr* user, fir::Value* alloca);
 
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
@@ -240,9 +237,6 @@ namespace Codegen
 		unwrapStaticDotOperator(Ast::MemberAccess* ma);
 
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
-
-		Ast::Result_t getEnumerationCaseValue(Ast::Expr* user, TypePair_t* enr, std::string casename, bool actual = true);
-		Ast::Result_t getEnumerationCaseValue(Ast::Expr* lhs, Ast::Expr* rhs, bool actual = true);
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);

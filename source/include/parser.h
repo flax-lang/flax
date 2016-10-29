@@ -170,7 +170,7 @@ namespace Parser
 
 		TokenList tokens;
 
-		std::map<std::string, bool> visited;
+		std::unordered_set<std::string> visited;
 
 		Token curtok;
 		Pin currentPos;
@@ -192,6 +192,11 @@ namespace Parser
 		void pop_front()
 		{
 			this->tokens.pop_front();
+		}
+
+		bool hasTokens()
+		{
+			return this->tokens.size() > 0;
 		}
 
 		Token eat()
@@ -233,7 +238,7 @@ namespace Parser
 	Ast::Expr* parsePrimary(ParserState& tokens);
 
 	Ast::Expr* 				parseIf(ParserState& tokens);
-	Ast::Expr*				parseType(ParserState& tokens);
+	pts::Type*				parseType(ParserState& tokens);
 	Ast::EnumDef*			parseEnum(ParserState& tokens);
 	Ast::Func*				parseFunc(ParserState& tokens);
 	Ast::Expr*				parseExpr(ParserState& tokens);

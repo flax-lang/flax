@@ -73,10 +73,7 @@ namespace fir
 	// various
 	std::string ClassType::str()
 	{
-		if(this->typeList.size() == 0)
-			return this->className.name;
-
-		return this->className.name;
+		return "class(" + this->className.name + ")";
 	}
 
 	std::string ClassType::encodedStr()

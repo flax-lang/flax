@@ -58,6 +58,7 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_POSINDEPENDENT						"-pic"
 #define ARG_PRINT_FIR							"-print-fir"
 #define ARG_PRINT_LLVMIR						"-print-lir"
+#define ARG_PROFILE								"-profile"
 #define ARG_RUNPROGRAM							"-run"
 #define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
 #define ARG_SYSROOT								"-sysroot"
@@ -96,6 +97,7 @@ static void setupMap()
 	list.push_back({ ARG_POSINDEPENDENT, "Generate position independent code" });
 	list.push_back({ ARG_PRINT_FIR, "Print the FlaxIR before compilation" });
 	list.push_back({ ARG_PRINT_LLVMIR, "Print the LLVM IR before compilation" });
+	list.push_back({ ARG_PROFILE, "Print internal compiler profiling statistics" });
 	list.push_back({ ARG_RUNPROGRAM, "Use LLVM JIT to run the program, instead of compiling to a file" });
 	list.push_back({ ARG_SHOW_CLANG_OUTPUT, "Show the output of calling the final compiler" });
 	list.push_back({ ARG_SYSROOT + std::string(" <dir>"), "Set the directory used as the sysroot" });
@@ -168,6 +170,12 @@ namespace Compiler
 	std::deque<std::string> getFrameworkSearchPaths()
 	{
 		return frameworkSearchPaths;
+	}
+
+	static bool doProfiler = false;
+	bool showProfilerOutput()
+	{
+		return doProfiler;
 	}
 
 	static bool printLLVMIR = false;
@@ -455,6 +463,10 @@ namespace Compiler
 				else if(!strcmp(argv[i], ARG_POSINDEPENDENT))
 				{
 					Compiler::isPIC = true;
+				}
+				else if(!strcmp(argv[i], ARG_PROFILE))
+				{
+					Compiler::doProfiler = true;
 				}
 				else if(!strcmp(argv[i], ARG_MCMODEL))
 				{

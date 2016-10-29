@@ -657,10 +657,10 @@ namespace Ast
 		bool packed = false;
 	};
 
-	struct EnumDef : ClassDef
+	struct EnumDef : StructBase
 	{
 		~EnumDef();
-		EnumDef(Parser::Pin pos, std::string name) : ClassDef(pos, name) { }
+		EnumDef(Parser::Pin pos, std::string name) : StructBase(pos, name) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;

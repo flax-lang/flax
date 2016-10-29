@@ -77,6 +77,10 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 		{
 			return ltype;
 		}
+		else if(ltype->isEnumType() && ltype == rtype && (op == ArithmeticOp::BitwiseAnd || op == ArithmeticOp::BitwiseOr || op == ArithmeticOp::BitwiseXor || op == ArithmeticOp::BitwiseNot))
+		{
+			return ltype;
+		}
 		else
 		{
 			if(ltype->isPointerType() && rtype->isIntegerType())

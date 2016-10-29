@@ -13,6 +13,7 @@ namespace TypeInfo
 {
 	void addNewType(CodegenInstance* cgi, fir::Type* stype, StructBase* str, TypeKind etype)
 	{
+		#if 0
 		if(stype == 0) return;
 
 		for(auto k : cgi->rootNode->typeList)
@@ -40,10 +41,12 @@ namespace TypeInfo
 		else if(stype->isClassType()) id = stype->toClassType()->getClassName().str();
 
 		cgi->rootNode->typeList.push_back(std::make_tuple(id, stype, etype));
+		#endif
 	}
 
 	size_t getIndexForType(Codegen::CodegenInstance* cgi, fir::Type* type)
 	{
+		#if 0
 		size_t i = 1;
 		for(auto k : cgi->rootNode->typeList)
 		{
@@ -59,10 +62,15 @@ namespace TypeInfo
 		cgi->rootNode->typeList.push_back(std::make_tuple(name, type, TypeKind::BuiltinType));
 
 		return getIndexForType(cgi, type);
+		#endif
+
+		return 0;
 	}
 
 	void initialiseTypeInfo(CodegenInstance* cgi)
 	{
+		#if 0
+
 		EnumDef* enr = 0;
 
 		if(cgi->getTypeByString("Type") == nullptr)
@@ -109,10 +117,13 @@ namespace TypeInfo
 			any->codegen(cgi);
 		}
 		#endif
+
+		#endif
 	}
 
 	void generateTypeInfo(CodegenInstance* cgi)
 	{
+		#if 0
 		EnumDef* enr = dynamic_cast<EnumDef*>(cgi->getTypeByString("Type")->second.first);
 		iceAssert(enr);
 
@@ -197,6 +208,8 @@ namespace TypeInfo
 			i++;
 		}
 		printf("}\n\n");
+		#endif
+
 		#endif
 	}
 }

@@ -28,9 +28,9 @@ disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
-flaxcNormFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -o '" ++ compiledTest ++ "'"
-flaxcJitFlags		= "-Wno-unused-variable -sysroot " ++ sysroot ++ " -run"
-
+flaxcNormFlags		= "-sysroot " ++ sysroot ++ " -o '" ++ compiledTest ++ "'"
+flaxcJitFlags		= "-sysroot " ++ sysroot ++ " -run"
+glFrameworks		= "-framework GLUT -framework OpenGL -lsdl2"
 
 main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = False } $ do
 	want ["jit"]
@@ -40,8 +40,23 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		need [finalOutput]
 
 		Exit code <- cmd Shell finalOutput [flaxcJitFlags] testSource
-
 		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Test failed"])
+
+	phony "gl" $ do
+		need [finalOutput]
+
+		Exit code <- cmd Shell finalOutput ["-sysroot " ++ sysroot ++ " -run -framework GLUT -framework OpenGL -lsdl2"] "build/gltest.flx"
+		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Test failed"])
+
+	phony "glcompile" $ do
+		need [finalOutput]
+
+		Exit code <- cmd Shell finalOutput ["-sysroot " ++ sysroot ++ " -o build/gltest " ++ glFrameworks] "build/gltest.flx"
+		cmd Shell (if code == ExitSuccess then ["echo"] else ["echo Test failed"])
+
+
+
+
 
 
 	phony "compile" $ do
@@ -97,7 +112,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX
 
-		() <- cmd Shell cxx "-g -o" [out] os [llvmConfigInvoke]
+		() <- cmd Shell cxx "-g -o" [out] os [llvmConfigInvoke] -- " -fsanitize=address"
 		putQuiet ("\x1b[0m" ++ "# built " ++ out)
 
 
@@ -108,7 +123,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let cxxFlags = "-std=c++1z -O0 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics"
+		let cxxFlags = "-std=c++1z -O2 -g -Wall -Weverything " ++ disableWarn ++ " -frtti -fexceptions -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include" ++ " -Xclang -fcolor-diagnostics" -- " -fsanitize=address"
 
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX
@@ -128,7 +143,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let ccFlags = "-std=c11 -O0 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations"
+		let ccFlags = "-std=c11 -O3 -g -Wall -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations" -- " -fsanitize=address"
 
 		maybeCC <- getEnvWithDefault "clang" "CC"
 		let cc = maybeCC

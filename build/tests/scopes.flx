@@ -117,8 +117,8 @@ public ƒ doScopeTest(argv: string)
 	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
 
 
-	let x1: int = OutsideEnum.Three
-	let x2: int = Something.InsideEnum.Quadruple
+	let x1: int = OutsideEnum.Three as int
+	let x2: int = Something.InsideEnum.Quadruple as int
 	let x3 = n1.n2.DeepClass.DeeperClass()
 	printf("x1: %d, x2: %d, x3: %d\n", x1, x2, n1.n2.DeepClass.DeeperClass.deepStatic())
 

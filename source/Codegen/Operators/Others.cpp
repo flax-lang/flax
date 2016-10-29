@@ -87,33 +87,6 @@ namespace Operators
 		{
 			return Result_t(cgi->irb.CreateIntToPointerCast(lhs, rtype), 0);
 		}
-		else if(cgi->isEnum(rtype))
-		{
-			// dealing with enum
-			fir::Type* insideType = rtype->toStructType()->getElementN(0);
-			if(lhs->getType() == insideType)
-			{
-				fir::Value* tmp = cgi->getStackAlloc(rtype, "tmp_enum");
-
-				fir::Value* gep = cgi->irb.CreateStructGEP(tmp, 0);
-				cgi->irb.CreateStore(lhs, gep);
-
-				return Result_t(cgi->irb.CreateLoad(tmp), tmp);
-			}
-			else
-			{
-				error(user, "Enum '%s' does not have type '%s', invalid cast", rtype->toStructType()->getStructName().str().c_str(),
-					lhs->getType()->str().c_str());
-			}
-		}
-		else if(cgi->isEnum(lhs->getType()) && lhs->getType()->toStructType()->getElementN(0) == rtype)
-		{
-			iceAssert(lhsPtr);
-			fir::Value* gep = cgi->irb.CreateStructGEP(lhsPtr, 0);
-			fir::Value* val = cgi->irb.CreateLoad(gep);
-
-			return Result_t(val, gep);
-		}
 		else if(cgi->isAnyType(lhs->getType()))
 		{
 			iceAssert(lhsPtr);
@@ -181,6 +154,18 @@ namespace Operators
 		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
 		{
 			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
+		}
+		else if(rtype->isEnumType() && cgi->getAutoCastDistance(lhs->getType(), rtype->toEnumType()->getCaseType()) >= 0)
+		{
+			fir::Value* v = cgi->autoCastType(rtype->toEnumType()->getCaseType(), lhs);
+			return Result_t(cgi->irb.CreateBitcast(v, rtype), 0);
+		}
+		else if(lhs->getType()->isEnumType() && cgi->getAutoCastDistance(lhs->getType()->toEnumType()->getCaseType(), rtype) >= 0)
+		{
+			fir::Value* cval = cgi->irb.CreateBitcast(lhs, lhs->getType()->toEnumType()->getCaseType());
+
+			fir::Value* v = cgi->autoCastType(rtype, cval);
+			return Result_t(v, 0);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{

@@ -70,11 +70,7 @@ namespace fir
 	// various
 	std::string StructType::str()
 	{
-		if(this->typeList.size() == 0)
-			return this->structName.name/* + "<struct>"*/;
-
-		// auto s = typeListToString(this->typeList);
-		return this->structName.name/* + "<{" + s.substr(2, s.length() - 4) + "}>"*/;
+		return "struct(" + this->structName.name + ")";
 	}
 
 	std::string StructType::encodedStr()

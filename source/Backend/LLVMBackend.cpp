@@ -74,6 +74,8 @@ namespace Compiler
 
 	void LLVMBackend::performCompilation()
 	{
+		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
+
 		// this one just does fir -> llvm, then links all the llvm modules together.
 		std::unordered_map<std::string, llvm::Module*> modulelist;
 
@@ -97,6 +99,8 @@ namespace Compiler
 
 	void LLVMBackend::optimiseProgram()
 	{
+		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
+
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Debug)
@@ -162,7 +166,10 @@ namespace Compiler
 			this->linkedModule->dump();
 
 		// verify the module.
-		llvm::verifyModule(*this->linkedModule, &llvm::errs());
+		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "llvm_verify");
+			llvm::verifyModule(*this->linkedModule, &llvm::errs());
+		}
 
 		std::string foldername;
 		size_t sep = this->inputFilenames[0].find_last_of("\\/");
@@ -188,6 +195,8 @@ namespace Compiler
 		}
 		else
 		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "llvm_compile");
+
 			if(Compiler::getOutputMode() != ProgOutputMode::ObjectFile && !this->linkedModule->getFunction("main"))
 			{
 				fprintf(stderr, "No main() function, a program cannot be compiled\n");
@@ -214,6 +223,7 @@ namespace Compiler
 				char templ[] = "/tmp/fileXXXXXX";
 				int fd = mkstemp(templ);
 
+
 				write(fd, buffer.data(), buffer.size_in_bytes());
 				fsync(fd);
 
@@ -225,8 +235,7 @@ namespace Compiler
 				auto frames = Compiler::getFrameworksToLink();
 				auto framedirs = Compiler::getFrameworkSearchPaths();
 
-
-				size_t s = 4 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
+				size_t s = 5 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
 				const char** argv = new const char*[s];
 				memset(argv, 0, s * sizeof(const char*));
 
@@ -267,8 +276,8 @@ namespace Compiler
 					argv[i] = l.c_str();	i++;
 				}
 
-				argv[s - 1] = templ;
-				argv[s] = 0;
+				argv[s - 2] = templ;
+				argv[s - 1] = 0;
 
 
 				int outpipe[2];
@@ -309,6 +318,8 @@ namespace Compiler
 					close(outpipe[0]);
 
 					int s = 0;
+
+					auto p = prof::Profile(PROFGROUP_LLVM, "wait_childproc");
 					waitpid(pid, &s, 0);
 
 					status = WEXITSTATUS(s);
@@ -422,9 +433,12 @@ namespace Compiler
 		auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
 		llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
-		llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-		targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
-		pm.run(*this->linkedModule);
+		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "llvm_emit_object");
+			llvm::legacy::PassManager pm = llvm::legacy::PassManager();
+			targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+			pm.run(*this->linkedModule);
+		}
 
 		// flush and kill it.
 		rawStream->flush();
@@ -609,7 +623,6 @@ namespace Compiler
 		if(needGlobalConstructor)
 		{
 			std::vector<llvm::Function*> constructors;
-			// rootmap[this->inputFilenames[0]] = cd.rootNode;
 
 			for(auto pair : rootmap)
 			{
@@ -628,7 +641,6 @@ namespace Compiler
 				}
 			}
 
-			// rootmap.erase(this->inputFilenames[0]);
 
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
