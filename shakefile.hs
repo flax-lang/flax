@@ -128,7 +128,8 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybeCXX <- getEnvWithDefault "clang++" "CXX"
 		let cxx = maybeCXX
 
-		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
+		progress <- getProgress
+		putQuiet ("\x1b[0m" ++ "# " ++ "[" ++ (show $ countTodo progress) ++ "]" ++ " compiling " ++ c)
 
 		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
 

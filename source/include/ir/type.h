@@ -38,8 +38,9 @@ namespace fir
 	struct PrimitiveType;
 	struct ParametricType;
 	struct UnicodeCharType;
+	struct DynamicArrayType;
 	struct UnicodeStringType;
-	struct LLVariableArrayType;
+	struct ParameterPackType;
 
 	struct ConstantValue;
 	struct ConstantArray;
@@ -95,7 +96,8 @@ namespace fir
 		Type* getPointerElementType(FTContext* tc = 0);
 
 
-		LLVariableArrayType* toLLVariableArrayType();
+		ParameterPackType* toParameterPackType();
+		DynamicArrayType* toDynamicArrayType();
 		ParametricType* toParametricType();
 		PrimitiveType* toPrimitiveType();
 		FunctionType* toFunctionType();
@@ -127,7 +129,8 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isVoidPointer();
-		bool isLLVariableArrayType();
+		bool isDynamicArrayType();
+		bool isParameterPackType();
 
 		bool isParametricType();
 		bool isPrimitiveType();
@@ -546,7 +549,8 @@ namespace fir
 		static ArrayType* get(Type* elementType, size_t num, FTContext* tc = 0);
 	};
 
-	struct LLVariableArrayType : Type
+
+	struct DynamicArrayType : Type
 	{
 		friend struct Type;
 
@@ -556,20 +560,50 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual LLVariableArrayType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+		virtual DynamicArrayType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
-		LLVariableArrayType(Type* elmType);
-		virtual ~LLVariableArrayType() override { }
+		DynamicArrayType(Type* elmType);
+		virtual ~DynamicArrayType() override { }
 
 		// fields
 		Type* arrayElementType;
 
 		// static funcs
 		public:
-		static LLVariableArrayType* get(Type* elementType, FTContext* tc = 0);
+		static DynamicArrayType* get(Type* elementType, FTContext* tc = 0);
 	};
+
+	struct ParameterPackType : Type
+	{
+		friend struct Type;
+
+		// methods
+		Type* getElementType();
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual ParameterPackType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		ParameterPackType(Type* elmType);
+		virtual ~ParameterPackType() override { }
+
+		// fields
+		Type* arrayElementType;
+
+		// static funcs
+		public:
+		static ParameterPackType* get(Type* elementType, FTContext* tc = 0);
+	};
+
+
+
+
+
 
 
 	struct ProtocolType : Type

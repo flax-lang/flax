@@ -325,22 +325,22 @@ namespace GenError
 
 	void unknownSymbol(CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Using undeclared %s %s", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Using undeclared %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void duplicateSymbol(CodegenInstance* cgi, Expr* e, std::string symname, SymbolType st)
 	{
-		error(e, "Duplicate %s %s", SymbolTypeNames[(int) st], symname.c_str());
+		error(e, "Duplicate %s '%s'", SymbolTypeNames[(int) st], symname.c_str());
 	}
 
 	void noOpOverload(CodegenInstance* cgi, Expr* e, std::string type, ArithmeticOp op)
 	{
-		error(e, "No valid operator overload for %s on type %s", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
+		error(e, "No valid operator overload for '%s' on type '%s'", Parser::arithmeticOpToString(cgi, op).c_str(), type.c_str());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Type* a, fir::Type* b)
 	{
-		error(e, "Invalid assignment from type %s to %s", b->str().c_str(), a->str().c_str());
+		error(e, "Invalid assignment from type '%s' to '%s'", b->str().c_str(), a->str().c_str());
 	}
 
 	void invalidAssignment(CodegenInstance* cgi, Expr* e, fir::Value* a, fir::Value* b)
@@ -363,7 +363,7 @@ namespace GenError
 		if(args_str.length() > 2)
 			args_str = args_str.substr(2);
 
-		error(e, "No valid init() candidate for type %s taking parameters [ %s ]", name.c_str(), args_str.c_str());
+		error(e, "No valid init() candidate for type '%s' taking parameters [ %s ]", name.c_str(), args_str.c_str());
 	}
 
 	void expected(CodegenInstance* cgi, Expr* e, std::string expect)
@@ -411,7 +411,7 @@ namespace GenError
 
 		if(prs.size() > 0) prs = prs.substr(0, prs.size() - 2);
 
-		error(e, "%s does not contain a function %s taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
+		error(e, "%s does not contain a function '%s' taking parameters (%s)", type.c_str(), name.c_str(), prs.c_str());
 	}
 
 	void assignToImmutable(CodegenInstance* cgi, Expr* op, Expr* value)

@@ -289,7 +289,7 @@ namespace pts
 
 							// variadic must be last
 							if(arr.length() > 0 && arr.front() == '[')
-								iceAssert(0 && "variadic array must be last array");
+								iceAssert(0 && "variadic array must be last dimension");
 						}
 						else
 						{
@@ -317,7 +317,7 @@ namespace pts
 						}
 						else
 						{
-							base = new pts::PointerType(base);
+							base = new pts::DynamicArrayType(base);
 						}
 					}
 

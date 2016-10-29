@@ -1176,7 +1176,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for"
+				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for "
 					"a variadic function argument.");
 			}
 
@@ -1195,7 +1195,7 @@ namespace Parser
 			ret += dims;
 
 			if(isVarArray && ps.front().type == TType::LSquare)
-				parserError("Variadic array must be the last dimension");
+				parserError("Variadic array must be the last (outermost) dimension");
 		}
 
 		if(ps.front().type == TType::Asterisk)
