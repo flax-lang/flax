@@ -94,7 +94,7 @@ public func main(argc: i32, argv: i8**) -> int
 					]
 
 	// var colours: f64[36]
-	var colours = alloc[48] f64
+	var colours: f64* = alloc[48] f64
 
 	var i = 0
 	while i < 48

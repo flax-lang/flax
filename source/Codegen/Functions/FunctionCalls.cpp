@@ -124,15 +124,15 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 
 		// special case: we can directly forward the arguments
-		if(params.back()->getType(cgi)->isLLVariableArrayType() && params.back()->getType(cgi)->toLLVariableArrayType()->getElementType()
-			== ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType())
+		if(params.back()->getType(cgi)->isParameterPackType() && params.back()->getType(cgi)->toParameterPackType()->getElementType()
+			== ft->getArgumentTypes().back()->toParameterPackType()->getElementType())
 		{
 			args.push_back(params.back()->codegen(cgi).value);
 		}
 		else
 		{
 			// do the last.
-			fir::Type* variadicType = ft->getArgumentTypes().back()->toLLVariableArrayType()->getElementType();
+			fir::Type* variadicType = ft->getArgumentTypes().back()->toParameterPackType()->getElementType();
 			std::deque<fir::Value*> variadics;
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
@@ -155,19 +155,22 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 				}
 			}
 
-			// make the array thing.
-			fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
-			fir::Value* rawArrayPtr = cgi->getStackAlloc(arrtype);
+			// // make the array thing.
+			// fir::Type* arrtype = fir::ArrayType::get(variadicType, variadics.size());
+			// fir::Value* rawArrayPtr = cgi->getStackAlloc(arrtype);
 
-			for(size_t i = 0; i < variadics.size(); i++)
-			{
-				auto gep = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, i);
-				cgi->irb.CreateStore(variadics[i], gep);
-			}
+			// for(size_t i = 0; i < variadics.size(); i++)
+			// {
+			// 	auto gep = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, i);
+			// 	cgi->irb.CreateStore(variadics[i], gep);
+			// }
 
-			fir::Value* arrPtr = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
-			fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).value;
-			args.push_back(llar);
+			// fir::Value* arrPtr = cgi->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
+			// fir::Value* llar = cgi->createLLVariableArray(arrPtr, fir::ConstantInt::getInt64(variadics.size())).value;
+			// args.push_back(llar);
+
+			fir::Value* pack = cgi->createParameterPack(variadicType, variadics).value;
+			args.push_back(pack);
 		}
 	}
 

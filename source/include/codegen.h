@@ -255,11 +255,14 @@ namespace Codegen
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
 
+		fir::Function* getDynamicArrayAppendFunction();
+		fir::Function* getDynamicArrayCompareFunction();
+		fir::Function* getDynamicArrayElementAppendFunction();
+		Ast::Result_t createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity);
+		Ast::Result_t createEmptyDynamicArray(fir::Type* elmType);
 
-		Ast::Result_t createLLVariableArray(fir::Value* ptr, fir::Value* length);
-		Ast::Result_t indexLLVariableArray(fir::Value* arr, fir::Value* index);
-		Ast::Result_t getLLVariableArrayDataPtr(fir::Value* arrPtr);
-		Ast::Result_t getLLVariableArrayLength(fir::Value* arrPtr);
+		fir::Function* getArrayBoundsCheckFunction();
+		Ast::Result_t createParameterPack(fir::Type* type, std::deque<fir::Value*> parameters);
 
 
 		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc);

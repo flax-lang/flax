@@ -133,11 +133,10 @@ namespace pts
 	struct DynamicArrayType : Type
 	{
 		virtual ~DynamicArrayType() { }
-		explicit DynamicArrayType(pts::Type* b, Ast::Expr* s) : base(b), size(s) { }
+		explicit DynamicArrayType(pts::Type* b) : base(b) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
-		Ast::Expr* size = 0;
 	};
 
 

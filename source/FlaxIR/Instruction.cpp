@@ -125,6 +125,16 @@ namespace fir
 			case OpKind::String_SetLength:					instrname = "setstrlen"; break;
 			case OpKind::String_GetRefCount:				instrname = "getstrrc"; break;
 			case OpKind::String_SetRefCount:				instrname = "setstrrc"; break;
+			case OpKind::DynamicArray_GetData:				instrname = "getarrdat"; break;
+			case OpKind::DynamicArray_SetData:				instrname = "setarrdat"; break;
+			case OpKind::DynamicArray_GetLength:			instrname = "getarrlen"; break;
+			case OpKind::DynamicArray_SetLength:			instrname = "setarrlen"; break;
+			case OpKind::DynamicArray_GetCapacity:			instrname = "getarrcap"; break;
+			case OpKind::DynamicArray_SetCapacity:			instrname = "setarrcap"; break;
+			case OpKind::ParamPack_GetData:					instrname = "getppackdata"; break;
+			case OpKind::ParamPack_SetData:					instrname = "setppackdata"; break;
+			case OpKind::ParamPack_GetLength:				instrname = "getppacklength"; break;
+			case OpKind::ParamPack_SetLength:				instrname = "setppacklength"; break;
 			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
 			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}

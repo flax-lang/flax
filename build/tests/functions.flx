@@ -90,7 +90,7 @@ public func doFunctionTest()
 	g(20)
 
 	printf("each test:")
-	let arr = alloc[4] int
+	let arr: int* = alloc[4] int
 	arr[0] = 11
 	arr[1] = 22
 	arr[2] = 33

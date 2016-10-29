@@ -41,11 +41,15 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isArrayType())
 	{
-		return "AR" + std::to_string(t->toArrayType()->getArraySize()) + mangleType(t->toArrayType()->getElementType());
+		return "FA" + std::to_string(t->toArrayType()->getArraySize()) + mangleType(t->toArrayType()->getElementType());
 	}
-	else if(t->isLLVariableArrayType())
+	else if(t->isDynamicArrayType())
 	{
-		return "VA" + mangleType(t->toLLVariableArrayType()->getElementType());
+		return "DA" + mangleType(t->toDynamicArrayType()->getElementType());
+	}
+	else if(t->isParameterPackType())
+	{
+		return "PP" + mangleType(t->toParameterPackType()->getElementType());
 	}
 	else if(t->isVoidType())
 	{
