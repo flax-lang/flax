@@ -276,10 +276,8 @@ namespace pts
 						if(arr.find("]") == 0)
 						{
 							// variable array.
-							// int x[];
+							// x: int[]
 							sizes.push_back(0);
-							iceAssert(arr.find("]") == 1);
-
 							arr = arr.substr(1);
 						}
 						else if(arr.find("...") == 0)

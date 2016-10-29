@@ -1185,9 +1185,12 @@ namespace Parser
 				isVarArray = true;
 
 
-			n = ps.eat();
-			if(n.type != TType::RSquare)
-				parserError(n, "Expected ']' in type specifier, have '%s'", n.text.c_str());
+			if(dims != "[]")
+			{
+				n = ps.eat();
+				if(n.type != TType::RSquare)
+					parserError(n, "Expected ']' in type specifier, have '%s'", n.text.c_str());
+			}
 
 			ret += dims;
 
@@ -1543,22 +1546,21 @@ namespace Parser
 			parserError("Variable declaration without type requires initialiser for type inference");
 		}
 
-		if(!v->initVal)
-		{
-			if(ps.front().type == TType::Equal)
-			{
-				// we do
-				ps.eat();
 
-				v->initVal = parseExpr(ps);
-				if(!v->initVal)
-					parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
-			}
-			else if(immutable)
-			{
-				parserError("Constant variables require an initialiser at the declaration site");
-			}
+		if(ps.front().type == TType::Equal)
+		{
+			// we do
+			ps.eat();
+
+			v->initVal = parseExpr(ps);
+			if(!v->initVal)
+				parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
 		}
+		else if(immutable)
+		{
+			parserError("Constant variables require an initialiser at the declaration site");
+		}
+
 
 		// if we got here, we're a normal variable.
 		if(v->attribs & Attr_Override)
