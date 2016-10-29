@@ -20,12 +20,12 @@ namespace fir
 
 	std::string ParameterPackType::str()
 	{
-		return "[(variable) x " + this->arrayElementType->str() + "]";
+		return this->arrayElementType->str() + "[...]";
 	}
 
 	std::string ParameterPackType::encodedStr()
 	{
-		return "[Vx" + this->arrayElementType->encodedStr() + "]";
+		return this->arrayElementType->encodedStr() + "[V]";
 	}
 
 
