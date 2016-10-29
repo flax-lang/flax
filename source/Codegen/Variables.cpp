@@ -174,16 +174,9 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 			// automatically call the init() function
 			if(!this->disableAutoInit && !this->initVal)
 			{
-				fir::Value* unwrappedAi = cgi->lastMinuteUnwrapType(this, ai);
-				if(unwrappedAi != ai)
+				if(!ai->getType()->getPointerElementType()->isEnumType())
 				{
-					cmplxtype = cgi->getType(unwrappedAi->getType()->getPointerElementType());
-					iceAssert(cmplxtype);
-				}
-
-				if(!cgi->isEnum(ai->getType()->getPointerElementType()))
-				{
-					std::vector<fir::Value*> args { unwrappedAi };
+					std::vector<fir::Value*> args { ai };
 
 					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
 					iceAssert(initfunc);
@@ -242,9 +235,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		}
 		else if(cmplxtype && this->initVal)
 		{
-			if(ai->getType()->getPointerElementType() != val->getType())
-				ai = cgi->lastMinuteUnwrapType(this, ai);
-
 			if(ai->getType()->getPointerElementType() != val->getType())
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 

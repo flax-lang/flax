@@ -27,34 +27,60 @@ using namespace Ast;
 int main(int argc, char* argv[])
 {
 	// parse arguments
-	auto names = Compiler::parseCmdLineArgs(argc, argv);
-
-	std::string filename = names.first;
-	std::string outname = names.second;
-
-	// compile the file.
-	// the file Compiler.cpp handles imports.
-
-	iceAssert(llvm::InitializeNativeTarget() == 0);
-	iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
-	iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
+	auto top = prof::Profile(PROFGROUP_TOP, "total");
 
 
-	Codegen::CodegenInstance* __cgi = new Codegen::CodegenInstance();
+	std::string outname;
+	std::string filename;
+	Codegen::CodegenInstance* _cgi = 0;
+	std::pair<std::string, std::string> names;
+	std::deque<std::deque<Codegen::DepNode*>> groups;
+	{
+		std::string curpath;
 
-	filename = Compiler::getFullPathOfFile(filename);
-	std::string curpath = Compiler::getPathFromFile(filename);
+		{
+			auto p = prof::Profile(PROFGROUP_TOP, "preflight");
+			names = Compiler::parseCmdLineArgs(argc, argv);
 
-	// parse and find all custom operators
-	Parser::ParserState pstate(__cgi);
+			filename = names.first;
+			outname = names.second;
+
+			// compile the file.
+			// the file Compiler.cpp handles imports.
+
+			iceAssert(llvm::InitializeNativeTarget() == 0);
+			iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
+			iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
 
 
-	auto groups = Compiler::checkCyclicDependencies(filename);
+			_cgi = new Codegen::CodegenInstance();
 
-	Parser::parseAllCustomOperators(pstate, filename, curpath);
+			filename = Compiler::getFullPathOfFile(filename);
+			curpath = Compiler::getPathFromFile(filename);
 
-	// ret = std::tuple<Root*, std::vector<std::string>, std::hashmap<std::string, Root*>, std::hashmap<fir::Module*>>
-	auto cd = Compiler::compileFile(filename, groups, __cgi->customOperatorMap, __cgi->customOperatorMapRev);
+		}
+
+		{
+			auto p = prof::Profile(PROFGROUP_TOP, "cycle check");
+			groups = Compiler::checkCyclicDependencies(filename);
+		}
+
+		{
+			auto p = prof::Profile("parse ops");
+
+			Parser::ParserState pstate(_cgi);
+
+			// parse and find all custom operators
+			Parser::parseAllCustomOperators(pstate, filename, curpath);
+		}
+	}
+
+	Compiler::CompiledData cd;
+	{
+		// auto p = prof::Profile(PROFGROUP_CODEGEN, "compile");
+		cd = Compiler::compileFile(filename, groups, _cgi->customOperatorMap, _cgi->customOperatorMapRev);
+	}
+
 
 	// do FIR optimisations
 	for(auto mod : cd.moduleList)
@@ -86,6 +112,7 @@ int main(int argc, char* argv[])
 
 	if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
 	{
+		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
 		backend->performCompilation();
 		backend->optimiseProgram();
 		backend->writeOutput();
@@ -98,7 +125,12 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 
-	delete __cgi;
+	delete _cgi;
+
+	top.finish();
+
+	if(Compiler::showProfilerOutput())
+		prof::printResults();
 }
 
 

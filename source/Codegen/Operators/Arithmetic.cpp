@@ -75,40 +75,14 @@ namespace Operators
 		return Result_t(ret, 0);
 	}
 
-	static Result_t compareEnumValues(CodegenInstance* cgi, ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr,
-		fir::Value* rhs, fir::Value* rhsPtr)
-	{
-		// enums
-		iceAssert(lhsPtr);
-		iceAssert(rhsPtr);
-
-		fir::Value* gepL = cgi->irb.CreateStructGEP(lhsPtr, 0);
-		fir::Value* gepR = cgi->irb.CreateStructGEP(rhsPtr, 0);
-
-		fir::Value* l = cgi->irb.CreateLoad(gepL);
-		fir::Value* r = cgi->irb.CreateLoad(gepR);
-
-		fir::Value* res = 0;
-
-		if(op == ArithmeticOp::CmpEq)
-		{
-			res = cgi->irb.CreateICmpEQ(l, r);
-		}
-		else if(op == ArithmeticOp::CmpNEq)
-		{
-			res = cgi->irb.CreateICmpNEQ(l, r);
-		}
-
-		return Result_t(res, 0);
-	}
-
-
 
 
 
 
 	Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
+		auto optostr = Parser::arithmeticOpToString;
+
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
@@ -133,7 +107,7 @@ namespace Operators
 
 			if(lhs->getType() != rhs->getType())
 			{
-				error(user, "Operator '%s' cannot be applied on types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+				error(user, "Operator '%s' cannot be applied on types '%s' and '%s'", optostr(cgi, op).c_str(),
 					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 			}
 
@@ -156,7 +130,7 @@ namespace Operators
 		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
 		{
 			if(op != ArithmeticOp::Add)
-				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", Parser::arithmeticOpToString(cgi, op).c_str());
+				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", optostr(cgi, op).c_str());
 
 			iceAssert(leftr.pointer);
 			iceAssert(rightr.value);
@@ -174,7 +148,7 @@ namespace Operators
 		{
 			// yay, builtin string operators.
 			if(!isComparisonOp(op) && op != ArithmeticOp::Add)
-				error(user, "Operator '%s' cannot be applied on two strings", Parser::arithmeticOpToString(cgi, op).c_str());
+				error(user, "Operator '%s' cannot be applied on two strings", optostr(cgi, op).c_str());
 
 			if(isComparisonOp(op))
 			{
@@ -239,7 +213,7 @@ namespace Operators
 			if(!tryop)
 			{
 				die:
-				error(user, "Invalid operator '%s' between types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+				error(user, "Invalid operator '%s' between types '%s' and '%s'", optostr(cgi, op).c_str(),
 					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 			}
 
@@ -250,12 +224,43 @@ namespace Operators
 		{
 			return performPointerArithemetic(cgi, op, lhs, rhs);
 		}
-		else if((op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq) && cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
+		else if(lhs->getType()->isEnumType() && rhs->getType() == lhs->getType())
 		{
-			return compareEnumValues(cgi, op, lhs, leftr.pointer, rhs, rightr.pointer);
+			fir::Type* caset = lhs->getType()->toEnumType()->getCaseType();
+
+			// compare enums or something
+			if(isComparisonOp(op))
+			{
+				if(!lhs->getType()->toEnumType()->getCaseType()->isPrimitiveType())
+					error(user, "Only enumerations with integer/floating-point types can be compared, have '%s'", caset->str().c_str());
+
+				fir::Value* l = cgi->irb.CreateBitcast(lhs, caset);
+				fir::Value* r = cgi->irb.CreateBitcast(rhs, caset);
+
+				if(caset->isFloatingPointType())	return compareFloatingPoints(cgi, op, l, r);
+				else								return compareIntegers(cgi, op, l, r);
+			}
+			else if(op == ArithmeticOp::BitwiseAnd || op == ArithmeticOp::BitwiseOr || op == ArithmeticOp::BitwiseXor
+				|| op == ArithmeticOp::BitwiseNot)
+			{
+				// support this common case of using enums as flags
+				if(!lhs->getType()->toEnumType()->getCaseType()->isIntegerType())
+					error(user, "Bitwise operations on enumerations are only valid with integer types, have '%s'", caset->str().c_str());
+
+				fir::Value* l = cgi->irb.CreateBitcast(lhs, caset);
+				fir::Value* r = cgi->irb.CreateBitcast(rhs, caset);
+
+				fir::Value* tryop = cgi->irb.CreateBinaryOp(op, l, r);
+				iceAssert(tryop);
+
+				return Result_t(cgi->irb.CreateBitcast(tryop, lhs->getType()), 0);
+			}
+			else
+			{
+				error(user, "Invalid operator '%s' between enumeration types '%s' (underlying type '%s')",
+					optostr(cgi, op).c_str(), lhs->getType()->str().c_str(), caset->str().c_str());
+			}
 		}
-		// else if(lhs->getType()->isStructType() || rhs->getType()->isStructType()
-			// || lhs->getType()->isClassType() || rhs->getType()->isClassType())
 		else
 		{
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
@@ -265,8 +270,8 @@ namespace Operators
 			}
 			else
 			{
-				error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-					lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
+				error(user, "No such operator '%s' for expression %s %s %s", optostr(cgi, op).c_str(),
+					lhs->getType()->str().c_str(), optostr(cgi, op).c_str(), rhs->getType()->str().c_str());
 			}
 		}
 	}

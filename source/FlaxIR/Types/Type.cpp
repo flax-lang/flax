@@ -413,11 +413,6 @@ namespace fir
 	}
 
 
-	Type* Type::fromLlvmType(fir::Type* ltype, std::deque<bool> signage)
-	{
-		iceAssert(0);
-		return Type::getVoid();
-	}
 
 
 
@@ -509,6 +504,13 @@ namespace fir
 	{
 		auto t = dynamic_cast<CharType*>(this);
 		if(t == 0) error("not char type");
+		return t;
+	}
+
+	EnumType* Type::toEnumType()
+	{
+		auto t = dynamic_cast<EnumType*>(this);
+		if(t == 0) error("not enum type");
 		return t;
 	}
 
@@ -616,6 +618,11 @@ namespace fir
 		return dynamic_cast<CharType*>(this) != 0;
 	}
 
+	bool Type::isEnumType()
+	{
+		return dynamic_cast<EnumType*>(this) != 0;
+	}
+
 
 
 
@@ -631,6 +638,11 @@ namespace fir
 	VoidType* Type::getVoid(FTContext* tc)
 	{
 		return VoidType::get(tc);
+	}
+
+	Type* Type::getVoidPtr(FTContext* tc)
+	{
+		return VoidType::get(tc)->getPointerTo();
 	}
 
 	PrimitiveType* Type::getBool(FTContext* tc)

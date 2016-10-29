@@ -16,14 +16,17 @@ function callCompiler
 	end
 
 	if contains "dump" $argv
-		set dump "-print-lir -c"
-		set compile ""
+		set dump "-print-lir"
+		set compile "-jit"
 	else if contains "dumpf" $argv
-		set dump "-print-fir -c"
+		set dump "-print-fir"
 		set compile "-jit"
 	else if contains "compile" $argv
 		set dump ""
 		set compile "-o build/test"
+	else if contains "nolink" $argv
+		set dump ""
+		set compile "-c"
 	end
 
 
@@ -33,11 +36,6 @@ function callCompiler
 
 
 	eval time "build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot" $opt $compile $dump "build/test.flx"
-
-	if [ $compile != "-jit" -a $dump = "" ]
-		echo -e "\n\n-----------------\n\n"
-		build/test
-	end
 end
 
 

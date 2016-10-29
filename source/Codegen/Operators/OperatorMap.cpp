@@ -53,6 +53,7 @@ namespace Operators
 		this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
 
 		this->theMap[ArithmeticOp::Cast]				= operatorCast;
+		this->theMap[ArithmeticOp::ForcedCast]			= operatorCast;
 
 		this->theMap[ArithmeticOp::BitwiseNot]			= operatorBitwiseNot;
 		this->theMap[ArithmeticOp::Plus]				= operatorUnaryPlus;
@@ -65,6 +66,8 @@ namespace Operators
 	Result_t OperatorMap::call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
 	{
 		auto fn = theMap[op > ArithmeticOp::UserDefined ? ArithmeticOp::UserDefined : op];
+		iceAssert(fn);
+
 		return fn(cgi, op, usr, args);
 	}
 

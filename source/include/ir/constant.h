@@ -18,11 +18,15 @@
 
 namespace fir
 {
+	struct Value;
+	struct ConstantValue;
+
 	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
 	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
 	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val);
 
-	struct Value;
+	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type);
+
 
 	// base class implicitly stores null
 	struct ConstantValue : Value

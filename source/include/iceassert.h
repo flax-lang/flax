@@ -8,12 +8,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "profile.h"
+
 inline void error_and_exit(const char* s, ...) __attribute__((noreturn));
 inline void error_and_exit(const char* s, ...)
 {
 	va_list ap;
 	va_start(ap, s);
-	vfprintf(stderr, s, ap);
+
+	char* alloc = nullptr;
+	vasprintf(&alloc, s, ap);
+
+	fprintf(stderr, "%s%s%s%s: %s%s\n", "\033[1m\033[31m", "Error", "\033[0m", "\033[1m", alloc, "\033[0m");
+
+	// vfprintf(stderr, s, ap);
+
+	free(alloc);
+
 	va_end(ap);
 	abort();
 }

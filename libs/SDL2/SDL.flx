@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import Keyboard
 
 public namespace SDL
 {
@@ -17,30 +18,121 @@ public namespace SDL
 														SDL.INIT_JOYSTICK | SDL.INIT_HAPTIC | SDL.INIT_GAMECONTROLLER
 
 	public let GL_RED_SIZE: i32						= 0
-    public let GL_GREEN_SIZE: i32					= 1
-    public let GL_BLUE_SIZE: i32					= 2
-    public let GL_ALPHA_SIZE: i32					= 3
-    public let GL_BUFFER_SIZE: i32					= 4
-    public let GL_DOUBLEBUFFER: i32					= 5
-    public let GL_DEPTH_SIZE: i32					= 6
-    public let GL_STENCIL_SIZE: i32					= 7
-    public let GL_ACCUM_RED_SIZE: i32				= 8
-    public let GL_ACCUM_GREEN_SIZE: i32				= 9
-    public let GL_ACCUM_BLUE_SIZE: i32				= 10
-    public let GL_ACCUM_ALPHA_SIZE: i32				= 11
-    public let GL_STEREO: i32						= 12
-    public let GL_MULTISAMPLEBUFFERS: i32			= 13
-    public let GL_MULTISAMPLESAMPLES: i32			= 14
-    public let GL_ACCELERATED_VISUAL: i32			= 15
-    public let GL_RETAINED_BACKING: i32				= 16
-    public let GL_CONTEXT_MAJOR_VERSION: i32		= 17
-    public let GL_CONTEXT_MINOR_VERSION: i32		= 18
-    public let GL_CONTEXT_EGL: i32					= 19
-    public let GL_CONTEXT_FLAGS: i32				= 20
-    public let GL_CONTEXT_PROFILE_MASK: i32			= 21
-    public let GL_SHARE_WITH_CURRENT_CONTEXT: i32	= 22
-    public let GL_FRAMEBUFFER_SRGB_CAPABLE: i32		= 23
-    public let GL_CONTEXT_RELEASE_BEHAVIOR: i32		= 24
+	public let GL_GREEN_SIZE: i32					= 1
+	public let GL_BLUE_SIZE: i32					= 2
+	public let GL_ALPHA_SIZE: i32					= 3
+	public let GL_BUFFER_SIZE: i32					= 4
+	public let GL_DOUBLEBUFFER: i32					= 5
+	public let GL_DEPTH_SIZE: i32					= 6
+	public let GL_STENCIL_SIZE: i32					= 7
+	public let GL_ACCUM_RED_SIZE: i32				= 8
+	public let GL_ACCUM_GREEN_SIZE: i32				= 9
+	public let GL_ACCUM_BLUE_SIZE: i32				= 10
+	public let GL_ACCUM_ALPHA_SIZE: i32				= 11
+	public let GL_STEREO: i32						= 12
+	public let GL_MULTISAMPLEBUFFERS: i32			= 13
+	public let GL_MULTISAMPLESAMPLES: i32			= 14
+	public let GL_ACCELERATED_VISUAL: i32			= 15
+	public let GL_RETAINED_BACKING: i32				= 16
+	public let GL_CONTEXT_MAJOR_VERSION: i32		= 17
+	public let GL_CONTEXT_MINOR_VERSION: i32		= 18
+	public let GL_CONTEXT_EGL: i32					= 19
+	public let GL_CONTEXT_FLAGS: i32				= 20
+	public let GL_CONTEXT_PROFILE_MASK: i32			= 21
+	public let GL_SHARE_WITH_CURRENT_CONTEXT: i32	= 22
+	public let GL_FRAMEBUFFER_SRGB_CAPABLE: i32		= 23
+	public let GL_CONTEXT_RELEASE_BEHAVIOR: i32		= 24
+
+
+	public enum EventType: u32
+	{
+		case FIRSTEVENT									= 0
+
+		case Quit										= 0x100
+		case App_Terminating
+		case App_LowMemory
+		case App_WillEnterBackground
+		case App_DidEnterBackground
+		case App_WillEnterForeground
+		case App_DidEnterForeground
+
+		case WindowEvent								= 0x200
+		case SysWMEvent
+
+		case KeyDown									= 0x300
+		case KeyUp
+		case TextEditing
+		case TextInput
+		case KeymapChanged
+
+		case Mouse_Motion								= 0x400
+		case Mouse_ButtonDown
+		case Mouse_ButtonUp
+		case Mouse_Wheel
+
+		case Joy_AxisMotion								= 0x600
+		case Joy_BallMotion
+		case Joy_HatMotion
+		case Joy_ButtonDown
+		case Joy_ButtonUp
+		case Joy_DeviceAdded
+		case Joy_DeviceRemoved
+
+		case Controller_AxisMotion						= 0x650
+		case Controller_ButtonDown
+		case Controller_ButtonUp
+		case Controller_DeviceAdded
+		case Controller_DeviceRemoved
+		case Controller_DeviceRemapped
+
+		case FingerDown									= 0x700
+		case FingerUp
+		case FingerMotion
+
+		case DollarGesture								= 0x800
+		case DollarRecord
+		case MultiGesture
+
+		case ClipboardUpdate							= 0x900
+
+		case DropFile									= 0x1000
+
+		case Audio_DeviceAdded							= 0x1100
+		case Audio_DeviceRemoved
+
+		case Render_TargetsReset						= 0x2000
+		case Render_DeviceReset
+
+		case USEREVENT									= 0x8000
+		case LASTEVENT									= 0xFFFF
+	}
+
+	public struct Event
+	{
+		var type: SDL.EventType
+		var lol: i8[52]
+	}
+
+	public class KeyboardEvent
+	{
+		public struct KeySym
+		{
+			// SDL_Scancode scancode
+			var scancode: u32
+			var sym: SDL.Key
+
+			var mod: u16
+			var unused: u32
+		}
+
+		var type: SDL.EventType
+		var timestamp: u32
+		var windowid: u32
+		var state: u8
+		var repeat: u8
+		var padding: u16
+		var keysym: SDL.KeyboardEvent.KeySym
+	}
 }
 
 public ffi func SDL_Init(flags: u32) -> i32
@@ -49,13 +141,7 @@ public ffi func SDL_CreateWindow(title: i8*, xpos: i32, ypos: i32, width: i32, h
 
 public ffi func SDL_GL_SetAttribute(attr: i32, value: i32)
 
-public struct SDL_Event
-{
-	var type: u32
-	var lol: i8[70]
-}
-
-public ffi func SDL_PollEvent(event: SDL_Event*) -> i32
+public ffi func SDL_PollEvent(event: SDL.Event*) -> i32
 
 // opengl stuff
 
