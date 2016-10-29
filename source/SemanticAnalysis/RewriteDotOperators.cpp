@@ -88,15 +88,20 @@ static void rewriteDotOperator(MemberAccess* ma)
 			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
 
 			// is this a namespace?
-			for(auto sub : ft->subs)
+			if(ft->subMap.find(vr->name) != ft->subMap.end())
 			{
-				if(sub->nsName == vr->name)
-				{
-					gstate.nsstrs.push_back(vr->name);
-					ma->matype = MAType::LeftNamespace;
-					return;
-				}
+				gstate.nsstrs.push_back(vr->name);
+				ma->matype = MAType::LeftNamespace;
+				return;
 			}
+
+			// for(auto sub : ft->subs)
+			// {
+			// 	if(sub->nsName == vr->name)
+			// 	{
+			// 	}
+			// }
+
 
 			// type???
 			std::deque<std::string> fullScope = gstate.nsstrs;
@@ -152,15 +157,23 @@ static void rewriteDotOperator(MemberAccess* ma)
 		FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
 		iceAssert(ft);
 
-		for(auto sub : ft->subs)
+
+		if(ft->subMap.find(vr->name) != ft->subMap.end())
 		{
-			if(sub->nsName == vr->name)
-			{
-				gstate.nsstrs.push_back(vr->name);
-				ma->matype = MAType::LeftNamespace;
-				return;
-			}
+			gstate.nsstrs.push_back(vr->name);
+			ma->matype = MAType::LeftNamespace;
+			return;
 		}
+
+		// for(auto sub : ft->subs)
+		// {
+		// 	if(sub->nsName == vr->name)
+		// 	{
+		// 		gstate.nsstrs.push_back(vr->name);
+		// 		ma->matype = MAType::LeftNamespace;
+		// 		return;
+		// 	}
+		// }
 
 		std::deque<std::string> fullScope = gstate.nsstrs;
 		for(auto s : gstate.nestedTypeStrs)

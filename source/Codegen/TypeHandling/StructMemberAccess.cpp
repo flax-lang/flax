@@ -354,25 +354,9 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 			error(memberFc, "Tried to call method on struct");
 		}
 	}
-	else if(pair->second.second == TypeKind::Enum)
-	{
-		EnumDef* enr = dynamic_cast<EnumDef*>(pair->second.first);
-		iceAssert(enr);
-
-		VarRef* enrcase = dynamic_cast<VarRef*>(this->right);
-		iceAssert(enrcase);
-
-		for(auto c : enr->cases)
-		{
-			if(c.first == enrcase->name)
-				return c.second->getType(cgi);
-		}
-
-		error(this, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), enrcase->name.c_str());
-	}
 	else
 	{
-		error(this, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+		error(this->left, "Invalid expression type for dot-operator access");
 	}
 
 	iceAssert(0);
@@ -478,13 +462,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(selfPtr)
 		{
-			selfPtr = cgi->lastMinuteUnwrapType(this, selfPtr);
 			wasSelfPtr = true;
 			isPtr = false;
-		}
-		else
-		{
-			self = cgi->lastMinuteUnwrapType(this, self);
 		}
 
 
@@ -678,7 +657,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else if(pair->second.second == TypeKind::Enum)
 	{
-		return cgi->getEnumerationCaseValue(this->left, this->right);
+		iceAssert(0 && "what? no.");
+		// return cgi->getEnumerationCaseValue(this->left, this->right);
 	}
 
 	iceAssert(!"Encountered invalid expression");
@@ -785,28 +765,37 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 		if(curType == 0)
 		{
 			// check if it's a namespace.
-			for(auto sub : ftree->subs)
+			if(ftree->subMap.find(front) != ftree->subMap.end())
 			{
-				iceAssert(sub);
-				if(sub->nsName == front)
-				{
-					// yes.
-					nsstrs.push_back(front);
-					ftree = this->getCurrentFuncTree(&nsstrs);
-					iceAssert(ftree);
+				// yes.
+				nsstrs.push_back(front);
+				ftree = this->getCurrentFuncTree(&nsstrs);
+				iceAssert(ftree);
 
-					found = true;
-					break;
-				}
+				found = true;
 			}
 
-			if(found)
-				continue;
+			// for(auto sub : ftree->subs)
+			// {
+			// 	iceAssert(sub);
+			// 	if(sub->nsName == front)
+			// 	{
+			// 		// yes.
+			// 		nsstrs.push_back(front);
+			// 		ftree = this->getCurrentFuncTree(&nsstrs);
+			// 		iceAssert(ftree);
+
+			// 		found = true;
+			// 		break;
+			// 	}
+			// }
+
+			if(found) continue;
 
 			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
 				iceAssert(tp->second.first);
-				curType = dynamic_cast<ClassDef*>(tp->second.first);
+				curType = dynamic_cast<StructBase*>(tp->second.first);
 				curFType = tp->first;
 				iceAssert(curType);
 
@@ -820,7 +809,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 					if(t.first == front)
 					{
 						iceAssert(t.second.first);
-						curType = dynamic_cast<ClassDef*>(t.second.second.first);
+						curType = dynamic_cast<StructBase*>(t.second.second.first);
 						curFType = t.second.first;
 
 						iceAssert(curType);
@@ -1005,6 +994,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				SymbolPair_t sp = ftree->vars.at(vr->name);
 				ptr = sp.first;
+
+				return
+				{
+					{
+						ptr->getType()->getPointerElementType(),
+						actual ? Result_t(this->irb.CreateLoad(ptr), ptr, ValueKind::LValue) : Result_t(0, 0)
+					},
+					curFType
+				};
 			}
 			else
 			{
@@ -1028,59 +1026,50 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 						return { { fn->getType(), Result_t(fn, 0) }, 0 };
 					}
 				}
-
-				error(vr, "namespace '%s' does not contain a variable '%s'",
-					ftree->nsName.c_str(), vr->name.c_str());
 			}
 
-
-
-			return
-			{
-				{
-					ptr->getType()->getPointerElementType(),
-					actual ? Result_t(this->irb.CreateLoad(ptr), ptr, ValueKind::LValue) : Result_t(0, 0)
-				},
-				curFType
-			};
+			error(vr, "Namespace '%s' does not contain a variable '%s'",
+				ftree->nsName.c_str(), vr->name.c_str());
 		}
-		else
+		else if(EnumDef* enr = dynamic_cast<EnumDef*>(curType))
 		{
-			// check static members
-			// note: check for enum comes first since enum : class, so it's more specific.
-			if(dynamic_cast<EnumDef*>(curType))
-			{
-				TypePair_t* tpair = this->getType(curType->ident);
-				if(!tpair)
-					error(vr, "Invalid class '%s'", vr->name.c_str());
+			iceAssert(enr->createdType);
+			fir::EnumType* et = enr->createdType->toEnumType();
+			iceAssert(et);
 
-				Result_t res = this->getEnumerationCaseValue(vr, tpair, vr->name, actual ? true : false);
-				return { { res.value->getType(), res }, curFType };
-			}
-			else if(ClassDef* cls = dynamic_cast<ClassDef*>(curType))
-			{
-				for(auto v : cls->members)
-				{
-					if(v->isStatic && v->ident.name == vr->name)
-					{
-						fir::Type* ltype = v->getType(this);
-						auto r = actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0);
+			fir::ConstantValue* cv = et->getCaseWithName(vr->name);
+			if(!cv) error(vr, "Enum '%s' has no case named '%s'", enr->ident.str().c_str(), vr->name.c_str());
 
-						return { { ltype, Result_t(r.value, r.pointer, ValueKind::LValue) }, curFType };
-					}
-				}
-				for(auto f : cls->funcs)
-				{
-					if(f->decl->ident.name == vr->name)
-					{
-						fir::Type* ltype = cls->functionMap[f]->getType();
-						return { { ltype, Result_t(cls->functionMap[f], 0) }, curFType };
-					}
-				}
-			}
+			Result_t res(0, 0);
 
-			error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->ident.name.c_str(), vr->name.c_str());
+			if(actual) res = Result_t(this->irb.CreateBitcast(cv, et), 0);
+
+			return { { et, res }, curFType };
 		}
+		else if(ClassDef* cls = dynamic_cast<ClassDef*>(curType))
+		{
+			for(auto v : cls->members)
+			{
+				if(v->isStatic && v->ident.name == vr->name)
+				{
+					fir::Type* ltype = v->getType(this);
+					auto r = actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0);
+
+					return { { ltype, Result_t(r.value, r.pointer, ValueKind::LValue) }, curFType };
+				}
+			}
+
+			for(auto f : cls->funcs)
+			{
+				if(f->decl->ident.name == vr->name)
+				{
+					fir::Type* ltype = cls->functionMap[f]->getType();
+					return { { ltype, Result_t(cls->functionMap[f], 0) }, curFType };
+				}
+			}
+		}
+
+		error(vr, "Class '%s' does not contain a static variable or class named '%s'", curType->ident.name.c_str(), vr->name.c_str());
 	}
 	else
 	{

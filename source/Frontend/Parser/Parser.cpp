@@ -344,9 +344,9 @@ namespace Parser
 					Import* imp = parseImport(ps);
 					std::string file = Compiler::resolveImport(imp, Compiler::getFullPathOfFile(filename));
 
-					if(!ps.visited[file])
+					if(ps.visited.find(file) == ps.visited.end())
 					{
-						ps.visited[file] = true;
+						ps.visited.insert(file);
 
 						ParserState fakePs(ps.cgi);
 						parseAllCustomOperators(fakePs, file, curpath);
@@ -916,10 +916,7 @@ namespace Parser
 			if(ps.eat().type != TType::Colon)
 				parserError("Expected ':' followed by a type");
 
-			Expr* ctype = parseType(ps);
-			v->ptype = ctype->ptype;
-			delete ctype;		// cleanup
-
+			v->ptype = parseType(ps);
 
 
 			// NOTE(ghetto): FUCKING. GHETTO.
@@ -957,12 +954,7 @@ namespace Parser
 			ps.eat();
 			retPin = ps.front().pin;
 
-			Expr* ctype = parseType(ps);
-			ret = ctype->ptype;
-			delete ctype;
-
-			// if(ret->str() == VOID_TYPE_STRING)
-			// 	parserMessage(Err::Warn, "Explicitly specifying '%s' as the return type is redundant", VOID_TYPE_STRING);
+			ret = parseType(ps);
 		}
 		else
 		{
@@ -1221,9 +1213,9 @@ namespace Parser
 		if(front.type == TType::Identifier)
 		{
 			std::string ret = front.text;
-			ps.pop_front();
+			ps.eat();
 
-			while(true)
+			while(ps.hasTokens())
 			{
 				if(ps.front().type == TType::Period)
 				{
@@ -1233,10 +1225,10 @@ namespace Parser
 					ret += ".";
 					ps.eat();
 				}
-				else if(ps.front().type == TType::Identifier)
+				else if(ps.front().type == TType::Identifier && (ret.empty() || ret.back() == '.'))
 				{
 					ret += ps.front().text;
-					ps.pop_front();
+					ps.eat();
 				}
 				else
 				{
@@ -1256,7 +1248,7 @@ namespace Parser
 
 			// parse a tuple.
 			std::deque<std::string> types;
-			while(ps.front().type != TType::RParen)
+			while(ps.hasTokens() && ps.front().type != TType::RParen)
 			{
 				// do things.
 				std::string ret = parseStringType(ps);
@@ -1306,11 +1298,11 @@ namespace Parser
 			ps.eat();
 			std::map<std::string, TypeConstraints_t> genericTypes;
 
-			if(ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
+			if(ps.hasTokens() && ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
 			{
 				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
 			}
-			else if(ps.front().type == TType::LAngle)
+			else if(ps.hasTokens() && ps.front().type == TType::LAngle)
 			{
 				ps.eat();
 				genericTypes = parseGenericTypeList(ps);
@@ -1353,7 +1345,7 @@ namespace Parser
 			ps.eat();
 
 			// start. basically we take a list of types only, no names.
-			while(ps.front().type != TType::RParen)
+			while(ps.hasTokens() && ps.front().type != TType::RParen)
 			{
 				ret += parseStringType(ps);
 
@@ -1404,14 +1396,9 @@ namespace Parser
 
 
 
-	Expr* parseType(ParserState& ps)
+	pts::Type* parseType(ParserState& ps)
 	{
-		Expr* ret = CreateAST(DummyExpr, ps.front());
-
-		ret->ptype = pts::parseType(parseStringType(ps));
-		ps.skipNewline();
-
-		return ret;
+		return pts::parseType(parseStringType(ps));
 	}
 
 
@@ -1537,12 +1524,7 @@ namespace Parser
 		Token colon = ps.eat();
 		if(colon.type == TType::Colon)
 		{
-			Expr* ctype = parseType(ps);
-			v->ptype = ctype->ptype;
-
-			auto typep = ctype->pin;
-
-			delete ctype;	// cleanup
+			v->ptype = parseType(ps);
 
 			if(ps.front().type == TType::LBrace)
 			{
@@ -1793,23 +1775,24 @@ namespace Parser
 
 
 
-
-
-			Expr* rhs = (tok_op.type == TType::As) ? parseType(ps) : parseUnary(ps);
-			if(!rhs) return nullptr;
+			Expr* rhs = 0;
+			if(tok_op.type == TType::As)
+			{
+				rhs = CreateAST(DummyExpr, tok_op);
+				rhs->ptype = parseType(ps);
+			}
+			else
+			{
+				rhs = parseUnary(ps);
+			}
 
 			int next = getCurOpPrec(ps);
 
 			if(next > prec || isRightAssociativeOp(ps.front()))
-			{
 				rhs = parseRhs(ps, rhs, prec + 1);
-				if(!rhs) return nullptr;
-			}
-
 
 			// todo: chained relational operators
 			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
-
 
 			ps.currentOpPrec = prec;
 
@@ -1872,9 +1855,8 @@ namespace Parser
 				parserError("Expected ']', have %s", n.text.c_str());
 		}
 
-
-		auto ct = parseType(ps);
-		pts::Type* type = ct->ptype;
+		auto pin = ps.front().pin;
+		pts::Type* type = parseType(ps);
 
 		if(ps.front().type == TType::LParen)
 		{
@@ -1882,13 +1864,12 @@ namespace Parser
 			if(!type->isNamedType())
 				parserError("Only class or struct types can be used in an alloc-construct expression");
 
-			FuncCall* fc = parseFuncCall(ps, type->str(), ct->pin);
+			FuncCall* fc = parseFuncCall(ps, type->str(), pin);
 			ret->params = fc->params;
 		}
 
 		ret->ptype = type;
 
-		delete ct;
 		return ret;
 	}
 
@@ -2503,23 +2484,33 @@ namespace Parser
 		iceAssert(ps.eat().type == TType::Enum);
 
 		Token tok_id;
+		pts::Type* explicitType = 0;
+
 		if((tok_id = ps.eat()).type != TType::Identifier)
+		{
 			parserError("Expected identifier after 'enum'");
+		}
+		if(ps.front().type == TType::Colon)
+		{
+			// parse an explicit type
+			ps.eat();
+			explicitType = parseType(ps);
+		}
+
 
 		if(ps.eat().type != TType::LBrace)
 			parserError("Expected body after 'enum'");
-
 
 		if(ps.front().type == TType::RBrace)
 			parserError("Empty enumerations are not allowed");
 
 
 		EnumDef* enumer = CreateAST(EnumDef, tok_id, tok_id.text);
+		enumer->ptype = explicitType;
 		Token front = ps.front();
 
-		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
-		if(attr & Attr_StrongTypeAlias)
-			enumer->isStrong = true;
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
+		enumer->attribs = attr;
 
 		// parse the stuff.
 		bool isFirst = true;
@@ -2786,12 +2777,9 @@ namespace Parser
 		if(ps.eat().type != TType::Equal)
 			parserError("Expected '='");
 
-		Expr* ct = parseType(ps);
-		iceAssert(ct);
+		pts::Type* pt = parseType(ps);
 
-		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, ct->ptype);
-		delete ct;
-
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, pt);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)

@@ -8,6 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
+#if 0
 Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName, bool actual)
 {
 	EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
@@ -66,6 +67,7 @@ Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool act
 
 	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
 }
+#endif
 
 Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -88,40 +90,55 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return this->createdType;
 
-
 	this->ident.scope = cgi->getFullScope();
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Type);
 
-
 	fir::Type* prev = 0;
+	if(this->ptype != 0)
+		prev = cgi->getTypeFromParserType(this, this->ptype);
+
 	for(auto pair : this->cases)
 	{
-		if(!prev)
-			prev = pair.second->getType(cgi);
-
+		if(!prev) prev = pair.second->getType(cgi);
 
 		fir::Type* t = pair.second->getType(cgi);
-		if(t != prev)
-			error(pair.second, "Enumeration values must have the same type, have %s and %s", t->str().c_str(), prev->str().c_str());
-
-
-		prev = t;
+		if(t != prev && cgi->getAutoCastDistance(t, prev) == -1)
+		{
+			error(pair.second, "Enumeration values must have the same type, have conflicting types '%s' and '%s'",
+				t->str().c_str(), prev->str().c_str());
+		}
 	}
 
-
+	if(prev->isPrimitiveType() && prev->toPrimitiveType()->isLiteralType())
+		prev = prev->toPrimitiveType()->getUnliteralType();
 
 	std::deque<std::string> fullScope = cgi->getFullScope();
 
-	fir::StructType* wrapper = fir::StructType::create(this->ident, { { "case", prev } }, cgi->getContext());
+
+	std::map<std::string, fir::ConstantValue*> casevals;
+	for(auto p : this->cases)
+	{
+		fir::Value* v = p.second->codegen(cgi).value;
+		fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(v);
+		if(!cv) error(p.second, "Enumeration cases have to be constant");
+
+		if(cv->getType() != prev && (prev->isIntegerType() || prev->isFloatingPointType()))
+			cv = fir::createConstantValueCast(cv, prev);
+
+		casevals[p.first] = cv;
+	}
+
 
 	// now that they're all the same type:
-	cgi->addNewType(wrapper, this, TypeKind::Enum);
 	this->didCreateType = true;
 
-	this->createdType = wrapper;
-	return wrapper;
+	fir::EnumType* type = fir::EnumType::get(this->ident, prev, casevals);
+	cgi->addNewType(type, this, TypeKind::Enum);
+	this->createdType = type;
+
+	return type;
 }
 
 

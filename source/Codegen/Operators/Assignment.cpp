@@ -459,21 +459,6 @@ namespace Operators
 			// store it, and return 0.
 			cgi->irb.CreateStore(rhs, lhsPtr);
 		}
-		else if(cgi->isEnum(lhs->getType()) && cgi->isEnum(rhs->getType()))
-		{
-			iceAssert(lhs->getType() == rhs->getType());
-
-			// directly store the enum innards into the lhs.
-
-			iceAssert(lhsPtr);
-			iceAssert(rhsPtr);
-
-			fir::Value* lhsGEP = cgi->irb.CreateStructGEP(lhsPtr, 0);
-			fir::Value* rhsGEP = cgi->irb.CreateStructGEP(rhsPtr, 0);
-
-			fir::Value* rhsVal = cgi->irb.CreateLoad(rhsGEP);
-			cgi->irb.CreateStore(rhsVal, lhsGEP);
-		}
 		else
 		{
 			// just do it

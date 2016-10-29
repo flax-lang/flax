@@ -9,15 +9,17 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t getTypeOfAny(CodegenInstance* cgi, fir::Value* ptr)
-{
-	fir::Value* gep = cgi->irb.CreateStructGEP(ptr, 0);
-	return Result_t(cgi->irb.CreateLoad(gep), gep);
-}
+// static Result_t getTypeOfAny(CodegenInstance* cgi, fir::Value* ptr)
+// {
+// 	fir::Value* gep = cgi->irb.CreateStructGEP(ptr, 0);
+// 	return Result_t(cgi->irb.CreateLoad(gep), gep);
+// }
 
 Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	size_t index = 0;
+	error(this, "go away");
+
+	#if 0
 	fir::Type* type = 0;
 
 	if(VarRef* vr = dynamic_cast<VarRef*>(this->inside))
@@ -41,6 +43,7 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
+	size_t index = 0;
 	if(cgi->isAnyType(type))
 	{
 		auto r = this->inside->codegen(cgi);
@@ -69,14 +72,20 @@ Result_t Typeof::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	cgi->irb.CreateStore(enr->cases[index - 1].second->codegen(cgi).value, gep);
 	return Result_t(cgi->irb.CreateLoad(wrapper), wrapper);
+	#endif
 }
 
 fir::Type* Typeof::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	#if 0
 	TypePair_t* tp = cgi->getTypeByString("Type");
 	iceAssert(tp);
 
 	return tp->first;
+	#endif
+
+	iceAssert(0);
+	return 0;
 }
 
 

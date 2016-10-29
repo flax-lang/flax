@@ -218,6 +218,103 @@ namespace fir
 
 
 
+	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type)
+	{
+		if(dynamic_cast<ConstantInt*>(cv) || dynamic_cast<ConstantFP*>(cv))
+		{
+			if(!type->isFloatingPointType() && !type->isIntegerType())
+			{
+				die:
+				error("Invaild constant cast from type '%s' to '%s'", cv->getType()->str().c_str(), type->str().c_str());
+			}
+
+			if(ConstantFP* cf = dynamic_cast<ConstantFP*>(cv))
+			{
+				// floats can only be casted to floats
+				if(!type->isFloatingPointType()) goto die;
+
+				// ok, make a float constant
+				bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), cf->getValue());
+				if(!r) error("Constant value '%Lf' cannot fit into type '%s'", cf->getValue(), type->str().c_str());
+
+				return ConstantFP::get(type, cf->getValue());
+			}
+			else
+			{
+				ConstantInt* ci = dynamic_cast<ConstantInt*>(cv);
+
+				if(type->isFloatingPointType())
+				{
+					// ok, int-to-float
+					if(ci->getType()->isSignedIntType())
+					{
+						bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), (long double) ci->getSignedValue());
+						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str().c_str());
+
+						return ConstantFP::get(type, (long double) ci->getSignedValue());
+					}
+					else
+					{
+						bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), (long double) ci->getUnsignedValue());
+						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str().c_str());
+
+						return ConstantFP::get(type, (long double) ci->getUnsignedValue());
+					}
+				}
+				else
+				{
+					// int-to-int.
+					if(ci->getType()->isSignedIntType())
+					{
+						bool r = checkSignedIntLiteralFitsIntoType(type->toPrimitiveType(), ci->getSignedValue());
+						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str().c_str());
+
+						return ConstantInt::get(type, ci->getSignedValue());
+					}
+					else
+					{
+						bool r = checkUnsignedIntLiteralFitsIntoType(type->toPrimitiveType(), ci->getUnsignedValue());
+						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str().c_str());
+
+						return ConstantInt::get(type, ci->getUnsignedValue());
+					}
+				}
+			}
+		}
+		// else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(cv))
+		// {
+		// }
+		// else if(ConstantArray* ca = dynamic_cast<ConstantArray*>(cv))
+		// {
+		// }
+		else
+		{
+			error("not supported");
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val)
 	{
 		iceAssert(type->isIntegerType());

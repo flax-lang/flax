@@ -19,68 +19,70 @@ func anyToString(any: Any, options: string) -> string
 	var buffer = alloc[64] int8
 
 
-	let argtype = typeof(any)
+	// let argtype = typeof(any)
 
-	if argtype == typeof(string)
-	{
-		dealloc buffer
-		return any as string
-	}
-	else if argtype == typeof(bool)
-	{
-		if any as bool
-		{
-			snprintf(buffer, 64, "true")
-		}
-		else
-		{
-			snprintf(buffer, 64, "false")
-		}
-	}
-	else if argtype == typeof(int8)
-	{
-		snprintf(buffer, 64, "%hhd", any as int8)
-	}
-	else if argtype == typeof(int16)
-	{
-		snprintf(buffer, 64, "%hd", any as int16)
-	}
-	else if argtype == typeof(int32)
-	{
-		snprintf(buffer, 64, "%d", any as int32)
-	}
-	else if argtype == typeof(int64)
-	{
-		snprintf(buffer, 64, "%lld", any as int64)
-	}
-	else if argtype == typeof(uint8)
-	{
-		snprintf(buffer, 64, "%hhu", any as uint8)
-	}
-	else if argtype == typeof(uint16)
-	{
-		snprintf(buffer, 64, "%hu", any as uint16)
-	}
-	else if argtype == typeof(uint32)
-	{
-		snprintf(buffer, 64, "%u", any as uint32)
-	}
-	else if argtype == typeof(uint64)
-	{
-		snprintf(buffer, 64, "%llu", any as uint64)
-	}
-	else if argtype == typeof(float32)
-	{
-		snprintf(buffer, 64, "%f", any as float32)
-	}
-	else if argtype == typeof(float64)
-	{
-		snprintf(buffer, 64, "%lf", any as float64)
-	}
-	else
-	{
-		snprintf(buffer, 64, "(unknown type)")
-	}
+	// if argtype == typeof(string)
+	// {
+	// 	dealloc buffer
+	// 	return any as string
+	// }
+	// else if argtype == typeof(bool)
+	// {
+	// 	if any as bool
+	// 	{
+	// 		snprintf(buffer, 64, "true")
+	// 	}
+	// 	else
+	// 	{
+	// 		snprintf(buffer, 64, "false")
+	// 	}
+	// }
+	// else if argtype == typeof(int8)
+	// {
+	// 	snprintf(buffer, 64, "%hhd", any as int8)
+	// }
+	// else if argtype == typeof(int16)
+	// {
+	// 	snprintf(buffer, 64, "%hd", any as int16)
+	// }
+	// else if argtype == typeof(int32)
+	// {
+	// 	snprintf(buffer, 64, "%d", any as int32)
+	// }
+	// else if argtype == typeof(int64)
+	// {
+	// 	snprintf(buffer, 64, "%lld", any as int64)
+	// }
+	// else if argtype == typeof(uint8)
+	// {
+	// 	snprintf(buffer, 64, "%hhu", any as uint8)
+	// }
+	// else if argtype == typeof(uint16)
+	// {
+	// 	snprintf(buffer, 64, "%hu", any as uint16)
+	// }
+	// else if argtype == typeof(uint32)
+	// {
+	// 	snprintf(buffer, 64, "%u", any as uint32)
+	// }
+	// else if argtype == typeof(uint64)
+	// {
+	// 	snprintf(buffer, 64, "%llu", any as uint64)
+	// }
+	// else if argtype == typeof(float32)
+	// {
+	// 	snprintf(buffer, 64, "%f", any as float32)
+	// }
+	// else if argtype == typeof(float64)
+	// {
+	// 	snprintf(buffer, 64, "%lf", any as float64)
+	// }
+	// else
+	// {
+	// 	snprintf(buffer, 64, "(unknown type)")
+	// }
+
+
 
 
 	let s = string(buffer)
