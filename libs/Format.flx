@@ -16,7 +16,7 @@ import String
 
 func anyToString(any: Any, options: string) -> string
 {
-	var buffer = alloc[64] int8
+	var buffer: i8* = alloc[64] i8
 
 
 	// let argtype = typeof(any)

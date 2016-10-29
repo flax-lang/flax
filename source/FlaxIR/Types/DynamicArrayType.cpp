@@ -20,12 +20,12 @@ namespace fir
 
 	std::string DynamicArrayType::str()
 	{
-		return "[? x " + this->arrayElementType->str() + "]";
+		return this->arrayElementType->str() + "[]";
 	}
 
 	std::string DynamicArrayType::encodedStr()
 	{
-		return "[Vx" + this->arrayElementType->encodedStr() + "]";
+		return this->arrayElementType->encodedStr() + "[]";
 	}
 
 

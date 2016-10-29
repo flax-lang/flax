@@ -7,9 +7,7 @@
 #include <map>
 #include <set>
 
-#include "parser.h"
 #include "codegen.h"
-#include "compiler.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -2736,7 +2734,21 @@ namespace Codegen
 
 
 
+	Result_t CodegenInstance::createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity)
+	{
+		iceAssert(ptr->getType()->isPointerType() && "ptr is not pointer type");
+		iceAssert(length->getType() == fir::Type::getInt64() && "len is not i64");
+		iceAssert(capacity->getType() == fir::Type::getInt64() && "cap is not i64");
 
+		fir::DynamicArrayType* dtype = fir::DynamicArrayType::get(ptr->getType()->getPointerElementType());
+		fir::Value* arr = this->irb.CreateStackAlloc(dtype);
+
+		this->irb.CreateSetDynamicArrayData(arr, ptr);
+		this->irb.CreateSetDynamicArrayLength(arr, length);
+		this->irb.CreateSetDynamicArrayCapacity(arr, capacity);
+
+		return Result_t(this->irb.CreateLoad(arr), arr);
+	}
 
 
 

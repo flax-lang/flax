@@ -160,6 +160,16 @@ namespace fir
 		{
 			return this->getTypeSizeInBits(fir::Type::getInt8());
 		}
+		else if(t->isParameterPackType())
+		{
+			return this->getTypeSizeInBits(t->toParameterPackType()->getElementType()->getPointerTo())
+				+ this->getTypeSizeInBits(fir::Type::getInt64());
+		}
+		else if(t->isDynamicArrayType())
+		{
+			return this->getTypeSizeInBits(t->toDynamicArrayType()->getElementType()->getPointerTo())
+				+ (2 * this->getTypeSizeInBits(fir::Type::getInt64()));
+		}
 		else
 		{
 			if(t->isVoidType()) return 0;
