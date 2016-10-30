@@ -26,14 +26,12 @@ public ƒ doArrayTest()
 		dealloc arr1
 
 		printf("\n\n")
-		// var s = alloc[4][4] string("array of array of strings test")
-		// s[1][2] = "BOO YOU STRING"
+		var s = alloc[4][4] string("array of array of strings test")
+		s[1][2] = "BOO YOU STRING"
 
-		// printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
+		printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
 
-		var q = alloc[2][3][4] string
-
-		dealloc q
+		dealloc s
 	}
 
 	printf("\n")
@@ -43,10 +41,9 @@ public ƒ doArrayTest()
 func dynamicArrays()
 {
 	do {
-		let y = 10
-		let x = alloc int(30)
+		let x = alloc[5] int(30)
 
-		printf("x[3] = %d\n", x[0])
+		printf("x[3] = %d\n", x[2])
 	}
 }
 

@@ -447,10 +447,10 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// set it up so we go straight to writing instructions.
 			cgi->irb.setCurrentBlock(constr->getBlockList().front());
 
-			auto res = this->initVal->codegen(cgi, glob);
+			auto [ rval, rptr, rtype, rkind ] = this->initVal->codegen(cgi, glob);
 
 			// don't be wasting time calling functions if we're constant.
-			if(dynamic_cast<fir::ConstantValue*>(res.value))
+			if(dynamic_cast<fir::ConstantValue*>(rval))
 			{
 				// go back to prev
 				cgi->irb.setCurrentBlock(prev);
@@ -556,7 +556,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// add it.
 				cgi->addGlobalConstructor(glob, constr);
 
-				this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
+				this->doInitialValue(cgi, cmplxtype, rval, rptr, glob, false, rkind);
 				cgi->irb.CreateReturnVoid();
 
 				cgi->irb.setCurrentBlock(prev);
@@ -648,12 +648,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(this->initVal)
 		{
-			auto r = this->initVal->codegen(cgi, ai);
-
-			val = r.value;
-			valptr = r.pointer;
-			vk = r.valueKind;
+			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, ai);
 		}
+
 
 		TypePair_t* cmplxtype = 0;
 		if(this->ptype != pts::InferredType::get())

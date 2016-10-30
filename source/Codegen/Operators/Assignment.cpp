@@ -104,7 +104,7 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 		ValueKind vk = ValueKind::RValue;
-		fir::Value* rhsPtr = 0;
+		fir::Value* rhsptr = 0;
 		fir::Value* rhs = 0;
 
 
@@ -128,12 +128,8 @@ namespace Operators
 
 			// note: when we reach this, it means that we didn't find a specific operator overload
 			// in the "generalCompoundAssignmentOperator" function.
-			Result_t res = OperatorMap::get().call(actualOp, cgi, user, args);
-			iceAssert(res.value);
-
-			rhs = res.value;
-			rhsPtr = res.pointer;
-			vk = res.valueKind;
+			std::tie(rhs, rhsptr, vk) = OperatorMap::get().call(actualOp, cgi, user, args);
+			iceAssert(rhs);
 
 			op = ArithmeticOp::Assign;
 		}
@@ -157,16 +153,6 @@ namespace Operators
 				iceAssert(lhsPtr);
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
-
-
-				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
-				// 	rhsVal = cgi->autoCastType(setter->getArguments()[1]->getType(), rhsVal);
-
-				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
-				// {
-				// 	error(user, "Mismatch in argument of setter; expected '%s', got '%s'",
-				// 		setter->getArguments()[1]->getType()->str().c_str(), rhsVal->getType()->str().c_str());
-				// }
 
 				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
@@ -219,30 +205,24 @@ namespace Operators
 
 
 		// else, we should be safe to codegen both sides
-		auto leftr = args[0]->codegen(cgi);
-
-		fir::Value* lhs = leftr.value;
-		fir::Value* lhsPtr = leftr.pointer;
+		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
 
 
 		// this is to allow handling of compound assignment operators
 		// if we are one, then the rhs will already have been generated, and we can't do codegen (again).
-		if(rhs == 0 && rhsPtr == 0)
+		if(rhs == 0 && rhsptr == 0)
 		{
 			iceAssert(rhs == 0);
-			iceAssert(rhsPtr == 0);
+			iceAssert(rhsptr == 0);
 
-			auto rightr = args[1]->codegen(cgi);
-
-			rhs = rightr.value;
-			rhsPtr = rightr.pointer;
-			vk = rightr.valueKind;
+			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi);
 		}
 
 
 		// the bulk of the work is still done here
-		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsPtr, rhs, rhsPtr, vk);
+		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsptr, rhs, rhsptr, vk);
 	}
+
 
 
 
@@ -262,10 +242,10 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
-				auto leftvp = args[0]->codegen(cgi);
-				auto rightvp = args[1]->codegen(cgi);
+				auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
+				auto [ rhs, rhsptr, ___, ____ ] = args[1]->codegen(cgi);
 
-				cgi->callBinaryOperatorOverload(data, leftvp.value, leftvp.pointer, rightvp.value, rightvp.pointer, op);
+				cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 				return Result_t(0, 0);
 			}
 
