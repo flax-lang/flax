@@ -1566,7 +1566,10 @@ namespace Codegen
 			if(revTypePositions.find(i) != revTypePositions.end())
 			{
 				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
-				auto [ s, indirs ] = revTypePositions[i];
+				std::string s;
+				int indirs = 0;
+
+				std::tie(s, indirs) = revTypePositions[i];
 
 				fir::Type* ftype = args[i];
 
@@ -1618,7 +1621,10 @@ namespace Codegen
 
 		for(auto pair : typePositions)
 		{
-			auto [ pos, indrs ] = *pair.second.begin();
+			int pos = 0;
+			int indrs = 0;
+
+			std::tie(pos, indrs) = *pair.second.begin();
 
 			fir::Type* t = args[pos];
 			for(int i = 0; i < indrs; i++)

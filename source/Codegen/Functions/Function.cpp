@@ -184,7 +184,11 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	// codegen everything in the body.
-	auto [ value, pointer, _, vkind ] = this->block->codegen(cgi);
+	fir::Value* value = 0;
+	fir::Value* pointer = 0;
+	ValueKind vkind;
+
+	std::tie(value, pointer, vkind) = this->block->codegen(cgi);
 
 	// verify again, this type checking the types
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());

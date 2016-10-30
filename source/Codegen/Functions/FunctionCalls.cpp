@@ -43,7 +43,9 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		{
 			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
 
-			auto [ arg, argptr, _, __ ] = e->codegen(cgi);
+			fir::Value* arg = 0;
+			fir::Value* argptr = 0;
+			std::tie(arg, argptr) = e->codegen(cgi);
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
@@ -124,15 +126,17 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
 			{
-				auto [ val, valP, _, __ ] = params[i]->codegen(cgi);
+				fir::Value* val = 0;
+				fir::Value* valp = 0;
+				std::tie(val, valp) = params[i]->codegen(cgi);
 
 				if(cgi->isAnyType(variadicType))
 				{
-					variadics.push_back(cgi->makeAnyFromValue(val, valP).value);
+					variadics.push_back(cgi->makeAnyFromValue(val, valp).value);
 				}
 				else if(variadicType != val->getType())
 				{
-					variadics.push_back(cgi->autoCastType(variadicType, val, valP));
+					variadics.push_back(cgi->autoCastType(variadicType, val, valp));
 				}
 				else
 				{

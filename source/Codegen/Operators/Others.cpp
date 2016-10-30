@@ -13,8 +13,11 @@ namespace Operators
 {
 	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
-		auto [ rhs, rhsptr, ___, ____ ] = args[1]->codegen(cgi);
+		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+		fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
 		auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 		if(data.found)
@@ -35,8 +38,8 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-
-		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
+		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
 
 		fir::Type* rtype = args[1]->getType(cgi);
 		if(!rtype)
