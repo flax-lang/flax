@@ -87,8 +87,11 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
-		auto [ rhs, rhsptr, ___, ____] = args[1]->codegen(cgi);
+		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+		fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
 		rhs = cgi->autoCastType(lhs, rhs);
 

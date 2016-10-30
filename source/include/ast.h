@@ -120,17 +120,22 @@ namespace Ast
 
 		operator std::tuple<fir::Value*&, fir::Value*&, ResultType&>()
 		{
-			return std::tuple<fir::Value*&,fir::Value*&, ResultType&>(this->value, this->pointer, this->type);
+			return std::tuple<fir::Value*&, fir::Value*&, ResultType&>(this->value, this->pointer, this->type);
+		}
+
+		operator std::tuple<fir::Value*&, ResultType&>()
+		{
+			return std::tuple<fir::Value*&, ResultType&>(this->value, this->type);
 		}
 
 		operator std::tuple<fir::Value*&, fir::Value*&, ValueKind&>()
 		{
-			return std::tuple<fir::Value*&,fir::Value*&, ValueKind&>(this->value, this->pointer, this->valueKind);
+			return std::tuple<fir::Value*&, fir::Value*&, ValueKind&>(this->value, this->pointer, this->valueKind);
 		}
 
 		operator std::tuple<fir::Value*&, fir::Value*&, ResultType&, ValueKind&>()
 		{
-			return std::tuple<fir::Value*&,fir::Value*&, ResultType&, ValueKind&>(this->value, this->pointer, this->type, this->valueKind);
+			return std::tuple<fir::Value*&, fir::Value*&, ResultType&, ValueKind&>(this->value, this->pointer, this->type, this->valueKind);
 		}
 
 

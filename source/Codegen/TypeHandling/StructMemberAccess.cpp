@@ -159,7 +159,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				if(fc->params.size() != 1)
 					error(fc, "Expected exactly 1 parameter in appending to dynamic array, have %zu", fc->params.size());
 
-				auto [ rval, rptr, _, __ ] = fc->params[0]->codegen(cgi);
+				fir::Value* rval = 0; fir::Value* rptr = 0;
+				std::tie(rval, rptr) = fc->params[0]->codegen(cgi);
 
 				fir::DynamicArrayType* lt = type->toDynamicArrayType();
 				fir::DynamicArrayType* rt = 0;
@@ -521,10 +522,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("wtf");
 	}
 
-	auto [ self, selfptr, _ , __ ] = res;
-
-	// fir::Value* self = res.value;
-	// fir::Value* selfPtr = res.pointer;
+	fir::Value* self = 0; fir::Value* selfptr = 0;
+	std::tie(self, selfptr) = res;
 
 
 	bool isPtr = false;
