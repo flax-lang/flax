@@ -240,21 +240,6 @@ namespace Codegen
 				overl->func->decl->attribs |= Attr_VisPublic;
 
 			overl->func->decl->codegen(cgi);
-
-			// fir::Value* val = overl->func->decl->codegen(cgi).result.first;
-			// cgi->irb.setCurrentBlock(ob);
-
-			// overl->lfunc = dynamic_cast<fir::Function*>(val);
-			// iceAssert(overl->lfunc);
-
-			// if(overl->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-			// 	cgi->addPublicFunc({ overl->lfunc, overl->func->decl });
-
-			// ob = cgi->irb.getCurrentBlock();
-
-			// overl->func->codegen(cgi);
-
-			// cgi->irb.setCurrentBlock(ob);
 		}
 
 
@@ -308,9 +293,6 @@ namespace Codegen
 				error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)",
 					aoo->lfunc->getReturnType()->str().c_str());
 			}
-
-			// if(aoo->func->decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-				// cgi->addPublicFunc(FuncDefPair(aoo->lfunc, aoo->func->decl, aoo->func));
 		}
 
 
@@ -365,9 +347,6 @@ namespace Codegen
 				cgi->irb.setCurrentBlock(ob);
 
 				soo->getterFn = new Func(decl->pin, decl, body);
-
-				// if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-				// 	cgi->addPublicFunc(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
 			}
 
 			if(soo->setterBody)
@@ -398,9 +377,6 @@ namespace Codegen
 				cgi->irb.setCurrentBlock(ob);
 
 				soo->setterFn = new Func(decl->pin, decl, body);
-
-				// if(decl->attribs & Attr_VisPublic || cls->attribs & Attr_VisPublic)
-				// 	cgi->addPublicFunc(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
 			}
 		}
 	}

@@ -183,10 +183,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
 	// codegen everything in the body.
-	Result_t lastval = this->block->codegen(cgi);
-
+	auto [ value, pointer, _, vkind ] = this->block->codegen(cgi);
 
 	// verify again, this type checking the types
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
@@ -199,38 +197,33 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		fir::Type* needed = func->getReturnType();
 
-		fir::Value* ret = lastval.value;
-		if(ret->getType() != needed)
+		if(value->getType() != needed)
 		{
-			auto tmp = cgi->autoCastType(func->getReturnType(), ret, lastval.pointer);
-
-			// info(this, "retretret (%d / %p) (%s / %s)", ret->getType()->isPrimitiveType() && ret->getType()->toPrimitiveType()->isLiteralType(), (void*) dynamic_cast<fir::ConstantValue*>(ret), needed->str().c_str(), tmp->getType()->str().c_str());
-
-			ret = tmp;
+			value = cgi->autoCastType(func->getReturnType(), value, pointer);
 		}
 
 
 		// if it's an rvalue, we make a new one, increment its refcount
-		if(cgi->isRefCountedType(ret->getType()))
+		if(cgi->isRefCountedType(value->getType()))
 		{
-			if(lastval.valueKind == ValueKind::LValue)
+			if(vkind == ValueKind::LValue)
 			{
 				// uh.. should always be there.
-				iceAssert(lastval.pointer);
-				cgi->incrementRefCount(lastval.pointer);
+				iceAssert(pointer);
+				cgi->incrementRefCount(pointer);
 			}
 			else
 			{
 				// rvalue
 
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(value->getType(), value);
 				cgi->incrementRefCount(tmp);
 
-				ret = cgi->irb.CreateLoad(tmp);
+				value = cgi->irb.CreateLoad(tmp);
 			}
 		}
 
-		cgi->irb.CreateReturn(ret);
+		cgi->irb.CreateReturn(value);
 	}
 
 

@@ -13,19 +13,18 @@ namespace Operators
 {
 	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
 	{
-		auto leftres = args[0]->codegen(cgi);
-		auto rightres = args[1]->codegen(cgi);
+		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
+		auto [ rhs, rhsptr, ___, ____ ] = args[1]->codegen(cgi);
 
-		auto data = cgi->getBinaryOperatorOverload(user, op, leftres.value->getType(), rightres.value->getType());
+		auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 		if(data.found)
 		{
-			return cgi->callBinaryOperatorOverload(data, leftres.value, leftres.pointer, rightres.value, rightres.pointer, op);
+			return cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 		}
 		else
 		{
 			error(user, "No such operator '%s' for expression %s %s %s", Parser::arithmeticOpToString(cgi, op).c_str(),
-				leftres.value->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(),
-				rightres.value->getType()->str().c_str());
+				lhs->getType()->str().c_str(), Parser::arithmeticOpToString(cgi, op).c_str(), rhs->getType()->str().c_str());
 		}
 	}
 
@@ -37,9 +36,7 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 
-		auto leftr = args[0]->codegen(cgi);
-		fir::Value* lhs = leftr.value;
-		fir::Value* lhsPtr = leftr.pointer;
+		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
 
 		fir::Type* rtype = args[1]->getType(cgi);
 		if(!rtype)
@@ -89,8 +86,8 @@ namespace Operators
 		}
 		else if(cgi->isAnyType(lhs->getType()))
 		{
-			iceAssert(lhsPtr);
-			return cgi->extractValueFromAny(rtype, lhsPtr);
+			iceAssert(lhsptr);
+			return cgi->extractValueFromAny(rtype, lhsptr);
 		}
 		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
 			&& rtype == fir::Type::getInt8Ptr(cgi->getContext()))
@@ -98,8 +95,8 @@ namespace Operators
 			// string to int8*.
 			// just access the data pointer.
 
-			iceAssert(lhsPtr);
-			fir::Value* stringPtr = cgi->irb.CreateStructGEP(lhsPtr, 0);
+			iceAssert(lhsptr);
+			fir::Value* stringPtr = cgi->irb.CreateStructGEP(lhsptr, 0);
 
 			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
 		}
@@ -120,17 +117,17 @@ namespace Operators
 			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
 		{
 			// array to pointer cast.
-			iceAssert(lhsPtr);
+			iceAssert(lhsptr);
 
-			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsptr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
 		}
 		else if(lhs->getType()->isArrayType() && rtype->isVoidPointer())
 		{
 			// array to void* cast.
-			iceAssert(lhsPtr);
+			iceAssert(lhsptr);
 
-			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsPtr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsptr, 0, 0);
 			fir::Value* vptr = cgi->irb.CreatePointerTypeCast(lhsRawPtr, fir::Type::getVoid()->getPointerTo());
 			return Result_t(vptr, 0);
 		}
