@@ -101,6 +101,8 @@ namespace Compiler
 	{
 		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
 
+		llvm::verifyModule(*this->linkedModule);
+
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Debug)

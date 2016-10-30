@@ -224,7 +224,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// first get the length
 				fir::Function* strlenf = cgi->getOrDeclareLibCFunc("strlen");
 				fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
-				fir::Function* memcpyf = cgi->getOrDeclareLibCFunc("memcpy");
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
 				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
 
