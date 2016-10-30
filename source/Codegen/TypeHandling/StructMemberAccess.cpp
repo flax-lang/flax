@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -85,7 +86,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
 			if(vr->name != "length")
-				error(ma, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+				error(ma, "Variadic arrays only have one member, 'length'. '%s' is invalid.", vr->name.c_str());
 
 			if(!actual)
 			{
@@ -98,11 +99,112 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma, "Variadic array only has one member, 'length'. Invalid operator.");
+			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
 		}
 	}
+	else if(type->isDynamicArrayType())
+	{
+		// lol, some magic.
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name == "length")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
 
-	if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayLength(ptr), 0);
+			}
+			else if(vr->name == "capacity")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayCapacity(ptr), 0);
+			}
+			else if(vr->name == "pointer")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType()->getPointerTo();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayData(ptr), 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown property '%s' on dynamic array type ('%s')", vr->name.c_str(), type->str().c_str());
+			}
+		}
+		else if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			if(fc->name == "append")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() != 1)
+					error(fc, "Expected exactly 1 parameter in appending to dynamic array, have %zu", fc->params.size());
+
+				auto [ rval, rptr, _, __ ] = fc->params[0]->codegen(cgi);
+
+				fir::DynamicArrayType* lt = type->toDynamicArrayType();
+				fir::DynamicArrayType* rt = 0;
+
+				if(rval->getType()->isDynamicArrayType()) rt = rval->getType()->toDynamicArrayType();
+
+				if(rt)
+				{
+					if(lt->getElementType() != rt->getElementType())
+					{
+						error(fc->params[0], "Incompatible element types in call to append; cannot append array of element "
+							"type '%s' to one of element type '%s'", rt->getElementType()->str().c_str(),
+							lt->getElementType()->str().c_str());
+					}
+
+					// ok.
+					iceAssert(rptr);
+
+					fir::Function* apf = RuntimeFuncs::getDynamicArrayAppendFunction(cgi, lt);
+					cgi->irb.CreateCall2(apf, ptr, rptr);
+				}
+				else if(!rt && rval->getType() == lt->getElementType())
+				{
+					fir::Function* apf = RuntimeFuncs::getDynamicArrayElementAppendFunction(cgi, lt);
+					cgi->irb.CreateCall2(apf, ptr, rval);
+				}
+				else
+				{
+					error(fc->params[0], "Cannot append a value of type '%s' to an array of element type '%s'",
+						rval->getType()->str().c_str(), lt->getElementType()->str().c_str());
+				}
+
+				return Result_t(0, 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
+			}
+		}
+		else
+		{
+			error(ma, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+		}
+	}
+	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
 	{
 		// handle builtin ones: 'raw' and 'length'
 		// raw is basically just the string
@@ -223,12 +325,12 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma->right, "Unsupported RHS for dot-operator on builtin type '%s'", type->str().c_str());
+			error(ma->right, "Unsupported builtin type '%s' for member access", type->str().c_str());
 		}
 	}
 	else
 	{
-		error(ma, "Cannot do member access on non-struct type '%s'", type->str().c_str());
+		error(ma, "Cannot do member access on aggregate type '%s'", type->str().c_str());
 	}
 }
 

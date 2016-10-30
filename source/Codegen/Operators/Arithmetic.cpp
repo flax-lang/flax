@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include "operators.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -134,7 +135,7 @@ namespace Operators
 
 			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
-			auto apf = cgi->getStringCharAppendFunction();
+			auto apf = RuntimeFuncs::getStringCharAppendFunction(cgi);
 			fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhs);
 			cgi->irb.CreateStore(app, newstrp);
 
@@ -154,7 +155,7 @@ namespace Operators
 				iceAssert(rhsptr);
 
 
-				fir::Function* cmpf = cgi->getStringCompareFunction();
+				fir::Function* cmpf = RuntimeFuncs::getStringCompareFunction(cgi);
 				iceAssert(cmpf);
 
 				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhsptr, rhsptr);
@@ -182,7 +183,7 @@ namespace Operators
 			{
 				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
-				auto apf = cgi->getStringAppendFunction();
+				auto apf = RuntimeFuncs::getStringAppendFunction(cgi);
 				fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhsptr);
 				cgi->irb.CreateStore(app, newstrp);
 

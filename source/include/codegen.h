@@ -255,13 +255,9 @@ namespace Codegen
 		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
 
-		fir::Function* getDynamicArrayAppendFunction();
-		fir::Function* getDynamicArrayCompareFunction();
-		fir::Function* getDynamicArrayElementAppendFunction();
 		Ast::Result_t createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity);
 		Ast::Result_t createEmptyDynamicArray(fir::Type* elmType);
 
-		fir::Function* getArrayBoundsCheckFunction();
 		Ast::Result_t createParameterPack(fir::Type* type, std::deque<fir::Value*> parameters);
 
 
@@ -287,14 +283,6 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
-		fir::Function* getStringRefCountIncrementFunction();
-		fir::Function* getStringRefCountDecrementFunction();
-		fir::Function* getStringCompareFunction();
-		fir::Function* getStringAppendFunction();
-		fir::Function* getStringCharAppendFunction();
-
-		fir::Function* getStringBoundsCheckFunction();
-		fir::Function* getStringCheckLiteralWriteFunction();
 
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);

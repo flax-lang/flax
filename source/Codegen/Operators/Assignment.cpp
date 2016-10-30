@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include "operators.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -179,8 +180,8 @@ namespace Operators
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(cgi->getStringCheckLiteralWriteFunction(), leftr.pointer, ind);
-				cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::getStringCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::getStringBoundsCheckFunction(cgi), leftr.pointer, ind);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
