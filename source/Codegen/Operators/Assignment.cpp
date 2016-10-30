@@ -206,7 +206,10 @@ namespace Operators
 
 
 		// else, we should be safe to codegen both sides
-		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
+		fir::Value* lhs = 0;
+		fir::Value* lhsptr = 0;
+
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
 
 
 		// this is to allow handling of compound assignment operators
@@ -243,8 +246,11 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
-				auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
-				auto [ rhs, rhsptr, ___, ____ ] = args[1]->codegen(cgi);
+				fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+				fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+				std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+				std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
 				cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 				return Result_t(0, 0);

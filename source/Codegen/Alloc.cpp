@@ -95,7 +95,10 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 		else if(params.size() > 0)
 		{
 			// ok do it
-			auto [ val, vptr, _, __ ] = params[0]->codegen(cgi);
+			fir::Value* val = 0;
+			fir::Value* vptr = 0;
+
+			std::tie(val, vptr) = params[0]->codegen(cgi);
 
 			val = cgi->autoCastType(pointer->getType()->getPointerElementType(), val, vptr);
 
@@ -352,7 +355,10 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	auto [ val, ptr, _, __ ] = this->expr->codegen(cgi);
+	fir::Value* val = 0;
+	fir::Value* ptr = 0;
+
+	std::tie(val, ptr) = this->expr->codegen(cgi);
 
 	iceAssert(ptr);
 	if(val->getType()->isDynamicArrayType())

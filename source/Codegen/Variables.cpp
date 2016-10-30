@@ -447,7 +447,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// set it up so we go straight to writing instructions.
 			cgi->irb.setCurrentBlock(constr->getBlockList().front());
 
-			auto [ rval, rptr, rtype, rkind ] = this->initVal->codegen(cgi, glob);
+
+			fir::Value* rval = 0;
+			fir::Value* rptr = 0;
+			ResultType rtype;
+			ValueKind rkind;
+
+			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, glob);
 
 			// don't be wasting time calling functions if we're constant.
 			if(dynamic_cast<fir::ConstantValue*>(rval))

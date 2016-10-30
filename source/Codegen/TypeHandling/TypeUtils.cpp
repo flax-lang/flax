@@ -156,8 +156,8 @@ namespace Codegen
 				return test->first;
 			}
 
-
-			auto [ tp, indirections ] = cgi->findTypeInFuncTree(ns, atype);
+			TypePair_t* tp = 0; int indirections = 0;
+			std::tie(tp, indirections) = cgi->findTypeInFuncTree(ns, atype);
 
 			iceAssert(indirections == -1 || indirections == 0);
 

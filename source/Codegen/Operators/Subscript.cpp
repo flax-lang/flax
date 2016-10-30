@@ -90,7 +90,8 @@ namespace Operators
 		ArrayIndex* ari = dynamic_cast<ArrayIndex*>(lhs);
 		iceAssert(ari);
 
-		auto [ cls, ftype ] = getClassDef(cgi, user, ari->arr);
+		ClassDef* cls = 0; fir::Type* ftype = 0;
+		std::tie(cls, ftype) = getClassDef(cgi, user, ari->arr);
 
 		std::deque<FuncDefPair> cands;
 
@@ -118,9 +119,10 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto [ argstr, candstr, ops ] = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
+			std::string argstr; std::string candstr; HighlightOptions opts;
+			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 
-			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
@@ -225,7 +227,8 @@ namespace Operators
 	{
 		iceAssert(args.size() >= 2);
 
-		auto [ cls, ftype ] = getClassDef(cgi, user, args[0]);
+		ClassDef* cls = 0; fir::Type* ftype = 0;
+		std::tie(cls, ftype) = getClassDef(cgi, user, args[0]);
 
 		std::deque<FuncDefPair> cands;
 
@@ -253,9 +256,10 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto [ argstr, candstr, ops ] = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
+			std::string argstr; std::string candstr; HighlightOptions opts;
+			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
 
-			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else

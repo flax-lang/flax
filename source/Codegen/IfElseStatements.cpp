@@ -101,11 +101,12 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->pushScope();
 
 		// generate the statements inside
-		auto [ val, _, rtype, __ ] = this->cases[0].second->codegen(cgi);
-		truev = val;
+
+		ResultType rt;
+		std::tie(truev, rt) = this->cases[0].second->codegen(cgi);
 		cgi->popScope();
 
-		if(rtype != ResultType::BreakCodegen)
+		if(rt != ResultType::BreakCodegen)
 			cgi->irb.CreateUnCondBranch(merge), didMerge = true;
 	}
 
