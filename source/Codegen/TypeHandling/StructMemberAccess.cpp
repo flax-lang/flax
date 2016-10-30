@@ -419,8 +419,10 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("wtf");
 	}
 
-	fir::Value* self = res.value;
-	fir::Value* selfPtr = res.pointer;
+	auto [ self, selfptr, _ , __ ] = res;
+
+	// fir::Value* self = res.value;
+	// fir::Value* selfPtr = res.pointer;
 
 
 	bool isPtr = false;
@@ -442,16 +444,16 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		else
 		{
 			fir::Type* _ = 0;
-			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfPtr, &_);
+			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfptr, &_);
 		}
 	}
 
 
 	// find out whether we need self or selfptr.
-	if(selfPtr == nullptr && !isPtr)
+	if(selfptr == nullptr && !isPtr)
 	{
-		selfPtr = cgi->getStackAlloc(ftype);
-		cgi->irb.CreateStore(self, selfPtr);
+		selfptr = cgi->getStackAlloc(ftype);
+		cgi->irb.CreateStore(self, selfptr);
 	}
 
 
@@ -460,7 +462,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		bool wasSelfPtr = false;
 
-		if(selfPtr)
+		if(selfptr)
 		{
 			wasSelfPtr = true;
 			isPtr = false;
@@ -470,8 +472,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if we're faced with a double pointer, we need to load it once
 		if(wasSelfPtr)
 		{
-			if(selfPtr->getType()->isPointerType() && selfPtr->getType()->getPointerElementType()->isPointerType())
-				selfPtr = cgi->irb.CreateLoad(selfPtr);
+			if(selfptr->getType()->isPointerType() && selfptr->getType()->getPointerElementType()->isPointerType())
+				selfptr = cgi->irb.CreateLoad(selfptr);
 		}
 		else
 		{
@@ -500,7 +502,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
-		return doTupleAccess(cgi, selfPtr, n);
+		return doTupleAccess(cgi, selfptr, n);
 	}
 	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
@@ -529,7 +531,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = st->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, str, i);
 			}
 			else
 			{
@@ -578,7 +580,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = ct->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, cls, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, cls, i);
 			}
 			else
 			{
@@ -621,7 +623,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(cprop);
-					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfPtr);
+					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfptr);
 				}
 			}
 		}
@@ -640,7 +642,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 
 			// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
-			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfPtr);
+			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfptr);
 			return Result_t(std::get<3>(result), 0);
 		}
 		else

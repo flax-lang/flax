@@ -157,10 +157,7 @@ namespace Codegen
 			}
 
 
-
-			auto pair = cgi->findTypeInFuncTree(ns, atype);
-			TypePair_t* tp = pair.first;
-			int indirections = pair.second;
+			auto [ tp, indirections ] = cgi->findTypeInFuncTree(ns, atype);
 
 			iceAssert(indirections == -1 || indirections == 0);
 

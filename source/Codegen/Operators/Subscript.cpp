@@ -89,9 +89,7 @@ namespace Operators
 		ArrayIndex* ari = dynamic_cast<ArrayIndex*>(lhs);
 		iceAssert(ari);
 
-		auto p = getClassDef(cgi, user, ari->arr);
-		ClassDef* cls = p.first;
-		fir::Type* ftype = p.second;
+		auto [ cls, ftype ] = getClassDef(cgi, user, ari->arr);
 
 		std::deque<FuncDefPair> cands;
 
@@ -119,10 +117,7 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
-			std::string argstr = std::get<0>(tup);
-			std::string candstr = std::get<1>(tup);
-			HighlightOptions ops = std::get<2>(tup);
+			auto [ argstr, candstr, ops ] = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 
 			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
@@ -229,9 +224,7 @@ namespace Operators
 	{
 		iceAssert(args.size() >= 2);
 
-		auto p = getClassDef(cgi, user, args[0]);
-		ClassDef* cls = p.first;
-		fir::Type* ftype = p.second;
+		auto [ cls, ftype ] = getClassDef(cgi, user, args[0]);
 
 		std::deque<FuncDefPair> cands;
 
@@ -259,10 +252,7 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
-			std::string argstr = std::get<0>(tup);
-			std::string candstr = std::get<1>(tup);
-			HighlightOptions ops = std::get<2>(tup);
+			auto [ argstr, candstr, ops ] = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
 
 			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());

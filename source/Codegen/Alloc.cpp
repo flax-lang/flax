@@ -12,7 +12,7 @@ using namespace Codegen;
 #define MALLOC_FUNC		"malloc"
 #define FREE_FUNC		"free"
 
-static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
+static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
 {
 	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
@@ -35,16 +35,6 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::V
 
 	fir::Value* amem = cgi->irb.CreatePointerTypeCast(cgi->irb.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->irb.CreateStore(amem, allocmemptr);
-
-
-	{
-		fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %zu\n");
-		tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-		cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, amem, size });
-	}
-
-
 
 
 	fir::IRBlock* curbb = cgi->irb.getCurrentBlock();	// store the current bb
@@ -89,7 +79,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::V
 				args.push_back(e->codegen(cgi).value);
 
 			typePair = cgi->getType(type);
-			fir::Function* initfunc = cgi->getStructInitialiser(/* user */ 0, typePair, args);
+			fir::Function* initfunc = cgi->getStructInitialiser(user, typePair, args);
 			iceAssert(initfunc);
 
 			cgi->irb.CreateCall(initfunc, args);
@@ -99,8 +89,23 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::V
 			fir::Value* front = sizes.front();
 			sizes.pop_front();
 
-			fir::Value* rret = recursivelyDoAlloc(cgi, type->toDynamicArrayType()->getElementType(), front, params, sizes).value;
+			fir::Value* rret = recursivelyDoAlloc(cgi, user, type->toDynamicArrayType()->getElementType(), front, params, sizes).value;
 			cgi->irb.CreateStore(rret, pointer);
+		}
+		else if(params.size() > 0)
+		{
+			// ok do it
+			auto [ val, vptr, _, __ ] = params[0]->codegen(cgi);
+
+			val = cgi->autoCastType(pointer->getType()->getPointerElementType(), val, vptr);
+
+			if(val->getType() != pointer->getType()->getPointerElementType())
+			{
+				error(user, "Cannot initialise values of type '%s' with one of type '%s'",
+					pointer->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
+			}
+
+			cgi->irb.CreateStore(val, pointer);
 		}
 		else
 		{
@@ -163,7 +168,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::V
 
 
 
-
+#include <algorithm>
 
 Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -175,15 +180,13 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	allocType = cgi->getTypeFromParserType(this, this->ptype);
 	iceAssert(allocType);
 
-
-
-
-	// call malloc
-
-
 	fir::Value* oneValue = fir::ConstantInt::getInt64(1, cgi->getContext());
-	// fir::Value* zeroValue = fir::ConstantInt::getUint64(0, cgi->getContext());
 
+	if(!allocType->isClassType() && !allocType->isStructType() && this->params.size() > 1)
+	{
+		error(this, "Primitive types (have '%s' here) only accept one initial value, have '%zu' (too many)",
+			allocType->str().c_str(), this->params.size());
+	}
 
 	if(this->counts.size() > 0)
 	{
@@ -198,13 +201,13 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(size_t i = 1; i < this->counts.size(); i++)
 			allocType = fir::DynamicArrayType::get(allocType);
 
-		return recursivelyDoAlloc(cgi, allocType, firstSize, this->params, cnts);
+		return recursivelyDoAlloc(cgi, this, allocType, firstSize, this->params, cnts);
 	}
 	else
 	{
 		std::deque<fir::Value*> cnts;
 
-		fir::Value* dptr = recursivelyDoAlloc(cgi, allocType, oneValue, this->params, cnts).pointer;
+		fir::Value* dptr = recursivelyDoAlloc(cgi, this, allocType, oneValue, this->params, cnts).pointer;
 
 		// this is a no-size alloc,
 		// return a straight pointer.
@@ -349,9 +352,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	auto r = this->expr->codegen(cgi);
-	fir::Value* val = r.value;
-	fir::Value* ptr = r.pointer;
+	auto [ val, ptr, _, __ ] = this->expr->codegen(cgi);
 
 	iceAssert(ptr);
 	if(val->getType()->isDynamicArrayType())
@@ -363,8 +364,6 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Type* t = val->getType();
 		while(t->isDynamicArrayType())
 			t = t->toDynamicArrayType()->getElementType(), nest++;
-
-		debuglog("nest = %d\n", nest);
 
 		// ok, ptr is the pointer to the outermost array
 		// get the data, get the length, and call.

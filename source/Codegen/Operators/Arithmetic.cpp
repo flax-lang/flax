@@ -86,11 +86,8 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-		auto leftr = args[0]->codegen(cgi);
-		auto rightr = args[1]->codegen(cgi);
-
-		fir::Value* lhs = leftr.value;
-		fir::Value* rhs = rightr.value;
+		auto [ lhs, lhsptr, _, __ ] = args[0]->codegen(cgi);
+		auto [ rhs, rhsptr, ___, ____] = args[1]->codegen(cgi);
 
 		rhs = cgi->autoCastType(lhs, rhs);
 
@@ -132,13 +129,13 @@ namespace Operators
 			if(op != ArithmeticOp::Add)
 				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", optostr(cgi, op).c_str());
 
-			iceAssert(leftr.pointer);
-			iceAssert(rightr.value);
+			iceAssert(lhsptr);
+			iceAssert(rhs);
 
 			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
 			auto apf = cgi->getStringCharAppendFunction();
-			fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.value);
+			fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhs);
 			cgi->irb.CreateStore(app, newstrp);
 
 			cgi->addRefCountedValue(newstrp);
@@ -153,10 +150,6 @@ namespace Operators
 			if(isComparisonOp(op))
 			{
 				// compare two strings
-
-				fir::Value* lhsptr = leftr.pointer;
-				fir::Value* rhsptr = rightr.pointer;
-
 				iceAssert(lhsptr);
 				iceAssert(rhsptr);
 
@@ -187,13 +180,10 @@ namespace Operators
 			}
 			else
 			{
-				iceAssert(leftr.pointer);
-				iceAssert(rightr.pointer);
-
 				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
 				auto apf = cgi->getStringAppendFunction();
-				fir::Value* app = cgi->irb.CreateCall2(apf, leftr.pointer, rightr.pointer);
+				fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhsptr);
 				cgi->irb.CreateStore(app, newstrp);
 
 				cgi->addRefCountedValue(newstrp);
@@ -266,7 +256,7 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
 			if(data.found)
 			{
-				return cgi->callBinaryOperatorOverload(data, lhs, leftr.pointer, rhs, rightr.pointer, op);
+				return cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 			}
 			else
 			{

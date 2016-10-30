@@ -8,66 +8,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-#if 0
-Result_t CodegenInstance::getEnumerationCaseValue(Expr* user, TypePair_t* tp, std::string caseName, bool actual)
-{
-	EnumDef* enr = dynamic_cast<EnumDef*>(tp->second.first);
-	if(!enr) printf("wtf?? %s\n", typeid(*tp->second.first).name());
-	iceAssert(enr);
-
-	Result_t res(0, 0);
-	bool found = false;
-	for(auto p : enr->cases)
-	{
-		if(p.first == caseName)
-		{
-			if(actual)
-			{
-				res = p.second->codegen(this);
-				found = true;
-				break;
-			}
-			else
-			{
-				return Result_t(fir::ConstantValue::getNullValue(p.second->getType(this)), 0);
-			}
-		}
-	}
-
-
-	if(!found)
-		error(user, "Enum '%s' has no such case '%s'", enr->ident.name.c_str(), caseName.c_str());
-
-	if(!enr->isStrong)
-		return res;
-
-
-	// strong enum.
-	// create a temp alloca, then use GEP to set the value, then return.
-	fir::Value* alloca = this->getStackAlloc(tp->first);
-	fir::Value* gep = this->irb.CreateStructGEP(alloca, 0);
-
-	this->irb.CreateStore(res.value, gep);
-	return Result_t(this->irb.CreateLoad(alloca), alloca);
-}
-
-
-Result_t CodegenInstance::getEnumerationCaseValue(Expr* lhs, Expr* rhs, bool actual)
-{
-	VarRef* enumName = dynamic_cast<VarRef*>(lhs);
-	VarRef* caseName = dynamic_cast<VarRef*>(rhs);
-	iceAssert(enumName);
-
-	if(!caseName)
-		error(rhs, "Expected identifier after enumeration access");
-
-	TypePair_t* tp = this->getTypeByString(enumName->name);
-	iceAssert(tp);
-	iceAssert(tp->second.second == TypeKind::Enum);
-
-	return this->getEnumerationCaseValue(rhs, tp, caseName->name);
-}
-#endif
 
 Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
