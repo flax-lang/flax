@@ -8,6 +8,7 @@
 #include <set>
 
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -1248,6 +1249,11 @@ namespace Codegen
 		{
 			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
+		}
+		else if(name == "realloc")
+		{
+			return this->module->getOrCreateFunction(Identifier("realloc", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
 		else if(name == "free")
 		{
@@ -2560,7 +2566,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			fir::Function* incrf = RuntimeFuncs::getStringRefCountIncrementFunction(this);
 			this->irb.CreateCall1(incrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2588,7 +2594,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			fir::Function* decrf = RuntimeFuncs::getStringRefCountDecrementFunction(this);
 			this->irb.CreateCall1(decrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))

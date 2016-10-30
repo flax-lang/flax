@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
+import LibCInterface
 
 public ƒ doArrayTest()
 {
@@ -38,12 +38,36 @@ public ƒ doArrayTest()
 	dynamicArrays()
 }
 
+// public func foldl<T>(first: T, arr: T[], fn: [(T[], T) -> T]) -> T
+// {
+// 	if arr.length == 0
+// 	{
+// 		return first
+// 	}
+// }
+
+// func f(a: int[], n: int) -> int
+// {
+
+// }
+
 func dynamicArrays()
 {
 	do {
-		let x = alloc[5] int(30)
+		let x = alloc[5] int(43)
+		let y = alloc[5] int(70)
 
-		printf("x[3] = %d\n", x[2])
+		x.append(y)
+
+		var i = 0
+
+		while i < 10
+		{
+			printf("x[%ld] = %ld\n", i, x[i])
+			i += 1
+		}
+
+		printf("x[3] = %d, length = %zd, cap = %zd\n", x[3], x.length, x.capacity)
 	}
 }
 
