@@ -258,7 +258,27 @@ namespace Operators
 		}
 		else if(lhs->getType()->isDynamicArrayType() && lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType())
 		{
-			error("nope");
+			iceAssert(lhsptr);
+
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+			if(op == ArithmeticOp::Add)
+			{
+				// first, clone the left side
+				fir::Value* cloned = cgi->irb.CreateStackAlloc(arrtype);
+				{
+					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
+					iceAssert(clonefunc);
+
+					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+				}
+
+				// ok, now, append to the clone
+				fir::Function* appendf = RuntimeFuncs::Array::getElementAppendFunction(cgi, arrtype);
+				cgi->irb.CreateCall2(appendf, cloned, rhs);
+
+				// appended -- return
+				return Result_t(cgi->irb.CreateLoad(cloned), cloned);
+			}
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{

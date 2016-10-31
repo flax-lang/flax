@@ -101,7 +101,8 @@ namespace Compiler
 	{
 		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
 
-		llvm::verifyModule(*this->linkedModule);
+		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
+			error("\nLLVM Module verification failed");
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
@@ -170,7 +171,8 @@ namespace Compiler
 		// verify the module.
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "llvm_verify");
-			llvm::verifyModule(*this->linkedModule, &llvm::errs());
+			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
+				error("\nLLVM Module verification failed");
 		}
 
 		std::string foldername;

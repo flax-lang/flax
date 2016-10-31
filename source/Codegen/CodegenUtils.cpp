@@ -2627,9 +2627,7 @@ namespace Codegen
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
-		{
-			error(user, "not refcounted");
-		}
+			error(user, "type '%s' is not refcounted", val->getType()->str().c_str());
 
 		// ok...
 		// if the rhs is an lvalue, it's simple.

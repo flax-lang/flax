@@ -378,13 +378,177 @@ namespace Array
 
 
 
-
-
-
-	fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* cmpf)
+	static void _compareFunctionUsingBuiltinCompare(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* func,
+		fir::Value* arg1, fir::Value* arg2)
 	{
+		// ok, ez.
+		fir::Value* zeroval = fir::ConstantInt::getInt64(0);
+		fir::Value* oneval = fir::ConstantInt::getInt64(1);
+
+		fir::IRBlock* cond = cgi->irb.addNewBlockInFunction("cond", func);
+		fir::IRBlock* body = cgi->irb.addNewBlockInFunction("body", func);
+		fir::IRBlock* incr = cgi->irb.addNewBlockInFunction("incr", func);
+		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+
+		fir::Value* ptr1 = cgi->irb.CreateGetDynamicArrayData(arg1);
+		fir::Value* ptr2 = cgi->irb.CreateGetDynamicArrayData(arg2);
+
+		fir::Value* len1 = cgi->irb.CreateGetDynamicArrayLength(arg1);
+		fir::Value* len2 = cgi->irb.CreateGetDynamicArrayLength(arg2);
+
+		// we compare to this to break
+		fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+		cgi->irb.CreateStore(zeroval, counter);
+
+		fir::Value* res = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+		cgi->irb.CreateStore(zeroval, res);
+
+
+		cgi->irb.CreateUnCondBranch(cond);
+		cgi->irb.setCurrentBlock(cond);
+		{
+			fir::IRBlock* retlt = cgi->irb.addNewBlockInFunction("retlt", func);
+			fir::IRBlock* reteq = cgi->irb.addNewBlockInFunction("reteq", func);
+			fir::IRBlock* retgt = cgi->irb.addNewBlockInFunction("retgt", func);
+
+			fir::IRBlock* tmp1 = cgi->irb.addNewBlockInFunction("tmp1", func);
+			fir::IRBlock* tmp2 = cgi->irb.addNewBlockInFunction("tmp2", func);
+
+			// if we got here, the arrays were equal *up to this point*
+			// if ptr1 exceeds or ptr2 exceeds, return len1 - len2
+
+			fir::Value* t1 = cgi->irb.CreateICmpEQ(cgi->irb.CreateLoad(counter), len1);
+			fir::Value* t2 = cgi->irb.CreateICmpEQ(cgi->irb.CreateLoad(counter), len2);
+
+			// if t1 is over, goto tmp1, if not goto t2
+			cgi->irb.CreateCondBranch(t1, tmp1, tmp2);
+			cgi->irb.setCurrentBlock(tmp1);
+			{
+				// t1 is over
+				// check if t2 is over
+				// if so, return 0 (b == a)
+				// if not, return -1 (b > a)
+
+				cgi->irb.CreateCondBranch(t2, reteq, retlt);
+			}
+
+			cgi->irb.setCurrentBlock(tmp2);
+			{
+				// t1 is not over
+				// check if t2 is over
+				// if so, return 1 (a > b)
+				// if not, goto body
+
+				cgi->irb.CreateCondBranch(t2, retgt, body);
+			}
+
+
+			cgi->irb.setCurrentBlock(retlt);
+			cgi->irb.CreateReturn(fir::ConstantInt::getInt64(-1));
+
+			cgi->irb.setCurrentBlock(reteq);
+			cgi->irb.CreateReturn(fir::ConstantInt::getInt64(0));
+
+			cgi->irb.setCurrentBlock(retgt);
+			cgi->irb.CreateReturn(fir::ConstantInt::getInt64(+1));
+		}
+
+
+		cgi->irb.setCurrentBlock(body);
+		{
+			if(arrtype->getElementType()->isStringType())
+			{
+				fir::Function* strf = RuntimeFuncs::String::getCompareFunction(cgi);
+				iceAssert(strf);
+
+				fir::Value* c = cgi->irb.CreateCall2(strf, ptr1, ptr2);
+				cgi->irb.CreateStore(c, res);
+			}
+			else
+			{
+				fir::Value* v1 = cgi->irb.CreateLoad(ptr1);
+				fir::Value* v2 = cgi->irb.CreateLoad(ptr2);
+
+				cgi->irb.CreateStore(cgi->irb.CreateICmpMulti(v1, v2), res);
+			}
+
+			// compare to 0.
+			fir::Value* cmpres = cgi->irb.CreateICmpEQ(cgi->irb.CreateLoad(res), zeroval);
+
+			// if equal, go to incr, if not return directly
+			cgi->irb.CreateCondBranch(cmpres, incr, merge);
+		}
+
+
+		cgi->irb.setCurrentBlock(incr);
+		{
+			cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), oneval), counter);
+			cgi->irb.CreateUnCondBranch(cond);
+		}
+
+
+
+		cgi->irb.setCurrentBlock(merge);
+		{
+			// load and return
+			cgi->irb.CreateReturn(cgi->irb.CreateLoad(res));
+		}
+	}
+
+
+	static void _compareFunctionUsingOperatorFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* curfunc,
+		fir::Value* arg1, fir::Value* arg2, fir::Function* opf)
+	{
+		// fir::Value* zeroval = fir::ConstantInt::getInt64(0);
 		error("notsup");
-		return 0;
+	}
+
+
+
+	fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* opf)
+	{
+		iceAssert(arrtype);
+
+		auto name = BUILTIN_DYNARRAY_CMP_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		fir::Function* cmpf = cgi->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!cmpf)
+		{
+			auto restore = cgi->irb.getCurrentBlock();
+
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype->getPointerTo(), arrtype->getPointerTo() },
+					fir::Type::getInt64(), false), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+			cgi->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+			{
+				// check our situation.
+				if(opf == 0)
+				{
+					_compareFunctionUsingBuiltinCompare(cgi, arrtype, func, s1, s2);
+				}
+				else
+				{
+					_compareFunctionUsingOperatorFunction(cgi, arrtype, func, s1, s2, opf);
+				}
+
+				// functions above do their own return
+			}
+
+
+			cmpf = func;
+			cgi->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
 	}
 
 	fir::Function* getConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
