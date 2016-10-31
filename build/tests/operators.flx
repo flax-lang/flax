@@ -46,11 +46,11 @@ public func doOperatorTupleTest()
 		printf("v: (%f, %f, %f)\n", v.x, v.y, v.z)
 		printf("vv: (%f, %f, %f)\n", vv.x, vv.y, vv.z)
 
-		let cross = m.0 x m.1
+		let cross = m.0 ⨯ m.1
 		printf("cross = (%f, %f, %f)\n", cross.x, cross.y, cross.z)
 
 
-		let crossn = m.1 x m.0
+		let crossn = m.1 ⨯ m.0
 		printf("crossn = (%f, %f, %f)\n", crossn.x, crossn.y, crossn.z)
 	}
 

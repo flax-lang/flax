@@ -27,8 +27,8 @@ public operator • (a: Math.Vector2, b: Math.Vector2) -> f64 { a.x * b.x + a.y 
 
 @operator[100]
 public operator ⨯ (a: Math.Vector2, b: Math.Vector2) -> f64 { a.x * b.y - a.y * b.x }	// this is the unicode 'x'
-@operator[100]
-public operator x (a: Math.Vector2, b: Math.Vector2) -> f64 { a ⨯ b }	// this is ascii 'x' (24th letter)
+// @operator[100]
+// public operator x (a: Math.Vector2, b: Math.Vector2) -> f64 { a ⨯ b }	// this is ascii 'x' (24th letter)
 
 
 

@@ -117,13 +117,13 @@ namespace fir
 		{
 			auto t = reals[tp->getName()];
 			if(t->isParametricType())
-				error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
+				_error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
 
 			return tc->normaliseType(new PointerType(this->indirections, t))->toPointerType();
 		}
 		else
 		{
-			error_and_exit("Failed to reify, no type found for '%s'", tp->getName().c_str());
+			_error_and_exit("Failed to reify, no type found for '%s'", tp->getName().c_str());
 		}
 	}
 }

@@ -17,7 +17,7 @@ namespace Compiler
 				return new x64Backend(cd, in, out);
 
 			case BackendOption::Invalid:
-				error_and_exit("Invalid backend");
+				_error_and_exit("Invalid backend");
 		}
 	}
 

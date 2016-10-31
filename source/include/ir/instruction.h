@@ -61,6 +61,9 @@ namespace fir
 		ICompare_GreaterEqual,
 		ICompare_LessEqual,
 
+		ICompare_Multi,
+		FCompare_Multi,
+
 		FCompare_Equal_ORD,
 		FCompare_Equal_UNORD,
 		FCompare_NotEqual_ORD,

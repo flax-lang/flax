@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include "operators.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -89,9 +90,8 @@ namespace Operators
 		ArrayIndex* ari = dynamic_cast<ArrayIndex*>(lhs);
 		iceAssert(ari);
 
-		auto p = getClassDef(cgi, user, ari->arr);
-		ClassDef* cls = p.first;
-		fir::Type* ftype = p.second;
+		ClassDef* cls = 0; fir::Type* ftype = 0;
+		std::tie(cls, ftype) = getClassDef(cgi, user, ari->arr);
 
 		std::deque<FuncDefPair> cands;
 
@@ -119,12 +119,10 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
-			std::string argstr = std::get<0>(tup);
-			std::string candstr = std::get<1>(tup);
-			HighlightOptions ops = std::get<2>(tup);
+			std::string argstr; std::string candstr; HighlightOptions opts;
+			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 
-			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
@@ -229,9 +227,8 @@ namespace Operators
 	{
 		iceAssert(args.size() >= 2);
 
-		auto p = getClassDef(cgi, user, args[0]);
-		ClassDef* cls = p.first;
-		fir::Type* ftype = p.second;
+		ClassDef* cls = 0; fir::Type* ftype = 0;
+		std::tie(cls, ftype) = getClassDef(cgi, user, args[0]);
 
 		std::deque<FuncDefPair> cands;
 
@@ -259,12 +256,10 @@ namespace Operators
 
 		if(!res.resolved)
 		{
-			auto tup = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
-			std::string argstr = std::get<0>(tup);
-			std::string candstr = std::get<1>(tup);
-			HighlightOptions ops = std::get<2>(tup);
+			std::string argstr; std::string candstr; HighlightOptions opts;
+			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, eparams, cands);
 
-			error(user, ops, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
@@ -354,7 +349,7 @@ namespace Operators
 		}
 		else if(atype->isParameterPackType())
 		{
-			fir::Function* checkf = cgi->getArrayBoundsCheckFunction();
+			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetParameterPackLength(lhsp.pointer);
@@ -368,7 +363,7 @@ namespace Operators
 		}
 		else if(atype->isDynamicArrayType())
 		{
-			fir::Function* checkf = cgi->getArrayBoundsCheckFunction();
+			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetDynamicArrayLength(lhsp.pointer);
@@ -382,7 +377,7 @@ namespace Operators
 		}
 		else if(atype->isStringType())
 		{
-			cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), lhsp.pointer, ind);
+			cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.pointer, ind);
 
 			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
 			gep = cgi->irb.CreateGetPointer(dp, ind);

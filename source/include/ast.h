@@ -113,6 +113,32 @@ namespace Ast
 		Result_t(fir::Value* val, fir::Value* ptr, ValueKind vk) : value(val), pointer(ptr), type(ResultType::Normal), valueKind(vk) { }
 		Result_t(fir::Value* val, fir::Value* ptr) : value(val), pointer(ptr), type(ResultType::Normal), valueKind(ValueKind::RValue) { }
 
+		operator std::tuple<fir::Value*&, fir::Value*&>()
+		{
+			return std::tuple<fir::Value*&, fir::Value*&>(this->value, this->pointer);
+		}
+
+		operator std::tuple<fir::Value*&, fir::Value*&, ResultType&>()
+		{
+			return std::tuple<fir::Value*&, fir::Value*&, ResultType&>(this->value, this->pointer, this->type);
+		}
+
+		operator std::tuple<fir::Value*&, ResultType&>()
+		{
+			return std::tuple<fir::Value*&, ResultType&>(this->value, this->type);
+		}
+
+		operator std::tuple<fir::Value*&, fir::Value*&, ValueKind&>()
+		{
+			return std::tuple<fir::Value*&, fir::Value*&, ValueKind&>(this->value, this->pointer, this->valueKind);
+		}
+
+		operator std::tuple<fir::Value*&, fir::Value*&, ResultType&, ValueKind&>()
+		{
+			return std::tuple<fir::Value*&, fir::Value*&, ResultType&, ValueKind&>(this->value, this->pointer, this->type, this->valueKind);
+		}
+
+
 		fir::Value* value;
 		fir::Value* pointer;
 

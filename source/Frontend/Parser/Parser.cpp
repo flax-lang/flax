@@ -1552,9 +1552,11 @@ namespace Parser
 			// we do
 			ps.eat();
 
-			v->initVal = parseExpr(ps);
-			if(!v->initVal)
-				parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
+			if(ps.front().type == TType::Alloc)
+				v->initVal = parseAlloc(ps);
+
+			else
+				v->initVal = parseExpr(ps);
 		}
 		else if(immutable)
 		{
