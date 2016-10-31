@@ -64,7 +64,7 @@ namespace Compiler
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
-			error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
+			_error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
 	}
 
 	std::string LLVMBackend::str()
@@ -581,7 +581,7 @@ namespace Compiler
 		}
 		else
 		{
-			error_and_exit("No main() function, cannot JIT");
+			_error_and_exit("No main() function, cannot JIT");
 		}
 
 
@@ -633,7 +633,7 @@ namespace Compiler
 					llvm::Function* constr = this->linkedModule->getFunction(pair.second->globalConstructorTrampoline->getName().mangled());
 					if(!constr)
 					{
-						error_and_exit("required global constructor %s was not found in the module!",
+						_error_and_exit("required global constructor %s was not found in the module!",
 							pair.second->globalConstructorTrampoline->getName().str().c_str());
 					}
 					else
@@ -667,7 +667,7 @@ namespace Compiler
 				// insert a call at the beginning of main().
 				llvm::Function* mainfunc = this->linkedModule->getFunction("main");
 				if((Compiler::getOutputMode() == ProgOutputMode::Program || Compiler::getOutputMode() == ProgOutputMode::RunJit) && !mainfunc)
-					error_and_exit("No main() function");
+					_error_and_exit("No main() function");
 
 				iceAssert(mainfunc);
 
