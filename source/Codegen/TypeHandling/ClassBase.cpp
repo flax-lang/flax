@@ -91,7 +91,7 @@ namespace Codegen
 
 					if(cgi->isValidFuncOverload(FuncDefPair(0, f->decl, f), ps, &d, true))
 					{
-						errorNoExit(f->decl, "Duplicate method declaration: %s", f->decl->ident.name.c_str());
+						exitless_error(f->decl, "Duplicate method declaration: %s", f->decl->ident.name.c_str());
 						info(fn->decl, "Previous declaration was here.");
 						doTheExit();
 					}
@@ -102,7 +102,7 @@ namespace Codegen
 			{
 				if(f->decl->ident.name == m->ident.name)
 				{
-					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
+					exitless_error(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
 						m->ident.name.c_str(), m->concretisedType->str().c_str());
 
 					info(m, "Previous declaration was here:");
@@ -115,7 +115,7 @@ namespace Codegen
 			{
 				if(f->decl->ident.name == m->ident.name)
 				{
-					errorNoExit(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
+					exitless_error(f->decl, "'%s' was previously declared as a property of type '%s', cannot redefine it as a function",
 						m->ident.name.c_str(), m->getType(cgi)->str().c_str());
 
 					info(m, "Previous declaration was here:");
@@ -146,7 +146,7 @@ namespace Codegen
 			{
 				if(c != cp && c->ident.name == cp->ident.name)
 				{
-					errorNoExit(c, "Duplicate property '%s' in class", c->ident.name.c_str());
+					exitless_error(c, "Duplicate property '%s' in class", c->ident.name.c_str());
 					info(cp, "Previous declaration was here.");
 					doTheExit();
 				}
@@ -156,7 +156,7 @@ namespace Codegen
 			{
 				if(m->ident.name == c->ident.name)
 				{
-					errorNoExit(c, "Property '%s' was previously declared as a field", c->ident.name.c_str());
+					exitless_error(c, "Property '%s' was previously declared as a field", c->ident.name.c_str());
 					info(m, "Previous declaration was here.");
 					doTheExit();
 				}
@@ -221,7 +221,7 @@ namespace Codegen
 
 					if(cgi->isValidFuncOverload(FuncDefPair(0, overl->func->decl, overl->func), ps, &d, true))
 					{
-						errorNoExit(oo->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, oo->op).c_str());
+						exitless_error(oo->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, oo->op).c_str());
 						info(overl->func->decl, "Previous declaration was here.");
 						doTheExit();
 					}
@@ -261,7 +261,7 @@ namespace Codegen
 
 					if(cgi->isValidFuncOverload(FuncDefPair(0, aoo->func->decl, aoo->func), ps, &d, true))
 					{
-						errorNoExit(a->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, a->op).c_str());
+						exitless_error(a->func->decl, "Duplicate operator overload for '%s'", Parser::arithmeticOpToString(cgi, a->op).c_str());
 						info(aoo->func->decl, "Previous declaration was here.");
 						doTheExit();
 					}
@@ -313,7 +313,7 @@ namespace Codegen
 
 					if(cgi->isValidFuncOverload(FuncDefPair(0, soo->getterFn->decl, soo->getterFn), ps, &d, true))
 					{
-						errorNoExit(s->decl, "Duplicate subscript operator");
+						exitless_error(s->decl, "Duplicate subscript operator");
 						info(soo->decl, "Previous declaration was here.");
 						doTheExit();
 					}

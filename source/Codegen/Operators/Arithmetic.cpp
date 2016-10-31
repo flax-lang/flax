@@ -95,6 +95,7 @@ namespace Operators
 
 		rhs = cgi->autoCastType(lhs, rhs);
 
+
 		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
 								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
 		{
@@ -138,7 +139,8 @@ namespace Operators
 
 			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
-			auto apf = RuntimeFuncs::getStringCharAppendFunction(cgi);
+			// newStringByAppendingChar (does not modify lhsptr)
+			auto apf = RuntimeFuncs::String::getCharAppendFunction(cgi);
 			fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhs);
 			cgi->irb.CreateStore(app, newstrp);
 
@@ -158,7 +160,7 @@ namespace Operators
 				iceAssert(rhsptr);
 
 
-				fir::Function* cmpf = RuntimeFuncs::getStringCompareFunction(cgi);
+				fir::Function* cmpf = RuntimeFuncs::String::getCompareFunction(cgi);
 				iceAssert(cmpf);
 
 				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhsptr, rhsptr);
@@ -186,13 +188,77 @@ namespace Operators
 			{
 				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
-				auto apf = RuntimeFuncs::getStringAppendFunction(cgi);
+				// newStringByAppendingString (does not modify lhsptr)
+				auto apf = RuntimeFuncs::String::getAppendFunction(cgi);
 				fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhsptr);
 				cgi->irb.CreateStore(app, newstrp);
 
 				cgi->addRefCountedValue(newstrp);
 				return Result_t(app, newstrp);
 			}
+		}
+		else if(lhs->getType()->isDynamicArrayType() && rhs->getType()->isDynamicArrayType()
+			&& lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType()->toDynamicArrayType()->getElementType())
+		{
+			iceAssert(lhsptr);
+			iceAssert(rhsptr);
+
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+			if(isComparisonOp(op))
+			{
+				// check if we can actually compare the two element types
+				auto ovl = cgi->getBinaryOperatorOverload(user, op, arrtype->getElementType(), arrtype->getElementType());
+				if(!ovl.found)
+				{
+					error(user, "Array type '%s' cannot be compared; operator '%s' is not defined for element type '%s'",
+						arrtype->str().c_str(), optostr(cgi, op).c_str(), arrtype->getElementType()->str().c_str());
+				}
+
+				// basically this calls the elementwise comparison function
+				// note: if ovl.opFunc is null, the IR will assume that FIR knows how to handle it
+				// ie. builtin type compares
+				fir::Function* cmpf = RuntimeFuncs::Array::getCompareFunction(cgi, arrtype, ovl.opFunc);
+				iceAssert(cmpf);
+
+
+				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhsptr, rhsptr);
+
+				// same as the string stuff above
+				fir::Value* ret = 0;
+				auto zero = fir::ConstantInt::getInt64(0);
+
+				if(op == ArithmeticOp::CmpLT)			ret = cgi->irb.CreateICmpLT(val, zero);
+				else if(op == ArithmeticOp::CmpLEq)		ret = cgi->irb.CreateICmpLEQ(val, zero);
+				else if(op == ArithmeticOp::CmpGT)		ret = cgi->irb.CreateICmpGT(val, zero);
+				else if(op == ArithmeticOp::CmpGEq)		ret = cgi->irb.CreateICmpGEQ(val, zero);
+				else if(op == ArithmeticOp::CmpEq)		ret = cgi->irb.CreateICmpEQ(val, zero);
+				else if(op == ArithmeticOp::CmpNEq)		ret = cgi->irb.CreateICmpNEQ(val, zero);
+
+				iceAssert(ret);
+				return Result_t(ret, 0);
+			}
+			else if(op == ArithmeticOp::Add)
+			{
+				// first, clone the left side
+				fir::Value* cloned = cgi->irb.CreateStackAlloc(arrtype);
+				{
+					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
+					iceAssert(clonefunc);
+
+					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+				}
+
+				// ok, now, append to the clone
+				fir::Function* appendf = RuntimeFuncs::Array::getAppendFunction(cgi, arrtype);
+				cgi->irb.CreateCall2(appendf, cloned, rhsptr);
+
+				// appended -- return
+				return Result_t(cgi->irb.CreateLoad(cloned), cloned);
+			}
+		}
+		else if(lhs->getType()->isDynamicArrayType() && lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType())
+		{
+			error("nope");
 		}
 		else if(lhs->getType()->isPrimitiveType() && rhs->getType()->isPrimitiveType())
 		{
@@ -262,12 +328,10 @@ namespace Operators
 			{
 				return cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 			}
-			else
-			{
-				error(user, "No such operator '%s' for expression %s %s %s", optostr(cgi, op).c_str(),
-					lhs->getType()->str().c_str(), optostr(cgi, op).c_str(), rhs->getType()->str().c_str());
-			}
 		}
+
+		error(user, "No such operator '%s' for expression %s %s %s", optostr(cgi, op).c_str(),
+			lhs->getType()->str().c_str(), optostr(cgi, op).c_str(), rhs->getType()->str().c_str());
 	}
 }
 

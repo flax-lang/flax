@@ -20,10 +20,11 @@ using namespace Ast;
 
 #define DEBUG_ARC 0
 
-
-namespace RuntimeFuncs
+namespace Codegen {
+namespace RuntimeFuncs {
+namespace String
 {
-	fir::Function* getStringAppendFunction(CodegenInstance* cgi)
+	fir::Function* getAppendFunction(CodegenInstance* cgi)
 	{
 		fir::Function* appendf = cgi->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
 
@@ -123,7 +124,7 @@ namespace RuntimeFuncs
 		return appendf;
 	}
 
-	fir::Function* getStringCharAppendFunction(CodegenInstance* cgi)
+	fir::Function* getCharAppendFunction(CodegenInstance* cgi)
 	{
 		fir::Function* appendf = cgi->module->getFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name));
 
@@ -223,7 +224,7 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getStringCompareFunction(CodegenInstance* cgi)
+	fir::Function* getCompareFunction(CodegenInstance* cgi)
 	{
 		fir::Function* cmpf = cgi->module->getFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name));
 
@@ -321,7 +322,7 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getStringRefCountIncrementFunction(CodegenInstance* cgi)
+	fir::Function* getRefCountIncrementFunction(CodegenInstance* cgi)
 	{
 		fir::Function* incrf = cgi->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
 
@@ -392,7 +393,7 @@ namespace RuntimeFuncs
 	}
 
 
-	fir::Function* getStringRefCountDecrementFunction(CodegenInstance* cgi)
+	fir::Function* getRefCountDecrementFunction(CodegenInstance* cgi)
 	{
 		fir::Function* decrf = cgi->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
 
@@ -499,7 +500,7 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getStringBoundsCheckFunction(CodegenInstance* cgi)
+	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi)
 	{
 		fir::Function* fn = cgi->module->getFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
 
@@ -579,7 +580,7 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getStringCheckLiteralWriteFunction(CodegenInstance* cgi)
+	fir::Function* getCheckLiteralWriteFunction(CodegenInstance* cgi)
 	{
 		fir::Function* fn = cgi->module->getFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name));
 
@@ -649,8 +650,8 @@ namespace RuntimeFuncs
 		return fn;
 	}
 }
-
-
+}
+}
 
 
 

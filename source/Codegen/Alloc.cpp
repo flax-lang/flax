@@ -171,7 +171,6 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 
 
 
-#include <algorithm>
 
 Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {

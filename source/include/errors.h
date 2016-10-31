@@ -44,9 +44,9 @@ void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)))
 void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
 void error(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
 
-void errorNoExit(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void errorNoExit(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void errorNoExit(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void exitless_error(const char* msg, ...) __attribute__((format(printf, 1, 2)));
+void exitless_error(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void exitless_error(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 
 void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
 void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));

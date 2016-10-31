@@ -349,7 +349,7 @@ namespace Operators
 		}
 		else if(atype->isParameterPackType())
 		{
-			fir::Function* checkf = RuntimeFuncs::getArrayBoundsCheckFunction(cgi);
+			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetParameterPackLength(lhsp.pointer);
@@ -363,7 +363,7 @@ namespace Operators
 		}
 		else if(atype->isDynamicArrayType())
 		{
-			fir::Function* checkf = RuntimeFuncs::getArrayBoundsCheckFunction(cgi);
+			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetDynamicArrayLength(lhsp.pointer);
@@ -377,7 +377,7 @@ namespace Operators
 		}
 		else if(atype->isStringType())
 		{
-			cgi->irb.CreateCall2(RuntimeFuncs::getStringBoundsCheckFunction(cgi), lhsp.pointer, ind);
+			cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.pointer, ind);
 
 			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
 			gep = cgi->irb.CreateGetPointer(dp, ind);

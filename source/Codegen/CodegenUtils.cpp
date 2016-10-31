@@ -2572,7 +2572,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* incrf = RuntimeFuncs::getStringRefCountIncrementFunction(this);
+			fir::Function* incrf = RuntimeFuncs::String::getRefCountIncrementFunction(this);
 			this->irb.CreateCall1(incrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2600,7 +2600,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* decrf = RuntimeFuncs::getStringRefCountDecrementFunction(this);
+			fir::Function* decrf = RuntimeFuncs::String::getRefCountDecrementFunction(this);
 			this->irb.CreateCall1(decrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))

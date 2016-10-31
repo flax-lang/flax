@@ -11,15 +11,18 @@ using namespace Ast;
 
 #define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__.array_boundscheck"
 
+#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__.darray_clone"
 #define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__.darray_append"
 #define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__.darray_appendelement"
 #define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__.darray_compare"
 #define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__.darray_popback"
 #define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__.darray_combinetwo"
 
-namespace RuntimeFuncs
+namespace Codegen {
+namespace RuntimeFuncs {
+namespace Array
 {
-	fir::Function* getArrayBoundsCheckFunction(CodegenInstance* cgi)
+	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi)
 	{
 		fir::Function* fn = cgi->module->getFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
 
@@ -98,6 +101,99 @@ namespace RuntimeFuncs
 
 
 
+	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	{
+		auto name = BUILTIN_DYNARRAY_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+
+		fir::Function* fn = cgi->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cgi->irb.getCurrentBlock();
+
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype->getPointerTo() }, arrtype, false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* insane = cgi->irb.addNewBlockInFunction("insane", func);
+			fir::IRBlock* merge1 = cgi->irb.addNewBlockInFunction("merge1", func);
+
+			cgi->irb.setCurrentBlock(entry);
+
+			fir::Value* orig = func->getArguments()[0];
+			iceAssert(orig);
+
+			fir::Value* origptr = cgi->irb.CreateGetDynamicArrayData(orig);
+			fir::Value* origlen = cgi->irb.CreateGetDynamicArrayLength(orig);
+			fir::Value* origcap = cgi->irb.CreateGetDynamicArrayCapacity(orig);
+
+			// note: sanity check that len <= cap
+			fir::Value* sane = cgi->irb.CreateICmpLEQ(origlen, origcap);
+			cgi->irb.CreateCondBranch(sane, merge1, insane);
+
+
+			cgi->irb.setCurrentBlock(insane);
+			{
+				// sanity check failed
+
+				fir::Function* fprintfn = cgi->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
+
+				fir::Function* fdopenf = cgi->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
+					fir::LinkageType::External);
+
+				fir::Value* tmpstr = cgi->module->createGlobalString("w");
+				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+				fir::Value* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
+				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+
+				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, origlen, origcap });
+
+				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
+				cgi->irb.CreateUnreachable();
+			}
+
+			// ok, back to normal
+			cgi->irb.setCurrentBlock(merge1);
+
+			// ok, alloc a buffer with the original capacity
+			// get size in bytes, since cap is in elements
+			fir::Value* actuallen = cgi->irb.CreateMul(origcap,
+				fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
+
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+			iceAssert(mallocf);
+
+			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+			cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+
+			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
+			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			cgi->irb.CreateSetDynamicArrayLength(newarr, origlen);
+			cgi->irb.CreateSetDynamicArrayCapacity(newarr, origcap);
+
+			fir::Value* ret = cgi->irb.CreateLoad(newarr);
+			cgi->irb.CreateReturn(ret);
+
+			fn = func;
+			cgi->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
 
 
 
@@ -159,7 +255,7 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getDynamicArrayAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(arrtype);
 
@@ -222,7 +318,7 @@ namespace RuntimeFuncs
 		return appendf;
 	}
 
-	fir::Function* getDynamicArrayElementAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getElementAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(arrtype);
 
@@ -285,32 +381,34 @@ namespace RuntimeFuncs
 
 
 
-	fir::Function* getDynamicArrayCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* cmpf)
+	{
+		error("notsup");
+		return 0;
+	}
+
+	fir::Function* getConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		return 0;
 	}
 
-	fir::Function* getDynamicArrayConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getPopElementFromBackFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		return 0;
 	}
 
-	fir::Function* getDynamicArrayPopElementFromBackFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getReserveSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		return 0;
 	}
 
-	fir::Function* getDynamicArrayReserveSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
-	{
-		return 0;
-	}
-
-	fir::Function* getDynamicArrayReserveExtraSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
+	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		return 0;
 	}
 }
-
+}
+}
 
 
 

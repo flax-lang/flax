@@ -180,8 +180,8 @@ namespace Operators
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(RuntimeFuncs::getStringCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
-				cgi->irb.CreateCall2(RuntimeFuncs::getStringBoundsCheckFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.pointer, ind);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
@@ -255,11 +255,64 @@ namespace Operators
 				cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 				return Result_t(0, 0);
 			}
+		}
+		// special case: array += array, array += element
+		else if(op == ArithmeticOp::PlusEquals && ltype->isDynamicArrayType() && rtype->isDynamicArrayType()
+			&& ltype->toDynamicArrayType()->getElementType() == rtype->toDynamicArrayType()->getElementType())
+		{
+			// array += array
+			fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+			fir::Value* rhs = 0; fir::Value* rhsptr = 0;
 
-			// if not, then we'll rely on + and = separation/synthesis.
+			std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+			std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+
+			iceAssert(lhs->getType()->isDynamicArrayType());
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+
+			iceAssert(lhsptr);
+			iceAssert(rhsptr);
+
+			if(lhsptr->isImmutable())
+				GenError::assignToImmutable(cgi, user, args[0]);
+
+			// ok, call append.
+			fir::Function* appendf = RuntimeFuncs::Array::getAppendFunction(cgi, arrtype);
+			iceAssert(appendf);
+
+			cgi->irb.CreateCall2(appendf, lhsptr, rhsptr);
+
+			return Result_t(cgi->irb.CreateLoad(lhsptr), lhsptr);
+		}
+		else if(op == ArithmeticOp::PlusEquals && ltype->isDynamicArrayType()
+			&& ltype->toDynamicArrayType()->getElementType() == rtype)
+		{
+			// array += element
+			fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+			fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+			std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+			std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+
+			iceAssert(lhs->getType()->isDynamicArrayType());
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+
+			iceAssert(lhsptr);
+			iceAssert(rhs);
+
+			if(lhsptr->isImmutable())
+				GenError::assignToImmutable(cgi, user, args[0]);
+
+			// ok, call append.
+			fir::Function* appendf = RuntimeFuncs::Array::getElementAppendFunction(cgi, arrtype);
+			iceAssert(appendf);
+
+			cgi->irb.CreateCall2(appendf, lhsptr, rhs);
+
+			return Result_t(cgi->irb.CreateLoad(lhsptr), lhsptr);
 		}
 
-		// else
+		// else, we'll rely on + and = separation/synthesis.
 		return operatorAssign(cgi, op, user, args);
 	}
 
