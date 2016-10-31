@@ -1144,24 +1144,9 @@ namespace fir
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, structPtr, memberIndex), vname);
 		}
-		else if(LLVariableArrayType* llat = dynamic_cast<LLVariableArrayType*>(structPtr->getType()->getPointerElementType()))
-		{
-			iceAssert(memberIndex <= 1 && "LLVariableArrayType only has 2 members");
-
-			Type* ty = (memberIndex == 0 ? llat->getElementType()->getPointerTo() : Type::getInt64());
-
-			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock, ty->getPointerTo(),
-				{ structPtr, ConstantInt::getUint64(memberIndex) });
-
-			// disallow storing to members of immut structs
-			if(structPtr->isImmutable())
-				instr->realOutput->immut = true;
-
-			return this->addInstruction(instr, vname);
-		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str().c_str());
+			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str().c_str());
 		}
 	}
 
@@ -1284,6 +1269,10 @@ namespace fir
 
 
 
+
+
+
+
 	Value* IRBuilder::CreateGetStringData(Value* ptr, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
@@ -1361,6 +1350,184 @@ namespace fir
 
 		return this->addInstruction(instr, vname);
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Value* IRBuilder::CreateGetDynamicArrayData(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_GetData, false, this->currentBlock,
+			ptr->getType()->getPointerElementType()->toDynamicArrayType()->getElementType()->getPointerTo(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetDynamicArrayData(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		auto t = ptr->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
+		if(val->getType() != t->getPointerTo())
+		{
+			error("val is not a pointer to elm type (need '%s', have '%s')",
+				t->getPointerTo()->str().c_str(), val->getType()->str().c_str());
+		}
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_SetData, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+	Value* IRBuilder::CreateGetDynamicArrayLength(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_GetLength, false, this->currentBlock,
+			fir::Type::getInt64(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetDynamicArrayLength(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_SetLength, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::CreateGetDynamicArrayCapacity(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_GetCapacity, false, this->currentBlock,
+			fir::Type::getInt64(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
+			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_SetCapacity, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
+
+
+
+
+	Value* IRBuilder::CreateGetParameterPackData(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
+			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
+
+		auto t = ptr->getType()->getPointerElementType()->toParameterPackType()->getElementType();
+		Instruction* instr = new Instruction(OpKind::ParamPack_GetData, false, this->currentBlock,
+			t->getPointerTo(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetParameterPackData(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
+			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
+
+		auto t = ptr->getType()->getPointerElementType()->toParameterPackType()->getElementType();
+		if(val->getType() != t->getPointerTo())
+		{
+			error("val is not a pointer to element type (need '%s', have '%s')", t->getPointerTo()->str().c_str(),
+				val->getType()->str().c_str());
+		}
+
+		Instruction* instr = new Instruction(OpKind::ParamPack_SetData, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+	Value* IRBuilder::CreateGetParameterPackLength(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
+			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::ParamPack_GetLength, false, this->currentBlock,
+			fir::Type::getInt64(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetParameterPackLength(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
+			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::ParamPack_SetLength, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	void IRBuilder::CreateUnreachable()
