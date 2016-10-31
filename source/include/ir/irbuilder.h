@@ -41,7 +41,6 @@ namespace fir
 		Value* CreateFCmpEQ_UNORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpNEQ_ORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpNEQ_UNORD(Value* a, Value* b, std::string vname = "");
-
 		Value* CreateFCmpGT_ORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpGT_UNORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpLT_ORD(Value* a, Value* b, std::string vname = "");
@@ -50,6 +49,9 @@ namespace fir
 		Value* CreateFCmpGEQ_UNORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpLEQ_ORD(Value* a, Value* b, std::string vname = "");
 		Value* CreateFCmpLEQ_UNORD(Value* a, Value* b, std::string vname = "");
+
+		Value* CreateICmpMulti(Value* a, Value* b, std::string vname = "");
+		Value* CreateFCmpMulti(Value* a, Value* b, std::string vname = "");
 
 		Value* CreateBitwiseXOR(Value* a, Value* b, std::string vname = "");
 		Value* CreateBitwiseLogicalSHR(Value* a, Value* b, std::string vname = "");

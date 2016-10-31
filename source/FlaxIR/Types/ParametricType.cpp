@@ -52,10 +52,10 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(names.find(this->name) == names.end())
-			error_and_exit("Failed to reify, no type found for '%s'\n", this->name.c_str());
+			_error_and_exit("Failed to reify, no type found for '%s'\n", this->name.c_str());
 
 		if(names[this->name]->isPrimitiveType() && names[this->name]->toPrimitiveType()->isLiteralType())
-			error_and_exit("Cannot reify parametric type with unspecified int/float types\n");
+			_error_and_exit("Cannot reify parametric type with unspecified int/float types\n");
 
 		return tc->normaliseType(names[this->name]);
 	}

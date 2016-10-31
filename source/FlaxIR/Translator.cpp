@@ -365,13 +365,13 @@ namespace fir
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+				fn = module->getOrInsertFunction("llvm.memmove.p0i8.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.i64", ft);
+				fn = module->getOrInsertFunction("llvm.memset.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memcmp")
 			{
@@ -462,6 +462,78 @@ namespace fir
 					builder.SetInsertPoint(merge);
 					{
 						builder.CreateRet(builder.CreateLoad(res));
+					}
+				}
+			}
+			else if(intr.first.name == "roundup_pow2")
+			{
+				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt64Ty(gc), { llvm::Type::getInt64Ty(gc) }, false);
+
+				fn = module->getOrInsertFunction("fir.intrinsic.roundup_pow2", ft);
+
+				llvm::Function* func = module->getFunction("fir.intrinsic.roundup_pow2");
+				iceAssert(fn == func);
+
+				// ok... now make the function, right here.
+				{
+					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+
+					builder.SetInsertPoint(entry);
+
+					/*
+						basically:
+
+						int num = arg;
+						int ret = 1;
+
+						while(num > 0)
+						{
+							num >>= 1
+							ret <<= 1;
+						}
+
+						return ret;
+					*/
+
+					llvm::Value* num = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					llvm::Value* retval = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+
+					auto oneconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true));
+					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
+
+					builder.CreateStore(oneconst, retval);
+					builder.CreateStore(func->arg_begin().getNodePtrUnchecked(), num);
+
+
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+
+
+					// explicit branch to loopcond
+					builder.CreateBr(loopcond);
+
+					builder.SetInsertPoint(loopcond);
+					{
+						// bounds check
+						llvm::Value* cond = builder.CreateICmpSGT(builder.CreateLoad(num), zeroconst);
+						builder.CreateCondBr(cond, loopbody, merge);
+					}
+
+					builder.SetInsertPoint(loopbody);
+					{
+						llvm::Value* shifted = builder.CreateLShr(builder.CreateLoad(num), 1);
+						builder.CreateStore(shifted, num);
+
+						builder.CreateStore(builder.CreateShl(builder.CreateLoad(retval), 1), retval);
+
+						builder.CreateBr(loopcond);
+					}
+
+					builder.SetInsertPoint(merge);
+					{
+						builder.CreateRet(builder.CreateLoad(retval));
 					}
 				}
 			}
@@ -979,6 +1051,64 @@ namespace fir
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+
+						case OpKind::ICompare_Multi:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							bool sgn = inst->operands[0]->getType()->isSignedIntType() || inst->operands[1]->getType()->isSignedIntType();
+
+							llvm::Value* r1 = 0;
+							if(sgn)	r1 = builder.CreateICmpSGE(a, b);
+							else	r1 = builder.CreateICmpUGE(a, b);
+
+							llvm::Value* r2 = 0;
+							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
+							else	r2 = builder.CreateICmpULE(a, b);
+
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+
+							llvm::Value* ret = builder.CreateSub(r1, r2);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case OpKind::FCompare_Multi:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							llvm::Value* r1 = builder.CreateFCmpOGE(a, b);
+							llvm::Value* r2 = builder.CreateFCmpOLE(a, b);
+
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+
+							llvm::Value* ret = builder.CreateSub(r1, r2);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 						case OpKind::Bitwise_Not:
 						{

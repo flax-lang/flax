@@ -40,11 +40,11 @@ public operator ⨯ (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3
 				(a.x * b.y) - (a.y * b.x))
 }
 
-@operator[100]
-public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3	// this is ascii 'x' (24th letter)
-{
-	a ⨯ b
-}
+// @operator[100]
+// public operator x (a: Math.Vector3, b: Math.Vector3) -> Math.Vector3	// this is ascii 'x' (24th letter)
+// {
+// 	a ⨯ b
+// }
 
 
 
