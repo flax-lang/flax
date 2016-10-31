@@ -1,4 +1,4 @@
-// LLVariableArrayType.cpp
+// ParameterPackType.cpp
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
@@ -7,51 +7,51 @@
 
 namespace fir
 {
-	LLVariableArrayType::LLVariableArrayType(Type* elmType)
+	ParameterPackType::ParameterPackType(Type* elmType)
 	{
 		this->arrayElementType = elmType;
 		iceAssert(this->arrayElementType);
 	}
 
-	Type* LLVariableArrayType::getElementType()
+	Type* ParameterPackType::getElementType()
 	{
 		return this->arrayElementType;
 	}
 
-	std::string LLVariableArrayType::str()
+	std::string ParameterPackType::str()
 	{
-		return "[(variable) x " + this->arrayElementType->str() + "]";
+		return this->arrayElementType->str() + "[...]";
 	}
 
-	std::string LLVariableArrayType::encodedStr()
+	std::string ParameterPackType::encodedStr()
 	{
-		return "[Vx" + this->arrayElementType->encodedStr() + "]";
+		return this->arrayElementType->encodedStr() + "[V]";
 	}
 
 
-	bool LLVariableArrayType::isTypeEqual(Type* other)
+	bool ParameterPackType::isTypeEqual(Type* other)
 	{
-		LLVariableArrayType* af = dynamic_cast<LLVariableArrayType*>(other);
+		ParameterPackType* af = dynamic_cast<ParameterPackType*>(other);
 		if(!af) return false;
 
 		return this->arrayElementType->isTypeEqual(af->arrayElementType);
 	}
 
-	LLVariableArrayType* LLVariableArrayType::get(Type* elementType, FTContext* tc)
+	ParameterPackType* ParameterPackType::get(Type* elementType, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
 		// create.
-		LLVariableArrayType* type = new LLVariableArrayType(elementType);
-		return dynamic_cast<LLVariableArrayType*>(tc->normaliseType(type));
+		ParameterPackType* type = new ParameterPackType(elementType);
+		return dynamic_cast<ParameterPackType*>(tc->normaliseType(type));
 	}
 
 
 
 
 
-	LLVariableArrayType* LLVariableArrayType::reify(std::map<std::string, Type*> reals, FTContext* tc)
+	ParameterPackType* ParameterPackType::reify(std::map<std::string, Type*> reals, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -68,7 +68,7 @@ namespace fir
 			if(t->isParametricType())
 				error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
 
-			return LLVariableArrayType::get(t);
+			return ParameterPackType::get(t);
 		}
 		else
 		{
@@ -76,6 +76,24 @@ namespace fir
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

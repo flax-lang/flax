@@ -12,7 +12,7 @@ using namespace Codegen;
 #define MALLOC_FUNC		"malloc"
 #define FREE_FUNC		"free"
 
-static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
+static Result_t recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
 {
 	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
@@ -28,13 +28,22 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
 	fir::Value* allocsize = fir::ConstantInt::getInt64(typesize, cgi->getContext());
 
-	size = cgi->autoCastType(allocsize->getType(), size);
+	size = cgi->autoCastType(fir::Type::getInt64(), size);
 
 	fir::Value* totalAlloc = cgi->irb.CreateMul(allocsize, size, "totalalloc");
 	fir::Value* allocmemptr = cgi->getStackAlloc(type->getPointerTo(), "allocmemptr");
 
 	fir::Value* amem = cgi->irb.CreatePointerTypeCast(cgi->irb.CreateCall1(mallocf, totalAlloc), type->getPointerTo());
 	cgi->irb.CreateStore(amem, allocmemptr);
+
+
+	{
+		fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %zu\n");
+		tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
+		cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, amem, size });
+	}
+
 
 
 
@@ -85,12 +94,12 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 
 			cgi->irb.CreateCall(initfunc, args);
 		}
-		else if(type->isPointerType() && sizes.size() > 0)
+		else if(type->isDynamicArrayType() && sizes.size() > 0)
 		{
 			fir::Value* front = sizes.front();
 			sizes.pop_front();
 
-			fir::Value* rret = recursivelyDoAlloc(cgi, type->getPointerElementType(), front, params, sizes);
+			fir::Value* rret = recursivelyDoAlloc(cgi, type->toDynamicArrayType()->getElementType(), front, params, sizes).value;
 			cgi->irb.CreateStore(rret, pointer);
 		}
 		else
@@ -128,9 +137,10 @@ static fir::Value* recursivelyDoAlloc(CodegenInstance* cgi, fir::Type* type, fir
 
 
 	cgi->irb.setCurrentBlock(loopMerge);
-	fir::Value* ret = cgi->irb.CreateLoad(allocmemptr, "mem");
+	fir::Value* data = cgi->irb.CreateLoad(allocmemptr, "mem");
 
-	return ret;
+	// make the dynamic array
+	return cgi->createDynamicArrayFromPointer(data, size, size);
 }
 
 
@@ -185,22 +195,22 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Value* firstSize = cnts.front();
 		cnts.pop_front();
 
-
 		for(size_t i = 1; i < this->counts.size(); i++)
-			allocType = allocType->getPointerTo();
+			allocType = fir::DynamicArrayType::get(allocType);
 
-
-		// this is the pointer.
-		// in accordance with new things, create a LowLevelVariableArray value, consisting of a pointer and a length.
-
-		fir::Value* ret = recursivelyDoAlloc(cgi, allocType, firstSize, this->params, cnts);
-		return Result_t(ret, 0);
+		return recursivelyDoAlloc(cgi, allocType, firstSize, this->params, cnts);
 	}
 	else
 	{
 		std::deque<fir::Value*> cnts;
 
-		fir::Value* ret = recursivelyDoAlloc(cgi, allocType, oneValue, this->params, cnts);
+		fir::Value* dptr = recursivelyDoAlloc(cgi, allocType, oneValue, this->params, cnts).pointer;
+
+		// this is a no-size alloc,
+		// return a straight pointer.
+
+		iceAssert(dptr);
+		fir::Value* ret = cgi->irb.CreateGetDynamicArrayData(dptr);
 		return Result_t(ret, 0);
 	}
 }
@@ -212,7 +222,8 @@ fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 	if(this->counts.size() == 0) return base->getPointerTo();
 
 	for(size_t i = 0; i < this->counts.size(); i++)
-		 base = base->getPointerTo();
+		base = fir::DynamicArrayType::get(base);
+		// base = base->getPointerTo();
 
 	return base;
 }
@@ -226,50 +237,167 @@ fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 
 
+// note: i'm quite proud of this function
+// took a good 15 minutes of brain-ing to figure out
+// basically, a function from nest = N to nest = 0 will be generated
+// functions with nest > 0 will call (and generate if needed) the function for nest = N - 1
+// aka recursion... in recursion!
+static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Type* type, int nest)
+{
+	std::string name = "__recursive_dealloc_" + type->encodedStr() + "_N" + std::to_string(nest);
+	fir::Function* df = cgi->module->getFunction(Identifier(name, IdKind::Name));
+
+	if(!df)
+	{
+		auto restore = cgi->irb.getCurrentBlock();
+
+		fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::FunctionType::get({ type, fir::Type::getInt64() }, fir::Type::getVoid(), false), fir::LinkageType::Internal);
+
+		func->setAlwaysInline();
+
+		fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+		cgi->irb.setCurrentBlock(entry);
+
+		fir::Value* ptr = func->getArguments()[0];
+		fir::Value* len = func->getArguments()[1];
+
+		// check what kind of function we are
+		if(nest == 0)
+		{
+			// just free
+			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+			iceAssert(freef);
+
+			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+
+			cgi->irb.CreateReturnVoid();
+		}
+		else
+		{
+			// loop from 0 to len
+			fir::IRBlock* loopcond = cgi->irb.addNewBlockInFunction("loopCond", func);
+			fir::IRBlock* loopbody = cgi->irb.addNewBlockInFunction("loopBody", func);
+			fir::IRBlock* loopmerge = cgi->irb.addNewBlockInFunction("loopMerge", func);
+
+			// make a new var
+			fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+			cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+
+			cgi->irb.CreateUnCondBranch(loopcond);
+			cgi->irb.setCurrentBlock(loopcond);
+
+			// check
+			fir::Value* cond = cgi->irb.CreateICmpLT(cgi->irb.CreateLoad(counter), len);
+			cgi->irb.CreateCondBranch(cond, loopbody, loopmerge);
+
+
+			cgi->irb.setCurrentBlock(loopbody);
+			if(!(ptr->getType()->isPointerType() && ptr->getType()->getPointerElementType()->isDynamicArrayType()))
+			{
+				error("%s, %s, %d", ptr->getType()->str().c_str(), type->str().c_str(), nest);
+			}
+
+			// ok. first, do pointer arithmetic to get the current array
+			fir::Value* arr = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
+
+			// next, get the data pointer and the length
+			fir::Value* dptr = cgi->irb.CreateGetDynamicArrayData(arr);
+			fir::Value* dlen = cgi->irb.CreateGetDynamicArrayLength(arr);
+
+			// now, call the next function with nest - 1.
+
+			fir::Function* recursiveCallee = makeRecursiveDeallocFunction(cgi,
+				type->getPointerElementType()->toDynamicArrayType()->getElementType()->getPointerTo(), nest - 1);
+
+			iceAssert(recursiveCallee);
+
+			cgi->irb.CreateCall2(recursiveCallee, dptr, dlen);
+
+			// increment counter
+			cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+
+			// branch to top
+			cgi->irb.CreateUnCondBranch(loopcond);
 
 
 
 
+			// merge:
+			cgi->irb.setCurrentBlock(loopmerge);
+
+			// free the pointer anyway
+
+			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+			iceAssert(freef);
+
+
+			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+			cgi->irb.CreateReturnVoid();
+		}
+
+
+		df = func;
+		cgi->irb.setCurrentBlock(restore);
+	}
+
+	iceAssert(df);
+	return df;
+}
 
 
 
 Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	fir::Value* freearg = 0;
-	if(dynamic_cast<VarRef*>(this->expr))
+	auto r = this->expr->codegen(cgi);
+	fir::Value* val = r.value;
+	fir::Value* ptr = r.pointer;
+
+	iceAssert(ptr);
+	if(val->getType()->isDynamicArrayType())
 	{
-		SymbolPair_t* sp = cgi->getSymPair(this, dynamic_cast<VarRef*>(this->expr)->name);
-		if(!sp)
-			error(this, "Unknown symbol '%s'", dynamic_cast<VarRef*>(this->expr)->name.c_str());
+		// need to loop through each element, and free the thing.
+		// go to the lowest level
 
+		int nest = 0;
+		fir::Type* t = val->getType();
+		while(t->isDynamicArrayType())
+			t = t->toDynamicArrayType()->getElementType(), nest++;
 
-		// this will be an alloca instance (aka pointer to whatever type it actually was)
-		fir::Value* varval = sp->first;
+		debuglog("nest = %d\n", nest);
 
-		// therefore, create a Load to get the actual value
-		varval = cgi->irb.CreateLoad(varval);
-		freearg = cgi->irb.CreatePointerTypeCast(varval, fir::Type::getInt8Ptr(cgi->getContext()));
+		// ok, ptr is the pointer to the outermost array
+		// get the data, get the length, and call.
+
+		fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+		fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+		fir::Function* fn = makeRecursiveDeallocFunction(cgi, data->getType(), nest - 1);
+		iceAssert(fn);
+
+		cgi->irb.CreateCall2(fn, data, len);
+	}
+	else if(!ptr->getType()->isPointerType())
+	{
+		error(this, "Cannot deallocate non-pointer type");
 	}
 	else
 	{
-		freearg = this->expr->codegen(cgi).value;
+		val = cgi->irb.CreatePointerTypeCast(val, fir::Type::getInt8Ptr());
+
+		// call 'free'
+		fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+		iceAssert(freef);
+
+		cgi->irb.CreateCall1(freef, val);
 	}
 
-	// call 'free'
-	fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
-	iceAssert(freef);
-
-	freef = cgi->module->getFunction(freef->getName());
-	iceAssert(freef);
-
-
-	cgi->irb.CreateCall1(freef, freearg);
 	return Result_t(0, 0);
 }
 
 fir::Type* Dealloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return 0;
+	return fir::Type::getVoid();
 }
 
 
