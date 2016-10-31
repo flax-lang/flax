@@ -236,7 +236,12 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		else if(cmplxtype && this->initVal)
 		{
 			if(ai->getType()->getPointerElementType() != val->getType())
+			{
+				// info(this, "%s <%d> %s", ai->getType()->getPointerElementType()->str().c_str(),
+					// cgi->getAutoCastDistance(val->getType(), this->concretisedType), val->getType()->str().c_str());
+
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
+			}
 
 			cgi->irb.CreateStore(val, ai);
 			return val;
@@ -310,7 +315,12 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		cgi->addSymbol(this->ident.name, ai, this);
 
 	if(val->getType() != ai->getType()->getPointerElementType())
+	{
+		// info(this, "%s <%d> %s", val->getType()->str().c_str(),
+			// cgi->getAutoCastDistance(val->getType(), this->concretisedType), this->concretisedType->str().c_str());
+
 		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
+	}
 
 
 

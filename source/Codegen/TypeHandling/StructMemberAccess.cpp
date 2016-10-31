@@ -79,7 +79,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
-	if(type->isLLVariableArrayType())
+	if(type->isParameterPackType())
 	{
 		// lol, some magic.
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
@@ -93,8 +93,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				return Result_t(0, 0);
 			}
 
-			// lol, now do the thing.
-			return cgi->getLLVariableArrayLength(ptr);
+			iceAssert(ptr);
+			return Result_t(cgi->irb.CreateGetParameterPackLength(ptr), 0);
 		}
 		else
 		{

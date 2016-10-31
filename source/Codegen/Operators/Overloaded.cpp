@@ -83,10 +83,10 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 		}
 		else
 		{
-			if(ltype->isPointerType() && rtype->isIntegerType())
+			if((ltype->isPointerType() && rtype->isIntegerType()) || (rtype->isPointerType() && ltype->isIntegerType()))
 			{
 				// pointer arith??
-				return ltype;
+				return ltype->isPointerType() ? ltype : rtype;
 			}
 
 			auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
