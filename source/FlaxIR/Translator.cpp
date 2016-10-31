@@ -1052,6 +1052,64 @@ namespace fir
 							break;
 						}
 
+
+						case OpKind::ICompare_Multi:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							bool sgn = inst->operands[0]->getType()->isSignedIntType() || inst->operands[1]->getType()->isSignedIntType();
+
+							llvm::Value* r1 = 0;
+							if(sgn)	r1 = builder.CreateICmpSGE(a, b);
+							else	r1 = builder.CreateICmpUGE(a, b);
+
+							llvm::Value* r2 = 0;
+							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
+							else	r2 = builder.CreateICmpULE(a, b);
+
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+
+							llvm::Value* ret = builder.CreateSub(r1, r2);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case OpKind::FCompare_Multi:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							llvm::Value* r1 = builder.CreateFCmpOGE(a, b);
+							llvm::Value* r2 = builder.CreateFCmpOLE(a, b);
+
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+
+							llvm::Value* ret = builder.CreateSub(r1, r2);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 						case OpKind::Bitwise_Not:
 						{
 							iceAssert(inst->operands.size() == 1);
