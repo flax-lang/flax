@@ -212,7 +212,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 
 
 
-void errorNoExit(const char* msg, ...)
+void exitless_error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -220,7 +220,7 @@ void errorNoExit(const char* msg, ...)
 	va_end(ap);
 }
 
-void errorNoExit(Expr* relevantast, const char* msg, ...)
+void exitless_error(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -229,7 +229,7 @@ void errorNoExit(Expr* relevantast, const char* msg, ...)
 	va_end(ap);
 }
 
-void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void exitless_error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -385,7 +385,7 @@ namespace GenError
 
 			ops.underlines.push_back(getHighlightExtent(bo));
 
-			errorNoExit(expr, ops, "Values cannot be yielded from voids");
+			exitless_error(expr, ops, "Values cannot be yielded from voids");
 
 			info(expr, "Assignment and compound assignment operators (eg. '%s' here) are not expressions, and cannot produce a value",
 				Parser::arithmeticOpToString(cgi, op).c_str());

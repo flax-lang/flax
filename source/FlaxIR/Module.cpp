@@ -327,7 +327,7 @@ namespace fir
 		}
 		else if(id == "memmove")
 		{
-			name = Identifier("memove", IdKind::Name);
+			name = Identifier("memmove", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid(), false);
@@ -348,6 +348,16 @@ namespace fir
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getInt32(), false);
+		}
+		else if(id == "roundup_pow2")
+		{
+			// rounds up to the nearest power of 2
+			// 127 -> 128
+			// 1 -> 1
+			// 40 -> 64
+
+			name = Identifier("roundup_pow2", IdKind::Name);
+			ft = FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt64(), false);
 		}
 
 		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())

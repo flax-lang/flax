@@ -179,7 +179,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(this->isCStyleVarArg())
-			error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
+			_error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
 
 		std::deque<Type*> reified;
 		Type* reifiedReturn = 0;
@@ -188,14 +188,14 @@ namespace fir
 		{
 			auto rfd = mem->reify(reals);
 			if(rfd->isParametricType())
-				error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
+				_error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 
 			reified.push_back(rfd);
 		}
 
 		auto rfd = this->functionRetType->reify(reals);
 		if(rfd->isParametricType())
-			error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
+			_error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
 
 		reifiedReturn = rfd;
 

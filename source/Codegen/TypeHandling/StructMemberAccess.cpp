@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -85,7 +86,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
 			if(vr->name != "length")
-				error(ma, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+				error(ma, "Variadic arrays only have one member, 'length'. '%s' is invalid.", vr->name.c_str());
 
 			if(!actual)
 			{
@@ -98,11 +99,118 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma, "Variadic array only has one member, 'length'. Invalid operator.");
+			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
 		}
 	}
+	else if(type->isDynamicArrayType())
+	{
+		// lol, some magic.
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name == "length")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
 
-	if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayLength(ptr), 0);
+			}
+			else if(vr->name == "capacity")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayCapacity(ptr), 0);
+			}
+			else if(vr->name == "pointer")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType()->getPointerTo();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayData(ptr), 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown property '%s' on dynamic array type ('%s')", vr->name.c_str(), type->str().c_str());
+			}
+		}
+		else if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			if(fc->name == "append")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() != 1)
+					error(fc, "Expected exactly 1 parameter in appending to dynamic array, have %zu", fc->params.size());
+
+				fir::Value* rval = 0; fir::Value* rptr = 0;
+				std::tie(rval, rptr) = fc->params[0]->codegen(cgi);
+
+				fir::DynamicArrayType* lt = type->toDynamicArrayType();
+				fir::DynamicArrayType* rt = 0;
+
+				if(rval->getType()->isDynamicArrayType()) rt = rval->getType()->toDynamicArrayType();
+
+				if(rt)
+				{
+					if(lt->getElementType() != rt->getElementType())
+					{
+						error(fc->params[0], "Incompatible element types in call to append; cannot append array of element "
+							"type '%s' to one of element type '%s'", rt->getElementType()->str().c_str(),
+							lt->getElementType()->str().c_str());
+					}
+
+					// ok.
+					iceAssert(rptr);
+
+					fir::Function* apf = RuntimeFuncs::Array::getAppendFunction(cgi, lt);
+					cgi->irb.CreateCall2(apf, ptr, rptr);
+				}
+				else if(!rt)
+				{
+					rval = cgi->autoCastType(lt->getElementType(), rval, rptr);
+
+					if(rval->getType() == lt->getElementType())
+					{
+						fir::Function* apf = RuntimeFuncs::Array::getElementAppendFunction(cgi, lt);
+						cgi->irb.CreateCall2(apf, ptr, rval);
+					}
+					else
+					{
+						error(fc->params[0], "Cannot append a value of type '%s' to an array of element type '%s'",
+							rval->getType()->str().c_str(), lt->getElementType()->str().c_str());
+					}
+				}
+
+				return Result_t(0, 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
+			}
+		}
+		else
+		{
+			error(ma, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+		}
+	}
+	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
 	{
 		// handle builtin ones: 'raw' and 'length'
 		// raw is basically just the string
@@ -223,12 +331,12 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma->right, "Unsupported RHS for dot-operator on builtin type '%s'", type->str().c_str());
+			error(ma->right, "Unsupported builtin type '%s' for member access", type->str().c_str());
 		}
 	}
 	else
 	{
-		error(ma, "Cannot do member access on non-struct type '%s'", type->str().c_str());
+		error(ma, "Cannot do member access on aggregate type '%s'", type->str().c_str());
 	}
 }
 
@@ -419,8 +527,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("wtf");
 	}
 
-	fir::Value* self = res.value;
-	fir::Value* selfPtr = res.pointer;
+	fir::Value* self = 0; fir::Value* selfptr = 0;
+	std::tie(self, selfptr) = res;
 
 
 	bool isPtr = false;
@@ -442,16 +550,16 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		else
 		{
 			fir::Type* _ = 0;
-			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfPtr, &_);
+			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfptr, &_);
 		}
 	}
 
 
 	// find out whether we need self or selfptr.
-	if(selfPtr == nullptr && !isPtr)
+	if(selfptr == nullptr && !isPtr)
 	{
-		selfPtr = cgi->getStackAlloc(ftype);
-		cgi->irb.CreateStore(self, selfPtr);
+		selfptr = cgi->getStackAlloc(ftype);
+		cgi->irb.CreateStore(self, selfptr);
 	}
 
 
@@ -460,7 +568,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		bool wasSelfPtr = false;
 
-		if(selfPtr)
+		if(selfptr)
 		{
 			wasSelfPtr = true;
 			isPtr = false;
@@ -470,8 +578,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if we're faced with a double pointer, we need to load it once
 		if(wasSelfPtr)
 		{
-			if(selfPtr->getType()->isPointerType() && selfPtr->getType()->getPointerElementType()->isPointerType())
-				selfPtr = cgi->irb.CreateLoad(selfPtr);
+			if(selfptr->getType()->isPointerType() && selfptr->getType()->getPointerElementType()->isPointerType())
+				selfptr = cgi->irb.CreateLoad(selfptr);
 		}
 		else
 		{
@@ -500,7 +608,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
-		return doTupleAccess(cgi, selfPtr, n);
+		return doTupleAccess(cgi, selfptr, n);
 	}
 	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
@@ -529,7 +637,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = st->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, str, i);
 			}
 			else
 			{
@@ -578,7 +686,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = ct->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, cls, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, cls, i);
 			}
 			else
 			{
@@ -621,7 +729,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(cprop);
-					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfPtr);
+					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfptr);
 				}
 			}
 		}
@@ -640,7 +748,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 
 			// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
-			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfPtr);
+			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfptr);
 			return Result_t(std::get<3>(result), 0);
 		}
 		else

@@ -8,6 +8,7 @@
 #include <set>
 
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -235,16 +236,6 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getTypeByString(std::string name)
 	{
-		#if 0
-
-			fprintf(stderr, "finding %s\n{\n", name.c_str());
-			for(auto p : this->typeMap)
-				fprintf(stderr, "\t%s\n", p.first.c_str());
-
-			fprintf(stderr, "}\n");
-
-		#endif
-
 		if(name == "Inferred")
 			return 0;
 
@@ -819,16 +810,6 @@ namespace Codegen
 			if(existing->subMap.find(namespc) != existing->subMap.end())
 				found = true;
 
-
-			// for(auto s : existing->subs)
-			// {
-			// 	if(s->nsName == namespc)
-			// 	{
-			// 		found = true;
-			// 		break;
-			// 	}
-			// }
-
 			if(!found)
 			{
 				FunctionTree* ft = new FunctionTree();
@@ -1269,6 +1250,11 @@ namespace Codegen
 			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
+		else if(name == "realloc")
+		{
+			return this->module->getOrCreateFunction(Identifier("realloc", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
+		}
 		else if(name == "free")
 		{
 			return this->module->getOrCreateFunction(Identifier("free", IdKind::Name),
@@ -1437,33 +1423,6 @@ namespace Codegen
 
 
 
-	#if 0
-	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
-	{
-		if(decl->isFFI) return false;
-
-		std::deque<Expr*> es;
-		for(auto p : decl->params) es.push_back(p);
-
-		Resolved_t res = this->resolveFunction(decl, decl->ident.name, es, true);
-		if(res.resolved && res.t.firFunc != 0 && res.t.funcDecl != decl)
-		{
-			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
-			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
-			{
-				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
-					res.t.funcDecl->params[i]->getType(this)->str().c_str());
-			}
-
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	#endif
-
 	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
 		std::deque<std::string> nses = this->unwrapNamespacedType(protstr);
@@ -1607,8 +1566,10 @@ namespace Codegen
 			if(revTypePositions.find(i) != revTypePositions.end())
 			{
 				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
-				std::string s = revTypePositions[i].first;
-				int indirs = revTypePositions[i].second;
+				std::string s;
+				int indirs = 0;
+
+				std::tie(s, indirs) = revTypePositions[i];
 
 				fir::Type* ftype = args[i];
 
@@ -1660,8 +1621,10 @@ namespace Codegen
 
 		for(auto pair : typePositions)
 		{
-			int pos = pair.second.begin()->first;
-			int indrs = pair.second.begin()->second;
+			int pos = 0;
+			int indrs = 0;
+
+			std::tie(pos, indrs) = *pair.second.begin();
 
 			fir::Type* t = args[pos];
 			for(int i = 0; i < indrs; i++)
@@ -2609,7 +2572,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			fir::Function* incrf = RuntimeFuncs::String::getRefCountIncrementFunction(this);
 			this->irb.CreateCall1(incrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2637,7 +2600,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			fir::Function* decrf = RuntimeFuncs::String::getRefCountDecrementFunction(this);
 			this->irb.CreateCall1(decrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2664,9 +2627,7 @@ namespace Codegen
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
-		{
-			error(user, "not refcounted");
-		}
+			error(user, "type '%s' is not refcounted", val->getType()->str().c_str());
 
 		// ok...
 		// if the rhs is an lvalue, it's simple.

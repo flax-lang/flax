@@ -83,7 +83,7 @@ namespace fir
 		{
 			auto rfd = mem->reify(reals);
 			if(rfd->isParametricType())
-				error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
+				_error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 
 			reified.push_back(rfd);
 		}
