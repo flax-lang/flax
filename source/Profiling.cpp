@@ -109,7 +109,7 @@ namespace prof
 		nd->timings.push_back(duration_cast<unit>(end - this->begin).count());
 
 		if(nd != stack[this->group].back())
-			error_and_exit("Overlapping profiling regions at the same scope level are not supported");
+			_error_and_exit("Overlapping profiling regions at the same scope level are not supported");
 
 		stack[this->group].pop_back();
 	}

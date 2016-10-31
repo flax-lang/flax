@@ -179,18 +179,23 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 					// ok.
 					iceAssert(rptr);
 
-					fir::Function* apf = RuntimeFuncs::getDynamicArrayAppendFunction(cgi, lt);
+					fir::Function* apf = RuntimeFuncs::Array::getAppendFunction(cgi, lt);
 					cgi->irb.CreateCall2(apf, ptr, rptr);
 				}
-				else if(!rt && rval->getType() == lt->getElementType())
+				else if(!rt)
 				{
-					fir::Function* apf = RuntimeFuncs::getDynamicArrayElementAppendFunction(cgi, lt);
-					cgi->irb.CreateCall2(apf, ptr, rval);
-				}
-				else
-				{
-					error(fc->params[0], "Cannot append a value of type '%s' to an array of element type '%s'",
-						rval->getType()->str().c_str(), lt->getElementType()->str().c_str());
+					rval = cgi->autoCastType(lt->getElementType(), rval, rptr);
+
+					if(rval->getType() == lt->getElementType())
+					{
+						fir::Function* apf = RuntimeFuncs::Array::getElementAppendFunction(cgi, lt);
+						cgi->irb.CreateCall2(apf, ptr, rval);
+					}
+					else
+					{
+						error(fc->params[0], "Cannot append a value of type '%s' to an array of element type '%s'",
+							rval->getType()->str().c_str(), lt->getElementType()->str().c_str());
+					}
 				}
 
 				return Result_t(0, 0);

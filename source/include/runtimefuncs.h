@@ -10,26 +10,37 @@
 namespace Codegen
 {
 	struct CodegenInstance;
+
+	namespace RuntimeFuncs
+	{
+		namespace String
+		{
+			fir::Function* getRefCountIncrementFunction(CodegenInstance* cgi);
+			fir::Function* getRefCountDecrementFunction(CodegenInstance* cgi);
+			fir::Function* getCompareFunction(CodegenInstance* cgi);
+			fir::Function* getAppendFunction(CodegenInstance* cgi);
+			fir::Function* getCharAppendFunction(CodegenInstance* cgi);
+
+			fir::Function* getBoundsCheckFunction(CodegenInstance* cgi);
+			fir::Function* getCheckLiteralWriteFunction(CodegenInstance* cgi);
+		}
+
+		namespace Array
+		{
+			fir::Function* getBoundsCheckFunction(CodegenInstance* cgi);
+
+			fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getElementAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getPopElementFromBackFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getReserveSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
+			fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* cmpf);
+		}
+	}
 }
 
-namespace RuntimeFuncs
-{
-	fir::Function* getArrayBoundsCheckFunction(Codegen::CodegenInstance* cgi);
 
-	fir::Function* getDynamicArrayAppendFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayCompareFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayElementAppendFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayConstructFromTwoFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayPopElementFromBackFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayReserveSpaceForElementsFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
-	fir::Function* getDynamicArrayReserveExtraSpaceForElementsFunction(Codegen::CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 
-	fir::Function* getStringRefCountIncrementFunction(Codegen::CodegenInstance* cgi);
-	fir::Function* getStringRefCountDecrementFunction(Codegen::CodegenInstance* cgi);
-	fir::Function* getStringCompareFunction(Codegen::CodegenInstance* cgi);
-	fir::Function* getStringAppendFunction(Codegen::CodegenInstance* cgi);
-	fir::Function* getStringCharAppendFunction(Codegen::CodegenInstance* cgi);
 
-	fir::Function* getStringBoundsCheckFunction(Codegen::CodegenInstance* cgi);
-	fir::Function* getStringCheckLiteralWriteFunction(Codegen::CodegenInstance* cgi);
-}

@@ -10,8 +10,8 @@
 
 #include "profile.h"
 
-inline void error_and_exit(const char* s, ...) __attribute__((noreturn));
-inline void error_and_exit(const char* s, ...)
+inline void _error_and_exit(const char* s, ...) __attribute__((noreturn));
+inline void _error_and_exit(const char* s, ...)
 {
 	va_list ap;
 	va_start(ap, s);
@@ -41,7 +41,7 @@ inline void debuglog(const char* s, ...)
 
 
 #define __nothing
-#define iceAssert(x)		((x) ? ((void) (0)) : error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 
 
 #define INTUNSPEC_TYPE_STRING			"int"

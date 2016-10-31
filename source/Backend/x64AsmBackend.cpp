@@ -14,17 +14,17 @@ namespace Compiler
 
 	void x64Backend::performCompilation()
 	{
-		error_and_exit("enotsup");
+		_error_and_exit("enotsup");
 	}
 
 	void x64Backend::optimiseProgram()
 	{
-		error_and_exit("enotsup");
+		_error_and_exit("enotsup");
 	}
 
 	void x64Backend::writeOutput()
 	{
-		error_and_exit("enotsup");
+		_error_and_exit("enotsup");
 	}
 
 	std::string x64Backend::str()

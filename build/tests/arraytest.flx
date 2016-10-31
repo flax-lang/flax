@@ -54,20 +54,25 @@ public ƒ doArrayTest()
 func dynamicArrays()
 {
 	do {
-		let x = alloc[5] int(43)
+		var x = alloc[5] int(43)
 		let y = alloc[5] int(70)
 
-		x.append(y)
+		x.append(4)
 
 		var i = 0
 
-		while i < 10
+		x += y
+		let z = x
+
+		// printf("z == x: %d\n", z == x)
+
+		while i < z.length
 		{
-			printf("x[%ld] = %ld\n", i, x[i])
+			printf("z[%ld] = %ld\n", i, z[i])
 			i += 1
 		}
 
-		printf("x[3] = %d, length = %zd, cap = %zd\n", x[3], x.length, x.capacity)
+		printf("z[3] = %d, length = %zd, cap = %zd\n", z[3], z.length, z.capacity)
 	}
 }
 
