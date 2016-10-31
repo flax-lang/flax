@@ -369,13 +369,12 @@ namespace String
 
 			#if DEBUG_ARC
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p (%s) = %d\n");
+				fir::Value* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
 				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
 
-				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
-					newRc });
+				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
 
@@ -445,13 +444,12 @@ namespace String
 
 			#if DEBUG_ARC
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p (%s) = %d\n");
+				fir::Value* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
 				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
 
-				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, bufp, bufp,
-					newRc });
+				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
 
@@ -467,16 +465,15 @@ namespace String
 
 				#if DEBUG_ARC
 				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("free %p (%s)\n");
+					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s')\n");
 					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-					cgi->irb.CreateCall3(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), tmpstr,
-						bufp, bufp);
+					cgi->irb.CreateCall3(cgi->getOrDeclareLibCFunc("printf"), tmpstr, bufp, bufp);
 				}
 				#endif
 
 
 
-				fir::Function* freefn = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("free")->getName());
+				fir::Function* freefn = cgi->getOrDeclareLibCFunc("free");
 				iceAssert(freefn);
 
 				cgi->irb.CreateCall1(freefn, cgi->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));

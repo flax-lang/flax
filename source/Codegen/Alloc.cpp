@@ -110,6 +110,10 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 
 			cgi->irb.CreateStore(val, pointer);
 		}
+		else if(type->isStringType())
+		{
+			cgi->irb.CreateStore(cgi->getEmptyString().value, pointer);
+		}
 		else
 		{
 			cgi->irb.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
@@ -228,7 +232,6 @@ fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 	for(size_t i = 0; i < this->counts.size(); i++)
 		base = fir::DynamicArrayType::get(base);
-		// base = base->getPointerTo();
 
 	return base;
 }
@@ -273,6 +276,45 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 			// just free
 			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
 			iceAssert(freef);
+
+			if(type->getPointerElementType()->isStringType())
+			{
+				// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
+				// in this shit
+
+				// loop from 0 to len
+				fir::IRBlock* cond = cgi->irb.addNewBlockInFunction("scond", func);
+				fir::IRBlock* body = cgi->irb.addNewBlockInFunction("sbody", func);
+				fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("smerge", func);
+
+				fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+				cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+
+				cgi->irb.CreateUnCondBranch(cond);
+				cgi->irb.setCurrentBlock(cond);
+				{
+					// check
+					fir::Value* cond = cgi->irb.CreateICmpLT(cgi->irb.CreateLoad(counter), len);
+					cgi->irb.CreateCondBranch(cond, body, merge);
+				}
+
+				cgi->irb.setCurrentBlock(body);
+				{
+					// ok. first, do pointer arithmetic to get the current array
+					fir::Value* strp = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
+					cgi->decrementRefCount(strp);
+
+					// increment counter
+					cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+
+					// branch to top
+					cgi->irb.CreateUnCondBranch(cond);
+				}
+
+				// merge:
+				cgi->irb.setCurrentBlock(merge);
+			}
+
 
 			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
 
