@@ -647,7 +647,7 @@ namespace Codegen
 			return ret + al->ptype->str();
 		}
 
-		error(expr, "Unknown shit (%s)", typeid(*expr).name());
+		return "?";
 	}
 }
 
