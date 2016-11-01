@@ -129,10 +129,9 @@ namespace fir
 			error("Cannot reify function using another parametric function type");
 
 		// check that the function type is actually legit
-		bool fail = false;
 
 		if(ft->getArgumentTypes().size() != this->getArguments().size())
-			fail = true;
+			error("Mismatched number of arguments (%zu vs %zu)", this->getArguments().size(), ft->getArgumentTypes().size());
 
 
 		// fuck, we need to go through all the arguments one by one -- make sure the types match
