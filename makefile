@@ -72,13 +72,13 @@ osx: prep jit
 ci: prep jit
 
 jit: build
-	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN)  $(TESTSRC)
+	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
 
 compile: build
-	@$(OUTPUT) $(FLXFLAGS) -o $(TESTBIN)  $(TESTSRC)
+	@$(OUTPUT) $(FLXFLAGS) -o $(TESTBIN) $(TESTSRC) -lm
 
 gltest: build
-	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN)  $(GLTESTSRC)
+	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
 build: $(OUTPUT) copylibs
 	# built
