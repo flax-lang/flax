@@ -228,7 +228,7 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::getType(Identifier id)
+	TypePair_t* CodegenInstance::getType(const Identifier& id)
 	{
 		return this->getTypeByString(id.str());
 	}
@@ -309,7 +309,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool CodegenInstance::isDuplicateType(Identifier id)
+	bool CodegenInstance::isDuplicateType(const Identifier& id)
 	{
 		return this->getType(id) != nullptr;
 	}
@@ -2307,7 +2307,7 @@ namespace Codegen
 
 
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithName(const Identifier& id, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 		if(list.empty()) return 0;
@@ -2318,7 +2318,7 @@ namespace Codegen
 		return list.front();
 	}
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 

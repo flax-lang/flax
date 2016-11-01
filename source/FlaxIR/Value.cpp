@@ -35,7 +35,7 @@ namespace fir
 		return this->ident.str() != "";
 	}
 
-	void Value::setName(Identifier name)
+	void Value::setName(const Identifier& name)
 	{
 		this->ident = name;
 	}
