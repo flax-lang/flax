@@ -76,7 +76,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 
-
+// todo: this function is a little... dirty.
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
@@ -199,6 +199,24 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				}
 
 				return Result_t(0, 0);
+			}
+			else if(fc->name == "clone")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clone() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, type->toDynamicArrayType());
+				iceAssert(clonef);
+
+				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
+				return Result_t(clone, 0);
 			}
 			else
 			{
