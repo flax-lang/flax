@@ -656,7 +656,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+				error(rhs, "Unsupported operation on RHS of dot operator");
 			}
 		}
 	}
@@ -759,7 +759,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+				error(rhs, "Unsupported operation on RHS of dot operator");
 			}
 		}
 	}
@@ -1181,7 +1181,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	}
 	else
 	{
-		error(ma, "Invalid expression type (%s) on right hand of dot operator", typeid(*ma->right).name());
+		error(ma, "Invalid expression type on right hand of dot operator");
 	}
 }
 

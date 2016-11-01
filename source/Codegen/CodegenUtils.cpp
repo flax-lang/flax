@@ -2296,7 +2296,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+			error(user, "Invalid expr type");
 		}
 	}
 
