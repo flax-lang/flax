@@ -146,7 +146,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
+		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
 	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, COLOUR_BLACK_BOLD, alloc, COLOUR_RESET);
 
