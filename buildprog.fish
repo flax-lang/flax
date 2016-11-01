@@ -9,10 +9,15 @@ function callCompiler
 
 	set opt "-O3"
 	set dump ""
+	set profile ""
 	set compile "-jit"
 
 	if contains "noopt" $argv
 		set opt "-Ox"
+	end
+
+	if contains "profile" $argv
+		set prof "-profile"
 	end
 
 	if contains "dump" $argv
@@ -35,7 +40,7 @@ function callCompiler
 	eval cp "-R" "libs/*" "build/sysroot/usr/local/lib/flaxlibs/"
 
 
-	eval time "build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot" $opt $compile $dump "build/test.flx"
+	eval time "build/sysroot/usr/local/bin/flaxc -Wno-unused-variable -sysroot build/sysroot" $opt $compile $dump $prof "build/test.flx"
 end
 
 
