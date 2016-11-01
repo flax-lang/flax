@@ -249,6 +249,41 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 				return Result_t(cgi->irb.CreateLoad(mem), 0);
 			}
+			else if(fc->name == "popBack")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				fir::Value* ret = cgi->irb.CreateLoad(mem);
+
+				// shrink the length
+				cgi->irb.CreateSetDynamicArrayLength(ptr, ind);
+
+				return Result_t(ret, 0);
+			}
 			else
 			{
 				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
