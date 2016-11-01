@@ -129,7 +129,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		let cxx = maybeCXX
 
 		progress <- getProgress
-		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
 		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
 
@@ -144,13 +144,13 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let ccFlags = "-std=c11 -O0 -g -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations" -- " -fsanitize=address"
+		let ccFlags = "-std=c11 -O0 -g -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations -Wno-unused-const-variable" -- " -fsanitize=address"
 
 		maybeCC <- getEnvWithDefault "clang" "CC"
 		let cc = maybeCC
 
 		progress <- getProgress
-		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
 		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MF" [m]
 
