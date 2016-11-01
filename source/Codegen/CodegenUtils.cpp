@@ -1884,7 +1884,7 @@ namespace Codegen
 		std::deque<FuncDefPair> ret;
 		for(auto fn : candidates)
 		{
-			auto fp = this->instantiateGenericFunctionUsingParameters(user, { }, fn, ft->getArgumentTypes());
+			auto fp = this->instantiateGenericFunctionUsingParameters(user, std::map<std::string, fir::Type*>(), fn, ft->getArgumentTypes());
 			if(fp.firFunc && fp.funcDef)
 				ret.push_back(fp);
 		}
