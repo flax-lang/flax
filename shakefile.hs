@@ -131,7 +131,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		progress <- getProgress
 		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
-		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
+		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MP -MF" [m]
 
 		needMakefileDependencies m
 
@@ -152,7 +152,7 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		progress <- getProgress
 		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
-		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MF" [m]
+		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MP -MF" [m]
 
 		needMakefileDependencies m
 

@@ -66,7 +66,8 @@ func dynamicArrays()
 		x[4] = "eee" + "EEE"
 
 		x += y
-		let z = x
+		let k = x
+		let z = k.clone()
 
 		printf("z == x: %d\n", z <= x)
 
@@ -78,7 +79,11 @@ func dynamicArrays()
 
 		printf("z[3] = %s, length = %zd, cap = %zd\n", z[3], z.length, z.capacity)
 
+		// x == k
 		dealloc x
+
+		// z is z
+		dealloc z
 	}
 }
 
@@ -89,7 +94,6 @@ func dynamicArrays()
 
 	SHAKE:
 	107 / 191
-
 
 	FMODULES:
 	95 / 166

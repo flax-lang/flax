@@ -11,7 +11,7 @@ SYSROOT			:= build/sysroot
 PREFIX			:= usr/local
 OUTPUTBIN		:= flaxc
 
-OUTPUT			:= $(SYSROOT)/$(PREFIX)/$(OUTPUTBIN)
+OUTPUT			:= $(SYSROOT)/$(PREFIX)/bin/$(OUTPUTBIN)
 
 CC				?= "clang"
 CXX				?= "clang++"
@@ -79,21 +79,20 @@ copylibs: $(FLXSRC)
 
 
 $(OUTPUT): $(CXXOBJ) $(COBJ)
+	@printf "# linking\n"
 	@$(CXX) -o $@ $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize) $(CXXOBJ) $(COBJ) $(LDFLAGS)
 
 
 %.cpp.o: %.cpp
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MF $<.m -o $@ $<
-
 	@$(eval DONEFILES += "CPP")
-	@printf "\r                                               \r$(words $(DONEFILES)) / $(NUMFILES) ($(notdir $<))"
+	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -MF $<.m -o $@ $<
 
 
 %.c.o: %.c
-	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/utf8rewind/include/utf8rewind -MMD -MF $<.m -o $@ $<
-
 	@$(eval DONEFILES += "C")
-	@printf "\r                                               \r$(words $(DONEFILES)) / $(NUMFILES) ($(notdir $<))"
+	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
+	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/utf8rewind/include/utf8rewind -MMD -MP -MF $<.m -o $@ $<
 
 
 
@@ -102,6 +101,7 @@ $(OUTPUT): $(CXXOBJ) $(COBJ)
 # haha
 clena: clean
 clean:
+	@rm $(OUTPUT)
 	@find source -name "*.o" | xargs rm -f
 	@find source -name "*.c.d" | xargs rm -f
 	@find source -name "*.cpp.d" | xargs rm -f
