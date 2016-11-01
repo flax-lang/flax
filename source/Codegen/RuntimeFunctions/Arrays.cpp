@@ -64,12 +64,12 @@ namespace Array
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
 				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
+				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
 				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, ind, max, cgi->irb.CreateSub(max, fir::ConstantInt::getInt64(1)) });
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, ind, max });
 
 				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
 				cgi->irb.CreateUnreachable();
