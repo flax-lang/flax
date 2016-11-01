@@ -8,7 +8,7 @@ install:
     - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo apt-get --force-yes update
     - sudo apt-get install build-essential
-    - sudo apt-get install libstdc++6
+    - sudo apt-get install libc++1 libc++-dev libc++abi1
     - sudo apt-get --force-yes install clang-$LLVM_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libedit2 libedit-dev
 
 script:
