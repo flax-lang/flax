@@ -1145,7 +1145,7 @@ namespace Parser
 		std::string ret;
 
 		// handle pointers.
-		while(ps.front().type == TType::Asterisk)
+		while(ps.hasTokens() && ps.front().type == TType::Asterisk)
 		{
 			ret += "*";
 			ps.eat();
@@ -1154,7 +1154,7 @@ namespace Parser
 
 		// handle arrays
 		// check if the next token is a '['.
-		while(ps.front().type == TType::LSquare)
+		while(ps.hasTokens() && ps.front().type == TType::LSquare)
 		{
 			ps.eat();
 
@@ -1198,7 +1198,7 @@ namespace Parser
 				parserError("Variadic array must be the last (outermost) dimension");
 		}
 
-		if(ps.front().type == TType::Asterisk)
+		if(ps.hasTokens() && ps.front().type == TType::Asterisk)
 			ret += parseStringTypeIndirections(ps);
 
 		return ret;
@@ -1211,6 +1211,8 @@ namespace Parser
 	{
 		// note: use of pop_front() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
 		// conflated with the current type being parsed.
+		if(!ps.hasTokens()) return "";
+
 		Token front = ps.front();
 
 		if(front.type == TType::Identifier)
