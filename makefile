@@ -4,7 +4,10 @@
 
 
 
-WARNINGS		+= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move -Wno-nullability-completeness -Wno-comma -Wno-undefined-func-template -Wno-unused-const-variable
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-old-style-cast -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable
+
+
+CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat
 
 
 SYSROOT			:= build/sysroot
@@ -36,8 +39,8 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -fmodules -Wall -Weverything -frtti -fexceptions -fno-omit-frame-pointer -Xclang -fcolor-diagnostics $(SANITISE)
-CFLAGS			+= -std=c11 -O0 -g -c -fmodules -Wall -fno-omit-frame-pointer -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations
+CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings -Wno-missing-variable-declarations
 
 LDFLAGS			+= $(SANITISE)
 
@@ -52,11 +55,21 @@ GLTESTSRC		:= build/gltest.flx
 
 
 
-.DEFAULT_GOAL = jit
+.DEFAULT_GOAL = osx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build
+.PHONY: copylibs jit compile clean build osx ci prep
+
+prep:
+	@mkdir -p $(dir $(OUTPUT))
+
+osx: CXXFLAGS += -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+osx: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+
+osx: prep jit
+
+ci: prep jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN)  $(TESTSRC)
@@ -80,7 +93,7 @@ copylibs: $(FLXSRC)
 
 $(OUTPUT): $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
-	@$(CXX) -o $@ $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize) $(CXXOBJ) $(COBJ) $(LDFLAGS)
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize) $(LDFLAGS)
 
 
 %.cpp.o: %.cpp
