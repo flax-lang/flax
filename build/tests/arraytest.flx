@@ -82,6 +82,19 @@ func dynamicArrays()
 	}
 }
 
+/*
+	MAKE:
+	110 / 195
+
+
+	SHAKE:
+	107 / 191
+
+
+	FMODULES:
+	95 / 166
+	96 / 167
+*/
 
 
 
