@@ -51,7 +51,7 @@ namespace prof
 	Profile::Profile(int grp, std::string n)
 	{
 		this->name = n;
-		this->begin = std::chrono::steady_clock::now();
+		this->begin = prof::clock::now();
 		this->didRecord = false;
 		this->group = 0;
 
@@ -100,7 +100,7 @@ namespace prof
 		using namespace std::chrono;
 		using unit = duration<double, std::milli>;
 
-		auto end = steady_clock::now();
+		auto end = prof::clock::now();
 
 		auto nd = namemap[this->name];
 		iceAssert(nd);
