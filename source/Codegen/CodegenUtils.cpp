@@ -1494,8 +1494,9 @@ namespace Codegen
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
 			// then there's no reason for the parameters to mismatch.
 			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
+			{
 				return false;
-
+			}
 			else if(candidate->parentClass && !candidate->isStatic)
 			{
 				// make sure it's only one off
