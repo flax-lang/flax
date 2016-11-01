@@ -41,7 +41,7 @@ build/gltest
 *.bc
 
 *.ir
-*.o.m
+*.m
 shakefile.hi
 shakefile
 .shake.database
