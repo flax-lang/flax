@@ -431,7 +431,8 @@ namespace Codegen
 			{
 				if(pair.funcDecl->attribs & Attr_VisPublic)
 				{
-					bool existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					bool existing = (pair.funcDecl->genericTypes.size() > 0)
+						? false : ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
 
 					if(!existing)
 					{
@@ -449,7 +450,7 @@ namespace Codegen
 						{
 							// for generics, just push as-is
 							ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
-							ftree->funcSet.insert(pair.firFunc->getName());
+							// ftree->funcSet.insert(pair.firFunc->getName());
 						}
 					}
 				}
@@ -2711,7 +2712,17 @@ namespace Codegen
 		return Result_t(this->irb.CreateLoad(arr), arr);
 	}
 
+	Result_t CodegenInstance::createEmptyDynamicArray(fir::Type* elmType)
+	{
+		fir::DynamicArrayType* dtype = fir::DynamicArrayType::get(elmType);
+		fir::Value* arr = this->irb.CreateStackAlloc(dtype);
 
+		this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(elmType->getPointerTo()));
+		this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
+		this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+
+		return Result_t(this->irb.CreateLoad(arr), arr);
+	}
 
 
 
