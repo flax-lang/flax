@@ -9,6 +9,8 @@
 #include "codegen.h"
 #include "compiler.h"
 
+#include <stdio.h>
+#include <string.h>
 #include <signal.h>
 
 using namespace Ast;
