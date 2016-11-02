@@ -104,7 +104,7 @@ namespace Codegen
 
 		} globalConstructors;
 
-		void addGlobalConstructor(Identifier name, fir::Function* constructor);
+		void addGlobalConstructor(const Identifier& name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
@@ -196,7 +196,7 @@ namespace Codegen
 		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
 		TypePair_t* getTypeByString(std::string name);
-		TypePair_t* getType(Identifier id);
+		TypePair_t* getType(const Identifier& id);
 		TypePair_t* getType(fir::Type* type);
 		fir::Function* getOrDeclareLibCFunc(std::string name);
 
@@ -221,7 +221,7 @@ namespace Codegen
 		bool isAnyType(fir::Type* type);
 		bool isRefCountedType(fir::Type* type);
 
-		bool isDuplicateType(Identifier id);
+		bool isDuplicateType(const Identifier& id);
 
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
@@ -250,10 +250,10 @@ namespace Codegen
 		void decrementRefCount(fir::Value* strp);
 
 		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
-			bool isInitialAssignment);
+			bool isInitialAssignment, bool doAssignment);
 
-		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
-		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithName(const Identifier& id, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Ast::Expr* user);
 
 		Ast::Result_t createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity);
 		Ast::Result_t createEmptyDynamicArray(fir::Type* elmType);

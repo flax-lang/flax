@@ -38,46 +38,68 @@ public ƒ doArrayTest()
 	dynamicArrays()
 }
 
-// public func foldl<T>(first: T, arr: T[], fn: [(T[], T) -> T]) -> T
-// {
-// 	if arr.length == 0
-// 	{
-// 		return first
-// 	}
-// }
+public func foldl(first: int, arr: int[], fn: [(int, int) -> int]) -> int
+{
+	if arr.length == 0 { return first }
+	return foldl(fn(first, arr.popBack()), arr, fn)
+}
 
-// func f(a: int[], n: int) -> int
-// {
+func f(a: int, b: int) -> int
+{
+	return a * b
+}
 
-// }
+func setup(max: int) -> int[]
+{
+	var arr: int[]
+
+	var i = 1
+	while i <= max
+	{
+		arr += i
+		i += 1
+	}
+
+	return arr
+}
 
 func dynamicArrays()
 {
 	do {
-		var x = alloc[5] string
-		let y = alloc[5] string
+		var x: string[]
+		var y = alloc[5] string
 
 		var i = 0
 
-		x[0] = "aaa" + "AAA"
-		x[1] = "BBB" + "bbb"
-		x[2] = "ccc" + "CCC"
-		x[3] = "DDD" + "ddd"
-		x[4] = "eee" + "EEE"
+		x += "aaa" + "AAA"
+		x += "BBB" + "bbb"
+		x += "ccc" + "CCC"
+		x += "DDD" + "ddd"
+		x += "eee" + "EEE"
 
 		x += y
+
 		let k = x
-		let z = k.clone()
+		var z = k.clone()
+
+		z[9] = "LAST ELEMENT"
 
 		printf("z == x: %d\n", z <= x)
 
 		while i < z.length
 		{
-			printf("z[%ld] = %s\n", i, z[i])
+			printf("z[%ld] = %s // %ld\n", i, z[i], z[i].rc)
 			i += 1
 		}
 
-		printf("z[3] = %s, length = %zd, cap = %zd\n", z[3], z.length, z.capacity)
+		printf("z.back() = %s, length = %zd, cap = %zd\n", z.back(), z.length, z.capacity)
+
+
+
+		let fib = setup(5)
+
+		let sum = foldl(1, fib, f)
+		printf("sum = %zd\n", sum)
 
 		// x == k
 		dealloc x

@@ -404,6 +404,16 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 			fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
 			return type;
 		}
+		else if(fir::Value* fv = cgi->getSymInst(this, this->name))
+		{
+			if(!fv->getType()->getPointerElementType()->isFunctionType())
+				error(this, "'%s' is not a function, and cannot be called", this->name.c_str());
+
+			fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
+			iceAssert(ft);
+
+			return ft->getReturnType();
+		}
 		else
 		{
 			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);

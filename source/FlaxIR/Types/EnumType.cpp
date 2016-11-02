@@ -10,7 +10,7 @@
 
 namespace fir
 {
-	EnumType::EnumType(Identifier name, Type* ct, std::map<std::string, ConstantValue*> cs)
+	EnumType::EnumType(const Identifier& name, Type* ct, std::map<std::string, ConstantValue*> cs)
 	{
 		this->enumName = name;
 		this->caseType = ct;
@@ -83,7 +83,7 @@ namespace fir
 
 
 
-	EnumType* EnumType::get(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc)
+	EnumType* EnumType::get(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

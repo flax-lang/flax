@@ -419,7 +419,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
+		StructType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
@@ -431,8 +431,9 @@ namespace fir
 
 		// static funcs
 		public:
-		static StructType* createWithoutBody(Identifier name, FTContext* tc = 0, bool isPacked = false);
-		static StructType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* createWithoutBody(const Identifier& name, FTContext* tc = 0, bool isPacked = false);
+		static StructType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0,
+			bool isPacked = false);
 	};
 
 
@@ -466,7 +467,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
+		ClassType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
 		virtual ~ClassType() override { }
 
 		// fields (protected)
@@ -480,8 +481,8 @@ namespace fir
 
 		// static funcs
 		public:
-		static ClassType* createWithoutBody(Identifier name, FTContext* tc = 0);
-		static ClassType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members,
+		static ClassType* createWithoutBody(const Identifier& name, FTContext* tc = 0);
+		static ClassType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members,
 			std::deque<Function*> methods, FTContext* tc = 0);
 	};
 
@@ -505,7 +506,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		EnumType(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
+		EnumType(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
 		virtual ~EnumType() override { }
 
 		Identifier enumName;
@@ -514,7 +515,7 @@ namespace fir
 
 		// static funcs
 		public:
-		static EnumType* get(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
+		static EnumType* get(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
 	};
 
 

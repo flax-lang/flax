@@ -52,7 +52,11 @@ namespace Codegen
 	{
 		fir::Type* t = e->getType(this);
 
-		if(t->isStringType()) return this->getEmptyString().value;
+		if(t->isStringType())
+			return this->getEmptyString().value;
+
+		else if(t->isDynamicArrayType())
+			return this->createEmptyDynamicArray(t->toDynamicArrayType()->getElementType()).value;
 
 		return fir::ConstantValue::getNullValue(e->getType(this));
 	}

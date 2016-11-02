@@ -60,7 +60,7 @@ namespace fir
 
 
 		// methods
-		void setName(Identifier idt);
+		void setName(const Identifier& idt);
 		void setName(std::string s);
 		Identifier getName();
 		bool hasName();
@@ -110,7 +110,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		GlobalVariable(Identifier idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
+		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 
 		protected:

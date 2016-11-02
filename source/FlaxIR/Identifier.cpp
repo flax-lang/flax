@@ -23,7 +23,7 @@ std::string Identifier::str() const
 	return ret;
 }
 
-static std::string mangleScopeOnly(Identifier id)
+static std::string mangleScopeOnly(const Identifier& id)
 {
 	std::string ret;
 	for(auto s : id.scope)

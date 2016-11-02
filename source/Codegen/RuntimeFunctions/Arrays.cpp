@@ -64,12 +64,12 @@ namespace Array
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
 				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
+				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
 				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, ind, max, cgi->irb.CreateSub(max, fir::ConstantInt::getInt64(1)) });
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, ind, max });
 
 				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
 				cgi->irb.CreateUnreachable();
@@ -99,7 +99,40 @@ namespace Array
 
 
 
+	static void _callCloneFunctionInLoop(CodegenInstance* cgi, fir::Function* curfunc, fir::Function* fn,
+		fir::Value* ptr, fir::Value* len, fir::Value* newptr)
+	{
+		fir::IRBlock* loopcond = cgi->irb.addNewBlockInFunction("loopcond", curfunc);
+		fir::IRBlock* loopbody = cgi->irb.addNewBlockInFunction("loopbody", curfunc);
+		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", curfunc);
 
+		fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+		cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+
+		cgi->irb.CreateUnCondBranch(loopcond);
+		cgi->irb.setCurrentBlock(loopcond);
+		{
+			fir::Value* res = cgi->irb.CreateICmpEQ(cgi->irb.CreateLoad(counter), len);
+			cgi->irb.CreateCondBranch(res, merge, loopbody);
+		}
+
+		cgi->irb.setCurrentBlock(loopbody);
+		{
+			// make clone
+			fir::Value* origElm = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
+			fir::Value* clone = cgi->irb.CreateCall1(fn, origElm);
+
+			// store clone
+			fir::Value* newElm = cgi->irb.CreatePointerAdd(newptr, cgi->irb.CreateLoad(counter));
+			cgi->irb.CreateStore(clone, newElm);
+
+			// increment counter
+			cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+			cgi->irb.CreateUnCondBranch(loopcond);
+		}
+
+		cgi->irb.setCurrentBlock(merge);
+	}
 
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
@@ -171,10 +204,43 @@ namespace Array
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
-			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-			cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 
+			fir::Type* elmType = arrtype->getElementType();
+
+			if(elmType->isPrimitiveType() || elmType->isCharType() || elmType->isEnumType())
+			{
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+			}
+			else if(elmType->isDynamicArrayType())
+			{
+				// yo dawg i heard you like arrays...
+				fir::Function* clonef = getCloneFunction(cgi, elmType->toDynamicArrayType());
+				iceAssert(clonef);
+
+				// loop
+				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
+				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr);
+			}
+			else if(elmType->isStringType())
+			{
+				fir::Function* clonef = String::getCloneFunction(cgi);
+				iceAssert(clonef);
+
+				// loop
+				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
+				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr);
+			}
+			else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
+			{
+				// todo: call copy constructors and stuff
+
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+			}
 
 			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
 			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));

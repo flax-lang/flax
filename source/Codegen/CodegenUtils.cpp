@@ -228,7 +228,7 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::getType(Identifier id)
+	TypePair_t* CodegenInstance::getType(const Identifier& id)
 	{
 		return this->getTypeByString(id.str());
 	}
@@ -309,7 +309,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool CodegenInstance::isDuplicateType(Identifier id)
+	bool CodegenInstance::isDuplicateType(const Identifier& id)
 	{
 		return this->getType(id) != nullptr;
 	}
@@ -431,7 +431,8 @@ namespace Codegen
 			{
 				if(pair.funcDecl->attribs & Attr_VisPublic)
 				{
-					bool existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					bool existing = (pair.funcDecl->genericTypes.size() > 0)
+						? false : ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
 
 					if(!existing)
 					{
@@ -449,7 +450,7 @@ namespace Codegen
 						{
 							// for generics, just push as-is
 							ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
-							ftree->funcSet.insert(pair.firFunc->getName());
+							// ftree->funcSet.insert(pair.firFunc->getName());
 						}
 					}
 				}
@@ -2308,7 +2309,7 @@ namespace Codegen
 
 
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithName(const Identifier& id, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 		if(list.empty()) return 0;
@@ -2319,7 +2320,7 @@ namespace Codegen
 		return list.front();
 	}
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 
@@ -2501,6 +2502,7 @@ namespace Codegen
 		this->irb.CreateSetStringLength(strp, len);
 
 		strp->makeImmutable();
+
 		return Result_t(this->irb.CreateLoad(strp), strp);
 	}
 
@@ -2624,7 +2626,7 @@ namespace Codegen
 
 
 	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
-		ValueKind rhsVK, bool isInit)
+		ValueKind rhsVK, bool isInit, bool doAssign)
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
@@ -2643,7 +2645,8 @@ namespace Codegen
 				this->decrementRefCount(target);
 
 			// store
-			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+			if(doAssign)
+				this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
 		}
 		else
 		{
@@ -2665,7 +2668,8 @@ namespace Codegen
 				this->removeRefCountedValueIfExists(ptr);
 
 			// now we just store as usual
-			this->irb.CreateStore(val, target);
+			if(doAssign)
+				this->irb.CreateStore(val, target);
 		}
 	}
 
@@ -2712,7 +2716,17 @@ namespace Codegen
 		return Result_t(this->irb.CreateLoad(arr), arr);
 	}
 
+	Result_t CodegenInstance::createEmptyDynamicArray(fir::Type* elmType)
+	{
+		fir::DynamicArrayType* dtype = fir::DynamicArrayType::get(elmType);
+		fir::Value* arr = this->irb.CreateStackAlloc(dtype);
 
+		this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(elmType->getPointerTo()));
+		this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
+		this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+
+		return Result_t(this->irb.CreateLoad(arr), arr);
+	}
 
 
 
