@@ -331,6 +331,19 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
 			}
 		}
+		else if(vr->name == "rc")
+		{
+			if(!actual)
+			{
+				*resultType = fir::Type::getInt64();
+				return Result_t(0, 0);
+			}
+			else
+			{
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetStringRefCount(ptr), 0);
+			}
+		}
 	}
 
 	if(cgi->getExtensionsForBuiltinType(type).size() > 0)
@@ -1037,7 +1050,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
 
-	return { ftree, nsstrs, origList, curType, curFType };
+	return std::make_tuple(ftree, nsstrs, origList, curType, curFType);
 }
 
 

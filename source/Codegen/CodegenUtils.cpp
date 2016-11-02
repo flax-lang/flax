@@ -2501,6 +2501,7 @@ namespace Codegen
 		this->irb.CreateSetStringLength(strp, len);
 
 		strp->makeImmutable();
+
 		return Result_t(this->irb.CreateLoad(strp), strp);
 	}
 
@@ -2624,7 +2625,7 @@ namespace Codegen
 
 
 	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
-		ValueKind rhsVK, bool isInit)
+		ValueKind rhsVK, bool isInit, bool doAssign)
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
@@ -2643,7 +2644,8 @@ namespace Codegen
 				this->decrementRefCount(target);
 
 			// store
-			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+			if(doAssign)
+				this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
 		}
 		else
 		{
@@ -2665,7 +2667,8 @@ namespace Codegen
 				this->removeRefCountedValueIfExists(ptr);
 
 			// now we just store as usual
-			this->irb.CreateStore(val, target);
+			if(doAssign)
+				this->irb.CreateStore(val, target);
 		}
 	}
 
