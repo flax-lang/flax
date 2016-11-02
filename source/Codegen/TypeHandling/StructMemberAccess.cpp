@@ -218,6 +218,72 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
 				return Result_t(clone, 0);
 			}
+			else if(fc->name == "back")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				return Result_t(cgi->irb.CreateLoad(mem), 0);
+			}
+			else if(fc->name == "popBack")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				fir::Value* ret = cgi->irb.CreateLoad(mem);
+
+				// shrink the length
+				cgi->irb.CreateSetDynamicArrayLength(ptr, ind);
+
+				return Result_t(ret, 0);
+			}
 			else
 			{
 				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
@@ -263,6 +329,19 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			{
 				iceAssert(ptr);
 				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
+			}
+		}
+		else if(vr->name == "rc")
+		{
+			if(!actual)
+			{
+				*resultType = fir::Type::getInt64();
+				return Result_t(0, 0);
+			}
+			else
+			{
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetStringRefCount(ptr), 0);
 			}
 		}
 	}
@@ -971,7 +1050,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
 
-	return { ftree, nsstrs, origList, curType, curFType };
+	return std::make_tuple(ftree, nsstrs, origList, curType, curFType);
 }
 
 

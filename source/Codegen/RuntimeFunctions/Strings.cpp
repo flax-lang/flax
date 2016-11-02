@@ -11,6 +11,8 @@ using namespace Ast;
 
 #define BUILTIN_STRINGREF_INCR_FUNC_NAME			"__.stringref_incr"
 #define BUILTIN_STRINGREF_DECR_FUNC_NAME			"__.stringref_decr"
+
+#define BUILTIN_STRING_CLONE_FUNC_NAME				"__.string_clone"
 #define BUILTIN_STRING_APPEND_FUNC_NAME				"__.string_append"
 #define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME		"__.string_appendchar"
 #define BUILTIN_STRING_CMP_FUNC_NAME				"__.string_compare"
@@ -18,12 +20,96 @@ using namespace Ast;
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__.string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
 
-#define DEBUG_ARC 0
+#define DEBUG_ARC 1
 
 namespace Codegen {
 namespace RuntimeFuncs {
 namespace String
 {
+	fir::Function* getCloneFunction(CodegenInstance* cgi)
+	{
+		fir::Function* clonef = cgi->module->getFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name));
+
+		if(!clonef)
+		{
+			auto restore = cgi->irb.getCurrentBlock();
+
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getStringType(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+			cgi->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			iceAssert(s1);
+
+			// get an empty string
+			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+			newstrp->setName("newstrp");
+
+			fir::Value* lhslen = cgi->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* lhsbuf = cgi->irb.CreateGetStringData(s1, "d1");
+
+
+			// space for null + refcount
+			size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			fir::Value* malloclen = cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + i64Size));
+
+			// now malloc.
+			fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc")->getName());
+			iceAssert(mallocf);
+
+			fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
+
+
+
+			// move it forward (skip the refcount)
+			buf = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+			// now memcpy
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+			cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, cgi->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+			fir::Value* offsetbuf = cgi->irb.CreatePointerAdd(buf, lhslen);
+
+			// null terminator
+			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), offsetbuf);
+
+			// ok, now fix it
+			cgi->irb.CreateSetStringData(newstrp, buf);
+			cgi->irb.CreateSetStringLength(newstrp, lhslen);
+			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+
+			{
+				fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
+
+				fir::Value* tmp = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
+				tmp = cgi->irb.CreateConstGEP2(tmp, 0, 0);
+
+				cgi->irb.CreateCall(printfn, { tmp, buf, lhslen, buf });
+			}
+
+
+			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+
+			clonef = func;
+			cgi->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(clonef);
+		return clonef;
+	}
+
+
+
+
+
 	fir::Function* getAppendFunction(CodegenInstance* cgi)
 	{
 		fir::Function* appendf = cgi->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));

@@ -3146,8 +3146,8 @@ void parserMessage(Err sev, const char* msg, ...)
 	va_end(ap);
 }
 
-void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...)
+void parserMessage(Err sev, const Parser::Pin& pin, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, const Parser::Pin& pin, const char* msg, ...)
 {
 
 	std::string str = "??";
@@ -3161,8 +3161,8 @@ void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...)
 	va_end(ap);
 }
 
-void parserMessage(Err sev, Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void parserMessage(Err sev, Parser::Token tok, const char* msg, ...)
+void parserMessage(Err sev, const Parser::Token& tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, const Parser::Token& tok, const char* msg, ...)
 {
 
 	std::string str = "??";
@@ -3202,8 +3202,8 @@ void parserError(const char* msg, ...)
 	abort();
 }
 
-void parserError(Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
-void parserError(Parser::Pin pin, const char* msg, ...)
+void parserError(const Parser::Pin& pin, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(const Parser::Pin& pin, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -3212,8 +3212,8 @@ void parserError(Parser::Pin pin, const char* msg, ...)
 	abort();
 }
 
-void parserError(Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
-void parserError(Parser::Token tok, const char* msg, ...)
+void parserError(const Parser::Token& tok, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(const Parser::Token& tok, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);

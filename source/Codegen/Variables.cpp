@@ -157,7 +157,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this)
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || this->getType(cgi)->isDynamicArrayType()
 		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType() || this->getType(cgi)->isCharType()))
 	{
 		val = cgi->getDefaultValue(this);
@@ -333,7 +333,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
 		{
 			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true);
+			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true, true);
 		}
 		else if(!this->initVal)
 		{

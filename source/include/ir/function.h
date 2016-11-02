@@ -81,12 +81,12 @@ namespace fir
 		Function* reifyUsingFunctionType(FunctionType* ft, FTContext* tc = 0);
 
 
-		static Function* create(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
+		static Function* create(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
 
 
 		// fields
 		protected:
-		Function(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage);
+		Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::deque<Argument*> fnArguments;
 		std::deque<IRBlock*> blocks;
 

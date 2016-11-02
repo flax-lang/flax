@@ -31,7 +31,7 @@ namespace Codegen
 
 
 
-	void CodegenInstance::addGlobalConstructor(Identifier id, fir::Function* constructor)
+	void CodegenInstance::addGlobalConstructor(const Identifier& id, fir::Function* constructor)
 	{
 		fir::GlobalVariable* gv = this->module->getGlobalVariable(id);
 		iceAssert(gv);
