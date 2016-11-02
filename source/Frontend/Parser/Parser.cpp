@@ -561,7 +561,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
-					[[clang::fallthrough]];
+					// fallthrough
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -606,7 +606,7 @@ namespace Parser
 						ps.rootNode->topLevelExpressions.push_back(parseOpOverload(ps));
 						break;
 					}
-					[[clang::fallthrough]];
+					// fallthrough
 
 				default:	// wip: skip shit we don't know/care about for now
 					parserError(tok, "Unknown token '%s'", tok.text.c_str());
@@ -712,7 +712,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
-					[[clang::fallthrough]];
+					// fallthrough
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -2227,7 +2227,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in struct", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in struct");
 			}
 		}
 
@@ -2318,7 +2318,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in class");
 			}
 		}
 
@@ -2389,7 +2389,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
+				parserError("Found invalid expression type in struct");
 			}
 		}
 
@@ -2470,7 +2470,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in class");
 			}
 		}
 
