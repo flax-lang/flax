@@ -282,7 +282,8 @@ namespace Operators
 
 			cgi->irb.CreateCall2(appendf, lhsptr, rhsptr);
 
-			return Result_t(cgi->irb.CreateLoad(lhsptr), lhsptr);
+			// return void
+			return Result_t(0, 0);
 		}
 		else if(op == ArithmeticOp::PlusEquals && ltype->isDynamicArrayType()
 			&& ltype->toDynamicArrayType()->getElementType() == rtype)
@@ -291,8 +292,9 @@ namespace Operators
 			fir::Value* lhs = 0; fir::Value* lhsptr = 0;
 			fir::Value* rhs = 0; fir::Value* rhsptr = 0;
 
+			ValueKind rhsvk;
 			std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
-			std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+			std::tie(rhs, rhsptr, rhsvk) = args[1]->codegen(cgi);
 
 			iceAssert(lhs->getType()->isDynamicArrayType());
 			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
@@ -309,7 +311,14 @@ namespace Operators
 
 			cgi->irb.CreateCall2(appendf, lhsptr, rhs);
 
-			return Result_t(cgi->irb.CreateLoad(lhsptr), lhsptr);
+
+			// handle some shit
+			if(cgi->isRefCountedType(rtype))
+				cgi->removeRefCountedValueIfExists(rhsptr);
+
+
+			// return void
+			return Result_t(0, 0);
 		}
 
 		// else, we'll rely on + and = separation/synthesis.
@@ -484,7 +493,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 			iceAssert(rhsPtr);
 
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{

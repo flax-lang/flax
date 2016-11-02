@@ -239,7 +239,8 @@ namespace Compiler
 				auto frames = Compiler::getFrameworksToLink();
 				auto framedirs = Compiler::getFrameworkSearchPaths();
 
-				size_t s = 5 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
+				size_t num_extra = 0;
+				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
 				const char** argv = new const char*[s];
 				memset(argv, 0, s * sizeof(const char*));
 
@@ -247,7 +248,7 @@ namespace Compiler
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
 
-				size_t i = 3;
+				size_t i = 3 + num_extra;
 
 
 				// note: these need to be references
