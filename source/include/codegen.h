@@ -250,7 +250,7 @@ namespace Codegen
 		void decrementRefCount(fir::Value* strp);
 
 		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
-			bool isInitialAssignment);
+			bool isInitialAssignment, bool doAssignment);
 
 		fir::Function* getFunctionFromModuleWithName(const Identifier& id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Ast::Expr* user);

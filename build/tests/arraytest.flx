@@ -88,7 +88,7 @@ func dynamicArrays()
 
 		while i < z.length
 		{
-			printf("z[%ld] = %s\n", i, z[i])
+			printf("z[%ld] = %s // %ld\n", i, z[i], z[i].rc)
 			i += 1
 		}
 
