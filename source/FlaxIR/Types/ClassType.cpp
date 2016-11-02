@@ -9,7 +9,7 @@
 namespace fir
 {
 	// structs
-	ClassType::ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods)
+	ClassType::ClassType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods)
 	{
 		this->className = name;
 
@@ -18,7 +18,8 @@ namespace fir
 	}
 
 
-	ClassType* ClassType::create(Identifier name, std::deque<std::pair<std::string, Type*>> members, std::deque<Function*> methods, FTContext* tc)
+	ClassType* ClassType::create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members,
+		std::deque<Function*> methods, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -49,7 +50,7 @@ namespace fir
 		return dynamic_cast<ClassType*>(tc->normaliseType(type));
 	}
 
-	ClassType* ClassType::createWithoutBody(Identifier name, FTContext* tc)
+	ClassType* ClassType::createWithoutBody(const Identifier& name, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

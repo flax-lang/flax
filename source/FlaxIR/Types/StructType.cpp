@@ -8,7 +8,7 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked)
+	StructType::StructType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked)
 	{
 		this->structName = name;
 		this->isTypePacked = ispacked;
@@ -16,7 +16,7 @@ namespace fir
 		this->setBody(mems);
 	}
 
-	StructType* StructType::create(Identifier name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
+	StructType* StructType::create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -46,7 +46,7 @@ namespace fir
 		return dynamic_cast<StructType*>(tc->normaliseType(type));
 	}
 
-	StructType* StructType::createWithoutBody(Identifier name, FTContext* tc, bool isPacked)
+	StructType* StructType::createWithoutBody(const Identifier& name, FTContext* tc, bool isPacked)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

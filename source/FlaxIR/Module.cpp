@@ -13,7 +13,7 @@ namespace fir
 		this->moduleName = nm;
 	}
 
-	GlobalVariable* Module::createGlobalVariable(Identifier ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
@@ -23,17 +23,17 @@ namespace fir
 		return gv;
 	}
 
-	GlobalVariable* Module::createGlobalVariable(Identifier id, Type* type, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, linkage);
 	}
 
-	GlobalVariable* Module::declareGlobalVariable(Identifier id, Type* type, bool isImmut)
+	GlobalVariable* Module::declareGlobalVariable(const Identifier& id, Type* type, bool isImmut)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, LinkageType::External);
 	}
 
-	GlobalVariable* Module::tryGetGlobalVariable(Identifier id)
+	GlobalVariable* Module::tryGetGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			return 0;
@@ -41,7 +41,7 @@ namespace fir
 		return this->globals[id];
 	}
 
-	GlobalVariable* Module::getGlobalVariable(Identifier id)
+	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			error("ICE: no such global with name %s", id.str().c_str());
@@ -77,7 +77,7 @@ namespace fir
 
 
 
-	Type* Module::getNamedType(Identifier id)
+	Type* Module::getNamedType(const Identifier& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
 			error("ICE: no such type with name %s", id.str().c_str());
@@ -85,7 +85,7 @@ namespace fir
 		return this->namedTypes[id];
 	}
 
-	void Module::addNamedType(Identifier id, Type* type)
+	void Module::addNamedType(const Identifier& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
 			error("ICE: type %s exists already", id.str().c_str());
@@ -120,12 +120,12 @@ namespace fir
 	}
 
 
-	Function* Module::declareFunction(Identifier id, FunctionType* ftype)
+	Function* Module::declareFunction(const Identifier& id, FunctionType* ftype)
 	{
 		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
-	Function* Module::getFunction(Identifier id)
+	Function* Module::getFunction(const Identifier& id)
 	{
 		if(this->functions.find(id) == this->functions.end())
 			return 0;
@@ -133,7 +133,7 @@ namespace fir
 		return this->functions[id];
 	}
 
-	std::deque<Function*> Module::getFunctionsWithName(Identifier id)
+	std::deque<Function*> Module::getFunctionsWithName(const Identifier& id)
 	{
 		// todo: *very* inefficient.
 
@@ -147,7 +147,7 @@ namespace fir
 		return ret;
 	}
 
-	Function* Module::getOrCreateFunction(Identifier id, FunctionType* ftype, LinkageType linkage)
+	Function* Module::getOrCreateFunction(const Identifier& id, FunctionType* ftype, LinkageType linkage)
 	{
 		if(this->functions.find(id) != this->functions.end())
 		{

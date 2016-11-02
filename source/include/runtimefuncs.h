@@ -19,6 +19,7 @@ namespace Codegen
 			fir::Function* getRefCountDecrementFunction(CodegenInstance* cgi);
 			fir::Function* getCompareFunction(CodegenInstance* cgi);
 			fir::Function* getAppendFunction(CodegenInstance* cgi);
+			fir::Function* getCloneFunction(CodegenInstance* cgi);
 			fir::Function* getCharAppendFunction(CodegenInstance* cgi);
 
 			fir::Function* getBoundsCheckFunction(CodegenInstance* cgi);
