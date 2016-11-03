@@ -93,7 +93,7 @@ copylibs: $(FLXSRC)
 
 $(OUTPUT): $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize) $(LDFLAGS)
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) $(LDFLAGS)
 
 
 %.cpp.o: %.cpp
