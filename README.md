@@ -79,12 +79,14 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Building the Flax compiler ####
 
-- Flax uses Shake, available at http://shakebuild.com
-- To summarise: install `ghc`, install `cabal`, `cabal update; cabal install shake`, `runhaskell shakefile.hs` to build Flax.
-- If you don't want to recompile `shakefile.hs` every time, you can also run `ghc shakefile.hs` and call `./shakefile` instead.
-- Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
-- Additionally, the (admittedly limited) standard library will be copied from './libs' to './build/sysroot/usr/local/lib/flaxlibs/'
+- Flax uses a makefile; most likely some form of GNU-compatible `make` will work.
+- For macOS people, simply call `make`
+- Linux people, follow roughly the instructions in `.travis.yml`, they have been tested on Ubuntu 14.04 LTS and up.
+- A C++14-compatible compiler should be used, `g++-6` is good. Due to *reasons*, `clang++` doesn't like `libstdc++`, and `libllvm` from `apt` is linked with `libstdc++`, so you basically need to use `g++` on Linux.
+- Find the `flaxc` executable in `build/sysroot/usr/local/bin`
+- Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 
+- The `shakefile` still works, however.
 
 -----------------------------------------------
 
@@ -93,7 +95,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 - Some form of compiler (`cc` is called via `execvp()`) should be in the `$PATH` to produce object/executable files; not necessary if using JIT
 - Since nobody in their right mind is *actually* using this, please pass `-sysroot build/sysroot` to invocations of the compiler -- else the compiler will default to looking somewhere in `/usr/local/lib` for libraries.
-- Speaking of which, standard libraries (Foundation, String, etc.) are looked for in `<sysroot>/<prefix>/lib/flaxlibs/`. Prefix is set to `/usr/local/` by default.
+- Speaking of which, standard libraries (Foundation, etc.) are looked for in `<sysroot>/<prefix>/lib/flaxlibs/`. Prefix is set to `/usr/local/` by default.
 
 
 -----------------------------------------------
@@ -104,7 +106,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Found a bug? Want a feature?
 - Just submit a pull request!
 - Alternatively, join the discussion at #flax-lang on Freenode IRC.
-- Requested help: Error catching, please! Sometimes the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
+- Requested help: Improved edge-case detection! With FIR now, cryptic LLVM assertions are much rarer, but might still happen.
 
 
 -----------------------------------------------
