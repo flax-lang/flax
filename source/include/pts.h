@@ -29,6 +29,7 @@ namespace fir
 // so i'm gonna use a bunch of shortcuts -- dynamic_cast everywhere, direct constructing, etc.
 namespace pts
 {
+	struct Type;
 	struct NamedType;
 	struct PointerType;
 	struct TupleType;
@@ -36,6 +37,36 @@ namespace pts
 	struct DynamicArrayType;
 	struct VariadicArrayType;
 	struct FunctionType;
+
+
+	struct TypeTransformer
+	{
+		enum class Type
+		{
+			None,
+			Pointer,
+			FixedArray,
+			DynamicArray,
+			VariadicArray
+		};
+
+		bool operator == (const TypeTransformer& other) const { return this->type == other.type && this->data == other.data; }
+		bool operator != (const TypeTransformer& other) const { return !(*this == other); }
+
+
+		TypeTransformer(Type t, size_t d) : type(t), data(d) { }
+
+		Type type = Type::None;
+		size_t data = 0;
+	};
+
+
+	fir::Type* applyTransformationsOnType(fir::Type* base, std::deque<TypeTransformer> trfs);
+
+	bool areTransformationsCompatible(std::deque<TypeTransformer> a, std::deque<TypeTransformer> b);
+	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::deque<TypeTransformer> a, std::deque<TypeTransformer> b);
+	std::pair<fir::Type*, std::deque<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type);
+	std::pair<pts::Type*, std::deque<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(pts::Type* type);
 
 
 	struct Type

@@ -119,6 +119,12 @@ func foo_generic<T, K>(a: T, b: K)
 	// }
 }
 
+func arrtest<T>(a: T, b: T[]) -> T
+{
+	return a
+}
+
+
 public func doGenericsTest()
 {
 	foo_generic(7, 6 as i8)
@@ -135,6 +141,11 @@ public func doGenericsTest()
 	Outer.SomeClass.segen()
 	Outer.SomeClass.sgen(10, 20)
 	SomeNS.ngen("foo")
+
+
+
+	let x = alloc[5] string
+	arrtest("foo", x)
 }
 
 

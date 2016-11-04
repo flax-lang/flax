@@ -2,15 +2,12 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
-
-
-
-
 
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {

@@ -42,10 +42,12 @@ namespace Operators
 		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
 
 		fir::Type* rtype = args[1]->getType(cgi);
-		if(!rtype)
-		{
-			GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
-		}
+		iceAssert(rtype);
+
+		// if(!rtype)
+		// {
+		// 	GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
+		// }
 
 
 		iceAssert(rtype);
@@ -154,6 +156,12 @@ namespace Operators
 		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
 		{
 			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
+		}
+		else if(lhs->getType()->isDynamicArrayType() && rtype->isPointerType() &&
+			lhs->getType()->toDynamicArrayType()->getElementType() == rtype->getPointerElementType())
+		{
+			iceAssert(lhsptr);
+			return Result_t(cgi->irb.CreateGetDynamicArrayData(lhsptr), 0);
 		}
 		else if(rtype->isEnumType() && cgi->getAutoCastDistance(lhs->getType(), rtype->toEnumType()->getCaseType()) >= 0)
 		{
