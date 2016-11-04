@@ -20,7 +20,7 @@ using namespace Ast;
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__.string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
 
-#define DEBUG_ARC 1
+#define DEBUG_ARC 0
 
 namespace Codegen {
 namespace RuntimeFuncs {
@@ -84,6 +84,8 @@ namespace String
 			cgi->irb.CreateSetStringLength(newstrp, lhslen);
 			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
 
+
+			#if DEBUG_ARC
 			{
 				fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
@@ -94,6 +96,7 @@ namespace String
 
 				cgi->irb.CreateCall(printfn, { tmp, buf, lhslen, buf });
 			}
+			#endif
 
 
 			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));

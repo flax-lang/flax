@@ -2,12 +2,9 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-
+#include "pts.h"
 #include "ast.h"
-#include "parser.h"
 #include "codegen.h"
-#include "compiler.h"
-#include "operators.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -33,6 +30,32 @@ namespace Codegen
 		}
 
 		return real;
+	}
+
+
+	TypePair_t* CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
+	{
+		auto curDepth = scope;
+
+		if(this->getExprTypeOfBuiltin(name) != 0)
+			return 0;
+
+		for(size_t i = 0; i <= scope.size(); i++)
+		{
+			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
+			if(!ft) break;
+
+			for(auto& f : ft->types)
+			{
+				if(f.first == name)
+					return &f.second;
+			}
+
+			if(curDepth.size() > 0)
+				curDepth.pop_back();
+		}
+
+		return 0;
 	}
 
 
@@ -160,12 +183,20 @@ namespace Codegen
 				return test->first;
 			}
 
-			TypePair_t* tp = 0; int indirections = 0;
-			std::tie(tp, indirections) = cgi->findTypeInFuncTree(ns, atype);
 
-			iceAssert(indirections == -1 || indirections == 0);
 
-			if(indirections == -1)
+
+			TypePair_t* tp = cgi->findTypeInFuncTree(ns, atype);
+
+			if(tp)
+			{
+				return tp->first;
+			}
+			else if(fir::Type* builtin = cgi->getExprTypeOfBuiltin(atype))
+			{
+				return builtin;
+			}
+			else
 			{
 				// try generic.
 				fir::Type* ret = cgi->resolveGenericType(atype);
@@ -180,65 +211,8 @@ namespace Codegen
 				for(auto n : ns)
 					nsstr += n + ".";
 
-				// if(ns.size() > 0) nsstr = nsstr.substr(1);
-
 				if(allowFail) return 0;
 				GenError::unknownSymbol(cgi, user, atype + (nsstr.size() > 0 ? (" in namespace " + nsstr) : ""), SymbolType::Type);
-			}
-
-			if(!tp && cgi->getExprTypeOfBuiltin(atype))
-			{
-				return cgi->getExprTypeOfBuiltin(atype);
-			}
-			else if(tp)
-			{
-				// foundType:
-
-				StructBase* oldSB = dynamic_cast<StructBase*>(tp->second.first);
-				tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
-
-				fir::Type* concrete = tp ? tp->first : 0;
-				if(!concrete)
-				{
-					// generate the type.
-					iceAssert(oldSB);
-
-
-					// temporarily hijack the main scope
-					auto old = cgi->namespaceStack;
-					cgi->namespaceStack = ns;
-
-					concrete = oldSB->createType(cgi);
-					// fprintf(stderr, "on-demand codegen of %s\n", oldSB->name.c_str());
-
-					// do recursively, to ensure it's found...???
-					// concrete = cgi->getExprTypeFromStringType(user, type, allowFail);
-					// concrete = cgi->getTypeFromParserType(user, pt, allowFail);
-
-					iceAssert(concrete);
-
-					cgi->namespaceStack = old;
-
-					if(!tp) tp = cgi->findTypeInFuncTree(ns, oldSB->ident.name).first;
-					iceAssert(tp);
-				}
-
-				fir::Type* ret = tp->first;
-				while(indirections > 0)
-				{
-					ret = ret->getPointerTo();
-					indirections--;
-				}
-
-				return ret;
-			}
-			else if(!allowFail)
-			{
-				error(user, "Unknown type '%s'", strtype.c_str());
-			}
-			else
-			{
-				return 0;
 			}
 		}
 		else if(pt->isFunctionType())

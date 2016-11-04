@@ -203,7 +203,7 @@ namespace Compiler
 		while(fakeps.tokens.size() > 0)
 		{
 			Token t = fakeps.front();
-			fakeps.pop_front();
+			fakeps.pop();
 
 			if(t.type == TType::Import)
 			{

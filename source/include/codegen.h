@@ -3,7 +3,6 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
-#include "ast.h"
 #include "typeinfo.h"
 
 #include "errors.h"
@@ -20,6 +19,23 @@ enum class SymbolType
 	Variable,
 	Type
 };
+
+namespace Ast
+{
+	struct Root;
+	struct FuncCall;
+	struct ClassDef;
+	struct MemberAccess;
+	struct NamespaceDecl;
+
+	struct Result_t;
+	enum class ValueKind;
+}
+
+namespace pts
+{
+	struct Type;
+}
 
 namespace GenError
 {
@@ -176,7 +192,7 @@ namespace Codegen
 
 
 		std::deque<std::string> getFullScope();
-		std::pair<TypePair_t*, int> findTypeInFuncTree(std::deque<std::string> scope, std::string name);
+		TypePair_t* findTypeInFuncTree(std::deque<std::string> scope, std::string name);
 
 		std::deque<std::string> unwrapNamespacedType(std::string raw);
 

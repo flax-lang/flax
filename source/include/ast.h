@@ -12,20 +12,15 @@
 #include "defs.h"
 #include "ir/identifier.h"
 
-#include "pts.h"
-
-// namespace fir
-// {
-// 	struct StructType;
-// 	struct TupleType;
-// }
-
 #include "ir/type.h"
 
 
 
 
-
+namespace pts
+{
+	struct Type;
+}
 
 namespace Ast
 {
@@ -318,8 +313,8 @@ namespace Ast
 		bool isCStyleVarArg = false;
 
 		bool isVariadic = false;
-		std::string variadicStrType;
-		fir::Type* variadicType = 0;
+		// std::string variadicStrType;
+		// fir::Type* variadicType = 0;
 		fir::Function* generatedFunc = 0;
 
 		bool isFFI = false;
