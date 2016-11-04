@@ -189,14 +189,27 @@ namespace Parser
 			return this->tokens.front();
 		}
 
-		void pop_front()
-		{
-			this->tokens.pop_front();
-		}
+		// void pop_front()
+		// {
+		// 	this->tokens.pop_front();
+		// }
 
 		bool hasTokens()
 		{
 			return this->tokens.size() > 0;
+		}
+
+		Token pop()
+		{
+			// returns the current front, then pops front.
+			if(this->tokens.size() == 0)
+				parserError(*this, "Unexpected end of input");
+
+			auto t = this->front();
+			this->tokens.pop_front();
+
+			this->curtok = t;
+			return t;
 		}
 
 		Token eat()
@@ -207,13 +220,26 @@ namespace Parser
 
 			this->skipNewline();
 			Token t = this->front();
-			this->pop_front();
+			this->tokens.pop_front();
 
 			this->skipNewline();
 
 			this->curtok = t;
 			return t;
 		}
+
+		// Token eatNoSkip()
+		// {
+		// 	// returns the current front, then pops front.
+		// 	if(this->tokens.size() == 0)
+		// 		parserError(*this, "Unexpected end of input");
+
+		// 	auto t = this->front();
+		// 	this->pop_front();
+
+		// 	this->curtok = t;
+		// 	return t;
+		// }
 
 		void skipNewline()
 		{

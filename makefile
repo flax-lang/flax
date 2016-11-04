@@ -59,15 +59,21 @@ GLTESTSRC		:= build/gltest.flx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx ci prep
+.PHONY: copylibs jit compile clean build osx ci prep satest osxflags
 
 prep:
 	@mkdir -p $(dir $(OUTPUT))
 
-osx: CXXFLAGS += -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-osx: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+osxflags: CXXFLAGS += -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 
-osx: prep jit
+osxflags:
+
+
+osx: prep jit osxflags
+
+satest: prep osxflags build
+	@$(OUTPUT) $(FLXFLAGS) -run -o build/standalone build/standalone.flx
 
 ci: prep jit
 

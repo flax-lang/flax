@@ -35,8 +35,10 @@ run
 *.sublime-*
 build/sysroot
 .modifydates
+
 build/test
 build/gltest
+build/standalone
 *.ll
 *.bc
 

@@ -1,0 +1,32 @@
+// standalone.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+public func lol<U>(a: U, b: U[]) -> U
+{
+	return a
+}
+
+import LibCInterface
+import tests.generics
+
+public func main()
+{
+	let x = alloc[5] int
+	lol(10, x)
+
+	var y: Foo.Test[]
+
+	doGenericsTest()
+
+	printf("done\n")
+}
+
+namespace Foo
+{
+	struct Test
+	{
+		var x: int
+	}
+}
