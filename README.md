@@ -83,8 +83,8 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - For macOS people, simply call `make`
 - Linux people, follow roughly the instructions in `.travis.yml`, they have been tested on Ubuntu 14.04 LTS and up.
 - A C++14-compatible compiler should be used, `g++-6` is good. Due to *reasons*, `clang++` doesn't like `libstdc++`, and `libllvm` from `apt` is linked with `libstdc++`, so you basically need to use `g++` on Linux.
-- Find the 'flaxc' executable in 'build/sysroot/usr/local/bin'
-- Additionally, the (admittedly limited) standard library will be copied from './libs' to './build/sysroot/usr/local/lib/flaxlibs/'
+- Find the `flaxc` executable in `build/sysroot/usr/local/bin`
+- Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 
 - The `shakefile` still works, however.
 
@@ -106,7 +106,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Found a bug? Want a feature?
 - Just submit a pull request!
 - Alternatively, join the discussion at #flax-lang on Freenode IRC.
-- Requested help: Error catching, please! Sometimes the Flax compiler will fail to catch invalid things, leading to fired assertions or even broken LLVM-IR being generated (on the LLVM level, which gives cryptic messages)
+- Requested help: Improved edge-case detection! With FIR now, cryptic LLVM assertions are much rarer, but might still happen.
 
 
 -----------------------------------------------
