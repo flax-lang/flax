@@ -192,13 +192,13 @@ namespace fir
 		// base things
 		size_t id = 0;
 
-		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t inds, size_t bits);
-		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, size_t inds, bool issigned, size_t bits);
-		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t inds, size_t arrsize, Type* elm);
-		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, size_t inds, bool islit, std::string name,
+		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
+		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);
+		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t arrsize, Type* elm);
+		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, bool islit, std::string name,
 			std::deque<Type*> mems);
 
-		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, size_t inds, bool isva, std::deque<Type*> args,
+		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::deque<Type*> args,
 			Type* ret);
 
 		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
@@ -330,22 +330,16 @@ namespace fir
 		friend struct FTContext;
 		friend FTContext* createFTContext();
 
-		// methods
-		size_t getIndirections();
-
-
 		virtual bool isTypeEqual(Type* other) override;
 		virtual PointerType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
-		PointerType(size_t inds, Type* base);
+		PointerType(Type* base);
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 
-
-		size_t indirections = 0;
 		Type* baseType = 0;
 
 		// static funcs

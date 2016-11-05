@@ -91,6 +91,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// we can shadow outer variables with our own.
 	cgi->pushScope();
 	cgi->setCurrentFunctionScope(this);
+	// auto s = cgi->saveAndClearScope();
 
 
 	// to support declaring functions inside functions, we need to remember
@@ -228,7 +229,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	// we've codegen'ed that stuff, pop the symbol table
+	// cgi->restoreScope(s);
 	cgi->popScope();
 
 	if(prevBlock)
