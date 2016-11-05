@@ -57,6 +57,8 @@ namespace GenError
 
 	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncDefPair> cands);
 
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>> errs) __attribute__((noreturn));
+
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args) __attribute__((noreturn));
 }
 
@@ -159,6 +161,9 @@ namespace Codegen
 		void removeRefCountedValueIfExists(fir::Value* ptr);
 		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
+
+		std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> saveAndClearScope();
+		void restoreScope(std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> s);
 
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc, bool doFuncTree = true);
@@ -277,20 +282,23 @@ namespace Codegen
 		Ast::Result_t createParameterPack(fir::Type* type, std::deque<fir::Value*> parameters);
 
 
-		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc);
-		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
-			fir::FunctionType* ft);
+			fir::FunctionType* ft, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
 		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
-			Ast::Func* func, std::deque<fir::Type*> params);
+			Ast::Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex);
+
+		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+
+
+
 
 		FuncDefPair tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::Expr* user, std::string name, fir::Value* extra);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::deque<fir::Function*> cands,
 			fir::Value* extra);
-
-		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
-			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);

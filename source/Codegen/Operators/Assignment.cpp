@@ -361,31 +361,40 @@ namespace Operators
 				// if it's a dot operator, we need to do the appropriate thing.
 
 				fir::Function* res = 0;
+				std::map<Func*, std::pair<std::string, Expr*>> errs;
 				if(MemberAccess* ma = dynamic_cast<MemberAccess*>(rightExpr))
 				{
-					res = cgi->resolveAndInstantiateGenericFunctionReference(rightExpr, oldf, lhs->getType()->toFunctionType(), ma);
+					res = cgi->resolveAndInstantiateGenericFunctionReference(rightExpr, oldf, lhs->getType()->toFunctionType(), ma, &errs);
 				}
 				else
 				{
 					auto cands = cgi->findGenericFunctions(rhs->getName().name);
 
 					FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
-						cands, lhs->getType()->toFunctionType());
+						cands, lhs->getType()->toFunctionType(), &errs);
 
 					res = fp.firFunc;
 				}
 
 
 
-				if(res != 0)
+				if(res == 0)
 				{
-					// rewrite history
-					rhs = res;
+					exitless_error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
+						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
+
+					if(errs.size() > 0)
+					{
+						for(auto p : errs)
+			 				info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
+					}
+
+					doTheExit();
 				}
 				else
 				{
-					error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
-						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
+					// rewrite history
+					rhs = res;
 				}
 			}
 		}

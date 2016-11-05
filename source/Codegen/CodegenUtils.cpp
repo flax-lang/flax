@@ -86,6 +86,24 @@ namespace Codegen
 		return fir::getDefaultFTContext();
 	}
 
+	typedef std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> _Scope_t;
+
+	_Scope_t CodegenInstance::saveAndClearScope()
+	{
+		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->namespaceStack);
+		this->clearScope();
+
+		return s;
+	}
+
+	void CodegenInstance::restoreScope(_Scope_t s)
+	{
+		std::tie(this->symTabStack, this->refCountingStack, this->namespaceStack) = s;
+	}
+
+
+
+
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
@@ -96,7 +114,7 @@ namespace Codegen
 	{
 		this->symTabStack.clear();
 		this->refCountingStack.clear();
-		this->clearNamespaceScope();
+		this->namespaceStack.clear();
 	}
 
 	void CodegenInstance::pushScope()

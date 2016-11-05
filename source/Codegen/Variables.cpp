@@ -283,30 +283,37 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 			iceAssert(oldf);
 
 			fir::Function* fn = 0;
-
+			std::map<Func*, std::pair<std::string, Expr*>> errs;
 			if(MemberAccess* ma = dynamic_cast<MemberAccess*>(this->initVal))
 			{
-				auto fp = cgi->resolveAndInstantiateGenericFunctionReference(this, oldf, this->concretisedType->toFunctionType(), ma);
+				auto fp = cgi->resolveAndInstantiateGenericFunctionReference(this, oldf, this->concretisedType->toFunctionType(), ma, &errs);
 				fn = fp;
 			}
 			else
 			{
 				auto fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
-					cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
+					cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType(), &errs);
 
 				fn = fp.firFunc;
 			}
 
-
-			if(fn != 0)
+			if(fn == 0)
 			{
-				// rewrite history
-				val = fn;
+				exitless_error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'",
+					oldf->getType()->str().c_str(), this->concretisedType->str().c_str());
+
+				if(errs.size() > 0)
+				{
+					for(auto p : errs)
+		 				info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
+				}
+
+				doTheExit();
 			}
 			else
 			{
-				error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'", oldf->getType()->str().c_str(),
-					this->concretisedType->str().c_str());
+				// rewrite history
+				val = fn;
 			}
 		}
 	}

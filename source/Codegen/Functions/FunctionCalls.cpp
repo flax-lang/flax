@@ -317,9 +317,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
 		if(!rt.resolved)
 		{
-			auto pair = cgi->tryResolveGenericFunctionCall(this);
+			auto pair = cgi->tryResolveGenericFunctionCall(this, &errs);
 			if(pair.firFunc || pair.funcDef)
 				rt = Resolved_t(pair);
 
@@ -333,7 +334,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// label
 			failedToFind:
 
-			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params, errs);
 		}
 
 
@@ -416,14 +417,15 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 		}
 		else
 		{
-			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this);
+			std::map<Func*, std::pair<std::string, Expr*>> errs;
+			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this, &errs);
 			if(genericMaybe.firFunc)
 			{
 				this->cachedResolveTarget = Resolved_t(genericMaybe);
 				return genericMaybe.firFunc->getReturnType();
 			}
 
-			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params);
+			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params, errs);
 		}
 	}
 
