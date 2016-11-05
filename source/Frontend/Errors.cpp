@@ -426,6 +426,26 @@ namespace GenError
 		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args,
+		std::map<Func*, std::pair<std::string, Expr*>> errs)
+	{
+		if(errs.empty())
+		{
+			prettyNoSuchFunctionError(cgi, expr, name, args);
+		}
+		else
+		{
+			// heh.
+			exitless_error(expr, "No valid target for function call to '%s'", name.c_str());
+
+			for(auto p : errs)
+				info(p.second.second, "Candidate not suitable: %s", p.second.first.c_str());
+
+			doTheExit();
+		}
+	}
+
+
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
 	{
 		auto cands = cgi->resolveFunctionName(name);
@@ -438,8 +458,6 @@ namespace GenError
 		error(expr, ops, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
 			name.c_str(), paramstr.c_str(), cands.size(), candstr.c_str());
 	}
-
-
 
 
 

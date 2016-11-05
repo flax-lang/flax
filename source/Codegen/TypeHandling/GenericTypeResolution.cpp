@@ -10,50 +10,6 @@ using namespace Ast;
 
 namespace Codegen
 {
-
-	/*
-		todo: this needs a rewrite
-
-		limitations:
-
-		1. does not handle arrays, like... at all.
-			- indirections only does the pointer stuff, arrays aren't reduced to their base type to be matched
-			- eg. U[] isn't treated as an array of U, which would get resolved, but rather as its own type or something
-			- this clearly fails.
-
-		2. function types aren't handled, like... at alll
-			- calling foo(a: [(T) -> T]) for instance with some f(int) -> int, does not work
-			- something something jon blow iterative solver something something
-
-		3. some better diagnostics?
-			- something like clang -- candidate 'foo' was rejected because 'bla bla bla'
-			- we could just have this function return a string, with its own reason
-			- nothing complicated.
-
-		overall this function needs to be a lot smarter about how it solves types
-		thankfully it's all in one place.
-
-		also we should move all the generic stuff to its own file
-
-
-		basic algorithm:
-
-		loop through all function parameters
-
-		build a list of string -> list of types
-		each generic type (T, K, etc) would have a list of candidate fir::Types*
-		also: possibly need to recursively resolve function types
-		eg. if the main function takes an argument of type [(T, [<K>(K, K) -> K]) -> T or something stupid like that
-
-		anyway
-		once the list of candidates are built,
-		for each generic type, loop through each candidate, make sure they are compatible
-		if they are not, die
-
-		if they are, woohooo...?
-	*/
-
-
 	static std::string _makeErrorString(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 	static std::string _makeErrorString(const char* fmt, ...)
 	{
@@ -87,8 +43,13 @@ namespace Codegen
 			// then there's no reason for the parameters to mismatch.
 			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
 			{
-				*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu", candidate->params.size(), args.size());
-				*failedExpr = candidate;
+				if(errorString && failedExpr)
+				{
+					*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu",
+						candidate->params.size(), args.size());
+
+					*failedExpr = candidate;
+				}
 				return false;
 			}
 			else if(candidate->parentClass && !candidate->isStatic)
@@ -96,8 +57,13 @@ namespace Codegen
 				// make sure it's only one off
 				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
 				{
-					*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu", candidate->params.size(), args.size());
-					*failedExpr = candidate;
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu",
+							candidate->params.size(), args.size());
+
+						*failedExpr = candidate;
+					}
 					return false;
 				}
 
@@ -118,8 +84,13 @@ namespace Codegen
 		{
 			if(args.size() < candidate->params.size() - 1)
 			{
-				*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu", candidate->params.size(), args.size());
-				*failedExpr = candidate;
+				if(errorString && failedExpr)
+				{
+					*errorString = _makeErrorString("Mismatched argument count; expected at least %zu, have %zu",
+						candidate->params.size() - 1, args.size());
+
+					*failedExpr = candidate;
+				}
 				return false;
 			}
 
@@ -177,9 +148,12 @@ namespace Codegen
 
 			if(a != b && cgi->getAutoCastDistance(b, a) == -1)
 			{
-				*errorString = _makeErrorString("No conversion from given type '%s' to expected type '%s' in argument %zu",
-					b->str().c_str(), a->str().c_str(), t.first);
-				*failedExpr = candidate->params[t.first];
+				if(errorString && failedExpr)
+				{
+					*errorString = _makeErrorString("No conversion from given type '%s' to expected type '%s' in argument %zu",
+						b->str().c_str(), a->str().c_str(), t.first + 1);
+					*failedExpr = candidate->params[t.first];
+				}
 				return false;
 			}
 		}
@@ -187,39 +161,6 @@ namespace Codegen
 
 
 		// ok, now check the generic types
-
-		// check that the transformations are compatible
-		// eg. we don't try to pass a parameter T to the function expecting K -- even if the base types match
-
-		#if 0
-		for(size_t i = 0; i < candidate->params.size(); i++)
-		{
-			// we already checked the non-generic ones
-			if(genericPositions.find(i) != genericPositions.end())
-			{
-				pts::Type* p = 0; std::deque<pts::TypeTransformer> ctrfs;
-				std::tie(p, ctrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
-
-				fir::Type* a = 0; std::deque<pts::TypeTransformer> ptrfs;
-				std::tie(a, ptrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(args[i]);
-
-				if(!pts::areTransformationsCompatible(ctrfs, ptrfs))
-				{
-					*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-						" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i,
-						candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
-
-					*failedExpr = candidate->params[i];
-					return false;
-				}
-
-				// ok.
-			}
-		}
-		#endif
-
-
-		// check the actual types, now that we know the transformations match
 		std::map<std::string, fir::Type*> thistm;
 
 		for(auto gt : candidateGenerics)
@@ -241,9 +182,12 @@ namespace Codegen
 				{
 					// no casting here, generic types need to be exact.
 
-					*errorString = _makeErrorString("Conflicting solutions for parametric type '%s' in argument %zu: '%s' and '%s'",
-						gt.first.c_str(), t.first, res->str().c_str(), t.second->str().c_str());
-					*failedExpr = candidate->params[t.first];
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Conflicting solutions for parametric type '%s' in argument %zu: '%s' and '%s'",
+							gt.first.c_str(), t.first + 1, res->str().c_str(), t.second->str().c_str());
+						*failedExpr = candidate->params[t.first];
+					}
 					return false;
 				}
 			}
@@ -266,11 +210,14 @@ namespace Codegen
 
 				if(!pts::areTransformationsCompatible(gtrfs, argtrfs))
 				{
-					*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-						" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i,
-						candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
+							" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i + 1,
+							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
 
-					*failedExpr = candidate->params[i];
+						*failedExpr = candidate->params[i];
+					}
 					return false;
 				}
 
@@ -281,11 +228,15 @@ namespace Codegen
 				}
 				else if(sol != soln)
 				{
-					*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-						" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i,
-						candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
+							" expected '%s', have '%s' (Previously '%s' was solved as '%s')", genericPositions[i].c_str(), i + 1,
+							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str(), genericPositions[i].c_str(),
+							sol->str().c_str());
 
-					*failedExpr = candidate->params[i];
+						*failedExpr = candidate->params[i];
+					}
 					return false;
 				}
 			}
@@ -327,8 +278,8 @@ namespace Codegen
 
 				if(args.size() >= candidate->params.size())
 				{
-					iceAssert(candidate->params.back()->ptype->isDynamicArrayType());
-					pts::Type* vbase = candidate->params.back()->ptype->toDynamicArrayType()->base;
+					iceAssert(candidate->params.back()->ptype->isVariadicArrayType());
+					pts::Type* vbase = candidate->params.back()->ptype->toVariadicArrayType()->base;
 
 					pts::Type* _ = 0; std::deque<pts::TypeTransformer> trfs;
 					std::tie(_, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(vbase);
@@ -346,20 +297,25 @@ namespace Codegen
 						if(resolvedvbase != fvbase && cgi->getAutoCastDistance(fvbase, resolvedvbase) == -1)
 						{
 							// damn, this is a verbose error message.
-							*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no conversion from given base type '%s' to expected base type '%s' (in solution for generic type '%s')", _->str().c_str(),
-								resolved->str().c_str(), baset.c_str());
+							if(errorString && failedExpr)
+							{
+								*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no conversion from given base type '%s' to expected base type '%s' (in solution for parametric type '%s', solved as '%s')",
+									fvbase->str().c_str(), resolvedvbase->str().c_str(), baset.c_str(), resolved->str().c_str());
 
-							*failedExpr = candidate->params.back();
+								*failedExpr = candidate->params.back();
+							}
 							return false;
 						}
 
 						if(!pts::areTransformationsCompatible(trfs, argtrfs))
 						{
 							// damn, this is a verbose error message.
-							*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no transformations to get from given base type '%s' to generic type '%s' with existing solution '%s' (ie. expected base type '%s')",
-								fvbase->str().c_str(), baset.c_str(), resolved->str().c_str(), resolvedvbase->str().c_str());
+							if(errorString && failedExpr)
+							{
+								*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no transformations to get from given base type '%s' to parametric type '%s' with existing solution '%s' (ie. expected base type '%s')", fvbase->str().c_str(), baset.c_str(), resolved->str().c_str(), resolvedvbase->str().c_str());
 
-							*failedExpr = candidate->params.back();
+								*failedExpr = candidate->params.back();
+							}
 							return false;
 						}
 					}
@@ -370,10 +326,13 @@ namespace Codegen
 							if(cgi->getAutoCastDistance(args[i], resolvedvbase) == -1)
 							{
 								// damn, this is a verbose error message.
-								*errorString = _makeErrorString("Incompatible parameter in variadic argument to function; no conversion from given type '%s' to expected type '%s', in variadic argument %zu", args[i]->str().c_str(),
-									resolvedvbase->str().c_str(), i + 2 - candidate->params.size());
+								if(errorString && failedExpr)
+								{
+									*errorString = _makeErrorString("Incompatible parameter in variadic argument to function; no conversion from given type '%s' to expected type '%s', in variadic argument %zu", args[i]->str().c_str(),
+										resolvedvbase->str().c_str(), i + 2 - candidate->params.size());
 
-								*failedExpr = candidate->params.back();
+									*failedExpr = candidate->params.back();
+								}
 								return false;
 							}
 						}
@@ -393,9 +352,12 @@ namespace Codegen
 
 				if(args.size() < candidate->params.size())
 				{
-					*errorString = _makeErrorString("No variadic parameters were given, so no solution for generic type '%s' could be determined (it is only used in the variadic parameter pack)", baset.c_str());
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("No variadic parameters were given, so no solution for parametric type '%s' could be determined (it is only used in the variadic parameter pack)", baset.c_str());
 
-					*failedExpr = candidate->params.back();
+						*failedExpr = candidate->params.back();
+					}
 					return false;
 				}
 
@@ -411,9 +373,12 @@ namespace Codegen
 				{
 					if(args[i] != first && cgi->getAutoCastDistance(first, args[i]))
 					{
-						*errorString = _makeErrorString("Conflicting types in variadic arguments -- '%s' and '%s' (in solution for generic type '%s')", args[i]->str().c_str(), first->str().c_str(), baset.c_str());
+						if(errorString && failedExpr)
+						{
+							*errorString = _makeErrorString("Conflicting types in variadic arguments -- '%s' and '%s' (in solution for parametric type '%s')", args[i]->str().c_str(), first->str().c_str(), baset.c_str());
 
-						*failedExpr = candidate->params.back();
+							*failedExpr = candidate->params.back();
+						}
 						return false;
 					}
 
@@ -423,10 +388,14 @@ namespace Codegen
 
 					if(!pts::areTransformationsCompatible(_trfs, trfs))
 					{
-						*errorString = _makeErrorString("Incompatible base types for variadic argument %zu; no transformations to get from given base type '%s' to expected type '%s'  (in solution for generic type '%s')", i, args[i]->str().c_str(),
-							candidate->params.back()->ptype->toDynamicArrayType()->base->str().c_str(), baset.c_str());
+						if(errorString && failedExpr)
+						{
+							*errorString = _makeErrorString("Incompatible base types for variadic argument %zu; no transformations to get from given base type '%s' to expected type '%s'  (in solution for parametric type '%s')", i + 1,
+								args[i]->str().c_str(), candidate->params.back()->ptype->toDynamicArrayType()->base->str().c_str(),
+								baset.c_str());
 
-						*failedExpr = candidate->params.back();
+							*failedExpr = candidate->params.back();
+						}
 						return false;
 					}
 				}
@@ -456,24 +425,30 @@ namespace Codegen
 
 				if(!doesConform)
 				{
-					*errorString = _makeErrorString("Solution for generic type '%s' ('%s') does not conform to protocol '%s'",
-						cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
+							cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
 
+						*failedExpr = candidate;
+					}
+					return false;
+				}
+			}
+		}
+
+
+
+		// check that we actually have an entry for every type
+		for(auto t : candidate->genericTypes)
+		{
+			if(thistm.find(t.first) == thistm.end())
+			{
+				if(errorString && failedExpr)
+				{
+					*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
 					*failedExpr = candidate;
-					return false;
 				}
-			}
-		}
-
-
-
-		// check that we actually have an entry for every type
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-			{
-				*errorString = _makeErrorString("No solution for generic type '%s' was found", t.first.c_str());
-				*failedExpr = candidate;
 				return false;
 			}
 		}
@@ -490,312 +465,11 @@ namespace Codegen
 
 
 
-
-
-
-
-
-	static bool _checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
-		FuncDecl* candidate, std::deque<fir::Type*> args)
-	{
-		std::string err;
-		Expr* fe = 0;
-
-		return _checkGenericFunction2(cgi, gtm, candidate, args, &err, &fe);
-
-		#if 0
-		std::map<std::string, fir::Type*> thistm;
-
-		// get rid of this stupid literal nonsense
-		for(size_t i = 0; i < args.size(); i++)
-		{
-			if(args[i]->isPrimitiveType() && args[i]->toPrimitiveType()->isLiteralType())
-				args[i] = args[i]->toPrimitiveType()->getUnliteralType();
-		}
-
-
-		// now check if we *can* instantiate it.
-		// first check the number of arguments.
-
-		bool didSelfParam = false;
-		fir::Type* originalFirstParam = 0;
-
-		if(candidate->params.size() != args.size())
-		{
-			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
-			// then there's no reason for the parameters to mismatch.
-			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
-			{
-				return false;
-			}
-			else if(candidate->parentClass && !candidate->isStatic)
-			{
-				// make sure it's only one off
-				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
-					return false;
-
-				didSelfParam = true;
-				iceAssert(args.front()->isPointerType() && args.front()->getPointerElementType()->isClassType() && "what, no.");
-
-				originalFirstParam = args.front();
-				args.pop_front();
-
-				iceAssert(candidate->params.size() == args.size());
-			}
-		}
-
-
-
-		// param count matches...
-		// do a similar thing as the actual mangling -- build a list of
-		// uniquely named types.
-
-		// string is name, map is a map from position to indirs.
-		std::map<std::string, std::map<int, int>> typePositions;
-		std::map<int, std::pair<std::string, int>> revTypePositions;
-
-		std::vector<int> nonGenericTypes;
-
-
-
-		// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
-		// so we only check the first n - 1 parameters.
-		VarDecl* varParam = 0;
-		if(candidate->isVariadic)
-		{
-			varParam = candidate->params.back();
-			candidate->params.pop_back();
-		}
-
-
-
-		int pos = 0;
-		for(auto p : candidate->params)
-		{
-			int indirs = 0;
-			std::string s = p->ptype->str();
-			s = unwrapPointerType(s, &indirs);
-
-			if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
-			{
-				typePositions[s][pos] = indirs;
-				revTypePositions[pos] = { s, indirs };
-			}
-			else
-			{
-				nonGenericTypes.push_back(pos);
-			}
-
-			pos++;
-		}
-
-
-		// since this is bound by the size of the candidates, we'll only check the non-var parameters
-		// this ensures we don't array out of bounds.
-		std::map<std::string, fir::Type*> checked;
-		for(size_t i = 0; i < candidate->params.size(); i++)
-		{
-			if(revTypePositions.find(i) != revTypePositions.end())
-			{
-				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
-				std::string s;
-				int indirs = 0;
-
-				std::tie(s, indirs) = revTypePositions[i];
-
-				fir::Type* ftype = args[i];
-
-				int givenindrs = 0;
-				while(ftype->isPointerType())
-				{
-					ftype = ftype->getPointerElementType();
-					givenindrs++;
-				}
-
-				// check that the base types match
-				// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
-				// ftype here has been reduced.
-
-				if(checked.find(s) != checked.end())
-				{
-					if(ftype != checked[s])
-						return false;
-				}
-				else
-				{
-					checked[s] = ftype;
-				}
-
-
-				// check that we have 'enough' pointerness
-				// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
-				if(givenindrs < indirs)
-					return false;
-			}
-			else
-			{
-				// check normal types.
-				fir::Type* a = args[i];
-				fir::Type* b = candidate->params[i]->getType(cgi);
-
-				if(a != b) return false;
-			}
-		}
-
-
-
-
-
-		// fill in the typemap.
-		// note that it's okay if we just have one -- if we did this loop more
-		// than once and screwed up the tm, that means we have more than one
-		// candidate, and will error anyway.
-
-		for(auto pair : typePositions)
-		{
-			int pos = 0;
-			int indrs = 0;
-
-			std::tie(pos, indrs) = *pair.second.begin();
-
-			fir::Type* t = args[pos];
-			for(int i = 0; i < indrs; i++)
-				t = t->getPointerElementType();
-
-			thistm[pair.first] = t;
-		}
-
-
-		// last phase: ensure the type constraints are met
-		for(auto cst : thistm)
-		{
-			TypeConstraints_t constr = candidate->genericTypes[cst.first];
-
-			for(auto protstr : constr.protocols)
-			{
-				ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
-				iceAssert(prot);
-
-				bool doesConform = prot->checkTypeConformity(cgi, cst.second);
-
-				if(!doesConform)
-					return false;
-			}
-		}
-
-
-		// if we're variadic -- check it.
-		if(varParam != 0)
-		{
-			// add it back first.
-			candidate->params.push_back(varParam);
-
-			// get the type.
-			int indirs = 0;
-			std::string base = varParam->ptype->toVariadicArrayType()->base->str();
-			base = unwrapPointerType(base, &indirs);
-
-
-			if(typePositions.find(base) != typePositions.end())
-			{
-				// already have it
-				// ensure it matches with the ones we've already found.
-
-				fir::Type* resolved = thistm[base];
-				iceAssert(resolved);
-
-
-
-				if(args.size() >= candidate->params.size())
-				{
-					// again, check the direct forwarding case
-					if(args.size() == candidate->params.size() && args.back()->isParameterPackType()
-						&& args.back()->toParameterPackType()->getElementType() == resolved)
-					{
-						// direct.
-						// do nothing.
-					}
-					else
-					{
-						for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-						{
-							if(args[i] != resolved)
-								return false;
-						}
-
-						// should be fine now.
-					}
-				}
-				else
-				{
-					// no varargs were even given
-					// since we have already inferred the type from the other parameters,
-					// we can give this a free pass.
-				}
-			}
-			else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
-			{
-				// ok, we need to be able to deduce the type from the vararg only.
-				// so if none were provided, then give up.
-
-				if(args.size() < candidate->params.size())
-					return false;
-
-
-				// great, now just deduce it.
-				// we just need to make sure all the Ts match, and the number of indirections
-				// match *and* are greater than or equal to the specified level.
-
-				fir::Type* first = args[candidate->params.size() - 1];
-
-				// first, make sure the indirections tally
-				int givenindrs = 0;
-				if(first->isPointerType())
-					givenindrs = first->toPointerType()->getIndirections();
-
-				if(givenindrs < indirs)
-					return false;
-
-
-				// ok, check the type itself
-				for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-				{
-					if(args[i] != first)
-						return false;
-				}
-
-				// ok now.
-				fir::Type* reduced = first;
-				while(reduced->isPointerType())
-					reduced = reduced->getPointerElementType();
-
-				thistm[base] = reduced;
-			}
-		}
-
-
-
-
-
-
-
-		// check that we actually have an entry for every type
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-				return false;
-		}
-
-
-		*gtm = thistm;
-		return true;
-		#endif
-	}
 
 
 
 	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
-		Func* func, std::deque<fir::Type*> params)
+		Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex)
 	{
 		iceAssert(func);
 		iceAssert(func->decl);
@@ -805,7 +479,7 @@ namespace Codegen
 		std::map<std::string, fir::Type*> gtm = _gtm;
 		if(gtm.empty())
 		{
-			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
+			bool res = _checkGenericFunction2(this, &gtm, func->decl, params, err, ex);
 			if(!res) return FuncDefPair::empty();
 		}
 
@@ -848,7 +522,9 @@ namespace Codegen
 		if(needToCodegen)
 		{
 			// dirty: use 'lhsPtr' to pass the version we want.
+			auto s = this->saveAndClearScope();
 			func->codegen(this, ffunc);
+			this->restoreScope(s);
 		}
 
 		this->removeFunctionFromScope(FuncDefPair(0, func->decl, func));
@@ -858,7 +534,8 @@ namespace Codegen
 	}
 
 
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates,
+		std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
 		// try and resolve shit
 		std::map<std::string, fir::Type*> gtm;
@@ -875,10 +552,12 @@ namespace Codegen
 		auto it = candidates.begin();
 		while(it != candidates.end())
 		{
-			bool result = _checkGenericFunction(this, &gtm, (*it)->decl, fargs);
+			std::string s; Expr* e = 0;
+			bool result = _checkGenericFunction2(this, &gtm, (*it)->decl, fargs, &s, &e);
 
 			if(!result)
 			{
+				if(errs) (*errs)[*it] = { s, e };
 				it = candidates.erase(it);
 			}
 			else
@@ -901,25 +580,34 @@ namespace Codegen
 				candidates.size(), cands.c_str());
 		}
 
-		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
+		// we know gtm isn't empty, and we only set the errors if we need to verify
+		// so we can safely ignore them here.
+		std::string _; Expr* __ = 0;
+		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs, &_, &__);
 	}
 
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
 		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
-		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
+		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates, errs);
 	}
 
 
 	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
-		fir::FunctionType* ft)
+		fir::FunctionType* ft, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
 		std::deque<FuncDefPair> ret;
 		for(auto fn : candidates)
 		{
-			auto fp = this->instantiateGenericFunctionUsingParameters(user, std::map<std::string, fir::Type*>(), fn, ft->getArgumentTypes());
+			std::string s; Expr* e = 0;
+			auto fp = this->instantiateGenericFunctionUsingParameters(user, std::map<std::string, fir::Type*>(), fn,
+				ft->getArgumentTypes(), &s, &e);
+
 			if(fp.firFunc && fp.funcDef)
 				ret.push_back(fp);
+
+			else if(errs)
+				(*errs)[fn] = { s, e };
 		}
 
 		if(ret.empty())

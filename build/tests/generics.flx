@@ -119,9 +119,14 @@ func foo_generic<T, K>(a: T, b: K)
 	// }
 }
 
-func arrtest<T>(a: T, b: T[]) -> T
+func arrtest<T>(b: T, x: T[]) -> T
 {
-	return a
+	return b
+}
+
+func foo(a: f64*, b: f64*[])
+{
+	arrtest(a, b)
 }
 
 
@@ -143,9 +148,9 @@ public func doGenericsTest()
 	SomeNS.ngen("foo")
 
 
-
-	let x = alloc[5] string
-	arrtest("foo", x)
+	let x = alloc[5] f64*
+	let y = 50.3;
+	arrtest(&y, x)
 }
 
 

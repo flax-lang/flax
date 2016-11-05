@@ -66,24 +66,7 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		// basically return a new version of ourselves
-		if(!this->arrayElementType->isParametricType())
-			return this;
-
-		ParametricType* tp = this->arrayElementType->toParametricType();
-
-		if(reals.find(tp->getName()) != reals.end())
-		{
-			auto t = reals[tp->getName()];
-			if(t->isParametricType())
-				_error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
-
-			return ArrayType::get(t, this->arraySize);
-		}
-		else
-		{
-			_error_and_exit("Failed to reify, no type found for '%s'", tp->getName().c_str());
-		}
+		return ArrayType::get(this->arrayElementType->reify(reals), this->arraySize);
 	}
 }
 

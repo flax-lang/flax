@@ -1078,6 +1078,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 	// what is the right side?
+
+	std::map<Func*, std::pair<std::string, Expr*>> errs;
 	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
 	{
 		Resolved_t res;
@@ -1095,7 +1097,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 						flist.push_back({ f.second });
 				}
 
-				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
 				if(!fp.isEmpty()) res = Resolved_t(fp);
 			}
 		}
@@ -1132,7 +1134,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 							flist.push_back(f);
 					}
 
-					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
 					if(!fp.isEmpty()) res = Resolved_t(fp);
 				}
 			}
@@ -1170,7 +1172,14 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			}
 			else
 			{
-				GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+				if(errs.size() > 0)
+				{
+					GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params, errs);
+				}
+				else
+				{
+					GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+				}
 			}
 		}
 
@@ -1372,7 +1381,7 @@ FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* us
 
 
 fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
-	fir::FunctionType* instantiatedFT, MemberAccess* ma)
+	fir::FunctionType* instantiatedFT, MemberAccess* ma, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 {
 	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instantiate generic function with another generic function");
 
@@ -1468,9 +1477,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 			{
 				// instantiate it.
 
-				FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT);
-
-				iceAssert(fp.firFunc);
+				FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT, errs);
 				return fp.firFunc;
 			}
 		}
@@ -1482,7 +1489,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 	else
 	{
 		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
-			this->findGenericFunctions(oldf->getName().name), instantiatedFT).firFunc;
+			this->findGenericFunctions(oldf->getName().name), instantiatedFT, errs).firFunc;
 	}
 }
 
@@ -1575,7 +1582,9 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 	if(!res.resolved)
 	{
 		// look for generic ones
-		FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
+		FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist, &errs);
+
 		if(!fp.isEmpty())
 		{
 			res = Resolved_t(fp);
@@ -1705,8 +1714,16 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 			ops.caret = fc->pin;
 
-			error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			exitless_error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				fc->name.c_str(), cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
+
+			if(errs.size() > 0)
+			{
+				for(auto p : errs)
+					info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
+			}
+
+			doTheExit();
 		}
 	}
 

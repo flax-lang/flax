@@ -93,7 +93,7 @@ namespace pts
 		// great.
 		iceAssert(type);
 
-		Type* ret = type;
+
 		std::deque<TypeTransformer> trfs;
 		while(!type->isNamedType())
 		{
@@ -105,15 +105,14 @@ namespace pts
 			if(t == type)
 			{
 				iceAssert(trf.type == TypeTransformer::Type::None);
-				ret = t;
-				break;
+				return { type, trfs };
 			}
 
 			type = t;
-			trfs.push_back(trf);
+			trfs.push_front(trf);
 		}
 
-		return { ret, trfs };
+		return { type, trfs };
 	}
 
 
@@ -122,7 +121,6 @@ namespace pts
 		// great.
 		iceAssert(type);
 
-		fir::Type* ret = type;
 		std::deque<TypeTransformer> trfs;
 		while(true)
 		{
@@ -134,15 +132,14 @@ namespace pts
 			if(t == type)
 			{
 				iceAssert(trf.type == TypeTransformer::Type::None);
-				ret = t;
-				break;
+				return { type, trfs };
 			}
 
 			type = t;
-			trfs.push_back(trf);
+			trfs.push_front(trf);
 		}
 
-		return { ret, trfs };
+		return { type, trfs };
 	}
 
 
@@ -765,7 +762,7 @@ namespace pts
 
 	std::string DynamicArrayType::str()
 	{
-		return this->base->str() + "[?]";
+		return this->base->str() + "[]";
 	}
 
 	std::string VariadicArrayType::str()

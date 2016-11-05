@@ -3,30 +3,28 @@
 // Licensed under the Apache License Version 2.0.
 
 
-public func lol<U>(a: U, b: U[]) -> U
-{
-	return a
-}
 
-import LibCInterface
-import tests.generics
+// import LibCInterface
+
+ffi func printf(fmt: i8*, ...) -> i32
 
 public func main()
 {
-	let x = alloc[5] int
-	lol(10, x)
-
-	var y: Foo.Test[]
-
-	doGenericsTest()
+	let a = 4.4
+	let b = 5.5
+	let c = 6.6
+	// foo(10, &a, &b, &c)
 
 	printf("done\n")
 }
 
-namespace Foo
+
+func arrtest<T>(b: T, x: T**[...]) -> T
 {
-	struct Test
-	{
-		var x: int
-	}
+	return b
+}
+
+func foo(a: f64*, b: f64***[...])
+{
+	arrtest(a, b)
 }
