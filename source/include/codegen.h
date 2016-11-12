@@ -290,9 +290,12 @@ namespace Codegen
 		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex);
 
-		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
+
+		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
+		fir::Function* instantiateGenericFunctionUsingValueAndType(Ast::Expr* user, fir::Function* oldf, fir::FunctionType* originalft,
+			fir::FunctionType* ft, Ast::MemberAccess* ma);
 
 
 

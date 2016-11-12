@@ -26,7 +26,376 @@ namespace Codegen
 		return ret;
 	}
 
-	static bool _checkGenericFunction2(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
+
+
+	static void _getAllGenericTypesContainedWithinRecursively(pts::Type* t, const std::map<std::string, TypeConstraints_t>& gt,
+		std::deque<std::string>* list)
+	{
+		if(t->isNamedType())
+		{
+			if(gt.find(t->toNamedType()->name) != gt.end())
+				list->push_back(t->toNamedType()->name);
+		}
+		else if(t->isFunctionType())
+		{
+			for(auto p : t->toFunctionType()->argTypes)
+				_getAllGenericTypesContainedWithinRecursively(p, gt, list);
+
+			_getAllGenericTypesContainedWithinRecursively(t->toFunctionType()->returnType, gt, list);
+		}
+		else if(t->isTupleType())
+		{
+			for(auto m : t->toTupleType()->types)
+				_getAllGenericTypesContainedWithinRecursively(m, gt, list);
+		}
+		else if(t->isPointerType())
+		{
+			while(t->isPointerType())
+				t = t->toPointerType()->base;
+
+			_getAllGenericTypesContainedWithinRecursively(t, gt, list);
+		}
+		else if(t->isDynamicArrayType())
+		{
+			_getAllGenericTypesContainedWithinRecursively(t->toDynamicArrayType()->base, gt, list);
+		}
+		else if(t->isFixedArrayType())
+		{
+			_getAllGenericTypesContainedWithinRecursively(t->toFixedArrayType()->base, gt, list);
+		}
+		else if(t->isVariadicArrayType())
+		{
+			_getAllGenericTypesContainedWithinRecursively(t->toVariadicArrayType()->base, gt, list);
+		}
+		else
+		{
+			iceAssert("??" && 0);
+		}
+	}
+
+
+
+	static std::deque<std::string> getAllGenericTypesContainedWithin(pts::Type* t, const std::map<std::string, TypeConstraints_t>& gt)
+	{
+		std::deque<std::string> ret;
+		_getAllGenericTypesContainedWithinRecursively(t, gt, &ret);
+
+		return ret;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// solver for function types
+	// accepts a parameter, returns whether a solution was found (bool)
+	static bool checkGenericFunctionOrTupleArgument(CodegenInstance* cgi, FuncDecl* candidate, size_t ix, pts::Type* prm, fir::Type* arg,
+		std::map<std::string, fir::Type*>* resolved, std::string* errorString, Expr** failedExpr)
+	{
+		typedef std::deque<pts::TypeTransformer> TrfList;
+
+		// decompose each type fully
+		pts::Type* dpt = 0; TrfList ptrfs;
+		std::tie(dpt, ptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(prm);
+
+		fir::Type* dft = 0; TrfList ftrfs;
+		std::tie(dft, ftrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
+
+		iceAssert(dpt->isFunctionType() || dpt->isTupleType());
+		if(!pts::areTransformationsCompatible(ptrfs, ftrfs))
+		{
+			if(errorString && failedExpr)
+			{
+				*errorString = _makeErrorString("Incompatible types in argument %zu: expected '%s', have '%s' (No valid transformations)",
+					ix + 1, prm->str().c_str(), arg->str().c_str());
+
+				*failedExpr = candidate->params[ix];
+			}
+
+			return false;
+		}
+		else if((!dft->isFunctionType() && !dft->isTupleType()) || (dft->isFunctionType() && !dpt->isFunctionType())
+			|| (dft->isTupleType() && !dpt->isTupleType()))
+		{
+			if(errorString && failedExpr)
+			{
+				*errorString = _makeErrorString("Incompatible types in solution for argument %zu:"
+					" expected %s type '%s', have '%s'", ix + 1, dpt->isFunctionType() ? "function" : "tuple",
+					prm->str().c_str(), arg->str().c_str());
+
+				*failedExpr = candidate->params[ix];
+			}
+
+			return false;
+		}
+
+
+
+		// ok, the types are compatible
+		// look at arguments
+
+		// note: should you be able to pass a function (T, K[...]) -> void to an argument taking (T) -> void?
+		// it shouldn't make a difference, but would probably be unexpected.
+
+		std::deque<fir::Type*> ftlist;
+		std::deque<pts::Type*> ptlist;
+		if(dft->isFunctionType())
+		{
+			ftlist = dft->toFunctionType()->getArgumentTypes();
+			ptlist = dpt->toFunctionType()->argTypes;
+		}
+		else
+		{
+			ftlist = std::deque<fir::Type*>(dft->toTupleType()->getElements().begin(), dft->toTupleType()->getElements().end());
+			ptlist = dpt->toTupleType()->types;
+		}
+
+		if(ftlist.size() != ptlist.size())
+		{
+			if(errorString && failedExpr)
+			{
+				*errorString = _makeErrorString("Incompatible (function or tuple) type lists in argument %zu:"
+					" Size mismatch, have %zu, expected %zu", ix + 1, ftlist.size(), ptlist.size());
+				*failedExpr = candidate->params[ix];
+			}
+			return false;
+		}
+
+
+		std::deque<std::string> toSolve = getAllGenericTypesContainedWithin(dpt, candidate->genericTypes);
+
+
+
+
+
+
+
+
+		// infinite loop
+		for(size_t cnt = 0;; cnt++)
+		{
+			// save a local copy of the current soluion
+			auto cursln = *resolved;
+
+			// ok, now... loop through each item
+			for(size_t i = 0; i < ftlist.size(); i++)
+			{
+				// check the given with the expected
+				fir::Type* givent = 0; TrfList giventrfs;
+				std::tie(givent, giventrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(ftlist[i]);
+
+				pts::Type* expt = 0; TrfList exptrfs;
+				std::tie(expt, exptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(ptlist[i]);
+
+				if(!pts::areTransformationsCompatible(exptrfs, giventrfs))
+				{
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Incompatible types in solution for argument %zu of function parameter"
+							" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
+							i + 1, ix + 1, expt->str().c_str(), arg->str().c_str());
+
+						*failedExpr = candidate->params[ix];
+					}
+					return false;
+				}
+
+
+				// check if a solution for this type already exists
+				if(expt->isNamedType())
+				{
+					if(cursln.find(expt->toNamedType()->name) != cursln.end())
+					{
+						// yes it does
+						fir::Type* rest = cursln[expt->toNamedType()->name];
+						iceAssert(rest);
+
+
+						// if our counterpart is *also* a parametric type, use this as the solution
+						// if not, check that the concrete types match.
+						if(givent->isParametricType())
+						{
+							// hmm
+							error("no");
+
+							// we must remember that we can't compare names
+							// T in this function is completely different from T in another function
+
+							// in this branch, 'rest' is a valid type that we have previously resolved.
+
+						}
+						else
+						{
+							if(rest != givent)
+							{
+								if(errorString && failedExpr)
+								{
+									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in argument %zu of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'",
+										expt->toNamedType()->name.c_str(), i + 1, ix + 1, rest->str().c_str(), givent->str().c_str());
+
+									*failedExpr = candidate->params[ix];
+								}
+								return false;
+							}
+							else
+							{
+								// ok
+							}
+						}
+					}
+					else
+					{
+						// nevermind.
+						info("no solution yet??");
+					}
+				}
+				else
+				{
+					error("notsup nested function");
+				}
+			}
+
+
+			// try the return type if this is a function
+			if(dft->isFunctionType())
+			{
+				iceAssert(dpt->isFunctionType());
+
+				// check the given with the expected
+				fir::Type* ft = 0; TrfList fttrfs;
+				std::tie(ft, fttrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(dft->toFunctionType()->getReturnType());
+
+				pts::Type* pt = 0; TrfList pttrfs;
+				std::tie(pt, pttrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(dpt->toFunctionType()->returnType);
+
+
+				// check if we don't already have a solution for 'pt'.
+				if(pt->isNamedType())
+				{
+					if(ft->isParametricType())
+					{
+						error("no 2");
+					}
+					else
+					{
+						if(cursln.find(pt->toNamedType()->name) != cursln.end())
+						{
+							// check if they conflict
+							fir::Type* rest = cursln[pt->toNamedType()->name];
+							iceAssert(rest);
+
+							if(rest != ft)
+							{
+								if(errorString && failedExpr)
+								{
+									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in return type"
+										" function parameter (which is argument %zu of parent function): have existing solution '%s',"
+										" found '%s'", pt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), ft->str().c_str());
+
+									*failedExpr = candidate->params[ix];
+								}
+								return false;
+							}
+							else
+							{
+								// ok
+							}
+						}
+						else
+						{
+							// hmm.
+							// use the return type directly
+							// we know here it's not a parametric type, so it's ok.
+
+							// no solution, so this *is* the solution
+							cursln[pt->toNamedType()->name] = ft;
+						}
+					}
+				}
+				else
+				{
+					error("notsup nested things");
+				}
+			}
+
+
+
+			// if our local copy matches the resolved copy, we made no progress this time.
+			if(*resolved == cursln)
+			{
+				// check if we've solved everything, if so then we can return true.
+				for(auto s : toSolve)
+				{
+					if(cursln.find(s) == cursln.end())
+					{
+						if(errorString && failedExpr)
+						{
+							std::string solvedstr; // = "\nSolutions found so far: ";
+							for(auto t : cursln)
+								solvedstr += _makeErrorString("'%s': '%s', ", t.first.c_str(), t.second->str().c_str());
+
+							if(solvedstr.empty())
+							{
+								solvedstr = "\n(no partial solutions found)";
+							}
+							else
+							{
+								solvedstr = "\nPartial solutions: " + solvedstr;
+								solvedstr = solvedstr.substr(solvedstr.length() - 2);
+							}
+
+							*errorString = _makeErrorString("Failed to find solution for function parameter %zu in parent function using"
+								" provided type '%s' to solve '%s'; made no progress after %zu iterations, and terminated.%s",
+								ix, arg->str().c_str(), prm->str().c_str(), cnt, solvedstr.c_str());
+
+							*failedExpr = candidate->params[ix];
+						}
+						return false;
+					}
+				}
+
+				*resolved = cursln;
+				return true;
+			}
+
+			cnt++;
+			*resolved = cursln;
+		}
+
+		return true;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// main solver function
+	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::deque<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
 		// get rid of this stupid literal nonsense
@@ -106,11 +475,14 @@ namespace Codegen
 		std::map<size_t, std::string> genericPositions;
 		std::map<size_t, fir::Type*> nonGenericTypes;
 
+		std::map<std::string, std::deque<size_t>> genericPositions2;
+
 		for(size_t i = 0; i < candidate->params.size(); i++)
 		{
 			pts::Type* pt = 0; std::deque<pts::TypeTransformer> trfs;
 			std::tie(pt, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
 
+			// maximally solve all the trivial types first.
 			if(pt->isNamedType())
 			{
 				if(candidate->genericTypes.find(pt->toNamedType()->name) != candidate->genericTypes.end())
@@ -127,13 +499,15 @@ namespace Codegen
 					nonGenericTypes[i] = pts::applyTransformationsOnType(resolved, trfs);
 				}
 			}
-			else if(pt->isTupleType())
+			else if(pt->isFunctionType() || pt->isTupleType())
 			{
-				error("notsup");
+				auto l = getAllGenericTypesContainedWithin(pt, candidate->genericTypes);
+				for(auto s : l)
+					genericPositions2[s].push_back(i);
 			}
-			else if(pt->isFunctionType())
+			else
 			{
-				error("notsup");
+				error("??");
 			}
 		}
 
@@ -200,7 +574,8 @@ namespace Codegen
 				size_t i = t.first;
 
 				// check that the transformations are compatible
-				// eg. we don't try to pass a parameter T to the function expecting K -- even if the base types match
+				// eg. we don't try to pass a parameter T to the function expecting K** -- even if the base types match
+				// eg. passing int to int**
 
 				fir::Type* arg = args[i]; fir::Type* _ = 0; std::deque<pts::TypeTransformer> argtrfs;
 				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
@@ -411,6 +786,80 @@ namespace Codegen
 
 
 
+
+		// check that we actually have an entry for every type
+		for(auto t : candidate->genericTypes)
+		{
+			if(thistm.find(t.first) == thistm.end())
+			{
+				if(genericPositions2.find(t.first) != genericPositions2.end())
+				{
+					for(auto i : genericPositions2[t.first])
+					{
+						// we have a chance
+						// copy the existing solution
+						std::map<std::string, fir::Type*> solns = thistm;
+						if(candidate->params[i]->ptype->isFunctionType())
+						{
+							std::string es; Expr* fe = 0;
+							bool res = checkGenericFunctionOrTupleArgument(cgi, candidate, i, candidate->params[i]->ptype,
+								args[i], &solns, &es, &fe);
+
+							if(!res)
+							{
+								*errorString = es;
+								*failedExpr = fe;
+								return false;
+							}
+
+							// update.
+							thistm = solns;
+						}
+						else if(candidate->params[i]->ptype->isTupleType())
+						{
+							error("notsup");
+						}
+						else
+						{
+							iceAssert("??" && 0);
+						}
+					}
+				}
+				else
+				{
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
+						*failedExpr = candidate;
+					}
+					return false;
+				}
+			}
+		}
+
+
+
+		// now that we did that, try again, making sure this time.
+		for(auto t : candidate->genericTypes)
+		{
+			if(thistm.find(t.first) == thistm.end())
+			{
+				if(errorString && failedExpr)
+				{
+					*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
+					*failedExpr = candidate;
+				}
+				return false;
+			}
+		}
+
+
+
+
+
+
+
+
 		// last phase: ensure the type constraints are met
 		for(auto cst : thistm)
 		{
@@ -439,19 +888,6 @@ namespace Codegen
 
 
 
-		// check that we actually have an entry for every type
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-			{
-				if(errorString && failedExpr)
-				{
-					*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
-					*failedExpr = candidate;
-				}
-				return false;
-			}
-		}
 
 
 		*gtm = thistm;
@@ -479,7 +915,7 @@ namespace Codegen
 		std::map<std::string, fir::Type*> gtm = _gtm;
 		if(gtm.empty())
 		{
-			bool res = _checkGenericFunction2(this, &gtm, func->decl, params, err, ex);
+			bool res = checkGenericFunction(this, &gtm, func->decl, params, err, ex);
 			if(!res) return FuncDefPair::empty();
 		}
 
@@ -553,7 +989,7 @@ namespace Codegen
 		while(it != candidates.end())
 		{
 			std::string s; Expr* e = 0;
-			bool result = _checkGenericFunction2(this, &gtm, (*it)->decl, fargs, &s, &e);
+			bool result = checkGenericFunction(this, &gtm, (*it)->decl, fargs, &s, &e);
 
 			if(!result)
 			{
@@ -626,6 +1062,83 @@ namespace Codegen
 
 		return ret.front();
 	}
+
+
+
+
+
+	fir::Function* CodegenInstance::instantiateGenericFunctionUsingValueAndType(Expr* user, fir::Function* oldfn, fir::FunctionType* oldft,
+		fir::FunctionType* ft, MemberAccess* ma)
+	{
+		iceAssert(ft && ft->isFunctionType());
+		if(ft->toFunctionType()->isGenericFunction())
+		{
+			error(user, "Unable to infer the instantiation of parametric function (type '%s'); explicit type specifier must be given",
+				ft->str().c_str());
+		}
+		else
+		{
+			// concretised function is *not* generic.
+			// hooray.
+
+			fir::Function* fn = 0;
+			std::map<Func*, std::pair<std::string, Expr*>> errs;
+			if(ma)
+			{
+				auto fp = this->resolveAndInstantiateGenericFunctionReference(user, oldft, ft->toFunctionType(), ma, &errs);
+				fn = fp;
+			}
+			else
+			{
+				if(!oldfn)
+					error(user, "Could not resolve generic function??");
+
+				auto fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
+					this->findGenericFunctions(oldfn->getName().name), ft->toFunctionType(), &errs);
+
+				fn = fp.firFunc;
+			}
+
+			if(fn == 0)
+			{
+				exitless_error(user, "Invalid instantiation of parametric function of type '%s' with type '%s'",
+					oldft->str().c_str(), ft->str().c_str());
+
+				if(errs.size() > 0)
+				{
+					for(auto p : errs)
+		 				info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
+				}
+
+				doTheExit();
+			}
+			else
+			{
+				// return new history
+				return fn;
+			}
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -237,9 +237,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		{
 			if(ai->getType()->getPointerElementType() != val->getType())
 			{
-				// info(this, "%s <%d> %s", ai->getType()->getPointerElementType()->str().c_str(),
-					// cgi->getAutoCastDistance(val->getType(), this->concretisedType), val->getType()->str().c_str());
-
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 			}
 
@@ -267,55 +264,16 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		// we cannot have a variable hold a parametric function in the raw form, since calling it
 		// later will be very troublesome (different return types, etc.)
 
-		iceAssert(this->concretisedType && this->concretisedType->isFunctionType());
-		if(this->concretisedType->toFunctionType()->isGenericFunction())
-		{
-			error(this, "Unable to infer the instantiation of parametric function (type '%s'); explicit type specifier must be given",
-				this->concretisedType->str().c_str());
-		}
-		else
-		{
-			// concretised function is *not* generic.
-			// hooray.
+		fir::Function* oldf = dynamic_cast<fir::Function*>(val);
 
+		// oldf can be null
+		fir::Function* fn = cgi->instantiateGenericFunctionUsingValueAndType(this, oldf, val->getType()->toFunctionType(),
+			this->concretisedType->toFunctionType(), dynamic_cast<MemberAccess*>(this->initVal));
 
-			fir::Function* oldf = dynamic_cast<fir::Function*>(val);
-			iceAssert(oldf);
+		iceAssert(fn);
 
-			fir::Function* fn = 0;
-			std::map<Func*, std::pair<std::string, Expr*>> errs;
-			if(MemberAccess* ma = dynamic_cast<MemberAccess*>(this->initVal))
-			{
-				auto fp = cgi->resolveAndInstantiateGenericFunctionReference(this, oldf, this->concretisedType->toFunctionType(), ma, &errs);
-				fn = fp;
-			}
-			else
-			{
-				auto fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
-					cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType(), &errs);
-
-				fn = fp.firFunc;
-			}
-
-			if(fn == 0)
-			{
-				exitless_error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'",
-					oldf->getType()->str().c_str(), this->concretisedType->str().c_str());
-
-				if(errs.size() > 0)
-				{
-					for(auto p : errs)
-		 				info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
-				}
-
-				doTheExit();
-			}
-			else
-			{
-				// rewrite history
-				val = fn;
-			}
-		}
+		// rewrite history
+		val = fn;
 	}
 
 	if(!didAddToSymtab && shouldAddToSymtab)
@@ -323,9 +281,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
-		// info(this, "%s <%d> %s", val->getType()->str().c_str(),
-			// cgi->getAutoCastDistance(val->getType(), this->concretisedType), this->concretisedType->str().c_str());
-
 		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 	}
 
