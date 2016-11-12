@@ -84,6 +84,7 @@ namespace pts
 		}
 		else
 		{
+			// parametric types, functions, tuples, named types
 			return { t, TypeTransformer(TrfType::None, 0) };
 		}
 	}
@@ -772,7 +773,7 @@ namespace pts
 
 	std::string FunctionType::str()
 	{
-		std::string ret = "{";
+		std::string ret = "(";
 
 		for(auto g : this->genericTypes)
 		{
@@ -801,7 +802,7 @@ namespace pts
 			ret.pop_back();
 		}
 
-		return ret + ") -> " + this->returnType->str() + "}";
+		return ret + ") -> " + this->returnType->str();
 	}
 }
 

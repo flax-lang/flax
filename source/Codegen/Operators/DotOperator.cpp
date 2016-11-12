@@ -1380,117 +1380,125 @@ FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* us
 
 
 
-fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
+fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::FunctionType* oldft,
 	fir::FunctionType* instantiatedFT, MemberAccess* ma, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 {
 	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instantiate generic function with another generic function");
 
-	std::string name = oldf->getName().name;
-
-	if(ma)
+	iceAssert(ma);
+	if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
 	{
-		if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
+		// do the thing
+
+		FunctionTree* ftree = 0;
+		StructBase* strType = 0;
+		fir::Type* strFType = 0;
+
+		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+
+		std::string name;
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
-			// do the thing
+			name = vr->name;
+		}
+		else
+		{
+			error(user, "Unsupported use of dot-operator to get function??");
+		}
 
-			FunctionTree* ftree = 0;
-			StructBase* strType = 0;
-			fir::Type* strFType = 0;
 
-			std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+		std::map<fir::Function*, Func*> map;
+
+		if(strType != 0)
+		{
+			// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
+			// a namespace) with a concrete type
+			// so, we don't need to look at members or anything else, just functions.
+			//
+			// eg.
+			//
+			// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
+			//
+			// ... (somewhere else)
+			//
+			// class SomeClass
+			// {
+			//     func someMethod<T>(a: T) -> T { ... }
+			// }
+			//
+			// we can't (and probably won't) have generic function types
+			// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
+			// since there's no easy way to be type-safe about them.
 
 
-			std::map<fir::Function*, Func*> map;
+			// static function
+			ClassDef* cd = dynamic_cast<ClassDef*>(strType);
+			iceAssert(cd);
 
-			if(strType != 0)
+			for(auto f : cd->funcs)
 			{
-				// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
-				// a namespace) with a concrete type
-				// so, we don't need to look at members or anything else, just functions.
-				//
-				// eg.
-				//
-				// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
-				//
-				// ... (somewhere else)
-				//
-				// class SomeClass
-				// {
-				//     func someMethod<T>(a: T) -> T { ... }
-				// }
-				//
-				// we can't (and probably won't) have generic function types
-				// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
-				// since there's no easy way to be type-safe about them.
+				if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+					map[cd->functionMap[f]] = f;
+			}
 
 
-				// static function
-				ClassDef* cd = dynamic_cast<ClassDef*>(strType);
-				iceAssert(cd);
-
-				for(auto f : cd->funcs)
+			for(auto ext : this->getExtensionsForType(cd))
+			{
+				for(auto f : ext->funcs)
 				{
 					if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-						map[cd->functionMap[f]] = f;
+						map[ext->functionMap[f]] = f;
 				}
-
-
-				for(auto ext : this->getExtensionsForType(cd))
-				{
-					for(auto f : ext->funcs)
-					{
-						if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-							map[ext->functionMap[f]] = f;
-					}
-				}
-			}
-			else
-			{
-				iceAssert(ftree);
-
-				for(auto f : ftree->genericFunctions)
-				{
-					if(!f.first->generatedFunc)
-						f.first->codegen(this);
-
-					iceAssert(f.first->generatedFunc);
-					map[f.first->generatedFunc] = f.second;
-				}
-			}
-
-			// failed to find
-			if(map.empty()) return 0;
-
-
-			std::deque<fir::Function*> cands;
-
-			// set up
-			for(auto p : map)
-				cands.push_back(p.first);
-
-			auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
-			if(res == 0) return 0;
-
-			// ok.
-			Func* fnbody = map[res];
-			iceAssert(fnbody);
-			{
-				// instantiate it.
-
-				FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT, errs);
-				return fp.firFunc;
 			}
 		}
 		else
 		{
-			error(user, "not supported??");
+			iceAssert(ftree);
+
+			for(auto f : ftree->genericFunctions)
+			{
+				if(!f.first->generatedFunc)
+					f.first->codegen(this);
+
+				iceAssert(f.first->generatedFunc);
+				map[f.first->generatedFunc] = f.second;
+			}
+		}
+
+		// failed to find
+		if(map.empty()) return 0;
+
+
+		std::deque<fir::Function*> cands;
+
+		// set up
+		for(auto p : map)
+			cands.push_back(p.first);
+
+		auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
+		if(res == 0) return 0;
+
+		// ok.
+		Func* fnbody = map[res];
+		iceAssert(fnbody);
+		{
+			// instantiate it.
+
+			FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT, errs);
+			return fp.firFunc;
 		}
 	}
 	else
 	{
-		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
-			this->findGenericFunctions(oldf->getName().name), instantiatedFT, errs).firFunc;
+		error(user, "not supported??");
 	}
+
+
+	// else
+	// {
+	// 	return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, this->findGenericFunctions(fname.name),
+	// 		instantiatedFT, errs).firFunc;
+	// }
 }
 
 

@@ -89,9 +89,10 @@ namespace Operators
 	{
 		auto res = args[0]->codegen(cgi);
 
-		if(!res.pointer)
-			error(user, "Cannot take the address of literal (have type '%s')", res.value->getType()->str().c_str());
+		if(res.valueKind != ValueKind::LValue)
+			error(user, "Cannot take the address of an rvalue");
 
+		iceAssert(res.pointer);
 		return Result_t(res.pointer, 0);
 	}
 
