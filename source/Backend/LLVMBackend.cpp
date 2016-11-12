@@ -529,7 +529,15 @@ namespace Compiler
 
 
 
-		for(auto l : Compiler::getLibrariesToLink())
+
+		auto tolink = Compiler::getLibrariesToLink();
+
+		// note: linux is stupid. to be safe, explicitly link libc and libm
+		// note: will not affect freestanding implementations, since this is JIT mode
+		tolink.push_back("c");
+		tolink.push_back("m");
+
+		for(auto l : tolink)
 		{
 			std::string ext;
 
@@ -578,8 +586,7 @@ namespace Compiler
 
 			// finalise the object, which causes the memory to be executable
 			// fucking NX bit
-			// ee->finalizeObject();
-
+			execEngine->finalizeObject();
 			mainfunc(1, m);
 		}
 		else

@@ -355,47 +355,15 @@ namespace Operators
 			if(rhs->getType()->toFunctionType()->isGenericFunction())
 			{
 				fir::Function* oldf = dynamic_cast<fir::Function*>(rhs);
-				iceAssert(oldf);
 
+				// oldf can be null.
+				fir::Function* res = cgi->instantiateGenericFunctionUsingValueAndType(rightExpr, oldf, rhs->getType()->toFunctionType(),
+					lhs->getType()->toFunctionType(), dynamic_cast<MemberAccess*>(rightExpr));
 
-				// if it's a dot operator, we need to do the appropriate thing.
+				iceAssert(res);
 
-				fir::Function* res = 0;
-				std::map<Func*, std::pair<std::string, Expr*>> errs;
-				if(MemberAccess* ma = dynamic_cast<MemberAccess*>(rightExpr))
-				{
-					res = cgi->resolveAndInstantiateGenericFunctionReference(rightExpr, oldf, lhs->getType()->toFunctionType(), ma, &errs);
-				}
-				else
-				{
-					auto cands = cgi->findGenericFunctions(rhs->getName().name);
-
-					FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
-						cands, lhs->getType()->toFunctionType(), &errs);
-
-					res = fp.firFunc;
-				}
-
-
-
-				if(res == 0)
-				{
-					exitless_error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
-						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
-
-					if(errs.size() > 0)
-					{
-						for(auto p : errs)
-			 				info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
-					}
-
-					doTheExit();
-				}
-				else
-				{
-					// rewrite history
-					rhs = res;
-				}
+				// rewrite history
+				rhs = res;
 			}
 		}
 

@@ -25,19 +25,35 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 }
 
 
-// extern Expr* __debugExpr;
+static fir::Function* instantiateGenericFunctionAsParameter(CodegenInstance* cgi, FuncCall* fc, fir::Value* val, fir::FunctionType* ft,
+	fir::FunctionType* oldft, Expr* param)
+{
+	iceAssert(oldft);
+	if(oldft->toFunctionType()->isGenericFunction())
+	{
+		iceAssert(!ft->isGenericFunction());
+
+		fir::Function* oldf = dynamic_cast<fir::Function*>(val);
+
+		// oldf can be null
+		fir::Function* res = cgi->instantiateGenericFunctionUsingValueAndType(param, oldf, oldft, ft, dynamic_cast<MemberAccess*>(param));
+		iceAssert(res);
+
+		// rewrite history
+		return res;
+	}
+
+	return 0;
+}
 
 static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenInstance* cgi, FuncCall* fc, fir::FunctionType* ft,
 	std::deque<Expr*> params, bool variadic, bool cvar)
 {
 	std::deque<fir::Value*> args;
-
-	// __debugExpr = fc;
+	std::deque<fir::Value*> argptrs;
 
 	if(!variadic)
 	{
-		std::vector<fir::Value*> argPtrs;
-
 		size_t cur = 0;
 		for(Expr* e : params)
 		{
@@ -46,6 +62,21 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			fir::Value* arg = 0;
 			fir::Value* argptr = 0;
 			std::tie(arg, argptr) = e->codegen(cgi);
+
+			if(arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
+			{
+				fir::Function* res = instantiateGenericFunctionAsParameter(cgi, fc, arg, ft->getArgumentTypes()[cur]->toFunctionType(),
+					arg->getType()->toFunctionType(), e);
+
+				if(res) arg = res;
+			}
+
+
+
+
+
+
+
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, e);
@@ -76,16 +107,15 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			}
 
 			args.push_back(arg);
-			argPtrs.push_back(argptr);
+			argptrs.push_back(argptr);
 
 			cur++;
 		}
 
-
 		for(size_t i = 0; i < std::min(args.size(), ft->getArgumentTypes().size()); i++)
 		{
 			if(ft->getArgumentN(i) != args[i]->getType())
-				args[i] = cgi->autoCastType(ft->getArgumentN(i), args[i], argPtrs[i]);
+				args[i] = cgi->autoCastType(ft->getArgumentN(i), args[i], argptrs[i]);
 
 			if(ft->getArgumentN(i) != args[i]->getType())
 			{
@@ -103,12 +133,42 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		{
 			Expr* ex = params[i];
 
-			fir::Value* arg = ex->codegen(cgi).value;
+			fir::Value* arg = 0;
+			fir::Value* argp = 0;
+			std::tie(arg, argp) = ex->codegen(cgi);
+
+
+			if(arg->getType()->isFunctionType() && ft->getArgumentTypes()[i]->isFunctionType())
+			{
+				fir::Function* res = instantiateGenericFunctionAsParameter(cgi, fc, arg, ft->getArgumentTypes()[i]->toFunctionType(),
+					arg->getType()->toFunctionType(), ex);
+
+				if(res) arg = res;
+			}
+
+
+
+
+
+
+
+
+
 
 			if(arg == nullptr || arg->getType()->isVoidType())
 				GenError::nullValue(cgi, ex);
 
+			if(ft->getArgumentN(i) != arg->getType())
+				arg = cgi->autoCastType(ft->getArgumentN(i), arg, argp);
+
+			if(ft->getArgumentN(i) != arg->getType())
+			{
+				error(fc, "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+					ft->getArgumentN(i)->str().c_str(), arg->getType()->str().c_str());
+			}
+
 			args.push_back(arg);
+			argptrs.push_back(argp);
 		}
 
 
@@ -281,7 +341,10 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		this->cachedResolveTarget.resolved = true;
 
 		if(!fv->getType()->getPointerElementType()->isFunctionType())
-			error(this, "'%s' is not a function, and cannot be called", this->name.c_str());
+		{
+			error(this, "'%s' (of type '%s') is not a function, and cannot be called", this->name.c_str(),
+				fv->getType()->getPointerElementType()->str().c_str());
+		}
 
 		fir::FunctionType* ft = fv->getType()->getPointerElementType()->toFunctionType();
 		iceAssert(ft);

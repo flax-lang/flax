@@ -701,7 +701,7 @@
 					<key>comment</key>
 					<string>expression and type keyword</string>
 					<key>match</key>
-					<string>\b(as|dynamicType|is|new|super|self|Self)\b</string>
+					<string>\b(as|dynamicType|is|super|self|Self)\b</string>
 					<key>name</key>
 					<string>keyword.other.statement.flax</string>
 				</dict>
