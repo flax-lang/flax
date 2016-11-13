@@ -63,12 +63,16 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			fir::Value* argptr = 0;
 			std::tie(arg, argptr) = e->codegen(cgi);
 
-			if(arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
+			// info(e, "%s - %s", arg->getType()->str().c_str(), ft->getArgumentTypes()[cur]->str().c_str());
+
+			if(!checkcv && arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
 			{
 				fir::Function* res = instantiateGenericFunctionAsParameter(cgi, fc, arg, ft->getArgumentTypes()[cur]->toFunctionType(),
 					arg->getType()->toFunctionType(), e);
 
 				if(res) arg = res;
+				else
+					info(fc, "???");
 			}
 
 
@@ -247,6 +251,8 @@ static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fi
 
 	return 0;
 }
+
+
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -450,6 +456,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 }
+
+
 
 
 

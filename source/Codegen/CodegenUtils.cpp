@@ -7,7 +7,7 @@
 #include <map>
 #include <set>
 
-
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
 #include "runtimefuncs.h"
@@ -1069,13 +1069,78 @@ namespace Codegen
 
 
 
+	static bool _checkGenericFunctionParameter(CodegenInstance* cgi, fir::FunctionType* gen, fir::FunctionType* given)
+	{
+		typedef std::deque<pts::TypeTransformer> TrfList;
+
+		// ok, type solving time.
+		auto alist = gen->getArgumentTypes();
+		auto glist = given->getArgumentTypes();
+
+		auto ft1 = gen;
+		auto ft2 = given;
+
+		// basic things
+		if(ft1->isVariadicFunc() != ft2->isVariadicFunc() || ft1->isCStyleVarArg() != ft2->isCStyleVarArg())
+			return false;
+
+		if(glist.size() != alist.size())
+			return false;
 
 
-	static bool _checkFunction(CodegenInstance* cgi, std::deque<fir::Type*> funcParams, std::deque<fir::Type*> args,
-		int* _dist, bool variadic, bool c_variadic, bool exact)
+		std::map<std::string, fir::Type*> gtm;
+		for(size_t k = 0; k < alist.size(); k++)
+		{
+			// really want structured bindings right about now
+			fir::Type* givent = 0; TrfList gtrfs;
+			std::tie(givent, gtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(glist[k]);
+
+			fir::Type* expt = 0; TrfList etrfs;
+			std::tie(expt, gtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(alist[k]);
+
+			if(expt->isParametricType())
+			{
+				if(!pts::areTransformationsCompatible(etrfs, gtrfs))
+					return false;
+
+				if(gtm.find(expt->toParametricType()->getName()) != gtm.end())
+				{
+					if(givent != gtm[expt->toParametricType()->getName()])
+						return false;
+				}
+				else
+				{
+					gtm[expt->toParametricType()->getName()] = givent;
+				}
+			}
+			else if(expt->isTupleType() || expt->isFunctionType())
+			{
+				error("not sup nested");
+			}
+			else
+			{
+				// regardless of 'exact' -- function types must always match exactly.
+				if(glist[k] != alist[k])
+					return false;
+			}
+		}
+
+		return true;
+	}
+
+
+	static bool _checkFunction(CodegenInstance* cgi, std::deque<Expr*> exprs, std::deque<fir::Type*> funcParams,
+		std::deque<fir::Type*> args, int* _dist, bool variadic, bool c_variadic, bool exact)
 	{
 		iceAssert(_dist);
 		*_dist = 0;
+
+		// fuck, we need to be able to check passing generic functions to non-generic functions
+		// non-generic functions should be perfectly able to take generic functions, because all the
+		// information is there to give solutions.
+
+		// hopefully it'll be much less complex than actual generic function resolution,
+		// since we know pretty much all the information immediately, and can return false if it's wrong.
 
 		if(!variadic)
 		{
@@ -1088,7 +1153,12 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				if(t1 != t2)
+				if(t1->isFunctionType() && t2->isFunctionType() && t1->toFunctionType()->isGenericFunction())
+				{
+					bool res = _checkGenericFunctionParameter(cgi, t1->toFunctionType(), t2->toFunctionType());
+					if(!res) return false;
+				}
+				else if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
 
@@ -1116,7 +1186,12 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				if(t1 != t2)
+				if(t1->isFunctionType() && t2->isFunctionType() && t1->toFunctionType()->isGenericFunction())
+				{
+					bool res = _checkGenericFunctionParameter(cgi, t1->toFunctionType(), t2->toFunctionType());
+					if(!res) return false;
+				}
+				else if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
 
@@ -1170,6 +1245,11 @@ namespace Codegen
 		}
 	}
 
+
+
+
+
+
 	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
@@ -1203,7 +1283,14 @@ namespace Codegen
 			isvar = fp.funcDecl->isVariadic;
 		}
 
-		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
+		std::deque<Expr*> exprl;
+		if(fp.funcDecl)
+		{
+			for(auto p : fp.funcDecl->params)
+				exprl.push_back(p);
+		}
+
+		return _checkFunction(this, exprl, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
 	}
 
 
