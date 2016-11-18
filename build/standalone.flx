@@ -21,22 +21,26 @@ func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 	return ret
 }
 
-func mapint(arr: int[], f: [(int) -> int]) -> int[]
+func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
 {
 	var i = 0
-	var ret = alloc[arr.length] int
+	var ret = alloc[arr.length] R
 	while i < arr.length
 	{
-		ret[i] = f(arr[i])
+		ret[i] = f(arr[i], arr2[i])
 		i += 1
 	}
 
 	return ret
 }
 
+
+
 func incr(x: int) -> int { x + 1 }
 func gincr<T>(x: T) -> T { x + 1 }
+func apply<T, K>(x: T, f: [(T) -> K]) -> K { f(x) }
 
+func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 
@@ -56,40 +60,38 @@ func gincr<T>(x: T) -> T { x + 1 }
 
 	but dynamic arrays aren't "generic types" per-se, so we need something for it.
 
+	lambdas:
 
-	also:
-	need to be able to pass generic functions to a function taking concrete functions
-	eg.
+	λ(x: int, y: int) -> string => {
 
-	func foo(f: [(int) -> int])
-	{
-		...
 	}
 
-	func bar<T>(a: T) -> T
-	{
-		...
+	.\(x: int, y: int) -> int => {
+
 	}
 
-	...
 
-	foo(bar)
-
-	this needs to instantiate a version of bar with T = int
-	then pass it to foo.
+	todo: handle taking address of function
 */
+
 
 public func main()
 {
 	var arr = alloc[5] int
+	var arr2 = alloc[5] int
 	var i = 0
 	while i < arr.length
 	{
 		arr[i] = i
+		arr2[i] = 2 * i - 6
+
 		i += 1
 	}
 
-	let new = mapint(arr, gincr)
+	let new = map2(arr, arr2, add2)
+
+	// let new = map(arr, gincr)
+	// let new = mapstupid(arr, apply(1, gincr))
 
 
 	i = 0
@@ -107,5 +109,32 @@ public func main()
 }
 
 
+
+// func mapint(arr: int[], f: [(int) -> int]) -> int[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] int
+// 	while i < arr.length
+// 	{
+// 		ret[i] = f(arr[i])
+// 		i += 1
+// 	}
+
+// 	return ret
+// }
+
+
+// func mapstupid<T, R>(arr: T[], fn: [(T) -> K], fa: [(x, [(T) -> K]) -> R]) -> R[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] R
+// 	while i < arr.length
+// 	{
+// 		ret[i] = fa(arr[i], fn)
+// 		i += 1
+// 	}
+
+// 	return ret
+// }
 
 

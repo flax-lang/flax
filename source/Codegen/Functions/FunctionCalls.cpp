@@ -71,15 +71,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 					arg->getType()->toFunctionType(), e);
 
 				if(res) arg = res;
-				else
-					info(fc, "???");
 			}
-
-
-
-
-
-
 
 
 			if(arg == nullptr || arg->getType()->isVoidType())

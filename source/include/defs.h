@@ -159,6 +159,27 @@ struct TypeConstraints_t
 
 
 
+#define COLOUR_RESET			"\033[0m"
+#define COLOUR_BLACK			"\033[30m"			// Black
+#define COLOUR_RED				"\033[31m"			// Red
+#define COLOUR_GREEN			"\033[32m"			// Green
+#define COLOUR_YELLOW			"\033[33m"			// Yellow
+#define COLOUR_BLUE				"\033[34m"			// Blue
+#define COLOUR_MAGENTA			"\033[35m"			// Magenta
+#define COLOUR_CYAN				"\033[36m"			// Cyan
+#define COLOUR_WHITE			"\033[37m"			// White
+#define COLOUR_BLACK_BOLD		"\033[1m"			// Bold Black
+#define COLOUR_RED_BOLD			"\033[1m\033[31m"	// Bold Red
+#define COLOUR_GREEN_BOLD		"\033[1m\033[32m"	// Bold Green
+#define COLOUR_YELLOW_BOLD		"\033[1m\033[33m"	// Bold Yellow
+#define COLOUR_BLUE_BOLD		"\033[1m\033[34m"	// Bold Blue
+#define COLOUR_MAGENTA_BOLD		"\033[1m\033[35m"	// Bold Magenta
+#define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
+#define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
+#define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
+
+
+
 
 
 
