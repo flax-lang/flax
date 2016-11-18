@@ -140,6 +140,8 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	else if(strcmp(type, "Note") == 0)
 		colour = COLOUR_GREY_BOLD;
 
+	bool dobold = strcmp(type, "Note") != 0;
+
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
@@ -148,7 +150,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
-	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, COLOUR_BLACK_BOLD, alloc, COLOUR_RESET);
+	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "", alloc, COLOUR_RESET);
 
 	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{

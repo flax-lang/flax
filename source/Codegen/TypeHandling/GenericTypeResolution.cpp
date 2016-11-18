@@ -189,6 +189,9 @@ namespace Codegen
 			// save a local copy of the current soluion
 			auto cursln = *resolved;
 
+			// the current solution for a generic function
+			std::map<std::string, fir::Type*> genericfnsoln;
+
 			// ok, now... loop through each item
 			for(size_t i = 0; i < ftlist.size(); i++)
 			{
@@ -216,49 +219,63 @@ namespace Codegen
 				// check if a solution for this type already exists
 				if(expt->isNamedType())
 				{
-					if(cursln.find(expt->toNamedType()->name) != cursln.end())
+					if(cursln.find(expt->toNamedType()->name) == cursln.end())
 					{
-						// yes it does
-						fir::Type* rest = cursln[expt->toNamedType()->name];
-						iceAssert(rest);
-
-
-						// if our counterpart is *also* a parametric type, use this as the solution
-						// if not, check that the concrete types match.
 						if(givent->isParametricType())
 						{
-							// hmm
-							error("no");
-
-							// we must remember that we can't compare names
-							// T in this function is completely different from T in another function
-
-							// in this branch, 'rest' is a valid type that we have previously resolved.
-
-						}
-						else
-						{
-							if(rest != givent)
+							if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
 							{
-								if(errorString && failedExpr)
-								{
-									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in argument %zu of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'",
-										expt->toNamedType()->name.c_str(), i + 1, ix + 1, rest->str().c_str(), givent->str().c_str());
-
-									*failedExpr = candidate->params[ix];
-								}
-								return false;
+								fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
+								cursln[expt->toNamedType()->name] = found;
 							}
 							else
 							{
-								// ok
+								// can't do anything.
 							}
 						}
+						else if(givent->isTupleType() || givent->isFunctionType())
+						{
+							error("stop it");
+						}
+						else
+						{
+							cursln[expt->toNamedType()->name] = givent;
+						}
 					}
-					else
+					else if(givent->isParametricType())
 					{
-						// nevermind.
-						info("no solution yet??");
+						// we have a solution
+						// update the generic function thing
+
+						fir::Type* rest = cursln[expt->toNamedType()->name];
+						iceAssert(rest);
+
+						if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
+						{
+							fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
+
+							if(rest != found)
+							{
+								if(errorString && failedExpr)
+								{
+									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in return type of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", expt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), found->str().c_str());
+
+									*failedExpr = candidate->params[ix];
+								}
+
+								return false;
+							}
+
+							cursln[expt->toNamedType()->name] = found;
+						}
+						else
+						{
+							genericfnsoln[givent->toParametricType()->getName()] = rest;
+						}
+					}
+					else if(givent->isTupleType() || givent->isFunctionType())
+					{
+						error("seriously stop");
 					}
 				}
 				else
@@ -268,60 +285,175 @@ namespace Codegen
 			}
 
 
+
+
+
+
+
+
+
+				// 		// yes it does
+				// 		fir::Type* rest = cursln[expt->toNamedType()->name];
+				// 		iceAssert(rest);
+
+
+				// 		// if our counterpart is *also* a parametric type, use this as the solution
+				// 		// if not, check that the concrete types match.
+				// 		if(givent->isParametricType())
+				// 		{
+				// 			// we must remember that we can't compare names
+				// 			// T in this function is completely different from T in another function
+				// 			// in this branch, 'rest' is a valid type that we have previously resolved.
+
+				// 			// check if we have a solution for this (givent) generic type
+				// 			if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
+				// 			{
+				// 				// check they don't conflict
+				// 				fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
+				// 				if(rest != found)
+				// 				{
+				// 					if(errorString && failedExpr)
+				// 					{
+				// 						*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in argument %zu of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", expt->toNamedType()->name.c_str(), i + 1, ix + 1, rest->str().c_str(), found->str().c_str());
+
+				// 						*failedExpr = candidate->params[ix];
+				// 					}
+
+				// 					return false;
+				// 				}
+
+				// 				// else, ok.
+				// 			}
+				// 			else
+				// 			{
+				// 				// add it.
+				// 				genericfnsoln[givent->toParametricType()->getName()] = rest;
+				// 				// fninnertypemap[givent->toParametricType()->getName()] =
+				// 			}
+				// 		}
+				// 		else
+				// 		{
+				// 			if(rest != givent)
+				// 			{
+				// 				if(errorString && failedExpr)
+				// 				{
+				// 					*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in argument %zu of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'",
+				// 						expt->toNamedType()->name.c_str(), i + 1, ix + 1, rest->str().c_str(), givent->str().c_str());
+
+				// 					*failedExpr = candidate->params[ix];
+				// 				}
+				// 				return false;
+				// 			}
+				// 			else
+				// 			{
+				// 				// ok
+				// 			}
+				// 		}
+				// 	}
+				// 	else
+				// 	{
+				// 		// nevermind.
+				// 		info("no solution yet??");
+				// 	}
+				// }
+			// }
+
+
+
+
 			// try the return type if this is a function
 			if(dft->isFunctionType())
 			{
 				iceAssert(dpt->isFunctionType());
 
 				// check the given with the expected
-				fir::Type* ft = 0; TrfList fttrfs;
-				std::tie(ft, fttrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(dft->toFunctionType()->getReturnType());
+				fir::Type* frt = 0; TrfList fttrfs;
+				std::tie(frt, fttrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(dft->toFunctionType()->getReturnType());
 
-				pts::Type* pt = 0; TrfList pttrfs;
-				std::tie(pt, pttrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(dpt->toFunctionType()->returnType);
+				pts::Type* prt = 0; TrfList pttrfs;
+				std::tie(prt, pttrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(dpt->toFunctionType()->returnType);
 
-
-				// check if we don't already have a solution for 'pt'.
-				if(pt->isNamedType())
+				if(!pts::areTransformationsCompatible(pttrfs, fttrfs))
 				{
-					if(ft->isParametricType())
+					if(errorString && failedExpr)
 					{
-						error("no 2");
+						*errorString = _makeErrorString("Incompatible types in solution for return type of function parameter"
+							" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
+							ix + 1, prt->str().c_str(), frt->str().c_str());
+
+						*failedExpr = candidate->params[ix];
 					}
-					else
+					return false;
+				}
+
+
+
+
+
+
+
+
+				// check if we don't already have a solution for 'prt'.
+				if(prt->isNamedType())
+				{
+					// no solution for 'prt'
+					if(cursln.find(prt->toNamedType()->name) == cursln.end())
 					{
-						if(cursln.find(pt->toNamedType()->name) != cursln.end())
+						if(frt->isParametricType())
 						{
-							// check if they conflict
-							fir::Type* rest = cursln[pt->toNamedType()->name];
-							iceAssert(rest);
-
-							if(rest != ft)
+							if(genericfnsoln.find(frt->toParametricType()->getName()) != genericfnsoln.end())
 							{
-								if(errorString && failedExpr)
-								{
-									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in return type"
-										" function parameter (which is argument %zu of parent function): have existing solution '%s',"
-										" found '%s'", pt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), ft->str().c_str());
-
-									*failedExpr = candidate->params[ix];
-								}
-								return false;
+								fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
+								cursln[prt->toNamedType()->name] = found;
 							}
 							else
 							{
-								// ok
+								// can't do anything.
 							}
+						}
+						else if(frt->isTupleType() || frt->isFunctionType())
+						{
+							error("stop it");
 						}
 						else
 						{
-							// hmm.
-							// use the return type directly
-							// we know here it's not a parametric type, so it's ok.
-
-							// no solution, so this *is* the solution
-							cursln[pt->toNamedType()->name] = ft;
+							cursln[prt->toNamedType()->name] = frt;
 						}
+					}
+					else if(frt->isParametricType())
+					{
+						// we have a solution
+						// update the generic function thing
+
+						fir::Type* rest = cursln[prt->toNamedType()->name];
+						iceAssert(rest);
+
+						if(genericfnsoln.find(frt->toParametricType()->getName()) != genericfnsoln.end())
+						{
+							fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
+
+							if(rest != found)
+							{
+								if(errorString && failedExpr)
+								{
+									*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in return type of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", prt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), found->str().c_str());
+
+									*failedExpr = candidate->params[ix];
+								}
+
+								return false;
+							}
+
+							cursln[prt->toNamedType()->name] = found;
+						}
+						else
+						{
+							genericfnsoln[frt->toParametricType()->getName()] = rest;
+						}
+					}
+					else if(frt->isTupleType() || frt->isFunctionType())
+					{
+						error("seriously stop");
 					}
 				}
 				else
@@ -329,6 +461,21 @@ namespace Codegen
 					error("notsup nested things");
 				}
 			}
+
+
+
+			for(auto k : genericfnsoln)
+			{
+				debuglog("%s -> %s\n", k.first.c_str(), k.second->str().c_str());
+			}
+
+
+
+
+
+
+
+
 
 
 
@@ -343,22 +490,32 @@ namespace Codegen
 						if(errorString && failedExpr)
 						{
 							std::string solvedstr; // = "\nSolutions found so far: ";
+
 							for(auto t : cursln)
-								solvedstr += _makeErrorString("'%s': '%s', ", t.first.c_str(), t.second->str().c_str());
+								solvedstr += _makeErrorString("    %s = '%s'\n", t.first.c_str(), t.second->str().c_str());
 
 							if(solvedstr.empty())
 							{
-								solvedstr = "\n(no partial solutions found)";
+								solvedstr = " (no partial solutions found)";
 							}
 							else
 							{
-								solvedstr = "\nPartial solutions: " + solvedstr;
-								solvedstr = solvedstr.substr(solvedstr.length() - 2);
+								solvedstr = COLOUR_BLACK_BOLD "\n\nPartial solutions:\n" COLOUR_RESET + solvedstr;
+
+								// get missing
+								std::string missingstr;
+								for(auto s : toSolve)
+								{
+									if(cursln.find(s) == cursln.end())
+										missingstr += _makeErrorString("    '%s'\n", s.c_str());
+								}
+
+								solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
 							}
 
 							*errorString = _makeErrorString("Failed to find solution for function parameter %zu in parent function using"
-								" provided type '%s' to solve '%s'; made no progress after %zu iterations, and terminated.%s",
-								ix, arg->str().c_str(), prm->str().c_str(), cnt, solvedstr.c_str());
+								" provided type '%s' to solve '%s'; made no progress after %zu iteration%s, and terminated.%s",
+								ix, arg->str().c_str(), prm->str().c_str(), cnt + 1, cnt == 0 ? "" : "s", solvedstr.c_str());
 
 							*failedExpr = candidate->params[ix];
 						}
