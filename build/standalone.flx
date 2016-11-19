@@ -94,7 +94,7 @@ public func main()
 	while i < arr.length
 	{
 		arr[i] = i
-		arr2[i] = 2 * i - 6
+		arr2[i] = i * (i + 5)
 
 		i += 1
 	}
@@ -103,7 +103,7 @@ public func main()
 
 	// let new = map(arr, gincr)
 	// let new = map(arr, gmult)
-	let new = mapstupid(arr, gincr, apply)
+	let new = mapstupid(arr2, gincr, apply)
 
 
 	i = 0
@@ -121,7 +121,7 @@ public func main()
 }
 
 
-func apply<T, K>(x: T, f: [(T) -> K]) -> K { f(x) }
+func apply<U, V>(x: U, f: [(U) -> V]) -> V { f(x) }
 
 func gincr<T>(x: T) -> T { x + 1 }
 func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[]
