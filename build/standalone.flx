@@ -21,6 +21,19 @@ func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 	return ret
 }
 
+func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = f(arr[i], 3)
+		i += 1
+	}
+
+	return ret
+}
+
 func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
 {
 	var i = 0
@@ -37,9 +50,7 @@ func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
 
 
 func incr(x: int) -> int { x + 1 }
-func gincr<T>(x: T) -> T { x + 1 }
-func apply<T, K>(x: T, f: [(T) -> K]) -> K { f(x) }
-
+func gmult<T>(x: T, m: T) -> T { x * m }
 func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
@@ -88,10 +99,11 @@ public func main()
 		i += 1
 	}
 
-	let new = map2(arr, arr2, add2)
+	// let new = map2(arr, arr2, add2)
 
 	// let new = map(arr, gincr)
-	// let new = mapstupid(arr, apply(1, gincr))
+	// let new = map(arr, gmult)
+	let new = mapstupid(arr, gincr, apply)
 
 
 	i = 0
@@ -109,6 +121,37 @@ public func main()
 }
 
 
+func apply<T, K>(x: T, f: [(T) -> K]) -> K { f(x) }
+
+func gincr<T>(x: T) -> T { x + 1 }
+func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = fa(arr[i], fn)
+		i += 1
+	}
+
+	return ret
+}
+
+
+// func mapstupid2<T, K>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> K]) -> K[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] K
+// 	while i < arr.length
+// 	{
+// 		ret[i] = fa(arr[i], fn)
+// 		i += 1
+// 	}
+
+// 	return ret
+// }
+
+
 
 // func mapint(arr: int[], f: [(int) -> int]) -> int[]
 // {
@@ -124,17 +167,12 @@ public func main()
 // }
 
 
-// func mapstupid<T, R>(arr: T[], fn: [(T) -> K], fa: [(x, [(T) -> K]) -> R]) -> R[]
-// {
-// 	var i = 0
-// 	var ret = alloc[arr.length] R
-// 	while i < arr.length
-// 	{
-// 		ret[i] = fa(arr[i], fn)
-// 		i += 1
-// 	}
 
-// 	return ret
-// }
+
+
+
+
+
+
 
 

@@ -82,6 +82,12 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		}
 		else
 		{
+			// add the things
+			std::deque<fir::ParametricType*> tparams;
+			for(auto t : fd->genericTypes)
+				tparams.push_back(fir::ParametricType::get(t.first));
+
+			ft->addTypeParameters(tparams);
 			func = fir::Function::create(fd->ident, ft, cgi->module, linkageType);
 		}
 
