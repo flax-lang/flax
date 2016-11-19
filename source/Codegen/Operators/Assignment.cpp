@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include "operators.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -104,7 +105,7 @@ namespace Operators
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
 		ValueKind vk = ValueKind::RValue;
-		fir::Value* rhsPtr = 0;
+		fir::Value* rhsptr = 0;
 		fir::Value* rhs = 0;
 
 
@@ -128,12 +129,8 @@ namespace Operators
 
 			// note: when we reach this, it means that we didn't find a specific operator overload
 			// in the "generalCompoundAssignmentOperator" function.
-			Result_t res = OperatorMap::get().call(actualOp, cgi, user, args);
-			iceAssert(res.value);
-
-			rhs = res.value;
-			rhsPtr = res.pointer;
-			vk = res.valueKind;
+			std::tie(rhs, rhsptr, vk) = OperatorMap::get().call(actualOp, cgi, user, args);
+			iceAssert(rhs);
 
 			op = ArithmeticOp::Assign;
 		}
@@ -157,16 +154,6 @@ namespace Operators
 				iceAssert(lhsPtr);
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
-
-
-				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
-				// 	rhsVal = cgi->autoCastType(setter->getArguments()[1]->getType(), rhsVal);
-
-				// if(setter->getArguments()[1]->getType() != rhsVal->getType())
-				// {
-				// 	error(user, "Mismatch in argument of setter; expected '%s', got '%s'",
-				// 		setter->getArguments()[1]->getType()->str().c_str(), rhsVal->getType()->str().c_str());
-				// }
 
 				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
@@ -193,8 +180,8 @@ namespace Operators
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(cgi->getStringCheckLiteralWriteFunction(), leftr.pointer, ind);
-				cgi->irb.CreateCall2(cgi->getStringBoundsCheckFunction(), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.pointer, ind);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
@@ -219,30 +206,27 @@ namespace Operators
 
 
 		// else, we should be safe to codegen both sides
-		auto leftr = args[0]->codegen(cgi);
+		fir::Value* lhs = 0;
+		fir::Value* lhsptr = 0;
 
-		fir::Value* lhs = leftr.value;
-		fir::Value* lhsPtr = leftr.pointer;
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
 
 
 		// this is to allow handling of compound assignment operators
 		// if we are one, then the rhs will already have been generated, and we can't do codegen (again).
-		if(rhs == 0 && rhsPtr == 0)
+		if(rhs == 0 && rhsptr == 0)
 		{
 			iceAssert(rhs == 0);
-			iceAssert(rhsPtr == 0);
+			iceAssert(rhsptr == 0);
 
-			auto rightr = args[1]->codegen(cgi);
-
-			rhs = rightr.value;
-			rhsPtr = rightr.pointer;
-			vk = rightr.valueKind;
+			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi);
 		}
 
 
 		// the bulk of the work is still done here
-		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsPtr, rhs, rhsPtr, vk);
+		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsptr, rhs, rhsptr, vk);
 	}
+
 
 
 
@@ -262,17 +246,82 @@ namespace Operators
 			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
-				auto leftvp = args[0]->codegen(cgi);
-				auto rightvp = args[1]->codegen(cgi);
+				fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+				fir::Value* rhs = 0; fir::Value* rhsptr = 0;
 
-				cgi->callBinaryOperatorOverload(data, leftvp.value, leftvp.pointer, rightvp.value, rightvp.pointer, op);
+				std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+				std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+
+				cgi->callBinaryOperatorOverload(data, lhs, lhsptr, rhs, rhsptr, op);
 				return Result_t(0, 0);
 			}
+		}
+		// special case: array += array, array += element
+		else if(op == ArithmeticOp::PlusEquals && ltype->isDynamicArrayType() && rtype->isDynamicArrayType()
+			&& ltype->toDynamicArrayType()->getElementType() == rtype->toDynamicArrayType()->getElementType())
+		{
+			// array += array
+			fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+			fir::Value* rhs = 0; fir::Value* rhsptr = 0;
 
-			// if not, then we'll rely on + and = separation/synthesis.
+			std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+			std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+
+			iceAssert(lhs->getType()->isDynamicArrayType());
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+
+			iceAssert(lhsptr);
+			iceAssert(rhsptr);
+
+			if(lhsptr->isImmutable())
+				GenError::assignToImmutable(cgi, user, args[0]);
+
+			// ok, call append.
+			fir::Function* appendf = RuntimeFuncs::Array::getAppendFunction(cgi, arrtype);
+			iceAssert(appendf);
+
+			cgi->irb.CreateCall2(appendf, lhsptr, rhsptr);
+
+			// return void
+			return Result_t(0, 0);
+		}
+		else if(op == ArithmeticOp::PlusEquals && ltype->isDynamicArrayType()
+			&& ltype->toDynamicArrayType()->getElementType() == rtype)
+		{
+			// array += element
+			fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+			fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+			ValueKind rhsvk;
+			std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+			std::tie(rhs, rhsptr, rhsvk) = args[1]->codegen(cgi);
+
+			iceAssert(lhs->getType()->isDynamicArrayType());
+			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+
+			iceAssert(lhsptr);
+			iceAssert(rhs);
+
+			if(lhsptr->isImmutable())
+				GenError::assignToImmutable(cgi, user, args[0]);
+
+			// ok, call append.
+			fir::Function* appendf = RuntimeFuncs::Array::getElementAppendFunction(cgi, arrtype);
+			iceAssert(appendf);
+
+			cgi->irb.CreateCall2(appendf, lhsptr, rhs);
+
+
+			// handle some shit
+			if(cgi->isRefCountedType(rtype))
+				cgi->removeRefCountedValueIfExists(rhsptr);
+
+
+			// return void
+			return Result_t(0, 0);
 		}
 
-		// else
+		// else, we'll rely on + and = separation/synthesis.
 		return operatorAssign(cgi, op, user, args);
 	}
 
@@ -306,38 +355,15 @@ namespace Operators
 			if(rhs->getType()->toFunctionType()->isGenericFunction())
 			{
 				fir::Function* oldf = dynamic_cast<fir::Function*>(rhs);
-				iceAssert(oldf);
 
+				// oldf can be null.
+				fir::Function* res = cgi->instantiateGenericFunctionUsingValueAndType(rightExpr, oldf, rhs->getType()->toFunctionType(),
+					lhs->getType()->toFunctionType(), dynamic_cast<MemberAccess*>(rightExpr));
 
-				// if it's a dot operator, we need to do the appropriate thing.
+				iceAssert(res);
 
-				fir::Function* res = 0;
-				if(MemberAccess* ma = dynamic_cast<MemberAccess*>(rightExpr))
-				{
-					res = cgi->resolveAndInstantiateGenericFunctionReference(rightExpr, oldf, lhs->getType()->toFunctionType(), ma);
-				}
-				else
-				{
-					auto cands = cgi->findGenericFunctions(rhs->getName().name);
-
-					FuncDefPair fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(rightExpr,
-						cands, lhs->getType()->toFunctionType());
-
-					res = fp.firFunc;
-				}
-
-
-
-				if(res != 0)
-				{
-					// rewrite history
-					rhs = res;
-				}
-				else
-				{
-					error(rightExpr, "Invalid instantiation of parametric function of type '%s' with type '%s' (%s)",
-						oldf->getType()->str().c_str(), lhs->getType()->str().c_str(), rhs->getName().name.c_str());
-				}
+				// rewrite history
+				rhs = res;
 			}
 		}
 
@@ -444,7 +470,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 			iceAssert(rhsPtr);
 
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{

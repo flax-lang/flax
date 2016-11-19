@@ -368,7 +368,6 @@ static void findDotOperator(Expr* expr)
 
 	else
 	{
-		// printf("unknown: %s\n", expr ? typeid(*expr).name() : "(null)");
 	}
 }
 

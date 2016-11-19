@@ -3,7 +3,6 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
-#include "ast.h"
 #include "typeinfo.h"
 
 #include "errors.h"
@@ -20,6 +19,23 @@ enum class SymbolType
 	Variable,
 	Type
 };
+
+namespace Ast
+{
+	struct Root;
+	struct FuncCall;
+	struct ClassDef;
+	struct MemberAccess;
+	struct NamespaceDecl;
+
+	struct Result_t;
+	enum class ValueKind;
+}
+
+namespace pts
+{
+	struct Type;
+}
 
 namespace GenError
 {
@@ -40,6 +56,8 @@ namespace GenError
 	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::deque<Ast::Expr*> ps);
 
 	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::deque<Ast::Expr*> args, std::deque<Codegen::FuncDefPair> cands);
+
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>> errs) __attribute__((noreturn));
 
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::deque<Ast::Expr*> args) __attribute__((noreturn));
 }
@@ -104,7 +122,7 @@ namespace Codegen
 
 		} globalConstructors;
 
-		void addGlobalConstructor(Identifier name, fir::Function* constructor);
+		void addGlobalConstructor(const Identifier& name, fir::Function* constructor);
 		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
 		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
 
@@ -144,6 +162,9 @@ namespace Codegen
 		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
+		std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> saveAndClearScope();
+		void restoreScope(std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> s);
+
 		// function scopes: namespaces, nested functions.
 		void pushNamespaceScope(std::string namespc, bool doFuncTree = true);
 		void clearNamespaceScope();
@@ -176,7 +197,7 @@ namespace Codegen
 
 
 		std::deque<std::string> getFullScope();
-		std::pair<TypePair_t*, int> findTypeInFuncTree(std::deque<std::string> scope, std::string name);
+		TypePair_t* findTypeInFuncTree(std::deque<std::string> scope, std::string name);
 
 		std::deque<std::string> unwrapNamespacedType(std::string raw);
 
@@ -196,7 +217,7 @@ namespace Codegen
 		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
 
 		TypePair_t* getTypeByString(std::string name);
-		TypePair_t* getType(Identifier id);
+		TypePair_t* getType(const Identifier& id);
 		TypePair_t* getType(fir::Type* type);
 		fir::Function* getOrDeclareLibCFunc(std::string name);
 
@@ -221,7 +242,7 @@ namespace Codegen
 		bool isAnyType(fir::Type* type);
 		bool isRefCountedType(fir::Type* type);
 
-		bool isDuplicateType(Identifier id);
+		bool isDuplicateType(const Identifier& id);
 
 		std::string mangleGenericParameters(std::deque<Ast::VarDecl*> args);
 
@@ -250,35 +271,37 @@ namespace Codegen
 		void decrementRefCount(fir::Value* strp);
 
 		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
-			bool isInitialAssignment);
+			bool isInitialAssignment, bool doAssignment);
 
-		fir::Function* getFunctionFromModuleWithName(Identifier id, Ast::Expr* user);
-		fir::Function* getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithName(const Identifier& id, Ast::Expr* user);
+		fir::Function* getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Ast::Expr* user);
 
-		fir::Function* getDynamicArrayAppendFunction();
-		fir::Function* getDynamicArrayCompareFunction();
-		fir::Function* getDynamicArrayElementAppendFunction();
 		Ast::Result_t createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity);
 		Ast::Result_t createEmptyDynamicArray(fir::Type* elmType);
 
-		fir::Function* getArrayBoundsCheckFunction();
 		Ast::Result_t createParameterPack(fir::Type* type, std::deque<fir::Value*> parameters);
 
 
-		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc);
-		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands);
+		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::deque<Ast::Func*> cands, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::deque<Ast::Func*> candidates,
-			fir::FunctionType* ft);
+			fir::FunctionType* ft, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
 		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
-			Ast::Func* func, std::deque<fir::Type*> params);
+			Ast::Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex);
+
+
+		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
+			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+
+		fir::Function* instantiateGenericFunctionUsingValueAndType(Ast::Expr* user, fir::Function* oldf, fir::FunctionType* originalft,
+			fir::FunctionType* ft, Ast::MemberAccess* ma);
+
+
 
 		FuncDefPair tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::Expr* user, std::string name, fir::Value* extra);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::deque<fir::Function*> cands,
 			fir::Value* extra);
-
-		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::Function* original,
-			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma);
 
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
@@ -287,14 +310,6 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
-		fir::Function* getStringRefCountIncrementFunction();
-		fir::Function* getStringRefCountDecrementFunction();
-		fir::Function* getStringCompareFunction();
-		fir::Function* getStringAppendFunction();
-		fir::Function* getStringCharAppendFunction();
-
-		fir::Function* getStringBoundsCheckFunction();
-		fir::Function* getStringCheckLiteralWriteFunction();
 
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);

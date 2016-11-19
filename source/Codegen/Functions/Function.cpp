@@ -2,15 +2,12 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
 
 using namespace Ast;
 using namespace Codegen;
-
-
-
-
 
 Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -94,6 +91,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// we can shadow outer variables with our own.
 	cgi->pushScope();
 	cgi->setCurrentFunctionScope(this);
+	// auto s = cgi->saveAndClearScope();
 
 
 	// to support declaring functions inside functions, we need to remember
@@ -183,10 +181,12 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-
 	// codegen everything in the body.
-	Result_t lastval = this->block->codegen(cgi);
+	fir::Value* value = 0;
+	fir::Value* pointer = 0;
+	ValueKind vkind;
 
+	std::tie(value, pointer, vkind) = this->block->codegen(cgi);
 
 	// verify again, this type checking the types
 	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
@@ -199,42 +199,37 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		fir::Type* needed = func->getReturnType();
 
-		fir::Value* ret = lastval.value;
-		if(ret->getType() != needed)
+		if(value->getType() != needed)
 		{
-			auto tmp = cgi->autoCastType(func->getReturnType(), ret, lastval.pointer);
-
-			// info(this, "retretret (%d / %p) (%s / %s)", ret->getType()->isPrimitiveType() && ret->getType()->toPrimitiveType()->isLiteralType(), (void*) dynamic_cast<fir::ConstantValue*>(ret), needed->str().c_str(), tmp->getType()->str().c_str());
-
-			ret = tmp;
+			value = cgi->autoCastType(func->getReturnType(), value, pointer);
 		}
 
 
 		// if it's an rvalue, we make a new one, increment its refcount
-		if(cgi->isRefCountedType(ret->getType()))
+		if(cgi->isRefCountedType(value->getType()))
 		{
-			if(lastval.valueKind == ValueKind::LValue)
+			if(vkind == ValueKind::LValue)
 			{
 				// uh.. should always be there.
-				iceAssert(lastval.pointer);
-				cgi->incrementRefCount(lastval.pointer);
+				iceAssert(pointer);
+				cgi->incrementRefCount(pointer);
 			}
 			else
 			{
 				// rvalue
 
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(value->getType(), value);
 				cgi->incrementRefCount(tmp);
 
-				ret = cgi->irb.CreateLoad(tmp);
+				value = cgi->irb.CreateLoad(tmp);
 			}
 		}
 
-		cgi->irb.CreateReturn(ret);
+		cgi->irb.CreateReturn(value);
 	}
 
 
-	// we've codegen'ed that stuff, pop the symbol table
+	// cgi->restoreScope(s);
 	cgi->popScope();
 
 	if(prevBlock)

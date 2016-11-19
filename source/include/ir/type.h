@@ -192,13 +192,13 @@ namespace fir
 		// base things
 		size_t id = 0;
 
-		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t inds, size_t bits);
-		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, size_t inds, bool issigned, size_t bits);
-		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t inds, size_t arrsize, Type* elm);
-		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, size_t inds, bool islit, std::string name,
+		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
+		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);
+		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t arrsize, Type* elm);
+		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, bool islit, std::string name,
 			std::deque<Type*> mems);
 
-		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, size_t inds, bool isva, std::deque<Type*> args,
+		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::deque<Type*> args,
 			Type* ret);
 
 		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
@@ -330,22 +330,16 @@ namespace fir
 		friend struct FTContext;
 		friend FTContext* createFTContext();
 
-		// methods
-		size_t getIndirections();
-
-
 		virtual bool isTypeEqual(Type* other) override;
 		virtual PointerType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
 
 		// protected constructor
 		protected:
-		PointerType(size_t inds, Type* base);
+		PointerType(Type* base);
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 
-
-		size_t indirections = 0;
 		Type* baseType = 0;
 
 		// static funcs
@@ -419,7 +413,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		StructType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
+		StructType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
@@ -431,8 +425,9 @@ namespace fir
 
 		// static funcs
 		public:
-		static StructType* createWithoutBody(Identifier name, FTContext* tc = 0, bool isPacked = false);
-		static StructType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0, bool isPacked = false);
+		static StructType* createWithoutBody(const Identifier& name, FTContext* tc = 0, bool isPacked = false);
+		static StructType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0,
+			bool isPacked = false);
 	};
 
 
@@ -466,7 +461,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		ClassType(Identifier name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
+		ClassType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
 		virtual ~ClassType() override { }
 
 		// fields (protected)
@@ -480,8 +475,8 @@ namespace fir
 
 		// static funcs
 		public:
-		static ClassType* createWithoutBody(Identifier name, FTContext* tc = 0);
-		static ClassType* create(Identifier name, std::deque<std::pair<std::string, Type*>> members,
+		static ClassType* createWithoutBody(const Identifier& name, FTContext* tc = 0);
+		static ClassType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members,
 			std::deque<Function*> methods, FTContext* tc = 0);
 	};
 
@@ -505,7 +500,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		EnumType(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
+		EnumType(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
 		virtual ~EnumType() override { }
 
 		Identifier enumName;
@@ -514,7 +509,7 @@ namespace fir
 
 		// static funcs
 		public:
-		static EnumType* get(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
+		static EnumType* get(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
 	};
 
 
@@ -636,6 +631,10 @@ namespace fir
 		bool isCStyleVarArg();
 		bool isVariadicFunc();
 
+		std::deque<ParametricType*> getTypeParameters();
+		void addTypeParameter(ParametricType* t);
+		void addTypeParameters(std::deque<ParametricType*> ts);
+
 		bool isGenericFunction();
 
 		virtual std::string str() override;
@@ -649,9 +648,10 @@ namespace fir
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
-		bool isGeneric;
 		bool isFnCStyleVarArg;
 		bool isFnVariadic;
+
+		std::deque<ParametricType*> typeParameters;
 
 		std::deque<Type*> functionParams;
 		Type* functionRetType;

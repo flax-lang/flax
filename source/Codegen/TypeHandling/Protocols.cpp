@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
 
@@ -250,7 +250,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 
 	if(missing.size() > 0)
 	{
-		errorNoExit(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
+		exitless_error(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
 
 		std::string list;
 		for(auto d : missing)

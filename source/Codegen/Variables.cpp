@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
 
@@ -157,7 +157,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		// ...
 		// handled below
 	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this)
+	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || this->getType(cgi)->isDynamicArrayType()
 		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType() || this->getType(cgi)->isCharType()))
 	{
 		val = cgi->getDefaultValue(this);
@@ -237,9 +237,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		{
 			if(ai->getType()->getPointerElementType() != val->getType())
 			{
-				// info(this, "%s <%d> %s", ai->getType()->getPointerElementType()->str().c_str(),
-					// cgi->getAutoCastDistance(val->getType(), this->concretisedType), val->getType()->str().c_str());
-
 				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 			}
 
@@ -267,48 +264,16 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		// we cannot have a variable hold a parametric function in the raw form, since calling it
 		// later will be very troublesome (different return types, etc.)
 
-		iceAssert(this->concretisedType && this->concretisedType->isFunctionType());
-		if(this->concretisedType->toFunctionType()->isGenericFunction())
-		{
-			error(this, "Unable to infer the instantiation of parametric function (type '%s'); explicit type specifier must be given",
-				this->concretisedType->str().c_str());
-		}
-		else
-		{
-			// concretised function is *not* generic.
-			// hooray.
+		fir::Function* oldf = dynamic_cast<fir::Function*>(val);
 
+		// oldf can be null
+		fir::Function* fn = cgi->instantiateGenericFunctionUsingValueAndType(this, oldf, val->getType()->toFunctionType(),
+			this->concretisedType->toFunctionType(), dynamic_cast<MemberAccess*>(this->initVal));
 
-			fir::Function* oldf = dynamic_cast<fir::Function*>(val);
-			iceAssert(oldf);
+		iceAssert(fn);
 
-			fir::Function* fn = 0;
-
-			if(MemberAccess* ma = dynamic_cast<MemberAccess*>(this->initVal))
-			{
-				auto fp = cgi->resolveAndInstantiateGenericFunctionReference(this, oldf, this->concretisedType->toFunctionType(), ma);
-				fn = fp;
-			}
-			else
-			{
-				auto fp = cgi->tryResolveGenericFunctionFromCandidatesUsingFunctionType(this,
-					cgi->findGenericFunctions(oldf->getName().name), this->concretisedType->toFunctionType());
-
-				fn = fp.firFunc;
-			}
-
-
-			if(fn != 0)
-			{
-				// rewrite history
-				val = fn;
-			}
-			else
-			{
-				error(this, "Invalid instantiation of parametric function of type '%s' with type '%s'", oldf->getType()->str().c_str(),
-					this->concretisedType->str().c_str());
-			}
-		}
+		// rewrite history
+		val = fn;
 	}
 
 	if(!didAddToSymtab && shouldAddToSymtab)
@@ -316,9 +281,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 	if(val->getType() != ai->getType()->getPointerElementType())
 	{
-		// info(this, "%s <%d> %s", val->getType()->str().c_str(),
-			// cgi->getAutoCastDistance(val->getType(), this->concretisedType), this->concretisedType->str().c_str());
-
 		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
 	}
 
@@ -333,7 +295,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
 		{
 			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true);
+			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true, true);
 		}
 		else if(!this->initVal)
 		{
@@ -447,10 +409,16 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// set it up so we go straight to writing instructions.
 			cgi->irb.setCurrentBlock(constr->getBlockList().front());
 
-			auto res = this->initVal->codegen(cgi, glob);
+
+			fir::Value* rval = 0;
+			fir::Value* rptr = 0;
+			ResultType rtype;
+			ValueKind rkind;
+
+			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, glob);
 
 			// don't be wasting time calling functions if we're constant.
-			if(dynamic_cast<fir::ConstantValue*>(res.value))
+			if(dynamic_cast<fir::ConstantValue*>(rval))
 			{
 				// go back to prev
 				cgi->irb.setCurrentBlock(prev);
@@ -556,7 +524,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 				// add it.
 				cgi->addGlobalConstructor(glob, constr);
 
-				this->doInitialValue(cgi, cmplxtype, res.value, res.pointer, glob, false, res.valueKind);
+				this->doInitialValue(cgi, cmplxtype, rval, rptr, glob, false, rkind);
 				cgi->irb.CreateReturnVoid();
 
 				cgi->irb.setCurrentBlock(prev);
@@ -648,12 +616,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(this->initVal)
 		{
-			auto r = this->initVal->codegen(cgi, ai);
-
-			val = r.value;
-			valptr = r.pointer;
-			vk = r.valueKind;
+			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, ai);
 		}
+
 
 		TypePair_t* cmplxtype = 0;
 		if(this->ptype != pts::InferredType::get())

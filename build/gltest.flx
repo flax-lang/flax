@@ -94,7 +94,7 @@ public func main(argc: i32, argv: i8**) -> int
 					]
 
 	// var colours: f64[36]
-	var colours: f64* = alloc[48] f64
+	var colours = alloc[48] f64
 
 	var i = 0
 	while i < 48
@@ -170,7 +170,7 @@ public func main(argc: i32, argv: i8**) -> int
 
 
 		glVertexPointer(3 as i32, GL.DOUBLE, 0 as i32, vertices as void*)
-		glColorPointer(4 as i32, GL.DOUBLE, 0 as i32, colours as void*)
+		glColorPointer(4 as i32, GL.DOUBLE, 0 as i32, colours.pointer as void*)
 		glNormalPointer(GL.DOUBLE, 0 as i32, normals as void*)
 
 		glDrawElements(GL.TRIANGLES, 60, GL.UNSIGNED_BYTE, indices as void*)

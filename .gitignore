@@ -35,13 +35,15 @@ run
 *.sublime-*
 build/sysroot
 .modifydates
+
 build/test
 build/gltest
+build/standalone
 *.ll
 *.bc
 
 *.ir
-*.o.m
+*.m
 shakefile.hi
 shakefile
 .shake.database
@@ -50,8 +52,7 @@ countloc
 
 .shake.lock
 bug-repro
-
-
+.clang_complete
 
 
 

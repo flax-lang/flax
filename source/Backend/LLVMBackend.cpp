@@ -64,7 +64,7 @@ namespace Compiler
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
-			error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
+			_error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
 	}
 
 	std::string LLVMBackend::str()
@@ -100,6 +100,9 @@ namespace Compiler
 	void LLVMBackend::optimiseProgram()
 	{
 		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
+
+		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
+			error("\nLLVM Module verification failed");
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
@@ -168,7 +171,8 @@ namespace Compiler
 		// verify the module.
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "llvm_verify");
-			llvm::verifyModule(*this->linkedModule, &llvm::errs());
+			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
+				error("\nLLVM Module verification failed");
 		}
 
 		std::string foldername;
@@ -235,7 +239,8 @@ namespace Compiler
 				auto frames = Compiler::getFrameworksToLink();
 				auto framedirs = Compiler::getFrameworkSearchPaths();
 
-				size_t s = 5 + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
+				size_t num_extra = 0;
+				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
 				const char** argv = new const char*[s];
 				memset(argv, 0, s * sizeof(const char*));
 
@@ -243,7 +248,7 @@ namespace Compiler
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
 
-				size_t i = 3;
+				size_t i = 3 + num_extra;
 
 
 				// note: these need to be references
@@ -524,7 +529,15 @@ namespace Compiler
 
 
 
-		for(auto l : Compiler::getLibrariesToLink())
+
+		auto tolink = Compiler::getLibrariesToLink();
+
+		// note: linux is stupid. to be safe, explicitly link libc and libm
+		// note: will not affect freestanding implementations, since this is JIT mode
+		tolink.push_back("c");
+		tolink.push_back("m");
+
+		for(auto l : tolink)
 		{
 			std::string ext;
 
@@ -573,13 +586,12 @@ namespace Compiler
 
 			// finalise the object, which causes the memory to be executable
 			// fucking NX bit
-			// ee->finalizeObject();
-
+			execEngine->finalizeObject();
 			mainfunc(1, m);
 		}
 		else
 		{
-			error_and_exit("No main() function, cannot JIT");
+			_error_and_exit("No main() function, cannot JIT");
 		}
 
 
@@ -631,7 +643,7 @@ namespace Compiler
 					llvm::Function* constr = this->linkedModule->getFunction(pair.second->globalConstructorTrampoline->getName().mangled());
 					if(!constr)
 					{
-						error_and_exit("required global constructor %s was not found in the module!",
+						_error_and_exit("required global constructor %s was not found in the module!",
 							pair.second->globalConstructorTrampoline->getName().str().c_str());
 					}
 					else
@@ -665,7 +677,7 @@ namespace Compiler
 				// insert a call at the beginning of main().
 				llvm::Function* mainfunc = this->linkedModule->getFunction("main");
 				if((Compiler::getOutputMode() == ProgOutputMode::Program || Compiler::getOutputMode() == ProgOutputMode::RunJit) && !mainfunc)
-					error_and_exit("No main() function");
+					_error_and_exit("No main() function");
 
 				iceAssert(mainfunc);
 
