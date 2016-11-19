@@ -5,7 +5,8 @@
 #include "ir/value.h"
 #include "ir/constant.h"
 
-#include <float.h>
+#include <cmath>
+#include <cfloat>
 
 namespace fir
 {

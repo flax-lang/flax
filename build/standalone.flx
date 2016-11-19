@@ -1,0 +1,178 @@
+// standalone.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+
+// import LibCInterface
+
+ffi func printf(fmt: i8*, ...) -> i32
+
+func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = f(arr[i])
+		i += 1
+	}
+
+	return ret
+}
+
+func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = f(arr[i], 3)
+		i += 1
+	}
+
+	return ret
+}
+
+func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = f(arr[i], arr2[i])
+		i += 1
+	}
+
+	return ret
+}
+
+
+
+func incr(x: int) -> int { x + 1 }
+func gmult<T>(x: T, m: T) -> T { x * m }
+func add2<A, B>(x: A, y: B) -> A { x + y }
+
+
+
+
+
+/*
+	notes
+
+	extension [] { }
+	^ this extends all dynamic arrays
+
+	extension T[]
+	^ this extends dynamic arrays of type T
+
+	presumably eventually we'll get generic types,
+	so we need generic extensions to go with that.
+
+	but dynamic arrays aren't "generic types" per-se, so we need something for it.
+
+	lambdas:
+
+	λ(x: int, y: int) -> string => {
+
+	}
+
+	.\(x: int, y: int) -> int => {
+
+	}
+
+
+	todo: handle taking address of function
+*/
+
+
+public func main()
+{
+	var arr = alloc[5] int
+	var arr2 = alloc[5] int
+	var i = 0
+	while i < arr.length
+	{
+		arr[i] = i
+		arr2[i] = i * (i + 5)
+
+		i += 1
+	}
+
+	// let new = map2(arr, arr2, add2)
+
+	// let new = map(arr, gincr)
+	// let new = map(arr, gmult)
+	let new = mapstupid(arr2, gincr, apply)
+
+
+	i = 0
+	while i < new.length
+	{
+		printf("%d: %d\n", i, new[i])
+		i += 1
+	}
+
+	// fntest(10, 3)
+	// let x = apply(10, 30)
+	// printf("x = %d\n", x)
+
+	printf("done\n")
+}
+
+
+func apply<U, V>(x: U, f: [(U) -> V]) -> V { f(x) }
+
+func gincr<T>(x: T) -> T { x + 1 }
+func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = fa(arr[i], fn)
+		i += 1
+	}
+
+	return ret
+}
+
+
+// func mapstupid2<T, K>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> K]) -> K[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] K
+// 	while i < arr.length
+// 	{
+// 		ret[i] = fa(arr[i], fn)
+// 		i += 1
+// 	}
+
+// 	return ret
+// }
+
+
+
+// func mapint(arr: int[], f: [(int) -> int]) -> int[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] int
+// 	while i < arr.length
+// 	{
+// 		ret[i] = f(arr[i])
+// 		i += 1
+// 	}
+
+// 	return ret
+// }
+
+
+
+
+
+
+
+
+
+
+

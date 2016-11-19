@@ -6,9 +6,8 @@
 
 namespace fir
 {
-	PointerType::PointerType(size_t inds, Type* base)
+	PointerType::PointerType(Type* base)
 	{
-		this->indirections = inds;
 		this->baseType = base;
 	}
 
@@ -86,15 +85,7 @@ namespace fir
 	{
 		PointerType* po = dynamic_cast<PointerType*>(other);
 		if(!po) return false;
-		if(this->indirections != po->indirections) return false;
-
 		return this->baseType->isTypeEqual(po->baseType);
-	}
-
-
-	size_t PointerType::getIndirections()
-	{
-		return this->indirections;
 	}
 
 
@@ -106,25 +97,7 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		// basically return a new version of ourselves
-		if(!this->baseType->isParametricType())
-			return this;
-
-
-		ParametricType* tp = this->baseType->toParametricType();
-
-		if(reals.find(tp->getName()) != reals.end())
-		{
-			auto t = reals[tp->getName()];
-			if(t->isParametricType())
-				error_and_exit("Cannot reify when the supposed real type of '%s' is still parametric", tp->getName().c_str());
-
-			return tc->normaliseType(new PointerType(this->indirections, t))->toPointerType();
-		}
-		else
-		{
-			error_and_exit("Failed to reify, no type found for '%s'", tp->getName().c_str());
-		}
+		return dynamic_cast<PointerType*>(this->baseType->reify(reals)->getPointerTo());
 	}
 }
 

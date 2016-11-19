@@ -2,8 +2,10 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -75,7 +77,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 
-
+// todo: this function is a little... dirty.
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
@@ -85,7 +87,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
 			if(vr->name != "length")
-				error(ma, "Variadic array only has one member, 'length'. %s is invalid.", vr->name.c_str());
+				error(ma, "Variadic arrays only have one member, 'length'. '%s' is invalid.", vr->name.c_str());
 
 			if(!actual)
 			{
@@ -98,11 +100,202 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma, "Variadic array only has one member, 'length'. Invalid operator.");
+			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
 		}
 	}
+	else if(type->isDynamicArrayType())
+	{
+		// lol, some magic.
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name == "length")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
 
-	if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayLength(ptr), 0);
+			}
+			else if(vr->name == "capacity")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayCapacity(ptr), 0);
+			}
+			else if(vr->name == "pointer")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType()->getPointerTo();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetDynamicArrayData(ptr), 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown property '%s' on dynamic array type ('%s')", vr->name.c_str(), type->str().c_str());
+			}
+		}
+		else if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			if(fc->name == "append")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() != 1)
+					error(fc, "Expected exactly 1 parameter in appending to dynamic array, have %zu", fc->params.size());
+
+				fir::Value* rval = 0; fir::Value* rptr = 0;
+				std::tie(rval, rptr) = fc->params[0]->codegen(cgi);
+
+				fir::DynamicArrayType* lt = type->toDynamicArrayType();
+				fir::DynamicArrayType* rt = 0;
+
+				if(rval->getType()->isDynamicArrayType()) rt = rval->getType()->toDynamicArrayType();
+
+				if(rt)
+				{
+					if(lt->getElementType() != rt->getElementType())
+					{
+						error(fc->params[0], "Incompatible element types in call to append; cannot append array of element "
+							"type '%s' to one of element type '%s'", rt->getElementType()->str().c_str(),
+							lt->getElementType()->str().c_str());
+					}
+
+					// ok.
+					iceAssert(rptr);
+
+					fir::Function* apf = RuntimeFuncs::Array::getAppendFunction(cgi, lt);
+					cgi->irb.CreateCall2(apf, ptr, rptr);
+				}
+				else if(!rt)
+				{
+					rval = cgi->autoCastType(lt->getElementType(), rval, rptr);
+
+					if(rval->getType() == lt->getElementType())
+					{
+						fir::Function* apf = RuntimeFuncs::Array::getElementAppendFunction(cgi, lt);
+						cgi->irb.CreateCall2(apf, ptr, rval);
+					}
+					else
+					{
+						error(fc->params[0], "Cannot append a value of type '%s' to an array of element type '%s'",
+							rval->getType()->str().c_str(), lt->getElementType()->str().c_str());
+					}
+				}
+
+				return Result_t(0, 0);
+			}
+			else if(fc->name == "clone")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clone() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, type->toDynamicArrayType());
+				iceAssert(clonef);
+
+				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
+				return Result_t(clone, 0);
+			}
+			else if(fc->name == "back")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				return Result_t(cgi->irb.CreateLoad(mem), 0);
+			}
+			else if(fc->name == "popBack")
+			{
+				if(!actual)
+				{
+					*resultType = type->toDynamicArrayType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				fir::Value* ret = cgi->irb.CreateLoad(mem);
+
+				// shrink the length
+				cgi->irb.CreateSetDynamicArrayLength(ptr, ind);
+
+				return Result_t(ret, 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
+			}
+		}
+		else
+		{
+			error(ma, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+		}
+	}
+	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
 	{
 		// handle builtin ones: 'raw' and 'length'
 		// raw is basically just the string
@@ -137,6 +330,19 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			{
 				iceAssert(ptr);
 				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
+			}
+		}
+		else if(vr->name == "rc")
+		{
+			if(!actual)
+			{
+				*resultType = fir::Type::getInt64();
+				return Result_t(0, 0);
+			}
+			else
+			{
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetStringRefCount(ptr), 0);
 			}
 		}
 	}
@@ -223,12 +429,12 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma->right, "Unsupported RHS for dot-operator on builtin type '%s'", type->str().c_str());
+			error(ma->right, "Unsupported builtin type '%s' for member access", type->str().c_str());
 		}
 	}
 	else
 	{
-		error(ma, "Cannot do member access on non-struct type '%s'", type->str().c_str());
+		error(ma, "Cannot do member access on aggregate type '%s'", type->str().c_str());
 	}
 }
 
@@ -419,8 +625,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error("wtf");
 	}
 
-	fir::Value* self = res.value;
-	fir::Value* selfPtr = res.pointer;
+	fir::Value* self = 0; fir::Value* selfptr = 0;
+	std::tie(self, selfptr) = res;
 
 
 	bool isPtr = false;
@@ -442,16 +648,16 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		else
 		{
 			fir::Type* _ = 0;
-			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfPtr, &_);
+			return attemptDotOperatorOnBuiltinTypeOrFail(cgi, ftype, this, true, self, selfptr, &_);
 		}
 	}
 
 
 	// find out whether we need self or selfptr.
-	if(selfPtr == nullptr && !isPtr)
+	if(selfptr == nullptr && !isPtr)
 	{
-		selfPtr = cgi->getStackAlloc(ftype);
-		cgi->irb.CreateStore(self, selfPtr);
+		selfptr = cgi->getStackAlloc(ftype);
+		cgi->irb.CreateStore(self, selfptr);
 	}
 
 
@@ -460,7 +666,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		bool wasSelfPtr = false;
 
-		if(selfPtr)
+		if(selfptr)
 		{
 			wasSelfPtr = true;
 			isPtr = false;
@@ -470,8 +676,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if we're faced with a double pointer, we need to load it once
 		if(wasSelfPtr)
 		{
-			if(selfPtr->getType()->isPointerType() && selfPtr->getType()->getPointerElementType()->isPointerType())
-				selfPtr = cgi->irb.CreateLoad(selfPtr);
+			if(selfptr->getType()->isPointerType() && selfptr->getType()->getPointerElementType()->isPointerType())
+				selfptr = cgi->irb.CreateLoad(selfptr);
 		}
 		else
 		{
@@ -500,7 +706,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
-		return doTupleAccess(cgi, selfPtr, n);
+		return doTupleAccess(cgi, selfptr, n);
 	}
 	else if(ftype->isStructType() && pair->second.second == TypeKind::Struct)
 	{
@@ -529,7 +735,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = st->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, str, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, str, i);
 			}
 			else
 			{
@@ -548,7 +754,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+				error(rhs, "Unsupported operation on RHS of dot operator");
 			}
 		}
 	}
@@ -578,7 +784,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				i = ct->getElementIndex(var->name);
 
 				iceAssert(i >= 0);
-				return doVariable(cgi, var, isPtr ? self : selfPtr, cls, i);
+				return doVariable(cgi, var, isPtr ? self : selfptr, cls, i);
 			}
 			else
 			{
@@ -621,7 +827,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 				else
 				{
 					iceAssert(cprop);
-					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfPtr);
+					return callComputedPropertyGetter(cgi, var, cprop, isPtr ? self : selfptr);
 				}
 			}
 		}
@@ -640,7 +846,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 
 			// return doFunctionCall(cgi, this, fc, isPtr ? self : selfPtr, cls, false);
-			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfPtr);
+			auto result = callMemberFunction(cgi, this, cls, fc, isPtr ? self : selfptr);
 			return Result_t(std::get<3>(result), 0);
 		}
 		else
@@ -651,7 +857,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 			}
 			else
 			{
-				error(rhs, "Unsupported operation on RHS of dot operator (%s)", typeid(*rhs).name());
+				error(rhs, "Unsupported operation on RHS of dot operator");
 			}
 		}
 	}
@@ -845,7 +1051,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
 
-	return { ftree, nsstrs, origList, curType, curFType };
+	return std::make_tuple(ftree, nsstrs, origList, curType, curFType);
 }
 
 
@@ -872,6 +1078,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 	// what is the right side?
+
+	std::map<Func*, std::pair<std::string, Expr*>> errs;
 	if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
 	{
 		Resolved_t res;
@@ -889,7 +1097,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 						flist.push_back({ f.second });
 				}
 
-				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+				FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
 				if(!fp.isEmpty()) res = Resolved_t(fp);
 			}
 		}
@@ -926,7 +1134,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 							flist.push_back(f);
 					}
 
-					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist);
+					FuncDefPair fp = this->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
 					if(!fp.isEmpty()) res = Resolved_t(fp);
 				}
 			}
@@ -964,7 +1172,14 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			}
 			else
 			{
-				GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+				if(errs.size() > 0)
+				{
+					GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params, errs);
+				}
+				else
+				{
+					GenError::noFunctionTakingParams(this, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+				}
 			}
 		}
 
@@ -1073,7 +1288,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	}
 	else
 	{
-		error(ma, "Invalid expression type (%s) on right hand of dot operator", typeid(*ma->right).name());
+		error(ma, "Invalid expression type on right hand of dot operator");
 	}
 }
 
@@ -1165,119 +1380,125 @@ FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* us
 
 
 
-fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::Function* oldf,
-	fir::FunctionType* instantiatedFT, MemberAccess* ma)
+fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Expr* user, fir::FunctionType* oldft,
+	fir::FunctionType* instantiatedFT, MemberAccess* ma, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 {
 	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instantiate generic function with another generic function");
 
-	std::string name = oldf->getName().name;
-
-	if(ma)
+	iceAssert(ma);
+	if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
 	{
-		if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
+		// do the thing
+
+		FunctionTree* ftree = 0;
+		StructBase* strType = 0;
+		fir::Type* strFType = 0;
+
+		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+
+		std::string name;
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
-			// do the thing
+			name = vr->name;
+		}
+		else
+		{
+			error(user, "Unsupported use of dot-operator to get function??");
+		}
 
-			FunctionTree* ftree = 0;
-			StructBase* strType = 0;
-			fir::Type* strFType = 0;
 
-			std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+		std::map<fir::Function*, Func*> map;
+
+		if(strType != 0)
+		{
+			// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
+			// a namespace) with a concrete type
+			// so, we don't need to look at members or anything else, just functions.
+			//
+			// eg.
+			//
+			// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
+			//
+			// ... (somewhere else)
+			//
+			// class SomeClass
+			// {
+			//     func someMethod<T>(a: T) -> T { ... }
+			// }
+			//
+			// we can't (and probably won't) have generic function types
+			// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
+			// since there's no easy way to be type-safe about them.
 
 
-			std::map<fir::Function*, Func*> map;
+			// static function
+			ClassDef* cd = dynamic_cast<ClassDef*>(strType);
+			iceAssert(cd);
 
-			if(strType != 0)
+			for(auto f : cd->funcs)
 			{
-				// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
-				// a namespace) with a concrete type
-				// so, we don't need to look at members or anything else, just functions.
-				//
-				// eg.
-				//
-				// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
-				//
-				// ... (somewhere else)
-				//
-				// class SomeClass
-				// {
-				//     func someMethod<T>(a: T) -> T { ... }
-				// }
-				//
-				// we can't (and probably won't) have generic function types
-				// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
-				// since there's no easy way to be type-safe about them.
+				if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+					map[cd->functionMap[f]] = f;
+			}
 
 
-				// static function
-				ClassDef* cd = dynamic_cast<ClassDef*>(strType);
-				iceAssert(cd);
-
-				for(auto f : cd->funcs)
+			for(auto ext : this->getExtensionsForType(cd))
+			{
+				for(auto f : ext->funcs)
 				{
 					if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-						map[cd->functionMap[f]] = f;
+						map[ext->functionMap[f]] = f;
 				}
-
-
-				for(auto ext : this->getExtensionsForType(cd))
-				{
-					for(auto f : ext->funcs)
-					{
-						if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-							map[ext->functionMap[f]] = f;
-					}
-				}
-			}
-			else
-			{
-				iceAssert(ftree);
-
-				for(auto f : ftree->genericFunctions)
-				{
-					if(!f.first->generatedFunc)
-						f.first->codegen(this);
-
-					iceAssert(f.first->generatedFunc);
-					map[f.first->generatedFunc] = f.second;
-				}
-			}
-
-			// failed to find
-			if(map.empty()) return 0;
-
-
-			std::deque<fir::Function*> cands;
-
-			// set up
-			for(auto p : map)
-				cands.push_back(p.first);
-
-			auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
-			if(res == 0) return 0;
-
-			// ok.
-			Func* fnbody = map[res];
-			iceAssert(fnbody);
-			{
-				// instantiate it.
-
-				FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT);
-
-				iceAssert(fp.firFunc);
-				return fp.firFunc;
 			}
 		}
 		else
 		{
-			error(user, "not supported??");
+			iceAssert(ftree);
+
+			for(auto f : ftree->genericFunctions)
+			{
+				if(!f.first->generatedFunc)
+					f.first->codegen(this);
+
+				iceAssert(f.first->generatedFunc);
+				map[f.first->generatedFunc] = f.second;
+			}
+		}
+
+		// failed to find
+		if(map.empty()) return 0;
+
+
+		std::deque<fir::Function*> cands;
+
+		// set up
+		for(auto p : map)
+			cands.push_back(p.first);
+
+		auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
+		if(res == 0) return 0;
+
+		// ok.
+		Func* fnbody = map[res];
+		iceAssert(fnbody);
+		{
+			// instantiate it.
+
+			FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT, errs);
+			return fp.firFunc;
 		}
 	}
 	else
 	{
-		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user,
-			this->findGenericFunctions(oldf->getName().name), instantiatedFT).firFunc;
+		error(user, "not supported??");
 	}
+
+
+	// else
+	// {
+	// 	return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, this->findGenericFunctions(fname.name),
+	// 		instantiatedFT, errs).firFunc;
+	// }
 }
 
 
@@ -1369,7 +1590,9 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 	if(!res.resolved)
 	{
 		// look for generic ones
-		FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist);
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
+		FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, genericfunclist, &errs);
+
 		if(!fp.isEmpty())
 		{
 			res = Resolved_t(fp);
@@ -1499,8 +1722,16 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 			ops.caret = fc->pin;
 
-			error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			exitless_error(fc, ops, "No such member function '%s' in class %s taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				fc->name.c_str(), cls->ident.name.c_str(), argstr.c_str(), fns.size(), candstr.c_str());
+
+			if(errs.size() > 0)
+			{
+				for(auto p : errs)
+					info(p.first, "Candidate not suitable: %s", p.second.first.c_str());
+			}
+
+			doTheExit();
 		}
 	}
 

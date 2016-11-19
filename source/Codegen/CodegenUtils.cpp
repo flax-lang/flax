@@ -7,7 +7,10 @@
 #include <map>
 #include <set>
 
+#include "pts.h"
+#include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -83,6 +86,24 @@ namespace Codegen
 		return fir::getDefaultFTContext();
 	}
 
+	typedef std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> _Scope_t;
+
+	_Scope_t CodegenInstance::saveAndClearScope()
+	{
+		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->namespaceStack);
+		this->clearScope();
+
+		return s;
+	}
+
+	void CodegenInstance::restoreScope(_Scope_t s)
+	{
+		std::tie(this->symTabStack, this->refCountingStack, this->namespaceStack) = s;
+	}
+
+
+
+
 	void CodegenInstance::popScope()
 	{
 		this->symTabStack.pop_back();
@@ -93,7 +114,7 @@ namespace Codegen
 	{
 		this->symTabStack.clear();
 		this->refCountingStack.clear();
-		this->clearNamespaceScope();
+		this->namespaceStack.clear();
 	}
 
 	void CodegenInstance::pushScope()
@@ -227,7 +248,7 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::getType(Identifier id)
+	TypePair_t* CodegenInstance::getType(const Identifier& id)
 	{
 		return this->getTypeByString(id.str());
 	}
@@ -235,16 +256,6 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::getTypeByString(std::string name)
 	{
-		#if 0
-
-			fprintf(stderr, "finding %s\n{\n", name.c_str());
-			for(auto p : this->typeMap)
-				fprintf(stderr, "\t%s\n", p.first.c_str());
-
-			fprintf(stderr, "}\n");
-
-		#endif
-
 		if(name == "Inferred")
 			return 0;
 
@@ -318,7 +329,7 @@ namespace Codegen
 		return nullptr;
 	}
 
-	bool CodegenInstance::isDuplicateType(Identifier id)
+	bool CodegenInstance::isDuplicateType(const Identifier& id)
 	{
 		return this->getType(id) != nullptr;
 	}
@@ -440,7 +451,8 @@ namespace Codegen
 			{
 				if(pair.funcDecl->attribs & Attr_VisPublic)
 				{
-					bool existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					bool existing = (pair.funcDecl->genericTypes.size() > 0)
+						? false : ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
 
 					if(!existing)
 					{
@@ -458,7 +470,7 @@ namespace Codegen
 						{
 							// for generics, just push as-is
 							ftree->funcs.push_back(FuncDefPair(pair.firFunc, pair.funcDecl, pair.funcDef));
-							ftree->funcSet.insert(pair.firFunc->getName());
+							// ftree->funcSet.insert(pair.firFunc->getName());
 						}
 					}
 				}
@@ -770,35 +782,6 @@ namespace Codegen
 		return 0;
 	}
 
-	std::pair<TypePair_t*, int> CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
-	{
-		auto curDepth = scope;
-
-		// this thing handles pointers properly.
-		if(this->getExprTypeOfBuiltin(name) != 0)
-			return { 0, 0 };
-
-		// not this though.
-		int indirections = 0;
-		name = unwrapPointerType(name, &indirections);
-
-		for(size_t i = 0; i <= scope.size(); i++)
-		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto& f : ft->types)
-			{
-				if(f.first == name)
-					return { &f.second, indirections };
-			}
-
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
-		}
-
-		return { 0, -1 };
-	}
 
 
 
@@ -818,16 +801,6 @@ namespace Codegen
 			FunctionTree* existing = this->getCurrentFuncTree();
 			if(existing->subMap.find(namespc) != existing->subMap.end())
 				found = true;
-
-
-			// for(auto s : existing->subs)
-			// {
-			// 	if(s->nsName == namespc)
-			// 	{
-			// 		found = true;
-			// 		break;
-			// 	}
-			// }
 
 			if(!found)
 			{
@@ -1096,13 +1069,78 @@ namespace Codegen
 
 
 
+	static bool _checkGenericFunctionParameter(CodegenInstance* cgi, fir::FunctionType* gen, fir::FunctionType* given)
+	{
+		typedef std::deque<pts::TypeTransformer> TrfList;
+
+		// ok, type solving time.
+		auto alist = gen->getArgumentTypes();
+		auto glist = given->getArgumentTypes();
+
+		auto ft1 = gen;
+		auto ft2 = given;
+
+		// basic things
+		if(ft1->isVariadicFunc() != ft2->isVariadicFunc() || ft1->isCStyleVarArg() != ft2->isCStyleVarArg())
+			return false;
+
+		if(glist.size() != alist.size())
+			return false;
 
 
-	static bool _checkFunction(CodegenInstance* cgi, std::deque<fir::Type*> funcParams, std::deque<fir::Type*> args,
-		int* _dist, bool variadic, bool c_variadic, bool exact)
+		std::map<std::string, fir::Type*> gtm;
+		for(size_t k = 0; k < alist.size(); k++)
+		{
+			// really want structured bindings right about now
+			fir::Type* givent = 0; TrfList gtrfs;
+			std::tie(givent, gtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(glist[k]);
+
+			fir::Type* expt = 0; TrfList etrfs;
+			std::tie(expt, gtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(alist[k]);
+
+			if(expt->isParametricType())
+			{
+				if(!pts::areTransformationsCompatible(etrfs, gtrfs))
+					return false;
+
+				if(gtm.find(expt->toParametricType()->getName()) != gtm.end())
+				{
+					if(givent != gtm[expt->toParametricType()->getName()])
+						return false;
+				}
+				else
+				{
+					gtm[expt->toParametricType()->getName()] = givent;
+				}
+			}
+			else if(expt->isTupleType() || expt->isFunctionType())
+			{
+				error("not sup nested");
+			}
+			else
+			{
+				// regardless of 'exact' -- function types must always match exactly.
+				if(glist[k] != alist[k])
+					return false;
+			}
+		}
+
+		return true;
+	}
+
+
+	static bool _checkFunction(CodegenInstance* cgi, std::deque<Expr*> exprs, std::deque<fir::Type*> funcParams,
+		std::deque<fir::Type*> args, int* _dist, bool variadic, bool c_variadic, bool exact)
 	{
 		iceAssert(_dist);
 		*_dist = 0;
+
+		// fuck, we need to be able to check passing generic functions to non-generic functions
+		// non-generic functions should be perfectly able to take generic functions, because all the
+		// information is there to give solutions.
+
+		// hopefully it'll be much less complex than actual generic function resolution,
+		// since we know pretty much all the information immediately, and can return false if it's wrong.
 
 		if(!variadic)
 		{
@@ -1115,7 +1153,12 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				if(t1 != t2)
+				if(t1->isFunctionType() && t2->isFunctionType() && t1->toFunctionType()->isGenericFunction())
+				{
+					bool res = _checkGenericFunctionParameter(cgi, t1->toFunctionType(), t2->toFunctionType());
+					if(!res) return false;
+				}
+				else if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
 
@@ -1143,7 +1186,12 @@ namespace Codegen
 				fir::Type* t1 = args[i];
 				fir::Type* t2 = funcParams[i];
 
-				if(t1 != t2)
+				if(t1->isFunctionType() && t2->isFunctionType() && t1->toFunctionType()->isGenericFunction())
+				{
+					bool res = _checkGenericFunctionParameter(cgi, t1->toFunctionType(), t2->toFunctionType());
+					if(!res) return false;
+				}
+				else if(t1 != t2)
 				{
 					if(exact || t1 == 0 || t2 == 0) return false;
 
@@ -1197,6 +1245,11 @@ namespace Codegen
 		}
 	}
 
+
+
+
+
+
 	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
@@ -1230,7 +1283,14 @@ namespace Codegen
 			isvar = fp.funcDecl->isVariadic;
 		}
 
-		return _checkFunction(this, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
+		std::deque<Expr*> exprl;
+		if(fp.funcDecl)
+		{
+			for(auto p : fp.funcDecl->params)
+				exprl.push_back(p);
+		}
+
+		return _checkFunction(this, exprl, funcParams, argTypes, castingDistance, isvar, iscvar, exactMatch);
 	}
 
 
@@ -1268,6 +1328,11 @@ namespace Codegen
 		{
 			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
+		}
+		else if(name == "realloc")
+		{
+			return this->module->getOrCreateFunction(Identifier("realloc", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
 		else if(name == "free")
 		{
@@ -1359,66 +1424,6 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::mangleGenericParameters(std::deque<VarDecl*> args)
-	{
-		std::deque<std::string> strs;
-		std::map<std::string, int> uniqueGenericTypes;	// only a map because it's easier to .find().
-
-		// TODO: this is very suboptimal
-		int runningTypeIndex = 0;
-		for(auto arg : args)
-		{
-			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
-
-			// if there is no proper type, go ahead with the raw type: T or U or something.
-			if(!atype)
-			{
-				std::string st = arg->ptype->str();
-				if(uniqueGenericTypes.find(st) == uniqueGenericTypes.end())
-				{
-					uniqueGenericTypes[st] = runningTypeIndex;
-					runningTypeIndex++;
-				}
-			}
-		}
-
-		// very very suboptimal.
-
-		for(auto arg : args)
-		{
-			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
-
-			// if there is no proper type, go ahead with the raw type: T or U or something.
-			if(!atype)
-			{
-				std::string st = arg->ptype->str();
-				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
-
-				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]);
-				strs.push_back(std::to_string(s.length()) + s);
-			}
-			else
-			{
-				std::string mangled = atype->encodedStr();
-
-				if(atype->isParameterPackType())
-				{
-					mangled = "V" + atype->toParameterPackType()->encodedStr();
-				}
-
-				while(atype->isPointerType())
-					mangled += "P", atype = atype->getPointerElementType();
-
-				strs.push_back(mangled);
-			}
-		}
-
-		std::string ret;
-		for(auto s : strs)
-			ret += "_" + s;
-
-		return ret;
-	}
 
 
 
@@ -1435,34 +1440,6 @@ namespace Codegen
 
 
 
-
-
-	#if 0
-	bool CodegenInstance::isDuplicateFuncDecl(FuncDecl* decl)
-	{
-		if(decl->isFFI) return false;
-
-		std::deque<Expr*> es;
-		for(auto p : decl->params) es.push_back(p);
-
-		Resolved_t res = this->resolveFunction(decl, decl->ident.name, es, true);
-		if(res.resolved && res.t.firFunc != 0 && res.t.funcDecl != decl)
-		{
-			fprintf(stderr, "Duplicate function: %s\n", this->printAst(res.t.funcDecl).c_str());
-			for(size_t i = 0; i < __min(decl->params.size(), res.t.funcDecl->params.size()); i++)
-			{
-				info(res.t.funcDecl, "%zu: %s, %s", i, decl->params[i]->getType(this)->str().c_str(),
-					res.t.funcDecl->params[i]->getType(this)->str().c_str());
-			}
-
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	#endif
 
 	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
@@ -1509,439 +1486,6 @@ namespace Codegen
 
 
 
-
-	static bool _checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
-		FuncDecl* candidate, std::deque<fir::Type*> args)
-	{
-		std::map<std::string, fir::Type*> thistm;
-
-
-		// get rid of this stupid literal nonsense
-		for(size_t i = 0; i < args.size(); i++)
-		{
-			if(args[i]->isPrimitiveType() && args[i]->toPrimitiveType()->isLiteralType())
-				args[i] = args[i]->toPrimitiveType()->getUnliteralType();
-		}
-
-
-		// now check if we *can* instantiate it.
-		// first check the number of arguments.
-
-		bool didSelfParam = false;
-		fir::Type* originalFirstParam = 0;
-
-		if(candidate->params.size() != args.size())
-		{
-			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
-			// then there's no reason for the parameters to mismatch.
-			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
-				return false;
-
-			else if(candidate->parentClass && !candidate->isStatic)
-			{
-				// make sure it's only one off
-				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
-					return false;
-
-				didSelfParam = true;
-				iceAssert(args.front()->isPointerType() && args.front()->getPointerElementType()->isClassType() && "what, no.");
-
-				originalFirstParam = args.front();
-				args.pop_front();
-
-				iceAssert(candidate->params.size() == args.size());
-			}
-		}
-
-
-
-		// param count matches...
-		// do a similar thing as the actual mangling -- build a list of
-		// uniquely named types.
-
-		// string is name, map is a map from position to indirs.
-		std::map<std::string, std::map<int, int>> typePositions;
-		std::map<int, std::pair<std::string, int>> revTypePositions;
-
-		std::vector<int> nonGenericTypes;
-
-
-
-		// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
-		// so we only check the first n - 1 parameters.
-		VarDecl* varParam = 0;
-		if(candidate->isVariadic)
-		{
-			varParam = candidate->params.back();
-			candidate->params.pop_back();
-		}
-
-
-
-		int pos = 0;
-		for(auto p : candidate->params)
-		{
-			int indirs = 0;
-			std::string s = p->ptype->str();
-			s = unwrapPointerType(s, &indirs);
-
-			if(candidate->genericTypes.find(s) != candidate->genericTypes.end())
-			{
-				typePositions[s][pos] = indirs;
-				revTypePositions[pos] = { s, indirs };
-			}
-			else
-			{
-				nonGenericTypes.push_back(pos);
-			}
-
-			pos++;
-		}
-
-
-		// since this is bound by the size of the candidates, we'll only check the non-var parameters
-		// this ensures we don't array out of bounds.
-		std::map<std::string, fir::Type*> checked;
-		for(size_t i = 0; i < candidate->params.size(); i++)
-		{
-			if(revTypePositions.find(i) != revTypePositions.end())
-			{
-				// check that the generic types match (ie. all the Ts are the same type, pointerness, etc)
-				std::string s = revTypePositions[i].first;
-				int indirs = revTypePositions[i].second;
-
-				fir::Type* ftype = args[i];
-
-				int givenindrs = 0;
-				while(ftype->isPointerType())
-				{
-					ftype = ftype->getPointerElementType();
-					givenindrs++;
-				}
-
-				// check that the base types match
-				// eg. if we have (T*, T*), make sure the T is the same, don't be having like int8* and String*.
-				// ftype here has been reduced.
-
-				if(checked.find(s) != checked.end())
-				{
-					if(ftype != checked[s])
-						return false;
-				}
-				else
-				{
-					checked[s] = ftype;
-				}
-
-
-				// check that we have 'enough' pointerness
-				// eg. if we have T**, make sure we pass at least a double-indirected thing, or more (triple, etc.)
-				if(givenindrs < indirs)
-					return false;
-			}
-			else
-			{
-				// check normal types.
-				fir::Type* a = args[i];
-				fir::Type* b = candidate->params[i]->getType(cgi);
-
-				if(a != b) return false;
-			}
-		}
-
-
-
-
-
-		// fill in the typemap.
-		// note that it's okay if we just have one -- if we did this loop more
-		// than once and screwed up the tm, that means we have more than one
-		// candidate, and will error anyway.
-
-		for(auto pair : typePositions)
-		{
-			int pos = pair.second.begin()->first;
-			int indrs = pair.second.begin()->second;
-
-			fir::Type* t = args[pos];
-			for(int i = 0; i < indrs; i++)
-				t = t->getPointerElementType();
-
-			thistm[pair.first] = t;
-		}
-
-
-		// last phase: ensure the type constraints are met
-		for(auto cst : thistm)
-		{
-			TypeConstraints_t constr = candidate->genericTypes[cst.first];
-
-			for(auto protstr : constr.protocols)
-			{
-				ProtocolDef* prot = cgi->resolveProtocolName(candidate, protstr);
-				iceAssert(prot);
-
-				bool doesConform = prot->checkTypeConformity(cgi, cst.second);
-
-				if(!doesConform)
-					return false;
-			}
-		}
-
-
-		// if we're variadic -- check it.
-		if(varParam != 0)
-		{
-			// add it back first.
-			candidate->params.push_back(varParam);
-
-			// get the type.
-			int indirs = 0;
-			std::string base = varParam->ptype->toVariadicArrayType()->base->str();
-			base = unwrapPointerType(base, &indirs);
-
-
-			if(typePositions.find(base) != typePositions.end())
-			{
-				// already have it
-				// ensure it matches with the ones we've already found.
-
-				fir::Type* resolved = thistm[base];
-				iceAssert(resolved);
-
-
-
-				if(args.size() >= candidate->params.size())
-				{
-					// again, check the direct forwarding case
-					if(args.size() == candidate->params.size() && args.back()->isParameterPackType()
-						&& args.back()->toParameterPackType()->getElementType() == resolved)
-					{
-						// direct.
-						// do nothing.
-					}
-					else
-					{
-						for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-						{
-							if(args[i] != resolved)
-								return false;
-						}
-
-						// should be fine now.
-					}
-				}
-				else
-				{
-					// no varargs were even given
-					// since we have already inferred the type from the other parameters,
-					// we can give this a free pass.
-				}
-			}
-			else if(candidate->genericTypes.find(base) != candidate->genericTypes.end())
-			{
-				// ok, we need to be able to deduce the type from the vararg only.
-				// so if none were provided, then give up.
-
-				if(args.size() < candidate->params.size())
-					return false;
-
-
-				// great, now just deduce it.
-				// we just need to make sure all the Ts match, and the number of indirections
-				// match *and* are greater than or equal to the specified level.
-
-				fir::Type* first = args[candidate->params.size() - 1];
-
-				// first, make sure the indirections tally
-				int givenindrs = 0;
-				if(first->isPointerType())
-					givenindrs = first->toPointerType()->getIndirections();
-
-				if(givenindrs < indirs)
-					return false;
-
-
-				// ok, check the type itself
-				for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-				{
-					if(args[i] != first)
-						return false;
-				}
-
-				// ok now.
-				fir::Type* reduced = first;
-				while(reduced->isPointerType())
-					reduced = reduced->getPointerElementType();
-
-				thistm[base] = reduced;
-			}
-		}
-
-
-
-
-
-
-
-		// check that we actually have an entry for every type
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-				return false;
-		}
-
-
-		*gtm = thistm;
-		return true;
-	}
-
-
-
-	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
-		Func* func, std::deque<fir::Type*> params)
-	{
-		iceAssert(func);
-		iceAssert(func->decl);
-
-		FuncDecl* fnDecl = func->decl;
-
-		std::map<std::string, fir::Type*> gtm = _gtm;
-		if(gtm.empty())
-		{
-			bool res = _checkGenericFunction(this, &gtm, func->decl, params);
-			if(!res) return FuncDefPair::empty();
-		}
-
-
-		bool needToCodegen = true;
-		if(this->reifiedGenericFunctions.find({ func, gtm }) != this->reifiedGenericFunctions.end())
-			needToCodegen = false;
-
-
-
-
-		// we need to push a new "generic type stack", and add the types that we resolved into it.
-		// todo: might be inefficient.
-		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
-		// so we don't have to iterate etc etc.
-		// I don't want to access cgi->instantiatedGenericTypeStack directly.
-
-
-
-		fir::Function* ffunc = nullptr;
-		if(needToCodegen)
-		{
-			Result_t res = fnDecl->generateDeclForGenericFunction(this, gtm);
-			ffunc = (fir::Function*) res.value;
-
-			this->reifiedGenericFunctions[{ func, gtm }] = ffunc;
-		}
-		else
-		{
-			ffunc = this->reifiedGenericFunctions[{ func, gtm }];
-			iceAssert(ffunc);
-		}
-
-		iceAssert(ffunc);
-
-		this->pushGenericTypeStack();
-		for(auto pair : gtm)
-			this->pushGenericType(pair.first, pair.second);
-
-		if(needToCodegen)
-		{
-			// dirty: use 'lhsPtr' to pass the version we want.
-			func->codegen(this, ffunc);
-		}
-
-		this->removeFunctionFromScope(FuncDefPair(0, func->decl, func));
-		this->popGenericTypeStack();
-
-		return FuncDefPair(ffunc, func->decl, func);
-	}
-
-
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates)
-	{
-		// try and resolve shit
-		std::map<std::string, fir::Type*> gtm;
-
-		if(candidates.size() == 0)
-		{
-			return FuncDefPair::empty();	// just fail
-		}
-
-		std::deque<fir::Type*> fargs;
-		for(auto p : fc->params)
-			fargs.push_back(p->getType(this));
-
-		auto it = candidates.begin();
-		while(it != candidates.end())
-		{
-			bool result = _checkGenericFunction(this, &gtm, (*it)->decl, fargs);
-
-			if(!result)
-			{
-				it = candidates.erase(it);
-			}
-			else
-			{
-				it++;
-			}
-		}
-
-		if(candidates.size() == 0)
-		{
-			return FuncDefPair::empty();
-		}
-		else if(candidates.size() > 1)
-		{
-			std::string cands;
-			for(auto c : candidates)
-				cands += this->printAst(c->decl) + "\n";
-
-			error(fc, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n", fc->name.c_str(),
-				candidates.size(), cands.c_str());
-		}
-
-		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs);
-	}
-
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc)
-	{
-		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
-		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates);
-	}
-
-
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
-		fir::FunctionType* ft)
-	{
-		std::deque<FuncDefPair> ret;
-		for(auto fn : candidates)
-		{
-			auto fp = this->instantiateGenericFunctionUsingParameters(user, { }, fn, ft->getArgumentTypes());
-			if(fp.firFunc && fp.funcDef)
-				ret.push_back(fp);
-		}
-
-		if(ret.empty())
-		{
-			return FuncDefPair::empty();
-		}
-		else if(candidates.size() > 1)
-		{
-			std::string cands;
-			for(auto c : candidates)
-				cands += this->printAst(c->decl) + "\n";
-
-			error(user, "Ambiguous instantiation of parametric function %s, have %zd candidates:\n%s\n",
-				ret.front().funcDecl->ident.name.c_str(), candidates.size(), cands.c_str());
-		}
-
-		return ret.front();
-	}
 
 
 
@@ -2333,7 +1877,7 @@ namespace Codegen
 		}
 		else
 		{
-			error(user, "Invalid expr type (%s)", typeid(*pair->second.first).name());
+			error(user, "Invalid expr type");
 		}
 	}
 
@@ -2344,7 +1888,7 @@ namespace Codegen
 
 
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithName(Identifier id, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithName(const Identifier& id, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 		if(list.empty()) return 0;
@@ -2355,7 +1899,7 @@ namespace Codegen
 		return list.front();
 	}
 
-	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(Identifier id, fir::FunctionType* ft, Expr* user)
+	fir::Function* CodegenInstance::getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Expr* user)
 	{
 		auto list = this->module->getFunctionsWithName(id);
 
@@ -2537,6 +2081,7 @@ namespace Codegen
 		this->irb.CreateSetStringLength(strp, len);
 
 		strp->makeImmutable();
+
 		return Result_t(this->irb.CreateLoad(strp), strp);
 	}
 
@@ -2609,7 +2154,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* incrf = this->getStringRefCountIncrementFunction();
+			fir::Function* incrf = RuntimeFuncs::String::getRefCountIncrementFunction(this);
 			this->irb.CreateCall1(incrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2637,7 +2182,7 @@ namespace Codegen
 		{
 			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
 
-			fir::Function* decrf = this->getStringRefCountDecrementFunction();
+			fir::Function* decrf = RuntimeFuncs::String::getRefCountDecrementFunction(this);
 			this->irb.CreateCall1(decrf, strp);
 		}
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
@@ -2660,13 +2205,11 @@ namespace Codegen
 
 
 	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
-		ValueKind rhsVK, bool isInit)
+		ValueKind rhsVK, bool isInit, bool doAssign)
 	{
 		// if you're doing stupid things:
 		if(!this->isRefCountedType(val->getType()))
-		{
-			error(user, "not refcounted");
-		}
+			error(user, "type '%s' is not refcounted", val->getType()->str().c_str());
 
 		// ok...
 		// if the rhs is an lvalue, it's simple.
@@ -2681,7 +2224,8 @@ namespace Codegen
 				this->decrementRefCount(target);
 
 			// store
-			this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+			if(doAssign)
+				this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
 		}
 		else
 		{
@@ -2703,7 +2247,8 @@ namespace Codegen
 				this->removeRefCountedValueIfExists(ptr);
 
 			// now we just store as usual
-			this->irb.CreateStore(val, target);
+			if(doAssign)
+				this->irb.CreateStore(val, target);
 		}
 	}
 
@@ -2750,7 +2295,17 @@ namespace Codegen
 		return Result_t(this->irb.CreateLoad(arr), arr);
 	}
 
+	Result_t CodegenInstance::createEmptyDynamicArray(fir::Type* elmType)
+	{
+		fir::DynamicArrayType* dtype = fir::DynamicArrayType::get(elmType);
+		fir::Value* arr = this->irb.CreateStackAlloc(dtype);
 
+		this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(elmType->getPointerTo()));
+		this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
+		this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+
+		return Result_t(this->irb.CreateLoad(arr), arr);
+	}
 
 
 
@@ -2914,8 +2469,7 @@ namespace Codegen
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
-			error(func, "Function '%s' has return type '%s', but returns nothing", func->decl->ident.name.c_str(),
-				func->decl->ptype->str().c_str());
+			error(func, "Function '%s' has return type '%s', but returns nothing", func->decl->ident.name.c_str(), retType->str().c_str());
 		}
 		else if(isVoid)
 		{

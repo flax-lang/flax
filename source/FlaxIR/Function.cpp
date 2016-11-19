@@ -55,7 +55,8 @@ namespace fir
 
 
 	// function stuff
-	Function::Function(Identifier name, FunctionType* fnType, Module* module, LinkageType linkage) : GlobalValue(module, fnType, linkage)
+	Function::Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage)
+		: GlobalValue(module, fnType, linkage)
 	{
 		this->ident = name;
 		this->valueType = fnType;
@@ -129,10 +130,9 @@ namespace fir
 			error("Cannot reify function using another parametric function type");
 
 		// check that the function type is actually legit
-		bool fail = false;
 
 		if(ft->getArgumentTypes().size() != this->getArguments().size())
-			fail = true;
+			error("Mismatched number of arguments (%zu vs %zu)", this->getArguments().size(), ft->getArgumentTypes().size());
 
 
 		// fuck, we need to go through all the arguments one by one -- make sure the types match
@@ -290,7 +290,7 @@ namespace fir
 
 
 
-	Function* Function::create(Identifier name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
+	Function* Function::create(const Identifier& name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
 	{
 		return new Function(name, fnType, module, linkage);
 	}

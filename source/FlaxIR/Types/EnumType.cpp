@@ -10,7 +10,7 @@
 
 namespace fir
 {
-	EnumType::EnumType(Identifier name, Type* ct, std::map<std::string, ConstantValue*> cs)
+	EnumType::EnumType(const Identifier& name, Type* ct, std::map<std::string, ConstantValue*> cs)
 	{
 		this->enumName = name;
 		this->caseType = ct;
@@ -19,7 +19,7 @@ namespace fir
 		{
 			if(c.second->getType() != this->caseType)
 			{
-				error_and_exit("Mismatched types: case '%s' in enum '%s' has type '%s', in enum of type '%s'", c.first.c_str(),
+				_error_and_exit("Mismatched types: case '%s' in enum '%s' has type '%s', in enum of type '%s'", c.first.c_str(),
 					name.name.c_str(), c.second->getType()->str().c_str(), this->caseType->str().c_str());
 			}
 		}
@@ -83,7 +83,7 @@ namespace fir
 
 
 
-	EnumType* EnumType::get(Identifier name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc)
+	EnumType* EnumType::get(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -95,7 +95,7 @@ namespace fir
 		{
 			if(t->isEnumType() && t->toEnumType()->getEnumName() == name)
 			{
-				error_and_exit("Enum '%s' already exists", name.str().c_str());
+				_error_and_exit("Enum '%s' already exists", name.str().c_str());
 			}
 		}
 

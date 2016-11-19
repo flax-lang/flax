@@ -86,6 +86,8 @@ namespace fir
 			case OpKind::FCompare_GreaterEqual_UNORD: 		instrname = "fcmp unord ge"; break;
 			case OpKind::FCompare_LessEqual_ORD: 			instrname = "fcmp ord le"; break;
 			case OpKind::FCompare_LessEqual_UNORD: 			instrname = "fcmp unord le"; break;
+			case OpKind::ICompare_Multi:					instrname = "icmp multi"; break;
+			case OpKind::FCompare_Multi:					instrname = "fcmp multi"; break;
 			case OpKind::Bitwise_Not: 						instrname = "not"; break;
 			case OpKind::Bitwise_Xor: 						instrname = "xor"; break;
 			case OpKind::Bitwise_Arithmetic_Shr: 			instrname = "ashr"; break;

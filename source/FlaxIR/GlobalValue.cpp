@@ -16,7 +16,7 @@ namespace fir
 	}
 
 
-	GlobalVariable::GlobalVariable(Identifier name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
+	GlobalVariable::GlobalVariable(const Identifier& name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
 		: GlobalValue(module, type, lt)
 	{
 		this->ident = name;
