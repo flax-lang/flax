@@ -631,6 +631,10 @@ namespace fir
 		bool isCStyleVarArg();
 		bool isVariadicFunc();
 
+		std::deque<ParametricType*> getTypeParameters();
+		void addTypeParameter(ParametricType* t);
+		void addTypeParameters(std::deque<ParametricType*> ts);
+
 		bool isGenericFunction();
 
 		virtual std::string str() override;
@@ -644,9 +648,10 @@ namespace fir
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
-		bool isGeneric;
 		bool isFnCStyleVarArg;
 		bool isFnVariadic;
+
+		std::deque<ParametricType*> typeParameters;
 
 		std::deque<Type*> functionParams;
 		Type* functionRetType;
