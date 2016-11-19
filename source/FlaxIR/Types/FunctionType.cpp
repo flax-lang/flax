@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/type.h"
+#include "ir/function.h"
 
 namespace Codegen
 {
@@ -11,6 +12,61 @@ namespace Codegen
 
 namespace fir
 {
+	#if 0
+	static bool isSomewhatGeneric(Type* t)
+	{
+		if(t->isDynamicArrayType())
+			return isSomewhatGeneric(t->toDynamicArrayType()->getElementType());
+		else if(t->isParameterPackType())
+			return isSomewhatGeneric(t->toParameterPackType()->getElementType());
+		else if(t->isArrayType())
+			return isSomewhatGeneric(t->toArrayType()->getElementType());
+		else if(t->isPointerType())
+			return isSomewhatGeneric(t->getPointerElementType());
+		else if(t->isClassType())
+		{
+			bool r = false;
+			for(auto m : t->toClassType()->getElements())
+				r = isSomewhatGeneric(m) || r;
+
+			for(auto m : t->toClassType()->getMethods())
+				r = isSomewhatGeneric(m->getType()) || r;
+
+			return r;
+		}
+		else if(t->isStructType())
+		{
+			bool r = false;
+			for(auto m : t->toStructType()->getElements())
+				r = isSomewhatGeneric(m) || r;
+
+			return r;
+		}
+		else if(t->isTupleType())
+		{
+			bool r = false;
+			for(auto m : t->toTupleType()->getElements())
+				r = isSomewhatGeneric(m) || r;
+
+			return r;
+		}
+		else if(t->isFunctionType())
+		{
+			bool r = false;
+			for(auto m : t->toFunctionType()->getArgumentTypes())
+				r = isSomewhatGeneric(m) || r;
+
+			r = isSomewhatGeneric(t->toFunctionType()->getReturnType()) || r;
+			return r;
+		}
+		else
+		{
+			return t->isParametricType();
+		}
+	}
+	#endif
+
+
 	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva)
 	{
 		this->functionParams = args;
@@ -18,17 +74,6 @@ namespace fir
 		this->isFnVariadic = isvariadic;
 
 		this->isFnCStyleVarArg = iscva;
-
-		this->isGeneric = false;
-
-		for(auto a : args)
-		{
-			if(a->isParametricType())
-				this->isGeneric = true;
-		}
-
-		if(ret->isParametricType())
-			this->isGeneric = true;
 	}
 
 
@@ -170,8 +215,40 @@ namespace fir
 
 	bool FunctionType::isGenericFunction()
 	{
-		return this->isGeneric;
+		return this->typeParameters.size() > 0;
 	}
+
+
+
+
+
+
+	std::deque<ParametricType*> FunctionType::getTypeParameters()
+	{
+		return this->typeParameters;
+	}
+
+	void FunctionType::addTypeParameter(ParametricType* t)
+	{
+		for(auto p : this->typeParameters)
+		{
+			if(p->getName() == t->getName())
+				error("Type parameter '%s' already exists", p->getName().c_str());
+		}
+
+		this->typeParameters.push_back(t);
+	}
+
+	void FunctionType::addTypeParameters(std::deque<ParametricType*> ts)
+	{
+		for(auto t : ts)
+			this->addTypeParameter(t);
+	}
+
+
+
+
+
 
 	FunctionType* FunctionType::reify(std::map<std::string, Type*> reals, FTContext* tc)
 	{
