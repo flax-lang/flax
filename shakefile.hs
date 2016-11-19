@@ -24,7 +24,7 @@ finalOutput	= sysroot </> prefix </> "bin" </> outputBin
 
 
 llvmConfig	= "llvm-config-3.8"
-disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move -Wno-nullability-completeness"
+disableWarn	= "-Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-c++98-compat -Wno-weak-vtables -Wno-documentation-unknown-command -Wno-old-style-cast -Wno-c++98-compat-pedantic -Wno-conversion -Wno-shadow -Wno-global-constructors -Wno-exit-time-destructors -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-shift-sign-overflow -Wno-format-nonliteral -Wno-gnu-zero-variadic-macro-arguments -Wno-trigraphs -Wno-extra-semi -Wno-reserved-id-macro -Wno-gnu-anonymous-struct -Wno-nested-anon-types -Wno-redundant-move -Wno-nullability-completeness -Wno-comma -Wno-undefined-func-template"
 
 compiledTest		= "build/test"
 testSource			= "build/test.flx"
@@ -129,9 +129,9 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		let cxx = maybeCXX
 
 		progress <- getProgress
-		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
-		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MF" [m]
+		() <- cmd Shell cxx "-c" [c] [cxxFlags] "-o" [out] "-MMD -MP -MF" [m]
 
 		needMakefileDependencies m
 
@@ -144,15 +144,15 @@ main = shakeArgs shakeOptions { shakeVerbosity = Quiet, shakeLineBuffering = Fal
 		maybelconf <- getEnvWithDefault llvmConfig "LLVM_CONFIG"
 		let lconf = maybelconf
 
-		let ccFlags = "-std=c11 -O0 -g -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations" -- " -fsanitize=address"
+		let ccFlags = "-std=c11 -O0 -g -Wall " ++ disableWarn ++ " -fno-omit-frame-pointer -I`" ++ lconf ++ " --includedir` -Isource/include -Isource/utf8rewind/include/utf8rewind" ++ " -Xclang -fcolor-diagnostics -Wno-overlength-strings -Wno-missing-variable-declarations -Wno-unused-const-variable" -- " -fsanitize=address"
 
 		maybeCC <- getEnvWithDefault "clang" "CC"
 		let cc = maybeCC
 
 		progress <- getProgress
-		putQuiet ("\x1b[0m" ++ "# [" ++ (show $ countTodo progress) ++ "] compiling " ++ c)
+		putQuiet ("\x1b[0m" ++ "# compiling " ++ c)
 
-		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MF" [m]
+		() <- cmd Shell cc "-c" [c] [ccFlags] "-o" [out] "-MMD -MP -MF" [m]
 
 		needMakefileDependencies m
 

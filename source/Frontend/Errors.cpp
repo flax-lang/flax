@@ -9,6 +9,8 @@
 #include "codegen.h"
 #include "compiler.h"
 
+#include <stdio.h>
+#include <string.h>
 #include <signal.h>
 
 using namespace Ast;
@@ -138,15 +140,17 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	else if(strcmp(type, "Note") == 0)
 		colour = COLOUR_GREY_BOLD;
 
+	bool dobold = strcmp(type, "Note") != 0;
+
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
 	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
-		fprintf(stderr, "%s(%s:%" PRIu64 ":%" PRIu64 ") ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
+		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
-	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, COLOUR_BLACK_BOLD, alloc, COLOUR_RESET);
+	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "", alloc, COLOUR_RESET);
 
 	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{
@@ -212,7 +216,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 
 
 
-void errorNoExit(const char* msg, ...)
+void exitless_error(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -220,7 +224,7 @@ void errorNoExit(const char* msg, ...)
 	va_end(ap);
 }
 
-void errorNoExit(Expr* relevantast, const char* msg, ...)
+void exitless_error(Expr* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -229,7 +233,7 @@ void errorNoExit(Expr* relevantast, const char* msg, ...)
 	va_end(ap);
 }
 
-void errorNoExit(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void exitless_error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -385,7 +389,7 @@ namespace GenError
 
 			ops.underlines.push_back(getHighlightExtent(bo));
 
-			errorNoExit(expr, ops, "Values cannot be yielded from voids");
+			exitless_error(expr, ops, "Values cannot be yielded from voids");
 
 			info(expr, "Assignment and compound assignment operators (eg. '%s' here) are not expressions, and cannot produce a value",
 				Parser::arithmeticOpToString(cgi, op).c_str());
@@ -424,6 +428,26 @@ namespace GenError
 		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args,
+		std::map<Func*, std::pair<std::string, Expr*>> errs)
+	{
+		if(errs.empty())
+		{
+			prettyNoSuchFunctionError(cgi, expr, name, args);
+		}
+		else
+		{
+			// heh.
+			exitless_error(expr, "No valid target for function call to '%s'", name.c_str());
+
+			for(auto p : errs)
+				info(p.second.second, "Candidate not suitable: %s", p.second.first.c_str());
+
+			doTheExit();
+		}
+	}
+
+
 	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
 	{
 		auto cands = cgi->resolveFunctionName(name);
@@ -436,8 +460,6 @@ namespace GenError
 		error(expr, ops, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
 			name.c_str(), paramstr.c_str(), cands.size(), candstr.c_str());
 	}
-
-
 
 
 

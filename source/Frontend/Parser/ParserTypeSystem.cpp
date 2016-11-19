@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "ir/type.h"
 
@@ -31,6 +32,265 @@ namespace Codegen
 
 namespace pts
 {
+	static std::pair<Type*, TypeTransformer> getTransformer(Type* t)
+	{
+		using TrfType = TypeTransformer::Type;
+		if(t->isNamedType() || t->isTupleType() || t->isFunctionType())
+		{
+			return { t, TypeTransformer(TrfType::None, 0) };
+		}
+		else if(t->isPointerType())
+		{
+			return { t->toPointerType()->base, TypeTransformer(TrfType::Pointer, 0) };
+		}
+		else if(t->isVariadicArrayType())
+		{
+			return { t->toVariadicArrayType()->base, TypeTransformer(TrfType::VariadicArray, 0) };
+		}
+		else if(t->isDynamicArrayType())
+		{
+			return { t->toDynamicArrayType()->base, TypeTransformer(TrfType::DynamicArray, 0) };
+		}
+		else if(t->isFixedArrayType())
+		{
+			return { t->toFixedArrayType()->base, TypeTransformer(TrfType::FixedArray, t->toFixedArrayType()->size) };
+		}
+		else
+		{
+			_error_and_exit("????");
+		}
+	}
+
+
+	static std::pair<fir::Type*, TypeTransformer> getTransformer(fir::Type* t)
+	{
+		using TrfType = TypeTransformer::Type;
+		if(t->isPointerType())
+		{
+			return { t->getPointerElementType(), TypeTransformer(TrfType::Pointer, 0) };
+		}
+		else if(t->isDynamicArrayType())
+		{
+			return { t->toDynamicArrayType()->getElementType(), TypeTransformer(TrfType::DynamicArray, 0) };
+		}
+		else if(t->isParameterPackType())
+		{
+			return { t->toParameterPackType()->getElementType(), TypeTransformer(TrfType::VariadicArray, 0) };
+		}
+		else if(t->isArrayType())
+		{
+			auto k = t->toArrayType();
+			return { k->getElementType(), TypeTransformer(TrfType::FixedArray, k->getArraySize()) };
+		}
+		else
+		{
+			// parametric types, functions, tuples, named types
+			return { t, TypeTransformer(TrfType::None, 0) };
+		}
+	}
+
+	std::pair<Type*, std::deque<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(Type* type)
+	{
+		// great.
+		iceAssert(type);
+
+
+		std::deque<TypeTransformer> trfs;
+		while(!type->isNamedType())
+		{
+			TypeTransformer trf(TypeTransformer::Type::None, 0);
+			Type* t = 0;
+			std::tie(t, trf) = getTransformer(type);
+
+			// we've reached the bottom.
+			if(t == type)
+			{
+				iceAssert(trf.type == TypeTransformer::Type::None);
+				return { type, trfs };
+			}
+
+			type = t;
+			trfs.push_front(trf);
+		}
+
+		return { type, trfs };
+	}
+
+
+	std::pair<fir::Type*, std::deque<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type)
+	{
+		// great.
+		iceAssert(type);
+
+		std::deque<TypeTransformer> trfs;
+		while(true)
+		{
+			TypeTransformer trf(TypeTransformer::Type::None, 0);
+			fir::Type* t = 0;
+			std::tie(t, trf) = getTransformer(type);
+
+			// we've reached the bottom.
+			if(t == type)
+			{
+				iceAssert(trf.type == TypeTransformer::Type::None);
+				return { type, trfs };
+			}
+
+			type = t;
+			trfs.push_front(trf);
+		}
+
+		return { type, trfs };
+	}
+
+
+
+
+
+	fir::Type* applyTransformationsOnType(fir::Type* base, std::deque<TypeTransformer> trfs)
+	{
+		using TrfType = TypeTransformer::Type;
+		for(auto trf : trfs)
+		{
+			switch(trf.type)
+			{
+				case TrfType::None:
+					break;
+
+				case TrfType::Pointer:
+					base = base->getPointerTo();
+					break;
+
+				case TrfType::DynamicArray:
+					base = fir::DynamicArrayType::get(base);
+					break;
+
+				case TrfType::VariadicArray:
+					base = fir::ParameterPackType::get(base);
+					break;
+
+				case TrfType::FixedArray:
+					base = fir::ArrayType::get(base, trf.data);
+					break;
+
+				default:
+					iceAssert(0);
+			}
+		}
+
+		return base;
+	}
+
+
+
+
+	// in this case, ats is the master, bts is the one that has to conform
+	bool areTransformationsCompatible(std::deque<TypeTransformer> ats, std::deque<TypeTransformer> bts)
+	{
+		// we must have at least as many transformations as the master
+		if(bts.size() < ats.size()) return false;
+
+		// make some fake types
+		{
+			fir::Type* a = fir::ParametricType::get("_X_");
+			fir::Type* b = fir::ParametricType::get("_X_");
+
+			// please?
+			if(applyTransformationsOnType(a, ats) == applyTransformationsOnType(b, bts))
+				return true;
+		}
+
+		// here's how this works:
+		// we start from the back.
+		// as long as the transformations match, we continue
+		// if ats is T*[]*[]*** and bts is T********
+		// we'd end up with ats = T*[]*[] and bts = T*****
+		// the next transformtion doesn't match, so we quit.
+
+		// if we have ats = T*[]*[]*** and bts = T***[]*[]***
+		// we'd have a = T*[]*[] and b = T***[]*[]
+		// then we keep reducing, ending up with
+		// a = T and b = T**
+		// this works, so we return true.
+
+		// not so easy.
+		// note that we stop at ats.size, because A must be reduced all the way to a base type.
+		for(size_t i = 0; i < ats.size(); i++)
+		{
+			TypeTransformer at = ats[ats.size() - i - 1];
+			TypeTransformer bt = bts[bts.size() - i - 1];
+
+			if(at != bt)
+				return false;
+		}
+
+		return true;
+	}
+
+
+	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::deque<TypeTransformer> ats, std::deque<TypeTransformer> bts)
+	{
+		using TrfType = TypeTransformer::Type;
+		iceAssert(areTransformationsCompatible(ats, bts));
+
+		// note that we stop at ats.size, because A must be reduced all the way to a base type.
+		for(size_t i = 0; i < ats.size(); i++)
+		{
+			TypeTransformer at = ats[ats.size() - i - 1];
+			TypeTransformer bt = bts[bts.size() - i - 1];
+
+
+			// a must be reduced all the way
+			// so we must match
+			iceAssert(at == bt);
+
+
+			switch(at.type)
+			{
+				case TrfType::None:
+					break;
+
+				case TrfType::Pointer:
+					iceAssert(type->isPointerType());
+					type = type->getPointerElementType();
+					break;
+
+				case TrfType::DynamicArray:
+					iceAssert(type->isDynamicArrayType());
+					type = type->toDynamicArrayType()->getElementType();
+					break;
+
+				case TrfType::VariadicArray:
+					iceAssert(type->isParameterPackType());
+					type = type->toParameterPackType()->getElementType();
+					break;
+
+				case TrfType::FixedArray:
+					iceAssert(type->isArrayType());
+					type = type->toArrayType()->getElementType();
+					break;
+
+				default:
+					iceAssert(0);
+			}
+		}
+
+		return type;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	static pts::Type* recursivelyParseTuple(std::string str, int* used)
 	{
@@ -503,7 +763,7 @@ namespace pts
 
 	std::string DynamicArrayType::str()
 	{
-		return this->base->str() + "[?]";
+		return this->base->str() + "[]";
 	}
 
 	std::string VariadicArrayType::str()
@@ -513,7 +773,7 @@ namespace pts
 
 	std::string FunctionType::str()
 	{
-		std::string ret = "{";
+		std::string ret = "(";
 
 		for(auto g : this->genericTypes)
 		{
@@ -542,7 +802,7 @@ namespace pts
 			ret.pop_back();
 		}
 
-		return ret + ") -> " + this->returnType->str() + "}";
+		return ret + ") -> " + this->returnType->str();
 	}
 }
 

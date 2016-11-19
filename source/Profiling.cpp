@@ -51,7 +51,7 @@ namespace prof
 	Profile::Profile(int grp, std::string n)
 	{
 		this->name = n;
-		this->begin = std::chrono::steady_clock::now();
+		this->begin = prof::clock::now();
 		this->didRecord = false;
 		this->group = 0;
 
@@ -100,7 +100,7 @@ namespace prof
 		using namespace std::chrono;
 		using unit = duration<double, std::milli>;
 
-		auto end = steady_clock::now();
+		auto end = prof::clock::now();
 
 		auto nd = namemap[this->name];
 		iceAssert(nd);
@@ -109,7 +109,7 @@ namespace prof
 		nd->timings.push_back(duration_cast<unit>(end - this->begin).count());
 
 		if(nd != stack[this->group].back())
-			error_and_exit("Overlapping profiling regions at the same scope level are not supported");
+			_error_and_exit("Overlapping profiling regions at the same scope level are not supported");
 
 		stack[this->group].pop_back();
 	}

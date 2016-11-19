@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include <cmath>
 #include "codegen.h"
 
 namespace Codegen
@@ -110,14 +111,6 @@ namespace Codegen
 		}
 		else if(to->isPointerType() && from->isVoidPointer())
 		{
-			return 5;
-		}
-		else if(from->isDynamicArrayType() && to->isPointerType()
-			&& from->toDynamicArrayType()->getElementType() == to->getPointerElementType())
-		{
-			// try and convert all the way
-			// this means T[][][][] should convert to T**** properly.
-
 			return 5;
 		}
 		else if(this->isAnyType(to))
@@ -312,13 +305,7 @@ namespace Codegen
 			// retval = fir::ConstantValue::getNullValue(target);
 			retval = this->irb.CreatePointerTypeCast(from, target);
 		}
-		else if(target->isPointerType() && from->getType()->isDynamicArrayType()
-			&& from->getType()->toDynamicArrayType()->getElementType() == target->getPointerElementType())
-		{
-			// get data
-			iceAssert(fromPtr);
-			retval = this->irb.CreateGetDynamicArrayData(fromPtr);
-		}
+
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{

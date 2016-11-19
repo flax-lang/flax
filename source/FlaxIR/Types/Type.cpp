@@ -15,15 +15,21 @@ namespace fir
 	// NOTE: some global state.
 	// structs
 
+	static size_t getIndirections(Type* type)
+	{
+		size_t ret = 0;
+		while(type->isPointerType())
+			type = type->getPointerElementType(), ret++;
+
+		return ret;
+	}
+
 	Type* FTContext::normaliseType(Type* type)
 	{
 		if(Type::areTypesEqual(type, this->voidType))
 			return this->voidType;
 
-		size_t ind = 0;
-		if(type->isPointerType())
-			ind = type->toPointerType()->getIndirections();
-
+		size_t ind = getIndirections(type);
 		std::vector<Type*>& list = this->typeCache[ind];
 
 		// find in the list.
@@ -296,16 +302,8 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		size_t inds = 0;
-		fir::Type* base = this;
 
-		while(base->isPointerType())
-		{
-			base = base->getPointerElementType();
-			inds++;
-		}
-
-		PointerType* newType = new PointerType(inds + 1, this);
+		PointerType* newType = new PointerType(this);
 
 		// get or create.
 		newType = dynamic_cast<PointerType*>(tc->normaliseType(newType));

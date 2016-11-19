@@ -17,7 +17,7 @@ namespace fir
 		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 
-		if(this->id == 27503)
+		if(this->id == 313)
 		{
 			// abort();
 		}
@@ -35,7 +35,7 @@ namespace fir
 		return this->ident.str() != "";
 	}
 
-	void Value::setName(Identifier name)
+	void Value::setName(const Identifier& name)
 	{
 		this->ident = name;
 	}

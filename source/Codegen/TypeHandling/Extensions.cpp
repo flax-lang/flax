@@ -134,7 +134,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(e->ident.name == cp->ident.name)
 				{
-					errorNoExit(cp, "Property '%s' was previously declared in another extension", cp->ident.name.c_str());
+					exitless_error(cp, "Property '%s' was previously declared in another extension", cp->ident.name.c_str());
 					info(e, "Previous declaration was here:");
 					doTheExit();
 				}
@@ -155,7 +155,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
 					{
-						errorNoExit(tf->decl, "Function '%s' was previously declared in another extension, with an identical type",
+						exitless_error(tf->decl, "Function '%s' was previously declared in another extension, with an identical type",
 							tf->decl->ident.name.c_str());
 
 						info(f->decl, "Previous declaration was here:");
@@ -179,7 +179,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
 					{
-						errorNoExit(tf->func->decl, "Operator overload for '%s' was previously declared in another extension",
+						exitless_error(tf->func->decl, "Operator overload for '%s' was previously declared in another extension",
 							Parser::arithmeticOpToString(cgi, tf->op).c_str());
 
 						info(f->func->decl, "Previous declaration was here:");
@@ -201,7 +201,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				int _ = 0;
 				if(cgi->isValidFuncOverload(fp, ps, &_, true))
 				{
-					errorNoExit(tf->decl, "Subscript operator was previously declared in another extension");
+					exitless_error(tf->decl, "Subscript operator was previously declared in another extension");
 					info(f->decl, "Previous declaration was here:");
 					doTheExit();
 				}
@@ -220,7 +220,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				int _ = 0;
 				if(cgi->isValidFuncOverload(fp, ps, &_, true))
 				{
-					errorNoExit(tf->func->decl, "Assignment operator was previously declared in another extension");
+					exitless_error(tf->func->decl, "Assignment operator was previously declared in another extension");
 					info(f->func->decl, "Previous declaration was here:");
 					doTheExit();
 				}
@@ -255,7 +255,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(e->ident.name == cp->ident.name)
 				{
-					errorNoExit(cp, "Property '%s' already exists in the base type", cp->ident.name.c_str());
+					exitless_error(cp, "Property '%s' already exists in the base type", cp->ident.name.c_str());
 					info(e, "Previous declaration was here:");
 					doTheExit();
 				}
@@ -278,7 +278,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 						int _ = 0;
 						if(cgi->isValidFuncOverload(fp, ps, &_, true))
 						{
-							errorNoExit(tf->decl, "Function '%s' already exists in the base type taking identical arguments",
+							exitless_error(tf->decl, "Function '%s' already exists in the base type taking identical arguments",
 								tf->decl->ident.name.c_str());
 
 							info(f->decl, "Previous declaration was here:");
@@ -302,7 +302,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 						int _ = 0;
 						if(cgi->isValidFuncOverload(fp, ps, &_, true))
 						{
-							errorNoExit(tf->func->decl, "Operator overload for '%s' already exists in the base type",
+							exitless_error(tf->func->decl, "Operator overload for '%s' already exists in the base type",
 								Parser::arithmeticOpToString(cgi, tf->op).c_str());
 
 							info(f->func->decl, "Previous declaration was here:");
@@ -324,7 +324,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
 					{
-						errorNoExit(tf->decl, "Subscript operator already exists in the base type");
+						exitless_error(tf->decl, "Subscript operator already exists in the base type");
 						info(f->decl, "Previous declaration was here:");
 						doTheExit();
 					}
@@ -343,7 +343,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
 					{
-						errorNoExit(tf->func->decl, "Assignment operator already exists in the base type");
+						exitless_error(tf->func->decl, "Assignment operator already exists in the base type");
 						info(f->func->decl, "Previous declaration was here:");
 						doTheExit();
 					}

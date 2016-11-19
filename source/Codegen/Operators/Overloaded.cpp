@@ -77,6 +77,15 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 		{
 			return ltype;
 		}
+		else if(ltype->isDynamicArrayType() && rtype->isDynamicArrayType()
+			&& ltype->toDynamicArrayType()->getElementType() == rtype->toDynamicArrayType()->getElementType())
+		{
+			return ltype;
+		}
+		else if(ltype->isDynamicArrayType() && ltype->toDynamicArrayType()->getElementType() == rtype)
+		{
+			return ltype;
+		}
 		else if(ltype->isEnumType() && ltype == rtype && (op == ArithmeticOp::BitwiseAnd || op == ArithmeticOp::BitwiseOr || op == ArithmeticOp::BitwiseXor || op == ArithmeticOp::BitwiseNot))
 		{
 			return ltype;
@@ -96,7 +105,7 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 			}
 			else
 			{
-				error(this, "No such operator overload for operator '%s' accepting types %s and %s.",
+				error(this, "No such operator overload for operator '%s' accepting types '%s' and '%s'.",
 					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->str().c_str(), rtype->str().c_str());
 			}
 		}
@@ -538,7 +547,7 @@ namespace Codegen
 
 		if(finals.size() > 1)
 		{
-			errorNoExit(us, "More than one possible operator overload candidate in this expression");
+			exitless_error(us, "More than one possible operator overload candidate in this expression");
 			for(auto c : finals)
 				info("<%d> %s: %s", c.first.first.castedDist, c.first.second->getName().str().c_str(), c.first.second->getType()->str().c_str());
 

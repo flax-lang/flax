@@ -101,11 +101,12 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 		cgi->pushScope();
 
 		// generate the statements inside
-		Result_t cresult = this->cases[0].second->codegen(cgi);
-		truev = cresult.value;
+
+		ResultType rt;
+		std::tie(truev, rt) = this->cases[0].second->codegen(cgi);
 		cgi->popScope();
 
-		if(cresult.type != ResultType::BreakCodegen)
+		if(rt != ResultType::BreakCodegen)
 			cgi->irb.CreateUnCondBranch(merge), didMerge = true;
 	}
 
@@ -117,7 +118,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	cgi->irb.setCurrentBlock(falseb);
 
-	auto c1 = this->cases.front();
+	// auto c1 = this->cases.front();
 	this->cases.pop_front();
 
 	fir::IRBlock* curblk = cgi->irb.getCurrentBlock();
@@ -133,24 +134,25 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->irb.setCurrentBlock(curblk);
 	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
 
-	// func->getBasicBlockList().push_back(falseb);
 
 	// if we have an 'else' case
-	Result_t elseResult(0, 0);
+	ResultType elsetype = ResultType::Normal;
 	if(this->final)
 	{
 		cgi->pushScope();
-		elseResult = this->final->codegen(cgi);
+
+		fir::Value* v = 0;
+		fir::Value* _ = 0;
+
+		std::tie(v, _, elsetype) = this->final->codegen(cgi);
+
 		cgi->popScope();
 
-		fir::Value* v = elseResult.value;
-
-		if(phi)
-			phi->addIncoming(v, falseb);
+		if(phi) phi->addIncoming(v, falseb);
 	}
 
 
-	if(!this->final || elseResult.type != ResultType::BreakCodegen)
+	if(!this->final || elsetype != ResultType::BreakCodegen)
 		cgi->irb.CreateUnCondBranch(merge), didMerge = true;
 
 

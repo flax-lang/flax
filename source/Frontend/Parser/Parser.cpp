@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cinttypes>
 
+#include "pts.h"
 #include "ast.h"
 #include "parser.h"
 #include "compiler.h"
@@ -334,7 +335,7 @@ namespace Parser
 			while(ps.tokens.size() > 0)
 			{
 				Token t = ps.front();
-				ps.pop_front();
+				ps.pop();
 
 				if(t.type == TType::Import)
 				{
@@ -355,7 +356,7 @@ namespace Parser
 				else if(t.type == TType::At)
 				{
 					Token attr = ps.front();
-					ps.pop_front();
+					ps.pop();
 
 					iceAssert(attr.type == TType::Identifier || attr.text == "public"
 						|| attr.text == "private" || attr.text == "internal");
@@ -366,11 +367,11 @@ namespace Parser
 						if(ps.front().type != TType::LSquare)
 							parserError(ps.front(), "Expected '[' after @operator");
 
-						ps.pop_front();
+						ps.pop();
 						ps.skipNewline();
 
 						Token num = ps.front();
-						ps.pop_front();
+						ps.pop();
 						ps.skipNewline();
 
 
@@ -383,13 +384,13 @@ namespace Parser
 							// skip.
 							if(ps.front().type == TType::RSquare)
 							{
-								ps.pop_front();
+								ps.pop();
 								curPrec = 0;
 								continue; // break out of the loopy
 							}
 							else if(ps.front().type == TType::Comma)
 							{
-								ps.pop_front();
+								ps.pop();
 								num = ps.front();
 							}
 							else
@@ -413,7 +414,7 @@ namespace Parser
 						// Commutative
 						if(ps.front().type == TType::Comma)
 						{
-							ps.pop_front();
+							ps.pop();
 							if(ps.eat().type != TType::Identifier)
 								parserError(ps.front(), "Expected identifier after comma");
 						}
@@ -423,7 +424,7 @@ namespace Parser
 							parserError(ps.front(), "Expected closing ']'");
 
 
-						ps.pop_front();
+						ps.pop();
 						ps.skipNewline();
 					}
 				}
@@ -505,6 +506,11 @@ namespace Parser
 
 		staticState = &ps;
 
+		// if(Compiler::getFilenameFromPath(filename) == "operators.flx")
+		// {
+		// 	debuglog("");
+		// }
+
 		parseAll(ps);
 		return ps.rootNode;
 	}
@@ -561,11 +567,11 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
-					[[clang::fallthrough]];
+					// fallthrough
 
 				case TType::Comment:
 				case TType::Semicolon:
-					ps.pop_front();
+					ps.pop();
 					break;
 
 				case TType::TypeAlias:
@@ -606,7 +612,7 @@ namespace Parser
 						ps.rootNode->topLevelExpressions.push_back(parseOpOverload(ps));
 						break;
 					}
-					[[clang::fallthrough]];
+					// fallthrough
 
 				default:	// wip: skip shit we don't know/care about for now
 					parserError(tok, "Unknown token '%s'", tok.text.c_str());
@@ -712,7 +718,7 @@ namespace Parser
 				// shit you just skip
 				case TType::NewLine:
 					ps.currentPos.line++;
-					[[clang::fallthrough]];
+					// fallthrough
 
 				case TType::Comment:
 				case TType::Semicolon:
@@ -727,16 +733,16 @@ namespace Parser
 
 				// no point creating separate functions for these
 				case TType::True:
-					ps.pop_front();
+					ps.pop();
 					return CreateAST(BoolVal, tok, true);
 
 				case TType::False:
-					ps.pop_front();
+					ps.pop();
 					return CreateAST(BoolVal, tok, false);
 
 				// nor for this
 				case TType::Null:
-					ps.pop_front();
+					ps.pop();
 					return CreateAST(NullVal, tok);
 
 				// attributes-as-keywords
@@ -1145,7 +1151,7 @@ namespace Parser
 		std::string ret;
 
 		// handle pointers.
-		while(ps.front().type == TType::Asterisk)
+		while(ps.hasTokens() && ps.front().type == TType::Asterisk)
 		{
 			ret += "*";
 			ps.eat();
@@ -1154,7 +1160,7 @@ namespace Parser
 
 		// handle arrays
 		// check if the next token is a '['.
-		while(ps.front().type == TType::LSquare)
+		while(ps.hasTokens() && ps.front().type == TType::LSquare)
 		{
 			ps.eat();
 
@@ -1198,7 +1204,7 @@ namespace Parser
 				parserError("Variadic array must be the last (outermost) dimension");
 		}
 
-		if(ps.front().type == TType::Asterisk)
+		if(ps.hasTokens() && ps.front().type == TType::Asterisk)
 			ret += parseStringTypeIndirections(ps);
 
 		return ret;
@@ -1211,12 +1217,14 @@ namespace Parser
 	{
 		// note: use of pop_front() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
 		// conflated with the current type being parsed.
+		if(!ps.hasTokens()) return "";
+
 		Token front = ps.front();
 
 		if(front.type == TType::Identifier)
 		{
 			std::string ret = front.text;
-			ps.eat();
+			ps.pop();
 
 			while(ps.hasTokens())
 			{
@@ -1226,12 +1234,12 @@ namespace Parser
 						parserError("Extraneous '.' in scoped type specifier");
 
 					ret += ".";
-					ps.eat();
+					ps.pop();
 				}
 				else if(ps.front().type == TType::Identifier && (ret.empty() || ret.back() == '.'))
 				{
 					ret += ps.front().text;
-					ps.eat();
+					ps.pop();
 				}
 				else
 				{
@@ -1247,7 +1255,7 @@ namespace Parser
 		}
 		else if(front.type == TType::LParen)
 		{
-			ps.eat();
+			ps.pop();
 
 			// parse a tuple.
 			std::deque<std::string> types;
@@ -1298,7 +1306,7 @@ namespace Parser
 
 			std::string ret = "{";
 
-			ps.eat();
+			ps.pop();
 			std::map<std::string, TypeConstraints_t> genericTypes;
 
 			if(ps.hasTokens() && ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
@@ -1307,7 +1315,7 @@ namespace Parser
 			}
 			else if(ps.hasTokens() && ps.front().type == TType::LAngle)
 			{
-				ps.eat();
+				ps.pop();
 				genericTypes = parseGenericTypeList(ps);
 			}
 
@@ -1345,7 +1353,7 @@ namespace Parser
 			if(ps.front().type != TType::LParen)
 				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
 
-			ps.eat();
+			ps.pop();
 
 			// start. basically we take a list of types only, no names.
 			while(ps.hasTokens() && ps.front().type != TType::RParen)
@@ -1377,14 +1385,14 @@ namespace Parser
 				doTheExit();
 			}
 
-			ps.eat();
+			ps.pop();
 
 			ret += "->" + parseStringType(ps) + "}";
 
 			if(ps.front().type != TType::RSquare)
 				parserError("Expected ']' to end function type specifier, got '%s' instead", ps.front().text.c_str());
 
-			ps.eat();
+			ps.pop();
 
 
 			// see if we have... more.
@@ -1528,6 +1536,7 @@ namespace Parser
 		if(colon.type == TType::Colon)
 		{
 			v->ptype = parseType(ps);
+			ps.skipNewline();
 
 			if(ps.front().type == TType::LBrace)
 			{
@@ -1552,9 +1561,11 @@ namespace Parser
 			// we do
 			ps.eat();
 
-			v->initVal = parseExpr(ps);
-			if(!v->initVal)
-				parserError("Invalid initialiser for variable '%s'", v->ident.name.c_str());
+			// if(ps.front().type == TType::Alloc)
+			// 	v->initVal = parseAlloc(ps);
+
+			// else
+				v->initVal = parseExpr(ps);
 		}
 		else if(immutable)
 		{
@@ -2223,7 +2234,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in struct", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in struct");
 			}
 		}
 
@@ -2314,7 +2325,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in class");
 			}
 		}
 
@@ -2385,7 +2396,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Found invalid expression type %s in struct", typeid(*stmt).name());
+				parserError("Found invalid expression type in struct");
 			}
 		}
 
@@ -2466,7 +2477,7 @@ namespace Parser
 			}
 			else
 			{
-				parserError(stmt->pin, "Found invalid expression type %s in class", typeid(*stmt).name());
+				parserError(stmt->pin, "Found invalid expression type in class");
 			}
 		}
 
@@ -2638,7 +2649,7 @@ namespace Parser
 
 			if(ps.front().type == TType::Integer)
 			{
-				ps.pop_front();
+				ps.pop();
 				if(ps.front().type == TType::Comma)
 				{
 					ps.eat();
@@ -2653,7 +2664,7 @@ namespace Parser
 					else
 						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
 
-					ps.pop_front();
+					ps.pop();
 				}
 				else if(ps.front().type == TType::RSquare)
 				{
@@ -2671,7 +2682,7 @@ namespace Parser
 				else
 					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
 
-				ps.pop_front();
+				ps.pop();
 
 
 
@@ -2721,7 +2732,7 @@ namespace Parser
 			parserError("Expected identifier after import");
 
 		Token t = tok_mod;
-		ps.pop_front();
+		ps.pop();
 
 		while(ps.tokens.size() > 0)
 		{
@@ -2744,7 +2755,7 @@ namespace Parser
 
 			// whitespace handling fucks us up
 			t = ps.front();
-			ps.pop_front();
+			ps.pop();
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
@@ -3142,8 +3153,8 @@ void parserMessage(Err sev, const char* msg, ...)
 	va_end(ap);
 }
 
-void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...)
+void parserMessage(Err sev, const Parser::Pin& pin, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, const Parser::Pin& pin, const char* msg, ...)
 {
 
 	std::string str = "??";
@@ -3157,8 +3168,8 @@ void parserMessage(Err sev, Parser::Pin pin, const char* msg, ...)
 	va_end(ap);
 }
 
-void parserMessage(Err sev, Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void parserMessage(Err sev, Parser::Token tok, const char* msg, ...)
+void parserMessage(Err sev, const Parser::Token& tok, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void parserMessage(Err sev, const Parser::Token& tok, const char* msg, ...)
 {
 
 	std::string str = "??";
@@ -3198,8 +3209,8 @@ void parserError(const char* msg, ...)
 	abort();
 }
 
-void parserError(Parser::Pin pin, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
-void parserError(Parser::Pin pin, const char* msg, ...)
+void parserError(const Parser::Pin& pin, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(const Parser::Pin& pin, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -3208,8 +3219,8 @@ void parserError(Parser::Pin pin, const char* msg, ...)
 	abort();
 }
 
-void parserError(Parser::Token tok, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
-void parserError(Parser::Token tok, const char* msg, ...)
+void parserError(const Parser::Token& tok, const char* msg, ...) __attribute__((format(printf, 2, 3), noreturn));
+void parserError(const Parser::Token& tok, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);

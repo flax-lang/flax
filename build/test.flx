@@ -83,23 +83,23 @@ import tests.functions
 	printf("\n\n\n")
 
 
-	// // generics
-	// printf("%s%s", genericsTitle, thinLine)
-	// doGenericsTest()
-	// printf("\n\n\n")
+	// generics
+	printf("%s%s", genericsTitle, thinLine)
+	doGenericsTest()
+	printf("\n\n\n")
 
 
-	// // first-class-functions
-	// printf("%s%s", functionsTitle, thinLine)
-	// doFunctionTest()
-	// printf("\n\n\n")
+	// first-class-functions
+	printf("%s%s", functionsTitle, thinLine)
+	doFunctionTest()
+	printf("\n\n\n")
 
 
 
-	// // misc tests
-	// printf("%s%s", miscTitle, thinLine)
-	// miscellaneousTests()
-	// printf("\n\n\n")
+	// misc tests
+	printf("%s%s", miscTitle, thinLine)
+	miscellaneousTests()
+	printf("\n\n\n")
 
 
 

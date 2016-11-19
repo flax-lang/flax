@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/type.h"
+#include "ir/function.h"
 
 namespace Codegen
 {
@@ -18,17 +19,6 @@ namespace fir
 		this->isFnVariadic = isvariadic;
 
 		this->isFnCStyleVarArg = iscva;
-
-		this->isGeneric = false;
-
-		for(auto a : args)
-		{
-			if(a->isParametricType())
-				this->isGeneric = true;
-		}
-
-		if(ret->isParametricType())
-			this->isGeneric = true;
 	}
 
 
@@ -170,8 +160,40 @@ namespace fir
 
 	bool FunctionType::isGenericFunction()
 	{
-		return this->isGeneric;
+		return this->typeParameters.size() > 0;
 	}
+
+
+
+
+
+
+	std::deque<ParametricType*> FunctionType::getTypeParameters()
+	{
+		return this->typeParameters;
+	}
+
+	void FunctionType::addTypeParameter(ParametricType* t)
+	{
+		for(auto p : this->typeParameters)
+		{
+			if(p->getName() == t->getName())
+				error("Type parameter '%s' already exists", p->getName().c_str());
+		}
+
+		this->typeParameters.push_back(t);
+	}
+
+	void FunctionType::addTypeParameters(std::deque<ParametricType*> ts)
+	{
+		for(auto t : ts)
+			this->addTypeParameter(t);
+	}
+
+
+
+
+
 
 	FunctionType* FunctionType::reify(std::map<std::string, Type*> reals, FTContext* tc)
 	{
@@ -179,7 +201,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(this->isCStyleVarArg())
-			error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
+			_error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
 
 		std::deque<Type*> reified;
 		Type* reifiedReturn = 0;
@@ -188,14 +210,14 @@ namespace fir
 		{
 			auto rfd = mem->reify(reals);
 			if(rfd->isParametricType())
-				error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
+				_error_and_exit("Failed to reify, no type found for '%s'", mem->toParametricType()->getName().c_str());
 
 			reified.push_back(rfd);
 		}
 
 		auto rfd = this->functionRetType->reify(reals);
 		if(rfd->isParametricType())
-			error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
+			_error_and_exit("Failed to reify, no type found for '%s'", this->functionRetType->toParametricType()->getName().c_str());
 
 		reifiedReturn = rfd;
 
