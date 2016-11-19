@@ -12,61 +12,6 @@ namespace Codegen
 
 namespace fir
 {
-	#if 0
-	static bool isSomewhatGeneric(Type* t)
-	{
-		if(t->isDynamicArrayType())
-			return isSomewhatGeneric(t->toDynamicArrayType()->getElementType());
-		else if(t->isParameterPackType())
-			return isSomewhatGeneric(t->toParameterPackType()->getElementType());
-		else if(t->isArrayType())
-			return isSomewhatGeneric(t->toArrayType()->getElementType());
-		else if(t->isPointerType())
-			return isSomewhatGeneric(t->getPointerElementType());
-		else if(t->isClassType())
-		{
-			bool r = false;
-			for(auto m : t->toClassType()->getElements())
-				r = isSomewhatGeneric(m) || r;
-
-			for(auto m : t->toClassType()->getMethods())
-				r = isSomewhatGeneric(m->getType()) || r;
-
-			return r;
-		}
-		else if(t->isStructType())
-		{
-			bool r = false;
-			for(auto m : t->toStructType()->getElements())
-				r = isSomewhatGeneric(m) || r;
-
-			return r;
-		}
-		else if(t->isTupleType())
-		{
-			bool r = false;
-			for(auto m : t->toTupleType()->getElements())
-				r = isSomewhatGeneric(m) || r;
-
-			return r;
-		}
-		else if(t->isFunctionType())
-		{
-			bool r = false;
-			for(auto m : t->toFunctionType()->getArgumentTypes())
-				r = isSomewhatGeneric(m) || r;
-
-			r = isSomewhatGeneric(t->toFunctionType()->getReturnType()) || r;
-			return r;
-		}
-		else
-		{
-			return t->isParametricType();
-		}
-	}
-	#endif
-
-
 	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva)
 	{
 		this->functionParams = args;

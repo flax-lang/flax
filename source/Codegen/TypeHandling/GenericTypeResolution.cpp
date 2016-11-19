@@ -87,63 +87,6 @@ namespace Codegen
 
 
 
-	static void _getAllGenericTypesContainedWithinFIRRecursively(fir::Type* t, std::set<std::string>* list)
-	{
-		if(t->isDynamicArrayType())
-		{
-			_getAllGenericTypesContainedWithinFIRRecursively(t->toDynamicArrayType()->getElementType(), list);
-		}
-		else if(t->isParameterPackType())
-		{
-			_getAllGenericTypesContainedWithinFIRRecursively(t->toParameterPackType()->getElementType(), list);
-		}
-		else if(t->isArrayType())
-		{
-			_getAllGenericTypesContainedWithinFIRRecursively(t->toArrayType()->getElementType(), list);
-		}
-		else if(t->isPointerType())
-		{
-			_getAllGenericTypesContainedWithinFIRRecursively(t->getPointerElementType(), list);
-		}
-		else if(t->isClassType())
-		{
-			for(auto m : t->toClassType()->getElements())
-				_getAllGenericTypesContainedWithinFIRRecursively(m, list);
-
-			for(auto m : t->toClassType()->getMethods())
-				_getAllGenericTypesContainedWithinFIRRecursively(m->getType(), list);
-		}
-		else if(t->isStructType())
-		{
-			for(auto m : t->toStructType()->getElements())
-				_getAllGenericTypesContainedWithinFIRRecursively(m, list);
-		}
-		else if(t->isTupleType())
-		{
-			for(auto m : t->toTupleType()->getElements())
-				_getAllGenericTypesContainedWithinFIRRecursively(m, list);
-		}
-		else if(t->isFunctionType())
-		{
-			for(auto m : t->toFunctionType()->getArgumentTypes())
-				_getAllGenericTypesContainedWithinFIRRecursively(m, list);
-
-			_getAllGenericTypesContainedWithinFIRRecursively(t->toFunctionType()->getReturnType(), list);
-		}
-		else if(t->isParametricType())
-		{
-			list->insert(t->toParametricType()->getName());
-		}
-	}
-
-
-
-	static std::set<std::string> getAllGenericTypesContainedWithinFIR(fir::Type* t)
-	{
-		std::set<std::string> ret;
-		_getAllGenericTypesContainedWithinFIRRecursively(t, &ret);
-		return ret;
-	}
 
 
 
@@ -242,11 +185,15 @@ namespace Codegen
 			return toSolve.find(s) != toSolve.end();
 		};
 
-		for(auto t : toSolve)
-			debuglog("NEED %s\n", t.c_str());
+		auto checkFinishedSolving = [toSolve](const std::map<std::string, fir::Type*>& cursln) -> bool {
+			for(auto s : toSolve)
+			{
+				if(cursln.find(s) == cursln.end())
+					return false;
+			}
 
-
-
+			return true;
+		};
 
 
 		// infinite loop
@@ -295,9 +242,9 @@ namespace Codegen
 								if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
 								{
 									fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
-
-									debuglog("add soln (0) %s -> %s\n", expt->toNamedType()->name.c_str(), found->str().c_str());
 									cursln[expt->toNamedType()->name] = found;
+
+									// debuglog("add soln (0) %s -> %s\n", expt->toNamedType()->name.c_str(), found->str().c_str());
 								}
 								else
 								{
@@ -311,8 +258,9 @@ namespace Codegen
 							}
 							else
 							{
-								debuglog("add soln (1) %s -> %s\n", expt->toNamedType()->name.c_str(), givent->str().c_str());
 								cursln[expt->toNamedType()->name] = givent;
+
+								// debuglog("add soln (1) %s -> %s\n", expt->toNamedType()->name.c_str(), givent->str().c_str());
 							}
 						}
 						else if(givent->isParametricType())
@@ -339,15 +287,14 @@ namespace Codegen
 									return false;
 								}
 
-								debuglog("have soln (2) %s -> %s\n", expt->toNamedType()->name.c_str(), found->str().c_str());
 								iceAssert(cursln[expt->toNamedType()->name] == found);
 							}
 							else
 							{
-								debuglog("add soln (3) %s = %s -> %s\n", expt->toNamedType()->name.c_str(),
-									givent->toParametricType()->getName().c_str(), rest->str().c_str());
-
 								genericfnsoln[givent->toParametricType()->getName()] = rest;
+
+								// debuglog("add soln (3) %s = %s -> %s\n", expt->toNamedType()->name.c_str(),
+								// 	givent->toParametricType()->getName().c_str(), rest->str().c_str());
 							}
 						}
 					}
@@ -359,29 +306,89 @@ namespace Codegen
 
 					iceAssert(expt->isFunctionType() == givent->isFunctionType());
 
-					// basically, call this function recursively
-					// this time, we pass 'genericfnsln' as the 'gtm', since the parent function's resolved types are independent
-					// (name-wise) from the child function
+					/*
+						basically, call this function recursively
+						this caused some pain to mentally figure out
+						basically, we check "expt" against "givent" -- expected vs given.
+						the expected type in this case is the main one.
 
-					// ignore the return value (see note below)
-					debuglog("RECURSE: resolving nested (1) %zu / %s / %s\n", ix, expt->str().c_str(), givent->str().c_str());
+						eg:
+						(type parameters in each function are made unique)
+						(E, U/V, T/K/R)
 
-					std::string s; Expr* e = 0;
+						func foo<U, V>(x: U, f: [(U) -> V]) -> V { ... }
+						func bar<E>(x: E) -> E { ... }
+						func qux<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[] { ... }
 
-					// auto need = getAllGenericTypesContainedWithin(expt, { });
-					std::set<std::string> need = getAllGenericTypesContainedWithinFIR(givent);
+						qux([ 1, 2, 3 ], bar, foo)
 
-					debuglog("REQ:\n");
-					for(auto n : need)
-					{
-						debuglog("N %s\n", n.c_str());
-					}
 
-					auto oldgnfs = genericfnsoln;
-					checkGenericFunctionOrTupleArgument(cgi, 0, toSolve, cnt, expt, givent, &cursln, &genericfnsoln, &s, &e);
-					info("%d", oldgnfs == genericfnsoln);
+						in the above, calling 'qux' immediately we know 'T = i64'.
+						then, we resolve 'fn' as bar. since we know 'T = i64', and 'T = E', and 'K = E', then 'K = i64'.
 
-					debuglog("QUIT (%s)\n", s.c_str());
+						this leaves 'R' as the only unknown type.
+
+						then, we start resolving 'fa'.
+						all is well at first -- we know 'T = i64', and 'U = T'. hence 'U = i64'.
+
+						now, the next parameter is a function type, so we enter this area.
+						at this stage,
+
+						cursln :: [ T = i64, K = i64 ]
+						genericfnsoln :: [ U = i64 ]
+
+						so, we need to find out the type of 'V', and since 'V = R', this gives us 'R'.
+
+						the second map (named 'fnsoln' in the parameter list of this function) is the so-called 'inner solution set'.
+						this is the partial solution set of the inner, recursed function -- in this case 'foo'.
+
+						expt is type fa -- using 'T', 'K', and 'R'.
+						givent is foo -- using 'U' and 'V'.
+
+						referencing the actual code above,
+						we check if 'cursln' contains a solution for 'exptN',
+						and if so whether 'genericfnsoln' contains a solution for 'giventN'.
+
+						'exptN' and 'giventN' are the types of the individual arguments in the function type,
+						in the case above, expt0 and givent0 are 'T' and 'U' in the base case,
+						'T' and 'U' in the inner case as well (ie. in resolving the type of 'f' in 'foo')
+
+
+						so it goes:
+
+						... stuff above -- finding 'T' and 'K' through the array argument and 'bar'
+
+
+						resolving [(U) -> V] (given) against [(T) -> K] (exp)
+
+						does 'cursln' have a solution for 'T'?
+						yes, yes it does.
+						does 'genericfnsoln' have a solution for 'U'?
+						yes, yes it does. do they conflict? no, good.
+
+
+						does 'cursln' have a solution for 'K'?
+						yes, yes it does.
+						does 'genericfnsoln' have a solution for 'V'?
+						no, it does not. K = V, so V = solution of K (i64).
+
+						now we know both 'U' and 'V', and can return.
+
+
+						returned:
+						resolving 'foo' against 'fa'
+
+						does 'cursln' have a solution for 'R'?
+						no, it does not.
+						does 'genericfnsoln' have a solution for 'V'?
+						yes, yes it does. R = V, so R = i64.
+
+						T, K, and R are solved == exit.
+					*/
+
+					// if we're done solving, don't bother
+					if(!checkFinishedSolving(cursln))
+						checkGenericFunctionOrTupleArgument(cgi, 0, toSolve, cnt, expt, givent, &cursln, &genericfnsoln, 0, 0);
 				}
 			}
 
@@ -439,8 +446,8 @@ namespace Codegen
 									fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
 									cursln[prt->toNamedType()->name] = found;
 
-									debuglog("add soln (4) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
-										frt->toParametricType()->getName().c_str(), found->str().c_str());
+									// debuglog("add soln (4) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
+									// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
 								}
 								else
 								{
@@ -456,8 +463,8 @@ namespace Codegen
 							{
 								cursln[prt->toNamedType()->name] = frt;
 
-								debuglog("add soln (5) %s -> %s\n", prt->toNamedType()->name.c_str(),
-									frt->str().c_str());
+								// debuglog("add soln (5) %s -> %s\n", prt->toNamedType()->name.c_str(),
+								// 	frt->str().c_str());
 							}
 						}
 						else if(frt->isParametricType())
@@ -484,16 +491,15 @@ namespace Codegen
 									return false;
 								}
 
-								cursln[prt->toNamedType()->name] = found;
+								iceAssert(cursln[prt->toNamedType()->name] == found);
 
-								debuglog("add soln (6) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
-									frt->toParametricType()->getName().c_str(), found->str().c_str());
+								// debuglog("add soln (6) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
+								// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
 							}
 							else
 							{
 								genericfnsoln[frt->toParametricType()->getName()] = rest;
-
-								debuglog("add soln (7) %s -> %s\n", frt->toParametricType()->getName().c_str(), rest->str().c_str());
+								// debuglog("add soln (7) %s -> %s\n", frt->toParametricType()->getName().c_str(), rest->str().c_str());
 							}
 						}
 					}
@@ -504,13 +510,12 @@ namespace Codegen
 					iceAssert(frt->isFunctionType() || frt->isTupleType());
 
 					// same as the one above
-					info("resolving nested (R)");
 
-					// new copies
-					std::string s; Expr* e = 0;
-
-					// auto need = getAllGenericTypesContainedWithin(prt, { });
-					checkGenericFunctionOrTupleArgument(cgi, 0, { }, ix, prt, frt, &cursln, &genericfnsoln, &s, &e);
+					// if we're done solving, don't bother
+					if(!checkFinishedSolving(cursln))
+					{
+						checkGenericFunctionOrTupleArgument(cgi, 0, toSolve, ix, prt, frt, &cursln, &genericfnsoln, 0, 0);
+					}
 				}
 			}
 
@@ -540,101 +545,54 @@ namespace Codegen
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			debuglog("iteration %zu: solns: ", cnt);
-			for(auto s : cursln)
-				debuglog("%s = %s, ", s.first.c_str(), s.second->str().c_str());
-
-			debuglog("\n");
-
-
-
 			// if our local copy matches the resolved copy, we made no progress this time.
 			if(*resolved == cursln)
 			{
-				// check if we've solved everything, if so then we can return true.
-				for(auto s : toSolve)
+				if(!checkFinishedSolving(cursln))
 				{
-					if(cursln.find(s) == cursln.end())
+					if(errorString && failedExpr)
 					{
-						if(errorString && failedExpr)
+						std::string solvedstr; // = "\nSolutions found so far: ";
+
+						for(auto t : cursln)
+							solvedstr += _makeErrorString("    %s = '%s'\n", t.first.c_str(), t.second->str().c_str());
+
+						if(solvedstr.empty())
 						{
-							std::string solvedstr; // = "\nSolutions found so far: ";
+							solvedstr = " (no partial solutions found)";
+						}
+						else
+						{
+							solvedstr = COLOUR_BLACK_BOLD "\n\nPartial solutions:\n" COLOUR_RESET + solvedstr;
 
-							for(auto t : cursln)
-								solvedstr += _makeErrorString("    %s = '%s'\n", t.first.c_str(), t.second->str().c_str());
-
-							if(solvedstr.empty())
+							// get missing
+							std::string missingstr;
+							for(auto s : toSolve)
 							{
-								solvedstr = " (no partial solutions found)";
-							}
-							else
-							{
-								solvedstr = COLOUR_BLACK_BOLD "\n\nPartial solutions:\n" COLOUR_RESET + solvedstr;
-
-								// get missing
-								std::string missingstr;
-								for(auto s : toSolve)
-								{
-									if(cursln.find(s) == cursln.end())
-										missingstr += _makeErrorString("    '%s'\n", s.c_str());
-								}
-
-								solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
+								if(cursln.find(s) == cursln.end())
+									missingstr += _makeErrorString("    '%s'\n", s.c_str());
 							}
 
-							*errorString = _makeErrorString("Failed to find solution for function parameter %zu in parent function using"
-								" provided type '%s' to solve '%s'; made no progress after %zu iteration%s, and terminated.%s",
-								ix, arg->str().c_str(), prm->str().c_str(), cnt + 1, cnt == 0 ? "" : "s", solvedstr.c_str());
-
-							if(candidate) *failedExpr = candidate->params[ix];
+							solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
 						}
 
-						debuglog("failed to solve\n");
-						return false;
+						*errorString = _makeErrorString("Failed to find solution for function parameter %zu in parent function using"
+							" provided type '%s' to solve '%s'; made no progress after %zu iteration%s, and terminated.%s",
+							ix, arg->str().c_str(), prm->str().c_str(), cnt + 1, cnt == 0 ? "" : "s", solvedstr.c_str());
+
+						if(candidate) *failedExpr = candidate->params[ix];
 					}
+
+					return false;
 				}
 
 				*resolved = cursln;
-				debuglog("(1) ----------------\n");
 				return true;
 			}
 
-			cnt++;
 			*resolved = cursln;
 		}
 
-		debuglog("(2) ----------------\n");
 		return true;
 	}
 
