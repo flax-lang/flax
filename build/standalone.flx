@@ -34,13 +34,13 @@ func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
 	return ret
 }
 
-func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
+func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
 	while i < arr.length
 	{
-		ret[i] = f(arr[i], arr2[i])
+		ret[i] = f(arr[i].0, arr[i].1)
 		i += 1
 	}
 
@@ -48,10 +48,10 @@ func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
 }
 
 
-
 func incr(x: int) -> int { x + 1 }
 func gmult<T>(x: T, m: T) -> T { x * m }
 func add2<A, B>(x: A, y: B) -> A { x + y }
+
 
 
 
@@ -83,27 +83,57 @@ func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 	todo: handle taking address of function
+	todo: basic blocks need to check if they all have a terminator
 */
+
+
+
+
+func tmpf<T>(x: (T, T)) -> T
+{
+	return x.0 + x.1
+}
+
+func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
+{
+	var ret = alloc[y.length] K
+
+	var i = 0
+	while i < y.length
+	{
+		ret[i] = f(y[i])
+	}
+
+	retun ret
+}
+
+
+
+
+
+
+
+
+
 
 
 public func main()
 {
-	var arr = alloc[5] int
-	var arr2 = alloc[5] int
+	var arr = alloc[5] (int, int)
 	var i = 0
 	while i < arr.length
 	{
-		arr[i] = i
-		arr2[i] = i * (i + 5)
-
+		arr[i] = (i, i * (i + 5))
 		i += 1
 	}
 
-	// let new = map2(arr, arr2, add2)
+	let new = map2(arr, add2)
+
+	vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
 
 	// let new = map(arr, gincr)
 	// let new = map(arr, gmult)
-	let new = mapstupid(arr2, gincr, apply)
+	// let new = mapstupid(arr2, gincr, apply)
 
 
 	i = 0
@@ -137,19 +167,6 @@ func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) ->
 	return ret
 }
 
-
-// func mapstupid2<T, K>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> K]) -> K[]
-// {
-// 	var i = 0
-// 	var ret = alloc[arr.length] K
-// 	while i < arr.length
-// 	{
-// 		ret[i] = fa(arr[i], fn)
-// 		i += 1
-// 	}
-
-// 	return ret
-// }
 
 
 
