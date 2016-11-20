@@ -36,10 +36,11 @@ namespace fir
 
 	static size_t getLargestMember(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
+		for(auto m : (t->isStructType() ? t->toStructType()->getElements() : (t->isClassType()
+			? t->toClassType()->getElements() : t->toTupleType()->getElements())))
 		{
 			size_t c = 0;
-			if(m->isStructType() || m->isClassType())
+			if(m->isStructType() || m->isClassType() || m->isTupleType())
 				c = getLargestMember(et, m, largest);
 
 			else
@@ -54,10 +55,13 @@ namespace fir
 
 	static void recursiveGetTypes(Type* t, std::deque<Type*>& types)
 	{
-		if(t->isStructType() || t->isClassType())
+		if(t->isStructType() || t->isClassType() || t->isTupleType())
 		{
-			for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
+			for(auto m : (t->isStructType() ? t->toStructType()->getElements()
+				: (t->isClassType() ? t->toClassType()->getElements() : t->toTupleType()->getElements())))
+			{
 				recursiveGetTypes(m, types);
+			}
 		}
 		else
 		{
@@ -67,7 +71,7 @@ namespace fir
 
 	static size_t recursiveGetSize(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		if(t->isStructType() || t->isClassType())
+		if(t->isStructType() || t->isClassType() || t->isTupleType())
 		{
 			size_t total = 0;
 			size_t first = 0;
@@ -128,6 +132,11 @@ namespace fir
 			{
 				return recursiveGetSize(this, st, getLargestMember(this, st, 0));
 			}
+		}
+		else if(t->isTupleType())
+		{
+			TupleType* tt = t->toTupleType();
+			return recursiveGetSize(this, tt, getLargestMember(this, tt, 0));
 		}
 		else if(t->isClassType())
 		{

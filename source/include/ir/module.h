@@ -8,12 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include <map>
-#include <deque>
-#include <string>
-#include <vector>
-#include <unordered_map>
-
 #include "value.h"
 #include "function.h"
 
