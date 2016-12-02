@@ -248,9 +248,9 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::getType(const Identifier& id)
+	TypePair_t* CodegenInstance::getType(const Identifier& ident)
 	{
-		return this->getTypeByString(id.str());
+		return this->getTypeByString(ident.str());
 	}
 
 
@@ -302,6 +302,25 @@ namespace Codegen
 					// todo(leak): this leaks too
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Parametric));
 				}
+				else if(possibleGeneric->isArrayType())
+				{
+					// all of this shit leaks
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isDynamicArrayType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isParameterPackType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isTupleType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Tuple));
+				}
+
+
 
 				TypePair_t* tp = this->getType(possibleGeneric);
 				iceAssert(tp);

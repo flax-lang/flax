@@ -703,7 +703,7 @@ namespace fir
 
 						case OpKind::Signed_Neg:
 						{
-							iceAssert(inst->operands.size() == 2);
+							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
 
 							llvm::Value* ret = builder.CreateNeg(a);
