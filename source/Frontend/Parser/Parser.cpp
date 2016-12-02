@@ -138,23 +138,24 @@ namespace Parser
 			// << and >>
 			// precedence = 700
 
+
+			case TType::Ampersand:
+				return 650;
+
+			case TType::Caret:
+				return 600;
+
+			case TType::Pipe:
+				return 550;
+
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
-				return 650;
+				return 500;
 
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 600;
-
-			case TType::Ampersand:
-				return 550;
-
-			case TType::Caret:
-				return 500;
-
-			case TType::Pipe:
 				return 450;
 
 			case TType::LogicalAnd:
