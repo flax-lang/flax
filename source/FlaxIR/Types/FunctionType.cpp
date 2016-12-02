@@ -148,6 +148,7 @@ namespace fir
 		if(this->isFnVariadic != of->isFnVariadic) return false;
 		if(this->functionParams.size() != of->functionParams.size()) return false;
 		if(!this->functionRetType->isTypeEqual(of->functionRetType)) return false;
+		if(this->typeParameters != of->typeParameters) return false;
 
 		for(size_t i = 0; i < this->functionParams.size(); i++)
 		{

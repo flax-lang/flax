@@ -153,9 +153,20 @@ namespace Operators
 				error(user, "Non-literal strings cannot be cast into chars; did you mean to subscript?");
 			}
 		}
-		else if(lhs->getType()->isCharType() && rtype == fir::Type::getInt8())
+		else if(lhs->getType()->isCharType() && rtype->isIntegerType())
 		{
-			return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
+			if(rtype != fir::Type::getInt8())
+			{
+				fir::Value* ret = cgi->irb.CreateIntSizeCast(cgi->irb.CreateBitcast(lhs, fir::Type::getInt8()), rtype);
+				if(ret->getType()->isSignedIntType() != rtype->isSignedIntType())
+					ret = cgi->irb.CreateIntSignednessCast(ret, rtype);
+
+				return Result_t(ret, 0);
+			}
+			else
+			{
+				return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
+			}
 		}
 		else if(lhs->getType()->isDynamicArrayType() && rtype->isPointerType() &&
 			lhs->getType()->toDynamicArrayType()->getElementType() == rtype->getPointerElementType())
