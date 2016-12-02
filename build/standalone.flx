@@ -3,6 +3,22 @@
 // Licensed under the Apache License Version 2.0.
 
 
+/*
+	TOFIX:
+
+	1. enums declared in functions do not work
+	2. array literals of type string do not work
+	3. dynamic array slices
+	4. FOR LOOPS
+
+
+	TO TEST:
+
+	1. tuple operators
+*/
+
+
+
 
 // import LibCInterface
 

@@ -12,36 +12,29 @@ using namespace Codegen;
 
 
 
-
-Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op, fir::Type* ltype,
+	fir::Type* rtype, fir::Value* extra, bool allowFail)
 {
-	iceAssert(this->left && this->right);
-	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->left, this->right });
-}
-
-fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
-{
-	fir::Type* ltype = this->left->getType(cgi);
-	fir::Type* rtype = this->right->getType(cgi);
-
-	if(this->op == ArithmeticOp::CmpLT || this->op == ArithmeticOp::CmpGT || this->op == ArithmeticOp::CmpLEq
-	|| this->op == ArithmeticOp::CmpGEq || this->op == ArithmeticOp::CmpEq || this->op == ArithmeticOp::CmpNEq)
+	if(op == ArithmeticOp::CmpLT || op == ArithmeticOp::CmpGT || op == ArithmeticOp::CmpLEq
+	|| op == ArithmeticOp::CmpGEq || op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
 	{
 		return fir::Type::getBool(cgi->getContext());
 	}
-	else if(this->op == ArithmeticOp::Cast || this->op == ArithmeticOp::ForcedCast)
+	else if(op == ArithmeticOp::Cast || op == ArithmeticOp::ForcedCast)
 	{
 		// assume that the cast is valid
 		// we'll check the validity of this claim later, during codegen.
-		return this->right->getType(cgi);
+		return rtype;
 	}
-	else if(this->op >= ArithmeticOp::UserDefined)
+	else if(op >= ArithmeticOp::UserDefined)
 	{
-		auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+		auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 
 		if(!data.found)
 		{
-			error(this, "No such custom operator '%s' for types '%s' and '%s'", Parser::arithmeticOpToString(cgi, this->op).c_str(),
+			if(allowFail) return 0;
+
+			error(user, "Custom operator '%s' is not defined for types '%s' and '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
 				ltype->str().c_str(), rtype->str().c_str());
 		}
 
@@ -90,6 +83,49 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 		{
 			return ltype;
 		}
+		else if(ltype->isTupleType() && ltype == rtype)
+		{
+			// check every element
+			for(auto e : ltype->toTupleType()->getElements())
+			{
+				if(getBinOpResultType(cgi, user, op, e, e, 0, true) == 0)
+				{
+					// fail
+					if(allowFail) return 0;
+
+					error(user, "Operator '%s' cannot be applied on two values of tuple type '%s'; operator is not applicable to"
+						" at least one member type, including '%s'", Parser::arithmeticOpToString(cgi, op).c_str(),
+						ltype->str().c_str(), e->str().c_str());
+				}
+			}
+
+			// ok
+			// now...
+			// if it's a comparison, result is always bool
+			if(op == ArithmeticOp::CmpLT || op == ArithmeticOp::CmpGT || op == ArithmeticOp::CmpLEq
+			|| op == ArithmeticOp::CmpGEq || op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
+			{
+				return fir::Type::getBool(cgi->getContext());
+			}
+			else if(op == ArithmeticOp::Cast || op == ArithmeticOp::ForcedCast)
+			{
+				if(ltype->toTupleType()->getElementCount() != rtype->toTupleType()->getElementCount())
+				{
+					if(allowFail) return 0;
+
+					error(user, "Invalid cast from type '%s' to '%s'; mismatched number of tuple elements (expected %zu, have %zu)",
+						ltype->str().c_str(), rtype->str().c_str(), ltype->toTupleType()->getElementCount(),
+						rtype->toTupleType()->getElementCount());
+				}
+
+				return rtype;
+			}
+			else
+			{
+				// it's just the type.
+				return ltype;
+			}
+		}
 		else
 		{
 			if((ltype->isPointerType() && rtype->isIntegerType()) || (rtype->isPointerType() && ltype->isIntegerType()))
@@ -98,18 +134,33 @@ fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 				return ltype->isPointerType() ? ltype : rtype;
 			}
 
-			auto data = cgi->getBinaryOperatorOverload(this, this->op, ltype, rtype);
+			auto data = cgi->getBinaryOperatorOverload(user, op, ltype, rtype);
 			if(data.found)
 			{
 				return data.opFunc->getReturnType();
 			}
 			else
 			{
-				error(this, "No such operator overload for operator '%s' accepting types '%s' and '%s'.",
-					Parser::arithmeticOpToString(cgi, this->op).c_str(), ltype->str().c_str(), rtype->str().c_str());
+				if(allowFail) return 0;
+
+				error(user, "No such operator overload for operator '%s' accepting types '%s' and '%s'.",
+					Parser::arithmeticOpToString(cgi, op).c_str(), ltype->str().c_str(), rtype->str().c_str());
 			}
 		}
 	}
+}
+
+
+
+Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	iceAssert(this->left && this->right);
+	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->left, this->right });
+}
+
+fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+{
+	return getBinOpResultType(cgi, this, this->op, this->left->getType(cgi), this->right->getType(cgi), extra, allowFail);
 }
 
 

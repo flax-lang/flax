@@ -10,6 +10,9 @@
 using namespace Ast;
 using namespace Codegen;
 
+fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op, fir::Type* ltype,
+	fir::Type* rtype, fir::Value* extra, bool allowFail);
+
 namespace Operators
 {
 	static bool isComparisonOp(ArithmeticOp op)
@@ -80,20 +83,13 @@ namespace Operators
 
 
 
-	Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+
+
+	static Result_t performGeneralArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, fir::Value* lhs, fir::Value* lhsptr,
+		fir::Value* rhs, fir::Value* rhsptr, std::deque<Expr*> exprs)
 	{
-		auto optostr = Parser::arithmeticOpToString;
+		auto opstr = Parser::arithmeticOpToString(cgi, op);
 
-		if(args.size() != 2)
-			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
-
-		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
-		fir::Value* rhs = 0; fir::Value* rhsptr = 0;
-
-		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
-		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
-
-		rhs = cgi->autoCastType(lhs, rhs);
 
 
 		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
@@ -109,7 +105,7 @@ namespace Operators
 
 			if(lhs->getType() != rhs->getType())
 			{
-				error(user, "Operator '%s' cannot be applied on types '%s' and '%s'", optostr(cgi, op).c_str(),
+				error(user, "Operator '%s' cannot be applied on types '%s' and '%s'", opstr.c_str(),
 					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 			}
 
@@ -132,7 +128,7 @@ namespace Operators
 		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
 		{
 			if(op != ArithmeticOp::Add)
-				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", optostr(cgi, op).c_str());
+				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", opstr.c_str());
 
 			iceAssert(lhsptr);
 			iceAssert(rhs);
@@ -151,7 +147,7 @@ namespace Operators
 		{
 			// yay, builtin string operators.
 			if(!isComparisonOp(op) && op != ArithmeticOp::Add)
-				error(user, "Operator '%s' cannot be applied on two strings", optostr(cgi, op).c_str());
+				error(user, "Operator '%s' cannot be applied on two strings", opstr.c_str());
 
 			if(isComparisonOp(op))
 			{
@@ -211,7 +207,7 @@ namespace Operators
 				if(!ovl.found)
 				{
 					error(user, "Array type '%s' cannot be compared; operator '%s' is not defined for element type '%s'",
-						arrtype->str().c_str(), optostr(cgi, op).c_str(), arrtype->getElementType()->str().c_str());
+						arrtype->str().c_str(), opstr.c_str(), arrtype->getElementType()->str().c_str());
 				}
 
 				// basically this calls the elementwise comparison function
@@ -293,7 +289,7 @@ namespace Operators
 			if(!tryop)
 			{
 				die:
-				error(user, "Invalid operator '%s' between types '%s' and '%s'", optostr(cgi, op).c_str(),
+				error(user, "Invalid operator '%s' between types '%s' and '%s'", opstr.c_str(),
 					lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
 			}
 
@@ -338,8 +334,85 @@ namespace Operators
 			else
 			{
 				error(user, "Invalid operator '%s' between enumeration types '%s' (underlying type '%s')",
-					optostr(cgi, op).c_str(), lhs->getType()->str().c_str(), caset->str().c_str());
+					opstr.c_str(), lhs->getType()->str().c_str(), caset->str().c_str());
 			}
+		}
+		else if(lhs->getType()->isTupleType() && rhs->getType() == lhs->getType())
+		{
+			// do each.
+			fir::Type* restype = getBinOpResultType(cgi, dynamic_cast<BinOp*>(user), op, lhs->getType(), rhs->getType(), 0, 0);
+			iceAssert(restype);
+
+			fir::Value* retval = cgi->irb.CreateStackAlloc(restype);
+			cgi->irb.CreateStore(fir::ConstantValue::getNullValue(restype), retval);
+
+			if(!lhsptr)	lhsptr = cgi->irb.CreateImmutStackAlloc(lhs->getType(), lhs);
+			if(!rhsptr)	rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
+
+
+
+
+
+
+			// for comparisons:
+			if(op == ArithmeticOp::CmpLT || op == ArithmeticOp::CmpGT || op == ArithmeticOp::CmpLEq
+				|| op == ArithmeticOp::CmpGEq || op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
+			{
+				iceAssert(retval->getType()->getPointerElementType() == fir::Type::getBool());
+				cgi->irb.CreateStore(fir::ConstantInt::getBool(true), retval);
+
+				for(size_t i = 0; i < lhs->getType()->toTupleType()->getElements().size(); i++)
+				{
+					fir::Value* le = cgi->irb.CreateLoad(cgi->irb.CreateStructGEP(lhsptr, i));
+					fir::Value* re = cgi->irb.CreateLoad(cgi->irb.CreateStructGEP(rhsptr, i));
+
+					fir::Value* res = performGeneralArithmeticOperator(cgi, op, exprs.size() > 0 ? exprs[i] : 0, le, 0, re, 0, { }).value;
+					iceAssert(res);
+					iceAssert(res->getType() == fir::Type::getBool());
+
+					// todo: provide additional information in case of error
+					// like uh
+					// note: in element 5 of tuple '$T'
+					// something like that
+
+					// ok. do bitwise and.
+					cgi->irb.CreateBitwiseXOR(fir::ConstantValue::getNullValue(fir::Type::getInt64()), fir::ConstantValue::getNullValue(fir::Type::getInt64()));
+
+					cgi->irb.CreateStore(cgi->irb.CreateBitwiseAND(res, cgi->irb.CreateLoad(retval)), retval);
+				}
+			}
+			else
+			{
+				// do each element individually
+				iceAssert(retval->getType()->isTupleType());
+				iceAssert(lhs->getType()->toTupleType()->getElementCount() == rhs->getType()->toTupleType()->getElementCount());
+
+				for(size_t i = 0; i < lhs->getType()->toTupleType()->getElements().size(); i++)
+				{
+					fir::Value* gep = cgi->irb.CreateStructGEP(retval, i);
+
+					fir::Value* lep = cgi->irb.CreateStructGEP(lhsptr, i);
+					fir::Value* lev = cgi->irb.CreateLoad(lep);
+
+					fir::Value* rep = cgi->irb.CreateStructGEP(rhsptr, i);
+					fir::Value* rev = cgi->irb.CreateLoad(rep);
+
+
+					// ok.
+					// same thing here, provide more info if we can
+					fir::Value* result = performGeneralArithmeticOperator(cgi, op, exprs.size() > 0 ? exprs[i] : 0, lep,
+						lev, rep, rev, { }).value;
+
+					iceAssert(result);
+					iceAssert(result->getType() == gep->getType()->getPointerElementType());
+
+					// store.
+					cgi->irb.CreateStore(result, gep);
+				}
+			}
+
+
+			return Result_t(cgi->irb.CreateLoad(retval), 0);
 		}
 		else
 		{
@@ -350,8 +423,27 @@ namespace Operators
 			}
 		}
 
-		error(user, "No such operator '%s' for expression %s %s %s", optostr(cgi, op).c_str(),
-			lhs->getType()->str().c_str(), optostr(cgi, op).c_str(), rhs->getType()->str().c_str());
+		error(user, "Operator '%s' cannot be applied in expression %s %s %s", opstr.c_str(),
+			lhs->getType()->str().c_str(), opstr.c_str(), rhs->getType()->str().c_str());
+	}
+
+
+	Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	{
+		auto opstr = Parser::arithmeticOpToString(cgi, op);
+
+		if(args.size() != 2)
+			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
+
+		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
+		fir::Value* rhs = 0; fir::Value* rhsptr = 0;
+
+		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
+
+		rhs = cgi->autoCastType(lhs, rhs);
+
+		return performGeneralArithmeticOperator(cgi, op, user, lhs, lhsptr, rhs, rhsptr, args);
 	}
 }
 
