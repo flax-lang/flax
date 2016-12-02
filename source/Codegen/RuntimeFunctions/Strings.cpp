@@ -91,8 +91,8 @@ namespace String
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				fir::Value* tmp = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
-				tmp = cgi->irb.CreateConstGEP2(tmp, 0, 0);
+				fir::ConstantValue* tmp = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
+				tmp = cgi->irb.CreateConstFixedGEP2(tmp, 0, 0);
 
 				cgi->irb.CreateCall(printfn, { tmp, buf, lhslen, buf });
 			}
@@ -192,7 +192,7 @@ namespace String
 			#if 0
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
 				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 			}
@@ -286,7 +286,7 @@ namespace String
 			#if 0
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
 				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 			}
@@ -458,8 +458,8 @@ namespace String
 
 			#if DEBUG_ARC
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
 
@@ -533,8 +533,8 @@ namespace String
 
 			#if DEBUG_ARC
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
 
@@ -554,8 +554,8 @@ namespace String
 
 				#if DEBUG_ARC
 				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s')\n");
-					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+					fir::ConstantValue* tmpstr = cgi->module->createGlobalString("free %p ('%s')\n");
+					tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 					cgi->irb.CreateCall3(cgi->getOrDeclareLibCFunc("printf"), tmpstr, bufp, bufp);
 				}
 				#endif
@@ -626,11 +626,11 @@ namespace String
 				// void* stderr = fdopen(2, "w")
 				// fprintf(stderr, "", bla bla)
 
-				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
+				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -706,11 +706,11 @@ namespace String
 				// void* stderr = fdopen(2, "w")
 				// fprintf(stderr, "", bla bla)
 
-				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zd'!\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zd'!\n");
+				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 

@@ -227,6 +227,45 @@ namespace fir
 
 			return llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
 		}
+		else if(ConstantString* cs = dynamic_cast<ConstantString*>(c))
+		{
+			// note: only works on 2's complement systems
+			// where 0xFFFFFFFFFFFFFFFF == -1
+
+			size_t origLen = cs->getValue().length();
+
+			std::string str = cs->getValue();
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+
+			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), str, true);
+			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(cs->id));
+
+			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvm::getGlobalContext()), 0);
+			std::vector<llvm::Constant*> indices = { zconst, zconst };
+			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
+
+
+			auto eightconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvm::getGlobalContext()), 8);
+			gepd = llvm::ConstantExpr::getInBoundsGetElementPtr(gepd->getType()->getPointerElementType(), gepd, eightconst);
+
+			auto len = llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvm::getGlobalContext()), origLen);
+
+			iceAssert(gepd->getType() == llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
+			iceAssert(len->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+
+			std::vector<llvm::Constant*> mems = { gepd, len };
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(StringType::get(), mod)), mems);
+
+			return ret;
+		}
 		else
 		{
 			return llvm::Constant::getNullValue(typeToLlvm(c->getType(), mod));
@@ -269,11 +308,7 @@ namespace fir
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
-			if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
-			{
-				return constToLlvm(cv, module);
-			}
-			else if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
+			if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
@@ -281,7 +316,17 @@ namespace fir
 
 				iceAssert(lgv);
 				return lgv;
-				// return builder.CreateConstGEP2_32(lgv, 0, 0);
+			}
+			// we must do this because function now derives from constantvalue
+			else if(dynamic_cast<Function*>(fv))
+			{
+				llvm::Value* ret = valueMap[fv->id];
+				if(!ret) error("!ret (id = %zu)", fv->id);
+				return ret;
+			}
+			else if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
+			{
+				return constToLlvm(cv, module);
 			}
 			else
 			{
@@ -1225,10 +1270,10 @@ namespace fir
 						case OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
-
 							Function* fn = dynamic_cast<Function*>(inst->operands[0]);
 							iceAssert(fn);
+
+							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
 
 							std::vector<llvm::Value*> args;
 
@@ -1495,6 +1540,33 @@ namespace fir
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+
+						case OpKind::Const_GetGEP2:
+						{
+							iceAssert(inst->operands.size() == 3);
+							llvm::Constant* a = llvm::cast<llvm::Constant>(getOperand(inst, 0));
+							iceAssert(a);
+							iceAssert(a->getType()->isPointerTy());
+
+							llvm::Constant* i1 = llvm::cast<llvm::Constant>(getOperand(inst, 1));
+							iceAssert(i1);
+							llvm::Constant* i2 = llvm::cast<llvm::Constant>(getOperand(inst, 2));
+							iceAssert(i2);
+
+							std::vector<llvm::Constant*> indices = { i1, i2 };
+							llvm::Value* ret = llvm::ConstantExpr::getGetElementPtr(a->getType()->getPointerElementType(), a, indices);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
 
 
 

@@ -92,31 +92,6 @@ namespace fir
 		std::deque<Value*> users;
 	};
 
-	struct GlobalValue : Value
-	{
-		friend struct Module;
-
-		LinkageType linkageType;
-
-		Module* getParentModule() { return this->parentModule; }
-
-		protected:
-		GlobalValue(Module* mod, Type* type, LinkageType linkage);
-
-		Module* parentModule = 0;
-	};
-
-	struct GlobalVariable : GlobalValue
-	{
-		friend struct Module;
-
-		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
-		void setInitialValue(ConstantValue* constVal);
-
-		protected:
-		ConstantValue* initValue = 0;
-	};
-
 	struct PHINode : Value
 	{
 		friend struct IRBuilder;

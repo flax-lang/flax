@@ -79,8 +79,8 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isTupleType())
 	{
-		std::string ret = "ST" + std::to_string(t->toStructType()->getElementCount()) + "SM";
-		for(auto m : t->toStructType()->getElements())
+		std::string ret = "ST" + std::to_string(t->toTupleType()->getElementCount()) + "SM";
+		for(auto m : t->toTupleType()->getElements())
 		{
 			auto mt = mangleType(m);
 			ret += std::to_string(mt.length()) + mt;

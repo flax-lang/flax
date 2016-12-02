@@ -122,8 +122,8 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->isRaw)
 	{
 		// good old Int8*
-		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->irb.CreateConstGEP2(stringVal, 0, 0);
+		fir::ConstantValue* stringVal = cgi->module->createGlobalString(this->str);
+		stringVal = cgi->irb.CreateConstFixedGEP2(stringVal, 0, 0);
 
 		return Result_t(stringVal, 0);
 	}
@@ -131,32 +131,38 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		if(extra && extra->getType()->getPointerElementType()->isStringType())
 		{
+			// these things can't be const
+
 			iceAssert(extra->getType()->getPointerElementType()->isStringType());
 
-			// note(portability): see CodegenInstance::makeStringLiteral()
-			std::string s = this->str;
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
-			s.insert(s.begin(), 0xFF);
 
-			fir::Value* thestring = cgi->module->createGlobalString(s);
-			thestring = cgi->irb.CreateConstGEP2(thestring, 0, 0);
+			/*
+				// note(portability): see CodegenInstance::makeStringLiteral()
+				std::string s = this->str;
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
+				s.insert(s.begin(), 0xFF);
 
-			fir::Value* len = fir::ConstantInt::getInt64(this->str.length());
+				fir::Value* thestring = cgi->module->createGlobalString(s);
+				thestring = cgi->irb.CreateFixedGEP2(thestring, 0, 0);
 
-			thestring = cgi->irb.CreatePointerAdd(thestring, fir::ConstantInt::getInt64(8));
-			cgi->irb.CreateSetStringData(extra, thestring);
-			cgi->irb.CreateSetStringLength(extra, len);
+				fir::Value* len = fir::ConstantInt::getInt64(this->str.length());
+
+				thestring = cgi->irb.CreatePointerAdd(thestring, fir::ConstantInt::getInt64(8));
+				cgi->irb.CreateSetStringData(extra, thestring);
+				cgi->irb.CreateSetStringLength(extra, len);
+			*/
 
 			// we don't (and can't) set the refcount, because it's probably in read-only memory.
 			// the -1 is reflected in the string literal already.
-			// fir::Value* rc = fir::ConstantInt::getInt64(-1);
-			// cgi->irb.CreateSetStringRefCount(extra, rc);
+
+			fir::ConstantString* cs = fir::ConstantString::get(this->str);
+			cgi->irb.CreateStore(cs, extra);
 
 			cgi->addRefCountedValue(extra);
 			if(!extra->hasName())
@@ -259,6 +265,13 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 {
 	return fir::ArrayType::get(_makeReal(this->values.front()->getType(cgi)), this->values.size());
 }
+
+
+
+
+
+
+
 
 
 
