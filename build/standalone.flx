@@ -7,10 +7,11 @@
 	TOFIX:
 
 	1. enums declared in functions do not work
-	2. array literals of type string do not work
+
 	3. dynamic array slices
 	4. FOR LOOPS
 
+	5. array of strings kinda work but not really
 
 	TO TEST:
 

@@ -2072,40 +2072,11 @@ namespace Codegen
 		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
 		fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
 
-		// note(portability): this isn't going to work on non-2's-complement platforms
-		// where 0xFFFFFFFFFFFFFFFF != -1.
-
-		// if this basic assumption fails however, then everything is out the window, and IDGAF anymore.
-
-		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
-		// this simplifies code a lot (generated code, too)
-
-		/*
-		std::string s = str;
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-
-		fir::ConstantValue* empty = this->module->createGlobalString(s);
-		empty = this->irb.CreateConstFixedGEP2(this->irb.CreateConstFixedGEP2(empty, 0, 0), 8, 0);
-
-		fir::Value* len = fir::ConstantInt::getInt64(str.length());
-
-		this->irb.CreateSetStringData(strp, empty);
-		this->irb.CreateSetStringLength(strp, len);
-		*/
-
 		auto cs = fir::ConstantString::get(str);
 		this->irb.CreateStore(cs, strp);
 
 		strp->makeImmutable();
 
-		// return Result_t(this->irb.CreateLoad(strp), strp);
 		return Result_t(cs, strp);
 	}
 
@@ -2147,24 +2118,16 @@ namespace Codegen
 			{
 				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
 
-				if(incr)
-					cgi->incrementRefCount(mem);
-
-				else
-					cgi->decrementRefCount(mem);
+				if(incr)	cgi->incrementRefCount(mem);
+				else		cgi->decrementRefCount(mem);
 			}
 			else if(isStructuredAggregate(m))
 			{
 				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
 
-				if(m->isStructType())
-					doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
-
-				else if(m->isClassType())
-					doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
-
-				else if(m->isTupleType())
-					doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
+				if(m->isStructType())		doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
+				else if(m->isClassType())	doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
+				else if(m->isTupleType())	doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
 			}
 
 			i++;
@@ -2184,18 +2147,25 @@ namespace Codegen
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
 		{
 			auto ty = strp->getType()->getPointerElementType();
-			if(ty->isStructType())
-				doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
 
-			else if(ty->isClassType())
-				doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+			if(ty->isStructType())		doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
+			else if(ty->isClassType())	doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+			else if(ty->isTupleType())	doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
+		}
+		else if(strp->getType()->getPointerElementType()->isArrayType())
+		{
+			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
+			for(size_t i = 0; i < at->getArraySize(); i++)
+			{
+				fir::Value* elm = this->irb.CreateFixedGEP2(strp, 0, i);
+				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
 
-			else if(ty->isTupleType())
-				doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
+				this->incrementRefCount(elm);
+			}
 		}
 		else
 		{
-			error("no");
+			error("no: %s", strp->getType()->str().c_str());
 		}
 	}
 
@@ -2212,18 +2182,25 @@ namespace Codegen
 		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
 		{
 			auto ty = strp->getType()->getPointerElementType();
-			if(ty->isStructType())
-				doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
 
-			else if(ty->isClassType())
-				doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
+			if(ty->isStructType())		doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
+			else if(ty->isClassType())	doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
+			else if(ty->isTupleType())	doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
+		}
+		else if(strp->getType()->getPointerElementType()->isArrayType())
+		{
+			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
+			for(size_t i = 0; i < at->getArraySize(); i++)
+			{
+				fir::Value* elm = this->irb.CreateFixedGEP2(strp, 0, i);
+				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
 
-			else if(ty->isTupleType())
-				doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
+				this->decrementRefCount(elm);
+			}
 		}
 		else
 		{
-			error("no");
+			error("no: %s", strp->getType()->str().c_str());
 		}
 	}
 

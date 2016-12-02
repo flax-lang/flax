@@ -152,7 +152,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 
 
-	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
+	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType())/* && !val->getType()->isArrayType()*/)
 	{
 		// ...
 		// handled below
