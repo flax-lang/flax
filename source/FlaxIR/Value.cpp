@@ -17,7 +17,7 @@ namespace fir
 		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 
-		if(this->id == 313)
+		if(this->id == 704)
 		{
 			// abort();
 		}

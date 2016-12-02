@@ -32,6 +32,7 @@ namespace fir
 	struct ConstantValue : Value
 	{
 		friend struct Module;
+		friend struct IRBuilder;
 
 		// static stuff
 		static ConstantValue* getNullValue(Type* type);
@@ -117,6 +118,59 @@ namespace fir
 		ConstantArray(Type* type, std::vector<ConstantValue*> vals);
 
 		std::vector<ConstantValue*> values;
+	};
+
+	struct ConstantStruct : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantStruct* get(StructType* st, std::deque<ConstantValue*> members);
+
+		protected:
+		ConstantStruct(StructType* st, std::deque<ConstantValue*> members);
+		std::deque<ConstantValue*> members;
+	};
+
+	struct ConstantString : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantString* get(std::string value);
+		std::string getValue();
+
+		protected:
+		ConstantString(std::string str);
+
+		std::string str;
+	};
+
+
+
+
+
+	struct GlobalValue : ConstantValue
+	{
+		friend struct Module;
+
+		LinkageType linkageType;
+
+		Module* getParentModule() { return this->parentModule; }
+
+		protected:
+		GlobalValue(Module* mod, Type* type, LinkageType linkage);
+
+		Module* parentModule = 0;
+	};
+
+	struct GlobalVariable : GlobalValue
+	{
+		friend struct Module;
+
+		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
+		void setInitialValue(ConstantValue* constVal);
+
+		protected:
+		ConstantValue* initValue = 0;
 	};
 }
 

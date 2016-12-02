@@ -13,8 +13,8 @@
 #include <deque>
 #include <unordered_map>
 
-#include "value.h"
 #include "block.h"
+#include "constant.h"
 
 namespace fir
 {

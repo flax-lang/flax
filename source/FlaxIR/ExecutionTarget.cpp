@@ -36,10 +36,15 @@ namespace fir
 
 	static size_t getLargestMember(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
+		std::vector<Type*> ts;
+		if(t->isStructType())		ts = t->toStructType()->getElements();
+		else if(t->isClassType())	ts = t->toClassType()->getElements();
+		else if(t->isTupleType())	ts = t->toTupleType()->getElements();
+
+		for(auto m : ts)
 		{
 			size_t c = 0;
-			if(m->isStructType() || m->isClassType())
+			if(m->isStructType() || m->isClassType() || m->isTupleType())
 				c = getLargestMember(et, m, largest);
 
 			else
@@ -54,9 +59,19 @@ namespace fir
 
 	static void recursiveGetTypes(Type* t, std::deque<Type*>& types)
 	{
-		if(t->isStructType() || t->isClassType())
+		if(t->isStructType())
 		{
-			for(auto m : (t->isStructType() ? t->toStructType()->getElements() : t->toClassType()->getElements()))
+			for(auto m : t->toStructType()->getElements())
+				recursiveGetTypes(m, types);
+		}
+		else if(t->isClassType())
+		{
+			for(auto m : t->toClassType()->getElements())
+				recursiveGetTypes(m, types);
+		}
+		else if(t->isTupleType())
+		{
+			for(auto m : t->toTupleType()->getElements())
 				recursiveGetTypes(m, types);
 		}
 		else
@@ -67,7 +82,7 @@ namespace fir
 
 	static size_t recursiveGetSize(ExecutionTarget* et, Type* t, size_t largest)
 	{
-		if(t->isStructType() || t->isClassType())
+		if(t->isStructType() || t->isClassType() || t->isTupleType())
 		{
 			size_t total = 0;
 			size_t first = 0;
@@ -134,6 +149,11 @@ namespace fir
 			ClassType* ct = t->toClassType();
 			return recursiveGetSize(this, ct, getLargestMember(this, ct, 0));
 		}
+		else if(t->isTupleType())
+		{
+			TupleType* tt = t->toTupleType();
+			return recursiveGetSize(this, tt, getLargestMember(this, tt, 0));
+		}
 		else if(t->isArrayType())
 		{
 			ArrayType* at = t->toArrayType();
@@ -174,7 +194,7 @@ namespace fir
 		{
 			if(t->isVoidType()) return 0;
 
-			iceAssert(0 && "unsupported type");
+			_error_and_exit("unsupported type: %s", t->str().c_str());
 		}
 	}
 
