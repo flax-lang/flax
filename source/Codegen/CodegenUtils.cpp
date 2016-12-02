@@ -2080,6 +2080,7 @@ namespace Codegen
 		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
 		// this simplifies code a lot (generated code, too)
 
+		/*
 		std::string s = str;
 		s.insert(s.begin(), 0xFF);
 		s.insert(s.begin(), 0xFF);
@@ -2090,18 +2091,22 @@ namespace Codegen
 		s.insert(s.begin(), 0xFF);
 		s.insert(s.begin(), 0xFF);
 
-		fir::Value* empty = this->module->createGlobalString(s);
-
-		empty = this->irb.CreatePointerAdd(this->irb.CreateConstGEP2(empty, 0, 0), fir::ConstantInt::getInt64(8));
+		fir::ConstantValue* empty = this->module->createGlobalString(s);
+		empty = this->irb.CreateConstFixedGEP2(this->irb.CreateConstFixedGEP2(empty, 0, 0), 8, 0);
 
 		fir::Value* len = fir::ConstantInt::getInt64(str.length());
 
 		this->irb.CreateSetStringData(strp, empty);
 		this->irb.CreateSetStringLength(strp, len);
+		*/
+
+		auto cs = fir::ConstantString::get(str);
+		this->irb.CreateStore(cs, strp);
 
 		strp->makeImmutable();
 
-		return Result_t(this->irb.CreateLoad(strp), strp);
+		// return Result_t(this->irb.CreateLoad(strp), strp);
+		return Result_t(cs, strp);
 	}
 
 
@@ -2279,11 +2284,11 @@ namespace Codegen
 
 		for(size_t i = 0; i < parameters.size(); i++)
 		{
-			auto gep = this->irb.CreateConstGEP2(rawArrayPtr, 0, i);
+			auto gep = this->irb.CreateFixedGEP2(rawArrayPtr, 0, i);
 			this->irb.CreateStore(parameters[i], gep);
 		}
 
-		fir::Value* arrPtr = this->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
+		fir::Value* arrPtr = this->irb.CreateFixedGEP2(rawArrayPtr, 0, 0);
 
 		fir::ParameterPackType* packType = fir::ParameterPackType::get(type);
 		fir::Value* pack = this->irb.CreateStackAlloc(packType);

@@ -61,11 +61,11 @@ namespace Array
 				// void* stderr = fdopen(2, "w")
 				// fprintf(stderr, "", bla bla)
 
-				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
+				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -178,11 +178,11 @@ namespace Array
 					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
 					fir::LinkageType::External);
 
-				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
+				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
 
-				fir::Value* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
+				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
