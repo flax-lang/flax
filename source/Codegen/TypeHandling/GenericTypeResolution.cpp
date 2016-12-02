@@ -86,6 +86,25 @@ namespace Codegen
 	}
 
 
+	/*
+
+		note: using basic intuition and without solid proof, i believe that
+		unify(unify(unify(a, b), c), d) == unify(a, b, c, d)
+
+		hence there is no need to overcomplicate the solution to handle multiple simultaneous solutions
+		we simply attempt to unify with the existing solution if there is one, iteratively.
+
+		this should yield the final type to be a proper solution in the end.
+	*/
+	static fir::Type* unifyTypeSolutions(fir::Type* a, fir::Type* b)
+	{
+		// todo: when we get typeclasses (protocols), actually make this find the best common type
+		// for now, we just compare a == b.
+
+		if(a == b) return a;
+		else return 0;
+	}
+
 
 
 
@@ -264,7 +283,6 @@ namespace Codegen
 							else
 							{
 								cursln[expt->toNamedType()->name] = givent;
-
 								// debuglog("add soln (1) %s -> %s\n", expt->toNamedType()->name.c_str(), givent->str().c_str());
 							}
 						}
@@ -280,7 +298,7 @@ namespace Codegen
 							{
 								fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
 
-								if(rest != found)
+								if(unifyTypeSolutions(rest, found) == 0)
 								{
 									if(errorString && failedExpr)
 									{
@@ -292,7 +310,7 @@ namespace Codegen
 									return false;
 								}
 
-								iceAssert(cursln[expt->toNamedType()->name] == found);
+								iceAssert(unifyTypeSolutions(cursln[expt->toNamedType()->name], found));
 							}
 							else
 							{
@@ -484,7 +502,7 @@ namespace Codegen
 							{
 								fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
 
-								if(rest != found)
+								if(unifyTypeSolutions(rest, found) == 0)
 								{
 									if(errorString && failedExpr)
 									{
@@ -496,7 +514,7 @@ namespace Codegen
 									return false;
 								}
 
-								iceAssert(cursln[prt->toNamedType()->name] == found);
+								iceAssert(unifyTypeSolutions(cursln[prt->toNamedType()->name], found));
 
 								// debuglog("add soln (6) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
 								// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
