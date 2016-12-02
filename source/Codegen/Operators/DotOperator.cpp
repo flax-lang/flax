@@ -103,6 +103,23 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
 		}
 	}
+	else if(type->isArrayType())
+	{
+		if(dynamic_cast<VarRef*>(ma->right) && dynamic_cast<VarRef*>(ma->right)->name == "length")
+		{
+			if(!actual)
+			{
+				*resultType = fir::Type::getInt64();
+				return Result_t(0, 0);
+			}
+
+			return Result_t(fir::ConstantInt::getInt64(type->toArrayType()->getArraySize()), 0);
+		}
+		else
+		{
+			error(ma->right, "Unsupported dot-operator on array type '%s'", type->str().c_str());
+		}
+	}
 	else if(type->isDynamicArrayType())
 	{
 		// lol, some magic.
