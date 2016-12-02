@@ -319,6 +319,26 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				return res;
 			}
 		}
+		else if(type->isCharType() && arg->getType()->isStringType())
+		{
+			// needs to be constant
+			if(auto cs = dynamic_cast<fir::ConstantString*>(arg))
+			{
+				std::string s = cs->getValue();
+				if(s.length() == 0)
+					error(this, "Empty character literals are not allowed");
+
+				else if(s.length() > 1)
+					error("Character literals must, obviously, contain only one (ASCII) character");
+
+				char c = s[0];
+				return Result_t(fir::ConstantChar::get(c), 0);
+			}
+			else
+			{
+				error(this, "Character literals need to be constant");
+			}
+		}
 		else
 		{
 			if(arg->getType() != type)
