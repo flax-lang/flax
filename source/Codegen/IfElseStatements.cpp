@@ -18,10 +18,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 		return;
 
 	fir::IRBlock* t = cgi->irb.addNewBlockInFunction("trueCaseR", func);
-	fir::IRBlock* f = new fir::IRBlock();
-	f->setName("falseCaseR");
-	f->setFunction(func);
-
+	fir::IRBlock* f = cgi->irb.addNewBlockInFunction("falseCaseR", func);
 
 	fir::Value* cond = pairs.front().first->codegen(cgi).value;
 	if(cond->getType() != fir::Type::getBool())
@@ -52,7 +49,6 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	if(blockResult.type != ResultType::BreakCodegen)
 		cgi->irb.CreateUnCondBranch(merge), *didCreateMerge = true;
 
-
 	// now the false case...
 	// set the insert point to the false case, then go again.
 	cgi->irb.setCurrentBlock(f);
@@ -60,9 +56,6 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	// recursively call ourselves
 	pairs.pop_front();
 	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge);
-
-	// once that's done, we can add the false-case block to the func
-	func->getBlockList().push_back(f);
 }
 
 Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
