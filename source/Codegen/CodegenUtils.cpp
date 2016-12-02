@@ -2502,8 +2502,9 @@ namespace Codegen
 
 		if(!ret)
 		{
-			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
+			error(func, "Function '%s' missing return statement (implicit return invalid, needed '%s', got '%s')",
+				func->decl->ident.name.c_str(), func->getType(this)->str().c_str(),
+				final->getType(this) ? final->getType(this)->str().c_str() : "(statement)");
 		}
 
 		if(checkType)
