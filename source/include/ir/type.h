@@ -4,17 +4,13 @@
 
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
 
 #include <map>
-#include <string>
 #include <vector>
-#include <deque>
 #include <unordered_map>
-
 #include "ir/identifier.h"
 
 namespace fir

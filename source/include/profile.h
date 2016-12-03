@@ -6,22 +6,16 @@
 
 #include <stdint.h>
 
-#include <vector>
 #include <string>
 #include <chrono>
-#include <algorithm>
-#include <type_traits>
-#include <unordered_map>
 
 #define PROFGROUP_TOP			0
 #define PROFGROUP_MISC			1
 #define PROFGROUP_LLVM			2
 
-
 namespace prof
 {
 	using clock = std::chrono::high_resolution_clock;
-
 
 	struct Profile
 	{
