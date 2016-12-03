@@ -10,14 +10,9 @@
 #include <limits.h>
 
 #include "errors.h"
-
-#include <map>
-#include <deque>
-#include <string>
-#include <vector>
-#include <unordered_map>
-
 #include "type.h"
+
+#include <vector>
 
 namespace fir
 {

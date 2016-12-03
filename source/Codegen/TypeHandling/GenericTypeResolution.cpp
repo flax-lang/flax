@@ -86,6 +86,25 @@ namespace Codegen
 	}
 
 
+	/*
+
+		note: using basic intuition and without solid proof, i believe that
+		unify(unify(unify(a, b), c), d) == unify(a, b, c, d)
+
+		hence there is no need to overcomplicate the solution to handle multiple simultaneous solutions
+		we simply attempt to unify with the existing solution if there is one, iteratively.
+
+		this should yield the final type to be a proper solution in the end.
+	*/
+	static fir::Type* unifyTypeSolutions(fir::Type* a, fir::Type* b)
+	{
+		// todo: when we get typeclasses (protocols), actually make this find the best common type
+		// for now, we just compare a == b.
+
+		if(a == b) return a;
+		else return 0;
+	}
+
 
 
 
@@ -106,7 +125,7 @@ namespace Codegen
 
 	// solver for function types
 	// accepts a parameter, returns whether a solution was found (bool)
-	static bool checkGenericFunctionOrTupleArgument(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
+	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr)
 	{
@@ -159,12 +178,17 @@ namespace Codegen
 		std::deque<pts::Type*> ptlist;
 		if(dft->isFunctionType())
 		{
+			iceAssert(dft->isFunctionType() && dpt->isFunctionType());
+
 			ftlist = dft->toFunctionType()->getArgumentTypes();
 			ptlist = dpt->toFunctionType()->argTypes;
 		}
 		else
 		{
-			ftlist = std::deque<fir::Type*>(dft->toTupleType()->getElements().begin(), dft->toTupleType()->getElements().end());
+			iceAssert(dft->isTupleType() && dpt->isTupleType());
+			for(auto t : dft->toTupleType()->getElements())
+				ftlist.push_back(t);
+
 			ptlist = dpt->toTupleType()->types;
 		}
 
@@ -259,7 +283,6 @@ namespace Codegen
 							else
 							{
 								cursln[expt->toNamedType()->name] = givent;
-
 								// debuglog("add soln (1) %s -> %s\n", expt->toNamedType()->name.c_str(), givent->str().c_str());
 							}
 						}
@@ -275,7 +298,7 @@ namespace Codegen
 							{
 								fir::Type* found = genericfnsoln[givent->toParametricType()->getName()];
 
-								if(rest != found)
+								if(unifyTypeSolutions(rest, found) == 0)
 								{
 									if(errorString && failedExpr)
 									{
@@ -287,7 +310,7 @@ namespace Codegen
 									return false;
 								}
 
-								iceAssert(cursln[expt->toNamedType()->name] == found);
+								iceAssert(unifyTypeSolutions(cursln[expt->toNamedType()->name], found));
 							}
 							else
 							{
@@ -388,7 +411,7 @@ namespace Codegen
 
 					// if we're done solving, don't bother
 					if(!checkFinishedSolving(cursln))
-						checkGenericFunctionOrTupleArgument(cgi, 0, toSolve, cnt, expt, givent, &cursln, &genericfnsoln, 0, 0);
+						checkFunctionOrTupleArgumentToGenericFunction(cgi, 0, toSolve, cnt, expt, givent, &cursln, &genericfnsoln, 0, 0);
 				}
 			}
 
@@ -479,7 +502,7 @@ namespace Codegen
 							{
 								fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
 
-								if(rest != found)
+								if(unifyTypeSolutions(rest, found) == 0)
 								{
 									if(errorString && failedExpr)
 									{
@@ -491,7 +514,7 @@ namespace Codegen
 									return false;
 								}
 
-								iceAssert(cursln[prt->toNamedType()->name] == found);
+								iceAssert(unifyTypeSolutions(cursln[prt->toNamedType()->name], found));
 
 								// debuglog("add soln (6) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
 								// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
@@ -514,7 +537,7 @@ namespace Codegen
 					// if we're done solving, don't bother
 					if(!checkFinishedSolving(cursln))
 					{
-						checkGenericFunctionOrTupleArgument(cgi, 0, toSolve, ix, prt, frt, &cursln, &genericfnsoln, 0, 0);
+						checkFunctionOrTupleArgumentToGenericFunction(cgi, 0, toSolve, ix, prt, frt, &cursln, &genericfnsoln, 0, 0);
 					}
 				}
 			}
@@ -621,10 +644,20 @@ namespace Codegen
 
 
 
+
+
+
+
+
+
 	// main solver function
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::deque<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
+		typedef std::deque<pts::TypeTransformer> TrfList;
+
+
+
 		// get rid of this stupid literal nonsense
 		for(size_t i = 0; i < args.size(); i++)
 		{
@@ -706,7 +739,7 @@ namespace Codegen
 
 		for(size_t i = 0; i < candidate->params.size(); i++)
 		{
-			pts::Type* pt = 0; std::deque<pts::TypeTransformer> trfs;
+			pts::Type* pt = 0; TrfList trfs;
 			std::tie(pt, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
 
 			// maximally solve all the trivial types first.
@@ -729,8 +762,7 @@ namespace Codegen
 			else if(pt->isFunctionType() || pt->isTupleType())
 			{
 				auto l = getAllGenericTypesContainedWithin(pt, candidate->genericTypes);
-				for(auto s : l)
-					genericPositions2[s].push_back(i);
+				for(auto s : l) genericPositions2[s].push_back(i);
 			}
 			else
 			{
@@ -804,10 +836,10 @@ namespace Codegen
 				// eg. we don't try to pass a parameter T to the function expecting K** -- even if the base types match
 				// eg. passing int to int**
 
-				fir::Type* arg = args[i]; fir::Type* _ = 0; std::deque<pts::TypeTransformer> argtrfs;
+				fir::Type* arg = args[i]; fir::Type* _ = 0; TrfList argtrfs;
 				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
 
-				pts::Type* g = 0; std::deque<pts::TypeTransformer> gtrfs;
+				pts::Type* g = 0; TrfList gtrfs;
 				std::tie(g, gtrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
 
 				if(!pts::areTransformationsCompatible(gtrfs, argtrfs))
@@ -856,8 +888,8 @@ namespace Codegen
 			candidate->params.push_back(varParam);
 
 			// get the type.
-			pts::Type* pt = 0; std::deque<pts::TypeTransformer> _trfs;
-			std::tie(pt, _trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params.back()->ptype->toVariadicArrayType()->base);
+			pts::Type* pt = 0; TrfList _trfs;
+			std::tie(pt, _trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(varParam->ptype->toVariadicArrayType()->base);
 
 			std::string baset;
 			if(pt->isNamedType())
@@ -866,8 +898,65 @@ namespace Codegen
 			}
 			else
 			{
-				error("notsup");
+				// right...
+				// why the fuck would you do this?
+				// ok, there's plenty of reasons
+				// but how the fuck do *I* do this?
+
+				// rubber-duck commenting time:
+				/*
+					so the steps are kinda similar to the normal resolution
+
+					but i think this should be done in a separate function, or ideally use the same function as above
+					problem is, we don't have a 'single' argument, so to speak
+
+					we can potentially short-circuit this -- get a list of all the generic types recursively, as we know how to do above
+					then, with a list of the Ts and Ks and Us and whatever:
+
+					1. if there were no variadic arguments, make sure everything is solved, if not error.
+
+					2. if there were, let's just use the first argument as the solution
+					   this will go tits up once we get typeclasses...
+					   TITS UP
+				*/
+
+
+				#if 0
+				// we have a chance
+				// copy the existing solution
+				std::map<std::string, fir::Type*> solns = thistm;
+				std::map<std::string, fir::Type*> empty;
+
+
+				if(pt->isFunctionType() || pt->isTupleType())
+				{
+					std::string es; Expr* fe = 0;
+					auto tosolve = getAllGenericTypesContainedWithin(pt, candidate->genericTypes);
+					bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, candidate->params.size() - 1, pt,
+						args[i], &solns, &empty, &es, &fe);
+
+					if(!res)
+					{
+						*errorString = es;
+						*failedExpr = fe;
+						return false;
+					}
+
+					// update.
+					thistm = solns;
+				}
+				else
+				{
+					error("?? %s", pt->str().c_str());
+				}
+				#endif
+
+
+				error("lol no");
 			}
+
+
+
 
 
 			if(thistm.find(baset) != thistm.end())
@@ -883,7 +972,7 @@ namespace Codegen
 					iceAssert(candidate->params.back()->ptype->isVariadicArrayType());
 					pts::Type* vbase = candidate->params.back()->ptype->toVariadicArrayType()->base;
 
-					pts::Type* _ = 0; std::deque<pts::TypeTransformer> trfs;
+					pts::Type* _ = 0; TrfList trfs;
 					std::tie(_, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(vbase);
 					fir::Type* resolvedvbase = pts::applyTransformationsOnType(resolved, trfs);
 
@@ -893,7 +982,7 @@ namespace Codegen
 						// check transformations.
 						fir::Type* fvbase = args.back()->toParameterPackType()->getElementType();
 
-						fir::Type* _ = 0; std::deque<pts::TypeTransformer> argtrfs;
+						fir::Type* _ = 0; TrfList argtrfs;
 						std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(fvbase);
 
 						if(resolvedvbase != fvbase && cgi->getAutoCastDistance(fvbase, resolvedvbase) == -1)
@@ -985,7 +1074,7 @@ namespace Codegen
 					}
 
 					// ok check the transformations
-					fir::Type* base = 0; std::deque<pts::TypeTransformer> trfs;
+					fir::Type* base = 0; TrfList trfs;
 					std::tie(base, trfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(args[i]);
 
 					if(!pts::areTransformationsCompatible(_trfs, trfs))
@@ -1004,12 +1093,28 @@ namespace Codegen
 
 
 				// everything checked out -- resolve.
-				fir::Type* _ = 0; std::deque<pts::TypeTransformer> argtrfs;
+				fir::Type* _ = 0; TrfList argtrfs;
 				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(first);
 				fir::Type* soln = pts::reduceMaximallyWithSubset(first, _trfs, argtrfs);
 				thistm[baset] = soln;
 			}
 		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1028,11 +1133,17 @@ namespace Codegen
 						std::map<std::string, fir::Type*> solns = thistm;
 						std::map<std::string, fir::Type*> empty;
 
-						if(candidate->params[i]->ptype->isFunctionType())
+
+						TrfList trfs;
+						pts::Type* base = 0;
+
+						std::tie(base, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
+
+						if(base->isFunctionType() || base->isTupleType())
 						{
 							std::string es; Expr* fe = 0;
-							auto tosolve = getAllGenericTypesContainedWithin(candidate->params[i]->ptype, candidate->genericTypes);
-							bool res = checkGenericFunctionOrTupleArgument(cgi, candidate, tosolve, i, candidate->params[i]->ptype,
+							auto tosolve = getAllGenericTypesContainedWithin(base, candidate->genericTypes);
+							bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, i, base,
 								args[i], &solns, &empty, &es, &fe);
 
 							if(!res)
@@ -1045,13 +1156,9 @@ namespace Codegen
 							// update.
 							thistm = solns;
 						}
-						else if(candidate->params[i]->ptype->isTupleType())
-						{
-							error("notsup");
-						}
 						else
 						{
-							iceAssert("??" && 0);
+							error("?? %s", base->str().c_str());
 						}
 					}
 				}

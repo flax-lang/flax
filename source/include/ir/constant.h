@@ -9,11 +9,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include <string>
-#include <vector>
-#include <deque>
-#include <unordered_map>
-
 #include "value.h"
 
 namespace fir
