@@ -365,7 +365,11 @@ static void findDotOperator(Expr* expr)
 	{
 		findDotOperator(oo->func);
 	}
-
+	else if(Tuple* tp = dynamic_cast<Tuple*>(expr))
+	{
+		for(auto v : tp->values)
+			findDotOperator(v);
+	}
 	else
 	{
 	}

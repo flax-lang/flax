@@ -227,6 +227,14 @@ namespace fir
 
 			return llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
 		}
+		else if(ConstantTuple* ct = dynamic_cast<ConstantTuple*>(c))
+		{
+			std::vector<llvm::Constant*> vals;
+			for(auto v : ct->getValues())
+				vals.push_back(constToLlvm(v, mod));
+
+			return llvm::ConstantStruct::getAnon(llvm::getGlobalContext(), vals);
+		}
 		else if(ConstantString* cs = dynamic_cast<ConstantString*>(c))
 		{
 			// note: only works on 2's complement systems
@@ -265,6 +273,10 @@ namespace fir
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(StringType::get(), mod)), mems);
 
 			return ret;
+		}
+		else if(dynamic_cast<ConstantStruct*>(c))
+		{
+			_error_and_exit("notsup const struct");
 		}
 		else
 		{

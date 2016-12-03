@@ -292,43 +292,61 @@ fir::Type* Tuple::createType(CodegenInstance* cgi)
 
 Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	fir::Value* gep = 0;
-	if(extra)
-	{
-		gep = extra;
-	}
-	else
-	{
-		gep = cgi->getStackAlloc(this->getType(cgi));
-	}
-
-	iceAssert(gep);
-
-	fir::TupleType* tuptype = gep->getType()->getPointerElementType()->toTupleType();
+	fir::TupleType* tuptype = this->getType(cgi)->toTupleType();
 	iceAssert(tuptype);
-
-	// set all the values.
-	// do the gep for each.
 
 	iceAssert(tuptype->getElementCount() == this->values.size());
 
-	for(size_t i = 0; i < tuptype->getElementCount(); i++)
+	// first check if we can make a constant.
+	bool allConst = true;
+	std::deque<fir::Value*> vals;
+	for(auto v : this->values)
 	{
-		fir::Value* member = cgi->irb.CreateStructGEP(gep, i);
-		fir::Value* val = this->values[i]->codegen(cgi).value;
-
-		val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
-
-		if(val->getType() != member->getType()->getPointerElementType())
-		{
-			error(this, "Element %zu of tuple is mismatched, expected '%s' but got '%s'", i,
-				member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
-		}
-
-		cgi->irb.CreateStore(val, member);
+		vals.push_back(v->codegen(cgi).value);
+		allConst = (dynamic_cast<fir::ConstantValue*>(vals.back()) != 0);
 	}
 
-	return Result_t(cgi->irb.CreateLoad(gep), gep);
+	fir::Value* gep = extra ? extra : cgi->getStackAlloc(this->getType(cgi));
+	iceAssert(gep);
+
+	if(allConst)
+	{
+		std::deque<fir::ConstantValue*> cvs;
+		for(auto v : vals)
+		{
+			auto cv = dynamic_cast<fir::ConstantValue*>(v); iceAssert(cv);
+			cvs.push_back(_makeReal(cv));
+		}
+
+		fir::ConstantTuple* ct = fir::ConstantTuple::get(cvs);
+		iceAssert(ct);
+
+		cgi->irb.CreateStore(ct, gep);
+		return Result_t(ct, gep);
+	}
+	else
+	{
+		// set all the values.
+		// do the gep for each.
+
+		for(size_t i = 0; i < tuptype->getElementCount(); i++)
+		{
+			fir::Value* member = cgi->irb.CreateStructGEP(gep, i);
+			fir::Value* val = vals[i];
+
+			val = cgi->autoCastType(member->getType()->getPointerElementType(), val);
+
+			if(val->getType() != member->getType()->getPointerElementType())
+			{
+				error(this, "Element %zu of tuple is mismatched, expected '%s' but got '%s'", i,
+					member->getType()->getPointerElementType()->str().c_str(), val->getType()->str().c_str());
+			}
+
+			cgi->irb.CreateStore(val, member);
+		}
+
+		return Result_t(cgi->irb.CreateLoad(gep), gep);
+	}
 }
 
 

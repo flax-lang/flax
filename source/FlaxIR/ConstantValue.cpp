@@ -246,6 +246,31 @@ namespace fir
 
 
 
+	ConstantTuple* ConstantTuple::get(std::deque<ConstantValue*> mems)
+	{
+		return new ConstantTuple(mems);
+	}
+
+	std::deque<ConstantValue*> ConstantTuple::getValues()
+	{
+		return this->values;
+	}
+
+	static std::deque<Type*> mapTypes(std::deque<ConstantValue*> vs)
+	{
+		std::deque<Type*> ret;
+		for(auto v : vs)
+			ret.push_back(v->getType());
+
+		return ret;
+	}
+
+	// well this is stupid.
+	ConstantTuple::ConstantTuple(std::deque<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
+	{
+		this->values = mems;
+	}
+
 
 
 
