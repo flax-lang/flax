@@ -122,9 +122,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(this->isRaw)
 	{
 		// good old Int8*
-		fir::ConstantValue* stringVal = cgi->module->createGlobalString(this->str);
-		stringVal = cgi->irb.CreateConstFixedGEP2(stringVal, 0, 0);
-
+		fir::Value* stringVal = cgi->module->createGlobalString(this->str);
 		return Result_t(stringVal, 0);
 	}
 	else

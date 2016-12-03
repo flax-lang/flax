@@ -1135,7 +1135,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateGetPointerToFixedStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname)
+	Value* IRBuilder::CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname)
 	{
 		iceAssert(ptr->getType()->isPointerType() && "ptr is not a pointer");
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not an integer type");
@@ -1221,7 +1221,7 @@ namespace fir
 
 
 	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
-	Value* IRBuilder::CreateFixedGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
+	Value* IRBuilder::CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
@@ -1273,45 +1273,6 @@ namespace fir
 
 		return this->addInstruction(instr, vname);
 	}
-
-
-
-	ConstantValue* IRBuilder::CreateConstFixedGEP2(ConstantValue* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
-
-		auto ptri = ConstantInt::getUint64(ptrIndex);
-		auto elmi = ConstantInt::getUint64(elmIndex);
-
-		return this->CreateConstGEP2(ptr, ptri, elmi);
-	}
-
-	ConstantValue* IRBuilder::CreateConstGEP2(ConstantValue* ptr, ConstantValue* ptrIndex, ConstantValue* elmIndex, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str().c_str());
-
-		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
-		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
-
-		Type* retType = ptr->getType()->getPointerElementType();
-		if(retType->isArrayType())
-			retType = retType->toArrayType()->getElementType()->getPointerTo();
-
-		Instruction* instr = new Instruction(OpKind::Const_GetGEP2, false, this->currentBlock, retType, { ptr, ptrIndex, elmIndex });
-
-		delete instr->realOutput;
-		instr->realOutput = new ConstantValue(retType);
-
-		// disallow storing to members of immut arrays
-		if(ptr->isImmutable())
-			instr->realOutput->immut = true;
-
-		this->addInstruction(instr, vname);
-		return dynamic_cast<ConstantValue*>(instr->realOutput);
-	}
-
 
 
 

@@ -62,10 +62,7 @@ namespace Array
 				// fprintf(stderr, "", bla bla)
 
 				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
-
 				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
-				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -179,10 +176,7 @@ namespace Array
 					fir::LinkageType::External);
 
 				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
-
 				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
-				fmtstr = cgi->irb.CreateConstFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 

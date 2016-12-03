@@ -97,7 +97,7 @@ namespace fir
 		Value* CreateImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-		Value* CreateGetPointerToFixedStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname = "");
+		Value* CreateGetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
 		Value* CreateGetStructMember(Value* ptr, std::string memberName);
@@ -108,10 +108,7 @@ namespace fir
 
 		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
 		Value* CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname = "");
-		Value* CreateFixedGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname = "");
-
-		ConstantValue* CreateConstFixedGEP2(ConstantValue* ptr, size_t ptrIndex, size_t elmIndex, std::string vname = "");
-		ConstantValue* CreateConstGEP2(ConstantValue* ptr, ConstantValue* ptrIndex, ConstantValue* elmIndex, std::string vname = "");
+		Value* CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname = "");
 
 		void CreateCondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void CreateUnCondBranch(IRBlock* target);

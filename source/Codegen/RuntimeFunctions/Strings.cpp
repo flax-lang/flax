@@ -92,8 +92,6 @@ namespace String
 					fir::Type::getInt32()), fir::LinkageType::External);
 
 				fir::Value* tmp = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
-				tmp = cgi->irb.CreateFixedGEP2(tmp, 0, 0);
-
 				cgi->irb.CreateCall(printfn, { tmp, buf, lhslen, buf });
 			}
 			#endif
@@ -192,8 +190,6 @@ namespace String
 			#if 0
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
-
 				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 			}
 			#endif
@@ -286,8 +282,6 @@ namespace String
 			#if 0
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstFixedGEP2(tmpstr, 0, 0);
-
 				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
 			}
 			#endif
@@ -459,10 +453,8 @@ namespace String
 			#if DEBUG_ARC
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateFixedGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-
 				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
@@ -534,10 +526,8 @@ namespace String
 			#if DEBUG_ARC
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateFixedGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-
 				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
@@ -555,7 +545,6 @@ namespace String
 				#if DEBUG_ARC
 				{
 					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s')\n");
-					tmpstr = cgi->irb.CreateFixedGEP2(tmpstr, 0, 0);
 					cgi->irb.CreateCall3(cgi->getOrDeclareLibCFunc("printf"), tmpstr, bufp, bufp);
 				}
 				#endif
@@ -627,10 +616,7 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateFixedGEP2(tmpstr, 0, 0);
-
 				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
-				fmtstr = cgi->irb.CreateFixedGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -707,10 +693,8 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateFixedGEP2(tmpstr, 0, 0);
-
 				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zd'!\n");
-				fmtstr = cgi->irb.CreateFixedGEP2(fmtstr, 0, 0);
+
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
