@@ -286,10 +286,10 @@ namespace fir
 		if(this->isLiteralType())
 		{
 			if(this->primKind == Kind::Integer)
-				return "int?";
+				return "int";
 
 			else
-				return "float?";
+				return "float";
 		}
 
 

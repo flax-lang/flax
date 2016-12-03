@@ -46,7 +46,8 @@ static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number*
 	// and do a structgep.
 
 	if((size_t) num->ival >= type->toTupleType()->getElementCount())
-		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
+		error(num, "Tuple does not have %d elements, only %zd (type '%s')", (int) num->ival + 1, type->toTupleType()->getElementCount(),
+			type->str().c_str());
 
 	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
 	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
@@ -482,11 +483,16 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(this->right);
-		iceAssert(n);
+		if(!n)
+		{
+			error(this->right, "Expected integer number after dot-operator for tuple access (%s)",
+				tt->str().c_str());
+		}
+
 
 		if((size_t) n->ival >= tt->getElementCount())
 		{
-			error(this, "Tuple does not have %d elements, only %zd", (int) n->ival + 1, tt->getElementCount());
+			error(this, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1, tt->getElementCount(), tt->str().c_str());
 		}
 
 		return tt->getElementN(n->ival);
@@ -719,7 +725,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(ftype->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
-		iceAssert(n);
+		if(!n) error(this->right, "Expected integer number after dot-operator for tuple access (%s)", typeid(*this->right).name());
+
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
