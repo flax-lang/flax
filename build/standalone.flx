@@ -11,12 +11,30 @@
 	3. dynamic array slices
 	4. FOR LOOPS
 
-	5. raw strings???
+
 
 	TO TEST:
 
 	1. tuple operators
 	2. array of strings
+
+
+
+	TO DO:
+
+	1. array decomp
+	2. tuple decomp
+	3. splatting (http://coffeescript.org/#splats)
+
+
+	tuple decomp:
+	let (a, b) = (10, 20)
+
+	array decomp:
+	let [a, b, ...x] = [ 10, 20, 30, 40, 50, 60 ]
+	a = 10, b = 20, x = [ 30, 40, 50, 60 ]
+
+
 */
 
 
