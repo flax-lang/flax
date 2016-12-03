@@ -485,8 +485,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		Number* n = dynamic_cast<Number*>(this->right);
 		if(!n)
 		{
-			error(this->right, "Expected integer number after dot-operator for tuple access (%s)",
-				tt->str().c_str());
+			error(this->right, "Expected integer number after dot-operator for tuple access");
 		}
 
 
@@ -725,7 +724,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(ftype->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
-		if(!n) error(this->right, "Expected integer number after dot-operator for tuple access (%s)", typeid(*this->right).name());
+		if(!n) error(this->right, "Expected integer number after dot-operator for tuple access");
 
 
 		// if the lhs is immutable, don't give a pointer.
