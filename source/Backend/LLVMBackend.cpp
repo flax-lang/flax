@@ -534,7 +534,8 @@ namespace Compiler
 
 		// note: linux is stupid. to be safe, explicitly link libc and libm
 		// note: will not affect freestanding implementations, since this is JIT mode
-		tolink.push_back("c");
+		// note2: the stupidity of linux extends further than i thought
+		// apparently we cannot dlopen "libc.so", because that's not even a fucking ELF library.
 		tolink.push_back("m");
 
 		for(auto l : tolink)
