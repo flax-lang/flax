@@ -144,6 +144,18 @@ namespace fir
 		std::string str;
 	};
 
+	struct ConstantTuple : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantTuple* get(std::deque<ConstantValue*> mems);
+		std::deque<ConstantValue*> getValues();
+
+		protected:
+		ConstantTuple(std::deque<ConstantValue*> mems);
+		std::deque<ConstantValue*> values;
+	};
+
 
 
 
