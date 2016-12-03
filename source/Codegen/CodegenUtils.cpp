@@ -2157,7 +2157,7 @@ namespace Codegen
 			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
 			for(size_t i = 0; i < at->getArraySize(); i++)
 			{
-				fir::Value* elm = this->irb.CreateFixedGEP2(strp, 0, i);
+				fir::Value* elm = this->irb.CreateConstGEP2(strp, 0, i);
 				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
 
 				this->incrementRefCount(elm);
@@ -2192,7 +2192,7 @@ namespace Codegen
 			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
 			for(size_t i = 0; i < at->getArraySize(); i++)
 			{
-				fir::Value* elm = this->irb.CreateFixedGEP2(strp, 0, i);
+				fir::Value* elm = this->irb.CreateConstGEP2(strp, 0, i);
 				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
 
 				this->decrementRefCount(elm);
@@ -2261,11 +2261,11 @@ namespace Codegen
 
 		for(size_t i = 0; i < parameters.size(); i++)
 		{
-			auto gep = this->irb.CreateFixedGEP2(rawArrayPtr, 0, i);
+			auto gep = this->irb.CreateConstGEP2(rawArrayPtr, 0, i);
 			this->irb.CreateStore(parameters[i], gep);
 		}
 
-		fir::Value* arrPtr = this->irb.CreateFixedGEP2(rawArrayPtr, 0, 0);
+		fir::Value* arrPtr = this->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
 
 		fir::ParameterPackType* packType = fir::ParameterPackType::get(type);
 		fir::Value* pack = this->irb.CreateStackAlloc(packType);

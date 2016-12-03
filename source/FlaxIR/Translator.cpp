@@ -379,11 +379,16 @@ namespace fir
 			std::string id = "_FV_STR" + std::to_string(strn);
 
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
-			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
+			llvm::Constant* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, id);
 
-			valueMap[string.second->id] = gv;
+			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(llvm::getGlobalContext()), 0);
 
+			std::vector<llvm::Constant*> ix { zconst, zconst };
+			gv = llvm::ConstantExpr::getInBoundsGetElementPtr(gv->getType()->getPointerElementType(), gv, ix);
+
+
+			valueMap[string.second->id] = gv;
 			strn++;
 		}
 
@@ -1558,11 +1563,13 @@ namespace fir
 						{
 							iceAssert(inst->operands.size() == 3);
 							llvm::Constant* a = llvm::cast<llvm::Constant>(getOperand(inst, 0));
+
 							iceAssert(a);
 							iceAssert(a->getType()->isPointerTy());
 
 							llvm::Constant* i1 = llvm::cast<llvm::Constant>(getOperand(inst, 1));
 							iceAssert(i1);
+
 							llvm::Constant* i2 = llvm::cast<llvm::Constant>(getOperand(inst, 2));
 							iceAssert(i2);
 
