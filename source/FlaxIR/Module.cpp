@@ -207,7 +207,7 @@ namespace fir
 			return this->globalStrings[str];
 
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
-			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
+			Type::getInt8(), true, LinkageType::Internal, 0);
 
 		this->globalStrings[str] = gs;
 		return gs;

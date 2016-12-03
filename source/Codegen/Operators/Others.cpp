@@ -124,7 +124,7 @@ namespace Operators
 			// array to pointer cast.
 			iceAssert(lhsptr);
 
-			fir::Value* lhsRawPtr = cgi->irb.CreateFixedGEP2(lhsptr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsptr, 0, 0);
 			return Result_t(lhsRawPtr, 0);
 		}
 		else if(lhs->getType()->isArrayType() && rtype->isVoidPointer())
@@ -132,7 +132,7 @@ namespace Operators
 			// array to void* cast.
 			iceAssert(lhsptr);
 
-			fir::Value* lhsRawPtr = cgi->irb.CreateFixedGEP2(lhsptr, 0, 0);
+			fir::Value* lhsRawPtr = cgi->irb.CreateConstGEP2(lhsptr, 0, 0);
 			fir::Value* vptr = cgi->irb.CreatePointerTypeCast(lhsRawPtr, fir::Type::getVoid()->getPointerTo());
 			return Result_t(vptr, 0);
 		}
