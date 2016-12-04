@@ -6,6 +6,7 @@
 #include "iceassert.h"
 
 #include <vector>
+#include <algorithm>
 #include <unordered_map>
 
 namespace prof
