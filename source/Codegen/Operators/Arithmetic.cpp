@@ -123,7 +123,81 @@ namespace Operators
 			fir::Value* c1 = cgi->irb.CreateBitcast(lhs, fir::Type::getInt8());
 			fir::Value* c2 = cgi->irb.CreateBitcast(rhs, fir::Type::getInt8());
 
-			return compareIntegers(cgi, op, c1, c2);
+			if(isComparisonOp(op))
+			{
+				return compareIntegers(cgi, op, c1, c2);
+			}
+			else if(op != ArithmeticOp::Add && op != ArithmeticOp::Subtract)
+			{
+				error(user, "Invalid operation '%s' between two char types (only '+' and '-' valid)", opstr.c_str());
+			}
+			else
+			{
+				fir::Value* res = 0;
+				if(op == ArithmeticOp::Add)
+					res = cgi->irb.CreateAdd(c1, c2);
+
+				else
+					res = cgi->irb.CreateSub(c1, c2);
+
+				return Result_t(cgi->irb.CreateBitcast(res, fir::Type::getCharType()), 0);
+			}
+		}
+		else if(lhs->getType()->isCharType() && rhs->getType()->isIntegerType())
+		{
+			fir::Value* c1 = cgi->irb.CreateBitcast(lhs, fir::Type::getInt8());
+			fir::Value* c2 = cgi->autoCastType(fir::Type::getInt8(), rhs);
+
+			if(c2->getType()->toPrimitiveType()->getIntegerBitWidth() > 8)
+			{
+				warn(user, "Arithmetic between char type and '%s' may overflow", rhs->getType()->str().c_str());
+				c2 = cgi->irb.CreateIntTruncate(c2, fir::Type::getInt8());
+			}
+
+			if(op != ArithmeticOp::Add && op != ArithmeticOp::Subtract)
+			{
+				error(user, "Invalid operation '%s' between char and integer types (only '+' and '-' valid)", opstr.c_str());
+			}
+			else
+			{
+				fir::Value* res = 0;
+				if(op == ArithmeticOp::Add)
+					res = cgi->irb.CreateAdd(c1, c2);
+
+				else
+					res = cgi->irb.CreateSub(c1, c2);
+
+				return Result_t(cgi->irb.CreateBitcast(res, fir::Type::getCharType()), 0);
+			}
+		}
+		else if(lhs->getType()->isIntegerType() && rhs->getType()->isCharType())
+		{
+			fir::Value* c1 = cgi->autoCastType(fir::Type::getInt8(), lhs);
+			fir::Value* c2 = cgi->irb.CreateBitcast(rhs, fir::Type::getInt8());
+
+
+			if(c1->getType()->toPrimitiveType()->getIntegerBitWidth() > 8)
+			{
+				warn(user, "Arithmetic between char type and '%s' may overflow", lhs->getType()->str().c_str());
+				c1 = cgi->irb.CreateIntTruncate(c2, fir::Type::getInt8());
+			}
+
+
+			if(op != ArithmeticOp::Add && op != ArithmeticOp::Subtract)
+			{
+				error(user, "Invalid operation '%s' between char and integer types (only '+' and '-' valid)", opstr.c_str());
+			}
+			else
+			{
+				fir::Value* res = 0;
+				if(op == ArithmeticOp::Add)
+					res = cgi->irb.CreateAdd(c1, c2);
+
+				else
+					res = cgi->irb.CreateSub(c1, c2);
+
+				return Result_t(cgi->irb.CreateBitcast(res, fir::Type::getCharType()), 0);
+			}
 		}
 		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
 		{

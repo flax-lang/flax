@@ -83,6 +83,11 @@ fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op
 		{
 			return ltype;
 		}
+		else if((ltype->isCharType() && rtype->isCharType()) || (ltype->isCharType() && rtype->isIntegerType())
+			|| (ltype->isIntegerType() && rtype->isCharType()))
+		{
+			return fir::Type::getCharType();
+		}
 		else if(ltype->isTupleType() && ltype == rtype)
 		{
 			// check every element

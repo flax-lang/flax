@@ -200,7 +200,8 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			error(this, "Unable to infer type for empty array");
 		}
 
-		tp = extra->getType()->getPointerElementType();
+		iceAssert(extra->getType()->isPointerType() && extra->getType()->getPointerElementType()->isArrayType());
+		tp = extra->getType()->getPointerElementType()->toArrayType()->getElementType();
 	}
 	else
 	{
@@ -237,7 +238,23 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return fir::ArrayType::get(_makeReal(this->values.front()->getType(cgi)), this->values.size());
+	if(this->values.empty())
+	{
+		if(!extra)
+		{
+			error(this, "Unable to infer type for empty array");
+		}
+
+		iceAssert(extra->getType()->isPointerType());
+		iceAssert(extra->getType()->getPointerElementType()->isArrayType());
+		auto tp = extra->getType()->getPointerElementType()->toArrayType()->getElementType();
+
+		return fir::ArrayType::get(tp, 0);
+	}
+	else
+	{
+		return fir::ArrayType::get(_makeReal(this->values.front()->getType(cgi)), this->values.size());
+	}
 }
 
 

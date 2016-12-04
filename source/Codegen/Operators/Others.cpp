@@ -168,6 +168,14 @@ namespace Operators
 				return Result_t(cgi->irb.CreateBitcast(lhs, rtype), 0);
 			}
 		}
+		else if(lhs->getType()->isIntegerType() && rtype->isCharType())
+		{
+			// truncate if required
+			if(lhs->getType() != fir::Type::getInt8())
+				error(user, "Invalid cast to char type from non-i8 type integer (have '%s')", lhs->getType()->str().c_str());
+
+			return Result_t(cgi->irb.CreateBitcast(lhs, fir::Type::getCharType()), 0);
+		}
 		else if(lhs->getType()->isDynamicArrayType() && rtype->isPointerType() &&
 			lhs->getType()->toDynamicArrayType()->getElementType() == rtype->getPointerElementType())
 		{

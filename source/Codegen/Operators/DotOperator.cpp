@@ -12,6 +12,8 @@ using namespace Codegen;
 
 
 
+
+
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* ref);
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
@@ -236,6 +238,23 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
 				return Result_t(clone, 0);
+			}
+			else if(fc->name == "clear")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clear() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// set length to 0 -- that's it
+				cgi->irb.CreateSetDynamicArrayLength(ptr, fir::ConstantInt::getInt64(0));
+
+				return Result_t(0, 0);
 			}
 			else if(fc->name == "back")
 			{
