@@ -25,8 +25,12 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 	fir::Value* oneValue = fir::ConstantInt::getInt64(1, cgi->getContext());
 	fir::Value* zeroValue = fir::ConstantInt::getInt64(0, cgi->getContext());
 
-	uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
-	fir::Value* allocsize = fir::ConstantInt::getInt64(typesize, cgi->getContext());
+	// uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
+
+	// fir::Value* allocsize = cgi->irb.CreateGEP2(fir::ConstantValue::getNullValue(type->getPointerTo()), zeroValue, oneValue);
+	// allocsize = cgi->irb.CreatePointerToIntCast(allocsize, fir::Type::getInt64());
+
+	fir::Value* allocsize = cgi->irb.CreateSizeof(type);
 
 	size = cgi->autoCastType(fir::Type::getInt64(), size);
 

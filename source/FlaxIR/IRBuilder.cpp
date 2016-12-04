@@ -1276,7 +1276,14 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateSizeof(Type* t, std::string vname)
+	{
+		Instruction* instr = new Instruction(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
+			{ ConstantValue::getNullValue(t) });
 
+		instr->realOutput->makeImmutable();
+		return this->addInstruction(instr, vname);
+	}
 
 
 
@@ -1615,8 +1622,15 @@ namespace fir
 			this->currentFunction = block->parentFunction;
 		}
 
-
 		this->currentFunction->blocks.push_back(block);
+
+		size_t cnt = 0;
+		for(auto b : this->currentFunction->blocks)
+			if(b->getName().str() == name) cnt++;
+
+		if(cnt > 0)
+			name += "." + std::to_string(cnt);
+
 		block->setName(name);
 		return block;
 	}
@@ -1635,6 +1649,14 @@ namespace fir
 			IRBlock* b = this->currentFunction->blocks[i];
 			if(b == block)
 			{
+				size_t cnt = 0;
+				for(auto bk : this->currentFunction->blocks)
+					if(bk->getName().str() == name) cnt++;
+
+				if(cnt > 0)
+					name += "." + std::to_string(cnt);
+
+				nb->setName(name);
 				this->currentFunction->blocks.insert(this->currentFunction->blocks.begin() + i + 1, nb);
 				return nb;
 			}

@@ -1559,24 +1559,18 @@ namespace fir
 						}
 
 
-						case OpKind::Const_GetGEP2:
+
+						case OpKind::Misc_Sizeof:
 						{
-							iceAssert(inst->operands.size() == 3);
-							llvm::Constant* a = llvm::cast<llvm::Constant>(getOperand(inst, 0));
+							iceAssert(inst->operands.size() == 1);
 
-							iceAssert(a);
-							iceAssert(a->getType()->isPointerTy());
+							llvm::Type* t = getOperand(inst, 0)->getType();
+							iceAssert(t);
 
-							llvm::Constant* i1 = llvm::cast<llvm::Constant>(getOperand(inst, 1));
-							iceAssert(i1);
+							llvm::Value* gep = builder.CreateConstGEP1_64(llvm::ConstantPointerNull::get(t->getPointerTo()), 1);
+							gep = builder.CreatePtrToInt(gep, llvm::Type::getInt64Ty(llvm::getGlobalContext()));
 
-							llvm::Constant* i2 = llvm::cast<llvm::Constant>(getOperand(inst, 2));
-							iceAssert(i2);
-
-							std::vector<llvm::Constant*> indices = { i1, i2 };
-							llvm::Value* ret = llvm::ConstantExpr::getGetElementPtr(a->getType()->getPointerElementType(), a, indices);
-
-							addValueToMap(ret, inst->realOutput);
+							addValueToMap(gep, inst->realOutput);
 							break;
 						}
 

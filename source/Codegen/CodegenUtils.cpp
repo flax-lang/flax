@@ -948,10 +948,7 @@ namespace Codegen
 					&& (f.funcDecl ? f.funcDecl->ident.name : f.firFunc->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-					{
-						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 						candidates.push_back(f);
-					}
 				}
 			}
 

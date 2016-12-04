@@ -187,10 +187,14 @@ namespace String
 			fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-			#if 0
+			#if DEBUG_ARC
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+				fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
+
+				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p (%s)\n");
+				cgi->irb.CreateCall(printfn, { tmpstr, buf, buf });
 			}
 			#endif
 
