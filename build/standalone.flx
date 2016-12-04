@@ -26,6 +26,10 @@
 	2. tuple decomp
 	3. splatting (http://coffeescript.org/#splats)
 
+	4. clean up typechecking
+		-- store the fir::Type of each AST node
+		-- recursively visit each node to get its type before anything happens
+
 
 	tuple decomp:
 	let (a, b) = (10, 20)
@@ -155,6 +159,19 @@ func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
 
 public func main()
 {
+	// generictest()
+
+	// let (a, (b, (c, d), e), f) = (10, (20, ("foo", "bar"), 3.1), 10.41)
+
+	var _ = 30
+
+
+	printf("done\n")
+}
+
+
+func generictest()
+{
 	var arr = alloc[5] (int, int)
 	var i = 0
 	while i < arr.length
@@ -165,7 +182,7 @@ public func main()
 
 	let new = map2(arr, add2)
 
-	vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
+	// vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
 
 	// let new = map(arr, gincr)
 	// let new = map(arr, gmult)
@@ -182,8 +199,6 @@ public func main()
 	// fntest(10, 3)
 	// let x = apply(10, 30)
 	// printf("x = %d\n", x)
-
-	printf("done\n")
 }
 
 

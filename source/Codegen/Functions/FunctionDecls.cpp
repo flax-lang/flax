@@ -97,7 +97,8 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		// if(fd->attribs & Attr_VisPublic)
 		// 	cgi->addPublicFunc(FuncDefPair(func, fd, 0));
 
-		cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
+		if(fd->parentClass == 0)
+			cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
 	}
 
 	fd->generatedFunc = func;

@@ -109,6 +109,9 @@ namespace fir
 		void CreateUnCondBranch(IRBlock* target);
 
 
+		Value* CreateSizeof(Type* t, std::string vname = "");
+
+
 		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 

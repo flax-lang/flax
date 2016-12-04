@@ -5,7 +5,6 @@
 #include "pts.h"
 #include "ast.h"
 #include "codegen.h"
-
 #include "operators.h"
 
 using namespace Ast;
@@ -13,6 +12,9 @@ using namespace Codegen;
 
 Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	if(this->name == "_")
+		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
+
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
 	{
@@ -39,6 +41,8 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(!fn->isGenericInstantiation())
 				cands.push_back(fn);
 		}
+
+		info(this, "%zu", cands.size());
 
 		// if it's a generic function, it won't be in the module
 		// check the scope.
@@ -69,6 +73,9 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	if(this->name == "_")
+		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
+
 	VarDecl* decl = cgi->getSymDecl(this, this->name);
 	if(!decl)
 	{
@@ -82,19 +89,23 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 
 
 
-
-
-
 		// check for functions
 
-		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		auto fns = cgi->resolveFunctionName(this->name);
 		std::deque<fir::Function*> cands;
+
+		for(auto s : cgi->namespaceStack) { debuglog("<%s>\n", s.c_str()); }
 
 		for(auto fn : fns)
 		{
-			if(!fn->isGenericInstantiation())
-				cands.push_back(fn);
+			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
+			{
+				info("%s", fn.firFunc->getType()->str().c_str());
+				cands.push_back(fn.firFunc);
+			}
 		}
+
+		info(this, "%zu", cands.size());
 
 		// if it's a generic function, it won't be in the module
 		// check the scope.

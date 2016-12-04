@@ -33,7 +33,7 @@ namespace fir
 		return fir::PrimitiveType::getUintN(this->psize);
 	}
 
-
+	#if 0
 	static size_t getLargestMember(ExecutionTarget* et, Type* t, size_t largest)
 	{
 		std::vector<Type*> ts;
@@ -123,11 +123,12 @@ namespace fir
 			return et->getTypeSizeInBits(t);
 		}
 	}
-
+	#endif
 
 	size_t ExecutionTarget::getTypeSizeInBits(Type* t)
 	{
 		// check.
+		/*
 		if(t->isStructType())
 		{
 			StructType* st = t->toStructType();
@@ -159,27 +160,6 @@ namespace fir
 			ArrayType* at = t->toArrayType();
 			return at->getArraySize() * this->getTypeSizeInBits(at->getElementType());
 		}
-		else if(t->isPointerType())
-		{
-			return this->psize;
-		}
-		else if(t->isPrimitiveType())
-		{
-			PrimitiveType* prt = t->toPrimitiveType();
-			return prt->isFloatingPointType() ? prt->getFloatingPointBitWidth() : prt->getIntegerBitWidth();
-		}
-		else if(t->isFunctionType())
-		{
-			return 0;
-		}
-		else if(t->isStringType())
-		{
-			return this->getTypeSizeInBits(fir::Type::getInt8Ptr()) + this->getTypeSizeInBits(fir::Type::getInt64());
-		}
-		else if(t->isCharType())
-		{
-			return this->getTypeSizeInBits(fir::Type::getInt8());
-		}
 		else if(t->isParameterPackType())
 		{
 			return this->getTypeSizeInBits(t->toParameterPackType()->getElementType()->getPointerTo())
@@ -189,6 +169,28 @@ namespace fir
 		{
 			return this->getTypeSizeInBits(t->toDynamicArrayType()->getElementType()->getPointerTo())
 				+ (2 * this->getTypeSizeInBits(fir::Type::getInt64()));
+		}
+		else if(t->isPointerType())
+		{
+			return this->psize;
+		}
+		else if(t->isFunctionType())
+		{
+			return this->getTypeSizeInBits(fir::Type::getInt8Ptr());
+		}
+		else if(t->isStringType())
+		{
+			return this->getTypeSizeInBits(fir::Type::getInt8Ptr()) + this->getTypeSizeInBits(fir::Type::getInt64());
+		}
+		else if(t->isCharType())
+		{
+			return this->getTypeSizeInBits(fir::Type::getInt8());
+		}
+		else */
+		if(t->isPrimitiveType())
+		{
+			PrimitiveType* prt = t->toPrimitiveType();
+			return prt->isFloatingPointType() ? prt->getFloatingPointBitWidth() : prt->getIntegerBitWidth();
 		}
 		else
 		{

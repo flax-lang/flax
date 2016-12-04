@@ -115,6 +115,7 @@ namespace Parser
 		Pound,
 		Tilde,
 		Caret,
+		Underscore,
 
 
 		// compound symbols
