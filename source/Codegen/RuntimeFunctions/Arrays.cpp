@@ -191,8 +191,10 @@ namespace Array
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cgi->irb.CreateMul(origcap,
-				fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
+			fir::Value* actuallen = cgi->irb.CreateMul(origcap, cgi->irb.CreateSizeof(arrtype->getElementType()));
+
+
+			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
 
 			fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
 			iceAssert(mallocf);
@@ -300,7 +302,8 @@ namespace Array
 			iceAssert(refunc);
 
 
-			fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(elmtype)));
+			// fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(elmtype)));
+			fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, cgi->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cgi->irb.CreateCall2(refunc, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
 
 			cgi->irb.CreateSetDynamicArrayData(arr, cgi->irb.CreatePointerTypeCast(newptr, ptr->getType()));
@@ -355,8 +358,10 @@ namespace Array
 
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-				fir::Value* actuallen = cgi->irb.CreateMul(applen,
-					fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
+				// fir::Value* actuallen = cgi->irb.CreateMul(applen,
+				// 	fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
+
+				fir::Value* actuallen = cgi->irb.CreateMul(applen, cgi->irb.CreateSizeof(arrtype->getElementType()));
 
 				cgi->irb.CreateCall(memcpyf, { cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()),
 					cgi->irb.CreatePointerTypeCast(s2ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),

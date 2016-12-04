@@ -300,8 +300,10 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 	std::deque<fir::Value*> vals;
 	for(auto v : this->values)
 	{
-		vals.push_back(v->codegen(cgi).value);
-		allConst = (dynamic_cast<fir::ConstantValue*>(vals.back()) != 0);
+		auto cgv = v->codegen(cgi).value;
+		allConst = allConst && (dynamic_cast<fir::ConstantValue*>(cgv) != 0);
+
+		vals.push_back(cgv);
 	}
 
 	fir::Value* gep = extra ? extra : cgi->getStackAlloc(this->getType(cgi));

@@ -545,6 +545,10 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		{
 			return std::get<2>(callMemberFunction(cgi, this, cls, memberFc, 0));
 		}
+		else
+		{
+			error(this->right, "Invalid expression type for dot-operator access");
+		}
 	}
 	else if(pair->second.second == TypeKind::Struct)
 	{
@@ -581,13 +585,17 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		{
 			error(memberFc, "Tried to call method on struct");
 		}
+		else
+		{
+			error(this->right, "Invalid expression type for dot-operator access");
+		}
 	}
 	else
 	{
 		error(this->left, "Invalid expression type for dot-operator access");
 	}
 
-	iceAssert(0);
+	// iceAssert(0);
 }
 
 
@@ -630,7 +638,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
-		if(this->matype == MAType::Invalid) error(this, "??");
+		if(this->matype == MAType::Invalid) error(this, "invalid ma type??");
 		return cgi->resolveStaticDotOperator(this, true).first.second;
 	}
 

@@ -143,7 +143,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		}
 		else
 		{
-			error(ma, "????");
+			error(ma, "what the?");
 		}
 	}
 	else if(dynamic_cast<FuncCall*>(ma->left))
@@ -296,6 +296,8 @@ static void findDotOperator(Expr* expr)
 	}
 	else if(ArrayIndex* ari = dynamic_cast<ArrayIndex*>(expr))
 	{
+		// info(ari, "");
+
 		findDotOperator(ari->arr);
 		findDotOperator(ari->index);
 	}
@@ -349,11 +351,12 @@ static void findDotOperator(Expr* expr)
 		findDotOperator(ma->right);
 		gstate.MAWithinMASearchNesting--;
 
+		// info(ma, "");
 
 		// we never recursively do stuff to this -- we only ever want the topmost level.
-		if(gstate.MAWithinMASearchNesting == 0)
+		// if(gstate.MAWithinMASearchNesting == 0)
 		{
-			if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
+			// if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
 				gstate.visitedMAs[ma] = true;
 		}
 	}
@@ -372,6 +375,7 @@ static void findDotOperator(Expr* expr)
 	}
 	else
 	{
+		// info(expr, "unknown expr");
 	}
 }
 
