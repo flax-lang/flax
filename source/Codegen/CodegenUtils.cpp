@@ -6,6 +6,7 @@
 
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include "pts.h"
 #include "ast.h"
