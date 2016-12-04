@@ -365,6 +365,16 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 			cgi->irb.CreateCall2(recursiveCallee, dptr, dlen);
 
+
+			// set the length and data to 0
+			auto zc = fir::ConstantInt::getInt64(0);
+
+			cgi->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(dptr->getType()));
+			cgi->irb.CreateSetDynamicArrayLength(arr, zc);
+			cgi->irb.CreateSetDynamicArrayCapacity(arr, zc);
+
+
+
 			// increment counter
 			cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
 
@@ -397,14 +407,8 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 }
 
 
-
-Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
+static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Value* ptr, Expr* user)
 {
-	fir::Value* val = 0;
-	fir::Value* ptr = 0;
-
-	std::tie(val, ptr) = this->expr->codegen(cgi);
-
 	iceAssert(ptr);
 	if(val->getType()->isDynamicArrayType())
 	{
@@ -426,10 +430,17 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 		iceAssert(fn);
 
 		cgi->irb.CreateCall2(fn, data, len);
+
+		// set to 0
+		auto zc = fir::ConstantInt::getInt64(0);
+
+		cgi->irb.CreateSetDynamicArrayData(ptr, fir::ConstantValue::getNullValue(data->getType()));
+		cgi->irb.CreateSetDynamicArrayLength(ptr, zc);
+		cgi->irb.CreateSetDynamicArrayCapacity(ptr, zc);
 	}
 	else if(!ptr->getType()->isPointerType())
 	{
-		error(this, "Cannot deallocate non-pointer type");
+		error(user, "Cannot deallocate non-pointer type");
 	}
 	else
 	{
@@ -441,6 +452,16 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		cgi->irb.CreateCall1(freef, val);
 	}
+}
+
+Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	fir::Value* val = 0;
+	fir::Value* ptr = 0;
+
+	std::tie(val, ptr) = this->expr->codegen(cgi);
+
+	recursivelyDeallocate(cgi, val, ptr, this);
 
 	return Result_t(0, 0);
 }

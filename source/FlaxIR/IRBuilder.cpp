@@ -787,7 +787,7 @@ namespace fir
 	Value* IRBuilder::CreateIntTruncate(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
-		iceAssert(targetType->isPointerType() && "target is not pointer type");
+		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = new Instruction(OpKind::Integer_Truncate, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
@@ -797,7 +797,7 @@ namespace fir
 	Value* IRBuilder::CreateIntZeroExt(Value* v, Type* targetType, std::string vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
-		iceAssert(targetType->isPointerType() && "target is not pointer type");
+		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = new Instruction(OpKind::Integer_ZeroExt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getNullValue(targetType) });
