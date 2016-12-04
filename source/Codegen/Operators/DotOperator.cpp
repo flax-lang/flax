@@ -241,7 +241,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			{
 				if(!actual)
 				{
-					*resultType = type->toDynamicArrayType();
+					*resultType = type->toDynamicArrayType()->getElementType();
 					return Result_t(0, 0);
 				}
 
@@ -266,7 +266,10 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
 				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
 
-				return Result_t(cgi->irb.CreateLoad(mem), 0);
+				if(ptr->isImmutable())
+					mem->makeImmutable();
+
+				return Result_t(cgi->irb.CreateLoad(mem), mem, ValueKind::LValue);
 			}
 			else if(fc->name == "popBack")
 			{
@@ -310,7 +313,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+			error(ma->right, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
 		}
 	}
 	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))

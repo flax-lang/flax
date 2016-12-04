@@ -29,7 +29,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 		// check for functions
-		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		auto fns = cgi->resolveFunctionName(this->name);
 		std::deque<fir::Function*> cands;
 
 		for(auto fn : fns)
@@ -38,11 +38,9 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
 			// that one will return an already-generated version if the types match up.
 
-			if(!fn->isGenericInstantiation())
-				cands.push_back(fn);
+			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
+				cands.push_back(fn.firFunc);
 		}
-
-		info(this, "%zu", cands.size());
 
 		// if it's a generic function, it won't be in the module
 		// check the scope.
@@ -94,18 +92,15 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 		auto fns = cgi->resolveFunctionName(this->name);
 		std::deque<fir::Function*> cands;
 
-		for(auto s : cgi->namespaceStack) { debuglog("<%s>\n", s.c_str()); }
-
 		for(auto fn : fns)
 		{
 			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
-			{
-				info("%s", fn.firFunc->getType()->str().c_str());
 				cands.push_back(fn.firFunc);
-			}
-		}
 
-		info(this, "%zu", cands.size());
+			// necessary here, for some reason. not above.
+			else
+				cands.push_back(dynamic_cast<fir::Function*>(fn.funcDecl->codegen(cgi).value));
+		}
 
 		// if it's a generic function, it won't be in the module
 		// check the scope.
