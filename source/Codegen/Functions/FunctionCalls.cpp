@@ -319,24 +319,35 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				return res;
 			}
 		}
-		else if(type->isCharType() && arg->getType()->isStringType())
+		else if(type->isCharType())
 		{
-			// needs to be constant
-			if(auto cs = dynamic_cast<fir::ConstantString*>(arg))
+			if(arg->getType()->isStringType())
 			{
-				std::string s = cs->getValue();
-				if(s.length() == 0)
-					error(this, "Empty character literals are not allowed");
+				// needs to be constant
+				if(auto cs = dynamic_cast<fir::ConstantString*>(arg))
+				{
+					std::string s = cs->getValue();
+					if(s.length() == 0)
+						error(this, "Empty character literals are not allowed");
 
-				else if(s.length() > 1)
-					error("Character literals must, obviously, contain only one (ASCII) character");
+					else if(s.length() > 1)
+						error("Character literals must, obviously, contain only one (ASCII) character");
 
-				char c = s[0];
-				return Result_t(fir::ConstantChar::get(c), 0);
+					char c = s[0];
+					return Result_t(fir::ConstantChar::get(c), 0);
+				}
+				else
+				{
+					error(this, "Character literals need to be constant");
+				}
 			}
-			else
+			else if(arg->getType()->isIntegerType())
 			{
-				error(this, "Character literals need to be constant");
+				// truncate if required
+				if(arg->getType() != fir::Type::getInt8())
+					error(this, "Invalid instantiation of char from non-i8 type integer (have '%s')", arg->getType()->str().c_str());
+
+				return Result_t(cgi->irb.CreateBitcast(arg, fir::Type::getCharType()), 0);
 			}
 		}
 		else

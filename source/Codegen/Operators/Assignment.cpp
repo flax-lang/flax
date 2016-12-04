@@ -146,14 +146,13 @@ namespace Operators
 			{
 				iceAssert(setter->getArgumentCount() == 2 && "invalid setter");
 
-				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi).value;
-
 				auto lres = ma->left->codegen(cgi);
 				fir::Value* lhsPtr = lres.value->getType()->isPointerType() ? lres.value : lres.pointer;
-
 				iceAssert(lhsPtr);
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
+
+				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi, lhsPtr).value;
 
 				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
@@ -219,7 +218,7 @@ namespace Operators
 			iceAssert(rhs == 0);
 			iceAssert(rhsptr == 0);
 
-			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi);
+			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi, lhsptr);
 		}
 
 
@@ -238,7 +237,7 @@ namespace Operators
 
 
 		fir::Type* ltype = args[0]->getType(cgi);
-		fir::Type* rtype = args[1]->getType(cgi);
+		fir::Type* rtype = args[1]->getType(cgi, false, fir::ConstantValue::getNullValue(ltype->getPointerTo()));
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{

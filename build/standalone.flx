@@ -11,6 +11,8 @@
 	3. dynamic array slices
 	4. FOR LOOPS
 
+	5. assign [] to dynamic arrays
+	6. general fixes to [] -- type inference
 
 
 	TO TEST:
