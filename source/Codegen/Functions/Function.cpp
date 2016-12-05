@@ -5,6 +5,7 @@
 #include "pts.h"
 #include "ast.h"
 #include "codegen.h"
+#include <algorithm>
 
 using namespace Ast;
 using namespace Codegen;

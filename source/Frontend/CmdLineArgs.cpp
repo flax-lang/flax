@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <vector>
+#include <algorithm>
 
 #include "backend.h"
 #include "compiler.h"

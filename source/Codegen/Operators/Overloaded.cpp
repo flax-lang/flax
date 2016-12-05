@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include "operators.h"
+#include <algorithm>
 
 using namespace Ast;
 using namespace Codegen;
