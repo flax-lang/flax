@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cassert>
 #include <cinttypes>
+#include <algorithm>
 
 #include "pts.h"
 #include "ast.h"
