@@ -44,18 +44,17 @@ namespace Operators
 		fir::Type* rtype = args[1]->getType(cgi);
 		iceAssert(rtype);
 
-		// if(!rtype)
-		// {
-		// 	GenError::unknownSymbol(cgi, user, args[1]->ptype->str(), SymbolType::Type);
-		// }
 
-
-		iceAssert(rtype);
 		if(lhs->getType() == rtype)
 		{
-			warn(user, "Redundant cast");
+			warn(user, "Redundant cast (type '%s')", rtype->str().c_str());
 			return Result_t(lhs, 0);
 		}
+
+
+		// array constants do not come with a pointer
+		if(lhs->getType()->isArrayType() && lhsptr == 0)
+			lhsptr = cgi->irb.CreateImmutStackAlloc(lhs->getType(), lhs);
 
 
 
@@ -93,30 +92,6 @@ namespace Operators
 		{
 			iceAssert(lhsptr);
 			return cgi->extractValueFromAny(rtype, lhsptr);
-		}
-		else if(lhs->getType()->isClassType() && lhs->getType()->toClassType()->getClassName().str() == "String"
-			&& rtype == fir::Type::getInt8Ptr(cgi->getContext()))
-		{
-			// string to int8*.
-			// just access the data pointer.
-
-			iceAssert(lhsptr);
-			fir::Value* stringPtr = cgi->irb.CreateStructGEP(lhsptr, 0);
-
-			return Result_t(cgi->irb.CreateLoad(stringPtr), stringPtr);
-		}
-		else if(lhs->getType() == fir::Type::getInt8Ptr(cgi->getContext())
-			&& rtype->isClassType() && rtype->toClassType()->getClassName().str() == "String")
-		{
-			// support this shit.
-			// error(cgi, this, "Automatic char* -> String casting not yet supported");
-
-			// create a bogus func call.
-			TypePair_t* tp = cgi->getTypeByString("String");
-			iceAssert(tp);
-
-			std::vector<fir::Value*> args { lhs };
-			return cgi->callTypeInitialiser(tp, user, args);
 		}
 		else if(lhs->getType()->isArrayType() && rtype->isPointerType()
 			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
@@ -171,8 +146,11 @@ namespace Operators
 		else if(lhs->getType()->isIntegerType() && rtype->isCharType())
 		{
 			// truncate if required
-			if(lhs->getType() != fir::Type::getInt8())
+			if(lhs->getType() != fir::Type::getInt8() && lhs->getType() != fir::Type::getUint8())
 				error(user, "Invalid cast to char type from non-i8 type integer (have '%s')", lhs->getType()->str().c_str());
+
+			if(lhs->getType() == fir::Type::getUint8())
+				lhs = cgi->irb.CreateIntSignednessCast(lhs, fir::Type::getInt8());
 
 			return Result_t(cgi->irb.CreateBitcast(lhs, fir::Type::getCharType()), 0);
 		}

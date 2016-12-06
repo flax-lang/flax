@@ -889,7 +889,15 @@ namespace fir
 						case OpKind::Integer_ZeroExt:
 						case OpKind::Integer_Truncate:
 						{
-							iceAssert(0);
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							Type* ft = inst->operands[1]->getType();
+
+							llvm::Type* t = typeToLlvm(ft, module);
+
+							llvm::Value* ret = builder.CreateZExtOrTrunc(a, t);
+							addValueToMap(ret, inst->realOutput);
+							break;
 						}
 
 

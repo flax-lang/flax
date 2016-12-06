@@ -138,7 +138,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::ConstantString* cs = fir::ConstantString::get(this->str);
 			cgi->irb.CreateStore(cs, extra);
 
-			cgi->addRefCountedValue(extra);
+			// cgi->addRefCountedValue(extra);
 			if(!extra->hasName())
 				extra->setName("strlit");
 
@@ -213,13 +213,35 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
-				vals.push_back(_makeReal(c));
+				c = _makeReal(c);
 
-				if(vals.back()->getType() != tp)
+				// attempt to make a proper thing if we're int literals
+				if(c->getType()->isIntegerType() && tp->isIntegerType())
+				{
+					fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(c);
+					iceAssert(ci);
+
+					// c is a constant.
+					bool res = false;
+					if(c->getType()->isSignedIntType())
+						res = fir::checkSignedIntLiteralFitsIntoType(tp->toPrimitiveType(), ci->getSignedValue());
+
+					else
+						res = fir::checkUnsignedIntLiteralFitsIntoType(tp->toPrimitiveType(), ci->getUnsignedValue());
+
+
+					if(res)
+						c = fir::ConstantInt::get(tp, ci->getUnsignedValue());
+				}
+
+
+				if(c->getType() != tp)
 				{
 					error(e, "Array members must have the same type, got %s and %s",
-						tp->str().c_str(), vals.back()->getType()->str().c_str());
+						c->getType()->str().c_str(), tp->str().c_str());
 				}
+
+				vals.push_back(c);
 			}
 			else
 			{
@@ -229,11 +251,11 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
-	fir::Value* alloc = cgi->irb.CreateStackAlloc(atype);
+	// fir::Value* alloc = cgi->irb.CreateStackAlloc(atype);
 	fir::Value* val = fir::ConstantArray::get(atype, vals);
 
-	cgi->irb.CreateStore(val, alloc);
-	return Result_t(val, alloc);
+	// cgi->irb.CreateStore(val, alloc);
+	return Result_t(val, /*alloc*/0);
 }
 
 fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)

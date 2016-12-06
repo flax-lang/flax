@@ -196,7 +196,7 @@ namespace Array
 
 			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
 
-			fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
@@ -298,7 +298,8 @@ namespace Array
 
 			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
 
-			fir::Function* refunc = cgi->getOrDeclareLibCFunc("realloc");
+
+			fir::Function* refunc = cgi->getOrDeclareLibCFunc(REALLOCATE_MEMORY_FUNC);
 			iceAssert(refunc);
 
 

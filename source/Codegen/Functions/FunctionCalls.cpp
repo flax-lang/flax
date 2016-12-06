@@ -5,6 +5,7 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -63,8 +64,6 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			fir::Value* argptr = 0;
 			std::tie(arg, argptr) = e->codegen(cgi);
 
-			// info(e, "%s - %s", arg->getType()->str().c_str(), ft->getArgumentTypes()[cur]->str().c_str());
-
 			if(!checkcv && arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
 			{
 				fir::Function* res = instantiateGenericFunctionAsParameter(cgi, fc, arg, ft->getArgumentTypes()[cur]->toFunctionType(),
@@ -79,11 +78,11 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 			if(checkcv && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
-				fir::Type* st = arg->getType();
-				if(st->isClassType() || st->isStructType())
-				{
-					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
-				}
+				error(e, "Compound values (structs, classes and tuples) cannot be passed to C-style variadic functions");
+			}
+			else if(checkcv && arg->getType()->isArrayType())
+			{
+				error(e, "Arrays cannot be passed to C-style variadic functions. Cast to a pointer type instead.");
 			}
 			else if(checkcv && arg->getType()->isStringType())
 			{
@@ -285,7 +284,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				// first get the length
 				fir::Function* strlenf = cgi->getOrDeclareLibCFunc("strlen");
-				fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+				fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
 				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
@@ -344,8 +343,11 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			else if(arg->getType()->isIntegerType())
 			{
 				// truncate if required
-				if(arg->getType() != fir::Type::getInt8())
+				if(arg->getType() != fir::Type::getInt8() && arg->getType() != fir::Type::getUint8())
 					error(this, "Invalid instantiation of char from non-i8 type integer (have '%s')", arg->getType()->str().c_str());
+
+				if(arg->getType() == fir::Type::getUint8())
+					arg = cgi->irb.CreateIntSignednessCast(arg, fir::Type::getInt8());
 
 				return Result_t(cgi->irb.CreateBitcast(arg, fir::Type::getCharType()), 0);
 			}
