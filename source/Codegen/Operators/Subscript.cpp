@@ -345,6 +345,7 @@ namespace Operators
 
 		if(atype->isArrayType())
 		{
+			if(!lhsp.pointer) { lhsp.pointer = cgi->irb.CreateImmutStackAlloc(lhsp.value->getType(), lhsp.value); }
 			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isParameterPackType())
