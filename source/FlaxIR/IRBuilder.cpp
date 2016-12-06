@@ -1065,11 +1065,32 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+
+
+
 	Value* IRBuilder::CreateStackAlloc(Type* type, std::string vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getPointerTo(),
 			{ ConstantValue::getNullValue(type) });
-		return this->addInstruction(instr, vname);
+
+		// we need to 'lift' the allocation up to the entry block of the function
+		// this prevents allocation inside loops eating stack memory forever
+
+		fir::Value* ret = instr->realOutput;
+		ret->setName(vname);
+
+		// get the parent function
+		auto parent = this->currentBlock->getParentFunction();
+		iceAssert(parent);
+
+		// get the entry block
+		auto entry = parent->getBlockList().front();
+		iceAssert(entry);
+
+		// insert at the front (back = no guarantees)
+		entry->instructions.push_front(instr);
+
+		return ret;
 	}
 
 	Value* IRBuilder::CreateImmutStackAlloc(Type* type, Value* v, std::string vname)
@@ -1077,11 +1098,15 @@ namespace fir
 		Value* ret = this->CreateStackAlloc(type, vname);
 		ret->immut = false;		// for now
 
+		// same lifting shit as above
+
 		this->CreateStore(v, ret);
 		ret->immut = true;
 
 		return ret;
 	}
+
+
 
 	void IRBuilder::CreateCondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
 	{

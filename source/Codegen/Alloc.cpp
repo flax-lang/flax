@@ -4,18 +4,16 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
 
 
-#define MALLOC_FUNC		"malloc"
-#define FREE_FUNC		"free"
-
 static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
 	std::deque<fir::Value*>& sizes)
 {
-	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(MALLOC_FUNC);
+	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 	iceAssert(mallocf);
 
 	mallocf = cgi->module->getFunction(mallocf->getName());
@@ -278,7 +276,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 		if(nest == 0)
 		{
 			// just free
-			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
 			iceAssert(freef);
 
 			if(type->getPointerElementType()->isStringType())
@@ -389,7 +387,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 			// free the pointer anyway
 
-			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
 			iceAssert(freef);
 
 
@@ -442,15 +440,19 @@ static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Va
 	{
 		error(user, "Cannot deallocate non-pointer type");
 	}
-	else
+	else if(val->getType()->isPointerType())
 	{
 		val = cgi->irb.CreatePointerTypeCast(val, fir::Type::getInt8Ptr());
 
 		// call 'free'
-		fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_FUNC);
+		fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
 		iceAssert(freef);
 
 		cgi->irb.CreateCall1(freef, val);
+	}
+	else
+	{
+		error(user, "Cannot deallocate value of type '%s'", val->getType()->str().c_str());
 	}
 }
 

@@ -66,7 +66,9 @@ func setup(max: int) -> int[]
 func dynamicArrays()
 {
 	do {
+		printf("PRE X\n")
 		var x: string[]
+		printf("POST X\n")
 		var y = alloc[5] string
 
 		var i = 0
@@ -82,9 +84,11 @@ func dynamicArrays()
 		let k = x
 		var z = k.clone()
 
+		printf("k = %p, x = %p\n", k.pointer, x.pointer)
+
 		z[9] = "LAST ELEMENT"
 
-		printf("z == x: %d\n", z <= x)
+		printf("z <= x: %d\n", z <= x)
 
 		while i < z.length
 		{

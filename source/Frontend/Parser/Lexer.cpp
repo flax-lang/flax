@@ -571,6 +571,8 @@ namespace Parser
 					case '|':	tok.type = TType::Pipe;					break;
 					case '@':	tok.type = TType::At;					break;
 					case '#':	tok.type = TType::Pound;				break;
+					case '~':	tok.type = TType::Tilde;				break;
+					case '^':	tok.type = TType::Caret;				break;
 
 					default:
 						parserError(tok, "Unknown token '%c'", stream[0]);
