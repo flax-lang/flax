@@ -124,24 +124,24 @@ namespace Codegen
 		this->refCountingStack.push_back({ });
 	}
 
-	void CodegenInstance::addRefCountedValue(fir::Value* ptr)
+	void CodegenInstance::addRefCountedValue(fir::Value* val)
 	{
-		iceAssert(ptr->getType()->isPointerType() && "refcounted value must be a pointer");
-		this->refCountingStack.back().push_back(ptr);
+		iceAssert(!val->getType()->isPointerType() && "refcounting pointers?? no.");
+		this->refCountingStack.back().push_back(val);
 	}
 
-	void CodegenInstance::removeRefCountedValue(fir::Value* ptr)
+	void CodegenInstance::removeRefCountedValue(fir::Value* val)
 	{
-		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
-			error("ptr does not exist in refcounting stack, cannot remove");
+			error("val does not exist in refcounting stack, cannot remove");
 
 		this->refCountingStack.back().erase(it);
 	}
 
-	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* ptr)
+	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* val)
 	{
-		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
 			return;
 
@@ -2067,15 +2067,15 @@ namespace Codegen
 
 	Result_t CodegenInstance::makeStringLiteral(std::string str)
 	{
-		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
-		fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+		// iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
+
+		// fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+		// this->irb.CreateStore(cs, strp);
+		// strp->makeImmutable();
+		// return Result_t(cs, strp);
 
 		auto cs = fir::ConstantString::get(str);
-		this->irb.CreateStore(cs, strp);
-
-		strp->makeImmutable();
-
-		return Result_t(cs, strp);
+		return Result_t(cs, 0);
 	}
 
 
@@ -2107,21 +2107,20 @@ namespace Codegen
 	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
 	{
 		iceAssert(cgi->isRefCountedType(type));
-		iceAssert(value->getType()->isPointerType());
 
 		size_t i = 0;
 		for(auto m : type->getElements())
 		{
 			if(cgi->isRefCountedType(m))
 			{
-				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+				fir::Value* mem = cgi->irb.CreateExtractValue(value, { i });
 
 				if(incr)	cgi->incrementRefCount(mem);
 				else		cgi->decrementRefCount(mem);
 			}
 			else if(isStructuredAggregate(m))
 			{
-				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+				fir::Value* mem = cgi->irb.CreateExtractValue(value, { i });
 
 				if(m->isStructType())		doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
 				else if(m->isClassType())	doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
@@ -2132,74 +2131,50 @@ namespace Codegen
 		}
 	}
 
-	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	static void _doRefCount(CodegenInstance* cgi, fir::Value* ptr, bool incr)
 	{
-		iceAssert(strp->getType()->isPointerType());
-		if(strp->getType()->getPointerElementType()->isStringType())
+		if(ptr->getType()->isStringType())
 		{
-			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+			fir::Function* rf = 0;
+			if(incr) rf = RuntimeFuncs::String::getRefCountIncrementFunction(cgi);
+			else rf = RuntimeFuncs::String::getRefCountDecrementFunction(cgi);
 
-			fir::Function* incrf = RuntimeFuncs::String::getRefCountIncrementFunction(this);
-			this->irb.CreateCall1(incrf, strp);
+			cgi->irb.CreateCall1(rf, ptr);
 		}
-		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		else if(isStructuredAggregate(ptr->getType()))
 		{
-			auto ty = strp->getType()->getPointerElementType();
+			auto ty = ptr->getType();
 
-			if(ty->isStructType())		doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
-			else if(ty->isClassType())	doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
-			else if(ty->isTupleType())	doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
+			if(ty->isStructType())		doRefCountOfAggregateType(cgi, ty->toStructType(), ptr, incr);
+			else if(ty->isClassType())	doRefCountOfAggregateType(cgi, ty->toClassType(), ptr, incr);
+			else if(ty->isTupleType())	doRefCountOfAggregateType(cgi, ty->toTupleType(), ptr, incr);
 		}
-		else if(strp->getType()->getPointerElementType()->isArrayType())
+		else if(ptr->getType()->isArrayType())
 		{
-			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
+			fir::ArrayType* at = ptr->getType()->toArrayType();
 			for(size_t i = 0; i < at->getArraySize(); i++)
 			{
-				fir::Value* elm = this->irb.CreateConstGEP2(strp, 0, i);
-				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
+				fir::Value* elm = cgi->irb.CreateExtractValue(ptr, { i });
+				iceAssert(cgi->isRefCountedType(elm->getType()));
 
-				this->incrementRefCount(elm);
+				if(incr) cgi->incrementRefCount(elm);
+				else cgi->decrementRefCount(elm);
 			}
 		}
 		else
 		{
-			error("no: %s", strp->getType()->str().c_str());
+			error("no: %s", ptr->getType()->str().c_str());
 		}
+	}
+
+	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	{
+		_doRefCount(this, strp, true);
 	}
 
 	void CodegenInstance::decrementRefCount(fir::Value* strp)
 	{
-		iceAssert(strp->getType()->isPointerType());
-		if(strp->getType()->getPointerElementType()->isStringType())
-		{
-			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
-
-			fir::Function* decrf = RuntimeFuncs::String::getRefCountDecrementFunction(this);
-			this->irb.CreateCall1(decrf, strp);
-		}
-		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
-		{
-			auto ty = strp->getType()->getPointerElementType();
-
-			if(ty->isStructType())		doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
-			else if(ty->isClassType())	doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
-			else if(ty->isTupleType())	doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
-		}
-		else if(strp->getType()->getPointerElementType()->isArrayType())
-		{
-			fir::ArrayType* at = strp->getType()->getPointerElementType()->toArrayType();
-			for(size_t i = 0; i < at->getArraySize(); i++)
-			{
-				fir::Value* elm = this->irb.CreateConstGEP2(strp, 0, i);
-				iceAssert(this->isRefCountedType(elm->getType()->getPointerElementType()));
-
-				this->decrementRefCount(elm);
-			}
-		}
-		else
-		{
-			error("no: %s", strp->getType()->str().c_str());
-		}
+		_doRefCount(this, strp, false);
 	}
 
 
@@ -2217,15 +2192,15 @@ namespace Codegen
 		{
 			iceAssert(ptr);
 			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
-			this->incrementRefCount(ptr);
+			this->incrementRefCount(val);
 
 			// decrement left side
 			if(!isInit)
-				this->decrementRefCount(target);
+				this->decrementRefCount(this->irb.CreateLoad(target));
 
 			// store
 			if(doAssign)
-				this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+				this->irb.CreateStore(val, target);
 		}
 		else
 		{
@@ -2235,7 +2210,7 @@ namespace Codegen
 			// instead, decrement the left side
 
 			if(!isInit)
-				this->decrementRefCount(target);
+				this->decrementRefCount(this->irb.CreateLoad(target));
 
 			// to avoid double-freeing, we remove 'val' from the list of refcounted things
 			// since it's an rvalue, it can't be "re-referenced", so to speak.
@@ -2243,8 +2218,7 @@ namespace Codegen
 			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
 			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
 
-			if(ptr)
-				this->removeRefCountedValueIfExists(ptr);
+			this->removeRefCountedValueIfExists(val);
 
 			// now we just store as usual
 			if(doAssign)
