@@ -117,7 +117,7 @@ namespace Array
 		{
 			// make clone
 			fir::Value* origElm = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
-			fir::Value* clone = cgi->irb.CreateCall1(fn, origElm);
+			fir::Value* clone = cgi->irb.CreateCall1(fn, cgi->irb.CreateLoad(origElm));
 
 			// store clone
 			fir::Value* newElm = cgi->irb.CreatePointerAdd(newptr, cgi->irb.CreateLoad(counter));
@@ -522,18 +522,19 @@ namespace Array
 
 		cgi->irb.setCurrentBlock(body);
 		{
+			fir::Value* v1 = cgi->irb.CreateLoad(ptr1);
+			fir::Value* v2 = cgi->irb.CreateLoad(ptr2);
+
 			if(arrtype->getElementType()->isStringType())
 			{
 				fir::Function* strf = RuntimeFuncs::String::getCompareFunction(cgi);
 				iceAssert(strf);
 
-				fir::Value* c = cgi->irb.CreateCall2(strf, ptr1, ptr2);
+				fir::Value* c = cgi->irb.CreateCall2(strf, v1, v2);
 				cgi->irb.CreateStore(c, res);
 			}
 			else
 			{
-				fir::Value* v1 = cgi->irb.CreateLoad(ptr1);
-				fir::Value* v2 = cgi->irb.CreateLoad(ptr2);
 
 				cgi->irb.CreateStore(cgi->irb.CreateICmpMulti(v1, v2), res);
 			}

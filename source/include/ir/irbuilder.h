@@ -119,6 +119,16 @@ namespace fir
 		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
+		Value* CreateAggregateValue(Type* t, std::deque<Value*> values, std::string vname = "");
+		Value* CreateValue(Type* t, std::string vname = "");
+
+		Value* CreateInsertValue(Value* val, std::deque<size_t> inds, Value* elm, std::string vname = "");
+		Value* CreateExtractValue(Value* val, std::deque<size_t> inds, std::string vname = "");
+
+		Value* CreateInsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
+		Value* CreateExtractValueByName(Value* val, std::string mem, std::string vname = "");
+
+
 		Value* CreateGetStringData(Value* ptr, std::string vname = "");
 		Value* CreateSetStringData(Value* ptr, Value* val, std::string vname = "");
 		Value* CreateGetStringLength(Value* ptr, std::string vname = "");

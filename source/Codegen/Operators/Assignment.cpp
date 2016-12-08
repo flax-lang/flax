@@ -172,17 +172,17 @@ namespace Operators
 
 				// requires runtime code check
 				auto leftr = ai->arr->codegen(cgi);
-				iceAssert(leftr.pointer);
+				iceAssert(leftr.value);
 
 				fir::Value* ind = ai->index->codegen(cgi).value;
 
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind);
 
-				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
+				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.value);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
 
 				fir::Value* val = args[1]->codegen(cgi).value;
@@ -472,7 +472,6 @@ namespace Operators
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
 			iceAssert(lhsPtr);
-
 			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))

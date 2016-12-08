@@ -289,11 +289,8 @@ namespace Codegen
 		// check if we're passing a string to a function expecting an Int8*
 		else if(target == fir::Type::getInt8Ptr() && from->getType()->isStringType())
 		{
-			// GEP needs a pointer
-			if(fromPtr == 0) fromPtr = this->getImmutStackAllocValue(from);
-
-			iceAssert(fromPtr);
-			retval = this->irb.CreateGetStringData(fromPtr);
+			iceAssert(from);
+			retval = this->irb.CreateGetStringData(from);
 		}
 		else if(target->isFloatingPointType() && from->getType()->isIntegerType())
 		{

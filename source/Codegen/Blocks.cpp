@@ -33,7 +33,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// ok, now decrement all the refcounted vars
 		for(auto v : cgi->getRefCountedValues())
 		{
-			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+			iceAssert(cgi->isRefCountedType(v->getType()));
 			cgi->decrementRefCount(v);
 		}
 	}
@@ -68,7 +68,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// ok, now decrement all the refcounted vars
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		iceAssert(cgi->isRefCountedType(v->getType()));
 		cgi->decrementRefCount(v);
 	}
 
@@ -109,7 +109,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// ok, now decrement all the refcounted vars
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		iceAssert(cgi->isRefCountedType(v->getType()));
 		cgi->decrementRefCount(v);
 	}
 
@@ -171,22 +171,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(res.value->getType()))
 		{
-			if(res.valueKind == ValueKind::LValue)
-			{
-				// uh.. should always be there.
-				iceAssert(res.pointer);
-
-				cgi->incrementRefCount(res.pointer);
-			}
-			else
-			{
-				// rvalue
-
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(this->actualReturnValue->getType(), this->actualReturnValue);
-				cgi->incrementRefCount(tmp);
-
-				this->actualReturnValue = cgi->irb.CreateLoad(tmp);
-			}
+			cgi->incrementRefCount(this->actualReturnValue);
 		}
 	}
 
@@ -194,7 +179,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// 5. now, do the refcounting magic
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		iceAssert(cgi->isRefCountedType(v->getType()));
 		cgi->decrementRefCount(v);
 	}
 
