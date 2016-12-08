@@ -304,7 +304,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 				{
 					// ok. first, do pointer arithmetic to get the current array
 					fir::Value* strp = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
-					cgi->decrementRefCount(strp);
+					cgi->decrementRefCount(cgi->irb.CreateLoad(strp));
 
 					// increment counter
 					cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);

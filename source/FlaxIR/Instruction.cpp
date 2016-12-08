@@ -117,6 +117,8 @@ namespace fir
 			case OpKind::Value_GetStructMember: 			instrname = "gep"; break;
 			case OpKind::Value_GetPointer: 					instrname = "gep"; break;
 			case OpKind::Value_GetGEP2: 					instrname = "gep"; break;
+			case OpKind::Value_InsertValue: 				instrname = "insertval"; break;
+			case OpKind::Value_ExtractValue: 				instrname = "extractval"; break;
 			case OpKind::Misc_Sizeof:						instrname = "sizeof"; break;
 			case OpKind::Branch_UnCond: 					instrname = "jump"; break;
 			case OpKind::Branch_Cond: 						instrname = "branch"; break;

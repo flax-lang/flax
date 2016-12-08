@@ -91,7 +91,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getStringType(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getStringType(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -103,9 +103,6 @@ namespace String
 			iceAssert(s1);
 
 			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
-
 			fir::Value* lhslen = cgi->irb.CreateGetStringLength(s1, "l1");
 			fir::Value* lhsbuf = cgi->irb.CreateGetStringData(s1, "d1");
 
@@ -136,10 +133,12 @@ namespace String
 			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), offsetbuf);
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, lhslen);
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
 
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
+
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, lhslen);
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
 			#if DEBUG_ALLOCATION
 			{
@@ -153,7 +152,7 @@ namespace String
 			#endif
 
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			cgi->irb.CreateReturn(str);
 
 			clonef = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -176,7 +175,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
 				fir::Type::getStringType(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -201,9 +200,6 @@ namespace String
 			// 7. set the length to a + b
 			// 8. return.
 
-			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
 
 			iceAssert(s1);
 			iceAssert(s2);
@@ -255,11 +251,13 @@ namespace String
 			#endif
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, newlen);
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, newlen);
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			cgi->irb.CreateReturn(str);
 
 			appendf = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -278,7 +276,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getCharType() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getCharType() },
 				fir::Type::getStringType(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -300,9 +298,6 @@ namespace String
 			// 6. set the length to a + b
 			// 7. return.
 
-			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
 
 			iceAssert(s1);
 			iceAssert(s2);
@@ -347,11 +342,14 @@ namespace String
 			#endif
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+			// get an empty string
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			cgi->irb.CreateReturn(str);
 
 			appendf = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -377,7 +375,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
 				fir::Type::getInt64(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -474,7 +472,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -542,7 +540,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -645,7 +643,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
@@ -723,7 +721,7 @@ namespace String
 
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
