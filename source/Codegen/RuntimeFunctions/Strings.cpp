@@ -147,8 +147,7 @@ namespace String
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				// fir::Value* tmpstr = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
-				fir::Value* tmpstr = cgi->module->createGlobalString("M");
+				fir::Value* tmpstr = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
 				cgi->irb.CreateCall(printfn, { tmpstr, buf, lhslen, buf });
 			}
 			#endif
@@ -250,8 +249,7 @@ namespace String
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				// fir::Value* tmpstr = cgi->module->createGlobalString("malloc (%zu): %p (%s)\n");
-				fir::Value* tmpstr = cgi->module->createGlobalString("M");
+				fir::Value* tmpstr = cgi->module->createGlobalString("malloc (%zu): %p (%s)\n");
 				cgi->irb.CreateCall(printfn, { tmpstr, malloclen, buf, buf });
 			}
 			#endif
@@ -343,8 +341,7 @@ namespace String
 
 			#if DEBUG_ALLOCATION
 			{
-				// fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s) // (%s) // (appc)\n");
-				fir::Value* tmpstr = cgi->module->createGlobalString("M");
+				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s) // (%s) // (appc)\n");
 				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, lhsbuf, buf, buf, lhsbuf });
 			}
 			#endif
@@ -608,8 +605,7 @@ namespace String
 
 				#if DEBUG_ALLOCATION
 				{
-					// fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s') (%d)\n");
-					fir::Value* tmpstr = cgi->module->createGlobalString("F");
+					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s') (%d)\n");
 					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, curRc });
 				}
 				#endif
