@@ -204,18 +204,14 @@ namespace Operators
 			if(op != ArithmeticOp::Add)
 				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", opstr.c_str());
 
-			iceAssert(lhsptr);
 			iceAssert(rhs);
-
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
 
 			// newStringByAppendingChar (does not modify lhsptr)
 			auto apf = RuntimeFuncs::String::getCharAppendFunction(cgi);
-			fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhs);
-			cgi->irb.CreateStore(app, newstrp);
+			fir::Value* app = cgi->irb.CreateCall2(apf, lhs, rhs);
+			cgi->addRefCountedValue(app);
 
-			cgi->addRefCountedValue(newstrp);
-			return Result_t(app, newstrp);
+			return Result_t(app, 0);
 		}
 		else if(lhs->getType()->isStringType() && rhs->getType()->isStringType())
 		{
@@ -226,14 +222,13 @@ namespace Operators
 			if(isComparisonOp(op))
 			{
 				// compare two strings
-				iceAssert(lhsptr);
-				iceAssert(rhsptr);
-
+				iceAssert(lhs);
+				iceAssert(rhs);
 
 				fir::Function* cmpf = RuntimeFuncs::String::getCompareFunction(cgi);
 				iceAssert(cmpf);
 
-				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhsptr, rhsptr);
+				fir::Value* val = cgi->irb.CreateCall2(cmpf, lhs, rhs);
 
 				// we need to convert the int return into booleans
 				// if ret < 0, then a < b and a <= b should be 1, and the rest be 0
@@ -256,15 +251,12 @@ namespace Operators
 			}
 			else
 			{
-				fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-
 				// newStringByAppendingString (does not modify lhsptr)
 				auto apf = RuntimeFuncs::String::getAppendFunction(cgi);
-				fir::Value* app = cgi->irb.CreateCall2(apf, lhsptr, rhsptr);
-				cgi->irb.CreateStore(app, newstrp);
+				fir::Value* app = cgi->irb.CreateCall2(apf, lhs, rhs);
 
-				cgi->addRefCountedValue(newstrp);
-				return Result_t(app, newstrp);
+				cgi->addRefCountedValue(app);
+				return Result_t(app, 0);
 			}
 		}
 		else if(lhs->getType()->isDynamicArrayType() && rhs->getType()->isDynamicArrayType()

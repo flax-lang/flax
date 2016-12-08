@@ -130,7 +130,6 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(extra && extra->getType()->getPointerElementType()->isStringType())
 		{
 			// these things can't be const
-
 			iceAssert(extra->getType()->getPointerElementType()->isStringType());
 
 			// we don't (and can't) set the refcount, because it's probably in read-only memory.
@@ -138,7 +137,6 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			fir::ConstantString* cs = fir::ConstantString::get(this->str);
 			cgi->irb.CreateStore(cs, extra);
 
-			// cgi->addRefCountedValue(extra);
 			if(!extra->hasName())
 				extra->setName("strlit");
 
@@ -160,10 +158,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 		}
 		else
 		{
-			auto r = cgi->makeStringLiteral(this->str);
-			r.pointer->setName("strlit");
-
-			return r;
+			return cgi->makeStringLiteral(this->str);
 		}
 	}
 }
