@@ -297,6 +297,18 @@ namespace Array
 			iceAssert(p2func);
 
 			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
+			// fir::Value* nextpow2 = cgi->irb.CreateMul(needed, fir::ConstantInt::getInt64(2));
+
+			// fir::Value* roundedElmSize = cgi->irb.CreateCall1(p2func, cgi->irb.CreateSizeof(elmtype));
+			// {
+			// 	fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+			// 		fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
+			// 		fir::Type::getInt32()), fir::LinkageType::External);
+
+			// 	fir::Value* tmpstr = cgi->module->createGlobalString("<%zu, %zu, %zu, %zu, %s>\n");
+			// 	fir::Value* x = cgi->module->createGlobalString(elmtype->str());
+			// 	cgi->irb.CreateCall(printfn, { tmpstr, needed, nextpow2, cgi->irb.CreateSizeof(elmtype), roundedElmSize, x });
+			// }
 
 
 			fir::Function* refunc = cgi->getOrDeclareLibCFunc(REALLOCATE_MEMORY_FUNC);

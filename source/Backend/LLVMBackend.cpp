@@ -95,7 +95,13 @@ namespace Compiler
 
 		this->linkedModule = mainModule;
 		this->finaliseGlobalConstructors();
+
+
+		// ok, move some shit into here because llvm is fucking retarded
+		this->setupTargetMachine();
+		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
 	}
+
 
 	void LLVMBackend::optimiseProgram()
 	{
@@ -108,6 +114,7 @@ namespace Compiler
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Debug)
 		{
+			fpm.add(llvm::createInstructionCombiningPass());
 			fpm.add(llvm::createPromoteMemoryToRegisterPass());
 			fpm.add(llvm::createMergedLoadStoreMotionPass());
 			fpm.add(llvm::createScalarReplAggregatesPass());
@@ -118,8 +125,6 @@ namespace Compiler
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::None)
 		{
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-			fpm.add(llvm::createInstructionCombiningPass());
 
 			// Reassociate expressions.
 			fpm.add(llvm::createReassociatePass());
@@ -133,6 +138,7 @@ namespace Compiler
 
 			// hmm.
 			// fuck it, turn everything on.
+
 			fpm.add(llvm::createConstantHoistingPass());
 			fpm.add(llvm::createLICMPass());
 			fpm.add(llvm::createDelinearizationPass());
@@ -148,6 +154,9 @@ namespace Compiler
 			fpm.add(llvm::createSCCPPass());
 
 			fpm.add(llvm::createTailCallEliminationPass());
+
+			// Do simple "peephole" optimisations and bit-twiddling optzns.
+
 		}
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Minimal)
@@ -230,7 +239,6 @@ namespace Compiler
 
 				write(fd, buffer.data(), buffer.size_in_bytes());
 				fsync(fd);
-
 
 
 				auto libs = Compiler::getLibrariesToLink();
@@ -359,13 +367,7 @@ namespace Compiler
 
 
 
-
-
-
-
-
-
-	llvm::SmallVector<char, 0> LLVMBackend::initialiseLLVMStuff()
+	void LLVMBackend::setupTargetMachine()
 	{
 		llvm::InitializeAllTargets();
 		llvm::InitializeAllTargetMCs();
@@ -377,7 +379,7 @@ namespace Compiler
 		llvm::initializeCodeGen(*Registry);
 
 		llvm::Triple targetTriple;
-		targetTriple.setTriple(Compiler::getTarget().empty() ? llvm::sys::getDefaultTargetTriple() : Compiler::getTarget());
+		targetTriple.setTriple(Compiler::getTarget().empty() ? llvm::sys::getProcessTriple() : Compiler::getTarget());
 
 
 
@@ -423,17 +425,19 @@ namespace Compiler
 
 
 		llvm::TargetOptions targetOptions;
-
 		if(Compiler::getIsPositionIndependent())
 			targetOptions.PositionIndependentExecutable = true;
 
+		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
+			targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default);
+	}
 
-		std::unique_ptr<llvm::TargetMachine> targetMachine(theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
-			targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default));
 
 
-		this->linkedModule->setDataLayout(targetMachine->createDataLayout());
 
+
+	llvm::SmallVector<char, 0> LLVMBackend::initialiseLLVMStuff()
+	{
 		llvm::SmallVector<char, 0> memoryBuffer;
 		auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
 		llvm::raw_pwrite_stream* rawStream = bufferStream.get();
@@ -578,6 +582,11 @@ namespace Compiler
 		if(this->linkedModule->getFunction("main") != 0)
 		{
 			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
+
+			// finalise the object, which does something.
+			execEngine->finalizeObject();
+
+
 			uint64_t func = execEngine->getFunctionAddress("main");
 			iceAssert(func != 0);
 
@@ -585,9 +594,6 @@ namespace Compiler
 
 			const char* m[] = { ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str() };
 
-			// finalise the object, which causes the memory to be executable
-			// fucking NX bit
-			execEngine->finalizeObject();
 			mainfunc(1, m);
 		}
 		else

@@ -308,10 +308,17 @@ namespace fir
 
 
 
+	struct Foo
+	{
+		int8_t x;
+		int64_t y;
+	};
 
 	llvm::Module* Module::translateToLlvm()
 	{
+		iceAssert(sizeof(Foo) == 16);
 		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
+		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
 		llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 		createdTypes.clear();
