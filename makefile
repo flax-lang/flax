@@ -37,7 +37,7 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 
 
-SANITISE		:= -fsanitize=address
+SANITISE		:=
 
 CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer
 CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings -Wno-missing-variable-declarations
