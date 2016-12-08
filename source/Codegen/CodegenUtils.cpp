@@ -2215,6 +2215,7 @@ namespace Codegen
 		// increment its refcount, decrement the left side refcount, store, return.
 		if(rhsVK == ValueKind::LValue)
 		{
+			iceAssert(ptr);
 			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
 			this->incrementRefCount(ptr);
 

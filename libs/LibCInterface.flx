@@ -21,7 +21,7 @@ public ffi func free(pointer: i8*)
 // strings
 public ffi func strlen(str: i8*) -> i64
 public ffi func strcmp(str1: i8*, str2: i8*) -> i32
-public ffi func strncmp(str1: i8*, str2: i8*, length: u64) -> i32
+public ffi func strncmp(str1: i8*, str2: i8*, length: i64) -> i32
 
 // random things
 public ffi func usleep(usec: u32) -> i32

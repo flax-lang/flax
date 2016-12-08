@@ -261,7 +261,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
 
 		// get our parameters.
-		if(this->params.size() != 1)
+		// strings can take more than one
+		if(this->params.size() != 1 && !type->isStringType())
 			error(this, "Builtin type initialisers must be called with exactly one argument (have %zu)", this->params.size());
 
 		auto res = this->params[0]->codegen(cgi);
@@ -273,10 +274,14 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(type->isStringType())
 		{
 			// make a string with this.
-			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(this->params[0]))
+			if(dynamic_cast<StringLiteral*>(this->params[0]) && this->params.size() == 1)
 			{
 				// lol wtf
-				return cgi->makeStringLiteral(sl->str);
+				return cgi->makeStringLiteral(dynamic_cast<StringLiteral*>(this->params[0])->str);
+			}
+			else if(arg->getType()->isStringType() && this->params.size() == 1)
+			{
+				return Result_t(arg, 0);
 			}
 
 
@@ -287,7 +292,40 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
+				fir::Value* len = 0;
+				if(this->params.size() == 1)
+				{
+					len = cgi->irb.CreateCall1(strlenf, arg);
+				}
+				else if(this->params.size() == 2)
+				{
+					fir::Value* l = this->params[1]->codegen(cgi).value;
+					if(!l->getType()->isIntegerType())
+					{
+						error(this, "Expected integer type in second (length) parameter of string initialiser; have '%s'",
+							l->getType()->str().c_str());
+					}
+
+					if(l->getType() != fir::Type::getInt64())
+					{
+						l = cgi->irb.CreateIntSignednessCast(l, l->getType()->toPrimitiveType()->getOppositeSignedType());
+						if(l->getType() != fir::Type::getInt64())
+							l = cgi->irb.CreateIntSizeCast(l, fir::Type::getInt64());
+					}
+
+
+					// make l the length
+					len = l;
+				}
+				else
+				{
+					error(this, "Invalid number of parameters for string initialiser (have %zu, max is 2)", this->params.size());
+				}
+
+
+
+
+
 
 				auto i64size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
 				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
@@ -312,10 +350,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 				cgi->addRefCountedValue(str);
 				return Result_t(cgi->irb.CreateLoad(str), str);
-			}
-			else
-			{
-				return res;
 			}
 		}
 		else if(type->isCharType())
