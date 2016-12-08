@@ -1310,6 +1310,10 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+	Value* IRBuilder::CreateValue(Type* t, std::string vname)
+	{
+		return fir::ConstantValue::getNullValue(t);
+	}
 
 
 
@@ -1346,87 +1350,168 @@ namespace fir
 
 
 
-
-
-
-
-
-
-
-	Value* IRBuilder::CreateGetStringData(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateInsertValue(Value* val, std::deque<size_t> inds, Value* elm, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		Type* t = val->getType();
+		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+			error("val is not an aggregate type (have '%s')", t->str().c_str());
+
+		Type* et = 0;
+		if(t->isStructType()) { et = t->toStructType()->getElementN(inds[0]); }
+		else if(t->isClassType()) { et = t->toClassType()->getElementN(inds[0]); }
+		else if(t->isTupleType()) { et = t->toTupleType()->getElementN(inds[0]); }
+		else if(t->isArrayType()) { et = t->toArrayType()->getElementType(); }
+
+		iceAssert(et);
+
+		if(elm->getType() != et)
+		{
+			error("Mismatched types for value and element -- trying to insert '%s' into '%s'",
+				elm->getType()->str().c_str(), et->str().c_str());
+		}
+
+		std::deque<Value*> args = { val, elm };
+		for(auto id : inds)
+			args.push_back(fir::ConstantInt::getInt64(id));
+
+		// note: no sideeffects, since we return a new aggregate
+		Instruction* instr = new Instruction(OpKind::Value_InsertValue, false, this->currentBlock, t, args);
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateExtractValue(Value* val, std::deque<size_t> inds, std::string vname)
+	{
+		Type* t = val->getType();
+		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+			error("val is not an aggregate type (have '%s')", t->str().c_str());
+
+		Type* et = 0;
+		if(t->isStructType()) { et = t->toStructType()->getElementN(inds[0]); }
+		else if(t->isClassType()) { et = t->toClassType()->getElementN(inds[0]); }
+		else if(t->isTupleType()) { et = t->toTupleType()->getElementN(inds[0]); }
+		else if(t->isArrayType()) { et = t->toArrayType()->getElementType(); }
+
+		iceAssert(et);
+
+		std::deque<Value*> args = { val };
+		for(auto id : inds)
+			args.push_back(fir::ConstantInt::getInt64(id));
+
+
+		// note: no sideeffects, since we return a new aggregate
+		Instruction* instr = new Instruction(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
+		return this->addInstruction(instr, vname);
+	}
+
+
+	Value* IRBuilder::CreateInsertValueByName(Value* val, std::string n, Value* elm, std::string vname)
+	{
+		Type* t = val->getType();
+		if(!t->isStructType() && !t->isClassType())
+			error("val is not an aggregate type with named members (class or struct) (have '%s')", t->str().c_str());
+
+		size_t ind = 0;
+		if(t->isStructType()) { ind = t->toStructType()->getElementIndex(n); }
+		else if(t->isClassType()) { ind = t->toClassType()->getElementIndex(n); }
+		iceAssert(ind);
+
+		return this->CreateInsertValue(val, { ind }, elm, vname);
+	}
+
+	Value* IRBuilder::CreateExtractValueByName(Value* val, std::string n, std::string vname)
+	{
+		Type* t = val->getType();
+		if(!t->isStructType() && !t->isClassType())
+			error("val is not an aggregate type with named members (class or struct) (have '%s')", t->str().c_str());
+
+
+		size_t ind = 0;
+		if(t->isStructType()) { ind = t->toStructType()->getElementIndex(n); }
+		else if(t->isClassType()) { ind = t->toClassType()->getElementIndex(n); }
+		iceAssert(ind);
+
+		return this->CreateExtractValue(val, { ind }, vname);
+	}
+
+
+
+
+
+
+
+
+	Value* IRBuilder::CreateGetStringData(Value* str, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::Type::getInt8()->getPointerTo(), { ptr });
+			fir::Type::getInt8()->getPointerTo(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetStringData(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetStringData(Value* str, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		if(val->getType() != fir::Type::getInt8Ptr())
 			error("val is not an int8*");
 
-		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getStringType(), { str, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
-	Value* IRBuilder::CreateGetStringLength(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetStringLength(Value* str, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetLength, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
+			fir::Type::getInt64(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetStringLength(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetStringLength(Value* str, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock, fir::Type::getStringType(), { str, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
 
-	Value* IRBuilder::CreateGetStringRefCount(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetStringRefCount(Value* str, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		Instruction* instr = new Instruction(OpKind::String_GetRefCount, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
+			fir::Type::getInt64(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetStringRefCount(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetStringRefCount(Value* str, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isStringType())
-			error("ptr is not a pointer to string type (got '%s')", ptr->getType()->str().c_str());
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType()->str().c_str());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::String_SetRefCount, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			fir::Type::getVoid(), { str, val });
 
 		return this->addInstruction(instr, vname);
 	}
