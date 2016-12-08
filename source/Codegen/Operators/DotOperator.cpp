@@ -339,9 +339,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 	{
 		// handle builtin ones: 'raw' and 'length'
 
-		if(type->isPointerType())
-			ptr = val;
-
+		if(type->isPointerType() && actual)
+			val = cgi->irb.CreateLoad(val);
 
 		auto vr = dynamic_cast<VarRef*>(ma->right);
 		iceAssert(vr);
@@ -355,8 +354,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringData(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringData(val), 0);
 			}
 		}
 		else if(vr->name == "length")
@@ -368,8 +367,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringLength(val), 0);
 			}
 		}
 		else if(vr->name == "rc")
@@ -381,8 +380,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringRefCount(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringRefCount(val), 0);
 			}
 		}
 	}
