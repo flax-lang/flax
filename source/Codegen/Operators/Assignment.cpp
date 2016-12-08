@@ -340,6 +340,11 @@ namespace Operators
 			GenError::assignToImmutable(cgi, user, leftExpr);
 		}
 
+		if(lhs == 0)
+		{
+			GenError::nullValue(cgi, user);
+		}
+
 
 
 
@@ -467,7 +472,6 @@ namespace Operators
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
 			iceAssert(lhsPtr);
-			iceAssert(rhsPtr);
 
 			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
 		}

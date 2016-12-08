@@ -335,13 +335,13 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			error(ma->right, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
 		}
 	}
-	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+	else if((type->isStringType() || type == fir::Type::getStringType()->getPointerTo()) && dynamic_cast<VarRef*>(ma->right))
 	{
 		// handle builtin ones: 'raw' and 'length'
-		// raw is basically just the string
-		// length is basically just the length.
 
-		// lol
+		if(type->isPointerType())
+			ptr = val;
+
 
 		auto vr = dynamic_cast<VarRef*>(ma->right);
 		iceAssert(vr);
