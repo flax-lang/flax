@@ -20,6 +20,8 @@
 namespace llvm
 {
 	class Module;
+	class TargetMachine;
+	class ExecutionEngine;
 }
 
 namespace Compiler
@@ -105,11 +107,13 @@ namespace Compiler
 		virtual std::string str() override;
 
 		private:
+		void setupTargetMachine();
 		void finaliseGlobalConstructors();
 		void runProgramWithJIT();
 		llvm::SmallVector<char, 0> initialiseLLVMStuff();
 
 		llvm::Module* linkedModule = 0;
+		llvm::TargetMachine* targetMachine = 0;
 	};
 
 	struct x64Backend : Backend
