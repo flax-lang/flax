@@ -61,6 +61,18 @@ public extension string
 
 		return string(self.raw + start, len)
 	}
+
+	func substringInRange(start: int, end: int) -> string
+	{
+		if end == -1
+		{
+			return (#self).substring(start, -1)
+		}
+		else
+		{
+			return (#self).substring(start, end - start)
+		}
+	}
 }
 
 

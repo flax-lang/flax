@@ -184,7 +184,7 @@ func parseFormatOptions(str: string) -> FormatOptions
 
 public func main(argc: i32, argv: i8**) -> int
 {
-	runTests()
+	// runTests()
 
 
 	do {
@@ -203,6 +203,15 @@ public func main(argc: i32, argv: i8**) -> int
 
 
 
+	struct Foo
+	{
+		var k: int[3]
+	}
+
+	var f: Foo[3]
+	var k: int*
+
+	k = &(f[3].k[1])
 
 
 

@@ -109,10 +109,10 @@ namespace Parser
 			// case TType::Comma:
 				// return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
 
-			case TType::LSquare:
-				return 1100;
-
+			// . and [] have the same precedence.
+			// not sure if this should stay -- works for now.
 			case TType::Period:
+			case TType::LSquare:
 				return 1000;
 
 			// unary !
