@@ -33,23 +33,28 @@ static std::string mangleScopeOnly(const Identifier& id)
 	return ret;
 }
 
+static inline std::string lentypestr(std::string s)
+{
+	return std::to_string(s.length()) + s;
+}
+
 static std::string mangleType(fir::Type* t)
 {
 	if(t->isPrimitiveType())
 	{
-		return t->encodedStr();
+		return lentypestr(t->encodedStr());
 	}
 	else if(t->isArrayType())
 	{
-		return "FA" + std::to_string(t->toArrayType()->getArraySize()) + mangleType(t->toArrayType()->getElementType());
+		return "FA" + lentypestr(mangleType(t->toArrayType()->getElementType())) + std::to_string(t->toArrayType()->getArraySize());
 	}
 	else if(t->isDynamicArrayType())
 	{
-		return "DA" + mangleType(t->toDynamicArrayType()->getElementType());
+		return "DA" + lentypestr(mangleType(t->toDynamicArrayType()->getElementType()));
 	}
 	else if(t->isParameterPackType())
 	{
-		return "PP" + mangleType(t->toParameterPackType()->getElementType());
+		return "PP" + lentypestr(mangleType(t->toParameterPackType()->getElementType()));
 	}
 	else if(t->isVoidType())
 	{
@@ -60,8 +65,7 @@ static std::string mangleType(fir::Type* t)
 		std::string ret = "FN" + std::to_string(t->toFunctionType()->getArgumentTypes().size()) + "FA";
 		for(auto a : t->toFunctionType()->getArgumentTypes())
 		{
-			auto mt = mangleType(a);
-			ret += std::to_string(mt.length()) + mt;
+			ret += lentypestr(mangleType(a));
 		}
 
 		if(t->toFunctionType()->getArgumentTypes().empty())
@@ -71,26 +75,23 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isStructType())
 	{
-		return mangleScopeOnly(t->toStructType()->getStructName());
+		return lentypestr(mangleScopeOnly(t->toStructType()->getStructName()));
 	}
 	else if(t->isClassType())
 	{
-		return mangleScopeOnly(t->toClassType()->getClassName());
+		return lentypestr(mangleScopeOnly(t->toClassType()->getClassName()));
 	}
 	else if(t->isTupleType())
 	{
 		std::string ret = "ST" + std::to_string(t->toTupleType()->getElementCount()) + "SM";
 		for(auto m : t->toTupleType()->getElements())
-		{
-			auto mt = mangleType(m);
-			ret += std::to_string(mt.length()) + mt;
-		}
+			ret += lentypestr(mangleType(m));
 
 		return ret;
 	}
 	else if(t->isPointerType())
 	{
-		return "PT" + mangleType(t->getPointerElementType());
+		return "PT" + lentypestr(mangleType(t->getPointerElementType()));
 	}
 	else if(t->isStringType())
 	{
@@ -100,9 +101,13 @@ static std::string mangleType(fir::Type* t)
 	{
 		return "CH";
 	}
+	else if(t->isEnumType())
+	{
+		return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeOnly(t->toEnumType()->getEnumName()));
+	}
 	else
 	{
-		iceAssert(0 && "unsupported ir type???");
+		_error_and_exit("unsupported ir type??? (%s)", t->str().c_str());
 	}
 }
 
