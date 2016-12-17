@@ -1238,9 +1238,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = res.t.firFunc->getReturnType();
 		if(actual)
 		{
+			if(res.t.firFunc == 0)
+			{
+				// iceAssert(res.t.funcDecl);
+				// res.t.firFunc = dynamic_cast<fir::Function*>(res.t.funcDecl->codegen(this).value);
+			}
+
+			fir::Type* ltype = res.t.firFunc->getReturnType();
 			fc->cachedResolveTarget = res;
 			Result_t result = fc->codegen(this);
 
@@ -1248,7 +1254,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		}
 		else
 		{
-			return { { ltype, Result_t(0, 0) }, curFType };
+			if(res.t.firFunc != 0)
+			{
+				return { { res.t.firFunc->getReturnType(), Result_t(0, 0) }, curFType };
+			}
+			else
+			{
+				iceAssert(res.t.funcDecl);
+				return { { this->getTypeFromParserType(ma, res.t.funcDecl->ptype), Result_t(0, 0) }, curFType };
+			}
 		}
 	}
 	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))

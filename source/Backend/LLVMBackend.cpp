@@ -108,7 +108,12 @@ namespace Compiler
 		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
 
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-			error("\nLLVM Module verification failed");
+		{
+			exitless_error("\nLLVM Module verification failed");
+			this->linkedModule->dump();
+
+			abort();
+		}
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 

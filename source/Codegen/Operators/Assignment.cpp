@@ -471,8 +471,7 @@ namespace Operators
 
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
-			iceAssert(lhsPtr);
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, vk, false, true);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{

@@ -340,9 +340,6 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 		vals.push_back(cgv);
 	}
 
-	fir::Value* gep = extra ? extra : cgi->getStackAlloc(this->getType(cgi));
-	iceAssert(gep);
-
 	if(allConst)
 	{
 		std::deque<fir::ConstantValue*> cvs;
@@ -355,13 +352,17 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::ConstantTuple* ct = fir::ConstantTuple::get(cvs);
 		iceAssert(ct);
 
-		cgi->irb.CreateStore(ct, gep);
-		return Result_t(ct, gep);
+		// if all const, fuck storing anything
+		// return an rvalue
+		return Result_t(ct, 0);
 	}
 	else
 	{
 		// set all the values.
 		// do the gep for each.
+
+		fir::Value* gep = extra ? extra : cgi->getStackAlloc(this->getType(cgi));
+		iceAssert(gep);
 
 		for(size_t i = 0; i < tuptype->getElementCount(); i++)
 		{
