@@ -11,3 +11,12 @@ public func programExit(reason: string)
 	write(2, reason.raw, reason.length as u64)
 	abort()
 }
+
+public func assert(b: bool)
+{
+	if !b
+	{
+		write(2, @raw "Assertion failed", 16)
+		abort()
+	}
+}

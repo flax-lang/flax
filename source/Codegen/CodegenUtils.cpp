@@ -2178,29 +2178,29 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* rhs, fir::Value* rhsptr, fir::Value* lhs, fir::Value* lhsptr,
 		ValueKind rhsVK, bool isInit, bool doAssign)
 	{
 		// if you're doing stupid things:
-		if(!this->isRefCountedType(val->getType()))
-			error(user, "type '%s' is not refcounted", val->getType()->str().c_str());
+		if(!this->isRefCountedType(rhs->getType()))
+			error(user, "type '%s' is not refcounted", rhs->getType()->str().c_str());
 
 		// ok...
 		// if the rhs is an lvalue, it's simple.
 		// increment its refcount, decrement the left side refcount, store, return.
 		if(rhsVK == ValueKind::LValue)
 		{
-			iceAssert(ptr);
-			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
-			this->incrementRefCount(val);
+			iceAssert(rhsptr);
+			iceAssert(rhsptr->getType()->getPointerElementType() == rhs->getType());
+			this->incrementRefCount(rhs);
 
 			// decrement left side
 			if(!isInit)
-				this->decrementRefCount(this->irb.CreateLoad(target));
+				this->decrementRefCount(lhs);
 
 			// store
 			if(doAssign)
-				this->irb.CreateStore(val, target);
+				this->irb.CreateStore(rhs, lhsptr);
 		}
 		else
 		{
@@ -2209,20 +2209,24 @@ namespace Codegen
 			// so we don't do anything to it
 			// instead, decrement the left side
 
-			if(!isInit)
-				this->decrementRefCount(this->irb.CreateLoad(target));
-
 			// to avoid double-freeing, we remove 'val' from the list of refcounted things
 			// since it's an rvalue, it can't be "re-referenced", so to speak.
 
 			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
 			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
 
-			this->removeRefCountedValueIfExists(val);
+			this->removeRefCountedValueIfExists(rhs);
 
 			// now we just store as usual
 			if(doAssign)
-				this->irb.CreateStore(val, target);
+				this->irb.CreateStore(rhs, lhsptr);
+
+
+			if(!isInit)
+			{
+				info(user, "decr");
+				this->decrementRefCount(lhs);
+			}
 		}
 	}
 
@@ -2313,10 +2317,10 @@ namespace Codegen
 
 
 
-	static void _errorNoReturn(Expr* e)
-	{
-		error(e, "Not all code paths return a value");
-	}
+	// static void _errorNoReturn(Expr* e)
+	// {
+	// 	error(e, "Not all code paths return a value");
+	// }
 
 	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, fir::Type* retType)
 	{
@@ -2372,7 +2376,10 @@ namespace Codegen
 	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, fir::Type* retType)
 	{
 		if(bb->statements.size() == 0)
-			_errorNoReturn(bb);
+		{
+			// _errorNoReturn(bb);
+			return 0;
+		}
 
 		Return* r = nullptr;
 		for(Expr* e : bb->statements)
@@ -2387,9 +2394,10 @@ namespace Codegen
 					break;
 				}
 			}
-
 			else if((r = dynamic_cast<Return*>(e)))
+			{
 				break;
+			}
 		}
 
 		if(checkType)
@@ -2404,6 +2412,7 @@ namespace Codegen
 	{
 		Return* r = 0;
 		bool first = true;
+
 		for(std::pair<Expr*, BracedBlock*> pair : ib->_cases)	// use the preserved one
 		{
 			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType, retType);
@@ -2462,8 +2471,7 @@ namespace Codegen
 			IfStmt* i = dynamic_cast<IfStmt*>(e);
 			final = e;
 
-			if(i)
-				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+			if(i) ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
 
 			// "top level" returns we will just accept.
 			if(ret || (ret = dynamic_cast<Return*>(e)))

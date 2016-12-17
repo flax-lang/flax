@@ -23,8 +23,8 @@ using namespace Ast;
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
 
 #define DEBUG_MASTER		0
-#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
-#define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
+#define DEBUG_ALLOCATION	(0 & DEBUG_MASTER)
+#define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
 
 #if 0
