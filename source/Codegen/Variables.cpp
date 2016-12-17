@@ -301,7 +301,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
 		{
 			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true, true);
+			cgi->assignRefCountedExpression(this, val, valptr, cgi->irb.CreateLoad(ai), ai, vk, true, true);
 		}
 		else if(!this->initVal)
 		{

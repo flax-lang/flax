@@ -14,5 +14,5 @@ namespace Math
 	public ƒ √(x: f64) -> f64 { sqrt(x) }
 	public ƒ √(x: int) -> f64 { sqrt(x as f64) }
 
-	public ƒ square(x: f64) -> f64 { x * x }
+	public ƒ square<T>(x: T) -> T { x * x }
 }

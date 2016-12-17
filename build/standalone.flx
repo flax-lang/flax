@@ -14,6 +14,12 @@
 	5. assign [] to dynamic arrays
 	6. general fixes to [] -- type inference
 
+	7. do { } while { }
+		this parses as (do {} while), and ({ })
+		do a newline / semicolon check or smth
+
+	8. abort(), exit(), etc. should be allowed as the last expression in a function
+		and allow the compiler to just ignore the fact that there's no return value
 
 	TO TEST:
 

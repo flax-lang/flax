@@ -76,6 +76,11 @@ namespace Operators
 			else
 				return Result_t(cgi->irb.CreateFExtend(lhs, rtype), 0);
 		}
+		else if(lhs->getType()->isFloatingPointType() && rtype->isIntegerType())
+		{
+			// truncate
+			return Result_t(cgi->irb.CreateFloatToIntCast(lhs, rtype), 0);
+		}
 		else if(lhs->getType()->isPointerType() && rtype->isPointerType())
 		{
 			return Result_t(cgi->irb.CreatePointerTypeCast(lhs, rtype), 0);
