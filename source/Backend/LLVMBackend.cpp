@@ -152,7 +152,6 @@ namespace Compiler
 			fpm.add(llvm::createFlattenCFGPass());
 			fpm.add(llvm::createScalarizerPass());
 			fpm.add(llvm::createSinkingPass());
-			fpm.add(llvm::createStructurizeCFGPass());
 			fpm.add(llvm::createInstructionSimplifierPass());
 			fpm.add(llvm::createDeadStoreEliminationPass());
 			fpm.add(llvm::createMemCpyOptPass());

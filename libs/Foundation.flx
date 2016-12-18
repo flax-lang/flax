@@ -7,6 +7,8 @@ import FileIO
 import Protocols
 import LibCInterface
 
+import Crypto.MD5
+
 public func min(a: int, b: int) -> int
 {
 	if a < b
