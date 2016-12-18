@@ -126,12 +126,15 @@ namespace Codegen
 
 	void CodegenInstance::addRefCountedValue(fir::Value* val)
 	{
-		iceAssert(!val->getType()->isPointerType() && "refcounting pointers?? no.");
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
 		this->refCountingStack.back().push_back(val);
 	}
 
+
 	void CodegenInstance::removeRefCountedValue(fir::Value* val)
 	{
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
+
 		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
 			error("val does not exist in refcounting stack, cannot remove");
@@ -141,12 +144,20 @@ namespace Codegen
 
 	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* val)
 	{
+		if(val == 0) return;
+
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
+
 		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
+		{
+			// error("does not exist");
 			return;
+		}
 
 		this->refCountingStack.back().erase(it);
 	}
+
 
 	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
@@ -2215,7 +2226,7 @@ namespace Codegen
 			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
 			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
 
-			this->removeRefCountedValueIfExists(rhs);
+			this->removeRefCountedValueIfExists(rhsptr);
 
 			// now we just store as usual
 			if(doAssign)
@@ -2224,7 +2235,7 @@ namespace Codegen
 
 			if(!isInit)
 			{
-				info(user, "decr");
+				// info(user, "decr");
 				this->decrementRefCount(lhs);
 			}
 		}

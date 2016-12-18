@@ -36,14 +36,17 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->irb.setCurrentBlock(loopBody);
 	cgi->pushBracedBlock(this, loopBody, loopEnd);
 
-	this->body->codegen(cgi);
+	auto res = this->body->codegen(cgi);
 
 	cgi->popBracedBlock();
 
-	// put a branch to see if we will go back
-	fir::Value* condInside = this->cond->codegen(cgi).value;
-	cgi->irb.CreateCondBranch(condInside, loopBody, loopEnd);
-
+	// see if we broke codegen
+	if(res.type != ResultType::BreakCodegen)
+	{
+		// put a branch to see if we will go back
+		fir::Value* condInside = this->cond->codegen(cgi).value;
+		cgi->irb.CreateCondBranch(condInside, loopBody, loopEnd);
+	}
 
 	// parentFunc->getBasicBlockList().push_back(loopEnd);
 	cgi->irb.setCurrentBlock(loopEnd);

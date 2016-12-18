@@ -92,7 +92,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// we can shadow outer variables with our own.
 	cgi->pushScope();
 	cgi->setCurrentFunctionScope(this);
-	// auto s = cgi->saveAndClearScope();
+
 
 
 	// to support declaring functions inside functions, we need to remember
@@ -203,8 +203,11 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(value->getType() != needed)
 		{
 			value = cgi->autoCastType(func->getReturnType(), value, pointer);
+			if(value->getType() != needed)
+			{
+				error(this->block, "Return type mismatch: needed '%s', got '%s'", needed->str().c_str(), value->getType()->str().c_str());
+			}
 		}
-
 
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(value->getType()))

@@ -140,7 +140,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 			if(!extra->hasName())
 				extra->setName("strlit");
 
-			return Result_t(cgi->irb.CreateLoad(extra), extra);
+			return Result_t(cs, extra);
 		}
 		else if(extra && extra->getType()->getPointerElementType()->isCharType())
 		{

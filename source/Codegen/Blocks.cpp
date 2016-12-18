@@ -21,7 +21,10 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 			lastval = e->codegen(cgi);
 
 		if(lastval.type == ResultType::BreakCodegen)
+		{
 			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
+			break;
+		}
 	}
 
 	if(!broke)
@@ -33,8 +36,8 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// ok, now decrement all the refcounted vars
 		for(auto v : cgi->getRefCountedValues())
 		{
-			iceAssert(cgi->isRefCountedType(v->getType()));
-			cgi->decrementRefCount(v);
+			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+			cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 		}
 	}
 
@@ -68,8 +71,8 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// ok, now decrement all the refcounted vars
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()));
-		cgi->decrementRefCount(v);
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 	// for break, we go to the ending block
@@ -109,8 +112,8 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// ok, now decrement all the refcounted vars
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()));
-		cgi->decrementRefCount(v);
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 
@@ -179,8 +182,8 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// 5. now, do the refcounting magic
 	for(auto v : cgi->getRefCountedValues())
 	{
-		iceAssert(cgi->isRefCountedType(v->getType()));
-		cgi->decrementRefCount(v);
+		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 

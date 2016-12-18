@@ -23,7 +23,7 @@ using namespace Ast;
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
 
 #define DEBUG_MASTER		0
-#define DEBUG_ALLOCATION	(0 & DEBUG_MASTER)
+#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
 
@@ -527,6 +527,8 @@ namespace String
 		}
 
 		iceAssert(incrf);
+
+
 		return incrf;
 	}
 
@@ -604,7 +606,7 @@ namespace String
 				#if DEBUG_ALLOCATION
 				{
 					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s') (%d)\n");
-					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, curRc });
+					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 				}
 				#endif
 
