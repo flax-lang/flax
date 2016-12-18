@@ -117,6 +117,9 @@ namespace Compiler
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
+		fpm.add(llvm::createDeadInstEliminationPass());
+		fpm.add(llvm::createDeadCodeEliminationPass());
+
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Debug)
 		{
 			fpm.add(llvm::createInstructionCombiningPass());
@@ -124,7 +127,6 @@ namespace Compiler
 			fpm.add(llvm::createMergedLoadStoreMotionPass());
 			fpm.add(llvm::createScalarReplAggregatesPass());
 			fpm.add(llvm::createConstantPropagationPass());
-			fpm.add(llvm::createDeadCodeEliminationPass());
 			fpm.add(llvm::createLoadCombinePass());
 		}
 
@@ -153,7 +155,6 @@ namespace Compiler
 			fpm.add(llvm::createStructurizeCFGPass());
 			fpm.add(llvm::createInstructionSimplifierPass());
 			fpm.add(llvm::createDeadStoreEliminationPass());
-			fpm.add(llvm::createDeadInstEliminationPass());
 			fpm.add(llvm::createMemCpyOptPass());
 
 			fpm.add(llvm::createSCCPPass());
