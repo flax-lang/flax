@@ -311,7 +311,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 		if(shouldAddToSymtab)
 		{
-			cgi->addRefCountedValue(val);
+			cgi->addRefCountedValue(ai);
 		}
 	}
 	else

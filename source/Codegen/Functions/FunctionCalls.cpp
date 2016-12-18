@@ -230,12 +230,17 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 
 
-static inline void handleRefcountedThingIfNeeded(CodegenInstance* cgi, fir::Value* ret)
+static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fir::Value* ret)
 {
 	if(cgi->isRefCountedType(ret->getType()))
 	{
-		cgi->addRefCountedValue(ret);
+		fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(ret->getType(), ret);
+		cgi->addRefCountedValue(tmp);
+
+		return tmp;
 	}
+
+	return 0;
 }
 
 
@@ -322,7 +327,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-				auto i64size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+				auto i64size = 8;/*cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());*/
 				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
 
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, alloclen);
@@ -343,8 +348,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				str = cgi->irb.CreateSetStringLength(str, len);
 				cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
-				cgi->addRefCountedValue(str);
-				return Result_t(str, 0);
+				auto aa = cgi->irb.CreateImmutStackAlloc(str->getType(), str);
+				cgi->addRefCountedValue(aa);
+				return Result_t(str, aa);
 			}
 		}
 		else if(type->isCharType())
@@ -414,8 +420,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Value* fn = cgi->irb.CreateLoad(fv);
 		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(fn, ft, args);
 
-		handleRefcountedThingIfNeeded(cgi, ret);
-		return Result_t(ret, 0);
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 	}
 	else if(extra && extra->getType()->isFunctionType())
 	{
@@ -428,8 +433,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extra, ft, args);
 
-		handleRefcountedThingIfNeeded(cgi, ret);
-		return Result_t(ret, 0);
+		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 	}
 
 
@@ -509,8 +513,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::Function* thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
 	fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
 
-	handleRefcountedThingIfNeeded(cgi, ret);
-	return Result_t(ret, 0);
+	return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 }
 
 

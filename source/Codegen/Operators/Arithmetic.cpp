@@ -209,9 +209,12 @@ namespace Operators
 			// newStringByAppendingChar (does not modify lhsptr)
 			auto apf = RuntimeFuncs::String::getCharAppendFunction(cgi);
 			fir::Value* app = cgi->irb.CreateCall2(apf, lhs, rhs);
-			cgi->addRefCountedValue(app);
 
-			return Result_t(app, 0);
+			// make a new fake
+			fir::Value* aa = cgi->irb.CreateImmutStackAlloc(app->getType(), app);
+			cgi->addRefCountedValue(aa);
+
+			return Result_t(app, aa);
 		}
 		else if(lhs->getType()->isStringType() && rhs->getType()->isStringType())
 		{
@@ -255,8 +258,11 @@ namespace Operators
 				auto apf = RuntimeFuncs::String::getAppendFunction(cgi);
 				fir::Value* app = cgi->irb.CreateCall2(apf, lhs, rhs);
 
-				cgi->addRefCountedValue(app);
-				return Result_t(app, 0);
+				// make a new fake
+				fir::Value* aa = cgi->irb.CreateImmutStackAlloc(app->getType(), app);
+				cgi->addRefCountedValue(aa);
+
+				return Result_t(app, aa);
 			}
 		}
 		else if(lhs->getType()->isDynamicArrayType() && rhs->getType()->isDynamicArrayType()
