@@ -169,7 +169,9 @@ namespace Compiler
 		cgi->module = new fir::Module(Parser::getModuleName(fpath));
 		cgi->importOtherCgi(rcgi);
 
+		auto q = prof::Profile("codegen");
 		Codegen::doCodegen(fpath, root, cgi);
+		q.finish();
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
@@ -252,6 +254,12 @@ namespace Compiler
 		std::string curpath = getPathFromFile(filename);
 
 		DependencyGraph* g = resolveImportGraph(filename, curpath);
+
+		size_t acc = 0;
+		for(auto e : g->edgesFrom)
+			acc += e.second.size();
+
+		printf("%zu edges in graph\n", acc);
 
 		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
 

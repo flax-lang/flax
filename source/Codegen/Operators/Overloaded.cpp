@@ -229,6 +229,8 @@ namespace Codegen
 			{
 				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
 				else if(lhs->isStringType() && rhs->isStringType())		return true;
+				else if(lhs->isCharType() && rhs->isCharType())			return true;
+				else if(lhs->isEnumType() && rhs->isEnumType())			return true;
 				else if(lhs->isPointerType() && rhs->isPointerType()
 					&& lhs->getPointerElementType() == rhs->getPointerElementType())	return true;
 
