@@ -45,7 +45,7 @@ namespace fir
 		this->ident = Identifier(name, IdKind::Name);
 	}
 
-	Identifier Value::getName()
+	const Identifier& Value::getName()
 	{
 		return this->ident;
 	}

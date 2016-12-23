@@ -467,35 +467,71 @@ namespace Codegen
 	}
 
 
-
-
+	static size_t seenCnt;
+	static std::set<FunctionTree*> seen;
 	void CodegenInstance::importFunctionTreeInto(FunctionTree* ftree, FunctionTree* other)
 	{
 		// other is the source
 		// ftree is the target
 
+		// static size_t dc1 = 0;
+		// static size_t dc2 = 0;
+		// static size_t dc3 = 0;
+		// static size_t dc4 = 0;
+
+		if(seen.find(other) != seen.end())
+			printf("seen %s (%zu)\n", other->nsName.c_str(), ++seenCnt);
+
+		else
+			seen.insert(other);
+
+		// static size_t x = 0;
+
+		// printf("import %zu ftrees\n", x++);
 		ftree->nsName = other->nsName;
 		{
 			auto p = prof::Profile("import funcs");
+
+			printf("size: %zu\n", other->funcs.size());
 
 			for(auto pair : other->funcs)
 			{
 				if(pair.funcDecl->attribs & Attr_VisPublic)
 				{
-					bool existing = (pair.funcDecl->genericTypes.size() > 0)
-						? false : ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					bool existing = false;
+
+
+					if(pair.funcDecl->genericTypes.size() > 0)
+					{
+						// loop through
+						for(auto f : ftree->funcs)
+						{
+							if(f.funcDecl == pair.funcDecl)
+								existing = true;
+						}
+					}
+					else
+					{
+						existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					}
 
 					if(!existing)
 					{
+						// printf("wtf? %s did not exist\n", pair.funcDecl->ident.str().c_str());
+
 						iceAssert(pair.funcDecl);
 						if(pair.funcDecl->genericTypes.size() == 0)
 						{
 							// declare new one
+							auto q = prof::Profile("getting and/or creating function");
 							auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(),
 								fir::LinkageType::External);
+							q.finish();
 
+							auto v = prof::Profile("add func");
 							ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
 							ftree->funcSet.insert(f->getName());
+							v.finish();
 						}
 						else
 						{
@@ -748,6 +784,10 @@ namespace Codegen
 		{
 			// auto p = prof::Profile("import subs");
 
+			static size_t r = 0;
+			if(other->subs.size() > 0)
+				printf("recursively importing %zu subs (%zu)\n", other->subs.size(), r += other->subs.size());
+
 			for(auto sub : other->subs)
 			{
 				FunctionTree* found = ftree->subMap[sub->nsName];
@@ -766,6 +806,8 @@ namespace Codegen
 				}
 			}
 		}
+
+		// printf("checks: %zu / %zu / %zu / %zu\n", dc1, dc2, dc3, dc4);
 	}
 
 

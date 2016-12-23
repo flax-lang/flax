@@ -44,7 +44,7 @@ CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-str
 
 LDFLAGS			+= $(SANITISE)
 
-FLXFLAGS		+= -sysroot $(SYSROOT)
+FLXFLAGS		+= -sysroot $(SYSROOT) -profile
 
 
 TESTBIN			:= build/test

@@ -586,7 +586,7 @@ namespace fir
 	Value* IRBuilder::CreateICmpMulti(Value* a, Value* b, std::string vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating icmp multi instruction with non-equal types");
-		iceAssert(a->getType()->isIntegerType() && "creating icmp multi instruction with non-integer type");
+		// iceAssert(a->getType()->isIntegerType() && "creating icmp multi instruction with non-integer type");
 		Instruction* instr = new Instruction(OpKind::ICompare_Multi, false, this->currentBlock,
 			fir::Type::getInt64(this->context), { a, b });
 		return this->addInstruction(instr, vname);

@@ -117,13 +117,18 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		vprs.push_front(fake);
 	}
 
+
 	for(size_t i = 0; i < vprs.size(); i++)
 	{
 		func->getArguments()[i]->setName(vprs[i]->ident);
 
 		if(!isGeneric)
 		{
-			iceAssert(func->getArguments()[i]->getType() == vprs[i]->getType(cgi));
+			if(func->getArguments()[i]->getType() != vprs[i]->getType(cgi))
+			{
+				error(this, "Mismatched types: '%s' vs '%s'", func->getArguments()[i]->getType()->str().c_str(),
+					vprs[i]->getType(cgi)->str().c_str());
+			}
 		}
 
 		fir::Value* ai = 0;
