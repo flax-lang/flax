@@ -545,7 +545,9 @@ namespace Compiler
 		// note: will not affect freestanding implementations, since this is JIT mode
 		// note2: the stupidity of linux extends further than i thought
 		// apparently we cannot dlopen "libc.so", because that's not even a fucking ELF library.
-		tolink.push_back("m");
+		// note3: wow, this applies to libm as well.
+		// fuck you torvalds
+		// so basically just do nothing.
 
 		for(auto l : tolink)
 		{

@@ -12,6 +12,7 @@ public ffi func fprintf(stream: void*, y: i8*, ...) -> i32
 
 // memcpy/set/move
 public ffi func memcpy(dest: i8*, source: i8*, length: u64) -> i8*
+public ffi func memmove(dest: i8*, source: i8*, length: u64) -> i8*
 public ffi func memset(dest: i8*, value: i32, length: u64) -> i8*
 
 // heap
