@@ -252,6 +252,18 @@ namespace Compiler
 				auto frames = Compiler::getFrameworksToLink();
 				auto framedirs = Compiler::getFrameworkSearchPaths();
 
+
+				// here, if we're doing a link, and we're not in freestanding mode, then we're going to add -lc and -lm
+				if(!Compiler::getIsFreestandingMode())
+				{
+					if(std::find(libs.begin(), libs.end(), "m") == libs.end())
+						libs.push_back("m");
+
+					if(std::find(libs.begin(), libs.end(), "c") == libs.end())
+						libs.push_back("c");
+				}
+
+
 				size_t num_extra = 0;
 				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
 				const char** argv = new const char*[s];
@@ -260,15 +272,10 @@ namespace Compiler
 				argv[0] = "cc";
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
+				argv[3] = templ;
 
-				size_t i = 3 + num_extra;
+				size_t i = 4 + num_extra;
 
-				// here, if we're doing a link, and we're not in freestanding mode, then we're going to add -lc and -lm
-				if(!Compiler::getIsFreestandingMode())
-				{
-					libs.push_back("c");
-					libs.push_back("m");
-				}
 
 
 
@@ -303,9 +310,7 @@ namespace Compiler
 					argv[i] = l.c_str();	i++;
 				}
 
-				argv[s - 2] = templ;
 				argv[s - 1] = 0;
-
 
 				int outpipe[2];
 				iceAssert(pipe(outpipe) == 0);
