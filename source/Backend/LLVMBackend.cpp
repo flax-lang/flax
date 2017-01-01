@@ -263,6 +263,15 @@ namespace Compiler
 
 				size_t i = 3 + num_extra;
 
+				// here, if we're doing a link, and we're not in freestanding mode, then we're going to add -lc and -lm
+				if(!Compiler::getIsFreestandingMode())
+				{
+					libs.push_back("c");
+					libs.push_back("m");
+				}
+
+
+
 
 				// note: these need to be references
 				// if they're not, then the std::string (along with its buffer) is destructed at the end of the loop body
