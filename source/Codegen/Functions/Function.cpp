@@ -45,10 +45,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		bool notMangling = (this->decl->attribs & Attr_NoMangle || this->decl->isFFI);
-		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
-							: cgi->module->getFunction(this->decl->ident);
-
+		// guaranteed to exist eventually, because recursion (below)
+		func = this->decl->generatedFunc;
 
 		if(!func)
 		{
@@ -105,7 +103,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	std::deque<VarDecl*> vprs = decl->params;
+	std::deque<VarDecl*> vprs = this->decl->params;
 	if(this->decl->params.size() + 1 == func->getArgumentCount())
 	{
 		// we need to add the self param.

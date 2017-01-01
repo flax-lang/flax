@@ -255,11 +255,11 @@ namespace Compiler
 
 		DependencyGraph* g = resolveImportGraph(filename, curpath);
 
-		size_t acc = 0;
-		for(auto e : g->edgesFrom)
-			acc += e.second.size();
+		// size_t acc = 0;
+		// for(auto e : g->edgesFrom)
+		// 	acc += e.second.size();
 
-		printf("%zu edges in graph\n", acc);
+		// printf("%zu edges in graph\n", acc);
 
 		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
 

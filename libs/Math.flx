@@ -26,12 +26,12 @@ namespace Math
 	public ƒ square<T>(x: T) -> T { x * x }
 
 
-	// public ƒ log(x: f32) -> f32 { logf(x) }
-	// public ƒ log(x: f64) -> f64 { log(x) }
+	public ƒ log(x: f32) -> f32 { logf(x) }
+	public ƒ log(x: f64) -> f64 { log(x) }
 
-	// public ƒ floor(x: f32) -> f32 { floorf(x) }
-	// public ƒ floor(x: f64) -> f64 { floor(x) }
+	public ƒ floor(x: f32) -> f32 { floorf(x) }
+	public ƒ floor(x: f64) -> f64 { floor(x) }
 
-	// public ƒ pow(x: f32, y: f32) -> f32 { powf(x, y) }
-	// public ƒ pow(x: f64, y: f64) -> f64 { pow(x, y) }
+	public ƒ pow(x: f32, y: f32) -> f32 { powf(x, y) }
+	public ƒ pow(x: f64, y: f64) -> f64 { pow(x, y) }
 }
