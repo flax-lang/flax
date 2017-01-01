@@ -270,7 +270,11 @@ namespace Operators
 			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
 
 			iceAssert(lhsptr);
-			iceAssert(rhsptr);
+
+			// we can always do var += rvalue, so we need to make an rhsptr
+			if(!rhsptr)
+				rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
+
 
 			if(lhsptr->isImmutable())
 				GenError::assignToImmutable(cgi, user, args[0]);

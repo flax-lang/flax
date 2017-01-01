@@ -13,7 +13,7 @@
 		4a: `for x in y` would be pretty cool too.
 		4b: `for x in (1, 3)` would be dope af
 			4bi: should the range be open or closed by default? ie. is it 1 <= x <= 3, or 1 <= x < 3?
-			4bii: potential range operator: `for x in 0..4` and/or `for x in 0..4` ? idk.
+			4bii: potential range operator: `for x in 0..4` ? idk.
 			4biii: i think one (either open or closed) should be chosen as default. it's not hard to ±1 if needed, i think
 
 	5. assign [] to dynamic arrays
@@ -30,6 +30,7 @@
 		ie. __attribute__((noreturn))
 
 	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
+		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
 
 	10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
 		the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver

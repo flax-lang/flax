@@ -81,6 +81,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 // todo: this function is a little... dirty.
+// lmao: every function is *very* dirty
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
@@ -476,6 +477,20 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		error(ma, "Cannot do member access on aggregate type '%s'", type->str().c_str());
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -962,8 +977,8 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 
 
 
-std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
-CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
+static std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, StructBase*, fir::Type*>
+unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
@@ -1010,7 +1025,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 
 	// now we go left-to-right.
 	std::deque<std::string> nsstrs;
-	FunctionTree* ftree = this->getCurrentFuncTree(&nsstrs);
+	FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
 	while(list.size() > 0)
 	{
 		std::string front = list.front();
@@ -1027,30 +1042,16 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 			{
 				// yes.
 				nsstrs.push_back(front);
-				ftree = this->getCurrentFuncTree(&nsstrs);
+				ftree = cgi->getCurrentFuncTree(&nsstrs);
 				iceAssert(ftree);
 
 				found = true;
 			}
 
-			// for(auto sub : ftree->subs)
-			// {
-			// 	iceAssert(sub);
-			// 	if(sub->nsName == front)
-			// 	{
-			// 		// yes.
-			// 		nsstrs.push_back(front);
-			// 		ftree = this->getCurrentFuncTree(&nsstrs);
-			// 		iceAssert(ftree);
-
-			// 		found = true;
-			// 		break;
-			// 	}
-			// }
 
 			if(found) continue;
 
-			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
+			if(TypePair_t* tp = cgi->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<StructBase*>(tp->second.first);
@@ -1082,7 +1083,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 		}
 		else
 		{
-			this->pushNestedTypeScope(curType);
+			cgi->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
 				if(sb.first->ident.name == front)
@@ -1093,7 +1094,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 					break;
 				}
 			}
-			this->popNestedTypeScope();
+			cgi->popNestedTypeScope();
 
 			if(found) continue;
 		}
@@ -1124,7 +1125,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	std::deque<std::string> nsstrs;
 	std::deque<std::string> origList;
 
-	std::tie(ftree, nsstrs, origList, curType, curFType) = this->unwrapStaticDotOperator(ma);
+	std::tie(ftree, nsstrs, origList, curType, curFType) = unwrapStaticDotOperator(this, ma);
 
 
 
@@ -1460,7 +1461,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 		StructBase* strType = 0;
 		fir::Type* strFType = 0;
 
-		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = unwrapStaticDotOperator(this, ma);
 
 		std::string name;
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))

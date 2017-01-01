@@ -252,11 +252,6 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-
-
-		std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
-		unwrapStaticDotOperator(Ast::MemberAccess* ma);
-
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);

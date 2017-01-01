@@ -95,14 +95,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 				return;
 			}
 
-			// for(auto sub : ft->subs)
-			// {
-			// 	if(sub->nsName == vr->name)
-			// 	{
-			// 	}
-			// }
-
-
 			// type???
 			std::deque<std::string> fullScope = gstate.nsstrs;
 			for(auto s : gstate.nestedTypeStrs)
@@ -293,6 +285,10 @@ static void findDotOperator(Expr* expr)
 
 		for(auto p : alc->params)
 			findDotOperator(p);
+	}
+	else if(Dealloc* dlc = dynamic_cast<Dealloc*>(expr))
+	{
+		findDotOperator(dlc->expr);
 	}
 	else if(ArrayIndex* ari = dynamic_cast<ArrayIndex*>(expr))
 	{
