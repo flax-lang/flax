@@ -45,13 +45,23 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 {
 	fir::FunctionType* ft = 0;
 
+
+	// add the things
+	// note: the following won't affect non-generic functions.
+	// this is to allow type normalisation with the function type *properly*
+	std::deque<fir::ParametricType*> tparams;
+
+	for(auto t : fd->genericTypes)
+		tparams.push_back(fir::ParametricType::get(t.first));
+
+
 	if(fd->isCStyleVarArg)
 	{
 		ft = fir::FunctionType::getCVariadicFunc(argtypes, rettype);
 	}
 	else
 	{
-		ft = fir::FunctionType::get(argtypes, rettype, fd->isVariadic);
+		ft = fir::FunctionType::getWithTypeParameters(argtypes, rettype, fd->isVariadic, tparams);
 	}
 
 
@@ -82,14 +92,6 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		}
 		else
 		{
-			// add the things
-			std::deque<fir::ParametricType*> tparams;
-
-			for(auto t : fd->genericTypes)
-				tparams.push_back(fir::ParametricType::get(t.first));
-
-			ft->addTypeParameters(tparams);
-
 			func = fir::Function::create(fd->ident, ft, cgi->module, linkageType);
 		}
 

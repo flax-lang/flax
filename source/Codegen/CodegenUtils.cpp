@@ -467,8 +467,8 @@ namespace Codegen
 	}
 
 
-	static size_t seenCnt;
-	static std::set<FunctionTree*> seen;
+	// static size_t seenCnt;
+	// static std::set<FunctionTree*> seen;
 	void CodegenInstance::importFunctionTreeInto(FunctionTree* ftree, FunctionTree* other)
 	{
 		// other is the source
@@ -479,11 +479,11 @@ namespace Codegen
 		// static size_t dc3 = 0;
 		// static size_t dc4 = 0;
 
-		if(seen.find(other) != seen.end())
-			printf("seen %s (%zu)\n", other->nsName.c_str(), ++seenCnt);
+		// if(seen.find(other) != seen.end())
+		// 	printf("seen %s (%zu)\n", other->nsName.c_str(), ++seenCnt);
 
-		else
-			seen.insert(other);
+		// else
+		// 	seen.insert(other);
 
 		// static size_t x = 0;
 
@@ -492,7 +492,7 @@ namespace Codegen
 		{
 			auto p = prof::Profile("import funcs");
 
-			printf("size: %zu\n", other->funcs.size());
+			// printf("size: %zu\n", other->funcs.size());
 
 			for(auto pair : other->funcs)
 			{
@@ -784,9 +784,9 @@ namespace Codegen
 		{
 			// auto p = prof::Profile("import subs");
 
-			static size_t r = 0;
-			if(other->subs.size() > 0)
-				printf("recursively importing %zu subs (%zu)\n", other->subs.size(), r += other->subs.size());
+			// static size_t r = 0;
+			// if(other->subs.size() > 0)
+				// printf("recursively importing %zu subs (%zu)\n", other->subs.size(), r += other->subs.size());
 
 			for(auto sub : other->subs)
 			{

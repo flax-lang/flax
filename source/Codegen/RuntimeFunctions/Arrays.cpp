@@ -303,8 +303,8 @@ namespace Array
 			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
 			// fir::Value* nextpow2 = cgi->irb.CreateMul(needed, fir::ConstantInt::getInt64(2));
 
-			// fir::Value* roundedElmSize = cgi->irb.CreateCall1(p2func, cgi->irb.CreateSizeof(elmtype));
 			// {
+			// 	fir::Value* roundedElmSize = cgi->irb.CreateCall1(p2func, cgi->irb.CreateSizeof(elmtype));
 			// 	fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
 			// 		fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 			// 		fir::Type::getInt32()), fir::LinkageType::External);
@@ -358,6 +358,8 @@ namespace Array
 			fir::Value* s1 = func->getArguments()[0];
 			fir::Value* s2 = func->getArguments()[1];
 
+			auto elmType = arrtype->getElementType();
+
 			// get the second one
 			{
 				fir::Value* origlen = cgi->irb.CreateGetDynamicArrayLength(s1);
@@ -384,8 +386,49 @@ namespace Array
 					cgi->irb.CreatePointerTypeCast(s2ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
 					fir::ConstantInt::getBool(0) });
 
-				// // increase the length
+				// increase the length
 				cgi->irb.CreateSetDynamicArrayLength(s1, cgi->irb.CreateAdd(origlen, applen));
+
+
+				if(cgi->isRefCountedType(elmType))
+				{
+					// loop through the source array (Y in X + Y)
+
+					fir::IRBlock* cond = cgi->irb.addNewBlockInFunction("loopCond", func);
+					fir::IRBlock* body = cgi->irb.addNewBlockInFunction("loopBody", func);
+					fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+
+					fir::Value* ctrPtr = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+					cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), ctrPtr);
+
+					fir::Value* s2len = cgi->irb.CreateGetDynamicArrayLength(s2);
+					cgi->irb.CreateUnCondBranch(cond);
+
+					cgi->irb.setCurrentBlock(cond);
+					{
+						// check the condition
+						fir::Value* ctr = cgi->irb.CreateLoad(ctrPtr);
+						fir::Value* res = cgi->irb.CreateICmpLT(ctr, s2len);
+
+						cgi->irb.CreateCondBranch(res, body, merge);
+					}
+
+					cgi->irb.setCurrentBlock(body);
+					{
+						// increment refcount
+						fir::Value* val = cgi->irb.CreateLoad(cgi->irb.CreatePointerAdd(s2ptr, cgi->irb.CreateLoad(ctrPtr)));
+						cgi->incrementRefCount(val);
+
+						// increment counter
+						cgi->irb.CreateStore(cgi->irb.CreateAdd(fir::ConstantInt::getInt64(1), cgi->irb.CreateLoad(ctrPtr)), ctrPtr);
+						cgi->irb.CreateUnCondBranch(cond);
+					}
+
+					cgi->irb.setCurrentBlock(merge);
+				}
+
+
+
 
 				// ok done.
 				cgi->irb.CreateReturnVoid();
@@ -423,6 +466,8 @@ namespace Array
 			fir::Value* s1 = func->getArguments()[0];
 			fir::Value* s2 = func->getArguments()[1];
 
+			auto elmType = arrtype->getElementType();
+
 			// get the second one
 			{
 				fir::Value* origlen = cgi->irb.CreateGetDynamicArrayLength(s1);
@@ -437,6 +482,10 @@ namespace Array
 				ptr = cgi->irb.CreatePointerAdd(ptr, origlen);
 
 				cgi->irb.CreateStore(s2, ptr);
+
+				if(cgi->isRefCountedType(elmType))
+					cgi->incrementRefCount(s2);
+
 
 				// increase the length
 				cgi->irb.CreateSetDynamicArrayLength(s1, cgi->irb.CreateAdd(origlen, applen));
