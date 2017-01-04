@@ -49,6 +49,8 @@
 #include "backend.h"
 #include "compiler.h"
 
+#include "llvm/IR/LLVMContext.h"
+
 #include <stdio.h>
 #include <spawn.h>
 #include <fcntl.h>
@@ -58,9 +60,15 @@
 #include <sys/types.h>
 
 
+static llvm::LLVMContext globalContext;
 
 namespace Compiler
 {
+	llvm::LLVMContext& LLVMBackend::getLLVMContext()
+	{
+		return globalContext;
+	}
+
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
@@ -87,7 +95,7 @@ namespace Compiler
 		auto s = Compiler::getFilenameFromPath(this->inputFilenames[0]);
 		s = s.substr(0, s.find_last_of("."));
 
-		llvm::Module* mainModule = new llvm::Module(s, llvm::getGlobalContext());
+		llvm::Module* mainModule = new llvm::Module(s, LLVMBackend::getLLVMContext());
 		llvm::Linker linker = llvm::Linker(*mainModule);
 
 		for(auto mod : modulelist)
@@ -125,9 +133,9 @@ namespace Compiler
 			fpm.add(llvm::createInstructionCombiningPass());
 			fpm.add(llvm::createPromoteMemoryToRegisterPass());
 			fpm.add(llvm::createMergedLoadStoreMotionPass());
-			fpm.add(llvm::createScalarReplAggregatesPass());
 			fpm.add(llvm::createConstantPropagationPass());
 			fpm.add(llvm::createLoadCombinePass());
+			fpm.add(llvm::createScalarizerPass());
 		}
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::None)
@@ -137,7 +145,7 @@ namespace Compiler
 			fpm.add(llvm::createReassociatePass());
 
 			// Eliminate Common SubExpressions.
-			fpm.add(llvm::createGVNPass());
+			// fpm.add(llvm::createGVNHoistPass());
 
 
 			// Simplify the control flow graph (deleting unreachable blocks, etc).
@@ -444,11 +452,14 @@ namespace Compiler
 
 
 		llvm::TargetOptions targetOptions;
+		llvm::Reloc::Model relocModel = llvm::Reloc::Model::Static;
+
+		// todo: use dynamic no pic for dylibs?? idk
 		if(Compiler::getIsPositionIndependent())
-			targetOptions.PositionIndependentExecutable = true;
+			relocModel = llvm::Reloc::Model::PIC_;
 
 		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
-			targetOptions, llvm::Reloc::Default, codeModel, llvm::CodeGenOpt::Default);
+			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
 	}
 
 
@@ -682,13 +693,13 @@ namespace Compiler
 			}
 
 
-			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm::getGlobalContext()), false);
+			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(LLVMBackend::getLLVMContext()), false);
 			llvm::Function* gconstr = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage,
 				"__global_constructor_top_level__", this->linkedModule);
 
-			llvm::IRBuilder<> builder(llvm::getGlobalContext());
+			llvm::IRBuilder<> builder(LLVMBackend::getLLVMContext());
 
-			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "initialiser", gconstr);
+			llvm::BasicBlock* iblock = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "initialiser", gconstr);
 			builder.SetInsertPoint(iblock);
 
 			for(auto f : constructors)
@@ -710,7 +721,7 @@ namespace Compiler
 				iceAssert(mainfunc);
 
 				llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
-				llvm::BasicBlock* f = llvm::BasicBlock::Create(llvm::getGlobalContext(), "__main_entry", mainfunc);
+				llvm::BasicBlock* f = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "__main_entry", mainfunc);
 
 				f->moveBefore(entry);
 				builder.SetInsertPoint(f);
