@@ -22,6 +22,7 @@ namespace llvm
 	class Module;
 	class TargetMachine;
 	class ExecutionEngine;
+	class LLVMContext;
 }
 
 namespace Compiler
@@ -105,6 +106,8 @@ namespace Compiler
 		virtual void writeOutput() override;
 
 		virtual std::string str() override;
+
+		static llvm::LLVMContext& getLLVMContext();
 
 		private:
 		void setupTargetMachine();

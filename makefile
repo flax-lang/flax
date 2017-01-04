@@ -18,7 +18,7 @@ OUTPUT			:= $(SYSROOT)/$(PREFIX)/bin/$(OUTPUTBIN)
 
 CC				?= "clang"
 CXX				?= "clang++"
-LLVM_CONFIG		?= "llvm-config-3.8"
+LLVM_CONFIG		?= "llvm-config"
 
 
 CXXSRC			:= $(shell find source -iname "*.cpp")
