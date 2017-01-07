@@ -55,8 +55,7 @@ namespace fir
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
 
-		// keyed by number of indirections
-		std::unordered_map<size_t, std::vector<Type*>> typeCache;
+		std::vector<Type*> typeCache;
 		Type* normaliseType(Type* type);
 	};
 
