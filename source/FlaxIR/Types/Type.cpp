@@ -302,13 +302,19 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
+		// cache the pointer internally
+		if (!pointerTo) {
+			PointerType* newType = new PointerType(this);
+			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
 
-		PointerType* newType = new PointerType(this);
+			iceAssert(newType);
+			// the type shouldn't be in the global cache at this point yet
+			iceAssert(normalised == newType);
 
-		// get or create.
-		newType = dynamic_cast<PointerType*>(tc->normaliseType(newType));
-		iceAssert(newType);
-		return newType;
+			pointerTo = normalised;
+		}
+
+		return pointerTo;
 	}
 
 	Type* Type::getPointerElementType(FTContext* tc)
