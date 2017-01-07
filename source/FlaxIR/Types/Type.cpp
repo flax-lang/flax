@@ -330,7 +330,9 @@ namespace fir
 		iceAssert(ptrthis);
 
 		Type* newType = ptrthis->baseType;
-		newType = tc->normaliseType(newType);
+		// ptrthis could only have been obtained by calling getPointerTo
+		// on an already normalised type, so this should not be needed
+		// newType = tc->normaliseType(newType);
 
 		return newType;
 	}
@@ -361,8 +363,9 @@ namespace fir
 			for(ssize_t i = 0; i < -times; i++)
 				ret = ret->getPointerElementType();
 		}
-
-		ret = tc->normaliseType(ret);
+		// both getPointerTo and getPointerElementType should already
+		// return normalised types
+		// ret = tc->normaliseType(ret);
 		return ret;
 	}
 
