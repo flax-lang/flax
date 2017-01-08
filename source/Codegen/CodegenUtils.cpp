@@ -1028,18 +1028,7 @@ namespace Codegen
 			argTypes.push_back(e->getType(this, true));
 
 
-		if(basename == "variadicTest")
-		{
-
-		}
-
 		auto ret = this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
-
-
-		if(basename == "variadicTest")
-		{
-			warn("!! (%p)", ret.t.firFunc);
-		}
 
 		return ret;
 	}

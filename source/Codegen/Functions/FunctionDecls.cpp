@@ -175,7 +175,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	printf("gen func: %s\n", this->ident.str().c_str());
+	// printf("gen func: %s\n", this->ident.str().c_str());
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentClass != nullptr);

@@ -472,7 +472,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// generate it.
 			iceAssert(rt.t.funcDecl);
 
-			printf("expediting function call to %s\n", this->name.c_str());
+			// printf("expediting function call to %s\n", this->name.c_str());
 			rt.t.funcDecl->codegen(cgi);
 
 			rt = cgi->resolveFunction(this, this->name, this->params);
