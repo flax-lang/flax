@@ -138,6 +138,8 @@ namespace SemAnalysis
 
 	static void analyseBlock(CodegenInstance* cgi, std::deque<Expr*> exprs)
 	{
+		return;
+
 		for(Expr* ex : exprs)
 		{
 			if(NamespaceDecl* ns = dynamic_cast<NamespaceDecl*>(ex))

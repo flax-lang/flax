@@ -868,7 +868,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override { return 0; };
 
-		Codegen::FunctionTree* rootFuncStack = new Codegen::FunctionTree("__#root");
+		Codegen::FunctionTree* rootFuncStack = new Codegen::FunctionTree("", 0);
 
 		// public functiondecls and type decls.
 		// Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");

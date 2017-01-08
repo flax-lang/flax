@@ -202,6 +202,46 @@ public func main(argc: i32, argv: i8**) -> int
 	}
 
 
+
+
+	/*
+		implementation notes
+
+		1. ftree needs an overhaul of some description, i think
+			in the interim, ftree needs a 'parent' field, probably.
+			scoping is unreliable and goes to hell
+
+		2. dot operator is crazy rn
+			instead of having a semantic pass, just let the compiler try all the static namespaces (class/struct/enum/whatever), then
+			instead of failing when it can't find anything, just go and look through instance variables
+
+			not optimal, but it's easier to optimise a working thing rather than rewrite a broken thing into a fast working thing
+			anyway. might swap the order of instance/static -- there might be many classes or whatever at global scope for example,
+			maybe checking local variables first, then failing, might be more prudent.
+
+		3. a lot of places in the codegen need to account for the possibility of 'trying' -- like the scope resolution above, we need to
+			be able to 'fail' safely when the static scope can't be found, so we can continue elsewhere
+
+			eg. 'tryResolveVariableReference'
+
+			everything is quite messy in this regard -- everything handles its own errors.
+
+		4. speaking of which, might want to revamp how error handling works.
+			while something like error("lol") might seem decent, as above, we might need a way to fail. maybe an error list that's pushed
+			to? eg. `pushError("lol")`... someone needs to check that list, which might become haphazard. bad things are coming to my mind now,
+			like asynchronous checking (running a separate thread) but that's a Bad Idea (tm).
+
+			probably just stick to a normal error() routine for now. most of them would not allow continued codegen or any form of recovery
+			that we care about anyway.
+
+			it does lead to the situation of needing to fix errors one-by-one in a edit-compile-test cycle, but if you're doing things where
+			you expect 102841 errors the first time, instead of maybe 4, you're doing some shit wrongly, and you're not welcome here.
+
+			besides, compounded errors caused by previous errors (read - missing parens/semicolons/whatever in C/C++) would just clutter
+			everything -- it's more useful to stop at the first error.
+	*/
+
+
 	// enum SomeEnum
 	// {
 	// 	case Up
@@ -210,13 +250,14 @@ public func main(argc: i32, argv: i8**) -> int
 	// 	case Right
 	// }
 
-	// struct Foo
-	// {
-	// 	var x: int
-	// }
+	struct Foop
+	{
+		var x: int
+	}
 
 	// let e = SomeEnum.Down
-	// let f = Foo(10)
+	let f = Foop(10)
+	printf("f.x = %d\n", f.x)
 
 	// if e == SomeEnum.Left
 	// {
