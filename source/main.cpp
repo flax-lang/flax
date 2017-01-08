@@ -57,13 +57,18 @@ int main(int argc, char* argv[])
 
 			filename = Compiler::getFullPathOfFile(filename);
 			curpath = Compiler::getPathFromFile(filename);
-
 		}
+
+
+
 
 		{
 			auto p = prof::Profile(PROFGROUP_TOP, "cycle check");
 			groups = Compiler::checkCyclicDependencies(filename);
 		}
+
+
+
 
 		{
 			auto p = prof::Profile("parse ops");
@@ -77,7 +82,7 @@ int main(int argc, char* argv[])
 
 	Compiler::CompiledData cd;
 	{
-		// auto p = prof::Profile(PROFGROUP_CODEGEN, "compile");
+		auto p = prof::Profile(PROFGROUP_TOP, "compile");
 		cd = Compiler::compileFile(filename, groups, _cgi->customOperatorMap, _cgi->customOperatorMapRev);
 	}
 

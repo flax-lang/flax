@@ -200,6 +200,103 @@ namespace fir
 
 
 
+	ConstantStruct* ConstantStruct::get(StructType* st, std::deque<ConstantValue*> members)
+	{
+		return new ConstantStruct(st, members);
+	}
+
+	ConstantStruct::ConstantStruct(StructType* st, std::deque<ConstantValue*> members) : ConstantValue(st)
+	{
+		if(st->getElementCount() != members.size())
+			_error_and_exit("Mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
+
+		for(size_t i = 0; i < st->getElementCount(); i++)
+		{
+			if(st->getElementN(i) != members[i]->getType())
+			{
+				_error_and_exit("Mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i)->str().c_str(),
+					members[i]->getType()->str().c_str());
+			}
+		}
+
+		// ok
+		this->members = members;
+	}
+
+
+
+
+
+
+
+	ConstantString* ConstantString::get(std::string s)
+	{
+		return new ConstantString(s);
+	}
+
+	ConstantString::ConstantString(std::string s) : ConstantValue(fir::StringType::get())
+	{
+		this->str = s;
+	}
+
+	std::string ConstantString::getValue()
+	{
+		return this->str;
+	}
+
+
+
+	ConstantTuple* ConstantTuple::get(std::deque<ConstantValue*> mems)
+	{
+		return new ConstantTuple(mems);
+	}
+
+	std::deque<ConstantValue*> ConstantTuple::getValues()
+	{
+		return this->values;
+	}
+
+	static std::deque<Type*> mapTypes(std::deque<ConstantValue*> vs)
+	{
+		std::deque<Type*> ret;
+		for(auto v : vs)
+			ret.push_back(v->getType());
+
+		return ret;
+	}
+
+	// well this is stupid.
+	ConstantTuple::ConstantTuple(std::deque<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
+	{
+		this->values = mems;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

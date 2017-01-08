@@ -32,7 +32,6 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Flax targets the LLVM backend, simply because it is widely ported, has an incredible amount of optimisation passes, and can target freestanding platforms.
 - This language aims to have as little dependencies against userspace libraries as possible.
 - Therefore, only a small subset of libc functions will be required. While the language has not been finalised, I envision only basic functions (read(2)/write(2), malloc/free, or even mmap(2), memset/memcpy/memmove) being required.
-- The builtin standard library (tentatively 'Foundation') will be provided as a source-level library (written in Flax!), making it much easier to build against a freestanding target.
 - Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/zhiayang/mx) in Flax, and if possible parts of the kernel or drivers.
 
 

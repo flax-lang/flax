@@ -252,11 +252,6 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-
-
-		std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
-		unwrapStaticDotOperator(Ast::MemberAccess* ma);
-
 		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
 
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
@@ -270,8 +265,8 @@ namespace Codegen
 		void incrementRefCount(fir::Value* strp);
 		void decrementRefCount(fir::Value* strp);
 
-		void assignRefCountedExpression(Ast::Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target, Ast::ValueKind rhsVK,
-			bool isInitialAssignment, bool doAssignment);
+		void assignRefCountedExpression(Ast::Expr* user, fir::Value* rhs, fir::Value* rhsptr, fir::Value* lhs, fir::Value* lhsptr,
+			Ast::ValueKind rhsVK, bool isInitialAssignment, bool doAssignment);
 
 		fir::Function* getFunctionFromModuleWithName(const Identifier& id, Ast::Expr* user);
 		fir::Function* getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Ast::Expr* user);

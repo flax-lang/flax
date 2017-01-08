@@ -9,7 +9,7 @@
 
 namespace fir
 {
-	GlobalValue::GlobalValue(Module* m, Type* type, LinkageType linkage) : Value(type->getPointerTo())
+	GlobalValue::GlobalValue(Module* m, Type* type, LinkageType linkage) : ConstantValue(type->getPointerTo())
 	{
 		this->linkageType = linkage;
 		this->parentModule = m;

@@ -5,6 +5,7 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "runtimefuncs.h"
 
 using namespace Ast;
 using namespace Codegen;
@@ -63,8 +64,6 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 			fir::Value* argptr = 0;
 			std::tie(arg, argptr) = e->codegen(cgi);
 
-			// info(e, "%s - %s", arg->getType()->str().c_str(), ft->getArgumentTypes()[cur]->str().c_str());
-
 			if(!checkcv && arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
 			{
 				fir::Function* res = instantiateGenericFunctionAsParameter(cgi, fc, arg, ft->getArgumentTypes()[cur]->toFunctionType(),
@@ -79,11 +78,11 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 
 			if(checkcv && (arg->getType()->isStructType() || arg->getType()->isClassType() || arg->getType()->isTupleType()))
 			{
-				fir::Type* st = arg->getType();
-				if(st->isClassType() || st->isStructType())
-				{
-					warn(e, "Passing structs to C-style variadic functions can have unexpected results.");
-				}
+				error(e, "Compound values (structs, classes and tuples) cannot be passed to C-style variadic functions");
+			}
+			else if(checkcv && arg->getType()->isArrayType())
+			{
+				error(e, "Arrays cannot be passed to C-style variadic functions. Cast to a pointer type instead.");
 			}
 			else if(checkcv && arg->getType()->isStringType())
 			{
@@ -262,7 +261,8 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
 
 		// get our parameters.
-		if(this->params.size() != 1)
+		// strings can take more than one
+		if(this->params.size() != 1 && !type->isStringType())
 			error(this, "Builtin type initialisers must be called with exactly one argument (have %zu)", this->params.size());
 
 		auto res = this->params[0]->codegen(cgi);
@@ -274,10 +274,14 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(type->isStringType())
 		{
 			// make a string with this.
-			if(StringLiteral* sl = dynamic_cast<StringLiteral*>(this->params[0]))
+			if(dynamic_cast<StringLiteral*>(this->params[0]) && this->params.size() == 1)
 			{
 				// lol wtf
-				return cgi->makeStringLiteral(sl->str);
+				return cgi->makeStringLiteral(dynamic_cast<StringLiteral*>(this->params[0])->str);
+			}
+			else if(arg->getType()->isStringType() && this->params.size() == 1)
+			{
+				return Result_t(arg, 0);
 			}
 
 
@@ -285,12 +289,45 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				// first get the length
 				fir::Function* strlenf = cgi->getOrDeclareLibCFunc("strlen");
-				fir::Function* mallocf = cgi->getOrDeclareLibCFunc("malloc");
+				fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-				fir::Value* len = cgi->irb.CreateCall1(strlenf, arg);
+				fir::Value* len = 0;
+				if(this->params.size() == 1)
+				{
+					len = cgi->irb.CreateCall1(strlenf, arg);
+				}
+				else if(this->params.size() == 2)
+				{
+					fir::Value* l = this->params[1]->codegen(cgi).value;
+					if(!l->getType()->isIntegerType())
+					{
+						error(this, "Expected integer type in second (length) parameter of string initialiser; have '%s'",
+							l->getType()->str().c_str());
+					}
 
-				auto i64size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+					if(l->getType() != fir::Type::getInt64())
+					{
+						l = cgi->irb.CreateIntSignednessCast(l, l->getType()->toPrimitiveType()->getOppositeSignedType());
+						if(l->getType() != fir::Type::getInt64())
+							l = cgi->irb.CreateIntSizeCast(l, fir::Type::getInt64());
+					}
+
+
+					// make l the length
+					len = l;
+				}
+				else
+				{
+					error(this, "Invalid number of parameters for string initialiser (have %zu, max is 2)", this->params.size());
+				}
+
+
+
+
+
+
+				auto i64size = 8;/*cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());*/
 				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
 
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, alloclen);
@@ -305,18 +342,49 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), cgi->irb.CreatePointerAdd(buf, len));
 
 				// ok, store everything.
-				fir::Value* str = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
+				fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-				cgi->irb.CreateSetStringData(str, buf);
-				cgi->irb.CreateSetStringLength(str, len);
+				str = cgi->irb.CreateSetStringData(str, buf);
+				str = cgi->irb.CreateSetStringLength(str, len);
 				cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
-				cgi->addRefCountedValue(str);
-				return Result_t(cgi->irb.CreateLoad(str), str);
+				auto aa = cgi->irb.CreateImmutStackAlloc(str->getType(), str);
+				cgi->addRefCountedValue(aa);
+				return Result_t(str, aa);
 			}
-			else
+		}
+		else if(type->isCharType())
+		{
+			if(arg->getType()->isStringType())
 			{
-				return res;
+				// needs to be constant
+				if(auto cs = dynamic_cast<fir::ConstantString*>(arg))
+				{
+					std::string s = cs->getValue();
+					if(s.length() == 0)
+						error(this, "Empty character literals are not allowed");
+
+					else if(s.length() > 1)
+						error("Character literals must, obviously, contain only one (ASCII) character");
+
+					char c = s[0];
+					return Result_t(fir::ConstantChar::get(c), 0);
+				}
+				else
+				{
+					error(this, "Character literals need to be constant");
+				}
+			}
+			else if(arg->getType()->isIntegerType())
+			{
+				// truncate if required
+				if(arg->getType() != fir::Type::getInt8() && arg->getType() != fir::Type::getUint8())
+					error(this, "Invalid instantiation of char from non-i8 type integer (have '%s')", arg->getType()->str().c_str());
+
+				if(arg->getType() == fir::Type::getUint8())
+					arg = cgi->irb.CreateIntSignednessCast(arg, fir::Type::getInt8());
+
+				return Result_t(cgi->irb.CreateBitcast(arg, fir::Type::getCharType()), 0);
 			}
 		}
 		else
@@ -444,7 +512,6 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	fir::Function* thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
 	fir::Value* ret = cgi->irb.CreateCall(thistarget, args);
-
 
 	return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 }

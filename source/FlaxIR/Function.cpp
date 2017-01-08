@@ -5,6 +5,8 @@
 #include "ir/module.h"
 #include "ir/function.h"
 
+#include <algorithm>
+
 namespace fir
 {
 	// argument stuff

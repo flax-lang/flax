@@ -70,6 +70,7 @@ namespace Codegen
 		Tuple,
 		Protocol,
 		Parametric,
+		Array
 	};
 
 	typedef std::pair<fir::Value*, Ast::VarDecl*> SymbolPair_t;

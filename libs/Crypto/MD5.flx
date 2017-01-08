@@ -1,0 +1,209 @@
+// MD5.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import LibCInterface
+
+public namespace MD5
+{
+	// Constants are the integer part of the sines of integers (in radians) * 2^32.
+	let sines = [
+		0xd76aa478 as u32, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+		0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+		0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+		0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+		0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+		0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+		0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+		0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+		0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+		0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+		0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+		0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+		0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+		0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+		0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+		0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+	]
+
+	// r specifies the per-round shift amounts
+	let shifts = [
+		7 as u32, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+		5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
+		4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+		6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+	]
+
+
+	func leftRotate(x: u32, c: u32) -> u32 { (x << c) | (x >> (32 - c)) }
+
+
+	func toBytes(v: u32, b: u8*)
+	{
+		b[0] = v as u8
+		b[1] = (v >> 8) as u8
+		b[2] = (v >> 16) as u8
+		b[3] = (v >> 24) as u8
+	}
+
+	func toInt32(b: u8*) -> u32 { (b[0]) | (b[1] as u32 << 8) | (b[2] as u32 << 16) | (b[3] as u32 << 24) }
+
+
+
+	func getHash(bytes: u8*, bytesLen: int) -> u8[]
+	{
+		var h0: u32 = 0x67452301
+		var h1: u32 = 0xefcdab89
+		var h2: u32 = 0x98badcfe
+		var h3: u32 = 0x10325476
+
+		// Pre-processing:
+		// append "1" bit to message
+		// append "0" bits until message length in bits ≡ 448 (mod 512)
+		// append length mod (2^64) to message
+
+		var newLen = bytesLen + 1
+		while newLen % 64 != 56
+		{
+			newLen += 1
+		}
+
+		var msg = (alloc[newLen + 8] u8).pointer
+		memcpy(msg as i8*, bytes as i8*, bytesLen as u64)
+		msg[bytesLen] = 0x80 // append the "1" bit; most significant bit is "first"
+
+
+		var offset: int = bytesLen + 1
+		while offset < newLen
+		{
+			// append "0" bits
+			msg[offset] = 0
+			offset += 1
+		}
+
+		// append the len in bits at the end of the buffer.
+		toBytes((bytesLen * 8) as u32, msg + newLen)
+
+		// initial_len >> 29 == initial_len * 8 >> 32, but avoids overflow.
+		toBytes((bytesLen >> 29) as u32, msg + newLen + 4)
+
+		// Process the message in successive 512-bit chunks:
+		// for each 512-bit chunk of message:
+
+		offset = 0
+		while offset < newLen
+		{
+			var w: u32[16]
+			var i: u32 = 0
+			while i < 16
+			{
+				// break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
+				w[i] = toInt32(msg + offset + i * 4)
+				i += 1
+			}
+
+
+			// Initialize hash value for this chunk:
+			var a = h0
+			var b = h1
+			var c = h2
+			var d = h3
+
+
+			// Main loop:
+			i = 0
+			while i < 64
+			{
+				var f: u32 = 0
+				var g: u32 = 0
+
+				if i < 16
+				{
+					f = (b & c) | ((~b) & d)
+					g = i
+				}
+				else if i < 32
+				{
+					f = (d & b) | ((~d) & c)
+					g = (5 * i + 1) % 16
+				}
+				else if i < 48
+				{
+					f = b ^ c ^ d
+					g = (3 * i + 5) % 16
+				}
+				else
+				{
+					f = c ^ (b | (~d))
+					g = (7 * i) % 16
+				}
+
+
+				let temp = d
+				d = c
+				c = b
+				b = b + leftRotate((a + f + sines[i] + w[g]), shifts[i])
+				a = temp
+
+				i += 1
+			}
+
+			// Add this chunk's hash to result so far:
+			h0 += a
+			h1 += b
+			h2 += c
+			h3 += d
+
+			offset += 64
+		}
+
+
+		// cleanup
+		dealloc msg
+
+		var digest = alloc[16] u8
+
+		toBytes(h0, digest.pointer)
+		toBytes(h1, digest.pointer + 4)
+		toBytes(h2, digest.pointer + 8)
+		toBytes(h3, digest.pointer + 12)
+
+		return digest
+	}
+
+
+
+
+	public func getHash(bytes: u8[]) -> u8[]
+	{
+		return getHash(bytes.pointer, bytes.length)
+	}
+
+	public func hashString(s: string) -> u8[]
+	{
+		let rs = s.raw
+		return MD5.getHash(rs as u8*, s.length)
+	}
+
+
+	public func hashToString(h: u8[]) -> string
+	{
+		var arr = malloc(64)
+
+		sprintf(arr, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15])
+
+		let s = string(arr, 32)
+
+		dealloc arr
+		return s
+	}
+
+	public func stringHashOfString(s: string) -> string
+	{
+		let x = MD5.hashString(s)
+		let y = MD5.hashToString(x)
+
+		dealloc x
+		return y
+	}
+}

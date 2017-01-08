@@ -6,6 +6,8 @@
 #include "codegen.h"
 #include "runtimefuncs.h"
 
+#include <set>
+
 using namespace Codegen;
 using namespace Ast;
 
@@ -20,7 +22,61 @@ using namespace Ast;
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__.string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
 
-#define DEBUG_ARC 0
+#define DEBUG_MASTER		0
+#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
+#define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
+
+
+#if 0
+std::set<void*> allocs;
+
+extern "C" void* allocate_memory(size_t s)
+{
+	void* ret = malloc(s);
+	if(ret == 0)
+		error("malloc returned NULL");
+
+	if(allocs.find(ret) != allocs.end())
+		error("wtf?");
+
+	allocs.insert(ret);
+	// debuglog("alloc:   %p (%zu)\n", ret, s);
+
+	return ret;
+}
+
+extern "C" void free_memory(void* s)
+{
+	if(allocs.find(s) == allocs.end())
+		error("wtf? freeing non-allocated memory (%p)", s);
+
+	allocs.erase(s);
+	// debuglog("free:    %p\n", s);
+	free(s);
+}
+
+
+extern "C" void* reallocate_memory(void* ptr, size_t s)
+{
+	if(allocs.find(ptr) == allocs.end() && ptr != 0)
+		error("cannot reallocate previously unallocated memory (%p)", ptr);
+
+	void* ret = realloc(ptr, s);
+	if(ret == 0)
+		error("realloc returned NULL");
+
+	if(ptr != ret)
+	{
+		allocs.erase(ptr);
+		allocs.insert(ret);
+
+		debuglog("realloc: %p (%zu)\n", ret, s);
+	}
+
+	return ret;
+}
+#endif
+
 
 namespace Codegen {
 namespace RuntimeFuncs {
@@ -35,7 +91,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getStringType(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getStringType(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -47,9 +103,6 @@ namespace String
 			iceAssert(s1);
 
 			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
-
 			fir::Value* lhslen = cgi->irb.CreateGetStringLength(s1, "l1");
 			fir::Value* lhsbuf = cgi->irb.CreateGetStringData(s1, "d1");
 
@@ -59,7 +112,7 @@ namespace String
 			fir::Value* malloclen = cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
-			fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc")->getName());
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
@@ -80,26 +133,26 @@ namespace String
 			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), offsetbuf);
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, lhslen);
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
 
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-			#if DEBUG_ARC
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, lhslen);
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			#if DEBUG_ALLOCATION
 			{
 				fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				fir::Value* tmp = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
-				tmp = cgi->irb.CreateConstGEP2(tmp, 0, 0);
-
-				cgi->irb.CreateCall(printfn, { tmp, buf, lhslen, buf });
+				fir::Value* tmpstr = cgi->module->createGlobalString("clone string '%s' / %ld / %p\n");
+				cgi->irb.CreateCall(printfn, { tmpstr, buf, lhslen, buf });
 			}
 			#endif
 
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			cgi->irb.CreateReturn(str);
 
 			clonef = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -122,7 +175,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
 				fir::Type::getStringType(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -147,9 +200,6 @@ namespace String
 			// 7. set the length to a + b
 			// 8. return.
 
-			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
 
 			iceAssert(s1);
 			iceAssert(s2);
@@ -168,7 +218,7 @@ namespace String
 			fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
-			fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc")->getName());
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
@@ -189,21 +239,25 @@ namespace String
 			fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, rhslen);
 			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-			#if 0
+			#if DEBUG_ALLOCATION
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+				fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
 
-				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+				fir::Value* tmpstr = cgi->module->createGlobalString("malloc (%zu): %p (%s)\n");
+				cgi->irb.CreateCall(printfn, { tmpstr, malloclen, buf, buf });
 			}
 			#endif
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, newlen);
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, newlen);
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			cgi->irb.CreateReturn(str);
 
 			appendf = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -222,7 +276,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getCharType() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getCharType() },
 				fir::Type::getStringType(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -237,30 +291,27 @@ namespace String
 			// steps:
 			//
 			// 1. get the size of the left string
-			// 2. malloc a string of that size + 1=2
+			// 2. malloc a string of that size + 1
 			// 3. make a new string
 			// 4. set the buffer to the malloced buffer
 			// 5. memcpy.
 			// 6. set the length to a + b
 			// 7. return.
 
-			// get an empty string
-			fir::Value* newstrp = cgi->irb.CreateStackAlloc(fir::Type::getStringType());
-			newstrp->setName("newstrp");
 
 			iceAssert(s1);
 			iceAssert(s2);
 
-			fir::Value* lhslen = cgi->irb.CreateGetStringLength(s1, "l1");
 			fir::Value* lhsbuf = cgi->irb.CreateGetStringData(s1, "d1");
+			fir::Value* lhslen = cgi->irb.CreateGetStringLength(s1, "l1");
 
 
 			// space for null (1) + refcount (i64size) + the char (another 1)
-			size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			size_t i64Size = 8; // cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
 			fir::Value* malloclen = cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + i64Size));
 
 			// now malloc.
-			fir::Function* mallocf = cgi->module->getFunction(cgi->getOrDeclareLibCFunc("malloc")->getName());
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
@@ -270,7 +321,7 @@ namespace String
 
 			// now memcpy
 			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
-			cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, cgi->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+			cgi->irb.CreateCall(memcpyf, { buf, lhsbuf, lhslen,
 				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 
 			fir::Value* offsetbuf = cgi->irb.CreatePointerAdd(buf, lhslen);
@@ -280,24 +331,25 @@ namespace String
 			cgi->irb.CreateStore(ch, offsetbuf);
 
 			// null terminator
-			fir::Value* nt = cgi->irb.CreateGetPointer(offsetbuf, fir::ConstantInt::getInt64(1));
+			fir::Value* nt = cgi->irb.CreatePointerAdd(offsetbuf, fir::ConstantInt::getInt64(1));
 			cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-			#if 0
+			#if DEBUG_ALLOCATION
 			{
-				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s)\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
-				cgi->irb.CreateCall(cgi->module->getFunction(cgi->getOrDeclareLibCFunc("printf").firFunc->getName()), { tmpstr, buf, tmp, buf });
+				fir::Value* tmpstr = cgi->module->createGlobalString("malloc: %p / %p (%s) // (%s) // (appc)\n");
+				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, lhsbuf, buf, buf, lhsbuf });
 			}
 			#endif
 
 			// ok, now fix it
-			cgi->irb.CreateSetStringData(newstrp, buf);
-			cgi->irb.CreateSetStringLength(newstrp, cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
-			cgi->irb.CreateSetStringRefCount(newstrp, fir::ConstantInt::getInt64(1));
+			// get an empty string
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
 
-			cgi->irb.CreateReturn(cgi->irb.CreateLoad(newstrp));
+			str = cgi->irb.CreateSetStringData(str, buf);
+			str = cgi->irb.CreateSetStringLength(str, cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			cgi->irb.CreateReturn(str);
 
 			appendf = func;
 			cgi->irb.setCurrentBlock(restore);
@@ -323,7 +375,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getStringType()->getPointerTo() },
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
 				fir::Type::getInt64(), false), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -420,7 +472,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -456,13 +508,11 @@ namespace String
 			fir::Value* newRc = cgi->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
 			cgi->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
-			#if DEBUG_ARC
+			#if DEBUG_REFCOUNTING
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-
 				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
@@ -477,6 +527,8 @@ namespace String
 		}
 
 		iceAssert(incrf);
+
+
 		return incrf;
 	}
 
@@ -490,7 +542,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -531,13 +583,12 @@ namespace String
 			fir::Value* newRc = cgi->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
 			cgi->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
-			#if DEBUG_ARC
+			#if DEBUG_REFCOUNTING
 			{
 				fir::Value* tmpstr = cgi->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
+
 
 				auto bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-
 				cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
@@ -552,22 +603,21 @@ namespace String
 				fir::Value* bufp = cgi->irb.CreateGetStringData(func->getArguments()[0]);
 
 
-				#if DEBUG_ARC
+				#if DEBUG_ALLOCATION
 				{
-					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s')\n");
-					tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-					cgi->irb.CreateCall3(cgi->getOrDeclareLibCFunc("printf"), tmpstr, bufp, bufp);
+					fir::Value* tmpstr = cgi->module->createGlobalString("free %p ('%s') (%d)\n");
+					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, bufp, bufp, newRc });
 				}
 				#endif
 
 
 
-				fir::Function* freefn = cgi->getOrDeclareLibCFunc("free");
+				fir::Function* freefn = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
 				iceAssert(freefn);
 
-				cgi->irb.CreateCall1(freefn, cgi->irb.CreatePointerAdd(bufp, fir::ConstantInt::getInt64(-8)));
+				cgi->irb.CreateCall1(freefn, cgi->irb.CreatePointerSub(bufp, fir::ConstantInt::getInt64(8)));
 
-				cgi->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+				// cgi->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
 				cgi->irb.CreateUnCondBranch(merge);
 			}
 
@@ -595,7 +645,7 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
@@ -627,10 +677,7 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
 				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -676,7 +723,7 @@ namespace String
 
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType()->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
@@ -707,10 +754,8 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				tmpstr = cgi->irb.CreateConstGEP2(tmpstr, 0, 0);
-
 				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zd'!\n");
-				fmtstr = cgi->irb.CreateConstGEP2(fmtstr, 0, 0);
+
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 

@@ -21,7 +21,10 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 			lastval = e->codegen(cgi);
 
 		if(lastval.type == ResultType::BreakCodegen)
+		{
 			broke = true;		// don't generate the rest of the code. cascade the BreakCodegen value into higher levels
+			break;
+		}
 	}
 
 	if(!broke)
@@ -34,7 +37,7 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 		for(auto v : cgi->getRefCountedValues())
 		{
 			iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-			cgi->decrementRefCount(v);
+			cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 		}
 	}
 
@@ -69,7 +72,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		cgi->decrementRefCount(v);
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 	// for break, we go to the ending block
@@ -110,7 +113,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		cgi->decrementRefCount(v);
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 
@@ -171,22 +174,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(res.value->getType()))
 		{
-			if(res.valueKind == ValueKind::LValue)
-			{
-				// uh.. should always be there.
-				iceAssert(res.pointer);
-
-				cgi->incrementRefCount(res.pointer);
-			}
-			else
-			{
-				// rvalue
-
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(this->actualReturnValue->getType(), this->actualReturnValue);
-				cgi->incrementRefCount(tmp);
-
-				this->actualReturnValue = cgi->irb.CreateLoad(tmp);
-			}
+			cgi->incrementRefCount(this->actualReturnValue);
 		}
 	}
 
@@ -195,7 +183,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
-		cgi->decrementRefCount(v);
+		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
 
 

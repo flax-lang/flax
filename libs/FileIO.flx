@@ -1,0 +1,107 @@
+// FileIO.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import LibCInterface
+import OS.IOInterface
+
+
+public enum Capabilities
+{
+	case None
+	case Read
+	case Write
+	case Seek
+}
+
+public enum FileMode
+{
+	case None
+	case Read
+	case Write
+	case Append
+	case Create
+}
+
+public struct Stream
+{
+	var offset: int
+	var caps: Capabilities
+	var name: string
+
+	var handle: void*
+}
+
+
+
+namespace _UNIX
+{
+	let O_RDONLY: i32		= 0x0000
+	let O_WRONLY: i32		= 0x0001
+	let O_RDWR: i32			= 0x0002
+	let O_NONBLOCK: i32		= 0x0004
+	let O_APPEND: i32		= 0x0008
+	let O_SHLOCK: i32		= 0x0010
+	let O_EXLOCK: i32		= 0x0020
+	let O_ASYNC: i32		= 0x0040
+	let O_NOFOLLOW: i32		= 0x0100
+	let O_CREAT: i32		= 0x0200
+	let O_TRUNC: i32		= 0x0400
+	let O_EXCL: i32			= 0x0800
+	let O_EVTONLY: i32		= 0x8000
+	let O_NOCTTY: i32		= 0x20000
+	let O_DIRECTORY: i32	= 0x100000
+	let O_SYMLINK: i32		= 0x200000
+	let O_CLOEXEC: i32		= 0x1000000
+}
+
+ffi func open(f: i8*, flags: i32) -> i32
+ffi func write(fd: i32, buf: i8*, count: u64) -> i64
+ffi func read(fd: i32, buf: i8*, count: u64) -> i64
+
+public func openFile(name: string, mode: FileMode) -> Stream
+{
+	var om: i32
+	if mode & (FileMode.Read | FileMode.Write) != FileMode.None
+	{
+		om |= _UNIX.O_RDWR
+	}
+	else if (mode & FileMode.Read) != FileMode.None
+	{
+		om |= _UNIX.O_RDONLY
+	}
+	else if (mode & FileMode.Write) != FileMode.None
+	{
+		om |= _UNIX.O_RDONLY
+	}
+	else if (mode & FileMode.Append) != FileMode.None
+	{
+		om |= _UNIX.O_APPEND
+	}
+	else if (mode & FileMode.Create) != FileMode.None
+	{
+		om |= _UNIX.O_CREAT
+	}
+
+	// UNIX:
+	let desc = open(name.raw, om)
+	if desc < 0
+	{
+		printf("Invalid file (path %s), failed to open.", name)
+		return Stream()
+	}
+
+	return Stream()
+}
+
+
+
+
+
+
+
+
+
+
+
+

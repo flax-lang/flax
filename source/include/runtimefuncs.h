@@ -7,6 +7,12 @@
 #include "defs.h"
 #include "ir/value.h"
 
+
+#define ALLOCATE_MEMORY_FUNC						"malloc"
+#define REALLOCATE_MEMORY_FUNC						"realloc"
+#define FREE_MEMORY_FUNC							"free"
+
+
 namespace Codegen
 {
 	struct CodegenInstance;

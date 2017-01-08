@@ -5,6 +5,7 @@
 #include "pts.h"
 #include "ast.h"
 #include "codegen.h"
+#include <algorithm>
 
 using namespace Ast;
 using namespace Codegen;
@@ -44,10 +45,8 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		bool notMangling = (this->decl->attribs & Attr_NoMangle || this->decl->isFFI);
-		func = notMangling ? cgi->module->getFunction(Identifier(this->decl->ident.name, IdKind::Name))
-							: cgi->module->getFunction(this->decl->ident);
-
+		// guaranteed to exist eventually, because recursion (below)
+		func = this->decl->generatedFunc;
 
 		if(!func)
 		{
@@ -91,7 +90,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// we can shadow outer variables with our own.
 	cgi->pushScope();
 	cgi->setCurrentFunctionScope(this);
-	// auto s = cgi->saveAndClearScope();
+
 
 
 	// to support declaring functions inside functions, we need to remember
@@ -104,7 +103,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	std::deque<VarDecl*> vprs = decl->params;
+	std::deque<VarDecl*> vprs = this->decl->params;
 	if(this->decl->params.size() + 1 == func->getArgumentCount())
 	{
 		// we need to add the self param.
@@ -116,13 +115,18 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		vprs.push_front(fake);
 	}
 
+
 	for(size_t i = 0; i < vprs.size(); i++)
 	{
 		func->getArguments()[i]->setName(vprs[i]->ident);
 
 		if(!isGeneric)
 		{
-			iceAssert(func->getArguments()[i]->getType() == vprs[i]->getType(cgi));
+			if(func->getArguments()[i]->getType() != vprs[i]->getType(cgi))
+			{
+				error(this, "Mismatched types: '%s' vs '%s'", func->getArguments()[i]->getType()->str().c_str(),
+					vprs[i]->getType(cgi)->str().c_str());
+			}
 		}
 
 		fir::Value* ai = 0;
@@ -202,27 +206,32 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(value->getType() != needed)
 		{
 			value = cgi->autoCastType(func->getReturnType(), value, pointer);
+			if(value->getType() != needed)
+			{
+				error(this->block, "Return type mismatch: needed '%s', got '%s'", needed->str().c_str(), value->getType()->str().c_str());
+			}
 		}
-
 
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(value->getType()))
 		{
-			if(vkind == ValueKind::LValue)
-			{
-				// uh.. should always be there.
-				iceAssert(pointer);
-				cgi->incrementRefCount(pointer);
-			}
-			else
-			{
-				// rvalue
+			// if(vkind == ValueKind::LValue)
+			// {
+			// 	// uh.. should always be there.
+			// 	iceAssert(pointer);
+			// 	cgi->incrementRefCount(pointer);
+			// }
+			// else
+			// {
+			// 	// rvalue
 
-				fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(value->getType(), value);
-				cgi->incrementRefCount(tmp);
+			// 	fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(value->getType(), value);
+			// 	cgi->incrementRefCount(tmp);
 
-				value = cgi->irb.CreateLoad(tmp);
-			}
+			// 	value = cgi->irb.CreateLoad(tmp);
+			// }
+
+			cgi->incrementRefCount(value);
 		}
 
 		cgi->irb.CreateReturn(value);

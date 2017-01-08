@@ -126,7 +126,7 @@ public func miscellaneousTests()
 	}
 
 	do {
-		printf("'4' is digit: %d\n", ("5" as char).isDigit())
+		printf("'4' is digit: %d\n", char("5").isDigit())
 	}
 
 	do {
