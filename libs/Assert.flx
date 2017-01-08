@@ -5,8 +5,18 @@
 import String
 import LibCInterface
 
+ffi func write(fd: i32, buf: i8*, count: u64) -> i64
 public func programExit(reason: string)
 {
 	write(2, reason.raw, reason.length as u64)
 	abort()
+}
+
+public func assert(b: bool)
+{
+	if !b
+	{
+		write(2, @raw "Assertion failed", 16)
+		abort()
+	}
 }

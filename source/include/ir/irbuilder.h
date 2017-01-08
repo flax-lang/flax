@@ -8,11 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include <string>
-#include <vector>
-#include <deque>
-#include <unordered_map>
-
 #include "block.h"
 #include "value.h"
 #include "module.h"
@@ -114,11 +109,24 @@ namespace fir
 		void CreateUnCondBranch(IRBlock* target);
 
 
+		Value* CreateSizeof(Type* t, std::string vname = "");
+
+
 		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
 
 
 		Value* CreatePointerAdd(Value* ptr, Value* num, std::string vname = "");
 		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
+
+
+		Value* CreateAggregateValue(Type* t, std::deque<Value*> values, std::string vname = "");
+		Value* CreateValue(Type* t, std::string vname = "");
+
+		Value* CreateInsertValue(Value* val, std::deque<size_t> inds, Value* elm, std::string vname = "");
+		Value* CreateExtractValue(Value* val, std::deque<size_t> inds, std::string vname = "");
+
+		Value* CreateInsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
+		Value* CreateExtractValueByName(Value* val, std::string mem, std::string vname = "");
 
 
 		Value* CreateGetStringData(Value* ptr, std::string vname = "");

@@ -3,6 +3,80 @@
 // Licensed under the Apache License Version 2.0.
 
 
+/*
+	TOFIX:
+
+	1. enums declared in functions do not work
+
+	3. dynamic array slices
+	4. FOR LOOPS
+		4a: `for x in y` would be pretty cool too.
+		4b: `for x in (1, 3)` would be dope af
+			4bi: should the range be open or closed by default? ie. is it 1 <= x <= 3, or 1 <= x < 3?
+			4bii: potential range operator: `for x in 0..4` ? idk.
+			4biii: i think one (either open or closed) should be chosen as default. it's not hard to ±1 if needed, i think
+
+	5. assign [] to dynamic arrays
+	6. general fixes to [] -- type inference
+		6a: stuff like passing [] to a function taking an array, for instance
+			type inference needs to happen.
+
+	7. do { } while { }
+		this parses as (do {} while), and ({ })
+		do a newline / semicolon check or smth
+
+	8. abort(), exit(), etc. should be allowed as the last expression in a function
+		and allow the compiler to just ignore the fact that there's no return value
+		ie. __attribute__((noreturn))
+
+	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
+		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
+
+	10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
+		the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver
+		for this might turn out to be a good idea in the future.
+
+	11. also the fucking generic type solver isn't finished god dammit
+
+	12. global variables outside of namespaces don't work
+
+	13. T.0.1 parses as T. (0.1) where 0.1 is a number
+		shit fails yo
+
+		> only return integers from the lexer -- (0.0331) becomes '0', '.', '0331'
+		> need to keep leading 0s
+
+
+	TO TEST:
+
+	1. tuple operators
+	2. array of strings
+
+
+
+	TO DO:
+
+	1. array decomp
+	2. tuple decomp
+	3. splatting (http://coffeescript.org/#splats)
+
+	4. clean up typechecking
+		-- store the fir::Type of each AST node
+		-- recursively visit each node to get its type before anything happens
+
+
+	tuple decomp:
+	let (a, b) = (10, 20)
+
+	array decomp:
+	let [a, b, ...x] = [ 10, 20, 30, 40, 50, 60 ]
+	a = 10, b = 20, x = [ 30, 40, 50, 60 ]
+
+
+*/
+
+
+
 
 // import LibCInterface
 
@@ -34,13 +108,13 @@ func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
 	return ret
 }
 
-func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
+func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
 	while i < arr.length
 	{
-		ret[i] = f(arr[i], arr2[i])
+		ret[i] = f(arr[i].0, arr[i].1)
 		i += 1
 	}
 
@@ -48,10 +122,10 @@ func map2<T, K, R>(arr: T[], arr2: K[], f: [(T, K) -> R]) -> R[]
 }
 
 
-
 func incr(x: int) -> int { x + 1 }
 func gmult<T>(x: T, m: T) -> T { x * m }
 func add2<A, B>(x: A, y: B) -> A { x + y }
+
 
 
 
@@ -83,27 +157,70 @@ func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 	todo: handle taking address of function
+	todo: basic blocks need to check if they all have a terminator
 */
+
+
+
+
+func tmpf<T>(x: (T, T)) -> T
+{
+	return x.0 + x.1
+}
+
+func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
+{
+	var ret = alloc[y.length] K
+
+	var i = 0
+	while i < y.length
+	{
+		ret[i] = f(y[i])
+	}
+
+	retun ret
+}
+
+
+
+
+
+
+
+
+
 
 
 public func main()
 {
-	var arr = alloc[5] int
-	var arr2 = alloc[5] int
+	// generictest()
+
+	// let (a, (b, (c, d), e), f) = (10, (20, ("foo", "bar"), 3.1), 10.41)
+
+	var _ = 30
+
+
+	printf("done\n")
+}
+
+
+func generictest()
+{
+	var arr = alloc[5] (int, int)
 	var i = 0
 	while i < arr.length
 	{
-		arr[i] = i
-		arr2[i] = i * (i + 5)
-
+		arr[i] = (i, i * (i + 5))
 		i += 1
 	}
 
-	// let new = map2(arr, arr2, add2)
+	let new = map2(arr, add2)
+
+	// vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
 
 	// let new = map(arr, gincr)
 	// let new = map(arr, gmult)
-	let new = mapstupid(arr2, gincr, apply)
+	// let new = mapstupid(arr2, gincr, apply)
 
 
 	i = 0
@@ -116,8 +233,6 @@ public func main()
 	// fntest(10, 3)
 	// let x = apply(10, 30)
 	// printf("x = %d\n", x)
-
-	printf("done\n")
 }
 
 
@@ -137,19 +252,6 @@ func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) ->
 	return ret
 }
 
-
-// func mapstupid2<T, K>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> K]) -> K[]
-// {
-// 	var i = 0
-// 	var ret = alloc[arr.length] K
-// 	while i < arr.length
-// 	{
-// 		ret[i] = fa(arr[i], fn)
-// 		i += 1
-// 	}
-
-// 	return ret
-// }
 
 
 

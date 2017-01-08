@@ -3,8 +3,11 @@
 // Licensed under the Apache License Version 2.0.
 
 import Core
+import FileIO
 import Protocols
 import LibCInterface
+
+import Crypto.MD5
 
 public func min(a: int, b: int) -> int
 {

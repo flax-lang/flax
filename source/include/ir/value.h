@@ -10,14 +10,9 @@
 #include <limits.h>
 
 #include "errors.h"
-
-#include <map>
-#include <deque>
-#include <string>
-#include <vector>
-#include <unordered_map>
-
 #include "type.h"
+
+#include <vector>
 
 namespace fir
 {
@@ -62,7 +57,7 @@ namespace fir
 		// methods
 		void setName(const Identifier& idt);
 		void setName(std::string s);
-		Identifier getName();
+		const Identifier& getName();
 		bool hasName();
 
 		void addUser(Value* user);
@@ -90,31 +85,6 @@ namespace fir
 		Instruction* source;
 		FValueKind valueKind;
 		std::deque<Value*> users;
-	};
-
-	struct GlobalValue : Value
-	{
-		friend struct Module;
-
-		LinkageType linkageType;
-
-		Module* getParentModule() { return this->parentModule; }
-
-		protected:
-		GlobalValue(Module* mod, Type* type, LinkageType linkage);
-
-		Module* parentModule = 0;
-	};
-
-	struct GlobalVariable : GlobalValue
-	{
-		friend struct Module;
-
-		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
-		void setInitialValue(ConstantValue* constVal);
-
-		protected:
-		ConstantValue* initValue = 0;
 	};
 
 	struct PHINode : Value

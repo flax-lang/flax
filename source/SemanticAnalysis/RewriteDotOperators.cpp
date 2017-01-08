@@ -95,14 +95,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 				return;
 			}
 
-			// for(auto sub : ft->subs)
-			// {
-			// 	if(sub->nsName == vr->name)
-			// 	{
-			// 	}
-			// }
-
-
 			// type???
 			std::deque<std::string> fullScope = gstate.nsstrs;
 			for(auto s : gstate.nestedTypeStrs)
@@ -143,7 +135,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		}
 		else
 		{
-			error(ma, "????");
+			error(ma, "what the?");
 		}
 	}
 	else if(dynamic_cast<FuncCall*>(ma->left))
@@ -294,8 +286,14 @@ static void findDotOperator(Expr* expr)
 		for(auto p : alc->params)
 			findDotOperator(p);
 	}
+	else if(Dealloc* dlc = dynamic_cast<Dealloc*>(expr))
+	{
+		findDotOperator(dlc->expr);
+	}
 	else if(ArrayIndex* ari = dynamic_cast<ArrayIndex*>(expr))
 	{
+		// info(ari, "");
+
 		findDotOperator(ari->arr);
 		findDotOperator(ari->index);
 	}
@@ -349,11 +347,12 @@ static void findDotOperator(Expr* expr)
 		findDotOperator(ma->right);
 		gstate.MAWithinMASearchNesting--;
 
+		// info(ma, "");
 
 		// we never recursively do stuff to this -- we only ever want the topmost level.
-		if(gstate.MAWithinMASearchNesting == 0)
+		// if(gstate.MAWithinMASearchNesting == 0)
 		{
-			if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
+			// if(gstate.visitedMAs.find(ma) == gstate.visitedMAs.end())
 				gstate.visitedMAs[ma] = true;
 		}
 	}
@@ -365,9 +364,14 @@ static void findDotOperator(Expr* expr)
 	{
 		findDotOperator(oo->func);
 	}
-
+	else if(Tuple* tp = dynamic_cast<Tuple*>(expr))
+	{
+		for(auto v : tp->values)
+			findDotOperator(v);
+	}
 	else
 	{
+		// info(expr, "unknown expr");
 	}
 }
 

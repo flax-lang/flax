@@ -5,7 +5,6 @@
 #include "pts.h"
 #include "ast.h"
 #include "codegen.h"
-
 #include "operators.h"
 
 using namespace Ast;
@@ -13,6 +12,9 @@ using namespace Codegen;
 
 Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	if(this->name == "_")
+		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
+
 	fir::Value* val = cgi->getSymInst(this, this->name);
 	if(!val)
 	{
@@ -27,7 +29,7 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 		// check for functions
-		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		auto fns = cgi->resolveFunctionName(this->name);
 		std::deque<fir::Function*> cands;
 
 		for(auto fn : fns)
@@ -36,8 +38,8 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
 			// that one will return an already-generated version if the types match up.
 
-			if(!fn->isGenericInstantiation())
-				cands.push_back(fn);
+			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
+				cands.push_back(fn.firFunc);
 		}
 
 		// if it's a generic function, it won't be in the module
@@ -69,6 +71,9 @@ Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	if(this->name == "_")
+		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
+
 	VarDecl* decl = cgi->getSymDecl(this, this->name);
 	if(!decl)
 	{
@@ -82,18 +87,19 @@ fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 
 
 
-
-
-
 		// check for functions
 
-		auto fns = cgi->module->getFunctionsWithName(Identifier(this->name, IdKind::Function));
+		auto fns = cgi->resolveFunctionName(this->name);
 		std::deque<fir::Function*> cands;
 
 		for(auto fn : fns)
 		{
-			if(!fn->isGenericInstantiation())
-				cands.push_back(fn);
+			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
+				cands.push_back(fn.firFunc);
+
+			// necessary here, for some reason. not above.
+			else
+				cands.push_back(dynamic_cast<fir::Function*>(fn.funcDecl->codegen(cgi).value));
 		}
 
 		// if it's a generic function, it won't be in the module
@@ -152,7 +158,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 
 
-	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType()) && !val->getType()->isArrayType())
+	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType())/* && !val->getType()->isArrayType()*/)
 	{
 		// ...
 		// handled below
@@ -295,7 +301,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
 		{
 			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->assignRefCountedExpression(this, val, valptr, ai, vk, true, true);
+			cgi->assignRefCountedExpression(this, val, valptr, cgi->irb.CreateLoad(ai), ai, vk, true, true);
 		}
 		else if(!this->initVal)
 		{

@@ -101,6 +101,9 @@ namespace Compiler
 	bool getNoAutoGlobalConstructor();
 
 
+	bool getIsFreestandingMode();
+
+
 	enum class Flag
 	{
 		WarningsAsErrors		= 0x1,

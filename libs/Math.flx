@@ -5,8 +5,17 @@
 import Math.Vector2
 import Math.Vector3
 
-ﬁ ƒ sqrt(x: f64) -> f64
-ﬁ ƒ sqrtf(x: f32) -> f32
+ffi ƒ sqrt(x: f64) -> f64
+ffi ƒ sqrtf(x: f32) -> f32
+
+public ffi ƒ log(x: f64) -> f64
+public ffi ƒ logf(x: f32) -> f32
+
+public ffi ƒ floor(x: f64) -> f64
+public ffi ƒ floorf(x: f32) -> f32
+
+public ffi ƒ pow(x: f64, y: f64) -> f64
+public ffi ƒ powf(x: f32, y: f32) -> f32
 
 namespace Math
 {
@@ -14,5 +23,15 @@ namespace Math
 	public ƒ √(x: f64) -> f64 { sqrt(x) }
 	public ƒ √(x: int) -> f64 { sqrt(x as f64) }
 
-	public ƒ square(x: f64) -> f64 { x * x }
+	public ƒ square<T>(x: T) -> T { x * x }
+
+
+	public ƒ log(x: f32) -> f32 { logf(x) }
+	public ƒ log(x: f64) -> f64 { log(x) }
+
+	public ƒ floor(x: f32) -> f32 { floorf(x) }
+	public ƒ floor(x: f64) -> f64 { floor(x) }
+
+	public ƒ pow(x: f32, y: f32) -> f32 { powf(x, y) }
+	public ƒ pow(x: f64, y: f64) -> f64 { pow(x, y) }
 }

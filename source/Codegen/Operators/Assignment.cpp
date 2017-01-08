@@ -146,14 +146,13 @@ namespace Operators
 			{
 				iceAssert(setter->getArgumentCount() == 2 && "invalid setter");
 
-				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi).value;
-
 				auto lres = ma->left->codegen(cgi);
 				fir::Value* lhsPtr = lres.value->getType()->isPointerType() ? lres.value : lres.pointer;
-
 				iceAssert(lhsPtr);
 				if(lhsPtr->isImmutable())
 					GenError::assignToImmutable(cgi, user, args[1]);
+
+				fir::Value* rhsVal = rhs ? rhs : args[1]->codegen(cgi, lhsPtr).value;
 
 				cgi->irb.CreateCall2(setter, lhsPtr, rhsVal);
 
@@ -173,17 +172,17 @@ namespace Operators
 
 				// requires runtime code check
 				auto leftr = ai->arr->codegen(cgi);
-				iceAssert(leftr.pointer);
+				iceAssert(leftr.value);
 
 				fir::Value* ind = ai->index->codegen(cgi).value;
 
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.pointer, ind);
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.pointer, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind);
+				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind);
 
-				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.pointer);
+				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.value);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
 
 				fir::Value* val = args[1]->codegen(cgi).value;
@@ -219,7 +218,7 @@ namespace Operators
 			iceAssert(rhs == 0);
 			iceAssert(rhsptr == 0);
 
-			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi);
+			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi, lhsptr);
 		}
 
 
@@ -238,7 +237,7 @@ namespace Operators
 
 
 		fir::Type* ltype = args[0]->getType(cgi);
-		fir::Type* rtype = args[1]->getType(cgi);
+		fir::Type* rtype = args[1]->getType(cgi, false, fir::ConstantValue::getNullValue(ltype->getPointerTo()));
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{
@@ -271,7 +270,11 @@ namespace Operators
 			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
 
 			iceAssert(lhsptr);
-			iceAssert(rhsptr);
+
+			// we can always do var += rvalue, so we need to make an rhsptr
+			if(!rhsptr)
+				rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
+
 
 			if(lhsptr->isImmutable())
 				GenError::assignToImmutable(cgi, user, args[0]);
@@ -339,6 +342,11 @@ namespace Operators
 		if(lhsPtr && lhsPtr->isImmutable())
 		{
 			GenError::assignToImmutable(cgi, user, leftExpr);
+		}
+
+		if(lhs == 0)
+		{
+			GenError::nullValue(cgi, user);
 		}
 
 
@@ -467,10 +475,7 @@ namespace Operators
 
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
-			iceAssert(lhsPtr);
-			iceAssert(rhsPtr);
-
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhsPtr, vk, false, true);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, vk, false, true);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{

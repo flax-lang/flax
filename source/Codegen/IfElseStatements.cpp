@@ -12,16 +12,13 @@ using namespace Codegen;
 
 
 static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs,
-	fir::IRBlock* merge, fir::PHINode* phi, bool* didCreateMerge)
+	fir::IRBlock* merge, fir::PHINode* phi, bool* didCreateMerge, bool* allBroke)
 {
 	if(pairs.size() == 0)
 		return;
 
 	fir::IRBlock* t = cgi->irb.addNewBlockInFunction("trueCaseR", func);
-	fir::IRBlock* f = new fir::IRBlock();
-	f->setName("falseCaseR");
-	f->setFunction(func);
-
+	fir::IRBlock* f = cgi->irb.addNewBlockInFunction("falseCaseR", func);
 
 	fir::Value* cond = pairs.front().first->codegen(cgi).value;
 	if(cond->getType() != fir::Type::getBool())
@@ -52,6 +49,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	if(blockResult.type != ResultType::BreakCodegen)
 		cgi->irb.CreateUnCondBranch(merge), *didCreateMerge = true;
 
+	*allBroke = *allBroke && (blockResult.type == ResultType::BreakCodegen);
 
 	// now the false case...
 	// set the insert point to the false case, then go again.
@@ -59,10 +57,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 
 	// recursively call ourselves
 	pairs.pop_front();
-	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge);
-
-	// once that's done, we can add the false-case block to the func
-	func->getBlockList().push_back(f);
+	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge, allBroke);
 }
 
 Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
@@ -91,6 +86,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	bool didMerge = false;
+	bool allBroke = true;
 
 	// emit code for the first block
 	fir::Value* truev = nullptr;
@@ -108,6 +104,10 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 		if(rt != ResultType::BreakCodegen)
 			cgi->irb.CreateUnCondBranch(merge), didMerge = true;
+
+		allBroke = allBroke && (rt == ResultType::BreakCodegen);
+
+		// warn(this->cases[0].first, "%d / %d", rt, didMerge);
 	}
 
 
@@ -124,15 +124,11 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	fir::IRBlock* curblk = cgi->irb.getCurrentBlock();
 	cgi->irb.setCurrentBlock(merge);
 
-	// fir::PHINode* phi = builder.CreatePHI(fir::Type::getVoidTy(getContext()), this->cases.size() + (this->final ? 1 : 0));
-
 	fir::PHINode* phi = nullptr;
-
-	if(phi)
-		phi->addIncoming(truev, trueb);
+	if(phi) phi->addIncoming(truev, trueb);
 
 	cgi->irb.setCurrentBlock(curblk);
-	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge);
+	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge, &allBroke);
 
 
 	// if we have an 'else' case
@@ -147,13 +143,13 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 		std::tie(v, _, elsetype) = this->final->codegen(cgi);
 
 		cgi->popScope();
-
 		if(phi) phi->addIncoming(v, falseb);
 	}
 
-
 	if(!this->final || elsetype != ResultType::BreakCodegen)
 		cgi->irb.CreateUnCondBranch(merge), didMerge = true;
+
+	allBroke = allBroke && (elsetype == ResultType::BreakCodegen);
 
 
 	if(didMerge)
@@ -167,7 +163,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// restore.
 	this->cases = this->_cases;
-	return Result_t(0, 0);
+	return Result_t(0, 0, allBroke ? ResultType::BreakCodegen : ResultType::Normal);
 }
 
 fir::Type* IfStmt::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)

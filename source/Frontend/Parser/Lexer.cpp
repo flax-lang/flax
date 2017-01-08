@@ -428,7 +428,8 @@ namespace Parser
 			tok.text = num;
 			tok.pin.len = num.length();
 		}
-		else if(stream[0] == '_' || utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
+
+		else if(stream[0] == '_'  || utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
 		{
 			std::string id;
 
@@ -447,9 +448,10 @@ namespace Parser
 			// while(tmp = str.get(), (isascii(tmp) && (isalnum(tmp) || tmp == '_')) || (!isascii(tmp) && utf8is))
 			// 	id += (char) tmp;
 
-
 			read = id.length();
 			tok.text = id;
+
+
 
 
 			// check for keywords
@@ -569,6 +571,8 @@ namespace Parser
 					case '|':	tok.type = TType::Pipe;					break;
 					case '@':	tok.type = TType::At;					break;
 					case '#':	tok.type = TType::Pound;				break;
+					case '~':	tok.type = TType::Tilde;				break;
+					case '^':	tok.type = TType::Caret;				break;
 
 					default:
 						parserError(tok, "Unknown token '%c'", stream[0]);

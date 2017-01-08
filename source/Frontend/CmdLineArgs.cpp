@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <vector>
+#include <algorithm>
 
 #include "backend.h"
 #include "compiler.h"
@@ -63,6 +64,7 @@ static std::string parseQuotedString(char** argv, int& i)
 #define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
 #define ARG_SYSROOT								"-sysroot"
 #define ARG_TARGET								"-target"
+#define ARG_FREESTANDING						"-ffreestanding"
 
 #define WARNING_DISABLE_ALL						"-w"
 #define WARNINGS_AS_ERRORS						"-Werror"
@@ -258,6 +260,11 @@ namespace Compiler
 		return backendOpt;
 	}
 
+	static bool isFreestanding = false;
+	bool getIsFreestandingMode()
+	{
+		return isFreestanding;
+	}
 
 
 
@@ -416,6 +423,11 @@ namespace Compiler
 						fprintf(stderr, "Error: Expected target string after '-target' option\n");
 						exit(-1);
 					}
+				}
+				else if(!strcmp(argv[i], ARG_FREESTANDING))
+				{
+					// set freestanding mode
+					Compiler::isFreestanding = true;
 				}
 				else if(!strcmp(argv[i], ARG_BACKEND))
 				{
@@ -621,6 +633,12 @@ namespace Compiler
 			fprintf(stderr, "Only one input file is supported at the moment\n");
 			exit(-1);
 		}
+
+
+		// sanity check
+		// what are you even trying to do m8
+		if(Compiler::getOutputMode() == ProgOutputMode::RunJit && Compiler::getIsFreestandingMode())
+			fprintf(stderr, "Cannot JIT program in freestanding mode");
 
 		return { filenames[0], outname };
 	}
