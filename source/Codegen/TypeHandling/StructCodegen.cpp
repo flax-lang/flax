@@ -164,12 +164,6 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return this->createdType;
 
-	// this->ident.scope = cgi->getFullScope();
-
-	if(this->ident.name == "Foop")
-		warn(">> %s", this->ident.str().c_str());
-
-
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{

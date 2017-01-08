@@ -111,13 +111,6 @@ extension string
 }
 
 
-struct winsize
-{
-	var row: u16
-	var col: u16
-	var xpixel: u16
-	var ypixel: u16
-}
 
 public func miscellaneousTests()
 {
@@ -139,6 +132,15 @@ public func miscellaneousTests()
 	}
 
 	do {
+
+		struct winsize
+		{
+			var row: u16
+			var col: u16
+			var xpixel: u16
+			var ypixel: u16
+		}
+
 		var ws: winsize
 		ioctl(1, 1074295912 as u64, &ws)
 
