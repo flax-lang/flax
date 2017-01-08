@@ -7,123 +7,117 @@
 #include "codegen.h"
 #include "operators.h"
 
+#include <mpark/variant.hpp>
+
 using namespace Ast;
 using namespace Codegen;
 
-Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
+
+static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, VarRef* vr, fir::Value* extra, bool actual)
 {
-	if(this->name == "_")
-		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
+	if(vr->name == "_")
+		error(vr, "'_' is a discarding reference, and cannot be used to refer to values.");
 
-	fir::Value* val = cgi->getSymInst(this, this->name);
-	if(!val)
+	if(actual)
 	{
-		// check the global scope for variables
-		auto ft = cgi->getCurrentFuncTree();
-		for(auto v : ft->vars)
-		{
-			if(v.first == this->name)
-				return Result_t(cgi->irb.CreateLoad(v.second.first), v.second.first, ValueKind::LValue);
-		}
-
-
-
-		// check for functions
-		auto fns = cgi->resolveFunctionName(this->name);
-		std::deque<fir::Function*> cands;
-
-		for(auto fn : fns)
-		{
-			// check that the function we found wasn't an instantiation -- we can't access those directly,
-			// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
-			// that one will return an already-generated version if the types match up.
-
-			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
-				cands.push_back(fn.firFunc);
-		}
-
-		// if it's a generic function, it won't be in the module
-		// check the scope.
-		for(auto f : cgi->getCurrentFuncTree()->genericFunctions)
-		{
-			if(f.first->ident.name == this->name)
-			{
-				if(!f.first->generatedFunc)
-					f.first->codegen(cgi);
-
-				iceAssert(f.first->generatedFunc);
-				cands.push_back(f.first->generatedFunc);
-			}
-		}
-
-
-		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, this->name, cands, extra);
-		if(fn == 0)
-		{
-			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
-		}
-
-		return Result_t(fn, 0);
+		if(fir::Value* val = cgi->getSymInst(vr, vr->name))
+			return Result_t(cgi->irb.CreateLoad(val), val, ValueKind::LValue);
+	}
+	else
+	{
+		if(VarDecl* decl = cgi->getSymDecl(vr, vr->name))
+			return decl->getType(cgi, false);
 	}
 
-	return Result_t(cgi->irb.CreateLoad(val), val, ValueKind::LValue);
+
+
+	// check the global scope for variables
+	{
+		auto ft = cgi->getCurrentFuncTree();
+		while(ft)
+		{
+			for(auto v : ft->vars)
+			{
+				if(v.first == vr->name)
+				{
+					if(!actual)
+						return v.second.first->getType()->getPointerElementType();
+
+					return Result_t(cgi->irb.CreateLoad(v.second.first), v.second.first, ValueKind::LValue);
+				}
+			}
+
+			ft = ft->parent;
+		}
+	}
+
+
+
+
+	// check for functions
+	auto fns = cgi->resolveFunctionName(vr->name);
+	std::deque<fir::Function*> cands;
+
+	for(auto fn : fns)
+	{
+		// check that the function we found wasn't an instantiation -- we can't access those directly,
+		// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
+		// that one will return an already-generated version if the types match up.
+
+		if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
+			cands.push_back(fn.firFunc);
+	}
+
+
+
+
+	// if it's a generic function, it won't be in the module; check the scope.
+	{
+		auto ft = cgi->getCurrentFuncTree();
+		while(ft)
+		{
+			for(auto f : ft->genericFunctions)
+			{
+				if(f.first->ident.name == vr->name)
+				{
+					if(!f.first->generatedFunc)
+						f.first->codegen(cgi);
+
+					iceAssert(f.first->generatedFunc);
+					cands.push_back(f.first->generatedFunc);
+				}
+			}
+
+			ft = ft->parent;
+		}
+	}
+
+
+	fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(vr, vr->name, cands, extra);
+	if(fn == 0)
+	{
+		GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
+	}
+
+	if(!actual)
+		return fn->getType();
+
+	return Result_t(fn, 0);
+}
+
+
+
+
+
+
+Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
+{
+	return mpark::get<Result_t>(handleVarRef(cgi, this, extra, true));
 }
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	if(this->name == "_")
-		error(this, "'_' is a discarding reference, and cannot be used to refer to values.");
-
-	VarDecl* decl = cgi->getSymDecl(this, this->name);
-	if(!decl)
-	{
-		// check the global scope for variables
-		auto ft = cgi->getCurrentFuncTree();
-		for(auto v : ft->vars)
-		{
-			if(v.first == this->name)
-				return v.second.first->getType()->getPointerElementType();
-		}
-
-
-
-		// check for functions
-
-		auto fns = cgi->resolveFunctionName(this->name);
-		std::deque<fir::Function*> cands;
-
-		for(auto fn : fns)
-		{
-			if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
-				cands.push_back(fn.firFunc);
-
-			// necessary here, for some reason. not above.
-			else
-				cands.push_back(dynamic_cast<fir::Function*>(fn.funcDecl->codegen(cgi).value));
-		}
-
-		// if it's a generic function, it won't be in the module
-		// check the scope.
-		for(auto f : cgi->getCurrentFuncTree()->genericFunctions)
-		{
-			if(f.first->ident.name == this->name)
-			{
-				if(!f.first->generatedFunc)
-					f.first->codegen(cgi);
-
-				iceAssert(f.first->generatedFunc);
-				cands.push_back(f.first->generatedFunc);
-			}
-		}
-
-		fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(this, this->name, cands, extra);
-		if(fn == 0)
-			GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
-
-		return fn->getType();
-	}
-
-	return decl->getType(cgi, allowFail);
+	return mpark::get<fir::Type*>(handleVarRef(cgi, this, extra, false));
 }
 
 

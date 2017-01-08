@@ -21,7 +21,7 @@ fir::Type* ExtensionDef::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 {
-	this->ident.scope = cgi->getFullScope();
+	// this->ident.scope = cgi->getFullScope();
 	this->parentRoot = cgi->rootNode;
 
 	// see if we have nested types

@@ -1025,7 +1025,9 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 
 	// now we go left-to-right.
 	std::deque<std::string> nsstrs;
-	FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
+	// FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
+	auto ftree = cgi->getFuncTreeFromNS(nsstrs);
+
 	while(list.size() > 0)
 	{
 		std::string front = list.front();
@@ -1042,7 +1044,9 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 			{
 				// yes.
 				nsstrs.push_back(front);
-				ftree = cgi->getCurrentFuncTree(&nsstrs);
+				// ftree = cgi->getCurrentFuncTree(&nsstrs);
+
+				ftree = cgi->getFuncTreeFromNS(nsstrs);
 				iceAssert(ftree);
 
 				found = true;

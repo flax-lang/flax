@@ -30,7 +30,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return this->createdType;
 
-	this->ident.scope = cgi->getFullScope();
+	// this->ident.scope = cgi->getFullScope();
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Type);

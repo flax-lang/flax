@@ -289,7 +289,7 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 
 
-
+static size_t _counter = 0;
 fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	// todo: handle named tuples.
@@ -304,7 +304,7 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 		for(Expr* e : this->values)
 			this->ltypes.push_back(_makeReal(e->getType(cgi)));
 
-		this->ident.name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
+		this->ident.name = "__anonymoustuple_" + std::to_string(_counter++);
 		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
 		this->didCreateType = true;
 

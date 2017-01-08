@@ -382,18 +382,13 @@ namespace Codegen
 		// get the functree, starting from here, up.
 		std::deque<OpOverload*> list;
 		{
-			auto curDepth = this->namespaceStack;
-
-			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			auto curFT = this->getCurrentFuncTree();
+			while(curFT)
 			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-				if(!ft) break;
-
-				for(auto f : ft->operators)
+				for(auto f : curFT->operators)
 					list.push_back(f);
 
-				if(curDepth.size() > 0)
-					curDepth.pop_back();
+				curFT = curFT->parent;
 			}
 
 			// if we're assigning things, we need to get the assignfuncs as well.

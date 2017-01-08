@@ -37,7 +37,8 @@ namespace Codegen
 		cgi->pushScope();
 
 
-		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		// cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		cgi->currentFuncTree = cgi->rootNode->rootFuncStack;
 
 		// rootFuncStack should really be empty, except we know that there should be
 		// stuff inside from imports.
@@ -87,11 +88,11 @@ namespace Codegen
 		return fir::getDefaultFTContext();
 	}
 
-	typedef std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> _Scope_t;
+	typedef std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, FunctionTree*> _Scope_t;
 
 	_Scope_t CodegenInstance::saveAndClearScope()
 	{
-		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->namespaceStack);
+		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->currentFuncTree);
 		this->clearScope();
 
 		return s;
@@ -99,7 +100,7 @@ namespace Codegen
 
 	void CodegenInstance::restoreScope(_Scope_t s)
 	{
-		std::tie(this->symTabStack, this->refCountingStack, this->namespaceStack) = s;
+		std::tie(this->symTabStack, this->refCountingStack, this->currentFuncTree) = s;
 	}
 
 
@@ -115,7 +116,7 @@ namespace Codegen
 	{
 		this->symTabStack.clear();
 		this->refCountingStack.clear();
-		this->namespaceStack.clear();
+		this->currentFuncTree = this->rootNode->rootFuncStack;
 	}
 
 	void CodegenInstance::pushScope()
@@ -233,7 +234,10 @@ namespace Codegen
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 
-		FunctionTree* ftree = this->getCurrentFuncTree();
+		// FunctionTree* ftree = this->currentFuncTree;
+		// iceAssert(ftree);
+
+		FunctionTree* ftree = this->getFuncTreeFromNS(atype->ident.scope);
 		iceAssert(ftree);
 
 		if(ftree->types.find(atype->ident.name) != ftree->types.end())
@@ -397,11 +401,19 @@ namespace Codegen
 
 	std::deque<std::string> CodegenInstance::getFullScope()
 	{
-		std::deque<std::string> full = this->namespaceStack;
-		for(auto s : this->nestedTypeStack)
-			full.push_back(s->ident.name);
+		std::deque<std::string> ret;
+		auto bottom = this->currentFuncTree;
 
-		return full;
+		while(bottom)
+		{
+			ret.push_front(bottom->nsName);
+			bottom = bottom->parent;
+		}
+
+		for(auto s : this->nestedTypeStack)
+			ret.push_back(s->ident.name);
+
+		return ret;
 	}
 
 
@@ -447,6 +459,10 @@ namespace Codegen
 	}
 
 
+	FunctionTree* CodegenInstance::getCurrentFuncTree()
+	{
+		return this->currentFuncTree;
+	}
 
 
 
@@ -798,7 +814,7 @@ namespace Codegen
 				}
 				else
 				{
-					auto nft = new FunctionTree();
+					auto nft = new FunctionTree(ftree);
 					this->importFunctionTreeInto(nft, sub);
 
 					ftree->subMap[sub->nsName] = nft;
@@ -812,92 +828,85 @@ namespace Codegen
 
 
 
-	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
+	// FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
+	// {
+	// 	if(root == 0) root = this->rootNode->rootFuncStack;
+	// 	if(nses == 0) nses = &this->namespaceStack;
+
+	// 	iceAssert(root);
+	// 	iceAssert(nses);
+
+	// 	std::deque<FunctionTree*> ft = root->subs;
+
+	// 	if(nses->size() == 0) return root;
+
+	// 	size_t i = 0;
+	// 	size_t max = nses->size();
+
+	// 	for(auto ns : *nses)
+	// 	{
+	// 		i++;
+
+	// 		bool found = false;
+	// 		for(auto f : ft)
+	// 		{
+	// 			if(f->nsName == ns)
+	// 			{
+	// 				ft = f->subs;
+
+	// 				if(i == max)
+	// 					return f;
+
+	// 				found = true;
+	// 				break;
+	// 			}
+	// 		}
+
+	// 		if(!found)
+	// 		{
+	// 			return 0;
+	// 		}
+	// 	}
+
+	// 	return 0;
+	// }
+
+
+
+
+
+
+
+
+
+
+
+
+	void CodegenInstance::pushNamespaceScope(std::string namespc)
 	{
-		if(root == 0) root = this->rootNode->rootFuncStack;
-		if(nses == 0) nses = &this->namespaceStack;
-
-		iceAssert(root);
-		iceAssert(nses);
-
-		std::deque<FunctionTree*> ft = root->subs;
-
-		if(nses->size() == 0) return root;
-
-		size_t i = 0;
-		size_t max = nses->size();
-
-		for(auto ns : *nses)
+		FunctionTree* existing = this->currentFuncTree;
+		if(existing->subMap.find(namespc) == existing->subMap.end())
 		{
-			i++;
+			FunctionTree* ft = new FunctionTree(existing);
+			ft->nsName = namespc;
 
-			bool found = false;
-			for(auto f : ft)
-			{
-				if(f->nsName == ns)
-				{
-					ft = f->subs;
-
-					if(i == max)
-						return f;
-
-					found = true;
-					break;
-				}
-			}
-
-			if(!found)
-			{
-				return 0;
-			}
+			existing->subs.push_back(ft);
+			existing->subMap[namespc] = ft;
 		}
 
-		return 0;
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
-	{
-		if(doFuncTree)
-		{
-			bool found = false;
-			FunctionTree* existing = this->getCurrentFuncTree();
-			if(existing->subMap.find(namespc) != existing->subMap.end())
-				found = true;
-
-			if(!found)
-			{
-				FunctionTree* ft = new FunctionTree();
-				ft->nsName = namespc;
-
-				existing->subs.push_back(ft);
-				existing->subMap[namespc] = ft;
-			}
-		}
-
-		this->namespaceStack.push_back(namespc);
+		this->currentFuncTree = existing->subMap[namespc];
 	}
 
 	void CodegenInstance::popNamespaceScope()
 	{
-		this->namespaceStack.pop_back();
+		iceAssert(this->currentFuncTree->parent);
+		this->currentFuncTree = this->currentFuncTree->parent;
 	}
 
 	void CodegenInstance::addFunctionToScope(FuncDefPair func, FunctionTree* root)
 	{
 		FunctionTree* cur = root;
-		if(!cur)
-			cur = this->getCurrentFuncTree();
+		if(!cur) cur = this->currentFuncTree;
 
 		iceAssert(cur);
 
@@ -922,7 +931,7 @@ namespace Codegen
 
 	void CodegenInstance::removeFunctionFromScope(FuncDefPair func)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree();
+		FunctionTree* cur = this->currentFuncTree;
 		iceAssert(cur);
 
 		auto it = std::find(cur->funcs.begin(), cur->funcs.end(), func);
@@ -949,7 +958,7 @@ namespace Codegen
 
 	std::deque<FuncDefPair> CodegenInstance::resolveFunctionName(std::string basename)
 	{
-		std::deque<std::string> curDepth = this->namespaceStack;
+		FunctionTree* curFT = this->currentFuncTree;
 		std::deque<FuncDefPair> candidates;
 
 
@@ -987,12 +996,9 @@ namespace Codegen
 
 
 
-		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		while(curFT)
 		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto f : ft->funcs)
+			for(auto f : curFT->funcs)
 			{
 				auto isDupe = [this, f, _isDupe](FuncDefPair fp) -> bool {
 					return _isDupe(f, fp);
@@ -1006,10 +1012,7 @@ namespace Codegen
 				}
 			}
 
-
-
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		return candidates;
@@ -1024,10 +1027,22 @@ namespace Codegen
 		for(auto e : params)
 			argTypes.push_back(e->getType(this, true));
 
-		return this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
+
+		if(basename == "variadicTest")
+		{
+
+		}
+
+		auto ret = this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
+
+
+		if(basename == "variadicTest")
+		{
+			warn("!! (%p)", ret.t.firFunc);
+		}
+
+		return ret;
 	}
-
-
 
 	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
 		std::deque<fir::Type*> params, bool exactMatch)
@@ -1111,15 +1126,12 @@ namespace Codegen
 
 	std::deque<Func*> CodegenInstance::findGenericFunctions(std::string basename)
 	{
-		std::deque<std::string> curDepth = this->namespaceStack;
+		FunctionTree* curFT = this->currentFuncTree;
 		std::deque<Func*> ret;
 
-		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		while(curFT)
 		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto f : ft->genericFunctions)
+			for(auto f : curFT->genericFunctions)
 			{
 				iceAssert(f.first->genericTypes.size() > 0);
 
@@ -1127,8 +1139,7 @@ namespace Codegen
 					ret.push_back({ f.second });
 			}
 
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		return ret;
@@ -1387,7 +1398,7 @@ namespace Codegen
 
 	void CodegenInstance::clearNamespaceScope()
 	{
-		this->namespaceStack.clear();
+		this->currentFuncTree = this->rootNode->rootFuncStack;
 	}
 
 
@@ -1479,7 +1490,20 @@ namespace Codegen
 
 
 
+	FunctionTree* CodegenInstance::getFuncTreeFromNS(std::deque<std::string> scope)
+	{
+		auto ret = this->rootNode->rootFuncStack;
+		if(scope.size() > 0 && scope[0] == "")
+			scope.pop_front();
 
+		for(auto s : scope)
+		{
+			ret = ret->subMap[s];
+			if(!ret) return 0;
+		}
+
+		return ret;
+	}
 
 
 
@@ -1517,14 +1541,12 @@ namespace Codegen
 		std::string protname = nses.back();
 		nses.pop_back();
 
-		auto curDepth = nses;
 		ProtocolDef* prot = 0;
-		for(size_t i = 0; i <= nses.size(); i++)
-		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
+		auto curFT = this->getFuncTreeFromNS(nses);
 
-			for(auto& f : ft->protocols)
+		while(curFT)
+		{
+			for(auto& f : curFT->protocols)
 			{
 				if(f.first == protname)
 				{
@@ -1533,8 +1555,7 @@ namespace Codegen
 				}
 			}
 
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		if(!prot)
@@ -1641,11 +1662,16 @@ namespace Codegen
 		std::deque<ExtensionDef*> ret;
 		iceAssert(ft);
 
-		auto pair = ft->extensions.equal_range(name);
-		for(auto it = pair.first; it != pair.second; it++)
+		while(ft)
 		{
-			if((*it).first == name)
-				ret.push_back((*it).second);
+			auto pair = ft->extensions.equal_range(name);
+			for(auto it = pair.first; it != pair.second; it++)
+			{
+				if((*it).first == name)
+					ret.push_back((*it).second);
+			}
+
+			ft = ft->parent;
 		}
 
 		return ret;
@@ -1653,7 +1679,7 @@ namespace Codegen
 
 	std::deque<ExtensionDef*> CodegenInstance::getExtensionsWithName(std::string name)
 	{
-		FunctionTree* ft = this->getCurrentFuncTree();
+		FunctionTree* ft = this->currentFuncTree;
 		iceAssert(ft);
 
 		return _findExtensionsByNameInScope(name, ft);
@@ -1665,29 +1691,21 @@ namespace Codegen
 
 		// 1. look in the current scope
 		{
-			FunctionTree* ft = this->getCurrentFuncTree();
-			iceAssert(ft);
-
-			std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+			std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, this->currentFuncTree);
 			ret.insert(res.begin(), res.end());
 		}
 
 
 		// 2. look in the scope of the type
 		{
-			std::deque<std::string> curDepth = cls->ident.scope;
+			auto curFT = this->getFuncTreeFromNS(cls->ident.scope);
 
-			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			while(curFT)
 			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-				if(!ft) break;
-
-				std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
-
+				std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, curFT);
 				ret.insert(res.begin(), res.end());
 
-				if(curDepth.size() > 0)
-					curDepth.pop_back();
+				curFT = curFT->parent;
 			}
 		}
 
