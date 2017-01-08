@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cassert>
 #include <cinttypes>
+#include <algorithm>
 
 #include "pts.h"
 #include "ast.h"
@@ -105,13 +106,13 @@ namespace Parser
 		// note that unary ops have precedence handled separately
 		switch(ps.front().type)
 		{
-			case TType::Comma:
-				return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
+			// case TType::Comma:
+				// return ps.leftParenNestLevel > 0 ? 9001 : -1;	// lol x3
 
-			case TType::LSquare:
-				return 1100;
-
+			// . and [] have the same precedence.
+			// not sure if this should stay -- works for now.
 			case TType::Period:
+			case TType::LSquare:
 				return 1000;
 
 			// unary !
@@ -138,23 +139,24 @@ namespace Parser
 			// << and >>
 			// precedence = 700
 
+
+			case TType::Ampersand:
+				return 650;
+
+			case TType::Caret:
+				return 600;
+
+			case TType::Pipe:
+				return 550;
+
 			case TType::LAngle:
 			case TType::RAngle:
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
-				return 650;
+				return 500;
 
 			case TType::EqualsTo:
 			case TType::NotEquals:
-				return 600;
-
-			case TType::Ampersand:
-				return 550;
-
-			case TType::Caret:
-				return 500;
-
-			case TType::Pipe:
 				return 450;
 
 			case TType::LogicalAnd:
@@ -1589,6 +1591,7 @@ namespace Parser
 
 		values.push_back(lhs);
 
+		// ps.leftParenNestLevel--;
 		Token t = ps.front();
 		while(true)
 		{
@@ -1604,6 +1607,7 @@ namespace Parser
 
 		// leave the last rparen
 		iceAssert(ps.front().type == TType::RParen);
+		// ps.leftParenNestLevel++;
 
 		return CreateAST(Tuple, first, values);
 	}
@@ -1614,6 +1618,17 @@ namespace Parser
 		ps.leftParenNestLevel++;
 
 		Expr* within = parseExpr(ps);
+
+		// if we're a tuple, get ready for this shit.
+		if(ps.front().type == TType::Comma)
+		{
+			// remove the comma
+			ps.eat();
+
+			// parse a tuple
+			Expr* tup = parseTuple(ps, within);
+			within = tup;
+		}
 
 		iceAssert(ps.front().type == TType::RParen);
 		ps.eat();
@@ -1704,14 +1719,14 @@ namespace Parser
 					}
 				}
 			}
-			else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
-			{
-				// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
-				auto ret = parseTuple(ps, lhs);
-				// ps.leftParenNestLevel--;
+			// else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
+			// {
+			// 	// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
+			// 	auto ret = parseTuple(ps, lhs);
+			// 	// ps.leftParenNestLevel--;
 
-				return ret;
-			}
+			// 	return ret;
+			// }
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
 				lhs = parsePostfixUnaryOp(ps, tok_op, lhs);

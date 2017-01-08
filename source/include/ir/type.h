@@ -4,17 +4,13 @@
 
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
 
 #include <map>
-#include <string>
 #include <vector>
-#include <deque>
 #include <unordered_map>
-
 #include "ir/identifier.h"
 
 namespace fir
@@ -665,6 +661,10 @@ namespace fir
 		static FunctionType* get(std::deque<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
+
+		static FunctionType* getWithTypeParameters(std::deque<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
+		static FunctionType* getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
+		static FunctionType* getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
 	};
 
 

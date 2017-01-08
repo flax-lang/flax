@@ -25,7 +25,6 @@ namespace Operators
 		fir::IRBlock* setTrue = cgi->irb.addNewBlockAfter("setTrue", currentBlock);
 		fir::IRBlock* merge = cgi->irb.addNewBlockAfter("merge", currentBlock);
 
-
 		cgi->irb.setCurrentBlock(currentBlock);
 
 		fir::Value* resPtr = cgi->getStackAlloc(fir::Type::getBool());

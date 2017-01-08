@@ -12,6 +12,8 @@ using namespace Codegen;
 
 
 
+
+
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* ref);
 static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
@@ -46,7 +48,8 @@ static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number*
 	// and do a structgep.
 
 	if((size_t) num->ival >= type->toTupleType()->getElementCount())
-		error(num, "Tuple does not have %d elements, only %zd", (int) num->ival + 1, type->toTupleType()->getElementCount());
+		error(num, "Tuple does not have %d elements, only %zd (type '%s')", (int) num->ival + 1, type->toTupleType()->getElementCount(),
+			type->str().c_str());
 
 	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
 	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
@@ -78,6 +81,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 // todo: this function is a little... dirty.
+// lmao: every function is *very* dirty
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
@@ -101,6 +105,23 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		else
 		{
 			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
+		}
+	}
+	else if(type->isArrayType())
+	{
+		if(dynamic_cast<VarRef*>(ma->right) && dynamic_cast<VarRef*>(ma->right)->name == "length")
+		{
+			if(!actual)
+			{
+				*resultType = fir::Type::getInt64();
+				return Result_t(0, 0);
+			}
+
+			return Result_t(fir::ConstantInt::getInt64(type->toArrayType()->getArraySize()), 0);
+		}
+		else
+		{
+			error(ma->right, "Unsupported dot-operator on array type '%s'", type->str().c_str());
 		}
 	}
 	else if(type->isDynamicArrayType())
@@ -219,11 +240,28 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
 				return Result_t(clone, 0);
 			}
+			else if(fc->name == "clear")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clear() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// set length to 0 -- that's it
+				cgi->irb.CreateSetDynamicArrayLength(ptr, fir::ConstantInt::getInt64(0));
+
+				return Result_t(0, 0);
+			}
 			else if(fc->name == "back")
 			{
 				if(!actual)
 				{
-					*resultType = type->toDynamicArrayType();
+					*resultType = type->toDynamicArrayType()->getElementType();
 					return Result_t(0, 0);
 				}
 
@@ -248,7 +286,10 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
 				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
 
-				return Result_t(cgi->irb.CreateLoad(mem), 0);
+				if(ptr->isImmutable())
+					mem->makeImmutable();
+
+				return Result_t(cgi->irb.CreateLoad(mem), mem, ValueKind::LValue);
 			}
 			else if(fc->name == "popBack")
 			{
@@ -292,16 +333,15 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else
 		{
-			error(ma, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+			error(ma->right, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
 		}
 	}
-	else if(type->isStringType() && dynamic_cast<VarRef*>(ma->right))
+	else if((type->isStringType() || type == fir::Type::getStringType()->getPointerTo()) && dynamic_cast<VarRef*>(ma->right))
 	{
 		// handle builtin ones: 'raw' and 'length'
-		// raw is basically just the string
-		// length is basically just the length.
 
-		// lol
+		if(type->isPointerType() && actual)
+			val = cgi->irb.CreateLoad(val);
 
 		auto vr = dynamic_cast<VarRef*>(ma->right);
 		iceAssert(vr);
@@ -315,8 +355,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringData(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringData(val), 0);
 			}
 		}
 		else if(vr->name == "length")
@@ -328,8 +368,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringLength(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringLength(val), 0);
 			}
 		}
 		else if(vr->name == "rc")
@@ -341,8 +381,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				iceAssert(ptr);
-				return Result_t(cgi->irb.CreateGetStringRefCount(ptr), 0);
+				iceAssert(val);
+				return Result_t(cgi->irb.CreateGetStringRefCount(val), 0);
 			}
 		}
 	}
@@ -444,6 +484,20 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	if(this->matype == MAType::LeftNamespace || this->matype == MAType::LeftTypename)
@@ -465,11 +519,15 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(this->right);
-		iceAssert(n);
+		if(!n)
+		{
+			error(this->right, "Expected integer number after dot-operator for tuple access");
+		}
+
 
 		if((size_t) n->ival >= tt->getElementCount())
 		{
-			error(this, "Tuple does not have %d elements, only %zd", (int) n->ival + 1, tt->getElementCount());
+			error(this, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1, tt->getElementCount(), tt->str().c_str());
 		}
 
 		return tt->getElementN(n->ival);
@@ -523,6 +581,10 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		{
 			return std::get<2>(callMemberFunction(cgi, this, cls, memberFc, 0));
 		}
+		else
+		{
+			error(this->right, "Invalid expression type for dot-operator access");
+		}
 	}
 	else if(pair->second.second == TypeKind::Struct)
 	{
@@ -559,13 +621,17 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		{
 			error(memberFc, "Tried to call method on struct");
 		}
+		else
+		{
+			error(this->right, "Invalid expression type for dot-operator access");
+		}
 	}
 	else
 	{
 		error(this->left, "Invalid expression type for dot-operator access");
 	}
 
-	iceAssert(0);
+	// iceAssert(0);
 }
 
 
@@ -608,7 +674,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
-		if(this->matype == MAType::Invalid) error(this, "??");
+		if(this->matype == MAType::Invalid) error(this, "invalid ma type??");
 		return cgi->resolveStaticDotOperator(this, true).first.second;
 	}
 
@@ -702,7 +768,8 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(ftype->isTupleType())
 	{
 		Number* n = dynamic_cast<Number*>(this->right);
-		iceAssert(n);
+		if(!n) error(this->right, "Expected integer number after dot-operator for tuple access");
+
 
 		// if the lhs is immutable, don't give a pointer.
 		// todo: fix immutability (actually across the entire compiler)
@@ -910,8 +977,8 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 
 
 
-std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, Ast::StructBase*, fir::Type*>
-CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
+static std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, StructBase*, fir::Type*>
+unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
 
@@ -958,7 +1025,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 
 	// now we go left-to-right.
 	std::deque<std::string> nsstrs;
-	FunctionTree* ftree = this->getCurrentFuncTree(&nsstrs);
+	FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
 	while(list.size() > 0)
 	{
 		std::string front = list.front();
@@ -975,30 +1042,16 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 			{
 				// yes.
 				nsstrs.push_back(front);
-				ftree = this->getCurrentFuncTree(&nsstrs);
+				ftree = cgi->getCurrentFuncTree(&nsstrs);
 				iceAssert(ftree);
 
 				found = true;
 			}
 
-			// for(auto sub : ftree->subs)
-			// {
-			// 	iceAssert(sub);
-			// 	if(sub->nsName == front)
-			// 	{
-			// 		// yes.
-			// 		nsstrs.push_back(front);
-			// 		ftree = this->getCurrentFuncTree(&nsstrs);
-			// 		iceAssert(ftree);
-
-			// 		found = true;
-			// 		break;
-			// 	}
-			// }
 
 			if(found) continue;
 
-			if(TypePair_t* tp = this->getType(Identifier(front, nsstrs, IdKind::Struct)))
+			if(TypePair_t* tp = cgi->getType(Identifier(front, nsstrs, IdKind::Struct)))
 			{
 				iceAssert(tp->second.first);
 				curType = dynamic_cast<StructBase*>(tp->second.first);
@@ -1030,7 +1083,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 		}
 		else
 		{
-			this->pushNestedTypeScope(curType);
+			cgi->pushNestedTypeScope(curType);
 			for(auto sb : curType->nestedTypes)
 			{
 				if(sb.first->ident.name == front)
@@ -1041,7 +1094,7 @@ CodegenInstance::unwrapStaticDotOperator(Ast::MemberAccess* ma)
 					break;
 				}
 			}
-			this->popNestedTypeScope();
+			cgi->popNestedTypeScope();
 
 			if(found) continue;
 		}
@@ -1072,7 +1125,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	std::deque<std::string> nsstrs;
 	std::deque<std::string> origList;
 
-	std::tie(ftree, nsstrs, origList, curType, curFType) = this->unwrapStaticDotOperator(ma);
+	std::tie(ftree, nsstrs, origList, curType, curFType) = unwrapStaticDotOperator(this, ma);
 
 
 
@@ -1186,9 +1239,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		// call that sucker.
 		// but first set the cached target.
 
-		fir::Type* ltype = res.t.firFunc->getReturnType();
 		if(actual)
 		{
+			if(res.t.firFunc == 0)
+			{
+				// iceAssert(res.t.funcDecl);
+				// res.t.firFunc = dynamic_cast<fir::Function*>(res.t.funcDecl->codegen(this).value);
+			}
+
+			fir::Type* ltype = res.t.firFunc->getReturnType();
 			fc->cachedResolveTarget = res;
 			Result_t result = fc->codegen(this);
 
@@ -1196,7 +1255,15 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		}
 		else
 		{
-			return { { ltype, Result_t(0, 0) }, curFType };
+			if(res.t.firFunc != 0)
+			{
+				return { { res.t.firFunc->getReturnType(), Result_t(0, 0) }, curFType };
+			}
+			else
+			{
+				iceAssert(res.t.funcDecl);
+				return { { this->getTypeFromParserType(ma, res.t.funcDecl->ptype), Result_t(0, 0) }, curFType };
+			}
 		}
 	}
 	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
@@ -1394,7 +1461,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 		StructBase* strType = 0;
 		fir::Type* strFType = 0;
 
-		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = this->unwrapStaticDotOperator(ma);
+		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = unwrapStaticDotOperator(this, ma);
 
 		std::string name;
 		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))

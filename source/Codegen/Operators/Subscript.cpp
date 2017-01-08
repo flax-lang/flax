@@ -345,6 +345,7 @@ namespace Operators
 
 		if(atype->isArrayType())
 		{
+			if(!lhsp.pointer) { lhsp.pointer = cgi->irb.CreateImmutStackAlloc(lhsp.value->getType(), lhsp.value); }
 			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
 		}
 		else if(atype->isParameterPackType())
@@ -377,9 +378,9 @@ namespace Operators
 		}
 		else if(atype->isStringType())
 		{
-			cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.pointer, ind);
+			cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.value, ind);
 
-			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.pointer);
+			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.value);
 			gep = cgi->irb.CreateGetPointer(dp, ind);
 			gep = cgi->irb.CreatePointerTypeCast(gep, fir::Type::getCharType()->getPointerTo());
 		}

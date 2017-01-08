@@ -86,7 +86,8 @@ namespace fir
 		if(this->isTypePacked != os->isTypePacked) return false;
 		if(this->structName != os->structName) return false;
 
-		return areTypeListsEqual(this->typeList, os->typeList);
+		// return areTypeListsEqual(this->typeList, os->typeList);
+		return true;
 	}
 
 

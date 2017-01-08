@@ -18,17 +18,21 @@
 
 #include "llvm/Support/raw_ostream.h"
 
-
 #include "ir/module.h"
 #include "ir/constant.h"
+
+
+#include "backend.h"
 
 
 namespace fir
 {
 	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
+	static std::map<ConstantValue*, llvm::Constant*> cachedConstants;
+
 	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
 	{
-		auto& gc = llvm::getGlobalContext();
+		auto& gc = Compiler::LLVMBackend::getLLVMContext();
 		if(type->isPrimitiveType())
 		{
 			PrimitiveType* pt = type->toPrimitiveType();
@@ -197,39 +201,103 @@ namespace fir
 	static llvm::Constant* constToLlvm(ConstantValue* c, llvm::Module* mod)
 	{
 		iceAssert(c);
+		auto ret = cachedConstants[c];
+		if(ret) return ret;
+
 		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			if(ci->getType()->toPrimitiveType()->isSigned())
 			{
-				return llvm::ConstantInt::getSigned(it, ci->getSignedValue());
+				return cachedConstants[c] = llvm::ConstantInt::getSigned(it, ci->getSignedValue());
 			}
 			else
 			{
-				return llvm::ConstantInt::get(it, ci->getUnsignedValue());
+				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
 		}
 		else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(c))
 		{
 			llvm::Type* ct = typeToLlvm(c->getType(), mod);
-			return llvm::ConstantInt::get(ct, cc->getValue());
+			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
 		else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
-			return llvm::ConstantFP::get(it, cf->getValue());
+			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
 		else if(ConstantArray* ca = dynamic_cast<ConstantArray*>(c))
 		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "const array");
+
 			std::vector<llvm::Constant*> vals;
+			vals.reserve(ca->getValues().size());
+
 			for(auto con : ca->getValues())
 				vals.push_back(constToLlvm(con, mod));
 
-			return llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
+			return cachedConstants[c] = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
+		}
+		else if(ConstantTuple* ct = dynamic_cast<ConstantTuple*>(c))
+		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
+
+			std::vector<llvm::Constant*> vals;
+			vals.reserve(ct->getValues().size());
+
+			for(auto v : ct->getValues())
+				vals.push_back(constToLlvm(v, mod));
+
+			return cachedConstants[c] = llvm::ConstantStruct::getAnon(Compiler::LLVMBackend::getLLVMContext(), vals);
+		}
+		else if(ConstantString* cs = dynamic_cast<ConstantString*>(c))
+		{
+			auto p = prof::Profile(PROFGROUP_LLVM, "const string");
+			// note: only works on 2's complement systems
+			// where 0xFFFFFFFFFFFFFFFF == -1
+
+			size_t origLen = cs->getValue().length();
+
+			std::string str = cs->getValue();
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), 0xFF);
+
+			llvm::Constant* cstr = llvm::ConstantDataArray::getString(Compiler::LLVMBackend::getLLVMContext(), str, true);
+			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(cs->id));
+
+			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), 0);
+			std::vector<llvm::Constant*> indices = { zconst, zconst };
+			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
+
+
+			auto eightconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), 8);
+			gepd = llvm::ConstantExpr::getInBoundsGetElementPtr(gepd->getType()->getPointerElementType(), gepd, eightconst);
+
+			auto len = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), origLen);
+
+			iceAssert(gepd->getType() == llvm::Type::getInt8PtrTy(Compiler::LLVMBackend::getLLVMContext()));
+			iceAssert(len->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
+
+			std::vector<llvm::Constant*> mems = { gepd, len };
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(StringType::get(), mod)), mems);
+
+			cachedConstants[c] = ret;
+			return ret;
+		}
+		else if(dynamic_cast<ConstantStruct*>(c))
+		{
+			_error_and_exit("notsup const struct");
 		}
 		else
 		{
-			return llvm::Constant::getNullValue(typeToLlvm(c->getType(), mod));
+			return cachedConstants[c] = llvm::Constant::getNullValue(typeToLlvm(c->getType(), mod));
 		}
 	}
 
@@ -257,11 +325,18 @@ namespace fir
 
 
 
+	struct Foo
+	{
+		int8_t x;
+		int64_t y;
+	};
 
 	llvm::Module* Module::translateToLlvm()
 	{
-		llvm::Module* module = new llvm::Module(this->getModuleName(), llvm::getGlobalContext());
-		llvm::IRBuilder<> builder(llvm::getGlobalContext());
+		iceAssert(sizeof(Foo) == 16);
+		llvm::Module* module = new llvm::Module(this->getModuleName(), Compiler::LLVMBackend::getLLVMContext());
+		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
+		llvm::IRBuilder<> builder(Compiler::LLVMBackend::getLLVMContext());
 
 		createdTypes.clear();
 
@@ -269,11 +344,7 @@ namespace fir
 
 		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
 
-			if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
-			{
-				return constToLlvm(cv, module);
-			}
-			else if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
+			if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
@@ -281,7 +352,17 @@ namespace fir
 
 				iceAssert(lgv);
 				return lgv;
-				// return builder.CreateConstGEP2_32(lgv, 0, 0);
+			}
+			// we must do this because function now derives from constantvalue
+			else if(dynamic_cast<Function*>(fv))
+			{
+				llvm::Value* ret = valueMap[fv->id];
+				if(!ret) error("!ret (id = %zu)", fv->id);
+				return ret;
+			}
+			else if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
+			{
+				return constToLlvm(cv, module);
 			}
 			else
 			{
@@ -321,12 +402,17 @@ namespace fir
 		{
 			std::string id = "_FV_STR" + std::to_string(strn);
 
-			llvm::Constant* cstr = llvm::ConstantDataArray::getString(llvm::getGlobalContext(), string.first, true);
-			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
+			llvm::Constant* cstr = llvm::ConstantDataArray::getString(Compiler::LLVMBackend::getLLVMContext(), string.first, true);
+			llvm::Constant* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, id);
 
-			valueMap[string.second->id] = gv;
+			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), 0);
 
+			std::vector<llvm::Constant*> ix { zconst, zconst };
+			gv = llvm::ConstantExpr::getInBoundsGetElementPtr(gv->getType()->getPointerElementType(), gv, ix);
+
+
+			valueMap[string.second->id] = gv;
 			strn++;
 		}
 
@@ -352,7 +438,7 @@ namespace fir
 
 		for(auto intr : this->intrinsicFunctions)
 		{
-			auto& gc = llvm::getGlobalContext();
+			auto& gc = Compiler::LLVMBackend::getLLVMContext();
 			llvm::Constant* fn = 0;
 
 			if(intr.first.str() == "memcpy")
@@ -389,7 +475,7 @@ namespace fir
 				// ok... now make the function, right here.
 				{
 					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
-					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "entry", func);
 
 					builder.SetInsertPoint(entry);
 
@@ -430,9 +516,9 @@ namespace fir
 					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
 					builder.CreateStore(zeroconst, ctr);
 
-					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
-					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
-					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "merge", func);
 
 
 					// explicit branch to loopcond
@@ -477,7 +563,7 @@ namespace fir
 				// ok... now make the function, right here.
 				{
 					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
-					llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", func);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "entry", func);
 
 					builder.SetInsertPoint(entry);
 
@@ -506,9 +592,9 @@ namespace fir
 					builder.CreateStore(func->arg_begin().getNodePtrUnchecked(), num);
 
 
-					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopcond", func);
-					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loopbody", func);
-					llvm::BasicBlock* merge = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", func);
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "merge", func);
 
 
 					// explicit branch to loopcond
@@ -579,7 +665,7 @@ namespace fir
 
 			for(auto b : ffn->blocks)
 			{
-				llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), b->getName().mangled(), func);
+				llvm::BasicBlock* bb = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), b->getName().mangled(), func);
 				valueMap[b->id] = bb;
 
 				// fprintf(stderr, "adding block %zu\n", b->id);
@@ -703,7 +789,7 @@ namespace fir
 
 						case OpKind::Signed_Neg:
 						{
-							iceAssert(inst->operands.size() == 2);
+							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
 
 							llvm::Value* ret = builder.CreateNeg(a);
@@ -827,7 +913,15 @@ namespace fir
 						case OpKind::Integer_ZeroExt:
 						case OpKind::Integer_Truncate:
 						{
-							iceAssert(0);
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							Type* ft = inst->operands[1]->getType();
+
+							llvm::Type* t = typeToLlvm(ft, module);
+
+							llvm::Value* ret = builder.CreateZExtOrTrunc(a, t);
+							addValueToMap(ret, inst->realOutput);
+							break;
 						}
 
 
@@ -1069,8 +1163,8 @@ namespace fir
 							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
 							else	r2 = builder.CreateICmpULE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1087,8 +1181,8 @@ namespace fir
 							llvm::Value* r1 = builder.CreateFCmpOGE(a, b);
 							llvm::Value* r2 = builder.CreateFCmpOLE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(llvm::getGlobalContext()), false);
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1225,10 +1319,10 @@ namespace fir
 						case OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
-
 							Function* fn = dynamic_cast<Function*>(inst->operands[0]);
 							iceAssert(fn);
+
+							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
 
 							std::vector<llvm::Value*> args;
 
@@ -1456,15 +1550,15 @@ namespace fir
 
 							// todo: hack
 							llvm::Value* ptr = a;
-							if(a->getType()->isPointerTy())
-							{
-								// nothing
-							}
-							else
-							{
-								ptr = builder.CreateAlloca(a->getType());
-								builder.CreateStore(a, ptr);
-							}
+							// if(a->getType()->isPointerTy())
+							// {
+							// 	// nothing
+							// }
+							// else
+							// {
+							// 	ptr = builder.CreateAlloca(a->getType());
+							// 	builder.CreateStore(a, ptr);
+							// }
 
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->value);
 							addValueToMap(ret, inst->realOutput);
@@ -1495,6 +1589,29 @@ namespace fir
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
+
+
+
+						case OpKind::Misc_Sizeof:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Type* t = getOperand(inst, 0)->getType();
+							iceAssert(t);
+
+							llvm::Value* gep = builder.CreateConstGEP1_64(llvm::ConstantPointerNull::get(t->getPointerTo()), 1);
+							gep = builder.CreatePtrToInt(gep, llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
+
+							addValueToMap(gep, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
 
 
 
@@ -1541,6 +1658,84 @@ namespace fir
 
 
 
+
+						case OpKind::Value_InsertValue:
+						{
+							iceAssert(inst->operands.size() >= 3);
+
+							llvm::Value* str = getOperand(inst, 0);
+							llvm::Value* elm = getOperand(inst, 1);
+
+							std::vector<unsigned int> inds;
+							for(size_t i = 2; i < inst->operands.size(); i++)
+							{
+								ConstantInt* ci = dynamic_cast<ConstantInt*>(inst->operands[i]);
+								iceAssert(ci);
+
+								inds.push_back(ci->getUnsignedValue());
+							}
+
+
+							iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
+							if(str->getType()->isStructTy())
+							{
+								iceAssert(elm->getType() == llvm::cast<llvm::StructType>(str->getType())->getElementType(inds[0]));
+							}
+							else if(str->getType()->isArrayTy())
+							{
+								iceAssert(elm->getType() == llvm::cast<llvm::ArrayType>(str->getType())->getElementType());
+							}
+							else
+							{
+								iceAssert(0);
+							}
+
+							llvm::Value* ret = builder.CreateInsertValue(str, elm, inds);
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
+
+						case OpKind::Value_ExtractValue:
+						{
+							iceAssert(inst->operands.size() >= 2);
+
+							llvm::Value* str = getOperand(inst, 0);
+
+							std::vector<unsigned int> inds;
+							for(size_t i = 1; i < inst->operands.size(); i++)
+							{
+								ConstantInt* ci = dynamic_cast<ConstantInt*>(inst->operands[i]);
+								iceAssert(ci);
+
+								inds.push_back(ci->getUnsignedValue());
+							}
+
+							iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
+
+							llvm::Value* ret = builder.CreateExtractValue(str, inds);
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 						case OpKind::String_GetData:
 						case OpKind::String_GetLength:
 						{
@@ -1548,8 +1743,7 @@ namespace fir
 
 							llvm::Value* a = getOperand(inst, 0);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
 							if(inst->opKind == OpKind::String_GetData)
@@ -1557,8 +1751,7 @@ namespace fir
 							else if(inst->opKind == OpKind::String_GetLength)
 								ind = 1;
 
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							llvm::Value* ret = builder.CreateLoad(gep);
+							llvm::Value* ret = builder.CreateExtractValue(a, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1569,14 +1762,12 @@ namespace fir
 
 							llvm::Value* a = getOperand(inst, 0);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
 
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							llvm::Value* dp = builder.CreateLoad(gep);
+							llvm::Value* dp = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = llvm::getGlobalContext();
+							auto& gc = Compiler::LLVMBackend::getLLVMContext();
 							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
 							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
 
@@ -1596,15 +1787,10 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(Compiler::LLVMBackend::getLLVMContext()));
 
-							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
-
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							builder.CreateStore(b, data);
-
-							llvm::Value* ret = builder.CreateLoad(data);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1616,16 +1802,10 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
-
-							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
-							builder.CreateStore(b, len);
-
-
-							llvm::Value* ret = builder.CreateLoad(len);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 1);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1637,19 +1817,15 @@ namespace fir
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
-
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							llvm::Value* dp = builder.CreateLoad(gep);
+							llvm::Value* dp = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = llvm::getGlobalContext();
+							auto& gc = Compiler::LLVMBackend::getLLVMContext();
 							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
 							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
-
 							builder.CreateStore(b, ptr);
 
 							llvm::Value* ret = builder.CreateLoad(ptr);
@@ -1724,7 +1900,7 @@ namespace fir
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
 							int ind = 0;
 							if(inst->opKind == OpKind::DynamicArray_SetLength)
@@ -1800,7 +1976,7 @@ namespace fir
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(llvm::getGlobalContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
 							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
 							builder.CreateStore(b, len);

@@ -6,6 +6,7 @@
 
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include "pts.h"
 #include "ast.h"
@@ -123,29 +124,40 @@ namespace Codegen
 		this->refCountingStack.push_back({ });
 	}
 
-	void CodegenInstance::addRefCountedValue(fir::Value* ptr)
+	void CodegenInstance::addRefCountedValue(fir::Value* val)
 	{
-		iceAssert(ptr->getType()->isPointerType() && "refcounted value must be a pointer");
-		this->refCountingStack.back().push_back(ptr);
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
+		this->refCountingStack.back().push_back(val);
 	}
 
-	void CodegenInstance::removeRefCountedValue(fir::Value* ptr)
+
+	void CodegenInstance::removeRefCountedValue(fir::Value* val)
 	{
-		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
+
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
-			error("ptr does not exist in refcounting stack, cannot remove");
+			error("val does not exist in refcounting stack, cannot remove");
 
 		this->refCountingStack.back().erase(it);
 	}
 
-	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* ptr)
+	void CodegenInstance::removeRefCountedValueIfExists(fir::Value* val)
 	{
-		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), ptr);
+		if(val == 0) return;
+
+		iceAssert(val->getType()->isPointerType() && "must refcount a pointer type");
+
+		auto it = std::find(this->refCountingStack.back().begin(), this->refCountingStack.back().end(), val);
 		if(it == this->refCountingStack.back().end())
+		{
+			// error("does not exist");
 			return;
+		}
 
 		this->refCountingStack.back().erase(it);
 	}
+
 
 	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
@@ -248,9 +260,9 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::getType(const Identifier& id)
+	TypePair_t* CodegenInstance::getType(const Identifier& ident)
 	{
-		return this->getTypeByString(id.str());
+		return this->getTypeByString(ident.str());
 	}
 
 
@@ -302,6 +314,25 @@ namespace Codegen
 					// todo(leak): this leaks too
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Parametric));
 				}
+				else if(possibleGeneric->isArrayType())
+				{
+					// all of this shit leaks
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isDynamicArrayType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isParameterPackType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
+				}
+				else if(possibleGeneric->isTupleType())
+				{
+					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Tuple));
+				}
+
+
 
 				TypePair_t* tp = this->getType(possibleGeneric);
 				iceAssert(tp);
@@ -436,35 +467,71 @@ namespace Codegen
 	}
 
 
-
-
+	// static size_t seenCnt;
+	// static std::set<FunctionTree*> seen;
 	void CodegenInstance::importFunctionTreeInto(FunctionTree* ftree, FunctionTree* other)
 	{
 		// other is the source
 		// ftree is the target
 
+		// static size_t dc1 = 0;
+		// static size_t dc2 = 0;
+		// static size_t dc3 = 0;
+		// static size_t dc4 = 0;
+
+		// if(seen.find(other) != seen.end())
+		// 	printf("seen %s (%zu)\n", other->nsName.c_str(), ++seenCnt);
+
+		// else
+		// 	seen.insert(other);
+
+		// static size_t x = 0;
+
+		// printf("import %zu ftrees\n", x++);
 		ftree->nsName = other->nsName;
 		{
 			auto p = prof::Profile("import funcs");
+
+			// printf("size: %zu\n", other->funcs.size());
 
 			for(auto pair : other->funcs)
 			{
 				if(pair.funcDecl->attribs & Attr_VisPublic)
 				{
-					bool existing = (pair.funcDecl->genericTypes.size() > 0)
-						? false : ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					bool existing = false;
+
+
+					if(pair.funcDecl->genericTypes.size() > 0)
+					{
+						// loop through
+						for(auto f : ftree->funcs)
+						{
+							if(f.funcDecl == pair.funcDecl)
+								existing = true;
+						}
+					}
+					else
+					{
+						existing = ftree->funcSet.find(pair.firFunc->getName()) != ftree->funcSet.end();
+					}
 
 					if(!existing)
 					{
+						// printf("wtf? %s did not exist\n", pair.funcDecl->ident.str().c_str());
+
 						iceAssert(pair.funcDecl);
 						if(pair.funcDecl->genericTypes.size() == 0)
 						{
 							// declare new one
+							auto q = prof::Profile("getting and/or creating function");
 							auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(),
 								fir::LinkageType::External);
+							q.finish();
 
+							auto v = prof::Profile("add func");
 							ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
 							ftree->funcSet.insert(f->getName());
+							v.finish();
 						}
 						else
 						{
@@ -717,6 +784,10 @@ namespace Codegen
 		{
 			// auto p = prof::Profile("import subs");
 
+			// static size_t r = 0;
+			// if(other->subs.size() > 0)
+				// printf("recursively importing %zu subs (%zu)\n", other->subs.size(), r += other->subs.size());
+
 			for(auto sub : other->subs)
 			{
 				FunctionTree* found = ftree->subMap[sub->nsName];
@@ -735,6 +806,8 @@ namespace Codegen
 				}
 			}
 		}
+
+		// printf("checks: %zu / %zu / %zu / %zu\n", dc1, dc2, dc3, dc4);
 	}
 
 
@@ -929,10 +1002,7 @@ namespace Codegen
 					&& (f.funcDecl ? f.funcDecl->ident.name : f.firFunc->getName().str()) == basename)
 				{
 					if(std::find_if(candidates.begin(), candidates.end(), isDupe) == candidates.end())
-					{
-						// printf("FOUND (1) %s in search of %s\n", this->printAst(f.second).c_str(), basename.c_str());
 						candidates.push_back(f);
-					}
 				}
 			}
 
@@ -1324,20 +1394,20 @@ namespace Codegen
 
 	fir::Function* CodegenInstance::getOrDeclareLibCFunc(std::string name)
 	{
-		if(name == "malloc")
+		if(name == ALLOCATE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier("malloc", IdKind::Name),
+			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
-		else if(name == "realloc")
+		else if(name == FREE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier("realloc", IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
-		}
-		else if(name == "free")
-		{
-			return this->module->getOrCreateFunction(Identifier("free", IdKind::Name),
+			return this->module->getOrCreateFunction(Identifier(FREE_MEMORY_FUNC, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getVoid(), false), fir::LinkageType::External);
+		}
+		else if(name == REALLOCATE_MEMORY_FUNC)
+		{
+			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr(), false), fir::LinkageType::External);
 		}
 		else if(name == "printf")
 		{
@@ -2050,39 +2120,15 @@ namespace Codegen
 
 	Result_t CodegenInstance::makeStringLiteral(std::string str)
 	{
-		iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
-		fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+		// iceAssert(str.length() < INT32_MAX && "wtf? 4gb string?");
 
-		// note(portability): this isn't going to work on non-2's-complement platforms
-		// where 0xFFFFFFFFFFFFFFFF != -1.
+		// fir::Value* strp = this->irb.CreateStackAlloc(fir::Type::getStringType());
+		// this->irb.CreateStore(cs, strp);
+		// strp->makeImmutable();
+		// return Result_t(cs, strp);
 
-		// if this basic assumption fails however, then everything is out the window, and IDGAF anymore.
-
-		// basically, this inserts a "-1" where the refcount for heap-strings would normally go
-		// this simplifies code a lot (generated code, too)
-
-		std::string s = str;
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-		s.insert(s.begin(), 0xFF);
-
-		fir::Value* empty = this->module->createGlobalString(s);
-
-		empty = this->irb.CreatePointerAdd(this->irb.CreateConstGEP2(empty, 0, 0), fir::ConstantInt::getInt64(8));
-
-		fir::Value* len = fir::ConstantInt::getInt64(str.length());
-
-		this->irb.CreateSetStringData(strp, empty);
-		this->irb.CreateSetStringLength(strp, len);
-
-		strp->makeImmutable();
-
-		return Result_t(this->irb.CreateLoad(strp), strp);
+		auto cs = fir::ConstantString::get(str);
+		return Result_t(cs, 0);
 	}
 
 
@@ -2114,118 +2160,100 @@ namespace Codegen
 	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
 	{
 		iceAssert(cgi->isRefCountedType(type));
-		iceAssert(value->getType()->isPointerType());
 
 		size_t i = 0;
 		for(auto m : type->getElements())
 		{
 			if(cgi->isRefCountedType(m))
 			{
-				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+				fir::Value* mem = cgi->irb.CreateExtractValue(value, { i });
 
-				if(incr)
-					cgi->incrementRefCount(mem);
-
-				else
-					cgi->decrementRefCount(mem);
+				if(incr)	cgi->incrementRefCount(mem);
+				else		cgi->decrementRefCount(mem);
 			}
 			else if(isStructuredAggregate(m))
 			{
-				fir::Value* mem = cgi->irb.CreateStructGEP(value, i);
+				fir::Value* mem = cgi->irb.CreateExtractValue(value, { i });
 
-				if(m->isStructType())
-					doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
-
-				else if(m->isClassType())
-					doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
-
-				else if(m->isTupleType())
-					doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
+				if(m->isStructType())		doRefCountOfAggregateType(cgi, m->toStructType(), mem, incr);
+				else if(m->isClassType())	doRefCountOfAggregateType(cgi, m->toClassType(), mem, incr);
+				else if(m->isTupleType())	doRefCountOfAggregateType(cgi, m->toTupleType(), mem, incr);
 			}
 
 			i++;
 		}
 	}
 
-	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	static void _doRefCount(CodegenInstance* cgi, fir::Value* ptr, bool incr)
 	{
-		iceAssert(strp->getType()->isPointerType());
-		if(strp->getType()->getPointerElementType()->isStringType())
+		if(ptr->getType()->isStringType())
 		{
-			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
+			fir::Function* rf = 0;
+			if(incr) rf = RuntimeFuncs::String::getRefCountIncrementFunction(cgi);
+			else rf = RuntimeFuncs::String::getRefCountDecrementFunction(cgi);
 
-			fir::Function* incrf = RuntimeFuncs::String::getRefCountIncrementFunction(this);
-			this->irb.CreateCall1(incrf, strp);
+			cgi->irb.CreateCall1(rf, ptr);
 		}
-		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
+		else if(isStructuredAggregate(ptr->getType()))
 		{
-			auto ty = strp->getType()->getPointerElementType();
-			if(ty->isStructType())
-				doRefCountOfAggregateType(this, ty->toStructType(), strp, true);
+			auto ty = ptr->getType();
 
-			else if(ty->isClassType())
-				doRefCountOfAggregateType(this, ty->toClassType(), strp, true);
+			if(ty->isStructType())		doRefCountOfAggregateType(cgi, ty->toStructType(), ptr, incr);
+			else if(ty->isClassType())	doRefCountOfAggregateType(cgi, ty->toClassType(), ptr, incr);
+			else if(ty->isTupleType())	doRefCountOfAggregateType(cgi, ty->toTupleType(), ptr, incr);
+		}
+		else if(ptr->getType()->isArrayType())
+		{
+			fir::ArrayType* at = ptr->getType()->toArrayType();
+			for(size_t i = 0; i < at->getArraySize(); i++)
+			{
+				fir::Value* elm = cgi->irb.CreateExtractValue(ptr, { i });
+				iceAssert(cgi->isRefCountedType(elm->getType()));
 
-			else if(ty->isTupleType())
-				doRefCountOfAggregateType(this, ty->toTupleType(), strp, true);
+				if(incr) cgi->incrementRefCount(elm);
+				else cgi->decrementRefCount(elm);
+			}
 		}
 		else
 		{
-			error("no");
+			error("no: %s", ptr->getType()->str().c_str());
 		}
+	}
+
+	void CodegenInstance::incrementRefCount(fir::Value* strp)
+	{
+		_doRefCount(this, strp, true);
 	}
 
 	void CodegenInstance::decrementRefCount(fir::Value* strp)
 	{
-		iceAssert(strp->getType()->isPointerType());
-		if(strp->getType()->getPointerElementType()->isStringType())
-		{
-			iceAssert(strp->getType()->isPointerType() && strp->getType()->getPointerElementType()->isStringType());
-
-			fir::Function* decrf = RuntimeFuncs::String::getRefCountDecrementFunction(this);
-			this->irb.CreateCall1(decrf, strp);
-		}
-		else if(isStructuredAggregate(strp->getType()->getPointerElementType()))
-		{
-			auto ty = strp->getType()->getPointerElementType();
-			if(ty->isStructType())
-				doRefCountOfAggregateType(this, ty->toStructType(), strp, false);
-
-			else if(ty->isClassType())
-				doRefCountOfAggregateType(this, ty->toClassType(), strp, false);
-
-			else if(ty->isTupleType())
-				doRefCountOfAggregateType(this, ty->toTupleType(), strp, false);
-		}
-		else
-		{
-			error("no");
-		}
+		_doRefCount(this, strp, false);
 	}
 
 
-	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* val, fir::Value* ptr, fir::Value* target,
+	void CodegenInstance::assignRefCountedExpression(Expr* user, fir::Value* rhs, fir::Value* rhsptr, fir::Value* lhs, fir::Value* lhsptr,
 		ValueKind rhsVK, bool isInit, bool doAssign)
 	{
 		// if you're doing stupid things:
-		if(!this->isRefCountedType(val->getType()))
-			error(user, "type '%s' is not refcounted", val->getType()->str().c_str());
+		if(!this->isRefCountedType(rhs->getType()))
+			error(user, "type '%s' is not refcounted", rhs->getType()->str().c_str());
 
 		// ok...
 		// if the rhs is an lvalue, it's simple.
 		// increment its refcount, decrement the left side refcount, store, return.
 		if(rhsVK == ValueKind::LValue)
 		{
-			iceAssert(ptr->getType()->getPointerElementType() == val->getType());
-			this->incrementRefCount(ptr);
+			iceAssert(rhsptr);
+			iceAssert(rhsptr->getType()->getPointerElementType() == rhs->getType());
+			this->incrementRefCount(rhs);
 
 			// decrement left side
 			if(!isInit)
-				this->decrementRefCount(target);
+				this->decrementRefCount(lhs);
 
 			// store
 			if(doAssign)
-				this->irb.CreateStore(this->irb.CreateLoad(ptr), target);
+				this->irb.CreateStore(rhs, lhsptr);
 		}
 		else
 		{
@@ -2234,21 +2262,24 @@ namespace Codegen
 			// so we don't do anything to it
 			// instead, decrement the left side
 
-			if(!isInit)
-				this->decrementRefCount(target);
-
 			// to avoid double-freeing, we remove 'val' from the list of refcounted things
 			// since it's an rvalue, it can't be "re-referenced", so to speak.
 
 			// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
 			// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
 
-			if(ptr)
-				this->removeRefCountedValueIfExists(ptr);
+			this->removeRefCountedValueIfExists(rhsptr);
 
 			// now we just store as usual
 			if(doAssign)
-				this->irb.CreateStore(val, target);
+				this->irb.CreateStore(rhs, lhsptr);
+
+
+			if(!isInit)
+			{
+				// info(user, "decr");
+				this->decrementRefCount(lhs);
+			}
 		}
 	}
 
@@ -2339,10 +2370,10 @@ namespace Codegen
 
 
 
-	static void _errorNoReturn(Expr* e)
-	{
-		error(e, "Not all code paths return a value");
-	}
+	// static void _errorNoReturn(Expr* e)
+	// {
+	// 	error(e, "Not all code paths return a value");
+	// }
 
 	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, fir::Type* retType)
 	{
@@ -2398,7 +2429,10 @@ namespace Codegen
 	static Return* recursiveVerifyBlock(CodegenInstance* cgi, Func* f, BracedBlock* bb, bool checkType, fir::Type* retType)
 	{
 		if(bb->statements.size() == 0)
-			_errorNoReturn(bb);
+		{
+			// _errorNoReturn(bb);
+			return 0;
+		}
 
 		Return* r = nullptr;
 		for(Expr* e : bb->statements)
@@ -2413,9 +2447,10 @@ namespace Codegen
 					break;
 				}
 			}
-
 			else if((r = dynamic_cast<Return*>(e)))
+			{
 				break;
+			}
 		}
 
 		if(checkType)
@@ -2430,6 +2465,7 @@ namespace Codegen
 	{
 		Return* r = 0;
 		bool first = true;
+
 		for(std::pair<Expr*, BracedBlock*> pair : ib->_cases)	// use the preserved one
 		{
 			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType, retType);
@@ -2488,8 +2524,7 @@ namespace Codegen
 			IfStmt* i = dynamic_cast<IfStmt*>(e);
 			final = e;
 
-			if(i)
-				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+			if(i) ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
 
 			// "top level" returns we will just accept.
 			if(ret || (ret = dynamic_cast<Return*>(e)))
@@ -2501,8 +2536,9 @@ namespace Codegen
 
 		if(!ret)
 		{
-			error(func, "Function '%s' missing return statement (implicit return invalid, need %s, got %s)", func->decl->ident.name.c_str(),
-				func->getType(this)->str().c_str(), final->getType(this)->str().c_str());
+			error(func, "Function '%s' missing return statement (implicit return invalid, needed '%s', got '%s')",
+				func->decl->ident.name.c_str(), func->getType(this)->str().c_str(),
+				final->getType(this) ? final->getType(this)->str().c_str() : "(statement)");
 		}
 
 		if(checkType)

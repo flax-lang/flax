@@ -91,6 +91,42 @@ namespace fir
 
 
 
+	FunctionType* FunctionType::getWithTypeParameters(std::deque<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// create.
+		FunctionType* type = new FunctionType(args, ret, isVarArg, false);
+		type->addTypeParameters(tparams);
+		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
+	}
+
+	FunctionType* FunctionType::getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
+	{
+		std::deque<Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return getWithTypeParameters(dargs, ret, isVarArg, tparams, tc);
+	}
+
+	FunctionType* FunctionType::getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
+	{
+		std::deque<Type*> dargs;
+		for(auto a : args)
+			dargs.push_back(a);
+
+		return getWithTypeParameters(dargs, ret, isVarArg, tparams, tc);
+	}
+
+
+
+
+
+
+
+
 	// various
 	std::string FunctionType::str()
 	{
@@ -148,6 +184,7 @@ namespace fir
 		if(this->isFnVariadic != of->isFnVariadic) return false;
 		if(this->functionParams.size() != of->functionParams.size()) return false;
 		if(!this->functionRetType->isTypeEqual(of->functionRetType)) return false;
+		if(this->typeParameters != of->typeParameters) return false;
 
 		for(size_t i = 0; i < this->functionParams.size(); i++)
 		{

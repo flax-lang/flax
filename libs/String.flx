@@ -16,8 +16,64 @@ public extension char
 	}
 }
 
+public extension string
+{
+	func find(s: string) -> int
+	{
+		// this is nonsensical
+		if s.length > self.length { return -1 }
 
+		let l = s.length
+		let sl = self.length
 
+		var i = 0
+		while i < sl && l <= (sl - i)
+		{
+			let res = strncmp(self.raw + i, s.raw, l)
+			if res == 0 { return i }
+
+			i += 1
+		}
+
+		return -1
+	}
+
+	func splitAtIndex(i: int) -> (string, string)
+	{
+		if i <= 0 { return ("", #self) }
+		else if i > self.length { return (#self, "") }
+
+		// else
+		let a = string(self.raw, i)
+		let b = string(self.raw + i, self.length - i)
+
+		return (a, b)
+	}
+
+	func substring(start: int, l: int) -> string
+	{
+		var len = l
+		if start > self.length { return "" }
+		if len == -1 || len > self.length - start
+		{
+			len = self.length - start
+		}
+
+		return string(self.raw + start, len)
+	}
+
+	func substringInRange(start: int, end: int) -> string
+	{
+		if end == -1
+		{
+			return (#self).substring(start, -1)
+		}
+		else
+		{
+			return (#self).substring(start, end - start)
+		}
+	}
+}
 
 
 
