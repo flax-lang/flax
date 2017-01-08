@@ -85,7 +85,9 @@ static void rewriteDotOperator(MemberAccess* ma)
 		{
 			// however, if it's a varref, we need to know... sadly.
 			// grab the functree.
-			FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
+			// FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
+
+			auto ft = cgi->getFuncTreeFromNS(gstate.nsstrs);
 
 			// is this a namespace?
 			if(ft->subMap.find(vr->name) != ft->subMap.end())
@@ -146,7 +148,9 @@ static void rewriteDotOperator(MemberAccess* ma)
 	else if(VarRef* vr = dynamic_cast<VarRef*>(ma->left))
 	{
 		// what kind of vr??
-		FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
+		// FunctionTree* ft = cgi->getCurrentFuncTree(&gstate.nsstrs);
+
+		auto ft = cgi->getFuncTreeFromNS(gstate.nsstrs);
 		iceAssert(ft);
 
 

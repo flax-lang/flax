@@ -33,6 +33,7 @@ static void addOpOverloadToFuncTree(CodegenInstance* cgi, OpOverload* oo)
 static void addFuncDeclToFuncTree(CodegenInstance* cgi, FuncDecl* decl)
 {
 	FunctionTree* ftree = getFuncTree(cgi);
+	decl->ident.scope = cgi->getFullScope();
 	ftree->funcs.push_back(FuncDefPair(0, decl, 0));
 }
 
@@ -55,11 +56,134 @@ static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)
 }
 
 
+
+
+
+
+
+template <typename T>
+static void fixExprScope(T* expr, std::deque<std::string> ns)
+{
+	expr->ident.scope = ns;
+}
+
+static size_t __counter = 0;
+static void handleNestedFunc(Func* fn, std::deque<std::string> ns);
+static void _handleBlock(BracedBlock* bb, std::deque<std::string> ns)
+{
+	for(auto e : bb->statements)
+	{
+		if(ForeignFuncDecl* ffi = dynamic_cast<ForeignFuncDecl*>(e))
+		{
+			fixExprScope(ffi->decl, ns);
+		}
+		else if(Func* f = dynamic_cast<Func*>(e))
+		{
+			handleNestedFunc(f, ns);
+		}
+		else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(e))
+		{
+			ns.push_back("__anon_scope_" + std::to_string(__counter++));
+			_handleBlock(wl->body, ns);
+			ns.pop_back();
+		}
+		else if(IfStmt* i = dynamic_cast<IfStmt*>(e))
+		{
+			for(auto c : i->cases)
+			{
+				ns.push_back("__anon_scope_" + std::to_string(__counter++));
+				_handleBlock(c.second, ns);
+				ns.pop_back();
+			}
+
+			if(i->final)
+			{
+				ns.push_back("__anon_scope_" + std::to_string(__counter++));
+				_handleBlock(i->final, ns);
+				ns.pop_back();
+			}
+		}
+	}
+}
+
+static void handleNestedFunc(Func* fn, std::deque<std::string> ns)
+{
+	fixExprScope(fn->decl, ns);
+	ns.push_back(fn->decl->ident.name);
+	_handleBlock(fn->block, ns);
+	ns.pop_back();
+}
+
+template <typename T>
+static void handleNestedType(T* expr, std::deque<std::string> ns)
+{
+	fixExprScope(expr, ns);
+
+	ns.push_back(expr->ident.name);
+	for(auto t : expr->nestedTypes)
+	{
+		fixExprScope(t.first, ns);
+		handleNestedType(t.first, ns);
+	}
+
+	if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
+	{
+		for(auto oo : cls->operatorOverloads)
+			handleNestedFunc(oo->func, ns);
+
+		for(auto fn : cls->funcs)
+			handleNestedFunc(fn, ns);
+
+		for(auto cp : cls->cprops)
+		{
+			ns.push_back(cp->ident.name);
+
+			if(cp->getter)
+				_handleBlock(cp->getter, ns);
+
+			if(cp->setter)
+				_handleBlock(cp->setter, ns);
+
+			ns.pop_back();
+		}
+	}
+	ns.pop_back();
+}
+
+
+
 // N-pass system.
 // there's no point counting at this stage.
 static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace)
 {
 	if(pass == 0)
+	{
+		// add all decls and all types, and fix their scope
+
+		auto scp = cgi->getFullScope();
+
+		for(Expr* e : expressions)
+		{
+			NamespaceDecl* ns		= dynamic_cast<NamespaceDecl*>(e);
+			StructDef* str			= dynamic_cast<StructDef*>(e);
+			ClassDef* cls			= dynamic_cast<ClassDef*>(e);
+			EnumDef* enr			= dynamic_cast<EnumDef*>(e);
+			Func* fn				= dynamic_cast<Func*>(e);
+			ForeignFuncDecl* ffi	= dynamic_cast<ForeignFuncDecl*>(e);
+			OpOverload* oo			= dynamic_cast<OpOverload*>(e);
+
+
+			if(ns)					ns->codegenPass(cgi, pass);
+			else if(enr)			fixExprScope(enr, scp);
+			else if(ffi)			fixExprScope(ffi->decl, scp);
+
+			else if(str)			handleNestedType(str, scp);
+			else if(cls)			handleNestedType(cls, scp);
+			else if(fn)				handleNestedFunc(fn, scp);
+			else if(oo)				handleNestedFunc(oo->func, scp);
+		}
+	}
+	else if(pass == 1)
 	{
 		// add all the types for order-independence -- if we encounter a need, we can
 		// force codegen.
@@ -79,13 +203,17 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			if(ns)					ns->codegenPass(cgi, pass);
 			else if(ta)				addTypeToFuncTree(cgi, ta, ta->ident.name, TypeKind::TypeAlias);
 			else if(str)			addTypeToFuncTree(cgi, str, str->ident.name, TypeKind::Struct);
-			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
-			else if(oo)				addOpOverloadToFuncTree(cgi, oo);
-			else if(prot)			addProtocolToFuncTree(cgi, prot);
 			else if(enr)			addTypeToFuncTree(cgi, enr, enr->ident.name, TypeKind::Enum);
+			else if(ffi)			addFuncDeclToFuncTree(cgi, ffi->decl);
+			else if(prot)			addProtocolToFuncTree(cgi, prot);
 			else if(cls && !dynamic_cast<ExtensionDef*>(cls))
 			{
 				addTypeToFuncTree(cgi, cls, cls->ident.name, TypeKind::Class);
+			}
+			else if(oo)
+			{
+				addOpOverloadToFuncTree(cgi, oo);
+				addFuncDeclToFuncTree(cgi, oo->func->decl);
 			}
 			else if(fn)
 			{
@@ -95,7 +223,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			}
 		}
 	}
-	else if(pass == 1)
+	else if(pass == 2)
 	{
 		// we need the 'Type' enum to be available, as well as the 'Any' type,
 		// before any variables are encountered.
@@ -103,16 +231,15 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// find all protocols
 		for(Expr* e : expressions)
 		{
-			ProtocolDef* prot = dynamic_cast<ProtocolDef*>(e);
-
-			if(prot) prot->createType(cgi);
+			if(ProtocolDef* prot = dynamic_cast<ProtocolDef*>(e))
+				prot->createType(cgi);
 		}
 
 
 		if(!isInsideNamespace)
 			TypeInfo::initialiseTypeInfo(cgi);
 	}
-	else if(pass == 2)
+	else if(pass == 3)
 	{
 		// pass 2: create declarations
 		for(Expr* e : expressions)
@@ -130,7 +257,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			else if(ns)				ns->codegenPass(cgi, pass);
 		}
 	}
-	else if(pass == 3)
+	else if(pass == 4)
 	{
 		// start "semantic analysis" before any typechecking needs to happen.
 		// this basically involves knowing what is on the left side of a dot operator
@@ -156,7 +283,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 		// processed, we create the Type enum.
 		TypeInfo::generateTypeInfo(cgi);
 	}
-	else if(pass == 4)
+	else if(pass == 5)
 	{
 		for(Expr* e : expressions)
 		{
@@ -171,7 +298,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 			}
 		}
 	}
-	else if(pass == 5)
+	else if(pass == 6)
 	{
 		// pass 4: functions.
 		for(Expr* e : expressions)
@@ -196,12 +323,10 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> ex
 
 void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 {
-	cgi->pushNamespaceScope(this->name, true);
-	cgi->usingNamespaces.push_back(this);
+	cgi->pushNamespaceScope(this->name);
 
 	codegenTopLevel(cgi, pass, this->innards->statements, true);
 
-	cgi->usingNamespaces.pop_back();
 	cgi->popNamespaceScope();
 }
 
@@ -210,7 +335,7 @@ Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// this is getting quite out of hand.
 	// note: we're using <= to show that there are N passes.
 	// don't usually do this.
-	for(int pass = 0; pass <= 5; pass++)
+	for(int pass = 0; pass <= 6; pass++)
 		codegenTopLevel(cgi, pass, this->topLevelExpressions, false);
 
 	// run the after-codegen checkers.

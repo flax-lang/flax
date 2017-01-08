@@ -92,10 +92,9 @@ namespace Codegen
 		std::deque<SymTab_t> symTabStack;
 		fir::ExecutionTarget* execTarget;
 
-		std::deque<std::string> namespaceStack;
+		FunctionTree* currentFuncTree;
 		std::deque<BracedBlockScope> blockStack;
 		std::deque<Ast::StructBase*> nestedTypeStack;
-		std::deque<Ast::NamespaceDecl*> usingNamespaces;
 
 		// refcounting, holds a stack of *POINTERS* to refcounted types
 		std::deque<std::deque<fir::Value*>> refCountingStack;
@@ -162,19 +161,17 @@ namespace Codegen
 		std::deque<fir::Value*> getRefCountedValues();
 		void clearScope();
 
-		std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> saveAndClearScope();
-		void restoreScope(std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> s);
+		std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, FunctionTree*> saveAndClearScope();
+		void restoreScope(std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, FunctionTree*> s);
 
 		// function scopes: namespaces, nested functions.
-		void pushNamespaceScope(std::string namespc, bool doFuncTree = true);
+		void pushNamespaceScope(std::string namespc);
 		void clearNamespaceScope();
 		void popNamespaceScope();
 
 		void addFunctionToScope(FuncDefPair func, FunctionTree* root = 0);
 		void removeFunctionFromScope(FuncDefPair func);
 		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
-
-		FunctionTree* getCurrentFuncTree(std::deque<std::string>* nses = 0, FunctionTree* root = 0);
 
 		void importFunctionTreeInto(FunctionTree* orig, FunctionTree* import);
 
@@ -195,6 +192,8 @@ namespace Codegen
 		void pushNestedTypeScope(Ast::StructBase* nest);
 		void popNestedTypeScope();
 
+		FunctionTree* getCurrentFuncTree();
+		FunctionTree* getFuncTreeFromNS(std::deque<std::string> scope);
 
 		std::deque<std::string> getFullScope();
 		TypePair_t* findTypeInFuncTree(std::deque<std::string> scope, std::string name);

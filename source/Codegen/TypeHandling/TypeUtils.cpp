@@ -35,24 +35,19 @@ namespace Codegen
 
 	TypePair_t* CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
 	{
-		auto curDepth = scope;
-
 		if(this->getExprTypeOfBuiltin(name) != 0)
 			return 0;
 
-		for(size_t i = 0; i <= scope.size(); i++)
+		auto cft = this->getFuncTreeFromNS(scope);
+		while(cft)
 		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto& f : ft->types)
+			for(auto& f : cft->types)
 			{
 				if(f.first == name)
 					return &f.second;
 			}
 
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			cft = cft->parent;
 		}
 
 		return 0;

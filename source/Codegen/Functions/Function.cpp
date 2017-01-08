@@ -89,6 +89,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// the reverse stack searching for symbols makes sure we can reference variables in outer scopes, but at the same time
 	// we can shadow outer variables with our own.
 	cgi->pushScope();
+	cgi->pushNamespaceScope(this->decl->ident.str());
 	cgi->setCurrentFunctionScope(this);
 
 
@@ -244,6 +245,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(prevBlock)
 		cgi->irb.setCurrentBlock(prevBlock);
 
+	cgi->popNamespaceScope();
 	cgi->clearCurrentFunctionScope();
 	return Result_t(func, 0);
 }

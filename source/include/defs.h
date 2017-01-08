@@ -103,8 +103,8 @@ namespace Codegen
 
 	struct FunctionTree
 	{
-		FunctionTree() { this->id = __getnewid(); }
-		explicit FunctionTree(std::string n) : nsName(n) { this->id = __getnewid(); }
+		FunctionTree(FunctionTree* p) : parent(p) { this->id = __getnewid(); }
+		explicit FunctionTree(std::string n, FunctionTree* p) : nsName(n), parent(p) { this->id = __getnewid(); }
 
 		static id_t __getnewid()
 		{
@@ -115,6 +115,7 @@ namespace Codegen
 		id_t id;
 
 		std::string nsName;
+		FunctionTree* parent;
 
 		std::deque<FunctionTree*> subs;
 		std::unordered_map<std::string, FunctionTree*> subMap;	// purely for fast duplicate checking

@@ -39,8 +39,8 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings -Wno-missing-variable-declarations
+CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
 
 LDFLAGS			+= $(SANITISE)
 
@@ -59,7 +59,7 @@ GLTESTSRC		:= build/gltest.flx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx ci prep satest osxflags
+.PHONY: copylibs jit compile clean build osx linux ci prep satest osxflags
 
 prep:
 	@mkdir -p $(dir $(OUTPUT))
@@ -75,7 +75,9 @@ osx: prep jit osxflags
 satest: prep osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run -o build/standalone build/standalone.flx
 
-ci: prep jit
+ci: linux
+
+linux: prep jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
