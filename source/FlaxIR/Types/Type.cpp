@@ -15,14 +15,14 @@ namespace fir
 	// NOTE: some global state.
 	// structs
 
-	static size_t getIndirections(Type* type)
-	{
-		size_t ret = 0;
-		while(type->isPointerType())
-			type = type->getPointerElementType(), ret++;
+	// static size_t getIndirections(Type* type)
+	// {
+	// 	size_t ret = 0;
+	// 	while(type->isPointerType())
+	// 		type = type->getPointerElementType(), ret++;
 
-		return ret;
-	}
+	// 	return ret;
+	// }
 
 	Type* FTContext::normaliseType(Type* type)
 	{

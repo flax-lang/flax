@@ -56,7 +56,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// special case: if no body, just return a type of the existing name.
-		for(auto &t : tc->typeCache)
+		for(auto& t : tc->typeCache)
 		{
 			if(t->isClassType() && t->toClassType()->getClassName() == name)
 				return t->toClassType();
