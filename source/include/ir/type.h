@@ -55,8 +55,7 @@ namespace fir
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
 
-		// keyed by number of indirections
-		std::unordered_map<size_t, std::vector<Type*>> typeCache;
+		std::vector<Type*> typeCache;
 		Type* normaliseType(Type* type);
 	};
 
@@ -187,6 +186,8 @@ namespace fir
 
 		// base things
 		size_t id = 0;
+
+		PointerType * pointerTo = nullptr;
 
 		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);

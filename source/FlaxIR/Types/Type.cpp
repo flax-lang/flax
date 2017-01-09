@@ -29,18 +29,20 @@ namespace fir
 		if(Type::areTypesEqual(type, this->voidType))
 			return this->voidType;
 
-		size_t ind = getIndirections(type);
-		std::vector<Type*>& list = this->typeCache[ind];
+		// pointer types are guaranteed to be unique due to internal caching
+		// see getPointerTo
+		if(type->isPointerType())
+			return type;
 
 		// find in the list.
 		// todo: make this more efficient
-		for(auto t : list)
+		for(auto t : typeCache)
 		{
 			if(Type::areTypesEqual(t, type))
 				return t;
 		}
 
-		list.push_back(type);
+		typeCache.push_back(type);
 		return type;
 	}
 
@@ -112,7 +114,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 
 
@@ -124,7 +126,7 @@ namespace fir
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// int16
 		{
@@ -132,7 +134,7 @@ namespace fir
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// int32
 		{
@@ -140,7 +142,7 @@ namespace fir
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// int64
 		{
@@ -148,7 +150,7 @@ namespace fir
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// int128
 		{
@@ -156,7 +158,7 @@ namespace fir
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 
 
@@ -168,7 +170,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// uint16
 		{
@@ -176,7 +178,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// uint32
 		{
@@ -184,7 +186,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// uint64
 		{
@@ -192,7 +194,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// uint128
 		{
@@ -200,7 +202,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 
 
@@ -212,7 +214,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// float64
 		{
@@ -220,7 +222,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// float80
 		{
@@ -228,7 +230,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[80].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 		// float128
 		{
@@ -236,7 +238,7 @@ namespace fir
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache[0].push_back(t);
+			tc->typeCache.push_back(t);
 		}
 
 		return tc;
@@ -302,13 +304,19 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
+		// cache the pointer internally
+		if (!pointerTo) {
+			PointerType* newType = new PointerType(this);
+			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
 
-		PointerType* newType = new PointerType(this);
+			iceAssert(newType);
+			// the type shouldn't be in the global cache at this point yet
+			iceAssert(normalised == newType);
 
-		// get or create.
-		newType = dynamic_cast<PointerType*>(tc->normaliseType(newType));
-		iceAssert(newType);
-		return newType;
+			pointerTo = normalised;
+		}
+
+		return pointerTo;
 	}
 
 	Type* Type::getPointerElementType(FTContext* tc)
@@ -324,7 +332,9 @@ namespace fir
 		iceAssert(ptrthis);
 
 		Type* newType = ptrthis->baseType;
-		newType = tc->normaliseType(newType);
+		// ptrthis could only have been obtained by calling getPointerTo
+		// on an already normalised type, so this should not be needed
+		// newType = tc->normaliseType(newType);
 
 		return newType;
 	}
@@ -355,8 +365,9 @@ namespace fir
 			for(ssize_t i = 0; i < -times; i++)
 				ret = ret->getPointerElementType();
 		}
-
-		ret = tc->normaliseType(ret);
+		// both getPointerTo and getPointerElementType should already
+		// return normalised types
+		// ret = tc->normaliseType(ret);
 		return ret;
 	}
 
