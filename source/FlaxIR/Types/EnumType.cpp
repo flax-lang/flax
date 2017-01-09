@@ -91,7 +91,7 @@ namespace fir
 		EnumType* type = new EnumType(name, caseType, _cases);
 
 		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache[0])
+		for(auto t : tc->typeCache)
 		{
 			if(t->isEnumType() && t->toEnumType()->getEnumName() == name)
 			{
