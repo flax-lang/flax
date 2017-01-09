@@ -27,7 +27,7 @@ namespace fir
 		ClassType* type = new ClassType(name, members, methods);
 
 		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache[0])
+		for(auto t : tc->typeCache)
 		{
 			if(t->isClassType() && t->toClassType()->getClassName() == name)
 			{
@@ -56,7 +56,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// special case: if no body, just return a type of the existing name.
-		for(auto t : tc->typeCache[0])
+		for(auto &t : tc->typeCache)
 		{
 			if(t->isClassType() && t->toClassType()->getClassName() == name)
 				return t->toClassType();
