@@ -187,7 +187,7 @@ namespace fir
 		// base things
 		size_t id = 0;
 
-		PointerType * pointerTo = nullptr;
+		PointerType* pointerTo = 0;
 
 		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);

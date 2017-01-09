@@ -52,7 +52,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// special case: if no body, just return a type of the existing name.
-		for(auto &t : tc->typeCache)
+		for(auto& t : tc->typeCache)
 		{
 			if(t->isStructType() && t->toStructType()->getStructName() == name)
 				return t->toStructType();
