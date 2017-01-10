@@ -5,7 +5,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <functional>
 
 #include "ast.h"
 
@@ -22,8 +21,9 @@ namespace Operators
 {
 	struct OperatorMap
 	{
-		std::map<Ast::ArithmeticOp, std::function<Ast::Result_t(Codegen::CodegenInstance*, Ast::ArithmeticOp,
-			Ast::Expr*, std::deque<Ast::Expr*>)>> theMap;
+		using OperatorFunc = Ast::Result_t(*)(Codegen::CodegenInstance*, Ast::ArithmeticOp,
+			Ast::Expr*, std::deque<Ast::Expr*>);
+		std::map<Ast::ArithmeticOp, OperatorFunc> theMap;
 
 		OperatorMap();
 		Ast::Result_t call(Ast::ArithmeticOp op, Codegen::CodegenInstance* cgi, Ast::Expr* usr, std::deque<Ast::Expr*> args);
