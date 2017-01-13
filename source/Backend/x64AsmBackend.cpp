@@ -7,7 +7,7 @@
 
 namespace Compiler
 {
-	x64Backend::x64Backend(CompiledData& dat, std::deque<std::string> inputs, std::string output)
+	x64Backend::x64Backend(CompiledData& dat, std::vector<std::string> inputs, std::string output)
 		: Backend(0, dat, inputs, output)
 	{
 	}

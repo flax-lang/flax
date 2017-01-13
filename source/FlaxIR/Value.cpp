@@ -61,7 +61,7 @@ namespace fir
 	void Value::transferUsesTo(Value* other)
 	{
 		// check.
-		std::deque<Value*> culled;
+		std::vector<Value*> culled;
 
 		// todo: O(N^2)
 		for(auto v : this->users)

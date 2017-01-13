@@ -61,7 +61,7 @@ fir::Type* PostfixUnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Va
 
 namespace Operators
 {
-	Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorUnaryPlus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto res = args[0]->codegen(cgi);
 
@@ -69,14 +69,14 @@ namespace Operators
 		return Result_t(res.value, res.pointer);
 	}
 
-	Result_t operatorUnaryMinus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorUnaryMinus(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto res = args[0]->codegen(cgi);
 
 		return Result_t(cgi->irb.CreateNeg(res.value), res.pointer);
 	}
 
-	Result_t operatorBitwiseNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorBitwiseNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto res = args[0]->codegen(cgi);
 		if(!res.value->getType()->isIntegerType())
@@ -85,7 +85,7 @@ namespace Operators
 		return Result_t(cgi->irb.CreateBitwiseNOT(res.value), res.pointer);
 	}
 
-	Result_t operatorAddressOf(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorAddressOf(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto res = args[0]->codegen(cgi);
 
@@ -96,7 +96,7 @@ namespace Operators
 		return Result_t(res.pointer, 0);
 	}
 
-	Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorDereference(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto res = args[0]->codegen(cgi);
 

@@ -35,7 +35,7 @@ enum class VarState
 struct VarDef
 {
 	std::string name;
-	std::deque<VarState> stateStack;
+	std::vector<VarState> stateStack;
 
 	Ast::Expr* expr = 0;
 	Ast::VarDecl* decl = 0;
