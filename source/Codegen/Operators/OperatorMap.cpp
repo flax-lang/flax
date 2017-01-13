@@ -63,7 +63,7 @@ namespace Operators
 		this->theMap[ArithmeticOp::UserDefined]			= operatorCustom;
 	}
 
-	Result_t OperatorMap::call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::deque<Expr*> args)
+	Result_t OperatorMap::call(ArithmeticOp op, CodegenInstance* cgi, Expr* usr, std::vector<Expr*> args)
 	{
 		auto fn = theMap[op > ArithmeticOp::UserDefined ? ArithmeticOp::UserDefined : op];
 		iceAssert(fn);

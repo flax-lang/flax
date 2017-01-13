@@ -129,7 +129,7 @@ namespace Codegen
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr)
 	{
-		typedef std::deque<pts::TypeTransformer> TrfList;
+		typedef std::vector<pts::TypeTransformer> TrfList;
 
 		// decompose each type fully
 		pts::Type* dpt = 0; TrfList ptrfs;
@@ -174,8 +174,8 @@ namespace Codegen
 		// note: should you be able to pass a function (T, K[...]) -> void to an argument taking (T) -> void?
 		// it shouldn't make a difference, but would probably be unexpected.
 
-		std::deque<fir::Type*> ftlist;
-		std::deque<pts::Type*> ptlist;
+		std::vector<fir::Type*> ftlist;
+		std::vector<pts::Type*> ptlist;
 		if(dft->isFunctionType())
 		{
 			iceAssert(dft->isFunctionType() && dpt->isFunctionType());
@@ -652,9 +652,9 @@ namespace Codegen
 
 	// main solver function
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
-		FuncDecl* candidate, std::deque<fir::Type*> args, std::string* errorString, Expr** failedExpr)
+		FuncDecl* candidate, std::vector<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
-		typedef std::deque<pts::TypeTransformer> TrfList;
+		typedef std::vector<pts::TypeTransformer> TrfList;
 
 
 
@@ -700,7 +700,7 @@ namespace Codegen
 				iceAssert(args.front()->isPointerType() && args.front()->getPointerElementType()->isClassType() && "what, no.");
 
 				// originalFirstParam = args.front();
-				args.pop_front();
+				args.erase(args.begin());
 
 				iceAssert(candidate->params.size() == args.size());
 			}
@@ -731,11 +731,11 @@ namespace Codegen
 		}
 
 
-		std::map<std::string, std::deque<std::pair<size_t, fir::Type*>>> candidateGenerics;
+		std::map<std::string, std::vector<std::pair<size_t, fir::Type*>>> candidateGenerics;
 		std::map<size_t, std::string> genericPositions;
 		std::map<size_t, fir::Type*> nonGenericTypes;
 
-		std::map<std::string, std::deque<size_t>> genericPositions2;
+		std::map<std::string, std::vector<size_t>> genericPositions2;
 
 		for(size_t i = 0; i < candidate->params.size(); i++)
 		{
@@ -1242,7 +1242,7 @@ namespace Codegen
 
 
 	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
-		Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex)
+		Func* func, std::vector<fir::Type*> params, std::string* err, Ast::Expr** ex)
 	{
 		iceAssert(func);
 		iceAssert(func->decl);
@@ -1307,7 +1307,7 @@ namespace Codegen
 	}
 
 
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::deque<Func*> candidates,
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::vector<Func*> candidates,
 		std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
 		// try and resolve shit
@@ -1318,7 +1318,7 @@ namespace Codegen
 			return FuncDefPair::empty();	// just fail
 		}
 
-		std::deque<fir::Type*> fargs;
+		std::vector<fir::Type*> fargs;
 		for(auto p : fc->params)
 			fargs.push_back(p->getType(this));
 
@@ -1361,15 +1361,15 @@ namespace Codegen
 
 	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
-		std::deque<Func*> candidates = this->findGenericFunctions(fc->name);
+		std::vector<Func*> candidates = this->findGenericFunctions(fc->name);
 		return this->tryResolveGenericFunctionCallUsingCandidates(fc, candidates, errs);
 	}
 
 
-	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::deque<Func*> candidates,
+	FuncDefPair CodegenInstance::tryResolveGenericFunctionFromCandidatesUsingFunctionType(Expr* user, std::vector<Func*> candidates,
 		fir::FunctionType* ft, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 	{
-		std::deque<FuncDefPair> ret;
+		std::vector<FuncDefPair> ret;
 		for(auto fn : candidates)
 		{
 			std::string s; Expr* e = 0;
@@ -1493,9 +1493,9 @@ namespace Codegen
 
 
 
-	std::string CodegenInstance::mangleGenericParameters(std::deque<VarDecl*> args)
+	std::string CodegenInstance::mangleGenericParameters(std::vector<VarDecl*> args)
 	{
-		std::deque<std::string> strs;
+		std::vector<std::string> strs;
 		std::map<std::string, int> uniqueGenericTypes;	// only a map because it's easier to .find().
 
 		// TODO: this is very suboptimal

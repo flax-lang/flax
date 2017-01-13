@@ -24,13 +24,13 @@ namespace Parser
 struct HighlightOptions
 {
 	Parser::Pin caret;
-	std::deque<Parser::Pin> underlines;
+	std::vector<Parser::Pin> underlines;
 	bool drawCaret;
 
 	HighlightOptions() : drawCaret(true) { }
 	HighlightOptions(const Parser::Pin& c) : caret(c), underlines({ }), drawCaret(true) { }
-	HighlightOptions(const Parser::Pin& c, std::deque<Parser::Pin> u) : caret(c), underlines(u), drawCaret(true) { }
-	HighlightOptions(const Parser::Pin& c, std::deque<Parser::Pin> u, bool dc) : caret(c), underlines(u), drawCaret(dc) { }
+	HighlightOptions(const Parser::Pin& c, std::vector<Parser::Pin> u) : caret(c), underlines(u), drawCaret(true) { }
+	HighlightOptions(const Parser::Pin& c, std::vector<Parser::Pin> u, bool dc) : caret(c), underlines(u), drawCaret(dc) { }
 };
 
 Parser::Pin getHighlightExtent(Ast::Expr* e);

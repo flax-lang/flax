@@ -77,7 +77,7 @@ namespace fir
 		return this->fnArguments.size();
 	}
 
-	std::deque<Argument*> Function::getArguments()
+	std::vector<Argument*> Function::getArguments()
 	{
 		return this->fnArguments;
 	}
@@ -93,7 +93,7 @@ namespace fir
 	}
 
 
-	std::deque<IRBlock*>& Function::getBlockList()
+	std::vector<IRBlock*>& Function::getBlockList()
 	{
 		return this->blocks;
 	}

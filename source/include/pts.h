@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 #include <string>
-#include <deque>
+#include <vector>
 
 #include "defs.h"
 
@@ -61,12 +61,12 @@ namespace pts
 	};
 
 
-	fir::Type* applyTransformationsOnType(fir::Type* base, std::deque<TypeTransformer> trfs);
+	fir::Type* applyTransformationsOnType(fir::Type* base, std::vector<TypeTransformer> trfs);
 
-	bool areTransformationsCompatible(std::deque<TypeTransformer> a, std::deque<TypeTransformer> b);
-	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::deque<TypeTransformer> a, std::deque<TypeTransformer> b);
-	std::pair<fir::Type*, std::deque<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type);
-	std::pair<pts::Type*, std::deque<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(pts::Type* type);
+	bool areTransformationsCompatible(std::vector<TypeTransformer> a, std::vector<TypeTransformer> b);
+	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::vector<TypeTransformer> a, std::vector<TypeTransformer> b);
+	std::pair<fir::Type*, std::vector<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type);
+	std::pair<pts::Type*, std::vector<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(pts::Type* type);
 
 
 	struct Type
@@ -141,10 +141,10 @@ namespace pts
 	struct TupleType : Type
 	{
 		virtual ~TupleType() { }
-		explicit TupleType(std::deque<pts::Type*> ts) : types(ts) { }
+		explicit TupleType(std::vector<pts::Type*> ts) : types(ts) { }
 		virtual std::string str() override;
 
-		std::deque<pts::Type*> types;
+		std::vector<pts::Type*> types;
 	};
 
 
@@ -184,11 +184,11 @@ namespace pts
 	struct FunctionType : Type
 	{
 		virtual ~FunctionType() { }
-		explicit FunctionType(std::deque<pts::Type*> args, pts::Type* ret) : argTypes(args), returnType(ret) { }
+		explicit FunctionType(std::vector<pts::Type*> args, pts::Type* ret) : argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
 		std::map<std::string, TypeConstraints_t> genericTypes;
-		std::deque<pts::Type*> argTypes;
+		std::vector<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};
 

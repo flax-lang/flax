@@ -5,7 +5,7 @@
 #pragma once
 
 #include <map>
-#include <deque>
+#include <vector>
 #include <stack>
 #include <string>
 
@@ -34,7 +34,7 @@ namespace Codegen
 		std::string name;
 
 		// mainly to aid error reporting
-		std::deque<std::pair<DepNode*, Ast::Expr*>> users;
+		std::vector<std::pair<DepNode*, Ast::Expr*>> users;
 
 		int index = -1;
 		int lowlink = -1;
@@ -51,16 +51,16 @@ namespace Codegen
 
 	struct DependencyGraph
 	{
-		std::deque<DepNode*> nodes;
-		std::map<DepNode*, std::deque<Dep*>> edgesFrom;
+		std::vector<DepNode*> nodes;
+		std::map<DepNode*, std::vector<Dep*>> edgesFrom;
 
 		std::stack<DepNode*> stack;
 
 
 		void addModuleDependency(std::string from, std::string to, Ast::Expr* imp);
-		std::deque<std::deque<DepNode*>> findCyclicDependencies();
+		std::vector<std::vector<DepNode*>> findCyclicDependencies();
 
-		std::deque<DepNode*> findDependenciesOf(Ast::Expr* expr);
+		std::vector<DepNode*> findDependenciesOf(Ast::Expr* expr);
 	};
 }
 

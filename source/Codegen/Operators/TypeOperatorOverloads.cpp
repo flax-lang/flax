@@ -44,7 +44,7 @@ fir::Type* OpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 	return 0;
 }
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
+Result_t OpOverload::codegen(CodegenInstance* cgi, std::vector<fir::Type*> args)
 {
 	if(!this->didCodegen)
 	{
@@ -93,7 +93,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::deque<fir::Type*> args)
 
 Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	return this->codegen(cgi, std::deque<fir::Type*>());
+	return this->codegen(cgi, std::vector<fir::Type*>());
 }
 
 
