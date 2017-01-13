@@ -293,7 +293,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 
 
 
-	std::deque<std::pair<std::string, fir::Type*>> types;
+	std::vector<std::pair<std::string, fir::Type*>> types;
 
 
 

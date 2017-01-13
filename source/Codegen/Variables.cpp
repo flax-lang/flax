@@ -56,7 +56,7 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 
 	// check for functions
 	auto fns = cgi->resolveFunctionName(vr->name);
-	std::deque<fir::Function*> cands;
+	std::vector<fir::Function*> cands;
 
 	for(auto fn : fns)
 	{

@@ -47,11 +47,11 @@ static fir::Function* instantiateGenericFunctionAsParameter(CodegenInstance* cgi
 	return 0;
 }
 
-static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenInstance* cgi, FuncCall* fc, fir::FunctionType* ft,
-	std::deque<Expr*> params, bool variadic, bool cvar)
+static std::vector<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenInstance* cgi, FuncCall* fc, fir::FunctionType* ft,
+	std::vector<Expr*> params, bool variadic, bool cvar)
 {
-	std::deque<fir::Value*> args;
-	std::deque<fir::Value*> argptrs;
+	std::vector<fir::Value*> args;
+	std::vector<fir::Value*> argptrs;
 
 	if(!variadic)
 	{
@@ -177,7 +177,7 @@ static std::deque<fir::Value*> _checkAndCodegenFunctionCallParameters(CodegenIns
 		{
 			// do the last.
 			fir::Type* variadicType = ft->getArgumentTypes().back()->toParameterPackType()->getElementType();
-			std::deque<fir::Value*> variadics;
+			std::vector<fir::Value*> variadics;
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
 			{

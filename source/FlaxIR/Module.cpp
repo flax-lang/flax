@@ -133,11 +133,11 @@ namespace fir
 		return this->functions[id];
 	}
 
-	std::deque<Function*> Module::getFunctionsWithName(const Identifier& id)
+	std::vector<Function*> Module::getFunctionsWithName(const Identifier& id)
 	{
 		// todo: *very* inefficient.
 
-		std::deque<Function*> ret;
+		std::vector<Function*> ret;
 		for(auto fn : this->functions)
 		{
 			if(fn.first.name == id.name && fn.first.scope == id.scope)
@@ -373,27 +373,27 @@ namespace fir
 
 
 
-	std::deque<GlobalVariable*> Module::getGlobalVariables()
+	std::vector<GlobalVariable*> Module::getGlobalVariables()
 	{
-		std::deque<GlobalVariable*> ret;
+		std::vector<GlobalVariable*> ret;
 		for(auto g : this->globals)
 			ret.push_back(g.second);
 
 		return ret;
 	}
 
-	std::deque<Type*> Module::getNamedTypes()
+	std::vector<Type*> Module::getNamedTypes()
 	{
-		std::deque<Type*> ret;
+		std::vector<Type*> ret;
 		for(auto g : this->namedTypes)
 			ret.push_back(g.second);
 
 		return ret;
 	}
 
-	std::deque<Function*> Module::getAllFunctions()
+	std::vector<Function*> Module::getAllFunctions()
 	{
-		std::deque<Function*> ret;
+		std::vector<Function*> ret;
 		for(auto g : this->functions)
 			ret.push_back(g.second);
 
