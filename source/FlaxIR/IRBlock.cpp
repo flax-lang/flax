@@ -32,7 +32,7 @@ namespace fir
 	void IRBlock::eraseFromParentFunction()
 	{
 		iceAssert(this->parentFunction && "no function");
-		std::deque<IRBlock*>& blist = this->parentFunction->getBlockList();
+		std::vector<IRBlock*>& blist = this->parentFunction->getBlockList();
 
 		for(auto it = blist.begin(); it != blist.end(); it++)
 		{
@@ -46,7 +46,7 @@ namespace fir
 		iceAssert(0 && "not in function");
 	}
 
-	std::deque<Instruction*>& IRBlock::getInstructions()
+	std::vector<Instruction*>& IRBlock::getInstructions()
 	{
 		return this->instructions;
 	}

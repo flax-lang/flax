@@ -12,7 +12,7 @@ using namespace Codegen;
 
 namespace Operators
 {
-	Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorLogicalAnd(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s, have %zu", Parser::arithmeticOpToString(cgi, op).c_str(), args.size());
@@ -64,7 +64,7 @@ namespace Operators
 		return Result_t(cgi->irb.CreateLoad(resPtr), resPtr);
 	}
 
-	Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorLogicalOr(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s, have %zu", Parser::arithmeticOpToString(cgi, op).c_str(), args.size());
@@ -121,7 +121,7 @@ namespace Operators
 		return Result_t(cgi->irb.CreateLoad(resPtr), resPtr);
 	}
 
-	Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorLogicalNot(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 1)
 			error(user, "Expected 1 argument for logical not, have %zu", args.size());

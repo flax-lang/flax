@@ -77,11 +77,10 @@ namespace fir
 		Value* CreateCall1(Function* fn, Value* p1, std::string vname = "");
 		Value* CreateCall2(Function* fn, Value* p1, Value* p2, std::string vname = "");
 		Value* CreateCall3(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname = "");
-		Value* CreateCall(Function* fn, std::deque<Value*> args, std::string vname = "");
 		Value* CreateCall(Function* fn, std::vector<Value*> args, std::string vname = "");
 		Value* CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname = "");
 
-		Value* CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname = "");
+		Value* CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname = "");
 
 		Value* CreateReturn(Value* v);
 		Value* CreateReturnVoid();
@@ -119,11 +118,11 @@ namespace fir
 		Value* CreatePointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
-		Value* CreateAggregateValue(Type* t, std::deque<Value*> values, std::string vname = "");
+		Value* CreateAggregateValue(Type* t, std::vector<Value*> values, std::string vname = "");
 		Value* CreateValue(Type* t, std::string vname = "");
 
-		Value* CreateInsertValue(Value* val, std::deque<size_t> inds, Value* elm, std::string vname = "");
-		Value* CreateExtractValue(Value* val, std::deque<size_t> inds, std::string vname = "");
+		Value* CreateInsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname = "");
+		Value* CreateExtractValue(Value* val, std::vector<size_t> inds, std::string vname = "");
 
 		Value* CreateInsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
 		Value* CreateExtractValueByName(Value* val, std::string mem, std::string vname = "");

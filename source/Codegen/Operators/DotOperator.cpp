@@ -393,7 +393,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
 		{
 			std::map<FuncDecl*, std::pair<Func*, fir::Function*>> fcands;
-			std::deque<FuncDefPair> fpcands;
+			std::vector<FuncDefPair> fpcands;
 
 			for(auto ext : cgi->getExtensionsForBuiltinType(type))
 			{
@@ -407,7 +407,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			for(auto p : fcands)
 				fpcands.push_back(FuncDefPair(p.second.second, p.second.first->decl, p.second.first));
 
-			std::deque<fir::Type*> fpars = { type->getPointerTo() };
+			std::vector<fir::Type*> fpars = { type->getPointerTo() };
 			for(auto e : fc->params) fpars.push_back(e->getType(cgi));
 
 			Resolved_t res = cgi->resolveFunctionFromList(fc, fpcands, fc->name, fpars);
@@ -422,7 +422,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				return Result_t(0, 0);
 			}
 
-			std::deque<fir::Value*> args;
+			std::vector<fir::Value*> args;
 			for(auto e : fc->params)
 				args.push_back(e->codegen(cgi).value);
 
@@ -430,7 +430,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			iceAssert(val);
 
 			fir::Value* newSelfP = cgi->irb.CreateImmutStackAlloc(val->getType(), val);
-			args.push_front(newSelfP);
+			args.insert(args.begin(), newSelfP);
 
 			fir::Function* target = res.t.firFunc;
 			auto thistarget = cgi->module->getOrCreateFunction(target->getName(), target->getType(), target->linkageType);
@@ -440,7 +440,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 		}
 		else if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
 		{
-			std::deque<ComputedProperty*> ccands;
+			std::vector<ComputedProperty*> ccands;
 
 			for(auto ext : cgi->getExtensionsForBuiltinType(type))
 			{
@@ -901,7 +901,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 		else if(fc)
 		{
 			size_t i = 0;
-			std::deque<FuncDefPair> candidates;
+			std::vector<FuncDefPair> candidates;
 
 			for(auto f : cls->funcs)
 			{
@@ -977,7 +977,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 
 
 
-static std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, StructBase*, fir::Type*>
+static std::tuple<FunctionTree*, std::vector<std::string>, std::vector<std::string>, StructBase*, fir::Type*>
 unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 {
 	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
@@ -995,7 +995,7 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 	// another (valid and reasonable) assumption is that once we encounter a typename (ie. static member or
 	// nested type access), there will not be namespace access anymore.
 
-	std::deque<std::string> list;
+	std::vector<std::string> list;
 
 	fir::Type* curFType = 0;
 	StructBase* curType = 0;
@@ -1009,7 +1009,7 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 		VarRef* vr = dynamic_cast<VarRef*>(cur->right);
 		iceAssert(vr);
 
-		list.push_front(vr->name);
+		list.insert(list.begin(), vr->name);
 	}
 
 	iceAssert(cur);
@@ -1017,21 +1017,21 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 		VarRef* vr = dynamic_cast<VarRef*>(cur->left);
 		iceAssert(vr);
 
-		list.push_front(vr->name);
+		list.insert(list.begin(), vr->name);
 	}
 
-	std::deque<std::string> origList = list;
+	std::vector<std::string> origList = list;
 
 
 	// now we go left-to-right.
-	std::deque<std::string> nsstrs;
+	std::vector<std::string> nsstrs;
 	// FunctionTree* ftree = cgi->getCurrentFuncTree(&nsstrs);
 	auto ftree = cgi->getFuncTreeFromNS(nsstrs);
 
 	while(list.size() > 0)
 	{
 		std::string front = list.front();
-		list.pop_front();
+		list.erase(list.begin());
 
 		bool found = false;
 
@@ -1126,8 +1126,8 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 	FunctionTree* ftree = 0;
 	StructBase* curType = 0;
 	fir::Type* curFType = 0;
-	std::deque<std::string> nsstrs;
-	std::deque<std::string> origList;
+	std::vector<std::string> nsstrs;
+	std::vector<std::string> origList;
 
 	std::tie(ftree, nsstrs, origList, curType, curFType) = unwrapStaticDotOperator(this, ma);
 
@@ -1145,7 +1145,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			res = this->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
 			if(!res.resolved)
 			{
-				std::deque<Func*> flist;
+				std::vector<Func*> flist;
 				for(auto f : ftree->genericFunctions)
 				{
 					iceAssert(f.first->genericTypes.size() > 0);
@@ -1164,7 +1164,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 			{
 				iceAssert(clsd->funcs.size() == clsd->lfuncs.size());
 
-				std::deque<FuncDefPair> flist;
+				std::vector<FuncDefPair> flist;
 				for(size_t i = 0; i < clsd->funcs.size(); i++)
 				{
 					if(clsd->funcs[i]->decl->ident.name == fc->name && clsd->funcs[i]->decl->isStatic)
@@ -1184,7 +1184,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 				if(!res.resolved)
 				{
-					std::deque<Func*> flist;
+					std::vector<Func*> flist;
 					for(auto f : clsd->funcs)
 					{
 						if(f->decl->ident.name == fc->name && f->decl->genericTypes.size() > 0)
@@ -1375,7 +1375,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 
 
 fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* usr, std::string name,
-	std::deque<fir::Function*> cands, fir::Value* extra)
+	std::vector<fir::Function*> cands, fir::Value* extra)
 {
 	if(cands.size() == 0)
 	{
@@ -1419,7 +1419,7 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* u
 FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* user, std::string name, fir::Value* extra)
 {
 	// find functions
-	std::deque<fir::Function*> cands;
+	std::vector<fir::Function*> cands;
 	std::map<fir::Function*, std::pair<FuncDecl*, Func*>> map;
 
 	for(auto f : cls->funcs)
@@ -1540,7 +1540,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 		if(map.empty()) return 0;
 
 
-		std::deque<fir::Function*> cands;
+		std::vector<fir::Function*> cands;
 
 		// set up
 		for(auto p : map)
@@ -1610,7 +1610,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
 	ClassDef* cls, FuncCall* fc, fir::Value* ref)
 {
-	std::deque<fir::Type*> params;
+	std::vector<fir::Type*> params;
 	for(auto p : fc->params)
 		params.push_back(p->getType(cgi));
 
@@ -1618,13 +1618,13 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 		cls->createType(cgi);
 
 	iceAssert(cls->createdType);
-	params.push_front(cls->createdType->getPointerTo());
+	params.insert(params.begin(), cls->createdType->getPointerTo());
 
 
-	std::deque<Func*> funclist;
+	std::vector<Func*> funclist;
 
-	std::deque<Func*> genericfunclist;
-	std::deque<FuncDefPair> fns;
+	std::vector<Func*> genericfunclist;
+	std::vector<FuncDefPair> fns;
 	for(auto f : cls->funcs)
 	{
 		if(f->decl->ident.name == fc->name)
@@ -1639,7 +1639,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 
 
 
-	std::deque<ExtensionDef*> exts = cgi->getExtensionsForType(cls);
+	std::vector<ExtensionDef*> exts = cgi->getExtensionsForType(cls);
 	for(auto ext : exts)
 	{
 		for(auto f : ext->funcs)

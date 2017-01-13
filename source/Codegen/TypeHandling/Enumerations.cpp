@@ -54,7 +54,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(prev->isPrimitiveType() && prev->toPrimitiveType()->isLiteralType())
 		prev = prev->toPrimitiveType()->getUnliteralType();
 
-	std::deque<std::string> fullScope = cgi->getFullScope();
+	std::vector<std::string> fullScope = cgi->getFullScope();
 
 
 	std::map<std::string, fir::ConstantValue*> casevals;

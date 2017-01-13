@@ -6,7 +6,7 @@
 
 namespace Compiler
 {
-	Backend* Backend::getBackendFromOption(BackendOption opt, CompiledData& cd, std::deque<std::string> in, std::string out)
+	Backend* Backend::getBackendFromOption(BackendOption opt, CompiledData& cd, std::vector<std::string> in, std::string out)
 	{
 		switch(opt)
 		{
@@ -24,7 +24,7 @@ namespace Compiler
 
 	std::string capabilitiesToString(BackendCaps::Capabilities caps)
 	{
-		std::deque<std::string> list;
+		std::vector<std::string> list;
 		if(caps & BackendCaps::EmitAssembly)
 			list.push_back("'emit assembly'");
 
