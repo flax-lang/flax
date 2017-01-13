@@ -248,7 +248,7 @@ namespace Compiler
 
 
 	using namespace Codegen;
-	std::deque<std::deque<DepNode*>> checkCyclicDependencies(std::string filename)
+	std::vector<std::vector<DepNode*>> checkCyclicDependencies(std::string filename)
 	{
 		filename = getFullPathOfFile(filename);
 		std::string curpath = getPathFromFile(filename);
@@ -261,14 +261,14 @@ namespace Compiler
 
 		// printf("%zu edges in graph\n", acc);
 
-		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
+		std::vector<std::vector<DepNode*>> groups = g->findCyclicDependencies();
 
 		for(auto gr : groups)
 		{
 			if(gr.size() > 1)
 			{
 				std::string modlist;
-				std::deque<Expr*> imps;
+				std::vector<Expr*> imps;
 
 				for(auto m : gr)
 				{
@@ -300,13 +300,13 @@ namespace Compiler
 
 
 
-	CompiledData compileFile(std::string filename, std::deque<std::deque<DepNode*>> groups, std::map<Ast::ArithmeticOp,
+	CompiledData compileFile(std::string filename, std::vector<std::vector<DepNode*>> groups, std::map<Ast::ArithmeticOp,
 		std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		filename = getFullPathOfFile(filename);
 
 		std::unordered_map<std::string, Root*> rootmap;
-		std::deque<std::pair<std::string, fir::Module*>> modulelist;
+		std::vector<std::pair<std::string, fir::Module*>> modulelist;
 
 
 		Root* dummyRoot = new Root();
@@ -323,7 +323,7 @@ namespace Compiler
 		{
 			DepNode* dn = new DepNode();
 			dn->name = filename;
-			groups.push_front({ dn });
+			groups.insert(groups.begin(), { dn });
 		}
 
 		for(auto gr : groups)

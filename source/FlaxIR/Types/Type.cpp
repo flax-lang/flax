@@ -254,11 +254,6 @@ namespace fir
 		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
 	}
 
-	std::string Type::typeListToString(std::deque<Type*> types)
-	{
-		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
-	}
-
 	std::string Type::typeListToString(std::vector<Type*> types)
 	{
 		// print types
@@ -285,11 +280,6 @@ namespace fir
 		}
 
 		return true;
-	}
-
-	bool Type::areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b)
-	{
-		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
 	}
 
 	bool Type::areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b)

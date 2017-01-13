@@ -62,14 +62,14 @@ static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)
 
 
 template <typename T>
-static void fixExprScope(T* expr, std::deque<std::string> ns)
+static void fixExprScope(T* expr, std::vector<std::string> ns)
 {
 	expr->ident.scope = ns;
 }
 
 static size_t __counter = 0;
-static void handleNestedFunc(Func* fn, std::deque<std::string> ns);
-static void _handleBlock(BracedBlock* bb, std::deque<std::string> ns)
+static void handleNestedFunc(Func* fn, std::vector<std::string> ns);
+static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 {
 	for(auto e : bb->statements)
 	{
@@ -106,7 +106,7 @@ static void _handleBlock(BracedBlock* bb, std::deque<std::string> ns)
 	}
 }
 
-static void handleNestedFunc(Func* fn, std::deque<std::string> ns)
+static void handleNestedFunc(Func* fn, std::vector<std::string> ns)
 {
 	fixExprScope(fn->decl, ns);
 	ns.push_back(fn->decl->ident.name);
@@ -115,7 +115,7 @@ static void handleNestedFunc(Func* fn, std::deque<std::string> ns)
 }
 
 template <typename T>
-static void handleNestedType(T* expr, std::deque<std::string> ns)
+static void handleNestedType(T* expr, std::vector<std::string> ns)
 {
 	fixExprScope(expr, ns);
 
@@ -154,7 +154,7 @@ static void handleNestedType(T* expr, std::deque<std::string> ns)
 
 // N-pass system.
 // there's no point counting at this stage.
-static void codegenTopLevel(CodegenInstance* cgi, int pass, std::deque<Expr*> expressions, bool isInsideNamespace)
+static void codegenTopLevel(CodegenInstance* cgi, int pass, std::vector<Expr*> expressions, bool isInsideNamespace)
 {
 	if(pass == 0)
 	{

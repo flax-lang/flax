@@ -28,7 +28,7 @@ struct raiiThing
 };
 
 
-static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* type, std::deque<FuncDecl*>* missing,
+static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* type, std::vector<FuncDecl*>* missing,
 	Expr** user, std::string* name)
 {
 	TypePair_t* tp = cgi->getType(type);
@@ -39,7 +39,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 
 		// fcf's first argument is self -- remove that.
 		auto tl = fcf->getType()->getArgumentTypes();
-		tl.pop_front();
+		tl.erase(tl.begin());
 
 		int _ = 0;
 		bool ret = (fn->ident.name == cf->decl->ident.name && cgi->isValidFuncOverload(FuncDefPair(0, cf->decl, cf), tl, &_, true)
@@ -166,7 +166,7 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 	else if(cgi->isBuiltinType(type))
 	{
 		// todo: not pretty
-		std::deque<ExtensionDef*> exts = cgi->getExtensionsForBuiltinType(type);
+		std::vector<ExtensionDef*> exts = cgi->getExtensionsForBuiltinType(type);
 		*name = type->str();
 
 		if(exts.size() > 0)
@@ -237,7 +237,7 @@ bool ProtocolDef::checkTypeConformity(CodegenInstance* cgi, fir::Type* type)
 	Expr* __ = 0;
 	std::string ___;
 
-	std::deque<FuncDecl*> _;
+	std::vector<FuncDecl*> _;
 	return _checkConform(cgi, this, type, &_, &__, &___);
 }
 
@@ -245,7 +245,7 @@ void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
 {
 	std::string name;
 	Expr* user = 0;
-	std::deque<FuncDecl*> missing;
+	std::vector<FuncDecl*> missing;
 	_checkConform(cgi, this, type, &missing, &user, &name);
 
 	if(missing.size() > 0)

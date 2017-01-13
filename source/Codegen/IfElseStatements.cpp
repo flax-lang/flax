@@ -11,7 +11,7 @@ using namespace Codegen;
 
 
 
-static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::deque<std::pair<Expr*, BracedBlock*>> pairs,
+static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::vector<std::pair<Expr*, BracedBlock*>> pairs,
 	fir::IRBlock* merge, fir::PHINode* phi, bool* didCreateMerge, bool* allBroke)
 {
 	if(pairs.size() == 0)
@@ -56,7 +56,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::d
 	cgi->irb.setCurrentBlock(f);
 
 	// recursively call ourselves
-	pairs.pop_front();
+	pairs.erase(pairs.begin());
 	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge, allBroke);
 }
 
@@ -119,7 +119,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	cgi->irb.setCurrentBlock(falseb);
 
 	// auto c1 = this->cases.front();
-	this->cases.pop_front();
+	this->cases.erase(this->cases.begin());
 
 	fir::IRBlock* curblk = cgi->irb.getCurrentBlock();
 	cgi->irb.setCurrentBlock(merge);
@@ -128,7 +128,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	if(phi) phi->addIncoming(truev, trueb);
 
 	cgi->irb.setCurrentBlock(curblk);
-	codeGenRecursiveIf(cgi, func, std::deque<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge, &allBroke);
+	codeGenRecursiveIf(cgi, func, std::vector<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge, &allBroke);
 
 
 	// if we have an 'else' case

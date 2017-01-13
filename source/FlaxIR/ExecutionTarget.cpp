@@ -57,7 +57,7 @@ namespace fir
 	}
 
 
-	static void recursiveGetTypes(Type* t, std::deque<Type*>& types)
+	static void recursiveGetTypes(Type* t, std::vector<Type*>& types)
 	{
 		if(t->isStructType())
 		{
@@ -87,7 +87,7 @@ namespace fir
 			size_t total = 0;
 			size_t first = 0;
 
-			std::deque<Type*> types;
+			std::vector<Type*> types;
 			recursiveGetTypes(t, types);
 
 			for(auto m : types)
