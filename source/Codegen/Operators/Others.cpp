@@ -11,7 +11,7 @@ using namespace Codegen;
 
 namespace Operators
 {
-	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorCustom(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
 		fir::Value* rhs = 0; fir::Value* rhsptr = 0;
@@ -33,7 +33,7 @@ namespace Operators
 
 
 
-	Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorCast(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());

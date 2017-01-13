@@ -200,12 +200,12 @@ namespace fir
 
 
 
-	ConstantStruct* ConstantStruct::get(StructType* st, std::deque<ConstantValue*> members)
+	ConstantStruct* ConstantStruct::get(StructType* st, std::vector<ConstantValue*> members)
 	{
 		return new ConstantStruct(st, members);
 	}
 
-	ConstantStruct::ConstantStruct(StructType* st, std::deque<ConstantValue*> members) : ConstantValue(st)
+	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
 			_error_and_exit("Mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
@@ -246,19 +246,19 @@ namespace fir
 
 
 
-	ConstantTuple* ConstantTuple::get(std::deque<ConstantValue*> mems)
+	ConstantTuple* ConstantTuple::get(std::vector<ConstantValue*> mems)
 	{
 		return new ConstantTuple(mems);
 	}
 
-	std::deque<ConstantValue*> ConstantTuple::getValues()
+	std::vector<ConstantValue*> ConstantTuple::getValues()
 	{
 		return this->values;
 	}
 
-	static std::deque<Type*> mapTypes(std::deque<ConstantValue*> vs)
+	static std::vector<Type*> mapTypes(std::vector<ConstantValue*> vs)
 	{
-		std::deque<Type*> ret;
+		std::vector<Type*> ret;
 		for(auto v : vs)
 			ret.push_back(v->getType());
 
@@ -266,7 +266,7 @@ namespace fir
 	}
 
 	// well this is stupid.
-	ConstantTuple::ConstantTuple(std::deque<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
+	ConstantTuple::ConstantTuple(std::vector<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
 	{
 		this->values = mems;
 	}

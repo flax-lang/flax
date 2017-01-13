@@ -10,8 +10,8 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* type, fir::Value* size, std::deque<Expr*> params,
-	std::deque<fir::Value*>& sizes)
+static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* type, fir::Value* size, std::vector<Expr*> params,
+	std::vector<fir::Value*>& sizes)
 {
 	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 	iceAssert(mallocf);
@@ -89,7 +89,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 		else if(type->isDynamicArrayType() && sizes.size() > 0)
 		{
 			fir::Value* front = sizes.front();
-			sizes.pop_front();
+			sizes.erase(sizes.begin());
 
 			fir::Value* rret = recursivelyDoAlloc(cgi, user, type->toDynamicArrayType()->getElementType(), front, params, sizes).value;
 			cgi->irb.CreateStore(rret, pointer);
@@ -198,13 +198,13 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(this->counts.size() > 0)
 	{
-		std::deque<fir::Value*> cnts;
+		std::vector<fir::Value*> cnts;
 
 		for(auto c : this->counts)
 			cnts.push_back(c->codegen(cgi).value);
 
 		fir::Value* firstSize = cnts.front();
-		cnts.pop_front();
+		cnts.erase(cnts.begin());
 
 		for(size_t i = 1; i < this->counts.size(); i++)
 			allocType = fir::DynamicArrayType::get(allocType);
@@ -213,7 +213,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		std::deque<fir::Value*> cnts;
+		std::vector<fir::Value*> cnts;
 
 		fir::Value* dptr = recursivelyDoAlloc(cgi, this, allocType, oneValue, this->params, cnts).pointer;
 

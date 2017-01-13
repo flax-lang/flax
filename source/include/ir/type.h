@@ -77,7 +77,6 @@ namespace fir
 
 		static bool areTypesEqual(Type* a, Type* b);
 
-		static std::string typeListToString(std::deque<Type*> types);
 		static std::string typeListToString(std::vector<Type*> types);
 		static std::string typeListToString(std::initializer_list<Type*> types);
 
@@ -193,12 +192,11 @@ namespace fir
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);
 		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t arrsize, Type* elm);
 		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, bool islit, std::string name,
-			std::deque<Type*> mems);
+			std::vector<Type*> mems);
 
-		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::deque<Type*> args,
+		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::vector<Type*> args,
 			Type* ret);
 
-		static bool areTypeListsEqual(std::deque<Type*> a, std::deque<Type*> b);
 		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
 		static bool areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b);
 	};
@@ -381,7 +379,6 @@ namespace fir
 
 		public:
 		static TupleType* get(std::initializer_list<Type*> members, FTContext* tc = 0);
-		static TupleType* get(std::deque<Type*> members, FTContext* tc = 0);
 		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
 	};
 
@@ -401,7 +398,7 @@ namespace fir
 		size_t getElementIndex(std::string name);
 		std::vector<Type*> getElements();
 
-		void setBody(std::deque<std::pair<std::string, Type*>> members);
+		void setBody(std::vector<std::pair<std::string, Type*>> members);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -410,7 +407,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		StructType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked);
+		StructType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
@@ -423,7 +420,7 @@ namespace fir
 		// static funcs
 		public:
 		static StructType* createWithoutBody(const Identifier& name, FTContext* tc = 0, bool isPacked = false);
-		static StructType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc = 0,
+		static StructType* create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members, FTContext* tc = 0,
 			bool isPacked = false);
 	};
 
@@ -448,8 +445,8 @@ namespace fir
 		std::vector<Function*> getMethodsWithName(std::string id);
 		Function* getMethodWithType(FunctionType* ftype);
 
-		void setMembers(std::deque<std::pair<std::string, Type*>> members);
-		void setMethods(std::deque<Function*> methods);
+		void setMembers(std::vector<std::pair<std::string, Type*>> members);
+		void setMethods(std::vector<Function*> methods);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -458,7 +455,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		ClassType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods);
+		ClassType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, std::vector<Function*> methods);
 		virtual ~ClassType() override { }
 
 		// fields (protected)
@@ -468,13 +465,13 @@ namespace fir
 
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> classMembers;
-		std::unordered_map<std::string, std::deque<Function*>> classMethodMap;
+		std::unordered_map<std::string, std::vector<Function*>> classMethodMap;
 
 		// static funcs
 		public:
 		static ClassType* createWithoutBody(const Identifier& name, FTContext* tc = 0);
-		static ClassType* create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members,
-			std::deque<Function*> methods, FTContext* tc = 0);
+		static ClassType* create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members,
+			std::vector<Function*> methods, FTContext* tc = 0);
 	};
 
 
@@ -621,16 +618,16 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		std::deque<Type*> getArgumentTypes();
+		std::vector<Type*> getArgumentTypes();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
 
 		bool isCStyleVarArg();
 		bool isVariadicFunc();
 
-		std::deque<ParametricType*> getTypeParameters();
+		std::vector<ParametricType*> getTypeParameters();
 		void addTypeParameter(ParametricType* t);
-		void addTypeParameters(std::deque<ParametricType*> ts);
+		void addTypeParameters(std::vector<ParametricType*> ts);
 
 		bool isGenericFunction();
 
@@ -641,31 +638,28 @@ namespace fir
 
 		// protected constructor
 		protected:
-		FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva);
+		FunctionType(std::vector<Type*> args, Type* ret, bool isvariadic, bool iscva);
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
 		bool isFnCStyleVarArg;
 		bool isFnVariadic;
 
-		std::deque<ParametricType*> typeParameters;
+		std::vector<ParametricType*> typeParameters;
 
-		std::deque<Type*> functionParams;
+		std::vector<Type*> functionParams;
 		Type* functionRetType;
 
 		// static funcs
 		public:
-		static FunctionType* getCVariadicFunc(std::deque<Type*> args, Type* ret, FTContext* tc = 0);
 		static FunctionType* getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc = 0);
 		static FunctionType* getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc = 0);
 
-		static FunctionType* get(std::deque<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 		static FunctionType* get(std::vector<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, bool isVariadic, FTContext* tc = 0);
 
-		static FunctionType* getWithTypeParameters(std::deque<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
-		static FunctionType* getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
-		static FunctionType* getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVariadic, std::deque<ParametricType*> tparams, FTContext* tc = 0);
+		static FunctionType* getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVariadic, std::vector<ParametricType*> tparams, FTContext* tc = 0);
+		static FunctionType* getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVariadic, std::vector<ParametricType*> tparams, FTContext* tc = 0);
 	};
 
 

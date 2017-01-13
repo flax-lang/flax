@@ -407,7 +407,7 @@ namespace GenError
 		error(e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
 	}
 
-	void noFunctionTakingParams(CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
+	void noFunctionTakingParams(CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::vector<Expr*> ps)
 	{
 		std::string prs = "";
 		for(auto p : ps)
@@ -428,7 +428,7 @@ namespace GenError
 		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args,
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::vector<Ast::Expr*> args,
 		std::map<Func*, std::pair<std::string, Expr*>> errs)
 	{
 		if(errs.empty())
@@ -448,7 +448,7 @@ namespace GenError
 	}
 
 
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::vector<Ast::Expr*> args)
 	{
 		auto cands = cgi->resolveFunctionName(name);
 		auto tup = getPrettyNoSuchFunctionError(cgi, args, cands);
@@ -466,8 +466,8 @@ namespace GenError
 
 
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args,
-		std::deque<FuncDefPair> cands)
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::vector<Expr*> args,
+		std::vector<FuncDefPair> cands)
 	{
 		std::vector<std::string> argtypes;
 		HighlightOptions ops;
@@ -489,7 +489,7 @@ namespace GenError
 			argstr = argstr.substr(2);
 
 		std::string candidates;
-		std::deque<FuncDefPair> reses;
+		std::vector<FuncDefPair> reses;
 
 		for(auto fs : cands)
 		{

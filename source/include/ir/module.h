@@ -32,12 +32,12 @@ namespace fir
 
 		GlobalVariable* createGlobalString(std::string str);
 
-		std::deque<GlobalVariable*> getGlobalVariables();
-		std::deque<Function*> getAllFunctions();
-		std::deque<Type*> getNamedTypes();
+		std::vector<GlobalVariable*> getGlobalVariables();
+		std::vector<Function*> getAllFunctions();
+		std::vector<Type*> getNamedTypes();
 
 		// note: only looks at the name + scope, excludes the parameter list.
-		std::deque<Function*> getFunctionsWithName(const Identifier& id);
+		std::vector<Function*> getFunctionsWithName(const Identifier& id);
 		Function* getIntrinsicFunction(std::string id);
 
 		Type* getNamedType(const Identifier& name);

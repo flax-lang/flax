@@ -89,13 +89,13 @@ namespace pts
 		}
 	}
 
-	std::pair<Type*, std::deque<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(Type* type)
+	std::pair<Type*, std::vector<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(Type* type)
 	{
 		// great.
 		iceAssert(type);
 
 
-		std::deque<TypeTransformer> trfs;
+		std::vector<TypeTransformer> trfs;
 		while(!type->isNamedType())
 		{
 			TypeTransformer trf(TypeTransformer::Type::None, 0);
@@ -110,19 +110,19 @@ namespace pts
 			}
 
 			type = t;
-			trfs.push_front(trf);
+			trfs.insert(trfs.begin(), trf);
 		}
 
 		return { type, trfs };
 	}
 
 
-	std::pair<fir::Type*, std::deque<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type)
+	std::pair<fir::Type*, std::vector<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type)
 	{
 		// great.
 		iceAssert(type);
 
-		std::deque<TypeTransformer> trfs;
+		std::vector<TypeTransformer> trfs;
 		while(true)
 		{
 			TypeTransformer trf(TypeTransformer::Type::None, 0);
@@ -137,7 +137,7 @@ namespace pts
 			}
 
 			type = t;
-			trfs.push_front(trf);
+			trfs.insert(trfs.begin(), trf);
 		}
 
 		return { type, trfs };
@@ -147,7 +147,7 @@ namespace pts
 
 
 
-	fir::Type* applyTransformationsOnType(fir::Type* base, std::deque<TypeTransformer> trfs)
+	fir::Type* applyTransformationsOnType(fir::Type* base, std::vector<TypeTransformer> trfs)
 	{
 		using TrfType = TypeTransformer::Type;
 		for(auto trf : trfs)
@@ -185,7 +185,7 @@ namespace pts
 
 
 	// in this case, ats is the master, bts is the one that has to conform
-	bool areTransformationsCompatible(std::deque<TypeTransformer> ats, std::deque<TypeTransformer> bts)
+	bool areTransformationsCompatible(std::vector<TypeTransformer> ats, std::vector<TypeTransformer> bts)
 	{
 		// we must have at least as many transformations as the master
 		if(bts.size() < ats.size()) return false;
@@ -228,7 +228,7 @@ namespace pts
 	}
 
 
-	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::deque<TypeTransformer> ats, std::deque<TypeTransformer> bts)
+	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::vector<TypeTransformer> ats, std::vector<TypeTransformer> bts)
 	{
 		using TrfType = TypeTransformer::Type;
 		iceAssert(areTransformationsCompatible(ats, bts));
@@ -306,7 +306,7 @@ namespace pts
 		if(front == ')')
 			return new pts::TupleType({ });
 
-		std::deque<pts::Type*> types;
+		std::vector<pts::Type*> types;
 
 		for(size_t i = 0, nest = 0; i < str.size();)
 		{
@@ -390,7 +390,7 @@ namespace pts
 							name += type[i], i++;
 
 						// constraints
-						std::deque<std::string> prots;
+						std::vector<std::string> prots;
 						if(type[i] == ':')
 						{
 							i++;
@@ -438,7 +438,7 @@ namespace pts
 				type = type.substr(1);
 
 
-				std::deque<pts::Type*> argTypes;
+				std::vector<pts::Type*> argTypes;
 				if(type[0] != ')')
 				{
 					for(size_t i = 0, nest = 0; i < type.size();)

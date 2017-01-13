@@ -11,7 +11,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include <deque>
+#include <vector>
 
 #include <sys/types.h>
 
@@ -117,16 +117,16 @@ namespace Codegen
 		std::string nsName;
 		FunctionTree* parent;
 
-		std::deque<FunctionTree*> subs;
+		std::vector<FunctionTree*> subs;
 		std::unordered_map<std::string, FunctionTree*> subMap;	// purely for fast duplicate checking
 
 		// things within.
-		std::deque<FuncDefPair> funcs;
+		std::vector<FuncDefPair> funcs;
 		std::unordered_set<Identifier> funcSet;		// purely for fast duplicate checking during import
 
 
-		std::deque<Ast::OpOverload*> operators;
-		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
+		std::vector<Ast::OpOverload*> operators;
+		std::vector<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
 		std::unordered_map<std::string, TypePair_t> types;
 		std::unordered_map<std::string, SymbolPair_t> vars;
@@ -149,7 +149,7 @@ namespace Codegen
 
 struct TypeConstraints_t
 {
-	std::deque<std::string> protocols;
+	std::vector<std::string> protocols;
 	int pointerDegree = 0;
 
 	bool operator == (const TypeConstraints_t& other) const
