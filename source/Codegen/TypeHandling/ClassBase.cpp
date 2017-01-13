@@ -175,6 +175,7 @@ namespace Codegen
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->ptype);
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
+				fakeDecl->isStatic = c->isStatic;
 				fakeDecl->parentClass = cls;
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -193,6 +194,7 @@ namespace Codegen
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, pts::NamedType::create(VOID_TYPE_STRING));
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
+				fakeDecl->isStatic = c->isStatic;
 				fakeDecl->parentClass = cls;
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)

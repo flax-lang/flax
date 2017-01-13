@@ -949,7 +949,12 @@ static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, Co
 	iceAssert(lcallee);
 
 	lcallee = cgi->module->getFunction(lcallee->getName());
-	return Result_t(cgi->irb.CreateCall1(lcallee, ref), 0);
+
+	if(cprop->isStatic)
+		return Result_t(cgi->irb.CreateCall0(lcallee), 0);
+
+	else
+		return Result_t(cgi->irb.CreateCall1(lcallee, ref), 0);
 }
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i)
