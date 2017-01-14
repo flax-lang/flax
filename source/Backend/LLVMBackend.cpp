@@ -12,8 +12,6 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#include <vector>
-#include <vector>
 #include <fstream>
 
 #include "llvm/IR/Verifier.h"

@@ -6,9 +6,6 @@
 
 #include <stddef.h>
 
-#include <string>
-#include <vector>
-
 #include "defs.h"
 
 namespace Ast
