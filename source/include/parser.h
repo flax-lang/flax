@@ -7,9 +7,8 @@
 #include "ast.h"
 #include "errors.h"
 
-#include <string>
-#include <sstream>
 #include <deque>
+#include <sstream>
 #include <algorithm>
 
 namespace Codegen

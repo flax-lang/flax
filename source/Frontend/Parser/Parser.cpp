@@ -3,7 +3,6 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
-#include <deque>
 #include <cfloat>
 #include <fstream>
 #include <cassert>
@@ -895,7 +894,7 @@ namespace Parser
 
 		// get the parameter list
 		// expect an identifer, colon, type
-		std::deque<VarDecl*> params;
+		std::vector<VarDecl*> params;
 		std::map<std::string, VarDecl*> nameCheck;
 
 		while(ps.tokens.size() > 0 && ps.front().type != TType::RParen)
@@ -1260,7 +1259,7 @@ namespace Parser
 			ps.pop();
 
 			// parse a tuple.
-			std::deque<std::string> types;
+			std::vector<std::string> types;
 			while(ps.hasTokens() && ps.front().type != TType::RParen)
 			{
 				// do things.
@@ -1954,7 +1953,7 @@ namespace Parser
 		Token tk = ps.eat();
 		iceAssert(tk.type == TType::LParen);
 
-		std::deque<Expr*> args;
+		std::vector<Expr*> args;
 
 		int save = ps.leftParenNestLevel;
 		ps.leftParenNestLevel = 0;
@@ -2015,7 +2014,7 @@ namespace Parser
 		iceAssert(tok_if.type == TType::If);
 
 		typedef std::pair<Expr*, BracedBlock*> CCPair;
-		std::deque<CCPair> conds;
+		std::vector<CCPair> conds;
 
 		Expr* cond = parseExpr(ps);
 		BracedBlock* tcase = parseBracedBlock(ps);
@@ -2102,9 +2101,9 @@ namespace Parser
 	}
 
 
-	static std::deque<std::string> parseInheritanceList(ParserState& ps, std::string selfname)
+	static std::vector<std::string> parseInheritanceList(ParserState& ps, std::string selfname)
 	{
-		std::deque<std::string> ret;
+		std::vector<std::string> ret;
 		while(true)
 		{
 			Token id = ps.eat();
@@ -2847,7 +2846,7 @@ namespace Parser
 		iceAssert(ps.front().type == TType::LSquare);
 		Token front = ps.eat();
 
-		std::deque<Expr*> values;
+		std::vector<Expr*> values;
 		while(true)
 		{
 			Token tok = ps.front();

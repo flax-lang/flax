@@ -178,7 +178,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 
 
 
-	std::deque<std::pair<std::string, fir::Type*>> types;
+	std::vector<std::pair<std::string, fir::Type*>> types;
 
 
 	if(cgi->isDuplicateType(this->ident))

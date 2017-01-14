@@ -12,8 +12,6 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#include <deque>
-#include <vector>
 #include <fstream>
 
 #include "llvm/IR/Verifier.h"
@@ -69,7 +67,7 @@ namespace Compiler
 		return globalContext;
 	}
 
-	LLVMBackend::LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
+	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
 			_error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());

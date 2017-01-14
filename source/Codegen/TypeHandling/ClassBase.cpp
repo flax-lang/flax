@@ -56,7 +56,8 @@ namespace Codegen
 
 				newBlock->setFunction(ffn);
 				newBlock->setName("call_autoinit");
-				ffn->getBlockList().push_front(newBlock);
+				auto& blockList = ffn->getBlockList();
+				blockList.insert(blockList.begin(), newBlock);
 
 				cgi->irb.setCurrentBlock(newBlock);
 
@@ -85,7 +86,7 @@ namespace Codegen
 				if(f != fn && f->decl->ident.name == fn->decl->ident.name)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : fn->decl->params)
 						ps.push_back(e->getType(cgi, true));
 
@@ -171,7 +172,7 @@ namespace Codegen
 
 			if(c->getter)
 			{
-				std::deque<VarDecl*> params;
+				std::vector<VarDecl*> params;
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->ptype);
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
@@ -190,7 +191,7 @@ namespace Codegen
 				VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
 				setterArg->ptype = c->ptype;
 
-				std::deque<VarDecl*> params { setterArg };
+				std::vector<VarDecl*> params { setterArg };
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, pts::NamedType::create(VOID_TYPE_STRING));
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
@@ -217,7 +218,7 @@ namespace Codegen
 				if(oo != overl && oo->op == overl->op)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : oo->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -257,7 +258,7 @@ namespace Codegen
 				if(a != aoo && a->op == aoo->op)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : a->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -309,7 +310,7 @@ namespace Codegen
 				if(s != soo)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : s->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -358,7 +359,7 @@ namespace Codegen
 				VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
 				setterArg->ptype = soo->decl->ptype;
 
-				std::deque<VarDecl*> params;
+				std::vector<VarDecl*> params;
 				params = soo->decl->params;
 				params.push_back(setterArg);
 

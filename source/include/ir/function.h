@@ -8,11 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include <string>
-#include <vector>
-#include <deque>
-#include <unordered_map>
-
 #include "block.h"
 #include "constant.h"
 
@@ -59,9 +54,9 @@ namespace fir
 
 		Type* getReturnType();
 		size_t getArgumentCount();
-		std::deque<Argument*> getArguments();
+		std::vector<Argument*> getArguments();
 
-		std::deque<IRBlock*>& getBlockList();
+		std::vector<IRBlock*>& getBlockList();
 		void deleteBody();
 
 		bool wasDeclaredWithBodyElsewhere();
@@ -87,8 +82,8 @@ namespace fir
 		// fields
 		protected:
 		Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
-		std::deque<Argument*> fnArguments;
-		std::deque<IRBlock*> blocks;
+		std::vector<Argument*> fnArguments;
+		std::vector<IRBlock*> blocks;
 
 		bool alwaysInlined = false;
 		bool hadBodyElsewhere = false;

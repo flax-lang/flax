@@ -33,7 +33,7 @@ namespace Codegen
 	}
 
 
-	TypePair_t* CodegenInstance::findTypeInFuncTree(std::deque<std::string> scope, std::string name)
+	TypePair_t* CodegenInstance::findTypeInFuncTree(std::vector<std::string> scope, std::string name)
 	{
 		if(this->getExprTypeOfBuiltin(name) != 0)
 			return 0;
@@ -152,7 +152,7 @@ namespace Codegen
 		}
 		else if(pt->isTupleType())
 		{
-			std::deque<fir::Type*> types;
+			std::vector<fir::Type*> types;
 			for(auto t : pt->toTupleType()->types)
 				types.push_back(_recursivelyConvertType(cgi, allowFail, user, t));
 
@@ -167,7 +167,7 @@ namespace Codegen
 			if(ret) return ret;
 
 			// not so lucky
-			std::deque<std::string> ns = cgi->unwrapNamespacedType(strtype);
+			std::vector<std::string> ns = cgi->unwrapNamespacedType(strtype);
 			std::string atype = ns.back();
 			ns.pop_back();
 
@@ -214,7 +214,7 @@ namespace Codegen
 		{
 			auto ft = pt->toFunctionType();
 
-			std::deque<fir::Type*> args;
+			std::vector<fir::Type*> args;
 			// temporarily push a new generic stack
 			cgi->pushGenericTypeStack();
 

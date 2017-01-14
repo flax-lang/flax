@@ -40,7 +40,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 }
 
 
-static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::deque<fir::Type*> argtypes, fir::Type* rettype,
+static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype,
 	bool mangle)
 {
 	fir::FunctionType* ft = 0;
@@ -49,7 +49,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	// add the things
 	// note: the following won't affect non-generic functions.
 	// this is to allow type normalisation with the function type *properly*
-	std::deque<fir::ParametricType*> tparams;
+	std::vector<fir::ParametricType*> tparams;
 
 	for(auto t : fd->genericTypes)
 		tparams.push_back(fir::ParametricType::get(t.first));
@@ -201,7 +201,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->attribs |= Attr_NoMangle;
 	}
 
-	std::deque<fir::Type*> argtypes;
+	std::vector<fir::Type*> argtypes;
 	fir::Type* returnType = 0;
 	cgi->pushGenericTypeStack();
 	{
@@ -223,7 +223,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(st == 0)
 			st = this->parentClass->createType(cgi);
 
-		argtypes.push_front(st->getPointerTo());
+		argtypes.insert(argtypes.begin(), st->getPointerTo());
 	}
 
 	this->didCodegen = true;

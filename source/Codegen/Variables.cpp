@@ -56,7 +56,7 @@ mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* v
 
 	// check for functions
 	auto fns = this->resolveFunctionName(vr->name);
-	std::deque<fir::Function*> cands;
+	std::vector<fir::Function*> cands;
 
 	for(auto fn : fns)
 	{

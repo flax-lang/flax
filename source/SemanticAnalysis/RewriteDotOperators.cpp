@@ -20,8 +20,8 @@ struct GlobalState
 	CodegenInstance* cgi = 0;
 	std::map<MemberAccess*, bool> visitedMAs;
 
-	std::deque<std::string> nsstrs;
-	std::deque<std::string> nestedTypeStrs;
+	std::vector<std::string> nsstrs;
+	std::vector<std::string> nestedTypeStrs;
 	int MAWithinMASearchNesting = 0;
 };
 
@@ -99,7 +99,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			}
 
 			// type???
-			std::deque<std::string> fullScope = gstate.nsstrs;
+			std::vector<std::string> fullScope = gstate.nsstrs;
 			for(auto s : gstate.nestedTypeStrs)
 				fullScope.push_back(s);
 
@@ -172,7 +172,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		// 	}
 		// }
 
-		std::deque<std::string> fullScope = gstate.nsstrs;
+		std::vector<std::string> fullScope = gstate.nsstrs;
 		for(auto s : gstate.nestedTypeStrs)
 			fullScope.push_back(s);
 

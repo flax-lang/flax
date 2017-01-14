@@ -5,9 +5,7 @@
 #pragma once
 
 #include "ast.h"
-#include <string>
-#include <vector>
-#include <map>
+#include <deque>
 
 
 namespace llvm
@@ -39,7 +37,7 @@ namespace Compiler
 		Ast::Root* rootNode = 0;
 
 		std::unordered_map<std::string, Ast::Root*> rootMap;
-		std::deque<std::pair<std::string, fir::Module*>> moduleList;
+		std::vector<std::pair<std::string, fir::Module*>> moduleList;
 
 
 		fir::Module* getModule(std::string name)
@@ -54,9 +52,9 @@ namespace Compiler
 		}
 	};
 
-	std::deque<std::deque<Codegen::DepNode*>> checkCyclicDependencies(std::string filename);
+	std::vector<std::vector<Codegen::DepNode*>> checkCyclicDependencies(std::string filename);
 
-	CompiledData compileFile(std::string filename,std::deque<std::deque<Codegen::DepNode*>> groups,
+	CompiledData compileFile(std::string filename,std::vector<std::vector<Codegen::DepNode*>> groups,
 		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev);
 
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
@@ -82,10 +80,10 @@ namespace Compiler
 	std::string getCodeModel();
 	std::string getSysroot();
 
-	std::deque<std::string> getLibrarySearchPaths();
-	std::deque<std::string> getLibrariesToLink();
-	std::deque<std::string> getFrameworksToLink();
-	std::deque<std::string> getFrameworkSearchPaths();
+	std::vector<std::string> getLibrarySearchPaths();
+	std::vector<std::string> getLibrariesToLink();
+	std::vector<std::string> getFrameworksToLink();
+	std::vector<std::string> getFrameworkSearchPaths();
 
 	enum class BackendOption;
 	enum class OptimisationLevel;

@@ -12,7 +12,7 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(std::deque<Type*> args, Type* ret, bool isvariadic, bool iscva)
+	FunctionType::FunctionType(std::vector<Type*> args, Type* ret, bool isvariadic, bool iscva)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;
@@ -27,7 +27,7 @@ namespace fir
 
 
 	// functions
-	FunctionType* FunctionType::getCVariadicFunc(std::deque<Type*> args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -37,18 +37,9 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc)
-	{
-		std::deque<Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return getCVariadicFunc(dargs, ret, tc);
-	}
-
 	FunctionType* FunctionType::getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc)
 	{
-		std::deque<Type*> dargs;
+		std::vector<Type*> dargs;
 		for(auto a : args)
 			dargs.push_back(a);
 
@@ -60,7 +51,7 @@ namespace fir
 
 
 
-	FunctionType* FunctionType::get(std::deque<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
+	FunctionType* FunctionType::get(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -70,18 +61,9 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::get(std::vector<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
-	{
-		std::deque<Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return get(dargs, ret, isVarArg, tc);
-	}
-
 	FunctionType* FunctionType::get(std::initializer_list<Type*> args, Type* ret, bool isVarArg, FTContext* tc)
 	{
-		std::deque<Type*> dargs;
+		std::vector<Type*> dargs;
 		for(auto a : args)
 			dargs.push_back(a);
 
@@ -91,7 +73,7 @@ namespace fir
 
 
 
-	FunctionType* FunctionType::getWithTypeParameters(std::deque<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
+	FunctionType* FunctionType::getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVarArg, std::vector<ParametricType*> tparams, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -102,18 +84,9 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
+	FunctionType* FunctionType::getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVarArg, std::vector<ParametricType*> tparams, FTContext* tc)
 	{
-		std::deque<Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return getWithTypeParameters(dargs, ret, isVarArg, tparams, tc);
-	}
-
-	FunctionType* FunctionType::getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVarArg, std::deque<ParametricType*> tparams, FTContext* tc)
-	{
-		std::deque<Type*> dargs;
+		std::vector<Type*> dargs;
 		for(auto a : args)
 			dargs.push_back(a);
 
@@ -150,7 +123,7 @@ namespace fir
 
 
 	// function stuff
-	std::deque<Type*> FunctionType::getArgumentTypes()
+	std::vector<Type*> FunctionType::getArgumentTypes()
 	{
 		return this->functionParams;
 	}
@@ -205,7 +178,7 @@ namespace fir
 
 
 
-	std::deque<ParametricType*> FunctionType::getTypeParameters()
+	std::vector<ParametricType*> FunctionType::getTypeParameters()
 	{
 		return this->typeParameters;
 	}
@@ -221,7 +194,7 @@ namespace fir
 		this->typeParameters.push_back(t);
 	}
 
-	void FunctionType::addTypeParameters(std::deque<ParametricType*> ts)
+	void FunctionType::addTypeParameters(std::vector<ParametricType*> ts)
 	{
 		for(auto t : ts)
 			this->addTypeParameter(t);
@@ -240,7 +213,7 @@ namespace fir
 		if(this->isCStyleVarArg())
 			_error_and_exit("cannot reify (in fact, should not be parametric) C FFI function");
 
-		std::deque<Type*> reified;
+		std::vector<Type*> reified;
 		Type* reifiedReturn = 0;
 
 		for(auto mem : this->functionParams)

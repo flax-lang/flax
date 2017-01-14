@@ -4,10 +4,6 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <deque>
-
 #include "typeinfo.h"
 #include "defs.h"
 #include "ir/identifier.h"
@@ -294,7 +290,7 @@ namespace Ast
 	struct FuncDecl : Expr
 	{
 		~FuncDecl();
-		FuncDecl(const Parser::Pin& pos, std::string id, std::deque<VarDecl*> params, pts::Type* ret) : Expr(pos), params(params)
+		FuncDecl(const Parser::Pin& pos, std::string id, std::vector<VarDecl*> params, pts::Type* ret) : Expr(pos), params(params)
 		{
 			this->ident.name = id;
 			this->ident.kind = IdKind::Function;
@@ -325,7 +321,7 @@ namespace Ast
 
 		Identifier ident;
 
-		std::deque<VarDecl*> params;
+		std::vector<VarDecl*> params;
 		std::map<std::string, TypeConstraints_t> genericTypes;
 
 
@@ -347,8 +343,8 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		std::deque<Expr*> statements;
-		std::deque<DeferredExpr*> deferredStatements;
+		std::vector<Expr*> statements;
+		std::vector<DeferredExpr*> deferredStatements;
 	};
 
 	struct Func : Expr
@@ -366,13 +362,13 @@ namespace Ast
 	struct FuncCall : Expr
 	{
 		~FuncCall();
-		FuncCall(const Parser::Pin& pos, std::string target, std::deque<Expr*> args) : Expr(pos), name(target), params(args) { }
+		FuncCall(const Parser::Pin& pos, std::string target, std::vector<Expr*> args) : Expr(pos), name(target), params(args) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		std::string name;
-		std::deque<Expr*> params;
+		std::vector<Expr*> params;
 
 		Codegen::Resolved_t cachedResolveTarget;
 	};
@@ -434,7 +430,7 @@ namespace Ast
 	struct IfStmt : Expr
 	{
 		~IfStmt();
-		IfStmt(const Parser::Pin& pos, std::deque<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
+		IfStmt(const Parser::Pin& pos, std::vector<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
 			final(ecase), cases(cases), _cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
@@ -442,8 +438,8 @@ namespace Ast
 
 
 		BracedBlock* final = 0;
-		std::deque<std::pair<Expr*, BracedBlock*>> cases;
-		std::deque<std::pair<Expr*, BracedBlock*>> _cases;	// needed to preserve stuff, since If->codegen modifies this->cases
+		std::vector<std::pair<Expr*, BracedBlock*>> cases;
+		std::vector<std::pair<Expr*, BracedBlock*>> _cases;	// needed to preserve stuff, since If->codegen modifies this->cases
 	};
 
 	struct WhileLoop : BreakableBracedBlock
@@ -529,7 +525,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		Result_t codegen(Codegen::CodegenInstance* cgi, std::deque<fir::Type*> args);
+		Result_t codegen(Codegen::CodegenInstance* cgi, std::vector<fir::Type*> args);
 
 		ArithmeticOp op = ArithmeticOp::Invalid;
 		OperatorKind kind = OperatorKind::Invalid;
@@ -593,12 +589,12 @@ namespace Ast
 
 		Identifier ident;
 
-		std::deque<VarDecl*> members;
-		std::deque<fir::Function*> initFuncs;
+		std::vector<VarDecl*> members;
+		std::vector<fir::Function*> initFuncs;
 
 		fir::Function* defaultInitialiser;
 
-		std::deque<std::pair<StructBase*, fir::Type*>> nestedTypes;
+		std::vector<std::pair<StructBase*, fir::Type*>> nestedTypes;
 	};
 
 	struct ClassDef : StructBase
@@ -610,16 +606,16 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		std::deque<Func*> funcs;
-		std::deque<fir::Function*> lfuncs;
-		std::deque<ComputedProperty*> cprops;
-		std::deque<std::string> protocolstrs;
-		std::deque<OpOverload*> operatorOverloads;
-		std::deque<AssignOpOverload*> assignmentOverloads;
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::vector<Func*> funcs;
+		std::vector<fir::Function*> lfuncs;
+		std::vector<ComputedProperty*> cprops;
+		std::vector<std::string> protocolstrs;
+		std::vector<OpOverload*> operatorOverloads;
+		std::vector<AssignOpOverload*> assignmentOverloads;
+		std::vector<SubscriptOpOverload*> subscriptOverloads;
 		std::unordered_map<Func*, fir::Function*> functionMap;
 
-		std::deque<ProtocolDef*> conformedProtocols;
+		std::vector<ProtocolDef*> conformedProtocols;
 	};
 
 
@@ -656,12 +652,12 @@ namespace Ast
 
 		Identifier ident;
 
-		std::deque<std::string> protocolstrs;
+		std::vector<std::string> protocolstrs;
 
-		std::deque<Func*> funcs;
-		std::deque<OpOverload*> operatorOverloads;
-		std::deque<AssignOpOverload*> assignmentOverloads;
-		std::deque<SubscriptOpOverload*> subscriptOverloads;
+		std::vector<Func*> funcs;
+		std::vector<OpOverload*> operatorOverloads;
+		std::vector<AssignOpOverload*> assignmentOverloads;
+		std::vector<SubscriptOpOverload*> subscriptOverloads;
 	};
 
 
@@ -687,7 +683,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		std::deque<std::pair<std::string, Expr*>> cases;
+		std::vector<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
 	};
 
@@ -752,7 +748,7 @@ namespace Ast
 
 		void codegenPass(Codegen::CodegenInstance* cgi, int pass);
 
-		std::deque<NamespaceDecl*> namespaces;
+		std::vector<NamespaceDecl*> namespaces;
 		BracedBlock* innards = 0;
 		std::string name;
 	};
@@ -784,12 +780,12 @@ namespace Ast
 	struct ArrayLiteral : Expr
 	{
 		~ArrayLiteral();
-		ArrayLiteral(const Parser::Pin& pos, std::deque<Expr*> values) : Expr(pos), values(values) { }
+		ArrayLiteral(const Parser::Pin& pos, std::vector<Expr*> values) : Expr(pos), values(values) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		std::deque<Expr*> values;
+		std::vector<Expr*> values;
 	};
 
 	struct TypeAlias : StructBase
@@ -813,8 +809,8 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		std::deque<Expr*> counts;
-		std::deque<Expr*> params;
+		std::vector<Expr*> counts;
+		std::vector<Expr*> params;
 	};
 
 	struct Dealloc : Expr
@@ -856,7 +852,7 @@ namespace Ast
 
 		Kind kind;
 		Expr* expr = 0;
-		std::deque<Expr*> args;
+		std::vector<Expr*> args;
 	};
 
 	struct Root : Expr
@@ -873,8 +869,8 @@ namespace Ast
 		// Codegen::FunctionTree* publicFuncTree = new Codegen::FunctionTree("");
 
 		// top level stuff
-		std::deque<Expr*> topLevelExpressions;
-		std::deque<NamespaceDecl*> topLevelNamespaces;
+		std::vector<Expr*> topLevelExpressions;
+		std::vector<NamespaceDecl*> topLevelNamespaces;
 
 		// for typeinfo, not codegen.
 		std::vector<std::tuple<std::string, fir::Type*, Codegen::TypeKind>> typeList;

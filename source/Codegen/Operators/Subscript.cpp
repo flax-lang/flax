@@ -93,7 +93,7 @@ namespace Operators
 		ClassDef* cls = 0; fir::Type* ftype = 0;
 		std::tie(cls, ftype) = getClassDef(cgi, user, ari->arr);
 
-		std::deque<FuncDefPair> cands;
+		std::vector<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back(FuncDefPair(soo->setterFunc, soo->setterFn->decl, soo->setterFn));
@@ -110,8 +110,8 @@ namespace Operators
 
 
 		// todo: MULIPLE SUBSCRIPTS
-		std::deque<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi) };
-		std::deque<Expr*> eparams = { ari->index };
+		std::vector<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi) };
+		std::vector<Expr*> eparams = { ari->index };
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
 
@@ -133,7 +133,7 @@ namespace Operators
 			}
 
 
-			std::deque<fir::Value*> fargs;
+			std::vector<fir::Value*> fargs;
 
 			// gen the self (note: uses the ArrayIndex AST)
 			fir::Value* lhsPtr = ari->arr->codegen(cgi).pointer;
@@ -173,7 +173,7 @@ namespace Operators
 
 
 
-	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::deque<Ast::Expr*> args)
+	fir::Function* getOperatorSubscriptGetter(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* fcls, std::vector<Ast::Expr*> args)
 	{
 		iceAssert(args.size() >= 1);
 
@@ -189,7 +189,7 @@ namespace Operators
 		iceAssert(ftype);
 
 
-		std::deque<FuncDefPair> cands;
+		std::vector<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
@@ -205,8 +205,8 @@ namespace Operators
 			basename = cands.front().funcDecl->ident.name;
 
 
-		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
-		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
+		std::vector<fir::Type*> fparams = { ftype->getPointerTo() };
+		for(auto e : std::vector<Expr*>(args.begin() + 1, args.end()))
 			fparams.push_back(e->getType(cgi));
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
@@ -223,14 +223,14 @@ namespace Operators
 
 
 
-	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorOverloadedSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		iceAssert(args.size() >= 2);
 
 		ClassDef* cls = 0; fir::Type* ftype = 0;
 		std::tie(cls, ftype) = getClassDef(cgi, user, args[0]);
 
-		std::deque<FuncDefPair> cands;
+		std::vector<FuncDefPair> cands;
 
 		for(auto soo : cls->subscriptOverloads)
 			cands.push_back(FuncDefPair(soo->getterFunc, soo->getterFn->decl, soo->getterFn));
@@ -246,9 +246,9 @@ namespace Operators
 		if(cands.size() > 0)
 			basename = cands.front().funcDecl->ident.name;
 
-		std::deque<Expr*> eparams = std::deque<Expr*>(args.begin() + 1, args.end());
-		std::deque<fir::Type*> fparams = { ftype->getPointerTo() };
-		for(auto e : std::deque<Expr*>(args.begin() + 1, args.end()))
+		std::vector<Expr*> eparams = std::vector<Expr*>(args.begin() + 1, args.end());
+		std::vector<fir::Type*> fparams = { ftype->getPointerTo() };
+		for(auto e : std::vector<Expr*>(args.begin() + 1, args.end()))
 			fparams.push_back(e->getType(cgi));
 
 
@@ -264,7 +264,7 @@ namespace Operators
 		}
 		else
 		{
-			std::deque<fir::Value*> fargs;
+			std::vector<fir::Value*> fargs;
 
 			// gen the self.
 			fir::Value* lhsPtr = args[0]->codegen(cgi).pointer;
@@ -297,7 +297,7 @@ namespace Operators
 
 
 
-	Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorSubscript(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		// arg[0] is the thing being subscripted
 		// the rest are the things within the subscript.
