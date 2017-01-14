@@ -483,6 +483,7 @@ namespace fir
 	{
 		friend struct Type;
 
+		bool hasCaseWithName(std::string name);
 		ConstantValue* getCaseWithName(std::string name);
 		ConstantArray* getConstantArrayOfValues();
 		Type* getCaseType();

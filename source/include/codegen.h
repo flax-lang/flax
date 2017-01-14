@@ -6,11 +6,12 @@
 #include "typeinfo.h"
 
 #include "errors.h"
+#include "ir/irbuilder.h"
 
 #include <vector>
 #include <map>
 
-#include "ir/irbuilder.h"
+#include "mpark/variant.hpp"
 
 enum class SymbolType
 {
@@ -23,6 +24,7 @@ enum class SymbolType
 namespace Ast
 {
 	struct Root;
+	struct VarRef;
 	struct FuncCall;
 	struct ClassDef;
 	struct MemberAccess;
@@ -194,6 +196,7 @@ namespace Codegen
 
 		FunctionTree* getCurrentFuncTree();
 		FunctionTree* getFuncTreeFromNS(std::deque<std::string> scope);
+		std::deque<std::string> getNSFromFuncTree(FunctionTree* ftree);
 
 		std::deque<std::string> getFullScope();
 		TypePair_t* findTypeInFuncTree(std::deque<std::string> scope, std::string name);
@@ -284,7 +287,6 @@ namespace Codegen
 		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
 			Ast::Func* func, std::deque<fir::Type*> params, std::string* err, Ast::Expr** ex);
 
-
 		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
@@ -292,8 +294,14 @@ namespace Codegen
 			fir::FunctionType* ft, Ast::MemberAccess* ma);
 
 
+		mpark::variant<fir::Type*, Ast::Result_t> tryResolveVarRef(Ast::VarRef* vr, fir::Value* extra, bool actual);
 
-		FuncDefPair tryGetMemberFunctionOfClass(Ast::ClassDef* cls, Ast::Expr* user, std::string name, fir::Value* extra);
+
+		std::deque<fir::Value*> checkAndCodegenFunctionCallParameters(Ast::FuncCall* fc, fir::FunctionType* ft,
+			std::deque<Ast::Expr*> params, bool variadic, bool cvar);
+
+
+		FuncDefPair tryGetMemberFunctionOfClass(Ast::StructBase* cls, Ast::Expr* user, std::string name, fir::Value* extra);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::deque<fir::Function*> cands,
 			fir::Value* extra);
 

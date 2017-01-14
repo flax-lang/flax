@@ -16,7 +16,9 @@ using namespace Codegen;
 
 static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, StructBase* str, int i);
 static Result_t callComputedPropertyGetter(CodegenInstance* cgi, VarRef* var, ComputedProperty* cp, fir::Value* ref);
-static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name)
+
+
+static mpark::variant<fir::Type*, Result_t> getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cls, std::string name, bool actual)
 {
 	auto tmp = cls->ident.scope;
 	tmp.push_back(cls->ident.name);
@@ -30,30 +32,34 @@ static Result_t getStaticVariable(CodegenInstance* cgi, Expr* user, ClassDef* cl
 		// basically, if the thing is supposed to be immutable, we're not going to return
 		// the ptr/ref value.
 
-		return Result_t(cgi->irb.CreateLoad(gv), gv);
+		if(actual)
+			return Result_t(cgi->irb.CreateLoad(gv), gv);
+
+		else
+			return gv->getType()->getPointerElementType();
 	}
 
 	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
 
-static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num)
-{
-	iceAssert(selfPtr);
-	iceAssert(num);
+// static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num)
+// {
+// 	iceAssert(selfPtr);
+// 	iceAssert(num);
 
-	fir::Type* type = selfPtr->getType()->getPointerElementType();
-	iceAssert(type->isTupleType());
+// 	fir::Type* type = selfPtr->getType()->getPointerElementType();
+// 	iceAssert(type->isTupleType());
 
-	// quite simple, just get the number (make sure it's a Ast::Number)
-	// and do a structgep.
+// 	// quite simple, just get the number (make sure it's a Ast::Number)
+// 	// and do a structgep.
 
-	if((size_t) num->ival >= type->toTupleType()->getElementCount())
-		error(num, "Tuple does not have %d elements, only %zd (type '%s')", (int) num->ival + 1, type->toTupleType()->getElementCount(),
-			type->str().c_str());
+// 	if((size_t) num->ival >= type->toTupleType()->getElementCount())
+// 		error(num, "Tuple does not have %d elements, only %zd (type '%s')", (int) num->ival + 1, type->toTupleType()->getElementCount(),
+// 			type->str().c_str());
 
-	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
-	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
-}
+// 	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
+// 	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
+// }
 
 // returns: Ast::Func, function, return type of function, return value of function
 static std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
@@ -494,20 +500,972 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 
 
+// new plan: instead of doing a pre-codegen pass where we 'discover' (buggily) the type of the dot operator (static or not),
+// we can do it ad-hoc, kind of. getType() will recursively attempt to get the type of the leftmost dot operator.
+/*
+	note(?): based on my crude understanding of the 'code' in this file, here's how the dot operator resolution works:
+	A. the dot operator classification system basically finds the rightmost static occurrence in the chain, and in the process
+		marks that dot-op, as well as all those to its left, as 'LeftStatic'.
+
+	B. due to the left-associativity of the dot-op, we get (((a.b).c).d).e
+		hence, say (a.b).c was determined to be the rightmost static access -- ie. A.B is a namespace/type, and C is some kind of instance
+		member or something.
+
+		then, since the whole thing is left-recursive, at the top-level, .e calls .d recursively. then, .d calls .c recursively. this
+		causes the appropriate resolution to give the type/value of .c, which is returned to .d. After that, normal (non-static)
+		dot-op resolution continues -- since ).d has type 'LeftVariable'.
+
+	C. the problem lies in the fact that, without knowing the *exact* position of the leftmost static access, we cannot call
+		resolveStaticDotOperator, because its rightmost access must resolve to a value -- eg. NS1.NS2.NS3.Type1 will error, saying that
+		there's no such variable Type1 in NS3 -- because Type1 is a type, not a value.
+
+		possible solution is tryResolveStaticDotOperator, but that quickly becomes messy...
+		and, we would need to repeatedly call it every time we increase the chain length...
+
+
+
+	The following change is proposed:
+
+	using ((((a.b).c).d).e).f as an example, with A, B, C, and D being static names:
+
+
+	1. create a new FIR Type, "NamespaceType". it would replace the current FunctionTree system we have now, probably.
+	2. in getType(), just return the appropriate type. A.B returns a NamespaceType of A.B.
+		a. .C sees that return value, and checks its rhs and does the approriate action -- in this case C is a static name,
+			so it looks in the namespace B for either a type, or another namespace, in B.
+		b. assuming it is found, it returns the appropriate thing. Let's say C is a type -- it'd return either ClassType,
+			StructType, or EnumType, depending.
+		c. D is also a static name, say it's a static field inside C. resolution looks through static fields, nested types and function names
+			to resolve D, and returns the appropriate type.
+		d. E is a non-static name -- let's say E is a function call, and D was a class type. Resolution looks through the functions
+			in D (limiting itself to non-static methods), and returns the appropriate (return) type.
+		e. F is has the same resolution path as E, essentially. recursion ends, and the correct type is returned.
+
+	3. in codegen(), instead of unrolling the entire operator chain into a list, we just recurse leftwards again. This time, we stop
+		recursing when encountering the first static dot-op.
+		- as an optimisation, we can set the matype field to LeftStatic during getType().
+
+		a. Since we know that everything to the left of a static dot-op must also be static, and if it's the rightmost static op then
+			everything to its left is non-static, we can call resolveStaticDotOperator() on this rightmost op. In this case,
+			it's (...).E -- E is the first non-static incantation, so the thing is called on that.
+
+		b. further codegen happens normally (recursively).
+
+
+
+			auto result = mpark::get<Result_t>(cgi->tryResolveVarRef(vr, extra, true));
+			iceAssert(result.pointer);
+*/
+
+
+using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
+static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fir::Type* lhs, Result_t result,
+	fir::Value* extra, bool actual)
+{
+	// at this stage, we can stick to checking for instance things
+	// since the leftmost (first) expression is a variable, there can be no more static things afterwards,
+	// so we don't need to return the FuncTree or StructBase in this branch.
+
+	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
+	if(lhs->isTupleType())
+	{
+		fir::TupleType* tt = lhs->toTupleType();
+		iceAssert(tt);
+
+		Number* n = dynamic_cast<Number*>(ma->right);
+		if(!n || n->decimal)
+			error(ma->right, "Expected integer number after dot-operator for tuple access");
+
+		if((size_t) n->ival >= tt->getElementCount())
+		{
+			error(ma, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1,
+				tt->getElementCount(), tt->str().c_str());
+		}
+
+		if(actual)
+		{
+			if(!result.pointer)
+				result.pointer = cgi->irb.CreateImmutStackAlloc(lhs, result.value);
+
+			iceAssert(result.pointer);
+			fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, n->ival);
+
+			return Result_t(cgi->irb.CreateLoad(vp), vp);
+		}
+		else
+		{
+			return tt->getElementN(n->ival);
+		}
+	}
+	else if(!pair && (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
+	{
+		fir::Type* ret = 0;
+
+		fir::Value* val = 0;
+		fir::Value* ptr = 0;
+
+		if(actual)
+			std::tie(val, ptr) = result;
+
+		auto result = attemptDotOperatorOnBuiltinTypeOrFail(cgi, lhs, ma, actual, val, ptr, &ret);
+
+		if(actual)	return result;
+		else		return ret;
+	}
+	else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
+	{
+		StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
+		iceAssert(sb);
+
+		ClassDef* maybeCls = dynamic_cast<ClassDef*>(sb);
+
+		VarRef* memberVr = dynamic_cast<VarRef*>(ma->right);
+		FuncCall* memberFc = dynamic_cast<FuncCall*>(ma->right);
+
+		bool isPtr = false;
+		if(actual)
+		{
+			if(result.value->getType()->isPointerType())
+				isPtr = true;
+
+			if(!isPtr && !result.pointer)
+				result.pointer = cgi->irb.CreateImmutStackAlloc(result.value->getType(), result.value);
+
+			iceAssert(result.pointer || (isPtr && result.value));
+		}
+
+		if(memberVr)
+		{
+			for(VarDecl* mem : sb->members)
+			{
+				if(mem->ident.name == memberVr->name && !mem->isStatic)
+				{
+					if(actual)
+					{
+						auto p = cgi->irb.CreateGetStructMember(isPtr ? result.value : result.pointer, mem->ident.name);
+						return Result_t(cgi->irb.CreateLoad(p), p);
+					}
+					else
+					{
+						return mem->getType(cgi);
+					}
+				}
+			}
+
+			if(maybeCls)
+			{
+				for(ComputedProperty* c : maybeCls->cprops)
+				{
+					if(c->ident.name == memberVr->name)
+					{
+						if(actual)
+							return callComputedPropertyGetter(cgi, memberVr, c, isPtr ? result.value : result.pointer);
+
+						else
+							return c->getType(cgi);
+					}
+				}
+			}
+
+			auto exts = cgi->getExtensionsForType(sb);
+			for(auto ext : exts)
+			{
+				for(auto cp : ext->cprops)
+				{
+					if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
+					{
+						if(cp->ident.name == memberVr->name)
+						{
+							if(actual)
+								return callComputedPropertyGetter(cgi, memberVr, cp, isPtr ? result.value : result.pointer);
+
+							else
+								return cp->getType(cgi);
+						}
+					}
+				}
+			}
+
+			if(maybeCls)
+			{
+				auto ret = cgi->tryGetMemberFunctionOfClass(maybeCls, memberVr, memberVr->name, extra);
+				if(!ret.isEmpty())
+				{
+					iceAssert(ret.firFunc);
+
+					if(actual)
+						return Result_t(ret.firFunc, 0);
+
+					else
+						return ret.firFunc->getType();
+				}
+			}
+
+			error(memberVr, "Type '%s' has no member named '%s'", sb->ident.name.c_str(), memberVr->name.c_str());
+		}
+		else if(memberFc)
+		{
+			if(ClassDef* maybeCls = dynamic_cast<ClassDef*>(sb))
+			{
+				if(actual)
+				{
+					auto r = callMemberFunction(cgi, ma, maybeCls, memberFc, isPtr ? result.value : result.pointer);
+					return Result_t(std::get<3>(r), 0);
+				}
+				else
+				{
+					return std::get<2>(callMemberFunction(cgi, ma, maybeCls, memberFc, 0));
+				}
+			}
+			else
+			{
+				error(ma->right, "Cannot call methods on structs, since they do not have any");
+			}
+		}
+		else
+		{
+			error(ma->right, "Invalid expression type for dot-operator access");
+		}
+	}
+	else
+	{
+		error(ma->left, "Invalid expression type for dot-operator access (on type '%s')", lhs->str().c_str());
+	}
+}
+
+static variant resolveLeftNamespaceMA(CodegenInstance* cgi, MemberAccess* ma, FunctionTree* ftree, fir::Value* extra, bool actual)
+{
+	// we're a namespace here.
+	// check what the right side is
+	if(auto vr = dynamic_cast<VarRef*>(ma->right))
+	{
+		// check vars first
+		{
+			auto it = ftree->vars.find(vr->name);
+			if(it != ftree->vars.end())
+			{
+				// bingo
+
+				if(actual)
+					return Result_t(cgi->irb.CreateLoad((*it).second.first), (*it).second.first, ValueKind::LValue);
+
+				else
+					return (*it).second.first->getType()->getPointerElementType();
+			}
+		}
+
+		// ok, try functions
+		{
+			std::deque<fir::Function*> fns;
+
+			for(auto f : ftree->funcs)
+			{
+				if(f.funcDecl->ident.name == vr->name && f.funcDecl->genericTypes.size() == 0)
+				{
+					if(!f.firFunc)
+						f.funcDecl->codegen(cgi);
+
+					fns.push_back(f.firFunc);
+				}
+			}
+
+			for(auto gf : ftree->genericFunctions)
+			{
+				if(gf.first->ident.name == vr->name)
+				{
+					if(!gf.first->generatedFunc)
+						gf.first->codegen(cgi);
+
+					fir::Function* fn = gf.first->generatedFunc;
+					iceAssert(fn);
+
+					fns.push_back(fn);
+				}
+			}
+
+			auto fn = cgi->tryDisambiguateFunctionVariableUsingType(vr, vr->name, fns, extra);
+			if(fn)
+			{
+				if(actual)
+					return Result_t(fn, 0);
+
+				else
+					return fn->getType();
+			}
+		}
+
+		// ok, try namespaces
+		{
+			auto sub = ftree->subMap[vr->name];
+			if(sub) return sub;
+		}
+
+		// ok, try types
+		{
+			if(ftree->types.find(vr->name) == ftree->types.end())
+				error(ma->right, "No entity named '%s' in namespace '%s'", vr->name.c_str(), ftree->nsName.c_str());
+
+			auto ret = ftree->types[vr->name].second.first;
+			if(dynamic_cast<StructBase*>(ret))
+				return ftree->types[vr->name];
+
+			else
+				error(ma->right, "'%s' is some kind of invalid type? ('%s')", vr->name.c_str(), ftree->types[vr->name].first->str().c_str());
+		}
+	}
+	else if(auto fc = dynamic_cast<FuncCall*>(ma->right))
+	{
+		// check functions.
+
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
+		auto res = cgi->resolveFunctionFromList(ma, ftree->funcs, fc->name, fc->params);
+		if(!res.resolved)
+		{
+			std::deque<Func*> flist;
+			for(auto f : ftree->genericFunctions)
+			{
+				iceAssert(f.first->genericTypes.size() > 0);
+
+				if(f.first->ident.name == fc->name)
+					flist.push_back({ f.second });
+			}
+
+			FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
+			if(!fp.isEmpty()) res = Resolved_t(fp);
+		}
+
+		// try variables
+		if(!res.resolved)
+		{
+			for(auto v : ftree->vars)
+			{
+				auto var = v.second.second;
+				if(v.first == fc->name && var->concretisedType && var->concretisedType->isFunctionType())
+				{
+					if(var->concretisedType->toFunctionType()->isGenericFunction())
+						error(fc, "this is impossible");
+
+					if(actual)
+					{
+						// get the thing
+						iceAssert(v.second.first);
+						fir::Value* fnptr = cgi->irb.CreateLoad(v.second.first);
+						iceAssert(fnptr->getType()->isFunctionType());
+
+						// call it.
+						fir::FunctionType* ft = fnptr->getType()->toFunctionType();
+						auto args = cgi->checkAndCodegenFunctionCallParameters(fc, ft, fc->params,
+							ft->isVariadicFunc(), ft->isCStyleVarArg());
+
+						// call it.
+						return Result_t(cgi->irb.CreateCallToFunctionPointer(fnptr, ft, args), 0);
+					}
+					else
+					{
+						// get the type
+						fir::Type* t = v.second.first->getType();
+						iceAssert(t->isPointerType());
+
+						t = t->getPointerElementType();
+						iceAssert(t->isFunctionType());
+
+						return t->toFunctionType()->getReturnType();
+					}
+				}
+			}
+		}
+
+		if(!res.resolved)
+		{
+			// try types initialisers
+			// again, we can call gettypebystring without (too much) scope messiness
+			if(auto pair = cgi->getType(Identifier(fc->name, cgi->getNSFromFuncTree(ftree), IdKind::Name)))
+			{
+				fir::Type* ltype = pair->first;
+				iceAssert(ltype);
+
+				if(actual)
+				{
+					std::vector<fir::Value*> args;
+					for(Expr* e : fc->params)
+						args.push_back(e->codegen(cgi).value);
+
+					return cgi->callTypeInitialiser(pair, ma, args);
+				}
+				else
+				{
+					return ltype;
+				}
+			}
+			else
+			{
+				if(errs.size() > 0)
+					GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params, errs);
+
+				else
+					GenError::noFunctionTakingParams(cgi, fc, "namespace " + ftree->nsName, fc->name, fc->params);
+			}
+		}
+
+
+		if(!res.resolved)
+			error(ma->right, "No function named '%s' in namespace '%s'", fc->name.c_str(), ftree->nsName.c_str());
+
+		iceAssert(res.t.firFunc);
+
+		if(actual)
+		{
+			// call that shit
+			return fc->codegen(cgi, res.t.firFunc);
+		}
+		else
+		{
+			return res.t.firFunc->getReturnType();
+		}
+	}
+	else
+	{
+		error(ma->right, "Invalid expression on namespace");
+	}
+}
+
+
+static variant resolveLeftTypenameMA(CodegenInstance* cgi, MemberAccess* ma, TypePair_t pair, fir::Value* extra, bool actual)
+{
+	if(dynamic_cast<StructDef*>(pair.second.first) || dynamic_cast<ClassDef*>(pair.second.first))
+	{
+		auto base = dynamic_cast<StructBase*>(pair.second.first);
+		auto maybecls = dynamic_cast<ClassDef*>(pair.second.first);
+
+		if(auto vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			// try members first -- structs don't have static members btw
+			if(maybecls)
+			{
+				for(auto m : base->members)
+				{
+					if(m->isStatic && m->ident.name == vr->name)
+					{
+						auto ret = getStaticVariable(cgi, vr, maybecls, vr->name, actual);
+
+						// sadly the variant does not auto unwrap
+						if(actual)
+							return mpark::get<Result_t>(ret);
+
+						else
+							return mpark::get<fir::Type*>(ret);
+					}
+				}
+			}
+
+			// however, structs can have static cprop extensions as well.
+			auto exts = cgi->getExtensionsForType(base);
+			for(auto ext : exts)
+			{
+				for(auto cp : ext->cprops)
+				{
+					if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
+					{
+						if(cp->ident.name == vr->name && cp->isStatic)
+						{
+							if(actual)
+								return callComputedPropertyGetter(cgi, vr, cp, 0);
+
+							else
+								return cp->getType(cgi);
+						}
+					}
+				}
+			}
+
+			auto ret = cgi->tryGetMemberFunctionOfClass(maybecls, vr, vr->name, extra);
+			{
+				if(!ret.isEmpty())
+				{
+					iceAssert(ret.firFunc);
+
+					if(actual)	return Result_t(ret.firFunc, 0);
+					else		return ret.firFunc->getType();
+				}
+
+
+				// ok, try nested classes.
+				// in the above, A.B does not need to resolve to value -- B can be a nested class, in which case we
+				// return the structbase* associated with it.
+
+				for(auto n : base->nestedTypes)
+				{
+					if(n.first->ident.name == vr->name)
+					{
+						// regardless of `actual` or not.
+						if(dynamic_cast<StructDef*>(n.first))
+						{
+							return TypePair_t(n.second, { n.first, TypeKind::Struct });
+						}
+						else if(dynamic_cast<ClassDef*>(n.first))
+						{
+							return TypePair_t(n.second, { n.first, TypeKind::Class });
+						}
+						else if(dynamic_cast<EnumDef*>(n.first))
+						{
+							return TypePair_t(n.second, { n.first, TypeKind::Enum });
+						}
+						else
+						{
+							error(n.first, "what??");
+						}
+					}
+				}
+			}
+
+				// ok, there's nothing else here.
+			error(vr, "Entity '%s' (function, type, field, or property) does not exist in type '%s'", vr->name.c_str(),
+				base->ident.name.c_str());
+		}
+		else if(auto fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			// ok, look for static functions and stuff
+			// christ almighty
+
+			if(ClassDef* clsd = dynamic_cast<ClassDef*>(base))
+			{
+				iceAssert(clsd->funcs.size() == clsd->lfuncs.size());
+
+				std::deque<FuncDefPair> flist;
+				for(size_t i = 0; i < clsd->funcs.size(); i++)
+				{
+					if(clsd->funcs[i]->decl->ident.name == fc->name && clsd->funcs[i]->decl->isStatic)
+						flist.push_back(FuncDefPair(clsd->lfuncs[i], clsd->funcs[i]->decl, clsd->funcs[i]));
+				}
+
+				for(auto e : cgi->getExtensionsForType(clsd))
+				{
+					for(size_t i = 0; i < clsd->funcs.size(); i++)
+					{
+						if(e->funcs[i]->decl->ident.name == fc->name && e->funcs[i]->decl->isStatic)
+							flist.push_back(FuncDefPair(e->lfuncs[i], e->funcs[i]->decl, e->funcs[i]));
+					}
+				}
+
+				std::map<Func*, std::pair<std::string, Expr*>> errs;
+				auto res = cgi->resolveFunctionFromList(ma, flist, fc->name, fc->params);
+
+				if(!res.resolved)
+				{
+					std::deque<Func*> flist;
+					for(auto f : clsd->funcs)
+					{
+						if(f->decl->ident.name == fc->name && f->decl->genericTypes.size() > 0)
+							flist.push_back(f);
+					}
+
+					FuncDefPair fp = cgi->tryResolveGenericFunctionCallUsingCandidates(fc, flist, &errs);
+					if(!fp.isEmpty()) res = Resolved_t(fp);
+				}
+
+
+				if(!res.resolved)
+				{
+					// look in nested types for type inits
+					for(auto nest : clsd->nestedTypes)
+					{
+						if(nest.first->ident.name == fc->name)
+						{
+							fir::Type* ltype = nest.second;
+							iceAssert(ltype);
+
+							if(actual)
+							{
+								std::vector<fir::Value*> args;
+								for(Expr* e : fc->params)
+									args.push_back(e->codegen(cgi).value);
+
+								return cgi->callTypeInitialiser(&pair, ma, args);
+							}
+							else
+							{
+								return ltype;
+							}
+						}
+					}
+
+					if(errs.size() > 0)
+						GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params, errs);
+
+					else
+						GenError::noFunctionTakingParams(cgi, fc, "type " + base->ident.name, fc->name, fc->params);
+				}
+
+
+
+				// call that shit
+				iceAssert(res.t.firFunc);
+
+				if(actual)
+				{
+					return fc->codegen(cgi, res.t.firFunc);
+				}
+				else
+				{
+					return res.t.firFunc->getReturnType();
+				}
+			}
+			else if(dynamic_cast<StructDef*>(base))
+			{
+				error(fc, "Cannot call methods on structs, since they do not have any");
+			}
+			else
+			{
+				error("what??");
+			}
+		}
+		else
+		{
+			error(ma->right, "Invalid expression in rhs of dot operator on typename");
+		}
+	}
+	else if(auto enr = dynamic_cast<EnumDef*>(pair.second.first))
+	{
+		// ok.
+		if(auto vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(enr->createdType == 0)
+				enr->createType(cgi);
+
+			iceAssert(enr->createdType);
+			fir::EnumType* ety = enr->createdType->toEnumType();
+
+			if(!ety->hasCaseWithName(vr->name))
+				error(vr, "Enum '%s' has no such case named '%s'", ety->getEnumName().name.c_str(), vr->name.c_str());
+
+			if(actual)
+			{
+				fir::Value* val = ety->getCaseWithName(vr->name);
+				iceAssert(val);
+
+				return Result_t(cgi->irb.CreateBitcast(val, ety), 0);
+			}
+			else
+			{
+				// return ety->getCaseType();
+				return ety;
+			}
+		}
+		else
+		{
+			error(ma->right, "Invalid expression on right side of dot operator with enumeration on left; expected identifier");
+		}
+	}
+	else
+	{
+		error(ma->left, "What? invalid type ('%s')", pair.first->str().c_str());
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
+variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extra, bool actual)
+{
+	if(auto l = dynamic_cast<MemberAccess*>(ma->left))
+	{
+		variant left = resolveTypeOfMA(cgi, l, extra, actual);
+
+		// get what kind of shit we are.
+		if(left.index() == 0 || left.index() == 3)
+		{
+			// type / value
+			fir::Type* type = 0;
+
+			if(actual)
+			{
+				iceAssert(left.index() == 3);
+				type = mpark::get<Result_t>(left).value->getType();
+			}
+			else
+			{
+				iceAssert(left.index() == 0);
+				type = mpark::get<fir::Type*>(left);
+			}
+
+			iceAssert(type);
+
+			// thankfully this has been pulled out into a function on its own.
+			auto res = (actual ? mpark::get<Result_t>(left) : Result_t(0, 0));
+			return resolveLeftNonStaticMA(cgi, ma, type, res, extra, actual);
+		}
+		else if(left.index() == 1)
+		{
+			// ok, namespace
+			FunctionTree* ftree = mpark::get<FunctionTree*>(left);
+			return resolveLeftNamespaceMA(cgi, ma, ftree, extra, actual);
+		}
+		else if(left.index() == 2)
+		{
+			TypePair_t pair = mpark::get<TypePair_t>(left);
+			return resolveLeftTypenameMA(cgi, ma, pair, extra, actual);
+		}
+		else
+		{
+			iceAssert(false && "¿¿¿ index out of bounds ???");
+		}
+	}
+	else if(auto v = dynamic_cast<VarRef*>(ma->left))
+	{
+		// this branch should only be entered at the root level (ie. A.B)
+		// so we just see if there's such a namespace.
+
+		// first check if there's such a variable
+		auto var = cgi->tryResolveVarRef(v, extra, false);
+		if(auto lhs = mpark::get<fir::Type*>(var))
+		{
+			auto res = (actual ? mpark::get<Result_t>(cgi->tryResolveVarRef(v, extra, true)) : Result_t(0, 0));
+			return resolveLeftNonStaticMA(cgi, ma, lhs, res, extra, actual);
+		}
+		else
+		{
+			// ok, it's not a variable.
+
+			// it's static.
+			// -- note -- NS is just v->name, since, again, this is only called in the leftmost mode.
+			// once we get `using namespaces` we'll have to modify this a bit, i think.
+			auto ft = cgi->getFuncTreeFromNS({ v->name });
+
+			// not a namespace
+			if(ft == 0)
+			{
+				// try a type
+				// again, this path is only taken at the root (deepest) level, so we can just do a getTypeByString() without any
+				// scoping nonsense
+				if(auto pair = cgi->getTypeByString(v->name))
+				{
+					return resolveLeftTypenameMA(cgi, ma, *pair, extra, actual);
+				}
+				else
+				{
+					error(ma->left, "Entity (namespace or type) '%s' does not exist", v->name.c_str());
+				}
+			}
+			else
+			{
+				return resolveLeftNamespaceMA(cgi, ma, ft, extra, actual);
+			}
+		}
+	}
+	else if(auto fc = dynamic_cast<FuncCall*>(ma->left))
+	{
+		// first... resolve the function
+		fir::Type* type = 0;
+		auto result = Result_t(0, 0);
+
+
+		if((type = cgi->getExprTypeOfBuiltin(fc->name)))
+		{
+			// ok, we can call this straightaway -- funccall::codegen() knows not to do stupid things when encountering
+			// a builtin type name.
+			// it'll just treat it as initialiser syntax.
+			result = fc->codegen(cgi);
+
+			// just return early.
+			// easier than if-ing all the code below.
+			return resolveLeftNonStaticMA(cgi, ma, type, result, extra, actual);
+		}
+
+
+		auto res = cgi->resolveFunction(ma, fc->name, fc->params);
+		if(!res.resolved)
+		{
+			std::map<Func*, std::pair<std::string, Expr*>> errs;
+			FuncDefPair fp = cgi->tryResolveGenericFunctionCall(fc, &errs);
+			if(!fp.isEmpty()) res = Resolved_t(fp);
+		}
+
+		if(res.resolved)
+		{
+			iceAssert(res.t.firFunc);
+			type = res.t.firFunc->getReturnType();
+
+			// call that shit
+			result = fc->codegen(cgi, res.t.firFunc);
+		}
+
+
+		// check type inits
+		if(!res.resolved)
+		{
+			if(auto pair = cgi->getType(Identifier(fc->name, IdKind::Name)))
+			{
+				fir::Type* type = pair->first;
+				iceAssert(type);
+
+				if(actual)
+				{
+					std::vector<fir::Value*> args;
+					for(Expr* e : fc->params)
+						args.push_back(e->codegen(cgi).value);
+
+					result =  cgi->callTypeInitialiser(pair, ma, args);
+				}
+			}
+		}
+
+		// check variables.
+		if(!res.resolved)
+		{
+			if(fir::Value* var = cgi->getSymInst(fc, fc->name))
+			{
+				if(var->getType()->isFunctionType())
+				{
+					if(var->getType()->toFunctionType()->isGenericFunction())
+						error(fc, "this is impossible");
+
+
+					iceAssert(var->getType()->isPointerType());
+					iceAssert(var->getType()->getPointerElementType()->isFunctionType());
+
+					type = var->getType()->getPointerElementType()->toFunctionType();
+
+					if(actual)
+					{
+						// get the thing
+						fir::Value* fnptr = cgi->irb.CreateLoad(var);
+						iceAssert(fnptr->getType()->isFunctionType());
+
+						// call it.
+						fir::FunctionType* ft = fnptr->getType()->toFunctionType();
+						auto args = cgi->checkAndCodegenFunctionCallParameters(fc, ft, fc->params,
+							ft->isVariadicFunc(), ft->isCStyleVarArg());
+
+						// call it.
+						result = Result_t(cgi->irb.CreateCallToFunctionPointer(fnptr, ft, args), 0);
+					}
+				}
+			}
+		}
+
+
+
+		if(!res.resolved)
+		{
+			// die
+			GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
+		}
+
+		iceAssert(type);
+		return resolveLeftNonStaticMA(cgi, ma, type, result, extra, actual);
+	}
+	else
+	{
+		// ok, fuck this -- just get the type on the left.
+		// chances are it's some kind of literal expression
+
+		fir::Type* ltype = ma->left->getType(cgi);
+
+		if(ltype->isTupleType())
+		{
+			// values are 1, 2, 3 etc.
+			// for now, assert this.
+
+			fir::TupleType* tt = ltype->toTupleType();
+			iceAssert(tt);
+
+			Number* n = dynamic_cast<Number*>(ma->right);
+			if(!n || n->decimal)
+			{
+				error(ma->right, "Expected integer number after dot-operator for tuple access");
+			}
+
+
+			if((size_t) n->ival >= tt->getElementCount())
+			{
+				error(ma, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1, tt->getElementCount(), tt->str().c_str());
+			}
+
+
+			if(actual)
+			{
+				auto result = ma->left->codegen(cgi);
+				if(!result.pointer)
+					result.pointer = cgi->irb.CreateImmutStackAlloc(ltype, result.value);
+
+				iceAssert(result.pointer);
+				fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, n->ival);
+
+				return Result_t(cgi->irb.CreateLoad(vp), vp);
+			}
+			else
+			{
+				return tt->getElementN(n->ival);
+			}
+		}
+		else if(!ltype->isStructType() && !ltype->isClassType() && !ltype->isTupleType())
+		{
+			fir::Type* ret = 0;
+
+			fir::Value* val = 0;
+			fir::Value* ptr = 0;
+
+			if(actual)
+				std::tie(val, ptr) = ma->left->codegen(cgi);
+
+			auto result = attemptDotOperatorOnBuiltinTypeOrFail(cgi, ltype, ma, actual, val, ptr, &ret);
+
+			if(actual)	return result;
+			else		return ret;
+		}
+
+		error(ma->left, "Invalid left-hand expression for dot-operator (type '%s')", ltype->str().c_str());
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	if(this->matype == MAType::LeftNamespace || this->matype == MAType::LeftTypename)
+	#if 1
+
+	auto ret = resolveTypeOfMA(cgi, this, extra, false);
+	iceAssert(ret.index() == 0);
+
+	return mpark::get<fir::Type*>(ret);
+
+	#else
+	if(this->matype == MAType::LeftStatic)
 		return cgi->resolveStaticDotOperator(this, false).first.first;
 
 	// first, get the type of the lhs
 	fir::Type* lhs = this->left->getType(cgi);
 	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
-
-
 
 
 	if(lhs->isTupleType())
@@ -519,7 +1477,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(this->right);
-		if(!n)
+		if(!n || n->decimal)
 		{
 			error(this->right, "Expected integer number after dot-operator for tuple access");
 		}
@@ -539,28 +1497,35 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 		return ret;
 	}
-	else if(pair->second.second == TypeKind::Class)
+	else if(pair->second.second == TypeKind::Class || pair->second.second == TypeKind::Struct)
 	{
-		ClassDef* cls = dynamic_cast<ClassDef*>(pair->second.first);
-		iceAssert(cls);
+		StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
+		iceAssert(sb);
+
+		ClassDef* maybeCls = dynamic_cast<ClassDef*>(sb);
+
 
 		VarRef* memberVr = dynamic_cast<VarRef*>(this->right);
 		FuncCall* memberFc = dynamic_cast<FuncCall*>(this->right);
 
 		if(memberVr)
 		{
-			for(VarDecl* mem : cls->members)
+			for(VarDecl* mem : sb->members)
 			{
 				if(mem->ident.name == memberVr->name)
 					return mem->getType(cgi);
 			}
-			for(ComputedProperty* c : cls->cprops)
+
+			if(maybeCls)
 			{
-				if(c->ident.name == memberVr->name)
-					return c->getType(cgi);
+				for(ComputedProperty* c : maybeCls->cprops)
+				{
+					if(c->ident.name == memberVr->name)
+						return c->getType(cgi);
+				}
 			}
 
-			auto exts = cgi->getExtensionsForType(cls);
+			auto exts = cgi->getExtensionsForType(sb);
 			for(auto ext : exts)
 			{
 				for(auto cp : ext->cprops)
@@ -573,53 +1538,24 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 				}
 			}
 
-			auto ret = cgi->tryGetMemberFunctionOfClass(cls, memberVr, memberVr->name, extra);
-			if(ret.isEmpty()) error(memberVr, "Class '%s' has no member named '%s'", cls->ident.name.c_str(), memberVr->name.c_str());
-			return ret.firFunc->getType();
+			if(maybeCls)
+			{
+				auto ret = cgi->tryGetMemberFunctionOfClass(maybeCls, memberVr, memberVr->name, extra);
+				if(!ret.isEmpty()) return ret.firFunc->getType();
+			}
+
+			error(memberVr, "Type '%s' has no member named '%s'", sb->ident.name.c_str(), memberVr->name.c_str());
 		}
 		else if(memberFc)
 		{
-			return std::get<2>(callMemberFunction(cgi, this, cls, memberFc, 0));
-		}
-		else
-		{
-			error(this->right, "Invalid expression type for dot-operator access");
-		}
-	}
-	else if(pair->second.second == TypeKind::Struct)
-	{
-		StructDef* str = dynamic_cast<StructDef*>(pair->second.first);
-		iceAssert(str);
-
-		VarRef* memberVr = dynamic_cast<VarRef*>(this->right);
-		FuncCall* memberFc = dynamic_cast<FuncCall*>(this->right);
-
-		if(memberVr)
-		{
-			for(VarDecl* mem : str->members)
+			if(ClassDef* maybeCls = dynamic_cast<ClassDef*>(sb))
 			{
-				if(mem->ident.name == memberVr->name)
-					return mem->getType(cgi);
+				return std::get<2>(callMemberFunction(cgi, this, maybeCls, memberFc, 0));
 			}
-
-			auto exts = cgi->getExtensionsForType(str);
-			for(auto ext : exts)
+			else
 			{
-				for(auto cp : ext->cprops)
-				{
-					if(cp->attribs & Attr_VisPublic || ext->parentRoot == cgi->rootNode)
-					{
-						if(cp->ident.name == memberVr->name)
-							return cp->getType(cgi);
-					}
-				}
+				error(this->right, "Cannot call methods on structs, since they do not have any");
 			}
-
-			error(memberVr, "Struct '%s' has no member '%s'", str->ident.name.c_str(), memberVr->name.c_str());
-		}
-		else if(memberFc)
-		{
-			error(memberFc, "Tried to call method on struct");
 		}
 		else
 		{
@@ -628,10 +1564,9 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 	}
 	else
 	{
-		error(this->left, "Invalid expression type for dot-operator access");
+		error(this->left, "Invalid expression type for dot-operator access (on type '%s')", lhs->str().c_str());
 	}
-
-	// iceAssert(0);
+	#endif
 }
 
 
@@ -672,6 +1607,19 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	#if 1
+
+	auto ret = resolveTypeOfMA(cgi, this, extra, true);
+	if(ret.index() != 3)
+	{
+
+	}
+
+	iceAssert(ret.index() == 3);
+
+	return mpark::get<Result_t>(ret);
+
+	#else
 	if(this->matype != MAType::LeftVariable && this->matype != MAType::LeftFunctionCall)
 	{
 		if(this->matype == MAType::Invalid) error(this, "invalid ma type??");
@@ -935,6 +1883,7 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 	iceAssert(!"Encountered invalid expression");
+	#endif
 }
 
 
@@ -985,7 +1934,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 static std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, StructBase*, fir::Type*>
 unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 {
-	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
+	iceAssert(ma->matype == MAType::LeftStatic);
 
 	// this makes the (valid and reasonable) assumption that all static access must happen before any non-static access.
 	// ie. there is no way to invoke static dot operator semantics after an instance is encountered.
@@ -1108,7 +2057,7 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 			if(found) continue;
 		}
 
-		std::string lscope = ma->matype == MAType::LeftNamespace ? "namespace" : "type";
+		std::string lscope = ma->matype == MAType::LeftStatic ? "namespace" : "type";
 		error(ma, "No such member %s in %s %s", front.c_str(), lscope.c_str(),
 			lscope == "namespace" ? ftree->nsName.c_str() : (curType ? curType->ident.name.c_str() : "uhm..."));
 	}
@@ -1126,7 +2075,7 @@ unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
 
 std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::resolveStaticDotOperator(MemberAccess* ma, bool actual)
 {
-	iceAssert(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename);
+	iceAssert(ma->matype == MAType::LeftStatic);
 
 	FunctionTree* ftree = 0;
 	StructBase* curType = 0;
@@ -1344,7 +2293,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 				if(v->isStatic && v->ident.name == vr->name)
 				{
 					fir::Type* ltype = v->getType(this);
-					auto r = actual ? getStaticVariable(this, vr, cls, v->ident.name) : Result_t(0, 0);
+					auto r = actual ? mpark::get<Result_t>(getStaticVariable(this, vr, cls, v->ident.name, true)) : Result_t(0, 0);
 
 					return { { ltype, Result_t(r.value, r.pointer, ValueKind::LValue) }, curFType };
 				}
@@ -1421,32 +2370,63 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* u
 	}
 }
 
-FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(ClassDef* cls, Expr* user, std::string name, fir::Value* extra)
+FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(StructBase* sb, Expr* user, std::string name, fir::Value* extra)
 {
 	// find functions
 	std::deque<fir::Function*> cands;
 	std::map<fir::Function*, std::pair<FuncDecl*, Func*>> map;
 
-	for(auto f : cls->funcs)
+	std::deque<Func*> genericBodies;
+	if(auto cls = dynamic_cast<ClassDef*>(sb))
 	{
-		if(f->decl->ident.name == name)
-			cands.push_back(cls->functionMap[f]), map[cls->functionMap[f]] = { f->decl, f };
+		for(auto f : cls->funcs)
+		{
+			if(f->decl->ident.name == name)
+			{
+				if(f->decl->genericTypes.size() == 0)
+					cands.push_back(cls->functionMap[f]), map[cls->functionMap[f]] = { f->decl, f };
+
+				else
+					genericBodies.push_back(f);
+			}
+		}
 	}
 
-	for(auto ext : this->getExtensionsForType(cls))
+	for(auto ext : this->getExtensionsForType(sb))
 	{
 		for(auto f : ext->funcs)
 		{
 			if(f->decl->ident.name == name)
-				cands.push_back(ext->functionMap[f]), map[ext->functionMap[f]] = { f->decl, f };
+			{
+				if(f->decl->genericTypes.size() == 0)
+					cands.push_back(ext->functionMap[f]), map[ext->functionMap[f]] = { f->decl, f };
+
+				else
+					genericBodies.push_back(f);
+			}
 		}
 	}
 
 	fir::Function* ret = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, extra);
-	if(ret == 0) return FuncDefPair::empty();
+	if(ret)
+	{
+		auto p = map[ret];
+		return FuncDefPair(ret, p.first, p.second);
+	}
+	else if(extra && extra->getType()->isPointerType() && extra->getType()->getPointerElementType()->isFunctionType())
+	{
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
+		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, genericBodies,
+			extra->getType()->getPointerElementType()->toFunctionType(), &errs);
+	}
+	else if(extra && extra->getType()->isFunctionType())
+	{
+		std::map<Func*, std::pair<std::string, Expr*>> errs;
+		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, genericBodies,
+			extra->getType()->toFunctionType(), &errs);
+	}
 
-	auto p = map[ret];
-	return FuncDefPair(ret, p.first, p.second);
+	return FuncDefPair::empty();
 }
 
 
@@ -1460,120 +2440,109 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 	fir::FunctionType* instantiatedFT, MemberAccess* ma, std::map<Func*, std::pair<std::string, Expr*>>* errs)
 {
 	iceAssert(!instantiatedFT->isGenericFunction() && "Cannot instantiate generic function with another generic function");
-
 	iceAssert(ma);
-	if(ma->matype == MAType::LeftNamespace || ma->matype == MAType::LeftTypename)
-	{
-		// do the thing
 
-		FunctionTree* ftree = 0;
-		StructBase* strType = 0;
-		fir::Type* strFType = 0;
+	auto res = ma->codegen(this, fir::ConstantValue::getNullValue(instantiatedFT));
+	return dynamic_cast<fir::Function*>(res.value);
 
-		std::tie(ftree, std::ignore, std::ignore, strType, strFType) = unwrapStaticDotOperator(this, ma);
+	// if(ma->matype == MAType::LeftStatic)
+	// {
+	// 	// do the thing
 
-		std::string name;
-		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
-		{
-			name = vr->name;
-		}
-		else
-		{
-			error(user, "Unsupported use of dot-operator to get function??");
-		}
+	// 	FunctionTree* ftree = 0;
+	// 	StructBase* strType = 0;
+	// 	fir::Type* strFType = 0;
 
+	// 	std::tie(ftree, std::ignore, std::ignore, strType, strFType) = unwrapStaticDotOperator(this, ma);
 
-		std::map<fir::Function*, Func*> map;
-
-		if(strType != 0)
-		{
-			// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
-			// a namespace) with a concrete type
-			// so, we don't need to look at members or anything else, just functions.
-			//
-			// eg.
-			//
-			// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
-			//
-			// ... (somewhere else)
-			//
-			// class SomeClass
-			// {
-			//     func someMethod<T>(a: T) -> T { ... }
-			// }
-			//
-			// we can't (and probably won't) have generic function types
-			// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
-			// since there's no easy way to be type-safe about them.
+	// 	std::string name;
+	// 	if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+	// 	{
+	// 		name = vr->name;
+	// 	}
+	// 	else
+	// 	{
+	// 		error(user, "Unsupported use of dot-operator to get function??");
+	// 	}
 
 
-			// static function
-			ClassDef* cd = dynamic_cast<ClassDef*>(strType);
-			iceAssert(cd);
+	// 	std::map<fir::Function*, Func*> map;
 
-			for(auto f : cd->funcs)
-			{
-				if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-					map[cd->functionMap[f]] = f;
-			}
-
-
-			for(auto ext : this->getExtensionsForType(cd))
-			{
-				for(auto f : ext->funcs)
-				{
-					if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-						map[ext->functionMap[f]] = f;
-				}
-			}
-		}
-		else
-		{
-			iceAssert(ftree);
-
-			for(auto f : ftree->genericFunctions)
-			{
-				if(!f.first->generatedFunc)
-					f.first->codegen(this);
-
-				iceAssert(f.first->generatedFunc);
-				map[f.first->generatedFunc] = f.second;
-			}
-		}
-
-		// failed to find
-		if(map.empty()) return 0;
+	// 	if(strType != 0)
+	// 	{
+	// 		// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
+	// 		// a namespace) with a concrete type
+	// 		// so, we don't need to look at members or anything else, just functions.
+	// 		//
+	// 		// eg.
+	// 		//
+	// 		// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
+	// 		//
+	// 		// ... (somewhere else)
+	// 		//
+	// 		// class SomeClass
+	// 		// {
+	// 		//     func someMethod<T>(a: T) -> T { ... }
+	// 		// }
+	// 		//
+	// 		// we can't (and probably won't) have generic function types
+	// 		// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
+	// 		// since there's no easy way to be type-safe about them.
 
 
-		std::deque<fir::Function*> cands;
+	// 		// static function
+	// 		ClassDef* cd = dynamic_cast<ClassDef*>(strType);
+	// 		iceAssert(cd);
 
-		// set up
-		for(auto p : map)
-			cands.push_back(p.first);
-
-		auto res = this->tryDisambiguateFunctionVariableUsingType(user, name, cands, fir::ConstantValue::getNullValue(instantiatedFT));
-		if(res == 0) return 0;
-
-		// ok.
-		Func* fnbody = map[res];
-		iceAssert(fnbody);
-		{
-			// instantiate it.
-
-			FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, { fnbody }, instantiatedFT, errs);
-			return fp.firFunc;
-		}
-	}
-	else
-	{
-		error(user, "not supported??");
-	}
+	// 		for(auto f : cd->funcs)
+	// 		{
+	// 			if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+	// 				map[cd->functionMap[f]] = f;
+	// 		}
 
 
+	// 		for(auto ext : this->getExtensionsForType(cd))
+	// 		{
+	// 			for(auto f : ext->funcs)
+	// 			{
+	// 				if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
+	// 					map[ext->functionMap[f]] = f;
+	// 			}
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		iceAssert(ftree);
+
+	// 		for(auto f : ftree->genericFunctions)
+	// 		{
+	// 			if(f.first->ident.name == name)
+	// 			{
+	// 				if(!f.first->generatedFunc)
+	// 					f.first->codegen(this);
+
+	// 				iceAssert(f.first->generatedFunc);
+	// 				map[f.first->generatedFunc] = f.second;
+	// 			}
+	// 		}
+	// 	}
+
+	// 	// failed to find
+	// 	if(map.empty()) return 0;
+
+
+	// 	std::deque<Func*> bodies;
+	// 	for(auto m : map)
+	// 		bodies.push_back(m.second);
+
+
+	// 	// instantiate it.
+	// 	FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, bodies, instantiatedFT, errs);
+	// 	return fp.firFunc;
+	// }
 	// else
 	// {
-	// 	return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, this->findGenericFunctions(fname.name),
-	// 		instantiatedFT, errs).firFunc;
+	// 	error(user, "not supported??");
 	// }
 }
 
@@ -1612,7 +2581,7 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 
 
 
-std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
+static std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
 	ClassDef* cls, FuncCall* fc, fir::Value* ref)
 {
 	std::deque<fir::Type*> params;
@@ -1827,6 +2796,7 @@ std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(Co
 			break;
 		}
 	}
+
 
 	iceAssert(callee && "??");
 	if(ref != 0)

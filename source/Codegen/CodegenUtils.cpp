@@ -401,8 +401,13 @@ namespace Codegen
 
 	std::deque<std::string> CodegenInstance::getFullScope()
 	{
+		return this->getNSFromFuncTree(this->getCurrentFuncTree());
+	}
+
+	std::deque<std::string> CodegenInstance::getNSFromFuncTree(FunctionTree* ftree)
+	{
 		std::deque<std::string> ret;
-		auto bottom = this->currentFuncTree;
+		auto bottom = ftree;
 
 		while(bottom)
 		{

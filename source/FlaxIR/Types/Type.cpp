@@ -12,18 +12,6 @@ namespace Codegen
 
 namespace fir
 {
-	// NOTE: some global state.
-	// structs
-
-	// static size_t getIndirections(Type* type)
-	// {
-	// 	size_t ret = 0;
-	// 	while(type->isPointerType())
-	// 		type = type->getPointerElementType(), ret++;
-
-	// 	return ret;
-	// }
-
 	Type* FTContext::normaliseType(Type* type)
 	{
 		if(Type::areTypesEqual(type, this->voidType))

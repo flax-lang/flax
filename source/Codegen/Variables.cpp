@@ -7,33 +7,33 @@
 #include "codegen.h"
 #include "operators.h"
 
-#include <mpark/variant.hpp>
+#include "mpark/variant.hpp"
 
 using namespace Ast;
 using namespace Codegen;
 
 
-static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, VarRef* vr, fir::Value* extra, bool actual)
+mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* vr, fir::Value* extra, bool actual)
 {
 	if(vr->name == "_")
 		error(vr, "'_' is a discarding reference, and cannot be used to refer to values.");
 
 	if(actual)
 	{
-		if(fir::Value* val = cgi->getSymInst(vr, vr->name))
-			return Result_t(cgi->irb.CreateLoad(val), val, ValueKind::LValue);
+		if(fir::Value* val = this->getSymInst(vr, vr->name))
+			return Result_t(this->irb.CreateLoad(val), val, ValueKind::LValue);
 	}
 	else
 	{
-		if(VarDecl* decl = cgi->getSymDecl(vr, vr->name))
-			return decl->getType(cgi, false);
+		if(VarDecl* decl = this->getSymDecl(vr, vr->name))
+			return decl->getType(this, false);
 	}
 
 
 
 	// check the global scope for variables
 	{
-		auto ft = cgi->getCurrentFuncTree();
+		auto ft = this->getCurrentFuncTree();
 		while(ft)
 		{
 			for(auto v : ft->vars)
@@ -43,7 +43,7 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 					if(!actual)
 						return v.second.first->getType()->getPointerElementType();
 
-					return Result_t(cgi->irb.CreateLoad(v.second.first), v.second.first, ValueKind::LValue);
+					return Result_t(this->irb.CreateLoad(v.second.first), v.second.first, ValueKind::LValue);
 				}
 			}
 
@@ -55,7 +55,7 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 
 
 	// check for functions
-	auto fns = cgi->resolveFunctionName(vr->name);
+	auto fns = this->resolveFunctionName(vr->name);
 	std::deque<fir::Function*> cands;
 
 	for(auto fn : fns)
@@ -73,7 +73,7 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 
 	// if it's a generic function, it won't be in the module; check the scope.
 	{
-		auto ft = cgi->getCurrentFuncTree();
+		auto ft = this->getCurrentFuncTree();
 		while(ft)
 		{
 			for(auto f : ft->genericFunctions)
@@ -81,7 +81,7 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 				if(f.first->ident.name == vr->name)
 				{
 					if(!f.first->generatedFunc)
-						f.first->codegen(cgi);
+						f.first->codegen(this);
 
 					iceAssert(f.first->generatedFunc);
 					cands.push_back(f.first->generatedFunc);
@@ -93,16 +93,16 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 	}
 
 
-	fir::Function* fn = cgi->tryDisambiguateFunctionVariableUsingType(vr, vr->name, cands, extra);
-	if(fn == 0)
-	{
-		GenError::unknownSymbol(cgi, vr, vr->name, SymbolType::Variable);
-	}
+	fir::Function* fn = this->tryDisambiguateFunctionVariableUsingType(vr, vr->name, cands, extra);
 
 	if(!actual)
-		return fn->getType();
-
-	return Result_t(fn, 0);
+	{
+		return fn ? fn->getType() : 0;
+	}
+	else
+	{
+		return Result_t(fn, 0);
+	}
 }
 
 
@@ -112,12 +112,20 @@ static mpark::variant<fir::Type*, Result_t> handleVarRef(CodegenInstance* cgi, V
 
 Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	return mpark::get<Result_t>(handleVarRef(cgi, this, extra, true));
+	auto r = mpark::get<Result_t>(cgi->tryResolveVarRef(this, extra, true));
+	if(r.value == 0)
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+
+	return r;
 }
 
 fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	return mpark::get<fir::Type*>(handleVarRef(cgi, this, extra, false));
+	auto t = mpark::get<fir::Type*>(cgi->tryResolveVarRef(this, extra, false));
+	if(t == 0)
+		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
+
+	return t;
 }
 
 
