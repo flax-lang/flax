@@ -335,8 +335,7 @@ namespace Parser
 			int curPrec = 0;
 			while(ps.tokens.size() > 0)
 			{
-				Token t = ps.front();
-				ps.pop();
+				Token t = ps.pop();
 
 				if(t.type == TType::Import)
 				{
@@ -356,8 +355,7 @@ namespace Parser
 				}
 				else if(t.type == TType::At)
 				{
-					Token attr = ps.front();
-					ps.pop();
+					Token attr = ps.pop();
 
 					iceAssert(attr.type == TType::Identifier || attr.text == "public"
 						|| attr.text == "private" || attr.text == "internal");
@@ -371,8 +369,7 @@ namespace Parser
 						ps.pop();
 						ps.skipNewline();
 
-						Token num = ps.front();
-						ps.pop();
+						Token num = ps.pop();
 						ps.skipNewline();
 
 
