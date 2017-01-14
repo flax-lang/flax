@@ -718,10 +718,9 @@ namespace Ast
 	enum class MAType
 	{
 		Invalid,
-		LeftNamespace,
+		LeftStatic,
 		LeftVariable,
-		LeftFunctionCall,
-		LeftTypename
+		LeftFunctionCall
 	};
 
 	struct MemberAccess : Expr

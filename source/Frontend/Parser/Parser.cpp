@@ -2227,6 +2227,9 @@ namespace Parser
 					doTheExit();
 				}
 
+				if(var->isStatic)
+					parserError(var->pin, "Structs cannot contain static members");
+
 				str->members.push_back(var);
 
 				// don't take up space in the struct if it's static.

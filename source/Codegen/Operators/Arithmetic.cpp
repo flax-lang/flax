@@ -448,8 +448,6 @@ namespace Operators
 					// something like that
 
 					// ok. do bitwise and.
-					cgi->irb.CreateBitwiseXOR(fir::ConstantValue::getNullValue(fir::Type::getInt64()), fir::ConstantValue::getNullValue(fir::Type::getInt64()));
-
 					cgi->irb.CreateStore(cgi->irb.CreateBitwiseAND(res, cgi->irb.CreateLoad(retval)), retval);
 				}
 			}

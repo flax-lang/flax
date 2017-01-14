@@ -46,6 +46,15 @@
 		> only return integers from the lexer -- (0.0331) becomes '0', '.', '0331'
 		> need to keep leading 0s
 
+	14. class instance method access should capture the instance
+		eg. Foo f; let fn = f.method; fn();
+
+		the call to fn() should not require explicit passing of the instance, but rather it should refer to the 'f' instance.
+
+		Foo.method would continue to work, but would require an instance.
+
+	15. wasn't there supposed to be automatic operator == for structs????? WTF
+
 
 	TO TEST:
 
@@ -187,8 +196,12 @@ func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
 
 
 
-
-
+class Str
+{
+	init(x: int, y: int) { self.a = x; self.b = y }
+	var a: int
+	var b: int
+}
 
 
 public func main()
@@ -199,6 +212,12 @@ public func main()
 
 	var _ = 30
 
+	let x = Str(10, 20)
+	let y = Str(10, 20)
+
+	// printf("> %d\n", x == y)
+
+	// let x = a.b.c.d.e.f
 
 	printf("done\n")
 }
