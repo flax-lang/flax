@@ -129,6 +129,7 @@ namespace thing
 	var xxx = 40
 }
 
+var yyy = 30
 
 func parseFormatOptions(str: string) -> FormatOptions
 {
@@ -247,50 +248,49 @@ public func main(argc: i32, argv: i8**) -> int
 	*/
 
 
-	enum SomeEnum
-	{
-		case Up
-		case Down
-		case Left
-		case Right
-	}
+	do {
 
-	struct Foop
-	{
-		var x: int
-	}
-
-	class Barf
-	{
-		static var y: int = 40
-		static var fkr: int
+		enum SomeEnum
 		{
-			get { 30 }
+			case Up
+			case Down
+			case Left
+			case Right
 		}
 
-		func foo() -> f64
+		struct Foop
 		{
-			43.1
+			var x: int
 		}
-	}
 
-	let e = SomeEnum.Down
-	let f = Foop(10)
-	let b = Barf()
+		class Barf
+		{
+			static var y: int = 40
+			static var fkr: int
+			{
+				get { 30 }
+			}
 
-	let fo = b.foo
+			func foo() -> f64
+			{
+				43.1
+			}
+		}
 
-	thing.xxx = 40
-	printf("f.x = %d, b.c = %d, fo = %d\n", f.x, 3, Barf.y)
+		let e = SomeEnum.Down
+		let f = Foop(10)
+		let b = Barf()
 
-	if e != SomeEnum.Left
-	{
-		let arr = alloc[3] int
-		printf("%d\n", arr[4])
-	}
-	else if f.x == 30
-	{
+		let fo = b.foo
 
+		thing.xxx = 40
+		printf("f.x = %d, b.c = %d, fo = %d, %d\n", f.x, 3, Barf.y, yyy)
+
+
+		let tup = (10, (30, 40))
+		let k = tup.1.0
+
+		printf("%d, %.7lf\n", k, 3.000141);
 	}
 
 

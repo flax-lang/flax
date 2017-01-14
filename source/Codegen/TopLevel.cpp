@@ -259,11 +259,6 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::vector<Expr*> e
 	}
 	else if(pass == 4)
 	{
-		// start "semantic analysis" before any typechecking needs to happen.
-		// this basically involves knowing what is on the left side of a dot operator
-		// this can be determined once we know all types and namespaces defined.
-		SemAnalysis::rewriteDotOperators(cgi);
-
 		// pass 3: types
 		for(Expr* e : expressions)
 		{

@@ -247,9 +247,10 @@ namespace Parser
 		}
 	}
 
+	#if 0
 	static std::pair<int64_t, bool> getIntegerValue(Token t)
 	{
-		iceAssert(t.type == TType::Integer);
+		iceAssert(t.type == TType::Number);
 		int base = 10;
 		if(t.text.compare(0, 2, "0x") == 0)
 			base = 16;
@@ -268,6 +269,7 @@ namespace Parser
 	{
 		return std::stod(t.text);
 	}
+	#endif
 
 	static const char* ReadableAttrNames[] =
 	{
@@ -401,11 +403,10 @@ namespace Parser
 						}
 
 
-
-						if(num.type != TType::Integer)
+						if(num.type != TType::Number)
 							parserError(num, "Expected integer as first attribute within @operator[]");
 
-						curPrec = std::stod(num.text);
+						curPrec = std::stoi(num.text);
 						if(curPrec <= 0)
 							parserError(num, "Precedence must be greater than 0");
 
@@ -691,8 +692,7 @@ namespace Parser
 				case TType::StringLiteral:
 					return parseStringLiteral(ps);
 
-				case TType::Integer:
-				case TType::Decimal:
+				case TType::Number:
 					return parseNumber(ps);
 
 				case TType::LSquare:
@@ -1169,7 +1169,7 @@ namespace Parser
 			Token n = ps.eat();
 			std::string dims;
 
-			if(n.type == TType::Integer)
+			if(n.type == TType::Number)
 			{
 				dims = "[" + n.text + "]";
 			}
@@ -1911,6 +1911,13 @@ namespace Parser
 
 	Number* parseNumber(ParserState& ps)
 	{
+		iceAssert(ps.front().type == TType::Number);
+		auto t = ps.eat();
+
+		return CreateAST(Number, t, t.text);
+
+
+		#if 0
 		Number* n;
 		if(ps.front().type == TType::Integer)
 		{
@@ -1946,6 +1953,7 @@ namespace Parser
 		}
 
 		return n;
+		#endif
 	}
 
 	FuncCall* parseFuncCall(ParserState& ps, std::string id, Pin id_pos)
@@ -2578,17 +2586,15 @@ namespace Parser
 				{
 					int64_t val = 0;
 					if(prevNumber)
-						val = prevNumber->ival + 1;
+						val = std::stoll(prevNumber->str) + 1;
 
 					// increment it.
-					prevNumber = CreateAST(Number, front, val);
-
+					prevNumber = CreateAST(Number, front, std::to_string(val));
 					value = prevNumber;
 				}
 				else if(isFirst)
 				{
-					int64_t val = 0;
-					prevNumber = CreateAST(Number, front, val);
+					prevNumber = CreateAST(Number, front, "0");
 
 					isNumeric = true;
 					value = prevNumber;
@@ -2662,9 +2668,8 @@ namespace Parser
 		{
 			// all handled.
 			iceAssert(ps.eat().type == TType::LSquare);
-			// iceAssert(ps.eat().type == TType::Integer);
 
-			if(ps.front().type == TType::Integer)
+			if(ps.front().type == TType::Number)
 			{
 				ps.pop();
 				if(ps.front().type == TType::Comma)
@@ -2702,11 +2707,10 @@ namespace Parser
 				ps.pop();
 
 
-
 				if(ps.front().type == TType::Comma)
 				{
 					ps.eat();
-					if(ps.front().type != TType::Integer)
+					if(ps.front().type != TType::Number)
 						parserError("Expected integer precedence in @operator");
 
 					ps.eat();
