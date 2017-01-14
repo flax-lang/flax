@@ -286,7 +286,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 				iceAssert(rangef);
 
-				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+				auto loc = fir::ConstantString::get(Parser::pinToString(fc->pin));
+				cgi->irb.CreateCall3(rangef, len, fir::ConstantInt::getInt64(0), loc);
 
 				// ok.
 				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
@@ -319,7 +320,8 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
 				iceAssert(rangef);
 
-				cgi->irb.CreateCall2(rangef, len, fir::ConstantInt::getInt64(0));
+				auto loc = fir::ConstantString::get(Parser::pinToString(fc->pin));
+				cgi->irb.CreateCall3(rangef, len, fir::ConstantInt::getInt64(0), loc);
 
 				// ok.
 				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));

@@ -3141,6 +3141,17 @@ namespace Parser
 		return oo;
 	}
 
+
+	std::string pinToString(Parser::Pin p)
+	{
+		char* buf = new char[1024];
+		snprintf(buf, 1024, "(%s:%zu:%zu)", p.file.c_str(), p.line, p.col);
+
+		std::string ret(buf);
+		delete[] buf;
+
+		return ret;
+	}
 }
 
 using namespace Parser;

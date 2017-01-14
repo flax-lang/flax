@@ -645,8 +645,8 @@ namespace String
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
-				fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64(), fir::Type::getStringType() },
+					fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 			fir::IRBlock* failb = cgi->irb.addNewBlockInFunction("fail", func);
@@ -677,11 +677,12 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
+				fir::Value* fmtstr = cgi->module->createGlobalString("%s: Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
+				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, arg2, len, cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, posstr, arg2, len, cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
 
 				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
 				cgi->irb.CreateUnreachable();
@@ -723,8 +724,8 @@ namespace String
 
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
-				fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64(), fir::Type::getStringType() },
+					fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 			fir::IRBlock* failb = cgi->irb.addNewBlockInFunction("fail", func);
@@ -754,13 +755,13 @@ namespace String
 				// fprintf(stderr, "", bla bla)
 
 				fir::Value* tmpstr = cgi->module->createGlobalString("w");
-				fir::Value* fmtstr = cgi->module->createGlobalString("Tried to write to immutable string literal '%s' at index '%zd'!\n");
-
+				fir::Value* fmtstr = cgi->module->createGlobalString("%s: Tried to write to immutable string literal '%s' at index '%zd'!\n");
+				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(arg1);
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, dp, arg2 });
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, posstr, dp, arg2 });
 
 				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
 				cgi->irb.CreateUnreachable();

@@ -213,8 +213,9 @@ namespace Operators
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind);
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind);
+				auto loc = fir::ConstantString::get(Parser::pinToString(ai->pin));
+				cgi->irb.CreateCall3(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind, loc);
+				cgi->irb.CreateCall3(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind, loc);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.value);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
