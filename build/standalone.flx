@@ -6,8 +6,6 @@
 /*
 	TOFIX:
 
-	1. enums declared in functions do not work
-
 	3. dynamic array slices
 	4. FOR LOOPS
 		4a: `for x in y` would be pretty cool too.
@@ -29,22 +27,11 @@
 		and allow the compiler to just ignore the fact that there's no return value
 		ie. __attribute__((noreturn))
 
-	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
-		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
-
 	10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
 		the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver
 		for this might turn out to be a good idea in the future.
 
 	11. also the fucking generic type solver isn't finished god dammit
-
-	12. global variables outside of namespaces don't work
-
-	13. T.0.1 parses as T. (0.1) where 0.1 is a number
-		shit fails yo
-
-		> only return integers from the lexer -- (0.0331) becomes '0', '.', '0331'
-		> need to keep leading 0s
 
 	14. class instance method access should capture the instance
 		eg. Foo f; let fn = f.method; fn();
@@ -54,6 +41,11 @@
 		Foo.method would continue to work, but would require an instance.
 
 	15. wasn't there supposed to be automatic operator == for structs????? WTF
+
+	16. special handling in parser for "." as a unary operator or something, so numbers like
+		".51" work
+
+
 
 
 	TO TEST:
@@ -82,6 +74,19 @@
 	a = 10, b = 20, x = [ 30, 40, 50, 60 ]
 
 
+
+
+
+	FIXED:
+
+	1. enums declared in functions do not work
+
+	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
+		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
+
+	12. global variables outside of namespaces don't work
+
+	13. T.0.1 parses as T. (0.1) where 0.1 is a number
 */
 
 

@@ -33,7 +33,7 @@ namespace Parser
 		// check the previous token
 		bool res = (previousToken.type != TType::Invalid && previousToken.pin.file == pos.file &&
 			(previousToken.type != TType::RParen && previousToken.type != TType::RSquare && previousToken.type != TType::Identifier
-			&& previousToken.type != TType::Integer && previousToken.type != TType::Decimal));
+			&& previousToken.type != TType::Number));
 
 		if(!res) return false;
 
@@ -287,6 +287,88 @@ namespace Parser
 		// ident + 3
 		// number + 3
 		// so in every other case we want unary +/-.
+
+		// note(2):
+		// here's how this shit fucks up:
+		// since numbers are handled at the lexing level, we have no idea about precedence.
+		// in the event a tuple contains another tuple, access looks something like this:
+		//
+		// let m = tup.0.1
+		// this, unfortunately, parses as tup.(0.1)
+		//
+		// so, let's do this: when parsing a number, return a string. Number AST node also should store a string now.
+		// string remains an accurate representation, for later merging.
+
+		/*
+			eg:
+
+			1.0e4 == 10000
+			parses as MemberAccess [ Number("1"), Number("0e4") ]
+
+			3.004151
+			parses as MemberAccess [ Number("3"), Number("004151") ]
+
+			at typecheck time, we just join the two together, add a "." in the middle, and call stold() or something.
+			storing strings preserves things like the 0s required for actually knowing what the number is.
+		*/
+
+		#if 1
+		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
+		{
+			bool neg = false;
+			if(stream.find("-") == 0)
+				neg = true, stream = stream.substr(1);
+
+			else if(stream.find("+") == 0)
+				stream = stream.substr(1);
+
+
+			int base = 10;
+			if(stream.find("0x") == 0 || stream.find("0X") == 0)
+				base = 16, stream = stream.substr(2);
+
+			else if(stream.find("0b") == 0 || stream.find("0B") == 0)
+				base = 2, stream = stream.substr(2);
+
+
+			// find that shit (cool, we can just pass `isdigit` directly)
+			auto end = std::find_if_not(stream.begin(), stream.end(), [base](const char& c) -> bool {
+				if(base == 10)	return isdigit(c);
+				if(base == 16)	return ishexnumber(c);
+				else			return (c == '0' || c == '1');
+			});
+
+			auto num = std::string(stream.begin(), end);
+			stream = stream.substr(num.length());
+
+			// check if we have 'e' or 'E'
+			if(stream.size() > 0 && (stream[0] == 'e' || stream[0] == 'E'))
+			{
+				if(base != 10)
+					parserError("Exponential form is supported with neither hexadecimal nor binary literals");
+
+				// find that shit
+				auto next = std::find_if_not(stream.begin() + 1, stream.end(), isdigit);
+
+				// this adds the 'e' as well.
+				num += std::string(stream.begin(), next);
+
+				stream = stream.substr(next - stream.begin());
+			}
+
+			if(base == 16)		num = "0x" + num;
+			else if(base == 2)	num = "0b" + num;
+
+			if(neg)
+				num = "-" + num;
+
+			// we already modified stream.
+			read = 0;
+			tok.text = num;
+			tok.type = TType::Number;
+			tok.pin.len = num.length();
+		}
+		#else
 		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
 		{
 			std::string num;
@@ -428,6 +510,7 @@ namespace Parser
 			tok.text = num;
 			tok.pin.len = num.length();
 		}
+		#endif
 
 		else if(stream[0] == '_'  || utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
 		{

@@ -482,7 +482,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 	}
 	else
 	{
-		error(ma, "Cannot do member access on aggregate type '%s'", type->str().c_str());
+		error(ma, "Cannot do member access on non-aggregate type '%s'", type->str().c_str());
 	}
 }
 
@@ -575,12 +575,13 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(ma->right);
-		if(!n || n->decimal)
+		if(n == 0)
 			error(ma->right, "Expected integer number after dot-operator for tuple access");
 
-		if((size_t) n->ival >= tt->getElementCount())
+		size_t index = std::stoll(n->str);
+		if(index >= tt->getElementCount())
 		{
-			error(ma, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1,
+			error(ma, "Tuple does not have %zu elements, only %zd (type '%s')", index + 1,
 				tt->getElementCount(), tt->str().c_str());
 		}
 
@@ -590,13 +591,13 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 				result.pointer = cgi->irb.CreateImmutStackAlloc(lhs, result.value);
 
 			iceAssert(result.pointer);
-			fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, n->ival);
+			fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, index);
 
 			return Result_t(cgi->irb.CreateLoad(vp), vp);
 		}
 		else
 		{
-			return tt->getElementN(n->ival);
+			return tt->getElementN(index);
 		}
 	}
 	else if(!pair && (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
@@ -1381,16 +1382,13 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 			iceAssert(tt);
 
 			Number* n = dynamic_cast<Number*>(ma->right);
-			if(!n || n->decimal)
-			{
+			if(n == 0)
 				error(ma->right, "Expected integer number after dot-operator for tuple access");
-			}
 
 
-			if((size_t) n->ival >= tt->getElementCount())
-			{
-				error(ma, "Tuple does not have %d elements, only %zd (type '%s')", (int) n->ival + 1, tt->getElementCount(), tt->str().c_str());
-			}
+			size_t index = std::stoll(n->str);
+			if(index >= tt->getElementCount())
+				error(ma, "Tuple does not have %zu elements, only %zd (type '%s')", index + 1, tt->getElementCount(), tt->str().c_str());
 
 
 			if(actual)
@@ -1400,13 +1398,13 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 					result.pointer = this->irb.CreateImmutStackAlloc(ltype, result.value);
 
 				iceAssert(result.pointer);
-				fir::Value* vp = this->irb.CreateStructGEP(result.pointer, n->ival);
+				fir::Value* vp = this->irb.CreateStructGEP(result.pointer, index);
 
 				return Result_t(this->irb.CreateLoad(vp), vp);
 			}
 			else
 			{
-				return tt->getElementN(n->ival);
+				return tt->getElementN(index);
 			}
 		}
 		else if(!ltype->isStructType() && !ltype->isClassType() && !ltype->isTupleType())
@@ -1454,6 +1452,17 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 
 fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	// short-circuit for numbers
+	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
+	{
+		// auto ln = dynamic_cast<Number*>(this->left);
+		// auto rn = dynamic_cast<Number*>(this->right);
+
+		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
+	}
+
+
+
 	auto ret = cgi->resolveTypeOfMA(this, extra, false);
 
 	// special case -- for 'gettype', we can return the fir::Type* inside the typepair, if it happens to be that.
@@ -1469,6 +1478,18 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
+	// short-circuit for numbers
+	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
+	{
+		auto ln = dynamic_cast<Number*>(this->left);
+		auto rn = dynamic_cast<Number*>(this->right);
+
+		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), std::stold(ln->str + "." + rn->str)), 0);
+	}
+
+
+
+
 	auto ret = cgi->resolveTypeOfMA(this, extra, true);
 	if(ret.index() != 3)
 		error(this, "Dot operator failed to evaluate");

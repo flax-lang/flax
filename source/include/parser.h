@@ -144,8 +144,7 @@ namespace Parser
 		// other stuff.
 		Identifier,
 		UnicodeSymbol,
-		Integer,
-		Decimal,
+		Number,
 		StringLiteral,
 
 		NewLine,

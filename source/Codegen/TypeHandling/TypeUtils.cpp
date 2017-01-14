@@ -456,7 +456,7 @@ namespace Codegen
 		}
 		else if(Number* n = dynamic_cast<Number*>(expr))
 		{
-			return n->decimal ? std::to_string(n->dval) : std::to_string(n->ival);
+			return n->str;
 		}
 		else if(ArrayLiteral* al = dynamic_cast<ArrayLiteral*>(expr))
 		{

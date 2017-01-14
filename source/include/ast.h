@@ -172,21 +172,11 @@ namespace Ast
 	struct Number : Expr
 	{
 		~Number();
-		Number(const Parser::Pin& pos, double val) : Expr(pos), dval(val) { this->decimal = true; }
-		Number(const Parser::Pin& pos, int64_t val) : Expr(pos), ival(val) { this->decimal = false; }
-
+		Number(const Parser::Pin& pos, std::string s) : Expr(pos), str(s) { }
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
-		bool needUnsigned = false;
-		bool decimal = false;
-		fir::Type* properLlvmType = 0;
-
-		union
-		{
-			int64_t ival;
-			double dval;
-		};
+		std::string str;
 	};
 
 	struct BoolVal : Expr
