@@ -18,7 +18,41 @@ namespace Operators
 		if(!(vrname = dynamic_cast<VarRef*>(ma->right)))
 			return 0;
 
-		fir::Type* leftType = (ma->matype == MAType::LeftVariable ? ma->left->getType(cgi) : cgi->resolveStaticDotOperator(ma, false).second);
+
+		// check if the left is a varref
+		fir::Type* leftType = 0;
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->left))
+		{
+			// check if it's a variable at all.
+			// yes -- ok good.
+			// no -- break early.
+			if(auto v = cgi->getSymInst(ma->left, vr->name))
+				leftType = v->getType()->getPointerElementType();
+
+			else
+				return 0;
+		}
+		else if(MemberAccess* lma = dynamic_cast<MemberAccess*>(ma->left))
+		{
+			// using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
+			auto variant = cgi->resolveTypeOfMA(lma, 0, false);
+			if(variant.index() == 0)
+				leftType = mpark::get<fir::Type*>(variant);
+
+			else if(variant.index() == 2)
+				leftType = mpark::get<TypePair_t>(variant).first;
+
+			else
+				return 0;
+		}
+		else
+		{
+			// no chance.
+			return 0;
+		}
+
+
+		iceAssert(leftType);
 
 		if(leftType->isPrimitiveType() && cgi->getExtensionsForBuiltinType(leftType).size() > 0)
 		{
