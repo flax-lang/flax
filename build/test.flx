@@ -247,13 +247,13 @@ public func main(argc: i32, argv: i8**) -> int
 	*/
 
 
-	// enum SomeEnum
-	// {
-	// 	case Up
-	// 	case Down
-	// 	case Left
-	// 	case Right
-	// }
+	enum SomeEnum
+	{
+		case Up
+		case Down
+		case Left
+		case Right
+	}
 
 	struct Foop
 	{
@@ -274,22 +274,24 @@ public func main(argc: i32, argv: i8**) -> int
 		}
 	}
 
-	// let e = SomeEnum.Down
+	let e = SomeEnum.Down
 	let f = Foop(10)
 	let b = Barf()
 
 	let fo = b.foo
 
 	thing.xxx = 40
-	// printf("f.x = %d, b.c = %d, fo = %d\n", f.x, 3, Barf.y)
+	printf("f.x = %d, b.c = %d, fo = %d\n", f.x, 3, Barf.y)
 
-	// if e == SomeEnum.Left
-	// {
-	// }
-	// else if f.x == 30
-	// {
+	if e != SomeEnum.Left
+	{
+		let arr = alloc[3] int
+		printf("%d\n", arr[4])
+	}
+	else if f.x == 30
+	{
 
-	// }
+	}
 
 
 

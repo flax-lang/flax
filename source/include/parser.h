@@ -308,7 +308,7 @@ namespace Parser
 	void parseAllCustomOperators(ParserState& pstate, std::string filename, std::string curpath);
 
 
-
+	std::string pinToString(Parser::Pin p);
 
 	std::string getModuleName(std::string filename);
 	Token getNextToken(std::string& stream, Pin& pos);

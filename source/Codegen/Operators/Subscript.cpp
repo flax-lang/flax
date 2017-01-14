@@ -354,7 +354,7 @@ namespace Operators
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetParameterPackLength(lhsp.pointer);
-			cgi->irb.CreateCall2(checkf, max, ind);
+			cgi->irb.CreateCall3(checkf, max, ind, fir::ConstantString::get(Parser::pinToString(user->pin)));
 
 			fir::Value* data = cgi->irb.CreateGetParameterPackData(lhsp.pointer);
 			gep = cgi->irb.CreateGetPointer(data, ind);
@@ -368,7 +368,7 @@ namespace Operators
 			iceAssert(checkf);
 
 			fir::Value* max = cgi->irb.CreateGetDynamicArrayLength(lhsp.pointer);
-			cgi->irb.CreateCall2(checkf, max, ind);
+			cgi->irb.CreateCall3(checkf, max, ind, fir::ConstantString::get(Parser::pinToString(user->pin)));
 
 			fir::Value* data = cgi->irb.CreateGetDynamicArrayData(lhsp.pointer);
 			gep = cgi->irb.CreateGetPointer(data, ind);
@@ -378,7 +378,8 @@ namespace Operators
 		}
 		else if(atype->isStringType())
 		{
-			cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.value, ind);
+			cgi->irb.CreateCall3(RuntimeFuncs::String::getBoundsCheckFunction(cgi), lhsp.value, ind,
+				fir::ConstantString::get(Parser::pinToString(user->pin)));
 
 			fir::Value* dp = cgi->irb.CreateGetStringData(lhsp.value);
 			gep = cgi->irb.CreateGetPointer(dp, ind);
