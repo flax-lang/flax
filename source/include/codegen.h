@@ -254,8 +254,6 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> resolveStaticDotOperator(Ast::MemberAccess* ma, bool actual = true);
-
 		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
 		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
 		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
@@ -313,6 +311,8 @@ namespace Codegen
 		std::deque<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
 
 
+		mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Ast::Result_t> resolveTypeOfMA(Ast::MemberAccess* ma,
+			fir::Value* extra, bool actual);
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

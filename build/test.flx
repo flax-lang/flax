@@ -124,6 +124,10 @@ struct FormatOptions
 	var argNum: i64
 }
 
+namespace thing
+{
+	var xxx = 40
+}
 
 
 func parseFormatOptions(str: string) -> FormatOptions
@@ -185,6 +189,7 @@ func parseFormatOptions(str: string) -> FormatOptions
 public func main(argc: i32, argv: i8**) -> int
 {
 	runTests()
+
 
 
 	do {
@@ -274,6 +279,8 @@ public func main(argc: i32, argv: i8**) -> int
 	let b = Barf()
 
 	let fo = b.foo
+
+	thing.xxx = 40
 	// printf("f.x = %d, b.c = %d, fo = %d\n", f.x, 3, Barf.y)
 
 	// if e == SomeEnum.Left

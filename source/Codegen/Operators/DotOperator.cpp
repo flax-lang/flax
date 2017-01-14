@@ -1174,11 +1174,11 @@ static variant resolveLeftTypenameMA(CodegenInstance* cgi, MemberAccess* ma, Typ
 
 
 // using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
-variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extra, bool actual)
+variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bool actual)
 {
 	if(auto l = dynamic_cast<MemberAccess*>(ma->left))
 	{
-		variant left = resolveTypeOfMA(cgi, l, extra, actual);
+		variant left = this->resolveTypeOfMA(l, extra, actual);
 
 		// get what kind of shit we are.
 		if(left.index() == 0 || left.index() == 3)
@@ -1201,18 +1201,18 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 
 			// thankfully this has been pulled out into a function on its own.
 			auto res = (actual ? mpark::get<Result_t>(left) : Result_t(0, 0));
-			return resolveLeftNonStaticMA(cgi, ma, type, res, extra, actual);
+			return resolveLeftNonStaticMA(this, ma, type, res, extra, actual);
 		}
 		else if(left.index() == 1)
 		{
 			// ok, namespace
 			FunctionTree* ftree = mpark::get<FunctionTree*>(left);
-			return resolveLeftNamespaceMA(cgi, ma, ftree, extra, actual);
+			return resolveLeftNamespaceMA(this, ma, ftree, extra, actual);
 		}
 		else if(left.index() == 2)
 		{
 			TypePair_t pair = mpark::get<TypePair_t>(left);
-			return resolveLeftTypenameMA(cgi, ma, pair, extra, actual);
+			return resolveLeftTypenameMA(this, ma, pair, extra, actual);
 		}
 		else
 		{
@@ -1225,11 +1225,11 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 		// so we just see if there's such a namespace.
 
 		// first check if there's such a variable
-		auto var = cgi->tryResolveVarRef(v, extra, false);
+		auto var = this->tryResolveVarRef(v, extra, false);
 		if(auto lhs = mpark::get<fir::Type*>(var))
 		{
-			auto res = (actual ? mpark::get<Result_t>(cgi->tryResolveVarRef(v, extra, true)) : Result_t(0, 0));
-			return resolveLeftNonStaticMA(cgi, ma, lhs, res, extra, actual);
+			auto res = (actual ? mpark::get<Result_t>(this->tryResolveVarRef(v, extra, true)) : Result_t(0, 0));
+			return resolveLeftNonStaticMA(this, ma, lhs, res, extra, actual);
 		}
 		else
 		{
@@ -1238,7 +1238,7 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 			// it's static.
 			// -- note -- NS is just v->name, since, again, this is only called in the leftmost mode.
 			// once we get `using namespaces` we'll have to modify this a bit, i think.
-			auto ft = cgi->getFuncTreeFromNS({ v->name });
+			auto ft = this->getFuncTreeFromNS({ v->name });
 
 			// not a namespace
 			if(ft == 0)
@@ -1246,9 +1246,9 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 				// try a type
 				// again, this path is only taken at the root (deepest) level, so we can just do a getTypeByString() without any
 				// scoping nonsense
-				if(auto pair = cgi->getTypeByString(v->name))
+				if(auto pair = this->getTypeByString(v->name))
 				{
-					return resolveLeftTypenameMA(cgi, ma, *pair, extra, actual);
+					return resolveLeftTypenameMA(this, ma, *pair, extra, actual);
 				}
 				else
 				{
@@ -1257,7 +1257,7 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 			}
 			else
 			{
-				return resolveLeftNamespaceMA(cgi, ma, ft, extra, actual);
+				return resolveLeftNamespaceMA(this, ma, ft, extra, actual);
 			}
 		}
 	}
@@ -1268,24 +1268,24 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 		auto result = Result_t(0, 0);
 
 
-		if((type = cgi->getExprTypeOfBuiltin(fc->name)))
+		if((type = this->getExprTypeOfBuiltin(fc->name)))
 		{
 			// ok, we can call this straightaway -- funccall::codegen() knows not to do stupid things when encountering
 			// a builtin type name.
 			// it'll just treat it as initialiser syntax.
-			result = fc->codegen(cgi);
+			result = fc->codegen(this);
 
 			// just return early.
 			// easier than if-ing all the code below.
-			return resolveLeftNonStaticMA(cgi, ma, type, result, extra, actual);
+			return resolveLeftNonStaticMA(this, ma, type, result, extra, actual);
 		}
 
 
-		auto res = cgi->resolveFunction(ma, fc->name, fc->params);
+		auto res = this->resolveFunction(ma, fc->name, fc->params);
 		if(!res.resolved)
 		{
 			std::map<Func*, std::pair<std::string, Expr*>> errs;
-			FuncDefPair fp = cgi->tryResolveGenericFunctionCall(fc, &errs);
+			FuncDefPair fp = this->tryResolveGenericFunctionCall(fc, &errs);
 			if(!fp.isEmpty()) res = Resolved_t(fp);
 		}
 
@@ -1295,14 +1295,14 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 			type = res.t.firFunc->getReturnType();
 
 			// call that shit
-			result = fc->codegen(cgi, res.t.firFunc);
+			result = fc->codegen(this, res.t.firFunc);
 		}
 
 
 		// check type inits
 		if(!res.resolved)
 		{
-			if(auto pair = cgi->getType(Identifier(fc->name, IdKind::Name)))
+			if(auto pair = this->getType(Identifier(fc->name, IdKind::Name)))
 			{
 				fir::Type* type = pair->first;
 				iceAssert(type);
@@ -1311,9 +1311,9 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 				{
 					std::vector<fir::Value*> args;
 					for(Expr* e : fc->params)
-						args.push_back(e->codegen(cgi).value);
+						args.push_back(e->codegen(this).value);
 
-					result =  cgi->callTypeInitialiser(pair, ma, args);
+					result =  this->callTypeInitialiser(pair, ma, args);
 				}
 			}
 		}
@@ -1321,7 +1321,7 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 		// check variables.
 		if(!res.resolved)
 		{
-			if(fir::Value* var = cgi->getSymInst(fc, fc->name))
+			if(fir::Value* var = this->getSymInst(fc, fc->name))
 			{
 				if(var->getType()->isFunctionType())
 				{
@@ -1337,16 +1337,16 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 					if(actual)
 					{
 						// get the thing
-						fir::Value* fnptr = cgi->irb.CreateLoad(var);
+						fir::Value* fnptr = this->irb.CreateLoad(var);
 						iceAssert(fnptr->getType()->isFunctionType());
 
 						// call it.
 						fir::FunctionType* ft = fnptr->getType()->toFunctionType();
-						auto args = cgi->checkAndCodegenFunctionCallParameters(fc, ft, fc->params,
+						auto args = this->checkAndCodegenFunctionCallParameters(fc, ft, fc->params,
 							ft->isVariadicFunc(), ft->isCStyleVarArg());
 
 						// call it.
-						result = Result_t(cgi->irb.CreateCallToFunctionPointer(fnptr, ft, args), 0);
+						result = Result_t(this->irb.CreateCallToFunctionPointer(fnptr, ft, args), 0);
 					}
 				}
 			}
@@ -1357,18 +1357,18 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 		if(!res.resolved)
 		{
 			// die
-			GenError::prettyNoSuchFunctionError(cgi, fc, fc->name, fc->params);
+			GenError::prettyNoSuchFunctionError(this, fc, fc->name, fc->params);
 		}
 
 		iceAssert(type);
-		return resolveLeftNonStaticMA(cgi, ma, type, result, extra, actual);
+		return resolveLeftNonStaticMA(this, ma, type, result, extra, actual);
 	}
 	else
 	{
 		// ok, fuck this -- just get the type on the left.
 		// chances are it's some kind of literal expression
 
-		fir::Type* ltype = ma->left->getType(cgi);
+		fir::Type* ltype = ma->left->getType(this);
 
 		if(ltype->isTupleType())
 		{
@@ -1393,14 +1393,14 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 
 			if(actual)
 			{
-				auto result = ma->left->codegen(cgi);
+				auto result = ma->left->codegen(this);
 				if(!result.pointer)
-					result.pointer = cgi->irb.CreateImmutStackAlloc(ltype, result.value);
+					result.pointer = this->irb.CreateImmutStackAlloc(ltype, result.value);
 
 				iceAssert(result.pointer);
-				fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, n->ival);
+				fir::Value* vp = this->irb.CreateStructGEP(result.pointer, n->ival);
 
-				return Result_t(cgi->irb.CreateLoad(vp), vp);
+				return Result_t(this->irb.CreateLoad(vp), vp);
 			}
 			else
 			{
@@ -1415,9 +1415,9 @@ variant resolveTypeOfMA(CodegenInstance* cgi, MemberAccess* ma, fir::Value* extr
 			fir::Value* ptr = 0;
 
 			if(actual)
-				std::tie(val, ptr) = ma->left->codegen(cgi);
+				std::tie(val, ptr) = ma->left->codegen(this);
 
-			auto result = attemptDotOperatorOnBuiltinTypeOrFail(cgi, ltype, ma, actual, val, ptr, &ret);
+			auto result = attemptDotOperatorOnBuiltinTypeOrFail(this, ltype, ma, actual, val, ptr, &ret);
 
 			if(actual)	return result;
 			else		return ret;
@@ -1454,10 +1454,17 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 {
 	#if 1
 
-	auto ret = resolveTypeOfMA(cgi, this, extra, false);
-	iceAssert(ret.index() == 0);
+	auto ret = cgi->resolveTypeOfMA(this, extra, false);
 
-	return mpark::get<fir::Type*>(ret);
+	// special case -- for 'gettype', we can return the fir::Type* inside the typepair, if it happens to be that.
+	if(ret.index() == 0)
+		return mpark::get<fir::Type*>(ret);
+
+	else if(ret.index() == 2)
+		return mpark::get<TypePair_t>(ret).first;
+
+	else
+		error(this, "Dot operator failed to evaluate");
 
 	#else
 	if(this->matype == MAType::LeftStatic)
@@ -1609,13 +1616,9 @@ Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	#if 1
 
-	auto ret = resolveTypeOfMA(cgi, this, extra, true);
+	auto ret = cgi->resolveTypeOfMA(this, extra, true);
 	if(ret.index() != 3)
-	{
-
-	}
-
-	iceAssert(ret.index() == 3);
+		error(this, "Dot operator failed to evaluate");
 
 	return mpark::get<Result_t>(ret);
 
@@ -1929,7 +1932,7 @@ static Result_t doVariable(CodegenInstance* cgi, VarRef* var, fir::Value* ref, S
 
 
 
-
+#if 0
 
 static std::tuple<FunctionTree*, std::deque<std::string>, std::deque<std::string>, StructBase*, fir::Type*>
 unwrapStaticDotOperator(CodegenInstance* cgi, MemberAccess* ma)
@@ -2316,7 +2319,7 @@ std::pair<std::pair<fir::Type*, Ast::Result_t>, fir::Type*> CodegenInstance::res
 		error(ma, "Invalid expression type on right hand of dot operator");
 	}
 }
-
+#endif
 
 
 
