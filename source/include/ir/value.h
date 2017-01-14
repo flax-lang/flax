@@ -12,8 +12,6 @@
 #include "errors.h"
 #include "type.h"
 
-#include <vector>
-
 namespace fir
 {
 	enum class FValueKind

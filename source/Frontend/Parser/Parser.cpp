@@ -3,7 +3,6 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
-#include <vector>
 #include <cfloat>
 #include <fstream>
 #include <cassert>

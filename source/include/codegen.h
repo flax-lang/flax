@@ -3,13 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
+
 #include "typeinfo.h"
-
 #include "errors.h"
-
-#include <vector>
-#include <map>
-
 #include "ir/irbuilder.h"
 
 enum class SymbolType

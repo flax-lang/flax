@@ -4,10 +4,6 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-
 #include "typeinfo.h"
 #include "defs.h"
 #include "ir/identifier.h"

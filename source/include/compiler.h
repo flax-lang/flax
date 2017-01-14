@@ -5,10 +5,7 @@
 #pragma once
 
 #include "ast.h"
-#include <string>
-#include <vector>
 #include <deque>
-#include <map>
 
 
 namespace llvm
