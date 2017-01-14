@@ -331,7 +331,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// first check if we can make a constant.
 	bool allConst = true;
-	std::deque<fir::Value*> vals;
+	std::vector<fir::Value*> vals;
 	for(auto v : this->values)
 	{
 		auto cgv = v->codegen(cgi).value;
@@ -342,7 +342,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(allConst)
 	{
-		std::deque<fir::ConstantValue*> cvs;
+		std::vector<fir::ConstantValue*> cvs;
 		for(auto v : vals)
 		{
 			auto cv = dynamic_cast<fir::ConstantValue*>(v); iceAssert(cv);

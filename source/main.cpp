@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 	std::string filename;
 	Codegen::CodegenInstance* _cgi = 0;
 	std::pair<std::string, std::string> names;
-	std::deque<std::deque<Codegen::DepNode*>> groups;
+	std::vector<std::vector<Codegen::DepNode*>> groups;
 	{
 		std::string curpath;
 

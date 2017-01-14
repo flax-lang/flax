@@ -12,8 +12,6 @@
 #include "errors.h"
 #include "type.h"
 
-#include <vector>
-
 namespace fir
 {
 	enum class FValueKind
@@ -67,7 +65,7 @@ namespace fir
 		void makeImmutable() { this->immut = true; }
 		void makeNotImmutable() { this->immut = false; }
 
-		std::deque<Value*>& getUsers() { return this->users; }
+		std::vector<Value*>& getUsers() { return this->users; }
 
 		Instruction* getSource() { return this->source; }
 
@@ -84,7 +82,7 @@ namespace fir
 		Type* valueType;
 		Instruction* source;
 		FValueKind valueKind;
-		std::deque<Value*> users;
+		std::vector<Value*> users;
 	};
 
 	struct PHINode : Value
