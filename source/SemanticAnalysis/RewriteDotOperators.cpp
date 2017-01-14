@@ -59,6 +59,7 @@ static void findDotOperator(Expr* expr);
 */
 
 
+// [[[[[ns.ns].type].member].member].functioncall()].member
 
 static void rewriteDotOperator(MemberAccess* ma)
 {
@@ -93,7 +94,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 			if(ft->subMap.find(vr->name) != ft->subMap.end())
 			{
 				gstate.nsstrs.push_back(vr->name);
-				ma->matype = MAType::LeftNamespace;
+				ma->matype = MAType::LeftStatic;
 				return;
 			}
 
@@ -105,7 +106,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 
 			if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 			{
-				ma->matype = MAType::LeftTypename;
+				ma->matype = MAType::LeftStatic;
 				gstate.nestedTypeStrs.push_back(vr->name);
 				return;
 			}
@@ -115,7 +116,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 				{
 					if(t.first == vr->name)
 					{
-						ma->matype = MAType::LeftTypename;
+						ma->matype = MAType::LeftStatic;
 						gstate.nestedTypeStrs.push_back(vr->name);
 						return;
 					}
@@ -157,7 +158,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		if(ft->subMap.find(vr->name) != ft->subMap.end())
 		{
 			gstate.nsstrs.push_back(vr->name);
-			ma->matype = MAType::LeftNamespace;
+			ma->matype = MAType::LeftStatic;
 			return;
 		}
 
@@ -166,7 +167,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 		// 	if(sub->nsName == vr->name)
 		// 	{
 		// 		gstate.nsstrs.push_back(vr->name);
-		// 		ma->matype = MAType::LeftNamespace;
+		// 		ma->matype = MAType::LeftStatic;
 		// 		return;
 		// 	}
 		// }
@@ -177,7 +178,7 @@ static void rewriteDotOperator(MemberAccess* ma)
 
 		if(cgi->getType(Identifier(vr->name, fullScope, IdKind::Struct)))
 		{
-			ma->matype = MAType::LeftTypename;
+			ma->matype = MAType::LeftStatic;
 			gstate.nestedTypeStrs.push_back(vr->name);
 			return;
 		}
@@ -189,26 +190,6 @@ static void rewriteDotOperator(MemberAccess* ma)
 	{
 		ma->matype = MAType::LeftVariable;
 	}
-
-	/*else if(dynamic_cast<Tuple*>(ma->left))
-	{
-		ma->matype = MAType::LeftVariable;
-		return;
-	}
-	else if(dynamic_cast<ArrayIndex*>(ma->left))
-	{
-		ma->matype = MAType::LeftVariable;
-		return;
-	}
-	else if(dynamic_cast<StringLiteral*>(ma->left))
-	{
-		ma->matype = MAType::LeftVariable;
-	}
-	else
-	{
-		// error(ma, "?????");
-		ma->matype = MAType::LeftVariable;
-	}*/
 }
 
 

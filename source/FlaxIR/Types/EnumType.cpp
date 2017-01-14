@@ -40,6 +40,11 @@ namespace fir
 		return this->cases[name];
 	}
 
+	bool EnumType::hasCaseWithName(std::string name)
+	{
+		return this->cases.find(name) != this->cases.end();
+	}
+
 	ConstantArray* EnumType::getConstantArrayOfValues()
 	{
 		// well.
