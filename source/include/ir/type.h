@@ -9,7 +9,6 @@
 #include <limits.h>
 
 #include <map>
-#include <vector>
 #include <unordered_map>
 #include "ir/identifier.h"
 
