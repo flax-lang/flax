@@ -133,7 +133,7 @@ namespace Operators
 	}
 
 
-	Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
@@ -264,7 +264,7 @@ namespace Operators
 
 
 
-	Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());

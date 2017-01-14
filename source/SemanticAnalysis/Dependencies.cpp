@@ -15,7 +15,7 @@ using namespace Ast;
 
 namespace Codegen
 {
-	static void stronglyConnect(DependencyGraph* graph, int& index, std::deque<std::deque<DepNode*>>& connected, DepNode* node);
+	static void stronglyConnect(DependencyGraph* graph, int& index, std::vector<std::vector<DepNode*>>& connected, DepNode* node);
 
 	void DependencyGraph::addModuleDependency(std::string from, std::string to, Expr* imp)
 	{
@@ -62,10 +62,10 @@ namespace Codegen
 
 
 
-	std::deque<std::deque<DepNode*>> DependencyGraph::findCyclicDependencies()
+	std::vector<std::vector<DepNode*>> DependencyGraph::findCyclicDependencies()
 	{
 		int index = 0;
-		std::deque<std::deque<DepNode*>> ret;
+		std::vector<std::vector<DepNode*>> ret;
 
 		for(auto n : this->nodes)
 		{
@@ -84,7 +84,7 @@ namespace Codegen
 	}
 
 
-	static void stronglyConnect(DependencyGraph* graph, int& index, std::deque<std::deque<DepNode*>>& connected, DepNode* node)
+	static void stronglyConnect(DependencyGraph* graph, int& index, std::vector<std::vector<DepNode*>>& connected, DepNode* node)
 	{
 		node->index = index;
 		node->lowlink = index;
@@ -96,7 +96,7 @@ namespace Codegen
 		node->onStack = true;
 
 
-		std::deque<Dep*> edges = graph->edgesFrom[node];
+		std::vector<Dep*> edges = graph->edgesFrom[node];
 		for(auto edge : edges)
 		{
 			DepNode* w = edge->to;
@@ -115,7 +115,7 @@ namespace Codegen
 
 		if(node->lowlink == node->index)
 		{
-			std::deque<DepNode*> set;
+			std::vector<DepNode*> set;
 
 			while(true)
 			{
@@ -135,9 +135,9 @@ namespace Codegen
 	}
 
 
-	std::deque<DepNode*> DependencyGraph::findDependenciesOf(Expr* expr)
+	std::vector<DepNode*> DependencyGraph::findDependenciesOf(Expr* expr)
 	{
-		std::deque<DepNode*> ret;
+		std::vector<DepNode*> ret;
 		for(auto e : this->edgesFrom)
 		{
 			if(e.first->expr == expr)
@@ -167,8 +167,8 @@ namespace SemAnalysis
 		tmp->edgesFrom = graph->edgesFrom;
 		tmp->nodes = graph->nodes;
 
-		std::deque<std::deque<DepNode*>> groups = tmp->findCyclicDependencies();
-		for(std::deque<DepNode*> group : groups)
+		std::vector<std::vector<DepNode*>> groups = tmp->findCyclicDependencies();
+		for(std::vector<DepNode*> group : groups)
 		{
 			if(group.size() > 1)
 				error(group.front()->expr, "cycle");

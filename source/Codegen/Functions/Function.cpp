@@ -104,7 +104,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-	std::deque<VarDecl*> vprs = this->decl->params;
+	std::vector<VarDecl*> vprs = this->decl->params;
 	if(this->decl->params.size() + 1 == func->getArgumentCount())
 	{
 		// we need to add the self param.
@@ -113,7 +113,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
 		fake->ptype = new pts::Type(this->decl->parentClass->createdType->getPointerTo());
 
-		vprs.push_front(fake);
+		vprs.insert(vprs.begin(), fake);
 	}
 
 
