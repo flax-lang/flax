@@ -10,6 +10,7 @@
 #include <deque>
 #include <sstream>
 #include <algorithm>
+#include <experimental/string_view>
 
 namespace Codegen
 {
@@ -310,7 +311,7 @@ namespace Parser
 	std::string pinToString(Parser::Pin p);
 
 	std::string getModuleName(std::string filename);
-	Token getNextToken(std::string& stream, Pin& pos);
+	Token getNextToken(std::experimental::string_view& stream, Pin& pos);
 
 	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
