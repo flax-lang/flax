@@ -247,30 +247,6 @@ namespace Parser
 		}
 	}
 
-	#if 0
-	static std::pair<int64_t, bool> getIntegerValue(Token t)
-	{
-		iceAssert(t.type == TType::Number);
-		int base = 10;
-		if(t.text.compare(0, 2, "0x") == 0)
-			base = 16;
-
-		try
-		{
-			return { std::stoll(t.text, nullptr, base), false };
-		}
-		catch(std::out_of_range)
-		{
-			return { std::stoull(t.text, nullptr, base), true };
-		}
-	}
-
-	static double getDecimalValue(Token t)
-	{
-		return std::stod(t.text);
-	}
-	#endif
-
 	static const char* ReadableAttrNames[] =
 	{
 		"Invalid",
@@ -522,8 +498,9 @@ namespace Parser
 			return;
 
 		Token tok;
-		while(ps.tokens.size() > 0 && (tok = ps.front()).text.length() > 0)
+		while(ps.tokens.size() > 0 && (tok = ps.front()).type != TType::EndOfFile)
 		{
+			// tok = ps.front();
 			switch(tok.type)
 			{
 				case TType::Func:
@@ -622,10 +599,10 @@ namespace Parser
 	Expr* parsePrimary(ParserState& ps)
 	{
 		if(ps.tokens.size() == 0)
-			return nullptr;
+			return 0;
 
 		Token tok;
-		while((tok = ps.front()).text.length() > 0)
+		while((tok = ps.front()).type != TType::EndOfFile)
 		{
 			switch(tok.type)
 			{
@@ -775,7 +752,7 @@ namespace Parser
 			}
 		}
 
-		return nullptr;
+		return 0;
 	}
 
 
@@ -1033,7 +1010,7 @@ namespace Parser
 		while(ps.tokens.size() > 0 && ps.front().type != TType::RBrace)
 		{
 			Expr* e = parseExpr(ps);
-			DeferredExpr* d = nullptr;
+			DeferredExpr* d = 0;
 
 			if((d = dynamic_cast<DeferredExpr*>(e)))
 			{
@@ -1583,6 +1560,7 @@ namespace Parser
 		iceAssert(lhs);
 
 		Token first = ps.front();
+
 		std::vector<Expr*> values;
 
 		values.push_back(lhs);
@@ -1613,6 +1591,7 @@ namespace Parser
 		iceAssert(ps.eat().type == TType::LParen);
 		ps.leftParenNestLevel++;
 
+
 		Expr* within = parseExpr(ps);
 
 		// if we're a tuple, get ready for this shit.
@@ -1636,6 +1615,8 @@ namespace Parser
 	Expr* parseExpr(ParserState& ps)
 	{
 		Expr* lhs = parseUnary(ps);
+		iceAssert(lhs);
+
 		return parseRhs(ps, lhs, 0);
 	}
 
@@ -1946,7 +1927,7 @@ namespace Parser
 		{
 			parserError("What!????");
 			iceAssert(false);
-			return nullptr;
+			return 0;
 		}
 
 		return n;
@@ -1970,8 +1951,8 @@ namespace Parser
 			{
 				Expr* arg = parseExpr(ps);
 
-				if(arg == nullptr)
-					return nullptr;
+				if(arg == 0)
+					return 0;
 
 
 				args.push_back(arg);
@@ -2003,7 +1984,7 @@ namespace Parser
 		Token front = ps.eat();
 		iceAssert(front.type == TType::Return);
 
-		Expr* retval = nullptr;
+		Expr* retval = 0;
 
 		// kinda hack: if the next token is a closing brace, then we don't expect an expression
 		// this works most of the time.
@@ -2027,7 +2008,7 @@ namespace Parser
 		conds.push_back(CCPair(cond, tcase));
 
 		// check for else and else if
-		BracedBlock* ecase = nullptr;
+		BracedBlock* ecase = 0;
 		bool parsedElse = false;
 		while(ps.front().type == TType::Else)
 		{
@@ -2550,7 +2531,7 @@ namespace Parser
 		// parse the stuff.
 		bool isFirst = true;
 		bool isNumeric = false;
-		Number* prevNumber = nullptr;
+		Number* prevNumber = 0;
 
 		while(front = ps.front(), ps.tokens.size() > 0)
 		{
@@ -2785,9 +2766,8 @@ namespace Parser
 		iceAssert(ps.front().type == TType::StringLiteral);
 		Token str = ps.eat();
 
-
 		// reference hack in tokeniser.cpp
-		str.text = str.text.substr(1);
+		// str.text = str.text.substr(1);
 		auto ret = CreateAST(StringLiteral, str, str.text);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_RawString);
@@ -3152,6 +3132,70 @@ namespace Parser
 		delete[] buf;
 
 		return ret;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Token ParserState::front()
+	{
+		iceAssert(!this->tokens.empty());
+		return this->tokens.front();
+	}
+
+	bool ParserState::hasTokens()
+	{
+		return this->tokens.size() > 0;
+	}
+
+	Token ParserState::pop()
+	{
+		// returns the current front, then pops front.
+		if(this->tokens.size() == 0)
+			parserError(*this, "Unexpected end of input");
+
+		auto t = this->front();
+		this->tokens.pop_front();
+
+		this->curtok = t;
+		return t;
+	}
+
+	Token ParserState::eat()
+	{
+		// returns the current front, then pops front.
+		if(this->tokens.size() == 0)
+			parserError(*this, "Unexpected end of input");
+
+		this->skipNewline();
+
+		Token t = this->front();
+		this->tokens.pop_front();
+
+		this->skipNewline();
+
+		this->curtok = t;
+		return t;
+	}
+
+	void ParserState::skipNewline()
+	{
+		// eat newlines AND comments
+		while(this->tokens.size() > 0 && (this->tokens.front().type == TType::NewLine
+			|| this->tokens.front().type == TType::Comment || this->tokens.front().type == TType::Semicolon))
+		{
+			this->tokens.pop_front();
+			this->currentPos.line++;
+		}
 	}
 }
 

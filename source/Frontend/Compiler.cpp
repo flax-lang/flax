@@ -200,8 +200,12 @@ namespace Compiler
 		fakeps.currentPos.col = 1;
 		fakeps.currentPos.len = 1;
 
-		fakeps.tokens = Compiler::getFileTokens(currentMod);
+		{
+			auto p = prof::Profile("getFileTokens");
+			fakeps.tokens = Compiler::getFileTokens(currentMod);
+		}
 
+		auto p = prof::Profile("find imports");
 		while(fakeps.tokens.size() > 0)
 		{
 			Token t = fakeps.front();
@@ -225,6 +229,7 @@ namespace Compiler
 				}
 			}
 		}
+		p.finish();
 	}
 
 	static Codegen::DependencyGraph* resolveImportGraph(std::string baseFullPath, std::string curpath)

@@ -58,7 +58,11 @@ namespace Parser
 	Token getNextToken(std::experimental::string_view& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
-			return Token();
+		{
+			Token ret;
+			ret.type = TType::EndOfFile;
+			return ret;
+		}
 
 		size_t read = 0;
 		size_t unicodeLength = 0;
@@ -470,8 +474,7 @@ namespace Parser
 			}
 
 			tok.type = TType::StringLiteral;
-			tok.text = "_" + ss.str();			// HACK: Parser checks for string length > 0, so if we have an empty string we
-												// need something here.
+			tok.text = ss.str();
 			read = i + 1;
 		}
 		else
