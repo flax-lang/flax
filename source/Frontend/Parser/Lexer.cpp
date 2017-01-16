@@ -12,7 +12,7 @@
 
 namespace Parser
 {
-	static void skipWhitespace(std::string& line, Pin& pos)
+	static void skipWhitespace(std::experimental::string_view& line, Pin& pos)
 	{
 		size_t startpos = line.find_first_not_of(" \t");
 		if(startpos != std::string::npos)
@@ -28,7 +28,7 @@ namespace Parser
 	}
 
 	static Token previousToken;
-	static bool shouldConsiderUnaryLiteral(std::string& stream, Pin& pos)
+	static bool shouldConsiderUnaryLiteral(std::experimental::string_view& stream, Pin& pos)
 	{
 		// check the previous token
 		bool res = (previousToken.type != TType::Invalid && previousToken.pin.file == pos.file &&
@@ -55,7 +55,7 @@ namespace Parser
 	// warning: messy function
 	// edit: haha, if you think this is messy, welcome to the *REAL WORLD*
 
-	Token getNextToken(std::string& stream, Pin& pos)
+	Token getNextToken(std::experimental::string_view& stream, Pin& pos)
 	{
 		if(stream.length() == 0)
 			return Token();
@@ -116,8 +116,8 @@ namespace Parser
 		{
 			tok.text = "//";
 
-			std::stringstream ss(stream);
-			std::getline(ss, tok.text, '\n');
+			size_t newline = stream.find('\n');
+			tok.text = (std::string) stream.substr(0, newline);
 			read = tok.text.length();
 			// pos.line++;
 
@@ -311,8 +311,6 @@ namespace Parser
 			at typecheck time, we just join the two together, add a "." in the middle, and call stold() or something.
 			storing strings preserves things like the 0s required for actually knowing what the number is.
 		*/
-
-		#if 1
 		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
 		{
 			bool neg = false;
@@ -368,159 +366,15 @@ namespace Parser
 			tok.type = TType::Number;
 			tok.pin.len = num.length();
 		}
-		#else
-		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
-		{
-			std::string num;
-
-			// read until whitespace
-			std::stringstream str;
-			str << stream;
-
-			if(stream[0] == '+' || stream[0] == '-')
-				num = str.get();
-
-			int tmp = 0;
-			while(isdigit(tmp = str.get()))
-				num += (char) tmp;
-
-			int base = 10;
-			if(num == "0" && (tmp == 'x' || tmp == 'X' || tmp == 'b' || tmp == 'B'))
-			{
-				if(tmp == 'x' || tmp == 'X')
-					base = 16;
-
-				else if(tmp == 'b' || tmp == 'B')
-					base = 2;
-
-				num = "";
-
-				while(tmp = str.get(), (base == 16 ? isxdigit(tmp) : (tmp == '0' || tmp == '1')))
-					num += (char) tmp;
-			}
-
-
-			if(tmp == '.')
-			{
-				num += '.';
-
-				if(base == 2)
-					parserError(tok, "Binary floating-point literals are currently unsupported.");
-
-				else if(base == 16)
-					parserError(tok, "Hexadecimal floating-point literals are currently unsupported.");
-
-				while(isdigit(tmp = str.get()))
-					num += (char) tmp;
-
-
-				// exponent form
-				if(tmp == 'e' || tmp == 'E')
-				{
-					num += "e";
-					while(isdigit(tmp = str.get()))
-						num += (char) tmp;
-				}
-
-
-				if(num.back() == '.')
-				{
-					// what follow after '.' are not digits
-					// pretend like the '.' was never seen, and let the parser handle this
-					// can come into play when tuple members are structs, eg. tupl.0.length()
-					num.pop_back();
-					tok.type = TType::Integer;
-				}
-				else
-				{
-					tok.type = TType::Decimal;
-
-					try
-					{
-						// makes sure we get the right shit done
-						std::stold(num);
-
-						// check if we might run out of precision
-						if(num.find(".") != std::string::npos && num.substr(num.find(".")).length() > __LDBL_DIG__)
-						{
-							parserMessage(Err::Warn, tok, "Floating-point constant is most likely too precise for best "
-								"representation (f80); have %zu digits, LDBL_DIG is %d", num.substr(num.find(".")).length(), __LDBL_DIG__);
-						}
-					}
-					catch(const std::out_of_range&)
-					{
-						parserError(tok, "Number '%s' is out of range of largest representation (f80)", num.c_str());
-					}
-					catch(const std::exception&)
-					{
-						parserError(tok, "Invalid number '%s'", num.c_str());
-					}
-				}
-			}
-			else
-			{
-				// exponent form
-				if(tmp == 'e' || tmp == 'E')
-				{
-					num += "e";
-					while(isdigit(tmp = str.get()))
-						num += (char) tmp;
-				}
-
-				// we're an int, set shit and return
-				tok.type = TType::Integer;
-				try
-				{
-					// makes sure we get the right shit done
-					if(num[0] == '-')
-						std::stoll(num, nullptr, base);
-
-					else
-						std::stoull(num, nullptr, base);
-				}
-				catch(const std::out_of_range&)
-				{
-					parserError(tok, "Number '%s' is out of range of largest representation (u64)", num.c_str());
-				}
-				catch(const std::exception&)
-				{
-					parserError(tok, "Invalid number '%s'", num.c_str());
-				}
-
-				if(base == 16)
-					num = "0x" + num;
-
-				else if(base == 2)
-					num = "0b" + num;
-			}
-
-
-
-
-
-			// make sure the next char is not a letter, prevents things like
-			// 98091824097foobar from working when 'foobar' is a var name
-			// hack below to let us see the next letter without stringstream eating the space
-			stream = stream.substr(num.length());
-
-			if(stream.length() > 0 && isalpha(stream[0]))
-				parserError(tok, "Malformed integer literal");
-
-			read = 0;		// done above
-			tok.text = num;
-			tok.pin.len = num.length();
-		}
-		#endif
-
-		else if(stream[0] == '_'  || utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
+		else if(stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
 		{
 			std::string id;
 
 			// get as many letters as possible first
-			size_t identLength = utf8iscategory(stream.c_str(), stream.size(),
+			size_t identLength = utf8iscategory(stream.data(), stream.size(),
 				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
 
-			id += stream.substr(0, identLength);
+			id += (std::string) stream.substr(0, identLength);
 
 			// fprintf(stderr, "FINISH: got identifier: %s, length %zu (%zu)\n", id.c_str(), id.length(), identLength);
 
@@ -664,16 +518,16 @@ namespace Parser
 				tok.text = stream[0];
 				read = 1;
 			}
-			else if(utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)
+			else if(utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)
 			{
-				read = utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER);
+				read = utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER);
 
-				tok.text = stream.substr(0, read);
+				tok.text = (std::string) stream.substr(0, read);
 				tok.type = TType::UnicodeSymbol;
 			}
 			else
 			{
-				parserError(tok, "Unknown token '%s'", stream.substr(0, 10).c_str());
+				parserError(tok, "Unknown token '%s'", stream.substr(0, 10).to_string().c_str());
 			}
 		}
 
