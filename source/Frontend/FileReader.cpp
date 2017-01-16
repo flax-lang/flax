@@ -61,24 +61,22 @@ namespace Compiler
 
 
 		Parser::Pin pos;
-		Parser::TokenList ts;
-		Parser::Token curtok;
-		FileInnards innards;
+		FileInnards& innards = fileList[fullPath];
 		{
 			auto p = prof::Profile("things");
 			pos.file = fullPath;
 
-			innards.lines = rawlines;
-			innards.contents = fileContents;
+
+			innards.lines = std::move(rawlines);
+			innards.contents = std::move(fileContents);
 			innards.isLexing = true;
-
-
-			fileList[fullPath] = innards;
 		}
 
-		std::experimental::string_view fileContentsView = fileContents;
+		std::experimental::string_view fileContentsView = innards.contents;
 
 		auto p = prof::Profile("lex");
+		Parser::TokenList ts;
+		Parser::Token curtok;
 		while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
 			ts.push_back(curtok);
 
@@ -87,7 +85,7 @@ namespace Compiler
 
 		{
 			auto p = prof::Profile("things2");
-			fileList[fullPath].tokens = ts;
+			fileList[fullPath].tokens = std::move(ts);
 			fileList[fullPath].isLexing = false;
 		}
 	}
