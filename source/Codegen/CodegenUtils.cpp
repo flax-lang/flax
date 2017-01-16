@@ -2171,7 +2171,7 @@ namespace Codegen
 	template <typename T>
 	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
 	{
-		iceAssert(cgi->isRefCountedType(type));
+		// iceAssert(cgi->isRefCountedType(type));
 
 		size_t i = 0;
 		for(auto m : type->getElements())

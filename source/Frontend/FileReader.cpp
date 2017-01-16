@@ -31,6 +31,7 @@ namespace Compiler
 		std::string fileContents;
 		if(fstr)
 		{
+			auto p = prof::Profile("read file");
 			std::ostringstream contents;
 			contents << fstr.rdbuf();
 			fstr.close();
@@ -45,41 +46,50 @@ namespace Compiler
 
 		// split into lines
 		std::vector<std::string> rawlines;
-		std::string contents;
+
 
 		{
+			auto p = prof::Profile("lines");
 			std::stringstream ss(fileContents);
-			contents = ss.str();
 
 			std::string tmp;
 			while(std::getline(ss, tmp, '\n'))
 				rawlines.push_back(tmp);
+
+			p.finish();
 		}
 
-		Parser::Token curtok;
+
 		Parser::Pin pos;
 		Parser::TokenList ts;
-
-		pos.file = fullPath;
-
+		Parser::Token curtok;
 		FileInnards innards;
-		innards.lines = rawlines;
-		innards.contents = contents;
-		innards.isLexing = true;
+		{
+			auto p = prof::Profile("things");
+			pos.file = fullPath;
 
-		fileList[fullPath] = innards;
+			innards.lines = rawlines;
+			innards.contents = fileContents;
+			innards.isLexing = true;
+
+
+			fileList[fullPath] = innards;
+		}
 
 		std::experimental::string_view fileContentsView = fileContents;
 
 		auto p = prof::Profile("lex");
-		while((curtok = getNextToken(fileContentsView, pos)).text.size() > 0)
+		while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
 			ts.push_back(curtok);
 
 		p.finish();
 
 
-		fileList[fullPath].tokens = ts;
-		fileList[fullPath].isLexing = false;
+		{
+			auto p = prof::Profile("things2");
+			fileList[fullPath].tokens = ts;
+			fileList[fullPath].isLexing = false;
+		}
 	}
 
 
