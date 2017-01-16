@@ -332,7 +332,7 @@ namespace Parser
 			// find that shit (cool, we can just pass `isdigit` directly)
 			auto end = std::find_if_not(stream.begin(), stream.end(), [base](const char& c) -> bool {
 				if(base == 10)	return isdigit(c);
-				if(base == 16)	return ishexnumber(c);
+				if(base == 16)	return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
 				else			return (c == '0' || c == '1');
 			});
 
