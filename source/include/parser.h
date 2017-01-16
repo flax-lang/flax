@@ -150,6 +150,10 @@ namespace Parser
 
 		NewLine,
 		Comment,
+
+
+
+		EndOfFile,
 	};
 
 
@@ -184,73 +188,13 @@ namespace Parser
 
 		int structNestLevel = 0;
 
-		Token front()
-		{
-			return this->tokens.front();
-		}
 
-		// void pop_front()
-		// {
-		// 	this->tokens.pop_front();
-		// }
+		bool hasTokens();
+		void skipNewline();
 
-		bool hasTokens()
-		{
-			return this->tokens.size() > 0;
-		}
-
-		Token pop()
-		{
-			// returns the current front, then pops front.
-			if(this->tokens.size() == 0)
-				parserError(*this, "Unexpected end of input");
-
-			auto t = this->front();
-			this->tokens.pop_front();
-
-			this->curtok = t;
-			return t;
-		}
-
-		Token eat()
-		{
-			// returns the current front, then pops front.
-			if(this->tokens.size() == 0)
-				parserError(*this, "Unexpected end of input");
-
-			this->skipNewline();
-			Token t = this->front();
-			this->tokens.pop_front();
-
-			this->skipNewline();
-
-			this->curtok = t;
-			return t;
-		}
-
-		// Token eatNoSkip()
-		// {
-		// 	// returns the current front, then pops front.
-		// 	if(this->tokens.size() == 0)
-		// 		parserError(*this, "Unexpected end of input");
-
-		// 	auto t = this->front();
-		// 	this->pop_front();
-
-		// 	this->curtok = t;
-		// 	return t;
-		// }
-
-		void skipNewline()
-		{
-			// eat newlines AND comments
-			while(this->tokens.size() > 0 && (this->tokens.front().type == TType::NewLine
-				|| this->tokens.front().type == TType::Comment || this->tokens.front().type == TType::Semicolon))
-			{
-				this->tokens.pop_front();
-				this->currentPos.line++;
-			}
-		}
+		Token pop();
+		Token eat();
+		Token front();
 	};
 
 
