@@ -323,11 +323,11 @@ namespace Compiler
 
 				argv[s - 1] = 0;
 
-				int outpipe[2];
-				iceAssert(pipe(outpipe) == 0);
-
 				std::string output;
 				int status = 0;
+
+
+
 
 				#if 1
 				std::string cmdline;
@@ -341,13 +341,16 @@ namespace Compiler
 
 				printf("cmdline = %s\n", cmdline.c_str());
 
-				Process::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
+				tinyproclib::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
 					output = std::string(bytes, n);
 				});
 
 
 
 				#else
+				int outpipe[2];
+				iceAssert(pipe(outpipe) == 0);
+
 				pid_t pid = fork();
 				if(pid == 0)
 				{
