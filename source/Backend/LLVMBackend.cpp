@@ -55,7 +55,9 @@ static llvm::LLVMContext globalContext;
 
 
 
-// static std::string _makeCmdLine(const char* fmt, ...);
+#ifdef _WIN32
+errno_t _putenv_s(const char* name, const char* value);
+#endif
 
 
 namespace Compiler
@@ -584,8 +586,18 @@ namespace Compiler
 
 
 		// set the things
-		setenv("LD_LIBRARY_PATH", env.c_str(), 1);
-		setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
+
+		#ifndef _WIN32
+		{
+			setenv("LD_LIBRARY_PATH", env.c_str(), 1);
+			setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
+		}
+		#else
+		{
+			_putenv_s("LD_LIBRARY_PATH", env.c_str());
+			_putenv_s("DYLD_FRAMEWORK_PATH", fenv.c_str());
+		}
+		#endif
 
 
 
@@ -661,8 +673,18 @@ namespace Compiler
 
 
 		// restore
-		setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
-		setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
+
+		#ifndef _WIN32
+		{
+			setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
+			setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
+		}
+		#else
+		{
+			_putenv_s("LD_LIBRARY_PATH", penv.c_str());
+			_putenv_s("DYLD_FRAMEWORK_PATH", pfenv.c_str());
+		}
+		#endif
 	}
 
 
