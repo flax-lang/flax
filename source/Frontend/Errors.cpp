@@ -124,14 +124,16 @@ __attribute__ ((noreturn)) void doTheExit()
 	#endif
 }
 
-void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list ap)
+void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list _ap)
 {
 	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
 		return;
 
+	va_list ap;
+	va_copy(ap, _ap);
 
-	char* alloc = nullptr;
-	vasprintf(&alloc, msg, ap);
+	// char* alloc = nullptr;
+	// vasprintf(&alloc, msg, ap);
 
 	auto colour = COLOUR_RED_BOLD;
 	if(strcmp(type, "Warning") == 0)
@@ -150,7 +152,10 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
-	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "", alloc, COLOUR_RESET);
+	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
+	vfprintf(stderr, msg, ap);
+	fprintf(stderr, "%s\n", COLOUR_RESET);
+
 
 	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{
@@ -164,7 +169,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	fprintf(stderr, "\n");
 
 	va_end(ap);
-	free(alloc);
+	// free(alloc);
 
 	if(doExit)
 	{

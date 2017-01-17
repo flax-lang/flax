@@ -16,15 +16,30 @@ namespace Codegen
 	static std::string _makeErrorString(const char* fmt, ...)
 	{
 		va_list ap;
+		va_list ap2;
+
 		va_start(ap, fmt);
+		va_copy(ap2, ap);
 
-		char* tmp = 0;
-		vasprintf(&tmp, fmt, ap);
+		ssize_t size = vsnprintf(0, 0, fmt, ap2);
 
-		std::string ret = tmp;
-		free(tmp);
+		va_end(ap2);
 
-		va_end(ap);
+
+		// return -1 to be compliant if
+		// size is less than 0
+		iceAssert(size >= 0);
+
+		// alloc with size plus 1 for `\0'
+		char* str = new char[size + 1];
+
+		// format string with original
+		// variadic arguments and set new size
+		vsprintf(str, fmt, ap);
+
+		std::string ret = str;
+		delete[] str;
+
 		return ret;
 	}
 
