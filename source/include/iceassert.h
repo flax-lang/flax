@@ -16,14 +16,14 @@ inline void _error_and_exit(const char* s, ...)
 	va_list ap;
 	va_start(ap, s);
 
-	char* alloc = nullptr;
-	vasprintf(&alloc, s, ap);
+	// char* alloc = nullptr;
+	// vasprintf(&alloc, s, ap);
 
-	fprintf(stderr, "%s%s%s%s: %s%s\n", "\033[1m\033[31m", "Error", "\033[0m", "\033[1m", alloc, "\033[0m");
+	fprintf(stderr, "%s%s%s%s: \n", "\033[1m\033[31m", "Error", "\033[0m", "\033[1m");
+	vfprintf(stderr, s, ap);
+	fprintf(stderr, "%s\n", "\033[0m");
 
-	// vfprintf(stderr, s, ap);
-
-	free(alloc);
+	// free(alloc);
 
 	va_end(ap);
 	abort();
