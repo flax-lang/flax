@@ -289,8 +289,7 @@ namespace Parser
 		staticState = &ps;
 
 		// split into lines
-		std::string fullpath = Compiler::getFullPathOfFile(filename);
-		ps.tokens = Compiler::getFileTokens(fullpath);
+		ps.tokens = Compiler::getFileTokens(Compiler::getFullPathOfFile(filename));
 
 		ps.currentPos.file = filename;
 
