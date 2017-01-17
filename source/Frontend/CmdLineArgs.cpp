@@ -14,9 +14,6 @@
 #include "compiler.h"
 
 
-#include <dlfcn.h>
-
-
 static std::string parseQuotedString(char** argv, int& i)
 {
 	std::string ret;
@@ -38,7 +35,7 @@ static std::string parseQuotedString(char** argv, int& i)
 	return ret;
 }
 
-#define VERSION_STRING	"0.92.0"
+#define VERSION_STRING	"0.97-pre"
 
 
 

@@ -38,7 +38,7 @@ namespace Compiler
 		// fprintf(stderr, "ops.caret.file = %s // %s\n", ops.caret.file.c_str(), fpath.c_str());
 
 		auto tmp = imp->pin;
-		tmp.col += std::string("import ").length();
+		tmp.col += std::string("import ").length() + 1;
 		tmp.len = imp->module.length();
 
 		ops.underlines.push_back(tmp);
@@ -59,11 +59,7 @@ namespace Compiler
 
 		// first check the current directory.
 		std::string modname = imp->module;
-		for(size_t i = 0; i < modname.length(); i++)
-		{
-			if(modname[i] == '.')
-				modname[i] = '/';
-		}
+		std::replace(modname.begin(), modname.end(), '.', '/');
 
 		std::string name = curpath + "/" + modname + ".flx";
 		char* fname = realpath(name.c_str(), 0);
@@ -73,6 +69,7 @@ namespace Compiler
 		{
 			auto ret = std::string(fname);
 			free(fname);
+
 			return getFullPathOfFile(ret);
 		}
 		else
