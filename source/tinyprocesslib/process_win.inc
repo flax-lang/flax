@@ -4,6 +4,7 @@
 #include <TlHelp32.h>
 #include <stdexcept>
 
+namespace tinyproclib {
 Process::Data::Data(): id(0), handle(NULL) {}
 
 namespace {
@@ -265,4 +266,5 @@ void Process::kill(id_type id, bool force) {
   }
   HANDLE process_handle = OpenProcess(PROCESS_TERMINATE, FALSE, id);
   if(process_handle) TerminateProcess(process_handle, 2);
+}
 }

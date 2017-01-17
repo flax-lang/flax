@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <stdexcept>
 
+namespace tinyproclib {
 Process::Data::Data(): id(-1) {}
 
 Process::Process(std::function<void()> function,
@@ -197,4 +198,5 @@ void Process::kill(id_type id, bool force) {
     ::kill(-id, SIGTERM);
   else
     ::kill(-id, SIGINT);
+}
 }
