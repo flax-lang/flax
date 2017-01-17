@@ -244,7 +244,7 @@ namespace Codegen
 		{
 			// only if there's an actual, fir::Type* there.
 			if(ftree->types[atype->ident.name].first)
-				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
+				error(atype, "Duplicate type %s (in ftree %s:%zu)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
 		// if there isn't one, add it.

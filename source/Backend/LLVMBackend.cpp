@@ -19,6 +19,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
@@ -33,11 +34,11 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-// #include "llvm/IRReader/IRReader.h"
-// #include "llvm/Transforms/Utils/Cloning.h"
-// #include "llvm/Transforms/Instrumentation.h"
-// #include "llvm/CodeGen/MIRParser/MIRParser.h"
-// #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "ir/type.h"
 #include "ir/value.h"
@@ -47,18 +48,15 @@
 #include "backend.h"
 #include "compiler.h"
 
-#include "llvm/IR/LLVMContext.h"
-
-#include <stdio.h>
-#include <spawn.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include "../tinyprocesslib/process.h"
 
 
 static llvm::LLVMContext globalContext;
+
+
+
+// static std::string _makeCmdLine(const char* fmt, ...);
+
 
 namespace Compiler
 {
@@ -244,12 +242,19 @@ namespace Compiler
 			}
 			else
 			{
-				char templ[] = "/tmp/fileXXXXXX";
-				int fd = mkstemp(templ);
+				std::string objname = "/tmp/flax_" + this->linkedModule->getModuleIdentifier();
 
+				int fd = open(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+				if(fd == -1)
+				{
+					exitless_error("Unable to create temporary file (%s) for linking", objname.c_str());
+					perror("open(2) error");
+
+					doTheExit();
+				}
 
 				write(fd, buffer.data(), buffer.size_in_bytes());
-				fsync(fd);
+				close(fd);
 
 
 				auto libs = Compiler::getLibrariesToLink();
@@ -278,7 +283,7 @@ namespace Compiler
 				argv[0] = "cc";
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
-				argv[3] = templ;
+				argv[3] = objname.c_str();
 
 				size_t i = 4 + num_extra;
 
@@ -322,9 +327,28 @@ namespace Compiler
 				iceAssert(pipe(outpipe) == 0);
 
 				std::string output;
-
-				pid_t pid = fork();
 				int status = 0;
+
+				#if 1
+				std::string cmdline;
+				for(size_t i = 0; i < s - 1; i++)
+				{
+					cmdline += argv[i];
+
+					if(strcmp(argv[i], "-l") != 0 && strcmp(argv[i], "-L") != 0)
+						cmdline += " ";
+				}
+
+				printf("cmdline = %s\n", cmdline.c_str());
+
+				Process::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
+					output = std::string(bytes, n);
+				});
+
+
+
+				#else
+				pid_t pid = fork();
 				if(pid == 0)
 				{
 					// in child, pid == 0.
@@ -362,9 +386,10 @@ namespace Compiler
 
 					status = WEXITSTATUS(s);
 				}
+				#endif
 
 				// delete the temp file
-				std::remove(templ);
+				// std::remove(templ);
 
 				delete[] argv;
 
@@ -781,11 +806,35 @@ namespace Compiler
 
 
 
+// static std::string _makeCmdLine(const char* fmt, ...)
+// {
+// 	va_list ap;
+// 	va_list ap2;
+
+// 	va_start(ap, fmt);
+// 	va_copy(ap2, ap);
+
+// 	ssize_t size = vsnprintf(0, 0, fmt, ap2);
+
+// 	va_end(ap2);
 
 
+// 	// return -1 to be compliant if
+// 	// size is less than 0
+// 	iceAssert(size >= 0);
 
+// 	// alloc with size plus 1 for `\0'
+// 	char* str = new char[size + 1];
 
+// 	// format string with original
+// 	// variadic arguments and set new size
+// 	vsprintf(str, fmt, ap);
 
+// 	std::string ret = str;
+// 	delete[] str;
+
+// 	return ret;
+// };
 
 
 
