@@ -106,13 +106,13 @@ namespace Codegen
 		FunctionTree(FunctionTree* p) : parent(p) { this->id = __getnewid(); }
 		explicit FunctionTree(std::string n, FunctionTree* p) : nsName(n), parent(p) { this->id = __getnewid(); }
 
-		static id_t __getnewid()
+		static size_t __getnewid()
 		{
-			static id_t curid = 0;
+			static size_t curid = 0;
 			return curid++;
 		}
 
-		id_t id;
+		size_t id;
 
 		std::string nsName;
 		FunctionTree* parent;
