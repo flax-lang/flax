@@ -20,10 +20,10 @@ namespace GenError
 {
 	static void printContext(HighlightOptions ops)
 	{
-		std::vector<std::string> lines = Compiler::getFileLines(ops.caret.file);
+		auto lines = Compiler::getFileLines(ops.caret.file);
 		if(lines.size() > ops.caret.line - 1)
 		{
-			std::string orig = lines[ops.caret.line - 1];
+			std::string orig = lines[ops.caret.line - 1].to_string();
 			std::string ln;
 
 			for(auto c : orig)

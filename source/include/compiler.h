@@ -6,7 +6,7 @@
 
 #include "ast.h"
 #include <deque>
-
+#include <experimental/string_view>
 
 namespace llvm
 {
@@ -61,7 +61,7 @@ namespace Compiler
 
 
 	std::deque<Parser::Token> getFileTokens(std::string fullPath);
-	std::vector<std::string> getFileLines(std::string fullPath);
+	std::vector<std::experimental::string_view> getFileLines(std::string fullPath);
 	std::string getFileContents(std::string fullPath);
 
 	std::string getPathFromFile(std::string path);
