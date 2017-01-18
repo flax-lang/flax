@@ -170,7 +170,7 @@ namespace Parser
 
 		std::unordered_set<std::string> visited;
 
-		Token curtok;
+		const Token *curtok;
 		Pin currentPos;
 		Ast::Root* rootNode = 0;
 		uint64_t curAttrib = 0;
@@ -188,11 +188,11 @@ namespace Parser
 
 		size_t getRemainingTokens();
 
-		Token pop();
-		Token eat();
-		Token front();
+		const Token& pop();
+		const Token& eat();
+		const Token& front();
 
-		Token lookahead(size_t i);
+		const Token& lookahead(size_t i);
 
 		private:
 
