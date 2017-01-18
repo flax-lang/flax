@@ -10,7 +10,7 @@ class CPTest
 	var readwrite: int
 	{
 		get { printf("READ\n"); return 31 }
-		set { printf("WRITE: %d\n", newValue); }
+		set { printf("WRITE: %d\n", newValue) }
 	}
 }
 

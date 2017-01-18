@@ -64,7 +64,7 @@ namespace Compiler
 				if(ln != std::experimental::string_view::npos)
 				{
 					linePos.push_back(ln);
-					rawlines.push_back(view.substr(0, ln));
+					rawlines.push_back(view.substr(0, ln + 1));
 
 					view.remove_prefix(ln + 1);
 				}
@@ -94,10 +94,24 @@ namespace Compiler
 		Parser::TokenList ts;
 		Parser::Token curtok;
 
-		while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
-			ts.push_back(curtok);
+		// for(auto l : innards.lines)
+		{
+			while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
+				ts.push_back(curtok);
+
+			// Parser::Token nl;
+			// nl.type = Parser::TType::NewLine;
+			// nl.pin = curtok.pin;
+			// ts.push_back(nl);
+		}
 
 		p.finish();
+
+
+
+		// prof::printResults();
+		// exit(0);
+
 
 
 		{

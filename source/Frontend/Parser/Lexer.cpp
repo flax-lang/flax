@@ -77,11 +77,9 @@ namespace Parser
 		{
 			size_t newline = stream.find('\n');
 
-
 			tok.type = TType::Comment;
-			tok.text = stream.substr(0, newline).to_string();
-			read = tok.text.length();
-			pos.line++;
+			// tok.text = stream.substr(0, newline).to_string();
+			read = newline;
 		}
 		else if(stream.compare(0, 2, "==") == 0)
 		{
@@ -210,7 +208,7 @@ namespace Parser
 					parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
 
 				if(stream[k] == '\n')
-					curpos.line++;
+					curpos.line++, curpos.col = 0;
 
 				if(stream[k] == '/' && stream[k + 1] == '*')
 					currentNest++, k++, curpos.col++, opening = curpos;
@@ -226,6 +224,11 @@ namespace Parser
 			pos = curpos;
 
 			return getNextToken(stream, pos);
+
+			// don't actually store the text, because it's pointless and memory-wasting
+			// tok.text = "/* I used to be a comment like you, until I took a memory-leak to the knee. */";
+			// tok.type = TType::Comment;
+			// read = 0;
 		}
 		else if(stream.compare(0, 2, "*/") == 0)
 		{
