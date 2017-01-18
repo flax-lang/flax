@@ -33,7 +33,7 @@ namespace GenError
 					for(size_t i = 0; i < TAB_WIDTH; i++)
 						ln += " ";
 				}
-				else
+				else if(c != '\n')
 				{
 					ln += c;
 				}
