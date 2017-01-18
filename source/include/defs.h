@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include <map>
+#include <deque>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -53,6 +54,10 @@ namespace Parser
 		size_t col = 1;
 		size_t len = 1;
 	};
+
+	struct Token;
+
+	using TokenList = std::vector<Token>;
 }
 
 namespace Codegen

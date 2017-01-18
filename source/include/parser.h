@@ -159,20 +159,14 @@ namespace Parser
 
 	struct Token
 	{
-		Token() { }
-
 		Pin pin;
 		std::string text;
 		TType type = TType::Invalid;
 	};
 
-
-	typedef std::deque<Token> TokenList;
 	struct ParserState
 	{
-		explicit ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
-
-		TokenList tokens;
+		explicit ParserState(Codegen::CodegenInstance* c, TokenList& tl); // : cgi(c) { }
 
 		std::unordered_set<std::string> visited;
 
@@ -188,13 +182,22 @@ namespace Parser
 
 		int structNestLevel = 0;
 
-
+		bool empty();
 		bool hasTokens();
 		void skipNewline();
+
+		size_t getRemainingTokens();
 
 		Token pop();
 		Token eat();
 		Token front();
+
+		Token lookahead(size_t i);
+
+		private:
+
+		TokenList& tokens;
+		size_t index = 0;
 	};
 
 
@@ -236,7 +239,6 @@ namespace Parser
 	Ast::NamespaceDecl*		parseNamespace(ParserState& tokens);
 	Ast::Expr*				parseStaticDecl(ParserState& tokens);
 	Ast::Expr*				parseOpOverload(ParserState& tokens);
-	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens);
 	Ast::ForeignFuncDecl*	parseForeignFunc(ParserState& tokens);
 	Ast::Func*				parseTopLevelExpr(ParserState& tokens);
 	Ast::ArrayLiteral*		parseArrayLiteral(ParserState& tokens);
@@ -246,11 +248,14 @@ namespace Parser
 	Ast::Expr*				parseRhs(ParserState& tokens, Ast::Expr* expr, int prio);
 	Ast::FuncCall*			parseFuncCall(ParserState& tokens, std::string id, Pin id_pos);
 
+	Ast::Func*				parseFuncUsingIdentifierToken(ParserState& tokens, Token id);
+	Ast::FuncDecl*			parseFuncDeclUsingIdentifierToken(ParserState& tokens, Token id);
+	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens, bool hadOpeningBrace = false, bool eatClosingBrace = true);
 
 
-	Ast::Root* Parse(ParserState& pstate, std::string filename);
-	void parseAllCustomOperators(ParserState& pstate, std::string filename, std::string curpath);
 
+	Ast::Root* Parse(Codegen::CodegenInstance* cgi, std::string filename);
+	void parseAllCustomOperators(Codegen::CodegenInstance* cgi, std::string filename, std::string curpath);
 
 	std::string pinToString(Parser::Pin p);
 
