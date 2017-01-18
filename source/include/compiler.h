@@ -60,9 +60,9 @@ namespace Compiler
 	std::string resolveImport(Ast::Import* imp, std::string fullPath);
 
 
-	std::deque<Parser::Token> getFileTokens(std::string fullPath);
-	std::vector<std::experimental::string_view> getFileLines(std::string fullPath);
 	std::string getFileContents(std::string fullPath);
+	Parser::TokenList& getFileTokens(std::string fullPath);
+	std::vector<std::experimental::string_view> getFileLines(std::string fullPath);
 
 	std::string getPathFromFile(std::string path);
 	std::string getFilenameFromPath(std::string path);

@@ -30,6 +30,7 @@ namespace Compiler
 		std::string contents;
 
 		bool isLexing = false;
+		bool didLex = false;
 	};
 
 	static std::unordered_map<std::string, FileInnards> fileList;
@@ -95,55 +96,44 @@ namespace Compiler
 			innards.isLexing = true;
 		}
 
-		std::experimental::string_view fileContentsView = innards.contents;
 
 		auto p = prof::Profile("lex");
-		Parser::TokenList ts;
-		Parser::Token curtok;
+		Parser::TokenList& ts = innards.tokens;
 
-		// for(auto l : innards.lines)
 		{
-			#if 1
-
 			// copy lines.
 			auto lines = innards.lines;
 
 			size_t curLine = 0;
+			Parser::Token curtok;
+
 			while((curtok = Lexer::getNextToken(lines, &curLine, pos)).type != Parser::TType::EndOfFile)
-			{
-				auto k = prof::Profile("push");
 				ts.push_back(curtok);
-				// if(curtok.type == Parser::TType::NewLine)
-				// fprintf(stderr, "%zu\r", curLine);
-			}
-
-			#else
-
-			while((curtok = Lexer::getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
-				ts.push_back(curtok);
-
-			#endif
 		}
+
+
+		/*
+			agv. performance characteristics:
+
+			using vector<> as the TokenList actually results in a 20% *slowdown* vs. using deque<>.
+			weird.
+
+			Also, simply lexing, regardless of the list type, takes about 300ms on the long file
+			- for deque<>, push_back takes 300ms total.
+			- vector<> takes about 400+ ms
+		*/
+
 
 		p.finish();
 
-
-
-		// prof::printResults();
-		// exit(0);
-
-
-
-		{
-			fileList[fullPath].tokens = std::move(ts);
-			fileList[fullPath].isLexing = false;
-		}
+		innards.didLex = true;
+		innards.isLexing = false;
 	}
 
 
-	Parser::TokenList getFileTokens(std::string fullPath)
+	Parser::TokenList& getFileTokens(std::string fullPath)
 	{
-		if(fileList.find(fullPath) == fileList.end())
+		if(fileList.find(fullPath) == fileList.end() || !fileList[fullPath].didLex)
 		{
 			readFile(fullPath);
 			assert(fileList.find(fullPath) != fileList.end());
