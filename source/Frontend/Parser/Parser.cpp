@@ -3166,7 +3166,7 @@ namespace Parser
 
 
 
-	Token ParserState::front()
+	const Token& ParserState::front()
 	{
 		iceAssert(this->hasTokens());
 		return this->tokens[this->index];
@@ -3187,26 +3187,26 @@ namespace Parser
 		return !this->hasTokens();
 	}
 
-	Token ParserState::lookahead(size_t i)
+	const Token& ParserState::lookahead(size_t i)
 	{
 		iceAssert(this->index + i < this->tokens.size());
 		return this->tokens[i + this->index];
 	}
 
-	Token ParserState::pop()
+	const Token& ParserState::pop()
 	{
 		// returns the current front, then pops front.
 		if(this->tokens.size() == 0)
 			parserError(*this, "Unexpected end of input");
 
-		auto t = this->tokens[this->index];
+		const auto& t = this->tokens[this->index];
 		this->index++;
 
-		this->curtok = t;
+		this->curtok = &t;
 		return t;
 	}
 
-	Token ParserState::eat()
+	const Token& ParserState::eat()
 	{
 		// returns the current front, then pops front.
 		// this one skips newlines.
@@ -3215,12 +3215,12 @@ namespace Parser
 
 		this->skipNewline();
 
-		auto t = this->tokens[this->index];
+		const auto& t = this->tokens[this->index];
 		this->index++;
 
 		this->skipNewline();
 
-		this->curtok = t;
+		this->curtok = &t;
 		return t;
 	}
 
@@ -3262,7 +3262,7 @@ void parserMessage(Err sev, const char* msg, ...)
 
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(pinToHO(staticState->curtok.pin), msg, str.c_str(), false, ap);
+	__error_gen(pinToHO(staticState->curtok->pin), msg, str.c_str(), false, ap);
 	va_end(ap);
 }
 
@@ -3307,7 +3307,7 @@ void parserMessage(Err sev, Parser::ParserState& ps, const char* msg, ...)
 
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(pinToHO(ps.curtok.pin), msg, str.c_str(), false, ap);
+	__error_gen(pinToHO(ps.curtok->pin), msg, str.c_str(), false, ap);
 	va_end(ap);
 }
 
@@ -3317,7 +3317,7 @@ void parserError(const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(pinToHO(staticState->curtok.pin), msg, "Error", true, ap);
+	__error_gen(pinToHO(staticState->curtok->pin), msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
@@ -3347,7 +3347,7 @@ void parserError(Parser::ParserState& ps, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
-	__error_gen(pinToHO(ps.curtok.pin), msg, "Error", true, ap);
+	__error_gen(pinToHO(ps.curtok->pin), msg, "Error", true, ap);
 	va_end(ap);
 	abort();
 }
