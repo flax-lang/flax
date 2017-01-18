@@ -341,8 +341,6 @@ namespace Compiler
 						cmdline += " ";
 				}
 
-				printf("cmdline = %s\n", cmdline.c_str());
-
 				tinyproclib::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
 					output = std::string(bytes, n);
 				});

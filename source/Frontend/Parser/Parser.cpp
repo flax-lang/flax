@@ -3166,35 +3166,20 @@ namespace Parser
 
 
 
-	#define USE_VECTOR 1
 	Token ParserState::front()
 	{
 		iceAssert(this->hasTokens());
-
-	#if USE_VECTOR
 		return this->tokens[this->index];
-	#else
-		return this->tokens.front();
-	#endif
-
 	}
 
 	size_t ParserState::getRemainingTokens()
 	{
-	#if USE_VECTOR
 		return this->tokens.size() - this->index;
-	#else
-		return this->tokens.size();
-	#endif
 	}
 
 	bool ParserState::hasTokens()
 	{
-	#if USE_VECTOR
 		return this->index < this->tokens.size();
-	#else
-		return this->tokens.size() > 0;
-	#endif
 	}
 
 	bool ParserState::empty()
@@ -3204,13 +3189,8 @@ namespace Parser
 
 	Token ParserState::lookahead(size_t i)
 	{
-	#if USE_VECTOR
 		iceAssert(this->index + i < this->tokens.size());
 		return this->tokens[i + this->index];
-	#else
-		iceAssert(this->tokens.size() > 0);
-		return this->tokens[i];
-	#endif
 	}
 
 	Token ParserState::pop()
@@ -3219,13 +3199,8 @@ namespace Parser
 		if(this->tokens.size() == 0)
 			parserError(*this, "Unexpected end of input");
 
-	#if USE_VECTOR
 		auto t = this->tokens[this->index];
 		this->index++;
-	#else
-		auto t = this->tokens.front();
-		this->tokens.pop_front();
-	#endif
 
 		this->curtok = t;
 		return t;
@@ -3240,14 +3215,8 @@ namespace Parser
 
 		this->skipNewline();
 
-	#if USE_VECTOR
 		auto t = this->tokens[this->index];
 		this->index++;
-	#else
-		auto t = this->tokens.front();
-		this->tokens.pop_front();
-	#endif
-
 
 		this->skipNewline();
 
@@ -3260,12 +3229,7 @@ namespace Parser
 		// eat newlines AND comments
 		while(this->hasTokens() && this->front().type == TType::NewLine)
 		{
-		#if USE_VECTOR
 			this->index++;
-		#else
-			this->tokens.pop_front();
-		#endif
-
 			this->currentPos.line++;
 		}
 	}
