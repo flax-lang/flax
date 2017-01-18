@@ -7,6 +7,9 @@
 #include <unordered_map>
 
 #include <assert.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "parser.h"
 #include "compiler.h"
@@ -16,7 +19,7 @@ namespace Compiler
 	struct FileInnards
 	{
 		Parser::TokenList tokens;
-		std::vector<std::string> lines;
+		std::vector<std::experimental::string_view> lines;
 		std::string contents;
 
 		bool isLexing = false;
@@ -32,6 +35,7 @@ namespace Compiler
 		if(fstr)
 		{
 			auto p = prof::Profile("read file");
+
 			std::ostringstream contents;
 			contents << fstr.rdbuf();
 			fstr.close();
@@ -45,16 +49,30 @@ namespace Compiler
 
 
 		// split into lines
-		std::vector<std::string> rawlines;
-
+		std::vector<std::experimental::string_view> rawlines;
+		std::vector<size_t> linePos;
 
 		{
 			auto p = prof::Profile("lines");
-			std::stringstream ss(fileContents);
+			// std::stringstream ss(fileContents);
 
-			std::string tmp;
-			while(std::getline(ss, tmp, '\n'))
-				rawlines.push_back(tmp);
+			std::experimental::string_view view = fileContents;
+
+			while(true)
+			{
+				size_t ln = view.find('\n');
+				if(ln != std::experimental::string_view::npos)
+				{
+					linePos.push_back(ln);
+					rawlines.push_back(view.substr(0, ln));
+
+					view.remove_prefix(ln + 1);
+				}
+				else
+				{
+					break;
+				}
+			}
 
 			p.finish();
 		}
@@ -63,9 +81,7 @@ namespace Compiler
 		Parser::Pin pos;
 		FileInnards& innards = fileList[fullPath];
 		{
-			auto p = prof::Profile("things");
 			pos.file = fullPath;
-
 
 			innards.lines = std::move(rawlines);
 			innards.contents = std::move(fileContents);
@@ -77,6 +93,7 @@ namespace Compiler
 		auto p = prof::Profile("lex");
 		Parser::TokenList ts;
 		Parser::Token curtok;
+
 		while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
 			ts.push_back(curtok);
 
@@ -84,7 +101,6 @@ namespace Compiler
 
 
 		{
-			auto p = prof::Profile("things2");
 			fileList[fullPath].tokens = std::move(ts);
 			fileList[fullPath].isLexing = false;
 		}
@@ -107,7 +123,7 @@ namespace Compiler
 	}
 
 
-	std::vector<std::string> getFileLines(std::string fullPath)
+	std::vector<std::experimental::string_view> getFileLines(std::string fullPath)
 	{
 		if(fileList.find(fullPath) == fileList.end())
 		{

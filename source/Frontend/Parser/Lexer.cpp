@@ -52,11 +52,10 @@ namespace Parser
 	}
 
 
-	// warning: messy function
-	// edit: haha, if you think this is messy, welcome to the *REAL WORLD*
-
 	Token getNextToken(std::experimental::string_view& stream, Pin& pos)
 	{
+		// auto p = prof::Profile("get 1 token");
+
 		if(stream.length() == 0)
 		{
 			Token ret;
@@ -74,7 +73,17 @@ namespace Parser
 		tok.pin = pos;
 
 		// check compound symbols first.
-		if(stream.compare(0, 2, "==") == 0)
+		if(stream.compare(0, 2, "//") == 0)
+		{
+			size_t newline = stream.find('\n');
+
+
+			tok.type = TType::Comment;
+			tok.text = stream.substr(0, newline).to_string();
+			read = tok.text.length();
+			pos.line++;
+		}
+		else if(stream.compare(0, 2, "==") == 0)
 		{
 			tok.text = "==";
 			tok.type = TType::EqualsTo;
@@ -115,17 +124,6 @@ namespace Parser
 			tok.text = "->";
 			tok.type = TType::Arrow;
 			read = 2;
-		}
-		else if(stream.compare(0, 2, "//") == 0)
-		{
-			tok.text = "//";
-
-			size_t newline = stream.find('\n');
-			tok.text = (std::string) stream.substr(0, newline);
-			read = tok.text.length();
-			// pos.line++;
-
-			tok.type = TType::Comment;
 		}
 		else if(stream.compare(0, 2, "++") == 0)
 		{
@@ -372,13 +370,9 @@ namespace Parser
 		}
 		else if(stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
 		{
-			std::string id;
-
 			// get as many letters as possible first
 			size_t identLength = utf8iscategory(stream.data(), stream.size(),
 				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
-
-			id += (std::string) stream.substr(0, identLength);
 
 			// fprintf(stderr, "FINISH: got identifier: %s, length %zu (%zu)\n", id.c_str(), id.length(), identLength);
 
@@ -389,61 +383,59 @@ namespace Parser
 			// while(tmp = str.get(), (isascii(tmp) && (isalnum(tmp) || tmp == '_')) || (!isascii(tmp) && utf8is))
 			// 	id += (char) tmp;
 
-			read = id.length();
-			tok.text = id;
-
-
+			read = identLength;
+			tok.text = stream.substr(0, identLength).to_string();
 
 
 			// check for keywords
-			if(id == "class")					tok.type = TType::Class;
-			else if(id == "struct")				tok.type = TType::Struct;
-			else if(id == FUNC_KEYWORD_STRING)	tok.type = TType::Func;
-			else if(id == "import")				tok.type = TType::Import;
-			else if(id == "var")				tok.type = TType::Var;
-			else if(id == "val")				tok.type = TType::Val;
-			else if(id == "let")				tok.type = TType::Val;
-			else if(id == "for")				tok.type = TType::For;
-			else if(id == "while")				tok.type = TType::While;
-			else if(id == "if")					tok.type = TType::If;
-			else if(id == "else")				tok.type = TType::Else;
-			else if(id == "return")				tok.type = TType::Return;
-			else if(id == "as")					{ tok.type = TType::As; if(isExclamation) { read++; tok.text = "as!"; } }
-			else if(id == "is")					tok.type = TType::Is;
-			else if(id == "switch")				tok.type = TType::Switch;
-			else if(id == "case")				tok.type = TType::Case;
-			else if(id == "enum")				tok.type = TType::Enum;
-			else if(id == "ffi")				tok.type = TType::ForeignFunc;
-			else if(id == "true")				tok.type = TType::True;
-			else if(id == "false")				tok.type = TType::False;
-			else if(id == "static")				tok.type = TType::Static;
+			if(tok.text == "class")						tok.type = TType::Class;
+			else if(tok.text == "struct")				tok.type = TType::Struct;
+			else if(tok.text == FUNC_KEYWORD_STRING)	tok.type = TType::Func;
+			else if(tok.text == "import")				tok.type = TType::Import;
+			else if(tok.text == "var")					tok.type = TType::Var;
+			else if(tok.text == "val")					tok.type = TType::Val;
+			else if(tok.text == "let")					tok.type = TType::Val;
+			else if(tok.text == "for")					tok.type = TType::For;
+			else if(tok.text == "while")				tok.type = TType::While;
+			else if(tok.text == "if")					tok.type = TType::If;
+			else if(tok.text == "else")					tok.type = TType::Else;
+			else if(tok.text == "return")				tok.type = TType::Return;
+			else if(tok.text == "as")					{ tok.type = TType::As; if(isExclamation) { read++; tok.text = "as!"; } }
+			else if(tok.text == "is")					tok.type = TType::Is;
+			else if(tok.text == "switch")				tok.type = TType::Switch;
+			else if(tok.text == "case")					tok.type = TType::Case;
+			else if(tok.text == "enum")					tok.type = TType::Enum;
+			else if(tok.text == "ffi")					tok.type = TType::ForeignFunc;
+			else if(tok.text == "true")					tok.type = TType::True;
+			else if(tok.text == "false")				tok.type = TType::False;
+			else if(tok.text == "static")				tok.type = TType::Static;
 
-			else if(id == "break")				tok.type = TType::Break;
-			else if(id == "continue")			tok.type = TType::Continue;
-			else if(id == "do")					tok.type = TType::Do;
-			else if(id == "loop")				tok.type = TType::Loop;
-			else if(id == "defer")				tok.type = TType::Defer;
+			else if(tok.text == "break")				tok.type = TType::Break;
+			else if(tok.text == "continue")				tok.type = TType::Continue;
+			else if(tok.text == "do")					tok.type = TType::Do;
+			else if(tok.text == "loop")					tok.type = TType::Loop;
+			else if(tok.text == "defer")				tok.type = TType::Defer;
 
-			else if(id == "public")				tok.type = TType::Public;
-			else if(id == "private")			tok.type = TType::Private;
-			else if(id == "internal")			tok.type = TType::Internal;
+			else if(tok.text == "public")				tok.type = TType::Public;
+			else if(tok.text == "private")				tok.type = TType::Private;
+			else if(tok.text == "internal")				tok.type = TType::Internal;
 
-			else if(id == "alloc")				tok.type = TType::Alloc;
-			else if(id == "dealloc")			tok.type = TType::Dealloc;
-			else if(id == "typeof")				tok.type = TType::Typeof;
+			else if(tok.text == "alloc")				tok.type = TType::Alloc;
+			else if(tok.text == "dealloc")				tok.type = TType::Dealloc;
+			else if(tok.text == "typeof")				tok.type = TType::Typeof;
 
-			else if(id == "get")				tok.type = TType::Get;
-			else if(id == "set")				tok.type = TType::Set;
+			else if(tok.text == "get")					tok.type = TType::Get;
+			else if(tok.text == "set")					tok.type = TType::Set;
 
-			else if(id == "null")				tok.type = TType::Null;
+			else if(tok.text == "null")					tok.type = TType::Null;
 
-			else if(id == "module")				tok.type = TType::Module;
-			else if(id == "namespace")			tok.type = TType::Namespace;
-			else if(id == "extension")			tok.type = TType::Extension;
-			else if(id == "typealias")			tok.type = TType::TypeAlias;
-			else if(id == "protocol")			tok.type = TType::Protocol;
-			else if(id == "override")			tok.type = TType::Override;
-			else								tok.type = TType::Identifier;
+			else if(tok.text == "module")				tok.type = TType::Module;
+			else if(tok.text == "namespace")			tok.type = TType::Namespace;
+			else if(tok.text == "extension")			tok.type = TType::Extension;
+			else if(tok.text == "typealias")			tok.type = TType::TypeAlias;
+			else if(tok.text == "protocol")				tok.type = TType::Protocol;
+			else if(tok.text == "override")				tok.type = TType::Override;
+			else										tok.type = TType::Identifier;
 		}
 		else if(stream[0] == '"')
 		{
@@ -518,6 +510,7 @@ namespace Parser
 						parserError(tok, "Unknown token '%c'", stream[0]);
 				}
 
+				// tok.text = std::experimental::string_view(stream.begin(), 1);
 				tok.text = stream[0];
 				read = 1;
 			}
@@ -534,14 +527,14 @@ namespace Parser
 			}
 		}
 
-		stream = stream.substr(read);
+		stream.remove_prefix(read);
 		if(tok.type != TType::NewLine)
 		{
-			// note(debatable): put the actual "position" in the front of the token
-			pos.col += read;
-
 			if(read > 0)
 			{
+				// note(debatable): put the actual "position" in the front of the token
+				pos.col += read;
+
 				// special handling -- things like ƒ, ≤ etc. are one character wide, but can be several *bytes* long.
 				pos.len = (unicodeLength > 0 ? unicodeLength : read);
 				tok.pin.len = read;
