@@ -14,6 +14,13 @@
 #include "parser.h"
 #include "compiler.h"
 
+namespace Lexer
+{
+	// Parser::Token getNextToken(std::experimental::string_view& stream, Parser::Pin& pos);
+	Parser::Token getNextToken(std::vector<std::experimental::string_view>& lines, size_t* line, Parser::Pin& pos);
+}
+
+
 namespace Compiler
 {
 	struct FileInnards
@@ -96,13 +103,26 @@ namespace Compiler
 
 		// for(auto l : innards.lines)
 		{
-			while((curtok = getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
+			#if 1
+
+			// copy lines.
+			auto lines = innards.lines;
+
+			size_t curLine = 0;
+			while((curtok = Lexer::getNextToken(lines, &curLine, pos)).type != Parser::TType::EndOfFile)
+			{
+				auto k = prof::Profile("push");
+				ts.push_back(curtok);
+				// if(curtok.type == Parser::TType::NewLine)
+				// fprintf(stderr, "%zu\r", curLine);
+			}
+
+			#else
+
+			while((curtok = Lexer::getNextToken(fileContentsView, pos)).type != Parser::TType::EndOfFile)
 				ts.push_back(curtok);
 
-			// Parser::Token nl;
-			// nl.type = Parser::TType::NewLine;
-			// nl.pin = curtok.pin;
-			// ts.push_back(nl);
+			#endif
 		}
 
 		p.finish();
