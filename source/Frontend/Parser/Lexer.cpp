@@ -85,7 +85,7 @@ namespace Lexer
 			// tok.text = stream.substr(0, newline).to_string();
 
 			tok.type = TType::Comment;
-			stream.clear();
+			stream = stream.substr(0, 0);
 			(*line)++;
 
 			// don't assign lines[line] = stream, since over here we've changed 'line' to be the next one.
