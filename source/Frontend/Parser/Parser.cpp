@@ -698,6 +698,14 @@ namespace Parser
 				case TType::Semicolon:
 					ps.eat();
 					return CreateAST(DummyExpr, tok);
+					// return parsePrimary(ps);
+
+				// 	ps.eat();
+				// 	return CreateAST(DummyExpr, tok);
+
+				// case TType::Semicolon:
+				// 	ps.eat();
+				// 	return CreateAST(DummyExpr, tok);
 
 				case TType::TypeAlias:
 					return parseTypeAlias(ps);
@@ -1015,7 +1023,7 @@ namespace Parser
 			{
 				defers.push_front(d);
 			}
-			else
+			else if(!dynamic_cast<DummyExpr*>(e))
 			{
 				c->statements.push_back(e);
 			}
@@ -3189,8 +3197,7 @@ namespace Parser
 	void ParserState::skipNewline()
 	{
 		// eat newlines AND comments
-		while(this->tokens.size() > 0 && (this->tokens.front().type == TType::NewLine
-			|| this->tokens.front().type == TType::Comment || this->tokens.front().type == TType::Semicolon))
+		while(this->tokens.size() > 0 && this->tokens.front().type == TType::NewLine)
 		{
 			this->tokens.pop_front();
 			this->currentPos.line++;
