@@ -50,11 +50,6 @@ namespace Parser
 
 	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps);
 
-	static bool checkHasMore(ParserState& ps)
-	{
-		return ps.tokens.size() > 0;
-	}
-
 	static bool isRightAssociativeOp(Token tok)
 	{
 		return false;
@@ -85,20 +80,20 @@ namespace Parser
 	static int getCurOpPrec(ParserState& ps)
 	{
 		// handle >>, >>=, <<, <<=.
-		if(ps.tokens.size() > 1 && (ps.front().type == TType::LAngle || ps.front().type == TType::RAngle))
+		if(ps.getRemainingTokens() > 1 && (ps.front().type == TType::LAngle || ps.front().type == TType::RAngle))
 		{
 			// check if the next one matches.
-			if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LAngle)
+			if(ps.front().type == TType::LAngle && ps.lookahead(1).type == TType::LAngle)
 				return 650;
 
-			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::RAngle)
+			else if(ps.front().type == TType::RAngle && ps.lookahead(1).type == TType::RAngle)
 				return 650;
 
 
-			else if(ps.front().type == TType::LAngle && ps.tokens[1].type == TType::LessThanEquals)
+			else if(ps.front().type == TType::LAngle && ps.lookahead(1).type == TType::LessThanEquals)
 				return 100;
 
-			else if(ps.front().type == TType::RAngle && ps.tokens[1].type == TType::GreaterEquals)
+			else if(ps.front().type == TType::RAngle && ps.lookahead(1).type == TType::GreaterEquals)
 				return 100;
 		}
 
@@ -284,13 +279,14 @@ namespace Parser
 
 
 
-	void parseAllCustomOperators(ParserState& ps, std::string filename, std::string curpath)
+	void parseAllCustomOperators(Codegen::CodegenInstance* cgi, std::string filename, std::string curpath)
 	{
+		// auto copy = Compiler::getFileTokens(Compiler::getFullPathOfFile(filename));
+		Parser::ParserState ps(cgi, Compiler::getFileTokens(Compiler::getFullPathOfFile(filename)));
+
 		staticState = &ps;
 
 		// split into lines
-		ps.tokens = Compiler::getFileTokens(Compiler::getFullPathOfFile(filename));
-
 		ps.currentPos.file = filename;
 
 		ps.currentPos.line = 1;
@@ -310,15 +306,12 @@ namespace Parser
 		auto findOperators = [&](ParserState& ps) {
 
 			int curPrec = 0;
-			while(ps.tokens.size() > 0)
+			while(ps.hasTokens() > 0)
 			{
-				Token t = ps.pop();
+				Token t = ps.front();
 
 				if(t.type == TType::Import)
 				{
-					// hack: parseImport expects front token to be "import"
-					ps.tokens.push_front(t);
-
 					Import* imp = parseImport(ps);
 					std::string file = Compiler::resolveImport(imp, Compiler::getFullPathOfFile(filename));
 
@@ -326,12 +319,14 @@ namespace Parser
 					{
 						ps.visited.insert(file);
 
-						ParserState fakePs(ps.cgi);
-						parseAllCustomOperators(fakePs, file, curpath);
+						parseAllCustomOperators(ps.cgi, file, curpath);
 					}
 				}
 				else if(t.type == TType::At)
 				{
+					// remove the '@'
+					ps.pop();
+
 					Token attr = ps.pop();
 
 					iceAssert(attr.type == TType::Identifier || attr.text == "public"
@@ -348,10 +343,6 @@ namespace Parser
 
 						Token num = ps.pop();
 						ps.skipNewline();
-
-
-
-
 
 						// todo: a bit messy
 						if(num.type == TType::Identifier)
@@ -404,6 +395,9 @@ namespace Parser
 				}
 				else if(t.type == TType::Identifier && t.text == "operator")
 				{
+					// eat the 'operator'
+					ps.pop();
+
 					ps.skipNewline();
 					Token op = ps.front();
 
@@ -438,6 +432,9 @@ namespace Parser
 				}
 				else if(t.type == TType::Private || t.type == TType::Internal || t.type == TType::Public)
 				{
+					// eat the thing.
+					ps.pop();
+
 					switch(t.type)
 					{
 						case TType::Private:	ps.curAttrib |= Attr_VisPrivate; break;
@@ -451,18 +448,25 @@ namespace Parser
 				{
 					parserError(ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
 				}
+				else
+				{
+					// skip it regardless.
+					ps.pop();
+				}
 			}
 		};
 
 		findOperators(ps);
 	}
 
-	Root* Parse(ParserState& ps, std::string filename)
+	Root* Parse(Codegen::CodegenInstance* cgi, std::string filename)
 	{
-		Token t;
+		auto p = prof::Profile("parse");
 
-		// restore this, so we don't have to read the file again
-		ps.tokens = Compiler::getFileTokens(filename);
+		auto p1 = prof::Profile("copy tokens");
+		// auto copy = Compiler::getFileTokens(filename);
+		ParserState ps(cgi, Compiler::getFileTokens(filename));
+		p1.finish();
 
 		ps.rootNode = new Root();
 
@@ -480,11 +484,6 @@ namespace Parser
 
 		staticState = &ps;
 
-		// if(Compiler::getFilenameFromPath(filename) == "operators.flx")
-		// {
-		// 	debuglog("");
-		// }
-
 		parseAll(ps);
 		return ps.rootNode;
 	}
@@ -493,11 +492,11 @@ namespace Parser
 	// this only handles the topmost level.
 	void parseAll(ParserState& ps)
 	{
-		if(ps.tokens.size() == 0)
+		if(!ps.hasTokens())
 			return;
 
 		Token tok;
-		while(ps.tokens.size() > 0 && (tok = ps.front()).type != TType::EndOfFile)
+		while(ps.hasTokens() && (tok = ps.front()).type != TType::EndOfFile)
 		{
 			// tok = ps.front();
 			switch(tok.type)
@@ -597,7 +596,7 @@ namespace Parser
 
 	Expr* parsePrimary(ParserState& ps)
 	{
-		if(ps.tokens.size() == 0)
+		if(ps.empty())
 			return 0;
 
 		Token tok;
@@ -834,16 +833,13 @@ namespace Parser
 	}
 
 
-	FuncDecl* parseFuncDecl(ParserState& ps)
+	// this function expects the first token it sees to be '('
+	FuncDecl* parseFuncDeclUsingIdentifierToken(ParserState& ps, Token _id)
 	{
-		// todo: better things? it's right now mostly hacks.
-		if(ps.front().text != "init" && ps.front().text.find("operator") != 0)
-			iceAssert(ps.eat().type == TType::Func);
-
-		if(ps.front().type != TType::Identifier && ps.front().type != TType::UnicodeSymbol)
+		if(_id.type != TType::Identifier && _id.type != TType::UnicodeSymbol)
 			parserError("Expected identifier, but got token of type %d", ps.front().type);
 
-		Token func_id = ps.eat();
+		Token func_id = _id;
 		std::string id = func_id.text;
 
 		std::map<std::string, TypeConstraints_t> genericTypes;
@@ -878,7 +874,7 @@ namespace Parser
 		std::vector<VarDecl*> params;
 		std::map<std::string, VarDecl*> nameCheck;
 
-		while(ps.tokens.size() > 0 && ps.front().type != TType::RParen)
+		while(ps.hasTokens() && ps.front().type != TType::RParen)
 		{
 			Token tok_id;
 			if((tok_id = ps.eat()).type != TType::Identifier)
@@ -937,7 +933,7 @@ namespace Parser
 		// get return type.
 		pts::Type* ret = 0;
 		Pin retPin;
-		if(checkHasMore(ps) && ps.front().type == TType::Arrow)
+		if(ps.hasTokens() && ps.front().type == TType::Arrow)
 		{
 			ps.eat();
 			retPin = ps.front().pin;
@@ -965,6 +961,26 @@ namespace Parser
 
 		return f;
 	}
+
+
+	FuncDecl* parseFuncDecl(ParserState& ps)
+	{
+		iceAssert(ps.eat().type == TType::Func);
+
+		auto id = ps.eat();
+		if(id.type != TType::Identifier && id.type != TType::UnicodeSymbol)
+			parserError("Expected identifier, but got token of type %d", id.type);
+
+		return parseFuncDeclUsingIdentifierToken(ps, id);
+	}
+
+
+
+
+
+
+
+
 
 	ForeignFuncDecl* parseForeignFunc(ParserState& ps)
 	{
@@ -1001,20 +1017,20 @@ namespace Parser
 		return CreateAST(ForeignFuncDecl, func, decl);
 	}
 
-	BracedBlock* parseBracedBlock(ParserState& ps)
+	BracedBlock* parseBracedBlock(ParserState& ps, bool hadOpeningBrace, bool eatClosingBrace)
 	{
-		Token tok_cls = ps.eat();
-		BracedBlock* c = CreateAST(BracedBlock, tok_cls);
+		Token tok_brc = ps.eat();
+		BracedBlock* c = CreateAST(BracedBlock, tok_brc);
 
 		// make sure the first token is a left brace.
-		if(tok_cls.type != TType::LBrace)
-			parserError("Expected '{' to begin a block, found '%s'!", tok_cls.text.c_str());
+		if(tok_brc.type != TType::LBrace && !hadOpeningBrace)
+			parserError("Expected '{' to begin a block, found '%s'!", tok_brc.text.c_str());
 
 
 		std::deque<DeferredExpr*> defers;
 
 		// get the stuff inside.
-		while(ps.tokens.size() > 0 && ps.front().type != TType::RBrace)
+		while(ps.hasTokens() && ps.front().type != TType::RBrace)
 		{
 			Expr* e = parseExpr(ps);
 			DeferredExpr* d = 0;
@@ -1031,23 +1047,33 @@ namespace Parser
 			ps.skipNewline();
 		}
 
-		if(ps.eat().type != TType::RBrace)
+		if(ps.front().type != TType::RBrace)
 			parserError("Expected '}'");
 
-
+		if(eatClosingBrace)
+			ps.eat();
 
 		for(auto d : defers)
-		{
 			c->deferredStatements.push_back(d);
-		}
 
 		return c;
 	}
 
 	Func* parseFunc(ParserState& ps)
 	{
-		Token front = ps.front();
-		FuncDecl* decl = parseFuncDecl(ps);
+		iceAssert(ps.eat().type == TType::Func);
+
+		auto id = ps.eat();
+		if(id.type != TType::Identifier && id.type != TType::UnicodeSymbol)
+			parserError("Expected identifier, but got token of type %d", id.type);
+
+		return parseFuncUsingIdentifierToken(ps, id);
+	}
+
+
+	Func* parseFuncUsingIdentifierToken(ParserState& ps, Token front)
+	{
+		FuncDecl* decl = parseFuncDeclUsingIdentifierToken(ps, front);
 
 		if(ps.front().type == TType::LBrace)
 		{
@@ -1060,6 +1086,9 @@ namespace Parser
 	}
 
 
+
+
+
 	Expr* parseInitFunc(ParserState& ps)
 	{
 		Token front = ps.front();
@@ -1069,32 +1098,32 @@ namespace Parser
 		// to do this, we can loop through the tokens (without consuming) until we find the closing ')'
 		// then see if the token following that is a '{'. if so, it's a declaration, if not it's a call
 
-		if(ps.tokens.size() < 3)
+		if(ps.getRemainingTokens() < 3)
 			parserError("Unexpected end of input");
 
-		else if(ps.tokens.size() > 3 && ps.tokens[1].type != TType::LParen)
+		else if(ps.getRemainingTokens() > 3 && ps.lookahead(1).type != TType::LParen)
 			parserError("Expected '(' for either function call or declaration");
 
 		int parenLevel = 0;
 		bool foundBrace = false;
-		for(size_t i = 1; i < ps.tokens.size(); i++)
+		for(size_t i = 1; i < ps.getRemainingTokens(); i++)
 		{
-			if(ps.tokens[i].type == TType::LParen)
+			if(ps.lookahead(i).type == TType::LParen)
 			{
 				parenLevel++;
 			}
-			else if(ps.tokens[i].type == TType::RParen)
+			else if(ps.lookahead(i).type == TType::RParen)
 			{
 				parenLevel--;
 				if(parenLevel == 0)
 				{
 					// look through each until we find a brace
-					for(size_t k = i + 1; k < ps.tokens.size() && !foundBrace; k++)
+					for(size_t k = i + 1; k < ps.getRemainingTokens() && !foundBrace; k++)
 					{
-						if(ps.tokens[k].type == TType::Comment || ps.tokens[k].type == TType::NewLine)
+						if(ps.lookahead(k).type == TType::Comment || ps.lookahead(k).type == TType::NewLine)
 							continue;
 
-						else if(ps.tokens[k].type == TType::LBrace)
+						else if(ps.lookahead(k).type == TType::LBrace)
 							foundBrace = true;
 
 						else
@@ -1109,7 +1138,10 @@ namespace Parser
 		if(foundBrace)
 		{
 			// found a brace, it's a decl
-			FuncDecl* decl = parseFuncDecl(ps);
+			// eat the init token.
+			ps.eat();
+
+			FuncDecl* decl = parseFuncDeclUsingIdentifierToken(ps, front);
 			return CreateAST(Func, front, decl, parseBracedBlock(ps));
 		}
 		else
@@ -1466,19 +1498,9 @@ namespace Parser
 				// there's no set, so make i = 1 so we error on extra bits
 				i = 1;
 
-				// insert a dummy brace
-				Token dummy;
-				dummy.type = TType::LBrace;
-				dummy.text = "{";
-
-				ps.tokens.push_front(dummy);
-				cprop->getter = parseBracedBlock(ps);
-
-
-				// lol, another hack
-				dummy.type = TType::RBrace;
-				dummy.text = "}";
-				ps.tokens.push_front(dummy);
+				// didHaveOpeningBrace -- true
+				// eatClosingBrace -- false
+				cprop->getter = parseBracedBlock(ps, true, false);
 
 				didGetter = true;
 			}
@@ -1498,7 +1520,7 @@ namespace Parser
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 
-		bool immutable = ps.front().type == TType::Val;
+		bool immutable = (ps.front().type == TType::Val);
 		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
 		ps.eat();
@@ -1514,6 +1536,7 @@ namespace Parser
 		v->attribs = attribs;
 
 		// check the type.
+		bool isInferred = false;
 		Token colon = ps.eat();
 		if(colon.type == TType::Colon)
 		{
@@ -1528,9 +1551,7 @@ namespace Parser
 		else if(colon.type == TType::Equal)
 		{
 			v->ptype = pts::InferredType::get();
-
-			// make sure the init value parser below works, push the colon back onto the stack
-			ps.tokens.push_front(colon);
+			isInferred = true;
 		}
 		else
 		{
@@ -1538,16 +1559,11 @@ namespace Parser
 		}
 
 
-		if(ps.front().type == TType::Equal)
+		if(ps.front().type == TType::Equal || isInferred)
 		{
-			// we do
-			ps.eat();
+			if(!isInferred) ps.eat();
 
-			// if(ps.front().type == TType::Alloc)
-			// 	v->initVal = parseAlloc(ps);
-
-			// else
-				v->initVal = parseExpr(ps);
+			v->initVal = parseExpr(ps);
 		}
 		else if(immutable)
 		{
@@ -1561,6 +1577,9 @@ namespace Parser
 
 		return v;
 	}
+
+
+
 
 	Tuple* parseTuple(ParserState& ps, Ast::Expr* lhs)
 	{
@@ -2540,7 +2559,7 @@ namespace Parser
 		bool isNumeric = false;
 		Number* prevNumber = 0;
 
-		while(front = ps.front(), ps.tokens.size() > 0)
+		while(front = ps.front(), ps.hasTokens() > 0)
 		{
 			if(front.type == TType::RBrace && !isFirst)
 				break;
@@ -2740,7 +2759,7 @@ namespace Parser
 		Token t = tok_mod;
 		ps.pop();
 
-		while(ps.tokens.size() > 0)
+		while(ps.hasTokens() > 0)
 		{
 			if(t.type == TType::Period)
 			{
@@ -3012,8 +3031,7 @@ namespace Parser
 			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
-			ps.tokens.push_front(fake);
-			FuncDecl* fd = parseFuncDecl(ps);
+			FuncDecl* fd = parseFuncDeclUsingIdentifierToken(ps, fake);
 
 			if(fd->ptype == pts::NamedType::create(VOID_TYPE_STRING))
 				parserError("Subscript operator must return a value");
@@ -3059,11 +3077,9 @@ namespace Parser
 			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
-			ps.tokens.push_front(fake);
-
 			// parse a func declaration.
 			uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
-			aoo->func = parseFunc(ps);
+			aoo->func = parseFuncUsingIdentifierToken(ps, fake);
 
 			aoo->func->decl->attribs = attr;
 			aoo->attribs = attr;
@@ -3087,11 +3103,9 @@ namespace Parser
 		fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
-		ps.tokens.push_front(fake);
-
 		// parse a func declaration.
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_CommutativeOp);
-		oo->func = parseFunc(ps);
+		oo->func = parseFuncUsingIdentifierToken(ps, fake);
 		oo->func->decl->attribs = attr & ~Attr_CommutativeOp;
 		oo->func->decl->pin = op.pin;
 
@@ -3152,16 +3166,51 @@ namespace Parser
 
 
 
-
+	#define USE_VECTOR 1
 	Token ParserState::front()
 	{
-		iceAssert(!this->tokens.empty());
+		iceAssert(this->hasTokens());
+
+	#if USE_VECTOR
+		return this->tokens[this->index];
+	#else
 		return this->tokens.front();
+	#endif
+
+	}
+
+	size_t ParserState::getRemainingTokens()
+	{
+	#if USE_VECTOR
+		return this->tokens.size() - this->index;
+	#else
+		return this->tokens.size();
+	#endif
 	}
 
 	bool ParserState::hasTokens()
 	{
+	#if USE_VECTOR
+		return this->index < this->tokens.size();
+	#else
 		return this->tokens.size() > 0;
+	#endif
+	}
+
+	bool ParserState::empty()
+	{
+		return !this->hasTokens();
+	}
+
+	Token ParserState::lookahead(size_t i)
+	{
+	#if USE_VECTOR
+		iceAssert(this->index + i < this->tokens.size());
+		return this->tokens[i + this->index];
+	#else
+		iceAssert(this->tokens.size() > 0);
+		return this->tokens[i];
+	#endif
 	}
 
 	Token ParserState::pop()
@@ -3170,8 +3219,13 @@ namespace Parser
 		if(this->tokens.size() == 0)
 			parserError(*this, "Unexpected end of input");
 
-		auto t = this->front();
+	#if USE_VECTOR
+		auto t = this->tokens[this->index];
+		this->index++;
+	#else
+		auto t = this->tokens.front();
 		this->tokens.pop_front();
+	#endif
 
 		this->curtok = t;
 		return t;
@@ -3180,13 +3234,20 @@ namespace Parser
 	Token ParserState::eat()
 	{
 		// returns the current front, then pops front.
+		// this one skips newlines.
 		if(this->tokens.size() == 0)
 			parserError(*this, "Unexpected end of input");
 
 		this->skipNewline();
 
-		Token t = this->front();
+	#if USE_VECTOR
+		auto t = this->tokens[this->index];
+		this->index++;
+	#else
+		auto t = this->tokens.front();
 		this->tokens.pop_front();
+	#endif
+
 
 		this->skipNewline();
 
@@ -3197,11 +3258,20 @@ namespace Parser
 	void ParserState::skipNewline()
 	{
 		// eat newlines AND comments
-		while(this->tokens.size() > 0 && this->tokens.front().type == TType::NewLine)
+		while(this->hasTokens() && this->front().type == TType::NewLine)
 		{
+		#if USE_VECTOR
+			this->index++;
+		#else
 			this->tokens.pop_front();
+		#endif
+
 			this->currentPos.line++;
 		}
+	}
+
+	ParserState::ParserState(Codegen::CodegenInstance* c, TokenList& tl) : cgi(c), tokens(tl)
+	{
 	}
 }
 

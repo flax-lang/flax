@@ -147,24 +147,23 @@ namespace Compiler
 		CodegenInstance* cgi = new CodegenInstance();
 		cloneCGIInnards(rcgi, cgi);
 
-		ParserState pstate(cgi);
-
 		cgi->customOperatorMap = rcgi->customOperatorMap;
 		cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
 
 		std::string curpath = Compiler::getPathFromFile(fpath);
 
 		// parse
-		// printf("*** start module %s\n", Compiler::getFilenameFromPath(fpath).c_str());
-		Root* root = Parser::Parse(pstate, fpath);
+		Root* root = Parser::Parse(cgi, fpath);
 		cgi->rootNode = root;
 
 
 		// add the previous stuff to our own root
 		copyRootInnards(cgi, dummyRoot, root, true);
 
+
 		cgi->module = new fir::Module(Parser::getModuleName(fpath));
 		cgi->importOtherCgi(rcgi);
+
 
 		auto q = prof::Profile("codegen");
 		Codegen::doCodegen(fpath, root, cgi);
@@ -172,7 +171,6 @@ namespace Compiler
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
-		// copyRootInnards(rcgi, root, dummyRoot, true);
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -187,32 +185,26 @@ namespace Compiler
 		using namespace Parser;
 
 		// NOTE: make sure resolveImport **DOES NOT** use codegeninstance, cuz it's 0.
-		ParserState fakeps(0);
 
+		auto q = prof::Profile("getFileTokens");
+		TokenList copy = Compiler::getFileTokens(currentMod);
+		ParserState fakeps(0, copy);
+		q.finish();
 
 		fakeps.currentPos.file = currentMod;
-
 
 		fakeps.currentPos.line = 1;
 		fakeps.currentPos.col = 1;
 		fakeps.currentPos.len = 1;
 
-		{
-			auto p = prof::Profile("getFileTokens");
-			fakeps.tokens = Compiler::getFileTokens(currentMod);
-		}
 
 		auto p = prof::Profile("find imports");
-		while(fakeps.tokens.size() > 0)
+		while(fakeps.hasTokens())
 		{
 			Token t = fakeps.front();
-			fakeps.pop();
 
 			if(t.type == TType::Import)
 			{
-				// hack: parseImport expects front token to be "import"
-				fakeps.tokens.push_front(t);
-
 				Import* imp = parseImport(fakeps);
 
 				std::string file = Compiler::getFullPathOfFile(Compiler::resolveImport(imp, Compiler::getFullPathOfFile(currentMod)));
@@ -224,6 +216,10 @@ namespace Compiler
 					visited[file] = true;
 					_resolveImportGraph(g, visited, file, curpath);
 				}
+			}
+			else
+			{
+				fakeps.pop();
 			}
 		}
 		p.finish();

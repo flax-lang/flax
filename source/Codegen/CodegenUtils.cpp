@@ -544,15 +544,11 @@ namespace Codegen
 						if(pair.funcDecl->genericTypes.size() == 0)
 						{
 							// declare new one
-							auto q = prof::Profile("getting and/or creating function");
 							auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(),
 								fir::LinkageType::External);
-							q.finish();
 
-							auto v = prof::Profile("add func");
 							ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
 							ftree->funcSet.insert(f->getName());
-							v.finish();
 						}
 						else
 						{
