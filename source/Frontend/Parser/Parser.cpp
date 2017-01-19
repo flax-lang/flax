@@ -191,55 +191,124 @@ namespace Parser
 		}
 	}
 
-	std::string arithmeticOpToString(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op)
-	{
-		switch(op)
-		{
-			case ArithmeticOp::Add:					return "+";
-			case ArithmeticOp::Subtract:			return "-";
-			case ArithmeticOp::Multiply:			return "*";
-			case ArithmeticOp::Divide:				return "/";
-			case ArithmeticOp::Modulo:				return "%";
-			case ArithmeticOp::ShiftLeft:			return "<<";
-			case ArithmeticOp::ShiftRight:			return ">>";
-			case ArithmeticOp::Assign:				return "=";
-			case ArithmeticOp::CmpLT:				return "<";
-			case ArithmeticOp::CmpGT:				return ">";
-			case ArithmeticOp::CmpLEq:				return "<=";
-			case ArithmeticOp::CmpGEq:				return ">=";
-			case ArithmeticOp::CmpEq:				return "==";
-			case ArithmeticOp::CmpNEq:				return "!=";
-			case ArithmeticOp::LogicalNot:			return "!";
-			case ArithmeticOp::Plus:				return "+";
-			case ArithmeticOp::Minus:				return "-";
-			case ArithmeticOp::AddrOf:				return "&";
-			case ArithmeticOp::Deref:				return "#";
-			case ArithmeticOp::BitwiseAnd:			return "&";
-			case ArithmeticOp::BitwiseOr:			return "|";
-			case ArithmeticOp::BitwiseXor:			return "^";
-			case ArithmeticOp::BitwiseNot:			return "~";
-			case ArithmeticOp::LogicalAnd:			return "&&";
-			case ArithmeticOp::LogicalOr:			return "||";
-			case ArithmeticOp::Cast:				return "as";
-			case ArithmeticOp::ForcedCast:			return "as!";
-			case ArithmeticOp::PlusEquals:			return "+=";
-			case ArithmeticOp::MinusEquals:			return "-=";
-			case ArithmeticOp::MultiplyEquals:		return "*=";
-			case ArithmeticOp::DivideEquals:		return "/=";
-			case ArithmeticOp::ModEquals:			return "%=";
-			case ArithmeticOp::ShiftLeftEquals:		return "<<=";
-			case ArithmeticOp::ShiftRightEquals:	return ">>=";
-			case ArithmeticOp::BitwiseAndEquals:	return "&=";
-			case ArithmeticOp::BitwiseOrEquals:		return "|=";
-			case ArithmeticOp::BitwiseXorEquals:	return "^=";
-			case ArithmeticOp::MemberAccess:		return ".";
-			case ArithmeticOp::ScopeResolution:		return "::";
-			case ArithmeticOp::TupleSeparator:		return ",";
-			case ArithmeticOp::Subscript:			return "[]";
-			case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
 
-			default:								return cgi->customOperatorMap[op].first;
+
+
+
+
+
+
+
+
+
+	// this is stupid, but we need to return references (for string_view reasons)
+	static std::string _lookupTable[(size_t) ArithmeticOp::UserDefined] = {
+		"+",
+		"-",
+		"*",
+		"/",
+		"%",
+		"<<",
+		">>",
+		"=",
+		"<",
+		">",
+		"<=",
+		">=",
+		"==",
+		"!=",
+		"!",
+		"+",
+		"-",
+		"&",
+		"#",
+		"&",
+		"|",
+		"^",
+		"~",
+		"&&",
+		"||",
+		"as",
+		"as!",
+		"+=",
+		"-=",
+		"*=",
+		"/=",
+		"%=",
+		"<<=",
+		">>=",
+		"&=",
+		"|=",
+		"^=",
+		".",
+		"::",
+		",",
+		"[]",
+	};
+
+
+	std::string& arithmeticOpToString(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op)
+	{
+		if(op < ArithmeticOp::UserDefined && op != ArithmeticOp::Invalid)
+		{
+			return _lookupTable[(size_t) op];
 		}
+		else if(cgi->customOperatorMap.find(op) != cgi->customOperatorMap.end())
+		{
+			return cgi->customOperatorMap[op].first;
+		}
+		else
+		{
+			parserError("Invalid arithmetic operator");
+		}
+
+
+		// switch(op)
+		// {
+		// 	case ArithmeticOp::Add:					return "+";
+		// 	case ArithmeticOp::Subtract:			return "-";
+		// 	case ArithmeticOp::Multiply:			return "*";
+		// 	case ArithmeticOp::Divide:				return "/";
+		// 	case ArithmeticOp::Modulo:				return "%";
+		// 	case ArithmeticOp::ShiftLeft:			return "<<";
+		// 	case ArithmeticOp::ShiftRight:			return ">>";
+		// 	case ArithmeticOp::Assign:				return "=";
+		// 	case ArithmeticOp::CmpLT:				return "<";
+		// 	case ArithmeticOp::CmpGT:				return ">";
+		// 	case ArithmeticOp::CmpLEq:				return "<=";
+		// 	case ArithmeticOp::CmpGEq:				return ">=";
+		// 	case ArithmeticOp::CmpEq:				return "==";
+		// 	case ArithmeticOp::CmpNEq:				return "!=";
+		// 	case ArithmeticOp::LogicalNot:			return "!";
+		// 	case ArithmeticOp::Plus:				return "+";
+		// 	case ArithmeticOp::Minus:				return "-";
+		// 	case ArithmeticOp::AddrOf:				return "&";
+		// 	case ArithmeticOp::Deref:				return "#";
+		// 	case ArithmeticOp::BitwiseAnd:			return "&";
+		// 	case ArithmeticOp::BitwiseOr:			return "|";
+		// 	case ArithmeticOp::BitwiseXor:			return "^";
+		// 	case ArithmeticOp::BitwiseNot:			return "~";
+		// 	case ArithmeticOp::LogicalAnd:			return "&&";
+		// 	case ArithmeticOp::LogicalOr:			return "||";
+		// 	case ArithmeticOp::Cast:				return "as";
+		// 	case ArithmeticOp::ForcedCast:			return "as!";
+		// 	case ArithmeticOp::PlusEquals:			return "+=";
+		// 	case ArithmeticOp::MinusEquals:			return "-=";
+		// 	case ArithmeticOp::MultiplyEquals:		return "*=";
+		// 	case ArithmeticOp::DivideEquals:		return "/=";
+		// 	case ArithmeticOp::ModEquals:			return "%=";
+		// 	case ArithmeticOp::ShiftLeftEquals:		return "<<=";
+		// 	case ArithmeticOp::ShiftRightEquals:	return ">>=";
+		// 	case ArithmeticOp::BitwiseAndEquals:	return "&=";
+		// 	case ArithmeticOp::BitwiseOrEquals:		return "|=";
+		// 	case ArithmeticOp::BitwiseXorEquals:	return "^=";
+		// 	case ArithmeticOp::MemberAccess:		return ".";
+		// 	case ArithmeticOp::ScopeResolution:		return "::";
+		// 	case ArithmeticOp::TupleSeparator:		return ",";
+		// 	case ArithmeticOp::Subscript:			return "[]";
+		// 	case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
+
+		// }
 	}
 
 	static const char* ReadableAttrNames[] =
@@ -3026,7 +3095,6 @@ namespace Parser
 
 			Token fake;
 			fake.pin = op.pin;
-			// fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
 			fake.text = arithmeticOpToString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
