@@ -2792,8 +2792,6 @@ namespace Parser
 		iceAssert(ps.front().type == TType::StringLiteral);
 		Token str = ps.eat();
 
-		// reference hack in tokeniser.cpp
-		// str.text = str.text.substr(1);
 		auto ret = CreateAST(StringLiteral, str, str.text);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_RawString);

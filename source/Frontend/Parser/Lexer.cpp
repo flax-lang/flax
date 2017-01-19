@@ -344,6 +344,64 @@ namespace Lexer
 		*/
 		else if(!stream.empty() && (isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
+			#if 1
+
+			std::string prefix;
+
+			// copy it.
+			auto tmp = stream;
+
+			if(stream.find('-') == 0 || stream.find('+') == 0)
+				prefix = stream[0], tmp.remove_prefix(1);
+
+			int base = 10;
+			if(tmp.find("0x") == 0 || tmp.find("0X") == 0)
+				base = 16, tmp.remove_prefix(2);
+
+			else if(tmp.find("0b") == 0 || tmp.find("0B") == 0)
+				base = 2, tmp.remove_prefix(2);
+
+
+			// find that shit (cool, we can just pass `isdigit` directly)
+			auto end = std::find_if_not(tmp.begin(), tmp.end(), [base](const char& c) -> bool {
+				if(base == 10)	return isdigit(c);
+				if(base == 16)	return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
+				else			return (c == '0' || c == '1');
+			});
+
+			auto num = std::string(tmp.begin(), end);
+			tmp.remove_prefix(num.length());
+
+			// check if we have 'e' or 'E'
+			if(tmp.size() > 0 && (tmp[0] == 'e' || tmp[0] == 'E'))
+			{
+				if(base != 10)
+					parserError("Exponential form is supported with neither hexadecimal nor binary literals");
+
+				// find that shit
+				auto next = std::find_if_not(tmp.begin() + 1, tmp.end(), isdigit);
+
+				// this adds the 'e' as well.
+				num += std::string(tmp.begin(), next);
+
+				tmp.remove_prefix(next - tmp.begin());
+			}
+
+			if(base == 16)		num = "0x" + num;
+			else if(base == 2)	num = "0b" + num;
+
+			num = prefix + num;
+
+			// we already modified stream.
+			read = 0;
+			tok.text = num;
+			tok.type = TType::Number;
+			tok.pin.len = num.length();
+
+			stream = stream.substr(num.length());
+
+
+			#else
 			bool neg = false;
 			if(stream.find("-") == 0)
 				neg = true, stream.remove_prefix(1);
@@ -396,6 +454,7 @@ namespace Lexer
 			tok.text = num;
 			tok.type = TType::Number;
 			tok.pin.len = num.length();
+			#endif
 		}
 		else if(!stream.empty() && (stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0))
 		{
