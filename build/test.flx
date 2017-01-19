@@ -290,7 +290,7 @@ public func main(argc: i32, argv: i8**) -> int
 		let tup = ("a", (30, 40))
 		let k = tup.1.0
 
-		printf("%d, %.7lf\n", k, 3.000141);
+		printf("%d, %.7lf\n", k, +3.000141);
 	}
 
 
