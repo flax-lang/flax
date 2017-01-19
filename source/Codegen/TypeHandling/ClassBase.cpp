@@ -235,7 +235,7 @@ namespace Codegen
 			// note(anti-confusion): decl->codegen() looks at parentClass
 			// and inserts an implicit self, so we don't need to do it.
 
-			overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			// overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			overl->func->decl->ident.kind = IdKind::Operator;
 			overl->func->decl->parentClass = cls;
 
@@ -271,7 +271,7 @@ namespace Codegen
 				}
 			}
 
-			aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			// aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->parentClass = cls;
 

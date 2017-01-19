@@ -3026,7 +3026,8 @@ namespace Parser
 
 			Token fake;
 			fake.pin = op.pin;
-			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			// fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.text = arithmeticOpToString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
 			FuncDecl* fd = parseFuncDeclUsingIdentifierToken(ps, fake);
@@ -3044,7 +3045,7 @@ namespace Parser
 			// needs to be able to set read/write, so we take from swift
 			// act like a computed property, with get and set style bodies.
 
-			ComputedProperty* cprop = parseComputedProperty(ps, "operator#" + operatorToMangledString(ps.cgi, ao), type, fd->attribs, fake);
+			ComputedProperty* cprop = parseComputedProperty(ps, arithmeticOpToString(ps.cgi, ao), type, fd->attribs, fake);
 			SubscriptOpOverload* oo = CreateAST_Pin(SubscriptOpOverload, fd->pin);
 
 			oo->decl = fd;
@@ -3072,7 +3073,7 @@ namespace Parser
 
 			Token fake;
 			fake.pin = op.pin;
-			fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+			fake.text = arithmeticOpToString(ps.cgi, ao);
 			fake.type = TType::Identifier;
 
 			// parse a func declaration.
@@ -3098,7 +3099,7 @@ namespace Parser
 
 		Token fake;
 		fake.pin = ps.currentPos;
-		fake.text = "operator#" + operatorToMangledString(ps.cgi, ao);
+		fake.text = arithmeticOpToString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
 		// parse a func declaration.
