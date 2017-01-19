@@ -287,7 +287,7 @@ namespace Parser
 		staticState = &ps;
 
 		// split into lines
-		ps.currentPos.file = filename;
+		ps.currentPos.file = Compiler::getStaticFilename(filename);
 
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
@@ -470,7 +470,7 @@ namespace Parser
 
 		ps.rootNode = new Root();
 
-		ps.currentPos.file = filename;
+		ps.currentPos.file = Compiler::getStaticFilename(filename);
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -3147,7 +3147,7 @@ namespace Parser
 	std::string pinToString(Parser::Pin p)
 	{
 		char* buf = new char[1024];
-		snprintf(buf, 1024, "(%s:%zu:%zu)", p.file.c_str(), p.line, p.col);
+		snprintf(buf, 1024, "(%s:%zu:%zu)", p.file.to_string().c_str(), p.line, p.col);
 
 		std::string ret(buf);
 		delete[] buf;

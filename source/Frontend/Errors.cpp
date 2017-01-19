@@ -20,7 +20,7 @@ namespace GenError
 {
 	static void printContext(HighlightOptions ops)
 	{
-		auto lines = Compiler::getFileLines(ops.caret.file);
+		auto lines = Compiler::getFileLines(ops.caret.file.to_string());
 		if(lines.size() > ops.caret.line - 1)
 		{
 			std::string orig = lines[ops.caret.line - 1].to_string();
@@ -147,7 +147,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
+	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file.to_string());
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);

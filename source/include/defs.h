@@ -10,6 +10,7 @@
 #include <map>
 #include <deque>
 #include <string>
+#include <experimental/string_view>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -47,9 +48,9 @@ namespace Parser
 	struct Pin
 	{
 		Pin() { }
-		Pin(std::string f, size_t l, size_t c, size_t ln) : file(f), line(l), col(c), len(ln) { }
+		Pin(std::experimental::string_view f, size_t l, size_t c, size_t ln) : file(f), line(l), col(c), len(ln) { }
 
-		std::string file;
+		std::experimental::string_view file;
 		size_t line = 1;
 		size_t col = 1;
 		size_t len = 1;

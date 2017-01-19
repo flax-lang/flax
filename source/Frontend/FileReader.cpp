@@ -89,7 +89,7 @@ namespace Compiler
 		Parser::Pin pos;
 		FileInnards& innards = fileList[fullPath];
 		{
-			pos.file = fullPath;
+			pos.file = getStaticFilename(fullPath);
 
 			innards.lines = std::move(rawlines);
 			innards.contents = std::move(fileContents);
@@ -156,6 +156,14 @@ namespace Compiler
 
 		innards.didLex = true;
 		innards.isLexing = false;
+	}
+
+	std::experimental::string_view getStaticFilename(const std::string &fullPath)
+	{
+		auto it = fileList.find(fullPath);
+		assert(it != fileList.end());
+		
+		return it->first;
 	}
 
 
