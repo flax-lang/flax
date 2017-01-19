@@ -261,7 +261,7 @@ namespace Parser
 
 	std::string getModuleName(std::string filename);
 
-	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	std::string& arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
 	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 }
