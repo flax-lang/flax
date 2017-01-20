@@ -76,8 +76,6 @@ inline void debuglog(const char* s, ...)
 #define BOOL_TYPE_STRING				"bool"
 #define VOID_TYPE_STRING				"void"
 
-#define FUNC_KEYWORD_STRING				"func"
-
 
 
 

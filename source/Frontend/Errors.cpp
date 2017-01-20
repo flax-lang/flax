@@ -24,23 +24,24 @@ namespace GenError
 		if(lines.size() > ops.caret.line - 1)
 		{
 			std::string orig = lines[ops.caret.line - 1].to_string();
-			std::string ln;
+
+			std::stringstream ln;
 
 			for(auto c : orig)
 			{
 				if(c == '\t')
 				{
 					for(size_t i = 0; i < TAB_WIDTH; i++)
-						ln += " ";
+						ln << " ";
 				}
 				else if(c != '\n')
 				{
-					ln += c;
+					ln << c;
 				}
 			}
 
 
-			fprintf(stderr, "%s\n", ln.c_str());
+			fprintf(stderr, "%s\n", ln.str().c_str());
 
 			size_t cursorX = 1;
 
@@ -48,7 +49,7 @@ namespace GenError
 			{
 				for(uint64_t i = 1; i <= ops.caret.col - 1; i++)
 				{
-					if(ln[i - 1] == '\t')
+					if(ln.str()[i - 1] == '\t')
 					{
 						for(size_t j = 0; j < TAB_WIDTH; j++)
 						{
@@ -150,7 +151,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	std::string filename = Compiler::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)" : Compiler::getFilenameFromID(ops.caret.fileID));
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
-		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
+		fprintf(stderr, "%s(%s:%d:%d) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
 	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
 	vfprintf(stderr, msg, ap);

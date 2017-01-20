@@ -288,9 +288,7 @@ namespace Parser
 
 
 		// hackjob... kinda.
-		// todo: why is this a closure???
-		auto findOperators = [&](ParserState& ps) {
-
+		{
 			int curPrec = 0;
 			while(ps.hasTokens() > 0)
 			{
@@ -441,9 +439,7 @@ namespace Parser
 					ps.pop();
 				}
 			}
-		};
-
-		findOperators(ps);
+		}
 	}
 
 	Root* Parse(Codegen::CodegenInstance* cgi, std::string filename)
@@ -475,13 +471,9 @@ namespace Parser
 	// this only handles the topmost level.
 	void parseAll(ParserState& ps)
 	{
-		if(!ps.hasTokens())
-			return;
-
 		Token tok;
 		while(ps.hasTokens() && (tok = ps.front()).type != TType::EndOfFile)
 		{
-			// tok = ps.front();
 			switch(tok.type)
 			{
 				case TType::Func:
@@ -3166,7 +3158,7 @@ namespace Parser
 	std::string pinToString(Parser::Pin p)
 	{
 		char* buf = new char[1024];
-		snprintf(buf, 1024, "(%s:%zu:%zu)", Compiler::getFilenameFromID(p.fileID).c_str(), p.line, p.col);
+		snprintf(buf, 1024, "(%s:%d:%d)", Compiler::getFilenameFromID(p.fileID).c_str(), p.line, p.col);
 
 		std::string ret(buf);
 		delete[] buf;
@@ -3212,6 +3204,14 @@ namespace Parser
 		return this->tokens[i + this->index];
 	}
 
+	const Token& ParserState::skip(size_t i)
+	{
+		iceAssert(this->index + i < this->tokens.size());
+		this->index += i;
+
+		return this->tokens[this->index];
+	}
+
 	const Token& ParserState::pop()
 	{
 		// returns the current front, then pops front.
@@ -3253,7 +3253,12 @@ namespace Parser
 		}
 	}
 
-	ParserState::ParserState(Codegen::CodegenInstance* c, TokenList& tl) : cgi(c), tokens(tl)
+	void ParserState::reset()
+	{
+		this->index = 0;
+	}
+
+	ParserState::ParserState(Codegen::CodegenInstance* c, const TokenList& tl) : cgi(c), tokens(tl)
 	{
 	}
 }

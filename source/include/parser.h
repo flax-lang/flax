@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ast.h"
+#include "util.h"
 #include "errors.h"
 
 #include <deque>
@@ -23,6 +24,12 @@ namespace Ast
 	enum class ArithmeticOp;
 }
 
+
+namespace Lexer
+{
+	void getNextToken(std::vector<std::experimental::string_view>& lines, size_t* line, const std::experimental::string_view& whole,
+		Parser::Pin& pos, Parser::Token*);
+}
 
 namespace Parser
 {
@@ -157,25 +164,9 @@ namespace Parser
 		EndOfFile,
 	};
 
-	class TokenList
-	{
-		public:
-		TokenList();
-		TokenList(size_t initSize);
+	using TokenList = util::FastVector<Token>;
 
-		~TokenList();
 
-		void add(const Token& t);
-		size_t size();
-		Token& operator[] (size_t index);
-		Token* _checkResize();
-
-		Token* _array;
-		size_t _capacity;
-		size_t _length;
-	};
-
-	// using TokenList = std::vector<Token>;
 
 
 	struct Token
@@ -187,7 +178,7 @@ namespace Parser
 
 	struct ParserState
 	{
-		explicit ParserState(Codegen::CodegenInstance* c, TokenList& tl); // : cgi(c) { }
+		explicit ParserState(Codegen::CodegenInstance* c, const TokenList& tl);
 
 		std::unordered_set<std::string> visited;
 
@@ -213,11 +204,13 @@ namespace Parser
 		const Token& eat();
 		const Token& front();
 
+		void reset();
+		const Token& skip(size_t i);
 		const Token& lookahead(size_t i);
 
 		private:
 
-		TokenList& tokens;
+		const TokenList& tokens;
 		size_t index = 0;
 	};
 
