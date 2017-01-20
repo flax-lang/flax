@@ -5,6 +5,8 @@
 #pragma once
 
 #include "ast.h"
+#include "parser.h"
+
 #include <deque>
 #include <experimental/string_view>
 
