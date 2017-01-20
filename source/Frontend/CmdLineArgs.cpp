@@ -13,7 +13,6 @@
 #include "backend.h"
 #include "compiler.h"
 
-
 static std::string parseQuotedString(char** argv, int& i)
 {
 	std::string ret;
