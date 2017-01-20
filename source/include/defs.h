@@ -46,13 +46,13 @@ namespace Parser
 {
 	struct Pin
 	{
-		Pin() { }
-		Pin(std::string f, size_t l, size_t c, size_t ln) : file(f), line(l), col(c), len(ln) { }
+		Pin() : fileID(0), line(1), col(1), len(0) { }
+		Pin(size_t f, size_t l, size_t c, size_t ln) : fileID(f), line(l), col(c), len(ln) { }
 
-		std::string file;
-		size_t line = 1;
-		size_t col = 1;
-		size_t len = 1;
+		size_t fileID;
+		size_t line;
+		size_t col;
+		size_t len;
 	};
 
 	struct Token;

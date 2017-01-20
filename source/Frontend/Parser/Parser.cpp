@@ -179,9 +179,9 @@ namespace Parser
 
 			case TType::Identifier:
 			case TType::UnicodeSymbol:
-				if(ps.cgi->customOperatorMapRev.find(ps.front().text) != ps.cgi->customOperatorMapRev.end())
+				if(ps.cgi->customOperatorMapRev.find(ps.front().text.to_string()) != ps.cgi->customOperatorMapRev.end())
 				{
-					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[ps.front().text]].second;
+					return ps.cgi->customOperatorMap[ps.cgi->customOperatorMapRev[ps.front().text.to_string()]].second;
 				}
 				return -1;
 
@@ -202,47 +202,9 @@ namespace Parser
 
 	// this is stupid, but we need to return references (for string_view reasons)
 	static std::string _lookupTable[(size_t) ArithmeticOp::UserDefined] = {
-		"+",
-		"-",
-		"*",
-		"/",
-		"%",
-		"<<",
-		">>",
-		"=",
-		"<",
-		">",
-		"<=",
-		">=",
-		"==",
-		"!=",
-		"!",
-		"+",
-		"-",
-		"&",
-		"#",
-		"&",
-		"|",
-		"^",
-		"~",
-		"&&",
-		"||",
-		"as",
-		"as!",
-		"+=",
-		"-=",
-		"*=",
-		"/=",
-		"%=",
-		"<<=",
-		">>=",
-		"&=",
-		"|=",
-		"^=",
-		".",
-		"::",
-		",",
-		"[]",
+		"+", "-", "*", "/", "%", "<<", ">>", "=", "<", ">", "<=", ">=", "==", "!=",
+		"!", "+", "-", "&", "#", "&", "|", "^", "~", "&&", "||", "as", "as!", "+=",
+		"-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=", ".", "::", ",", "[]",
 	};
 
 
@@ -260,54 +222,6 @@ namespace Parser
 		{
 			parserError("Invalid arithmetic operator");
 		}
-
-
-		// switch(op)
-		// {
-		// 	case ArithmeticOp::Add:					return "+";
-		// 	case ArithmeticOp::Subtract:			return "-";
-		// 	case ArithmeticOp::Multiply:			return "*";
-		// 	case ArithmeticOp::Divide:				return "/";
-		// 	case ArithmeticOp::Modulo:				return "%";
-		// 	case ArithmeticOp::ShiftLeft:			return "<<";
-		// 	case ArithmeticOp::ShiftRight:			return ">>";
-		// 	case ArithmeticOp::Assign:				return "=";
-		// 	case ArithmeticOp::CmpLT:				return "<";
-		// 	case ArithmeticOp::CmpGT:				return ">";
-		// 	case ArithmeticOp::CmpLEq:				return "<=";
-		// 	case ArithmeticOp::CmpGEq:				return ">=";
-		// 	case ArithmeticOp::CmpEq:				return "==";
-		// 	case ArithmeticOp::CmpNEq:				return "!=";
-		// 	case ArithmeticOp::LogicalNot:			return "!";
-		// 	case ArithmeticOp::Plus:				return "+";
-		// 	case ArithmeticOp::Minus:				return "-";
-		// 	case ArithmeticOp::AddrOf:				return "&";
-		// 	case ArithmeticOp::Deref:				return "#";
-		// 	case ArithmeticOp::BitwiseAnd:			return "&";
-		// 	case ArithmeticOp::BitwiseOr:			return "|";
-		// 	case ArithmeticOp::BitwiseXor:			return "^";
-		// 	case ArithmeticOp::BitwiseNot:			return "~";
-		// 	case ArithmeticOp::LogicalAnd:			return "&&";
-		// 	case ArithmeticOp::LogicalOr:			return "||";
-		// 	case ArithmeticOp::Cast:				return "as";
-		// 	case ArithmeticOp::ForcedCast:			return "as!";
-		// 	case ArithmeticOp::PlusEquals:			return "+=";
-		// 	case ArithmeticOp::MinusEquals:			return "-=";
-		// 	case ArithmeticOp::MultiplyEquals:		return "*=";
-		// 	case ArithmeticOp::DivideEquals:		return "/=";
-		// 	case ArithmeticOp::ModEquals:			return "%=";
-		// 	case ArithmeticOp::ShiftLeftEquals:		return "<<=";
-		// 	case ArithmeticOp::ShiftRightEquals:	return ">>=";
-		// 	case ArithmeticOp::BitwiseAndEquals:	return "&=";
-		// 	case ArithmeticOp::BitwiseOrEquals:		return "|=";
-		// 	case ArithmeticOp::BitwiseXorEquals:	return "^=";
-		// 	case ArithmeticOp::MemberAccess:		return ".";
-		// 	case ArithmeticOp::ScopeResolution:		return "::";
-		// 	case ArithmeticOp::TupleSeparator:		return ",";
-		// 	case ArithmeticOp::Subscript:			return "[]";
-		// 	case ArithmeticOp::Invalid:				parserError("Invalid arithmetic operator");
-
-		// }
 	}
 
 	static const char* ReadableAttrNames[] =
@@ -349,13 +263,12 @@ namespace Parser
 
 	void parseAllCustomOperators(Codegen::CodegenInstance* cgi, std::string filename, std::string curpath)
 	{
-		// auto copy = Compiler::getFileTokens(Compiler::getFullPathOfFile(filename));
 		Parser::ParserState ps(cgi, Compiler::getFileTokens(Compiler::getFullPathOfFile(filename)));
 
 		staticState = &ps;
 
 		// split into lines
-		ps.currentPos.file = filename;
+		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
 
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
@@ -437,7 +350,7 @@ namespace Parser
 						if(num.type != TType::Number)
 							parserError(num, "Expected integer as first attribute within @operator[]");
 
-						curPrec = std::stoi(num.text);
+						curPrec = std::stoi(num.text.to_string());
 						if(curPrec <= 0)
 							parserError(num, "Precedence must be greater than 0");
 
@@ -477,14 +390,15 @@ namespace Parser
 							parserError(t, "Custom operators must have a precedence, use @operator[x]");
 
 						// check if it exists.
-						if(ps.cgi->customOperatorMapRev.find(op.text) == ps.cgi->customOperatorMapRev.end())
+						auto txt = op.text.to_string();
+						if(ps.cgi->customOperatorMapRev.find(txt) == ps.cgi->customOperatorMapRev.end())
 						{
-							ps.cgi->customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { op.text, curPrec };
-							ps.cgi->customOperatorMapRev[op.text] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
+							ps.cgi->customOperatorMap[(ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum)] = { txt, curPrec };
+							ps.cgi->customOperatorMapRev[txt] = (ArithmeticOp) ((size_t) ArithmeticOp::UserDefined + opNum);
 						}
 						else
 						{
-							ArithmeticOp ao = ps.cgi->customOperatorMapRev[op.text];
+							ArithmeticOp ao = ps.cgi->customOperatorMapRev[txt];
 							auto pair = ps.cgi->customOperatorMap[ao];
 
 							if(pair.second != curPrec)
@@ -514,7 +428,7 @@ namespace Parser
 				}
 				else if(curPrec > 0)
 				{
-					parserError(ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.c_str());
+					parserError(ps.front(), "@operator can only be applied to operators (%s)", ps.front().text.to_string().c_str());
 				}
 				else
 				{
@@ -530,15 +444,11 @@ namespace Parser
 	Root* Parse(Codegen::CodegenInstance* cgi, std::string filename)
 	{
 		auto p = prof::Profile("parse");
-
-		auto p1 = prof::Profile("copy tokens");
-		// auto copy = Compiler::getFileTokens(filename);
 		ParserState ps(cgi, Compiler::getFileTokens(filename));
-		p1.finish();
 
 		ps.rootNode = new Root();
 
-		ps.currentPos.file = filename;
+		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
 		ps.currentPos.line = 1;
 		ps.currentPos.col = 1;
 
@@ -657,7 +567,7 @@ namespace Parser
 					// fallthrough
 
 				default:	// wip: skip shit we don't know/care about for now
-					parserError(tok, "Unknown token '%s'", tok.text.c_str());
+					parserError(tok, "Unknown token '%s'", tok.text.to_string().c_str());
 			}
 		}
 	}
@@ -822,7 +732,7 @@ namespace Parser
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
-					parserError(tok, "Unexpected token '%s'\n", tok.text.c_str());
+					parserError(tok, "Unexpected token '%s'\n", tok.text.to_string().c_str());
 			}
 		}
 
@@ -896,7 +806,7 @@ namespace Parser
 		}
 		else
 		{
-			parserError("Invaild static expression '%s'", ps.front().text.c_str());
+			parserError("Invaild static expression '%s'", ps.front().text.to_string().c_str());
 		}
 	}
 
@@ -908,7 +818,7 @@ namespace Parser
 			parserError("Expected identifier, but got token of type %d", ps.front().type);
 
 		Token func_id = _id;
-		std::string id = func_id.text;
+		std::string id = func_id.text.to_string();
 
 		std::map<std::string, TypeConstraints_t> genericTypes;
 
@@ -916,7 +826,7 @@ namespace Parser
 		Token paren = ps.eat();
 		if(paren.type != TType::LParen && paren.type != TType::LAngle)
 		{
-			parserError("Expected '(' in function declaration, got '%s'", paren.text.c_str());
+			parserError("Expected '(' in function declaration, got '%s'", paren.text.to_string().c_str());
 		}
 		else if(paren.type == TType::LAngle)
 		{
@@ -957,11 +867,11 @@ namespace Parser
 				}
 				else
 				{
-					parserError(tok_id, "Expected identifier (got '%s')", tok_id.text.c_str());
+					parserError(tok_id, "Expected identifier (got '%s')", tok_id.text.to_string().c_str());
 				}
 			}
 
-			std::string id = tok_id.text;
+			std::string id = tok_id.text.to_string();
 			VarDecl* v = CreateAST(VarDecl, tok_id, id, true);
 
 			// expect a colon
@@ -1066,11 +976,11 @@ namespace Parser
 				parserError("Expected type of external function, either C (default) or Cpp");
 
 			Token ftype = ps.eat();
-			std::string lftype = ftype.text;
+			std::string lftype = ftype.text.to_string();
 			std::transform(lftype.begin(), lftype.end(), lftype.begin(), ::tolower);
 
 			if(lftype == "c")			ffitype = FFIType::C;
-			else						parserError("Unknown FFI type '%s'", ftype.text.c_str());
+			else						parserError("Unknown FFI type '%s'", ftype.text.to_string().c_str());
 
 			if(ps.eat().type != TType::RParen)
 				parserError("Expected ')'");
@@ -1092,7 +1002,7 @@ namespace Parser
 
 		// make sure the first token is a left brace.
 		if(tok_brc.type != TType::LBrace && !hadOpeningBrace)
-			parserError("Expected '{' to begin a block, found '%s'!", tok_brc.text.c_str());
+			parserError("Expected '{' to begin a block, found '%s'!", tok_brc.text.to_string().c_str());
 
 
 		std::deque<DeferredExpr*> defers;
@@ -1252,7 +1162,7 @@ namespace Parser
 
 			if(n.type == TType::Number)
 			{
-				dims = "[" + n.text + "]";
+				dims = "[" + n.text.to_string() + "]";
 			}
 			else if(n.type == TType::Ellipsis)
 			{
@@ -1277,7 +1187,7 @@ namespace Parser
 			{
 				n = ps.eat();
 				if(n.type != TType::RSquare)
-					parserError(n, "Expected ']' in type specifier, have '%s'", n.text.c_str());
+					parserError(n, "Expected ']' in type specifier, have '%s'", n.text.to_string().c_str());
 			}
 
 			ret += dims;
@@ -1305,7 +1215,7 @@ namespace Parser
 
 		if(front.type == TType::Identifier)
 		{
-			std::string ret = front.text;
+			std::string ret = front.text.to_string();
 			ps.pop();
 
 			while(ps.hasTokens())
@@ -1320,7 +1230,7 @@ namespace Parser
 				}
 				else if(ps.front().type == TType::Identifier && (ret.empty() || ret.back() == '.'))
 				{
-					ret += ps.front().text;
+					ret += ps.front().text.to_string();
 					ps.pop();
 				}
 				else
@@ -1347,7 +1257,7 @@ namespace Parser
 				std::string ret = parseStringType(ps);
 
 				if(ps.front().type != TType::Comma && ps.front().type != TType::RParen)
-					parserError("Unexpected token '%s' in type specifier, expected either ',' or ')'", ps.front().text.c_str());
+					parserError("Unexpected token '%s' in type specifier, expected either ',' or ')'", ps.front().text.to_string().c_str());
 
 				else if(ps.front().type == TType::Comma)
 					ps.eat();
@@ -1370,7 +1280,7 @@ namespace Parser
 
 
 			if(ps.eat().type != TType::RParen)
-				parserError("Expected ')' to end tuple type specifier, found '%s' instead", ps.front().text.c_str());
+				parserError("Expected ')' to end tuple type specifier, found '%s' instead", ps.front().text.to_string().c_str());
 
 
 			// ok, now check if we have more things behind this.
@@ -1393,7 +1303,8 @@ namespace Parser
 
 			if(ps.hasTokens() && ps.front().type != TType::LAngle && ps.front().type != TType::LParen)
 			{
-				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead",
+					ps.front().text.to_string().c_str());
 			}
 			else if(ps.hasTokens() && ps.front().type == TType::LAngle)
 			{
@@ -1433,7 +1344,10 @@ namespace Parser
 			ret += "(";
 
 			if(ps.front().type != TType::LParen)
-				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+			{
+				parserError("Expected '(' to begin argument list of function type specifier, got '%s' instead",
+					ps.front().text.to_string().c_str());
+			}
 
 			ps.pop();
 
@@ -1449,7 +1363,8 @@ namespace Parser
 				}
 				else if(ps.front().type != TType::RParen)
 				{
-					parserError("Expected ')' to end argument list of function type specifier, got '%s' instead", ps.front().text.c_str());
+					parserError("Expected ')' to end argument list of function type specifier, got '%s' instead",
+						ps.front().text.to_string().c_str());
 				}
 			}
 
@@ -1461,7 +1376,9 @@ namespace Parser
 
 			if(ps.front().type != TType::Arrow)
 			{
-				parserMessage(Err::Error, "Expected '->' to specify return type of function type specifier, got '%s'", ps.front().text.c_str());
+				parserMessage(Err::Error, "Expected '->' to specify return type of function type specifier, got '%s'",
+					ps.front().text.to_string().c_str());
+
 				parserMessage(Err::Info, "Note: void returns must be made explicit in type specifiers");
 
 				doTheExit();
@@ -1472,7 +1389,7 @@ namespace Parser
 			ret += "->" + parseStringType(ps) + "}";
 
 			if(ps.front().type != TType::RSquare)
-				parserError("Expected ']' to end function type specifier, got '%s' instead", ps.front().text.c_str());
+				parserError("Expected ']' to end function type specifier, got '%s' instead", ps.front().text.to_string().c_str());
 
 			ps.pop();
 
@@ -1482,7 +1399,7 @@ namespace Parser
 		}
 		else
 		{
-			parserError("Expected type specifier, found invalid token '%s' instead", front.text.c_str());
+			parserError("Expected type specifier, found invalid token '%s' instead", front.text.to_string().c_str());
 		}
 	}
 
@@ -1547,7 +1464,7 @@ namespace Parser
 					if(ps.front().type != TType::Identifier)
 						parserError("Expected identifier for custom setter argument name");
 
-					setValName = ps.eat().text;
+					setValName = ps.eat().text.to_string();
 
 					if(ps.eat().type != TType::RParen)
 						parserError("Expected closing ')'");
@@ -1598,7 +1515,7 @@ namespace Parser
 		if((tok_id = ps.eat()).type != TType::Identifier)
 			parserError("Expected identifier for variable declaration.");
 
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
 		v->disableAutoInit = attribs & Attr_NoAutoInit;
 		v->attribs = attribs;
@@ -1848,14 +1765,14 @@ namespace Parser
 												break;
 					default:
 					{
-						if(ps.cgi->customOperatorMapRev.find(tok_op.text) != ps.cgi->customOperatorMapRev.end())
+						if(ps.cgi->customOperatorMapRev.find(tok_op.text.to_string()) != ps.cgi->customOperatorMapRev.end())
 						{
-							op = ps.cgi->customOperatorMapRev[tok_op.text];
+							op = ps.cgi->customOperatorMapRev[tok_op.text.to_string()];
 							break;
 						}
 						else
 						{
-							parserError("Unknown operator '%s'", tok_op.text.c_str());
+							parserError("Unknown operator '%s'", tok_op.text.to_string().c_str());
 						}
 					}
 				}
@@ -1906,7 +1823,7 @@ namespace Parser
 	Expr* parseIdExpr(ParserState& ps)
 	{
 		Token tok_id = ps.eat();
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		VarRef* idvr = CreateAST(VarRef, tok_id, id);
 
 		if(ps.front().type == TType::LParen)
@@ -1951,7 +1868,7 @@ namespace Parser
 
 			Token n = ps.eat();
 			if(n.type != TType::RSquare)
-				parserError("Expected ']', have %s", n.text.c_str());
+				parserError("Expected ']', have %s", n.text.to_string().c_str());
 		}
 
 		auto pin = ps.front().pin;
@@ -1986,7 +1903,7 @@ namespace Parser
 		iceAssert(ps.front().type == TType::Number);
 		auto t = ps.eat();
 
-		return CreateAST(Number, t, t.text);
+		return CreateAST(Number, t, t.text.to_string());
 
 
 		#if 0
@@ -2058,7 +1975,7 @@ namespace Parser
 
 				Token t;
 				if((t = ps.eat()).type != TType::Comma)
-					parserError("Expected either ',' or ')' in parameter list, got '%s' (id = %s)", t.text.c_str(), id.c_str());
+					parserError("Expected either ',' or ')' in parameter list, got '%s' (id = %s)", t.text.to_string().c_str(), id.c_str());
 			}
 		}
 		else
@@ -2191,12 +2108,12 @@ namespace Parser
 				parserError("Expected identifier after ':' in struct or class declaration");
 
 			if(std::find(ret.begin(), ret.end(), id.text) != ret.end())
-				parserError("Duplicate member %s in inheritance list", id.text.c_str());
+				parserError("Duplicate member %s in inheritance list", id.text.to_string().c_str());
 
 			if(selfname == id.text)
 				parserError("Self inheritance is illegal");
 
-			ret.push_back(id.text);
+			ret.push_back(id.text.to_string());
 			ps.skipNewline();
 
 			if(ps.front().type != TType::Comma)
@@ -2216,7 +2133,7 @@ namespace Parser
 		{
 			if(ps.front().type == TType::Identifier)
 			{
-				std::string gt = ps.eat().text;
+				std::string gt = ps.eat().text.to_string();
 				TypeConstraints_t constrs;
 
 				if(ps.front().type == TType::Colon)
@@ -2227,7 +2144,7 @@ namespace Parser
 
 					while(ps.front().type == TType::Identifier)
 					{
-						constrs.protocols.push_back(ps.eat().text);
+						constrs.protocols.push_back(ps.eat().text.to_string());
 
 						if(ps.front().type == TType::Ampersand)
 						{
@@ -2277,7 +2194,7 @@ namespace Parser
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier");
 
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		StructDef* str = CreateAST(StructDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_PackedStruct | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -2353,9 +2270,9 @@ namespace Parser
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
-			parserError("Expected identifier (got %s)", tok_id.text.c_str());
+			parserError("Expected identifier (got %s)", tok_id.text.to_string().c_str());
 
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		ClassDef* cls = CreateAST(ClassDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -2442,7 +2359,7 @@ namespace Parser
 		if(tok_id.type != TType::Identifier)
 			parserError("Expected identifier");
 
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		ExtensionDef* ext = CreateAST(ExtensionDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -2517,9 +2434,9 @@ namespace Parser
 		Token tok_id = ps.eat();
 
 		if(tok_id.type != TType::Identifier)
-			parserError("Expected identifier (got %s)", tok_id.text.c_str());
+			parserError("Expected identifier (got %s)", tok_id.text.to_string().c_str());
 
-		std::string id = tok_id.text;
+		std::string id = tok_id.text.to_string();
 		ProtocolDef* prot = CreateAST(ProtocolDef, tok_id, id);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
@@ -2615,7 +2532,7 @@ namespace Parser
 			parserError("Empty enumerations are not allowed");
 
 
-		EnumDef* enumer = CreateAST(EnumDef, tok_id, tok_id.text);
+		EnumDef* enumer = CreateAST(EnumDef, tok_id, tok_id.text.to_string());
 		enumer->ptype = explicitType;
 		Token front = ps.front();
 
@@ -2633,13 +2550,13 @@ namespace Parser
 				break;
 
 			if(front.type != TType::Case)
-				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.c_str());
+				parserError("Only 'case' expressions are allowed inside enumerations, got '%s'", front.text.to_string().c_str());
 
 			ps.eat();
 			if((front = ps.eat()).type != TType::Identifier)
-				parserError("Expected identifier after 'case', got '%s'", front.text.c_str());
+				parserError("Expected identifier after 'case', got '%s'", front.text.to_string().c_str());
 
-			std::string eName = front.text;
+			std::string eName = front.text.to_string();
 			Expr* value = 0;
 
 			ps.skipNewline();
@@ -2693,7 +2610,7 @@ namespace Parser
 			}
 			else if(front.type != TType::RBrace)
 			{
-				parserError("Unexpected token '%s'", front.text.c_str());
+				parserError("Unexpected token '%s'", front.text.to_string().c_str());
 			}
 			else
 			{
@@ -2750,13 +2667,18 @@ namespace Parser
 					iceAssert(ps.front().type == TType::Identifier);
 
 					if(ps.front().text == "Commutative")
+					{
 						attr |= Attr_CommutativeOp;
-
+					}
 					else if(ps.front().text == "NotCommutative")
+					{
 						attr &= ~Attr_CommutativeOp;
-
+					}
 					else
-						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
+					{
+						parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'",
+							ps.front().text.to_string().c_str());
+					}
 
 					ps.pop();
 				}
@@ -2768,13 +2690,18 @@ namespace Parser
 			else if(ps.front().type == TType::Identifier)
 			{
 				if(ps.front().text == "Commutative")
+				{
 					attr |= Attr_CommutativeOp;
-
+				}
 				else if(ps.front().text == "NotCommutative")
+				{
 					attr &= ~Attr_CommutativeOp;
-
+				}
 				else
-					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'", ps.front().text.c_str());
+				{
+					parserError("Expected either 'Commutative' or 'NotCommutative' in @operator, got '%s'",
+						ps.front().text.to_string().c_str());
+				}
 
 				ps.pop();
 
@@ -2791,7 +2718,10 @@ namespace Parser
 
 			iceAssert(ps.eat().type == TType::RSquare);
 		}
-		else										parserError("Unknown attribute '%s'", id.text.c_str());
+		else
+		{
+			parserError("Unknown attribute '%s'", id.text.to_string().c_str());
+		}
 
 		ps.curAttrib |= attr;
 	}
@@ -2835,7 +2765,7 @@ namespace Parser
 			}
 			else if(t.type == TType::Identifier)
 			{
-				s += t.text;
+				s += t.text.to_string();
 			}
 			else if(t.type == TType::Asterisk)
 			{
@@ -2861,7 +2791,7 @@ namespace Parser
 		Token tok = ps.eat();
 
 		// do replacement here, instead of in the lexer.
-		std::string tmp = tok.text;
+		std::string tmp = tok.text.to_string();
 		std::stringstream ss;
 
 		for(size_t i = 0; i < tmp.length(); i++)
@@ -2908,7 +2838,7 @@ namespace Parser
 
 		pts::Type* pt = parseType(ps);
 
-		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text, pt);
+		auto ret = CreateAST(TypeAlias, tok_name, tok_name.text.to_string(), pt);
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_StrongTypeAlias);
 		if(attr & Attr_StrongTypeAlias)
@@ -2987,7 +2917,7 @@ namespace Parser
 			parserError("Expected identifier after namespace declaration");
 
 		BracedBlock* bb = parseBracedBlock(ps);
-		NamespaceDecl* ns = CreateAST(NamespaceDecl, tok_id, tok_id.text, bb);
+		NamespaceDecl* ns = CreateAST(NamespaceDecl, tok_id, tok_id.text.to_string(), bb);
 
 
 		// do the thing.
@@ -3180,11 +3110,11 @@ namespace Parser
 		}
 		else
 		{
-			if(ps.cgi->customOperatorMapRev.find(op.text) != ps.cgi->customOperatorMapRev.end())
-				ao = ps.cgi->customOperatorMapRev[op.text];
+			if(ps.cgi->customOperatorMapRev.find(op.text.to_string()) != ps.cgi->customOperatorMapRev.end())
+				ao = ps.cgi->customOperatorMapRev[op.text.to_string()];
 
 			else
-				parserError("Unsupported operator overload on operator '%s'", op.text.c_str());
+				parserError("Unsupported operator overload on operator '%s'", op.text.to_string().c_str());
 		}
 
 
@@ -3239,7 +3169,7 @@ namespace Parser
 	std::string pinToString(Parser::Pin p)
 	{
 		char* buf = new char[1024];
-		snprintf(buf, 1024, "(%s:%zu:%zu)", p.file.c_str(), p.line, p.col);
+		snprintf(buf, 1024, "(%s:%zu:%zu)", Compiler::getFilenameFromID(p.fileID).c_str(), p.line, p.col);
 
 		std::string ret(buf);
 		delete[] buf;

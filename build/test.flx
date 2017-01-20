@@ -290,8 +290,9 @@ public func main(argc: i32, argv: i8**) -> int
 		let tup = ("a", (30, 40))
 		let k = tup.1.0
 
-		let s = "some \\ string \
-			broken over"
+		let s = "some string \
+			broken over \
+			multiple lines"
 
 		printf("s = %s\n", s)
 
