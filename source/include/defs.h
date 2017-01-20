@@ -56,8 +56,6 @@ namespace Parser
 	};
 
 	struct Token;
-
-	using TokenList = std::vector<Token>;
 }
 
 namespace Codegen

@@ -35,6 +35,11 @@ namespace Parser
 
 	static ParserState* staticState = 0;
 
+	void setStaticState(ParserState& ps)
+	{
+		staticState = &ps;
+	}
+
 	std::string getModuleName(std::string filename)
 	{
 		size_t lastdot = filename.find_last_of(".");
@@ -208,7 +213,7 @@ namespace Parser
 	};
 
 
-	std::string& arithmeticOpToString(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op)
+	const std::string& arithmeticOpToString(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op)
 	{
 		if(op < ArithmeticOp::UserDefined && op != ArithmeticOp::Invalid)
 		{
@@ -1004,9 +1009,6 @@ namespace Parser
 		if(tok_brc.type != TType::LBrace && !hadOpeningBrace)
 			parserError("Expected '{' to begin a block, found '%s'!", tok_brc.text.to_string().c_str());
 
-
-		std::deque<DeferredExpr*> defers;
-
 		// get the stuff inside.
 		while(ps.hasTokens() && ps.front().type != TType::RBrace)
 		{
@@ -1014,13 +1016,10 @@ namespace Parser
 			DeferredExpr* d = 0;
 
 			if((d = dynamic_cast<DeferredExpr*>(e)))
-			{
-				defers.push_front(d);
-			}
+				c->deferredStatements.push_back(d);
+
 			else if(!dynamic_cast<DummyExpr*>(e))
-			{
 				c->statements.push_back(e);
-			}
 
 			ps.skipNewline();
 		}
@@ -1031,9 +1030,7 @@ namespace Parser
 		if(eatClosingBrace)
 			ps.eat();
 
-		for(auto d : defers)
-			c->deferredStatements.push_back(d);
-
+		std::reverse(c->deferredStatements.begin(), c->deferredStatements.end());
 		return c;
 	}
 

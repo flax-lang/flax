@@ -47,13 +47,13 @@ namespace Lexer
 
 
 
-	static Token previousToken;
+	static TType prevType = TType::Invalid;
+	static size_t prevID = 0;
 	static bool shouldConsiderUnaryLiteral(string_view& stream, Pin& pos)
 	{
 		// check the previous token
-		bool res = (previousToken.type != TType::Invalid && previousToken.pin.fileID == pos.fileID &&
-			(previousToken.type != TType::RParen && previousToken.type != TType::RSquare && previousToken.type != TType::Identifier
-			&& previousToken.type != TType::Number));
+		bool res = (prevType != TType::Invalid && prevID == pos.fileID && (prevType != TType::RParen && prevType != TType::RSquare
+			&& prevType != TType::Identifier && prevType != TType::Number));
 
 		if(!res) return false;
 
@@ -72,15 +72,15 @@ namespace Lexer
 	}
 
 
-	Token getNextToken(std::vector<string_view>& lines, size_t* line, const string_view& whole, Pin& pos)
+	void getNextToken(std::vector<string_view>& lines, size_t* line, const string_view& whole, Pin& pos, Token* rettok)
 	{
 		bool flag = true;
 
 		if(*line == lines.size())
 		{
-			Token ret;
-			ret.type = TType::EndOfFile;
-			return ret;
+			rettok->pin = pos;
+			rettok->type = TType::EndOfFile;
+			return;
 		}
 
 		string_view stream = lines[*line];
@@ -91,7 +91,7 @@ namespace Lexer
 		// first eat all whitespace
 		skipWhitespace(stream, pos);
 
-		Token tok;
+		Token& tok = *rettok;
 		tok.pin = pos;
 
 		// check compound symbols first.
@@ -623,8 +623,8 @@ namespace Lexer
 			(*line)++;
 		}
 
-		previousToken = tok;
-		return tok;
+		prevType = tok.type;
+		prevID = tok.pin.fileID;
 	}
 }
 

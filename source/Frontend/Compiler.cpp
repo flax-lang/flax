@@ -190,10 +190,11 @@ namespace Compiler
 		q.finish();
 
 		fakeps.currentPos.fileID = getFileIDFromFilename(currentMod);
-
 		fakeps.currentPos.line = 1;
 		fakeps.currentPos.col = 1;
 		fakeps.currentPos.len = 1;
+
+		Parser::setStaticState(fakeps);
 
 
 		auto p = prof::Profile("find imports");

@@ -157,6 +157,26 @@ namespace Parser
 		EndOfFile,
 	};
 
+	class TokenList
+	{
+		public:
+		TokenList();
+		TokenList(size_t initSize);
+
+		~TokenList();
+
+		void add(const Token& t);
+		size_t size();
+		Token& operator[] (size_t index);
+		Token* _checkResize();
+
+		Token* _array;
+		size_t _capacity;
+		size_t _length;
+	};
+
+	// using TokenList = std::vector<Token>;
+
 
 	struct Token
 	{
@@ -202,7 +222,7 @@ namespace Parser
 	};
 
 
-
+	void setStaticState(ParserState& ps);
 
 
 
@@ -262,7 +282,7 @@ namespace Parser
 
 	std::string getModuleName(std::string filename);
 
-	std::string& arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	const std::string& arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
 	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 }

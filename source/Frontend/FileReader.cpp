@@ -15,6 +15,8 @@
 #include "parser.h"
 #include "compiler.h"
 
+#define USE_MMAP false
+
 #ifdef __MACH__
 #include <mach/vm_statistics.h>
 #define EXTRA_MMAP_FLAGS VM_FLAGS_SUPERPAGE_SIZE_2MB
@@ -29,7 +31,7 @@ using string_view = std::experimental::string_view;
 
 namespace Lexer
 {
-	Parser::Token getNextToken(std::vector<string_view>& lines, size_t* line, const string_view& whole, Parser::Pin& pos);
+	void getNextToken(std::vector<string_view>& lines, size_t* line, const string_view& whole, Parser::Pin& pos, Parser::Token* rettok);
 }
 
 namespace Compiler
@@ -81,8 +83,9 @@ namespace Compiler
 			// if we have at least 4mb worth of file.
 			// if not, then just 2 * pagesize.
 			#define MINIMUM_MMAP_THRESHOLD (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize())
+			#define _
 
-			if(fileLength >= MINIMUM_MMAP_THRESHOLD)
+			if(fileLength >= MINIMUM_MMAP_THRESHOLD && USE_MMAP)
 			{
 				// ok, do an mmap
 				fileContents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
@@ -96,34 +99,15 @@ namespace Compiler
 			{
 				// read normally
 				fileContents = new char[fileLength + 1];
-				read(fd, fileContents, fileLength);
+				size_t didRead = read(fd, fileContents, fileLength);
+				if(didRead != fileLength)
+				{
+					perror("There was an error getting reading the file");
+					exit(-1);
+				}
 			}
 			close(fd);
 		}
-
-
-
-
-
-		// std::ifstream fstr(fullPath);
-		// std::string fileContents;
-		// if(fstr)
-		// {
-		// 	auto p = prof::Profile("read file");
-
-		// 	std::ostringstream contents;
-		// 	contents << fstr.rdbuf();
-		// 	fstr.close();
-		// 	fileContents = contents.str();
-		// }
-		// else
-		// {
-		// 	perror("There was an error reading the file");
-		// 	exit(-1);
-		// }
-
-
-
 
 
 
@@ -165,6 +149,9 @@ namespace Compiler
 
 
 		auto p = prof::Profile("lex");
+
+		// assume an average of 1 token per line -- blank lines, etc.
+		// innards.tokens = TokenList(innards.lines.size() * 2);
 		TokenList& ts = innards.tokens;
 
 		{
@@ -175,13 +162,24 @@ namespace Compiler
 			Token curtok;
 
 			auto view = string_view(innards.contents);
-			while((curtok = Lexer::getNextToken(lines, &curLine, view, pos)).type != TType::EndOfFile)
-				ts.push_back(std::move(curtok));
+			Token* tok = 0;
+			do {
+
+				tok = &ts._array[ts.size()];
+				Lexer::getNextToken(lines, &curLine, view, pos, tok);
+				ts._length++;
+
+				// returns the last element so we can check properly;
+				// if the array got resized the pointer will be invalid.
+				tok = ts._checkResize();
+
+			} while(tok->type != TType::EndOfFile);
 		}
 
 		p.finish();
-		// prof::printResults();
-		// exit(0);
+
+		prof::printResults();
+		exit(0);
 
 
 		innards.didLex = true;
@@ -235,14 +233,17 @@ namespace Compiler
 
 	size_t getFileIDFromFilename(const std::string& name)
 	{
-		size_t i = existingNames[name];
-		if(i == 0)
+		if(existingNames.find(name) != existingNames.end())
+		{
+			return existingNames[name];
+		}
+		else
 		{
 			fileNames.push_back(name);
-			return fileNames.size();
-		}
+			existingNames[name] = fileNames.size() - 1;
 
-		return i;
+			return fileNames.size() - 1;
+		}
 	}
 
 	const std::vector<string_view>& getFileLines(size_t id)
@@ -257,6 +258,63 @@ namespace Compiler
 		return fileList[fp].lines;
 	}
 }
+
+
+
+
+
+namespace Parser
+{
+	#define INITIAL_SIZE 128
+	TokenList::TokenList() : TokenList(INITIAL_SIZE) { }
+
+	TokenList::TokenList(size_t init)
+	{
+		this->_array = (Token*) calloc(init, sizeof(Token));
+		this->_capacity = init;
+		this->_length = 0;
+	}
+
+	TokenList::~TokenList()
+	{
+		free(this->_array);
+	}
+
+	Token& TokenList::operator[] (size_t index)
+	{
+		iceAssert(index < this->_length);
+		return this->_array[index];
+	}
+
+	size_t TokenList::size()
+	{
+		return this->_length;
+	}
+
+	void TokenList::add(const Token& token)
+	{
+		this->_checkResize();
+		this->_array[this->_length] = token;
+		this->_length++;
+	}
+
+	Token* TokenList::_checkResize()
+	{
+		// check if we're out of it
+		if(this->_length == this->_capacity)
+		{
+			this->_array = (Token*) realloc(this->_array, this->_capacity * 2 * sizeof(Token));
+			memset(this->_array + this->_length, 0, this->_capacity * sizeof(Token));
+
+			iceAssert(this->_array);
+
+			this->_capacity *= 2;
+		}
+
+		return &this->_array[this->size() - 1];
+	}
+}
+
 
 
 
