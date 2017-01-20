@@ -17,7 +17,6 @@
 
 using namespace Ast;
 
-
 namespace Parser
 {
 	#define CreateAST_Pin(name, pin, ...)	(new name (pin, ##__VA_ARGS__))
@@ -2859,9 +2858,35 @@ namespace Parser
 	StringLiteral* parseStringLiteral(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::StringLiteral);
-		Token str = ps.eat();
+		Token tok = ps.eat();
 
-		auto ret = CreateAST(StringLiteral, str, str.text);
+		// do replacement here, instead of in the lexer.
+		std::string tmp = tok.text;
+		std::stringstream ss;
+
+		for(size_t i = 0; i < tmp.length(); i++)
+		{
+			if(tmp[i] == '\\')
+			{
+				i++;
+				switch(tmp[i])
+				{
+					// todo: handle hex sequences and stuff
+					case 'n':	ss << '\n';	break;
+					case 'b':	ss << '\b';	break;
+					case 'r':	ss << '\r';	break;
+					case 't':	ss << '\t';	break;
+					case '"':	ss << '\"'; break;
+					case '\\':	ss << '\\'; break;
+				}
+
+				continue;
+			}
+
+			ss << tmp[i];
+		}
+
+		auto ret = CreateAST(StringLiteral, tok, ss.str());
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_RawString);
 		if(attr & Attr_RawString)

@@ -171,7 +171,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 				error(this, "Character literal cannot be empty");
 
 			else if(this->str.length() > 1)
-				error(this, "Character literal can have at most 1 (ASCII) character");
+				error(this, "Character literal can have at most 1 (ASCII) character (have '%s')", this->str.c_str());
 
 			char c = this->str[0];
 			fir::ConstantValue* cv = fir::ConstantChar::get(c);

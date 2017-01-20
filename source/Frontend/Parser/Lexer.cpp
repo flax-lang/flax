@@ -87,6 +87,7 @@ namespace Lexer
 			tok.type = TType::Comment;
 			stream = stream.substr(0, 0);
 			(*line)++;
+			pos.line++;
 
 			// don't assign lines[line] = stream, since over here we've changed 'line' to be the next one.
 			flag = false;
@@ -394,7 +395,7 @@ namespace Lexer
 
 			// we already modified stream.
 			read = 0;
-			tok.text = num;
+			tok.text = stream.substr(0, num.length()).to_string();
 			tok.type = TType::Number;
 			tok.pin.len = num.length();
 
@@ -488,7 +489,6 @@ namespace Lexer
 			else if(tok.text == "if")					tok.type = TType::If;
 			else if(tok.text == "else")					tok.type = TType::Else;
 			else if(tok.text == "return")				tok.type = TType::Return;
-			else if(tok.text == "as")					{ tok.type = TType::As; if(isExclamation) { read++; tok.text = "as!"; } }
 			else if(tok.text == "is")					tok.type = TType::Is;
 			else if(tok.text == "switch")				tok.type = TType::Switch;
 			else if(tok.text == "case")					tok.type = TType::Case;
@@ -523,26 +523,48 @@ namespace Lexer
 			else if(tok.text == "typealias")			tok.type = TType::TypeAlias;
 			else if(tok.text == "protocol")				tok.type = TType::Protocol;
 			else if(tok.text == "override")				tok.type = TType::Override;
+
+			else if(tok.text == "as")					{ tok.type = TType::As; if(isExclamation) { read++; tok.type = TType::AsExclamation; } }
 			else										tok.type = TType::Identifier;
 		}
 		else if(!stream.empty() && stream[0] == '"')
 		{
-			// parse a string literal
-			std::stringstream ss;
+			// string literal
+			auto ss = std::stringstream();
 
-			unsigned long i = 1;
+			// because we want to avoid using std::string (ie. copying) in the lexer (Token), we must send the string over verbatim.
+			//
+			size_t i = 1;
 			for(; stream[i] != '"'; i++)
 			{
 				if(stream[i] == '\\')
 				{
-					i++;
-					switch(stream[i])
+					if(i + 1 == stream.size())
 					{
-						case 'n':	ss << "\n";	break;
-						case 'b':	ss << "\b";	break;
-						case 'r':	ss << "\r";	break;
-						case 't':	ss << "\t";	break;
-						case '\\':	ss << "\\"; break;
+						parserError("Unexpected end of input");
+					}
+					else if(stream[i + 1] == '"')
+					{
+						// add the quote and the backslash, and skip it.
+						ss << "\\\"";
+						i++;
+					}
+					// breaking string over two lines
+					else if(stream[i + 1] == '\n')
+					{
+						// skip it, then move to the next line
+						pos.line++;
+						pos.col = 1;
+						(*line)++;
+
+						i = 0;
+						stream = lines[*line];
+					}
+					else
+					{
+						// just put the backslash in.
+						// and don't skip the next one.
+						ss << '\\';
 					}
 
 					continue;
@@ -550,7 +572,7 @@ namespace Lexer
 
 				ss << stream[i];
 				if(i == stream.size() - 1 || stream[i] == '\n')
-					parserError(tok, "Expected closing '\"'");
+					parserError(Pin(pos.file, pos.line, pos.col + i, pos.len), "Expected closing '\"'");
 			}
 
 			tok.type = TType::StringLiteral;
@@ -598,15 +620,14 @@ namespace Lexer
 						parserError(tok, "Unknown token '%c'", stream[0]);
 				}
 
-				// tok.text = std::experimental::string_view(stream.begin(), 1);
-				tok.text = stream[0];
+				tok.text = std::experimental::string_view(stream.begin(), 1).to_string();
 				read = 1;
 			}
 			else if(utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)
 			{
 				read = utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER);
 
-				tok.text = (std::string) stream.substr(0, read);
+				tok.text = stream.substr(0, read).to_string();
 				tok.type = TType::UnicodeSymbol;
 			}
 			else
