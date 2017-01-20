@@ -9,7 +9,10 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "compiler.h"
+namespace Compiler
+{
+	bool showProfilerOutput();
+}
 
 namespace prof
 {
@@ -196,7 +199,7 @@ namespace prof
 			spaces += "- ";
 		}
 
-		printf("| %-67s | %-5zu | %-10.3lf | %-15.4lf |\n", (spaces + record->name).c_str(), record->calls,
+		printf("| %-61s | %-9zu | %-12.4lf | %-15.2lf |\n", (spaces + record->name).c_str(), record->calls,
 			record->avgTime, record->totalTime);
 
 		for(auto a : record->subs)
@@ -206,8 +209,8 @@ namespace prof
 	void printResults()
 	{
 		printf("\n");
-		printf("|                                name                                 | calls |   avg/ms   |    total/ms     |\n");
-		printf("|---------------------------------------------------------------------|-------|------------|-----------------|\n");
+		printf("|                             name                              |   calls   |    avg/ms    |    total/ms     |\n");
+		printf("|---------------------------------------------------------------|-----------|--------------|-----------------|\n");
 		printRecordSet(database[0], 0);
 		printf("|------------------------------------------------------------------------------------------------------------|\n");
 		// printRecordSet(database[PROFGROUP_MISC], 0);

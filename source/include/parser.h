@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ast.h"
+#include "util.h"
 #include "errors.h"
 
 #include <deque>
@@ -24,6 +25,12 @@ namespace Ast
 }
 
 
+namespace Lexer
+{
+	void getNextToken(std::vector<std::experimental::string_view>& lines, size_t* line, const std::experimental::string_view& whole,
+		Parser::Pin& pos, Parser::Token*);
+}
+
 namespace Parser
 {
 	enum class TType
@@ -42,6 +49,7 @@ namespace Parser
 		Else,
 		Return,
 		As,
+		AsExclamation,
 		Is,
 		Switch,
 		Case,
@@ -156,17 +164,21 @@ namespace Parser
 		EndOfFile,
 	};
 
+	using TokenList = util::FastVector<Token>;
+
+
+
 
 	struct Token
 	{
 		Pin pin;
-		std::string text;
 		TType type = TType::Invalid;
+		std::experimental::string_view text;
 	};
 
 	struct ParserState
 	{
-		explicit ParserState(Codegen::CodegenInstance* c, TokenList& tl); // : cgi(c) { }
+		explicit ParserState(Codegen::CodegenInstance* c, const TokenList& tl);
 
 		std::unordered_set<std::string> visited;
 
@@ -192,16 +204,18 @@ namespace Parser
 		const Token& eat();
 		const Token& front();
 
+		void reset();
+		const Token& skip(size_t i);
 		const Token& lookahead(size_t i);
 
 		private:
 
-		TokenList& tokens;
+		const TokenList& tokens;
 		size_t index = 0;
 	};
 
 
-
+	void setStaticState(ParserState& ps);
 
 
 
@@ -261,7 +275,7 @@ namespace Parser
 
 	std::string getModuleName(std::string filename);
 
-	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	const std::string& arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
 	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 }

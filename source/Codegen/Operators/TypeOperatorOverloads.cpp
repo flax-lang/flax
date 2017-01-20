@@ -51,7 +51,7 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::vector<fir::Type*> args)
 		if(this->func->decl->ident.kind != IdKind::Operator)
 		{
 			this->func->decl->ident.kind = IdKind::Operator;
-			this->func->decl->ident.name = this->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			// this->func->decl->ident.name = this->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 		}
 
 		// check if the operator is generic

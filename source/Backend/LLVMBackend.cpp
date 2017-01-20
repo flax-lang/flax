@@ -345,6 +345,9 @@ namespace Compiler
 					output = std::string(bytes, n);
 				});
 
+				// oh well.
+				// system(cmdline.c_str());
+
 
 
 				#else
