@@ -50,7 +50,7 @@ FLXFLAGS		+= -sysroot $(SYSROOT)
 TESTBIN			:= build/test
 GLTESTBIN		:= build/gltest
 
-TESTSRC			:= build/test.flx -profile
+TESTSRC			:= build/test.flx
 GLTESTSRC		:= build/gltest.flx
 
 

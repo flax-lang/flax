@@ -994,12 +994,7 @@ namespace fir
 
 	Value* IRBuilder::CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname)
 	{
-		std::vector<Value*> dargs;
-
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return this->CreateCall(fn, dargs, vname);
+		return this->CreateCall(fn, std::vector<Value*>(args.begin(), args.end()), vname);
 	}
 
 
