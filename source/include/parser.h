@@ -161,8 +161,8 @@ namespace Parser
 	struct Token
 	{
 		Pin pin;
-		std::string text;
 		TType type = TType::Invalid;
+		std::experimental::string_view text;
 	};
 
 	struct ParserState

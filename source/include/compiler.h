@@ -62,11 +62,14 @@ namespace Compiler
 
 	std::string getFileContents(std::string fullPath);
 	Parser::TokenList& getFileTokens(std::string fullPath);
-	std::vector<std::experimental::string_view> getFileLines(std::string fullPath);
+	const std::vector<std::experimental::string_view>& getFileLines(size_t id);
 
 	std::string getPathFromFile(std::string path);
 	std::string getFilenameFromPath(std::string path);
 	std::string getFullPathOfFile(std::string partial);
+
+	const std::string& getFilenameFromID(size_t fileID);
+	size_t getFileIDFromFilename(const std::string& name);
 
 	std::pair<std::string, std::string> parseCmdLineArgs(int argc, char** argv);
 

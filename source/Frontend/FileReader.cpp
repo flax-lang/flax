@@ -6,28 +6,40 @@
 #include <fstream>
 #include <unordered_map>
 
-#include <assert.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include "parser.h"
 #include "compiler.h"
 
+#ifdef __MACH__
+#include <mach/vm_statistics.h>
+#define EXTRA_MMAP_FLAGS VM_FLAGS_SUPERPAGE_SIZE_2MB
+#elif defined(MAP_HUGE_2MB)
+#define EXTRA_MMAP_FLAGS MAP_HUGE_2MB
+#else
+#define EXTRA_MMAP_FLAGS 0
+#endif
+
+using string_view = std::experimental::string_view;
+
+
 namespace Lexer
 {
-	// Parser::Token getNextToken(std::experimental::string_view& stream, Parser::Pin& pos);
-	Parser::Token getNextToken(std::vector<std::experimental::string_view>& lines, size_t* line, Parser::Pin& pos);
+	Parser::Token getNextToken(std::vector<string_view>& lines, size_t* line, const string_view& whole, Parser::Pin& pos);
 }
-
 
 namespace Compiler
 {
 	struct FileInnards
 	{
 		Parser::TokenList tokens;
-		std::vector<std::experimental::string_view> lines;
-		std::string contents;
+		std::vector<string_view> lines;
+		const char* contents;
+		size_t contentLength = 0;
 
 		bool isLexing = false;
 		bool didLex = false;
@@ -37,43 +49,98 @@ namespace Compiler
 
 	static void readFile(std::string fullPath)
 	{
-		std::ifstream fstr(fullPath);
+		using namespace Parser;
 
-		std::string fileContents;
-		if(fstr)
+		char* fileContents = 0;
+		size_t fileLength = 0;
+
 		{
 			auto p = prof::Profile("read file");
 
-			std::ostringstream contents;
-			contents << fstr.rdbuf();
-			fstr.close();
-			fileContents = contents.str();
+			// first, get the size of the file
+			struct stat st;
+			int ret = stat(fullPath.c_str(), &st);
+
+			if(ret != 0)
+			{
+				perror("There was an error getting the file size");
+				exit(-1);
+			}
+
+			fileLength = st.st_size;
+
+			int fd = open(fullPath.c_str(), O_RDONLY);
+			if(fd == -1)
+			{
+				perror("There was an error getting opening the file");
+				exit(-1);
+			}
+
+			// check if we should mmap
+			// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
+			// if we have at least 4mb worth of file.
+			// if not, then just 2 * pagesize.
+			#define MINIMUM_MMAP_THRESHOLD (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize())
+
+			if(fileLength >= MINIMUM_MMAP_THRESHOLD)
+			{
+				// ok, do an mmap
+				fileContents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
+				if(fileContents == MAP_FAILED)
+				{
+					perror("There was an error getting reading the file");
+					exit(-1);
+				}
+			}
+			else
+			{
+				// read normally
+				fileContents = new char[fileLength + 1];
+				read(fd, fileContents, fileLength);
+			}
+			close(fd);
 		}
-		else
-		{
-			perror("There was an error reading the file");
-			exit(-1);
-		}
+
+
+
+
+
+		// std::ifstream fstr(fullPath);
+		// std::string fileContents;
+		// if(fstr)
+		// {
+		// 	auto p = prof::Profile("read file");
+
+		// 	std::ostringstream contents;
+		// 	contents << fstr.rdbuf();
+		// 	fstr.close();
+		// 	fileContents = contents.str();
+		// }
+		// else
+		// {
+		// 	perror("There was an error reading the file");
+		// 	exit(-1);
+		// }
+
+
+
+
+
 
 
 		// split into lines
-		std::vector<std::experimental::string_view> rawlines;
-		std::vector<size_t> linePos;
+		std::vector<string_view> rawlines;
 
 		{
 			auto p = prof::Profile("lines");
-			// std::stringstream ss(fileContents);
-
-			std::experimental::string_view view = fileContents;
+			string_view view(fileContents, fileLength);
 
 			while(true)
 			{
 				size_t ln = view.find('\n');
-				if(ln != std::experimental::string_view::npos)
+				if(ln != string_view::npos)
 				{
-					linePos.push_back(ln);
 					rawlines.push_back(view.substr(0, ln + 1));
-
 					view.remove_prefix(ln + 1);
 				}
 				else
@@ -86,79 +153,47 @@ namespace Compiler
 		}
 
 
-		Parser::Pin pos;
+		Pin pos;
 		FileInnards& innards = fileList[fullPath];
 		{
-			pos.file = fullPath;
+			pos.fileID = getFileIDFromFilename(fullPath);
 
 			innards.lines = std::move(rawlines);
-			innards.contents = std::move(fileContents);
+			innards.contents = fileContents;
 			innards.isLexing = true;
 		}
 
 
 		auto p = prof::Profile("lex");
-		Parser::TokenList& ts = innards.tokens;
+		TokenList& ts = innards.tokens;
 
 		{
 			// copy lines.
 			auto lines = innards.lines;
 
 			size_t curLine = 0;
-			Parser::Token curtok;
+			Token curtok;
 
-			while((curtok = Lexer::getNextToken(lines, &curLine, pos)).type != Parser::TType::EndOfFile)
-				ts.push_back(curtok);
+			auto view = string_view(innards.contents);
+			while((curtok = Lexer::getNextToken(lines, &curLine, view, pos)).type != TType::EndOfFile)
+				ts.push_back(std::move(curtok));
 		}
 
-
-		/*
-			agv. performance characteristics:
-
-			using vector<> as the TokenList actually results in a 20% *slowdown* vs. using deque<>.
-			weird.
-
-			Also, simply lexing, regardless of the list type, takes about 300ms on the long file
-			- for deque<>, push_back takes 300ms total.
-			- vector<> takes about 400+ ms
-		*/
-
-
-		/*
-			vector (-O2):
-			2.48
-			2.33
-			2.33
-			2.33
-			2.36
-			2.28
-			2.24
-			2.52
-			2.44
-
-			avg: 2.37
-
-
-
-			deque (-O2):
-			2.24
-			2.25
-			2.22
-			2.27
-			2.21
-			2.26
-			2.25
-			2.16
-			2.20
-
-			avg: 2.23
-		*/
-
-
 		p.finish();
+		// prof::printResults();
+		// exit(0);
+
 
 		innards.didLex = true;
 		innards.isLexing = false;
+
+
+
+		/*
+			~175ms reading with c++
+			~20ms with read() -- split lines ~70ms
+			~4ms with mmap() -- split lines ~87ms
+		*/
 	}
 
 
@@ -177,19 +212,6 @@ namespace Compiler
 		return fileList[fullPath].tokens;
 	}
 
-
-	std::vector<std::experimental::string_view> getFileLines(std::string fullPath)
-	{
-		if(fileList.find(fullPath) == fileList.end())
-		{
-			readFile(fullPath);
-			assert(fileList.find(fullPath) != fileList.end());
-		}
-
-		return fileList[fullPath].lines;
-	}
-
-
 	std::string getFileContents(std::string fullPath)
 	{
 		if(fileList.find(fullPath) == fileList.end())
@@ -198,7 +220,41 @@ namespace Compiler
 			assert(fileList.find(fullPath) != fileList.end());
 		}
 
-		return fileList[fullPath].contents;
+		const auto& in = fileList[fullPath];
+		return std::string(in.contents, in.contentLength);
+	}
+
+
+	static std::vector<std::string> fileNames { "null" };
+	static std::unordered_map<std::string, size_t> existingNames;
+	const std::string& getFilenameFromID(size_t fileID)
+	{
+		iceAssert(fileID > 0 && fileID < fileNames.size());
+		return fileNames[fileID];
+	}
+
+	size_t getFileIDFromFilename(const std::string& name)
+	{
+		size_t i = existingNames[name];
+		if(i == 0)
+		{
+			fileNames.push_back(name);
+			return fileNames.size();
+		}
+
+		return i;
+	}
+
+	const std::vector<string_view>& getFileLines(size_t id)
+	{
+		std::string fp = getFilenameFromID(id);
+		if(fileList.find(fp) == fileList.end())
+		{
+			readFile(fp);
+			assert(fileList.find(fp) != fileList.end());
+		}
+
+		return fileList[fp].lines;
 	}
 }
 

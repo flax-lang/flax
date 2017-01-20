@@ -287,11 +287,8 @@ namespace Codegen
 				HighlightOptions ops;
 				ops.caret = aoo->pin;
 
-				if(aoo->func->decl->returnTypePos.file.size() > 0)
-				{
-					Parser::Pin hl = aoo->func->decl->returnTypePos;
-					ops.underlines.push_back(hl);
-				}
+				Parser::Pin hl = aoo->func->decl->returnTypePos;
+				ops.underlines.push_back(hl);
 
 				error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)",
 					aoo->lfunc->getReturnType()->str().c_str());
