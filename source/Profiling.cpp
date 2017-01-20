@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <unordered_map>
 
+namespace Compiler
+{
+	bool showProfilerOutput();
+}
+
 namespace prof
 {
 	struct Data
@@ -52,39 +57,46 @@ namespace prof
 	Profile::Profile(std::string n) : Profile(PROFGROUP_MISC, n) { }
 	Profile::Profile(int grp, std::string n)
 	{
-		this->name = n;
-		this->begin = prof::clock::now();
 		this->didRecord = false;
 		this->group = 0;
 
-		Data* nd = namemap[this->name];
-		if(!nd)
+		// don't do any of this shit if we aren't profiling, it just slows things down.
+		if(Compiler::showProfilerOutput())
 		{
-			nd = new Data(this->name);
-			namemap[this->name] = nd;
-		}
+			this->name = n;
+			this->begin = prof::clock::now();
+			this->didRecord = false;
+			this->group = 0;
 
-
-
-		if(stack[this->group].size() > 0)
-		{
-			auto parent = stack[this->group].back();
-			auto& subs = stack[this->group].back()->subs;
-
-			// must check that (a) we don't become our own parent, and (b) we handle recursion properly (check siblings of parent)
-			if(nd != parent && std::find(subs.begin(), subs.end(), nd) == subs.end() && (parent->parent == 0
-				|| std::find(parent->parent->subs.begin(), parent->parent->subs.end(), nd) == parent->parent->subs.end()))
+			Data* nd = namemap[this->name];
+			if(!nd)
 			{
-				subs.push_back(nd);
-				nd->parent = parent;
+				nd = new Data(this->name);
+				namemap[this->name] = nd;
 			}
-		}
-		else
-		{
-			database[this->group] = nd;
-		}
 
-		stack[this->group].push_back(nd);
+
+
+			if(stack[this->group].size() > 0)
+			{
+				auto parent = stack[this->group].back();
+				auto& subs = stack[this->group].back()->subs;
+
+				// must check that (a) we don't become our own parent, and (b) we handle recursion properly (check siblings of parent)
+				if(nd != parent && std::find(subs.begin(), subs.end(), nd) == subs.end() && (parent->parent == 0
+					|| std::find(parent->parent->subs.begin(), parent->parent->subs.end(), nd) == parent->parent->subs.end()))
+				{
+					subs.push_back(nd);
+					nd->parent = parent;
+				}
+			}
+			else
+			{
+				database[this->group] = nd;
+			}
+
+			stack[this->group].push_back(nd);
+		}
 	}
 
 
@@ -95,25 +107,28 @@ namespace prof
 
 	void Profile::finish()
 	{
-		iceAssert(stack.size() > 0);
+		if(Compiler::showProfilerOutput())
+		{
+			iceAssert(stack.size() > 0);
 
-		this->didRecord = true;
+			this->didRecord = true;
 
-		using namespace std::chrono;
-		using unit = duration<double, std::milli>;
+			using namespace std::chrono;
+			using unit = duration<double, std::milli>;
 
-		auto end = prof::clock::now();
+			auto end = prof::clock::now();
 
-		auto nd = namemap[this->name];
-		iceAssert(nd);
+			auto nd = namemap[this->name];
+			iceAssert(nd);
 
-		nd->calls++;
-		nd->timings.push_back(duration_cast<unit>(end - this->begin).count());
+			nd->calls++;
+			nd->timings.push_back(duration_cast<unit>(end - this->begin).count());
 
-		if(nd != stack[this->group].back())
-			_error_and_exit("Overlapping profiling regions at the same scope level are not supported");
+			if(nd != stack[this->group].back())
+				_error_and_exit("Overlapping profiling regions at the same scope level are not supported");
 
-		stack[this->group].pop_back();
+			stack[this->group].pop_back();
+		}
 	}
 
 
@@ -184,7 +199,7 @@ namespace prof
 			spaces += "- ";
 		}
 
-		printf("| %-67s | %-5zu | %-10.3lf | %-15.4lf |\n", (spaces + record->name).c_str(), record->calls,
+		printf("| %-61s | %-9zu | %-12.4lf | %-15.2lf |\n", (spaces + record->name).c_str(), record->calls,
 			record->avgTime, record->totalTime);
 
 		for(auto a : record->subs)
@@ -194,8 +209,8 @@ namespace prof
 	void printResults()
 	{
 		printf("\n");
-		printf("|                                name                                 | calls |   avg/ms   |    total/ms     |\n");
-		printf("|---------------------------------------------------------------------|-------|------------|-----------------|\n");
+		printf("|                             name                              |   calls   |    avg/ms    |    total/ms     |\n");
+		printf("|---------------------------------------------------------------|-----------|--------------|-----------------|\n");
 		printRecordSet(database[0], 0);
 		printf("|------------------------------------------------------------------------------------------------------------|\n");
 		// printRecordSet(database[PROFGROUP_MISC], 0);

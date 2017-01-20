@@ -12,8 +12,6 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#include <deque>
-#include <vector>
 #include <fstream>
 
 #include "llvm/IR/Verifier.h"
@@ -21,6 +19,7 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
@@ -35,11 +34,11 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-// #include "llvm/IRReader/IRReader.h"
-// #include "llvm/Transforms/Utils/Cloning.h"
-// #include "llvm/Transforms/Instrumentation.h"
-// #include "llvm/CodeGen/MIRParser/MIRParser.h"
-// #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "ir/type.h"
 #include "ir/value.h"
@@ -49,18 +48,17 @@
 #include "backend.h"
 #include "compiler.h"
 
-#include "llvm/IR/LLVMContext.h"
-
-#include <stdio.h>
-#include <spawn.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include "../tinyprocesslib/process.h"
 
 
 static llvm::LLVMContext globalContext;
+
+
+
+#ifdef _WIN32
+errno_t _putenv_s(const char* name, const char* value);
+#endif
+
 
 namespace Compiler
 {
@@ -69,7 +67,7 @@ namespace Compiler
 		return globalContext;
 	}
 
-	LLVMBackend::LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
+	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
 			_error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
@@ -246,12 +244,19 @@ namespace Compiler
 			}
 			else
 			{
-				char templ[] = "/tmp/fileXXXXXX";
-				int fd = mkstemp(templ);
+				std::string objname = "/tmp/flax_" + this->linkedModule->getModuleIdentifier();
 
+				int fd = open(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+				if(fd == -1)
+				{
+					exitless_error("Unable to create temporary file (%s) for linking", objname.c_str());
+					perror("open(2) error");
+
+					doTheExit();
+				}
 
 				write(fd, buffer.data(), buffer.size_in_bytes());
-				fsync(fd);
+				close(fd);
 
 
 				auto libs = Compiler::getLibrariesToLink();
@@ -280,7 +285,7 @@ namespace Compiler
 				argv[0] = "cc";
 				argv[1] = "-o";
 				argv[2] = oname.c_str();
-				argv[3] = templ;
+				argv[3] = objname.c_str();
 
 				size_t i = 4 + num_extra;
 
@@ -320,13 +325,36 @@ namespace Compiler
 
 				argv[s - 1] = 0;
 
+				std::string output;
+				int status = 0;
+
+
+
+
+				#if 1
+				std::string cmdline;
+				for(size_t i = 0; i < s - 1; i++)
+				{
+					cmdline += argv[i];
+
+					if(strcmp(argv[i], "-l") != 0 && strcmp(argv[i], "-L") != 0)
+						cmdline += " ";
+				}
+
+				tinyproclib::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
+					output = std::string(bytes, n);
+				});
+
+				// oh well.
+				// system(cmdline.c_str());
+
+
+
+				#else
 				int outpipe[2];
 				iceAssert(pipe(outpipe) == 0);
 
-				std::string output;
-
 				pid_t pid = fork();
-				int status = 0;
 				if(pid == 0)
 				{
 					// in child, pid == 0.
@@ -364,9 +392,10 @@ namespace Compiler
 
 					status = WEXITSTATUS(s);
 				}
+				#endif
 
 				// delete the temp file
-				std::remove(templ);
+				// std::remove(templ);
 
 				delete[] argv;
 
@@ -558,8 +587,18 @@ namespace Compiler
 
 
 		// set the things
-		setenv("LD_LIBRARY_PATH", env.c_str(), 1);
-		setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
+
+		#ifndef _WIN32
+		{
+			setenv("LD_LIBRARY_PATH", env.c_str(), 1);
+			setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
+		}
+		#else
+		{
+			_putenv_s("LD_LIBRARY_PATH", env.c_str());
+			_putenv_s("DYLD_FRAMEWORK_PATH", fenv.c_str());
+		}
+		#endif
 
 
 
@@ -635,8 +674,18 @@ namespace Compiler
 
 
 		// restore
-		setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
-		setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
+
+		#ifndef _WIN32
+		{
+			setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
+			setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
+		}
+		#else
+		{
+			_putenv_s("LD_LIBRARY_PATH", penv.c_str());
+			_putenv_s("DYLD_FRAMEWORK_PATH", pfenv.c_str());
+		}
+		#endif
 	}
 
 
@@ -783,11 +832,35 @@ namespace Compiler
 
 
 
+// static std::string _makeCmdLine(const char* fmt, ...)
+// {
+// 	va_list ap;
+// 	va_list ap2;
+
+// 	va_start(ap, fmt);
+// 	va_copy(ap2, ap);
+
+// 	ssize_t size = vsnprintf(0, 0, fmt, ap2);
+
+// 	va_end(ap2);
 
 
+// 	// return -1 to be compliant if
+// 	// size is less than 0
+// 	iceAssert(size >= 0);
 
+// 	// alloc with size plus 1 for `\0'
+// 	char* str = new char[size + 1];
 
+// 	// format string with original
+// 	// variadic arguments and set new size
+// 	vsprintf(str, fmt, ap);
 
+// 	std::string ret = str;
+// 	delete[] str;
+
+// 	return ret;
+// };
 
 
 

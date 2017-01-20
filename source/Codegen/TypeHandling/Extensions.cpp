@@ -21,7 +21,7 @@ fir::Type* ExtensionDef::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 {
-	this->ident.scope = cgi->getFullScope();
+	// this->ident.scope = cgi->getFullScope();
 	this->parentRoot = cgi->rootNode;
 
 	// see if we have nested types
@@ -148,7 +148,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(f->decl->ident.name == tf->decl->ident.name)
 				{
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto p : tf->decl->params)
 						ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -172,7 +172,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				if(f->op == tf->op)
 				{
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto p : tf->func->decl->params)
 						ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -194,7 +194,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			FuncDefPair fp(0, f->getterFn->decl, f->getterFn);
 			for(auto tf : this->subscriptOverloads)
 			{
-				std::deque<fir::Type*> ps;
+				std::vector<fir::Type*> ps;
 				for(auto p : tf->decl->params)
 					ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -213,7 +213,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			FuncDefPair fp(0, f->func->decl, f->func);
 			for(auto tf : this->assignmentOverloads)
 			{
-				std::deque<fir::Type*> ps;
+				std::vector<fir::Type*> ps;
 				for(auto p : tf->func->decl->params)
 					ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -271,7 +271,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					if(f->decl->ident.name == tf->decl->ident.name)
 					{
-						std::deque<fir::Type*> ps;
+						std::vector<fir::Type*> ps;
 						for(auto p : tf->decl->params)
 							ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -295,7 +295,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					if(f->op == tf->op)
 					{
-						std::deque<fir::Type*> ps;
+						std::vector<fir::Type*> ps;
 						for(auto p : tf->func->decl->params)
 							ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -317,7 +317,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				FuncDefPair fp(0, f->getterFn->decl, f->getterFn);
 				for(auto tf : this->subscriptOverloads)
 				{
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto p : tf->decl->params)
 						ps.push_back(p->getType(cgi, true));	// allow fail
 
@@ -336,7 +336,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				FuncDefPair fp(0, f->func->decl, f->func);
 				for(auto tf : this->assignmentOverloads)
 				{
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto p : tf->func->decl->params)
 						ps.push_back(p->getType(cgi, true));	// allow fail
 

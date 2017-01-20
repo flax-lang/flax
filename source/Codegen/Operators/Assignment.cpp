@@ -18,7 +18,41 @@ namespace Operators
 		if(!(vrname = dynamic_cast<VarRef*>(ma->right)))
 			return 0;
 
-		fir::Type* leftType = (ma->matype == MAType::LeftVariable ? ma->left->getType(cgi) : cgi->resolveStaticDotOperator(ma, false).second);
+
+		// check if the left is a varref
+		fir::Type* leftType = 0;
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->left))
+		{
+			// check if it's a variable at all.
+			// yes -- ok good.
+			// no -- break early.
+			if(auto v = cgi->getSymInst(ma->left, vr->name))
+				leftType = v->getType()->getPointerElementType();
+
+			else
+				return 0;
+		}
+		else if(MemberAccess* lma = dynamic_cast<MemberAccess*>(ma->left))
+		{
+			// using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
+			auto variant = cgi->resolveTypeOfMA(lma, 0, false);
+			if(variant.index() == 0)
+				leftType = mpark::get<fir::Type*>(variant);
+
+			else if(variant.index() == 2)
+				leftType = mpark::get<TypePair_t>(variant).first;
+
+			else
+				return 0;
+		}
+		else
+		{
+			// no chance.
+			return 0;
+		}
+
+
+		iceAssert(leftType);
 
 		if(leftType->isPrimitiveType() && cgi->getExtensionsForBuiltinType(leftType).size() > 0)
 		{
@@ -99,7 +133,7 @@ namespace Operators
 	}
 
 
-	Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t operatorAssign(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
@@ -179,8 +213,9 @@ namespace Operators
 				if(!ind->getType()->isIntegerType())
 					error(ai->index, "Subscript index must be an integer type, got '%s'", ind->getType()->str().c_str());
 
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind);
-				cgi->irb.CreateCall2(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind);
+				auto loc = fir::ConstantString::get(Parser::pinToString(ai->pin));
+				cgi->irb.CreateCall3(RuntimeFuncs::String::getCheckLiteralWriteFunction(cgi), leftr.value, ind, loc);
+				cgi->irb.CreateCall3(RuntimeFuncs::String::getBoundsCheckFunction(cgi), leftr.value, ind, loc);
 
 				fir::Value* dp = cgi->irb.CreateGetStringData(leftr.value);
 				fir::Value* ptr = cgi->irb.CreateGetPointer(dp, ind);
@@ -230,7 +265,7 @@ namespace Operators
 
 
 
-	Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t generalCompoundAssignOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());

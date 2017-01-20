@@ -31,7 +31,7 @@ namespace Array
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() }, fir::Type::getVoid(), false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
@@ -62,11 +62,12 @@ namespace Array
 				// fprintf(stderr, "", bla bla)
 
 				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Tried to index array at index '%zd'; length is only '%zd'\n");
+				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
+				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
 
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, ind, max });
+				cgi->irb.CreateCall(fprintfn, { err, fmtstr, posstr, ind, max });
 
 				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
 				cgi->irb.CreateUnreachable();

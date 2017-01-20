@@ -119,11 +119,11 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantStruct* get(StructType* st, std::deque<ConstantValue*> members);
+		static ConstantStruct* get(StructType* st, std::vector<ConstantValue*> members);
 
 		protected:
-		ConstantStruct(StructType* st, std::deque<ConstantValue*> members);
-		std::deque<ConstantValue*> members;
+		ConstantStruct(StructType* st, std::vector<ConstantValue*> members);
+		std::vector<ConstantValue*> members;
 	};
 
 	struct ConstantString : ConstantValue
@@ -143,12 +143,12 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantTuple* get(std::deque<ConstantValue*> mems);
-		std::deque<ConstantValue*> getValues();
+		static ConstantTuple* get(std::vector<ConstantValue*> mems);
+		std::vector<ConstantValue*> getValues();
 
 		protected:
-		ConstantTuple(std::deque<ConstantValue*> mems);
-		std::deque<ConstantValue*> values;
+		ConstantTuple(std::vector<ConstantValue*> mems);
+		std::vector<ConstantValue*> values;
 	};
 
 

@@ -8,13 +8,13 @@
 namespace fir
 {
 	Value::Value(Type* t)
+		: ident("", IdKind::Name)
 	{
 		static size_t vnames = 0;
 		this->valueType = t;
 
 		this->id = vnames;
 		this->source = 0;
-		this->ident = Identifier("", IdKind::Name);
 		vnames++;
 
 		if(this->id == 8555)
@@ -61,7 +61,7 @@ namespace fir
 	void Value::transferUsesTo(Value* other)
 	{
 		// check.
-		std::deque<Value*> culled;
+		std::vector<Value*> culled;
 
 		// todo: O(N^2)
 		for(auto v : this->users)

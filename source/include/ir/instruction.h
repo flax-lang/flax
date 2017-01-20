@@ -8,11 +8,6 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include <string>
-#include <vector>
-#include <deque>
-#include <unordered_map>
-
 #include "value.h"
 
 namespace Ast
@@ -159,7 +154,7 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::deque<Value*> vals);
+		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::vector<Value*> vals);
 		std::string str();
 
 		Value* getResult();
@@ -177,7 +172,7 @@ namespace fir
 		bool sideEffects;
 		Value* realOutput;
 		IRBlock* parentBlock;
-		std::deque<Value*> operands;
+		std::vector<Value*> operands;
 	};
 }
 

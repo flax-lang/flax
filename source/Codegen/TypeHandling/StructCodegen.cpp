@@ -56,7 +56,11 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto nested : this->nestedTypes)
 	{
 		cgi->pushNestedTypeScope(this);
+		cgi->pushNamespaceScope(this->ident.name);
+
 		nested.first->codegen(cgi);
+
+		cgi->popNamespaceScope();
 		cgi->popNestedTypeScope();
 	}
 
@@ -160,15 +164,13 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return this->createdType;
 
-	this->ident.scope = cgi->getFullScope();
-
-
-
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
 		cgi->pushNestedTypeScope(this);
+		cgi->pushNamespaceScope(this->ident.name);
 		nested.second = nested.first->createType(cgi);
+		cgi->popNamespaceScope();
 		cgi->popNestedTypeScope();
 	}
 
@@ -176,7 +178,7 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 
 
 
-	std::deque<std::pair<std::string, fir::Type*>> types;
+	std::vector<std::pair<std::string, fir::Type*>> types;
 
 
 	if(cgi->isDuplicateType(this->ident))

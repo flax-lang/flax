@@ -40,7 +40,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 }
 
 
-static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::deque<fir::Type*> argtypes, fir::Type* rettype,
+static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::vector<fir::Type*> argtypes, fir::Type* rettype,
 	bool mangle)
 {
 	fir::FunctionType* ft = 0;
@@ -49,7 +49,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	// add the things
 	// note: the following won't affect non-generic functions.
 	// this is to allow type normalisation with the function type *properly*
-	std::deque<fir::ParametricType*> tparams;
+	std::vector<fir::ParametricType*> tparams;
 
 	for(auto t : fd->genericTypes)
 		tparams.push_back(fir::ParametricType::get(t.first));
@@ -100,7 +100,13 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		// 	cgi->addPublicFunc(FuncDefPair(func, fd, 0));
 
 		if(fd->parentClass == 0)
-			cgi->addFunctionToScope(FuncDefPair(func, fd, 0));
+		{
+			// if(fd->ident.name == "variadicTest")
+			// {
+			// 	info("%zu %s %p", fd->ident.scope.size(), fd->ident.scope[0].c_str(), cgi->getFuncTreeFromNS(fd->ident.scope));
+			// }
+			cgi->addFunctionToScope(FuncDefPair(func, fd, 0), cgi->getFuncTreeFromNS(fd->ident.scope));
+		}
 	}
 
 	fd->generatedFunc = func;
@@ -159,9 +165,17 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
 
 	if(this->ident.scope.empty())
-		this->ident.scope = cgi->getFullScope();
+		error(this, "no scope");
+
+	if(this->didCodegen)
+	{
+		exitless_error("again??");
+		iceAssert(this->generatedFunc);
+		return Result_t(this->generatedFunc, 0);
+	}
 
 
+	// printf("gen func: %s\n", this->ident.str().c_str());
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
 	bool isMemberFunction = (this->parentClass != nullptr);
@@ -187,7 +201,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 			this->attribs |= Attr_NoMangle;
 	}
 
-	std::deque<fir::Type*> argtypes;
+	std::vector<fir::Type*> argtypes;
 	fir::Type* returnType = 0;
 	cgi->pushGenericTypeStack();
 	{
@@ -209,9 +223,10 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 		if(st == 0)
 			st = this->parentClass->createType(cgi);
 
-		argtypes.push_front(st->getPointerTo());
+		argtypes.insert(argtypes.begin(), st->getPointerTo());
 	}
 
+	this->didCodegen = true;
 	bool disableMangle = (this->attribs & Attr_NoMangle || this->isFFI);
 	return generateActualFuncDecl(cgi, this, argtypes, returnType, !disableMangle);
 }

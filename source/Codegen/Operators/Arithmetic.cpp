@@ -86,7 +86,7 @@ namespace Operators
 
 
 	static Result_t performGeneralArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, fir::Value* lhs, fir::Value* lhsptr,
-		fir::Value* rhs, fir::Value* rhsptr, std::deque<Expr*> exprs)
+		fir::Value* rhs, fir::Value* rhsptr, std::vector<Expr*> exprs)
 	{
 		auto opstr = Parser::arithmeticOpToString(cgi, op);
 
@@ -448,8 +448,6 @@ namespace Operators
 					// something like that
 
 					// ok. do bitwise and.
-					cgi->irb.CreateBitwiseXOR(fir::ConstantValue::getNullValue(fir::Type::getInt64()), fir::ConstantValue::getNullValue(fir::Type::getInt64()));
-
 					cgi->irb.CreateStore(cgi->irb.CreateBitwiseAND(res, cgi->irb.CreateLoad(retval)), retval);
 				}
 			}
@@ -500,7 +498,7 @@ namespace Operators
 	}
 
 
-	Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::deque<Expr*> args)
+	Result_t generalArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, std::vector<Expr*> args)
 	{
 		auto opstr = Parser::arithmeticOpToString(cgi, op);
 

@@ -30,7 +30,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(this->didCreateType)
 		return this->createdType;
 
-	this->ident.scope = cgi->getFullScope();
+	// this->ident.scope = cgi->getFullScope();
 
 	if(cgi->isDuplicateType(this->ident))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Type);
@@ -54,7 +54,7 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(prev->isPrimitiveType() && prev->toPrimitiveType()->isLiteralType())
 		prev = prev->toPrimitiveType()->getUnliteralType();
 
-	std::deque<std::string> fullScope = cgi->getFullScope();
+	std::vector<std::string> fullScope = cgi->getFullScope();
 
 
 	std::map<std::string, fir::ConstantValue*> casevals;

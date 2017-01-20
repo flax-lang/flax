@@ -56,7 +56,11 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 	for(auto nested : this->nestedTypes)
 	{
 		cgi->pushNestedTypeScope(this);
+		cgi->pushNamespaceScope(this->ident.name);
+
 		nested.first->codegen(cgi);
+
+		cgi->popNamespaceScope();
 		cgi->popNestedTypeScope();
 	}
 
@@ -272,20 +276,24 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 		return this->createdType;
 
 
-	this->ident.scope = cgi->getFullScope();
+	// this->ident.scope = cgi->getFullScope();
 
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
 		cgi->pushNestedTypeScope(this);
+		cgi->pushNamespaceScope(this->ident.name);
+
 		nested.second = nested.first->createType(cgi);
+
+		cgi->popNamespaceScope();
 		cgi->popNestedTypeScope();
 	}
 
 
 
-	std::deque<std::pair<std::string, fir::Type*>> types;
+	std::vector<std::pair<std::string, fir::Type*>> types;
 
 
 

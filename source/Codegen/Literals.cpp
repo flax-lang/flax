@@ -11,17 +11,35 @@ using namespace Codegen;
 Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
 	// check builtin type
-	if(this->decimal)
+	// if(this->decimal)
+	// {
+	// 	return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), this->dval), 0);
+	// }
+	// else if(this->needUnsigned)
+	// {
+	// 	return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), (uint64_t) this->ival), 0);
+	// }
+	// else
+	// {
+	// 	return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), this->ival), 0);
+	// }
+
+	try
 	{
-		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), this->dval), 0);
+		int64_t num = std::stoll(this->str);
+		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), num), 0);
 	}
-	else if(this->needUnsigned)
+	catch(std::out_of_range& e)
 	{
-		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), (uint64_t) this->ival), 0);
-	}
-	else
-	{
-		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), this->ival), 0);
+		try
+		{
+			uint64_t num = std::stoull(this->str);
+			return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), num), 0);
+		}
+		catch(std::out_of_range& e1)
+		{
+			error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+		}
 	}
 }
 
@@ -67,17 +85,22 @@ static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
 
 fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	if(this->decimal)
+	try
 	{
-		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
-	}
-	else if(this->needUnsigned)
-	{
-		return fir::PrimitiveType::getUnspecifiedLiteralUint();
-	}
-	else
-	{
+		std::stoll(this->str);
 		return fir::PrimitiveType::getUnspecifiedLiteralInt();
+	}
+	catch(std::out_of_range& e)
+	{
+		try
+		{
+			std::stoull(this->str);
+			return fir::PrimitiveType::getUnspecifiedLiteralUint();
+		}
+		catch(std::out_of_range& e1)
+		{
+			error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+		}
 	}
 }
 
@@ -148,7 +171,7 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 				error(this, "Character literal cannot be empty");
 
 			else if(this->str.length() > 1)
-				error(this, "Character literal can have at most 1 (ASCII) character");
+				error(this, "Character literal can have at most 1 (ASCII) character (have '%s')", this->str.c_str());
 
 			char c = this->str[0];
 			fir::ConstantValue* cv = fir::ConstantChar::get(c);
@@ -289,7 +312,7 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 
 
-
+static size_t _counter = 0;
 fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	// todo: handle named tuples.
@@ -304,7 +327,7 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 		for(Expr* e : this->values)
 			this->ltypes.push_back(_makeReal(e->getType(cgi)));
 
-		this->ident.name = "__anonymoustuple_" + std::to_string(cgi->typeMap.size());
+		this->ident.name = "__anonymoustuple_" + std::to_string(_counter++);
 		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
 		this->didCreateType = true;
 
@@ -331,7 +354,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	// first check if we can make a constant.
 	bool allConst = true;
-	std::deque<fir::Value*> vals;
+	std::vector<fir::Value*> vals;
 	for(auto v : this->values)
 	{
 		auto cgv = v->codegen(cgi).value;
@@ -342,7 +365,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	if(allConst)
 	{
-		std::deque<fir::ConstantValue*> cvs;
+		std::vector<fir::ConstantValue*> cvs;
 		for(auto v : vals)
 		{
 			auto cv = dynamic_cast<fir::ConstantValue*>(v); iceAssert(cv);

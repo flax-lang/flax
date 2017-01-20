@@ -20,27 +20,28 @@ namespace GenError
 {
 	static void printContext(HighlightOptions ops)
 	{
-		std::vector<std::string> lines = Compiler::getFileLines(ops.caret.file);
+		auto lines = Compiler::getFileLines(ops.caret.fileID);
 		if(lines.size() > ops.caret.line - 1)
 		{
-			std::string orig = lines[ops.caret.line - 1];
-			std::string ln;
+			std::string orig = lines[ops.caret.line - 1].to_string();
+
+			std::stringstream ln;
 
 			for(auto c : orig)
 			{
 				if(c == '\t')
 				{
 					for(size_t i = 0; i < TAB_WIDTH; i++)
-						ln += " ";
+						ln << " ";
 				}
-				else
+				else if(c != '\n')
 				{
-					ln += c;
+					ln << c;
 				}
 			}
 
 
-			fprintf(stderr, "%s\n", ln.c_str());
+			fprintf(stderr, "%s\n", ln.str().c_str());
 
 			size_t cursorX = 1;
 
@@ -48,7 +49,7 @@ namespace GenError
 			{
 				for(uint64_t i = 1; i <= ops.caret.col - 1; i++)
 				{
-					if(ln[i - 1] == '\t')
+					if(ln.str()[i - 1] == '\t')
 					{
 						for(size_t j = 0; j < TAB_WIDTH; j++)
 						{
@@ -124,14 +125,16 @@ __attribute__ ((noreturn)) void doTheExit()
 	#endif
 }
 
-void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list ap)
+void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list _ap)
 {
 	if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
 		return;
 
+	va_list ap;
+	va_copy(ap, _ap);
 
-	char* alloc = nullptr;
-	vasprintf(&alloc, msg, ap);
+	// char* alloc = nullptr;
+	// vasprintf(&alloc, msg, ap);
 
 	auto colour = COLOUR_RED_BOLD;
 	if(strcmp(type, "Warning") == 0)
@@ -145,26 +148,27 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
+	std::string filename = Compiler::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)" : Compiler::getFilenameFromID(ops.caret.fileID));
 
-	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
-		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
+	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
+		fprintf(stderr, "%s(%s:%d:%d) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
-	fprintf(stderr, "%s%s%s%s: %s%s\n", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "", alloc, COLOUR_RESET);
+	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
+	vfprintf(stderr, msg, ap);
+	fprintf(stderr, "%s\n", COLOUR_RESET);
+
 
 	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{
 		std::vector<std::string> lines;
-		if(ops.caret.file.length() > 0)
-		{
+		if(ops.caret.fileID > 0)
 			GenError::printContext(ops);
-		}
 	}
 
 	fprintf(stderr, "\n");
 
 	va_end(ap);
-	free(alloc);
+	// free(alloc);
 
 	if(doExit)
 	{
@@ -204,7 +208,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", true, ap);
@@ -238,7 +242,7 @@ void exitless_error(Expr* relevantast, HighlightOptions ops, const char* msg, ..
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", false, ap);
@@ -276,7 +280,7 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Warning", false, ap);
@@ -307,7 +311,7 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Note", false, ap);
@@ -407,7 +411,7 @@ namespace GenError
 		error(e, "Type %s does not have a member '%s'", type.c_str(), member.c_str());
 	}
 
-	void noFunctionTakingParams(CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::deque<Expr*> ps)
+	void noFunctionTakingParams(CodegenInstance* cgi, Expr* e, std::string type, std::string name, std::vector<Expr*> ps)
 	{
 		std::string prs = "";
 		for(auto p : ps)
@@ -428,7 +432,7 @@ namespace GenError
 		error(op, ops, "Cannot assign to immutable expression '%s'", cgi->printAst(value).c_str());
 	}
 
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args,
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::vector<Ast::Expr*> args,
 		std::map<Func*, std::pair<std::string, Expr*>> errs)
 	{
 		if(errs.empty())
@@ -448,7 +452,7 @@ namespace GenError
 	}
 
 
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::deque<Ast::Expr*> args)
+	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Expr* expr, std::string name, std::vector<Ast::Expr*> args)
 	{
 		auto cands = cgi->resolveFunctionName(name);
 		auto tup = getPrettyNoSuchFunctionError(cgi, args, cands);
@@ -466,8 +470,8 @@ namespace GenError
 
 
 
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::deque<Expr*> args,
-		std::deque<FuncDefPair> cands)
+	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(CodegenInstance* cgi, std::vector<Expr*> args,
+		std::vector<FuncDefPair> cands)
 	{
 		std::vector<std::string> argtypes;
 		HighlightOptions ops;
@@ -489,7 +493,7 @@ namespace GenError
 			argstr = argstr.substr(2);
 
 		std::string candidates;
-		std::deque<FuncDefPair> reses;
+		std::vector<FuncDefPair> reses;
 
 		for(auto fs : cands)
 		{
@@ -513,7 +517,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = ma->pin.file;
+		ret.fileID = ma->pin.fileID;
 		ret.line = ma->pin.line;
 		ret.col = left.col;
 		ret.len = (right.col + right.len) - left.len;
@@ -527,7 +531,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = bo->pin.file;
+		ret.fileID = bo->pin.fileID;
 		ret.line = bo->pin.line;
 		ret.col = left.col;
 		ret.len = (right.col + right.len) - left.col;
@@ -541,7 +545,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = arr.file;
+		ret.fileID = arr.fileID;
 		ret.line = arr.line;
 		ret.col = arr.col;
 
