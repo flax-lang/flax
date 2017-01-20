@@ -47,12 +47,12 @@ namespace Parser
 	struct Pin
 	{
 		Pin() : fileID(0), line(1), col(1), len(0) { }
-		Pin(size_t f, size_t l, size_t c, size_t ln) : fileID(f), line(l), col(c), len(ln) { }
+		Pin(int32_t f, int32_t l, int32_t c, int32_t ln) : fileID(f), line(l), col(c), len(ln) { }
 
-		size_t fileID;
-		size_t line;
-		size_t col;
-		size_t len;
+		int32_t fileID;
+		int32_t line;
+		int32_t col;
+		int32_t len;
 	};
 
 	struct Token;

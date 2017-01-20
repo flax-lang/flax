@@ -185,8 +185,7 @@ namespace Compiler
 		// NOTE: make sure resolveImport **DOES NOT** use codegeninstance, cuz it's 0.
 
 		auto q = prof::Profile("getFileTokens");
-		TokenList copy = Compiler::getFileTokens(currentMod);
-		ParserState fakeps(0, copy);
+		ParserState fakeps(0, Compiler::getFileTokens(currentMod));
 		q.finish();
 
 		fakeps.currentPos.fileID = getFileIDFromFilename(currentMod);
@@ -196,18 +195,18 @@ namespace Compiler
 
 		Parser::setStaticState(fakeps);
 
-
 		auto p = prof::Profile("find imports");
-		while(fakeps.hasTokens())
-		{
-			Token t = fakeps.front();
 
-			if(t.type == TType::Import)
+		for(size_t imp : Compiler::getImportTokenLocationsForFile(currentMod))
+		{
+			fakeps.reset();
+			Token t = fakeps.skip(imp);
+
+			iceAssert(t.type == TType::Import);
 			{
 				Import* imp = parseImport(fakeps);
 
 				std::string file = Compiler::getFullPathOfFile(Compiler::resolveImport(imp, Compiler::getFullPathOfFile(currentMod)));
-
 				g->addModuleDependency(currentMod, file, imp);
 
 				if(!visited[file])
@@ -216,11 +215,8 @@ namespace Compiler
 					_resolveImportGraph(g, visited, file, curpath);
 				}
 			}
-			else
-			{
-				fakeps.pop();
-			}
 		}
+
 		p.finish();
 	}
 
