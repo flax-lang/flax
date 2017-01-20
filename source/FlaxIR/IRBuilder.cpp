@@ -909,7 +909,7 @@ namespace fir
 	#endif
 
 
-	Value* IRBuilder::CreateCall(Function* fn, std::deque<Value*> args, std::string vname)
+	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args, std::string vname)
 	{
 		// in theory we should still check, but i'm lazy right now
 		// TODO.
@@ -986,40 +986,25 @@ namespace fir
 			}
 		}
 
-		args.push_front(fn);
+		args.insert(args.begin(), fn);
 
 		Instruction* instr = new Instruction(OpKind::Value_CallFunction, true, this->currentBlock, fn->getType()->getReturnType(), args);
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateCall(Function* fn, std::vector<Value*> args, std::string vname)
-	{
-		std::deque<Value*> dargs;
-
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return this->CreateCall(fn, dargs, vname);
-	}
-
 	Value* IRBuilder::CreateCall(Function* fn, std::initializer_list<Value*> args, std::string vname)
 	{
-		std::deque<Value*> dargs;
-
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return this->CreateCall(fn, dargs, vname);
+		return this->CreateCall(fn, std::vector<Value*>(args.begin(), args.end()), vname);
 	}
 
 
 
 
 
-	Value* IRBuilder::CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::deque<Value*> args, std::string vname)
+	Value* IRBuilder::CreateCallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname)
 	{
 		// we can't really check anything.
-		args.push_front(fn);
+		args.insert(args.begin(), fn);
 
 		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, true, this->currentBlock, ft->getReturnType(), args);
 		return this->addInstruction(instr, vname);
@@ -1088,7 +1073,7 @@ namespace fir
 		iceAssert(entry);
 
 		// insert at the front (back = no guarantees)
-		entry->instructions.push_front(instr);
+		entry->instructions.insert(entry->instructions.begin(), instr);
 
 		return ret;
 	}
@@ -1350,7 +1335,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::CreateInsertValue(Value* val, std::deque<size_t> inds, Value* elm, std::string vname)
+	Value* IRBuilder::CreateInsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
@@ -1370,7 +1355,7 @@ namespace fir
 				elm->getType()->str().c_str(), et->str().c_str());
 		}
 
-		std::deque<Value*> args = { val, elm };
+		std::vector<Value*> args = { val, elm };
 		for(auto id : inds)
 			args.push_back(fir::ConstantInt::getInt64(id));
 
@@ -1379,7 +1364,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateExtractValue(Value* val, std::deque<size_t> inds, std::string vname)
+	Value* IRBuilder::CreateExtractValue(Value* val, std::vector<size_t> inds, std::string vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
@@ -1393,7 +1378,7 @@ namespace fir
 
 		iceAssert(et);
 
-		std::deque<Value*> args = { val };
+		std::vector<Value*> args = { val };
 		for(auto id : inds)
 			args.push_back(fir::ConstantInt::getInt64(id));
 

@@ -9,7 +9,10 @@ std::string Identifier::str() const
 	std::string ret;
 
 	for(auto s : scope)
-		ret += s + ".";
+	{
+		if(s.size() > 0)
+			ret += s + ".";
+	}
 
 	ret += name;
 

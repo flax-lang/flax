@@ -56,7 +56,8 @@ namespace Codegen
 
 				newBlock->setFunction(ffn);
 				newBlock->setName("call_autoinit");
-				ffn->getBlockList().push_front(newBlock);
+				auto& blockList = ffn->getBlockList();
+				blockList.insert(blockList.begin(), newBlock);
 
 				cgi->irb.setCurrentBlock(newBlock);
 
@@ -85,7 +86,7 @@ namespace Codegen
 				if(f != fn && f->decl->ident.name == fn->decl->ident.name)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : fn->decl->params)
 						ps.push_back(e->getType(cgi, true));
 
@@ -171,10 +172,11 @@ namespace Codegen
 
 			if(c->getter)
 			{
-				std::deque<VarDecl*> params;
+				std::vector<VarDecl*> params;
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_get" + lenstr, params, c->ptype);
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
+				fakeDecl->isStatic = c->isStatic;
 				fakeDecl->parentClass = cls;
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -189,10 +191,11 @@ namespace Codegen
 				VarDecl* setterArg = new VarDecl(c->pin, c->setterArgName, true);
 				setterArg->ptype = c->ptype;
 
-				std::deque<VarDecl*> params { setterArg };
+				std::vector<VarDecl*> params { setterArg };
 				FuncDecl* fakeDecl = new FuncDecl(c->pin, "_set" + lenstr, params, pts::NamedType::create(VOID_TYPE_STRING));
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
+				fakeDecl->isStatic = c->isStatic;
 				fakeDecl->parentClass = cls;
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
@@ -215,7 +218,7 @@ namespace Codegen
 				if(oo != overl && oo->op == overl->op)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : oo->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -232,7 +235,7 @@ namespace Codegen
 			// note(anti-confusion): decl->codegen() looks at parentClass
 			// and inserts an implicit self, so we don't need to do it.
 
-			overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			// overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			overl->func->decl->ident.kind = IdKind::Operator;
 			overl->func->decl->parentClass = cls;
 
@@ -255,7 +258,7 @@ namespace Codegen
 				if(a != aoo && a->op == aoo->op)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : a->func->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -268,7 +271,7 @@ namespace Codegen
 				}
 			}
 
-			aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
+			// aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->parentClass = cls;
 
@@ -284,11 +287,8 @@ namespace Codegen
 				HighlightOptions ops;
 				ops.caret = aoo->pin;
 
-				if(aoo->func->decl->returnTypePos.file.size() > 0)
-				{
-					Parser::Pin hl = aoo->func->decl->returnTypePos;
-					ops.underlines.push_back(hl);
-				}
+				Parser::Pin hl = aoo->func->decl->returnTypePos;
+				ops.underlines.push_back(hl);
 
 				error(aoo, ops, "Assignment operators cannot return a value (currently returning %s)",
 					aoo->lfunc->getReturnType()->str().c_str());
@@ -307,7 +307,7 @@ namespace Codegen
 				if(s != soo)
 				{
 					int d = 0;
-					std::deque<fir::Type*> ps;
+					std::vector<fir::Type*> ps;
 					for(auto e : s->decl->params)
 						ps.push_back(e->getType(cgi));
 
@@ -356,7 +356,7 @@ namespace Codegen
 				VarDecl* setterArg = new VarDecl(soo->pin, soo->setterArgName, true);
 				setterArg->ptype = soo->decl->ptype;
 
-				std::deque<VarDecl*> params;
+				std::vector<VarDecl*> params;
 				params = soo->decl->params;
 				params.push_back(setterArg);
 

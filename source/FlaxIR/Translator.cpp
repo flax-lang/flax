@@ -1326,14 +1326,10 @@ namespace fir
 
 							std::vector<llvm::Value*> args;
 
-							std::deque<Value*> fargs = inst->operands;
-							fargs.pop_front();
+							std::vector<Value*> fargs = inst->operands;
 
-							for(auto arg : fargs)
-							{
-								llvm::Value* larg = getValue(arg);
-								args.push_back(larg);
-							}
+							for(size_t i = 1; i < fargs.size(); ++i)
+								args.push_back(getValue(fargs[i]));
 
 							llvm::Value* ret = builder.CreateCall(a, args);
 							addValueToMap(ret, inst->realOutput);
@@ -1347,11 +1343,10 @@ namespace fir
 
 							std::vector<llvm::Value*> args;
 
-							std::deque<Value*> fargs = inst->operands;
-							fargs.pop_front();
+							std::vector<Value*> fargs = inst->operands;
 
-							for(auto arg : fargs)
-								args.push_back(getValue(arg));
+							for(size_t i = 1; i < fargs.size(); ++i)
+								args.push_back(getValue(fargs[i]));
 
 							llvm::Type* lft = typeToLlvm(inst->operands.front()->getType(), module);
 

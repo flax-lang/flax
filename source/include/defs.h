@@ -7,11 +7,12 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <string>
 #include <map>
+#include <deque>
+#include <string>
+#include <vector>
 #include <unordered_map>
 #include <unordered_set>
-#include <deque>
 
 #include <sys/types.h>
 
@@ -45,14 +46,16 @@ namespace Parser
 {
 	struct Pin
 	{
-		Pin() { }
-		Pin(std::string f, size_t l, size_t c, size_t ln) : file(f), line(l), col(c), len(ln) { }
+		Pin() : fileID(0), line(1), col(1), len(0) { }
+		Pin(int32_t f, int32_t l, int32_t c, int32_t ln) : fileID(f), line(l), col(c), len(ln) { }
 
-		std::string file;
-		size_t line = 1;
-		size_t col = 1;
-		size_t len = 1;
+		int32_t fileID;
+		int32_t line;
+		int32_t col;
+		int32_t len;
 	};
+
+	struct Token;
 }
 
 namespace Codegen
@@ -103,29 +106,30 @@ namespace Codegen
 
 	struct FunctionTree
 	{
-		FunctionTree() { this->id = __getnewid(); }
-		explicit FunctionTree(std::string n) : nsName(n) { this->id = __getnewid(); }
+		FunctionTree(FunctionTree* p) : parent(p) { this->id = __getnewid(); }
+		explicit FunctionTree(std::string n, FunctionTree* p) : nsName(n), parent(p) { this->id = __getnewid(); }
 
-		static id_t __getnewid()
+		static size_t __getnewid()
 		{
-			static id_t curid = 0;
+			static size_t curid = 0;
 			return curid++;
 		}
 
-		id_t id;
+		size_t id;
 
 		std::string nsName;
+		FunctionTree* parent;
 
-		std::deque<FunctionTree*> subs;
+		std::vector<FunctionTree*> subs;
 		std::unordered_map<std::string, FunctionTree*> subMap;	// purely for fast duplicate checking
 
 		// things within.
-		std::deque<FuncDefPair> funcs;
+		std::vector<FuncDefPair> funcs;
 		std::unordered_set<Identifier> funcSet;		// purely for fast duplicate checking during import
 
 
-		std::deque<Ast::OpOverload*> operators;
-		std::deque<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
+		std::vector<Ast::OpOverload*> operators;
+		std::vector<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
 
 		std::unordered_map<std::string, TypePair_t> types;
 		std::unordered_map<std::string, SymbolPair_t> vars;
@@ -148,7 +152,7 @@ namespace Codegen
 
 struct TypeConstraints_t
 {
-	std::deque<std::string> protocols;
+	std::vector<std::string> protocols;
 	int pointerDegree = 0;
 
 	bool operator == (const TypeConstraints_t& other) const

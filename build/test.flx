@@ -124,7 +124,12 @@ struct FormatOptions
 	var argNum: i64
 }
 
+namespace thing
+{
+	var xxx = 40
+}
 
+var yyy = 30
 
 func parseFormatOptions(str: string) -> FormatOptions
 {
@@ -187,6 +192,7 @@ public func main(argc: i32, argv: i8**) -> int
 	runTests()
 
 
+
 	do {
 		// println("Hello, {%}. This is world {%}, version {%, precision: 2}. {%}.", "World", 2, 3.71, "Goodbye")
 
@@ -202,29 +208,96 @@ public func main(argc: i32, argv: i8**) -> int
 	}
 
 
-	// enum SomeEnum
-	// {
-	// 	case Up
-	// 	case Down
-	// 	case Left
-	// 	case Right
-	// }
 
-	// struct Foo
-	// {
-	// 	var x: int
-	// }
 
-	// let e = SomeEnum.Down
-	// let f = Foo(10)
+	/*
+		implementation notes
 
-	// if e == SomeEnum.Left
-	// {
-	// }
-	// else if f.x == 30
-	// {
+		1. ftree needs an overhaul of some description, i think
+			in the interim, ftree needs a 'parent' field, probably.
+			scoping is unreliable and goes to hell
 
-	// }
+		2. dot operator is crazy rn
+			instead of having a semantic pass, just let the compiler try all the static namespaces (class/struct/enum/whatever), then
+			instead of failing when it can't find anything, just go and look through instance variables
+
+			not optimal, but it's easier to optimise a working thing rather than rewrite a broken thing into a fast working thing
+			anyway. might swap the order of instance/static -- there might be many classes or whatever at global scope for example,
+			maybe checking local variables first, then failing, might be more prudent.
+
+		3. a lot of places in the codegen need to account for the possibility of 'trying' -- like the scope resolution above, we need to
+			be able to 'fail' safely when the static scope can't be found, so we can continue elsewhere
+
+			eg. 'tryResolveVariableReference'
+
+			everything is quite messy in this regard -- everything handles its own errors.
+
+		4. speaking of which, might want to revamp how error handling works.
+			while something like error("lol") might seem decent, as above, we might need a way to fail. maybe an error list that's pushed
+			to? eg. `pushError("lol")`... someone needs to check that list, which might become haphazard. bad things are coming to my mind now,
+			like asynchronous checking (running a separate thread) but that's a Bad Idea (tm).
+
+			probably just stick to a normal error() routine for now. most of them would not allow continued codegen or any form of recovery
+			that we care about anyway.
+
+			it does lead to the situation of needing to fix errors one-by-one in a edit-compile-test cycle, but if you're doing things where
+			you expect 102841 errors the first time, instead of maybe 4, you're doing some shit wrongly, and you're not welcome here.
+
+			besides, compounded errors caused by previous errors (read - missing parens/semicolons/whatever in C/C++) would just clutter
+			everything -- it's more useful to stop at the first error.
+	*/
+
+
+	do {
+
+		enum SomeEnum
+		{
+			case Up
+			case Down
+			case Left
+			case Right
+		}
+
+		struct Foop
+		{
+			var x: int
+		}
+
+		class Barf
+		{
+			static var y: int = 40
+			static var fkr: int
+			{
+				get { 30 }
+			}
+
+			func foo() -> f64
+			{
+				43.1
+			}
+		}
+
+		let e = SomeEnum.Down
+		let f = Foop(10)
+		let b = Barf()
+
+		let fo = b.foo
+
+		thing.xxx = 40
+		printf("f.x = %d, b.c = %d, fo = %d, %d\n", f.x, 3, Barf.y, yyy)
+
+
+		let tup = ("a", (30, 40))
+		let k = tup.1.0
+
+		let s = "some string \
+		broken over \
+		multiple lines"
+
+		printf("s = %s\n", s)
+
+		printf("%d, %.7lf\n", k, +3.000141);
+	}
 
 
 
@@ -279,14 +352,12 @@ public func main(argc: i32, argv: i8**) -> int
 
 	// >>> multiple, dynamic dispatch
 
-	// let x = 6
-	// let b: bool = 4 + 1 > 7 - 5
+
 
 
 	printf("\n<< done >>\n")
 	return 0
 }
-
 
 
 
@@ -323,6 +394,7 @@ public func main(argc: i32, argv: i8**) -> int
 */
 
 
+// ` = 3
 
 
 
@@ -371,242 +443,6 @@ public func main(argc: i32, argv: i8**) -> int
 
 
 
-
-
-/*
-
-// import LibCInterface
-
-
-ffi func printf(fmt: i8*, ...)
-
-struct SomeStruct
-{
-	var str: string = "bar" + "foob"
-}
-
-class A
-{
-	init(a: int) { self.x = a }
-	init() { }
-
-	var x = 10
-
-	operator = (other: A)
-	{
-		self.x = other.x
-	}
-}
-
-struct B
-{
-	var x = 20
-}
-
-operator == (a: B, b: B) -> bool { return a.x == b.x }
-
-extension string
-{
-	func haha()
-	{
-		printf(@raw "haha... (%s)?\n", #self)
-	}
-}
-
-extension int64
-{
-	func lol() -> string
-	{
-		return "lol"
-	}
-}
-
-import IntegerLimits
-
-public func main() -> int
-{
-	do {
-		var a: A
-		a = A()
-
-		let b = A(3)
-		a = b
-
-		printf(@raw "%d\n", a.x)
-	}
-
-	do {
-		var x = B()
-		let y = B(40)
-
-		x = y
-
-		printf(@raw "%d, %d\n", x.x, x == y)
-	}
-
-
-	// let k: string = "hello"
-	// var g: string = "world"
-
-	// // k + g
-	// g = k
-	// printf(@raw "something\n");
-
-	// printf(@raw "[%s], [%s]\n", k, g)
-	// foo()
-
-	var ss = SomeStruct()
-	// ss.str = "lol"
-
-	// ss.str = "kappa"
-
-	printf(@raw "[%s] (%d, %d, %d, %d, %d)\n", ss.str, ss.str == 4, cmp(ss.str, 10), cmp(ss.str, 7),
-		cmp(4, 7), cmp(7, 7))
-
-	ss.str.haha()
-
-	printf("lol: %s / %d\n", ss.str.raw, ss.str.length)
-
-
-	bar()
-	qux()
-
-
-	var k: string = "tee" + "hee"
-
-	let lc: char = "f"
-	let ch = k[1]
-
-	k[0] = lc
-	k[1] = char("u")
-
-	glob = k
-	printf(@raw "k = [%s], glob = [%s], 'f' = [%c], 'e' = [%c]\n", k, glob, lc, ch)
-
-	return 0
-}
-
-func cmp<T: eq>(a: T, b: int) -> bool
-{
-	return a == b
-}
-
-func qux()
-{
-	printf(@raw "cmp: [%d]\n", "foo" + "x" <= "foo" + "x")
-}
-
-
-protocol eq
-{
-	operator == (other: int) -> bool
-}
-
-extension string : eq
-{
-}
-
-operator == (a: string, b: int) -> bool
-{
-	return b == 7
-}
-
-func bar()
-{
-	// let a = "ohmy"
-	// let b = "gosh"
-
-	// let x = a + b
-	// printf(@raw "[%s]\n", x)
-
-	bar1()
-}
-
-func wat() -> int
-{
-	return 10
-}
-
-var gs: string
-var glob = "foo" + "k"
-
-func takeS(a: string)
-{
-	printf(@raw "str: [%s]\n", a)
-	gs = a
-}
-
-func retS() -> string
-{
-	let r = "goto" + "hell"
-	printf(@raw "ret gs\n")
-	// return gs
-	return r
-}
-
-func bar1()
-{
-	let xxx = "str"
-	printf(@raw "do xxx\n")
-	var yyy = xxx + "onk"
-	printf(@raw "do yyy\n")
-	printf(@raw "[%s], [%s]\n", xxx, yyy)
-
-	var zzz = yyy + "alingadingdong"
-	printf(@raw "do zzz 1\n")
-	zzz = "russian" + yyy
-	printf(@raw "do zzz 2\n")
-
-	var aaa: string
-	aaa = yyy
-	printf(@raw "do aaa\n")
-
-	printf(@raw "[%s] [%s], [%s], [%s]\n", xxx, yyy, zzz, aaa)
-
-	takeS("hello" + "world")
-
-	// printf(@raw "global: [%s]\n", gs)
-
-
-
-	// var bbb: string
-	// var ccc: string
-	// var ddd: string
-	// var eee: string
-
-	// bbb = yyy
-	// ccc = yyy
-	// ddd = yyy
-	// eee = yyy
-
-	printf(@raw "\n\n\n\n")
-
-	let gs1 = retS()
-	let gs2 = retS()
-
-	retS()
-
-	printf(@raw "ret: [%s], [%s]\n", gs1, gs2)
-}
-
-
-func foo()
-{
-	defer printf(@raw "fuck\n")
-
-	var i = 0
-	while i < 10
-	{
-		defer printf(@raw "kappa\n")
-
-		printf(@raw "lol")
-
-		if i == 4 { return }
-
-		i += 1
-	}
-}
-*/
 
 
 
