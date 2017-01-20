@@ -37,7 +37,8 @@ namespace Codegen
 		cgi->pushScope();
 
 
-		cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		// cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
+		cgi->currentFuncTree = cgi->rootNode->rootFuncStack;
 
 		// rootFuncStack should really be empty, except we know that there should be
 		// stuff inside from imports.
@@ -87,11 +88,11 @@ namespace Codegen
 		return fir::getDefaultFTContext();
 	}
 
-	typedef std::tuple<std::deque<SymTab_t>, std::deque<std::deque<fir::Value*>>, std::deque<std::string>> _Scope_t;
+	typedef std::tuple<std::vector<SymTab_t>, std::vector<std::vector<fir::Value*>>, FunctionTree*> _Scope_t;
 
 	_Scope_t CodegenInstance::saveAndClearScope()
 	{
-		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->namespaceStack);
+		auto s = std::make_tuple(this->symTabStack, this->refCountingStack, this->currentFuncTree);
 		this->clearScope();
 
 		return s;
@@ -99,7 +100,7 @@ namespace Codegen
 
 	void CodegenInstance::restoreScope(_Scope_t s)
 	{
-		std::tie(this->symTabStack, this->refCountingStack, this->namespaceStack) = s;
+		std::tie(this->symTabStack, this->refCountingStack, this->currentFuncTree) = s;
 	}
 
 
@@ -115,7 +116,7 @@ namespace Codegen
 	{
 		this->symTabStack.clear();
 		this->refCountingStack.clear();
-		this->namespaceStack.clear();
+		this->currentFuncTree = this->rootNode->rootFuncStack;
 	}
 
 	void CodegenInstance::pushScope()
@@ -159,7 +160,7 @@ namespace Codegen
 	}
 
 
-	std::deque<fir::Value*> CodegenInstance::getRefCountedValues()
+	std::vector<fir::Value*> CodegenInstance::getRefCountedValues()
 	{
 		return this->refCountingStack.back();
 	}
@@ -233,14 +234,17 @@ namespace Codegen
 	{
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
 
-		FunctionTree* ftree = this->getCurrentFuncTree();
+		// FunctionTree* ftree = this->currentFuncTree;
+		// iceAssert(ftree);
+
+		FunctionTree* ftree = this->getFuncTreeFromNS(atype->ident.scope);
 		iceAssert(ftree);
 
 		if(ftree->types.find(atype->ident.name) != ftree->types.end())
 		{
 			// only if there's an actual, fir::Type* there.
 			if(ftree->types[atype->ident.name].first)
-				error(atype, "Duplicate type %s (in ftree %s:%d)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
+				error(atype, "Duplicate type %s (in ftree %s:%zu)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
 		// if there isn't one, add it.
@@ -395,13 +399,26 @@ namespace Codegen
 		this->nestedTypeStack.pop_back();
 	}
 
-	std::deque<std::string> CodegenInstance::getFullScope()
+	std::vector<std::string> CodegenInstance::getFullScope()
 	{
-		std::deque<std::string> full = this->namespaceStack;
-		for(auto s : this->nestedTypeStack)
-			full.push_back(s->ident.name);
+		return this->getNSFromFuncTree(this->getCurrentFuncTree());
+	}
 
-		return full;
+	std::vector<std::string> CodegenInstance::getNSFromFuncTree(FunctionTree* ftree)
+	{
+		std::vector<std::string> ret;
+		auto bottom = ftree;
+
+		while(bottom)
+		{
+			ret.insert(ret.begin(), bottom->nsName);
+			bottom = bottom->parent;
+		}
+
+		for(auto s : this->nestedTypeStack)
+			ret.push_back(s->ident.name);
+
+		return ret;
 	}
 
 
@@ -447,6 +464,10 @@ namespace Codegen
 	}
 
 
+	FunctionTree* CodegenInstance::getCurrentFuncTree()
+	{
+		return this->currentFuncTree;
+	}
 
 
 
@@ -523,15 +544,11 @@ namespace Codegen
 						if(pair.funcDecl->genericTypes.size() == 0)
 						{
 							// declare new one
-							auto q = prof::Profile("getting and/or creating function");
 							auto f = this->module->getOrCreateFunction(pair.firFunc->getName(), pair.firFunc->getType(),
 								fir::LinkageType::External);
-							q.finish();
 
-							auto v = prof::Profile("add func");
 							ftree->funcs.push_back(FuncDefPair(f, pair.funcDecl, pair.funcDef));
 							ftree->funcSet.insert(f->getName());
-							v.finish();
 						}
 						else
 						{
@@ -798,7 +815,7 @@ namespace Codegen
 				}
 				else
 				{
-					auto nft = new FunctionTree();
+					auto nft = new FunctionTree(ftree);
 					this->importFunctionTreeInto(nft, sub);
 
 					ftree->subMap[sub->nsName] = nft;
@@ -812,92 +829,85 @@ namespace Codegen
 
 
 
-	FunctionTree* CodegenInstance::getCurrentFuncTree(std::deque<std::string>* nses, FunctionTree* root)
+	// FunctionTree* CodegenInstance::getCurrentFuncTree(std::vector<std::string>* nses, FunctionTree* root)
+	// {
+	// 	if(root == 0) root = this->rootNode->rootFuncStack;
+	// 	if(nses == 0) nses = &this->namespaceStack;
+
+	// 	iceAssert(root);
+	// 	iceAssert(nses);
+
+	// 	std::vector<FunctionTree*> ft = root->subs;
+
+	// 	if(nses->size() == 0) return root;
+
+	// 	size_t i = 0;
+	// 	size_t max = nses->size();
+
+	// 	for(auto ns : *nses)
+	// 	{
+	// 		i++;
+
+	// 		bool found = false;
+	// 		for(auto f : ft)
+	// 		{
+	// 			if(f->nsName == ns)
+	// 			{
+	// 				ft = f->subs;
+
+	// 				if(i == max)
+	// 					return f;
+
+	// 				found = true;
+	// 				break;
+	// 			}
+	// 		}
+
+	// 		if(!found)
+	// 		{
+	// 			return 0;
+	// 		}
+	// 	}
+
+	// 	return 0;
+	// }
+
+
+
+
+
+
+
+
+
+
+
+
+	void CodegenInstance::pushNamespaceScope(std::string namespc)
 	{
-		if(root == 0) root = this->rootNode->rootFuncStack;
-		if(nses == 0) nses = &this->namespaceStack;
-
-		iceAssert(root);
-		iceAssert(nses);
-
-		std::deque<FunctionTree*> ft = root->subs;
-
-		if(nses->size() == 0) return root;
-
-		size_t i = 0;
-		size_t max = nses->size();
-
-		for(auto ns : *nses)
+		FunctionTree* existing = this->currentFuncTree;
+		if(existing->subMap.find(namespc) == existing->subMap.end())
 		{
-			i++;
+			FunctionTree* ft = new FunctionTree(existing);
+			ft->nsName = namespc;
 
-			bool found = false;
-			for(auto f : ft)
-			{
-				if(f->nsName == ns)
-				{
-					ft = f->subs;
-
-					if(i == max)
-						return f;
-
-					found = true;
-					break;
-				}
-			}
-
-			if(!found)
-			{
-				return 0;
-			}
+			existing->subs.push_back(ft);
+			existing->subMap[namespc] = ft;
 		}
 
-		return 0;
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-	void CodegenInstance::pushNamespaceScope(std::string namespc, bool doFuncTree)
-	{
-		if(doFuncTree)
-		{
-			bool found = false;
-			FunctionTree* existing = this->getCurrentFuncTree();
-			if(existing->subMap.find(namespc) != existing->subMap.end())
-				found = true;
-
-			if(!found)
-			{
-				FunctionTree* ft = new FunctionTree();
-				ft->nsName = namespc;
-
-				existing->subs.push_back(ft);
-				existing->subMap[namespc] = ft;
-			}
-		}
-
-		this->namespaceStack.push_back(namespc);
+		this->currentFuncTree = existing->subMap[namespc];
 	}
 
 	void CodegenInstance::popNamespaceScope()
 	{
-		this->namespaceStack.pop_back();
+		iceAssert(this->currentFuncTree->parent);
+		this->currentFuncTree = this->currentFuncTree->parent;
 	}
 
 	void CodegenInstance::addFunctionToScope(FuncDefPair func, FunctionTree* root)
 	{
 		FunctionTree* cur = root;
-		if(!cur)
-			cur = this->getCurrentFuncTree();
+		if(!cur) cur = this->currentFuncTree;
 
 		iceAssert(cur);
 
@@ -922,7 +932,7 @@ namespace Codegen
 
 	void CodegenInstance::removeFunctionFromScope(FuncDefPair func)
 	{
-		FunctionTree* cur = this->getCurrentFuncTree();
+		FunctionTree* cur = this->currentFuncTree;
 		iceAssert(cur);
 
 		auto it = std::find(cur->funcs.begin(), cur->funcs.end(), func);
@@ -947,10 +957,10 @@ namespace Codegen
 
 
 
-	std::deque<FuncDefPair> CodegenInstance::resolveFunctionName(std::string basename)
+	std::vector<FuncDefPair> CodegenInstance::resolveFunctionName(std::string basename)
 	{
-		std::deque<std::string> curDepth = this->namespaceStack;
-		std::deque<FuncDefPair> candidates;
+		FunctionTree* curFT = this->currentFuncTree;
+		std::vector<FuncDefPair> candidates;
 
 
 		auto _isDupe = [this](FuncDefPair a, FuncDefPair b) -> bool {
@@ -987,12 +997,9 @@ namespace Codegen
 
 
 
-		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		while(curFT)
 		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto f : ft->funcs)
+			for(auto f : curFT->funcs)
 			{
 				auto isDupe = [this, f, _isDupe](FuncDefPair fp) -> bool {
 					return _isDupe(f, fp);
@@ -1006,10 +1013,7 @@ namespace Codegen
 				}
 			}
 
-
-
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		return candidates;
@@ -1017,25 +1021,26 @@ namespace Codegen
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
-		std::deque<Expr*> params, bool exactMatch)
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
+		std::vector<Expr*> params, bool exactMatch)
 	{
-		std::deque<fir::Type*> argTypes;
+		std::vector<fir::Type*> argTypes;
 		for(auto e : params)
 			argTypes.push_back(e->getType(this, true));
 
-		return this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
+
+		auto ret = this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
+
+		return ret;
 	}
 
-
-
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::deque<FuncDefPair> list, std::string basename,
-		std::deque<fir::Type*> params, bool exactMatch)
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
+		std::vector<fir::Type*> params, bool exactMatch)
 	{
-		std::deque<FuncDefPair> candidates = list;
+		std::vector<FuncDefPair> candidates = list;
 		if(candidates.size() == 0) return Resolved_t();
 
-		std::deque<std::pair<FuncDefPair, int>> finals;
+		std::vector<std::pair<FuncDefPair, int>> finals;
 		for(auto c : candidates)
 		{
 			int distance = 0;
@@ -1050,7 +1055,7 @@ namespace Codegen
 		if(finals.size() > 1)
 		{
 			// go through each.
-			std::deque<std::pair<FuncDefPair, int>> mostViable;
+			std::vector<std::pair<FuncDefPair, int>> mostViable;
 			for(auto f : finals)
 			{
 				if(mostViable.size() == 0 || mostViable.front().second > f.second)
@@ -1098,9 +1103,9 @@ namespace Codegen
 		return Resolved_t(finals.front().first);
 	}
 
-	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::deque<Expr*> params, bool exactMatch)
+	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::vector<Expr*> params, bool exactMatch)
 	{
-		std::deque<FuncDefPair> candidates = this->resolveFunctionName(basename);
+		std::vector<FuncDefPair> candidates = this->resolveFunctionName(basename);
 		return this->resolveFunctionFromList(user, candidates, basename, params, exactMatch);
 	}
 
@@ -1109,17 +1114,14 @@ namespace Codegen
 
 
 
-	std::deque<Func*> CodegenInstance::findGenericFunctions(std::string basename)
+	std::vector<Func*> CodegenInstance::findGenericFunctions(std::string basename)
 	{
-		std::deque<std::string> curDepth = this->namespaceStack;
-		std::deque<Func*> ret;
+		FunctionTree* curFT = this->currentFuncTree;
+		std::vector<Func*> ret;
 
-		for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+		while(curFT)
 		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
-
-			for(auto f : ft->genericFunctions)
+			for(auto f : curFT->genericFunctions)
 			{
 				iceAssert(f.first->genericTypes.size() > 0);
 
@@ -1127,8 +1129,7 @@ namespace Codegen
 					ret.push_back({ f.second });
 			}
 
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		return ret;
@@ -1141,7 +1142,7 @@ namespace Codegen
 
 	static bool _checkGenericFunctionParameter(CodegenInstance* cgi, fir::FunctionType* gen, fir::FunctionType* given)
 	{
-		typedef std::deque<pts::TypeTransformer> TrfList;
+		typedef std::vector<pts::TypeTransformer> TrfList;
 
 		// ok, type solving time.
 		auto alist = gen->getArgumentTypes();
@@ -1199,8 +1200,8 @@ namespace Codegen
 	}
 
 
-	static bool _checkFunction(CodegenInstance* cgi, std::deque<Expr*> exprs, std::deque<fir::Type*> funcParams,
-		std::deque<fir::Type*> args, int* _dist, bool variadic, bool c_variadic, bool exact)
+	static bool _checkFunction(CodegenInstance* cgi, std::vector<Expr*> exprs, std::vector<fir::Type*> funcParams,
+		std::vector<fir::Type*> args, int* _dist, bool variadic, bool c_variadic, bool exact)
 	{
 		iceAssert(_dist);
 		*_dist = 0;
@@ -1320,10 +1321,10 @@ namespace Codegen
 
 
 
-	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::deque<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
+	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::vector<fir::Type*> argTypes, int* castingDistance, bool exactMatch)
 	{
 		iceAssert(castingDistance);
-		std::deque<fir::Type*> funcParams;
+		std::vector<fir::Type*> funcParams;
 
 
 		bool iscvar = 0;
@@ -1353,7 +1354,7 @@ namespace Codegen
 			isvar = fp.funcDecl->isVariadic;
 		}
 
-		std::deque<Expr*> exprl;
+		std::vector<Expr*> exprl;
 		if(fp.funcDecl)
 		{
 			for(auto p : fp.funcDecl->params)
@@ -1387,7 +1388,7 @@ namespace Codegen
 
 	void CodegenInstance::clearNamespaceScope()
 	{
-		this->namespaceStack.clear();
+		this->currentFuncTree = this->rootNode->rootFuncStack;
 	}
 
 
@@ -1441,7 +1442,7 @@ namespace Codegen
 
 
 
-	std::deque<std::string> CodegenInstance::unwrapNamespacedType(std::string raw)
+	std::vector<std::string> CodegenInstance::unwrapNamespacedType(std::string raw)
 	{
 		iceAssert(raw.size() > 0);
 		if(raw.find(".") == std::string::npos)
@@ -1458,7 +1459,7 @@ namespace Codegen
 		}
 
 		// else
-		std::deque<std::string> nses;
+		std::vector<std::string> nses;
 		while(true)
 		{
 			size_t pos = raw.find(".");
@@ -1479,7 +1480,20 @@ namespace Codegen
 
 
 
+	FunctionTree* CodegenInstance::getFuncTreeFromNS(std::vector<std::string> scope)
+	{
+		auto ret = this->rootNode->rootFuncStack;
+		if(scope.size() > 0 && scope[0] == "")
+			scope.erase(scope.begin());
 
+		for(auto s : scope)
+		{
+			ret = ret->subMap[s];
+			if(!ret) return 0;
+		}
+
+		return ret;
+	}
 
 
 
@@ -1513,18 +1527,16 @@ namespace Codegen
 
 	ProtocolDef* CodegenInstance::resolveProtocolName(Expr* user, std::string protstr)
 	{
-		std::deque<std::string> nses = this->unwrapNamespacedType(protstr);
+		std::vector<std::string> nses = this->unwrapNamespacedType(protstr);
 		std::string protname = nses.back();
 		nses.pop_back();
 
-		auto curDepth = nses;
 		ProtocolDef* prot = 0;
-		for(size_t i = 0; i <= nses.size(); i++)
-		{
-			FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-			if(!ft) break;
+		auto curFT = this->getFuncTreeFromNS(nses);
 
-			for(auto& f : ft->protocols)
+		while(curFT)
+		{
+			for(auto& f : curFT->protocols)
 			{
 				if(f.first == protname)
 				{
@@ -1533,8 +1545,7 @@ namespace Codegen
 				}
 			}
 
-			if(curDepth.size() > 0)
-				curDepth.pop_back();
+			curFT = curFT->parent;
 		}
 
 		if(!prot)
@@ -1636,65 +1647,62 @@ namespace Codegen
 
 
 
-	static std::deque<ExtensionDef*> _findExtensionsByNameInScope(std::string name, FunctionTree* ft)
+	static std::vector<ExtensionDef*> _findExtensionsByNameInScope(std::string name, FunctionTree* ft)
 	{
-		std::deque<ExtensionDef*> ret;
+		std::vector<ExtensionDef*> ret;
 		iceAssert(ft);
 
-		auto pair = ft->extensions.equal_range(name);
-		for(auto it = pair.first; it != pair.second; it++)
+		while(ft)
 		{
-			if((*it).first == name)
-				ret.push_back((*it).second);
+			auto pair = ft->extensions.equal_range(name);
+			for(auto it = pair.first; it != pair.second; it++)
+			{
+				if((*it).first == name)
+					ret.push_back((*it).second);
+			}
+
+			ft = ft->parent;
 		}
 
 		return ret;
 	}
 
-	std::deque<ExtensionDef*> CodegenInstance::getExtensionsWithName(std::string name)
+	std::vector<ExtensionDef*> CodegenInstance::getExtensionsWithName(std::string name)
 	{
-		FunctionTree* ft = this->getCurrentFuncTree();
+		FunctionTree* ft = this->currentFuncTree;
 		iceAssert(ft);
 
 		return _findExtensionsByNameInScope(name, ft);
 	}
 
-	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
+	std::vector<ExtensionDef*> CodegenInstance::getExtensionsForType(StructBase* cls)
 	{
 		std::set<ExtensionDef*> ret;
 
 		// 1. look in the current scope
 		{
-			FunctionTree* ft = this->getCurrentFuncTree();
-			iceAssert(ft);
-
-			std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
+			std::vector<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, this->currentFuncTree);
 			ret.insert(res.begin(), res.end());
 		}
 
 
 		// 2. look in the scope of the type
 		{
-			std::deque<std::string> curDepth = cls->ident.scope;
+			auto curFT = this->getFuncTreeFromNS(cls->ident.scope);
 
-			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			while(curFT)
 			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-				if(!ft) break;
-
-				std::deque<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, ft);
-
+				std::vector<ExtensionDef*> res = _findExtensionsByNameInScope(cls->ident.name, curFT);
 				ret.insert(res.begin(), res.end());
 
-				if(curDepth.size() > 0)
-					curDepth.pop_back();
+				curFT = curFT->parent;
 			}
 		}
 
-		return std::deque<ExtensionDef*>(ret.begin(), ret.end());
+		return std::vector<ExtensionDef*>(ret.begin(), ret.end());
 	}
 
-	std::deque<ExtensionDef*> CodegenInstance::getExtensionsForBuiltinType(fir::Type* type)
+	std::vector<ExtensionDef*> CodegenInstance::getExtensionsForBuiltinType(fir::Type* type)
 	{
 		if(fir::Type::fromBuiltin(INT8_TYPE_STRING) == type)
 			return this->getExtensionsWithName(INT8_TYPE_STRING);
@@ -1896,11 +1904,11 @@ namespace Codegen
 
 			// use function overload operator for this.
 
-			std::deque<FuncDefPair> fns;
+			std::vector<FuncDefPair> fns;
 			for(auto f : sb->initFuncs)
 				fns.push_back(FuncDefPair(f, 0, 0));
 
-			std::deque<ExtensionDef*> exts = this->getExtensionsForType(sb);
+			std::vector<ExtensionDef*> exts = this->getExtensionsForType(sb);
 			for(auto ext : exts)
 			{
 				// note: check that either it's a public extension, *or* we're in the same rootnode.
@@ -1922,7 +1930,7 @@ namespace Codegen
 				}
 			}
 
-			std::deque<fir::Type*> argTypes;
+			std::vector<fir::Type*> argTypes;
 			for(auto v : vals)
 				argTypes.push_back(v->getType());
 
@@ -1987,7 +1995,7 @@ namespace Codegen
 		}
 
 		// more than one.
-		std::deque<fir::Function*> ret;
+		std::vector<fir::Function*> ret;
 
 		for(auto f : list)
 		{
@@ -2159,7 +2167,7 @@ namespace Codegen
 	template <typename T>
 	void doRefCountOfAggregateType(CodegenInstance* cgi, T* type, fir::Value* value, bool incr)
 	{
-		iceAssert(cgi->isRefCountedType(type));
+		// iceAssert(cgi->isRefCountedType(type));
 
 		size_t i = 0;
 		for(auto m : type->getElements())
@@ -2284,7 +2292,7 @@ namespace Codegen
 	}
 
 
-	Result_t CodegenInstance::createParameterPack(fir::Type* type, std::deque<fir::Value*> parameters)
+	Result_t CodegenInstance::createParameterPack(fir::Type* type, std::vector<fir::Value*> parameters)
 	{
 		fir::Type* arrtype = fir::ArrayType::get(type, parameters.size());
 		fir::Value* rawArrayPtr = this->getStackAlloc(arrtype);

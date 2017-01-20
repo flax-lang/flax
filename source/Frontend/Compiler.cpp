@@ -33,12 +33,10 @@ namespace Compiler
 	{
 		HighlightOptions ops;
 		ops.caret = imp->pin;
-		ops.caret.file = fpath;
-
-		// fprintf(stderr, "ops.caret.file = %s // %s\n", ops.caret.file.c_str(), fpath.c_str());
+		ops.caret.fileID = getFileIDFromFilename(fpath);
 
 		auto tmp = imp->pin;
-		tmp.col += std::string("import ").length();
+		tmp.col += std::string("import ").length() + 1;
 		tmp.len = imp->module.length();
 
 		ops.underlines.push_back(tmp);
@@ -59,11 +57,7 @@ namespace Compiler
 
 		// first check the current directory.
 		std::string modname = imp->module;
-		for(size_t i = 0; i < modname.length(); i++)
-		{
-			if(modname[i] == '.')
-				modname[i] = '/';
-		}
+		std::replace(modname.begin(), modname.end(), '.', '/');
 
 		std::string name = curpath + "/" + modname + ".flx";
 		char* fname = realpath(name.c_str(), 0);
@@ -73,6 +67,7 @@ namespace Compiler
 		{
 			auto ret = std::string(fname);
 			free(fname);
+
 			return getFullPathOfFile(ret);
 		}
 		else
@@ -150,24 +145,23 @@ namespace Compiler
 		CodegenInstance* cgi = new CodegenInstance();
 		cloneCGIInnards(rcgi, cgi);
 
-		ParserState pstate(cgi);
-
 		cgi->customOperatorMap = rcgi->customOperatorMap;
 		cgi->customOperatorMapRev = rcgi->customOperatorMapRev;
 
 		std::string curpath = Compiler::getPathFromFile(fpath);
 
 		// parse
-		// printf("*** start module %s\n", Compiler::getFilenameFromPath(fpath).c_str());
-		Root* root = Parser::Parse(pstate, fpath);
+		Root* root = Parser::Parse(cgi, fpath);
 		cgi->rootNode = root;
 
 
 		// add the previous stuff to our own root
 		copyRootInnards(cgi, dummyRoot, root, true);
 
+
 		cgi->module = new fir::Module(Parser::getModuleName(fpath));
 		cgi->importOtherCgi(rcgi);
+
 
 		auto q = prof::Profile("codegen");
 		Codegen::doCodegen(fpath, root, cgi);
@@ -175,7 +169,6 @@ namespace Compiler
 
 		// add the new stuff to the main root
 		// todo: check for duplicates
-		// copyRootInnards(rcgi, root, dummyRoot, true);
 
 		rcgi->customOperatorMap = cgi->customOperatorMap;
 		rcgi->customOperatorMapRev = cgi->customOperatorMapRev;
@@ -190,32 +183,30 @@ namespace Compiler
 		using namespace Parser;
 
 		// NOTE: make sure resolveImport **DOES NOT** use codegeninstance, cuz it's 0.
-		ParserState fakeps(0);
 
+		auto q = prof::Profile("getFileTokens");
+		ParserState fakeps(0, Compiler::getFileTokens(currentMod));
+		q.finish();
 
-		fakeps.currentPos.file = currentMod;
-
-
+		fakeps.currentPos.fileID = getFileIDFromFilename(currentMod);
 		fakeps.currentPos.line = 1;
 		fakeps.currentPos.col = 1;
 		fakeps.currentPos.len = 1;
 
-		fakeps.tokens = Compiler::getFileTokens(currentMod);
+		Parser::setStaticState(fakeps);
 
-		while(fakeps.tokens.size() > 0)
+		auto p = prof::Profile("find imports");
+
+		for(size_t imp : Compiler::getImportTokenLocationsForFile(currentMod))
 		{
-			Token t = fakeps.front();
-			fakeps.pop();
+			fakeps.reset();
+			Token t = fakeps.skip(imp);
 
-			if(t.type == TType::Import)
+			iceAssert(t.type == TType::Import);
 			{
-				// hack: parseImport expects front token to be "import"
-				fakeps.tokens.push_front(t);
-
 				Import* imp = parseImport(fakeps);
 
 				std::string file = Compiler::getFullPathOfFile(Compiler::resolveImport(imp, Compiler::getFullPathOfFile(currentMod)));
-
 				g->addModuleDependency(currentMod, file, imp);
 
 				if(!visited[file])
@@ -225,6 +216,8 @@ namespace Compiler
 				}
 			}
 		}
+
+		p.finish();
 	}
 
 	static Codegen::DependencyGraph* resolveImportGraph(std::string baseFullPath, std::string curpath)
@@ -248,7 +241,7 @@ namespace Compiler
 
 
 	using namespace Codegen;
-	std::deque<std::deque<DepNode*>> checkCyclicDependencies(std::string filename)
+	std::vector<std::vector<DepNode*>> checkCyclicDependencies(std::string filename)
 	{
 		filename = getFullPathOfFile(filename);
 		std::string curpath = getPathFromFile(filename);
@@ -261,14 +254,14 @@ namespace Compiler
 
 		// printf("%zu edges in graph\n", acc);
 
-		std::deque<std::deque<DepNode*>> groups = g->findCyclicDependencies();
+		std::vector<std::vector<DepNode*>> groups = g->findCyclicDependencies();
 
 		for(auto gr : groups)
 		{
 			if(gr.size() > 1)
 			{
 				std::string modlist;
-				std::deque<Expr*> imps;
+				std::vector<Expr*> imps;
 
 				for(auto m : gr)
 				{
@@ -300,13 +293,13 @@ namespace Compiler
 
 
 
-	CompiledData compileFile(std::string filename, std::deque<std::deque<DepNode*>> groups, std::map<Ast::ArithmeticOp,
+	CompiledData compileFile(std::string filename, std::vector<std::vector<DepNode*>> groups, std::map<Ast::ArithmeticOp,
 		std::pair<std::string, int>> foundOps, std::map<std::string, Ast::ArithmeticOp> foundOpsRev)
 	{
 		filename = getFullPathOfFile(filename);
 
 		std::unordered_map<std::string, Root*> rootmap;
-		std::deque<std::pair<std::string, fir::Module*>> modulelist;
+		std::vector<std::pair<std::string, fir::Module*>> modulelist;
 
 
 		Root* dummyRoot = new Root();
@@ -323,7 +316,7 @@ namespace Compiler
 		{
 			DepNode* dn = new DepNode();
 			dn->name = filename;
-			groups.push_front({ dn });
+			groups.insert(groups.begin(), { dn });
 		}
 
 		for(auto gr : groups)

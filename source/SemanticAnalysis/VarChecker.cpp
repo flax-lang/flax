@@ -13,7 +13,7 @@ namespace SemAnalysis
 
 	struct GlobalState
 	{
-		std::deque<std::deque<VarDef>> vars;
+		std::vector<std::vector<VarDef>> vars;
 	};
 
 	static GlobalState gs;
@@ -136,8 +136,10 @@ namespace SemAnalysis
 
 
 
-	static void analyseBlock(CodegenInstance* cgi, std::deque<Expr*> exprs)
+	static void analyseBlock(CodegenInstance* cgi, std::vector<Expr*> exprs)
 	{
+		return;
+
 		for(Expr* ex : exprs)
 		{
 			if(NamespaceDecl* ns = dynamic_cast<NamespaceDecl*>(ex))
@@ -324,7 +326,7 @@ namespace SemAnalysis
 			}
 			else if(Tuple* tup = dynamic_cast<Tuple*>(ex))
 			{
-				std::deque<Expr*> vals;
+				std::vector<Expr*> vals;
 				for(auto v : tup->values) vals.push_back(v);
 
 				analyseBlock(cgi, vals);

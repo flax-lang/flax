@@ -8,15 +8,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <vector>
 #include <algorithm>
 
 #include "backend.h"
 #include "compiler.h"
-
-
-#include <dlfcn.h>
-
 
 static std::string parseQuotedString(char** argv, int& i)
 {
@@ -39,7 +34,7 @@ static std::string parseQuotedString(char** argv, int& i)
 	return ret;
 }
 
-#define VERSION_STRING	"0.92.0"
+#define VERSION_STRING	"0.97-pre"
 
 
 
@@ -150,26 +145,26 @@ static void printHelp()
 
 namespace Compiler
 {
-	static std::deque<std::string> librarySearchPaths;
-	std::deque<std::string> getLibrarySearchPaths()
+	static std::vector<std::string> librarySearchPaths;
+	std::vector<std::string> getLibrarySearchPaths()
 	{
 		return librarySearchPaths;
 	}
 
-	static std::deque<std::string> librariesToLink;
-	std::deque<std::string> getLibrariesToLink()
+	static std::vector<std::string> librariesToLink;
+	std::vector<std::string> getLibrariesToLink()
 	{
 		return librariesToLink;
 	}
 
-	static std::deque<std::string> frameworksToLink;
-	std::deque<std::string> getFrameworksToLink()
+	static std::vector<std::string> frameworksToLink;
+	std::vector<std::string> getFrameworksToLink()
 	{
 		return frameworksToLink;
 	}
 
-	static std::deque<std::string> frameworkSearchPaths;
-	std::deque<std::string> getFrameworkSearchPaths()
+	static std::vector<std::string> frameworkSearchPaths;
+	std::vector<std::string> getFrameworkSearchPaths()
 	{
 		return frameworkSearchPaths;
 	}
@@ -292,7 +287,7 @@ namespace Compiler
 	std::pair<std::string, std::string> parseCmdLineArgs(int argc, char** argv)
 	{
 		// parse arguments
-		std::deque<std::string> filenames;
+		std::vector<std::string> filenames;
 		std::string outname;
 
 		if(argc > 1)

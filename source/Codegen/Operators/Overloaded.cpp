@@ -322,12 +322,12 @@ namespace Codegen
 		}
 
 
-		std::deque<std::pair<Attribs, fir::Function*>> candidates;
+		std::vector<std::pair<Attribs, fir::Function*>> candidates;
 
 
 
-		auto findCandidatesPass1 = [lhs, rhs](CodegenInstance* cgi, std::deque<std::pair<Attribs, fir::Function*>>* cands,
-			std::deque<OpOverload*> list, ArithmeticOp op, bool skipGeneric)
+		auto findCandidatesPass1 = [lhs, rhs](CodegenInstance* cgi, std::vector<std::pair<Attribs, fir::Function*>>* cands,
+			std::vector<OpOverload*> list, ArithmeticOp op, bool skipGeneric)
 		{
 			for(auto oo : list)
 			{
@@ -380,20 +380,15 @@ namespace Codegen
 
 
 		// get the functree, starting from here, up.
-		std::deque<OpOverload*> list;
+		std::vector<OpOverload*> list;
 		{
-			auto curDepth = this->namespaceStack;
-
-			for(size_t i = 0; i <= this->namespaceStack.size(); i++)
+			auto curFT = this->getCurrentFuncTree();
+			while(curFT)
 			{
-				FunctionTree* ft = this->getCurrentFuncTree(&curDepth, this->rootNode->rootFuncStack);
-				if(!ft) break;
-
-				for(auto f : ft->operators)
+				for(auto f : curFT->operators)
 					list.push_back(f);
 
-				if(curDepth.size() > 0)
-					curDepth.pop_back();
+				curFT = curFT->parent;
 			}
 
 			// if we're assigning things, we need to get the assignfuncs as well.
@@ -550,8 +545,8 @@ namespace Codegen
 		candidates.clear();
 
 
-		// deque [pair [<attr, operator func>, assign func]]
-		std::deque<std::pair<std::pair<Attribs, fir::Function*>, fir::Function*>> finals;
+		// vector [pair [<attr, operator func>, assign func]]
+		std::vector<std::pair<std::pair<Attribs, fir::Function*>, fir::Function*>> finals;
 		for(std::pair<Attribs, fir::Function*> c : set)
 		{
 			// see if the appropriate assign exists.

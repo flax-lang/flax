@@ -34,6 +34,8 @@
 #include "internal/seeking.h"
 #include "internal/streaming.h"
 
+#include <strings.h>
+
 size_t utf8len(const char* text)
 {
 	const uint8_t* src;
@@ -256,7 +258,7 @@ size_t utf32toutf8(const unicode_t* input, size_t inputSize, char* target, size_
 		{
 			/* Decode surrogate pair */
 
-			if (codepoint > SURROGATE_HIGH_END) 
+			if (codepoint > SURROGATE_HIGH_END)
 			{
 				/* Missing high surrogate codepoint */
 
@@ -708,7 +710,7 @@ size_t utf8totitle(const char* input, size_t inputSize, char* target, size_t tar
 	while (state.src_size > 0)
 	{
 		size_t converted;
-		
+
 		if ((converted = casemapping_execute(&state, errors)) == 0)
 		{
 			return state.total_bytes_needed;

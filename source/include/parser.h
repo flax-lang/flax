@@ -5,12 +5,13 @@
 #pragma once
 
 #include "ast.h"
+#include "util.h"
 #include "errors.h"
 
-#include <string>
-#include <sstream>
 #include <deque>
+#include <sstream>
 #include <algorithm>
+#include <experimental/string_view>
 
 namespace Codegen
 {
@@ -23,6 +24,12 @@ namespace Ast
 	enum class ArithmeticOp;
 }
 
+
+namespace Lexer
+{
+	void getNextToken(std::vector<std::experimental::string_view>& lines, size_t* line, const std::experimental::string_view& whole,
+		Parser::Pin& pos, Parser::Token*);
+}
 
 namespace Parser
 {
@@ -42,6 +49,7 @@ namespace Parser
 		Else,
 		Return,
 		As,
+		AsExclamation,
 		Is,
 		Switch,
 		Case,
@@ -145,35 +153,36 @@ namespace Parser
 		// other stuff.
 		Identifier,
 		UnicodeSymbol,
-		Integer,
-		Decimal,
+		Number,
 		StringLiteral,
 
 		NewLine,
 		Comment,
+
+
+
+		EndOfFile,
 	};
+
+	using TokenList = util::FastVector<Token>;
+
+
 
 
 	struct Token
 	{
-		Token() { }
-
 		Pin pin;
-		std::string text;
 		TType type = TType::Invalid;
+		std::experimental::string_view text;
 	};
 
-
-	typedef std::deque<Token> TokenList;
 	struct ParserState
 	{
-		explicit ParserState(Codegen::CodegenInstance* c) : cgi(c) { }
-
-		TokenList tokens;
+		explicit ParserState(Codegen::CodegenInstance* c, const TokenList& tl);
 
 		std::unordered_set<std::string> visited;
 
-		Token curtok;
+		const Token *curtok;
 		Pin currentPos;
 		Ast::Root* rootNode = 0;
 		uint64_t curAttrib = 0;
@@ -185,77 +194,28 @@ namespace Parser
 
 		int structNestLevel = 0;
 
-		Token front()
-		{
-			return this->tokens.front();
-		}
+		bool empty();
+		bool hasTokens();
+		void skipNewline();
 
-		// void pop_front()
-		// {
-		// 	this->tokens.pop_front();
-		// }
+		size_t getRemainingTokens();
 
-		bool hasTokens()
-		{
-			return this->tokens.size() > 0;
-		}
+		const Token& pop();
+		const Token& eat();
+		const Token& front();
 
-		Token pop()
-		{
-			// returns the current front, then pops front.
-			if(this->tokens.size() == 0)
-				parserError(*this, "Unexpected end of input");
+		void reset();
+		const Token& skip(size_t i);
+		const Token& lookahead(size_t i);
 
-			auto t = this->front();
-			this->tokens.pop_front();
+		private:
 
-			this->curtok = t;
-			return t;
-		}
-
-		Token eat()
-		{
-			// returns the current front, then pops front.
-			if(this->tokens.size() == 0)
-				parserError(*this, "Unexpected end of input");
-
-			this->skipNewline();
-			Token t = this->front();
-			this->tokens.pop_front();
-
-			this->skipNewline();
-
-			this->curtok = t;
-			return t;
-		}
-
-		// Token eatNoSkip()
-		// {
-		// 	// returns the current front, then pops front.
-		// 	if(this->tokens.size() == 0)
-		// 		parserError(*this, "Unexpected end of input");
-
-		// 	auto t = this->front();
-		// 	this->pop_front();
-
-		// 	this->curtok = t;
-		// 	return t;
-		// }
-
-		void skipNewline()
-		{
-			// eat newlines AND comments
-			while(this->tokens.size() > 0 && (this->tokens.front().type == TType::NewLine
-				|| this->tokens.front().type == TType::Comment || this->tokens.front().type == TType::Semicolon))
-			{
-				this->tokens.pop_front();
-				this->currentPos.line++;
-			}
-		}
+		const TokenList& tokens;
+		size_t index = 0;
 	};
 
 
-
+	void setStaticState(ParserState& ps);
 
 
 
@@ -293,7 +253,6 @@ namespace Parser
 	Ast::NamespaceDecl*		parseNamespace(ParserState& tokens);
 	Ast::Expr*				parseStaticDecl(ParserState& tokens);
 	Ast::Expr*				parseOpOverload(ParserState& tokens);
-	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens);
 	Ast::ForeignFuncDecl*	parseForeignFunc(ParserState& tokens);
 	Ast::Func*				parseTopLevelExpr(ParserState& tokens);
 	Ast::ArrayLiteral*		parseArrayLiteral(ParserState& tokens);
@@ -303,18 +262,20 @@ namespace Parser
 	Ast::Expr*				parseRhs(ParserState& tokens, Ast::Expr* expr, int prio);
 	Ast::FuncCall*			parseFuncCall(ParserState& tokens, std::string id, Pin id_pos);
 
+	Ast::Func*				parseFuncUsingIdentifierToken(ParserState& tokens, Token id);
+	Ast::FuncDecl*			parseFuncDeclUsingIdentifierToken(ParserState& tokens, Token id);
+	Ast::BracedBlock*		parseBracedBlock(ParserState& tokens, bool hadOpeningBrace = false, bool eatClosingBrace = true);
 
 
-	Ast::Root* Parse(ParserState& pstate, std::string filename);
-	void parseAllCustomOperators(ParserState& pstate, std::string filename, std::string curpath);
 
+	Ast::Root* Parse(Codegen::CodegenInstance* cgi, std::string filename);
+	void parseAllCustomOperators(Codegen::CodegenInstance* cgi, std::string filename, std::string curpath);
 
-
+	std::string pinToString(Parser::Pin p);
 
 	std::string getModuleName(std::string filename);
-	Token getNextToken(std::string& stream, Pin& pos);
 
-	std::string arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
+	const std::string& arithmeticOpToString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 	Ast::ArithmeticOp mangledStringToOperator(Codegen::CodegenInstance*, std::string op);
 	std::string operatorToMangledString(Codegen::CodegenInstance*, Ast::ArithmeticOp op);
 }

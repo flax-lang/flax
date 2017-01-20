@@ -27,20 +27,21 @@ using namespace Ast;
 int main(int argc, char* argv[])
 {
 	// parse arguments
-	auto top = prof::Profile(PROFGROUP_TOP, "total");
+	auto names = Compiler::parseCmdLineArgs(argc, argv);
 
+	// any profiling needs to come after parsing args, since that tells us whether or not to enable the damn thing.
+	auto top = prof::Profile(PROFGROUP_TOP, "total");
 
 	std::string outname;
 	std::string filename;
 	Codegen::CodegenInstance* _cgi = 0;
-	std::pair<std::string, std::string> names;
-	std::deque<std::deque<Codegen::DepNode*>> groups;
+
+	std::vector<std::vector<Codegen::DepNode*>> groups;
 	{
 		std::string curpath;
 
 		{
 			auto p = prof::Profile(PROFGROUP_TOP, "preflight");
-			names = Compiler::parseCmdLineArgs(argc, argv);
 
 			filename = names.first;
 			outname = names.second;
@@ -73,10 +74,8 @@ int main(int argc, char* argv[])
 		{
 			auto p = prof::Profile("parse ops");
 
-			Parser::ParserState pstate(_cgi);
-
 			// parse and find all custom operators
-			Parser::parseAllCustomOperators(pstate, filename, curpath);
+			Parser::parseAllCustomOperators(_cgi, filename, curpath);
 		}
 	}
 

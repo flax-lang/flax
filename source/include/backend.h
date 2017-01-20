@@ -5,7 +5,7 @@
 #pragma once
 
 #include "defs.h"
-#include "compiler.h"
+// #include "compiler.h"
 
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS
@@ -27,6 +27,8 @@ namespace llvm
 
 namespace Compiler
 {
+	struct CompiledData;
+
 	enum class OptimisationLevel
 	{
 		Invalid,
@@ -75,7 +77,7 @@ namespace Compiler
 		BackendCaps::Capabilities getCapabilities() { return (BackendCaps::Capabilities) this->capabilities; }
 		bool hasCapability(BackendCaps::Capabilities cap) { return this->capabilities & cap; }
 
-		static Backend* getBackendFromOption(BackendOption opt, CompiledData& cd, std::deque<std::string> in, std::string out);
+		static Backend* getBackendFromOption(BackendOption opt, CompiledData& cd, std::vector<std::string> in, std::string out);
 
 		virtual ~Backend() { }
 
@@ -87,18 +89,18 @@ namespace Compiler
 		virtual std::string str() = 0;
 
 		protected:
-		Backend(int caps, CompiledData& dat, std::deque<std::string> inputs, std::string output)
+		Backend(int caps, CompiledData& dat, std::vector<std::string> inputs, std::string output)
 			: capabilities(caps), compiledData(dat), inputFilenames(inputs), outputFilename(output) { }
 
 		int capabilities;
 		CompiledData& compiledData;
-		std::deque<std::string> inputFilenames;
+		std::vector<std::string> inputFilenames;
 		std::string outputFilename;
 	};
 
 	struct LLVMBackend : Backend
 	{
-		LLVMBackend(CompiledData& dat, std::deque<std::string> inputs, std::string output);
+		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
 		virtual ~LLVMBackend() { }
 
 		virtual void performCompilation() override;
@@ -121,7 +123,7 @@ namespace Compiler
 
 	struct x64Backend : Backend
 	{
-		x64Backend(CompiledData& dat, std::deque<std::string> inputs, std::string output);
+		x64Backend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
 		virtual ~x64Backend() { }
 
 		virtual void performCompilation() override;

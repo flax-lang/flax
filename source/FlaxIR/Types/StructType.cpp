@@ -8,7 +8,7 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, bool ispacked)
+	StructType::StructType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, bool ispacked)
 	{
 		this->structName = name;
 		this->isTypePacked = ispacked;
@@ -16,7 +16,7 @@ namespace fir
 		this->setBody(mems);
 	}
 
-	StructType* StructType::create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
+	StructType* StructType::create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -24,13 +24,13 @@ namespace fir
 		StructType* type = new StructType(name, members, packed);
 
 		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache[0])
+		for(auto t : tc->typeCache)
 		{
 			if(t->isStructType() && t->toStructType()->getStructName() == name)
 			{
 				// check members.
-				std::deque<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-				std::deque<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
+				std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
+				std::vector<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
 
 				if(!areTypeListsEqual(tl1, tl2))
 				{
@@ -52,7 +52,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// special case: if no body, just return a type of the existing name.
-		for(auto t : tc->typeCache[0])
+		for(auto& t : tc->typeCache)
 		{
 			if(t->isStructType() && t->toStructType()->getStructName() == name)
 				return t->toStructType();
@@ -135,7 +135,7 @@ namespace fir
 	}
 
 
-	void StructType::setBody(std::deque<std::pair<std::string, Type*>> members)
+	void StructType::setBody(std::vector<std::pair<std::string, Type*>> members)
 	{
 		size_t i = 0;
 		for(auto p : members)
@@ -159,7 +159,7 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		std::deque<std::pair<std::string, Type*>> reified;
+		std::vector<std::pair<std::string, Type*>> reified;
 		for(auto mem : this->structMembers)
 		{
 			auto rfd = mem.second->reify(reals);

@@ -9,7 +9,7 @@
 namespace fir
 {
 	// structs
-	ClassType::ClassType(const Identifier& name, std::deque<std::pair<std::string, Type*>> mems, std::deque<Function*> methods)
+	ClassType::ClassType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, std::vector<Function*> methods)
 	{
 		this->className = name;
 
@@ -18,8 +18,8 @@ namespace fir
 	}
 
 
-	ClassType* ClassType::create(const Identifier& name, std::deque<std::pair<std::string, Type*>> members,
-		std::deque<Function*> methods, FTContext* tc)
+	ClassType* ClassType::create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members,
+		std::vector<Function*> methods, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -27,13 +27,13 @@ namespace fir
 		ClassType* type = new ClassType(name, members, methods);
 
 		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache[0])
+		for(auto t : tc->typeCache)
 		{
 			if(t->isClassType() && t->toClassType()->getClassName() == name)
 			{
 				// check members.
-				std::deque<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-				std::deque<Type*> tl2; for(auto p : t->toClassType()->classMembers) tl2.push_back(p.second);
+				std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
+				std::vector<Type*> tl2; for(auto p : t->toClassType()->classMembers) tl2.push_back(p.second);
 
 				if(!areTypeListsEqual(tl1, tl2))
 				{
@@ -56,7 +56,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// special case: if no body, just return a type of the existing name.
-		for(auto t : tc->typeCache[0])
+		for(auto& t : tc->typeCache)
 		{
 			if(t->isClassType() && t->toClassType()->getClassName() == name)
 				return t->toClassType();
@@ -166,7 +166,7 @@ namespace fir
 	}
 
 
-	void ClassType::setMembers(std::deque<std::pair<std::string, Type*>> members)
+	void ClassType::setMembers(std::vector<std::pair<std::string, Type*>> members)
 	{
 		size_t i = 0;
 		for(auto p : members)
@@ -179,7 +179,7 @@ namespace fir
 		}
 	}
 
-	void ClassType::setMethods(std::deque<Function*> methods)
+	void ClassType::setMethods(std::vector<Function*> methods)
 	{
 		for(auto m : methods)
 		{
@@ -199,8 +199,8 @@ namespace fir
 
 		ClassType* ret = ClassType::createWithoutBody(this->className);
 
-		std::deque<std::pair<std::string, Type*>> reifiedMems;
-		std::deque<Function*> reifiedMethods;
+		std::vector<std::pair<std::string, Type*>> reifiedMems;
+		std::vector<Function*> reifiedMethods;
 
 		for(auto mem : this->classMembers)
 		{

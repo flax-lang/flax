@@ -10,30 +10,51 @@
 #include "parser.h"
 #include "../utf8rewind/include/utf8rewind/utf8rewind.h"
 
-namespace Parser
-{
-	static void skipWhitespace(std::string& line, Pin& pos)
-	{
-		size_t startpos = line.find_first_not_of(" \t");
-		if(startpos != std::string::npos)
-		{
-			for(size_t i = 0; i < startpos; i++)
-			{
-				if(line[i] == ' ')			pos.col++;
-				else if(line[i] == '\t')	pos.col += TAB_WIDTH;
-			}
+using string_view = std::experimental::string_view;
 
-			line = line.substr(startpos);
-		}
+namespace Lexer
+{
+	using namespace Parser;
+
+	static void skipWhitespace(string_view& line, Pin& pos, size_t* offset)
+	{
+		size_t skip = 0;
+		while(line.length() > skip && (line[skip] == '\t' || line[skip] == ' '))
+			skip++, (line[skip] == ' ' ? pos.col++ : pos.col += TAB_WIDTH);
+
+		line.remove_prefix(skip);
+		(*offset) += skip;
 	}
 
-	static Token previousToken;
-	static bool shouldConsiderUnaryLiteral(std::string& stream, Pin& pos)
+	template <size_t N>
+	static bool hasPrefix(const string_view& str, char const (&literal)[N])
+	{
+		if(str.length() < N - 1) return false;
+		for(size_t i = 0; i < N - 1; i++)
+			if(str[i] != literal[i]) return false;
+
+		return true;
+	}
+
+	template <size_t N>
+	static bool compare(const string_view& str, char const (&literal)[N])
+	{
+		if(str.length() != N - 1) return false;
+		for(size_t i = 0; i < N - 1; i++)
+			if(str[i] != literal[i]) return false;
+
+		return true;
+	}
+
+
+
+	static TType prevType = TType::Invalid;
+	static size_t prevID = 0;
+	static bool shouldConsiderUnaryLiteral(string_view& stream, Pin& pos)
 	{
 		// check the previous token
-		bool res = (previousToken.type != TType::Invalid && previousToken.pin.file == pos.file &&
-			(previousToken.type != TType::RParen && previousToken.type != TType::RSquare && previousToken.type != TType::Identifier
-			&& previousToken.type != TType::Integer && previousToken.type != TType::Decimal));
+		bool res = (prevType != TType::Invalid && prevID == pos.fileID && (prevType != TType::RParen && prevType != TType::RSquare
+			&& prevType != TType::Identifier && prevType != TType::Number));
 
 		if(!res) return false;
 
@@ -52,163 +73,171 @@ namespace Parser
 	}
 
 
-	// warning: messy function
-	// edit: haha, if you think this is messy, welcome to the *REAL WORLD*
-
-	Token getNextToken(std::string& stream, Pin& pos)
+	TType getNextToken(const util::FastVector<string_view>& lines, size_t* line, size_t* offset, const string_view& whole,
+		Pin& pos, Token* out)
 	{
-		if(stream.length() == 0)
-			return Token();
+		bool flag = true;
+
+		if(*line == lines.size())
+		{
+			out->pin = pos;
+			out->type = TType::EndOfFile;
+			return TType::EndOfFile;
+		}
+
+		string_view stream = lines[*line].substr(*offset);
 
 		size_t read = 0;
 		size_t unicodeLength = 0;
 
 		// first eat all whitespace
-		skipWhitespace(stream, pos);
+		skipWhitespace(stream, pos, offset);
 
-		Token tok;
+		Token& tok = *out;
 		tok.pin = pos;
 
 		// check compound symbols first.
-		if(stream.compare(0, 2, "==") == 0)
+		if(hasPrefix(stream, "//"))
 		{
-			tok.text = "==";
+			tok.type = TType::Comment;
+			stream = stream.substr(0, 0);
+			(*line)++;
+			pos.line++;
+
+
+			(*offset) = 0;
+
+			// don't assign lines[line] = stream, since over here we've changed 'line' to be the next one.
+			flag = false;
+		}
+		else if(hasPrefix(stream, "=="))
+		{
 			tok.type = TType::EqualsTo;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, ">=") == 0)
+		else if(hasPrefix(stream, ">="))
 		{
-			tok.text = ">=";
 			tok.type = TType::GreaterEquals;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "<=") == 0)
+		else if(hasPrefix(stream, "<="))
 		{
-			tok.text = "<=";
 			tok.type = TType::LessThanEquals;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "!=") == 0)
+		else if(hasPrefix(stream, "!="))
 		{
-			tok.text = "!=";
 			tok.type = TType::NotEquals;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "||") == 0)
+		else if(hasPrefix(stream, "||"))
 		{
-			tok.text = "||";
 			tok.type = TType::LogicalOr;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "&&") == 0)
+		else if(hasPrefix(stream, "&&"))
 		{
-			tok.text = "&&";
 			tok.type = TType::LogicalAnd;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "->") == 0)
+		else if(hasPrefix(stream, "->"))
 		{
-			tok.text = "->";
 			tok.type = TType::Arrow;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "//") == 0)
+		else if(hasPrefix(stream, "++"))
 		{
-			tok.text = "//";
-
-			std::stringstream ss(stream);
-			std::getline(ss, tok.text, '\n');
-			read = tok.text.length();
-			// pos.line++;
-
-			tok.type = TType::Comment;
-		}
-		else if(stream.compare(0, 2, "++") == 0)
-		{
-			tok.text = "++";
 			tok.type = TType::DoublePlus;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "--") == 0)
+		else if(hasPrefix(stream, "--"))
 		{
-			tok.text = "--";
 			tok.type = TType::DoubleMinus;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "+=") == 0)
+		else if(hasPrefix(stream, "+="))
 		{
-			tok.text = "+=";
 			tok.type = TType::PlusEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "-=") == 0)
+		else if(hasPrefix(stream, "-="))
 		{
-			tok.text = "+=";
 			tok.type = TType::MinusEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "*=") == 0)
+		else if(hasPrefix(stream, "*="))
 		{
-			tok.text = "+=";
 			tok.type = TType::MultiplyEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "/=") == 0)
+		else if(hasPrefix(stream, "/="))
 		{
-			tok.text = "+=";
 			tok.type = TType::DivideEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "%=") == 0)
+		else if(hasPrefix(stream, "%="))
 		{
-			tok.text = "%=";
 			tok.type = TType::ModEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "&=") == 0)
+		else if(hasPrefix(stream, "&="))
 		{
-			tok.text = "&=";
 			tok.type = TType::AmpersandEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "|=") == 0)
+		else if(hasPrefix(stream, "|="))
 		{
-			tok.text = "|=";
 			tok.type = TType::PipeEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 2, "^=") == 0)
+		else if(hasPrefix(stream, "^="))
 		{
-			tok.text = "^=";
 			tok.type = TType::CaretEq;
 			read = 2;
 		}
-		else if(stream.compare(0, 3, "...") == 0)
+		else if(hasPrefix(stream, "..."))
 		{
-			tok.text = "...";
 			tok.type = TType::Ellipsis;
 			read = 3;
 		}
-		else if(stream.compare(0, 2, "/*") == 0)
+		else if(hasPrefix(stream, "/*"))
 		{
 			int currentNest = 1;
 
 			// support nested, so basically we have to loop until we find either a /* or a */
-			stream = stream.substr(2);
-
+			stream.remove_prefix(2);
+			(*offset) += 2;
 			pos.col += 2;
+
 
 			Pin opening = pos;
 			Pin curpos = pos;
 
 			size_t k = 0;
-			while(currentNest > 0 && k < stream.size())
+			while(currentNest > 0)
 			{
-				if(k + 1 == stream.size())
-					parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
+				// we can do this, because we know the closing token (*/) is 2 chars long
+				// so if we have 1 char left, gg.
+				if(k + 1 == stream.size() || stream[k] == '\n')
+				{
+					if(*line + 1 == lines.size())
+						parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
 
-				if(stream[k] == '\n')
+					// else, get the next line.
+					// also note: if we're in this loop, we're inside a block comment.
+					// since the ending token cannot be split across lines, we know that this last char
+					// must also be part of the comment. hence, just skip over it.
+
+					k = 0;
 					curpos.line++;
+					curpos.col = 0;
+					(*offset) = 0;
+					(*line)++;
+
+					stream = lines[*line];
+					continue;
+				}
+
 
 				if(stream[k] == '/' && stream[k + 1] == '*')
 					currentNest++, k++, curpos.col++, opening = curpos;
@@ -220,60 +249,59 @@ namespace Parser
 				curpos.col++;
 			}
 
-			stream = stream.substr(k);
+			if(currentNest != 0)
+				parserError(opening, "Expected closing */ (reached EOF), for block comment started here:");
+
 			pos = curpos;
 
-			return getNextToken(stream, pos);
+			// don't actually store the text, because it's pointless and memory-wasting
+			// tok.text = "/* I used to be a comment like you, until I took a memory-leak to the knee. */";
+			tok.type = TType::Comment;
+			read = k;
 		}
-		else if(stream.compare(0, 2, "*/") == 0)
+		else if(hasPrefix(stream, "*/"))
 		{
 			parserError(tok, "Unexpected '*/'");
 		}
 
 		// unicode stuff
-		else if(stream.compare(0, strlen("ƒ"), "ƒ") == 0)
+		else if(hasPrefix(stream, "ƒ"))
 		{
-			tok.text = FUNC_KEYWORD_STRING;
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
 
 			unicodeLength = 1;
 		}
-		else if(stream.compare(0, strlen("ﬁ"), "ﬁ") == 0)
+		else if(hasPrefix(stream, "ﬁ"))
 		{
-			tok.text = "ffi";
 			tok.type = TType::ForeignFunc;
 			read = std::string("ﬁ").length();
 
 			unicodeLength = 1;
 		}
-		else if(stream.compare(0, strlen("÷"), "÷") == 0)
+		else if(hasPrefix(stream, "÷"))
 		{
-			tok.text = "÷";
 			tok.type = TType::Divide;
 			read = std::string("÷").length();
 
 			unicodeLength = 1;
 		}
-		else if(stream.compare(0, strlen("≠"), "≠") == 0)
+		else if(hasPrefix(stream, "≠"))
 		{
-			tok.text = "≠";
 			tok.type = TType::NotEquals;
 			read = std::string("≠").length();
 
 			unicodeLength = 1;
 		}
-		else if(stream.compare(0, strlen("≤"), "≤") == 0)
+		else if(hasPrefix(stream, "≤"))
 		{
-			tok.text = "≤";
 			tok.type = TType::LessThanEquals;
 			read = std::string("≤").length();
 
 			unicodeLength = 1;
 		}
-		else if(stream.compare(0, strlen("≥"), "≥") == 0)
+		else if(hasPrefix(stream, "≥"))
 		{
-			tok.text = "≥";
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
 
@@ -287,257 +315,206 @@ namespace Parser
 		// ident + 3
 		// number + 3
 		// so in every other case we want unary +/-.
-		else if(isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos))
+
+		// note(2):
+		// here's how this shit fucks up:
+		// since numbers are handled at the lexing level, we have no idea about precedence.
+		// in the event a tuple contains another tuple, access looks something like this:
+		//
+		// let m = tup.0.1
+		// this, unfortunately, parses as tup.(0.1)
+		//
+		// so, let's do this: when parsing a number, return a string. Number AST node also should store a string now.
+		// string remains an accurate representation, for later merging.
+
+		/*
+			eg:
+
+			1.0e4 == 10000
+			parses as MemberAccess [ Number("1"), Number("0e4") ]
+
+			3.004151
+			parses as MemberAccess [ Number("3"), Number("004151") ]
+
+			at typecheck time, we just join the two together, add a "." in the middle, and call stold() or something.
+			storing strings preserves things like the 0s required for actually knowing what the number is.
+		*/
+		else if(!stream.empty() && (isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
-			std::string num;
+			// copy it.
+			auto tmp = stream;
 
-			// read until whitespace
-			std::stringstream str;
-			str << stream;
-
-			if(stream[0] == '+' || stream[0] == '-')
-				num = str.get();
-
-			int tmp = 0;
-			while(isdigit(tmp = str.get()))
-				num += (char) tmp;
+			if(stream.find('-') == 0 || stream.find('+') == 0)
+				tmp.remove_prefix(1);
 
 			int base = 10;
-			if(num == "0" && (tmp == 'x' || tmp == 'X' || tmp == 'b' || tmp == 'B'))
+			if(tmp.find("0x") == 0 || tmp.find("0X") == 0)
+				base = 16, tmp.remove_prefix(2);
+
+			else if(tmp.find("0b") == 0 || tmp.find("0B") == 0)
+				base = 2, tmp.remove_prefix(2);
+
+
+			// find that shit
+			auto end = std::find_if_not(tmp.begin(), tmp.end(), [base](const char& c) -> bool {
+				if(base == 10)	return isdigit(c);
+				if(base == 16)	return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
+				else			return (c == '0' || c == '1');
+			});
+
+			tmp.remove_prefix((end - tmp.begin()));
+
+			// check if we have 'e' or 'E'
+			if(tmp.size() > 0 && (tmp[0] == 'e' || tmp[0] == 'E'))
 			{
-				if(tmp == 'x' || tmp == 'X')
-					base = 16;
+				if(base != 10)
+					parserError("Exponential form is supported with neither hexadecimal nor binary literals");
 
-				else if(tmp == 'b' || tmp == 'B')
-					base = 2;
+				// find that shit
+				auto next = std::find_if_not(tmp.begin() + 1, tmp.end(), isdigit);
 
-				num = "";
-
-				while(tmp = str.get(), (base == 16 ? isxdigit(tmp) : (tmp == '0' || tmp == '1')))
-					num += (char) tmp;
+				// this does the 'e' as well.
+				tmp.remove_prefix(next - tmp.begin());
 			}
 
+			size_t didRead = stream.size() - tmp.size();
 
-			if(tmp == '.')
-			{
-				num += '.';
+			tok.text = stream.substr(0, didRead);
+			tok.type = TType::Number;
+			tok.pin.len = didRead;
 
-				if(base == 2)
-					parserError(tok, "Binary floating-point literals are currently unsupported.");
-
-				else if(base == 16)
-					parserError(tok, "Hexadecimal floating-point literals are currently unsupported.");
-
-				while(isdigit(tmp = str.get()))
-					num += (char) tmp;
-
-
-				// exponent form
-				if(tmp == 'e' || tmp == 'E')
-				{
-					num += "e";
-					while(isdigit(tmp = str.get()))
-						num += (char) tmp;
-				}
-
-
-				if(num.back() == '.')
-				{
-					// what follow after '.' are not digits
-					// pretend like the '.' was never seen, and let the parser handle this
-					// can come into play when tuple members are structs, eg. tupl.0.length()
-					num.pop_back();
-					tok.type = TType::Integer;
-				}
-				else
-				{
-					tok.type = TType::Decimal;
-
-					try
-					{
-						// makes sure we get the right shit done
-						std::stold(num);
-
-						// check if we might run out of precision
-						if(num.find(".") != std::string::npos && num.substr(num.find(".")).length() > __LDBL_DIG__)
-						{
-							parserMessage(Err::Warn, tok, "Floating-point constant is most likely too precise for best "
-								"representation (f80); have %zu digits, LDBL_DIG is %d", num.substr(num.find(".")).length(), __LDBL_DIG__);
-						}
-					}
-					catch(const std::out_of_range&)
-					{
-						parserError(tok, "Number '%s' is out of range of largest representation (f80)", num.c_str());
-					}
-					catch(const std::exception&)
-					{
-						parserError(tok, "Invalid number '%s'", num.c_str());
-					}
-				}
-			}
-			else
-			{
-				// exponent form
-				if(tmp == 'e' || tmp == 'E')
-				{
-					num += "e";
-					while(isdigit(tmp = str.get()))
-						num += (char) tmp;
-				}
-
-				// we're an int, set shit and return
-				tok.type = TType::Integer;
-				try
-				{
-					// makes sure we get the right shit done
-					if(num[0] == '-')
-						std::stoll(num, nullptr, base);
-
-					else
-						std::stoull(num, nullptr, base);
-				}
-				catch(const std::out_of_range&)
-				{
-					parserError(tok, "Number '%s' is out of range of largest representation (u64)", num.c_str());
-				}
-				catch(const std::exception&)
-				{
-					parserError(tok, "Invalid number '%s'", num.c_str());
-				}
-
-				if(base == 16)
-					num = "0x" + num;
-
-				else if(base == 2)
-					num = "0b" + num;
-			}
-
-
-
-
-
-			// make sure the next char is not a letter, prevents things like
-			// 98091824097foobar from working when 'foobar' is a var name
-			// hack below to let us see the next letter without stringstream eating the space
-			stream = stream.substr(num.length());
-
-			if(stream.length() > 0 && isalpha(stream[0]))
-				parserError(tok, "Malformed integer literal");
-
-			read = 0;		// done above
-			tok.text = num;
-			tok.pin.len = num.length();
+			read = didRead;
 		}
-
-		else if(stream[0] == '_'  || utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_LETTER) > 0)
+		else if(!stream.empty() && (stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0))
 		{
-			std::string id;
-
 			// get as many letters as possible first
-			size_t identLength = utf8iscategory(stream.c_str(), stream.size(),
+			size_t identLength = utf8iscategory(stream.data(), stream.size(),
 				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
-
-			id += stream.substr(0, identLength);
-
-			// fprintf(stderr, "FINISH: got identifier: %s, length %zu (%zu)\n", id.c_str(), id.length(), identLength);
 
 			bool isExclamation = (stream.size() - identLength > 0) && stream.substr(identLength).front() == '!';
 
 
-			// int tmp = 0;
-			// while(tmp = str.get(), (isascii(tmp) && (isalnum(tmp) || tmp == '_')) || (!isascii(tmp) && utf8is))
-			// 	id += (char) tmp;
-
-			read = id.length();
-			tok.text = id;
-
-
+			read = identLength;
+			tok.text = stream.substr(0, identLength);
 
 
 			// check for keywords
-			if(id == "class")					tok.type = TType::Class;
-			else if(id == "struct")				tok.type = TType::Struct;
-			else if(id == FUNC_KEYWORD_STRING)	tok.type = TType::Func;
-			else if(id == "import")				tok.type = TType::Import;
-			else if(id == "var")				tok.type = TType::Var;
-			else if(id == "val")				tok.type = TType::Val;
-			else if(id == "let")				tok.type = TType::Val;
-			else if(id == "for")				tok.type = TType::For;
-			else if(id == "while")				tok.type = TType::While;
-			else if(id == "if")					tok.type = TType::If;
-			else if(id == "else")				tok.type = TType::Else;
-			else if(id == "return")				tok.type = TType::Return;
-			else if(id == "as")					{ tok.type = TType::As; if(isExclamation) { read++; tok.text = "as!"; } }
-			else if(id == "is")					tok.type = TType::Is;
-			else if(id == "switch")				tok.type = TType::Switch;
-			else if(id == "case")				tok.type = TType::Case;
-			else if(id == "enum")				tok.type = TType::Enum;
-			else if(id == "ffi")				tok.type = TType::ForeignFunc;
-			else if(id == "true")				tok.type = TType::True;
-			else if(id == "false")				tok.type = TType::False;
-			else if(id == "static")				tok.type = TType::Static;
-
-			else if(id == "break")				tok.type = TType::Break;
-			else if(id == "continue")			tok.type = TType::Continue;
-			else if(id == "do")					tok.type = TType::Do;
-			else if(id == "loop")				tok.type = TType::Loop;
-			else if(id == "defer")				tok.type = TType::Defer;
-
-			else if(id == "public")				tok.type = TType::Public;
-			else if(id == "private")			tok.type = TType::Private;
-			else if(id == "internal")			tok.type = TType::Internal;
-
-			else if(id == "alloc")				tok.type = TType::Alloc;
-			else if(id == "dealloc")			tok.type = TType::Dealloc;
-			else if(id == "typeof")				tok.type = TType::Typeof;
-
-			else if(id == "get")				tok.type = TType::Get;
-			else if(id == "set")				tok.type = TType::Set;
-
-			else if(id == "null")				tok.type = TType::Null;
-
-			else if(id == "module")				tok.type = TType::Module;
-			else if(id == "namespace")			tok.type = TType::Namespace;
-			else if(id == "extension")			tok.type = TType::Extension;
-			else if(id == "typealias")			tok.type = TType::TypeAlias;
-			else if(id == "protocol")			tok.type = TType::Protocol;
-			else if(id == "override")			tok.type = TType::Override;
-			else								tok.type = TType::Identifier;
+			if(compare(tok.text, "class"))				tok.type = TType::Class;
+			else if(compare(tok.text, "struct"))		tok.type = TType::Struct;
+			else if(compare(tok.text, "func"))			tok.type = TType::Func;
+			else if(compare(tok.text, "import"))		tok.type = TType::Import;
+			else if(compare(tok.text, "var"))			tok.type = TType::Var;
+			else if(compare(tok.text, "val"))			tok.type = TType::Val;
+			else if(compare(tok.text, "let"))			tok.type = TType::Val;
+			else if(compare(tok.text, "for"))			tok.type = TType::For;
+			else if(compare(tok.text, "while"))			tok.type = TType::While;
+			else if(compare(tok.text, "if"))			tok.type = TType::If;
+			else if(compare(tok.text, "else"))			tok.type = TType::Else;
+			else if(compare(tok.text, "return"))		tok.type = TType::Return;
+			else if(compare(tok.text, "is"))			tok.type = TType::Is;
+			else if(compare(tok.text, "switch"))		tok.type = TType::Switch;
+			else if(compare(tok.text, "case"))			tok.type = TType::Case;
+			else if(compare(tok.text, "enum"))			tok.type = TType::Enum;
+			else if(compare(tok.text, "ffi"))			tok.type = TType::ForeignFunc;
+			else if(compare(tok.text, "true"))			tok.type = TType::True;
+			else if(compare(tok.text, "false"))			tok.type = TType::False;
+			else if(compare(tok.text, "static"))		tok.type = TType::Static;
+			else if(compare(tok.text, "break"))			tok.type = TType::Break;
+			else if(compare(tok.text, "continue"))		tok.type = TType::Continue;
+			else if(compare(tok.text, "do"))			tok.type = TType::Do;
+			else if(compare(tok.text, "loop"))			tok.type = TType::Loop;
+			else if(compare(tok.text, "defer"))			tok.type = TType::Defer;
+			else if(compare(tok.text, "public"))		tok.type = TType::Public;
+			else if(compare(tok.text, "private"))		tok.type = TType::Private;
+			else if(compare(tok.text, "internal"))		tok.type = TType::Internal;
+			else if(compare(tok.text, "alloc"))			tok.type = TType::Alloc;
+			else if(compare(tok.text, "dealloc"))		tok.type = TType::Dealloc;
+			else if(compare(tok.text, "typeof"))		tok.type = TType::Typeof;
+			else if(compare(tok.text, "get"))			tok.type = TType::Get;
+			else if(compare(tok.text, "set"))			tok.type = TType::Set;
+			else if(compare(tok.text, "null"))			tok.type = TType::Null;
+			else if(compare(tok.text, "module"))		tok.type = TType::Module;
+			else if(compare(tok.text, "namespace"))		tok.type = TType::Namespace;
+			else if(compare(tok.text, "extension"))		tok.type = TType::Extension;
+			else if(compare(tok.text, "typealias"))		tok.type = TType::TypeAlias;
+			else if(compare(tok.text, "protocol"))		tok.type = TType::Protocol;
+			else if(compare(tok.text, "override"))		tok.type = TType::Override;
+			else if(compare(tok.text, "as"))			{ tok.type = TType::As; if(isExclamation) { read++; tok.type = TType::AsExclamation; } }
+			else										tok.type = TType::Identifier;
 		}
-		else if(stream[0] == '"')
+		else if(!stream.empty() && stream[0] == '"')
 		{
-			// parse a string literal
-			std::stringstream ss;
+			// string literal
 
-			unsigned long i = 1;
+			// because we want to avoid using std::string (ie. copying) in the lexer (Token), we must send the string over verbatim.
+
+			// store the starting position
+			size_t start = stream.begin() - whole.begin() + 1;
+
+			size_t didRead = 0;
+			size_t i = 1;
 			for(; stream[i] != '"'; i++)
 			{
 				if(stream[i] == '\\')
 				{
-					i++;
-					switch(stream[i])
+					if(i + 1 == stream.size() || *line + 1 == lines.size())
 					{
-						case 'n':	ss << "\n";	break;
-						case 'b':	ss << "\b";	break;
-						case 'r':	ss << "\r";	break;
-						case 't':	ss << "\t";	break;
-						case '\\':	ss << "\\"; break;
+						parserError("Unexpected end of input");
+					}
+					else if(stream[i + 1] == '"')
+					{
+						// add the quote and the backslash, and skip it.
+						didRead += 2;
+						pos.col += 2;
+						i++;
+					}
+					// breaking string over two lines
+					else if(stream[i + 1] == '\n')
+					{
+						// skip it, then move to the next line
+						pos.line++;
+						pos.col = 1;
+						(*line)++;
+
+						i = 0;
+
+						// just a fudge factor gotten from empirical evidence
+						// 3 extra holds for multiple lines, so all is well.
+
+						didRead += 3;
+						stream = lines[*line];
+						(*offset) = 0;
+					}
+					else
+					{
+						// just put the backslash in.
+						// and don't skip the next one.
+						didRead++;
+						pos.col++;
 					}
 
 					continue;
 				}
 
-				ss << stream[i];
+				didRead++;
+				pos.col++;
+
 				if(i == stream.size() - 1 || stream[i] == '\n')
-					parserError(tok, "Expected closing '\"'");
+				{
+					parserError(Pin(pos.fileID, pos.line, pos.col + i, pos.len), "Expected closing '\"' (%zu/%zu/%zu/%c/%zu)",
+						i, stream.size(), didRead, stream[i], *offset);
+				}
 			}
 
 			tok.type = TType::StringLiteral;
-			tok.text = "_" + ss.str();			// HACK: Parser checks for string length > 0, so if we have an empty string we
-												// need something here.
-			read = i + 1;
+			tok.text = whole.substr(start, didRead);
+			stream = stream.substr(i + 1);
+			(*offset) += i + 1;
+
+			read = 0;
+			flag = false;
 		}
-		else
+		else if(!stream.empty())
 		{
 			if(isascii(stream[0]))
 			{
@@ -578,30 +555,32 @@ namespace Parser
 						parserError(tok, "Unknown token '%c'", stream[0]);
 				}
 
-				tok.text = stream[0];
 				read = 1;
 			}
-			else if(utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)
+			else if(utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)
 			{
-				read = utf8iscategory(stream.c_str(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER);
+				read = utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER);
 
 				tok.text = stream.substr(0, read);
 				tok.type = TType::UnicodeSymbol;
 			}
 			else
 			{
-				parserError(tok, "Unknown token '%s'", stream.substr(0, 10).c_str());
+				parserError(tok, "Unknown token '%s'", stream.substr(0, 10).to_string().c_str());
 			}
 		}
 
-		stream = stream.substr(read);
+		stream.remove_prefix(read);
+
+		if(flag) (*offset) += read;
+
 		if(tok.type != TType::NewLine)
 		{
-			// note(debatable): put the actual "position" in the front of the token
-			pos.col += read;
-
 			if(read > 0)
 			{
+				// note(debatable): put the actual "position" in the front of the token
+				pos.col += (read / 2);
+
 				// special handling -- things like ƒ, ≤ etc. are one character wide, but can be several *bytes* long.
 				pos.len = (unicodeLength > 0 ? unicodeLength : read);
 				tok.pin.len = read;
@@ -611,10 +590,15 @@ namespace Parser
 		{
 			tok.pin.col = 1;
 			pos.col = 1;
+
+			(*line)++;
+			(*offset) = 0;
 		}
 
-		previousToken = tok;
-		return tok;
+		prevType = tok.type;
+		prevID = tok.pin.fileID;
+
+		return prevType;
 	}
 }
 

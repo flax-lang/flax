@@ -110,6 +110,8 @@ extension string
 	// }
 }
 
+
+
 public func miscellaneousTests()
 {
 	mtest(10, 41)
@@ -130,6 +132,7 @@ public func miscellaneousTests()
 	}
 
 	do {
+
 		struct winsize
 		{
 			var row: u16

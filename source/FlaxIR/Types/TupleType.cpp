@@ -53,11 +53,6 @@ namespace fir
 		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()), tc);
 	}
 
-	TupleType* TupleType::get(std::deque<Type*> mems, FTContext* tc)
-	{
-		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()), tc);
-	}
-
 	TupleType* TupleType::get(std::vector<Type*> mems, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
