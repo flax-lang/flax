@@ -33,9 +33,7 @@ namespace Compiler
 	{
 		HighlightOptions ops;
 		ops.caret = imp->pin;
-		ops.caret.file = fpath;
-
-		// fprintf(stderr, "ops.caret.file = %s // %s\n", ops.caret.file.c_str(), fpath.c_str());
+		ops.caret.fileID = getFileIDFromFilename(fpath);
 
 		auto tmp = imp->pin;
 		tmp.col += std::string("import ").length() + 1;
@@ -191,7 +189,7 @@ namespace Compiler
 		ParserState fakeps(0, copy);
 		q.finish();
 
-		fakeps.currentPos.file = currentMod;
+		fakeps.currentPos.fileID = getFileIDFromFilename(currentMod);
 
 		fakeps.currentPos.line = 1;
 		fakeps.currentPos.col = 1;

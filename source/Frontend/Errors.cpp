@@ -20,7 +20,7 @@ namespace GenError
 {
 	static void printContext(HighlightOptions ops)
 	{
-		auto lines = Compiler::getFileLines(ops.caret.file);
+		auto lines = Compiler::getFileLines(ops.caret.fileID);
 		if(lines.size() > ops.caret.line - 1)
 		{
 			std::string orig = lines[ops.caret.line - 1].to_string();
@@ -147,9 +147,9 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = Compiler::getFilenameFromPath(ops.caret.file.empty() ? "(unknown)" : ops.caret.file);
+	std::string filename = Compiler::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)" : Compiler::getFilenameFromID(ops.caret.fileID));
 
-	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.file.size() > 0)
+	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
 
 	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
@@ -160,10 +160,8 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	if(ops.caret.line > 0 && ops.caret.col > 0)
 	{
 		std::vector<std::string> lines;
-		if(ops.caret.file.length() > 0)
-		{
+		if(ops.caret.fileID > 0)
 			GenError::printContext(ops);
-		}
 	}
 
 	fprintf(stderr, "\n");
@@ -209,7 +207,7 @@ void error(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", true, ap);
@@ -243,7 +241,7 @@ void exitless_error(Expr* relevantast, HighlightOptions ops, const char* msg, ..
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Error", false, ap);
@@ -281,7 +279,7 @@ void warn(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Warning", false, ap);
@@ -312,7 +310,7 @@ void info(Expr* relevantast, HighlightOptions ops, const char* msg, ...)
 	va_list ap;
 	va_start(ap, msg);
 
-	if(ops.caret.file.empty())
+	if(ops.caret.fileID == 0)
 		ops.caret = relevantast ? relevantast->pin : Parser::Pin();
 
 	__error_gen(ops, msg, "Note", false, ap);
@@ -518,7 +516,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = ma->pin.file;
+		ret.fileID = ma->pin.fileID;
 		ret.line = ma->pin.line;
 		ret.col = left.col;
 		ret.len = (right.col + right.len) - left.len;
@@ -532,7 +530,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = bo->pin.file;
+		ret.fileID = bo->pin.fileID;
 		ret.line = bo->pin.line;
 		ret.col = left.col;
 		ret.len = (right.col + right.len) - left.col;
@@ -546,7 +544,7 @@ Parser::Pin getHighlightExtent(Ast::Expr* e)
 
 		Parser::Pin ret;
 
-		ret.file = arr.file;
+		ret.fileID = arr.fileID;
 		ret.line = arr.line;
 		ret.col = arr.col;
 
