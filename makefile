@@ -39,8 +39,8 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
+CXXFLAGS		+= -std=c++14 -O3 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
+CFLAGS			+= -std=c11 -O3 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
 
 LDFLAGS			+= $(SANITISE)
 
@@ -64,7 +64,7 @@ GLTESTSRC		:= build/gltest.flx
 prep:
 	@mkdir -p $(dir $(OUTPUT))
 
-osxflags: CXXFLAGS += -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 
 osxflags:
