@@ -290,6 +290,11 @@ public func main(argc: i32, argv: i8**) -> int
 		let tup = ("a", (30, 40))
 		let k = tup.1.0
 
+		let s = "some \\ string \
+			broken over"
+
+		printf("s = %s\n", s)
+
 		printf("%d, %.7lf\n", k, +3.000141);
 	}
 

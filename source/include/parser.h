@@ -42,6 +42,7 @@ namespace Parser
 		Else,
 		Return,
 		As,
+		AsExclamation,
 		Is,
 		Switch,
 		Case,
