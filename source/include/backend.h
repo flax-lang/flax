@@ -5,7 +5,7 @@
 #pragma once
 
 #include "defs.h"
-#include "compiler.h"
+// #include "compiler.h"
 
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS
@@ -27,6 +27,8 @@ namespace llvm
 
 namespace Compiler
 {
+	struct CompiledData;
+
 	enum class OptimisationLevel
 	{
 		Invalid,
