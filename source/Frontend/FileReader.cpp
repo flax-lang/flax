@@ -204,28 +204,30 @@ namespace Compiler
 
 	TokenList& getFileTokens(std::string fullPath)
 	{
-		if(fileList.find(fullPath) == fileList.end() || !fileList.at(fullPath).didLex)
+		auto it = fileList.find(fullPath);
+		if(it == fileList.end() || !(*it).second.didLex)
 		{
 			readFile(fullPath);
 			assert(fileList.find(fullPath) != fileList.end());
 		}
-		else if(fileList.at(fullPath).isLexing)
+		else if((*it).second.isLexing)
 		{
 			error("Cannot get token list of file '%s' while still lexing", fullPath.c_str());
 		}
 
-		return fileList.at(fullPath).tokens;
+		return (*it).second.tokens;
 	}
 
 	std::string getFileContents(std::string fullPath)
 	{
-		if(fileList.find(fullPath) == fileList.end())
+		auto it = fileList.find(fullPath);
+		if(it == fileList.end())
 		{
 			readFile(fullPath);
 			assert(fileList.find(fullPath) != fileList.end());
 		}
 
-		const auto& in = fileList.at(fullPath);
+		const auto& in = (*it).second;
 		return in.fileContents.to_string();
 	}
 
@@ -256,18 +258,20 @@ namespace Compiler
 	const util::FastVector<string_view>& getFileLines(size_t id)
 	{
 		std::string fp = getFilenameFromID(id);
-		if(fileList.find(fp) == fileList.end())
+		auto it = fileList.find(fp);
+
+		if(it == fileList.end())
 		{
 			readFile(fp);
 			assert(fileList.find(fp) != fileList.end());
 		}
 
-		return fileList.at(fp).lines;
+		return (*it).second.lines;
 	}
 
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename)
 	{
-		return fileList.at(filename).importIndices;
+		return fileList[filename].importIndices;
 	}
 }
 
