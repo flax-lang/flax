@@ -45,6 +45,9 @@
 	16. special handling in parser for "." as a unary operator or something, so numbers like
 		".51" work
 
+	17. a function with multiple overloads should be able to be passed as a parameter to another function, since we know the types.
+		applies to generic functions as well, both in the parameter type and the function being passed.
+
 
 
 
@@ -109,18 +112,18 @@ func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 	return ret
 }
 
-func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
-{
-	var i = 0
-	var ret = alloc[arr.length] R
-	while i < arr.length
-	{
-		ret[i] = f(arr[i], 3)
-		i += 1
-	}
+// func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+// {
+// 	var i = 0
+// 	var ret = alloc[arr.length] R
+// 	while i < arr.length
+// 	{
+// 		ret[i] = f(arr[i], 3)
+// 		i += 1
+// 	}
 
-	return ret
-}
+// 	return ret
+// }
 
 func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 {
@@ -138,6 +141,8 @@ func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 
 func incr(x: int) -> int { x + 1 }
 func gmult<T>(x: T, m: T) -> T { x * m }
+// func gmult<T>(x: (T, T)) -> T { x.0 * x.1 }
+
 func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
@@ -211,7 +216,7 @@ class Str
 
 public func main()
 {
-	// generictest()
+	generictest()
 
 	// let (a, (b, (c, d), e), f) = (10, (20, ("foo", "bar"), 3.1), 10.41)
 
@@ -238,12 +243,19 @@ func generictest()
 		i += 1
 	}
 
-	let new = map2(arr, add2)
+	// let new = map2(arr, add2)
 
 	// vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
 
 	// let new = map(arr, gincr)
-	// let new = map(arr, gmult)
+
+
+	// func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
+	// func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+	// func gmult<T>(x: T, m: T) -> T { x * m }
+	let new = map(arr, gmult)
+
+
 	// let new = mapstupid(arr2, gincr, apply)
 
 
