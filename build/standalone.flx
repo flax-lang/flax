@@ -33,6 +33,9 @@
 
 	11. also the fucking generic type solver isn't finished god dammit
 
+	13. T.0.1 parses as T. (0.1) where 0.1 is a number
+		- unfixed -- need to make sure 3 . 4 doesn't parse as a valid number
+
 	14. class instance method access should capture the instance
 		eg. Foo f; let fn = f.method; fn();
 
@@ -88,8 +91,6 @@
 		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
 
 	12. global variables outside of namespaces don't work
-
-	13. T.0.1 parses as T. (0.1) where 0.1 is a number
 */
 
 
@@ -243,17 +244,13 @@ func generictest()
 		i += 1
 	}
 
-	// let new = map2(arr, add2)
+	let t = 3  . 4
+
+	let new = map2(arr, add2)
 
 	// vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
 
 	// let new = map(arr, gincr)
-
-
-	// func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
-	// func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
-	// func gmult<T>(x: T, m: T) -> T { x * m }
-	let new = map(arr, gmult)
 
 
 	// let new = mapstupid(arr2, gincr, apply)
