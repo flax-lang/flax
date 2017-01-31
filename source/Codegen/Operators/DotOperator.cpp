@@ -575,7 +575,7 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(ma->right);
-		if(n == 0)
+		if(n == 0 || n->str.find('.') != std::string::npos)
 			error(ma->right, "Expected integer number after dot-operator for tuple access");
 
 		size_t index = std::stoll(n->str);
@@ -1382,7 +1382,7 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 			iceAssert(tt);
 
 			Number* n = dynamic_cast<Number*>(ma->right);
-			if(n == 0)
+			if(n == 0 || n->str.find('.') != std::string::npos)
 				error(ma->right, "Expected integer number after dot-operator for tuple access");
 
 
@@ -1452,17 +1452,6 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 
 fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	// short-circuit for numbers
-	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
-	{
-		// auto ln = dynamic_cast<Number*>(this->left);
-		// auto rn = dynamic_cast<Number*>(this->right);
-
-		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
-	}
-
-
-
 	auto ret = cgi->resolveTypeOfMA(this, extra, false);
 
 	// special case -- for 'gettype', we can return the fir::Type* inside the typepair, if it happens to be that.
@@ -1478,18 +1467,6 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// short-circuit for numbers
-	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
-	{
-		auto ln = dynamic_cast<Number*>(this->left);
-		auto rn = dynamic_cast<Number*>(this->right);
-
-		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), std::stold(ln->str + "." + rn->str)), 0);
-	}
-
-
-
-
 	auto ret = cgi->resolveTypeOfMA(this, extra, true);
 	if(ret.index() != 3)
 		error(this, "Dot operator failed to evaluate");

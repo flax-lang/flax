@@ -1,0 +1,164 @@
+// issues.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+
+// NOTE: this file *SHOULD NOT* be compiled, at least until all the 'TOFIX'es have been moved to the
+// 'FIXED' section.
+
+
+
+//
+// TOFIX:
+//
+
+
+// 3. dynamic array slices
+let arr = [ ... ]
+let x = arr[0:3]
+
+
+
+// 4. FOR LOOPS
+// 	4a: `for x in y` would be pretty cool too.
+// 	4b: `for x in (1, 3)` would be dope af
+// 		4bi: should the range be open or closed by default? ie. is it 1 <= x <= 3, or 1 <= x < 3?
+// 		4bii: potential range operator: `for x in 0..4` ? idk.
+// 		4biii: i think one (either open or closed) should be chosen as default. it's not hard to ±1 if needed, i think
+for x in arr { ... }
+for _ in arr { ... }
+
+// one or both?
+for x in 1...3 { ... }
+for x in 1..<3 { ... }
+
+// i'd love some mathematical goodness:
+for x in (1, 10) { ... }	// 2, 3, 4, ... 8, 9
+for x in [1, 10] { ... }	// 1, 2, 3, ... 9, 10
+for x in [1, 10) { ... }	// 1, 2, 3, ... 8, 9
+for x in (1, 10] { ... }	// 2, 3, 4, ... 9, 10
+
+// alas it'd be a bitch to parse.
+
+
+
+// 5. assign [] to dynamic arrays
+var x: int[] = [ ]
+
+
+
+// 6. general fixes to [] -- type inference
+// 	6a: stuff like passing [] to a function taking an array, for instance
+// 		type inference needs to happen.
+func foo(x: int[]) { ... }
+foo([ ])
+
+
+
+// 7. do { } while { }
+// 	this parses as (do {} while), and ({ })
+// 	do a newline / semicolon check or smth
+do { } while { }
+
+
+
+
+// 8. abort(), exit(), etc. should be allowed as the last expression in a function
+// 	and allow the compiler to just ignore the fact that there's no return value
+// 	ie. __attribute__((noreturn))
+func foo() -> int { abort() }
+
+
+
+
+// 10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
+// 	the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver
+// 	for this might turn out to be a good idea in the future.
+
+// 11. also the fucking generic type solver isn't finished god dammit
+
+
+
+
+// 14. class instance method access should capture the instance
+// the call to fn() should not require explicit passing of the instance, but rather it should refer to the 'f' instance.
+// Foo.method would continue to work, but would require an instance.
+class Foo { func method() { /* ... */ } }
+Foo f;
+let fn = f.method;
+fn();
+
+
+
+
+// 15. wasn't there supposed to be automatic operator == for structs????? WTF
+struct Bar { /* ... */ }
+Bar x;
+Bar y;
+let cond = (x == y)
+
+
+
+
+// 16. special handling in parser for "." as a unary operator or something, so numbers like
+// 	".51" work
+let x = .31
+
+
+
+// 17. a function with multiple overloads should be able to be passed as a parameter to another function, since we know the types.
+// 	applies to generic functions as well, both in the parameter type and the function being passed.
+
+
+
+
+//
+// FIXED
+//
+/*
+	1. enums declared in functions do not work
+
+	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
+		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
+
+	12. global variables outside of namespaces don't work
+
+	13. T.0.1 parses as T. (0.1) where 0.1 is a number
+*/
+
+
+//
+// TO TEST
+//
+/*
+	1. tuple operators
+	2. array of strings
+*/
+
+
+//
+// TODO
+//
+/*
+	1. array decomp
+	2. tuple decomp
+	3. splatting (http://coffeescript.org/#splats)
+
+	4. clean up typechecking
+		-- store the fir::Type of each AST node
+		-- recursively visit each node to get its type before anything happens
+
+
+	tuple decomp:
+	let (a, b) = (10, 20)
+
+	array decomp:
+	let [a, b, ...x] = [ 10, 20, 30, 40, 50, 60 ]
+	a = 10, b = 20, x = [ 30, 40, 50, 60 ]
+*/
+
+
+
+
+
+
