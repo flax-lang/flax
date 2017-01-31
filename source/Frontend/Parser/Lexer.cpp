@@ -109,95 +109,114 @@ namespace Lexer
 
 			// don't assign lines[line] = stream, since over here we've changed 'line' to be the next one.
 			flag = false;
+			tok.text = "";
 		}
 		else if(hasPrefix(stream, "=="))
 		{
 			tok.type = TType::EqualsTo;
+			tok.text = "==";
 			read = 2;
 		}
 		else if(hasPrefix(stream, ">="))
 		{
 			tok.type = TType::GreaterEquals;
+			tok.text = ">=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "<="))
 		{
 			tok.type = TType::LessThanEquals;
+			tok.text = "<=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "!="))
 		{
 			tok.type = TType::NotEquals;
+			tok.text = "!=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "||"))
 		{
 			tok.type = TType::LogicalOr;
+			tok.text = "||";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "&&"))
 		{
 			tok.type = TType::LogicalAnd;
+			tok.text = "&&";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "->"))
 		{
 			tok.type = TType::Arrow;
+			tok.text = "->";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "++"))
 		{
 			tok.type = TType::DoublePlus;
+			tok.text = "++";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "--"))
 		{
 			tok.type = TType::DoubleMinus;
+			tok.text = "--";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "+="))
 		{
 			tok.type = TType::PlusEq;
+			tok.text = "+=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "-="))
 		{
 			tok.type = TType::MinusEq;
+			tok.text = "-=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "*="))
 		{
 			tok.type = TType::MultiplyEq;
+			tok.text = "*=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "/="))
 		{
 			tok.type = TType::DivideEq;
+			tok.text = "/=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "%="))
 		{
 			tok.type = TType::ModEq;
+			tok.text = "%=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "&="))
 		{
 			tok.type = TType::AmpersandEq;
+			tok.text = "&=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "|="))
 		{
 			tok.type = TType::PipeEq;
+			tok.text = "|=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "^="))
 		{
 			tok.type = TType::CaretEq;
+			tok.text = "^=";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "..."))
 		{
 			tok.type = TType::Ellipsis;
+			tok.text = "...";
 			read = 3;
 		}
 		else if(hasPrefix(stream, "/*"))
@@ -269,6 +288,7 @@ namespace Lexer
 		{
 			tok.type = TType::Func;
 			read = std::string("ƒ").length();
+			tok.text = "ƒ";
 
 			unicodeLength = 1;
 		}
@@ -276,6 +296,7 @@ namespace Lexer
 		{
 			tok.type = TType::ForeignFunc;
 			read = std::string("ﬁ").length();
+			tok.text = "ﬁ";
 
 			unicodeLength = 1;
 		}
@@ -283,6 +304,7 @@ namespace Lexer
 		{
 			tok.type = TType::Divide;
 			read = std::string("÷").length();
+			tok.text = "÷";
 
 			unicodeLength = 1;
 		}
@@ -290,6 +312,7 @@ namespace Lexer
 		{
 			tok.type = TType::NotEquals;
 			read = std::string("≠").length();
+			tok.text = "≠";
 
 			unicodeLength = 1;
 		}
@@ -297,6 +320,7 @@ namespace Lexer
 		{
 			tok.type = TType::LessThanEquals;
 			read = std::string("≤").length();
+			tok.text = "≤";
 
 			unicodeLength = 1;
 		}
@@ -304,6 +328,7 @@ namespace Lexer
 		{
 			tok.type = TType::GreaterEquals;
 			read = std::string("≥").length();
+			tok.text = "≥";
 
 			unicodeLength = 1;
 		}

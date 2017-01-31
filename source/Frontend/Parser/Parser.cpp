@@ -940,6 +940,11 @@ namespace Parser
 
 	FuncDecl* parseFuncDecl(ParserState& ps)
 	{
+		// for(size_t i = ps.index; i < ps.tokens.size(); ++i)
+		// {
+		// 	ps.tokens[i].text.to_string();
+		// }
+
 		iceAssert(ps.eat().type == TType::Func);
 
 		auto id = ps.eat();
