@@ -13,14 +13,14 @@ class Outer
 		{
 			let m = alloc K
 			printf("instance generic\n")
-			return #m;
+			return *m;
 		}
 
 		static func sgen<T, K>(a: T, b: K) -> T
 		{
 			let m = alloc T
 			printf("static generic\n")
-			return #m;
+			return *m;
 		}
 	}
 }
@@ -49,7 +49,7 @@ namespace SomeNS
 	{
 		let m = alloc T
 		printf("namespace generic\n")
-		return #m;
+		return *m;
 	}
 }
 
