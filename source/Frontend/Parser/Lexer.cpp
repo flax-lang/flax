@@ -315,30 +315,6 @@ namespace Lexer
 		// ident + 3
 		// number + 3
 		// so in every other case we want unary +/-.
-
-		// note(2):
-		// here's how this shit fucks up:
-		// since numbers are handled at the lexing level, we have no idea about precedence.
-		// in the event a tuple contains another tuple, access looks something like this:
-		//
-		// let m = tup.0.1
-		// this, unfortunately, parses as tup.(0.1)
-		//
-		// so, let's do this: when parsing a number, return a string. Number AST node also should store a string now.
-		// string remains an accurate representation, for later merging.
-
-		/*
-			eg:
-
-			1.0e4 == 10000
-			parses as MemberAccess [ Number("1"), Number("0e4") ]
-
-			3.004151
-			parses as MemberAccess [ Number("3"), Number("004151") ]
-
-			at typecheck time, we just join the two together, add a "." in the middle, and call stold() or something.
-			storing strings preserves things like the 0s required for actually knowing what the number is.
-		*/
 		else if(!stream.empty() && (isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
 			// copy it.
@@ -365,6 +341,7 @@ namespace Lexer
 			tmp.remove_prefix((end - tmp.begin()));
 
 			// check if we have 'e' or 'E'
+			bool hadExp = false;
 			if(tmp.size() > 0 && (tmp[0] == 'e' || tmp[0] == 'E'))
 			{
 				if(base != 10)
@@ -375,11 +352,47 @@ namespace Lexer
 
 				// this does the 'e' as well.
 				tmp.remove_prefix(next - tmp.begin());
+
+				hadExp = true;
 			}
 
 			size_t didRead = stream.size() - tmp.size();
+			auto post = stream.substr(didRead);
+
+			if(!post.empty() && post[0] == '.')
+			{
+				if(base != 10)
+					parserError("Invalid floating point literal; only valid in base 10");
+
+				else if(hadExp)
+					parserError("Invalid floating point literal; decimal point cannot occur after the exponent ('e' or 'E').");
+
+				// if the previous token was a '.' as well, then we're doing some tuple access
+				// eg. x.0.1 (we would be at '0', having a period both ahead and behind us)
+
+				// if the next token is not a number, then same thing, eg.
+				// x.0.z, where the first tuple element of 'x' is a struct or something.
+
+				// so -- lex a floating point *iff* the previous token was not '.', and the next token is a digit.
+				if(prevType != TType::Period && post.size() > 1 && isdigit(post[1]))
+				{
+					// yes, parse a floating point
+					post.remove_prefix(1), didRead++;
+
+					while(isdigit(post.front()))
+						post.remove_prefix(1), didRead++;
+
+					// ok.
+				}
+				else
+				{
+					// no, just return the integer token.
+					// (which we do below, so just do nothing here)
+				}
+			}
 
 			tok.text = stream.substr(0, didRead);
+
 			tok.type = TType::Number;
 			tok.pin.len = didRead;
 
