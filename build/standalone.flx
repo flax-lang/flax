@@ -20,18 +20,18 @@ func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 	return ret
 }
 
-// func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
-// {
-// 	var i = 0
-// 	var ret = alloc[arr.length] R
-// 	while i < arr.length
-// 	{
-// 		ret[i] = f(arr[i], 3)
-// 		i += 1
-// 	}
+func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+{
+	var i = 0
+	var ret = alloc[arr.length] R
+	while i < arr.length
+	{
+		ret[i] = f(arr[i], 3)
+		i += 1
+	}
 
-// 	return ret
-// }
+	return ret
+}
 
 func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 {
@@ -48,7 +48,7 @@ func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 
 
 func incr(x: int) -> int { x + 1 }
-func gmult<T>(x: T, m: T) -> T { x * m }
+func gmult<Q>(x: Q, m: Q) -> Q { x * m }
 // func gmult<T>(x: (T, T)) -> T { x.0 * x.1 }
 
 func add2<A, B>(x: A, y: B) -> A { x + y }
