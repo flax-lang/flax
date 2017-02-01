@@ -138,11 +138,11 @@ namespace tinyproclib
 					pos += 4;
 				}
 
-				execl("/bin/sh", "-c", ("cd '" + path_escaped + "' && " + command).c_str(), NULL);
+				execl("/bin/sh", "sh", "-c", ("cd '" + path_escaped + "' && " + command).c_str(), NULL);
 			}
 			else
 			{
-				execl("/bin/sh", "-c", command.c_str(), NULL);
+				execl("/bin/sh", "sh", "-c", command.c_str(), NULL);
 			}
 		});
 	}

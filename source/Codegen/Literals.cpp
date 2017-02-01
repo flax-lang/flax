@@ -24,21 +24,37 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// 	return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), this->ival), 0);
 	// }
 
-	try
+	if(this->str.find('.') != std::string::npos)
 	{
-		int64_t num = std::stoll(this->str);
-		return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), num), 0);
+		// parse a ƒloating point
+		try
+		{
+			long double num = std::stold(this->str);
+			return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), num), 0);
+		}
+		catch(std::out_of_range& e)
+		{
+			error(this, "Number '%s' is out of range", this->str.c_str());
+		}
 	}
-	catch(std::out_of_range& e)
+	else
 	{
 		try
 		{
-			uint64_t num = std::stoull(this->str);
-			return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), num), 0);
+			int64_t num = std::stoll(this->str);
+			return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), num), 0);
 		}
-		catch(std::out_of_range& e1)
+		catch(std::out_of_range& e)
 		{
-			error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+			try
+			{
+				uint64_t num = std::stoull(this->str);
+				return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), num), 0);
+			}
+			catch(std::out_of_range& e1)
+			{
+				error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+			}
 		}
 	}
 }
@@ -85,6 +101,9 @@ static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
 
 fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
+	if(this->str.find('.') != std::string::npos)
+		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
+
 	try
 	{
 		std::stoll(this->str);
