@@ -49,9 +49,17 @@ namespace Compiler
 
 	static std::unordered_map<std::string, FileInnards> fileList;
 
-	static void readFile(std::string fullPath)
+	static FileInnards& readFileIfNecessary(std::string fullPath)
 	{
 		string_view fileContents;
+
+		// break early if we can
+		{
+			auto it = fileList.find(fullPath);
+			if(it != fileList.end() && it->second.didLex)
+				return it->second;
+		}
+
 
 		{
 			auto p = prof::Profile("read file");
@@ -183,7 +191,7 @@ namespace Compiler
 		innards.didLex = true;
 		innards.isLexing = false;
 
-
+		return innards;
 
 		/*
 			file reading stats:
@@ -204,29 +212,12 @@ namespace Compiler
 
 	TokenList& getFileTokens(std::string fullPath)
 	{
-		if(fileList.find(fullPath) == fileList.end() || !fileList.at(fullPath).didLex)
-		{
-			readFile(fullPath);
-			assert(fileList.find(fullPath) != fileList.end());
-		}
-		else if(fileList.at(fullPath).isLexing)
-		{
-			error("Cannot get token list of file '%s' while still lexing", fullPath.c_str());
-		}
-
-		return fileList.at(fullPath).tokens;
+		return readFileIfNecessary(fullPath).tokens;
 	}
 
 	std::string getFileContents(std::string fullPath)
 	{
-		if(fileList.find(fullPath) == fileList.end())
-		{
-			readFile(fullPath);
-			assert(fileList.find(fullPath) != fileList.end());
-		}
-
-		const auto& in = fileList.at(fullPath);
-		return in.fileContents.to_string();
+		return readFileIfNecessary(fullPath).fileContents.to_string();
 	}
 
 
@@ -256,18 +247,12 @@ namespace Compiler
 	const util::FastVector<string_view>& getFileLines(size_t id)
 	{
 		std::string fp = getFilenameFromID(id);
-		if(fileList.find(fp) == fileList.end())
-		{
-			readFile(fp);
-			assert(fileList.find(fp) != fileList.end());
-		}
-
-		return fileList.at(fp).lines;
+		return readFileIfNecessary(fp).lines;
 	}
 
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename)
 	{
-		return fileList.at(filename).importIndices;
+		return fileList[filename].importIndices;
 	}
 }
 

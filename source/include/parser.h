@@ -208,7 +208,7 @@ namespace Parser
 		const Token& skip(size_t i);
 		const Token& lookahead(size_t i);
 
-		private:
+		// private:
 
 		const TokenList& tokens;
 		size_t index = 0;
