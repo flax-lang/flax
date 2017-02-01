@@ -124,7 +124,12 @@ namespace Codegen
 
 
 
+	/*
+		notes:
 
+		for tuple variadics, first unify each tuple type, disregarding the parametric type.
+		then do the existing solution check, and/or attempt unification.
+	*/
 
 
 
