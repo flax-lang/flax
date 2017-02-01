@@ -42,8 +42,10 @@ for x in (1, 10] { ... }	// 2, 3, 4, ... 9, 10
 
 
 
+
 // 5. assign [] to dynamic arrays
 var x: int[] = [ ]
+
 
 
 
@@ -52,6 +54,7 @@ var x: int[] = [ ]
 // 		type inference needs to happen.
 func foo(x: int[]) { ... }
 foo([ ])
+
 
 
 
@@ -74,6 +77,9 @@ func foo() -> int { abort() }
 // 10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
 // 	the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver
 // 	for this might turn out to be a good idea in the future.
+
+
+
 
 // 11. also the fucking generic type solver isn't finished god dammit
 
@@ -106,8 +112,15 @@ let x = .31
 
 
 
+
 // 17. a function with multiple overloads should be able to be passed as a parameter to another function, since we know the types.
 // 	applies to generic functions as well, both in the parameter type and the function being passed.
+
+
+
+
+// 19. init+cond in if/while statements, a-la c++17
+if let k = 30; k < 40 { /* ... */ }
 
 
 

@@ -10,9 +10,9 @@ public func Utf8Length(_text: i8*) -> i64
 	var text = _text
 
 
-	while #text != 0
+	while *text != 0
 	{
-		if (#text & 0xC0) != 0x80
+		if (*text & 0xC0) != 0x80
 		{
 			len += 1
 		}
@@ -42,9 +42,9 @@ public func Utf8Index(_text: i8*, _pos: i64) -> i8*
 
 	pos += 1
 
-	while #text != 0
+	while *text != 0
 	{
-		if (#text & 0xC0) != 0x80
+		if (*text & 0xC0) != 0x80
 		{
 			pos -= 1
 		}

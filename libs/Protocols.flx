@@ -45,7 +45,7 @@ public protocol Equatable
 // most of them already have the necessary functions
 // we need to do this to avoid circular imports
 
-public extension string : Equatable, StringConvertible { func toString() -> string { #self } }
+public extension string : Equatable, StringConvertible { func toString() -> string { *self } }
 // public extension Character : Equatable { }
 
 namespace Math
