@@ -575,7 +575,7 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 		iceAssert(tt);
 
 		Number* n = dynamic_cast<Number*>(ma->right);
-		if(n == 0)
+		if(n == 0 || n->str.find('.') != std::string::npos)
 			error(ma->right, "Expected integer number after dot-operator for tuple access");
 
 		size_t index = std::stoll(n->str);
@@ -1382,7 +1382,7 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 			iceAssert(tt);
 
 			Number* n = dynamic_cast<Number*>(ma->right);
-			if(n == 0)
+			if(n == 0 || n->str.find('.') != std::string::npos)
 				error(ma->right, "Expected integer number after dot-operator for tuple access");
 
 
@@ -1452,17 +1452,6 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 
 fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
-	// short-circuit for numbers
-	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
-	{
-		// auto ln = dynamic_cast<Number*>(this->left);
-		// auto rn = dynamic_cast<Number*>(this->right);
-
-		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
-	}
-
-
-
 	auto ret = cgi->resolveTypeOfMA(this, extra, false);
 
 	// special case -- for 'gettype', we can return the fir::Type* inside the typepair, if it happens to be that.
@@ -1478,18 +1467,6 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// short-circuit for numbers
-	if(dynamic_cast<Number*>(this->left) && dynamic_cast<Number*>(this->right))
-	{
-		auto ln = dynamic_cast<Number*>(this->left);
-		auto rn = dynamic_cast<Number*>(this->right);
-
-		return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), std::stold(ln->str + "." + rn->str)), 0);
-	}
-
-
-
-
 	auto ret = cgi->resolveTypeOfMA(this, extra, true);
 	if(ret.index() != 3)
 		error(this, "Dot operator failed to evaluate");
@@ -1666,106 +1643,6 @@ fir::Function* CodegenInstance::resolveAndInstantiateGenericFunctionReference(Ex
 
 	auto res = ma->codegen(this, fir::ConstantValue::getNullValue(instantiatedFT));
 	return dynamic_cast<fir::Function*>(res.value);
-
-	// if(ma->matype == MAType::LeftStatic)
-	// {
-	// 	// do the thing
-
-	// 	FunctionTree* ftree = 0;
-	// 	StructBase* strType = 0;
-	// 	fir::Type* strFType = 0;
-
-	// 	std::tie(ftree, std::ignore, std::ignore, strType, strFType) = unwrapStaticDotOperator(this, ma);
-
-	// 	std::string name;
-	// 	if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
-	// 	{
-	// 		name = vr->name;
-	// 	}
-	// 	else
-	// 	{
-	// 		error(user, "Unsupported use of dot-operator to get function??");
-	// 	}
-
-
-	// 	std::map<fir::Function*, Func*> map;
-
-	// 	if(strType != 0)
-	// 	{
-	// 		// note(?): this procedure is only called when we need to instantiate a generic method/static generic method of a type (or in
-	// 		// a namespace) with a concrete type
-	// 		// so, we don't need to look at members or anything else, just functions.
-	// 		//
-	// 		// eg.
-	// 		//
-	// 		// let foo: [(SomeClass*, int) -> int] = SomeClass.someMethod
-	// 		//
-	// 		// ... (somewhere else)
-	// 		//
-	// 		// class SomeClass
-	// 		// {
-	// 		//     func someMethod<T>(a: T) -> T { ... }
-	// 		// }
-	// 		//
-	// 		// we can't (and probably won't) have generic function types
-	// 		// (eg. something like let foo: [<T, K>(a: T, b: T) -> K] or something)
-	// 		// since there's no easy way to be type-safe about them.
-
-
-	// 		// static function
-	// 		ClassDef* cd = dynamic_cast<ClassDef*>(strType);
-	// 		iceAssert(cd);
-
-	// 		for(auto f : cd->funcs)
-	// 		{
-	// 			if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-	// 				map[cd->functionMap[f]] = f;
-	// 		}
-
-
-	// 		for(auto ext : this->getExtensionsForType(cd))
-	// 		{
-	// 			for(auto f : ext->funcs)
-	// 			{
-	// 				if(f->decl->ident.name == name && f->decl->genericTypes.size() > 0)
-	// 					map[ext->functionMap[f]] = f;
-	// 			}
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		iceAssert(ftree);
-
-	// 		for(auto f : ftree->genericFunctions)
-	// 		{
-	// 			if(f.first->ident.name == name)
-	// 			{
-	// 				if(!f.first->generatedFunc)
-	// 					f.first->codegen(this);
-
-	// 				iceAssert(f.first->generatedFunc);
-	// 				map[f.first->generatedFunc] = f.second;
-	// 			}
-	// 		}
-	// 	}
-
-	// 	// failed to find
-	// 	if(map.empty()) return 0;
-
-
-	// 	std::vector<Func*> bodies;
-	// 	for(auto m : map)
-	// 		bodies.push_back(m.second);
-
-
-	// 	// instantiate it.
-	// 	FuncDefPair fp = this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, bodies, instantiatedFT, errs);
-	// 	return fp.firFunc;
-	// }
-	// else
-	// {
-	// 	error(user, "not supported??");
-	// }
 }
 
 

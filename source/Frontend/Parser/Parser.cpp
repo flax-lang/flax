@@ -672,14 +672,6 @@ namespace Parser
 				case TType::Semicolon:
 					ps.eat();
 					return CreateAST(DummyExpr, tok);
-					// return parsePrimary(ps);
-
-				// 	ps.eat();
-				// 	return CreateAST(DummyExpr, tok);
-
-				// case TType::Semicolon:
-				// 	ps.eat();
-				// 	return CreateAST(DummyExpr, tok);
 
 				case TType::TypeAlias:
 					return parseTypeAlias(ps);
@@ -757,7 +749,7 @@ namespace Parser
 		else if(tk.type == TType::Plus)			op = ArithmeticOp::Plus;
 		else if(tk.type == TType::Minus)		op = ArithmeticOp::Minus;
 		else if(tk.type == TType::Tilde)		op = ArithmeticOp::BitwiseNot;
-		else if(tk.type == TType::Pound)		op = ArithmeticOp::Deref;
+		else if(tk.type == TType::Asterisk)		op = ArithmeticOp::Deref;
 		else if(tk.type == TType::Ampersand)	op = ArithmeticOp::AddrOf;
 
 		if(op != ArithmeticOp::Invalid)
@@ -940,6 +932,11 @@ namespace Parser
 
 	FuncDecl* parseFuncDecl(ParserState& ps)
 	{
+		// for(size_t i = ps.index; i < ps.tokens.size(); ++i)
+		// {
+		// 	ps.tokens[i].text.to_string();
+		// }
+
 		iceAssert(ps.eat().type == TType::Func);
 
 		auto id = ps.eat();
