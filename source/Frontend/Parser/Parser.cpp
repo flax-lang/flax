@@ -659,8 +659,8 @@ namespace Parser
 
 			case TType::LBrace:
 				// parse it, but throw it away
-				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
 				ret = CreateAST(DummyExpr, ps.front());
+				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to execute, preface with 'do'");
 				break;
 
 			case TType::Import:
@@ -1607,6 +1607,8 @@ namespace Parser
 		Token tok_id = ps.eat();
 		if(tok_id.type == TType::LParen)
 		{
+			// again, refund some tokens
+			ps.refundToPosition(restore);
 			return parseTupleDestructure(ps);
 		}
 		else if(tok_id.type != TType::Identifier)
@@ -1661,6 +1663,56 @@ namespace Parser
 
 		return v;
 	}
+
+	DestructuredTupleDecl* parseTupleDestructure(ParserState& ps)
+	{
+		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+		bool immutable = ps.eat().type == TType::Val;
+
+		iceAssert(ps.eat().type == TType::LParen);
+
+		// ok now, start parsing shit
+		// to be better than c++, we need to support nested destructuring of some kind
+		// eg.
+		// let (a, (b, c), d) = (10, ("hello", "world"), 3.1415)
+		// this severely complicates both parsing, as well as storing, this information.
+		// we need to be able to retrieve which indices had which names
+
+		// we might define a quick little wrapper struct that keeps track of the bindings at each nesting level,
+		// then have a vector<> of these wrappers to allow recursive thingies. i think that'll work?
+
+		// struct Foo { string name; vector<Foo> inners; }; vector<Foo> mapping;
+		// in this case either inners or name would be valid, but not both.
+		// name == "_" would be ignored, naturally
+
+		// we should also allow ignoring 'the rest' with a single _
+		// eg.
+		// let (a, _) = (10, 20, 30, 40, 50)
+
+		// and of course allow _ in the middle, eg:
+		// let (a, _, _, b, _) = (10, 20, 30, 40, 50)
+
+		// note how the trailing _ is still needed; underscores would only gobble if they're the last binding in the list.
+		// since we know the type of the RHS for sure, it shouldn't be too complicated, and we can scream at the user at
+		// compile time if they do anything stupid.
+
+		_error_and_exit("enotsup");
+		return 0;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2156,18 +2208,21 @@ namespace Parser
 
 	WhileLoop* parseWhile(ParserState& ps)
 	{
-		Token tok_while = ps.eat();
+		Token tok_front = ps.eat();
 
-		if(tok_while.type == TType::While)
+		if(tok_front.type == TType::While)
 		{
+			if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				parserError(tok_front, "Expected condition expression after 'while'");
+
 			Expr* cond = parseExpr(ps);
 			BracedBlock* body = parseBracedBlock(ps);
 
-			return CreateAST(WhileLoop, tok_while, cond, body, false);
+			return CreateAST(WhileLoop, tok_front, cond, body, false);
 		}
 		else
 		{
-			iceAssert(tok_while.type == TType::Do || tok_while.type == TType::Loop);
+			iceAssert(tok_front.type == TType::Do || tok_front.type == TType::Loop);
 
 			// parse the block first
 			BracedBlock* body = parseBracedBlock(ps);
@@ -2181,18 +2236,46 @@ namespace Parser
 			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
-			if(ps.front().type == TType::While)
+
+			// save the ps position
+			size_t savedPosition = ps.index;
+
+			if(ps.lookaheadUntilNonNewline().type == TType::While)
 			{
+				// here's the thing -- something like this:
+				// do { ... } while { ... }
+				// should really parse as 'do {} while' '{ }'
+				// this then causes an error (expected condition expr after while), and an unnamed block.
+
 				ps.eat();
+
+				// we need the condition either way
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+					parserError(tok_front, "Expected condition expression after 'while'");
+
 				cond = parseExpr(ps);
+
+				// ok, now check if we have a { } after the while
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				{
+					// oh kurwa, what actually was written was do { ... } ;;; while(cond) { ... }
+
+					// set the cond first,
+					cond = CreateAST(BoolVal, ps.front(), false);
+
+					// then, we restore the state; we've parsed the while and the expr already.
+					// but we saved the index, so we just hand over the receipt and ask for a refund.
+
+					ps.refundToPosition(savedPosition);
+				}
 			}
 			else
 			{
 				// here's the magic: continue condition is 'false' for do, 'true' for loop
-				cond = CreateAST(BoolVal, ps.front(), tok_while.type == TType::Do ? false : true);
+				cond = CreateAST(BoolVal, ps.front(), tok_front.type == TType::Do ? false : true);
 			}
 
-			return CreateAST(WhileLoop, tok_while, cond, body, true);
+			return CreateAST(WhileLoop, tok_front, cond, body, true);
 		}
 	}
 
@@ -3358,6 +3441,19 @@ namespace Parser
 			k++;
 
 		return this->lookahead(k);
+	}
+
+	void ParserState::refundTokens(size_t i)
+	{
+		iceAssert(this->index >= i);
+		this->index -= i;
+	}
+
+	void ParserState::refundToPosition(size_t i)
+	{
+		iceAssert(i < this->tokens.size());
+		iceAssert(i < this->index);
+		this->index = i;
 	}
 
 	ParserState::ParserState(Codegen::CodegenInstance* c, const TokenList& tl) : cgi(c), tokens(tl)

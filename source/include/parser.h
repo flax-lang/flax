@@ -199,6 +199,10 @@ namespace Parser
 		bool hasTokens();
 		void skipNewline();
 
+		// once broken considered sold
+		void refundTokens(size_t i);
+		void refundToPosition(size_t index);
+
 		size_t getRemainingTokens();
 
 		const Token& pop();
