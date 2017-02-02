@@ -659,8 +659,8 @@ namespace Parser
 
 			case TType::LBrace:
 				// parse it, but throw it away
-				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
 				ret = CreateAST(DummyExpr, ps.front());
+				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to execute, preface with 'do'");
 				break;
 
 			case TType::Import:
@@ -2142,18 +2142,21 @@ namespace Parser
 
 	WhileLoop* parseWhile(ParserState& ps)
 	{
-		Token tok_while = ps.eat();
+		Token tok_front = ps.eat();
 
-		if(tok_while.type == TType::While)
+		if(tok_front.type == TType::While)
 		{
+			if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				parserError(tok_front, "Expected condition expression after 'while'");
+
 			Expr* cond = parseExpr(ps);
 			BracedBlock* body = parseBracedBlock(ps);
 
-			return CreateAST(WhileLoop, tok_while, cond, body, false);
+			return CreateAST(WhileLoop, tok_front, cond, body, false);
 		}
 		else
 		{
-			iceAssert(tok_while.type == TType::Do || tok_while.type == TType::Loop);
+			iceAssert(tok_front.type == TType::Do || tok_front.type == TType::Loop);
 
 			// parse the block first
 			BracedBlock* body = parseBracedBlock(ps);
@@ -2167,18 +2170,46 @@ namespace Parser
 			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
-			if(ps.front().type == TType::While)
+
+			// save the ps position
+			size_t savedPosition = ps.index;
+
+			if(ps.lookaheadUntilNonNewline().type == TType::While)
 			{
+				// here's the thing -- something like this:
+				// do { ... } while { ... }
+				// should really parse as 'do {} while' '{ }'
+				// this then causes an error (expected condition expr after while), and an unnamed block.
+
 				ps.eat();
+
+				// we need the condition either way
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+					parserError(tok_front, "Expected condition expression after 'while'");
+
 				cond = parseExpr(ps);
+
+				// ok, now check if we have a { } after the while
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				{
+					// oh kurwa, what actually was written was do { ... } ;;; while(cond) { ... }
+
+					// set the cond first,
+					cond = CreateAST(BoolVal, ps.front(), false);
+
+					// then, we restore the state; we've parsed the while and the expr already.
+					// but we saved the index, so we just hand over the receipt and ask for a refund.
+
+					ps.refundTokens(ps.index - savedPosition);
+				}
 			}
 			else
 			{
 				// here's the magic: continue condition is 'false' for do, 'true' for loop
-				cond = CreateAST(BoolVal, ps.front(), tok_while.type == TType::Do ? false : true);
+				cond = CreateAST(BoolVal, ps.front(), tok_front.type == TType::Do ? false : true);
 			}
 
-			return CreateAST(WhileLoop, tok_while, cond, body, true);
+			return CreateAST(WhileLoop, tok_front, cond, body, true);
 		}
 	}
 
@@ -3344,6 +3375,12 @@ namespace Parser
 			k++;
 
 		return this->lookahead(k);
+	}
+
+	void ParserState::refundTokens(size_t i)
+	{
+		iceAssert(this->index >= i);
+		this->index -= i;
 	}
 
 	ParserState::ParserState(Codegen::CodegenInstance* c, const TokenList& tl) : cgi(c), tokens(tl)
