@@ -289,7 +289,6 @@ public func main(argc: i32, argv: i8**) -> int
 
 		let tup = ("a", (30, 40))
 		let k = tup.1.1
-		let g = 3let v = 10
 
 		printf("k = %d\n", k)
 
@@ -300,6 +299,14 @@ public func main(argc: i32, argv: i8**) -> int
 		printf("s = %s\n", s)
 
 		printf("%d, %.7lf\n", k, +3.000141);
+	}
+
+
+	do {
+		printf("\n\n");
+
+		let x = 40let y = 43
+		printf("x = %d, y = %d\n", x, y)
 	}
 
 

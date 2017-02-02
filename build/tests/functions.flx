@@ -142,7 +142,7 @@ public func doFunctionTest()
 		printf("\nclass test\n")
 		do {
 			var gf2: [(int) -> int] = et1
-			printf("et:") gf2(300) printf("\n")
+			printf("et:"); gf2(300); printf("\n")
 			gf2 = gen
 			gf2(400)
 
