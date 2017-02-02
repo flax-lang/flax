@@ -574,8 +574,8 @@ namespace Parser
 		if(ps.empty())
 			return 0;
 
-		Token tok;
-		while((tok = ps.front()).type != TType::EndOfFile)
+		Token tok = ps.front();
+		if(tok.type != TType::EndOfFile)
 		{
 			switch(tok.type)
 			{
