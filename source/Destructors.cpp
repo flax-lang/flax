@@ -7,185 +7,50 @@
 
 namespace Ast
 {
-	DummyExpr::~DummyExpr()
-	{
+	Func::~Func() { }
+	Tuple::~Tuple() { }
+	BinOp::~BinOp() { }
+	Break::~Break() { }
+	Alloc::~Alloc() { }
+	Number::~Number() { }
+	VarRef::~VarRef() { }
+	Typeof::~Typeof() { }
+	Return::~Return() { }
+	Import::~Import() { }
+	IfStmt::~IfStmt() { }
+	BoolVal::~BoolVal() { }
+	NullVal::~NullVal() { }
+	VarDecl::~VarDecl() { }
+	UnaryOp::~UnaryOp() { }
+	Dealloc::~Dealloc() { }
+	EnumDef::~EnumDef() { }
+	FuncDecl::~FuncDecl() { }
+	FuncCall::~FuncCall() { }
+	Continue::~Continue() { }
+	ClassDef::~ClassDef() { }
+	DummyExpr::~DummyExpr() { }
+	WhileLoop::~WhileLoop() { }
+	StructDef::~StructDef() { }
+	TypeAlias::~TypeAlias() { }
+	OpOverload::~OpOverload() { }
+	StructBase::~StructBase() { }
+	ArrayIndex::~ArrayIndex() { }
+	ProtocolDef::~ProtocolDef() { }
+	BracedBlock::~BracedBlock() { }
+	ExtensionDef::~ExtensionDef() { }
+	MemberAccess::~MemberAccess() { }
+	DeferredExpr::~DeferredExpr() { }
+	ArrayLiteral::~ArrayLiteral() { }
+	NamespaceDecl::~NamespaceDecl() { }
+	StringLiteral::~StringLiteral() { }
+	PostfixUnaryOp::~PostfixUnaryOp() { }
+	ForeignFuncDecl::~ForeignFuncDecl() { }
+	ComputedProperty::~ComputedProperty() { }
+	AssignOpOverload::~AssignOpOverload() { }
+	SubscriptOpOverload::~SubscriptOpOverload() { }
+	BreakableBracedBlock::~BreakableBracedBlock() { }
+	DestructuredTupleDecl::~DestructuredTupleDecl() { }
 
-	}
-
-	Number::~Number()
-	{
-
-	}
-
-	BoolVal::~BoolVal()
-	{
-
-	}
-
-	NullVal::~NullVal()
-	{
-	}
-
-	ProtocolDef::~ProtocolDef()
-	{
-	}
-
-	VarRef::~VarRef()
-	{
-
-	}
-
-	VarDecl::~VarDecl()
-	{
-	}
-
-	Tuple::~Tuple()
-	{
-	}
-
-	BinOp::~BinOp()
-	{
-
-	}
-
-	FuncDecl::~FuncDecl()
-	{
-
-	}
-
-	BracedBlock::~BracedBlock()
-	{
-	}
-
-	Func::~Func()
-	{
-	}
-
-	FuncCall::~FuncCall()
-	{
-	}
-
-	Typeof::~Typeof()
-	{
-	}
-
-	Return::~Return()
-	{
-	}
-
-	Import::~Import()
-	{
-	}
-
-	ForeignFuncDecl::~ForeignFuncDecl()
-	{
-	}
-
-	BreakableBracedBlock::~BreakableBracedBlock()
-	{
-
-	}
-
-	IfStmt::~IfStmt()
-	{
-	}
-
-	WhileLoop::~WhileLoop()
-	{
-	}
-
-	ComputedProperty::~ComputedProperty()
-	{
-
-	}
-
-	Break::~Break()
-	{
-
-	}
-
-	Continue::~Continue()
-	{
-
-	}
-
-	UnaryOp::~UnaryOp()
-	{
-	}
-
-	OpOverload::~OpOverload()
-	{
-	}
-
-	SubscriptOpOverload::~SubscriptOpOverload()
-	{
-	}
-
-	AssignOpOverload::~AssignOpOverload()
-	{
-	}
-
-	StructBase::~StructBase()
-	{
-	}
-
-	ExtensionDef::~ExtensionDef()
-	{
-	}
-
-	StructDef::~StructDef()
-	{
-	}
-
-	ClassDef::~ClassDef()
-	{
-	}
-
-	MemberAccess::~MemberAccess()
-	{
-	}
-
-	NamespaceDecl::~NamespaceDecl()
-	{
-	}
-
-	ArrayIndex::~ArrayIndex()
-	{
-
-	}
-
-	StringLiteral::~StringLiteral()
-	{
-
-	}
-
-	Alloc::~Alloc()
-	{
-	}
-
-	Dealloc::~Dealloc()
-	{
-	}
-
-	EnumDef::~EnumDef()
-	{
-	}
-
-	TypeAlias::~TypeAlias()
-	{
-	}
-
-	DeferredExpr::~DeferredExpr()
-	{
-	}
-
-	ArrayLiteral::~ArrayLiteral()
-	{
-	}
-
-	PostfixUnaryOp::~PostfixUnaryOp()
-	{
-	}
 
 	Root::~Root()
 	{

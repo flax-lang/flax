@@ -885,9 +885,16 @@ namespace Parser
 		}
 		else if(ps.front().type == TType::Var || ps.front().type == TType::Val)
 		{
+			auto begin = ps.front();
+
 			// static var.
-			VarDecl* ret = parseVarDecl(ps);
-			ret->isStatic = true;
+			Expr* ret = parseVarDecl(ps);
+			if(VarDecl* vd = dynamic_cast<VarDecl*>(ret))
+				vd->isStatic = true;
+
+			else
+				parserError(begin, "Destructuring declarations cannot be made static");
+
 			return ret;
 		}
 		else
@@ -1586,19 +1593,26 @@ namespace Parser
 	}
 
 
-	VarDecl* parseVarDecl(ParserState& ps)
+	Expr* parseVarDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 
 		bool immutable = (ps.front().type == TType::Val);
 		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
+		size_t restore = ps.index;
 		ps.eat();
 
 		// get the identifier.
-		Token tok_id;
-		if((tok_id = ps.eat()).type != TType::Identifier)
+		Token tok_id = ps.eat();
+		if(tok_id.type == TType::LParen)
+		{
+			return parseTupleDestructure(ps);
+		}
+		else if(tok_id.type != TType::Identifier)
+		{
 			parserError("Expected identifier for variable declaration.");
+		}
 
 		std::string id = tok_id.text.to_string();
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
