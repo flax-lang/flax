@@ -125,9 +125,11 @@ if let k = 30; k < 40 { /* ... */ }
 
 
 
-// 20. defer does not happen after the return, only before
-// this means that we cannot, for example, use memory in the return expression that is freed using defer.
+// 22. remove implicit returns, unless the function has exactly one *statement*.
+// so something like func foo() { if cond { 30 } else { 40 } } would still work, and of course something like
+// func bar(x: int) { x * x + 2 * x + 1 } works.
 
+// prevents having careless values strewn deep inside nested ifs/loops/whatevers contributing to the return value.
 
 
 
@@ -147,7 +149,9 @@ if let k = 30; k < 40 { /* ... */ }
 
 	13. T.0.1 parses as T. (0.1) where 0.1 is a number
 
-	21. shit like this works: (fixed in 61325cdb)
+	20. defer does not happen after the return, only before (fixed in d9f8d4b)
+
+	21. shit like this works: (fixed in 61325cd)
 	let g = 3let v = 10
 */
 
