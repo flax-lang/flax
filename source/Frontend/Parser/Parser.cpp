@@ -313,8 +313,7 @@ namespace Parser
 
 					Token attr = ps.pop();
 
-					iceAssert(attr.type == TType::Identifier || attr.text == "public"
-						|| attr.text == "private" || attr.text == "internal");
+					iceAssert(attr.type == TType::Identifier || attr.type == TType::Operator);
 
 					if(attr.text == ATTR_STR_OPERATOR)
 					{
@@ -377,7 +376,7 @@ namespace Parser
 						ps.skipNewline();
 					}
 				}
-				else if(t.type == TType::Identifier && t.text == "operator")
+				else if(t.type == TType::Operator)
 				{
 					// eat the 'operator'
 					ps.pop();
@@ -471,108 +470,239 @@ namespace Parser
 	// this only handles the topmost level.
 	void parseAll(ParserState& ps)
 	{
-		Token tok;
-		while(ps.hasTokens() && (tok = ps.front()).type != TType::EndOfFile)
+		while(ps.hasTokens())
 		{
-			switch(tok.type)
-			{
-				case TType::Func:
-					ps.rootNode->topLevelExpressions.push_back(parseFunc(ps));
-					break;
+			auto expr = parseStatement(ps, true);
+			if(!expr) break;
 
-				case TType::Import:
-					ps.rootNode->topLevelExpressions.push_back(parseImport(ps));
-					break;
-
-				case TType::ForeignFunc:
-					ps.rootNode->topLevelExpressions.push_back(parseForeignFunc(ps));
-					break;
-
-				case TType::Struct:
-					ps.rootNode->topLevelExpressions.push_back(parseStruct(ps));
-					break;
-
-				case TType::Class:
-					ps.rootNode->topLevelExpressions.push_back(parseClass(ps));
-					break;
-
-				case TType::Protocol:
-					ps.rootNode->topLevelExpressions.push_back(parseProtocol(ps));
-					break;
-
-				case TType::Enum:
-					ps.rootNode->topLevelExpressions.push_back(parseEnum(ps));
-					break;
-
-				case TType::Extension:
-					ps.rootNode->topLevelExpressions.push_back(parseExtension(ps));
-					break;
-
-				case TType::Var:
-				case TType::Val:
-					ps.rootNode->topLevelExpressions.push_back(parseVarDecl(ps));
-					break;
-
-				// shit you just skip
-				case TType::NewLine:
-					ps.currentPos.line++;
-					// fallthrough
-
-				case TType::Comment:
-				case TType::Semicolon:
-					ps.pop();
-					break;
-
-				case TType::TypeAlias:
-					ps.rootNode->topLevelExpressions.push_back(parseTypeAlias(ps));
-					break;
-
-				case TType::Namespace:
-					ps.rootNode->topLevelExpressions.push_back(parseNamespace(ps));
-					break;
-
-				case TType::Private:
-					ps.eat();
-					ps.curAttrib |= Attr_VisPrivate;
-					break;
-
-				case TType::Internal:
-					ps.eat();
-					ps.curAttrib |= Attr_VisInternal;
-					break;
-
-				case TType::Public:
-					ps.eat();
-					ps.curAttrib |= Attr_VisPublic;
-					break;
-
-				case TType::Override:
-					ps.eat();
-					ps.curAttrib |= Attr_Override;
-					break;
-
-				case TType::At:
-					parseAttribute(ps);
-					break;
-
-				case TType::Identifier:
-					if(tok.text == "operator")
-					{
-						ps.rootNode->topLevelExpressions.push_back(parseOpOverload(ps));
-						break;
-					}
-					// fallthrough
-
-				default:	// wip: skip shit we don't know/care about for now
-					parserError(tok, "Unknown token '%s'", tok.text.to_string().c_str());
-			}
+			ps.rootNode->topLevelExpressions.push_back(expr);
 		}
 	}
+
+
+
+	static void _skipWhitespaceAndComments(ParserState& ps)
+	{
+		// skip whitespace and comments
+		while(ps.front().type == TType::Comment || ps.front().type == TType::NewLine)
+			ps.pop();
+	}
+
+	Expr* parseStatement(ParserState& ps, bool allowingImports)
+	{
+		if(ps.empty())
+			parserError("Unexpected end of file");
+
+		_skipWhitespaceAndComments(ps);
+
+		// todo/hack: parseBracedBlock expects the closing brace to still be there, but we expect a statement of some kind
+		// if the last token in a block was a comment, we'll have skipped it, leaving a RBrace in the front now.
+
+		// also EOF just return 0.
+
+		if(ps.front().type == TType::RBrace || ps.front().type == TType::EndOfFile)
+			return 0;
+
+
+		bool skipCheck = false;
+		Expr* ret = 0;
+
+		// note: labels!
+		// reason we do this (using goto) is because we want to be able to skip the check for newline/semicolon
+		// if we use recursion, we'd have to pass skipCheck as a flag or something, which IMO is less elegant than a
+		// well-planned goto.
+
+		// Without this fix, the statement itself checks for the newline (and removes it), then when it exists, the attribute/public/private
+		// parsing expects another newline, and dies.
+		again:
+
+		// for good measure
+		// note: actually to allow attributes on separate lines
+		// but that's a good measure right?
+		_skipWhitespaceAndComments(ps);
+
+		Token tok = ps.front();
+		switch(tok.type)
+		{
+			case TType::Var:
+			case TType::Val:
+				ret = parseVarDecl(ps);
+				break;
+
+			case TType::Func:
+				ret = parseFunc(ps);
+				break;
+
+			case TType::ForeignFunc:
+				ret = parseForeignFunc(ps);
+				break;
+
+			case TType::Operator:
+				ret = parseOpOverload(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Static:
+				ret = parseStaticDecl(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Struct:
+				ret = parseStruct(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Class:
+				ret = parseClass(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Protocol:
+				ret = parseProtocol(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Enum:
+				ret = parseEnum(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Extension:
+				ret = parseExtension(ps);
+				skipCheck = true;
+				break;
+
+			case TType::If:
+				ret = parseIf(ps);
+				skipCheck = true;
+				break;
+
+			// all have the same kind of AST node
+			case TType::Do:
+			case TType::While:
+			case TType::Loop:
+				ret = parseWhile(ps);
+				skipCheck = true;
+				break;
+
+			case TType::Namespace:
+				ret = parseNamespace(ps);
+				skipCheck = true;
+				break;
+
+
+			case TType::Dealloc:
+				ret = parseDealloc(ps);
+				break;
+
+			case TType::Defer:
+				ret = parseDefer(ps);
+				break;
+
+			case TType::Return:
+				ret = parseReturn(ps);
+				break;
+
+			case TType::Break:
+				ret = parseBreak(ps);
+				break;
+
+			case TType::Continue:
+				ret = parseContinue(ps);
+				break;
+
+			// skip this shit
+			case TType::Semicolon:
+				ps.pop();
+				ret = CreateAST(DummyExpr, tok);
+				break;
+
+			case TType::TypeAlias:
+				ret = parseTypeAlias(ps);
+				break;
+
+
+
+			case TType::At:
+				parseAttribute(ps);
+				skipCheck = true;
+				goto again;
+				break;
+
+			case TType::Private:
+				ps.pop();
+				ps.curAttrib |= Attr_VisPrivate;
+				skipCheck = true;
+				goto again;
+				break;
+
+			case TType::Internal:
+				ps.pop();
+				ps.curAttrib |= Attr_VisInternal;
+				skipCheck = true;
+				goto again;
+				break;
+
+			case TType::Public:
+				ps.pop();
+				ps.curAttrib |= Attr_VisPublic;
+				skipCheck = true;
+				goto again;
+				break;
+
+			case TType::Override:
+				ps.pop();
+				ps.curAttrib |= Attr_Override;
+				skipCheck = true;
+				goto again;
+				break;
+
+			case TType::LBrace:
+				// parse it, but throw it away
+				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
+				ret = CreateAST(DummyExpr, ps.front());
+				break;
+
+			case TType::Import:
+				if(allowingImports)	ret = parseImport(ps);
+				else				parserError("Imports are only allowed in the global scope");
+				break;
+
+			default:
+				ret = parseExpr(ps);
+				break;
+		}
+
+		// parserMessage(Err::Warn, "end of statement: %s / %d\n", ps.front().text.to_string().c_str(), ps.front().type);
+
+		iceAssert(ret);
+		if(!skipCheck)
+		{
+			auto t = ps.front().type;
+			if(t != TType::NewLine && t != TType::Comment && t != TType::RBrace && t != TType::Semicolon)
+			{
+				parserError(ret->pin, "Expected newline or semicolon to terminate a statement, found '%s' (id = %d)",
+					ps.front().text.to_string().c_str(), t);
+			}
+
+			// keep it in there
+			if(t != TType::RBrace)
+				ps.pop();
+		}
+
+		return ret;
+	}
+
+
+
+
 
 	Expr* parsePrimary(ParserState& ps)
 	{
 		if(ps.empty())
-			return 0;
+			parserError("Unexpected end of file");
+
+		_skipWhitespaceAndComments(ps);
 
 		Token tok = ps.front();
 		if(tok.type != TType::EndOfFile)
@@ -581,13 +711,52 @@ namespace Parser
 			{
 				case TType::Var:
 				case TType::Val:
-					return parseVarDecl(ps);
-
 				case TType::Func:
-					return parseFunc(ps);
-
+				case TType::Enum:
+				case TType::Class:
+				case TType::Static:
+				case TType::Struct:
+				case TType::Public:
+				case TType::Private:
+				case TType::Operator:
+				case TType::Protocol:
+				case TType::Internal:
+				case TType::Override:
+				case TType::Extension:
+				case TType::Namespace:
+				case TType::TypeAlias:
 				case TType::ForeignFunc:
-					return parseForeignFunc(ps);
+					parserError("Declarations are not expressions (%s)", tok.text.to_string().c_str());
+
+				case TType::Dealloc:
+					parserError("Deallocation statements are not expressions");
+
+				case TType::Defer:
+					parserError("Defer statements are not expressions");
+
+				case TType::Return:
+					parserError("Return statements are not expressions");
+
+				case TType::Break:
+					parserError("Break statements are not expressions");
+
+				case TType::Continue:
+					parserError("Continue statements are not expressions");
+
+				case TType::If:
+					parserError("If statements are not expressions");
+
+				// since both have the same kind of AST node, parseWhile can handle both
+				case TType::Do:
+				case TType::While:
+				case TType::Loop:
+					parserError("Loops are not expressions");
+
+
+
+
+
+
 
 				case TType::LParen:
 					return parseParenthesised(ps);
@@ -597,44 +766,13 @@ namespace Parser
 					if(tok.text == "init")
 						return parseInitFunc(ps);
 
-					else if(tok.text == "operator")
-						return parseOpOverload(ps);
-
 					return parseIdExpr(ps);
-
-				case TType::Static:
-					return parseStaticDecl(ps);
 
 				case TType::Alloc:
 					return parseAlloc(ps);
 
-				case TType::Dealloc:
-					return parseDealloc(ps);
-
-				case TType::Struct:
-					return parseStruct(ps);
-
-				case TType::Class:
-					return parseClass(ps);
-
-				case TType::Protocol:
-					return parseProtocol(ps);
-
-				case TType::Enum:
-					return parseEnum(ps);
-
-				case TType::Defer:
-					return parseDefer(ps);
-
 				case TType::Typeof:
 					return parseTypeof(ps);
-
-				case TType::Extension:
-					return parseExtension(ps);
-
-				case TType::At:
-					parseAttribute(ps);
-					return parsePrimary(ps);
 
 				case TType::StringLiteral:
 					return parseStringLiteral(ps);
@@ -645,39 +783,19 @@ namespace Parser
 				case TType::LSquare:
 					return parseArrayLiteral(ps);
 
-				case TType::Return:
-					return parseReturn(ps);
+				case TType::At:
+					parseAttribute(ps);
+					return parsePrimary(ps);
 
-				case TType::Break:
-					return parseBreak(ps);
+				// // shit you just skip
+				// case TType::NewLine:
+				// 	ps.currentPos.line++;
+				// 	// fallthrough
 
-				case TType::Continue:
-					return parseContinue(ps);
-
-				case TType::If:
-					return parseIf(ps);
-
-				// since both have the same kind of AST node, parseWhile can handle both
-				case TType::Do:
-				case TType::While:
-				case TType::Loop:
-					return parseWhile(ps);
-
-				// shit you just skip
-				case TType::NewLine:
-					ps.currentPos.line++;
-					// fallthrough
-
-				case TType::Comment:
-				case TType::Semicolon:
-					ps.eat();
-					return CreateAST(DummyExpr, tok);
-
-				case TType::TypeAlias:
-					return parseTypeAlias(ps);
-
-				case TType::Namespace:
-					return parseNamespace(ps);
+				// case TType::Comment:
+				// case TType::Semicolon:
+				// 	ps.eat();
+				// 	return CreateAST(DummyExpr, tok);
 
 				// no point creating separate functions for these
 				case TType::True:
@@ -693,27 +811,6 @@ namespace Parser
 					ps.pop();
 					return CreateAST(NullVal, tok);
 
-				// attributes-as-keywords
-				// stored as attributes in the AST, but parsed as keywords by the parser.
-				case TType::Private:
-					ps.eat();
-					ps.curAttrib |= Attr_VisPrivate;
-					return parsePrimary(ps);
-
-				case TType::Internal:
-					ps.eat();
-					ps.curAttrib |= Attr_VisInternal;
-					return parsePrimary(ps);
-
-				case TType::Public:
-					ps.eat();
-					ps.curAttrib |= Attr_VisPublic;
-					return parsePrimary(ps);
-
-				case TType::Override:
-					ps.eat();
-					ps.curAttrib |= Attr_Override;
-					return parsePrimary(ps);
 
 				case TType::LBrace:
 					// parse it, but throw it away
@@ -721,7 +818,7 @@ namespace Parser
 					return CreateAST(DummyExpr, ps.front());
 
 				default:
-					parserError(tok, "Unexpected token '%s'\n", tok.text.to_string().c_str());
+					parserError(tok, "Unexpected token '%s' (id = %d)", tok.text.to_string().c_str(), tok.type);
 			}
 		}
 
@@ -912,7 +1009,6 @@ namespace Parser
 			ret = pts::NamedType::create(VOID_TYPE_STRING);
 		}
 
-		ps.skipNewline();
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
 		f->attribs = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
 			Attr_NoMangle | Attr_ForceMangle | Attr_Override);
@@ -1001,7 +1097,10 @@ namespace Parser
 		// get the stuff inside.
 		while(ps.hasTokens() && ps.front().type != TType::RBrace)
 		{
-			Expr* e = parseExpr(ps);
+			// Expr* e = parseExpr(ps);
+			Expr* e = parseStatement(ps);
+			if(!e) break;
+
 			DeferredExpr* d = 0;
 
 			if((d = dynamic_cast<DeferredExpr*>(e)))
@@ -1009,15 +1108,13 @@ namespace Parser
 
 			else if(!dynamic_cast<DummyExpr*>(e))
 				c->statements.push_back(e);
-
-			ps.skipNewline();
 		}
 
 		if(ps.front().type != TType::RBrace)
-			parserError("Expected '}'");
+			parserError(tok_brc, "Expected '}', found '%s' (id = %d)", ps.front().text.to_string().c_str(), ps.front().type);
 
 		if(eatClosingBrace)
-			ps.eat();
+			ps.pop();
 
 		std::reverse(c->deferredStatements.begin(), c->deferredStatements.end());
 		return c;
@@ -1039,8 +1136,9 @@ namespace Parser
 	{
 		FuncDecl* decl = parseFuncDeclUsingIdentifierToken(ps, front);
 
-		if(ps.front().type == TType::LBrace)
+		if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
 		{
+			ps.skipNewline();
 			return CreateAST(Func, front, decl, parseBracedBlock(ps));
 		}
 		else
@@ -1193,7 +1291,7 @@ namespace Parser
 	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
 	static std::string parseStringType(ParserState& ps)
 	{
-		// note: use of pop_front() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
+		// note: use of pop() vs eat() here is to stop eating newlines, that cause identifiers on the next line to be
 		// conflated with the current type being parsed.
 		if(!ps.hasTokens()) return "";
 
@@ -1419,7 +1517,7 @@ namespace Parser
 		bool didSetter = false;
 		for(int i = 0; i < 2; i++)
 		{
-			if(ps.front().type == TType::Get)
+			if(ps.lookaheadUntilNonNewline().type == TType::Get)
 			{
 				if(didGetter)
 					parserError("Only one getter is allowed per computed property");
@@ -1433,7 +1531,7 @@ namespace Parser
 
 				cprop->getter = parseBracedBlock(ps);
 			}
-			else if(ps.front().type == TType::Set)
+			else if(ps.lookaheadUntilNonNewline().type == TType::Set)
 			{
 				if(didSetter)
 					parserError("Only one setter is allowed per computed property");
@@ -1459,8 +1557,9 @@ namespace Parser
 				cprop->setter = parseBracedBlock(ps);
 				cprop->setterArgName = setValName;
 			}
-			else if(ps.front().type == TType::RBrace)
+			else if(ps.lookaheadUntilNonNewline().type == TType::RBrace)
 			{
+				ps.skipNewline();
 				break;
 			}
 			else
@@ -1512,10 +1611,10 @@ namespace Parser
 		if(colon.type == TType::Colon)
 		{
 			v->ptype = parseType(ps);
-			ps.skipNewline();
 
-			if(ps.front().type == TType::LBrace)
+			if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
 			{
+				ps.skipNewline();
 				return parseComputedProperty(ps, v->ident.name, v->ptype, v->attribs, tok_id);
 			}
 		}
@@ -2007,10 +2106,10 @@ namespace Parser
 		// check for else and else if
 		BracedBlock* ecase = 0;
 		bool parsedElse = false;
-		while(ps.front().type == TType::Else)
+		while(ps.lookaheadUntilNonNewline().type == TType::Else)
 		{
 			ps.eat();
-			if(ps.front().type == TType::If && !parsedElse)
+			if(ps.lookaheadUntilNonNewline().type == TType::If && !parsedElse)
 			{
 				ps.eat();
 
@@ -2100,9 +2199,8 @@ namespace Parser
 				parserError("Self inheritance is illegal");
 
 			ret.push_back(id.text.to_string());
-			ps.skipNewline();
 
-			if(ps.front().type != TType::Comma)
+			if(ps.lookaheadUntilNonNewline().type != TType::Comma)
 				break;
 
 			ps.eat();
@@ -2265,8 +2363,7 @@ namespace Parser
 		cls->attribs = attr;
 
 		// check for a colon.
-		ps.skipNewline();
-		if(ps.front().type == TType::Colon)
+		if(ps.lookaheadUntilNonNewline().type == TType::Colon)
 		{
 			ps.eat();
 			cls->protocolstrs = parseInheritanceList(ps, cls->ident.name);
@@ -2353,8 +2450,7 @@ namespace Parser
 		ext->attribs = attr;
 
 		// check for a colon.
-		ps.skipNewline();
-		if(ps.front().type == TType::Colon)
+		if(ps.lookaheadUntilNonNewline().type == TType::Colon)
 		{
 			ps.eat();
 			ext->protocolstrs = parseInheritanceList(ps, ext->ident.name);
@@ -2429,8 +2525,7 @@ namespace Parser
 		prot->attribs = attr;
 
 		// check for a colon.
-		ps.skipNewline();
-		if(ps.front().type == TType::Colon)
+		if(ps.lookaheadUntilNonNewline().type == TType::Colon)
 		{
 			ps.eat();
 			prot->protocolstrs = parseInheritanceList(ps, prot->ident.name);
@@ -2530,6 +2625,7 @@ namespace Parser
 		bool isNumeric = false;
 		Number* prevNumber = 0;
 
+		ps.skipNewline();
 		while(front = ps.front(), ps.hasTokens() > 0)
 		{
 			if(front.type == TType::RBrace && !isFirst)
@@ -2545,7 +2641,6 @@ namespace Parser
 			std::string eName = front.text.to_string();
 			Expr* value = 0;
 
-			ps.skipNewline();
 			front = ps.front();
 			if(front.type == TType::Equal)
 			{
@@ -2614,7 +2709,7 @@ namespace Parser
 		iceAssert(ps.eat().type == TType::At);
 		Token id = ps.eat();
 
-		if(id.type != TType::Identifier && id.type != TType::Private && id.type != TType::Internal && id.type != TType::Public)
+		if(id.type != TType::Identifier && id.type != TType::Operator)
 			parserError("Expected attribute name after '@'");
 
 		uint64_t attr = 0;
@@ -2624,21 +2719,6 @@ namespace Parser
 		else if(id.text == ATTR_STR_PACKEDSTRUCT)	attr |= Attr_PackedStruct;
 		else if(id.text == ATTR_STR_STRONG)			attr |= Attr_StrongTypeAlias;
 		else if(id.text == ATTR_STR_RAW)			attr |= Attr_RawString;
-		else if(id.text == "public")
-		{
-			parserMessage(Err::Warn, "Attribute 'public' is a keyword, usage as an attribute is deprecated");
-			attr |= Attr_VisPublic;
-		}
-		else if(id.text == "internal")
-		{
-			parserMessage(Err::Warn, "Attribute 'internal' is a keyword, usage as an attribute is deprecated");
-			attr |= Attr_VisInternal;
-		}
-		else if(id.text == "private")
-		{
-			parserMessage(Err::Warn, "Attribute 'private' is a keyword, usage as an attribute is deprecated");
-			attr |= Attr_VisPrivate;
-		}
 		else if(id.text == "operator")
 		{
 			// all handled.
@@ -2736,34 +2816,24 @@ namespace Parser
 		iceAssert((front = ps.eat()).type == TType::Import);
 
 		std::string s;
-		Token tok_mod = ps.front();
-		if(tok_mod.type != TType::Identifier)
+		if(ps.front().type != TType::Identifier)
 			parserError("Expected identifier after import");
 
-		Token t = tok_mod;
-		ps.pop();
-
-		while(ps.hasTokens() > 0)
+		Token t;
+		while(ps.hasTokens() && (t = ps.front()).type != TType::Invalid)
 		{
 			if(t.type == TType::Period)
-			{
 				s += ".";
-			}
-			else if(t.type == TType::Identifier)
-			{
-				s += t.text.to_string();
-			}
-			else if(t.type == TType::Asterisk)
-			{
-				s += "*";
-			}
-			else
-			{
-				break;
-			}
 
-			// whitespace handling fucks us up
-			t = ps.front();
+			else if(t.type == TType::Identifier)
+				s += t.text.to_string();
+
+			else if(t.type == TType::Asterisk)
+				s += "*";
+
+			else
+				break;
+
 			ps.pop();
 		}
 
@@ -2864,10 +2934,10 @@ namespace Parser
 		std::vector<Expr*> values;
 		while(true)
 		{
-			Token tok = ps.front();
+			Token tok = ps.lookaheadUntilNonNewline();
 			if(tok.type == TType::Comma)
 			{
-				ps.eat();
+				ps.pop();
 				continue;
 			}
 			else if(tok.type == TType::RSquare)
@@ -2876,10 +2946,12 @@ namespace Parser
 			}
 			else
 			{
+				ps.skipNewline();
 				values.push_back(parseExpr(ps));
 			}
 		}
 
+		ps.skipNewline();
 		iceAssert(ps.front().type == TType::RSquare);
 		ps.eat();
 
@@ -3234,7 +3306,7 @@ namespace Parser
 		const auto& t = this->tokens[this->index];
 		this->index++;
 
-		this->skipNewline();
+		// this->skipNewline();
 
 		this->curtok = &t;
 		return t;
@@ -3253,6 +3325,15 @@ namespace Parser
 	void ParserState::reset()
 	{
 		this->index = 0;
+	}
+
+	const Token& ParserState::lookaheadUntilNonNewline()
+	{
+		size_t k = 0;
+		while(this->index + k < this->tokens.size() && (this->lookahead(k).type == TType::Comment || this->lookahead(k).type == TType::NewLine))
+			k++;
+
+		return this->lookahead(k);
 	}
 
 	ParserState::ParserState(Codegen::CodegenInstance* c, const TokenList& tl) : cgi(c), tokens(tl)

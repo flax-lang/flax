@@ -477,6 +477,7 @@ namespace Lexer
 			else if(compare(tok.text, "typealias"))		tok.type = TType::TypeAlias;
 			else if(compare(tok.text, "protocol"))		tok.type = TType::Protocol;
 			else if(compare(tok.text, "override"))		tok.type = TType::Override;
+			else if(compare(tok.text, "operator"))		tok.type = TType::Operator;
 			else if(compare(tok.text, "as"))			{ tok.type = TType::As; if(isExclamation) { read++; tok.type = TType::AsExclamation; } }
 			else										tok.type = TType::Identifier;
 		}
