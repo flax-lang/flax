@@ -125,6 +125,18 @@ if let k = 30; k < 40 { /* ... */ }
 
 
 
+// 20. defer does not happen after the return, only before
+// this means that we cannot, for example, use memory in the return expression that is freed using defer.
+
+
+
+
+// 21. shit like this works:
+let g = 3let v = 10
+
+
+
+
 //
 // FIXED
 //
