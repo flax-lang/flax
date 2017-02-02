@@ -2816,25 +2816,35 @@ namespace Parser
 		iceAssert((front = ps.eat()).type == TType::Import);
 
 		std::string s;
-		if(ps.front().type != TType::Identifier)
-			parserError("Expected identifier after import");
-
-		Token t;
-		while(ps.hasTokens() && (t = ps.front()).type != TType::Invalid)
+		if(ps.front().type == TType::StringLiteral)
 		{
-			if(t.type == TType::Period)
-				s += ".";
+			// todo: fix
+			// take it as-is.
 
-			else if(t.type == TType::Identifier)
-				s += t.text.to_string();
+			s = ps.front().text.to_string();
+		}
+		else
+		{
+			if(ps.front().type != TType::Identifier)
+				parserError("Expected identifier after import");
 
-			else if(t.type == TType::Asterisk)
-				s += "*";
+			Token t;
+			while(ps.hasTokens() && (t = ps.front()).type != TType::Invalid)
+			{
+				if(t.type == TType::Period)
+					s += ".";
 
-			else
-				break;
+				else if(t.type == TType::Identifier)
+					s += t.text.to_string();
 
-			ps.pop();
+				else if(t.type == TType::Asterisk)
+					s += "*";
+
+				else
+					break;
+
+				ps.pop();
+			}
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
