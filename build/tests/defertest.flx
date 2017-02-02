@@ -20,9 +20,12 @@ func foo(x: int) -> int
 
 func bar() -> int
 {
-	foo(10)
-	defer foo(20)
-	return foo(30)
+	// numbered by *correct* order of appearance.
+	// defer should execute after the return.
+
+	foo(1)
+	defer foo(3)
+	return foo(2)
 }
 
 
