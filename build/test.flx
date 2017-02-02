@@ -303,6 +303,12 @@ public func main(argc: i32, argv: i8**) -> int
 	}
 
 
+	do {
+
+		let x = (let y = 40)
+	}
+
+
 
 
 
