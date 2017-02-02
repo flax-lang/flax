@@ -131,9 +131,6 @@ if let k = 30; k < 40 { /* ... */ }
 
 
 
-// 21. shit like this works:
-let g = 3let v = 10
-
 
 
 
@@ -149,6 +146,9 @@ let g = 3let v = 10
 	12. global variables outside of namespaces don't work
 
 	13. T.0.1 parses as T. (0.1) where 0.1 is a number
+
+	21. shit like this works: (fixed in 61325cdb)
+	let g = 3let v = 10
 */
 
 

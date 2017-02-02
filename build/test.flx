@@ -13,6 +13,7 @@ import tests.operators
 import tests.arraytest
 import tests.generics
 import tests.limits
+import tests.defertest		// workaround: defer is a keyword
 import tests.misc
 
 import tests.functions
@@ -31,6 +32,7 @@ import tests.functions
 	let arrayTitle		= "      *** ARRAY REGRESSION TEST ***     \n"
 	let genericsTitle	= "    *** GENERICS REGRESSION TEST ***    \n"
 	let functionsTitle	= "    *** FUNCTION REGRESSION TEST ***    \n"
+	let deferTitle		= "       *** DEFER SEMANTICS TEST ***     \n"
 	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine		= "----------------------------------------\n"
 	let endTitle		= "============ TESTS COMPLETE ============\n"
@@ -92,6 +94,12 @@ import tests.functions
 	// first-class-functions
 	printf("%s%s", functionsTitle, thinLine)
 	doFunctionTest()
+	printf("\n\n\n")
+
+
+	// defer semantics
+	printf("%s%s", deferTitle, thinLine)
+	doDeferTest()
 	printf("\n\n\n")
 
 
