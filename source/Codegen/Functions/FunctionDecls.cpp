@@ -110,7 +110,6 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	}
 
 	fd->generatedFunc = func;
-
 	return Result_t(func, 0);
 }
 

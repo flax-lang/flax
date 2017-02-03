@@ -320,7 +320,7 @@ public func main(argc: i32, argv: i8**) -> int
 
 		let [ a, b, c, d, e, ... x ] = arr
 
-		// printf("a = %d, b = %d, c = %d, d = %d, e = %d\n", a, b, c, x[0], x[1])
+		printf("a = %d, b = %d, c = %d, d = %d, e = %d\n", a, b, c, d, e)//x[0], x[1])
 	}
 
 

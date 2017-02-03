@@ -10,6 +10,35 @@
 using namespace Codegen;
 namespace Ast
 {
+	static void _doStore(CodegenInstance* cgi, Expr* user, fir::Type* elmType, fir::Value* src, fir::Value* dst, std::string name,
+		Parser::Pin pos, ValueKind vk)
+	{
+		auto cmplxtype = cgi->getType(elmType);
+		if(cmplxtype)
+		{
+			// todo: this leaks also
+			auto res = Operators::performActualAssignment(cgi, user, new VarRef(pos, name),
+				0, ArithmeticOp::Assign, cgi->irb.CreateLoad(dst), dst, cgi->irb.CreateLoad(src), src, vk);
+
+			// it's stored already, no need to do shit.
+			iceAssert(res.value);
+		}
+		else
+		{
+			// ok, just do it normally
+			cgi->irb.CreateStore(cgi->irb.CreateLoad(src), dst);
+		}
+
+		if(cgi->isRefCountedType(elmType))
+		{
+			// (isInit = true, doAssign = false -- we already assigned it above)
+			cgi->assignRefCountedExpression(new VarRef(pos, name), cgi->irb.CreateLoad(src), src,
+				cgi->irb.CreateLoad(dst), dst, vk, true, false);
+		}
+	}
+
+
+
 	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	{
 		// ok. first, we need to codegen, and get the type of, the right side.
@@ -63,31 +92,7 @@ namespace Ast
 
 				// get the value from the array
 				fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
-				{
-					auto cmplxtype = cgi->getType(elmtype);
-
-					if(cmplxtype)
-					{
-						// todo: this leaks also
-						auto res = Operators::performActualAssignment(cgi, this, new VarRef(this->mapping[i].second, name),
-							0, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai), ai, cgi->irb.CreateLoad(ptr), ptr, vk);
-
-						// it's stored already, no need to do shit.
-						iceAssert(res.value);
-					}
-					else
-					{
-						// ok, just do it normally
-						cgi->irb.CreateStore(cgi->irb.CreateLoad(ptr), ai);
-					}
-
-					if(cgi->isRefCountedType(rhs->getType()))
-					{
-						// (isInit = true, doAssign = false -- we already assigned it above)
-						cgi->assignRefCountedExpression(new VarRef(this->mapping[i].second, name), cgi->irb.CreateLoad(ptr), ptr,
-							cgi->irb.CreateLoad(ai), ai, vk, true, false);
-					}
-				}
+				_doStore(cgi, this, elmtype, ptr, ai, name, this->mapping[i].second, vk);
 
 				if(this->immutable)
 					ai->makeImmutable();
@@ -117,30 +122,7 @@ namespace Ast
 					fir::Value* srcptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
 					fir::Value* dstptr = cgi->irb.CreateConstGEP2(ai, 0, i - numNormalBindings);
 
-
-					auto cmplxtype = cgi->getType(elmtype);
-
-					if(cmplxtype)
-					{
-						// todo: this leaks also
-						auto res = Operators::performActualAssignment(cgi, this, new VarRef(this->mapping[-1].second, name),
-							0, ArithmeticOp::Assign, cgi->irb.CreateLoad(dstptr), dstptr, cgi->irb.CreateLoad(srcptr), srcptr, vk);
-
-						// it's stored already, no need to do shit.
-						iceAssert(res.value);
-					}
-					else
-					{
-						// ok, just do it normally
-						cgi->irb.CreateStore(cgi->irb.CreateLoad(srcptr), dstptr);
-					}
-
-					if(cgi->isRefCountedType(elmtype))
-					{
-						// (isInit = true, doAssign = false -- we already assigned it above)
-						cgi->assignRefCountedExpression(new VarRef(this->mapping[-1].second, name), cgi->irb.CreateLoad(srcptr), srcptr,
-							cgi->irb.CreateLoad(dstptr), dstptr, vk, true, false);
-					}
+					_doStore(cgi, this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
 				}
 
 				if(this->immutable)
@@ -154,19 +136,14 @@ namespace Ast
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
 		}
-		else if(rtype->isParameterPackType() || rtype->isDynamicArrayType())
+		else if(rtype->isDynamicArrayType())
 		{
 			// todo: question should the 'remaining' bit of the array be a copy or reference?
 			// it'll be a copy for now.
 
-			fir::Value* ptr = 0;
-			fir::Value* len = 0;
-
-			if(rtype->isParameterPackType())	ptr = cgi->irb.CreateGetParameterPackData(rhsptr);
-			else								ptr = cgi->irb.CreateGetDynamicArrayData(rhsptr);
-
-			if(rtype->isParameterPackType())	len = cgi->irb.CreateGetParameterPackLength(rhsptr);
-			else								len = cgi->irb.CreateGetDynamicArrayLength(rhsptr);
+			fir::Value* ptr = cgi->irb.CreateGetDynamicArrayData(rhsptr);
+			fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(rhsptr);
+			fir::Type* elmType = rtype->toDynamicArrayType()->getElementType();
 
 			iceAssert(ptr && len);
 
@@ -179,6 +156,37 @@ namespace Ast
 				// this uses index, so we just kinda fudge it.
 				cgi->irb.CreateCall3(checkf, len, fir::ConstantInt::getInt64(numNormalBindings),
 					fir::ConstantString::get(Parser::pinToString(this->pin)));
+			}
+
+
+			// okay, now, loop + copy
+			for(size_t i = 0; i < numNormalBindings; i++)
+			{
+				std::string name = this->mapping[i].first;
+				if(name == "_")
+					continue;
+
+				// no need to bounds check here.
+				fir::Value* gep = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(i));
+				fir::Value* ai = cgi->irb.CreateStackAlloc(elmType);
+
+				// do the store-y thing
+				_doStore(cgi, this, elmType, gep, ai, name, this->mapping[i].second, vk);
+
+				if(this->immutable)
+					ai->makeImmutable();
+
+				VarDecl* fakeDecl = new VarDecl(this->mapping[i].second, name, this->immutable);
+				fakeDecl->didCodegen = true;
+				fakeDecl->concretisedType = elmType;
+
+				cgi->addSymbol(name, ai, fakeDecl);
+			}
+
+
+			if(haveNamedEllipsis)
+			{
+				// so, this is the fucked up part
 			}
 		}
 		else
@@ -196,3 +204,17 @@ namespace Ast
 		error(this, "Decomposing declarations do not yield a value");
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

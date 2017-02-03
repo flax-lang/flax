@@ -1096,10 +1096,10 @@ namespace Codegen
 					fir::Type* resolvedvbase = pts::applyTransformationsOnType(resolved, trfs);
 
 
-					if(args.size() == candidate->params.size() && args.back()->isParameterPackType())
+					if(args.size() == candidate->params.size() && args.back()->isDynamicArrayType())
 					{
 						// check transformations.
-						fir::Type* fvbase = args.back()->toParameterPackType()->getElementType();
+						fir::Type* fvbase = args.back()->toDynamicArrayType()->getElementType();
 
 						fir::Type* _ = 0; TrfList argtrfs;
 						std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(fvbase);
@@ -1654,10 +1654,8 @@ namespace Codegen
 			{
 				std::string mangled = atype->encodedStr();
 
-				if(atype->isParameterPackType())
-				{
-					mangled = "V" + atype->toParameterPackType()->encodedStr();
-				}
+				if(atype->isDynamicArrayType() && atype->toDynamicArrayType()->isFunctionVariadic())
+					mangled = "V" + atype->toDynamicArrayType()->encodedStr();
 
 				while(atype->isPointerType())
 					mangled += "P", atype = atype->getPointerElementType();

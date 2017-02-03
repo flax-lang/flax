@@ -21,11 +21,7 @@ Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
 fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
 {
 	fir::Type* t = this->arr->getType(cgi);
-	if(t->isParameterPackType())
-	{
-		return t->toParameterPackType()->getElementType();
-	}
-	else if(t->isDynamicArrayType())
+	if(t->isDynamicArrayType())
 	{
 		return t->toDynamicArrayType()->getElementType();
 	}
@@ -311,7 +307,7 @@ namespace Operators
 		// get our array type
 		fir::Type* atype = subscriptee->getType(cgi);
 
-		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isParameterPackType() && !atype->isDynamicArrayType()
+		if(!atype->isArrayType() && !atype->isPointerType() && !atype->isDynamicArrayType()
 			&& !atype->isStringType())
 		{
 			if(atype->isStructType() || atype->isClassType())
@@ -347,20 +343,6 @@ namespace Operators
 		{
 			if(!lhsp.pointer) { lhsp.pointer = cgi->irb.CreateImmutStackAlloc(lhsp.value->getType(), lhsp.value); }
 			gep = cgi->irb.CreateGEP2(lhsp.pointer, fir::ConstantInt::getUint64(0), ind);
-		}
-		else if(atype->isParameterPackType())
-		{
-			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
-			iceAssert(checkf);
-
-			fir::Value* max = cgi->irb.CreateGetParameterPackLength(lhsp.pointer);
-			cgi->irb.CreateCall3(checkf, max, ind, fir::ConstantString::get(Parser::pinToString(user->pin)));
-
-			fir::Value* data = cgi->irb.CreateGetParameterPackData(lhsp.pointer);
-			gep = cgi->irb.CreateGetPointer(data, ind);
-
-			if(lhsp.pointer->isImmutable())
-				gep->makeImmutable();
 		}
 		else if(atype->isDynamicArrayType())
 		{
