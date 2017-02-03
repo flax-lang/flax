@@ -79,8 +79,9 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 #### Building the Flax compiler ####
 
 - Flax uses a makefile; most likely some form of GNU-compatible `make` will work.
-- For macOS people, simply call `make`
-- Linux people, follow roughly the instructions in `.travis.yml`, they have been tested on Ubuntu 14.04 LTS and up.
+- LLVM needs to be installed. On macOS, `brew install llvm` should work. For Linux people, follow roughly `.travis.yml`, which uses apt-get to install the required libraries.
+- For macOS people, simply call `make`.
+- Linux people, call `make linux`.
 - A C++14-compatible compiler should be used, `g++-6` is good. Due to *reasons*, `clang++` doesn't like `libstdc++`, and `libllvm` from `apt` is linked with `libstdc++`, so you basically need to use `g++` on Linux.
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
