@@ -312,7 +312,7 @@ namespace Operators
 					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
 					iceAssert(clonefunc);
 
-					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+					cgi->irb.CreateStore(cgi->irb.CreateCall2(clonefunc, lhsptr, fir::ConstantInt::getInt64(0)), cloned);
 				}
 
 				// ok, now, append to the clone
@@ -336,7 +336,7 @@ namespace Operators
 					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
 					iceAssert(clonefunc);
 
-					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+					cgi->irb.CreateStore(cgi->irb.CreateCall2(clonefunc, lhsptr, fir::ConstantInt::getInt64(0)), cloned);
 				}
 
 				// ok, now, append to the clone
