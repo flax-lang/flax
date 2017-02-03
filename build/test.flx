@@ -287,7 +287,7 @@ public func main(argc: i32, argv: i8**) -> int
 		printf("f.x = %d, b.c = %d, fo = %d, %d\n", f.x, 3, Barf.y, yyy)
 
 
-		let tup = ("a", (30, 40))
+		let tup = ("a", (30 40))
 		let k = tup.1.1
 
 		printf("k = %d\n", k)
