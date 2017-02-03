@@ -40,6 +40,8 @@ namespace GenError
 				}
 			}
 
+			printf("caret at %d\n", ops.caret.col);
+
 
 			fprintf(stderr, "%s\n", ln.str().c_str());
 
