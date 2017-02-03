@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
+#include <set>
 #include <cfloat>
 #include <fstream>
 #include <cassert>
@@ -1665,42 +1666,42 @@ namespace Parser
 	}
 
 
-
-	struct DestructMapping
-	{
-		bool isRecursive = false;
-		std::string name;
-
-		std::vector<DestructMapping> inners;
-	};
-
-	static DestructMapping _recursivelyParseDestructure(ParserState& ps)
+	using Mapping = TupleDecompDecl::Mapping;
+	static Mapping _recursivelyParseDestructure(ParserState& ps, std::set<std::string> existingNames)
 	{
 		if(ps.eat().type != TType::LParen)
-			parserError("Expected '(' in tuple destructuring");
+			parserError("Expected '(' in tuple decomposition");
 
 
-		DestructMapping ret;
+		Mapping ret;
+		ret.pos = ps.front().pin;
 		ret.isRecursive = true;
 
-		while(true)
+		while(ps.hasTokens())
 		{
 			if(ps.front().type == TType::Identifier)
 			{
-				DestructMapping x;
+				Mapping x;
 				x.isRecursive = false;
 				x.name = ps.eat().text.to_string();
+				x.pos = ps.front().pin;
+
+				if(x.name != "_" && existingNames.find(x.name) != existingNames.end())
+					parserError(x.pos, "Name '%s' already exists in the binding", x.name.c_str());
+
+				existingNames.insert(x.name);
 
 				// do the thing
 				ret.inners.push_back(x);
 			}
 			else if(ps.front().type == TType::LParen)
 			{
-				DestructMapping x;
+				Mapping x;
 				x.isRecursive = true;
+				x.pos = ps.front().pin;
 
 				// recurse.
-				ret.inners.push_back(_recursivelyParseDestructure(ps));
+				ret.inners.push_back(_recursivelyParseDestructure(ps, existingNames));
 			}
 			else if(ps.front().type == TType::Comma)
 			{
@@ -1717,44 +1718,34 @@ namespace Parser
 			}
 			else
 			{
-				parserError("Unexpected '%s' in tuple destructure", ps.front().text.to_string().c_str());
+				parserError("Unexpected '%s' in tuple decomposition", ps.front().text.to_string().c_str());
 			}
 		}
 
 		if(ps.eat().type != TType::RParen)
-			parserError("Expected closing ')' in tuple destructure");
+			parserError("Expected closing ')' in tuple decomposition");
+
+		// tell off the user if they're being stupid
+		bool allIgnored = true;
+		for(auto m : ret.inners)
+			if(m.name != "_") allIgnored = false;
+
+		if(allIgnored)
+			parserMessage(Err::Warn, ret.pos, "All bindings in the tuple decomposition are ignored");
+
+		if(ret.inners.size() == 0)
+			parserError(ret.pos, "Empty tuple decompositions are not allowed");
 
 		return ret;
 	}
 
-	static std::string foo(DestructMapping x)
-	{
-		std::string ret;
-		if(x.isRecursive)
-		{
-			ret += "(";
-			for(auto i : x.inners)
-				ret += foo(i) + ", ";
-
-			if(x.inners.size() > 0)
-				ret = ret.substr(0, ret.length() - 2);
-
-			ret += ")";
-		}
-		else
-		{
-			ret += x.name;
-		}
-
-		return ret;
-	}
-
-	DestructuredTupleDecl* parseTupleDestructure(ParserState& ps)
+	TupleDecompDecl* parseTupleDestructure(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 		bool immutable = ps.eat().type == TType::Val;
 
-		iceAssert(ps.front().type == TType::LParen);
+		Token id;
+		iceAssert((id = ps.front()).type == TType::LParen);
 
 		// ok now, start parsing shit
 		// to be better than c++, we need to support nested destructuring of some kind
@@ -1783,12 +1774,19 @@ namespace Parser
 
 		// parse things.
 
-		auto p = _recursivelyParseDestructure(ps);
-		auto s = foo(p);
+		auto mp = _recursivelyParseDestructure(ps, std::set<std::string>());
 
-		_error_and_exit("%s", s.c_str());
+		TupleDecompDecl* dtd = CreateAST(TupleDecompDecl, id);
+		dtd->immutable = immutable;
+		dtd->mapping = mp;
 
-		return 0;
+		// ok, the complicated thing is parsed already.
+		if(ps.eat().type != TType::Equal)
+			parserError("Decomposing declarations require an initialiser");
+
+		// ok, parse expr.
+		dtd->rightSide = parseExpr(ps);
+		return dtd;
 	}
 
 

@@ -49,7 +49,7 @@ namespace Ast
 	AssignOpOverload::~AssignOpOverload() { }
 	SubscriptOpOverload::~SubscriptOpOverload() { }
 	BreakableBracedBlock::~BreakableBracedBlock() { }
-	DestructuredTupleDecl::~DestructuredTupleDecl() { }
+	TupleDecompDecl::~TupleDecompDecl() { }
 
 
 	Root::~Root()
