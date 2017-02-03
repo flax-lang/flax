@@ -230,12 +230,12 @@ public func main(argc: i32, argv: i8**) -> int
 				else if ke.keysym.sym == SDL.Key.V { scale += 0.5 }
 				else if ke.keysym.sym == SDL.Key.X { speed += scale }
 				else if ke.keysym.sym == SDL.Key.Z { speed -= scale }
-				else if ke.keysym.sym == SDL.Key.D { printf("d\n"); sry -= scale }
-				else if ke.keysym.sym == SDL.Key.A { printf("a\n"); sry += scale }
-				else if ke.keysym.sym == SDL.Key.Q { printf("q\n"); srz -= scale }
-				else if ke.keysym.sym == SDL.Key.E { printf("e\n"); srz += scale }
-				else if ke.keysym.sym == SDL.Key.W { printf("w\n"); srx -= scale }
-				else if ke.keysym.sym == SDL.Key.S { printf("s\n"); srx += scale }
+				else if ke.keysym.sym == SDL.Key.D { sry -= scale }
+				else if ke.keysym.sym == SDL.Key.A { sry += scale }
+				else if ke.keysym.sym == SDL.Key.Q { srz -= scale }
+				else if ke.keysym.sym == SDL.Key.E { srz += scale }
+				else if ke.keysym.sym == SDL.Key.W { srx -= scale }
+				else if ke.keysym.sym == SDL.Key.S { srx += scale }
 
 
 				fprintf(stderr, "                                               \r> %.2lf / %.2lf : %.2lf, %.2lf, %.2lf\r", speed,
