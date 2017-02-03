@@ -216,7 +216,7 @@ public func main(argc: i32, argv: i8**) -> int
 			}
 			else if e.type == SDL.EventType.KeyDown
 			{
-				let ke = #(&e as SDL.KeyboardEvent*)
+				let ke = *(&e as SDL.KeyboardEvent*)
 
 				if ke.keysym.sym == SDL.Key.Space
 				{
