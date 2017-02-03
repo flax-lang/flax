@@ -143,15 +143,6 @@ namespace fir
 		{
 			return llvm::Type::getVoidTy(gc);
 		}
-		else if(type->isParameterPackType())
-		{
-			ParameterPackType* packt = type->toParameterPackType();
-			std::vector<llvm::Type*> mems;
-			mems.push_back(typeToLlvm(packt->getElementType()->getPointerTo(), mod));
-			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
-
-			return llvm::StructType::get(gc, mems, false);
-		}
 		else if(type->isDynamicArrayType())
 		{
 			DynamicArrayType* llat = type->toDynamicArrayType();
@@ -1913,71 +1904,6 @@ namespace fir
 
 
 
-
-
-						case OpKind::ParamPack_GetData:
-						case OpKind::ParamPack_GetLength:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == OpKind::ParamPack_GetData)
-								ind = 0;
-							else
-								ind = 1;
-
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							llvm::Value* ret = builder.CreateLoad(gep);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-						case OpKind::ParamPack_SetData:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
-							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getPointerElementType()->
-								toParameterPackType()->getElementType()->getPointerTo(), module));
-
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							builder.CreateStore(b, data);
-
-							llvm::Value* ret = builder.CreateLoad(data);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case OpKind::ParamPack_SetLength:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
-
-							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
-							builder.CreateStore(b, len);
-
-							llvm::Value* ret = builder.CreateLoad(len);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 
 

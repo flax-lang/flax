@@ -171,15 +171,16 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 
 		// special case: we can directly forward the arguments
-		if(params.back()->getType(this)->isParameterPackType() && params.back()->getType(this)->toParameterPackType()->getElementType()
-			== ft->getArgumentTypes().back()->toParameterPackType()->getElementType())
+		if(params.back()->getType(this)->isDynamicArrayType() && params.back()->getType(this)->toDynamicArrayType()->isFunctionVariadic()
+			&& params.back()->getType(this)->toDynamicArrayType()->getElementType()
+			== ft->getArgumentTypes().back()->toDynamicArrayType()->getElementType())
 		{
 			args.push_back(params.back()->codegen(this).value);
 		}
 		else
 		{
 			// do the last.
-			fir::Type* variadicType = ft->getArgumentTypes().back()->toParameterPackType()->getElementType();
+			fir::Type* variadicType = ft->getArgumentTypes().back()->toDynamicArrayType()->getElementType();
 			std::vector<fir::Value*> variadics;
 
 			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
