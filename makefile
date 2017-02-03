@@ -59,7 +59,7 @@ GLTESTSRC		:= build/gltest.flx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx linux ci prep satest osxflags
+.PHONY: copylibs jit compile clean build osx linux ci prep satest tiny osxflags
 
 prep:
 	@mkdir -p $(dir $(OUTPUT))
@@ -74,6 +74,9 @@ osx: prep jit osxflags
 
 satest: prep osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run -o build/standalone build/standalone.flx
+
+tiny: prep osxflags build
+	@$(OUTPUT) $(FLXFLAGS) -run -o build/tiny build/tiny.flx
 
 ci: linux
 
