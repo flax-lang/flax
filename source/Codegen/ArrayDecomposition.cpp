@@ -186,7 +186,28 @@ namespace Ast
 
 			if(haveNamedEllipsis)
 			{
-				// so, this is the fucked up part
+				std::string name = this->mapping[-1].first;
+
+				// so, we have a nice function to clone an array, and it now takes a starting index
+				// et voila, problem solved.
+
+				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
+				iceAssert(clonef);
+
+				fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+				// well, there we go. that's the clone, store that shit.
+				fir::Value* ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
+				cgi->irb.CreateStore(clone, ai);
+
+				if(this->immutable)
+					ai->makeImmutable();
+
+				VarDecl* fakeDecl = new VarDecl(this->mapping[-1].second, name, this->immutable);
+				fakeDecl->didCodegen = true;
+				fakeDecl->concretisedType = rtype->toDynamicArrayType();
+
+				cgi->addSymbol(name, ai, fakeDecl);
 			}
 		}
 		else

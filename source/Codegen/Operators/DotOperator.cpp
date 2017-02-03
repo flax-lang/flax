@@ -200,7 +200,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, type->toDynamicArrayType());
 				iceAssert(clonef);
 
-				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
+				fir::Value* clone = cgi->irb.CreateCall2(clonef, ptr, fir::ConstantInt::getInt64(0));
 				return Result_t(clone, 0);
 			}
 			else if(fc->name == "clear")
