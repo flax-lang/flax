@@ -1664,12 +1664,97 @@ namespace Parser
 		return v;
 	}
 
+
+
+	struct DestructMapping
+	{
+		bool isRecursive = false;
+		std::string name;
+
+		std::vector<DestructMapping> inners;
+	};
+
+	static DestructMapping _recursivelyParseDestructure(ParserState& ps)
+	{
+		if(ps.eat().type != TType::LParen)
+			parserError("Expected '(' in tuple destructuring");
+
+
+		DestructMapping ret;
+		ret.isRecursive = true;
+
+		while(true)
+		{
+			if(ps.front().type == TType::Identifier)
+			{
+				DestructMapping x;
+				x.isRecursive = false;
+				x.name = ps.eat().text.to_string();
+
+				// do the thing
+				ret.inners.push_back(x);
+			}
+			else if(ps.front().type == TType::LParen)
+			{
+				DestructMapping x;
+				x.isRecursive = true;
+
+				// recurse.
+				ret.inners.push_back(_recursivelyParseDestructure(ps));
+			}
+			else if(ps.front().type == TType::Comma)
+			{
+				// do nothing
+				ps.eat();
+
+				// check for trailing thing
+				if(ps.front().type == TType::RParen)
+					parserError("Trailing commas are not allowed");
+			}
+			else if(ps.front().type == TType::RParen)
+			{
+				break;
+			}
+			else
+			{
+				parserError("Unexpected '%s' in tuple destructure", ps.front().text.to_string().c_str());
+			}
+		}
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')' in tuple destructure");
+
+		return ret;
+	}
+
+	static std::string foo(DestructMapping x)
+	{
+		std::string ret;
+		if(x.isRecursive)
+		{
+			ret += "(";
+			for(auto i : x.inners)
+				ret += foo(i) + ", ";
+
+			if(x.inners.size() > 0)
+				ret = ret.substr(0, ret.length() - 2);
+
+			ret += ")";
+		}
+		else
+		{
+			ret += x.name;
+		}
+
+		return ret;
+	}
+
 	DestructuredTupleDecl* parseTupleDestructure(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 		bool immutable = ps.eat().type == TType::Val;
 
-		iceAssert(ps.eat().type == TType::LParen);
+		iceAssert(ps.front().type == TType::LParen);
 
 		// ok now, start parsing shit
 		// to be better than c++, we need to support nested destructuring of some kind
@@ -1696,7 +1781,13 @@ namespace Parser
 		// since we know the type of the RHS for sure, it shouldn't be too complicated, and we can scream at the user at
 		// compile time if they do anything stupid.
 
-		_error_and_exit("enotsup");
+		// parse things.
+
+		auto p = _recursivelyParseDestructure(ps);
+		auto s = foo(p);
+
+		_error_and_exit("%s", s.c_str());
+
 		return 0;
 	}
 
