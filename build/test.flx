@@ -296,7 +296,6 @@ public func main(argc: i32, argv: i8**) -> int
 		thing.xxx = 40
 		printf("f.x = %d, b.c = %d, fo = %d, %d\n", f.x, 3, Barf.y, yyy)
 
-
 		let tup = ("a", (30, 40, 50, 60))
 		let k = tup.1.1
 
@@ -310,9 +309,6 @@ public func main(argc: i32, argv: i8**) -> int
 
 		printf("%d, %.7lf\n", k, +3.000141);
 
-
-
-		// let (a, b, c, (_, (e, (_, y))), f) = tup
 		let (a, (b, c, ...)) = tup
 		printf("a = '%s', b = %d, c = %d\n", a, b, c)
 	}

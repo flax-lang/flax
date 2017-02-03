@@ -274,10 +274,10 @@ namespace Parser
 		staticState = &ps;
 
 		// split into lines
-		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
+		// ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
 
-		ps.currentPos.line = 1;
-		ps.currentPos.col = 1;
+		// ps.currentPos.line = 1;
+		// ps.currentPos.col = 1;
 
 
 		// todo: hacks
@@ -448,10 +448,6 @@ namespace Parser
 		ParserState ps(cgi, Compiler::getFileTokens(filename));
 
 		ps.rootNode = new Root();
-
-		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
-		ps.currentPos.line = 1;
-		ps.currentPos.col = 1;
 
 
 		// todo: hacks
@@ -1721,23 +1717,21 @@ namespace Parser
 				// recurse.
 				ret.inners.push_back(_recursivelyParseDestructure(ps, existingNames));
 			}
-			else if(ps.front().type == TType::Comma)
-			{
-				// do nothing
-				ps.eat();
 
-				// check for trailing thing
-				if(ps.front().type == TType::RParen)
-					parserError("Trailing commas are not allowed");
-			}
-			else if(ps.front().type == TType::RParen)
+
+			if(ps.front().type == TType::RParen)
 			{
 				break;
 			}
-			else
+			else if(ps.eat().type != TType::Comma)
 			{
-				parserError("Unexpected '%s' in tuple decomposition", ps.front().text.to_string().c_str());
+				parserError("Unexpected '%s' in tuple decomposition, expected either ')' or ','", ps.front().text.to_string().c_str());
 			}
+
+
+			// check for trailing thing
+			if(ps.front().type == TType::RParen)
+				parserError("Trailing commas are not allowed");
 		}
 
 		if(ps.eat().type != TType::RParen)
@@ -1812,12 +1806,8 @@ namespace Parser
 		iceAssert(lhs);
 
 		Token first = ps.front();
+		std::vector<Expr*> values { lhs };
 
-		std::vector<Expr*> values;
-
-		values.push_back(lhs);
-
-		// ps.leftParenNestLevel--;
 		Token t = ps.front();
 		while(true)
 		{
@@ -1825,26 +1815,30 @@ namespace Parser
 			if(ps.front().type == TType::RParen)
 				break;
 
-			else if(ps.front().type == TType::Comma)
-				ps.eat();
+			if(ps.front().type != TType::Comma)
+				parserError("Expected either ')' or ',' in tuple (got '%s')", ps.front().text.to_string().c_str());
 
+			ps.eat();
 			t = ps.front();
 		}
 
 		// leave the last rparen
 		iceAssert(ps.front().type == TType::RParen);
-		// ps.leftParenNestLevel++;
 
 		return CreateAST(Tuple, first, values);
 	}
 
 	Expr* parseParenthesised(ParserState& ps)
 	{
-		iceAssert(ps.eat().type == TType::LParen);
+		Token opening = ps.eat();
+		iceAssert(opening.type == TType::LParen);
 		ps.leftParenNestLevel++;
 
 
 		Expr* within = parseExpr(ps);
+
+		if(ps.front().type != TType::Comma && ps.front().type != TType::RParen)
+			parserError(opening, "Expected closing ')' to match opening parenthesis here, or ',' to begin a tuple");
 
 		// if we're a tuple, get ready for this shit.
 		if(ps.front().type == TType::Comma)
@@ -1907,7 +1901,6 @@ namespace Parser
 			if(prec < prio && !isRightAssociativeOp(ps.front()))
 				return lhs;
 
-
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
 			Token tok_op = ps.eat();
@@ -1948,14 +1941,6 @@ namespace Parser
 					}
 				}
 			}
-			// else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
-			// {
-			// 	// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
-			// 	auto ret = parseTuple(ps, lhs);
-			// 	// ps.leftParenNestLevel--;
-
-			// 	return ret;
-			// }
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
 				lhs = parsePostfixUnaryOp(ps, tok_op, lhs);
@@ -3393,7 +3378,7 @@ namespace Parser
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 
 		Token fake;
-		fake.pin = ps.currentPos;
+		fake.pin = ps.curtok->pin;
 		fake.text = arithmeticOpToString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
@@ -3530,10 +3515,7 @@ namespace Parser
 	{
 		// eat newlines AND comments
 		while(this->hasTokens() && (this->front().type == TType::NewLine || this->front().type == TType::Comment))
-		{
 			this->index++;
-			this->currentPos.line++;
-		}
 	}
 
 	void ParserState::reset()
