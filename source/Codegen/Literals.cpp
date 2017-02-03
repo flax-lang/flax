@@ -10,20 +10,6 @@ using namespace Codegen;
 
 Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// check builtin type
-	// if(this->decimal)
-	// {
-	// 	return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), this->dval), 0);
-	// }
-	// else if(this->needUnsigned)
-	// {
-	// 	return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), (uint64_t) this->ival), 0);
-	// }
-	// else
-	// {
-	// 	return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), this->ival), 0);
-	// }
-
 	if(this->str.find('.') != std::string::npos)
 	{
 		// parse a ƒloating point
@@ -39,16 +25,27 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
+		std::string s = this->str;
+		// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
+		// just figure out the base on our own.
+
+		int base = 10;
+		if(s.find("0x") != std::string::npos)
+			base = 16, s = s.substr(2);
+
+		else if(s.find("0b") != std::string::npos)
+			base = 2, s = s.substr(2);
+
 		try
 		{
-			int64_t num = std::stoll(this->str);
+			int64_t num = std::stoll(s, 0, base);
 			return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), num), 0);
 		}
 		catch(std::out_of_range& e)
 		{
 			try
 			{
-				uint64_t num = std::stoull(this->str);
+				uint64_t num = std::stoull(this->str, 0, base);
 				return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), num), 0);
 			}
 			catch(std::out_of_range& e1)
@@ -104,16 +101,28 @@ fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 	if(this->str.find('.') != std::string::npos)
 		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
 
+
+	std::string s = this->str;
+	// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
+	// just figure out the base on our own.
+
+	int base = 10;
+	if(s.find("0x") != std::string::npos)
+		base = 16, s = s.substr(2);
+
+	else if(s.find("0b") != std::string::npos)
+		base = 2, s = s.substr(2);
+
 	try
 	{
-		std::stoll(this->str);
+		std::stoll(this->str, 0, base);
 		return fir::PrimitiveType::getUnspecifiedLiteralInt();
 	}
 	catch(std::out_of_range& e)
 	{
 		try
 		{
-			std::stoull(this->str);
+			std::stoull(this->str, 0, base);
 			return fir::PrimitiveType::getUnspecifiedLiteralUint();
 		}
 		catch(std::out_of_range& e1)

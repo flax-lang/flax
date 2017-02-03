@@ -1,0 +1,12 @@
+// tiny.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+ffi func printf(fmt: i8*, ...) -> int
+
+public func main()
+{
+	let hex = 0x410
+	let flt = 0.109
+	printf("tiny = %d, %lf\n", hex, flt)
+}

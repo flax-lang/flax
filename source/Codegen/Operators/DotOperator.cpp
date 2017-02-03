@@ -42,31 +42,10 @@ static mpark::variant<fir::Type*, Result_t> getStaticVariable(CodegenInstance* c
 	error(user, "Class '%s' has no such static member '%s'", cls->ident.name.c_str(), name.c_str());
 }
 
-// static Result_t doTupleAccess(CodegenInstance* cgi, fir::Value* selfPtr, Number* num)
-// {
-// 	iceAssert(selfPtr);
-// 	iceAssert(num);
-
-// 	fir::Type* type = selfPtr->getType()->getPointerElementType();
-// 	iceAssert(type->isTupleType());
-
-// 	// quite simple, just get the number (make sure it's a Ast::Number)
-// 	// and do a structgep.
-
-// 	if((size_t) num->ival >= type->toTupleType()->getElementCount())
-// 		error(num, "Tuple does not have %d elements, only %zd (type '%s')", (int) num->ival + 1, type->toTupleType()->getElementCount(),
-// 			type->str().c_str());
-
-// 	fir::Value* gep = cgi->irb.CreateStructGEP(selfPtr, num->ival);
-// 	return Result_t(cgi->irb.CreateLoad(gep), gep, selfPtr->isImmutable() ? ValueKind::RValue : ValueKind::LValue);
-// }
 
 // returns: Ast::Func, function, return type of function, return value of function
 static std::tuple<Func*, fir::Function*, fir::Type*, fir::Value*> callMemberFunction(CodegenInstance* cgi, MemberAccess* ma,
 	ClassDef* cls, FuncCall* fc, fir::Value* ref);
-
-
-
 
 Result_t ComputedProperty::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
@@ -561,6 +540,43 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 
 
 using variant = mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Result_t>;
+
+
+static variant doTupleAccess(CodegenInstance* cgi, fir::Type* lhsType, Expr* right, Result_t result, bool actual)
+{
+	fir::TupleType* tt = lhsType->toTupleType();
+	iceAssert(tt);
+
+	Number* n = dynamic_cast<Number*>(right);
+	if(n == 0 || n->str.find('.') != std::string::npos)
+		error(right, "Expected integer number after dot-operator for tuple access");
+
+	size_t index = std::stoll(n->str);
+	if(index >= tt->getElementCount())
+	{
+		error(right, "Tuple does not have %zu elements, only %zd (type '%s')", index + 1,
+			tt->getElementCount(), tt->str().c_str());
+	}
+
+	if(actual)
+	{
+		if(!result.pointer)
+			result.pointer = cgi->irb.CreateImmutStackAlloc(lhsType, result.value);
+
+		iceAssert(result.pointer);
+		fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, index);
+
+		return Result_t(cgi->irb.CreateLoad(vp), vp);
+	}
+	else
+	{
+		return tt->getElementN(index);
+	}
+}
+
+
+
+
 static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fir::Type* lhs, Result_t result,
 	fir::Value* extra, bool actual)
 {
@@ -571,34 +587,7 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 	TypePair_t* pair = cgi->getType(lhs->isPointerType() ? lhs->getPointerElementType() : lhs);
 	if(lhs->isTupleType())
 	{
-		fir::TupleType* tt = lhs->toTupleType();
-		iceAssert(tt);
-
-		Number* n = dynamic_cast<Number*>(ma->right);
-		if(n == 0 || n->str.find('.') != std::string::npos)
-			error(ma->right, "Expected integer number after dot-operator for tuple access");
-
-		size_t index = std::stoll(n->str);
-		if(index >= tt->getElementCount())
-		{
-			error(ma, "Tuple does not have %zu elements, only %zd (type '%s')", index + 1,
-				tt->getElementCount(), tt->str().c_str());
-		}
-
-		if(actual)
-		{
-			if(!result.pointer)
-				result.pointer = cgi->irb.CreateImmutStackAlloc(lhs, result.value);
-
-			iceAssert(result.pointer);
-			fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, index);
-
-			return Result_t(cgi->irb.CreateLoad(vp), vp);
-		}
-		else
-		{
-			return tt->getElementN(index);
-		}
+		return doTupleAccess(cgi, lhs, ma->right, result, actual);
 	}
 	else if(!pair && (!lhs->isStructType() && !lhs->isClassType() && !lhs->isTupleType()))
 	{
@@ -735,6 +724,8 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 		error(ma->left, "Invalid expression type for dot-operator access (on type '%s')", lhs->str().c_str());
 	}
 }
+
+
 
 static variant resolveLeftNamespaceMA(CodegenInstance* cgi, MemberAccess* ma, FunctionTree* ftree, fir::Value* extra, bool actual)
 {
@@ -1150,7 +1141,6 @@ static variant resolveLeftTypenameMA(CodegenInstance* cgi, MemberAccess* ma, Typ
 			}
 			else
 			{
-				// return ety->getCaseType();
 				return ety;
 			}
 		}
@@ -1378,36 +1368,20 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 			// values are 1, 2, 3 etc.
 			// for now, assert this.
 
-			fir::TupleType* tt = ltype->toTupleType();
-			iceAssert(tt);
-
-			Number* n = dynamic_cast<Number*>(ma->right);
-			if(n == 0 || n->str.find('.') != std::string::npos)
-				error(ma->right, "Expected integer number after dot-operator for tuple access");
-
-
-			size_t index = std::stoll(n->str);
-			if(index >= tt->getElementCount())
-				error(ma, "Tuple does not have %zu elements, only %zd (type '%s')", index + 1, tt->getElementCount(), tt->str().c_str());
-
-
-			if(actual)
-			{
-				auto result = ma->left->codegen(this);
-				if(!result.pointer)
-					result.pointer = this->irb.CreateImmutStackAlloc(ltype, result.value);
-
-				iceAssert(result.pointer);
-				fir::Value* vp = this->irb.CreateStructGEP(result.pointer, index);
-
-				return Result_t(this->irb.CreateLoad(vp), vp);
-			}
-			else
-			{
-				return tt->getElementN(index);
-			}
+			return doTupleAccess(this, ltype, ma->right, actual ? ma->left->codegen(this) : Result_t(0, 0), actual);
 		}
-		else if(!ltype->isStructType() && !ltype->isClassType() && !ltype->isTupleType())
+
+		// else
+		if(ltype->isPointerType())
+			ltype = ltype->getPointerElementType();
+
+		if(ltype->isStructType() || ltype->isClassType() || (ltype->isPointerType()
+			&& (ltype->getPointerElementType()->isStructType() || ltype->getPointerElementType()->isClassType())))
+		{
+			// balls.
+			return resolveLeftNonStaticMA(this, ma, ltype, actual ? ma->left->codegen(this) : Result_t(0, 0), extra, actual);
+		}
+		else
 		{
 			fir::Type* ret = 0;
 
