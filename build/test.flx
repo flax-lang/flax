@@ -13,6 +13,7 @@ import tests.operators
 import tests.arraytest
 import tests.generics
 import tests.limits
+import tests.defertest		// workaround: defer is a keyword
 import tests.misc
 
 import tests.functions
@@ -31,6 +32,7 @@ import tests.functions
 	let arrayTitle		= "      *** ARRAY REGRESSION TEST ***     \n"
 	let genericsTitle	= "    *** GENERICS REGRESSION TEST ***    \n"
 	let functionsTitle	= "    *** FUNCTION REGRESSION TEST ***    \n"
+	let deferTitle		= "       *** DEFER SEMANTICS TEST ***     \n"
 	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine		= "----------------------------------------\n"
 	let endTitle		= "============ TESTS COMPLETE ============\n"
@@ -92,6 +94,12 @@ import tests.functions
 	// first-class-functions
 	printf("%s%s", functionsTitle, thinLine)
 	doFunctionTest()
+	printf("\n\n\n")
+
+
+	// defer semantics
+	printf("%s%s", deferTitle, thinLine)
+	doDeferTest()
 	printf("\n\n\n")
 
 
@@ -207,6 +215,8 @@ public func main(argc: i32, argv: i8**) -> int
 		parseFormatOptions("{401:x}")
 	}
 
+	while false {
+	}
 
 
 
@@ -279,15 +289,15 @@ public func main(argc: i32, argv: i8**) -> int
 
 		let e = SomeEnum.Down
 		let f = Foop(10)
-		let b = Barf()
+		let barf = Barf()
 
-		let fo = b.foo
+		let fo = barf.foo
 
 		thing.xxx = 40
 		printf("f.x = %d, b.c = %d, fo = %d, %d\n", f.x, 3, Barf.y, yyy)
 
 
-		let tup = ("a", (30, 40))
+		let tup = ("a", (30, 40, 50, 60))
 		let k = tup.1.1
 
 		printf("k = %d\n", k)
@@ -299,13 +309,19 @@ public func main(argc: i32, argv: i8**) -> int
 		printf("s = %s\n", s)
 
 		printf("%d, %.7lf\n", k, +3.000141);
+
+
+
+		// let (a, b, c, (_, (e, (_, y))), f) = tup
+		let (a, (b, c, ...)) = tup
+		printf("a = '%s', b = %d, c = %d\n", a, b, c)
 	}
 
 
 	do {
 		printf("\n\n");
 
-		let x = 40let y = 43
+		let x = 40; let y = 43
 		printf("x = %d, y = %d\n", x, y)
 	}
 

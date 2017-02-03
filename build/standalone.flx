@@ -105,7 +105,7 @@ func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
 		ret[i] = f(y[i])
 	}
 
-	retun ret
+	return ret
 }
 
 
