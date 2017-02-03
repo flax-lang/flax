@@ -2676,8 +2676,7 @@ namespace Parser
 			}
 
 
-			ps.skipNewline();
-
+			_skipWhitespaceAndComments(ps);
 			front = ps.front();
 
 			iceAssert(value);
@@ -2691,7 +2690,7 @@ namespace Parser
 			}
 			else if(front.type != TType::RBrace)
 			{
-				parserError("Unexpected token '%s'", front.text.to_string().c_str());
+				parserError("Unexpected token '%s' (id = %d)", front.text.to_string().c_str(), front.type);
 			}
 			else
 			{

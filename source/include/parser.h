@@ -160,8 +160,6 @@ namespace Parser
 		NewLine,
 		Comment,
 
-
-
 		EndOfFile,
 	};
 
