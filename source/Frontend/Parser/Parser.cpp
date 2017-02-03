@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <map>
+#include <set>
 #include <cfloat>
 #include <fstream>
 #include <cassert>
@@ -659,8 +660,8 @@ namespace Parser
 
 			case TType::LBrace:
 				// parse it, but throw it away
-				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to run, preface with 'do'");
 				ret = CreateAST(DummyExpr, ps.front());
+				parserMessage(Err::Warn, parseBracedBlock(ps)->pin, "Anonymous blocks are ignored; to execute, preface with 'do'");
 				break;
 
 			case TType::Import:
@@ -885,9 +886,16 @@ namespace Parser
 		}
 		else if(ps.front().type == TType::Var || ps.front().type == TType::Val)
 		{
+			auto begin = ps.front();
+
 			// static var.
-			VarDecl* ret = parseVarDecl(ps);
-			ret->isStatic = true;
+			Expr* ret = parseVarDecl(ps);
+			if(VarDecl* vd = dynamic_cast<VarDecl*>(ret))
+				vd->isStatic = true;
+
+			else
+				parserError(begin, "Destructuring declarations cannot be made static");
+
 			return ret;
 		}
 		else
@@ -1586,19 +1594,28 @@ namespace Parser
 	}
 
 
-	VarDecl* parseVarDecl(ParserState& ps)
+	Expr* parseVarDecl(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 
 		bool immutable = (ps.front().type == TType::Val);
 		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
+		size_t restore = ps.index;
 		ps.eat();
 
 		// get the identifier.
-		Token tok_id;
-		if((tok_id = ps.eat()).type != TType::Identifier)
+		Token tok_id = ps.eat();
+		if(tok_id.type == TType::LParen)
+		{
+			// again, refund some tokens
+			ps.refundToPosition(restore);
+			return parseTupleDestructure(ps);
+		}
+		else if(tok_id.type != TType::Identifier)
+		{
 			parserError("Expected identifier for variable declaration.");
+		}
 
 		std::string id = tok_id.text.to_string();
 		VarDecl* v = CreateAST(VarDecl, tok_id, id, immutable);
@@ -1647,6 +1664,145 @@ namespace Parser
 
 		return v;
 	}
+
+
+	using Mapping = TupleDecompDecl::Mapping;
+	static Mapping _recursivelyParseDestructure(ParserState& ps, std::set<std::string> existingNames)
+	{
+		if(ps.eat().type != TType::LParen)
+			parserError("Expected '(' in tuple decomposition");
+
+
+		Mapping ret;
+		ret.pos = ps.front().pin;
+		ret.isRecursive = true;
+
+		bool hadEllipsis = false;
+		while(ps.hasTokens())
+		{
+			if(ps.front().type == TType::Identifier)
+			{
+				Mapping x;
+				x.isRecursive = false;
+				x.name = ps.eat().text.to_string();
+				x.pos = ps.front().pin;
+
+				if(x.name != "_" && existingNames.find(x.name) != existingNames.end())
+					parserError(x.pos, "Name '%s' already exists in the binding", x.name.c_str());
+
+				existingNames.insert(x.name);
+
+				// do the thing
+				ret.inners.push_back(x);
+			}
+			else if(ps.front().type == TType::Ellipsis)
+			{
+				ps.eat();
+
+				Mapping x;
+				x.isRecursive = false;
+				x.name = "...";
+				x.pos = ps.front().pin;
+
+				if(hadEllipsis)
+					parserError(x.pos, "Ellipsis in decomposition must be the last element");
+
+				hadEllipsis = true;
+
+				// do the thing
+				ret.inners.push_back(x);
+			}
+			else if(ps.front().type == TType::LParen)
+			{
+				Mapping x;
+				x.isRecursive = true;
+				x.pos = ps.front().pin;
+
+				// recurse.
+				ret.inners.push_back(_recursivelyParseDestructure(ps, existingNames));
+			}
+			else if(ps.front().type == TType::Comma)
+			{
+				// do nothing
+				ps.eat();
+
+				// check for trailing thing
+				if(ps.front().type == TType::RParen)
+					parserError("Trailing commas are not allowed");
+			}
+			else if(ps.front().type == TType::RParen)
+			{
+				break;
+			}
+			else
+			{
+				parserError("Unexpected '%s' in tuple decomposition", ps.front().text.to_string().c_str());
+			}
+		}
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')' in tuple decomposition");
+
+		// tell off the user if they're being stupid
+		bool allIgnored = true;
+		for(auto m : ret.inners)
+			if(m.name != "_") allIgnored = false;
+
+		if(allIgnored)
+			parserMessage(Err::Warn, ret.pos, "All bindings in the tuple decomposition are ignored");
+
+		if(ret.inners.size() == 0)
+			parserError(ret.pos, "Empty tuple decompositions are not allowed");
+
+		return ret;
+	}
+
+	TupleDecompDecl* parseTupleDestructure(ParserState& ps)
+	{
+		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+		bool immutable = ps.eat().type == TType::Val;
+
+		Token id;
+		iceAssert((id = ps.front()).type == TType::LParen);
+
+		// to be better than c++, we need to support nested destructuring
+		// let (a, (b, c), d) = (10, ("hello", "world"), 3.1415)
+
+		// name == "_" would be ignored, naturally
+
+		// we should also allow ignoring 'the rest' with ...
+		// let (a, ...) = (10, 20, 30, 40, 50)
+
+		// underscores only ignore one thing, and ... ignores -the rest-
+
+		auto mp = _recursivelyParseDestructure(ps, std::set<std::string>());
+
+		TupleDecompDecl* dtd = CreateAST(TupleDecompDecl, id);
+		dtd->immutable = immutable;
+		dtd->mapping = mp;
+
+		// ok, the complicated thing is parsed already.
+		if(ps.eat().type != TType::Equal)
+			parserError("Decomposing declarations require an initialiser");
+
+		// ok, parse expr.
+		dtd->rightSide = parseExpr(ps);
+		return dtd;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2142,18 +2298,21 @@ namespace Parser
 
 	WhileLoop* parseWhile(ParserState& ps)
 	{
-		Token tok_while = ps.eat();
+		Token tok_front = ps.eat();
 
-		if(tok_while.type == TType::While)
+		if(tok_front.type == TType::While)
 		{
+			if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				parserError(tok_front, "Expected condition expression after 'while'");
+
 			Expr* cond = parseExpr(ps);
 			BracedBlock* body = parseBracedBlock(ps);
 
-			return CreateAST(WhileLoop, tok_while, cond, body, false);
+			return CreateAST(WhileLoop, tok_front, cond, body, false);
 		}
 		else
 		{
-			iceAssert(tok_while.type == TType::Do || tok_while.type == TType::Loop);
+			iceAssert(tok_front.type == TType::Do || tok_front.type == TType::Loop);
 
 			// parse the block first
 			BracedBlock* body = parseBracedBlock(ps);
@@ -2167,18 +2326,46 @@ namespace Parser
 			// with the 'while' clause, they have the same behaviour.
 
 			Expr* cond = 0;
-			if(ps.front().type == TType::While)
+
+			// save the ps position
+			size_t savedPosition = ps.index;
+
+			if(ps.lookaheadUntilNonNewline().type == TType::While)
 			{
+				// here's the thing -- something like this:
+				// do { ... } while { ... }
+				// should really parse as 'do {} while' '{ }'
+				// this then causes an error (expected condition expr after while), and an unnamed block.
+
 				ps.eat();
+
+				// we need the condition either way
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+					parserError(tok_front, "Expected condition expression after 'while'");
+
 				cond = parseExpr(ps);
+
+				// ok, now check if we have a { } after the while
+				if(ps.lookaheadUntilNonNewline().type == TType::LBrace)
+				{
+					// oh kurwa, what actually was written was do { ... } ;;; while(cond) { ... }
+
+					// set the cond first,
+					cond = CreateAST(BoolVal, ps.front(), false);
+
+					// then, we restore the state; we've parsed the while and the expr already.
+					// but we saved the index, so we just hand over the receipt and ask for a refund.
+
+					ps.refundToPosition(savedPosition);
+				}
 			}
 			else
 			{
 				// here's the magic: continue condition is 'false' for do, 'true' for loop
-				cond = CreateAST(BoolVal, ps.front(), tok_while.type == TType::Do ? false : true);
+				cond = CreateAST(BoolVal, ps.front(), tok_front.type == TType::Do ? false : true);
 			}
 
-			return CreateAST(WhileLoop, tok_while, cond, body, true);
+			return CreateAST(WhileLoop, tok_front, cond, body, true);
 		}
 	}
 
@@ -2816,25 +3003,35 @@ namespace Parser
 		iceAssert((front = ps.eat()).type == TType::Import);
 
 		std::string s;
-		if(ps.front().type != TType::Identifier)
-			parserError("Expected identifier after import");
-
-		Token t;
-		while(ps.hasTokens() && (t = ps.front()).type != TType::Invalid)
+		if(ps.front().type == TType::StringLiteral)
 		{
-			if(t.type == TType::Period)
-				s += ".";
+			// todo: fix
+			// take it as-is.
 
-			else if(t.type == TType::Identifier)
-				s += t.text.to_string();
+			s = ps.front().text.to_string();
+		}
+		else
+		{
+			if(ps.front().type != TType::Identifier)
+				parserError("Expected identifier after import");
 
-			else if(t.type == TType::Asterisk)
-				s += "*";
+			Token t;
+			while(ps.hasTokens() && (t = ps.front()).type != TType::Invalid)
+			{
+				if(t.type == TType::Period)
+					s += ".";
 
-			else
-				break;
+				else if(t.type == TType::Identifier)
+					s += t.text.to_string();
 
-			ps.pop();
+				else if(t.type == TType::Asterisk)
+					s += "*";
+
+				else
+					break;
+
+				ps.pop();
+			}
 		}
 
 		// NOTE: make sure printAst doesn't touch 'cgi', because this will break to hell.
@@ -3334,6 +3531,19 @@ namespace Parser
 			k++;
 
 		return this->lookahead(k);
+	}
+
+	void ParserState::refundTokens(size_t i)
+	{
+		iceAssert(this->index >= i);
+		this->index -= i;
+	}
+
+	void ParserState::refundToPosition(size_t i)
+	{
+		iceAssert(i < this->tokens.size());
+		iceAssert(i < this->index);
+		this->index = i;
 	}
 
 	ParserState::ParserState(Codegen::CodegenInstance* c, const TokenList& tl) : cgi(c), tokens(tl)

@@ -1,0 +1,31 @@
+// defer.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+import Foundation
+
+
+public func doDeferTest()
+{
+	bar()
+}
+
+
+func foo(x: int) -> int
+{
+	printf("calling foo %d\n", x)
+	return 2 * x
+}
+
+
+func bar() -> int
+{
+	// numbered by *correct* order of appearance.
+	// defer should execute after the return.
+
+	foo(1)
+	defer foo(3)
+	return foo(2)
+}
+
+

@@ -199,6 +199,10 @@ namespace Parser
 		bool hasTokens();
 		void skipNewline();
 
+		// once broken considered sold
+		void refundTokens(size_t i);
+		void refundToPosition(size_t index);
+
 		size_t getRemainingTokens();
 
 		const Token& pop();
@@ -224,50 +228,52 @@ namespace Parser
 
 
 	void parseAll(ParserState& tokens);
+	void parseAttribute(ParserState& ps);
 	Ast::Expr* parsePrimary(ParserState& ps);
 	Ast::Expr* parseStatement(ParserState& ps, bool allowingImports = false);
 
-	Ast::Expr* 				parseIf(ParserState& ps);
-	pts::Type*				parseType(ParserState& ps);
-	Ast::EnumDef*			parseEnum(ParserState& ps);
-	Ast::Func*				parseFunc(ParserState& ps);
-	Ast::Expr*				parseExpr(ParserState& ps);
-	Ast::Expr*				parseUnary(ParserState& ps);
-	Ast::WhileLoop*			parseWhile(ParserState& ps);
-	Ast::Alloc*				parseAlloc(ParserState& ps);
-	Ast::Break*				parseBreak(ParserState& ps);
-	Ast::DeferredExpr*		parseDefer(ParserState& ps);
-	Ast::ClassDef*			parseClass(ParserState& ps);
-	Ast::Expr*				parseIdExpr(ParserState& ps);
-	Ast::StructDef*			parseStruct(ParserState& ps);
-	Ast::Import*			parseImport(ParserState& ps);
-	Ast::Return*			parseReturn(ParserState& ps);
-	Ast::Typeof*			parseTypeof(ParserState& ps);
-	Ast::Number*			parseNumber(ParserState& ps);
-	Ast::VarDecl*			parseVarDecl(ParserState& ps);
-	Ast::Dealloc*			parseDealloc(ParserState& ps);
-	Ast::ProtocolDef*		parseProtocol(ParserState& ps);
-	Ast::Expr*				parseInitFunc(ParserState& ps);
-	Ast::Continue*			parseContinue(ParserState& ps);
-	Ast::FuncDecl*			parseFuncDecl(ParserState& ps);
-	void					parseAttribute(ParserState& ps);
-	Ast::TypeAlias*			parseTypeAlias(ParserState& ps);
-	Ast::ExtensionDef*		parseExtension(ParserState& ps);
-	Ast::NamespaceDecl*		parseNamespace(ParserState& ps);
-	Ast::Expr*				parseStaticDecl(ParserState& ps);
-	Ast::Expr*				parseOpOverload(ParserState& ps);
-	Ast::ForeignFuncDecl*	parseForeignFunc(ParserState& ps);
-	Ast::Func*				parseTopLevelExpr(ParserState& ps);
-	Ast::ArrayLiteral*		parseArrayLiteral(ParserState& ps);
-	Ast::Expr*				parseParenthesised(ParserState& ps);
-	Ast::StringLiteral*		parseStringLiteral(ParserState& ps);
-	Ast::Tuple*				parseTuple(ParserState& ps, Ast::Expr* lhs);
-	Ast::Expr*				parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
-	Ast::FuncCall*			parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
 
-	Ast::Func*				parseFuncUsingIdentifierToken(ParserState& ps, Token id);
-	Ast::FuncDecl*			parseFuncDeclUsingIdentifierToken(ParserState& ps, Token id);
-	Ast::BracedBlock*		parseBracedBlock(ParserState& ps, bool hadOpeningBrace = false, bool eatClosingBrace = true);
+	Ast::Expr* 					parseIf(ParserState& ps);
+	pts::Type*					parseType(ParserState& ps);
+	Ast::EnumDef*				parseEnum(ParserState& ps);
+	Ast::Func*					parseFunc(ParserState& ps);
+	Ast::Expr*					parseExpr(ParserState& ps);
+	Ast::Expr*					parseUnary(ParserState& ps);
+	Ast::WhileLoop*				parseWhile(ParserState& ps);
+	Ast::Alloc*					parseAlloc(ParserState& ps);
+	Ast::Break*					parseBreak(ParserState& ps);
+	Ast::DeferredExpr*			parseDefer(ParserState& ps);
+	Ast::ClassDef*				parseClass(ParserState& ps);
+	Ast::Expr*					parseIdExpr(ParserState& ps);
+	Ast::StructDef*				parseStruct(ParserState& ps);
+	Ast::Import*				parseImport(ParserState& ps);
+	Ast::Return*				parseReturn(ParserState& ps);
+	Ast::Typeof*				parseTypeof(ParserState& ps);
+	Ast::Number*				parseNumber(ParserState& ps);
+	Ast::Expr*					parseVarDecl(ParserState& ps);
+	Ast::Dealloc*				parseDealloc(ParserState& ps);
+	Ast::ProtocolDef*			parseProtocol(ParserState& ps);
+	Ast::Expr*					parseInitFunc(ParserState& ps);
+	Ast::Continue*				parseContinue(ParserState& ps);
+	Ast::FuncDecl*				parseFuncDecl(ParserState& ps);
+	Ast::TypeAlias*				parseTypeAlias(ParserState& ps);
+	Ast::ExtensionDef*			parseExtension(ParserState& ps);
+	Ast::NamespaceDecl*			parseNamespace(ParserState& ps);
+	Ast::Expr*					parseStaticDecl(ParserState& ps);
+	Ast::Expr*					parseOpOverload(ParserState& ps);
+	Ast::ForeignFuncDecl*		parseForeignFunc(ParserState& ps);
+	Ast::Func*					parseTopLevelExpr(ParserState& ps);
+	Ast::ArrayLiteral*			parseArrayLiteral(ParserState& ps);
+	Ast::Expr*					parseParenthesised(ParserState& ps);
+	Ast::StringLiteral*			parseStringLiteral(ParserState& ps);
+	Ast::TupleDecompDecl*	parseTupleDestructure(ParserState& ps);
+	Ast::Tuple*					parseTuple(ParserState& ps, Ast::Expr* lhs);
+	Ast::Expr*					parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
+	Ast::FuncCall*				parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
+
+	Ast::Func*					parseFuncUsingIdentifierToken(ParserState& ps, Token id);
+	Ast::FuncDecl*				parseFuncDeclUsingIdentifierToken(ParserState& ps, Token id);
+	Ast::BracedBlock*			parseBracedBlock(ParserState& ps, bool hadOpeningBrace = false, bool eatClosingBrace = true);
 
 
 
