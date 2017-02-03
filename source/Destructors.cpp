@@ -44,12 +44,13 @@ namespace Ast
 	NamespaceDecl::~NamespaceDecl() { }
 	StringLiteral::~StringLiteral() { }
 	PostfixUnaryOp::~PostfixUnaryOp() { }
+	TupleDecompDecl::~TupleDecompDecl() { }
+	ArrayDecompDecl::~ArrayDecompDecl() { }
 	ForeignFuncDecl::~ForeignFuncDecl() { }
 	ComputedProperty::~ComputedProperty() { }
 	AssignOpOverload::~AssignOpOverload() { }
 	SubscriptOpOverload::~SubscriptOpOverload() { }
 	BreakableBracedBlock::~BreakableBracedBlock() { }
-	TupleDecompDecl::~TupleDecompDecl() { }
 
 
 	Root::~Root()

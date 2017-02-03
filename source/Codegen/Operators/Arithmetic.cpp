@@ -91,7 +91,6 @@ namespace Operators
 		auto opstr = Parser::arithmeticOpToString(cgi, op);
 
 
-
 		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
 								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
 		{
@@ -512,7 +511,6 @@ namespace Operators
 		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
 		rhs = cgi->autoCastType(lhs, rhs);
-
 		return performGeneralArithmeticOperator(cgi, op, user, lhs, lhsptr, rhs, rhsptr, args);
 	}
 }
