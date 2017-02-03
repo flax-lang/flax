@@ -1747,32 +1747,15 @@ namespace Parser
 		Token id;
 		iceAssert((id = ps.front()).type == TType::LParen);
 
-		// ok now, start parsing shit
-		// to be better than c++, we need to support nested destructuring of some kind
-		// eg.
+		// to be better than c++, we need to support nested destructuring
 		// let (a, (b, c), d) = (10, ("hello", "world"), 3.1415)
-		// this severely complicates both parsing, as well as storing, this information.
-		// we need to be able to retrieve which indices had which names
 
-		// we might define a quick little wrapper struct that keeps track of the bindings at each nesting level,
-		// then have a vector<> of these wrappers to allow recursive thingies. i think that'll work?
-
-		// struct Foo { string name; vector<Foo> inners; }; vector<Foo> mapping;
-		// in this case either inners or name would be valid, but not both.
 		// name == "_" would be ignored, naturally
 
 		// we should also allow ignoring 'the rest' with a single _
-		// eg.
 		// let (a, _) = (10, 20, 30, 40, 50)
 
-		// and of course allow _ in the middle, eg:
-		// let (a, _, _, b, _) = (10, 20, 30, 40, 50)
-
-		// note how the trailing _ is still needed; underscores would only gobble if they're the last binding in the list.
-		// since we know the type of the RHS for sure, it shouldn't be too complicated, and we can scream at the user at
-		// compile time if they do anything stupid.
-
-		// parse things.
+		// underscores would only gobble if they're the last binding in the list.
 
 		auto mp = _recursivelyParseDestructure(ps, std::set<std::string>());
 
