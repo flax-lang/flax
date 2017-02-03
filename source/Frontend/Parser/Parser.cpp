@@ -1751,7 +1751,6 @@ namespace Parser
 			if(prec < prio && !isRightAssociativeOp(ps.front()))
 				return lhs;
 
-
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
 			Token tok_op = ps.eat();
@@ -1792,14 +1791,6 @@ namespace Parser
 					}
 				}
 			}
-			// else if(tok_op.type == TType::Comma && ps.leftParenNestLevel > 0)
-			// {
-			// 	// return parseTuple(ps, lhs), ps.leftParenNestLevel--;
-			// 	auto ret = parseTuple(ps, lhs);
-			// 	// ps.leftParenNestLevel--;
-
-			// 	return ret;
-			// }
 			else if(isPostfixUnaryOperator(tok_op.type))
 			{
 				lhs = parsePostfixUnaryOp(ps, tok_op, lhs);
