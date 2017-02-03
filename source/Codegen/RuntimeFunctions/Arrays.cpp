@@ -9,30 +9,32 @@
 using namespace Codegen;
 using namespace Ast;
 
-#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__.array_boundscheck"
+#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
+#define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
 
-#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__.darray_clone"
-#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__.darray_append"
-#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__.darray_appendelement"
-#define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__.darray_compare"
-#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__.darray_popback"
-#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__.darray_combinetwo"
+#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__darray_clone"
+#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__darray_append"
+#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__darray_appendelement"
+#define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__darray_compare"
+#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
+#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
 
 namespace Codegen {
 namespace RuntimeFuncs {
 namespace Array
 {
-	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi)
+	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi, bool isPerformingDecomposition)
 	{
-		fir::Function* fn = cgi->module->getFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
+		fir::Function* fn = cgi->module->getFunction(Identifier(isPerformingDecomposition
+			? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
 
 		if(!fn)
 		{
 			auto restore = cgi->irb.getCurrentBlock();
 
-			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() }, fir::Type::getVoid(), false),
-				fir::LinkageType::Internal);
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(isPerformingDecomposition ? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() },
+					fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 			fir::IRBlock* failb = cgi->irb.addNewBlockInFunction("fail", func);
@@ -44,7 +46,16 @@ namespace Array
 			fir::Value* max = func->getArguments()[0];
 			fir::Value* ind = func->getArguments()[1];
 
-			fir::Value* res = cgi->irb.CreateICmpGEQ(ind, max);
+			fir::Value* res = 0;
+
+			// if we're decomposing, it's length vs length, so compare strictly greater.
+			if(isPerformingDecomposition)
+				res = cgi->irb.CreateICmpGT(ind, max);
+
+			else
+				res = cgi->irb.CreateICmpGEQ(ind, max);
+
+			iceAssert(res);
 
 			cgi->irb.CreateCondBranch(res, failb, checkneg);
 			cgi->irb.setCurrentBlock(failb);
@@ -62,9 +73,17 @@ namespace Array
 				// fprintf(stderr, "", bla bla)
 
 				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
-				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
+				fir::ConstantValue* fmtstr = 0;
 
+				if(isPerformingDecomposition)
+					fmtstr = cgi->module->createGlobalString("%s: Tried to decompose array into '%zd' elements; length is only '%zd'\n");
+
+				else
+					fmtstr = cgi->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
+
+				iceAssert(fmtstr);
+
+				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
 				cgi->irb.CreateCall(fprintfn, { err, fmtstr, posstr, ind, max });
@@ -302,25 +321,10 @@ namespace Array
 			iceAssert(p2func);
 
 			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
-			// fir::Value* nextpow2 = cgi->irb.CreateMul(needed, fir::ConstantInt::getInt64(2));
-
-			// {
-			// 	fir::Value* roundedElmSize = cgi->irb.CreateCall1(p2func, cgi->irb.CreateSizeof(elmtype));
-			// 	fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
-			// 		fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
-			// 		fir::Type::getInt32()), fir::LinkageType::External);
-
-			// 	fir::Value* tmpstr = cgi->module->createGlobalString("<%zu, %zu, %zu, %zu, %s>\n");
-			// 	fir::Value* x = cgi->module->createGlobalString(elmtype->str());
-			// 	cgi->irb.CreateCall(printfn, { tmpstr, needed, nextpow2, cgi->irb.CreateSizeof(elmtype), roundedElmSize, x });
-			// }
-
 
 			fir::Function* refunc = cgi->getOrDeclareLibCFunc(REALLOCATE_MEMORY_FUNC);
 			iceAssert(refunc);
 
-
-			// fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(elmtype)));
 			fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, cgi->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cgi->irb.CreateCall2(refunc, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
 

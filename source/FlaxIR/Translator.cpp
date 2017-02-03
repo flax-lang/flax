@@ -466,11 +466,9 @@ namespace fir
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 
-				fn = module->getOrInsertFunction("fir.intrinsic.memcmp", ft);
-
-
-				llvm::Function* func = module->getFunction("fir.intrinsic.memcmp");
-				iceAssert(fn == func);
+				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.memcmp", module);
+				llvm::Function* func = llvm::cast<llvm::Function>(fn);
+				iceAssert(func);
 
 				// ok... now make the function, right here.
 				{
@@ -554,11 +552,11 @@ namespace fir
 			else if(intr.first.name == "roundup_pow2")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt64Ty(gc), { llvm::Type::getInt64Ty(gc) }, false);
+				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.roundup_pow2", module);
 
-				fn = module->getOrInsertFunction("fir.intrinsic.roundup_pow2", ft);
+				llvm::Function* func = llvm::cast<llvm::Function>(fn);
+				iceAssert(func);
 
-				llvm::Function* func = module->getFunction("fir.intrinsic.roundup_pow2");
-				iceAssert(fn == func);
 
 				// ok... now make the function, right here.
 				{
