@@ -266,7 +266,7 @@ namespace Parser
 	Ast::ArrayLiteral*			parseArrayLiteral(ParserState& ps);
 	Ast::Expr*					parseParenthesised(ParserState& ps);
 	Ast::StringLiteral*			parseStringLiteral(ParserState& ps);
-	Ast::DestructuredTupleDecl*	parseTupleDestructure(ParserState& ps);
+	Ast::TupleDecompDecl*	parseTupleDestructure(ParserState& ps);
 	Ast::Tuple*					parseTuple(ParserState& ps, Ast::Expr* lhs);
 	Ast::Expr*					parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
 	Ast::FuncCall*				parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
