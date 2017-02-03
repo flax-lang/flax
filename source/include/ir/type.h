@@ -35,7 +35,6 @@ namespace fir
 	struct UnicodeCharType;
 	struct DynamicArrayType;
 	struct UnicodeStringType;
-	struct ParameterPackType;
 
 	struct ConstantValue;
 	struct ConstantArray;
@@ -89,7 +88,6 @@ namespace fir
 		Type* getPointerElementType(FTContext* tc = 0);
 
 
-		ParameterPackType* toParameterPackType();
 		DynamicArrayType* toDynamicArrayType();
 		ParametricType* toParametricType();
 		PrimitiveType* toPrimitiveType();
@@ -123,7 +121,6 @@ namespace fir
 
 		bool isVoidPointer();
 		bool isDynamicArrayType();
-		bool isParameterPackType();
 
 		bool isParametricType();
 		bool isPrimitiveType();
@@ -545,6 +542,7 @@ namespace fir
 
 		// methods
 		Type* getElementType();
+		bool isFunctionVariadic();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -557,36 +555,13 @@ namespace fir
 		virtual ~DynamicArrayType() override { }
 
 		// fields
+		bool isVariadic = false;
 		Type* arrayElementType;
 
 		// static funcs
 		public:
 		static DynamicArrayType* get(Type* elementType, FTContext* tc = 0);
-	};
-
-	struct ParameterPackType : Type
-	{
-		friend struct Type;
-
-		// methods
-		Type* getElementType();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual ParameterPackType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
-
-		// protected constructor
-		protected:
-		ParameterPackType(Type* elmType);
-		virtual ~ParameterPackType() override { }
-
-		// fields
-		Type* arrayElementType;
-
-		// static funcs
-		public:
-		static ParameterPackType* get(Type* elementType, FTContext* tc = 0);
+		static DynamicArrayType* getVariadic(Type* elementType, FTContext* tc = 0);
 	};
 
 

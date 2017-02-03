@@ -218,7 +218,7 @@ namespace Parser
 	{
 		if(op < ArithmeticOp::UserDefined && op != ArithmeticOp::Invalid)
 		{
-			return _lookupTable[(size_t) op];
+			return _lookupTable[(size_t) op - 1];
 		}
 		else if(cgi->customOperatorMap.find(op) != cgi->customOperatorMap.end())
 		{
@@ -1606,7 +1606,12 @@ namespace Parser
 		{
 			// again, refund some tokens
 			ps.refundToPosition(restore);
-			return parseTupleDestructure(ps);
+			return parseTupleDecomposition(ps);
+		}
+		else if(tok_id.type == TType::LSquare)
+		{
+			ps.refundToPosition(restore);
+			return parseArrayDecomposition(ps);
 		}
 		else if(tok_id.type != TType::Identifier)
 		{
@@ -1663,7 +1668,7 @@ namespace Parser
 
 
 	using Mapping = TupleDecompDecl::Mapping;
-	static Mapping _recursivelyParseDestructure(ParserState& ps, std::set<std::string> existingNames)
+	static Mapping _recursivelyParseDecomposition(ParserState& ps, std::set<std::string> existingNames)
 	{
 		if(ps.eat().type != TType::LParen)
 			parserError("Expected '(' in tuple decomposition");
@@ -1673,6 +1678,7 @@ namespace Parser
 		ret.pos = ps.front().pin;
 		ret.isRecursive = true;
 
+		bool wasComma = false;
 		bool hadEllipsis = false;
 		while(ps.hasTokens())
 		{
@@ -1690,6 +1696,7 @@ namespace Parser
 
 				// do the thing
 				ret.inners.push_back(x);
+				wasComma = false;
 			}
 			else if(ps.front().type == TType::Ellipsis)
 			{
@@ -1707,6 +1714,7 @@ namespace Parser
 
 				// do the thing
 				ret.inners.push_back(x);
+				wasComma = false;
 			}
 			else if(ps.front().type == TType::LParen)
 			{
@@ -1715,15 +1723,25 @@ namespace Parser
 				x.pos = ps.front().pin;
 
 				// recurse.
-				ret.inners.push_back(_recursivelyParseDestructure(ps, existingNames));
+				ret.inners.push_back(_recursivelyParseDecomposition(ps, existingNames));
+				wasComma = false;
 			}
 
 
-			if(ps.front().type == TType::RParen)
+			if(ps.front().type == TType::Comma)
+			{
+				ps.eat();
+
+				if(wasComma)
+					parserError("Extraneous comma in decomposition list");
+
+				wasComma = true;
+			}
+			else if(ps.front().type == TType::RParen)
 			{
 				break;
 			}
-			else if(ps.eat().type != TType::Comma)
+			else
 			{
 				parserError("Unexpected '%s' in tuple decomposition, expected either ')' or ','", ps.front().text.to_string().c_str());
 			}
@@ -1743,7 +1761,7 @@ namespace Parser
 			if(m.name != "_") allIgnored = false;
 
 		if(allIgnored)
-			parserMessage(Err::Warn, ret.pos, "All bindings in the tuple decomposition are ignored");
+			parserMessage(Err::Warn, ret.pos, "All bindings in this tuple decomposition are ignored");
 
 		if(ret.inners.size() == 0)
 			parserError(ret.pos, "Empty tuple decompositions are not allowed");
@@ -1751,7 +1769,7 @@ namespace Parser
 		return ret;
 	}
 
-	TupleDecompDecl* parseTupleDestructure(ParserState& ps)
+	TupleDecompDecl* parseTupleDecomposition(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
 		bool immutable = ps.eat().type == TType::Val;
@@ -1769,7 +1787,7 @@ namespace Parser
 
 		// underscores only ignore one thing, and ... ignores -the rest-
 
-		auto mp = _recursivelyParseDestructure(ps, std::set<std::string>());
+		auto mp = _recursivelyParseDecomposition(ps, std::set<std::string>());
 
 		TupleDecompDecl* dtd = CreateAST(TupleDecompDecl, id);
 		dtd->immutable = immutable;
@@ -1788,6 +1806,113 @@ namespace Parser
 
 
 
+	ArrayDecompDecl* parseArrayDecomposition(ParserState& ps)
+	{
+		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+		bool immutable = ps.eat().type == TType::Val;
+
+		Token id;
+		iceAssert((id = ps.eat()).type == TType::LSquare);
+
+		// ok, then.
+		std::unordered_map<std::string, Pin> existingNames;
+		std::unordered_map<size_t, std::pair<std::string, Pin>> mapping;
+
+		size_t index = 0;
+
+		bool wasComma = false;
+		bool hadEllipsis = false;
+		while(ps.hasTokens())
+		{
+			if(ps.front().type == TType::Identifier)
+			{
+				std::string name = ps.front().text.to_string();
+				if(name != "_" && existingNames.find(name) != existingNames.end())
+					parserError(existingNames[name], "Name '%s' already exists in the decomposition", name.c_str());
+
+				mapping[index] = { name, ps.front().pin };
+				existingNames[name] = ps.eat().pin;
+
+				index += 1;
+				wasComma = false;
+			}
+			else if(ps.front().type == TType::Ellipsis)
+			{
+				if(hadEllipsis)
+					parserError("Ellipsis must be the final binding in a decomposition");
+
+				ps.eat();
+				hadEllipsis = true;
+
+				// check if there's an identifier after the thing
+				if(ps.front().type == TType::Identifier)
+				{
+					// -1 is the ellipsis
+					mapping[-1] = { ps.front().text.to_string(), ps.front().pin };
+					ps.eat();
+
+					if(ps.front().type != TType::RSquare)
+						parserError("Expected closing ']' after ellipsis binding in array decomposition");
+				}
+				else if(ps.front().type != TType::RSquare)
+				{
+					parserError("Expected either identifier (to bind remaining elements), or ']' (to ignore); got '%s'", ps.front().text.to_string().c_str());
+				}
+
+				break;
+			}
+
+
+			if(ps.front().type == TType::Comma)
+			{
+				ps.eat();
+
+				if(wasComma)
+					parserError("Extraneous comma in decomposition list");
+
+				wasComma = true;
+			}
+			else if(ps.front().type == TType::RParen)
+			{
+				break;
+			}
+			else
+			{
+				parserError("Unexpected '%s' in array decomposition, expected either ')' or ','", ps.front().text.to_string().c_str());
+			}
+
+
+			// check for trailing thing
+			if(ps.front().type == TType::RParen)
+				parserError("Trailing commas are not allowed");
+		}
+
+		// leave the last rparen
+		iceAssert(ps.front().type == TType::RSquare);
+
+		// ok.
+		ps.eat();
+
+
+		bool allIgnored = true;
+		for(auto m : mapping)
+			if(m.second.first != "_") allIgnored = false;
+
+		if(allIgnored)
+			parserMessage(Err::Warn, id, "All bindings in this array decomposition are ignored");
+
+
+		ArrayDecompDecl* add = CreateAST(ArrayDecompDecl, id);
+		add->immutable = immutable;
+		add->mapping = mapping;
+
+		if(ps.eat().type != TType::Equal)
+			parserError("Decomposing declarations require an initialiser");
+
+		// ok, parse expr.
+		add->rightSide = parseExpr(ps);
+		return add;
+	}
 
 
 
@@ -3530,12 +3655,6 @@ namespace Parser
 			k++;
 
 		return this->lookahead(k);
-	}
-
-	void ParserState::refundTokens(size_t i)
-	{
-		iceAssert(this->index >= i);
-		this->index -= i;
 	}
 
 	void ParserState::refundToPosition(size_t i)

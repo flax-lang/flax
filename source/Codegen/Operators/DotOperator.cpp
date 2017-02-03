@@ -70,29 +70,7 @@ fir::Type* ComputedProperty::getType(CodegenInstance* cgi, bool allowFail, fir::
 static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir::Type* type, MemberAccess* ma, bool actual,
 	fir::Value* val, fir::Value* ptr, fir::Type** resultType)
 {
-	if(type->isParameterPackType())
-	{
-		// lol, some magic.
-		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
-		{
-			if(vr->name != "length")
-				error(ma, "Variadic arrays only have one member, 'length'. '%s' is invalid.", vr->name.c_str());
-
-			if(!actual)
-			{
-				*resultType = fir::Type::getInt64();
-				return Result_t(0, 0);
-			}
-
-			iceAssert(ptr);
-			return Result_t(cgi->irb.CreateGetParameterPackLength(ptr), 0);
-		}
-		else
-		{
-			error(ma, "Variadic arrays only have one member, 'length'. Invalid operator.");
-		}
-	}
-	else if(type->isArrayType())
+	if(type->isArrayType())
 	{
 		if(dynamic_cast<VarRef*>(ma->right) && dynamic_cast<VarRef*>(ma->right)->name == "length")
 		{
@@ -222,7 +200,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, type->toDynamicArrayType());
 				iceAssert(clonef);
 
-				fir::Value* clone = cgi->irb.CreateCall1(clonef, ptr);
+				fir::Value* clone = cgi->irb.CreateCall2(clonef, ptr, fir::ConstantInt::getInt64(0));
 				return Result_t(clone, 0);
 			}
 			else if(fc->name == "clear")

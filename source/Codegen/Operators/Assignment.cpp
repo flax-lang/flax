@@ -230,7 +230,7 @@ namespace Operators
 				cgi->irb.CreateStore(val, ptr);
 				return Result_t(0, 0);
 			}
-			else if(!t->isPointerType() && !t->isArrayType() && !t->isParameterPackType() && !t->isDynamicArrayType())
+			else if(!t->isPointerType() && !t->isArrayType() && !t->isDynamicArrayType())
 			{
 				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).value, args[1]);
 			}

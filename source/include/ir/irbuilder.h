@@ -143,11 +143,6 @@ namespace fir
 		Value* CreateGetDynamicArrayCapacity(Value* ptr, std::string vname = "");
 		Value* CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname = "");
 
-		Value* CreateGetParameterPackData(Value* ptr, std::string vname = "");
-		Value* CreateSetParameterPackData(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetParameterPackLength(Value* ptr, std::string vname = "");
-		Value* CreateSetParameterPackLength(Value* ptr, Value* val, std::string vname = "");
-
 		void CreateUnreachable();
 
 

@@ -53,11 +53,8 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isDynamicArrayType())
 	{
-		return "DA" + lentypestr(mangleType(t->toDynamicArrayType()->getElementType()));
-	}
-	else if(t->isParameterPackType())
-	{
-		return "PP" + lentypestr(mangleType(t->toParameterPackType()->getElementType()));
+		return (t->toDynamicArrayType()->isFunctionVariadic() ? "PP" : "DA")
+			+ lentypestr(mangleType(t->toDynamicArrayType()->getElementType()));
 	}
 	else if(t->isVoidType())
 	{
