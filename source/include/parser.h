@@ -182,7 +182,6 @@ namespace Parser
 		std::unordered_set<std::string> visited;
 
 		const Token *curtok;
-		Pin currentPos;
 		Ast::Root* rootNode = 0;
 		uint64_t curAttrib = 0;
 
