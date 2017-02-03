@@ -176,34 +176,23 @@ namespace Array
 
 			fir::Value* origptr = cgi->irb.CreateGetDynamicArrayData(orig);
 			fir::Value* origlen = cgi->irb.CreateGetDynamicArrayLength(orig);
-			fir::Value* origcap = cgi->irb.CreateGetDynamicArrayCapacity(orig);
+
+			fir::Value* cap = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+			cgi->irb.CreateStore(cgi->irb.CreateGetDynamicArrayCapacity(orig), cap);
 
 			// note: sanity check that len <= cap
-			fir::Value* sane = cgi->irb.CreateICmpLEQ(origlen, origcap);
+			fir::Value* sane = cgi->irb.CreateICmpLEQ(origlen, cgi->irb.CreateLoad(cap));
 			cgi->irb.CreateCondBranch(sane, merge1, insane);
 
 
 			cgi->irb.setCurrentBlock(insane);
 			{
 				// sanity check failed
+				// *but* since we're using dyn arrays as vararg arrays,
+				// then we just treat capacity = length.
 
-				fir::Function* fprintfn = cgi->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
-
-				fir::Function* fdopenf = cgi->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
-					fir::LinkageType::External);
-
-				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
-
-				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, origlen, origcap });
-
-				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
-				cgi->irb.CreateUnreachable();
+				cgi->irb.CreateStore(origlen, cap);
+				cgi->irb.CreateUnCondBranch(merge1);
 			}
 
 			// ok, back to normal
@@ -211,7 +200,7 @@ namespace Array
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cgi->irb.CreateMul(origcap, cgi->irb.CreateSizeof(arrtype->getElementType()));
+			fir::Value* actuallen = cgi->irb.CreateMul(cgi->irb.CreateLoad(cap), cgi->irb.CreateSizeof(arrtype->getElementType()));
 
 
 			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
@@ -265,7 +254,7 @@ namespace Array
 			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
 			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			cgi->irb.CreateSetDynamicArrayLength(newarr, origlen);
-			cgi->irb.CreateSetDynamicArrayCapacity(newarr, origcap);
+			cgi->irb.CreateSetDynamicArrayCapacity(newarr, cgi->irb.CreateLoad(cap));
 
 			fir::Value* ret = cgi->irb.CreateLoad(newarr);
 			cgi->irb.CreateReturn(ret);
