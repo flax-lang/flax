@@ -309,9 +309,6 @@ public func main(argc: i32, argv: i8**) -> int
 
 		printf("%d, %.7lf\n", k, +3.000141);
 
-
-
-		// let (a, b, c, (_, (e, (_, y))), f) = tup
 		let (a, (b, c, ...)) = tup
 		printf("a = '%s', b = %d, c = %d\n", a, b, c)
 	}

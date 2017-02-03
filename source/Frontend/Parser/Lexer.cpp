@@ -20,7 +20,10 @@ namespace Lexer
 	{
 		size_t skip = 0;
 		while(line.length() > skip && (line[skip] == '\t' || line[skip] == ' '))
-			skip++, (line[skip] == ' ' ? pos.col++ : pos.col += TAB_WIDTH);
+		{
+			(line[skip] == ' ' ? pos.col++ : pos.col += TAB_WIDTH);
+			skip++;
+		}
 
 		line.remove_prefix(skip);
 		(*offset) += skip;
@@ -95,6 +98,7 @@ namespace Lexer
 
 		Token& tok = *out;
 		tok.pin = pos;
+
 
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
@@ -276,6 +280,7 @@ namespace Lexer
 			// don't actually store the text, because it's pointless and memory-wasting
 			// tok.text = "/* I used to be a comment like you, until I took a memory-leak to the knee. */";
 			tok.type = TType::Comment;
+			tok.text = "";
 			read = k;
 		}
 		else if(hasPrefix(stream, "*/"))
@@ -490,6 +495,9 @@ namespace Lexer
 			// store the starting position
 			size_t start = stream.begin() - whole.begin() + 1;
 
+			// opening "
+			pos.col++;
+
 			size_t didRead = 0;
 			size_t i = 1;
 			for(; stream[i] != '"'; i++)
@@ -544,6 +552,10 @@ namespace Lexer
 						i, stream.size(), didRead, stream[i], *offset);
 				}
 			}
+
+			// closing "
+			pos.col++;
+
 
 			tok.type = TType::StringLiteral;
 			tok.text = whole.substr(start, didRead);
@@ -612,14 +624,15 @@ namespace Lexer
 
 		stream.remove_prefix(read);
 
-		if(flag) (*offset) += read;
+		if(flag)
+			(*offset) += read;
 
 		if(tok.type != TType::NewLine)
 		{
 			if(read > 0)
 			{
 				// note(debatable): put the actual "position" in the front of the token
-				pos.col += (read / 2);
+				pos.col += read;
 
 				// special handling -- things like ƒ, ≤ etc. are one character wide, but can be several *bytes* long.
 				pos.len = (unicodeLength > 0 ? unicodeLength : read);
@@ -628,12 +641,13 @@ namespace Lexer
 		}
 		else
 		{
-			tok.pin.col = 1;
 			pos.col = 1;
 
 			(*line)++;
 			(*offset) = 0;
 		}
+
+		// printf("token %s: %d // %d\n", tok.text.to_string().c_str(), tok.pin.col, pos.col);
 
 		prevType = tok.type;
 		prevID = tok.pin.fileID;

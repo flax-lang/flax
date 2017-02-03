@@ -274,10 +274,10 @@ namespace Parser
 		staticState = &ps;
 
 		// split into lines
-		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
+		// ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
 
-		ps.currentPos.line = 1;
-		ps.currentPos.col = 1;
+		// ps.currentPos.line = 1;
+		// ps.currentPos.col = 1;
 
 
 		// todo: hacks
@@ -448,10 +448,6 @@ namespace Parser
 		ParserState ps(cgi, Compiler::getFileTokens(filename));
 
 		ps.rootNode = new Root();
-
-		ps.currentPos.fileID = Compiler::getFileIDFromFilename(filename);
-		ps.currentPos.line = 1;
-		ps.currentPos.col = 1;
 
 
 		// todo: hacks
@@ -3382,7 +3378,7 @@ namespace Parser
 		OpOverload* oo = CreateAST(OpOverload, op, ao);
 
 		Token fake;
-		fake.pin = ps.currentPos;
+		fake.pin = ps.curtok->pin;
 		fake.text = arithmeticOpToString(ps.cgi, ao);
 		fake.type = TType::Identifier;
 
@@ -3519,10 +3515,7 @@ namespace Parser
 	{
 		// eat newlines AND comments
 		while(this->hasTokens() && (this->front().type == TType::NewLine || this->front().type == TType::Comment))
-		{
 			this->index++;
-			this->currentPos.line++;
-		}
 	}
 
 	void ParserState::reset()
