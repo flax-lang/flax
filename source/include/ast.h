@@ -243,15 +243,26 @@ namespace Ast
 		fir::Type* concretisedType = 0;
 	};
 
-	struct DestructuredTupleDecl : Expr
+	struct TupleDecompDecl : Expr
 	{
-		~DestructuredTupleDecl();
-		DestructuredTupleDecl(const Parser::Pin& pos) : Expr(pos) { }
+		struct Mapping
+		{
+			bool isRecursive = false;
+
+			Parser::Pin pos;
+			std::string name;
+			std::vector<Mapping> inners;
+		};
+
+
+		~TupleDecompDecl();
+		TupleDecompDecl(const Parser::Pin& pos) : Expr(pos) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
 
 		bool immutable = false;
+		Mapping mapping;
 		Expr* rightSide = 0;
 	};
 
