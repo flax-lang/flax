@@ -132,37 +132,19 @@ fir::Type* Continue::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 
 Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 {
-	// first, evaluate the deferred expressions
+	// note: defer should actually evaluate *after* the return value is evaluated
+	// this allows doing things like this:
+	/*
+		let x = alloc(...)
+		defer free(x)
 
-	// 1. in the current bracedblockscope
-	// 2. iterate upwards until we get to the top
-	{
-		for(size_t i = cgi->blockStack.size(); i-- > 0;)
-		{
-			BracedBlockScope bbs = cgi->blockStack[i];
-			iceAssert(bbs.first);
-			iceAssert(bbs.first->body);
+		return do_something_with_x(x)
+	*/
 
-			for(auto e : bbs.first->body->deferredStatements)
-				e->codegen(cgi);
-		}
-	}
-
-	// 3. then call the function ones.
-	{
-		Func* fn = cgi->getCurrentFunctionScope();
-		iceAssert(fn);
-
-		BracedBlock* bb = fn->block;
-		iceAssert(bb);
-
-		for(auto e : bb->deferredStatements)
-			e->codegen(cgi);
-	}
+	// under the old system, we would free the memory before doing the something.
 
 
-
-	// 4. generate the return value, handling refcount inflation if necessary
+	// 1. generate the return value, handling refcount inflation if necessary
 	if(this->val)
 	{
 		auto res = this->val->codegen(cgi);
@@ -179,12 +161,40 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 
 
-	// 5. now, do the refcounting magic
+	// 2. now, do the refcounting magic
 	for(auto v : cgi->getRefCountedValues())
 	{
 		iceAssert(cgi->isRefCountedType(v->getType()->getPointerElementType()));
 		cgi->decrementRefCount(cgi->irb.CreateLoad(v));
 	}
+
+
+	// 3. in the current bracedblockscope
+	// 4. iterate upwards until we get to the top
+	{
+		for(size_t i = cgi->blockStack.size(); i-- > 0;)
+		{
+			BracedBlockScope bbs = cgi->blockStack[i];
+			iceAssert(bbs.first);
+			iceAssert(bbs.first->body);
+
+			for(auto e : bbs.first->body->deferredStatements)
+				e->codegen(cgi);
+		}
+	}
+
+	// 5. then call the function ones.
+	{
+		Func* fn = cgi->getCurrentFunctionScope();
+		iceAssert(fn);
+
+		BracedBlock* bb = fn->block;
+		iceAssert(bb);
+
+		for(auto e : bb->deferredStatements)
+			e->codegen(cgi);
+	}
+
 
 
 	// 6. actually return.
