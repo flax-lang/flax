@@ -1721,23 +1721,21 @@ namespace Parser
 				// recurse.
 				ret.inners.push_back(_recursivelyParseDestructure(ps, existingNames));
 			}
-			else if(ps.front().type == TType::Comma)
-			{
-				// do nothing
-				ps.eat();
 
-				// check for trailing thing
-				if(ps.front().type == TType::RParen)
-					parserError("Trailing commas are not allowed");
-			}
-			else if(ps.front().type == TType::RParen)
+
+			if(ps.front().type == TType::RParen)
 			{
 				break;
 			}
-			else
+			else if(ps.eat().type != TType::Comma)
 			{
-				parserError("Unexpected '%s' in tuple decomposition", ps.front().text.to_string().c_str());
+				parserError("Unexpected '%s' in tuple decomposition, expected either ')' or ','", ps.front().text.to_string().c_str());
 			}
+
+
+			// check for trailing thing
+			if(ps.front().type == TType::RParen)
+				parserError("Trailing commas are not allowed");
 		}
 
 		if(ps.eat().type != TType::RParen)
@@ -1812,12 +1810,8 @@ namespace Parser
 		iceAssert(lhs);
 
 		Token first = ps.front();
+		std::vector<Expr*> values { lhs };
 
-		std::vector<Expr*> values;
-
-		values.push_back(lhs);
-
-		// ps.leftParenNestLevel--;
 		Token t = ps.front();
 		while(true)
 		{
@@ -1825,26 +1819,30 @@ namespace Parser
 			if(ps.front().type == TType::RParen)
 				break;
 
-			else if(ps.front().type == TType::Comma)
-				ps.eat();
+			if(ps.front().type != TType::Comma)
+				parserError("Expected either ')' or ',' in tuple (got '%s')", ps.front().text.to_string().c_str());
 
+			ps.eat();
 			t = ps.front();
 		}
 
 		// leave the last rparen
 		iceAssert(ps.front().type == TType::RParen);
-		// ps.leftParenNestLevel++;
 
 		return CreateAST(Tuple, first, values);
 	}
 
 	Expr* parseParenthesised(ParserState& ps)
 	{
-		iceAssert(ps.eat().type == TType::LParen);
+		Token opening = ps.eat();
+		iceAssert(opening.type == TType::LParen);
 		ps.leftParenNestLevel++;
 
 
 		Expr* within = parseExpr(ps);
+
+		if(ps.front().type != TType::Comma && ps.front().type != TType::RParen)
+			parserError(opening, "Expected closing ')' to match opening parenthesis here, or ',' to begin a tuple");
 
 		// if we're a tuple, get ready for this shit.
 		if(ps.front().type == TType::Comma)
