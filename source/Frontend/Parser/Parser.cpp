@@ -1677,6 +1677,7 @@ namespace Parser
 		ret.pos = ps.front().pin;
 		ret.isRecursive = true;
 
+		bool hadEllipsis = false;
 		while(ps.hasTokens())
 		{
 			if(ps.front().type == TType::Identifier)
@@ -1690,6 +1691,23 @@ namespace Parser
 					parserError(x.pos, "Name '%s' already exists in the binding", x.name.c_str());
 
 				existingNames.insert(x.name);
+
+				// do the thing
+				ret.inners.push_back(x);
+			}
+			else if(ps.front().type == TType::Ellipsis)
+			{
+				ps.eat();
+
+				Mapping x;
+				x.isRecursive = false;
+				x.name = "...";
+				x.pos = ps.front().pin;
+
+				if(hadEllipsis)
+					parserError(x.pos, "Ellipsis in decomposition must be the last element");
+
+				hadEllipsis = true;
 
 				// do the thing
 				ret.inners.push_back(x);
@@ -1752,10 +1770,10 @@ namespace Parser
 
 		// name == "_" would be ignored, naturally
 
-		// we should also allow ignoring 'the rest' with a single _
-		// let (a, _) = (10, 20, 30, 40, 50)
+		// we should also allow ignoring 'the rest' with ...
+		// let (a, ...) = (10, 20, 30, 40, 50)
 
-		// underscores would only gobble if they're the last binding in the list.
+		// underscores only ignore one thing, and ... ignores -the rest-
 
 		auto mp = _recursivelyParseDestructure(ps, std::set<std::string>());
 
