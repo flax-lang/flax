@@ -20,19 +20,24 @@ namespace fir
 
 	std::string DynamicArrayType::str()
 	{
-		return this->arrayElementType->str() + "[]";
+		return this->arrayElementType->str() + (this->isVariadic ? "[...]" : "[]");
 	}
 
 	std::string DynamicArrayType::encodedStr()
 	{
-		return this->arrayElementType->encodedStr() + "[]";
+		return this->arrayElementType->encodedStr() + (this->isVariadic ? "[...]" : "[]");
 	}
 
+	bool DynamicArrayType::isFunctionVariadic()
+	{
+		return this->isVariadic;
+	}
 
 	bool DynamicArrayType::isTypeEqual(Type* other)
 	{
 		DynamicArrayType* af = dynamic_cast<DynamicArrayType*>(other);
 		if(!af) return false;
+		if(af->isVariadic != this->isVariadic) return false;
 
 		return this->arrayElementType->isTypeEqual(af->arrayElementType);
 	}
@@ -47,6 +52,17 @@ namespace fir
 		return dynamic_cast<DynamicArrayType*>(tc->normaliseType(type));
 	}
 
+	DynamicArrayType* DynamicArrayType::getVariadic(Type* elementType, FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// create.
+		DynamicArrayType* type = new DynamicArrayType(elementType);
+		type->isVariadic = true;
+
+		return dynamic_cast<DynamicArrayType*>(tc->normaliseType(type));
+	}
 
 
 
@@ -56,7 +72,11 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		return DynamicArrayType::get(this->arrayElementType->reify(reals));
+		if(this->isVariadic)
+			return DynamicArrayType::getVariadic(this->arrayElementType->reify(reals));
+
+		else
+			return DynamicArrayType::get(this->arrayElementType->reify(reals));
 	}
 }
 

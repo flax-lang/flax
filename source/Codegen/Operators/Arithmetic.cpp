@@ -91,7 +91,6 @@ namespace Operators
 		auto opstr = Parser::arithmeticOpToString(cgi, op);
 
 
-
 		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
 								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
 		{
@@ -313,7 +312,7 @@ namespace Operators
 					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
 					iceAssert(clonefunc);
 
-					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+					cgi->irb.CreateStore(cgi->irb.CreateCall2(clonefunc, lhsptr, fir::ConstantInt::getInt64(0)), cloned);
 				}
 
 				// ok, now, append to the clone
@@ -337,7 +336,7 @@ namespace Operators
 					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
 					iceAssert(clonefunc);
 
-					cgi->irb.CreateStore(cgi->irb.CreateCall1(clonefunc, lhsptr), cloned);
+					cgi->irb.CreateStore(cgi->irb.CreateCall2(clonefunc, lhsptr, fir::ConstantInt::getInt64(0)), cloned);
 				}
 
 				// ok, now, append to the clone
@@ -512,7 +511,6 @@ namespace Operators
 		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
 		rhs = cgi->autoCastType(lhs, rhs);
-
 		return performGeneralArithmeticOperator(cgi, op, user, lhs, lhsptr, rhs, rhsptr, args);
 	}
 }

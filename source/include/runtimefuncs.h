@@ -34,7 +34,7 @@ namespace Codegen
 
 		namespace Array
 		{
-			fir::Function* getBoundsCheckFunction(CodegenInstance* cgi);
+			fir::Function* getBoundsCheckFunction(CodegenInstance* cgi, bool isPerformingDecomposition = false);
 
 			fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 			fir::Function* getAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);

@@ -269,6 +269,20 @@ namespace Ast
 
 
 
+	struct ArrayDecompDecl : Expr
+	{
+		~ArrayDecompDecl();
+		ArrayDecompDecl(const Parser::Pin& pos) : Expr(pos) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+
+		bool immutable = false;
+
+		Expr* rightSide = 0;
+		std::unordered_map<size_t, std::pair<std::string, Parser::Pin>> mapping;
+	};
+
 
 
 
