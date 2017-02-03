@@ -23,13 +23,13 @@ namespace Ast
 			size_t maxElm = type->toTupleType()->getElementCount();
 			if(mapping.inners.size() != type->toTupleType()->getElementCount())
 			{
-				// check if the last one is an underscore -- if it is, treat the _ as a gobbler and ignore the rest
+				// check if the last one is an ellipsis -- if it is, treat the _ as a gobbler and ignore the rest
 				// of course, this implies that we need to have more elements on the right than on the left.
 
 				iceAssert(mapping.inners.size() > 0);
 
 				// ok, check if the last one is an underscore
-				if(!mapping.inners.back().isRecursive && mapping.inners.back().name == "_" && mapping.inners.size() <= type->toTupleType()->getElementCount())
+				if(!mapping.inners.back().isRecursive && mapping.inners.back().name == "..." && mapping.inners.size() <= type->toTupleType()->getElementCount())
 				{
 					maxElm = mapping.inners.size() - 1;
 				}
