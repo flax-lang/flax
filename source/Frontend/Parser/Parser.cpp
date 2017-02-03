@@ -2843,7 +2843,21 @@ namespace Parser
 				{
 					int64_t val = 0;
 					if(prevNumber)
-						val = std::stoll(prevNumber->str) + 1;
+					{
+						std::string s = prevNumber->str;
+						// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
+						// just figure out the base on our own.
+						// AGAIN, AND AGAIN, AND AGAIN
+
+						int base = 10;
+						if(s.find("0x") != std::string::npos)
+							base = 16, s = s.substr(2);
+
+						else if(s.find("0b") != std::string::npos)
+							base = 2, s = s.substr(2);
+
+						val = std::stoll(s, 0, base) + 1;
+					}
 
 					// increment it.
 					prevNumber = CreateAST(Number, front, std::to_string(val));
@@ -2863,8 +2877,7 @@ namespace Parser
 			}
 
 
-			ps.skipNewline();
-
+			_skipWhitespaceAndComments(ps);
 			front = ps.front();
 
 			iceAssert(value);
@@ -2878,7 +2891,7 @@ namespace Parser
 			}
 			else if(front.type != TType::RBrace)
 			{
-				parserError("Unexpected token '%s'", front.text.to_string().c_str());
+				parserError("Unexpected token '%s' (id = %d)", front.text.to_string().c_str(), front.type);
 			}
 			else
 			{
@@ -3135,6 +3148,10 @@ namespace Parser
 			if(tok.type == TType::Comma)
 			{
 				ps.pop();
+
+				if(ps.lookaheadUntilNonNewline().type == TType::RSquare)
+					parserError(tok, "Trailing commas are not allowed");
+
 				continue;
 			}
 			else if(tok.type == TType::RSquare)
@@ -3512,7 +3529,7 @@ namespace Parser
 	void ParserState::skipNewline()
 	{
 		// eat newlines AND comments
-		while(this->hasTokens() && this->front().type == TType::NewLine)
+		while(this->hasTokens() && (this->front().type == TType::NewLine || this->front().type == TType::Comment))
 		{
 			this->index++;
 			this->currentPos.line++;
