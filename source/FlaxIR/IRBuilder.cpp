@@ -1605,61 +1605,6 @@ namespace fir
 
 
 
-	Value* IRBuilder::CreateGetParameterPackData(Value* ptr, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
-			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
-
-		auto t = ptr->getType()->getPointerElementType()->toParameterPackType()->getElementType();
-		Instruction* instr = new Instruction(OpKind::ParamPack_GetData, false, this->currentBlock,
-			t->getPointerTo(), { ptr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::CreateSetParameterPackData(Value* ptr, Value* val, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
-			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
-
-		auto t = ptr->getType()->getPointerElementType()->toParameterPackType()->getElementType();
-		if(val->getType() != t->getPointerTo())
-		{
-			error("val is not a pointer to element type (need '%s', have '%s')", t->getPointerTo()->str().c_str(),
-				val->getType()->str().c_str());
-		}
-
-		Instruction* instr = new Instruction(OpKind::ParamPack_SetData, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::CreateGetParameterPackLength(Value* ptr, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
-			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
-
-		Instruction* instr = new Instruction(OpKind::ParamPack_GetLength, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::CreateSetParameterPackLength(Value* ptr, Value* val, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isParameterPackType())
-			error("ptr is not a pointer to a parameter pack type (got '%s')", ptr->getType()->str().c_str());
-
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
-
-		Instruction* instr = new Instruction(OpKind::ParamPack_SetLength, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
-
-		return this->addInstruction(instr, vname);
-	}
 
 
 

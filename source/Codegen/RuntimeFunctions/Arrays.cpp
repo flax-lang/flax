@@ -9,30 +9,32 @@
 using namespace Codegen;
 using namespace Ast;
 
-#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__.array_boundscheck"
+#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
+#define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
 
-#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__.darray_clone"
-#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__.darray_append"
-#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__.darray_appendelement"
-#define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__.darray_compare"
-#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__.darray_popback"
-#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__.darray_combinetwo"
+#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__darray_clone"
+#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__darray_append"
+#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__darray_appendelement"
+#define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__darray_compare"
+#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
+#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
 
 namespace Codegen {
 namespace RuntimeFuncs {
 namespace Array
 {
-	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi)
+	fir::Function* getBoundsCheckFunction(CodegenInstance* cgi, bool isPerformingDecomposition)
 	{
-		fir::Function* fn = cgi->module->getFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
+		fir::Function* fn = cgi->module->getFunction(Identifier(isPerformingDecomposition
+			? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
 
 		if(!fn)
 		{
 			auto restore = cgi->irb.getCurrentBlock();
 
-			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() }, fir::Type::getVoid(), false),
-				fir::LinkageType::Internal);
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(isPerformingDecomposition ? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() },
+					fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 			fir::IRBlock* failb = cgi->irb.addNewBlockInFunction("fail", func);
@@ -44,7 +46,16 @@ namespace Array
 			fir::Value* max = func->getArguments()[0];
 			fir::Value* ind = func->getArguments()[1];
 
-			fir::Value* res = cgi->irb.CreateICmpGEQ(ind, max);
+			fir::Value* res = 0;
+
+			// if we're decomposing, it's length vs length, so compare strictly greater.
+			if(isPerformingDecomposition)
+				res = cgi->irb.CreateICmpGT(ind, max);
+
+			else
+				res = cgi->irb.CreateICmpGEQ(ind, max);
+
+			iceAssert(res);
 
 			cgi->irb.CreateCondBranch(res, failb, checkneg);
 			cgi->irb.setCurrentBlock(failb);
@@ -62,9 +73,17 @@ namespace Array
 				// fprintf(stderr, "", bla bla)
 
 				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
-				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
+				fir::ConstantValue* fmtstr = 0;
 
+				if(isPerformingDecomposition)
+					fmtstr = cgi->module->createGlobalString("%s: Tried to decompose array into '%zd' elements; length is only '%zd'\n");
+
+				else
+					fmtstr = cgi->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
+
+				iceAssert(fmtstr);
+
+				fir::Value* posstr = cgi->irb.CreateGetStringData(func->getArguments()[2]);
 				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
 				cgi->irb.CreateCall(fprintfn, { err, fmtstr, posstr, ind, max });
@@ -98,14 +117,14 @@ namespace Array
 
 
 	static void _callCloneFunctionInLoop(CodegenInstance* cgi, fir::Function* curfunc, fir::Function* fn,
-		fir::Value* ptr, fir::Value* len, fir::Value* newptr)
+		fir::Value* ptr, fir::Value* len, fir::Value* newptr, fir::Value* startIndex)
 	{
 		fir::IRBlock* loopcond = cgi->irb.addNewBlockInFunction("loopcond", curfunc);
 		fir::IRBlock* loopbody = cgi->irb.addNewBlockInFunction("loopbody", curfunc);
 		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", curfunc);
 
 		fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
-		cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+		cgi->irb.CreateStore(startIndex, counter);
 
 		cgi->irb.CreateUnCondBranch(loopcond);
 		cgi->irb.setCurrentBlock(loopcond);
@@ -118,7 +137,12 @@ namespace Array
 		{
 			// make clone
 			fir::Value* origElm = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
-			fir::Value* clone = cgi->irb.CreateCall1(fn, cgi->irb.CreateLoad(origElm));
+			fir::Value* clone = 0;
+
+			if(fn->getArgumentCount() == 1)
+				clone = cgi->irb.CreateCall1(fn, cgi->irb.CreateLoad(origElm));
+			else
+				clone = cgi->irb.CreateCall2(fn, cgi->irb.CreateLoad(origElm), fir::ConstantInt::getInt64(0));
 
 			// store clone
 			fir::Value* newElm = cgi->irb.CreatePointerAdd(newptr, cgi->irb.CreateLoad(counter));
@@ -132,6 +156,7 @@ namespace Array
 		cgi->irb.setCurrentBlock(merge);
 	}
 
+	// takes ptr, start index
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		auto name = BUILTIN_DYNARRAY_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
@@ -143,7 +168,7 @@ namespace Array
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo() }, arrtype, false),
+				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() }, arrtype, false),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
@@ -153,38 +178,30 @@ namespace Array
 			cgi->irb.setCurrentBlock(entry);
 
 			fir::Value* orig = func->getArguments()[0];
+			fir::Value* startIndex = func->getArguments()[1];
+
 			iceAssert(orig);
+			iceAssert(startIndex);
 
 			fir::Value* origptr = cgi->irb.CreateGetDynamicArrayData(orig);
 			fir::Value* origlen = cgi->irb.CreateGetDynamicArrayLength(orig);
-			fir::Value* origcap = cgi->irb.CreateGetDynamicArrayCapacity(orig);
+
+			fir::Value* cap = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+			cgi->irb.CreateStore(cgi->irb.CreateGetDynamicArrayCapacity(orig), cap);
 
 			// note: sanity check that len <= cap
-			fir::Value* sane = cgi->irb.CreateICmpLEQ(origlen, origcap);
+			fir::Value* sane = cgi->irb.CreateICmpLEQ(origlen, cgi->irb.CreateLoad(cap));
 			cgi->irb.CreateCondBranch(sane, merge1, insane);
 
 
 			cgi->irb.setCurrentBlock(insane);
 			{
 				// sanity check failed
+				// *but* since we're using dyn arrays as vararg arrays,
+				// then we just treat capacity = length.
 
-				fir::Function* fprintfn = cgi->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
-
-				fir::Function* fdopenf = cgi->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
-					fir::LinkageType::External);
-
-				fir::ConstantValue* tmpstr = cgi->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = cgi->module->createGlobalString("Sanity check failed (length '%zd' somehow > capacity '%zd') for array\n");
-
-				fir::Value* err = cgi->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				cgi->irb.CreateCall(fprintfn, { err, fmtstr, origlen, origcap });
-
-				cgi->irb.CreateCall0(cgi->getOrDeclareLibCFunc("abort"));
-				cgi->irb.CreateUnreachable();
+				cgi->irb.CreateStore(origlen, cap);
+				cgi->irb.CreateUnCondBranch(merge1);
 			}
 
 			// ok, back to normal
@@ -192,7 +209,7 @@ namespace Array
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cgi->irb.CreateMul(origcap, cgi->irb.CreateSizeof(arrtype->getElementType()));
+			fir::Value* actuallen = cgi->irb.CreateMul(cgi->irb.CreateLoad(cap), cgi->irb.CreateSizeof(arrtype->getElementType()));
 
 
 			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
@@ -209,7 +226,8 @@ namespace Array
 			{
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
+					startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 			}
 			else if(elmType->isDynamicArrayType())
 			{
@@ -219,7 +237,7 @@ namespace Array
 
 				// loop
 				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
-				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr);
+				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
 			}
 			else if(elmType->isStringType())
 			{
@@ -228,7 +246,7 @@ namespace Array
 
 				// loop
 				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
-				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr);
+				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
 			}
 			else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
 			{
@@ -236,7 +254,8 @@ namespace Array
 
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
 
-				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(origptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
+					startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
 			}
 			else
 			{
@@ -245,8 +264,8 @@ namespace Array
 
 			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
 			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			cgi->irb.CreateSetDynamicArrayLength(newarr, origlen);
-			cgi->irb.CreateSetDynamicArrayCapacity(newarr, origcap);
+			cgi->irb.CreateSetDynamicArrayLength(newarr, cgi->irb.CreateSub(origlen, startIndex));
+			cgi->irb.CreateSetDynamicArrayCapacity(newarr, cgi->irb.CreateLoad(cap));
 
 			fir::Value* ret = cgi->irb.CreateLoad(newarr);
 			cgi->irb.CreateReturn(ret);
@@ -302,25 +321,10 @@ namespace Array
 			iceAssert(p2func);
 
 			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
-			// fir::Value* nextpow2 = cgi->irb.CreateMul(needed, fir::ConstantInt::getInt64(2));
-
-			// {
-			// 	fir::Value* roundedElmSize = cgi->irb.CreateCall1(p2func, cgi->irb.CreateSizeof(elmtype));
-			// 	fir::Function* printfn = cgi->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
-			// 		fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
-			// 		fir::Type::getInt32()), fir::LinkageType::External);
-
-			// 	fir::Value* tmpstr = cgi->module->createGlobalString("<%zu, %zu, %zu, %zu, %s>\n");
-			// 	fir::Value* x = cgi->module->createGlobalString(elmtype->str());
-			// 	cgi->irb.CreateCall(printfn, { tmpstr, needed, nextpow2, cgi->irb.CreateSizeof(elmtype), roundedElmSize, x });
-			// }
-
 
 			fir::Function* refunc = cgi->getOrDeclareLibCFunc(REALLOCATE_MEMORY_FUNC);
 			iceAssert(refunc);
 
-
-			// fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(elmtype)));
 			fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, cgi->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cgi->irb.CreateCall2(refunc, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
 

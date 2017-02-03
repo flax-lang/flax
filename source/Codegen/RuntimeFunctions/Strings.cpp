@@ -11,16 +11,16 @@
 using namespace Codegen;
 using namespace Ast;
 
-#define BUILTIN_STRINGREF_INCR_FUNC_NAME			"__.stringref_incr"
-#define BUILTIN_STRINGREF_DECR_FUNC_NAME			"__.stringref_decr"
+#define BUILTIN_STRINGREF_INCR_FUNC_NAME			"__stringref_incr"
+#define BUILTIN_STRINGREF_DECR_FUNC_NAME			"__stringref_decr"
 
-#define BUILTIN_STRING_CLONE_FUNC_NAME				"__.string_clone"
-#define BUILTIN_STRING_APPEND_FUNC_NAME				"__.string_append"
-#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME		"__.string_appendchar"
-#define BUILTIN_STRING_CMP_FUNC_NAME				"__.string_compare"
+#define BUILTIN_STRING_CLONE_FUNC_NAME				"__string_clone"
+#define BUILTIN_STRING_APPEND_FUNC_NAME				"__string_append"
+#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME		"__string_appendchar"
+#define BUILTIN_STRING_CMP_FUNC_NAME				"__string_compare"
 
-#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__.string_checkliteralmodify"
-#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__.string_boundscheck"
+#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
+#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
 
 #define DEBUG_MASTER		0
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)

@@ -143,7 +143,7 @@ namespace Codegen
 		else if(pt->isVariadicArrayType())
 		{
 			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toVariadicArrayType()->base);
-			return fir::ParameterPackType::get(base);
+			return fir::DynamicArrayType::getVariadic(base);
 		}
 		else if(pt->isDynamicArrayType())
 		{
@@ -226,7 +226,8 @@ namespace Codegen
 
 			fir::Type* retty = _recursivelyConvertType(cgi, allowFail, user, ft->returnType);
 
-			auto ret = fir::FunctionType::get(args, retty, args.size() > 0 && args.back()->isParameterPackType());
+			auto ret = fir::FunctionType::get(args, retty, args.size() > 0 && args.back()->isDynamicArrayType()
+				&& args.back()->toDynamicArrayType()->isFunctionVariadic());
 
 			return ret;
 		}
@@ -373,10 +374,6 @@ namespace Codegen
 			return false;
 		}
 		else if(type->isArrayType())
-		{
-			return this->isRefCountedType(type->toArrayType()->getElementType());
-		}
-		else if(type->isParameterPackType())
 		{
 			return this->isRefCountedType(type->toArrayType()->getElementType());
 		}

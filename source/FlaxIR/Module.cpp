@@ -363,7 +363,8 @@ namespace fir
 		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())
 			return this->intrinsicFunctions[name];
 
-		return this->intrinsicFunctions[name] = new Function(name, ft, this, LinkageType::External);
+		this->intrinsicFunctions[name] = new Function(name, ft, this, LinkageType::Internal);
+		return this->intrinsicFunctions[name];
 	}
 
 

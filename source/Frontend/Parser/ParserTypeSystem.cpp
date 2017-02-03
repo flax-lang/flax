@@ -73,10 +73,6 @@ namespace pts
 		{
 			return { t->toDynamicArrayType()->getElementType(), TypeTransformer(TrfType::DynamicArray, 0) };
 		}
-		else if(t->isParameterPackType())
-		{
-			return { t->toParameterPackType()->getElementType(), TypeTransformer(TrfType::VariadicArray, 0) };
-		}
 		else if(t->isArrayType())
 		{
 			auto k = t->toArrayType();
@@ -166,7 +162,7 @@ namespace pts
 					break;
 
 				case TrfType::VariadicArray:
-					base = fir::ParameterPackType::get(base);
+					base = fir::DynamicArrayType::getVariadic(base);
 					break;
 
 				case TrfType::FixedArray:
@@ -261,8 +257,8 @@ namespace pts
 					break;
 
 				case TrfType::VariadicArray:
-					iceAssert(type->isParameterPackType());
-					type = type->toParameterPackType()->getElementType();
+					iceAssert(type->isDynamicArrayType() && type->toDynamicArrayType()->isFunctionVariadic());
+					type = type->toDynamicArrayType()->getElementType();
 					break;
 
 				case TrfType::FixedArray:

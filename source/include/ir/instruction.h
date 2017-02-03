@@ -133,11 +133,6 @@ namespace fir
 		DynamicArray_GetCapacity,
 		DynamicArray_SetCapacity,
 
-		ParamPack_GetData,
-		ParamPack_SetData,
-		ParamPack_GetLength,
-		ParamPack_SetLength,
-
 		Branch_UnCond,
 		Branch_Cond,
 

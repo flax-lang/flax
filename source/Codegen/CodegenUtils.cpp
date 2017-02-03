@@ -327,10 +327,6 @@ namespace Codegen
 				{
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
 				}
-				else if(possibleGeneric->isParameterPackType())
-				{
-					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Array));
-				}
 				else if(possibleGeneric->isTupleType())
 				{
 					return new TypePair_t(possibleGeneric, std::make_pair(nullptr, TypeKind::Tuple));
@@ -1277,8 +1273,9 @@ namespace Codegen
 			// check for direct forwarding case
 			if(args.size() == funcParams.size())
 			{
-				if(args.back()->isParameterPackType() && funcParams.back()->isParameterPackType()
-					&& args.back()->toParameterPackType()->getElementType() == funcParams.back()->toParameterPackType()->getElementType())
+				if(args.back()->isDynamicArrayType() && args.back()->toDynamicArrayType()->isFunctionVariadic()
+					&& funcParams.back()->isDynamicArrayType() && funcParams.back()->toDynamicArrayType()->isFunctionVariadic()
+					&& args.back()->toDynamicArrayType()->getElementType() == funcParams.back()->toDynamicArrayType()->getElementType())
 				{
 					// yes, do that (where that == nothing)
 					*_dist += 0;
@@ -1291,9 +1288,9 @@ namespace Codegen
 
 			// 3. get the type of the vararg array.
 			fir::Type* funcLLType = funcParams.back();
-			iceAssert(funcLLType->isParameterPackType());
+			iceAssert(funcLLType->isDynamicArrayType());
 
-			fir::Type* llElmType = funcLLType->toParameterPackType()->getElementType();
+			fir::Type* llElmType = funcLLType->toDynamicArrayType()->getElementType();
 
 			// 4. check the variable args.
 			for(size_t i = funcParams.size() - 1; i < args.size(); i++)
@@ -2305,11 +2302,12 @@ namespace Codegen
 
 		fir::Value* arrPtr = this->irb.CreateConstGEP2(rawArrayPtr, 0, 0);
 
-		fir::ParameterPackType* packType = fir::ParameterPackType::get(type);
+		fir::DynamicArrayType* packType = fir::DynamicArrayType::getVariadic(type);
 		fir::Value* pack = this->irb.CreateStackAlloc(packType);
 
-		this->irb.CreateSetParameterPackData(pack, arrPtr);
-		this->irb.CreateSetParameterPackLength(pack, fir::ConstantInt::getInt64(parameters.size()));
+		this->irb.CreateSetDynamicArrayData(pack, arrPtr);
+		this->irb.CreateSetDynamicArrayLength(pack, fir::ConstantInt::getInt64(parameters.size()));
+		this->irb.CreateSetDynamicArrayCapacity(pack, fir::ConstantInt::getInt64(0));
 
 		pack->makeImmutable();
 

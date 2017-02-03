@@ -473,13 +473,6 @@ namespace fir
 		return t;
 	}
 
-	ParameterPackType* Type::toParameterPackType()
-	{
-		auto t = dynamic_cast<ParameterPackType*>(this);
-		if(t == 0) error("not parameter pack type");
-		return t;
-	}
-
 	ParametricType* Type::toParametricType()
 	{
 		auto t = dynamic_cast<ParametricType*>(this);
@@ -590,11 +583,6 @@ namespace fir
 	bool Type::isDynamicArrayType()
 	{
 		return dynamic_cast<DynamicArrayType*>(this) != 0;
-	}
-
-	bool Type::isParameterPackType()
-	{
-		return dynamic_cast<ParameterPackType*>(this) != 0;
 	}
 
 	bool Type::isVoidPointer()
