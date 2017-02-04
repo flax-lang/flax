@@ -339,7 +339,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			{
 				if(!actual)
 				{
-					*resultType = type->toArraySliceType();
+					*resultType = fir::DynamicArrayType::get(type->toArraySliceType()->getElementType());
 					return Result_t(0, 0);
 				}
 
