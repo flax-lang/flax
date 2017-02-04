@@ -307,7 +307,7 @@ namespace Array
 
 
 
-
+	// takes a slice, but returns a dynamic array
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::ArraySliceType* arrtype)
 	{
 		auto name = BUILTIN_SLICE_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
@@ -319,8 +319,8 @@ namespace Array
 			auto restore = cgi->irb.getCurrentBlock();
 
 			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() }, arrtype, false),
-				fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() },
+					fir::DynamicArrayType::get(arrtype->getElementType()), false), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
 			fir::IRBlock* merge1 = cgi->irb.addNewBlockInFunction("merge1", func);
@@ -355,10 +355,10 @@ namespace Array
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cgi, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
-
-			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
-			cgi->irb.CreateSetArraySliceData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			cgi->irb.CreateSetArraySliceLength(newarr, cgi->irb.CreateSub(origlen, startIndex));
+			fir::Value* newarr = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(arrtype->getElementType()));
+			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			cgi->irb.CreateSetDynamicArrayLength(newarr, cgi->irb.CreateSub(origlen, startIndex));
+			cgi->irb.CreateSetDynamicArrayCapacity(newarr, cgi->irb.CreateSub(origlen, startIndex));
 
 			fir::Value* ret = cgi->irb.CreateLoad(newarr);
 			cgi->irb.CreateReturn(ret);
