@@ -194,14 +194,15 @@ namespace Ast
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
 		}
-		else if(rtype->isDynamicArrayType())
+		else if(rtype->isDynamicArrayType() || rtype->isArraySliceType())
 		{
+			bool isSlice = rtype->isArraySliceType();
 			// todo: question should the 'remaining' bit of the array be a copy or reference?
 			// it'll be a copy for now.
 
-			fir::Value* ptr = cgi->irb.CreateGetDynamicArrayData(rhsptr);
-			fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(rhsptr);
-			fir::Type* elmType = rtype->toDynamicArrayType()->getElementType();
+			fir::Value* ptr = (isSlice ? cgi->irb.CreateGetArraySliceData(rhsptr) : cgi->irb.CreateGetDynamicArrayData(rhsptr));
+			fir::Value* len = (isSlice ? cgi->irb.CreateGetArraySliceLength(rhsptr) : cgi->irb.CreateGetDynamicArrayLength(rhsptr));
+			fir::Type* elmType = (isSlice ? rtype->toArraySliceType()->getElementType() : rtype->toDynamicArrayType()->getElementType());
 
 			iceAssert(ptr && len);
 

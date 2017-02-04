@@ -314,13 +314,13 @@ public func main(argc: i32, argv: i8**) -> int
 
 	do {
 		var arr: int[]
-		arr.append(1)
-		arr.append(2)
-		arr.append(3)
-		arr.append(4)
-		arr.append(5)
-		arr.append(6)
-		arr.append(7)
+		arr += (1)
+		arr += (2)
+		arr += (3)
+		arr += (4)
+		arr += (5)
+		arr += (6)
+		arr += (7)
 
 		// let arr = [ 1, 2, 3, 4, 5, 6, 7 ]
 		var [ a, &b, &c, ... &x ] = arr

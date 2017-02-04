@@ -593,7 +593,9 @@ namespace Parser
 				break;
 
 			case TType::Defer:
+				// defer itself calls parseStatement, so again, don't check twice.
 				ret = parseDefer(ps);
+				skipCheck = true;
 				break;
 
 			case TType::Return:
@@ -3248,7 +3250,7 @@ namespace Parser
 	DeferredExpr* parseDefer(ParserState& ps)
 	{
 		iceAssert(ps.front().type == TType::Defer);
-		return CreateAST(DeferredExpr, ps.eat(), parseExpr(ps));
+		return CreateAST(DeferredExpr, ps.eat(), parseStatement(ps));
 	}
 
 	Typeof* parseTypeof(ParserState& ps)
