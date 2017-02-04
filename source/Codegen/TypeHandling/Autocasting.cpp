@@ -34,6 +34,18 @@ namespace Codegen
 			}
 		}
 
+		// convert int -> T for T[]
+		// i think.
+		if(from->isPrimitiveType() && from->toPrimitiveType()->isLiteralType())
+		{
+			fir::Type* elmType = 0;
+			if(to->isArrayType()) elmType = to->toArrayType()->getElementType();
+			else if(to->isArraySliceType()) elmType = to->toArraySliceType()->getElementType();
+			else if(to->isDynamicArrayType()) elmType = to->toDynamicArrayType()->getElementType();
+
+			if(elmType && elmType->isPrimitiveType())
+				return getAutoCastDistance(from, elmType);
+		}
 
 
 		int ret = 0;
@@ -159,6 +171,21 @@ namespace Codegen
 		{
 			return from;
 		}
+
+
+
+		if(from->getType()->isPrimitiveType() && from->getType()->toPrimitiveType()->isLiteralType())
+		{
+			fir::Type* elmType = 0;
+			if(target->isArrayType()) elmType = target->toArrayType()->getElementType();
+			else if(target->isArraySliceType()) elmType = target->toArraySliceType()->getElementType();
+			else if(target->isDynamicArrayType()) elmType = target->toDynamicArrayType()->getElementType();
+
+			if(elmType && elmType->isPrimitiveType())
+				return autoCastType(elmType, from);
+		}
+
+
 
 
 		if(target->isIntegerType() && from->getType()->isIntegerType()
