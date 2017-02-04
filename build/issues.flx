@@ -63,14 +63,6 @@ foo([ ])
 
 
 
-// 7. do { } while { }
-// 	this parses as (do {} while), and ({ })
-// 	do a newline / semicolon check or smth
-do { } while { }
-
-
-
-
 // 8. abort(), exit(), etc. should be allowed as the last expression in a function
 // 	and allow the compiler to just ignore the fact that there's no return value
 // 	ie. __attribute__((noreturn))
@@ -146,6 +138,8 @@ if let k = 30; k < 40 { /* ... */ }
 //
 /*
 	1. enums declared in functions do not work
+
+	7. do { } while { } parsing bug (fixed in 9334be3)
 
 	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
 		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
