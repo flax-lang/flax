@@ -127,7 +127,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				error(ma->right, "Unknown property '%s' on dynamic array type ('%s')", vr->name.c_str(), type->str().c_str());
+				error(ma->right, "Unknown property '%s' on dynamic array (type '%s')", vr->name.c_str(), type->str().c_str());
 			}
 		}
 		else if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
@@ -293,12 +293,201 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 			else
 			{
-				error(ma->right, "Unknown method '%s' on dynamic array type ('%s')", fc->name.c_str(), type->str().c_str());
+				error(ma->right, "Unknown method '%s' on dynamic array (type '%s')", fc->name.c_str(), type->str().c_str());
 			}
 		}
 		else
 		{
 			error(ma->right, "Unknown operator on dynamic array (type '%s')", type->str().c_str());
+		}
+	}
+	else if(type->isArraySliceType())
+	{
+		// lol, some magic.
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name == "length")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetArraySliceLength(ptr), 0);
+			}
+			else if(vr->name == "pointer")
+			{
+				if(!actual)
+				{
+					*resultType = type->toArraySliceType()->getElementType()->getPointerTo();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				return Result_t(cgi->irb.CreateGetArraySliceData(ptr), 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown property '%s' on array slice (type '%s')", vr->name.c_str(), type->str().c_str());
+			}
+		}
+		else if(FuncCall* fc = dynamic_cast<FuncCall*>(ma->right))
+		{
+			if(fc->name == "clone")
+			{
+				if(!actual)
+				{
+					*resultType = type->toArraySliceType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clone() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, type->toArraySliceType());
+				iceAssert(clonef);
+
+				fir::Value* clone = cgi->irb.CreateCall2(clonef, ptr, fir::ConstantInt::getInt64(0));
+				return Result_t(clone, 0);
+			}
+			else if(fc->name == "clear")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getVoid();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array clear() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// set length to 0 -- that's it
+				cgi->irb.CreateSetArraySliceLength(ptr, fir::ConstantInt::getInt64(0));
+
+				return Result_t(0, 0);
+			}
+			else if(fc->name == "back")
+			{
+				if(!actual)
+				{
+					*resultType = type->toArraySliceType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetArraySliceData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetArraySliceLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				auto loc = fir::ConstantString::get(Parser::pinToString(fc->pin));
+				cgi->irb.CreateCall3(rangef, len, fir::ConstantInt::getInt64(0), loc);
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				if(ptr->isImmutable())
+					mem->makeImmutable();
+
+				return Result_t(cgi->irb.CreateLoad(mem), mem, ValueKind::LValue);
+			}
+			else if(fc->name == "popBack")
+			{
+				if(!actual)
+				{
+					*resultType = type->toArraySliceType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetArraySliceData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetArraySliceLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				auto loc = fir::ConstantString::get(Parser::pinToString(fc->pin));
+				cgi->irb.CreateCall3(rangef, len, fir::ConstantInt::getInt64(0), loc);
+
+				// ok.
+				fir::Value* ind = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				fir::Value* mem = cgi->irb.CreatePointerAdd(data, ind);
+
+				fir::Value* ret = cgi->irb.CreateLoad(mem);
+
+				// shrink the length
+				cgi->irb.CreateSetArraySliceLength(ptr, ind);
+
+				return Result_t(ret, 0);
+			}
+			else if(fc->name == "popFront")
+			{
+				// we can do this for slices
+
+				if(!actual)
+				{
+					*resultType = type->toArraySliceType()->getElementType();
+					return Result_t(0, 0);
+				}
+
+				iceAssert(ptr);
+				if(fc->params.size() > 0)
+					error(fc, "Array back() expects exactly 0 parameters, have %zu", fc->params.size());
+
+				// get the data pointer
+				fir::Value* data = cgi->irb.CreateGetArraySliceData(ptr);
+
+				// sub 1 from the len
+				fir::Value* len = cgi->irb.CreateGetArraySliceLength(ptr);
+
+				// trigger an abort if length is 0
+				fir::Function* rangef = RuntimeFuncs::Array::getBoundsCheckFunction(cgi);
+				iceAssert(rangef);
+
+				auto loc = fir::ConstantString::get(Parser::pinToString(fc->pin));
+				cgi->irb.CreateCall3(rangef, len, fir::ConstantInt::getInt64(0), loc);
+
+				// ok.
+				fir::Value* ret = cgi->irb.CreateLoad(data);
+
+				// increment the pointer by 1
+				fir::Value* newData = cgi->irb.CreatePointerAdd(data, fir::ConstantInt::getInt64(1));
+				cgi->irb.CreateSetArraySliceData(ptr, newData);
+
+				// shrink the length by one
+				fir::Value* newlen = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				cgi->irb.CreateSetArraySliceLength(ptr, newlen);
+
+				return Result_t(ret, 0);
+			}
+			else
+			{
+				error(ma->right, "Unknown method '%s' on array slice (type '%s')", fc->name.c_str(), type->str().c_str());
+			}
+		}
+		else
+		{
+			error(ma->right, "Unknown operator on array slice (type '%s')", type->str().c_str());
 		}
 	}
 	else if((type->isStringType() || type == fir::Type::getStringType()->getPointerTo()) && dynamic_cast<VarRef*>(ma->right))

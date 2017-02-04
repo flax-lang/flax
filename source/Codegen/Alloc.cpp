@@ -436,6 +436,10 @@ static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Va
 		cgi->irb.CreateSetDynamicArrayLength(ptr, zc);
 		cgi->irb.CreateSetDynamicArrayCapacity(ptr, zc);
 	}
+	else if(val->getType()->isArraySliceType())
+	{
+		error(user, "Array slices (type '%s') do not own memory, and cannot be deallocated", val->getType()->str().c_str());
+	}
 	else if(!ptr->getType()->isPointerType())
 	{
 		error(user, "Cannot deallocate non-pointer type");
