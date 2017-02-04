@@ -1608,6 +1608,61 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateGetArraySliceData(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
+			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::ArraySlice_GetData, false, this->currentBlock,
+			ptr->getType()->getPointerElementType()->toArraySliceType()->getElementType()->getPointerTo(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetArraySliceData(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
+			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str().c_str());
+
+		auto t = ptr->getType()->getPointerElementType()->toArraySliceType()->getElementType();
+		if(val->getType() != t->getPointerTo())
+		{
+			error("val is not a pointer to elm type (need '%s', have '%s')",
+				t->getPointerTo()->str().c_str(), val->getType()->str().c_str());
+		}
+
+		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+	Value* IRBuilder::CreateGetArraySliceLength(Value* ptr, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
+			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::ArraySlice_GetLength, false, this->currentBlock,
+			fir::Type::getInt64(), { ptr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetArraySliceLength(Value* ptr, Value* val, std::string vname)
+	{
+		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
+			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::ArraySlice_SetLength, true, this->currentBlock,
+			fir::Type::getVoid(), { ptr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
 
 
 

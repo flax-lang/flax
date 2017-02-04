@@ -19,6 +19,8 @@ using namespace Ast;
 #define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
 #define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
 
+#define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
+
 namespace Codegen {
 namespace RuntimeFuncs {
 namespace Array
@@ -156,6 +158,65 @@ namespace Array
 		cgi->irb.setCurrentBlock(merge);
 	}
 
+	static void _handleCallingAppropriateCloneFunction(CodegenInstance* cgi, fir::Function* func, fir::Type* elmType, fir::Value* origptr,
+		fir::Value* newptr, fir::Value* origlen, fir::Value* actuallen, fir::Value* startIndex)
+	{
+		if(elmType->isPrimitiveType() || elmType->isCharType() || elmType->isEnumType())
+		{
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+			cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
+				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+		}
+		else if(elmType->isDynamicArrayType())
+		{
+			// yo dawg i heard you like arrays...
+			fir::Function* clonef = getCloneFunction(cgi, elmType->toDynamicArrayType());
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
+		}
+		else if(elmType->isArraySliceType())
+		{
+			// yo dawg i heard you like arrays...
+			fir::Function* clonef = getCloneFunction(cgi, elmType->toArraySliceType());
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
+		}
+		else if(elmType->isStringType())
+		{
+			fir::Function* clonef = String::getCloneFunction(cgi);
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
+		}
+		else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
+		{
+			// todo: call copy constructors and stuff
+
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+			cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
+				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+		}
+		else
+		{
+			error("unsupported element type '%s' for array clone", elmType->str().c_str());
+		}
+	}
+
+
+
+
+
+
 	// takes ptr, start index
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
@@ -219,53 +280,85 @@ namespace Array
 
 			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
 
-
 			fir::Type* elmType = arrtype->getElementType();
-
-			if(elmType->isPrimitiveType() || elmType->isCharType() || elmType->isEnumType())
-			{
-				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
-
-				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
-					startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
-			}
-			else if(elmType->isDynamicArrayType())
-			{
-				// yo dawg i heard you like arrays...
-				fir::Function* clonef = getCloneFunction(cgi, elmType->toDynamicArrayType());
-				iceAssert(clonef);
-
-				// loop
-				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
-				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
-			}
-			else if(elmType->isStringType())
-			{
-				fir::Function* clonef = String::getCloneFunction(cgi);
-				iceAssert(clonef);
-
-				// loop
-				fir::Value* cloneptr = cgi->irb.CreatePointerTypeCast(newptr, elmType->getPointerTo());
-				_callCloneFunctionInLoop(cgi, func, clonef, origptr, origlen, cloneptr, startIndex);
-			}
-			else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
-			{
-				// todo: call copy constructors and stuff
-
-				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
-
-				cgi->irb.CreateCall(memcpyf, { newptr, cgi->irb.CreatePointerTypeCast(cgi->irb.CreatePointerAdd(origptr,
-					startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
-			}
-			else
-			{
-				error("unsupported element type '%s' for array clone", elmType->str().c_str());
-			}
+			_handleCallingAppropriateCloneFunction(cgi, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
 			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
 			cgi->irb.CreateSetDynamicArrayData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			cgi->irb.CreateSetDynamicArrayLength(newarr, cgi->irb.CreateSub(origlen, startIndex));
 			cgi->irb.CreateSetDynamicArrayCapacity(newarr, cgi->irb.CreateLoad(cap));
+
+			fir::Value* ret = cgi->irb.CreateLoad(newarr);
+			cgi->irb.CreateReturn(ret);
+
+			fn = func;
+			cgi->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
+
+
+
+
+
+
+
+
+
+	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::ArraySliceType* arrtype)
+	{
+		auto name = BUILTIN_SLICE_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+
+		fir::Function* fn = cgi->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cgi->irb.getCurrentBlock();
+
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() }, arrtype, false),
+				fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+			fir::IRBlock* merge1 = cgi->irb.addNewBlockInFunction("merge1", func);
+
+			cgi->irb.setCurrentBlock(entry);
+
+			fir::Value* orig = func->getArguments()[0];
+			fir::Value* startIndex = func->getArguments()[1];
+
+			iceAssert(orig);
+			iceAssert(startIndex);
+
+			fir::Value* origptr = cgi->irb.CreateGetArraySliceData(orig);
+			fir::Value* origlen = cgi->irb.CreateGetArraySliceLength(orig);
+
+			cgi->irb.CreateUnCondBranch(merge1);
+
+			// ok, back to normal
+			cgi->irb.setCurrentBlock(merge1);
+
+			// ok, alloc a buffer with the original capacity
+			// get size in bytes, since cap is in elements
+			fir::Value* actuallen = cgi->irb.CreateMul(origlen, cgi->irb.CreateSizeof(arrtype->getElementType()));
+
+			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
+
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
+			iceAssert(mallocf);
+
+			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
+
+			fir::Type* elmType = arrtype->getElementType();
+			_handleCallingAppropriateCloneFunction(cgi, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
+
+
+			fir::Value* newarr = cgi->irb.CreateStackAlloc(arrtype);
+			cgi->irb.CreateSetArraySliceData(newarr, cgi->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			cgi->irb.CreateSetArraySliceLength(newarr, cgi->irb.CreateSub(origlen, startIndex));
 
 			fir::Value* ret = cgi->irb.CreateLoad(newarr);
 			cgi->irb.CreateReturn(ret);
