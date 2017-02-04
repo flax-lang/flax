@@ -60,44 +60,80 @@ namespace Ast
 		}
 		else
 		{
+			bool isPtr = false;
+			std::string name = mapping.name;
+
+			if(name[0] == '&')
+			{
+				isPtr = true;
+				name = name.substr(1);
+			}
+
 			// only do something if we're not ignoring it.
 			if(mapping.name != "_")
 			{
-				std::string name = mapping.name;
 
 				// todo: this leaks.
 				if(cgi->isDuplicateSymbol(name))
 					GenError::duplicateSymbol(cgi, new VarRef(mapping.pos, name), name, SymbolType::Variable);
 
 				// ok, declare it first.
-				fir::Value* ai = cgi->getStackAlloc(rhs->getType(), name);
+				fir::Value* ai = cgi->getStackAlloc(isPtr ? rhs->getType()->getPointerTo() : rhs->getType(), name);
 				iceAssert(ai);
 
-				// ok, set it.
-				// check if we're some special snowflake
-				auto cmplxtype = cgi->getType(rhs->getType());
-
-				if(cmplxtype)
+				if(isPtr)
 				{
-					// todo: this leaks also
-					auto res = Operators::performActualAssignment(cgi, user, new VarRef(mapping.pos, name), 0, ArithmeticOp::Assign,
-						cgi->irb.CreateLoad(ai), ai, rhs, rhsptr, vk);
+					// well, in this case we don't need to do any of the weird stuff, we just kinda store it.
+					// first check if we're refcounted
 
-					// it's stored already, no need to do shit.
-					iceAssert(res.value);
+					if(cgi->isRefCountedType(rhs->getType()))
+					{
+						// todo: leaks
+						error(new DummyExpr(mapping.pos), "Reference counted types (such as '%s') cannot have their address taken",
+							rhs->getType()->str().c_str());
+					}
+
+					// ok, then check for rvalue/lvalue nonsense
+					if(vk != ValueKind::LValue)
+						error(new DummyExpr(mapping.pos), "Cannot take the address of an rvalue");
+
+
+					// ok, now do it.
+					iceAssert(rhsptr);
+
+					// well yea that's just it.
+					cgi->irb.CreateStore(rhsptr, ai);
+
+					if(immut || rhsptr->isImmutable())
+						ai->makeImmutable();
 				}
 				else
 				{
-					// ok, just do it normally
-					cgi->irb.CreateStore(rhs, ai);
-				}
+					// ok, set it.
+					// check if we're some special snowflake
+					auto cmplxtype = cgi->getType(rhs->getType());
 
-				if(cgi->isRefCountedType(rhs->getType()))
-				{
-					// (isInit = true, doAssign = false -- we already assigned it above)
-					cgi->assignRefCountedExpression(new VarRef(mapping.pos, name), rhs, rhsptr, cgi->irb.CreateLoad(ai), ai, vk, true, false);
-				}
+					if(cmplxtype)
+					{
+						// todo: this leaks also
+						auto res = Operators::performActualAssignment(cgi, user, new VarRef(mapping.pos, name), 0, ArithmeticOp::Assign,
+							cgi->irb.CreateLoad(ai), ai, rhs, rhsptr, vk);
 
+						// it's stored already, no need to do shit.
+						iceAssert(res.value);
+					}
+					else
+					{
+						// ok, just do it normally
+						cgi->irb.CreateStore(rhs, ai);
+					}
+
+					if(cgi->isRefCountedType(rhs->getType()))
+					{
+						// (isInit = true, doAssign = false -- we already assigned it above)
+						cgi->assignRefCountedExpression(new VarRef(mapping.pos, name), rhs, rhsptr, cgi->irb.CreateLoad(ai), ai, vk, true, false);
+					}
+				}
 
 				if(immut) ai->makeImmutable();
 

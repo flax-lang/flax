@@ -1682,12 +1682,18 @@ namespace Parser
 		bool hadEllipsis = false;
 		while(ps.hasTokens())
 		{
-			if(ps.front().type == TType::Identifier)
+			bool wasRef = false;
+			if(ps.front().type == TType::Identifier || (ps.front().type == TType::Ampersand && (wasRef = true)))
 			{
 				Mapping x;
 				x.isRecursive = false;
 				x.name = ps.eat().text.to_string();
+				if(wasRef) x.name += ps.eat().text.to_string();
+
 				x.pos = ps.front().pin;
+
+				if(x.name == "&_")
+					parserError(x.pos, "Invalid combination of ignorance and pointer-to");
 
 				if(x.name != "_" && existingNames.find(x.name) != existingNames.end())
 					parserError(x.pos, "Name '%s' already exists in the binding", x.name.c_str());
@@ -1824,14 +1830,22 @@ namespace Parser
 		bool hadEllipsis = false;
 		while(ps.hasTokens())
 		{
-			if(ps.front().type == TType::Identifier)
+			bool wasRef = false;
+			if(ps.front().type == TType::Identifier || (ps.front().type == TType::Ampersand && (wasRef = true)))
 			{
-				std::string name = ps.front().text.to_string();
+				Token t = ps.eat();
+
+				std::string name = t.text.to_string();
+				if(wasRef) name += ps.eat().text.to_string();
+
+				if(name == "&_")
+					parserError(t.pin, "Invalid combination of ignorance and pointer-to");
+
 				if(name != "_" && existingNames.find(name) != existingNames.end())
 					parserError(existingNames[name], "Name '%s' already exists in the decomposition", name.c_str());
 
-				mapping[index] = { name, ps.front().pin };
-				existingNames[name] = ps.eat().pin;
+				mapping[index] = { name, t.pin };
+				existingNames[name] = t.pin;
 
 				index += 1;
 				wasComma = false;
@@ -1853,6 +1867,10 @@ namespace Parser
 
 					if(ps.front().type != TType::RSquare)
 						parserError("Expected closing ']' after ellipsis binding in array decomposition");
+				}
+				else if(ps.front().type == TType::Underscore)
+				{
+					parserError("Using '_' to ignore the rest of the array in a decomposition is superfluous; simply omit the identifier");
 				}
 				else if(ps.front().type != TType::RSquare)
 				{
