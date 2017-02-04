@@ -1451,6 +1451,9 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 
 		if(res.resolved)
 		{
+			if(!res.t.firFunc)
+				res.t.firFunc = dynamic_cast<fir::Function*>(res.t.funcDecl->codegen(this).value);
+
 			iceAssert(res.t.firFunc);
 			type = res.t.firFunc->getReturnType();
 
