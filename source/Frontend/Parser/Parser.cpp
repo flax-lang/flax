@@ -209,7 +209,7 @@ namespace Parser
 	// this is stupid, but we need to return references (for string_view reasons)
 	static std::string _lookupTable[(size_t) ArithmeticOp::UserDefined] = {
 		"+", "-", "*", "/", "%", "<<", ">>", "=", "<", ">", "<=", ">=", "==", "!=",
-		"!", "+", "-", "&", "#", "&", "|", "^", "~", "&&", "||", "as", "as!", "+=",
+		"!", "+", "-", "&", "*", "&", "|", "^", "~", "&&", "||", "as", "as!", "+=",
 		"-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=", ".", "::", ",", "[]",
 	};
 
