@@ -339,7 +339,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			{
 				if(!actual)
 				{
-					*resultType = type->toArraySliceType();
+					*resultType = fir::DynamicArrayType::get(type->toArraySliceType()->getElementType());
 					return Result_t(0, 0);
 				}
 
@@ -1451,6 +1451,9 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Value* extra, bo
 
 		if(res.resolved)
 		{
+			if(!res.t.firFunc)
+				res.t.firFunc = dynamic_cast<fir::Function*>(res.t.funcDecl->codegen(this).value);
+
 			iceAssert(res.t.firFunc);
 			type = res.t.firFunc->getReturnType();
 
