@@ -103,6 +103,9 @@ namespace Operators
 		if(!res.value->getType()->isPointerType())
 			error(user, "Cannot dereference non-pointer type (have type '%s')", res.value->getType()->str().c_str());
 
+		if(res.pointer && res.pointer->isImmutable())
+			res.value->makeImmutable();
+
 		return Result_t(cgi->irb.CreateLoad(res.value), res.value, ValueKind::LValue);
 	}
 }

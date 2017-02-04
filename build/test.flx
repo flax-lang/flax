@@ -320,6 +320,12 @@ public func main(argc: i32, argv: i8**) -> int
 
 		let [ a, b, c, ... x ] = arr
 
+		let k = 10
+		let p = &k
+
+		*p = 30
+		printf("k = %d\n", k);
+
 		printf("a = %d, b = %d, c = %d, d = %d, e = %d\n", a, b, c, x[0], x[1])
 	}
 
