@@ -64,6 +64,12 @@ mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* v
 		// we always have to go through our Codegen::instantiateGenericFunctionUsingParameters() function
 		// that one will return an already-generated version if the types match up.
 
+		if(fn.funcDecl && !fn.firFunc)
+		{
+			fn.firFunc = dynamic_cast<fir::Function*>(fn.funcDecl->codegen(this).value);
+			iceAssert(fn.firFunc);
+		}
+
 		if(fn.firFunc && !fn.firFunc->isGenericInstantiation())
 			cands.push_back(fn.firFunc);
 	}
@@ -401,6 +407,13 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	// TODO: call global constructors
 	if(this->isGlobal)
 	{
+		// check if we already have a global with this name
+		if(auto _gv = cgi->module->tryGetGlobalVariable(this->ident))
+		{
+			error(this, "Global '%s' already exists (with type '%s'), cannot redeclare",
+				this->ident.str().c_str(), _gv->getType()->str().c_str());
+		}
+
 		fir::GlobalVariable* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
 			fir::ConstantValue::getNullValue(this->concretisedType), this->immutable,
 			(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
