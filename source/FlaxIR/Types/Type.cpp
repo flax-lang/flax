@@ -473,6 +473,13 @@ namespace fir
 		return t;
 	}
 
+	ArraySliceType* Type::toArraySliceType()
+	{
+		auto t = dynamic_cast<ArraySliceType*>(this);
+		if(t == 0) error("not array slice type");
+		return t;
+	}
+
 	ParametricType* Type::toParametricType()
 	{
 		auto t = dynamic_cast<ParametricType*>(this);
@@ -583,6 +590,11 @@ namespace fir
 	bool Type::isDynamicArrayType()
 	{
 		return dynamic_cast<DynamicArrayType*>(this) != 0;
+	}
+
+	bool Type::isArraySliceType()
+	{
+		return dynamic_cast<ArraySliceType*>(this) != 0;
 	}
 
 	bool Type::isVoidPointer()
