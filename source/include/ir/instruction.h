@@ -133,6 +133,11 @@ namespace fir
 		DynamicArray_GetCapacity,
 		DynamicArray_SetCapacity,
 
+		ArraySlice_GetData,
+		ArraySlice_SetData,
+		ArraySlice_GetLength,
+		ArraySlice_SetLength,
+
 		Branch_UnCond,
 		Branch_Cond,
 

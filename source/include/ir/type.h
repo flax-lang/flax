@@ -32,6 +32,7 @@ namespace fir
 	struct FunctionType;
 	struct PrimitiveType;
 	struct ParametricType;
+	struct ArraySliceType;
 	struct UnicodeCharType;
 	struct DynamicArrayType;
 	struct UnicodeStringType;
@@ -89,6 +90,7 @@ namespace fir
 
 
 		DynamicArrayType* toDynamicArrayType();
+		ArraySliceType* toArraySliceType();
 		ParametricType* toParametricType();
 		PrimitiveType* toPrimitiveType();
 		FunctionType* toFunctionType();
@@ -120,6 +122,7 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isVoidPointer();
+		bool isArraySliceType();
 		bool isDynamicArrayType();
 
 		bool isParametricType();
@@ -565,8 +568,30 @@ namespace fir
 	};
 
 
+	struct ArraySliceType : Type
+	{
+		friend struct Type;
 
+		// methods
+		Type* getElementType();
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual ArraySliceType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		ArraySliceType(Type* elmType);
+		virtual ~ArraySliceType() override { }
+
+		// fields
+		Type* arrayElementType;
+
+		// static funcs
+		public:
+		static ArraySliceType* get(Type* elementType, FTContext* tc = 0);
+	};
 
 
 

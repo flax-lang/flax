@@ -1859,11 +1859,15 @@ namespace Parser
 				hadEllipsis = true;
 
 				// check if there's an identifier after the thing
-				if(ps.front().type == TType::Identifier)
+				if(ps.front().type == TType::Identifier || (ps.front().type == TType::Ampersand && (wasRef = true)))
 				{
+					Token t = ps.eat();
+					std::string name = t.text.to_string();
+
+					if(wasRef) name += ps.eat().text.to_string();
+
 					// -1 is the ellipsis
-					mapping[-1] = { ps.front().text.to_string(), ps.front().pin };
-					ps.eat();
+					mapping[-1] = { name, t.pin };
 
 					if(ps.front().type != TType::RSquare)
 						parserError("Expected closing ']' after ellipsis binding in array decomposition");

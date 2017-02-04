@@ -145,16 +145,33 @@ namespace Ast
 				if(cgi->isDuplicateSymbol(name))
 					GenError::duplicateSymbol(cgi, new VarRef(this->mapping[-1].second, name), name, SymbolType::Variable);
 
-				// regardless of ifPtr or not, the type is always the array anyway.
-				fir::Value* ai = cgi->irb.CreateStackAlloc(at);
+				fir::Value* ai = 0;
 
 				if(isPtr)
 				{
 					// this actually isn't possible, unless we get slices.
-					_error_and_exit("slices not supported");
+					// ok, make a slice
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmtype));
+
+					// get the pointer to the first elm that goes in here
+					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, numNormalBindings);
+
+					// ok, this is our data.
+					// the length:
+
+					fir::Value* len = fir::ConstantInt::getInt64(needed);
+
+					// set that shit up
+					cgi->irb.CreateSetArraySliceData(ai, ptr);
+					cgi->irb.CreateSetArraySliceLength(ai, len);
+
+					// check immutability
+					if(this->immutable || ptr->isImmutable())
+						ai->makeImmutable();
 				}
 				else
 				{
+					ai = cgi->irb.CreateStackAlloc(at);
 					for(size_t i = numNormalBindings; i < arrtype->getArraySize(); i++)
 					{
 						fir::Value* srcptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
@@ -163,6 +180,8 @@ namespace Ast
 						_doStore(cgi, this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
 					}
 				}
+
+				iceAssert(ai);
 
 				if(this->immutable)
 					ai->makeImmutable();
@@ -223,7 +242,7 @@ namespace Ast
 
 					cgi->irb.CreateStore(gep, ai);
 
-					if(this->immutable || gep->isImmutable())
+					if(this->immutable || rhsptr->isImmutable())
 						ai->makeImmutable();
 				}
 				else
@@ -252,23 +271,49 @@ namespace Ast
 				{
 					isPtr = true;
 					name = name.substr(1);
-
-					_error_and_exit("slices not done");
 				}
 
-				fir::Value* ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
+				fir::Value* ai = 0;
 
-				// so, we have a nice function to clone an array, and it now takes a starting index
-				// et voila, problem solved.
 
-				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
-				iceAssert(clonef);
+				if(isPtr)
+				{
+					// make slicey
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmType));
 
-				fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
+					// get the pointer to the first elm that goes in here
+					fir::Value* newptr = cgi->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(numNormalBindings));
 
-				// well, there we go. that's the clone, store that shit.
-				cgi->irb.CreateStore(clone, ai);
+					// ok, this is our data.
+					// the length:
 
+					fir::Value* newlen = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// set that shit up
+					cgi->irb.CreateSetArraySliceData(ai, newptr);
+					cgi->irb.CreateSetArraySliceLength(ai, newlen);
+
+					// check immutability
+					if(this->immutable || rhsptr->isImmutable())
+						ai->makeImmutable();
+				}
+				else
+				{
+					ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
+
+					// so, we have a nice function to clone an array, and it now takes a starting index
+					// et voila, problem solved.
+
+					fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
+					iceAssert(clonef);
+
+					fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// well, there we go. that's the clone, store that shit.
+					cgi->irb.CreateStore(clone, ai);
+				}
+
+				iceAssert(ai);
 				if(this->immutable)
 					ai->makeImmutable();
 
