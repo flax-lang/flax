@@ -76,54 +76,112 @@ namespace Ast
 			// ok, all is good now.
 			for(size_t i = 0; i < numNormalBindings; i++)
 			{
+				bool isPtr = false;
+
 				std::string name = this->mapping[i].first;
 				if(name == "_")
 					continue;
 
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
+
 				if(cgi->isDuplicateSymbol(name))
 					GenError::duplicateSymbol(cgi, new VarRef(this->mapping[i].second, name), name, SymbolType::Variable);
 
-				// ok. make it.
-				VarDecl* fakeDecl = new VarDecl(this->mapping[i].second, name, this->immutable);
-				fakeDecl->didCodegen = true;
-				fakeDecl->concretisedType = elmtype;
+				fir::Value* ai = cgi->irb.CreateStackAlloc(isPtr ? elmtype->getPointerTo() : elmtype);
 
-				fir::Value* ai = cgi->irb.CreateStackAlloc(elmtype);
+				if(isPtr)
+				{
+					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
+					if(vk != ValueKind::LValue)
+						error(new DummyExpr(this->mapping[i].second), "Cannot take the address of an rvalue");
 
-				// get the value from the array
-				fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
-				_doStore(cgi, this, elmtype, ptr, ai, name, this->mapping[i].second, vk);
+					cgi->irb.CreateStore(ptr, ai);
+
+					if(this->immutable || ptr->isImmutable())
+						ai->makeImmutable();
+				}
+				else
+				{
+					// get the value from the array
+					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
+					_doStore(cgi, this, elmtype, ptr, ai, name, this->mapping[i].second, vk);
+				}
 
 				if(this->immutable)
 					ai->makeImmutable();
 
 				// add.
+				VarDecl* fakeDecl = new VarDecl(this->mapping[i].second, name, this->immutable);
+				fakeDecl->didCodegen = true;
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
+
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
+
 
 			// ok, handle the last thing
 			// get the number of elms we need
 			if(haveNamedEllipsis)
 			{
+				bool isPtr = false;
+
 				size_t needed = arrtype->getArraySize() - numNormalBindings;
 				fir::Type* at = fir::ArrayType::get(elmtype, needed);
 
 				// ok.
 				std::string name = this->mapping[-1].first;
 
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
+
+
 				if(cgi->isDuplicateSymbol(name))
 					GenError::duplicateSymbol(cgi, new VarRef(this->mapping[-1].second, name), name, SymbolType::Variable);
 
-				// ok make it
-				fir::Value* ai = cgi->irb.CreateStackAlloc(at);
+				fir::Value* ai = 0;
 
-				for(size_t i = numNormalBindings; i < arrtype->getArraySize(); i++)
+				if(isPtr)
 				{
-					fir::Value* srcptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
-					fir::Value* dstptr = cgi->irb.CreateConstGEP2(ai, 0, i - numNormalBindings);
+					// this actually isn't possible, unless we get slices.
+					// ok, make a slice
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmtype));
 
-					_doStore(cgi, this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
+					// get the pointer to the first elm that goes in here
+					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, numNormalBindings);
+
+					// ok, this is our data.
+					// the length:
+
+					fir::Value* len = fir::ConstantInt::getInt64(needed);
+
+					// set that shit up
+					cgi->irb.CreateSetArraySliceData(ai, ptr);
+					cgi->irb.CreateSetArraySliceLength(ai, len);
+
+					// check immutability
+					if(this->immutable || ptr->isImmutable())
+						ai->makeImmutable();
 				}
+				else
+				{
+					ai = cgi->irb.CreateStackAlloc(at);
+					for(size_t i = numNormalBindings; i < arrtype->getArraySize(); i++)
+					{
+						fir::Value* srcptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
+						fir::Value* dstptr = cgi->irb.CreateConstGEP2(ai, 0, i - numNormalBindings);
+
+						_doStore(cgi, this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
+					}
+				}
+
+				iceAssert(ai);
 
 				if(this->immutable)
 					ai->makeImmutable();
@@ -131,7 +189,7 @@ namespace Ast
 				// add it.
 				VarDecl* fakeDecl = new VarDecl(this->mapping[-1].second, name, this->immutable);
 				fakeDecl->didCodegen = true;
-				fakeDecl->concretisedType = at;
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
 
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
@@ -162,23 +220,43 @@ namespace Ast
 			// okay, now, loop + copy
 			for(size_t i = 0; i < numNormalBindings; i++)
 			{
+				bool isPtr = false;
 				std::string name = this->mapping[i].first;
 				if(name == "_")
 					continue;
 
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
+
 				// no need to bounds check here.
 				fir::Value* gep = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(i));
-				fir::Value* ai = cgi->irb.CreateStackAlloc(elmType);
+				fir::Value* ai = cgi->irb.CreateStackAlloc(isPtr ? elmType->getPointerTo() : elmType);
 
-				// do the store-y thing
-				_doStore(cgi, this, elmType, gep, ai, name, this->mapping[i].second, vk);
+				if(isPtr)
+				{
+					if(vk != ValueKind::LValue)
+						error(new DummyExpr(this->mapping[i].second), "Cannot take the address of an rvalue");
+
+					cgi->irb.CreateStore(gep, ai);
+
+					if(this->immutable || rhsptr->isImmutable())
+						ai->makeImmutable();
+				}
+				else
+				{
+					// do the store-y thing
+					_doStore(cgi, this, elmType, gep, ai, name, this->mapping[i].second, vk);
+				}
 
 				if(this->immutable)
 					ai->makeImmutable();
 
 				VarDecl* fakeDecl = new VarDecl(this->mapping[i].second, name, this->immutable);
 				fakeDecl->didCodegen = true;
-				fakeDecl->concretisedType = elmType;
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
 
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
@@ -186,26 +264,62 @@ namespace Ast
 
 			if(haveNamedEllipsis)
 			{
+				bool isPtr = false;
 				std::string name = this->mapping[-1].first;
 
-				// so, we have a nice function to clone an array, and it now takes a starting index
-				// et voila, problem solved.
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
 
-				fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
-				iceAssert(clonef);
+				fir::Value* ai = 0;
 
-				fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
 
-				// well, there we go. that's the clone, store that shit.
-				fir::Value* ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
-				cgi->irb.CreateStore(clone, ai);
+				if(isPtr)
+				{
+					// make slicey
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmType));
 
+					// get the pointer to the first elm that goes in here
+					fir::Value* newptr = cgi->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// ok, this is our data.
+					// the length:
+
+					fir::Value* newlen = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// set that shit up
+					cgi->irb.CreateSetArraySliceData(ai, newptr);
+					cgi->irb.CreateSetArraySliceLength(ai, newlen);
+
+					// check immutability
+					if(this->immutable || rhsptr->isImmutable())
+						ai->makeImmutable();
+				}
+				else
+				{
+					ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
+
+					// so, we have a nice function to clone an array, and it now takes a starting index
+					// et voila, problem solved.
+
+					fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
+					iceAssert(clonef);
+
+					fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// well, there we go. that's the clone, store that shit.
+					cgi->irb.CreateStore(clone, ai);
+				}
+
+				iceAssert(ai);
 				if(this->immutable)
 					ai->makeImmutable();
 
 				VarDecl* fakeDecl = new VarDecl(this->mapping[-1].second, name, this->immutable);
 				fakeDecl->didCodegen = true;
-				fakeDecl->concretisedType = rtype->toDynamicArrayType();
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
 
 				cgi->addSymbol(name, ai, fakeDecl);
 			}
