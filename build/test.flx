@@ -351,8 +351,8 @@ public func main(argc: i32, argv: i8**) -> int
 			arr += "world"
 			arr += "bouys"
 
-			let [ &a, &b, &c ] = arr
-			printf("a = %p, b = %p, c = %p\n", a, b, c)
+			let [ a, ... &b ] = arr
+			printf("a = %s, b = %d\n", a, b.length)
 		}
 	}
 

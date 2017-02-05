@@ -172,6 +172,18 @@ namespace Ast
 					cgi->irb.CreateSetArraySliceData(ai, ptr);
 					cgi->irb.CreateSetArraySliceLength(ai, len);
 
+
+					if(cgi->isRefCountedType(elmtype))
+					{
+						// increment the refcounts for the strings
+						fir::Function* incrfn = RuntimeFuncs::Array::getIncrementArrayRefCountFunction(cgi, elmtype);
+						iceAssert(incrfn);
+
+						cgi->irb.CreateCall2(incrfn, ptr, len);
+					}
+
+
+
 					// check immutability
 					if(this->immutable || ptr->isImmutable())
 						ai->makeImmutable();
@@ -307,6 +319,17 @@ namespace Ast
 					// set that shit up
 					cgi->irb.CreateSetArraySliceData(ai, newptr);
 					cgi->irb.CreateSetArraySliceLength(ai, newlen);
+
+
+					if(cgi->isRefCountedType(elmtype))
+					{
+						// increment the refcounts for the strings
+						fir::Function* incrfn = RuntimeFuncs::Array::getIncrementArrayRefCountFunction(cgi, elmtype);
+						iceAssert(incrfn);
+
+						cgi->irb.CreateCall2(incrfn, ptr, len);
+					}
+
 
 					// check immutability
 					if(this->immutable || rhsptr->isImmutable())
