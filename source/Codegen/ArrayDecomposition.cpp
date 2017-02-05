@@ -95,6 +95,13 @@ namespace Ast
 
 				if(isPtr)
 				{
+					// check refcounted
+					if(cgi->isRefCountedType(elmtype))
+					{
+						error(new DummyExpr(this->mapping[i].second), "Cannot bind to refcounted type '%s' by reference",
+							elmtype->str().c_str());
+					}
+
 					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
 					if(vk != ValueKind::LValue)
 						error(new DummyExpr(this->mapping[i].second), "Cannot take the address of an rvalue");
@@ -202,7 +209,7 @@ namespace Ast
 
 			fir::Value* ptr = (isSlice ? cgi->irb.CreateGetArraySliceData(rhsptr) : cgi->irb.CreateGetDynamicArrayData(rhsptr));
 			fir::Value* len = (isSlice ? cgi->irb.CreateGetArraySliceLength(rhsptr) : cgi->irb.CreateGetDynamicArrayLength(rhsptr));
-			fir::Type* elmType = (isSlice ? rtype->toArraySliceType()->getElementType() : rtype->toDynamicArrayType()->getElementType());
+			fir::Type* elmtype = (isSlice ? rtype->toArraySliceType()->getElementType() : rtype->toDynamicArrayType()->getElementType());
 
 			iceAssert(ptr && len);
 
@@ -234,10 +241,17 @@ namespace Ast
 
 				// no need to bounds check here.
 				fir::Value* gep = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(i));
-				fir::Value* ai = cgi->irb.CreateStackAlloc(isPtr ? elmType->getPointerTo() : elmType);
+				fir::Value* ai = cgi->irb.CreateStackAlloc(isPtr ? elmtype->getPointerTo() : elmtype);
 
 				if(isPtr)
 				{
+					// check refcounted
+					if(cgi->isRefCountedType(elmtype))
+					{
+						error(new DummyExpr(this->mapping[i].second), "Cannot bind to refcounted type '%s' by reference",
+							elmtype->str().c_str());
+					}
+
 					if(vk != ValueKind::LValue)
 						error(new DummyExpr(this->mapping[i].second), "Cannot take the address of an rvalue");
 
@@ -249,7 +263,7 @@ namespace Ast
 				else
 				{
 					// do the store-y thing
-					_doStore(cgi, this, elmType, gep, ai, name, this->mapping[i].second, vk);
+					_doStore(cgi, this, elmtype, gep, ai, name, this->mapping[i].second, vk);
 				}
 
 				if(this->immutable)
@@ -280,7 +294,7 @@ namespace Ast
 				if(isPtr)
 				{
 					// make slicey
-					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmType));
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(elmtype));
 
 					// get the pointer to the first elm that goes in here
 					fir::Value* newptr = cgi->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(numNormalBindings));

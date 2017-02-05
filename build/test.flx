@@ -330,18 +330,30 @@ public func main(argc: i32, argv: i8**) -> int
 
 
 
-		class Foo
-		{
-			init() { }
-			operator [] (i: int) -> int { return 30 }
+		do {
+			class Foo
+			{
+				init() { }
+				operator [] (i: int) -> int { return 30 }
+			}
+
+			let slice = arr[:]
+			printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
+
+			let str = "Hello, world!"
+			printf("original: %s\nslice: %.*s\n", str, str[3:10].length, str[3:10])
 		}
 
-		let slice = arr[:]
-		printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
+		do {
 
+			var arr: string[]
+			arr += "hello"
+			arr += "world"
+			arr += "bouys"
 
-		let str = "Hello, world!"
-		printf("original: %s\nslice: %.*s\n", str, str[3:10].length, str[3:10])
+			let [ &a, &b, &c ] = arr
+			printf("a = %p, b = %p, c = %p\n", a, b, c)
+		}
 	}
 
 
