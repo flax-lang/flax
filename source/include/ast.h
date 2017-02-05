@@ -73,6 +73,7 @@ namespace Ast
 		TupleSeparator,
 
 		Subscript,
+		Slice,
 
 		UserDefined
 	};
@@ -796,6 +797,19 @@ namespace Ast
 
 		Expr* arr = 0;
 		Expr* index = 0;
+	};
+
+	struct ArraySlice : Expr
+	{
+		~ArraySlice();
+		ArraySlice(const Parser::Pin& pos, Expr* arr, Expr* st, Expr* ed) : Expr(pos), arr(arr), start(st), end(ed) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Value* extra = 0) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, bool allowFail = false, fir::Value* extra = 0) override;
+
+		Expr* arr = 0;
+		Expr* start = 0;
+		Expr* end = 0;
 	};
 
 	struct StringLiteral : Expr

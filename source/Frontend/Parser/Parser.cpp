@@ -210,7 +210,7 @@ namespace Parser
 	static std::string _lookupTable[(size_t) ArithmeticOp::UserDefined] = {
 		"+", "-", "*", "/", "%", "<<", ">>", "=", "<", ">", "<=", ">=", "==", "!=",
 		"!", "+", "-", "&", "*", "&", "|", "^", "~", "&&", "||", "as", "as!", "+=",
-		"-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=", ".", "::", ",", "[]",
+		"-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^=", ".", "::", ",", "[]", "[:]",
 	};
 
 
@@ -2026,12 +2026,60 @@ namespace Parser
 		Expr* newlhs = 0;
 		if(top.type == TType::LSquare)
 		{
-			// parse the inside expression
-			Expr* inside = parseExpr(ps);
-			if(ps.eat().type != TType::RSquare)
-				parserError("Expected ']' after '[' for array index");
+			// if we're a colon immediately, then it's a slice expr already.
+			// either [:x] or [:]
+			Expr* slcbegin = 0;
+			Expr* slcend = 0;
 
-			newlhs = CreateAST_Pin(ArrayIndex, curLhs->pin, curLhs, inside);
+
+			bool isSlice = false;
+			bool isEmptySlice = false;
+
+			if(ps.front().type == TType::Colon)
+			{
+				ps.eat();
+				isSlice = true;
+
+				if(ps.front().type == TType::RSquare)
+				{
+					ps.eat();
+					isEmptySlice = true;
+				}
+			}
+
+			// parse the inside expression
+			Expr* inside = 0;
+			if(!isEmptySlice)
+				inside = parseExpr(ps);
+
+			if(!isSlice && ps.front().type == TType::RSquare)
+			{
+				ps.eat();
+				iceAssert(inside);
+				newlhs = CreateAST_Pin(ArrayIndex, curLhs->pin, curLhs, inside);
+			}
+			else if(isEmptySlice || (isSlice && ps.front().type == TType::RSquare) || ps.front().type == TType::Colon)
+			{
+				// right slice expr
+				slcbegin = inside;
+
+				if(ps.front().type == TType::Colon)
+				{
+					ps.eat();
+					slcend = parseExpr(ps);
+				}
+
+				if(!isEmptySlice && ps.front().type != TType::RSquare)
+					parserError("Expected ']' after '[' in array slice");
+
+				if(!isEmptySlice) ps.eat();
+
+				newlhs = CreateAST_Pin(ArraySlice, curLhs->pin, curLhs, slcbegin, slcend);
+			}
+			else
+			{
+				parserError("Expected ']' after '[' for array subscript");
+			}
 		}
 		else
 		{

@@ -35,6 +35,7 @@ namespace Ast
 	OpOverload::~OpOverload() { }
 	StructBase::~StructBase() { }
 	ArrayIndex::~ArrayIndex() { }
+	ArraySlice::~ArraySlice() { }
 	ProtocolDef::~ProtocolDef() { }
 	BracedBlock::~BracedBlock() { }
 	ExtensionDef::~ExtensionDef() { }
