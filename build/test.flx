@@ -338,6 +338,10 @@ public func main(argc: i32, argv: i8**) -> int
 
 		let slice = arr[:]
 		printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
+
+
+		let str = "Hello, world!"
+		printf("original: %s\nslice: %.*s\n", str, str[3:10].length, str[3:10])
 	}
 
 
