@@ -89,7 +89,7 @@ namespace Ast
 					if(cgi->isRefCountedType(rhs->getType()))
 					{
 						// todo: leaks
-						error(new DummyExpr(mapping.pos), "Reference counted types (such as '%s') cannot have their address taken",
+						error(new DummyExpr(mapping.pos), "Cannot bind to refcounted type '%s' by reference",
 							rhs->getType()->str().c_str());
 					}
 
