@@ -7,6 +7,13 @@
 // 'FIXED' section.
 
 
+// note: this issues system is some kind of shitty queue
+// queue numbers are recycled, but issues are not moved forward in the queue (ie. their numbers are not decremented)
+// more urgent issues are placed in front to reuse lower queue numbers
+
+// ^ why am i documenting this?
+
+
 
 //
 // TOFIX:
@@ -14,6 +21,16 @@
 
 // 1. UNFUCK LITERAL VALUSE
 // JESUS CHRIST THEY SUCK HORSE COCK RIGHT ABOUT NOW
+
+
+
+
+// 2. handle refcounts when doing slices. slices of strings will die if the parent array dies, because the slice doesn't reference
+// the string -- it should totally reference the string, but *not* the memory itself.
+// should be a trivial fix.
+
+// note: also applies to array decomposition of dynamic arrays, since we create slices there. tuples/fixed arrays work fine, since they
+// have some handling (that i should probably refactor/abstract away) that checks for refcounted types.
 
 
 

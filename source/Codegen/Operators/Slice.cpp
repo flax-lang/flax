@@ -90,6 +90,101 @@ namespace Operators
 
 
 
+	static void checkSliceOperation(CodegenInstance* cgi, fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex,
+		std::vector<Expr*> args)
+	{
+		Parser::Pin apos = (args[1] ? args[1]->pin : args[0]->pin);
+		Parser::Pin bpos = (args[2] ? args[2]->pin : args[0]->pin);
+
+		if(!beginIndex->getType()->isIntegerType())
+			error(args[1], "Expected integer type for array slice; got '%s'", beginIndex->getType()->str().c_str());
+
+		if(!endIndex->getType()->isIntegerType())
+			error(args[2], "Expected integer type for array slice; got '%s'", endIndex->getType()->str().c_str());
+
+
+		fir::Value* length = cgi->irb.CreateSub(endIndex, beginIndex);
+
+		// do a check
+		auto neg_begin = cgi->irb.addNewBlockInFunction("neg_begin", cgi->irb.getCurrentFunction());
+		auto neg_end = cgi->irb.addNewBlockInFunction("neg_end", cgi->irb.getCurrentFunction());
+		auto neg_len = cgi->irb.addNewBlockInFunction("neg_len", cgi->irb.getCurrentFunction());
+		auto check1 = cgi->irb.addNewBlockInFunction("check1", cgi->irb.getCurrentFunction());
+		auto check2 = cgi->irb.addNewBlockInFunction("check2", cgi->irb.getCurrentFunction());
+		auto merge = cgi->irb.addNewBlockInFunction("merge", cgi->irb.getCurrentFunction());
+
+		{
+			fir::Value* neg = cgi->irb.CreateICmpLT(beginIndex, fir::ConstantInt::getInt64(0));
+			cgi->irb.CreateCondBranch(neg, neg_begin, check1);
+		}
+
+		cgi->irb.setCurrentBlock(check1);
+		{
+			fir::Value* neg = cgi->irb.CreateICmpLT(endIndex, fir::ConstantInt::getInt64(0));
+			cgi->irb.CreateCondBranch(neg, neg_end, check2);
+		}
+
+		cgi->irb.setCurrentBlock(check2);
+		{
+			fir::Value* neg = cgi->irb.CreateICmpLT(length, fir::ConstantInt::getInt64(0));
+			cgi->irb.CreateCondBranch(neg, neg_len, merge);
+		}
+
+
+		cgi->irb.setCurrentBlock(neg_begin);
+		_complainAboutSliceIndices(cgi, "%s: Start index for array slice was negative (%zd)\n", beginIndex, apos);
+
+		cgi->irb.setCurrentBlock(neg_end);
+		_complainAboutSliceIndices(cgi, "%s: Ending index for array slice was negative (%zd)\n", endIndex, bpos);
+
+		cgi->irb.setCurrentBlock(neg_len);
+		_complainAboutSliceIndices(cgi, "%s: Length for array slice was negative (%zd)\n", length, bpos);
+
+
+		cgi->irb.setCurrentBlock(merge);
+
+		// bounds check.
+		{
+			// endindex is non-inclusive, so do the len vs len check
+			fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi, true);
+			iceAssert(checkf);
+
+			cgi->irb.CreateCall3(checkf, maxlen, endIndex, fir::ConstantString::get(Parser::pinToString(apos)));
+		}
+	}
+
+
+
+
+	static Result_t performSliceOperation(CodegenInstance* cgi, fir::Type* elmType, fir::Value* data, fir::Value* maxlen,
+		fir::Value* beginIndex, fir::Value* endIndex, std::vector<Expr*> args)
+	{
+		checkSliceOperation(cgi, maxlen, beginIndex, endIndex, args);
+
+		// ok, make the slice
+		fir::Type* slct = fir::ArraySliceType::get(elmType);
+		fir::Value* ai = cgi->irb.CreateStackAlloc(slct);
+
+		// FINALLY.
+		// increment ptr
+		fir::Value* newptr = cgi->irb.CreatePointerAdd(data, beginIndex);
+
+		cgi->irb.CreateSetArraySliceData(ai, newptr);
+		cgi->irb.CreateSetArraySliceLength(ai, cgi->irb.CreateSub(endIndex, beginIndex));
+
+		// slices are rvalues
+		return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+	}
+
+
+
+
+
+
+
+
+
+
 
 	Result_t operatorSlice(CodegenInstance* cgi, ArithmeticOp op, Expr* usr, std::vector<Expr*> args)
 	{
@@ -107,9 +202,6 @@ namespace Operators
 		// ok then
 		fir::Type* lt = lhs->getType();
 
-		Parser::Pin apos = (args[1] ? args[1]->pin : args[0]->pin);
-		Parser::Pin bpos = (args[2] ? args[2]->pin : args[0]->pin);
-
 		if(lt->isDynamicArrayType())
 		{
 			// make that shit happen
@@ -122,100 +214,89 @@ namespace Operators
 			if(args[2])	endIndex = args[2]->codegen(cgi).value;
 			else		endIndex = cgi->irb.CreateGetDynamicArrayLength(lhsptr);
 
+			beginIndex = cgi->autoCastType(fir::Type::getInt64(), beginIndex);
+			endIndex = cgi->autoCastType(fir::Type::getInt64(), endIndex);
 
-			if(!beginIndex->getType()->isIntegerType())
-				error(args[1], "Expected integer type for array slice; got '%s'", beginIndex->getType()->str().c_str());
+			return performSliceOperation(cgi, lt->toDynamicArrayType()->getElementType(), cgi->irb.CreateGetDynamicArrayData(lhsptr),
+				cgi->irb.CreateGetDynamicArrayLength(lhsptr), beginIndex, endIndex, args);
+		}
+		else if(lt->isArrayType())
+		{
+			// make that shit happen
+			fir::Value* beginIndex = 0;
+			fir::Value* endIndex = 0;
 
-			if(!endIndex->getType()->isIntegerType())
-				error(args[2], "Expected integer type for array slice; got '%s'", endIndex->getType()->str().c_str());
+			if(args[1])	beginIndex = args[1]->codegen(cgi).value;
+			else		beginIndex = fir::ConstantInt::getInt64(0);
 
+			if(args[2])	endIndex = args[2]->codegen(cgi).value;
+			else		endIndex = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
 
 			beginIndex = cgi->autoCastType(fir::Type::getInt64(), beginIndex);
 			endIndex = cgi->autoCastType(fir::Type::getInt64(), endIndex);
 
-			fir::Value* length = cgi->irb.CreateSub(endIndex, beginIndex);
 
-			// ok, make the slice
-			fir::Type* slct = fir::ArraySliceType::get(lt->toDynamicArrayType()->getElementType());
-			fir::Value* ai = cgi->irb.CreateStackAlloc(slct);
+			fir::Value* data = cgi->irb.CreateConstGEP2(lhsptr, 0, 0);
 
-			// fir::Value* ptr = cgi->irb.CreateGetDynamicArrayData(lhsptr);
-
-			// do a check
-			auto neg_begin = cgi->irb.addNewBlockInFunction("neg_begin", cgi->irb.getCurrentFunction());
-			auto neg_end = cgi->irb.addNewBlockInFunction("neg_end", cgi->irb.getCurrentFunction());
-			auto neg_len = cgi->irb.addNewBlockInFunction("neg_len", cgi->irb.getCurrentFunction());
-			auto check1 = cgi->irb.addNewBlockInFunction("check1", cgi->irb.getCurrentFunction());
-			auto check2 = cgi->irb.addNewBlockInFunction("check2", cgi->irb.getCurrentFunction());
-			auto merge = cgi->irb.addNewBlockInFunction("merge", cgi->irb.getCurrentFunction());
-
-			{
-				fir::Value* neg = cgi->irb.CreateICmpLT(beginIndex, fir::ConstantInt::getInt64(0));
-				cgi->irb.CreateCondBranch(neg, neg_begin, check1);
-			}
-
-			cgi->irb.setCurrentBlock(check1);
-			{
-				fir::Value* neg = cgi->irb.CreateICmpLT(endIndex, fir::ConstantInt::getInt64(0));
-				cgi->irb.CreateCondBranch(neg, neg_end, check2);
-			}
-
-			cgi->irb.setCurrentBlock(check2);
-			{
-				fir::Value* neg = cgi->irb.CreateICmpLT(length, fir::ConstantInt::getInt64(0));
-				cgi->irb.CreateCondBranch(neg, neg_len, merge);
-			}
-
-
-			cgi->irb.setCurrentBlock(neg_begin);
-			_complainAboutSliceIndices(cgi, "%s: Start index for array slice was negative (%zd)\n", beginIndex, apos);
-
-			cgi->irb.setCurrentBlock(neg_end);
-			_complainAboutSliceIndices(cgi, "%s: Ending index for array slice was negative (%zd)\n", endIndex, bpos);
-
-			cgi->irb.setCurrentBlock(neg_len);
-			_complainAboutSliceIndices(cgi, "%s: Length for array slice was negative (%zd)\n", length, bpos);
-
-
-			cgi->irb.setCurrentBlock(merge);
-
-			// bounds check.
-			{
-				// endindex is non-inclusive, so do the len vs len check
-				fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi, true);
-				iceAssert(checkf);
-
-				fir::Value* max = cgi->irb.CreateGetDynamicArrayLength(lhsptr);
-				cgi->irb.CreateCall3(checkf, max, endIndex, fir::ConstantString::get(Parser::pinToString(apos)));
-			}
-
-
-			// FINALLY.
-			// increment ptr
-			fir::Value* data = cgi->irb.CreateGetDynamicArrayData(lhsptr);
-			fir::Value* newptr = cgi->irb.CreatePointerAdd(data, beginIndex);
-
-			cgi->irb.CreateSetArraySliceData(ai, newptr);
-			cgi->irb.CreateSetArraySliceLength(ai, length);
-
-			// slices are rvalues
-			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
-		}
-		else if(lt->isArrayType())
-		{
-			error("enotsup");
+			return performSliceOperation(cgi, lt->toArrayType()->getElementType(), data,
+				fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize()), beginIndex, endIndex, args);
 		}
 		else if(lt->isArraySliceType())
 		{
-			error("enotsup");
+			// make that shit happen
+			fir::Value* beginIndex = 0;
+			fir::Value* endIndex = 0;
+
+			if(args[1])	beginIndex = args[1]->codegen(cgi).value;
+			else		beginIndex = fir::ConstantInt::getInt64(0);
+
+			if(args[2])	endIndex = args[2]->codegen(cgi).value;
+			else		endIndex = cgi->irb.CreateGetArraySliceLength(lhsptr);
+
+			beginIndex = cgi->autoCastType(fir::Type::getInt64(), beginIndex);
+			endIndex = cgi->autoCastType(fir::Type::getInt64(), endIndex);
+
+
+			return performSliceOperation(cgi, lt->toArraySliceType()->getElementType(), cgi->irb.CreateGetArraySliceData(lhsptr),
+				cgi->irb.CreateGetArraySliceLength(lhsptr), beginIndex, endIndex, args);
 		}
 		else if(lt->isStringType())
 		{
-			error("enotsup");
+			// make that shit happen
+			fir::Value* beginIndex = 0;
+			fir::Value* endIndex = 0;
+
+			if(args[1])	beginIndex = args[1]->codegen(cgi).value;
+			else		beginIndex = fir::ConstantInt::getInt64(0);
+
+			if(args[2])	endIndex = args[2]->codegen(cgi).value;
+			else		endIndex = cgi->irb.CreateGetStringLength(lhs);
+
+			beginIndex = cgi->autoCastType(fir::Type::getInt64(), beginIndex);
+			endIndex = cgi->autoCastType(fir::Type::getInt64(), endIndex);
+
+
+			// do it manually, since we want to get a string instead of char[]
+			checkSliceOperation(cgi, cgi->irb.CreateGetStringLength(lhs), beginIndex, endIndex, args);
+
+			// ok
+			fir::Value* data = cgi->irb.CreateGetStringData(lhs);
+
+			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
+			fir::Value* ptr = cgi->irb.CreatePointerAdd(data, beginIndex);
+
+			str = cgi->irb.CreateSetStringData(str, ptr);
+			str = cgi->irb.CreateSetStringLength(str, cgi->irb.CreateSub(endIndex, beginIndex));
+
+			// make a new fake
+			fir::Value* aa = cgi->irb.CreateImmutStackAlloc(fir::Type::getStringType(), str);
+			cgi->addRefCountedValue(aa);
+
+			return Result_t(str, aa, ValueKind::RValue);
 		}
 		else
 		{
-			error("enotsup");
+			error("enotsup slice on custom type");
 		}
 	}
 }
