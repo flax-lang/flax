@@ -60,6 +60,8 @@ fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value*
 
 
 
+
+
 namespace Operators
 {
 	static std::pair<ClassDef*, fir::Type*> getClassDef(CodegenInstance* cgi, Expr* user, Expr* subscriptee)
@@ -278,7 +280,7 @@ namespace Operators
 
 			for(size_t i = 0; i < fn->getArgumentCount() - 1; i++)
 			{
-				fir::Value* arg = eparams[i]->codegen(cgi).pointer;
+				fir::Value* arg = eparams[i]->codegen(cgi).value;
 
 				// i + 1 to skip the self
 				if(fn->getArguments()[i + 1]->getType() != arg->getType())

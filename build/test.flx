@@ -314,19 +314,30 @@ public func main(argc: i32, argv: i8**) -> int
 
 	do {
 		var arr: int[]
-		arr += (1)
-		arr += (2)
-		arr += (3)
-		arr += (4)
-		arr += (5)
-		arr += (6)
-		arr += (7)
+		arr += 2
+		arr += 3
+		arr += 5
+		arr += 7
+		arr += 11
+		arr += 13
+		arr += 17
 
 		// let arr = [ 1, 2, 3, 4, 5, 6, 7 ]
 		var [ a, &b, &c, ... &x ] = arr
 		*b = 30
 
-		printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
+		printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n\n\n", a, *b, c, x[0], x[1], x.length)
+
+
+
+		class Foo
+		{
+			init() { }
+			operator [] (i: int) -> int { return 30 }
+		}
+
+		let slice = arr[:]
+		printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
 	}
 
 
