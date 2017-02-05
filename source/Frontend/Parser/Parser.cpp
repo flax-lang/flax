@@ -1896,7 +1896,7 @@ namespace Parser
 
 				wasComma = true;
 			}
-			else if(ps.front().type == TType::RParen)
+			else if(ps.front().type == TType::RSquare)
 			{
 				break;
 			}
@@ -1907,7 +1907,7 @@ namespace Parser
 
 
 			// check for trailing thing
-			if(ps.front().type == TType::RParen)
+			if(ps.front().type == TType::RSquare)
 				parserError("Trailing commas are not allowed");
 		}
 
