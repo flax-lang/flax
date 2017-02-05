@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
 			// parse and find all custom operators
 			Parser::parseAllCustomOperators(_cgi, filename, curpath);
 		}
+
 	}
 
 	Compiler::CompiledData cd;

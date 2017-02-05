@@ -51,6 +51,7 @@ namespace Operators
 		this->theMap[ArithmeticOp::LogicalOr]			= operatorLogicalOr;
 
 		this->theMap[ArithmeticOp::Subscript]			= operatorSubscript;
+		this->theMap[ArithmeticOp::Slice]				= operatorSlice;
 
 		this->theMap[ArithmeticOp::Cast]				= operatorCast;
 		this->theMap[ArithmeticOp::ForcedCast]			= operatorCast;

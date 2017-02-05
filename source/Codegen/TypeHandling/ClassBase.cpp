@@ -238,6 +238,7 @@ namespace Codegen
 			// overl->func->decl->ident.name = overl->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			overl->func->decl->ident.kind = IdKind::Operator;
 			overl->func->decl->ident.scope = cls->ident.scope;
+			overl->func->decl->ident.scope.push_back(cls->ident.name);
 			overl->func->decl->parentClass = cls;
 
 			if(cls->attribs & Attr_VisPublic && !(overl->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
@@ -275,6 +276,7 @@ namespace Codegen
 			// aoo->func->decl->ident.name = aoo->func->decl->ident.name.substr(9 /*strlen("operator#")*/);
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->ident.scope = cls->ident.scope;
+			aoo->func->decl->ident.scope.push_back(cls->ident.name);
 			aoo->func->decl->parentClass = cls;
 
 			if(cls->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
@@ -340,6 +342,7 @@ namespace Codegen
 				decl->parentClass = cls;
 				decl->ident.kind = IdKind::Operator;
 				decl->ident.scope = cls->ident.scope;
+				decl->ident.scope.push_back(cls->ident.name);
 
 				if(cls->attribs & Attr_VisPublic)
 					decl->attribs |= Attr_VisPublic;
