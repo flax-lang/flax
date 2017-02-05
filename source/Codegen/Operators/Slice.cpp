@@ -168,9 +168,19 @@ namespace Operators
 		// FINALLY.
 		// increment ptr
 		fir::Value* newptr = cgi->irb.CreatePointerAdd(data, beginIndex);
+		fir::Value* newlen = cgi->irb.CreateSub(endIndex, beginIndex);
 
 		cgi->irb.CreateSetArraySliceData(ai, newptr);
-		cgi->irb.CreateSetArraySliceLength(ai, cgi->irb.CreateSub(endIndex, beginIndex));
+		cgi->irb.CreateSetArraySliceLength(ai, newlen);
+
+		if(cgi->isRefCountedType(elmType))
+		{
+			// increment the refcounts for the strings
+			fir::Function* incrfn = RuntimeFuncs::Array::getIncrementArrayRefCountFunction(cgi, elmType);
+			iceAssert(incrfn);
+
+			cgi->irb.CreateCall2(incrfn, newptr, newlen);
+		}
 
 		// slices are rvalues
 		return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
@@ -277,16 +287,46 @@ namespace Operators
 
 
 			// do it manually, since we want to get a string instead of char[]
+			// and also we don't want to be stupid, so slices make copies!!
+			// todo: might want to change
 			checkSliceOperation(cgi, cgi->irb.CreateGetStringLength(lhs), beginIndex, endIndex, args);
 
+
 			// ok
-			fir::Value* data = cgi->irb.CreateGetStringData(lhs);
+			fir::Value* srcptr = cgi->irb.CreatePointerAdd(cgi->irb.CreateGetStringData(lhs), beginIndex);
+			fir::Value* length = cgi->irb.CreateSub(endIndex, beginIndex);
 
+			fir::Value* data = 0;
+			{
+				// space for null + refcount
+				size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+				fir::Value* malloclen = cgi->irb.CreateAdd(length, fir::ConstantInt::getInt64(1 + i64Size));
+
+				// now malloc.
+				fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
+				iceAssert(mallocf);
+
+				fir::Value* buf = cgi->irb.CreateCall1(mallocf, malloclen);
+
+				// move it forward (skip the refcount)
+				data = cgi->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+
+
+				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+				cgi->irb.CreateCall(memcpyf, { data, srcptr, cgi->irb.CreateIntSizeCast(length, fir::Type::getInt64()),
+					fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+				// null terminator
+				cgi->irb.CreateStore(fir::ConstantInt::getInt8(0), cgi->irb.CreatePointerAdd(data, length));
+			}
+
+			// ok, now fix it
 			fir::Value* str = cgi->irb.CreateValue(fir::Type::getStringType());
-			fir::Value* ptr = cgi->irb.CreatePointerAdd(data, beginIndex);
+			str = cgi->irb.CreateSetStringData(str, data);
+			str = cgi->irb.CreateSetStringLength(str, length);
 
-			str = cgi->irb.CreateSetStringData(str, ptr);
-			str = cgi->irb.CreateSetStringLength(str, cgi->irb.CreateSub(endIndex, beginIndex));
+			cgi->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
 
 			// make a new fake
 			fir::Value* aa = cgi->irb.CreateImmutStackAlloc(fir::Type::getStringType(), str);
