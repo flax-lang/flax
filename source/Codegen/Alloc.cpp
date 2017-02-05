@@ -275,47 +275,19 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 		// check what kind of function we are
 		if(nest == 0)
 		{
+			if(cgi->isRefCountedType(type->getPointerElementType()))
+			{
+				// just call that thing
+				fir::Function* decrfn = RuntimeFuncs::Array::getDecrementArrayRefCountFunction(cgi, type->getPointerElementType());
+				iceAssert(decrfn);
+
+				cgi->irb.CreateCall2(decrfn, ptr, len);
+			}
+
+
 			// just free
 			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
 			iceAssert(freef);
-
-			if(type->getPointerElementType()->isStringType())
-			{
-				// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
-				// in this shit
-
-				// loop from 0 to len
-				fir::IRBlock* cond = cgi->irb.addNewBlockInFunction("scond", func);
-				fir::IRBlock* body = cgi->irb.addNewBlockInFunction("sbody", func);
-				fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("smerge", func);
-
-				fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
-				cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
-
-				cgi->irb.CreateUnCondBranch(cond);
-				cgi->irb.setCurrentBlock(cond);
-				{
-					// check
-					fir::Value* cond = cgi->irb.CreateICmpLT(cgi->irb.CreateLoad(counter), len);
-					cgi->irb.CreateCondBranch(cond, body, merge);
-				}
-
-				cgi->irb.setCurrentBlock(body);
-				{
-					// ok. first, do pointer arithmetic to get the current array
-					fir::Value* strp = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
-					cgi->decrementRefCount(cgi->irb.CreateLoad(strp));
-
-					// increment counter
-					cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
-
-					// branch to top
-					cgi->irb.CreateUnCondBranch(cond);
-				}
-
-				// merge:
-				cgi->irb.setCurrentBlock(merge);
-			}
 
 
 			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
