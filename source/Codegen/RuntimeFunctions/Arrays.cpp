@@ -21,6 +21,11 @@ using namespace Ast;
 
 #define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
 
+#define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
+#define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
+
+
+
 namespace Codegen {
 namespace RuntimeFuncs {
 namespace Array
@@ -780,6 +785,107 @@ namespace Array
 		iceAssert(cmpf);
 		return cmpf;
 	}
+
+
+
+
+
+
+	static fir::Function* _getDoRefCountFunction(CodegenInstance* cgi, fir::Type* elmtype, bool increment)
+	{
+		iceAssert(elmtype);
+		iceAssert(cgi->isRefCountedType(elmtype) && "not refcounted type");
+
+		auto name = (increment ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
+			+ std::string("_") + elmtype->encodedStr();
+
+		fir::Function* cmpf = cgi->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!cmpf)
+		{
+			auto restore = cgi->irb.getCurrentBlock();
+
+			fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ elmtype->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid(), false),
+				fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cgi->irb.addNewBlockInFunction("entry", func);
+			cgi->irb.setCurrentBlock(entry);
+
+			fir::Value* ptr = func->getArguments()[0];
+			fir::Value* len = func->getArguments()[1];
+
+
+
+			// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
+			// in this shit
+
+			// loop from 0 to len
+			fir::IRBlock* cond = cgi->irb.addNewBlockInFunction("cond", func);
+			fir::IRBlock* body = cgi->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+
+			fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
+			cgi->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+
+			cgi->irb.CreateUnCondBranch(cond);
+			cgi->irb.setCurrentBlock(cond);
+			{
+				// check
+				fir::Value* cond = cgi->irb.CreateICmpLT(cgi->irb.CreateLoad(counter), len);
+				cgi->irb.CreateCondBranch(cond, body, merge);
+			}
+
+			cgi->irb.setCurrentBlock(body);
+			{
+				// ok. first, do pointer arithmetic to get the current array
+				fir::Value* strp = cgi->irb.CreatePointerAdd(ptr, cgi->irb.CreateLoad(counter));
+				cgi->decrementRefCount(cgi->irb.CreateLoad(strp));
+
+				// increment counter
+				cgi->irb.CreateStore(cgi->irb.CreateAdd(cgi->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+
+				// branch to top
+				cgi->irb.CreateUnCondBranch(cond);
+			}
+
+			// merge:
+			cgi->irb.setCurrentBlock(merge);
+			cgi->irb.CreateReturnVoid();
+
+
+
+
+			cmpf = func;
+			cgi->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
+	}
+
+	fir::Function* getIncrementArrayRefCountFunction(CodegenInstance* cgi, fir::Type* elmtype)
+	{
+		return _getDoRefCountFunction(cgi, elmtype, true);
+	}
+
+	fir::Function* getDecrementArrayRefCountFunction(CodegenInstance* cgi, fir::Type* elmtype)
+	{
+		return _getDoRefCountFunction(cgi, elmtype, false);
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 	fir::Function* getConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{

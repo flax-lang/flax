@@ -39,6 +39,9 @@ namespace Codegen
 			fir::Function* getCloneFunction(CodegenInstance* cgi, fir::ArraySliceType* arrtype);
 			fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 
+			fir::Function* getIncrementArrayRefCountFunction(CodegenInstance* cgi, fir::Type* elmtype);
+			fir::Function* getDecrementArrayRefCountFunction(CodegenInstance* cgi, fir::Type* elmtype);
+
 			fir::Function* getAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 			fir::Function* getElementAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 			fir::Function* getConstructFromTwoFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
