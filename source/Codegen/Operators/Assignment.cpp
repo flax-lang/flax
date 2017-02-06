@@ -272,7 +272,7 @@ namespace Operators
 
 
 		fir::Type* ltype = args[0]->getType(cgi);
-		fir::Type* rtype = args[1]->getType(cgi, false, fir::ConstantValue::getNullValue(ltype->getPointerTo()));
+		fir::Type* rtype = args[1]->getType(cgi, ltype->getPointerTo());
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{

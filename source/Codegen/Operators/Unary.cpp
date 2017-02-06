@@ -11,12 +11,12 @@ using namespace Codegen;
 
 
 
-Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t UnaryOp::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->expr });
 }
 
-fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* UnaryOp::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->op == ArithmeticOp::Deref)
 	{
@@ -43,12 +43,12 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 
 
-Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t PostfixUnaryOp::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	iceAssert(0);
 }
 
-fir::Type* PostfixUnaryOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* PostfixUnaryOp::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }

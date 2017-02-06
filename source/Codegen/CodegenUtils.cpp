@@ -975,7 +975,7 @@ namespace Codegen
 				for(size_t i = 0; i < a.funcDecl->params.size(); i++)
 				{
 					// allowFail = true
-					if(a.funcDecl->params[i]->getType(this, true) != b.funcDecl->params[i]->getType(this, true))
+					if(a.funcDecl->params[i]->getType(this, 0, true) != b.funcDecl->params[i]->getType(this, 0, true))
 						return false;
 				}
 
@@ -1017,35 +1017,10 @@ namespace Codegen
 
 
 
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
-		std::vector<Expr*> params, bool exactMatch)
+
+	static Resolved_t _doTheResolveFunction(CodegenInstance* cgi, Expr* user, std::string basename, std::vector<fir::Type*> givenParams,
+		std::vector<std::pair<FuncDefPair, int>> finals)
 	{
-		std::vector<fir::Type*> argTypes;
-		for(auto e : params)
-			argTypes.push_back(e->getType(this, true));
-
-
-		auto ret = this->resolveFunctionFromList(user, list, basename, argTypes, exactMatch);
-
-		return ret;
-	}
-
-	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
-		std::vector<fir::Type*> params, bool exactMatch)
-	{
-		std::vector<FuncDefPair> candidates = list;
-		if(candidates.size() == 0) return Resolved_t();
-
-		std::vector<std::pair<FuncDefPair, int>> finals;
-		for(auto c : candidates)
-		{
-			int distance = 0;
-
-			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
-			if((c.funcDecl ? c.funcDecl->ident.name : basename) == basename && this->isValidFuncOverload(c, params, &distance, exactMatch))
-				finals.push_back({ c, distance });
-		}
-
 		// disambiguate this.
 		// with casting distance.
 		if(finals.size() > 1)
@@ -1073,18 +1048,18 @@ namespace Codegen
 			{
 				// parameters
 				std::string pstr;
-				for(auto e : params)
+				for(auto e : givenParams)
 					pstr += e->str() + ", ";
 
-				if(params.size() > 0)
+				if(givenParams.size() > 0)
 					pstr = pstr.substr(0, pstr.size() - 2);
 
 				// candidates
 				std::string cstr;
 				for(auto c : finals)
 				{
-					if(c.first.funcDef)
-						cstr += this->printAst(c.first.funcDecl) + "\n";
+					if(c.first.funcDecl)
+						cstr += cgi->printAst(c.first.funcDecl) + "\n";
 				}
 
 				error(user, "Ambiguous function call to function %s with parameters: (%s), have %zu candidates:\n%s",
@@ -1097,6 +1072,51 @@ namespace Codegen
 		}
 
 		return Resolved_t(finals.front().first);
+	}
+
+
+
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
+		std::vector<Expr*> params, bool exactMatch)
+	{
+		std::vector<FuncDefPair> candidates = list;
+		if(candidates.size() == 0) return Resolved_t();
+
+		std::vector<fir::Type*> prms;
+
+		std::vector<std::pair<FuncDefPair, int>> finals;
+		for(auto c : candidates)
+		{
+			int distance = 0;
+
+			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
+			if((c.funcDecl ? c.funcDecl->ident.name : basename) == basename && this->isValidFuncOverload(c, params, &distance,
+				exactMatch, &prms))
+			{
+				finals.push_back({ c, distance });
+			}
+		}
+
+		return _doTheResolveFunction(this, user, basename, prms, finals);
+	}
+
+	Resolved_t CodegenInstance::resolveFunctionFromList(Expr* user, std::vector<FuncDefPair> list, std::string basename,
+		std::vector<fir::Type*> params, bool exactMatch)
+	{
+		std::vector<FuncDefPair> candidates = list;
+		if(candidates.size() == 0) return Resolved_t();
+
+		std::vector<std::pair<FuncDefPair, int>> finals;
+		for(auto c : candidates)
+		{
+			int distance = 0;
+
+			// note: if we don't provide the FuncDecl, assume we have everything down, including the basename.
+			if((c.funcDecl ? c.funcDecl->ident.name : basename) == basename && this->isValidFuncOverload(c, params, &distance, exactMatch))
+				finals.push_back({ c, distance });
+		}
+
+		return _doTheResolveFunction(this, user, basename, params, finals);
 	}
 
 	Resolved_t CodegenInstance::resolveFunction(Expr* user, std::string basename, std::vector<Expr*> params, bool exactMatch)
@@ -1341,7 +1361,7 @@ namespace Codegen
 
 			for(auto arg : fp.funcDecl->params)
 			{
-				auto t = arg->getType(this, true);
+				auto t = arg->getType(this, 0, true);
 				if(!t) return false;
 
 				funcParams.push_back(t);
@@ -1363,8 +1383,36 @@ namespace Codegen
 
 
 
+	bool CodegenInstance::isValidFuncOverload(FuncDefPair fp, std::vector<Expr*> params, int* castingDistance, bool exactMatch,
+		std::vector<fir::Type*>* resolvedTypes)
+	{
+		std::vector<fir::Type*> expectedTypes;
+		if(fp.firFunc)
+		{
+			expectedTypes = fp.firFunc->getType()->getArgumentTypes();
+		}
+		else
+		{
+			iceAssert(fp.funcDecl);
 
+			for(auto arg : fp.funcDecl->params)
+			{
+				auto t = arg->getType(this, 0, true);
+				if(!t) return false;
 
+				expectedTypes.push_back(t);
+			}
+		}
+
+		std::vector<fir::Type*> prms;
+
+		for(size_t i = 0; i < params.size(); i++)
+			prms.push_back(params[i]->getType(this, i >= expectedTypes.size() ? expectedTypes.back() : expectedTypes[i]));
+
+		*resolvedTypes = prms;
+
+		return this->isValidFuncOverload(fp, prms, castingDistance, exactMatch);
+	}
 
 
 

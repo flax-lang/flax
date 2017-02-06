@@ -5,6 +5,8 @@
 #include "ast.h"
 #include "codegen.h"
 
+using namespace Codegen;
+
 namespace Ast
 {
 	Func::~Func() { }
@@ -59,6 +61,25 @@ namespace Ast
 		// for(Expr* e : this->topLevelExpressions)
 		// 	delete e;
 	}
+
+
+
+	// lmao
+	Result_t Expr::codegen(CodegenInstance* cgi, fir::Value* target)
+	{
+		return this->codegen(cgi, target ? target->getType() : 0, target);
+	}
+
+	Result_t Expr::codegen(Codegen::CodegenInstance* cgi)
+	{
+		return this->codegen(cgi, 0, 0);
+	}
+
+	Result_t Expr::codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype)
+	{
+		return this->codegen(cgi, extratype, 0);
+	}
+
 }
 
 Codegen::CodegenInstance::~CodegenInstance()

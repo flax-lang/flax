@@ -11,7 +11,7 @@ using namespace Ast;
 using namespace Codegen;
 
 fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op, fir::Type* ltype,
-	fir::Type* rtype, fir::Value* extra, bool allowFail);
+	fir::Type* rtype, fir::Type* extratype, bool allowFail);
 
 namespace Operators
 {

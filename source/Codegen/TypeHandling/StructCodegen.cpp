@@ -11,7 +11,7 @@ using namespace Codegen;
 
 
 
-fir::Type* StructDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* StructDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->createdType == 0)
 		return this->createType(cgi);
@@ -19,7 +19,7 @@ fir::Type* StructDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* 
 	else return this->createdType;
 }
 
-Result_t StructDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	this->createType(cgi);
 

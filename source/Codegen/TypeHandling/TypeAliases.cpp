@@ -9,12 +9,12 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t TypeAlias::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t TypeAlias::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(0, 0);
 }
 
-fir::Type* TypeAlias::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* TypeAlias::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return 0;
 }

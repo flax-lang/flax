@@ -636,7 +636,7 @@ namespace Codegen
 
 namespace Ast
 {
-	fir::Type* DummyExpr::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+	fir::Type* DummyExpr::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 	{
 		return cgi->getTypeFromParserType(this, this->ptype);
 	}

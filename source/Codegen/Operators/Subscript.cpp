@@ -13,12 +13,12 @@ using namespace Codegen;
 
 
 
-Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ArrayIndex::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Operators::OperatorMap::get().call(ArithmeticOp::Subscript, cgi, this, { this->arr, this->index });
 }
 
-fir::Type* ArrayIndex::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ArrayIndex::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	fir::Type* t = this->arr->getType(cgi);
 	if(t->isDynamicArrayType())

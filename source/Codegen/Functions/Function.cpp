@@ -10,11 +10,11 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	static bool didRecurse = false;
 
-	if(this->didCodegen && !extra)
+	if(this->didCodegen && !target)
 		error(this, "Tried to generate function twice (%s)", this->decl->ident.str().c_str());
 
 	this->didCodegen = true;
@@ -23,7 +23,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 	bool isGeneric = this->decl->genericTypes.size() > 0;
 
-	if(isGeneric && !extra)
+	if(isGeneric && !target)
 	{
 		FunctionTree* cft = cgi->getCurrentFuncTree();
 		iceAssert(cft);
@@ -39,9 +39,9 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 	fir::Function* func = 0;
-	if(isGeneric && extra != 0)
+	if(isGeneric && target != 0)
 	{
-		iceAssert(func = dynamic_cast<fir::Function*>(extra));
+		iceAssert(func = dynamic_cast<fir::Function*>(target));
 	}
 	else
 	{
@@ -252,7 +252,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* Func::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Func::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return this->decl->getType(cgi);
 }

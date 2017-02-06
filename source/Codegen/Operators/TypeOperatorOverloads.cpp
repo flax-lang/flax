@@ -11,23 +11,23 @@ using namespace Codegen;
 
 
 
-Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
+Result_t SubscriptOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(0, 0);
 }
 
-fir::Type* SubscriptOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* SubscriptOpOverload::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
 
 
-Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Value* extra)
+Result_t AssignOpOverload::codegen(Codegen::CodegenInstance *cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(0, 0);
 }
 
-fir::Type* AssignOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* AssignOpOverload::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
@@ -39,12 +39,12 @@ fir::Type* AssignOpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::
 
 
 
-fir::Type* OpOverload::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* OpOverload::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return 0;
 }
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, std::vector<fir::Type*> args)
+Result_t OpOverload::codegenOp(CodegenInstance* cgi, std::vector<fir::Type*> args)
 {
 	if(!this->didCodegen)
 	{
@@ -91,9 +91,9 @@ Result_t OpOverload::codegen(CodegenInstance* cgi, std::vector<fir::Type*> args)
 }
 
 
-Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t OpOverload::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
-	return this->codegen(cgi, std::vector<fir::Type*>());
+	return this->codegenOp(cgi, std::vector<fir::Type*>());
 }
 
 

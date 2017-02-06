@@ -9,7 +9,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	fir::Function* parentFunc = cgi->irb.getCurrentBlock()->getParentFunction();
 	iceAssert(parentFunc);
@@ -54,7 +54,7 @@ Result_t WhileLoop::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Type* WhileLoop::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* WhileLoop::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return 0;
 }
