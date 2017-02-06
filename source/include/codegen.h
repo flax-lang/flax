@@ -205,6 +205,8 @@ namespace Codegen
 
 
 		bool isValidFuncOverload(FuncDefPair fp, std::vector<fir::Type*> params, int* castingDistance, bool exactMatch);
+		bool isValidFuncOverload(FuncDefPair fp, std::vector<Ast::Expr*> params, int* castingDistance, bool exactMatch,
+			std::vector<fir::Type*>* resolvedTypes);
 
 		std::vector<FuncDefPair> resolveFunctionName(std::string basename);
 		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::vector<FuncDefPair> list, std::string basename,
@@ -292,16 +294,16 @@ namespace Codegen
 			fir::FunctionType* ft, Ast::MemberAccess* ma);
 
 
-		mpark::variant<fir::Type*, Ast::Result_t> tryResolveVarRef(Ast::VarRef* vr, fir::Value* extra, bool actual);
+		mpark::variant<fir::Type*, Ast::Result_t> tryResolveVarRef(Ast::VarRef* vr, fir::Type* extratype, bool actual);
 
 
 		std::vector<fir::Value*> checkAndCodegenFunctionCallParameters(Ast::FuncCall* fc, fir::FunctionType* ft,
 			std::vector<Ast::Expr*> params, bool variadic, bool cvar);
 
 
-		FuncDefPair tryGetMemberFunctionOfClass(Ast::StructBase* cls, Ast::Expr* user, std::string name, fir::Value* extra);
+		FuncDefPair tryGetMemberFunctionOfClass(Ast::StructBase* cls, Ast::Expr* user, std::string name, fir::Type* extratype);
 		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::vector<fir::Function*> cands,
-			fir::Value* extra);
+			fir::Type* extratype);
 
 
 		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
@@ -312,7 +314,7 @@ namespace Codegen
 
 
 		mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Ast::Result_t> resolveTypeOfMA(Ast::MemberAccess* ma,
-			fir::Value* extra, bool actual);
+			fir::Type* extratype, bool actual);
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

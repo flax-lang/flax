@@ -11,12 +11,12 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t ArraySlice::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ArraySlice::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Operators::OperatorMap::get().call(ArithmeticOp::Slice, cgi, this, { this->arr, this->start, this->end });
 }
 
-fir::Type* ArraySlice::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ArraySlice::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	fir::Type* t = this->arr->getType(cgi);
 	if(t->isDynamicArrayType())

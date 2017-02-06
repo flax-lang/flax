@@ -286,12 +286,12 @@ fir::Type* ProtocolDef::createType(CodegenInstance* cgi)
 	return 0;
 }
 
-fir::Type* ProtocolDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ProtocolDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
 
-Result_t ProtocolDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ProtocolDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(0, 0);
 }

@@ -88,7 +88,7 @@ namespace Codegen
 					int d = 0;
 					std::vector<fir::Type*> ps;
 					for(auto e : fn->decl->params)
-						ps.push_back(e->getType(cgi, true));
+						ps.push_back(e->getType(cgi, 0, true));
 
 					if(cgi->isValidFuncOverload(FuncDefPair(0, f->decl, f), ps, &d, true))
 					{

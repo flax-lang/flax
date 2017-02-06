@@ -13,7 +13,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* vr, fir::Value* extra, bool actual)
+mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* vr, fir::Type* extratype, bool actual)
 {
 	if(vr->name == "_")
 		error(vr, "'_' is a discarding reference, and cannot be used to refer to values.");
@@ -26,7 +26,7 @@ mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* v
 	else
 	{
 		if(VarDecl* decl = this->getSymDecl(vr, vr->name))
-			return decl->getType(this, false);
+			return decl->getType(this);
 	}
 
 
@@ -99,7 +99,7 @@ mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* v
 	}
 
 
-	fir::Function* fn = this->tryDisambiguateFunctionVariableUsingType(vr, vr->name, cands, extra);
+	fir::Function* fn = this->tryDisambiguateFunctionVariableUsingType(vr, vr->name, cands, extratype);
 
 	if(!actual)
 	{
@@ -116,18 +116,18 @@ mpark::variant<fir::Type*, Result_t> CodegenInstance::tryResolveVarRef(VarRef* v
 
 
 
-Result_t VarRef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t VarRef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
-	auto r = mpark::get<Result_t>(cgi->tryResolveVarRef(this, extra, true));
+	auto r = mpark::get<Result_t>(cgi->tryResolveVarRef(this, extratype, true));
 	if(r.value == 0)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
 	return r;
 }
 
-fir::Type* VarRef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* VarRef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
-	auto t = mpark::get<fir::Type*>(cgi->tryResolveVarRef(this, extra, false));
+	auto t = mpark::get<fir::Type*>(cgi->tryResolveVarRef(this, extratype, false));
 	if(t == 0)
 		GenError::unknownSymbol(cgi, this, this->name, SymbolType::Variable);
 
@@ -393,7 +393,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 
 
 
-Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	if(cgi->isDuplicateSymbol(this->ident.name))
 		GenError::duplicateSymbol(cgi, this, this->ident.name, SymbolType::Variable);
@@ -657,7 +657,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
-fir::Type* VarDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* VarDecl::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->ptype == pts::InferredType::get())
 	{

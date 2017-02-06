@@ -39,7 +39,7 @@ namespace Ast
 
 
 
-	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
+	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 	{
 		// ok. first, we need to codegen, and get the type of, the right side.
 		fir::Value* rhs = 0; fir::Value* rhsptr = 0; ValueKind vk;
@@ -371,7 +371,7 @@ namespace Ast
 		return Result_t(0, 0);
 	}
 
-	fir::Type* ArrayDecompDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+	fir::Type* ArrayDecompDecl::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 	{
 		// there's no one type...
 		error(this, "Decomposing declarations do not yield a value");

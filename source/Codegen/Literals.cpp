@@ -8,7 +8,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t Number::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Number::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	if(this->str.find('.') != std::string::npos)
 	{
@@ -96,7 +96,7 @@ static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
 }
 
 
-fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Number::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->str.find('.') != std::string::npos)
 		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
@@ -137,12 +137,12 @@ fir::Type* Number::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 
 
 
-Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t BoolVal::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(fir::ConstantInt::getBool(this->val), 0);
 }
 
-fir::Type* BoolVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* BoolVal::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return fir::Type::getBool();
 }
@@ -153,12 +153,12 @@ fir::Type* BoolVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 
 
-Result_t NullVal::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t NullVal::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return Result_t(fir::ConstantValue::getNull(), 0);
 }
 
-fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* NullVal::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return fir::Type::getVoid()->getPointerTo();
 }
@@ -168,7 +168,7 @@ fir::Type* NullVal::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ex
 
 
 
-Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	if(this->isRaw)
 	{
@@ -178,22 +178,22 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 	else
 	{
-		if(extra && extra->getType()->getPointerElementType()->isStringType())
+		if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isStringType())
 		{
 			// these things can't be const
-			iceAssert(extra->getType()->getPointerElementType()->isStringType());
+			iceAssert(target->getType()->getPointerElementType()->isStringType());
 
 			// we don't (and can't) set the refcount, because it's probably in read-only memory.
 
 			fir::ConstantString* cs = fir::ConstantString::get(this->str);
-			cgi->irb.CreateStore(cs, extra);
+			cgi->irb.CreateStore(cs, target);
 
-			if(!extra->hasName())
-				extra->setName("strlit");
+			if(!target->hasName())
+				target->setName("strlit");
 
-			return Result_t(cs, extra);
+			return Result_t(cs, target);
 		}
-		else if(extra && extra->getType()->getPointerElementType()->isCharType())
+		else if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isCharType())
 		{
 			if(this->str.length() == 0)
 				error(this, "Character literal cannot be empty");
@@ -203,9 +203,9 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 			char c = this->str[0];
 			fir::ConstantValue* cv = fir::ConstantChar::get(c);
-			cgi->irb.CreateStore(cv, extra);
+			cgi->irb.CreateStore(cv, target);
 
-			return Result_t(cv, extra);
+			return Result_t(cv, target);
 		}
 		else
 		{
@@ -214,13 +214,11 @@ Result_t StringLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
-fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* StringLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
-	if(this->isRaw)
-		return fir::Type::getInt8Ptr();
+	if(this->isRaw)	return fir::Type::getInt8Ptr();
 
-	else
-		return fir::Type::getStringType();
+	return fir::Type::getStringType();
 }
 
 
@@ -234,20 +232,34 @@ fir::Type* StringLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Val
 
 
 
-Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	fir::Type* tp = 0;
 	std::vector<fir::ConstantValue*> vals;
 
 	if(this->values.size() == 0)
 	{
-		if(!extra)
+		if(!extratype && !target)
 		{
 			error(this, "Unable to infer type for empty array");
 		}
 
-		iceAssert(extra->getType()->isPointerType() && extra->getType()->getPointerElementType()->isArrayType());
-		tp = extra->getType()->getPointerElementType()->toArrayType()->getElementType();
+		tp = extratype;
+		if(tp->isDynamicArrayType())
+		{
+			// ok, make a dynamic array instead. don't return some half-assed thing
+			auto elmtype = tp->toDynamicArrayType()->getElementType();
+
+			fir::Value* ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(elmtype));
+			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
+			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
+			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
+
+			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+		}
+
+		iceAssert(extratype->isPointerType() && extratype->getPointerElementType()->isArrayType());
+		tp = extratype->getPointerElementType()->toArrayType()->getElementType();
 	}
 	else
 	{
@@ -304,18 +316,25 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(val, /*alloc*/0);
 }
 
-fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->values.empty())
 	{
-		if(!extra)
+		if(!extratype)
 		{
 			error(this, "Unable to infer type for empty array");
 		}
 
-		iceAssert(extra->getType()->isPointerType());
-		iceAssert(extra->getType()->getPointerElementType()->isArrayType());
-		auto tp = extra->getType()->getPointerElementType()->toArrayType()->getElementType();
+		if(extratype->isDynamicArrayType())
+		{
+			// ok, make a dynamic array instead. don't return some half-assed thing
+			auto elmtype = extratype->toDynamicArrayType()->getElementType();
+			return fir::DynamicArrayType::get(elmtype);
+		}
+
+		iceAssert(extratype->isPointerType());
+		iceAssert(extratype->getPointerElementType()->isArrayType());
+		auto tp = extratype->getPointerElementType()->toArrayType()->getElementType();
 
 		return fir::ArrayType::get(tp, 0);
 	}
@@ -341,7 +360,7 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, bool allowFail, fir::Valu
 
 
 static size_t _counter = 0;
-fir::TupleType* Tuple::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::TupleType* Tuple::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	// todo: handle named tuples.
 	// would probably just be handled as implicit anon structs
@@ -373,7 +392,7 @@ fir::Type* Tuple::createType(CodegenInstance* cgi)
 	return 0;
 }
 
-Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Tuple::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	fir::TupleType* tuptype = this->getType(cgi)->toTupleType();
 	iceAssert(tuptype);
@@ -412,7 +431,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Value* extra)
 		// set all the values.
 		// do the gep for each.
 
-		fir::Value* gep = extra ? extra : cgi->getStackAlloc(this->getType(cgi));
+		fir::Value* gep = target ? target : cgi->getStackAlloc(this->getType(cgi));
 		iceAssert(gep);
 
 		for(size_t i = 0; i < tuptype->getElementCount(); i++)

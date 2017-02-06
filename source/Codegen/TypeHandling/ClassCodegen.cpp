@@ -13,7 +13,7 @@ using namespace Codegen;
 
 
 
-fir::Type* ClassDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ClassDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->createdType == 0)
 		return this->createType(cgi);
@@ -21,7 +21,7 @@ fir::Type* ClassDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 	else return this->createdType;
 }
 
-Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	this->createType(cgi);
 

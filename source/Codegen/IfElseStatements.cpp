@@ -60,7 +60,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::v
 	codeGenRecursiveIf(cgi, func, pairs, merge, phi, didCreateMerge, allBroke);
 }
 
-Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	iceAssert(this->cases.size() > 0);
 
@@ -166,7 +166,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0, allBroke ? ResultType::BreakCodegen : ResultType::Normal);
 }
 
-fir::Type* IfStmt::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* IfStmt::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return 0;
 }

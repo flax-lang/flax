@@ -9,13 +9,13 @@ using namespace Ast;
 using namespace Codegen;
 
 
-Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t EnumDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	this->createType(cgi);
 	return Result_t(0, 0);
 }
 
-fir::Type* EnumDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* EnumDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->createdType == 0)
 		return this->createType(cgi);
