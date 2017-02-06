@@ -14,7 +14,7 @@ using namespace Codegen;
 
 
 fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op, fir::Type* ltype,
-	fir::Type* rtype, fir::Value* extra, bool allowFail)
+	fir::Type* rtype, fir::Type* extratype, bool allowFail)
 {
 	if(op == ArithmeticOp::CmpLT || op == ArithmeticOp::CmpGT || op == ArithmeticOp::CmpLEq
 	|| op == ArithmeticOp::CmpGEq || op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
@@ -158,15 +158,15 @@ fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op
 
 
 
-Result_t BinOp::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t BinOp::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	iceAssert(this->left && this->right);
 	return Operators::OperatorMap::get().call(this->op, cgi, this, { this->left, this->right });
 }
 
-fir::Type* BinOp::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* BinOp::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
-	return getBinOpResultType(cgi, this, this->op, this->left->getType(cgi), this->right->getType(cgi), extra, allowFail);
+	return getBinOpResultType(cgi, this, this->op, this->left->getType(cgi), this->right->getType(cgi), extratype, allowFail);
 }
 
 
@@ -355,7 +355,7 @@ namespace Codegen
 					if(oo->func->decl->genericTypes.size() == 0 || !skipGeneric)
 					{
 						// info(oo->func->decl, "generating");
-						lfunc = dynamic_cast<fir::Function*>(oo->codegen(cgi, { lhs, rhs }).value);
+						lfunc = dynamic_cast<fir::Function*>(oo->codegenOp(cgi, { lhs, rhs }).value);
 					}
 				}
 

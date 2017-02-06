@@ -178,7 +178,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 
 
 
-Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Alloc::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	// if we haven't declared malloc() yet, then we need to do it here
 	// NOTE: this is the only place in the compiler where a hardcoded call is made to a non-provided function.
@@ -226,7 +226,7 @@ Result_t Alloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	}
 }
 
-fir::Type* Alloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Alloc::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	fir::Type* base = cgi->getTypeFromParserType(this, this->ptype);
 
@@ -432,7 +432,7 @@ static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Va
 	}
 }
 
-Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	fir::Value* val = 0;
 	fir::Value* ptr = 0;
@@ -444,7 +444,7 @@ Result_t Dealloc::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0);
 }
 
-fir::Type* Dealloc::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Dealloc::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return fir::Type::getVoid();
 }

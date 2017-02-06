@@ -354,6 +354,16 @@ public func main(argc: i32, argv: i8**) -> int
 			let [ a, ... &b ] = arr
 			printf("a = %s, b = %d\n", a, b.length)
 		}
+
+		do {
+
+			func footest(arr: int[]) -> int
+			{
+				return arr.length
+			}
+
+			printf("-- %d --\n", footest([]))
+		}
 	}
 
 

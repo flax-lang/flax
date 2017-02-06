@@ -9,7 +9,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	Result_t lastval(0, 0);
 	cgi->pushScope();
@@ -45,13 +45,13 @@ Result_t BracedBlock::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return lastval;
 }
 
-fir::Type* BracedBlock::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* BracedBlock::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
 
 
-Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Break::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -80,7 +80,7 @@ Result_t Break::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-fir::Type* Break::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Break::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
@@ -91,7 +91,7 @@ fir::Type* Break::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extr
 
 
 
-Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Continue::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	BracedBlockScope* cs = cgi->getCurrentBracedBlockScope();
 	if(!cs)
@@ -122,7 +122,7 @@ Result_t Continue::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-fir::Type* Continue::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Continue::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	iceAssert(0);
 }
@@ -130,7 +130,7 @@ fir::Type* Continue::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 
 
 
-Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Return::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	// note: defer should actually evaluate *after* the return value is evaluated
 	// this allows doing things like this:
@@ -208,7 +208,7 @@ Result_t Return::codegen(CodegenInstance* cgi, fir::Value* extra)
 	return Result_t(0, 0, ResultType::BreakCodegen);
 }
 
-fir::Type* Return::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* Return::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->val) return this->val->getType(cgi);
 	else return fir::Type::getVoid();
@@ -216,12 +216,12 @@ fir::Type* Return::getType(CodegenInstance* cgi, bool allowFail, fir::Value* ext
 
 
 
-Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t DeferredExpr::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return expr->codegen(cgi);
 }
 
-fir::Type* DeferredExpr::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* DeferredExpr::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return this->expr->getType(cgi);
 }

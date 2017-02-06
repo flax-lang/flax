@@ -158,7 +158,7 @@ Result_t FuncDecl::generateDeclForGenericFunctionUsingFunctionType(CodegenInstan
 
 
 
-Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	if(this->isCStyleVarArg && (!this->isFFI || this->ffiType != FFIType::C))
 		error(this, "C-style variadic arguments are only supported with C-style FFI function declarations.");
@@ -235,7 +235,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* FuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* FuncDecl::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	fir::Type* t = cgi->getTypeFromParserType(this, this->ptype);
 	if(t)
@@ -276,12 +276,12 @@ fir::Type* FuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* e
 
 
 
-fir::Type* ForeignFuncDecl::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ForeignFuncDecl::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	return 0;
 }
 
-Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ForeignFuncDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	return this->decl->codegen(cgi);
 }

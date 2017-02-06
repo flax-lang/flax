@@ -162,6 +162,8 @@ struct TypeConstraints_t
 };
 
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 
 #define COLOUR_RESET			"\033[0m"

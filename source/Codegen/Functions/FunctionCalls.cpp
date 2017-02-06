@@ -60,9 +60,9 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 		{
 			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
 
-			fir::Value* arg = 0;
-			fir::Value* argptr = 0;
-			std::tie(arg, argptr) = e->codegen(this);
+			fir::Value* arg = 0; fir::Value* argptr = 0;
+			fir::Type* extratype = (checkcv ? 0 : ft->getArgumentN(cur));
+			std::tie(arg, argptr) = e->codegen(this, extratype);
 
 			if(!checkcv && arg->getType()->isFunctionType() && ft->getArgumentTypes()[cur]->isFunctionType())
 			{
@@ -133,7 +133,7 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 			fir::Value* arg = 0;
 			fir::Value* argp = 0;
-			std::tie(arg, argp) = ex->codegen(this);
+			std::tie(arg, argp) = ex->codegen(this, ft->getArgumentN(i));
 
 
 			if(arg->getType()->isFunctionType() && ft->getArgumentTypes()[i]->isFunctionType())
@@ -143,14 +143,6 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 				if(res) arg = res;
 			}
-
-
-
-
-
-
-
-
 
 
 			if(arg == nullptr || arg->getType()->isVoidType())
@@ -249,18 +241,18 @@ static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fi
 
 
 
-Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* extratgt)
 {
-	if(extra && extra->getType()->isFunctionType())
+	if(extratgt && extratgt->getType()->isFunctionType())
 	{
 		this->cachedResolveTarget.resolved = true;
 
-		fir::FunctionType* ft = extra->getType()->toFunctionType();
+		fir::FunctionType* ft = extratgt->getType()->toFunctionType();
 		iceAssert(ft);
 
 		auto args = cgi->checkAndCodegenFunctionCallParameters(this, ft, this->params, ft->isVariadicFunc(), ft->isCStyleVarArg());
 
-		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extra, ft, args);
+		fir::Value* ret = cgi->irb.CreateCallToFunctionPointer(extratgt, ft, args);
 
 		return Result_t(ret, handleRefcountedThingIfNeeded(cgi, ret));
 	}
@@ -523,7 +515,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Value* extra)
 
 
 
-fir::Type* FuncCall::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	Resolved_t rt = cgi->resolveFunction(this, this->name, this->params);
 	if(!rt.resolved)

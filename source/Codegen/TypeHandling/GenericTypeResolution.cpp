@@ -1621,7 +1621,7 @@ namespace Codegen
 		int runningTypeIndex = 0;
 		for(auto arg : args)
 		{
-			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, 0, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)
@@ -1639,7 +1639,7 @@ namespace Codegen
 
 		for(auto arg : args)
 		{
-			fir::Type* atype = arg->getType(this, true);	// same as mangleFunctionName, but allow failures.
+			fir::Type* atype = arg->getType(this, 0, true);	// same as mangleFunctionName, but allow failures.
 
 			// if there is no proper type, go ahead with the raw type: T or U or something.
 			if(!atype)

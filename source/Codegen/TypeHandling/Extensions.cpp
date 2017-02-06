@@ -11,7 +11,7 @@
 using namespace Ast;
 using namespace Codegen;
 
-fir::Type* ExtensionDef::getType(CodegenInstance* cgi, bool allowFail, fir::Value* extra)
+fir::Type* ExtensionDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->createdType == 0)
 		return this->createType(cgi);
@@ -74,7 +74,7 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 
 
 
-Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	if(this->isDuplicate || this->didCodegen)
 		return Result_t(0, 0);
@@ -150,7 +150,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					std::vector<fir::Type*> ps;
 					for(auto p : tf->decl->params)
-						ps.push_back(p->getType(cgi, true));	// allow fail
+						ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -174,7 +174,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					std::vector<fir::Type*> ps;
 					for(auto p : tf->func->decl->params)
-						ps.push_back(p->getType(cgi, true));	// allow fail
+						ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -196,7 +196,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				std::vector<fir::Type*> ps;
 				for(auto p : tf->decl->params)
-					ps.push_back(p->getType(cgi, true));	// allow fail
+					ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 				int _ = 0;
 				if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -215,7 +215,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 			{
 				std::vector<fir::Type*> ps;
 				for(auto p : tf->func->decl->params)
-					ps.push_back(p->getType(cgi, true));	// allow fail
+					ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 				int _ = 0;
 				if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -273,7 +273,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					{
 						std::vector<fir::Type*> ps;
 						for(auto p : tf->decl->params)
-							ps.push_back(p->getType(cgi, true));	// allow fail
+							ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 						int _ = 0;
 						if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -297,7 +297,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 					{
 						std::vector<fir::Type*> ps;
 						for(auto p : tf->func->decl->params)
-							ps.push_back(p->getType(cgi, true));	// allow fail
+							ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 						int _ = 0;
 						if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -319,7 +319,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					std::vector<fir::Type*> ps;
 					for(auto p : tf->decl->params)
-						ps.push_back(p->getType(cgi, true));	// allow fail
+						ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))
@@ -338,7 +338,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Value* extra)
 				{
 					std::vector<fir::Type*> ps;
 					for(auto p : tf->func->decl->params)
-						ps.push_back(p->getType(cgi, true));	// allow fail
+						ps.push_back(p->getType(cgi, 0, true));	// allow fail
 
 					int _ = 0;
 					if(cgi->isValidFuncOverload(fp, ps, &_, true))

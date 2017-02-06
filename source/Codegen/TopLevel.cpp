@@ -306,7 +306,7 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::vector<Expr*> e
 				warn(oo, "Placing operator overloads inside a namespace will make them completely inaccessible.");
 
 			if(func && !func->didCodegen)	func->codegen(cgi);
-			if(oo)							oo->codegen(cgi, { });
+			if(oo)							oo->codegenOp(cgi, { });
 			if(ns)							ns->codegenPass(cgi, pass);
 		}
 	}
@@ -325,7 +325,7 @@ void NamespaceDecl::codegenPass(CodegenInstance* cgi, int pass)
 	cgi->popNamespaceScope();
 }
 
-Result_t Root::codegen(CodegenInstance* cgi, fir::Value* extra)
+Result_t Root::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
 	// this is getting quite out of hand.
 	// note: we're using <= to show that there are N passes.
