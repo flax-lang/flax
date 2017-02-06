@@ -25,23 +25,6 @@
 
 
 
-// 2. handle refcounts when doing slices. slices of strings will die if the parent array dies, because the slice doesn't reference
-// the string -- it should totally reference the string, but *not* the memory itself.
-// should be a trivial fix.
-
-// note: also applies to array decomposition of dynamic arrays, since we create slices there. tuples/fixed arrays work fine, since they
-// have some handling (that i should probably refactor/abstract away) that checks for refcounted types.
-
-
-
-
-// 3. dynamic array slices
-let arr = [ ... ]
-let x = arr[0:3]
-
-
-
-
 // 4. FOR LOOPS
 // 	4a: `for x in y` would be pretty cool too.
 // 	4b: `for x in (1, 3)` would be dope af
@@ -155,21 +138,29 @@ if let k = 30; k < 40 { /* ... */ }
 // FIXED
 //
 /*
+	(fixed in e664992)
 	1. enums declared in functions do not work
 
-	7. do { } while { } parsing bug (fixed in 9334be3)
+	(fixed in bb6baf0)
+	2. handle refcounts when doing slices
 
-	9. honestly the whole scoping/namespacing thing is fucked up, and will need a rewrite.
-		namespace fuckups -- global vs namespace (ffi) conflict, somewhere
+	(added in e7c50a0)
+	3. dynamic array slices
 
+	(fixed in 9334be3)
+	7. do { } while { } parsing bug
+
+	(fixed in e664992)
 	12. global variables outside of namespaces don't work
 
+	(fixed in dc63839)
 	13. T.0.1 parses as T. (0.1) where 0.1 is a number
 
-	20. defer does not happen after the return, only before (fixed in d9f8d4b)
+	(fixed in d9f8d4b)
+	20. defer does not happen after the return, only before
 
-	21. shit like this works: (fixed in 61325cd)
-	let g = 3let v = 10
+	(fixed in 61325cd)
+	21. shit like this works "let g = 3let v = 10"
 */
 
 
@@ -186,21 +177,11 @@ if let k = 30; k < 40 { /* ... */ }
 // TODO
 //
 /*
-	1. array decomp
-	2. tuple decomp
 	3. splatting (http://coffeescript.org/#splats)
 
 	4. clean up typechecking
 		-- store the fir::Type of each AST node
 		-- recursively visit each node to get its type before anything happens
-
-
-	tuple decomp:
-	let (a, b) = (10, 20)
-
-	array decomp:
-	let [a, b, ...x] = [ 10, 20, 30, 40, 50, 60 ]
-	a = 10, b = 20, x = [ 30, 40, 50, 60 ]
 */
 
 
