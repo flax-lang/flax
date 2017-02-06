@@ -257,6 +257,18 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 
 			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
 		}
+		else if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isDynamicArrayType())
+		{
+			// ok, make a dynamic array instead. don't return some half-assed thing
+			auto elmtype = target->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
+
+			fir::Value* ai = target;
+			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
+			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
+			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
+
+			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+		}
 
 		iceAssert(extratype->isPointerType() && extratype->getPointerElementType()->isArrayType());
 		tp = extratype->getPointerElementType()->toArrayType()->getElementType();
