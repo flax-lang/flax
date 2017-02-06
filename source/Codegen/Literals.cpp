@@ -251,6 +251,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 			auto elmtype = tp->toDynamicArrayType()->getElementType();
 
 			fir::Value* ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(elmtype));
+
 			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
 			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
 			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
@@ -260,9 +261,8 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 		else if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isDynamicArrayType())
 		{
 			// ok, make a dynamic array instead. don't return some half-assed thing
-			auto elmtype = target->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
-
 			fir::Value* ai = target;
+
 			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
 			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
 			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));

@@ -19,7 +19,7 @@
 // TOFIX:
 //
 
-// 1. UNFUCK LITERAL VALUSE
+// 1. UNFUCK LITERAL VALUES
 // JESUS CHRIST THEY SUCK HORSE COCK RIGHT ABOUT NOW
 
 
@@ -48,18 +48,7 @@ for x in (1, 10] { ... }	// 2, 3, 4, ... 9, 10
 
 
 
-
-// 5. assign [] to dynamic arrays
-var x: int[] = [ ]
-
-
-
-
-// 6. general fixes to [] -- type inference
-// 	6a: stuff like passing [] to a function taking an array, for instance
-// 		type inference needs to happen.
-func foo(x: int[]) { ... }
-foo([ ])
+// 5. passing [] to generic functions probably doesn't work, needs to be fixed.
 
 
 
@@ -139,28 +128,30 @@ if let k = 30; k < 40 { /* ... */ }
 //
 /*
 	(fixed in e664992)
-	1. enums declared in functions do not work
+	- enums declared in functions do not work
+	- global variables outside of namespaces don't work
 
 	(fixed in bb6baf0)
-	2. handle refcounts when doing slices
+	- handle refcounts when doing slices
 
 	(added in e7c50a0)
-	3. dynamic array slices
+	- dynamic array slices
+
+	(fixed in 42b1aaf)
+	- assign [] to dynamic arrays
+	- pass [] to functions taking dynamic arrays
 
 	(fixed in 9334be3)
-	7. do { } while { } parsing bug
-
-	(fixed in e664992)
-	12. global variables outside of namespaces don't work
+	- do { } while { } parsing bug
 
 	(fixed in dc63839)
-	13. T.0.1 parses as T. (0.1) where 0.1 is a number
+	- T.0.1 parses as T. (0.1) where 0.1 is a number
 
 	(fixed in d9f8d4b)
-	20. defer does not happen after the return, only before
+	- defer does not happen after the return, only before
 
 	(fixed in 61325cd)
-	21. shit like this works "let g = 3let v = 10"
+	- shit like this works "let g = 3let v = 10"
 */
 
 
