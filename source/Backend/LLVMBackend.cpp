@@ -115,10 +115,10 @@ namespace Compiler
 
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
-			exitless_error("\nLLVM Module verification failed");
+			exitless_error("\nLLVM Module verification failed\n");
 			this->linkedModule->dump();
 
-			abort();
+			doTheExit();
 		}
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
@@ -128,9 +128,11 @@ namespace Compiler
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Debug)
 		{
-			fpm.add(llvm::createInstructionCombiningPass());
+			// mem2reg is based, because it changes inefficient load-store branches into more efficient phi-nodes (at least more efficient
+			// in terms of optimisation potential)
 			fpm.add(llvm::createPromoteMemoryToRegisterPass());
 			fpm.add(llvm::createMergedLoadStoreMotionPass());
+			fpm.add(llvm::createInstructionCombiningPass());
 			fpm.add(llvm::createConstantPropagationPass());
 			fpm.add(llvm::createLoadCombinePass());
 			fpm.add(llvm::createScalarizerPass());
@@ -138,15 +140,7 @@ namespace Compiler
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::None)
 		{
-
-			// Reassociate expressions.
 			fpm.add(llvm::createReassociatePass());
-
-			// Eliminate Common SubExpressions.
-			// fpm.add(llvm::createGVNHoistPass());
-
-
-			// Simplify the control flow graph (deleting unreachable blocks, etc).
 			fpm.add(llvm::createCFGSimplificationPass());
 
 			// hmm.
@@ -165,9 +159,6 @@ namespace Compiler
 			fpm.add(llvm::createSCCPPass());
 
 			fpm.add(llvm::createTailCallEliminationPass());
-
-			// Do simple "peephole" optimisations and bit-twiddling optzns.
-
 		}
 
 		if(Compiler::getOptimisationLevel() > OptimisationLevel::Minimal)
