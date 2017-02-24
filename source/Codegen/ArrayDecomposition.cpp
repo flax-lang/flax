@@ -216,8 +216,6 @@ namespace Ast
 		else if(rtype->isDynamicArrayType() || rtype->isArraySliceType())
 		{
 			bool isSlice = rtype->isArraySliceType();
-			// todo: question should the 'remaining' bit of the array be a copy or reference?
-			// it'll be a copy for now.
 
 			fir::Value* ptr = (isSlice ? cgi->irb.CreateGetArraySliceData(rhsptr) : cgi->irb.CreateGetDynamicArrayData(rhsptr));
 			fir::Value* len = (isSlice ? cgi->irb.CreateGetArraySliceLength(rhsptr) : cgi->irb.CreateGetDynamicArrayLength(rhsptr));
@@ -337,18 +335,147 @@ namespace Ast
 				}
 				else
 				{
-					ai = cgi->irb.CreateStackAlloc(rtype->toDynamicArrayType());
+					// if it's a slice, we get back a slice
+					// if it's an array, we get back an array.
+					ai = cgi->irb.CreateStackAlloc(rtype);
 
 					// so, we have a nice function to clone an array, and it now takes a starting index
 					// et voila, problem solved.
 
-					fir::Function* clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
+					fir::Function* clonef = 0;
+
+					if(isSlice)	clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toArraySliceType());
+					else		clonef = RuntimeFuncs::Array::getCloneFunction(cgi, rtype->toDynamicArrayType());
+
 					iceAssert(clonef);
 
 					fir::Value* clone = cgi->irb.CreateCall2(clonef, rhsptr, fir::ConstantInt::getInt64(numNormalBindings));
 
 					// well, there we go. that's the clone, store that shit.
+					iceAssert(clone->getType() == ai->getType()->getPointerElementType());
 					cgi->irb.CreateStore(clone, ai);
+				}
+
+				iceAssert(ai);
+				if(this->immutable)
+					ai->makeImmutable();
+
+				VarDecl* fakeDecl = new VarDecl(this->mapping[-1].second, name, this->immutable);
+				fakeDecl->didCodegen = true;
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
+
+				cgi->addSymbol(name, ai, fakeDecl);
+			}
+		}
+		else if(rtype->isStringType())
+		{
+			// ok, we can also decompose strings into chars and array of chars, because why the hell not.
+
+			fir::Value* ptr = cgi->irb.CreateGetStringData(rhs);
+			fir::Value* len = cgi->irb.CreateGetStringLength(rhs);
+			fir::Type* elmtype = fir::Type::getCharType();
+
+			iceAssert(ptr && len);
+
+			// ok... first, do a length check
+			{
+				fir::Function* checkf = RuntimeFuncs::Array::getBoundsCheckFunction(cgi, true);
+				iceAssert(checkf);
+
+				// this uses index, so we just kinda fudge it.
+				cgi->irb.CreateCall3(checkf, len, fir::ConstantInt::getInt64(numNormalBindings),
+					fir::ConstantString::get(Parser::pinToString(this->pin)));
+			}
+
+
+			// okay, now, loop + copy
+			for(size_t i = 0; i < numNormalBindings; i++)
+			{
+				bool isPtr = false;
+				std::string name = this->mapping[i].first;
+				if(name == "_")
+					continue;
+
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
+
+				// no need to bounds check here.
+				fir::Value* gep = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(i));
+				fir::Value* ai = cgi->irb.CreateStackAlloc(elmtype);
+
+				if(isPtr)
+				{
+					error(new DummyExpr(this->mapping[i].second), "Strings are immutable; decomposition ('%s' here) cannot take references",
+						name.c_str());
+				}
+				else
+				{
+					// do the store-y thing
+					// _doStore(cgi, this, elmtype, gep, ai, name, this->mapping[i].second, vk);
+					cgi->irb.CreateStore(cgi->irb.CreateBitcast(cgi->irb.CreateLoad(gep), fir::Type::getCharType()), ai);
+				}
+
+				if(this->immutable)
+					ai->makeImmutable();
+
+				VarDecl* fakeDecl = new VarDecl(this->mapping[i].second, name, this->immutable);
+				fakeDecl->didCodegen = true;
+				fakeDecl->concretisedType = ai->getType()->getPointerElementType();
+
+				cgi->addSymbol(name, ai, fakeDecl);
+			}
+
+
+			if(haveNamedEllipsis)
+			{
+				bool isPtr = false;
+				std::string name = this->mapping[-1].first;
+
+				if(name[0] == '&')
+				{
+					isPtr = true;
+					name = name.substr(1);
+				}
+
+				fir::Value* ai = 0;
+
+
+				if(isPtr)
+				{
+					error(new DummyExpr(this->mapping[-1].second), "Strings are immutable; decomposition ('%s' here) cannot take references",
+						name.c_str());
+				}
+				else
+				{
+					// return an array of chars
+					ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(fir::Type::getCharType()));
+
+					// get the number of elements we need in the array
+					fir::Value* arrlen = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// malloc this number of things.
+					fir::Value* charsize = cgi->irb.CreateSizeof(fir::Type::getCharType());
+					fir::Value* allocsize = cgi->irb.CreateMul(arrlen, charsize);
+
+					fir::Value* allocedptr = cgi->irb.CreateCall1(cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC), allocsize);
+					allocedptr = cgi->irb.CreatePointerTypeCast(allocedptr, fir::Type::getCharType()->getPointerTo());
+
+					// set the length and capacity.
+					cgi->irb.CreateSetDynamicArrayData(ai, allocedptr);
+					cgi->irb.CreateSetDynamicArrayLength(ai, arrlen);
+					cgi->irb.CreateSetDynamicArrayCapacity(ai, arrlen);
+
+					fir::Value* offsetptr = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// ok, now just do a memcpy
+					fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+					cgi->irb.CreateCall(memcpyf, { cgi->irb.CreatePointerTypeCast(allocedptr, fir::Type::getInt8Ptr()), cgi->irb.CreatePointerTypeCast(offsetptr, fir::Type::getInt8Ptr()), arrlen,
+						fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+
+					// ok, all is good now, i hope.
 				}
 
 				iceAssert(ai);
