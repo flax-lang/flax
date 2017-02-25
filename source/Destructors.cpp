@@ -17,6 +17,7 @@ namespace Ast
 	Number::~Number() { }
 	VarRef::~VarRef() { }
 	Typeof::~Typeof() { }
+	Typeid::~Typeid() { }
 	Return::~Return() { }
 	Import::~Import() { }
 	IfStmt::~IfStmt() { }
