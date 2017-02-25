@@ -278,8 +278,6 @@ namespace Array
 			fir::Value* actuallen = cgi->irb.CreateMul(cgi->irb.CreateLoad(cap), cgi->irb.CreateSizeof(arrtype->getElementType()));
 
 
-			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
-
 			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
@@ -349,8 +347,6 @@ namespace Array
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
 			fir::Value* actuallen = cgi->irb.CreateMul(origlen, cgi->irb.CreateSizeof(arrtype->getElementType()));
-
-			// fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
 
 			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
@@ -479,9 +475,6 @@ namespace Array
 				fir::Value* s2ptr = cgi->irb.CreateGetDynamicArrayData(s2);
 
 				fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
-
-				// fir::Value* actuallen = cgi->irb.CreateMul(applen,
-				// 	fir::ConstantInt::getInt64(cgi->execTarget->getTypeSizeInBytes(arrtype->getElementType())));
 
 				fir::Value* actuallen = cgi->irb.CreateMul(applen, cgi->irb.CreateSizeof(arrtype->getElementType()));
 

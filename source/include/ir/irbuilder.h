@@ -128,12 +128,12 @@ namespace fir
 		Value* CreateExtractValueByName(Value* val, std::string mem, std::string vname = "");
 
 
-		Value* CreateGetStringData(Value* ptr, std::string vname = "");
-		Value* CreateSetStringData(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetStringLength(Value* ptr, std::string vname = "");
-		Value* CreateSetStringLength(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetStringRefCount(Value* ptr, std::string vname = "");
-		Value* CreateSetStringRefCount(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetStringData(Value* str, std::string vname = "");
+		Value* CreateSetStringData(Value* str, Value* val, std::string vname = "");
+		Value* CreateGetStringLength(Value* str, std::string vname = "");
+		Value* CreateSetStringLength(Value* str, Value* val, std::string vname = "");
+		Value* CreateGetStringRefCount(Value* str, std::string vname = "");
+		Value* CreateSetStringRefCount(Value* str, Value* val, std::string vname = "");
 
 		Value* CreateGetDynamicArrayData(Value* ptr, std::string vname = "");
 		Value* CreateSetDynamicArrayData(Value* ptr, Value* val, std::string vname = "");
@@ -146,6 +146,16 @@ namespace fir
 		Value* CreateSetArraySliceData(Value* ptr, Value* val, std::string vname = "");
 		Value* CreateGetArraySliceLength(Value* ptr, std::string vname = "");
 		Value* CreateSetArraySliceLength(Value* ptr, Value* val, std::string vname = "");
+
+		Value* CreateGetAnyTypeID(Value* any, std::string vname = "");
+		Value* CreateSetAnyTypeID(Value* any, Value* val, std::string vname = "");
+		Value* CreateGetAnyFlag(Value* any, std::string vname = "");
+		Value* CreateSetAnyFlag(Value* any, Value* val, std::string vname = "");
+		Value* CreateGetAnyData(Value* any, std::string vname = "");
+		Value* CreateSetAnyData(Value* any, Value* val, std::string vname = "");
+
+
+
 
 		void CreateUnreachable();
 

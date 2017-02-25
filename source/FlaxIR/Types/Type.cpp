@@ -34,6 +34,14 @@ namespace fir
 		return type;
 	}
 
+	void FTContext::dumpTypeIDs()
+	{
+		for(auto t : typeCache)
+			printf("%zu: %s\n", t->getID(), t->str().c_str());
+
+		printf("\n\n");
+	}
+
 
 	static FTContext* defaultFTContext = 0;
 	void setDefaultFTContext(FTContext* tc)
@@ -391,6 +399,8 @@ namespace fir
 		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
 		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
 
+		else if(builtin == ANY_TYPE_STRING)			real = Type::getAnyType(tc);
+
 		else return 0;
 
 		iceAssert(real);
@@ -508,6 +518,13 @@ namespace fir
 		return t;
 	}
 
+	AnyType* Type::toAnyType()
+	{
+		auto t = dynamic_cast<AnyType*>(this);
+		if(t == 0) error("not any type");
+		return t;
+	}
+
 
 
 
@@ -620,6 +637,11 @@ namespace fir
 	bool Type::isEnumType()
 	{
 		return dynamic_cast<EnumType*>(this) != 0;
+	}
+
+	bool Type::isAnyType()
+	{
+		return dynamic_cast<AnyType*>(this) != 0;
 	}
 
 
@@ -780,7 +802,10 @@ namespace fir
 		return StringType::get(tc);
 	}
 
-
+	AnyType* Type::getAnyType(FTContext* tc)
+	{
+		return AnyType::get(tc);
+	}
 }
 
 

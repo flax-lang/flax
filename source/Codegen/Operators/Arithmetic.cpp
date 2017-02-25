@@ -66,7 +66,7 @@ namespace Operators
 			std::swap(lhs, rhs);
 
 		// do the pointer arithmetic thing
-		fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
+		fir::Type* ptrIntType = cgi->module->getExecutionTarget()->getPointerSizedIntegerType();
 
 		if(rhs->getType() != ptrIntType)
 			rhs = cgi->irb.CreateIntSizeCast(rhs, ptrIntType);

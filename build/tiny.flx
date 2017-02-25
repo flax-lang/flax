@@ -4,9 +4,20 @@
 
 ffi func printf(fmt: i8*, ...) -> int
 
-public func main()
+public func main() -> int
 {
-	let hex = 0x410
-	let flt = 0.109
-	printf("tiny = %d, %lf\n", hex, flt)
+	do {
+		var k = 40 as any
+		k = "foo"
+
+		printf("k as string = %s\n", k as string)
+
+		k = 301 as int
+
+		printf("k as int = %d\n", k as int)
+
+		// printf("typeof(k): %d\n", typeof(k))
+	}
+
+	return 0
 }
