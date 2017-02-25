@@ -2,17 +2,28 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-ffi func printf(fmt: i8*, ...) -> int
+ffi func printf(fmt: i8*, ...) -> i32
 
-func foo(a: i8)
+var glob: any
+func foo(a: any)
 {
-	printf("a = %d\n", a)
+	printf("a = %d\n", (a as Large).a)
+	glob = a
+}
+
+struct Large
+{
+	var a: i64 = 10
+	var b: i64 = 20
+	var c: i64 = 30
+	var d: i64 = 40
+	var e: i64 = 50
 }
 
 public func main() -> int
 {
 	do {
-		var k = 40 as any
+		var k: any = 40 as any
 		k = "foo"
 
 		printf("k as string = %s\n", k as string)
@@ -24,7 +35,31 @@ public func main() -> int
 		printf("typeid(k): %d\n", typeid(k))
 	}
 
-	foo(30)
+	do {
+		var x: any = Large()
+		// (x as Large).c = 301443
+
+		// let v = x// as Large
+		var k = x as Large
+		k.c = 5413
+
+		foo(x)
+
+		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
+	}
+
+	// foo(30)
 
 	return 0
 }
+
+
+
+
+
+
+
+
+
+
+

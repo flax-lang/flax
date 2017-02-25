@@ -12,6 +12,8 @@ using namespace Ast;
 #define BUILTIN_ANY_INCR_FUNC_NAME			"__anyref_incr"
 #define BUILTIN_ANY_DECR_FUNC_NAME			"__anyref_decr"
 
+#define DEBUG_MASTER		1
+#define DEBUG_REFCOUNTING	(1 && DEBUG_MASTER)
 
 namespace Codegen {
 namespace RuntimeFuncs {
@@ -87,6 +89,13 @@ namespace Any
 
 				fir::Value* newRc = cgi->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
 				cgi->irb.CreateStore(newRc, rcptr);
+
+				#if DEBUG_REFCOUNTING
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("(incr any) new rc of %p = %d\n");
+					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, rcptr, newRc });
+				}
+				#endif
 			}
 
 			cgi->irb.CreateUnCondBranch(merge);
@@ -177,6 +186,13 @@ namespace Any
 				cgi->irb.CreateStore(newRc, rcptr);
 
 
+				#if DEBUG_REFCOUNTING
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("(decr any) new rc of %p = %d\n");
+					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, rcptr, newRc });
+				}
+				#endif
+
 
 				fir::Value* cond = cgi->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
 				cgi->irb.CreateCondBranch(cond, dealloc, merge);
@@ -191,8 +207,17 @@ namespace Any
 
 				// bufp is already at the rc.
 				cgi->irb.CreateCall1(freefn, bufp);
-				cgi->irb.CreateUnCondBranch(merge);
+
+				#if DEBUG_REFCOUNTING
+				{
+					fir::Value* tmpstr = cgi->module->createGlobalString("(free any) %p\n");
+					cgi->irb.CreateCall(cgi->getOrDeclareLibCFunc("printf"), { tmpstr, rcptr });
+				}
+				#endif
 			}
+
+
+			cgi->irb.CreateUnCondBranch(merge);
 
 			cgi->irb.setCurrentBlock(merge);
 			cgi->irb.CreateReturnVoid();
@@ -207,7 +232,232 @@ namespace Any
 	}
 }
 }
+
+
+
+
+
+	Result_t CodegenInstance::assignValueToAny(Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr, ValueKind vk)
+	{
+		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
+		bool isSmall = (sz != -1 && sz <= 24);
+
+		iceAssert(any);
+		iceAssert(any->getType()->isPointerType() && any->getType()->getPointerElementType()->isAnyType());
+
+		if(!ptr) ptr = this->getImmutStackAllocValue(val);
+
+
+		if(isSmall)
+		{
+			// set flag = -1, and the id
+			this->irb.CreateSetAnyFlag(any, fir::ConstantInt::getInt64(-1));
+			this->irb.CreateSetAnyTypeID(any, fir::ConstantInt::getInt64(val->getType()->getID()));
+
+			// get the data pointer
+			fir::Value* data = this->irb.CreateGetAnyData(any);
+
+			// cast it appropriately.
+			data = this->irb.CreatePointerTypeCast(data, val->getType()->getPointerTo());
+
+			// store it.
+			this->performComplexValueStore(user, val->getType(), ptr, data, "_", user->pin, vk);
+
+			// that's it.
+			return Result_t(0, 0);
+		}
+		else
+		{
+			// set flag = 1, and id
+			this->irb.CreateSetAnyFlag(any, fir::ConstantInt::getInt64(1));
+			this->irb.CreateSetAnyTypeID(any, fir::ConstantInt::getInt64(val->getType()->getID()));
+
+			// call malloc with the size + 8
+			size_t i64size = 8;
+
+			// use runtime sizeof
+			fir::Value* tysz = this->irb.CreateSizeof(val->getType());
+			tysz = this->irb.CreateAdd(tysz, fir::ConstantInt::getInt64(i64size));
+
+			// malloc
+			auto allocfn = this->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
+			iceAssert(allocfn);
+
+			// call
+			fir::Value* alloc = this->irb.CreateCall1(allocfn, tysz);
+
+			// set refcount = 1
+			fir::Value* rcptr = this->irb.CreatePointerTypeCast(alloc, fir::Type::getInt64Ptr());
+			this->irb.CreateStore(fir::ConstantInt::getInt64(1), rcptr);
+
+			// increment
+			fir::Value* dataptr = this->irb.CreatePointerAdd(rcptr, fir::ConstantInt::getInt64(1));
+
+			// memcpy
+			dataptr = this->irb.CreatePointerTypeCast(dataptr, val->getType()->getPointerTo());
+			this->performComplexValueStore(user, val->getType(), ptr, dataptr, "_", user->pin, vk);
+
+
+			// store the pointer into the thing
+			this->irb.CreateSetAnyData(any, dataptr);
+
+			if(std::find(this->getRefCountedValues().begin(), this->getRefCountedValues().end(), any) == this->getRefCountedValues().end())
+				this->addRefCountedValue(any);
+
+			return Result_t(0, 0);
+		}
+	}
+
+	Result_t CodegenInstance::extractValueFromAny(Expr* user, fir::Value* any, fir::Type* type)
+	{
+		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(type);
+		bool isSmall = (sz != -1 && sz <= 24);
+
+		iceAssert(any);
+		iceAssert(any->getType()->isPointerType() && any->getType()->getPointerElementType()->isAnyType());
+
+		fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+			fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
+			fir::Type::getInt32()), fir::LinkageType::External);
+
+		fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+			fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
+			fir::LinkageType::External);
+
+
+		// runtime check
+		// make sure that if it's small, flag is -1
+		{
+			fir::Value* flag = this->irb.CreateGetAnyFlag(any);
+			fir::IRBlock* fail = this->irb.addNewBlockInFunction("fail", this->irb.getCurrentFunction());
+			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", this->irb.getCurrentFunction());
+
+
+			if(isSmall)
+			{
+				fir::Value* cond = this->irb.CreateICmpEQ(flag, fir::ConstantInt::getInt64(-1));
+				this->irb.CreateCondBranch(cond, merge, fail);
+
+				this->irb.setCurrentBlock(fail);
+				{
+					// basically:
+					// void* stderr = fdopen(2, "w")
+					// fprintf(stderr, "", bla bla)
+
+					fir::Value* tmpstr = this->module->createGlobalString("w");
+					fir::Value* fmtstr = this->module->createGlobalString("%s: Expected trivial type (<= 24 bytes) in any, found non-trival type (flag: %d, not -1)\n");
+
+					fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
+
+					fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+					this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, flag });
+
+					this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
+					this->irb.CreateUnreachable();
+				}
+			}
+			else
+			{
+				fir::Value* cond = this->irb.CreateICmpNEQ(flag, fir::ConstantInt::getInt64(-1));
+				this->irb.CreateCondBranch(cond, merge, fail);
+
+				this->irb.setCurrentBlock(fail);
+				{
+					fir::Value* tmpstr = this->module->createGlobalString("w");
+					fir::Value* fmtstr = this->module->createGlobalString("%s: Expected non-trivial type (> 24 bytes) in any, found trivial type (flag: %d)\n");
+
+					fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
+
+					fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+					this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, flag });
+
+					this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
+					this->irb.CreateUnreachable();
+				}
+			}
+
+			this->irb.setCurrentBlock(merge);
+		}
+
+
+		// check the typeid
+		{
+			fir::Value* tid = this->irb.CreateGetAnyTypeID(any);
+
+			fir::IRBlock* fail = this->irb.addNewBlockInFunction("invalidcast", this->irb.getCurrentFunction());
+			fir::IRBlock* success = this->irb.addNewBlockInFunction("validcast", this->irb.getCurrentFunction());
+
+			// compare
+			fir::Value* cond = this->irb.CreateICmpEQ(tid, fir::ConstantInt::getInt64(type->getID()));
+			this->irb.CreateCondBranch(cond, success, fail);
+
+			this->irb.setCurrentBlock(fail);
+			{
+				fir::Value* tmpstr = this->module->createGlobalString("w");
+				fir::Value* fmtstr = this->module->createGlobalString("%s: Invalid any type coercion (from id %zu to %zu)\n");
+				fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
+
+				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, tid, fir::ConstantInt::getInt64(type->getID()) });
+
+				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
+				this->irb.CreateUnreachable();
+			}
+
+
+			this->irb.setCurrentBlock(success);
+		}
+
+
+
+		// ok can
+		if(isSmall)
+		{
+			// get the data
+			fir::Value* data = this->irb.CreateGetAnyData(any);
+
+			// cast it to the proper type
+			fir::Value* ptr = this->irb.CreatePointerTypeCast(data, type->getPointerTo());
+
+			// load it, and return it.
+			return Result_t(this->irb.CreateLoad(ptr), ptr);
+		}
+		else
+		{
+			// get the data
+			fir::Value* data = this->irb.CreateGetAnyData(any);
+
+			// cast it to the proper type
+			fir::Value* ptrptr = this->irb.CreatePointerTypeCast(data,
+				this->module->getExecutionTarget()->getPointerSizedIntegerType()->getPointerTo());
+
+			// get the pointer
+			fir::Value* ptr = this->irb.CreateLoad(ptrptr);
+
+			// ptr is an int, so make it actually a pointer
+			ptr = this->irb.CreateIntToPointerCast(ptr, type->getPointerTo());
+
+			// load it
+			return Result_t(this->irb.CreateLoad(ptr), ptr);
+		}
+	}
+
+	Result_t CodegenInstance::makeAnyFromValue(Expr* user, fir::Value* val, fir::Value* ptr, ValueKind vk)
+	{
+		// check if we can fit the thing into ptrsize bytes
+		fir::Value* ai = this->irb.CreateStackAlloc(fir::Type::getAnyType());
+		if(!ptr) ptr = this->getImmutStackAllocValue(val);
+
+		// heh.
+		this->assignValueToAny(user, ai, val, ptr, vk);
+		return Result_t(this->irb.CreateLoad(ai), ai);
+	}
 }
+
+
 
 
 

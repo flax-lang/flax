@@ -733,7 +733,7 @@ static variant doTupleAccess(CodegenInstance* cgi, fir::Type* lhsType, Expr* rig
 		iceAssert(result.pointer);
 		fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, index);
 
-		return Result_t(cgi->irb.CreateLoad(vp), vp, ValueKind::LValue);
+		return Result_t(cgi->irb.CreateLoad(vp), vp, result.valueKind);
 	}
 	else
 	{
@@ -802,7 +802,7 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 					if(actual)
 					{
 						auto p = cgi->irb.CreateGetStructMember(isPtr ? result.value : result.pointer, mem->ident.name);
-						return Result_t(cgi->irb.CreateLoad(p), p, ValueKind::LValue);
+						return Result_t(cgi->irb.CreateLoad(p), p, result.valueKind);
 					}
 					else
 					{
