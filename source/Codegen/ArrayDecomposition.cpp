@@ -408,8 +408,9 @@ namespace Ast
 
 				if(isPtr)
 				{
-					error(new DummyExpr(this->mapping[i].second), "Strings are immutable; decomposition ('%s' here) cannot take references",
-						name.c_str());
+					// cannot take a character by reference, because why would you do that?
+					// strings are immutable anyway
+					error(new DummyExpr(this->mapping[i].second), "Strings are immutable; decomposition to character ('%s' here) cannot take references", name.c_str());
 				}
 				else
 				{
@@ -445,8 +446,21 @@ namespace Ast
 
 				if(isPtr)
 				{
-					error(new DummyExpr(this->mapping[-1].second), "Strings are immutable; decomposition ('%s' here) cannot take references",
-						name.c_str());
+					// however, in this case, we can return a char array slice instead of copying the array
+					// the slice will, naturally, be made immutable. I hope.
+
+					ai = cgi->irb.CreateStackAlloc(fir::ArraySliceType::get(fir::Type::getCharType()));
+
+					// get the number of elements we need in the array
+					fir::Value* arrlen = cgi->irb.CreateSub(len, fir::ConstantInt::getInt64(numNormalBindings));
+					fir::Value* offsetptr = cgi->irb.CreateGetPointer(ptr, fir::ConstantInt::getInt64(numNormalBindings));
+
+					// set the length and capacity.
+					cgi->irb.CreateSetArraySliceData(ai, cgi->irb.CreatePointerTypeCast(offsetptr, fir::Type::getCharType()->getPointerTo()));
+					cgi->irb.CreateSetArraySliceLength(ai, arrlen);
+
+					// always make it immutable.
+					ai->makeImmutable();
 				}
 				else
 				{
