@@ -93,11 +93,6 @@ namespace Operators
 		{
 			return Result_t(cgi->irb.CreateIntToPointerCast(lhs, rtype), 0);
 		}
-		else if(cgi->isAnyType(lhs->getType()))
-		{
-			iceAssert(lhsptr);
-			return cgi->extractValueFromAny(rtype, lhsptr);
-		}
 		else if(lhs->getType()->isArrayType() && rtype->isPointerType()
 			&& lhs->getType()->toArrayType()->getElementType() == rtype->getPointerElementType())
 		{
@@ -176,6 +171,15 @@ namespace Operators
 
 			fir::Value* v = cgi->autoCastType(rtype, cval);
 			return Result_t(v, 0);
+		}
+		else if(lhs->getType()->isAnyType())
+		{
+			iceAssert(lhsptr);
+			return cgi->extractValueFromAny(user, lhsptr, rtype);
+		}
+		else if(rtype->isAnyType())
+		{
+			return cgi->makeAnyFromValue(lhs, lhsptr);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{
