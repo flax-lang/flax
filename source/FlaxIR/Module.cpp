@@ -172,6 +172,17 @@ namespace fir
 	}
 
 
+	void Module::setExecutionTarget(ExecutionTarget* e)
+	{
+		iceAssert(e);
+		this->execTarget = e;
+	}
+
+	ExecutionTarget* Module::getExecutionTarget()
+	{
+		iceAssert(this->execTarget);
+		return this->execTarget;
+	}
 
 
 

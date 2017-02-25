@@ -775,16 +775,6 @@ namespace Codegen
 	{
 		typedef std::vector<pts::TypeTransformer> TrfList;
 
-
-
-		// get rid of this stupid literal nonsense
-		for(size_t i = 0; i < args.size(); i++)
-		{
-			if(args[i]->isPrimitiveType() && args[i]->toPrimitiveType()->isLiteralType())
-				args[i] = args[i]->toPrimitiveType()->getUnliteralType();
-		}
-
-
 		if(candidate->params.size() != args.size())
 		{
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,

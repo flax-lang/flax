@@ -283,43 +283,6 @@ namespace Codegen
 		return false;	// TODO: something about this
 	}
 
-	bool CodegenInstance::isAnyType(fir::Type* type)
-	{
-		if(type->isStructType())
-		{
-			if(type->toStructType()->getStructName().str() == "Any")
-			{
-				return true;
-			}
-
-			TypePair_t* pair = this->getTypeByString("Any");
-			if(!pair) return false;
-			// iceAssert(pair);
-
-			if(pair->first == type)
-				return true;
-		}
-
-		return false;
-	}
-
-	bool CodegenInstance::isTypeAlias(fir::Type* type)
-	{
-		if(!type) return false;
-
-		bool res = true;
-		if(!type->isStructType())								res = false;
-		if(res && type->toStructType()->getElementCount() != 1)	res = false;
-
-		if(!res) return false;
-
-		TypePair_t* tp = 0;
-		if((tp = this->getType(type)))
-			return tp->second.second == TypeKind::TypeAlias;
-
-		return res;
-	}
-
 	bool CodegenInstance::isBuiltinType(fir::Type* t)
 	{
 		bool ret = (t && (t->isIntegerType() || t->isFloatingPointType() || t->isStringType() || t->isCharType()));
@@ -379,7 +342,7 @@ namespace Codegen
 		}
 		else
 		{
-			return type->isStringType();
+			return type->isStringType() || type->isAnyType();
 		}
 	}
 

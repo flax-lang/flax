@@ -19,7 +19,7 @@ public ffi ƒ powf(x: f32, y: f32) -> f32
 
 namespace Math
 {
-	public ƒ π() -> f32 { 3.14159265/*35897932484626*/ }
+	public ƒ π() -> f64 { 3.1415926535897932484626 }
 	public ƒ √(x: f64) -> f64 { sqrt(x) }
 	public ƒ √(x: int) -> f64 { sqrt(x as f64) }
 

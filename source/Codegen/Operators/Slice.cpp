@@ -299,7 +299,7 @@ namespace Operators
 			fir::Value* data = 0;
 			{
 				// space for null + refcount
-				size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+				size_t i64Size = 8;
 				fir::Value* malloclen = cgi->irb.CreateAdd(length, fir::ConstantInt::getInt64(1 + i64Size));
 
 				// now malloc.

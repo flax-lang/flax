@@ -18,6 +18,8 @@ namespace llvm
 
 namespace fir
 {
+	struct ExecutionTarget;
+
 	struct Module
 	{
 		Module(std::string nm);
@@ -57,6 +59,9 @@ namespace fir
 
 		std::string print();
 
+		void setExecutionTarget(ExecutionTarget* e);
+		ExecutionTarget* getExecutionTarget();
+
 		private:
 		std::string moduleName;
 		std::unordered_map<std::string, GlobalVariable*> globalStrings;
@@ -66,6 +71,8 @@ namespace fir
 		std::unordered_map<Identifier, Type*> namedTypes;
 
 		std::unordered_map<Identifier, Function*> intrinsicFunctions;
+
+		ExecutionTarget* execTarget = 0;
 	};
 
 

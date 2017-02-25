@@ -16,7 +16,23 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 		try
 		{
 			long double num = std::stold(this->str);
-			return Result_t(fir::ConstantFP::get(fir::PrimitiveType::getUnspecifiedLiteralFloat(), num), 0);
+
+			if(extratype && extratype->isFloatingPointType())
+			{
+				if(fir::checkFloatingPointLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+					return Result_t(fir::ConstantFP::get(extratype, num), 0);
+
+				else
+					error(this, "Floating point literal '%Lf' cannot fit into type '%s'", num, extratype->str().c_str());
+			}
+
+
+			// use f64 if we can, if not f80
+			if(fir::checkFloatingPointLiteralFitsIntoType(fir::Type::getFloat64(), num))
+				return Result_t(fir::ConstantFP::get(fir::Type::getFloat64(), num), 0);
+
+			else
+				return Result_t(fir::ConstantFP::get(fir::Type::getFloat80(), num), 0);
 		}
 		catch(std::out_of_range& e)
 		{
@@ -39,14 +55,35 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 		try
 		{
 			int64_t num = std::stoll(s, 0, base);
-			return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralInt(), num), 0);
+
+			if(extratype && extratype->isIntegerType())
+			{
+				if(fir::checkSignedIntLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+					return Result_t(fir::ConstantInt::get(extratype, num), 0);
+
+				else
+					error(this, "Integer literal '%lld' cannot fit into type '%s'", num, extratype->str().c_str());
+			}
+
+			return Result_t(fir::ConstantInt::get(fir::Type::getInt64(), num), 0);
 		}
 		catch(std::out_of_range& e)
 		{
 			try
 			{
 				uint64_t num = std::stoull(this->str, 0, base);
-				return Result_t(fir::ConstantInt::get(fir::PrimitiveType::getUnspecifiedLiteralUint(), num), 0);
+
+				if(extratype && extratype->isIntegerType())
+				{
+					if(fir::checkUnsignedIntLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+						return Result_t(fir::ConstantInt::get(extratype, num), 0);
+
+					else
+						error(this, "Integer literal '%llu' cannot fit into type '%s'", num, extratype->str().c_str());
+				}
+
+
+				return Result_t(fir::ConstantInt::get(fir::Type::getUint64(), num), 0);
 			}
 			catch(std::out_of_range& e1)
 			{
@@ -56,78 +93,164 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	}
 }
 
-static fir::Type* _makeReal(fir::Type* pt)
-{
-	if(pt->isPrimitiveType() && pt->toPrimitiveType()->isLiteralType())
-	{
-		if(pt->toPrimitiveType()->isFloatingPointType())
-			return fir::Type::getFloat64();
+// static fir::Type* _makeReal(fir::Type* pt)
+// {
+// 	if(pt->isPrimitiveType() && pt->toPrimitiveType()->isLiteralType())
+// 	{
+// 		if(pt->toPrimitiveType()->isFloatingPointType())
+// 			return fir::Type::getFloat64();
 
-		else if(pt->toPrimitiveType()->isSignedIntType())
-			return fir::Type::getInt64();
+// 		else if(pt->toPrimitiveType()->isSignedIntType())
+// 			return fir::Type::getInt64();
 
-		else
-			return fir::Type::getUint64();
-	}
+// 		else
+// 			return fir::Type::getUint64();
+// 	}
 
-	return pt;
-}
+// 	return pt;
+// }
 
-static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
-{
-	if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(cv))
-	{
-		return fir::ConstantInt::get(_makeReal(ci->getType()), ci->getSignedValue());
-	}
-	else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(cv))
-	{
-		return fir::ConstantFP::get(_makeReal(cf->getType()), cf->getValue());
-	}
-	else if(fir::ConstantArray* ca = dynamic_cast<fir::ConstantArray*>(cv))
-	{
-		std::vector<fir::ConstantValue*> vs;
-		for(auto v : ca->getValues())
-			vs.push_back(_makeReal(v));
+// static fir::ConstantValue* _makeReal(fir::ConstantValue* cv)
+// {
+// 	if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(cv))
+// 	{
+// 		return fir::ConstantInt::get(_makeReal(ci->getType()), ci->getSignedValue());
+// 	}
+// 	else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(cv))
+// 	{
+// 		return fir::ConstantFP::get(_makeReal(cf->getType()), cf->getValue());
+// 	}
+// 	else if(fir::ConstantArray* ca = dynamic_cast<fir::ConstantArray*>(cv))
+// 	{
+// 		std::vector<fir::ConstantValue*> vs;
+// 		for(auto v : ca->getValues())
+// 			vs.push_back(_makeReal(v));
 
-		return fir::ConstantArray::get(fir::ArrayType::get(vs.front()->getType(), vs.size()), vs);
-	}
+// 		return fir::ConstantArray::get(fir::ArrayType::get(vs.front()->getType(), vs.size()), vs);
+// 	}
 
-	return cv;
-}
+// 	return cv;
+// }
+
+
+// fir::Type* Number::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
+// {
+// 	if(this->str.find('.') != std::string::npos)
+// 		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
+
+
+// 	std::string s = this->str;
+// 	// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
+// 	// just figure out the base on our own.
+
+// 	int base = 10;
+// 	if(s.find("0x") != std::string::npos)
+// 		base = 16, s = s.substr(2);
+
+// 	else if(s.find("0b") != std::string::npos)
+// 		base = 2, s = s.substr(2);
+
+// 	try
+// 	{
+// 		std::stoll(this->str, 0, base);
+// 		return fir::PrimitiveType::getUnspecifiedLiteralInt();
+// 	}
+// 	catch(std::out_of_range& e)
+// 	{
+// 		try
+// 		{
+// 			std::stoull(this->str, 0, base);
+// 			return fir::PrimitiveType::getUnspecifiedLiteralUint();
+// 		}
+// 		catch(std::out_of_range& e1)
+// 		{
+// 			error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+// 		}
+// 	}
+// }
 
 
 fir::Type* Number::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	if(this->str.find('.') != std::string::npos)
-		return fir::PrimitiveType::getUnspecifiedLiteralFloat();
-
-
-	std::string s = this->str;
-	// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
-	// just figure out the base on our own.
-
-	int base = 10;
-	if(s.find("0x") != std::string::npos)
-		base = 16, s = s.substr(2);
-
-	else if(s.find("0b") != std::string::npos)
-		base = 2, s = s.substr(2);
-
-	try
 	{
-		std::stoll(this->str, 0, base);
-		return fir::PrimitiveType::getUnspecifiedLiteralInt();
-	}
-	catch(std::out_of_range& e)
-	{
+		// parse a ƒloating point
 		try
 		{
-			std::stoull(this->str, 0, base);
-			return fir::PrimitiveType::getUnspecifiedLiteralUint();
+			long double num = std::stold(this->str);
+
+			if(extratype && extratype->isFloatingPointType())
+			{
+				if(fir::checkFloatingPointLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+					return extratype;
+
+				else
+					error(this, "Floating point literal '%Lf' cannot fit into type '%s'", num, extratype->str().c_str());
+			}
+
+
+			// use f64 if we can, if not f80
+			if(fir::checkFloatingPointLiteralFitsIntoType(fir::Type::getFloat64(), num))
+				return fir::Type::getFloat64();
+
+			else
+				return fir::Type::getFloat80();
 		}
-		catch(std::out_of_range& e1)
+		catch(std::out_of_range& e)
 		{
-			error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+			error(this, "Number '%s' is out of range", this->str.c_str());
+		}
+	}
+	else
+	{
+		std::string s = this->str;
+		// because c++ is stupid, 1. it doesn't support binary and 2. the default base is 10 where it doesn't autodetect,
+		// just figure out the base on our own.
+
+		int base = 10;
+		if(s.find("0x") != std::string::npos)
+			base = 16, s = s.substr(2);
+
+		else if(s.find("0b") != std::string::npos)
+			base = 2, s = s.substr(2);
+
+		try
+		{
+			int64_t num = std::stoll(s, 0, base);
+
+			if(extratype && extratype->isIntegerType())
+			{
+				if(fir::checkSignedIntLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+					return extratype;
+
+				else
+					error(this, "Integer literal '%lld' cannot fit into type '%s'", num, extratype->str().c_str());
+			}
+
+			return fir::Type::getInt64();
+		}
+		catch(std::out_of_range& e)
+		{
+			try
+			{
+				uint64_t num = std::stoull(this->str, 0, base);
+
+				if(extratype && extratype->isIntegerType())
+				{
+					if(fir::checkUnsignedIntLiteralFitsIntoType(extratype->toPrimitiveType(), num))
+						return extratype;
+
+					else
+						error(this, "Integer literal '%llu' cannot fit into type '%s'", num, extratype->str().c_str());
+				}
+
+
+				return fir::Type::getUint64();
+			}
+			catch(std::out_of_range& e1)
+			{
+				error(this, "Number '%s' is out of range of the largest possible size (u64)", this->str.c_str());
+			}
 		}
 	}
 }
@@ -275,7 +398,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 	}
 	else
 	{
-		tp = _makeReal(this->values.front()->getType(cgi));
+		tp = this->values.front()->getType(cgi);
 
 		for(Expr* e : this->values)
 		{
@@ -283,7 +406,7 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
-				c = _makeReal(c);
+				// c = _makeReal(c);
 
 				// attempt to make a proper thing if we're int literals
 				if(c->getType()->isIntegerType() && tp->isIntegerType())
@@ -352,7 +475,7 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, boo
 	}
 	else
 	{
-		return fir::ArrayType::get(_makeReal(this->values.front()->getType(cgi)), this->values.size());
+		return fir::ArrayType::get(this->values.front()->getType(cgi), this->values.size());
 	}
 }
 
@@ -384,7 +507,7 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi, fir::Type* extratype, bool 
 		iceAssert(!this->didCreateType);
 
 		for(Expr* e : this->values)
-			this->ltypes.push_back(_makeReal(e->getType(cgi)));
+			this->ltypes.push_back(e->getType(cgi));
 
 		this->ident.name = "__anonymoustuple_" + std::to_string(_counter++);
 		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
@@ -428,7 +551,7 @@ Result_t Tuple::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* 
 		for(auto v : vals)
 		{
 			auto cv = dynamic_cast<fir::ConstantValue*>(v); iceAssert(cv);
-			cvs.push_back(_makeReal(cv));
+			cvs.push_back(cv);
 		}
 
 		fir::ConstantTuple* ct = fir::ConstantTuple::get(cvs);

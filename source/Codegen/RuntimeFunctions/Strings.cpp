@@ -108,7 +108,7 @@ namespace String
 
 
 			// space for null + refcount
-			size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			size_t i64Size = 8;
 			fir::Value* malloclen = cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
@@ -214,7 +214,7 @@ namespace String
 			fir::Value* newlen = cgi->irb.CreateAdd(lhslen, rhslen);
 
 			// space for null + refcount
-			size_t i64Size = cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			size_t i64Size = 8;
 			fir::Value* malloclen = cgi->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
@@ -307,7 +307,7 @@ namespace String
 
 
 			// space for null (1) + refcount (i64size) + the char (another 1)
-			size_t i64Size = 8; // cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());
+			size_t i64Size = 8;
 			fir::Value* malloclen = cgi->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + i64Size));
 
 			// now malloc.
