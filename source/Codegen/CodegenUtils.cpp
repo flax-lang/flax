@@ -11,6 +11,7 @@
 #include "pts.h"
 #include "ast.h"
 #include "codegen.h"
+#include "operators.h"
 #include "runtimefuncs.h"
 
 using namespace Ast;
@@ -2069,212 +2070,35 @@ namespace Codegen
 
 
 
-	Result_t CodegenInstance::assignValueToAny(Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr)
+	void CodegenInstance::performComplexValueStore(Expr* user, fir::Type* elmType, fir::Value* src, fir::Value* dst, std::string name,
+		Parser::Pin pos, ValueKind rhsvk)
 	{
-		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
-		bool isSmall = (sz != -1 && sz <= 24);
-
-		iceAssert(any);
-		iceAssert(any->getType()->isPointerType() && any->getType()->getPointerElementType()->isAnyType());
-
-
-		if(isSmall)
+		auto cmplxtype = this->getType(elmType);
+		if(cmplxtype)
 		{
-			// set flag = -1, and the id
-			this->irb.CreateSetAnyFlag(any, fir::ConstantInt::getInt64(-1));
-			this->irb.CreateSetAnyTypeID(any, fir::ConstantInt::getInt64(val->getType()->getID()));
+			// todo: this leaks also
+			Operators::performActualAssignment(this, user, new VarRef(pos, name),
+				0, ArithmeticOp::Assign, this->irb.CreateLoad(dst), dst, ValueKind::LValue, this->irb.CreateLoad(src), src, rhsvk);
 
-			// get the data pointer
-			fir::Value* data = this->irb.CreateGetAnyData(any);
-
-			// cast it appropriately.
-			data = this->irb.CreatePointerTypeCast(data, val->getType()->getPointerTo());
-
-			// store it.
-			this->irb.CreateStore(val, data);
-
-			// that's it.
-			return Result_t(0, 0);
+			// it's stored already, no need to do shit.
+			// iceAssert(res.value);
 		}
 		else
 		{
-			iceAssert("not supported" && 0);
+			// ok, just do it normally
+			this->irb.CreateStore(this->irb.CreateLoad(src), dst);
+		}
+
+		if(this->isRefCountedType(elmType))
+		{
+			// (isInit = true, doAssign = false -- we already assigned it above)
+			this->assignRefCountedExpression(new VarRef(pos, name), this->irb.CreateLoad(src), src,
+				this->irb.CreateLoad(dst), dst, rhsvk, true, false);
 		}
 	}
 
-	Result_t CodegenInstance::extractValueFromAny(Expr* user, fir::Value* any, fir::Type* type)
-	{
-		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(type);
-		bool isSmall = (sz != -1 && sz <= 24);
-
-		iceAssert(any);
-		iceAssert(any->getType()->isPointerType() && any->getType()->getPointerElementType()->isAnyType());
-
-		fir::Function* fprintfn = this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-			fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-			fir::Type::getInt32()), fir::LinkageType::External);
-
-		fir::Function* fdopenf = this->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
-			fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr(), false),
-			fir::LinkageType::External);
 
 
-		// runtime check
-		// make sure that if it's small, flag is -1
-		{
-			fir::Value* flag = this->irb.CreateGetAnyFlag(any);
-			fir::IRBlock* fail = this->irb.addNewBlockInFunction("fail", this->irb.getCurrentFunction());
-			fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", this->irb.getCurrentFunction());
-
-
-			if(isSmall)
-			{
-				fir::Value* cond = this->irb.CreateICmpEQ(flag, fir::ConstantInt::getInt64(-1));
-				this->irb.CreateCondBranch(cond, merge, fail);
-
-				this->irb.setCurrentBlock(fail);
-				{
-					// basically:
-					// void* stderr = fdopen(2, "w")
-					// fprintf(stderr, "", bla bla)
-
-					fir::Value* tmpstr = this->module->createGlobalString("w");
-					fir::Value* fmtstr = this->module->createGlobalString("%s: Expected trivial type (<= 24 bytes) in any, found non-trival type (flag: %d, not -1)\n");
-
-					fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
-
-					fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-					this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, flag });
-
-					this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
-					this->irb.CreateUnreachable();
-				}
-			}
-			else
-			{
-				fir::Value* cond = this->irb.CreateICmpNEQ(flag, fir::ConstantInt::getInt64(-1));
-				this->irb.CreateCondBranch(cond, merge, fail);
-
-				this->irb.setCurrentBlock(fail);
-				{
-					fir::Value* tmpstr = this->module->createGlobalString("w");
-					fir::Value* fmtstr = this->module->createGlobalString("%s: Expected non-trivial type (> 24 bytes) in any, found trivial type (flag: %d)\n");
-
-					fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
-
-					fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-					this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, flag });
-
-					this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
-					this->irb.CreateUnreachable();
-				}
-			}
-
-			this->irb.setCurrentBlock(merge);
-		}
-
-
-		// check the typeid
-		{
-			fir::Value* tid = this->irb.CreateGetAnyTypeID(any);
-
-			fir::IRBlock* fail = this->irb.addNewBlockInFunction("invalidcast", this->irb.getCurrentFunction());
-			fir::IRBlock* success = this->irb.addNewBlockInFunction("validcast", this->irb.getCurrentFunction());
-
-			// compare
-			fir::Value* cond = this->irb.CreateICmpEQ(tid, fir::ConstantInt::getInt64(type->getID()));
-			this->irb.CreateCondBranch(cond, success, fail);
-
-			this->irb.setCurrentBlock(fail);
-			{
-				fir::Value* tmpstr = this->module->createGlobalString("w");
-				fir::Value* fmtstr = this->module->createGlobalString("%s: Invalid any type coercion (from id %zu to %zu)\n");
-				fir::Value* posstr = this->module->createGlobalString(Parser::pinToString(user->pin));
-
-				fir::Value* err = this->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				this->irb.CreateCall(fprintfn, { err, fmtstr, posstr, tid, fir::ConstantInt::getInt64(type->getID()) });
-
-				this->irb.CreateCall0(this->getOrDeclareLibCFunc("abort"));
-				this->irb.CreateUnreachable();
-			}
-
-
-			this->irb.setCurrentBlock(success);
-		}
-
-
-
-		// ok can
-		if(isSmall)
-		{
-			// get the data
-			fir::Value* data = this->irb.CreateGetAnyData(any);
-
-			// cast it to the proper type
-			fir::Value* ptr = this->irb.CreatePointerTypeCast(data, type->getPointerTo());
-
-			// load it, and return it.
-			return Result_t(this->irb.CreateLoad(ptr), ptr);
-		}
-		else
-		{
-			iceAssert("not supported" && 0);
-		}
-	}
-
-	Result_t CodegenInstance::makeAnyFromValue(fir::Value* val, fir::Value* ptr)
-	{
-		// check if we can fit the thing into ptrsize bytes
-		fir::Type* vtype = val->getType();
-		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(vtype);
-
-
-		fir::Value* ai = this->irb.CreateStackAlloc(fir::Type::getAnyType());
-
-		if(sz <= 24 && sz != -1)
-		{
-			// yes -- store directly
-			// set typeid, flag = -1.
-
-			this->irb.CreateSetAnyFlag(ai, fir::ConstantInt::getInt64(-1));
-			this->irb.CreateSetAnyTypeID(ai, fir::ConstantInt::getInt64(vtype->getID()));
-
-			// now, get the pointer to the array
-			fir::Value* data = this->irb.CreateGetAnyData(ai);
-			data = this->irb.CreatePointerTypeCast(data, vtype->getPointerTo());
-
-			this->irb.CreateStore(val, data);
-		}
-		else
-		{
-			// no -- use pointer magic.
-			// for some alignment (i suppose), `any` type is this:
-			// struct any
-			// {
-			// 	i64 typeid
-			// 	i64 flag
-			// 	[24 x i8] data
-			// }
-
-			// so we get 3 i64s worth of data, allowing us to store dynamic arrays in `any` without resorting to pointer magic.
-			// for anything larger, what we need to do is to set `flag` to 1, and use the first ptrsize bytes of `data` as a pointer
-			// to the actual data.
-
-			// how it works: `any` is a refcounted type. `flag` is set to -1 if we're storing literal values (similar to strings)
-			// for any other value of `flag`, it is treated as the refcount.
-			// `data` thus stores a pointer to heap memory that is a *copy* of the value we were given
-			// hence, `any` never stores references, only copies
-
-			// i believe this should work.
-
-			iceAssert("not supported" && 0);
-		}
-
-		return Result_t(this->irb.CreateLoad(ai), ai);
-	}
 
 
 
