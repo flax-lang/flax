@@ -685,7 +685,7 @@
 					<key>comment</key>
 					<string>declaration keyword</string>
 					<key>match</key>
-					<string>\b(class|deinit|enum|extension|func|import|init|let|protocol|static|struct|subscript|typealias|var|typeof|sizeof|val)\b</string>
+					<string>\b(class|deinit|enum|extension|func|import|init|let|protocol|static|struct|subscript|typealias|var|typeof|typeid|sizeof|val)\b</string>
 					<key>name</key>
 					<string>keyword.declaration.flax</string>
 				</dict>

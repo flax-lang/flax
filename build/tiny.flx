@@ -21,7 +21,7 @@ public func main() -> int
 
 		printf("k as int = %d\n", k as int)
 
-		// printf("typeof(k): %d\n", typeof(k))
+		printf("typeid(k): %d\n", typeid(k))
 	}
 
 	foo(30)
