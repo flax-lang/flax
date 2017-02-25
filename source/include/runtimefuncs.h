@@ -50,6 +50,12 @@ namespace Codegen
 			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype);
 			fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* cmpf);
 		}
+
+		namespace Any
+		{
+			fir::Function* getRefCountIncrementFunction(CodegenInstance* cgi);
+			fir::Function* getRefCountDecrementFunction(CodegenInstance* cgi);
+		}
 	}
 }
 

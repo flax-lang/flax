@@ -35,7 +35,7 @@ public namespace MD5
 	]
 
 
-	func leftRotate(x: u32, c: u32) -> u32 { (x << c) | (x >> (32 - c)) }
+	func leftRotate(x: u32, c: u32) -> u32 { return (x << c) | (x >> (32 - c)) }
 
 
 	func toBytes(v: u32, b: u8*)
@@ -46,7 +46,7 @@ public namespace MD5
 		b[3] = (v >> 24) as u8
 	}
 
-	func toInt32(b: u8*) -> u32 { (b[0]) | (b[1] as u32 << 8) | (b[2] as u32 << 16) | (b[3] as u32 << 24) }
+	func toInt32(b: u8*) -> u32 { return (b[0]) | (b[1] as u32 << 8) | (b[2] as u32 << 16) | (b[3] as u32 << 24) }
 
 
 

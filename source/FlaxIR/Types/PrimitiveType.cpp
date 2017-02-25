@@ -6,11 +6,10 @@
 
 namespace fir
 {
-	PrimitiveType::PrimitiveType(size_t bits, Kind kind, bool islit)
+	PrimitiveType::PrimitiveType(size_t bits, Kind kind)
 	{
 		this->bitWidth = bits;
 		this->primKind = kind;
-		this->isUnspecifiedLiteral = islit;
 	}
 
 
@@ -218,63 +217,6 @@ namespace fir
 
 
 
-	PrimitiveType* PrimitiveType::getUnspecifiedLiteralInt(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		auto t = new PrimitiveType(64, Kind::Integer, true);
-		t->isTypeSigned = true;
-
-		return dynamic_cast<PrimitiveType*>(tc->normaliseType(t));
-	}
-
-	PrimitiveType* PrimitiveType::getUnspecifiedLiteralUint(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		auto t = new PrimitiveType(64, Kind::Integer, true);
-		t->isTypeSigned = false;
-
-		return dynamic_cast<PrimitiveType*>(tc->normaliseType(t));
-	}
-
-	PrimitiveType* PrimitiveType::getUnspecifiedLiteralFloat(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return dynamic_cast<PrimitiveType*>(tc->normaliseType(new PrimitiveType(64, Kind::Floating, true)));
-	}
-
-	PrimitiveType* PrimitiveType::getUnliteralType(FTContext* tc)
-	{
-		if(!this->isLiteralType())
-		{
-			return this;
-		}
-
-		// ok
-		if(this->isIntegerType())
-		{
-			if(this->isSigned())
-			{
-				return fir::PrimitiveType::getIntN(this->getIntegerBitWidth());
-			}
-			else
-			{
-				return fir::PrimitiveType::getUintN(this->getIntegerBitWidth());
-			}
-		}
-		else
-		{
-			return fir::PrimitiveType::getFloatWithBitWidth(tc, this->getFloatingPointBitWidth());
-		}
-	}
-
-
-
 
 
 	// various
@@ -282,16 +224,6 @@ namespace fir
 	{
 		// is primitive.
 		std::string ret;
-
-		if(this->isLiteralType())
-		{
-			if(this->primKind == Kind::Integer)
-				return "int";
-
-			else
-				return "float";
-		}
-
 
 		if(this->primKind == Kind::Integer)
 		{
@@ -328,7 +260,6 @@ namespace fir
 		if(this->primKind != po->primKind) return false;
 		if(this->bitWidth != po->bitWidth) return false;
 		if(this->isTypeSigned != po->isTypeSigned) return false;
-		if(this->isUnspecifiedLiteral != po->isUnspecifiedLiteral) return false;
 
 		return true;
 	}
@@ -340,11 +271,6 @@ namespace fir
 	{
 		iceAssert(this->primKind == Kind::Integer && "not integer type");
 		return this->isTypeSigned;
-	}
-
-	bool PrimitiveType::isLiteralType()
-	{
-		return this->isUnspecifiedLiteral;
 	}
 
 	size_t PrimitiveType::getIntegerBitWidth()

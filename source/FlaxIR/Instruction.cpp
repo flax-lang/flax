@@ -124,22 +124,33 @@ namespace fir
 			case OpKind::Branch_Cond: 						instrname = "branch"; break;
 			case OpKind::Value_PointerAddition:				instrname = "ptradd"; break;
 			case OpKind::Value_PointerSubtraction:			instrname = "ptrsub"; break;
+
 			case OpKind::String_GetData:					instrname = "get_str.data"; break;
 			case OpKind::String_SetData:					instrname = "set_str.data"; break;
 			case OpKind::String_GetLength:					instrname = "get_str.len"; break;
 			case OpKind::String_SetLength:					instrname = "set_str.len"; break;
 			case OpKind::String_GetRefCount:				instrname = "get_str.rc"; break;
 			case OpKind::String_SetRefCount:				instrname = "set_str.rc"; break;
+
 			case OpKind::DynamicArray_GetData:				instrname = "get_arr.data"; break;
 			case OpKind::DynamicArray_SetData:				instrname = "set_arr.data"; break;
 			case OpKind::DynamicArray_GetLength:			instrname = "get_arr.len"; break;
 			case OpKind::DynamicArray_SetLength:			instrname = "set_arr.len"; break;
 			case OpKind::DynamicArray_GetCapacity:			instrname = "get_arr.cap"; break;
 			case OpKind::DynamicArray_SetCapacity:			instrname = "set_arr.cap"; break;
+
 			case OpKind::ArraySlice_GetData:				instrname = "get_slice.data"; break;
 			case OpKind::ArraySlice_SetData:				instrname = "set_slice.data"; break;
 			case OpKind::ArraySlice_GetLength:				instrname = "get_slice.len"; break;
 			case OpKind::ArraySlice_SetLength:				instrname = "set_slice.len"; break;
+
+			case OpKind::Any_GetData:						instrname = "get_any.data"; break;
+			case OpKind::Any_SetData:						instrname = "set_any.data"; break;
+			case OpKind::Any_GetFlag:						instrname = "get_any.flag"; break;
+			case OpKind::Any_SetFlag:						instrname = "set_any.flag"; break;
+			case OpKind::Any_GetTypeID:						instrname = "get_any.typeid"; break;
+			case OpKind::Any_SetTypeID:						instrname = "set_any.typeid"; break;
+
 			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
 			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}

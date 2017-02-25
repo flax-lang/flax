@@ -154,8 +154,21 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		GenError::nullValue(cgi, this->initVal);
 	}
 
-
 	iceAssert(this->concretisedType);
+
+	// special override: if we're assigning a non-any to an any
+
+
+
+
+
+
+
+
+
+
+
+
 	if(val != 0)
 	{
 		// cast.
@@ -166,7 +179,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 
 
-	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType())/* && !val->getType()->isArrayType()*/)
+	if(this->initVal && !cmplxtype && !val->getType()->isAnyType())
 	{
 		// ...
 		// handled below
@@ -207,8 +220,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		}
 
 
-		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->ident.name == "Any"
-										|| cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || val->getType()->isAnyType()))
 		{
 			// this only works if we don't call a constructor
 
@@ -222,7 +234,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 			auto vr = new VarRef(this->pin, this->ident.name);
 			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
-				ai, val, valptr, vk);
+				ai, ValueKind::LValue, val, valptr, vk);
 
 			// delete vr;
 
@@ -357,24 +369,11 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			GenError::nullValue(cgi, this->initVal);
 
 
-		if(cgi->isAnyType(vartype))
+		if(vartype->isAnyType())
 		{
 			// todo: fix this shit
 			// but how?
-			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
-		}
-
-		if(vartype->isPrimitiveType() && vartype->toPrimitiveType()->isLiteralType())
-		{
-			// make it the largest, by default
-			if(vartype->isIntegerType() && vartype->isSignedIntType())
-				vartype = fir::Type::getInt64();
-
-			else if(vartype->isIntegerType())
-				vartype = fir::Type::getUint64();
-
-			else
-				vartype = fir::Type::getFloat64();
+			warn(this, "Assigning a value of type 'any' using type inference will not unwrap the value");
 		}
 
 		this->concretisedType = vartype;
@@ -436,7 +435,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 			ResultType rtype;
 			ValueKind rkind;
 
-			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, glob);
+			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, ltype, glob);
 
 			// don't be wasting time calling functions if we're constant.
 			if(dynamic_cast<fir::ConstantValue*>(rval))
@@ -637,7 +636,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 
 		if(this->initVal)
 		{
-			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, ai);
+			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, this->concretisedType, ai);
 		}
 
 

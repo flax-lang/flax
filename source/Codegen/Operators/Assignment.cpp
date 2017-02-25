@@ -138,7 +138,7 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-		ValueKind vk = ValueKind::RValue;
+		ValueKind rhsvk = ValueKind::RValue;
 		fir::Value* rhsptr = 0;
 		fir::Value* rhs = 0;
 
@@ -163,7 +163,7 @@ namespace Operators
 
 			// note: when we reach this, it means that we didn't find a specific operator overload
 			// in the "generalCompoundAssignmentOperator" function.
-			std::tie(rhs, rhsptr, vk) = OperatorMap::get().call(actualOp, cgi, user, args);
+			std::tie(rhs, rhsptr, rhsvk) = OperatorMap::get().call(actualOp, cgi, user, args);
 			iceAssert(rhs);
 
 			op = ArithmeticOp::Assign;
@@ -230,7 +230,7 @@ namespace Operators
 				cgi->irb.CreateStore(val, ptr);
 				return Result_t(0, 0);
 			}
-			else if(!t->isPointerType() && !t->isArrayType() && !t->isDynamicArrayType())
+			else if(!t->isPointerType() && !t->isArrayType() && !t->isDynamicArrayType() && !t->isArraySliceType())
 			{
 				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).value, args[1]);
 			}
@@ -242,8 +242,9 @@ namespace Operators
 		// else, we should be safe to codegen both sides
 		fir::Value* lhs = 0;
 		fir::Value* lhsptr = 0;
+		ValueKind lhsvk = ValueKind::RValue;
 
-		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+		std::tie(lhs, lhsptr, lhsvk) = args[0]->codegen(cgi);
 
 
 		// this is to allow handling of compound assignment operators
@@ -253,12 +254,12 @@ namespace Operators
 			iceAssert(rhs == 0);
 			iceAssert(rhsptr == 0);
 
-			std::tie(rhs, rhsptr, vk) = args[1]->codegen(cgi, lhsptr);
+			std::tie(rhs, rhsptr, rhsvk) = args[1]->codegen(cgi, lhs->getType(), lhsptr);
 		}
 
 
 		// the bulk of the work is still done here
-		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsptr, rhs, rhsptr, vk);
+		return performActualAssignment(cgi, user, args[0], args[1], op, lhs, lhsptr, lhsvk, rhs, rhsptr, rhsvk);
 	}
 
 
@@ -272,7 +273,7 @@ namespace Operators
 
 
 		fir::Type* ltype = args[0]->getType(cgi);
-		fir::Type* rtype = args[1]->getType(cgi, ltype->getPointerTo());
+		fir::Type* rtype = args[1]->getType(cgi, ltype);
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{
@@ -368,7 +369,7 @@ namespace Operators
 
 
 	Result_t performActualAssignment(CodegenInstance* cgi, Expr* user, Expr* leftExpr, Expr* rightExpr, ArithmeticOp op, fir::Value* lhs,
-		fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr, ValueKind vk)
+		fir::Value* lhsPtr, ValueKind lhsvk, fir::Value* rhs, fir::Value* rhsPtr, ValueKind rhsvk)
 	{
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
@@ -379,9 +380,14 @@ namespace Operators
 			GenError::assignToImmutable(cgi, user, leftExpr);
 		}
 
-		if(lhs == 0)
+		if(lhs == 0 || lhs->getType()->isVoidType())
 		{
 			GenError::nullValue(cgi, user);
+		}
+
+		if(lhsvk != ValueKind::LValue || !lhsPtr)
+		{
+			error(leftExpr, "Invalid assignment to rvalue");
 		}
 
 
@@ -412,7 +418,7 @@ namespace Operators
 
 
 
-		if((lhs->getType()->isStructType() || lhs->getType()->isClassType()) && !cgi->isAnyType(lhs->getType()))
+		if((lhs->getType()->isStructType() || lhs->getType()->isClassType()) && !lhs->getType()->isAnyType())
 		{
 			TypePair_t* tp = cgi->getType(lhs->getType());
 			iceAssert(tp);
@@ -455,7 +461,7 @@ namespace Operators
 
 
 		// assigning something to Any
-		if(cgi->isAnyType(lhs->getType()))
+		if(lhs->getType()->isAnyType() && !rhs->getType()->isAnyType())
 		{
 			if(!rhsPtr && !rhs->getType()->isPrimitiveType() && !rhs->getType()->isPointerType())
 			{
@@ -464,20 +470,20 @@ namespace Operators
 			}
 
 			iceAssert(lhsPtr);
-			cgi->assignValueToAny(lhsPtr, rhs, rhsPtr);
+			cgi->assignValueToAny(user, lhsPtr, rhs, rhsPtr);
 
 			// assign returns nothing
 			return Result_t(0, 0);
 		}
 
 		// assigning Any to something
-		if(cgi->isAnyType(rhs->getType()))
+		if(rhs->getType()->isAnyType() && !lhs->getType()->isAnyType())
 		{
 			// todo: find some fucking way to unwrap this shit at compile time.
-			warn(user, "Unchecked assignment from 'Any' to typed variable (unfixable)");
+			warn(user, "Unchecked assignment from 'any' to typed variable (unfixable)");
 
 			iceAssert(rhsPtr);
-			Result_t res = cgi->extractValueFromAny(lhs->getType(), rhsPtr);
+			Result_t res = cgi->extractValueFromAny(user, rhsPtr, lhs->getType());
 
 			cgi->irb.CreateStore(res.value, lhsPtr);
 
@@ -485,10 +491,6 @@ namespace Operators
 			return Result_t(0, 0);
 		}
 
-		if(!lhsPtr)
-		{
-			error(user, "Unassignable?");
-		}
 
 		// do the casting.
 		if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
@@ -510,7 +512,8 @@ namespace Operators
 
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, vk, false, true);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, rhsvk, false, true);
+			return Result_t(0, 0);
 		}
 		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
 		{
@@ -522,17 +525,12 @@ namespace Operators
 			if(vdecl->immutable || lhsPtr->isImmutable())
 				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
 
-			// store it, and return 0.
-			cgi->irb.CreateStore(rhs, lhsPtr);
 		}
-		else
-		{
-			// just do it
-			iceAssert(rhs);
-			iceAssert(lhsPtr);
 
-			cgi->irb.CreateStore(rhs, lhsPtr);
-		}
+		iceAssert(rhs);
+		iceAssert(lhsPtr);
+
+		cgi->irb.CreateStore(rhs, lhsPtr);
 
 		return Result_t(0, 0);
 	}

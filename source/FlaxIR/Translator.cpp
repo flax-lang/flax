@@ -167,7 +167,7 @@ namespace fir
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
 			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 
-			auto id = Identifier("__.string", IdKind::Struct);
+			auto id = Identifier("__string", IdKind::Struct);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -183,6 +183,22 @@ namespace fir
 		else if(type->isEnumType())
 		{
 			return typeToLlvm(type->toEnumType()->getCaseType(), mod);
+		}
+		else if(type->isAnyType())
+		{
+			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
+			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), 24);
+
+			auto id = Identifier("__any", IdKind::Struct);
+			if(createdTypes.find(id) != createdTypes.end())
+				return createdTypes[id];
+
+			auto str = llvm::StructType::create(gc, id.mangled());
+
+			// typeid, flag, data
+			str->setBody({ i64type, i64type, arrtype });
+
+			return createdTypes[id] = str;
 		}
 		else if(type->isParametricType())
 		{
@@ -1310,6 +1326,8 @@ namespace fir
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateAlloca(t);
+							builder.CreateStore(llvm::Constant::getNullValue(t), ret);
+
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1993,6 +2011,115 @@ namespace fir
 
 
 
+						case OpKind::Any_GetData:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							// get the array via GEP
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
+							iceAssert(data->getType()->getPointerElementType()->isArrayTy());
+
+							// get the pointer via GEP (again)
+							llvm::Value* ret = builder.CreateConstGEP2_64(data, 0, 0);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Any_SetData:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(module->getDataLayout().getTypeSizeInBits(b->getType()) <= 24 * CHAR_BIT);
+
+							// get the pointer to array
+							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
+
+							// get the real pointer
+							llvm::Value* ptr = builder.CreateConstGEP2_64(data, 0, 0);
+
+							// cast it
+							ptr = builder.CreatePointerCast(ptr, b->getType()->getPointerTo());
+
+							// store it
+							builder.CreateStore(b, ptr);
+
+							addValueToMap(builder.CreateLoad(ptr), inst->realOutput);
+							break;
+						}
+
+
+
+
+						case OpKind::Any_GetTypeID:
+						case OpKind::Any_GetFlag:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							int ind = 0;
+							if(inst->opKind == OpKind::Any_GetTypeID)
+								ind = 0;
+							else
+								ind = 1;
+
+							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							llvm::Value* ret = builder.CreateLoad(gep);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case OpKind::Any_SetTypeID:
+						case OpKind::Any_SetFlag:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isPointerTy());
+							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
+
+							int ind = 0;
+							if(inst->opKind == OpKind::Any_SetTypeID)
+								ind = 0;
+							else
+								ind = 1;
+
+							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
+							builder.CreateStore(b, len);
+
+							llvm::Value* ret = builder.CreateLoad(len);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+
+
+
+
+
+
+
 
 						case OpKind::Unreachable:
 						{
@@ -2004,7 +2131,7 @@ namespace fir
 						{
 							// note we don't use "default" to catch
 							// new opkinds that we forget to add.
-							iceAssert(0);
+							iceAssert("invalid opcode" && 0);
 						}
 					}
 				}
