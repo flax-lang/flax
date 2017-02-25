@@ -925,6 +925,7 @@ namespace fir
 				auto target = fn->getArguments()[i]->getType();
 				if(args[i]->getType() != target)
 				{
+					#if 0
 					if(args[i]->getType()->isPrimitiveType() && args[i]->getType()->toPrimitiveType()->isLiteralType())
 					{
 						bool shouldcast = false;
@@ -979,6 +980,7 @@ namespace fir
 						if(args[i]->getType() == target)
 							continue;
 					}
+					#endif
 
 					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
 						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());

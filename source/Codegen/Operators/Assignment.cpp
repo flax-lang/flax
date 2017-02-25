@@ -254,7 +254,7 @@ namespace Operators
 			iceAssert(rhs == 0);
 			iceAssert(rhsptr == 0);
 
-			std::tie(rhs, rhsptr, rhsvk) = args[1]->codegen(cgi, lhsptr);
+			std::tie(rhs, rhsptr, rhsvk) = args[1]->codegen(cgi, lhs->getType(), lhsptr);
 		}
 
 
@@ -273,7 +273,7 @@ namespace Operators
 
 
 		fir::Type* ltype = args[0]->getType(cgi);
-		fir::Type* rtype = args[1]->getType(cgi, ltype->getPointerTo());
+		fir::Type* rtype = args[1]->getType(cgi, ltype);
 
 		if(ltype->isStructType() || rtype->isStructType() || ltype->isClassType() || rtype->isClassType())
 		{

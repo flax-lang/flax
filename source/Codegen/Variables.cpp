@@ -376,19 +376,6 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			warn(this, "Assigning a value of type 'any' using type inference will not unwrap the value");
 		}
 
-		if(vartype->isPrimitiveType() && vartype->toPrimitiveType()->isLiteralType())
-		{
-			// make it the largest, by default
-			if(vartype->isIntegerType() && vartype->isSignedIntType())
-				vartype = fir::Type::getInt64();
-
-			else if(vartype->isIntegerType())
-				vartype = fir::Type::getUint64();
-
-			else
-				vartype = fir::Type::getFloat64();
-		}
-
 		this->concretisedType = vartype;
 	}
 	else
@@ -448,7 +435,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 			ResultType rtype;
 			ValueKind rkind;
 
-			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, glob);
+			std::tie(rval, rptr, rtype, rkind) = this->initVal->codegen(cgi, ltype, glob);
 
 			// don't be wasting time calling functions if we're constant.
 			if(dynamic_cast<fir::ConstantValue*>(rval))
@@ -649,7 +636,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 
 		if(this->initVal)
 		{
-			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, ai);
+			std::tie(val, valptr, vk) = this->initVal->codegen(cgi, this->concretisedType, ai);
 		}
 
 
