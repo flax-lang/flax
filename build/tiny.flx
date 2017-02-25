@@ -4,6 +4,11 @@
 
 ffi func printf(fmt: i8*, ...) -> int
 
+func foo(a: i8)
+{
+	printf("a = %d\n", a)
+}
+
 public func main() -> int
 {
 	do {
@@ -12,12 +17,14 @@ public func main() -> int
 
 		printf("k as string = %s\n", k as string)
 
-		k = 301 as int
+		k = 301
 
 		printf("k as int = %d\n", k as int)
 
 		// printf("typeof(k): %d\n", typeof(k))
 	}
+
+	foo(30)
 
 	return 0
 }

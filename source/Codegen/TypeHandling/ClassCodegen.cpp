@@ -122,7 +122,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 				else
 				{
 					iceAssert(var->initVal);
-					fir::Value* val = var->initVal->codegen(cgi, gv).value;
+					fir::Value* val = var->initVal->codegen(cgi, var->concretisedType, gv).value;
 					if(dynamic_cast<fir::ConstantValue*>(val))
 					{
 						gv->setInitialValue(dynamic_cast<fir::ConstantValue*>(cgi->autoCastType(var->concretisedType, val)));

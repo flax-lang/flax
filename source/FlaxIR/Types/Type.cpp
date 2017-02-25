@@ -106,7 +106,7 @@ namespace fir
 
 		// bool
 		{
-			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
@@ -118,7 +118,7 @@ namespace fir
 
 		// int8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -126,7 +126,7 @@ namespace fir
 		}
 		// int16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -134,7 +134,7 @@ namespace fir
 		}
 		// int32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -142,7 +142,7 @@ namespace fir
 		}
 		// int64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -150,7 +150,7 @@ namespace fir
 		}
 		// int128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[128].push_back(t);
@@ -162,7 +162,7 @@ namespace fir
 
 		// uint8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -170,7 +170,7 @@ namespace fir
 		}
 		// uint16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -178,7 +178,7 @@ namespace fir
 		}
 		// uint32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -186,7 +186,7 @@ namespace fir
 		}
 		// uint64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -194,7 +194,7 @@ namespace fir
 		}
 		// uint128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);
@@ -206,7 +206,7 @@ namespace fir
 
 		// float32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -214,7 +214,7 @@ namespace fir
 		}
 		// float64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -222,7 +222,7 @@ namespace fir
 		}
 		// float80
 		{
-			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[80].push_back(t);
@@ -230,7 +230,7 @@ namespace fir
 		}
 		// float128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);

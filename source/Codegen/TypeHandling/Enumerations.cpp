@@ -51,9 +51,6 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 		}
 	}
 
-	if(prev->isPrimitiveType() && prev->toPrimitiveType()->isLiteralType())
-		prev = prev->toPrimitiveType()->getUnliteralType();
-
 	std::vector<std::string> fullScope = cgi->getFullScope();
 
 
