@@ -229,10 +229,15 @@ namespace Codegen
 		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
 
 		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
-		__attribute__ ((warn_unused_result));
+		__attribute__ ((warn_unused_result, /*deprecated*/));
 
 		fir::Value* autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
-		__attribute__ ((warn_unused_result));
+		__attribute__ ((warn_unused_result, /*deprecated*/));
+
+		std::pair<fir::Value*, fir::Value*> attemptTypeAutoCasting(fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs, fir::Value* rhsptr,
+			int* distance = 0) __attribute__ ((warn_unused_result));
+
+		fir::Value* attemptTypeCast(fir::Value* lhs, fir::Value* lhsptr, fir::Type* type, int* dist = 0) __attribute__ ((warn_unused_result));
 
 		int getAutoCastDistance(fir::Type* from, fir::Type* to);
 

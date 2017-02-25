@@ -7,6 +7,159 @@
 
 namespace Codegen
 {
+	std::pair<fir::Value*, fir::Value*> CodegenInstance::attemptTypeAutoCasting(fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs,
+		fir::Value* rhsptr, int* distance)
+	{
+		if(lhs->getType()->isTypeEqual(rhs->getType()))
+		{
+			if(distance) *distance = 0;
+			return { lhs, rhs };
+		}
+
+		fir::Type* lty = lhs->getType();
+		fir::Type* rty = rhs->getType();
+
+		if(distance) *distance = MIN(this->getAutoCastDistance(lty, rty), this->getAutoCastDistance(rty, lty));
+
+		// well.
+		// first things first, is what we created this function to accomplish
+		// ie. side-agnostic casting with literals involved.
+
+		if(dynamic_cast<fir::ConstantValue*>(lhs) || dynamic_cast<fir::ConstantValue*>(rhs))
+		{
+			// if they're both constant...
+			if(dynamic_cast<fir::ConstantValue*>(lhs) && dynamic_cast<fir::ConstantValue*>(rhs))
+			{
+				// check the types
+				if(lty->isFloatingPointType() && rty->isIntegerType())
+					return { lhs, this->irb.CreateIntToFloatCast(rhs, lty) };
+
+				else if(lty->isIntegerType() && rty->isFloatingPointType())
+					return { this->irb.CreateIntToFloatCast(lhs, rty), rhs };
+
+				else if(lty->isIntegerType() && rty->isIntegerType())
+				{
+					// both constants... they should both be i64/u64
+					// do nothing
+				}
+				else if(lty->isFloatingPointType() && rty->isFloatingPointType())
+				{
+					// same thing, shouldn't need to do anything since they're both literals
+				}
+			}
+
+			// if the left side is constant
+			if(fir::ConstantValue* lcv = dynamic_cast<fir::ConstantValue*>(lhs))
+			{
+				if(lty->isIntegerType() && rty->isIntegerType())
+				{
+					// try to fit.
+					bool fits = false;
+					if(lty->isSignedIntType())
+					{
+						fits = fir::checkSignedIntLiteralFitsIntoType(rty->toPrimitiveType(),
+							dynamic_cast<fir::ConstantInt*>(lcv)->getSignedValue());
+					}
+					else
+					{
+						fits = fir::checkUnsignedIntLiteralFitsIntoType(rty->toPrimitiveType(),
+							dynamic_cast<fir::ConstantInt*>(lcv)->getUnsignedValue());
+					}
+
+					if(fits) return { this->irb.CreateIntSizeCast(lhs, rty), rhs };
+				}
+				else if(lty->isFloatingPointType() && rty->isFloatingPointType())
+				{
+					// try to fit.
+					bool fits = fir::checkFloatingPointLiteralFitsIntoType(rty->toPrimitiveType(),
+						dynamic_cast<fir::ConstantFP*>(lcv)->getValue());
+
+					if(fits)
+					{
+						if(rty->toPrimitiveType()->getFloatingPointBitWidth() > lty->toPrimitiveType()->getFloatingPointBitWidth())
+							return { this->irb.CreateFExtend(lhs, rty), rhs };
+
+						else
+							return { this->irb.CreateFTruncate(lhs, rty), rhs };
+					}
+				}
+				else if(lty->isFloatingPointType() && rty->isIntegerType())
+				{
+					// can't do anything, since the floating point is the constant.
+				}
+				else if(lty->isIntegerType() && rty->isFloatingPointType())
+				{
+					// this one we can do.
+					return { this->irb.CreateIntToFloatCast(lhs, rty), rhs };
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else if(fir::ConstantValue* rcv = dynamic_cast<fir::ConstantValue*>(rhs))
+			{
+				if(lty->isIntegerType() && rty->isIntegerType())
+				{
+					// try to fit.
+					bool fits = false;
+					if(rty->isSignedIntType())
+					{
+						fits = fir::checkSignedIntLiteralFitsIntoType(lty->toPrimitiveType(),
+							dynamic_cast<fir::ConstantInt*>(rcv)->getSignedValue());
+					}
+					else
+					{
+						fits = fir::checkUnsignedIntLiteralFitsIntoType(lty->toPrimitiveType(),
+							dynamic_cast<fir::ConstantInt*>(rcv)->getUnsignedValue());
+					}
+
+					if(fits) return { lhs, this->irb.CreateIntSizeCast(rhs, lty) };
+				}
+				else if(lty->isFloatingPointType() && rty->isFloatingPointType())
+				{
+					// try to fit.
+					bool fits = fir::checkFloatingPointLiteralFitsIntoType(lty->toPrimitiveType(),
+						dynamic_cast<fir::ConstantFP*>(rcv)->getValue());
+
+					if(fits)
+					{
+						if(rty->toPrimitiveType()->getFloatingPointBitWidth() > lty->toPrimitiveType()->getFloatingPointBitWidth())
+							return { lhs, this->irb.CreateFTruncate(rhs, lty) };
+
+						else
+							return { lhs, this->irb.CreateFExtend(rhs, lty) };
+					}
+				}
+				else if(lty->isFloatingPointType() && rty->isIntegerType())
+				{
+					// do it.
+					return { lhs, this->irb.CreateIntToFloatCast(rhs, lty) };
+				}
+				else if(lty->isIntegerType() && rty->isFloatingPointType())
+				{
+					// can't do anything, since the floating point is the constant.
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+		}
+
+
+
+		// neither are constants now...
+		// prefer converting rhs to lhs' type
+
+		rhs = this->autoCastType(lhs->getType(), rhs, rhsptr);
+
+		return { lhs, rhs };
+	}
+
+
+
+
 	int CodegenInstance::getAutoCastDistance(fir::Type* from, fir::Type* to)
 	{
 		if(!from || !to)
@@ -14,38 +167,6 @@ namespace Codegen
 
 		if(from->isTypeEqual(to))
 			return 0;
-
-		if(from->isPrimitiveType() && to->isPrimitiveType())
-		{
-			auto fprim = from->toPrimitiveType();
-			auto tprim = to->toPrimitiveType();
-
-			if(fprim->isLiteralType() && fprim->isFloatingPointType() && tprim->isFloatingPointType())
-			{
-				return 1;
-			}
-			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isIntegerType())
-			{
-				return 1;
-			}
-			else if(fprim->isLiteralType() && fprim->isIntegerType() && tprim->isFloatingPointType())
-			{
-				return 3;
-			}
-		}
-
-		// convert int -> T for T[]
-		// i think.
-		if(from->isPrimitiveType() && from->toPrimitiveType()->isLiteralType())
-		{
-			fir::Type* elmType = 0;
-			if(to->isArrayType()) elmType = to->toArrayType()->getElementType();
-			else if(to->isArraySliceType()) elmType = to->toArraySliceType()->getElementType();
-			else if(to->isDynamicArrayType()) elmType = to->toDynamicArrayType()->getElementType();
-
-			if(elmType && elmType->isPrimitiveType())
-				return getAutoCastDistance(from, elmType);
-		}
 
 
 		int ret = 0;
@@ -69,7 +190,7 @@ namespace Codegen
 
 			if(as == false && bs == true)
 			{
-				return bb >= 2 * ab;
+				return bb >= (2 * ab) ? (bb / ab) : -1;
 			}
 			else if(as == true && bs == false)
 			{
@@ -173,28 +294,12 @@ namespace Codegen
 		}
 
 
-
-		if(from->getType()->isPrimitiveType() && from->getType()->toPrimitiveType()->isLiteralType())
-		{
-			fir::Type* elmType = 0;
-			if(target->isArrayType()) elmType = target->toArrayType()->getElementType();
-			else if(target->isArraySliceType()) elmType = target->toArraySliceType()->getElementType();
-			else if(target->isDynamicArrayType()) elmType = target->toDynamicArrayType()->getElementType();
-
-			if(elmType && elmType->isPrimitiveType())
-				return autoCastType(elmType, from);
-		}
-
-
-
-
 		if(target->isIntegerType() && from->getType()->isIntegerType()
-			&& (target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth()
-				|| from->getType()->toPrimitiveType()->isLiteralType()))
+			&& (target->toPrimitiveType()->getIntegerBitWidth() != from->getType()->toPrimitiveType()->getIntegerBitWidth()))
 		{
 			bool shouldCast = dist >= 0;
 			fir::ConstantInt* ci = 0;
-			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+			if(dist == -1)
 			{
 				if((ci = dynamic_cast<fir::ConstantInt*>(from)))
 				{
@@ -211,29 +316,6 @@ namespace Codegen
 
 			if(shouldCast)
 			{
-				// if it is a literal, we need to create a new constant with a proper type
-				if(from->getType()->toPrimitiveType()->isLiteralType())
-				{
-					if(ci)
-					{
-						fir::PrimitiveType* real = 0;
-						if(ci->getType()->isSignedIntType())
-							real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
-
-						else
-							real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
-
-						from = fir::ConstantInt::get(real, ci->getSignedValue());
-					}
-					else
-					{
-						// nothing?
-						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
-					}
-
-					retval = from;
-				}
-
 				// check signed to unsigned first
 				if(target->toPrimitiveType()->isSigned() != from->getType()->toPrimitiveType()->isSigned())
 				{
@@ -280,7 +362,7 @@ namespace Codegen
 			bool shouldCast = dist >= 0;
 			fir::ConstantFP* cf = 0;
 
-			if(dist == -1 || from->getType()->toPrimitiveType()->isLiteralType())
+			if(dist == -1)
 			{
 				if((cf = dynamic_cast<fir::ConstantFP*>(from)))
 				{
@@ -291,23 +373,6 @@ namespace Codegen
 
 			if(shouldCast)
 			{
-				// if it is a literal, we need to create a new constant with a proper type
-				if(from->getType()->toPrimitiveType()->isLiteralType())
-				{
-					if(cf)
-					{
-						from = fir::ConstantFP::get(target, cf->getValue());
-						// info(__debugExpr, "(%s / %s)", target->str().c_str(), from->getType()->str().c_str());
-					}
-					else
-					{
-						// nothing.
-						from->setType(from->getType()->toPrimitiveType()->getUnliteralType());
-					}
-
-					retval = from;
-				}
-
 				if(from->getType()->toPrimitiveType()->getFloatingPointBitWidth() < target->toPrimitiveType()->getFloatingPointBitWidth())
 					retval = this->irb.CreateFExtend(from, target);
 			}
