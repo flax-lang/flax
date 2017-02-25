@@ -98,6 +98,8 @@ int main(int argc, char* argv[])
 	}
 
 
+	// fir::getDefaultFTContext()->dumpTypeIDs();
+
 
 	// check caps that we need
 	using namespace Compiler;

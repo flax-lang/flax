@@ -34,6 +34,14 @@ namespace fir
 		return type;
 	}
 
+	void FTContext::dumpTypeIDs()
+	{
+		for(auto t : typeCache)
+			printf("%zu: %s\n", t->getID(), t->str().c_str());
+
+		printf("\n\n");
+	}
+
 
 	static FTContext* defaultFTContext = 0;
 	void setDefaultFTContext(FTContext* tc)
@@ -98,7 +106,7 @@ namespace fir
 
 		// bool
 		{
-			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[1].push_back(t);
@@ -110,7 +118,7 @@ namespace fir
 
 		// int8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -118,7 +126,7 @@ namespace fir
 		}
 		// int16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -126,7 +134,7 @@ namespace fir
 		}
 		// int32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -134,7 +142,7 @@ namespace fir
 		}
 		// int64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -142,7 +150,7 @@ namespace fir
 		}
 		// int128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = true;
 
 			tc->primitiveTypes[128].push_back(t);
@@ -154,7 +162,7 @@ namespace fir
 
 		// uint8
 		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[8].push_back(t);
@@ -162,7 +170,7 @@ namespace fir
 		}
 		// uint16
 		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[16].push_back(t);
@@ -170,7 +178,7 @@ namespace fir
 		}
 		// uint32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -178,7 +186,7 @@ namespace fir
 		}
 		// uint64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -186,7 +194,7 @@ namespace fir
 		}
 		// uint128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);
@@ -198,7 +206,7 @@ namespace fir
 
 		// float32
 		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[32].push_back(t);
@@ -206,7 +214,7 @@ namespace fir
 		}
 		// float64
 		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[64].push_back(t);
@@ -214,7 +222,7 @@ namespace fir
 		}
 		// float80
 		{
-			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[80].push_back(t);
@@ -222,7 +230,7 @@ namespace fir
 		}
 		// float128
 		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating, false);
+			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating);
 			t->isTypeSigned = false;
 
 			tc->primitiveTypes[128].push_back(t);
@@ -391,6 +399,8 @@ namespace fir
 		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
 		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
 
+		else if(builtin == ANY_TYPE_STRING)			real = Type::getAnyType(tc);
+
 		else return 0;
 
 		iceAssert(real);
@@ -508,6 +518,13 @@ namespace fir
 		return t;
 	}
 
+	AnyType* Type::toAnyType()
+	{
+		auto t = dynamic_cast<AnyType*>(this);
+		if(t == 0) error("not any type");
+		return t;
+	}
+
 
 
 
@@ -620,6 +637,11 @@ namespace fir
 	bool Type::isEnumType()
 	{
 		return dynamic_cast<EnumType*>(this) != 0;
+	}
+
+	bool Type::isAnyType()
+	{
+		return dynamic_cast<AnyType*>(this) != 0;
 	}
 
 
@@ -780,7 +802,10 @@ namespace fir
 		return StringType::get(tc);
 	}
 
-
+	AnyType* Type::getAnyType(FTContext* tc)
+	{
+		return AnyType::get(tc);
+	}
 }
 
 

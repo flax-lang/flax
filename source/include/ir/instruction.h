@@ -138,6 +138,13 @@ namespace fir
 		ArraySlice_GetLength,
 		ArraySlice_SetLength,
 
+		Any_GetData,
+		Any_SetData,
+		Any_GetFlag,
+		Any_SetFlag,
+		Any_GetTypeID,
+		Any_SetTypeID,
+
 		Branch_UnCond,
 		Branch_Cond,
 

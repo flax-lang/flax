@@ -361,9 +361,12 @@ public func main(argc: i32, argv: i8**) -> int
 		do {
 			let longstring = "In the event of unexpected shutdown, all personnel are to evacuate the area immediately.\n\n"
 
-			let [ a, b, c, ... chars ] = longstring
+			let [ a, b, c, ... &chars ] = longstring
 
 			printf("a = '%c', b = '%c', c = '%c'\n", a, b, c)
+
+			// this should not, and thankfully, does not, work.
+			// chars[3] = char("$")
 
 			var k = 0
 			while k < chars.length
@@ -384,6 +387,16 @@ public func main(argc: i32, argv: i8**) -> int
 
 			printf("-- %d --\n", footest([]))
 		}
+	}
+
+
+	do {
+		printf("any test\n")
+		var k = 40 as any
+		k = "foo"
+
+		// printf("typeof(k): %d\n", typeof(k))
+		printf("k as string = %s\n", k as string)
 	}
 
 

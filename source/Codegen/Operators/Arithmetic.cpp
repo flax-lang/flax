@@ -66,7 +66,7 @@ namespace Operators
 			std::swap(lhs, rhs);
 
 		// do the pointer arithmetic thing
-		fir::Type* ptrIntType = cgi->execTarget->getPointerSizedIntegerType();
+		fir::Type* ptrIntType = cgi->module->getExecutionTarget()->getPointerSizedIntegerType();
 
 		if(rhs->getType() != ptrIntType)
 			rhs = cgi->irb.CreateIntSizeCast(rhs, ptrIntType);
@@ -510,8 +510,17 @@ namespace Operators
 		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
 		std::tie(rhs, rhsptr) = args[1]->codegen(cgi);
 
-		rhs = cgi->autoCastType(lhs, rhs);
-		return performGeneralArithmeticOperator(cgi, op, user, lhs, lhsptr, rhs, rhsptr, args);
+		// rhs = cgi->autoCastType(lhs, rhs);
+
+		// warn(user, "called with %s, %s\n", lhs->getType()->str().c_str(), rhs->getType()->str().c_str());
+		std::tie(lhs, rhs) = cgi->attemptTypeAutoCasting(lhs, lhsptr, rhs, rhsptr);
+
+
+		auto ret = performGeneralArithmeticOperator(cgi, op, user, lhs, lhsptr, rhs, rhsptr, args);
+
+		// warn(user, "got: %s, %s (result %s)\n", lhs->getType()->str().c_str(), rhs->getType()->str().c_str(), ret.value->getType()->str().c_str());
+
+		return ret;
 	}
 }
 

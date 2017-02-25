@@ -178,6 +178,16 @@ namespace fir
 		{
 			return this->getTypeSizeInBits(fir::Type::getInt8Ptr());
 		}
+		*/
+		if(t->isPrimitiveType())
+		{
+			PrimitiveType* prt = t->toPrimitiveType();
+			return prt->isFloatingPointType() ? prt->getFloatingPointBitWidth() : prt->getIntegerBitWidth();
+		}
+		else if(t->isPointerType())
+		{
+			return this->getPointerWidthInBits();
+		}
 		else if(t->isStringType())
 		{
 			return this->getTypeSizeInBits(fir::Type::getInt8Ptr()) + this->getTypeSizeInBits(fir::Type::getInt64());
@@ -186,17 +196,17 @@ namespace fir
 		{
 			return this->getTypeSizeInBits(fir::Type::getInt8());
 		}
-		else */
-		if(t->isPrimitiveType())
+		else if(t->isDynamicArrayType())
 		{
-			PrimitiveType* prt = t->toPrimitiveType();
-			return prt->isFloatingPointType() ? prt->getFloatingPointBitWidth() : prt->getIntegerBitWidth();
+			return this->getTypeSizeInBits(t->toDynamicArrayType()->getElementType()->getPointerTo())
+				+ (2 * this->getTypeSizeInBits(fir::Type::getInt64()));
 		}
 		else
 		{
 			if(t->isVoidType()) return 0;
 
-			_error_and_exit("unsupported type: %s", t->str().c_str());
+			// _error_and_exit("unsupported type for compile-time sizeof: %s", t->str().c_str());
+			return -1;
 		}
 	}
 
