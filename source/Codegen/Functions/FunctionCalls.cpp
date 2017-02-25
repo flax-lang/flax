@@ -181,13 +181,21 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 				fir::Value* valp = 0;
 				std::tie(val, valp) = params[i]->codegen(this);
 
-				if(this->isAnyType(variadicType))
+				if(variadicType->isAnyType())
 				{
 					variadics.push_back(this->makeAnyFromValue(val, valp).value);
 				}
 				else if(variadicType != val->getType())
 				{
-					variadics.push_back(this->autoCastType(variadicType, val, valp));
+					if(this->getAutoCastDistance(val->getType(), variadicType) >= 0)
+					{
+						variadics.push_back(this->autoCastType(variadicType, val, valp));
+					}
+					else
+					{
+						error(params[i], "Type '%s' cannot be converted to '%s' in argument to function",
+							val->getType()->str().c_str(), variadicType->str().c_str());
+					}
 				}
 				else
 				{
@@ -335,7 +343,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 
 
-				auto i64size = 8;/*cgi->execTarget->getTypeSizeInBytes(fir::Type::getInt64());*/
+				auto i64size = 8;
 				fir::Value* alloclen = cgi->irb.CreateAdd(len, fir::ConstantInt::getInt64(1 + i64size));
 
 				fir::Value* buf = cgi->irb.CreateCall1(mallocf, alloclen);

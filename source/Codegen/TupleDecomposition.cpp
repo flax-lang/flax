@@ -117,7 +117,7 @@ namespace Ast
 					{
 						// todo: this leaks also
 						auto res = Operators::performActualAssignment(cgi, user, new VarRef(mapping.pos, name), 0, ArithmeticOp::Assign,
-							cgi->irb.CreateLoad(ai), ai, rhs, rhsptr, vk);
+							cgi->irb.CreateLoad(ai), ai, ValueKind::LValue, rhs, rhsptr, vk);
 
 						// it's stored already, no need to do shit.
 						iceAssert(res.value);

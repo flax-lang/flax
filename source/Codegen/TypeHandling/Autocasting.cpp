@@ -125,7 +125,7 @@ namespace Codegen
 		{
 			return 5;
 		}
-		else if(this->isAnyType(to))
+		else if(to->isAnyType())
 		{
 			// any cast is 25.
 			return 25;

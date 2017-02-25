@@ -18,7 +18,7 @@ namespace Ast
 		{
 			// todo: this leaks also
 			auto res = Operators::performActualAssignment(cgi, user, new VarRef(pos, name),
-				0, ArithmeticOp::Assign, cgi->irb.CreateLoad(dst), dst, cgi->irb.CreateLoad(src), src, vk);
+				0, ArithmeticOp::Assign, cgi->irb.CreateLoad(dst), dst, ValueKind::LValue, cgi->irb.CreateLoad(src), src, vk);
 
 			// it's stored already, no need to do shit.
 			iceAssert(res.value);

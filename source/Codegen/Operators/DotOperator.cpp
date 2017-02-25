@@ -33,7 +33,7 @@ static mpark::variant<fir::Type*, Result_t> getStaticVariable(CodegenInstance* c
 		// the ptr/ref value.
 
 		if(actual)
-			return Result_t(cgi->irb.CreateLoad(gv), gv);
+			return Result_t(cgi->irb.CreateLoad(gv), gv, ValueKind::LValue);
 
 		else
 			return gv->getType()->getPointerElementType();
@@ -733,7 +733,7 @@ static variant doTupleAccess(CodegenInstance* cgi, fir::Type* lhsType, Expr* rig
 		iceAssert(result.pointer);
 		fir::Value* vp = cgi->irb.CreateStructGEP(result.pointer, index);
 
-		return Result_t(cgi->irb.CreateLoad(vp), vp);
+		return Result_t(cgi->irb.CreateLoad(vp), vp, ValueKind::LValue);
 	}
 	else
 	{
@@ -802,7 +802,7 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 					if(actual)
 					{
 						auto p = cgi->irb.CreateGetStructMember(isPtr ? result.value : result.pointer, mem->ident.name);
-						return Result_t(cgi->irb.CreateLoad(p), p);
+						return Result_t(cgi->irb.CreateLoad(p), p, ValueKind::LValue);
 					}
 					else
 					{

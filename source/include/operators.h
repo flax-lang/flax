@@ -51,7 +51,8 @@ namespace Operators
 	Ast::Result_t operatorAssign(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::vector<Ast::Expr*> args);
 	Ast::Result_t generalCompoundAssignOperator(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::vector<Ast::Expr*> args);
 
-	Ast::Result_t performActualAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* usr, Ast::Expr* leftExpr, Ast::Expr* rightExpr, Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr, Ast::ValueKind vk);
+	Ast::Result_t performActualAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* usr, Ast::Expr* leftExpr, Ast::Expr* rightExpr, Ast::ArithmeticOp op, fir::Value* lhs, fir::Value* lhsPtr, Ast::ValueKind lhsvk, fir::Value* rhs, fir::Value* rhsPtr,
+		Ast::ValueKind rhsvk);
 
 	Ast::Result_t operatorSubscript(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::vector<Ast::Expr*> args);
 	Ast::Result_t operatorSlice(Codegen::CodegenInstance* cgi, Ast::ArithmeticOp op, Ast::Expr* usr, std::vector<Ast::Expr*> args);

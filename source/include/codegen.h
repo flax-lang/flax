@@ -92,7 +92,6 @@ namespace Codegen
 		Ast::Root* rootNode;
 		fir::Module* module;
 		std::vector<SymTab_t> symTabStack;
-		fir::ExecutionTarget* execTarget;
 
 		FunctionTree* currentFuncTree;
 		std::vector<BracedBlockScope> blockStack;
@@ -242,8 +241,6 @@ namespace Codegen
 		bool isBuiltinType(Ast::Expr* e);
 		bool isIntegerType(Ast::Expr* e);
 		bool isBuiltinType(fir::Type* e);
-		bool isTypeAlias(fir::Type* type);
-		bool isAnyType(fir::Type* type);
 		bool isRefCountedType(fir::Type* type);
 
 		bool isDuplicateType(const Identifier& id);
@@ -256,9 +253,9 @@ namespace Codegen
 
 		std::string printAst(Ast::Expr*);
 
-		Ast::Result_t assignValueToAny(fir::Value* lhsPtr, fir::Value* rhs, fir::Value* rhsPtr);
-		Ast::Result_t extractValueFromAny(fir::Type* type, fir::Value* ptr);
-		Ast::Result_t makeAnyFromValue(fir::Value* value, fir::Value* valuePtr);
+		Ast::Result_t makeAnyFromValue(fir::Value* val, fir::Value* ptr);
+		Ast::Result_t assignValueToAny(Ast::Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr);
+		Ast::Result_t extractValueFromAny(Ast::Expr* user, fir::Value* any, fir::Type* type);
 
 		Ast::Result_t getNullString();
 		Ast::Result_t getEmptyString();

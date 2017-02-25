@@ -1670,6 +1670,92 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateGetAnyTypeID(Value* any, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getInt64(), { any });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetAnyTypeID(Value* any, Value* val, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::Any_SetTypeID, true, this->currentBlock, fir::Type::getVoid(), { any, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateGetAnyFlag(Value* any, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Any_GetFlag, false, this->currentBlock, fir::Type::getInt64(), { any });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetAnyFlag(Value* any, Value* val, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::Any_SetFlag, true, this->currentBlock, fir::Type::getVoid(), { any, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+	// note: getData() returns i8*, to facilitate pointer tomfoolery.
+	// setData() just takes any type, as long as its size is <= 24 bytes, so we can let the LLVM translator
+	// handle the nitty-gritty
+	Value* IRBuilder::CreateGetAnyData(Value* any, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Any_GetData, false, this->currentBlock, fir::Type::getInt8()->getPointerTo(), { any });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetAnyData(Value* any, Value* val, std::string vname)
+	{
+		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
+			error("any is not a pointer to an any type (got '%s')", any->getType()->str().c_str());
+
+		iceAssert(this->context);
+		iceAssert(this->context->module);
+
+		size_t sz = this->context->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
+		if(sz > 24 || sz == -1)
+		{
+			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",
+				val->getType()->str().c_str(), (ssize_t) sz);
+		}
+
+		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getVoid(), { any, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+
+
+
 
 
 

@@ -154,8 +154,21 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		GenError::nullValue(cgi, this->initVal);
 	}
 
-
 	iceAssert(this->concretisedType);
+
+	// special override: if we're assigning a non-any to an any
+
+
+
+
+
+
+
+
+
+
+
+
 	if(val != 0)
 	{
 		// cast.
@@ -166,7 +179,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 
 
-	if(this->initVal && !cmplxtype && !cgi->isAnyType(val->getType())/* && !val->getType()->isArrayType()*/)
+	if(this->initVal && !cmplxtype && !val->getType()->isAnyType())
 	{
 		// ...
 		// handled below
@@ -207,8 +220,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		}
 
 
-		if(this->initVal && (!cmplxtype || dynamic_cast<StructBase*>(cmplxtype->second.first)->ident.name == "Any"
-										|| cgi->isAnyType(val->getType())))
+		if(this->initVal && (!cmplxtype || val->getType()->isAnyType()))
 		{
 			// this only works if we don't call a constructor
 
@@ -222,7 +234,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 			auto vr = new VarRef(this->pin, this->ident.name);
 			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
-				ai, val, valptr, vk);
+				ai, ValueKind::LValue, val, valptr, vk);
 
 			// delete vr;
 
@@ -357,11 +369,11 @@ void VarDecl::inferType(CodegenInstance* cgi)
 			GenError::nullValue(cgi, this->initVal);
 
 
-		if(cgi->isAnyType(vartype))
+		if(vartype->isAnyType())
 		{
 			// todo: fix this shit
 			// but how?
-			warn(this, "Assigning a value of type 'Any' using type inference will not unwrap the value");
+			warn(this, "Assigning a value of type 'any' using type inference will not unwrap the value");
 		}
 
 		if(vartype->isPrimitiveType() && vartype->toPrimitiveType()->isLiteralType())

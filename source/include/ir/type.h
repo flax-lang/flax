@@ -20,6 +20,7 @@ namespace fir
 
 	struct Type;
 	struct Module;
+	struct AnyType;
 	struct VoidType;
 	struct CharType;
 	struct EnumType;
@@ -56,6 +57,8 @@ namespace fir
 
 		std::vector<Type*> typeCache;
 		Type* normaliseType(Type* type);
+
+		void dumpTypeIDs();
 	};
 
 	FTContext* createFTContext();
@@ -102,6 +105,7 @@ namespace fir
 		ArrayType* toArrayType();
 		CharType* toCharType();
 		EnumType* toEnumType();
+		AnyType* toAnyType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -114,6 +118,7 @@ namespace fir
 		bool isCharType();
 		bool isStringType();
 
+		bool isAnyType();
 		bool isEnumType();
 		bool isArrayType();
 		bool isIntegerType();
@@ -132,6 +137,7 @@ namespace fir
 
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
+		size_t getID() { return this->id; }
 
 
 		// convenience
@@ -171,6 +177,7 @@ namespace fir
 		static CharType* getCharType(FTContext* tc = 0);
 		static StringType* getStringType(FTContext* tc = 0);
 
+		static AnyType* getAnyType(FTContext* tc = 0);
 
 
 		protected:
@@ -705,6 +712,25 @@ namespace fir
 
 
 
+
+	struct AnyType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		AnyType();
+		virtual ~AnyType() override { }
+
+		public:
+		static AnyType* get(FTContext* tc = 0);
+	};
 
 
 
