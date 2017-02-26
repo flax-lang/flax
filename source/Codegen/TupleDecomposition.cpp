@@ -110,29 +110,7 @@ namespace Ast
 				else
 				{
 					// ok, set it.
-					// check if we're some special snowflake
-					auto cmplxtype = cgi->getType(rhs->getType());
-
-					if(cmplxtype)
-					{
-						// todo: this leaks also
-						auto res = Operators::performActualAssignment(cgi, user, new VarRef(mapping.pos, name), 0, ArithmeticOp::Assign,
-							cgi->irb.CreateLoad(ai), ai, ValueKind::LValue, rhs, rhsptr, vk);
-
-						// it's stored already, no need to do shit.
-						iceAssert(res.value);
-					}
-					else
-					{
-						// ok, just do it normally
-						cgi->irb.CreateStore(rhs, ai);
-					}
-
-					if(cgi->isRefCountedType(rhs->getType()))
-					{
-						// (isInit = true, doAssign = false -- we already assigned it above)
-						cgi->assignRefCountedExpression(new VarRef(mapping.pos, name), rhs, rhsptr, cgi->irb.CreateLoad(ai), ai, vk, true, false);
-					}
+					cgi->performComplexValueStore(user, rhs->getType(), rhsptr, ai, name, mapping.pos, vk);
 				}
 
 				if(immut) ai->makeImmutable();

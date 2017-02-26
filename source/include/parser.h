@@ -83,6 +83,7 @@ namespace Parser
 		TypeAlias,
 
 		Typeof,
+		Typeid,
 		Alloc,
 		Dealloc,
 
@@ -245,6 +246,7 @@ namespace Parser
 	Ast::Import*				parseImport(ParserState& ps);
 	Ast::Return*				parseReturn(ParserState& ps);
 	Ast::Typeof*				parseTypeof(ParserState& ps);
+	Ast::Typeid*				parseTypeid(ParserState& ps);
 	Ast::Number*				parseNumber(ParserState& ps);
 	Ast::Expr*					parseVarDecl(ParserState& ps);
 	Ast::Dealloc*				parseDealloc(ParserState& ps);

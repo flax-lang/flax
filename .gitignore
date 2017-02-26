@@ -61,3 +61,6 @@ prof_with_square.svg
 build/cmake-output
 .idea
 CMakeLists.txt
+
+release.fish
+macosx.zip

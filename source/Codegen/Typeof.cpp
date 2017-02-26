@@ -26,5 +26,31 @@ fir::Type* Typeof::getType(CodegenInstance* cgi, fir::Type* extratype, bool allo
 
 
 
+Result_t Typeid::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+{
+	fir::Value* val = 0; fir::Value* ptr = 0;
+	std::tie(val, ptr) = this->inside->codegen(cgi);
+
+	if(val->getType()->isAnyType())
+	{
+		if(!ptr)
+			ptr = cgi->irb.CreateImmutStackAlloc(val->getType(), val);
+
+		iceAssert(ptr);
+
+		return Result_t(cgi->irb.CreateGetAnyTypeID(ptr), 0);
+	}
+	else
+	{
+		return Result_t(fir::ConstantInt::getInt64(val->getType()->getID()), 0);
+	}
+}
+
+fir::Type* Typeid::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
+{
+	return fir::Type::getInt64();
+}
+
+
 
 

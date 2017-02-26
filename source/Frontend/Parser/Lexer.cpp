@@ -473,6 +473,7 @@ namespace Lexer
 			else if(compare(tok.text, "alloc"))			tok.type = TType::Alloc;
 			else if(compare(tok.text, "dealloc"))		tok.type = TType::Dealloc;
 			else if(compare(tok.text, "typeof"))		tok.type = TType::Typeof;
+			else if(compare(tok.text, "typeid"))		tok.type = TType::Typeid;
 			else if(compare(tok.text, "get"))			tok.type = TType::Get;
 			else if(compare(tok.text, "set"))			tok.type = TType::Set;
 			else if(compare(tok.text, "null"))			tok.type = TType::Null;
