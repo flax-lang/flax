@@ -157,7 +157,18 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	iceAssert(this->concretisedType);
 
 	// special override: if we're assigning a non-any to an any
+	if(this->concretisedType->isAnyType() && !val->getType()->isAnyType())
+	{
+		// just.. store it, and fuck off.
+		if(shouldAddToSymtab)
+		{
+			cgi->addSymbol(this->ident.name, ai, this);
+			didAddToSymtab = true;
+		}
 
+		cgi->assignValueToAny(this, ai, val, valptr, vk);
+		return cgi->irb.CreateLoad(ai);
+	}
 
 
 
@@ -185,7 +196,8 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		// handled below
 	}
 	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || this->getType(cgi)->isDynamicArrayType()
-		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType() || this->getType(cgi)->isCharType()))
+		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType() || this->getType(cgi)->isCharType()
+		|| this->getType(cgi)->isAnyType()))
 	{
 		val = cgi->getDefaultValue(this);
 		iceAssert(val);
@@ -217,6 +229,9 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		{
 			cgi->addSymbol(this->ident.name, ai, this);
 			didAddToSymtab = true;
+
+			if(cgi->isRefCountedType(this->concretisedType))
+				cgi->addRefCountedValue(ai);
 		}
 
 
