@@ -38,8 +38,8 @@ namespace Operators
 		if(args.size() != 2)
 			error(user, "Expected 2 arguments for operator %s", Parser::arithmeticOpToString(cgi, op).c_str());
 
-		fir::Value* lhs = 0; fir::Value* lhsptr = 0;
-		std::tie(lhs, lhsptr) = args[0]->codegen(cgi);
+		fir::Value* lhs = 0; fir::Value* lhsptr = 0; ValueKind vk;
+		std::tie(lhs, lhsptr, vk) = args[0]->codegen(cgi);
 
 		fir::Type* rtype = args[1]->getType(cgi);
 		iceAssert(rtype);
@@ -179,7 +179,7 @@ namespace Operators
 		}
 		else if(rtype->isAnyType())
 		{
-			return cgi->makeAnyFromValue(lhs, lhsptr);
+			return cgi->makeAnyFromValue(user, lhs, lhsptr, vk);
 		}
 		else if(op != ArithmeticOp::ForcedCast)
 		{

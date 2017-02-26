@@ -956,6 +956,21 @@ namespace Ast
 		Expr* inside = 0;
 	};
 
+
+	struct Typeid : Expr
+	{
+		using Expr::codegen;
+
+		~Typeid();
+		Typeid(const Parser::Pin& pos, Expr* _inside) : Expr(pos), inside(_inside) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+		Expr* inside = 0;
+	};
+
+
 	struct PostfixUnaryOp : Expr
 	{
 		using Expr::codegen;

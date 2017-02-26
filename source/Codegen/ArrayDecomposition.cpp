@@ -10,35 +10,6 @@
 using namespace Codegen;
 namespace Ast
 {
-	static void _doStore(CodegenInstance* cgi, Expr* user, fir::Type* elmType, fir::Value* src, fir::Value* dst, std::string name,
-		Parser::Pin pos, ValueKind vk)
-	{
-		auto cmplxtype = cgi->getType(elmType);
-		if(cmplxtype)
-		{
-			// todo: this leaks also
-			auto res = Operators::performActualAssignment(cgi, user, new VarRef(pos, name),
-				0, ArithmeticOp::Assign, cgi->irb.CreateLoad(dst), dst, ValueKind::LValue, cgi->irb.CreateLoad(src), src, vk);
-
-			// it's stored already, no need to do shit.
-			iceAssert(res.value);
-		}
-		else
-		{
-			// ok, just do it normally
-			cgi->irb.CreateStore(cgi->irb.CreateLoad(src), dst);
-		}
-
-		if(cgi->isRefCountedType(elmType))
-		{
-			// (isInit = true, doAssign = false -- we already assigned it above)
-			cgi->assignRefCountedExpression(new VarRef(pos, name), cgi->irb.CreateLoad(src), src,
-				cgi->irb.CreateLoad(dst), dst, vk, true, false);
-		}
-	}
-
-
-
 	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 	{
 		// ok. first, we need to codegen, and get the type of, the right side.
@@ -115,7 +86,7 @@ namespace Ast
 				{
 					// get the value from the array
 					fir::Value* ptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
-					_doStore(cgi, this, elmtype, ptr, ai, name, this->mapping[i].second, vk);
+					cgi->performComplexValueStore(this, elmtype, ptr, ai, name, this->mapping[i].second, vk);
 				}
 
 				if(this->immutable)
@@ -196,7 +167,7 @@ namespace Ast
 						fir::Value* srcptr = cgi->irb.CreateConstGEP2(rhsptr, 0, i);
 						fir::Value* dstptr = cgi->irb.CreateConstGEP2(ai, 0, i - numNormalBindings);
 
-						_doStore(cgi, this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
+						cgi->performComplexValueStore(this, elmtype, srcptr, dstptr, name, this->mapping[i].second, vk);
 					}
 				}
 
@@ -273,7 +244,7 @@ namespace Ast
 				else
 				{
 					// do the store-y thing
-					_doStore(cgi, this, elmtype, gep, ai, name, this->mapping[i].second, vk);
+					cgi->performComplexValueStore(this, elmtype, gep, ai, name, this->mapping[i].second, vk);
 				}
 
 				if(this->immutable)

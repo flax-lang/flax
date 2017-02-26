@@ -179,11 +179,12 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 			{
 				fir::Value* val = 0;
 				fir::Value* valp = 0;
-				std::tie(val, valp) = params[i]->codegen(this);
+				ValueKind vk;
+				std::tie(val, valp, vk) = params[i]->codegen(this);
 
 				if(variadicType->isAnyType())
 				{
-					variadics.push_back(this->makeAnyFromValue(val, valp).value);
+					variadics.push_back(this->makeAnyFromValue(params[i], val, valp, vk).value);
 				}
 				else if(variadicType != val->getType())
 				{

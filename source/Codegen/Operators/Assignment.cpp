@@ -470,7 +470,8 @@ namespace Operators
 			}
 
 			iceAssert(lhsPtr);
-			cgi->assignValueToAny(user, lhsPtr, rhs, rhsPtr);
+			cgi->removeRefCountedValueIfExists(lhsPtr);
+			cgi->assignValueToAny(user, lhsPtr, rhs, rhsPtr, rhsvk);
 
 			// assign returns nothing
 			return Result_t(0, 0);
@@ -502,29 +503,14 @@ namespace Operators
 
 		if(lhs->getType() != rhs->getType())
 		{
-			error(user, "Invalid assignment from value of type %s to one of type %s", lhs->getType()->str().c_str(),
+			error(user, "Invalid assignment from value of type '%s' to one of type '%s'", lhs->getType()->str().c_str(),
 				rhs->getType()->str().c_str());
 		}
-
-
-
-
 
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
 			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, rhsvk, false, true);
 			return Result_t(0, 0);
-		}
-		else if(VarRef* v = dynamic_cast<VarRef*>(leftExpr))
-		{
-			VarDecl* vdecl = cgi->getSymDecl(user, v->name);
-
-			if(!vdecl)
-				GenError::unknownSymbol(cgi, user, v->name, SymbolType::Variable);
-
-			if(vdecl->immutable || lhsPtr->isImmutable())
-				error(user, "Cannot assign to immutable variable '%s'!", v->name.c_str());
-
 		}
 
 		iceAssert(rhs);

@@ -253,13 +253,16 @@ namespace Codegen
 		std::string mangleGenericParameters(std::vector<Ast::VarDecl*> args);
 
 
+		void performComplexValueStore(Ast::Expr* user, fir::Type* type, fir::Value* srcptr, fir::Value* dstptr, std::string name,
+			Parser::Pin pos, Ast::ValueKind rhsvk);
+
 		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
 		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
 
 		std::string printAst(Ast::Expr*);
 
-		Ast::Result_t makeAnyFromValue(fir::Value* val, fir::Value* ptr);
-		Ast::Result_t assignValueToAny(Ast::Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr);
+		Ast::Result_t makeAnyFromValue(Ast::Expr* user, fir::Value* val, fir::Value* ptr, Ast::ValueKind vk);
+		Ast::Result_t assignValueToAny(Ast::Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr, Ast::ValueKind vk);
 		Ast::Result_t extractValueFromAny(Ast::Expr* user, fir::Value* any, fir::Type* type);
 
 		Ast::Result_t getNullString();

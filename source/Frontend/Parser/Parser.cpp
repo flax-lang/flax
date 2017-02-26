@@ -773,6 +773,9 @@ namespace Parser
 				case TType::Typeof:
 					return parseTypeof(ps);
 
+				case TType::Typeid:
+					return parseTypeid(ps);
+
 				case TType::StringLiteral:
 					return parseStringLiteral(ps);
 
@@ -3316,6 +3319,23 @@ namespace Parser
 			parserError("Expected closing ')'");
 
 		return CreateAST(Typeof, t, inside);
+	}
+
+	Typeid* parseTypeid(ParserState& ps)
+	{
+		Token t;
+		iceAssert((t = ps.eat()).type == TType::Typeid);
+
+		// require parens
+		if(ps.eat().type != TType::LParen)
+			parserError("typeid() requires parentheses");
+
+		Expr* inside = parseExpr(ps);
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')'");
+
+		return CreateAST(Typeid, t, inside);
 	}
 
 	ArrayLiteral* parseArrayLiteral(ParserState& ps)
