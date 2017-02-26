@@ -6,6 +6,8 @@
 #include "codegen.h"
 #include "runtimefuncs.h"
 
+#include <algorithm>
+
 using namespace Codegen;
 using namespace Ast;
 
