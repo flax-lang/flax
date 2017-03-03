@@ -505,6 +505,11 @@ namespace Codegen
 				return "while(" + this->printAst(wl->cond) + ")\n{\n" + this->printAst(wl->body) + "\n}\n";
 			}
 		}
+		else if(ForLoop* fl = dynamic_cast<ForLoop*>(expr))
+		{
+			return "for(" + this->printAst(fl->init) + "; " + this->printAst(fl->cond) + "; " + this->printAst(fl->incr)
+				+ ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+		}
 		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
 		{
 			bool first = false;

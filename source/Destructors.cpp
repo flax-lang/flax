@@ -27,6 +27,7 @@ namespace Ast
 	UnaryOp::~UnaryOp() { }
 	Dealloc::~Dealloc() { }
 	EnumDef::~EnumDef() { }
+	ForLoop::~ForLoop() { }
 	FuncDecl::~FuncDecl() { }
 	FuncCall::~FuncCall() { }
 	Continue::~Continue() { }

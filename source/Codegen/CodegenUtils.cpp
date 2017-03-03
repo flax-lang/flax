@@ -2500,14 +2500,14 @@ namespace Codegen
 			// (maybe?)
 
 			Expr* ex = func->block->statements.front();
-			if(!dynamic_cast<WhileLoop*>(ex) && !dynamic_cast<IfStmt*>(ex))
+			if(!dynamic_cast<BreakableBracedBlock*>(ex) && !dynamic_cast<IfStmt*>(ex))
 			{
 				Return* ret = 0;
 				if(IfStmt* i = dynamic_cast<IfStmt*>(ex))
 					ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
 
-				else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(ex))
-					ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
+				else if(BreakableBracedBlock* bbb = dynamic_cast<BreakableBracedBlock*>(ex))
+					ret = recursiveVerifyBlock(this, func, bbb->body, !isVoid && checkType, retType);
 
 				// get the type
 				fir::Type* t = (ret ? ret->getType(this) : ex->getType(this));
@@ -2545,8 +2545,8 @@ namespace Codegen
 			if(IfStmt* i = dynamic_cast<IfStmt*>(e))
 				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
 
-			else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(e))
-				ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
+			else if(BreakableBracedBlock* bbb = dynamic_cast<BreakableBracedBlock*>(e))
+				ret = recursiveVerifyBlock(this, func, bbb->body, !isVoid && checkType, retType);
 
 			// "top level" returns we will just accept.
 			if(ret || (ret = dynamic_cast<Return*>(e)))
