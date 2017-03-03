@@ -505,6 +505,19 @@ namespace Codegen
 				return "while(" + this->printAst(wl->cond) + ")\n{\n" + this->printAst(wl->body) + "\n}\n";
 			}
 		}
+		else if(ForLoop* fl = dynamic_cast<ForLoop*>(expr))
+		{
+			auto ret = "for(" + this->printAst(fl->init) + "; " + this->printAst(fl->cond) + "; ";
+			for(auto k : fl->incrs)
+				ret += this->printAst(k) + ", ";
+
+			if(fl->incrs.size() > 0)
+				ret = ret.substr(0, ret.length() - 2);
+
+			ret += ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+
+			return ret;
+		}
 		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
 		{
 			bool first = false;
@@ -517,7 +530,7 @@ namespace Codegen
 					one = "else ";
 
 				first = false;
-				one += "if(" + this->printAst(c.first) + ")" + "\n{\n" + this->printAst(c.second) + "\n}\n";
+				one += "if(" + this->printAst(std::get<0>(c)) + ")" + "\n{\n" + this->printAst(std::get<1>(c)) + "\n}\n";
 
 				final += one;
 			}

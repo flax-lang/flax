@@ -3,6 +3,8 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <cmath>
+
+#include "ast.h"
 #include "codegen.h"
 
 namespace Codegen
@@ -292,6 +294,14 @@ namespace Codegen
 		{
 			return from;
 		}
+
+
+		if(target->isAnyType())
+		{
+			return this->makeAnyFromValue(0, from, fromPtr, Ast::ValueKind::RValue).value;
+		}
+
+
 
 
 		if(target->isIntegerType() && from->getType()->isIntegerType()
