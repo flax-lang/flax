@@ -14,7 +14,7 @@ using namespace Ast;
 #define BUILTIN_ANY_INCR_FUNC_NAME			"__anyref_incr"
 #define BUILTIN_ANY_DECR_FUNC_NAME			"__anyref_decr"
 
-#define DEBUG_MASTER		1
+#define DEBUG_MASTER		0
 #define DEBUG_REFCOUNTING	(1 && DEBUG_MASTER)
 
 namespace Codegen {
