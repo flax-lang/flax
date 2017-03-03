@@ -2425,7 +2425,7 @@ namespace Parser
 
 		// kinda hack: if the next token is a closing brace, then we don't expect an expression
 		// this works most of the time.
-		if(ps.front().type != TType::RBrace)
+		if(ps.lookaheadUntilNonNewline().type != TType::RBrace)
 			retval = parseExpr(ps);
 
 		return CreateAST(Return, front, retval);
