@@ -308,7 +308,7 @@ namespace SemAnalysis
 			{
 				analyseBlock(cgi, { floop->init });
 				analyseBlock(cgi, { floop->cond });
-				analyseBlock(cgi, { floop->incr });
+				analyseBlock(cgi, floop->incrs);
 
 				pushScope(cgi);
 				analyseBlock(cgi, floop->body->statements);
