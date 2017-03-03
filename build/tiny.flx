@@ -71,6 +71,14 @@ public func main() -> int
 		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
 	}
 
+	do {
+
+		if let k = 30; k > 27
+		{
+			printf("k > 27\n")
+		}
+	}
+
 	// foo(30)
 
 	return 0
