@@ -7,8 +7,15 @@ ffi func printf(fmt: i8*, ...) -> i32
 var glob: any
 func foo(a: any)
 {
-	printf("a = %d\n", (a as Large).a)
-	glob = a
+	if(typeid(a) == typeid(Large))
+	{
+		printf("a = %d\n", (a as Large).a)
+		glob = a
+	}
+	else
+	{
+		printf("not large\n")
+	}
 }
 
 struct Large
@@ -42,8 +49,11 @@ public func main() -> int
 		// let v = x// as Large
 		var k = x as Large
 		k.c = 5413
+		k.a = 631
 
 		foo(x)
+		foo(k)
+		foo(401.3)
 
 		func bar() -> any
 		{
