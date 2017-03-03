@@ -28,8 +28,7 @@ Result_t ForLoop::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 	cgi->pushBracedBlock(this, incrBlk, merge);
 
 	// generate init (shouldn't return a value)
-	iceAssert(this->init);
-	this->init->codegen(cgi);
+	if(this->init) this->init->codegen(cgi);
 	cgi->irb.CreateUnCondBranch(condBlk);
 
 
