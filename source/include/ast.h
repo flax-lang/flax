@@ -543,9 +543,11 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 
+
 		Expr* init = 0;
+		std::vector<Expr*> incrs;
+
 		Expr* cond = 0;
-		Expr* incr = 0;
 	};
 
 	struct Break : Expr

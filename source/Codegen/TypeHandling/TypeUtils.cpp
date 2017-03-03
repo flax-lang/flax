@@ -507,8 +507,16 @@ namespace Codegen
 		}
 		else if(ForLoop* fl = dynamic_cast<ForLoop*>(expr))
 		{
-			return "for(" + this->printAst(fl->init) + "; " + this->printAst(fl->cond) + "; " + this->printAst(fl->incr)
-				+ ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+			auto ret = "for(" + this->printAst(fl->init) + "; " + this->printAst(fl->cond) + "; ";
+			for(auto k : fl->incrs)
+				ret += this->printAst(k) + ", ";
+
+			if(fl->incrs.size() > 0)
+				ret = ret.substr(0, ret.length() - 2);
+
+			ret += ")\n{\n" + this->printAst(wl->body) + "\n}\n";
+
+			return ret;
 		}
 		else if(IfStmt* ifst = dynamic_cast<IfStmt*>(expr))
 		{
