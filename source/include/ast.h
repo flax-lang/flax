@@ -508,16 +508,14 @@ namespace Ast
 		using Expr::codegen;
 
 		~IfStmt();
-		IfStmt(const Parser::Pin& pos, std::vector<std::pair<Expr*, BracedBlock*>> cases, BracedBlock* ecase) : Expr(pos),
-			final(ecase), cases(cases), _cases(cases) { }
+		IfStmt(const Parser::Pin& pos, std::vector<std::tuple<Expr*, BracedBlock*, std::vector<Expr*>>> cases, BracedBlock* ecase)
+			: Expr(pos), final(ecase), cases(cases) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 
-
 		BracedBlock* final = 0;
-		std::vector<std::pair<Expr*, BracedBlock*>> cases;
-		std::vector<std::pair<Expr*, BracedBlock*>> _cases;	// needed to preserve stuff, since If->codegen modifies this->cases
+		std::vector<std::tuple<Expr*, BracedBlock*, std::vector<Expr*>>> cases;
 	};
 
 	struct WhileLoop : BreakableBracedBlock
@@ -533,6 +531,23 @@ namespace Ast
 
 		Expr* cond = 0;
 		bool isDoWhileVariant = false;
+	};
+
+	struct ForLoop : BreakableBracedBlock
+	{
+		using Expr::codegen;
+
+		~ForLoop();
+		ForLoop(const Parser::Pin& pos, BracedBlock* _body) : BreakableBracedBlock(pos, _body) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+
+		Expr* init = 0;
+		std::vector<Expr*> incrs;
+
+		Expr* cond = 0;
 	};
 
 	struct Break : Expr

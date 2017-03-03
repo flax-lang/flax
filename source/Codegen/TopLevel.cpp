@@ -81,10 +81,10 @@ static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 		{
 			handleNestedFunc(f, ns);
 		}
-		else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(e))
+		else if(BreakableBracedBlock* bbb = dynamic_cast<BreakableBracedBlock*>(e))
 		{
 			ns.push_back("__anon_scope_" + std::to_string(__counter++));
-			_handleBlock(wl->body, ns);
+			_handleBlock(bbb->body, ns);
 			ns.pop_back();
 		}
 		else if(IfStmt* i = dynamic_cast<IfStmt*>(e))
@@ -92,7 +92,7 @@ static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 			for(auto c : i->cases)
 			{
 				ns.push_back("__anon_scope_" + std::to_string(__counter++));
-				_handleBlock(c.second, ns);
+				_handleBlock(std::get<1>(c), ns);
 				ns.pop_back();
 			}
 

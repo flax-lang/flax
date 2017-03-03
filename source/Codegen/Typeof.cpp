@@ -28,6 +28,19 @@ fir::Type* Typeof::getType(CodegenInstance* cgi, fir::Type* extratype, bool allo
 
 Result_t Typeid::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
+	// first check for types
+	if(auto vr = dynamic_cast<VarRef*>(this->inside))
+	{
+		if(TypePair_t* tp = cgi->getTypeByString(vr->name))
+		{
+			// use the type
+			fir::Type* t = tp->first;
+			if(!t) t = tp->second.first->getType(cgi);
+
+			return Result_t(fir::ConstantInt::getInt64(t->getID()), 0);
+		}
+	}
+
 	fir::Value* val = 0; fir::Value* ptr = 0;
 	std::tie(val, ptr) = this->inside->codegen(cgi);
 
