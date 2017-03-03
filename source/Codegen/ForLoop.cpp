@@ -28,14 +28,16 @@ Result_t ForLoop::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 	cgi->pushBracedBlock(this, incrBlk, merge);
 
 	// generate init (shouldn't return a value)
-	if(this->init)
-		this->init->codegen(cgi);
+	iceAssert(this->init);
+	this->init->codegen(cgi);
+	cgi->irb.CreateUnCondBranch(condBlk);
 
 
 	cgi->irb.setCurrentBlock(condBlk);
 
+
 	// check the condition
-	if(this->cond)
+	iceAssert(this->cond);
 	{
 		fir::Value* c = this->cond->codegen(cgi).value;
 		iceAssert(c);
@@ -46,19 +48,13 @@ Result_t ForLoop::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 		// do a conditional branch
 		cgi->irb.CreateCondBranch(c, bodyBlk, merge);
 	}
-	else
-	{
-		// go straight to body (why the fuck)
-		cgi->irb.CreateUnCondBranch(bodyBlk);
-	}
 
 
 	// do the incr
 	cgi->irb.setCurrentBlock(incrBlk);
 
-	if(this->incr)
-		this->incr->codegen(cgi);
-
+	for(auto in : this->incrs)
+		in->codegen(cgi);
 
 	// branch
 	cgi->irb.CreateUnCondBranch(condBlk);
@@ -69,6 +65,8 @@ Result_t ForLoop::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 	cgi->irb.setCurrentBlock(bodyBlk);
 
 	this->body->codegen(cgi);
+	cgi->irb.CreateUnCondBranch(incrBlk);
+
 
 	cgi->popBracedBlock();
 	cgi->popScope();

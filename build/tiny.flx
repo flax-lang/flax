@@ -29,55 +29,63 @@ struct Large
 
 public func main() -> int
 {
-	do {
-		var k: any = 40 as any
-		k = "foo"
+	// do {
+	// 	var k: any = 40 as any
+	// 	k = "foo"
 
-		printf("k as string = %s\n", k as string)
+	// 	printf("k as string = %s\n", k as string)
 
-		k = 301
+	// 	k = 301
 
-		printf("k as int = %d\n", k as int)
+	// 	printf("k as int = %d\n", k as int)
 
-		printf("typeid(k): %d\n", typeid(k))
-	}
+	// 	printf("typeid(k): %d\n", typeid(k))
+	// }
 
-	do {
-		var x: any = Large()
-		// (x as Large).c = 301443
+	// do {
+	// 	var x: any = Large()
+	// 	// (x as Large).c = 301443
 
-		// let v = x// as Large
-		var k = x as Large
-		k.c = 5413
-		k.a = 631
+	// 	// let v = x// as Large
+	// 	var k = x as Large
+	// 	k.c = 5413
+	// 	k.a = 631
 
-		foo(x)
-		foo(k)
-		foo(401.3)
+	// 	foo(x)
+	// 	foo(k)
+	// 	foo(401.3)
 
-		func bar() -> any
-		{
-			10
-		}
+	// 	func bar() -> any
+	// 	{
+	// 		10
+	// 	}
 
-		func qux()
-		{
-			return
-		}
+	// 	func qux()
+	// 	{
+	// 		return
+	// 	}
 
-		printf("bar = %d, qux = %d\n", bar(), 30)
-		qux()
+	// 	printf("bar = %d, qux = %d\n", bar(), 30)
+	// 	qux()
 
-		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
-	}
+	// 	printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
+	// }
 
-	do {
+	// do {
 
 		if let k = 30; k > 27
 		{
 			printf("k > 27\n")
 		}
-	}
+
+
+		for (i, k, v) = (1, 0, 30); k < 40 && v > 13; i += 1, k += 10, v -= 3
+		{
+			printf("i = %d, k = %d, v = %d\n", i, k, v)
+		}
+	// }
+
+
 
 	// foo(30)
 

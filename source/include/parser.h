@@ -231,6 +231,7 @@ namespace Parser
 
 
 	Ast::Expr* 					parseIf(ParserState& ps);
+	Ast::ForLoop* 				parseFor(ParserState& ps);
 	pts::Type*					parseType(ParserState& ps);
 	Ast::EnumDef*				parseEnum(ParserState& ps);
 	Ast::Func*					parseFunc(ParserState& ps);
@@ -248,7 +249,6 @@ namespace Parser
 	Ast::Typeof*				parseTypeof(ParserState& ps);
 	Ast::Typeid*				parseTypeid(ParserState& ps);
 	Ast::Number*				parseNumber(ParserState& ps);
-	Ast::Expr*					parseVarDecl(ParserState& ps);
 	Ast::Dealloc*				parseDealloc(ParserState& ps);
 	Ast::ProtocolDef*			parseProtocol(ParserState& ps);
 	Ast::Expr*					parseInitFunc(ParserState& ps);
@@ -264,11 +264,13 @@ namespace Parser
 	Ast::ArrayLiteral*			parseArrayLiteral(ParserState& ps);
 	Ast::Expr*					parseParenthesised(ParserState& ps);
 	Ast::StringLiteral*			parseStringLiteral(ParserState& ps);
-	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps);
 	Ast::ArrayDecompDecl*		parseArrayDecomposition(ParserState& ps);
 	Ast::Tuple*					parseTuple(ParserState& ps, Ast::Expr* lhs);
 	Ast::Expr*					parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
 	Ast::FuncCall*				parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
+	Ast::Expr*					parseVarDecl(ParserState& ps, bool handledFront = false, bool immut = false);
+	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps, bool handledFront = false, bool immut = false);
+
 
 	Ast::Func*					parseFuncUsingIdentifierToken(ParserState& ps, Token id);
 	Ast::FuncDecl*				parseFuncDeclUsingIdentifierToken(ParserState& ps, Token id);
