@@ -112,11 +112,6 @@ if let k = 30; k < 40 { /* ... */ }
 
 
 
-// 22. remove implicit returns, unless the function has exactly one *statement*.
-// so something like func foo() { if cond { 30 } else { 40 } } would still work, and of course something like
-// func bar(x: int) { x * x + 2 * x + 1 } works.
-
-// prevents having careless values strewn deep inside nested ifs/loops/whatevers contributing to the return value.
 
 
 
@@ -152,6 +147,11 @@ if let k = 30; k < 40 { /* ... */ }
 
 	(fixed in 61325cd)
 	- shit like this works "let g = 3let v = 10"
+
+	(fixed in 6d31d14)
+	- remove implicit returns, unless the function has exactly one *statement*.
+
+
 */
 
 
@@ -173,6 +173,11 @@ if let k = 30; k < 40 { /* ... */ }
 	4. clean up typechecking
 		-- store the fir::Type of each AST node
 		-- recursively visit each node to get its type before anything happens
+
+	5. arbitrary refcounted types (ie. rc<T>)
+		recent work with 'any' has demonstrated that it's *somewhat trivial* to add a new refcounted type to the type system. The real
+		challenge is not in making it refcounted, it's simply in integrating it with the rest of the type system (in terms of operator
+		results, compares, special-cases, etc.)
 */
 
 
