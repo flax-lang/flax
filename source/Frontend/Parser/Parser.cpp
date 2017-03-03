@@ -2436,13 +2436,28 @@ namespace Parser
 		Token tok_if = ps.eat();
 		iceAssert(tok_if.type == TType::If);
 
-		typedef std::pair<Expr*, BracedBlock*> CCPair;
+		typedef std::tuple<Expr*, BracedBlock*, std::vector<Expr*>> CCPair;
 		std::vector<CCPair> conds;
+
+
+		// parse all init conts
+		std::vector<Expr*> inits;
+		while(ps.front().type == TType::Val || ps.front().type == TType::Var)
+		{
+			inits.push_back(parseVarDecl(ps));
+
+			if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+				parserError("Expected semicolon (;) after if-variable-initialisation");
+
+			ps.eat();
+		}
+
 
 		Expr* cond = parseExpr(ps);
 		BracedBlock* tcase = parseBracedBlock(ps);
 
-		conds.push_back(CCPair(cond, tcase));
+		conds.push_back({ cond, tcase, inits });
+		inits.clear();
 
 		// check for else and else if
 		BracedBlock* ecase = 0;
@@ -2454,11 +2469,22 @@ namespace Parser
 			{
 				ps.eat();
 
+				while(ps.front().type == TType::Val || ps.front().type == TType::Var)
+				{
+					inits.push_back(parseVarDecl(ps));
+
+					if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+						parserError("Expected semicolon (;) after if-variable-initialisation");
+
+					ps.eat();
+				}
+
+
 				// parse an expr, then a block
 				Expr* c = parseExpr(ps);
 				BracedBlock* cl = parseBracedBlock(ps);
 
-				conds.push_back(CCPair(c, cl));
+				conds.push_back(CCPair(c, cl, inits));
 			}
 			else if(!parsedElse)
 			{

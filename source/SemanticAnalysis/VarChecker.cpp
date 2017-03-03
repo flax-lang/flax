@@ -280,12 +280,12 @@ namespace SemAnalysis
 			}
 			else if(IfStmt* ifstmt = dynamic_cast<IfStmt*>(ex))
 			{
-				for(auto cs : ifstmt->_cases)
+				for(auto cs : ifstmt->cases)
 				{
-					analyseBlock(cgi, { cs.first });
+					analyseBlock(cgi, { std::get<0>(cs) });
 
 					pushScope(cgi);
-					analyseBlock(cgi, cs.second->statements);
+					analyseBlock(cgi, std::get<1>(cs)->statements);
 					popScope(cgi);
 				}
 

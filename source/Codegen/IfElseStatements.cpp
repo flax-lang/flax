@@ -9,9 +9,9 @@
 using namespace Ast;
 using namespace Codegen;
 
+using CondTuple = std::vector<std::tuple<Expr*, BracedBlock*, std::vector<Expr*>>>;
 
-
-static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::vector<std::pair<Expr*, BracedBlock*>> pairs,
+static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, CondTuple pairs,
 	fir::IRBlock* merge, fir::PHINode* phi, bool* didCreateMerge, bool* allBroke)
 {
 	if(pairs.size() == 0)
@@ -20,10 +20,19 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::v
 	fir::IRBlock* t = cgi->irb.addNewBlockInFunction("trueCaseR", func);
 	fir::IRBlock* f = cgi->irb.addNewBlockInFunction("falseCaseR", func);
 
-	fir::Value* cond = pairs.front().first->codegen(cgi).value;
+
+	// this is here (and not paired with the popScope() below) because we need to keep the scope tight
+	// *but* at the same time the inits need to be ready in time to be codegened as the condition
+	cgi->pushScope();
+
+	for(auto in : std::get<2>(pairs.front()))
+		in->codegen(cgi);
+
+
+	fir::Value* cond = std::get<0>(pairs.front())->codegen(cgi).value;
 	if(cond->getType() != fir::Type::getBool())
 	{
-		error(pairs.front().first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+		error(std::get<0>(pairs.front()), "Non-boolean type '%s' cannot be used as the conditional for an if statement",
 			cond->getType()->str().c_str());
 	}
 
@@ -36,8 +45,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, std::v
 	Result_t blockResult(0, 0);
 	fir::Value* val = nullptr;
 	{
-		cgi->pushScope();
-		blockResult = pairs.front().second->codegen(cgi);
+		blockResult = std::get<1>(pairs.front())->codegen(cgi);
 		val = blockResult.value;
 		cgi->popScope();
 	}
@@ -64,14 +72,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 {
 	iceAssert(this->cases.size() > 0);
 
-	fir::Value* firstCond = this->cases[0].first->codegen(cgi).value;
-	if(firstCond->getType() != fir::Type::getBool())
-	{
-		error(this->cases[0].first, "Non-boolean type '%s' cannot be used as the conditional for an if statement",
-			firstCond->getType()->str().c_str());
-	}
-
-	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
+	auto backupCases = this->cases;
 
 
 	fir::Function* func = cgi->irb.getCurrentBlock()->getParentFunction();
@@ -80,6 +81,30 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	fir::IRBlock* trueb = cgi->irb.addNewBlockInFunction("trueCase", func);
 	fir::IRBlock* falseb = cgi->irb.addNewBlockInFunction("falseCase", func);
 	fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
+
+
+	// push a new symtab
+	cgi->pushScope();
+
+	// generate the statements inside
+
+	// first, do the inits (inside the new pushScope)
+	for(auto in : std::get<2>(this->cases[0]))
+	{
+		info("init\n");
+		in->codegen(cgi);
+	}
+
+
+	fir::Value* firstCond = std::get<0>(this->cases[0])->codegen(cgi).value;
+	if(firstCond->getType() != fir::Type::getBool())
+	{
+		error(std::get<0>(this->cases[0]), "Non-boolean type '%s' cannot be used as the conditional for an if statement",
+			firstCond->getType()->str().c_str());
+	}
+
+	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
+
 
 	// create the first conditional
 	cgi->irb.CreateCondBranch(firstCond, trueb, falseb);
@@ -93,13 +118,21 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	{
 		cgi->irb.setCurrentBlock(trueb);
 
-		// push a new symtab
-		cgi->pushScope();
+		// // push a new symtab
+		// cgi->pushScope();
 
-		// generate the statements inside
+		// // generate the statements inside
 
+		// // first, do the inits (inside the new pushScope)
+		// for(auto in : std::get<2>(this->cases[0]))
+		// {
+		// 	info("init\n");
+		// 	in->codegen(cgi);
+		// }
+
+		// then do the block
 		ResultType rt;
-		std::tie(truev, rt) = this->cases[0].second->codegen(cgi);
+		std::tie(truev, rt) = std::get<1>(this->cases[0])->codegen(cgi);
 		cgi->popScope();
 
 		if(rt != ResultType::BreakCodegen)
@@ -128,7 +161,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	if(phi) phi->addIncoming(truev, trueb);
 
 	cgi->irb.setCurrentBlock(curblk);
-	codeGenRecursiveIf(cgi, func, std::vector<std::pair<Expr*, BracedBlock*>>(this->cases), merge, phi, &didMerge, &allBroke);
+	codeGenRecursiveIf(cgi, func, this->cases, merge, phi, &didMerge, &allBroke);
 
 
 	// if we have an 'else' case
@@ -162,7 +195,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	}
 
 	// restore.
-	this->cases = this->_cases;
+	this->cases = backupCases;
 	return Result_t(0, 0, allBroke ? ResultType::BreakCodegen : ResultType::Normal);
 }
 
