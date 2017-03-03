@@ -304,6 +304,16 @@ namespace SemAnalysis
 				analyseBlock(cgi, wloop->body->statements);
 				popScope(cgi);
 			}
+			else if(ForLoop* floop = dynamic_cast<ForLoop*>(ex))
+			{
+				analyseBlock(cgi, { floop->init });
+				analyseBlock(cgi, { floop->cond });
+				analyseBlock(cgi, { floop->incr });
+
+				pushScope(cgi);
+				analyseBlock(cgi, floop->body->statements);
+				popScope(cgi);
+			}
 			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(ex))
 			{
 				analyseBlock(cgi, { uo->expr });
