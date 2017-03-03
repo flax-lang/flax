@@ -582,6 +582,11 @@ namespace Parser
 				skipCheck = true;
 				break;
 
+			case TType::For:
+				ret = parseFor(ps);
+				skipCheck = true;
+				break;
+
 			case TType::Namespace:
 				ret = parseNamespace(ps);
 				skipCheck = true;
@@ -745,10 +750,10 @@ namespace Parser
 				case TType::If:
 					parserError("If statements are not expressions");
 
-				// since both have the same kind of AST node, parseWhile can handle both
 				case TType::Do:
 				case TType::While:
 				case TType::Loop:
+				case TType::For:
 					parserError("Loops are not expressions");
 
 
@@ -1595,15 +1600,23 @@ namespace Parser
 	}
 
 
-	Expr* parseVarDecl(ParserState& ps)
+	Expr* parseVarDecl(ParserState& ps, bool handledFront, bool _immut)
 	{
-		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
-
-		bool immutable = (ps.front().type == TType::Val);
-		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
-
+		bool immutable = false;
 		size_t restore = ps.index;
-		ps.eat();
+
+		if(!handledFront)
+		{
+			iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+			immutable = (ps.front().type == TType::Val);
+			ps.eat();
+		}
+		else
+		{
+			immutable = _immut;
+		}
+
+		uint64_t attribs = checkAndApplyAttributes(ps, Attr_NoAutoInit | Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate | Attr_Override);
 
 		// get the identifier.
 		Token tok_id = ps.eat();
@@ -1611,7 +1624,7 @@ namespace Parser
 		{
 			// again, refund some tokens
 			ps.refundToPosition(restore);
-			return parseTupleDecomposition(ps);
+			return parseTupleDecomposition(ps, handledFront, immutable);
 		}
 		else if(tok_id.type == TType::LSquare)
 		{
@@ -1780,10 +1793,18 @@ namespace Parser
 		return ret;
 	}
 
-	TupleDecompDecl* parseTupleDecomposition(ParserState& ps)
+	TupleDecompDecl* parseTupleDecomposition(ParserState& ps, bool handledFront, bool _immut)
 	{
-		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
-		bool immutable = ps.eat().type == TType::Val;
+		bool immutable = true;
+		if(!handledFront)
+		{
+			iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+		 	immutable = ps.eat().type == TType::Val;
+		 }
+		 else
+		 {
+		 	immutable = _immut;
+		 }
 
 		Token id;
 		iceAssert((id = ps.front()).type == TType::LParen);
@@ -2425,7 +2446,7 @@ namespace Parser
 
 		// kinda hack: if the next token is a closing brace, then we don't expect an expression
 		// this works most of the time.
-		if(ps.front().type != TType::RBrace)
+		if(ps.lookaheadUntilNonNewline().type != TType::RBrace)
 			retval = parseExpr(ps);
 
 		return CreateAST(Return, front, retval);
@@ -2436,13 +2457,28 @@ namespace Parser
 		Token tok_if = ps.eat();
 		iceAssert(tok_if.type == TType::If);
 
-		typedef std::pair<Expr*, BracedBlock*> CCPair;
+		typedef std::tuple<Expr*, BracedBlock*, std::vector<Expr*>> CCPair;
 		std::vector<CCPair> conds;
+
+
+		// parse all init conts
+		std::vector<Expr*> inits;
+		while(ps.front().type == TType::Val || ps.front().type == TType::Var)
+		{
+			inits.push_back(parseVarDecl(ps));
+
+			if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+				parserError("Expected semicolon (;) after if-variable-initialisation");
+
+			ps.eat();
+		}
+
 
 		Expr* cond = parseExpr(ps);
 		BracedBlock* tcase = parseBracedBlock(ps);
 
-		conds.push_back(CCPair(cond, tcase));
+		conds.push_back({ cond, tcase, inits });
+		inits.clear();
 
 		// check for else and else if
 		BracedBlock* ecase = 0;
@@ -2454,11 +2490,22 @@ namespace Parser
 			{
 				ps.eat();
 
+				while(ps.front().type == TType::Val || ps.front().type == TType::Var)
+				{
+					inits.push_back(parseVarDecl(ps));
+
+					if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+						parserError("Expected semicolon (;) after if-variable-initialisation");
+
+					ps.eat();
+				}
+
+
 				// parse an expr, then a block
 				Expr* c = parseExpr(ps);
 				BracedBlock* cl = parseBracedBlock(ps);
 
-				conds.push_back(CCPair(c, cl));
+				conds.push_back(CCPair(c, cl, inits));
 			}
 			else if(!parsedElse)
 			{
@@ -2553,6 +2600,82 @@ namespace Parser
 			return CreateAST(WhileLoop, tok_front, cond, body, true);
 		}
 	}
+
+
+	ForLoop* parseFor(ParserState& ps)
+	{
+		Token for_tok = ps.front();
+		iceAssert(ps.front().type == TType::For);
+		ps.eat();
+
+		// make sure we have an identifier
+
+		Expr* init = 0;
+		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+		{
+			init = parseVarDecl(ps, true, false);
+		}
+
+		iceAssert(ps.lookaheadUntilNonNewline().type == TType::Semicolon);
+		ps.eat();
+
+
+		// parse cond expr
+		if(ps.lookaheadUntilNonNewline().type == TType::Semicolon)
+			parserError("For-loop conditions are compulsory");
+
+
+		// parse it
+		Expr* cond = parseExpr(ps);
+
+
+		// expect semicolon
+		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+			parserError("Expected semicolon after for-loop condition");
+
+
+		ps.eat();
+
+		// parse the incrs, similarly.
+		std::vector<Expr*> incrs;
+		while(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+		{
+			// ok
+			incrs.push_back(parseExpr(ps));
+
+			if(ps.lookaheadUntilNonNewline().type == TType::Comma)
+			{
+				ps.eat();
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+			parserError("Expected '{' in for loop");
+
+		BracedBlock* body = parseBracedBlock(ps);
+		ForLoop* fl = CreateAST(ForLoop, for_tok, body);
+
+		fl->init = init;
+		fl->cond = cond;
+		fl->incrs = incrs;
+
+		return fl;
+	}
+
+
+
+
+
+
+
+
+
+
 
 
 	static std::vector<std::string> parseInheritanceList(ParserState& ps, std::string selfname)

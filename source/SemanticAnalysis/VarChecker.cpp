@@ -280,12 +280,12 @@ namespace SemAnalysis
 			}
 			else if(IfStmt* ifstmt = dynamic_cast<IfStmt*>(ex))
 			{
-				for(auto cs : ifstmt->_cases)
+				for(auto cs : ifstmt->cases)
 				{
-					analyseBlock(cgi, { cs.first });
+					analyseBlock(cgi, { std::get<0>(cs) });
 
 					pushScope(cgi);
-					analyseBlock(cgi, cs.second->statements);
+					analyseBlock(cgi, std::get<1>(cs)->statements);
 					popScope(cgi);
 				}
 
@@ -302,6 +302,16 @@ namespace SemAnalysis
 
 				pushScope(cgi);
 				analyseBlock(cgi, wloop->body->statements);
+				popScope(cgi);
+			}
+			else if(ForLoop* floop = dynamic_cast<ForLoop*>(ex))
+			{
+				analyseBlock(cgi, { floop->init });
+				analyseBlock(cgi, { floop->cond });
+				analyseBlock(cgi, floop->incrs);
+
+				pushScope(cgi);
+				analyseBlock(cgi, floop->body->statements);
 				popScope(cgi);
 			}
 			else if(UnaryOp* uo = dynamic_cast<UnaryOp*>(ex))
