@@ -1629,7 +1629,7 @@ namespace Parser
 		else if(tok_id.type == TType::LSquare)
 		{
 			ps.refundToPosition(restore);
-			return parseArrayDecomposition(ps);
+			return parseArrayDecomposition(ps, handledFront, immutable);
 		}
 		else if(tok_id.type != TType::Identifier)
 		{
@@ -1838,10 +1838,18 @@ namespace Parser
 
 
 
-	ArrayDecompDecl* parseArrayDecomposition(ParserState& ps)
+	ArrayDecompDecl* parseArrayDecomposition(ParserState& ps, bool handledFront, bool _immut)
 	{
-		iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
-		bool immutable = ps.eat().type == TType::Val;
+		bool immutable = true;
+		if(!handledFront)
+		{
+			iceAssert(ps.front().type == TType::Var || ps.front().type == TType::Val);
+		 	immutable = ps.eat().type == TType::Val;
+		 }
+		 else
+		 {
+		 	immutable = _immut;
+		 }
 
 		Token id;
 		iceAssert((id = ps.eat()).type == TType::LSquare);
