@@ -2451,9 +2451,9 @@ namespace Codegen
 		Return* r = 0;
 		bool first = true;
 
-		for(std::pair<Expr*, BracedBlock*> pair : ib->_cases)	// use the preserved one
+		for(auto pair : ib->cases)	// use the preserved one
 		{
-			Return* tmp = recursiveVerifyBlock(cgi, f, pair.second, checkType, retType);
+			Return* tmp = recursiveVerifyBlock(cgi, f, std::get<1>(pair), checkType, retType);
 			if(first)
 				r = tmp;
 
@@ -2500,30 +2500,32 @@ namespace Codegen
 			// (maybe?)
 
 			Expr* ex = func->block->statements.front();
-
-			Return* ret = 0;
-			if(IfStmt* i = dynamic_cast<IfStmt*>(ex))
-				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
-
-			else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(ex))
-				ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
-
-			// get the type
-			fir::Type* t = (ret ? ret->getType(this) : ex->getType(this));
-
-			if(checkType)
+			if(!dynamic_cast<WhileLoop*>(ex) && !dynamic_cast<IfStmt*>(ex))
 			{
-				if(this->getAutoCastDistance(t, retType) == -1)
+				Return* ret = 0;
+				if(IfStmt* i = dynamic_cast<IfStmt*>(ex))
+					ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+
+				else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(ex))
+					ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
+
+				// get the type
+				fir::Type* t = (ret ? ret->getType(this) : ex->getType(this));
+
+				if(checkType)
 				{
-					error(func, "Function '%s' missing return statement (implicit return invalid, needed type '%s', got '%s')",
-						func->decl->ident.name.c_str(), func->getType(this)->str().c_str(), t ? t->str().c_str() : "(statement)");
+					if(this->getAutoCastDistance(t, retType) == -1)
+					{
+						error(func, "Function '%s' missing return statement (implicit return invalid, needed type '%s', got '%s')",
+							func->decl->ident.name.c_str(), func->getType(this)->str().c_str(), t ? t->str().c_str() : "(statement)");
+					}
 				}
+
+				// ok, implicit return
+				if(stmtCounter) *stmtCounter = 1;
+
+				return true;
 			}
-
-			// ok, implicit return
-			if(stmtCounter) *stmtCounter = 1;
-
-			return true;
 		}
 
 

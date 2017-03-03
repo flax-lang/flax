@@ -92,7 +92,7 @@ static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 			for(auto c : i->cases)
 			{
 				ns.push_back("__anon_scope_" + std::to_string(__counter++));
-				_handleBlock(c.second, ns);
+				_handleBlock(std::get<1>(c), ns);
 				ns.pop_back();
 			}
 

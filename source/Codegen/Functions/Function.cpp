@@ -215,25 +215,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* t
 
 		// if it's an rvalue, we make a new one, increment its refcount
 		if(cgi->isRefCountedType(value->getType()))
-		{
-			// if(vkind == ValueKind::LValue)
-			// {
-			// 	// uh.. should always be there.
-			// 	iceAssert(pointer);
-			// 	cgi->incrementRefCount(pointer);
-			// }
-			// else
-			// {
-			// 	// rvalue
-
-			// 	fir::Value* tmp = cgi->irb.CreateImmutStackAlloc(value->getType(), value);
-			// 	cgi->incrementRefCount(tmp);
-
-			// 	value = cgi->irb.CreateLoad(tmp);
-			// }
-
 			cgi->incrementRefCount(value);
-		}
 
 		cgi->irb.CreateReturn(value);
 	}
