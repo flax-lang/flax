@@ -2371,6 +2371,7 @@ namespace Codegen
 			{
 				have = r->actualReturnValue->getType();
 			}
+
 			if(!have)
 			{
 				have = r->val->getType(cgi);
@@ -2381,7 +2382,6 @@ namespace Codegen
 				if(fir::Type* t = cgi->resolveGenericType(have->toParametricType()->getName()))
 					have = t;
 			}
-
 
 
 			if(retType == 0)
@@ -2484,52 +2484,85 @@ namespace Codegen
 		if(stmtCounter)
 			*stmtCounter = 0;
 
-
-		bool isVoid = (retType == 0 ? func->getType(this) : retType)->isVoidType();
+		bool isVoid = (retType == 0 ? (retType = func->getType(this)) : retType)->isVoidType();
 
 		// check the block
 		if(func->block->statements.size() == 0 && !isVoid)
 		{
 			error(func, "Function '%s' has return type '%s', but returns nothing", func->decl->ident.name.c_str(), retType->str().c_str());
 		}
-		else if(isVoid)
+
+		// check for implicit return (only valid for 1 statement in block)
+		if(!isVoid && func->block->statements.size() == 1 && !dynamic_cast<Return*>(func->block->statements[0]))
 		{
+			// todo: make this more robust maybe
+			// also check it's not a loop or anything stupid like that
+			// (maybe?)
+
+			Expr* ex = func->block->statements.front();
+
+			Return* ret = 0;
+			if(IfStmt* i = dynamic_cast<IfStmt*>(ex))
+				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+
+			else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(ex))
+				ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
+
+			// get the type
+			fir::Type* t = (ret ? ret->getType(this) : ex->getType(this));
+
+			if(checkType)
+			{
+				if(this->getAutoCastDistance(t, retType) == -1)
+				{
+					error(func, "Function '%s' missing return statement (implicit return invalid, needed type '%s', got '%s')",
+						func->decl->ident.name.c_str(), func->getType(this)->str().c_str(), t ? t->str().c_str() : "(statement)");
+				}
+			}
+
+			// ok, implicit return
+			if(stmtCounter) *stmtCounter = 1;
+
 			return true;
 		}
+
+
 
 
 		// now loop through all exprs in the block
 		Return* ret = 0;
 		Expr* final = 0;
+		bool stopCounting = false;
 		for(Expr* e : func->block->statements)
 		{
-			if(stmtCounter)
+			if(stmtCounter && !stopCounting)
 				(*stmtCounter)++;
 
-			IfStmt* i = dynamic_cast<IfStmt*>(e);
 			final = e;
 
-			if(i) ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+			if(IfStmt* i = dynamic_cast<IfStmt*>(e))
+				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
+
+			else if(WhileLoop* wl = dynamic_cast<WhileLoop*>(e))
+				ret = recursiveVerifyBlock(this, func, wl->body, !isVoid && checkType, retType);
 
 			// "top level" returns we will just accept.
 			if(ret || (ret = dynamic_cast<Return*>(e)))
-				break;
+			{
+				// do check.
+				if(isVoid && ret->getType(this) != fir::Type::getVoid())
+				{
+					// cry
+					error(ret, "Function '%s' returns void, but return statement attempted to return a value of type '%s'",
+						func->decl->ident.name.c_str(), ret->getType(this)->str().c_str());
+				}
+
+				stopCounting = true;
+			}
 		}
 
-		if(!ret && (isVoid || !checkType || this->getAutoCastDistance(final->getType(this), func->getType(this)) != -1))
-			return true;
-
-		if(!ret)
-		{
-			error(func, "Function '%s' missing return statement (implicit return invalid, needed '%s', got '%s')",
-				func->decl->ident.name.c_str(), func->getType(this)->str().c_str(),
-				final->getType(this) ? final->getType(this)->str().c_str() : "(statement)");
-		}
-
-		if(checkType)
-		{
+		if(checkType && !isVoid)
 			verifyReturnType(this, func, func->block, ret, retType);
-		}
 
 		return false;
 	}

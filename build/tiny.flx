@@ -45,6 +45,19 @@ public func main() -> int
 
 		foo(x)
 
+		func bar() -> any
+		{
+			10
+		}
+
+		func qux()
+		{
+			return
+		}
+
+		printf("bar = %d, qux = %d\n", bar(), 30)
+		qux()
+
 		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
 	}
 

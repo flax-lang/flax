@@ -263,7 +263,7 @@ namespace Any
 			data = this->irb.CreatePointerTypeCast(data, val->getType()->getPointerTo());
 
 			// store it.
-			this->performComplexValueStore(user, val->getType(), ptr, data, "_", user->pin, vk);
+			this->performComplexValueStore(user, val->getType(), ptr, data, "_", user ? user->pin : Parser::Pin(), vk);
 
 			// that's it.
 			return Result_t(0, 0);
@@ -297,7 +297,7 @@ namespace Any
 
 			// memcpy
 			dataptr = this->irb.CreatePointerTypeCast(dataptr, val->getType()->getPointerTo());
-			this->performComplexValueStore(user, val->getType(), ptr, dataptr, "_", user->pin, vk);
+			this->performComplexValueStore(user, val->getType(), ptr, dataptr, "_", user ? user->pin : Parser::Pin(), vk);
 
 
 			// store the pointer into the thing
