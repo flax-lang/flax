@@ -106,10 +106,6 @@ let x = .31
 
 
 
-// 19. init+cond in if/while statements, a-la c++17
-if let k = 30; k < 40 { /* ... */ }
-
-
 
 
 
@@ -151,7 +147,8 @@ if let k = 30; k < 40 { /* ... */ }
 	(fixed in 6d31d14)
 	- remove implicit returns, unless the function has exactly one *statement*.
 
-
+	(added in b56ef9c)
+	- init+cond in if statements, a-la c++17
 */
 
 
