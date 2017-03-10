@@ -180,6 +180,19 @@ namespace fir
 		{
 			return llvm::Type::getInt8Ty(gc);
 		}
+		else if(type->isRangeType())
+		{
+			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
+
+			auto id = Identifier("__range", IdKind::Struct);
+			if(createdTypes.find(id) != createdTypes.end())
+				return createdTypes[id];
+
+			auto str = llvm::StructType::create(gc, id.mangled());
+			str->setBody({ i64type, i64type });
+
+			return createdTypes[id] = str;
+		}
 		else if(type->isEnumType())
 		{
 			return typeToLlvm(type->toEnumType()->getCaseType(), mod);
@@ -2114,7 +2127,41 @@ namespace fir
 
 
 
+						case OpKind::Range_GetLower:
+						case OpKind::Range_GetUpper:
+						{
+							unsigned int pos = 0;
+							if(inst->opKind == OpKind::Range_GetUpper)
+								pos = 1;
 
+							llvm::Value* a = getOperand(inst, 0);
+							iceAssert(a->getType()->isStructTy());
+
+							llvm::Value* val = builder.CreateExtractValue(a, { pos });
+							addValueToMap(val, inst->realOutput);
+
+							break;
+						}
+
+
+						case OpKind::Range_SetLower:
+						case OpKind::Range_SetUpper:
+						{
+							unsigned int pos = 0;
+							if(inst->opKind == OpKind::Range_SetUpper)
+								pos = 1;
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Value* ret = builder.CreateInsertValue(a, b, { pos });
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
 
 
 
