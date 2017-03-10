@@ -49,6 +49,7 @@ namespace fir
 	Function* IRBuilder::getCurrentFunction()
 	{
 		return this->currentFunction;
+		// return this->currentBlock->getParentFunction();
 	}
 
 	IRBlock* IRBuilder::getCurrentBlock()
