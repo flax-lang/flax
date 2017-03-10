@@ -554,6 +554,20 @@ namespace Ast
 		Expr* cond = 0;
 	};
 
+	struct ForInLoop : BreakableBracedBlock
+	{
+		using Expr::codegen;
+
+		~ForInLoop();
+		ForInLoop(const Parser::Pin& pos, BracedBlock* _body) : BreakableBracedBlock(pos, _body) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+		Expr* var = 0;
+		Expr* rhs = 0;
+	};
+
 	struct Break : Expr
 	{
 		using Expr::codegen;
