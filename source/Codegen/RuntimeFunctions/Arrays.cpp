@@ -683,8 +683,8 @@ namespace Array
 
 		cgi->irb.setCurrentBlock(body);
 		{
-			fir::Value* v1 = cgi->irb.CreateLoad(ptr1);
-			fir::Value* v2 = cgi->irb.CreateLoad(ptr2);
+			fir::Value* v1 = cgi->irb.CreateLoad(cgi->irb.CreatePointerAdd(ptr1, cgi->irb.CreateLoad(counter)));
+			fir::Value* v2 = cgi->irb.CreateLoad(cgi->irb.CreatePointerAdd(ptr2, cgi->irb.CreateLoad(counter)));
 
 			if(arrtype->getElementType()->isStringType())
 			{
@@ -696,7 +696,6 @@ namespace Array
 			}
 			else
 			{
-
 				cgi->irb.CreateStore(cgi->irb.CreateICmpMulti(v1, v2), res);
 			}
 
