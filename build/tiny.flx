@@ -88,8 +88,8 @@ public func main() -> int
 	printf("\n----\n\n")
 
 	do {
-		let r1 = 0 ... 4
-		let r2 = 0 ..< 4
+		let r1 = 0 ... 0
+		let r2 = 0 ..< 1
 
 		printf("r1.l = %d, r1.u = %d\n", r1.lower, r1.upper)
 		printf("r2.l = %d, r2.u = %d\n", r2.lower, r2.upper)

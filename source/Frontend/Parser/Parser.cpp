@@ -1609,12 +1609,50 @@ namespace Parser
 
 	Expr* parseForIn(ParserState& ps)
 	{
+		Token for_tok = ps.front();
+		iceAssert(ps.front().type == TType::For);
+		ps.eat();
+
+		Expr* lhs = 0;
 		if(ps.lookaheadUntilNonNewline().type == TType::LParen)
 		{
+			lhs = parseTupleDecomposition(ps, true);
 		}
 		else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
 		{
+			lhs = parseArrayDecomposition(ps, true);
 		}
+		else if(ps.lookaheadUntilNonNewline().type == TType::Identifier)
+		{
+			std::string n = ps.lookaheadUntilNonNewline().text.to_string();
+			lhs = new VarRef(ps.curtok->pin, n);
+
+			ps.eat();
+		}
+		else
+		{
+			iceAssert(0 && "how did we get here?");
+		}
+
+		iceAssert(lhs);
+		iceAssert(ps.lookaheadUntilNonNewline().type == TType::Identifier && ps.lookaheadUntilNonNewline().text == "in");
+
+		ps.eat();
+
+		Expr* rhs = parseExpr(ps);
+
+		if(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+			parserError("Expected '{' in for loop");
+
+		// ok. send it off.
+
+		BracedBlock* body = parseBracedBlock(ps);
+		ForInLoop* ret = CreateAST(ForInLoop, for_tok, body);
+
+		ret->var = lhs;
+		ret->rhs = rhs;
+
+		return ret;
 	}
 
 
@@ -1637,11 +1675,11 @@ namespace Parser
 			size_t restore = ps.index;
 			if(ps.lookaheadUntilNonNewline().type == TType::LParen)
 			{
-				parseTupleDecomposition(ps);
+				parseTupleDecomposition(ps, true);
 			}
 			else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
 			{
-				parseArrayDecomposition(ps);
+				parseArrayDecomposition(ps, true);
 			}
 			else if(ps.lookaheadUntilNonNewline().type == TType::Identifier)
 			{
@@ -1654,18 +1692,14 @@ namespace Parser
 			}
 
 			// check it
-			if(ps.lookaheadUntilNonNewline().type == TType::Equal)
+			auto tmp = ps.lookaheadUntilNonNewline();
+
+			ps.refundToPosition(restore);
+			if(tmp.type == TType::Identifier && tmp.text == "in")
 			{
-				ps.refundToPosition(restore);
-			}
-			else if(ps.lookaheadUntilNonNewline().type == TType::Identifier && ps.lookaheadUntilNonNewline().text == "in")
-			{
-				ps.refundToPosition(restore);
+				// put the 'for' back as well.
+				ps.refundToPosition(restore - 1);
 				return parseForIn(ps);
-			}
-			else
-			{
-				parserError("Unexpected token '%s' after 'for'", ps.lookaheadUntilNonNewline().text.to_string().c_str());
 			}
 
 			init = parseVarDecl(ps, true, false);

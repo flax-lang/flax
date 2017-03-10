@@ -33,6 +33,7 @@ namespace Ast
 	FuncCall::~FuncCall() { }
 	Continue::~Continue() { }
 	ClassDef::~ClassDef() { }
+	ForInLoop::~ForInLoop() { }
 	DummyExpr::~DummyExpr() { }
 	WhileLoop::~WhileLoop() { }
 	StructDef::~StructDef() { }
