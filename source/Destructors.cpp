@@ -14,6 +14,7 @@ namespace Ast
 	BinOp::~BinOp() { }
 	Break::~Break() { }
 	Alloc::~Alloc() { }
+	Range::~Range() { }
 	Number::~Number() { }
 	VarRef::~VarRef() { }
 	Typeof::~Typeof() { }

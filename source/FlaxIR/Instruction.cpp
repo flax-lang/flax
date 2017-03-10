@@ -151,6 +151,11 @@ namespace fir
 			case OpKind::Any_GetTypeID:						instrname = "get_any.typeid"; break;
 			case OpKind::Any_SetTypeID:						instrname = "set_any.typeid"; break;
 
+			case OpKind::Range_GetLower:					instrname = "get_range.lower"; break;
+			case OpKind::Range_SetLower:					instrname = "set_range.lower"; break;
+			case OpKind::Range_GetUpper:					instrname = "get_range.upper"; break;
+			case OpKind::Range_SetUpper:					instrname = "set_range.upper"; break;
+
 			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
 			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}

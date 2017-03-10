@@ -62,7 +62,8 @@ namespace Parser
 
 	static bool isPostfixUnaryOperator(TType tt)
 	{
-		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus);
+		return (tt == TType::LSquare) || (tt == TType::DoublePlus) || (tt == TType::DoubleMinus)
+			|| (tt == TType::Ellipsis) || (tt == TType::HalfOpenEllipsis);
 	}
 
 	static int getOpPrecForUnaryOp(ArithmeticOp op)
@@ -153,6 +154,10 @@ namespace Parser
 			case TType::LessThanEquals:
 			case TType::GreaterEquals:
 				return 500;
+
+			case TType::Ellipsis:
+			case TType::HalfOpenEllipsis:
+				return 475;
 
 			case TType::EqualsTo:
 			case TType::NotEquals:
@@ -1600,6 +1605,128 @@ namespace Parser
 	}
 
 
+
+
+	Expr* parseForIn(ParserState& ps)
+	{
+		if(ps.lookaheadUntilNonNewline().type == TType::LParen)
+		{
+		}
+		else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
+		{
+		}
+	}
+
+
+	Expr* parseFor(ParserState& ps)
+	{
+		Token for_tok = ps.front();
+		iceAssert(ps.front().type == TType::For);
+		ps.eat();
+
+		// so how this works is as such:
+		// we check the first token. If it's a semicolon, we know we're a C-style for loop immediately, just without an initialiser
+		// if it's a ( or a [, we can't be sure. Store the current position, and parseDecomposition.
+		// then, if we get an '=', then we know we're also a C-style for loop; refund tokens and do normally.
+		// if we get an 'in', then refund and call parseForIn.
+		// if it's immediately an identifier, same thing; parse the identifier, then check the next token.
+
+		Expr* init = 0;
+		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+		{
+			size_t restore = ps.index;
+			if(ps.lookaheadUntilNonNewline().type == TType::LParen)
+			{
+				parseTupleDecomposition(ps);
+			}
+			else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
+			{
+				parseArrayDecomposition(ps);
+			}
+			else if(ps.lookaheadUntilNonNewline().type == TType::Identifier)
+			{
+				ps.eat();
+			}
+			else
+			{
+				parserError("Unexpected token '%s' after 'for', expected identifier or declaration",
+					ps.lookaheadUntilNonNewline().text.to_string().c_str());
+			}
+
+			// check it
+			if(ps.lookaheadUntilNonNewline().type == TType::Equal)
+			{
+				ps.refundToPosition(restore);
+			}
+			else if(ps.lookaheadUntilNonNewline().type == TType::Identifier && ps.lookaheadUntilNonNewline().text == "in")
+			{
+				ps.refundToPosition(restore);
+				return parseForIn(ps);
+			}
+			else
+			{
+				parserError("Unexpected token '%s' after 'for'", ps.lookaheadUntilNonNewline().text.to_string().c_str());
+			}
+
+			init = parseVarDecl(ps, true, false);
+		}
+
+		iceAssert(ps.lookaheadUntilNonNewline().type == TType::Semicolon);
+		ps.eat();
+
+
+		// parse cond expr
+		if(ps.lookaheadUntilNonNewline().type == TType::Semicolon)
+			parserError("For-loop conditions are compulsory");
+
+
+		// parse it
+		Expr* cond = parseExpr(ps);
+
+
+		// expect semicolon
+		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
+			parserError("Expected semicolon after for-loop condition");
+
+
+		ps.eat();
+
+		// parse the incrs, similarly.
+		std::vector<Expr*> incrs;
+		while(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+		{
+			// ok
+			incrs.push_back(parseExpr(ps));
+
+			if(ps.lookaheadUntilNonNewline().type == TType::Comma)
+			{
+				ps.eat();
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+			parserError("Expected '{' in for loop");
+
+		BracedBlock* body = parseBracedBlock(ps);
+		ForLoop* fl = CreateAST(ForLoop, for_tok, body);
+
+		fl->init = init;
+		fl->cond = cond;
+		fl->incrs = incrs;
+
+		return fl;
+	}
+
+
+
+
+
+
 	Expr* parseVarDecl(ParserState& ps, bool handledFront, bool _immut)
 	{
 		bool immutable = false;
@@ -2049,11 +2176,6 @@ namespace Parser
 
 	static Expr* parsePostfixUnaryOp(ParserState& ps, Token tok, Expr* curLhs)
 	{
-		// do something! quickly!
-
-		// get the type of op.
-		// prec: array index: 120
-
 		Token top = tok;
 		Expr* newlhs = 0;
 		if(top.type == TType::LSquare)
@@ -2112,6 +2234,17 @@ namespace Parser
 			{
 				parserError("Expected ']' after '[' for array subscript");
 			}
+		}
+		else if(top.type == TType::Ellipsis || top.type == TType::HalfOpenEllipsis)
+		{
+			Expr* start = curLhs;
+			iceAssert(start);
+
+			// current token now starts the ending expression (ie. '...' or '..<' are no longer in the token stream)
+			Expr* end = parseExpr(ps);
+
+			// ok
+			newlhs = CreateAST_Pin(Range, curLhs->pin, start, end, (top.type == TType::HalfOpenEllipsis));
 		}
 		else
 		{
@@ -2235,17 +2368,6 @@ namespace Parser
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 			Expr* rhs = 0;
 			if(tok_op.type == TType::As)
 			{
@@ -2359,45 +2481,6 @@ namespace Parser
 		auto t = ps.eat();
 
 		return CreateAST(Number, t, t.text.to_string());
-
-
-		#if 0
-		Number* n;
-		if(ps.front().type == TType::Integer)
-		{
-			// todo: handle integer suffixes
-
-			Token tok = ps.eat();
-			auto iv = getIntegerValue(tok);
-
-			n = CreateAST(Number, tok, iv.first);
-			if(iv.second)
-			{
-				n->needUnsigned = true;
-				n->ptype = pts::NamedType::create(UINT64_TYPE_STRING);
-			}
-			else
-			{
-				n->ptype = pts::NamedType::create(INT64_TYPE_STRING);
-			}
-		}
-		else if(ps.front().type == TType::Decimal)
-		{
-			Token tok = ps.eat();
-			n = CreateAST(Number, tok, getDecimalValue(tok));
-
-			if(n->dval < (double) FLT_MAX)	n->ptype = pts::NamedType::create(FLOAT32_TYPE_STRING);
-			else							n->ptype = pts::NamedType::create(FLOAT64_TYPE_STRING);
-		}
-		else
-		{
-			parserError("What!????");
-			iceAssert(false);
-			return 0;
-		}
-
-		return n;
-		#endif
 	}
 
 	FuncCall* parseFuncCall(ParserState& ps, std::string id, Pin id_pos)
@@ -2607,72 +2690,6 @@ namespace Parser
 
 			return CreateAST(WhileLoop, tok_front, cond, body, true);
 		}
-	}
-
-
-	ForLoop* parseFor(ParserState& ps)
-	{
-		Token for_tok = ps.front();
-		iceAssert(ps.front().type == TType::For);
-		ps.eat();
-
-		// make sure we have an identifier
-
-		Expr* init = 0;
-		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
-		{
-			init = parseVarDecl(ps, true, false);
-		}
-
-		iceAssert(ps.lookaheadUntilNonNewline().type == TType::Semicolon);
-		ps.eat();
-
-
-		// parse cond expr
-		if(ps.lookaheadUntilNonNewline().type == TType::Semicolon)
-			parserError("For-loop conditions are compulsory");
-
-
-		// parse it
-		Expr* cond = parseExpr(ps);
-
-
-		// expect semicolon
-		if(ps.lookaheadUntilNonNewline().type != TType::Semicolon)
-			parserError("Expected semicolon after for-loop condition");
-
-
-		ps.eat();
-
-		// parse the incrs, similarly.
-		std::vector<Expr*> incrs;
-		while(ps.lookaheadUntilNonNewline().type != TType::LBrace)
-		{
-			// ok
-			incrs.push_back(parseExpr(ps));
-
-			if(ps.lookaheadUntilNonNewline().type == TType::Comma)
-			{
-				ps.eat();
-				continue;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		if(ps.lookaheadUntilNonNewline().type != TType::LBrace)
-			parserError("Expected '{' in for loop");
-
-		BracedBlock* body = parseBracedBlock(ps);
-		ForLoop* fl = CreateAST(ForLoop, for_tok, body);
-
-		fl->init = init;
-		fl->cond = cond;
-		fl->incrs = incrs;
-
-		return fl;
 	}
 
 

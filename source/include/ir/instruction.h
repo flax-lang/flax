@@ -145,6 +145,11 @@ namespace fir
 		Any_GetTypeID,
 		Any_SetTypeID,
 
+		Range_GetLower,
+		Range_SetLower,
+		Range_GetUpper,
+		Range_SetUpper,
+
 		Branch_UnCond,
 		Branch_Cond,
 

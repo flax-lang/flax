@@ -223,6 +223,12 @@ namespace Lexer
 			tok.text = "...";
 			read = 3;
 		}
+		else if(hasPrefix(stream, "..<"))
+		{
+			tok.type = TType::HalfOpenEllipsis;
+			tok.text = "..<";
+			read = 3;
+		}
 		else if(hasPrefix(stream, "/*"))
 		{
 			int currentNest = 1;

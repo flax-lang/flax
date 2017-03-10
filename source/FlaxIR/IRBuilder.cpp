@@ -1756,6 +1756,57 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateGetRangeLower(Value* range, std::string vname)
+	{
+		if(!range->getType()->isRangeType())
+			error("range is not a range type (have '%s')", range->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Range_GetLower, false, this->currentBlock,
+			fir::Type::getInt64(), { range });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetRangeLower(Value* range, Value* val, std::string vname)
+	{
+		if(!range->getType()->isRangeType())
+			error("range is not a range type (got '%s')", range->getType()->str().c_str());
+
+		if(!val->getType()->isIntegerType())
+			error("val is not an integer type (got '%s')", val->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Range_SetLower, true, this->currentBlock,
+			fir::Type::getRangeType(), { range, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateGetRangeUpper(Value* range, std::string vname)
+	{
+		if(!range->getType()->isRangeType())
+			error("range is not a range type (have '%s')", range->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Range_GetUpper, false, this->currentBlock,
+			fir::Type::getInt64(), { range });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetRangeUpper(Value* range, Value* val, std::string vname)
+	{
+		if(!range->getType()->isRangeType())
+			error("range is not a range type (got '%s')", range->getType()->str().c_str());
+
+		if(!val->getType()->isIntegerType())
+			error("val is not an integer type (got '%s')", val->getType()->str().c_str());
+
+		Instruction* instr = new Instruction(OpKind::Range_SetUpper, true, this->currentBlock,
+			fir::Type::getRangeType(), { range, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
 
 
 

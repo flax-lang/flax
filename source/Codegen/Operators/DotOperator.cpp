@@ -540,6 +540,31 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 			}
 		}
 	}
+	else if(type->isRangeType())
+	{
+		if(VarRef* vr = dynamic_cast<VarRef*>(ma->right))
+		{
+			if(vr->name == "lower" || vr->name == "upper")
+			{
+				if(!actual)
+				{
+					*resultType = fir::Type::getInt64();
+					return Result_t(0, 0);
+				}
+
+				if(vr->name == "lower")
+					return Result_t(cgi->irb.CreateGetRangeLower(val), 0);
+
+				else if(vr->name == "upper")
+					return Result_t(cgi->irb.CreateGetRangeUpper(val), 0);
+			}
+		}
+
+		error(ma->right, "Unsupported dot-operator on array type '%s'", type->str().c_str());
+	}
+
+
+
 
 	if(cgi->getExtensionsForBuiltinType(type).size() > 0)
 	{
