@@ -315,6 +315,46 @@ namespace fir
 
 
 
+	ConstantDynamicArray* ConstantDynamicArray::get(DynamicArrayType* t, ConstantValue* d, ConstantValue* l, ConstantValue* c)
+	{
+		auto cda = new ConstantDynamicArray(t);
+		cda->data = d;
+		cda->length = l;
+		cda->capacity = c;
+
+		return cda;
+	}
+
+	ConstantDynamicArray* ConstantDynamicArray::get(ConstantArray* arr)
+	{
+		auto cda = new ConstantDynamicArray(DynamicArrayType::get(arr->getType()->toArrayType()->getElementType()));
+		cda->arr = arr;
+
+		return cda;
+	}
+
+
+	ConstantDynamicArray::ConstantDynamicArray(DynamicArrayType* t) : ConstantValue(t)
+	{
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type)
 	{

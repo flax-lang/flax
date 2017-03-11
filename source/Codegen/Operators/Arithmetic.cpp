@@ -85,14 +85,15 @@ namespace Operators
 
 
 
-	static Result_t performGeneralArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, fir::Value* lhs, fir::Value* lhsptr,
+	Result_t performGeneralArithmeticOperator(CodegenInstance* cgi, ArithmeticOp op, Expr* user, fir::Value* lhs, fir::Value* lhsptr,
 		fir::Value* rhs, fir::Value* rhsptr, std::vector<Expr*> exprs)
 	{
 		auto opstr = Parser::arithmeticOpToString(cgi, op);
 
 
 		if(isComparisonOp(op) && (lhs->getType()->isPointerType() || lhs->getType()->isPrimitiveType())
-								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType()))
+								&& (rhs->getType()->isPointerType() || rhs->getType()->isPrimitiveType())
+								&& lhs->getType()->isPointerType() == rhs->getType()->isPointerType())
 		{
 			// todo(behaviour): c/c++ states that comparing pointers (>, <, etc) is undefined when the pointers do not
 			// point to the same "aggregate" (pointer to struct members, or array members)
@@ -198,16 +199,19 @@ namespace Operators
 				return Result_t(cgi->irb.CreateBitcast(res, fir::Type::getCharType()), 0);
 			}
 		}
-		else if(lhs->getType()->isStringType() && rhs->getType()->isCharType())
+		else if((lhs->getType()->isStringType() && rhs->getType()->isCharType())
+			|| (lhs->getType()->isCharType() && rhs->getType()->isStringType()))
 		{
 			if(op != ArithmeticOp::Add)
 				error(user, "Operator '%s' cannot be applied on types 'string' and 'char'", opstr.c_str());
 
 			iceAssert(rhs);
 
+			bool flipped = (lhs->getType()->isCharType());
+
 			// newStringByAppendingChar (does not modify lhsptr)
 			auto apf = RuntimeFuncs::String::getCharAppendFunction(cgi);
-			fir::Value* app = cgi->irb.CreateCall2(apf, lhs, rhs);
+			fir::Value* app = cgi->irb.CreateCall2(apf, flipped ? rhs : lhs, flipped ? lhs : rhs);
 
 			// make a new fake
 			fir::Value* aa = cgi->irb.CreateImmutStackAlloc(app->getType(), app);
@@ -264,27 +268,31 @@ namespace Operators
 				return Result_t(app, aa);
 			}
 		}
-		else if(lhs->getType()->isDynamicArrayType() && rhs->getType()->isDynamicArrayType()
+		else if((lhs->getType()->isDynamicArrayType() && rhs->getType()->isDynamicArrayType()
 			&& lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType()->toDynamicArrayType()->getElementType())
+			|| (lhs->getType()->isArraySliceType() && rhs->getType()->isArraySliceType()
+			&& lhs->getType()->toArraySliceType()->getElementType() == rhs->getType()->toArraySliceType()->getElementType()))
 		{
+			// array + array
 			iceAssert(lhsptr);
 			iceAssert(rhsptr);
 
-			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+			fir::Type* elmType = (lhs->getType()->isDynamicArrayType() ? lhs->getType()->toDynamicArrayType()->getElementType() : lhs->getType()->toArraySliceType()->getElementType());
+
 			if(isComparisonOp(op))
 			{
 				// check if we can actually compare the two element types
-				auto ovl = cgi->getBinaryOperatorOverload(user, op, arrtype->getElementType(), arrtype->getElementType());
+				auto ovl = cgi->getBinaryOperatorOverload(user, op, elmType, elmType);
 				if(!ovl.found)
 				{
 					error(user, "Array type '%s' cannot be compared; operator '%s' is not defined for element type '%s'",
-						arrtype->str().c_str(), opstr.c_str(), arrtype->getElementType()->str().c_str());
+						lhs->getType()->str().c_str(), opstr.c_str(), elmType->str().c_str());
 				}
 
 				// basically this calls the elementwise comparison function
-				// note: if ovl.opFunc is null, the IR will assume that FIR knows how to handle it
+				// note: if ovl.opFunc is null, the code will assume that FIR knows how to handle it
 				// ie. builtin type compares
-				fir::Function* cmpf = RuntimeFuncs::Array::getCompareFunction(cgi, arrtype, ovl.opFunc);
+				fir::Function* cmpf = RuntimeFuncs::Array::getCompareFunction(cgi, lhs->getType(), ovl.opFunc);
 				iceAssert(cmpf);
 
 
@@ -306,8 +314,14 @@ namespace Operators
 			}
 			else if(op == ArithmeticOp::Add)
 			{
+				if(!lhs->getType()->isDynamicArrayType())
+					error(user, "Cannot perform concatenation on slices; use .clone() to create regular arrays first");
+
+				fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
+				iceAssert(arrtype);
+
 				// first, clone the left side
-				fir::Value* cloned = cgi->irb.CreateStackAlloc(arrtype);
+				fir::Value* cloned = cgi->irb.CreateStackAlloc(lhs->getType());
 				{
 					fir::Function* clonefunc = RuntimeFuncs::Array::getCloneFunction(cgi, arrtype);
 					iceAssert(clonefunc);
@@ -325,6 +339,7 @@ namespace Operators
 		}
 		else if(lhs->getType()->isDynamicArrayType() && lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType())
 		{
+			// array + element
 			iceAssert(lhsptr);
 
 			fir::DynamicArrayType* arrtype = lhs->getType()->toDynamicArrayType();
@@ -482,6 +497,23 @@ namespace Operators
 
 
 			return Result_t(cgi->irb.CreateLoad(retval), 0);
+		}
+		else if(lhs->getType()->isPointerType() && rhs->getType()->isPointerType()
+			&& lhs->getType()->getPointerElementType() == rhs->getType()->getPointerElementType())
+		{
+			// pointer difference
+			// first, convert both pointers to ints
+			// then, do the subtraction
+			// then, divide by the size.
+
+			fir::Value* typesize = cgi->irb.CreateSizeof(lhs->getType()->getPointerElementType());
+			fir::Value* l = cgi->irb.CreatePointerToIntCast(lhs, fir::Type::getInt64());
+			fir::Value* r = cgi->irb.CreatePointerToIntCast(rhs, fir::Type::getInt64());
+
+			fir::Value* diff = cgi->irb.CreateSub(l, r);
+			fir::Value* ret = cgi->irb.CreateDiv(diff, typesize);
+
+			return Result_t(ret, 0);
 		}
 		else
 		{

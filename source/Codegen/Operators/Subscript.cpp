@@ -342,7 +342,7 @@ namespace Operators
 		iceAssert(lhs);
 
 		fir::Value* gep = nullptr;
-		fir::Value* ind = subscriptIndex->codegen(cgi).value;
+		fir::Value* ind = cgi->irb.CreateIntSizeCast(subscriptIndex->codegen(cgi).value, fir::Type::getInt64());
 
 
 		if(atype->isArrayType())
