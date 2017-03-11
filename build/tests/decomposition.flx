@@ -1,0 +1,64 @@
+// decomposition.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public func doDecompositionTest()
+{
+
+	do {
+		printf("\n\n>> tuple decomposition\n")
+
+		let tup = (10, 20, 30)
+		let (x, &y, _) = tup
+
+		printf("x = %d, y = %p\n", x, y)
+
+		let (a, (b, c, ...)) = ("a", (30, 40, 50, 60))
+		printf("a = '%s', b = %d, c = %d\n", a, b, c)
+	}
+
+
+	do {
+		printf("\n>> array decomposition\n")
+		var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
+
+		var [ a, &b, &c, ... &x ] = arr
+		*b = 30
+
+		printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
+
+
+		do {
+
+			var arr: string[]
+			arr += "hello"
+			arr += "world"
+			arr += "bouys"
+
+			let [ a, ... &b ] = arr
+
+			// can bind directly, if you're that kind of person...
+			let [ ... &c ] = arr
+			printf("a = %s, b = %d, c = %d\n", a, b.length, c.length)
+		}
+
+		do {
+			printf("\n>> string decomposition\n")
+			let longstring = "In the event of unexpected shutdown, all personnel are to evacuate the area immediately.\n\n"
+
+			let [ a, b, c, ... &chars ] = longstring
+
+			printf("a = '%c', b = '%c', c = '%c'\n", a, b, c)
+
+			// this should not, and thankfully, does not, work.
+			// chars[3] = char("$")
+
+			var k = 0
+			while k < chars.length
+			{
+				printf("%c", chars[k])
+				k += 1
+			}
+		}
+	}
+}

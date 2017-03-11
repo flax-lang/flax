@@ -158,6 +158,67 @@ public func miscellaneousTests()
 		printf("test = %p %d\n", test().raw, i64(10))
 	}
 
+	do {
+
+		if let k = 30; k > 27
+		{
+			printf("(if-let) k > 27\n")
+		}
+	}
+
+
+	do {
+
+		enum SomeEnum
+		{
+			case Up
+			case Down
+			case Left
+			case Right
+		}
+
+		struct Foop
+		{
+			var x: int
+		}
+
+		class Barf
+		{
+			static var y: int = 40
+			static var fkr: int
+			{
+				get { 30 }
+			}
+
+			func foo() -> f64
+			{
+				43.1
+			}
+		}
+
+		let e = SomeEnum.Down
+		let f = Foop(10)
+		let barf = Barf()
+
+		let fo = barf.foo
+
+		printf("f.x = %d, b.c = %d, fo = %d\n", f.x, 3, Barf.y)
+
+		let tup = ("a", (30, 40, 50, 60))
+		let k = tup.1.1
+
+		printf("k = %d\n", k)
+
+		let s = "some string \
+		broken over \
+		multiple lines"
+
+		printf("s = %s\n", s)
+
+		printf("%d, %.7lf\n", k, +3.000141);
+	}
+
+
 
 	variadicTest("ints", 10, 20, 30, 40, 50, 60)
 }

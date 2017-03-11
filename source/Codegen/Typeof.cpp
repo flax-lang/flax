@@ -31,7 +31,11 @@ Result_t Typeid::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	// first check for types
 	if(auto vr = dynamic_cast<VarRef*>(this->inside))
 	{
-		if(TypePair_t* tp = cgi->getTypeByString(vr->name))
+		if(fir::Type* bt = cgi->getExprTypeOfBuiltin(vr->name))
+		{
+			return Result_t(fir::ConstantInt::getInt64(bt->getID()), 0);
+		}
+		else if(TypePair_t* tp = cgi->getTypeByString(vr->name))
 		{
 			// use the type
 			fir::Type* t = tp->first;

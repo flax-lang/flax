@@ -1,0 +1,55 @@
+// forloops.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public func doForLoopTest()
+{
+	do {
+		printf("\n\n>> C-style for loops\n")
+		for (i, k, v) = (1, 0, 30); k < 40 && v > 13; i += 1, k += 10, v -= 3
+		{
+			printf("i = %d, k = %d, v = %d\n", i, k, v)
+		}
+	}
+
+	do {
+		printf("\n>> ranges\n")
+
+		let r1 = 0 ... 3
+		let r2 = 0 ..< 1
+
+		printf("r1.l = %d, r1.u = %d\n", r1.lower, r1.upper)
+		printf("r2.l = %d, r2.u = %d\n\n", r2.lower, r2.upper)
+
+		for i, j in r1
+		{
+			printf("%d: i = %d\n", j, i)
+		}
+	}
+
+	do {
+		printf("\n>> for-in array\n")
+
+		let x = [ (1, "a"), (2, "b"), (3, "c"), (4, "d") ]
+		let fixed: (int, int)[3] = [ (10, 2), (7, 3), (3, 2) ]
+
+		for (a, b), i in x
+		{
+			printf("%d: %d / %s\n", i, a, b)
+		}
+	}
+
+	do {
+		printf("\n>> for-in string\n")
+
+		for c, i in "woohoo"
+		{
+			printf("%d: '%c', ", i, c)
+		}
+
+		printf("\n")
+	}
+}
+
+
+

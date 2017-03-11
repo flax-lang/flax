@@ -12,7 +12,6 @@ using namespace Ast;
 using namespace Codegen;
 
 
-
 fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op, fir::Type* ltype,
 	fir::Type* rtype, fir::Type* extratype, bool allowFail)
 {
@@ -111,7 +110,7 @@ fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op
 			if(op == ArithmeticOp::CmpLT || op == ArithmeticOp::CmpGT || op == ArithmeticOp::CmpLEq
 			|| op == ArithmeticOp::CmpGEq || op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq)
 			{
-				return fir::Type::getBool(cgi->getContext());
+				return fir::Type::getBool();
 			}
 			else if(op == ArithmeticOp::Cast || op == ArithmeticOp::ForcedCast)
 			{
@@ -131,6 +130,10 @@ fir::Type* getBinOpResultType(CodegenInstance* cgi, BinOp* user, ArithmeticOp op
 				// it's just the type.
 				return ltype;
 			}
+		}
+		else if(ltype->isPointerType() && rtype->isPointerType() && ltype->getPointerElementType() == rtype->getPointerElementType())
+		{
+			return fir::Type::getInt64();
 		}
 		else
 		{
@@ -189,6 +192,12 @@ namespace Codegen
 			{
 				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
 				else if(lhs->isStringType() && rhs->isStringType())		return true;
+				else if(lhs->isDynamicArrayType() && rhs->isDynamicArrayType() && lhs->toDynamicArrayType()->getElementType() ==
+					rhs->toDynamicArrayType()->getElementType())		return true;
+				else if(lhs->isArraySliceType() && rhs->isArraySliceType() && lhs->toArraySliceType()->getElementType() ==
+					rhs->toArraySliceType()->getElementType())			return true;
+				else if(lhs->isArrayType() && rhs->isArrayType() && lhs->toArrayType()->getElementType() ==
+					rhs->toArrayType()->getElementType())				return true;
 				else if(lhs->isPointerType() && rhs->isIntegerType())	return true;
 				else if(lhs->isIntegerType() && rhs->isPointerType())	return true;
 
@@ -220,19 +229,34 @@ namespace Codegen
 				return false;
 			}
 
+			case ArithmeticOp::CmpEq:
+			case ArithmeticOp::CmpNEq:
+			{
+				if(lhs->isRangeType() && lhs == rhs) return true;
+				else if(lhs->isAnyType() && rhs->isAnyType()) return true;
+			}
 			case ArithmeticOp::CmpLT:
 			case ArithmeticOp::CmpGT:
 			case ArithmeticOp::CmpLEq:
 			case ArithmeticOp::CmpGEq:
-			case ArithmeticOp::CmpEq:
-			case ArithmeticOp::CmpNEq:
 			{
 				if(lhs->isPrimitiveType() && rhs->isPrimitiveType())	return true;
 				else if(lhs->isStringType() && rhs->isStringType())		return true;
 				else if(lhs->isCharType() && rhs->isCharType())			return true;
 				else if(lhs->isEnumType() && rhs->isEnumType())			return true;
+				else if(lhs->isDynamicArrayType() && rhs->isDynamicArrayType()
+					&& lhs->toDynamicArrayType()->getElementType() == rhs->toDynamicArrayType()->getElementType()) return true;
+
+				else if(lhs->isArrayType() && rhs->isArrayType()
+					&& lhs->toArrayType()->getElementType() == rhs->toArrayType()->getElementType()) return true;
+
+				else if(lhs->isArraySliceType() && rhs->isArraySliceType()
+					&& lhs->toArraySliceType()->getElementType() == rhs->toArraySliceType()->getElementType()) return true;
+
+				else if(lhs->isTupleType() && lhs == rhs) return true;
+
 				else if(lhs->isPointerType() && rhs->isPointerType()
-					&& lhs->getPointerElementType() == rhs->getPointerElementType())	return true;
+					&& lhs->getPointerElementType() == rhs->getPointerElementType()) return true;
 
 				return false;
 			}

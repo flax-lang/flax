@@ -280,6 +280,8 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 
+		void decomposeWithRhs(Codegen::CodegenInstance* cgi, fir::Value* rhs, fir::Value* rhsptr, ValueKind vk);
+
 		bool immutable = false;
 		Mapping mapping;
 		Expr* rightSide = 0;
@@ -297,6 +299,8 @@ namespace Ast
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+		void decomposeWithRhs(Codegen::CodegenInstance* cgi, fir::Value* rhs, fir::Value* rhsptr, ValueKind vk);
 
 		bool immutable = false;
 
@@ -548,6 +552,22 @@ namespace Ast
 		std::vector<Expr*> incrs;
 
 		Expr* cond = 0;
+	};
+
+	struct ForInLoop : BreakableBracedBlock
+	{
+		using Expr::codegen;
+
+		~ForInLoop();
+		ForInLoop(const Parser::Pin& pos, BracedBlock* _body) : BreakableBracedBlock(pos, _body) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+		Expr* var = 0;
+		Expr* rhs = 0;
+
+		std::string indexName;
 	};
 
 	struct Break : Expr
@@ -859,6 +879,26 @@ namespace Ast
 		BracedBlock* innards = 0;
 		std::string name;
 	};
+
+
+
+	struct Range : Expr
+	{
+		using Expr::codegen;
+
+		~Range();
+		Range(const Parser::Pin& pos, Expr* s, Expr* e, bool half) : Expr(pos), start(s), end(e), isHalfOpen(half) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+
+		Expr* start = 0;
+		Expr* end = 0;
+
+		bool isHalfOpen = false;
+	};
+
+
 
 	struct ArrayIndex : Expr
 	{
