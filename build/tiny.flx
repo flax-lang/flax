@@ -2,92 +2,18 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
-
-var glob: any
-func foo(a: any)
-{
-	if(typeid(a) == typeid(Large))
-	{
-		printf("a = %d\n", (a as Large).a)
-		glob = a
-	}
-	else
-	{
-		printf("not large\n")
-	}
-}
-
-struct Large
-{
-	var a: i64 = 10
-	var b: i64 = 20
-	var c: i64 = 30
-	var d: i64 = 40
-	var e: i64 = 50
-}
 
 public func main() -> int
 {
 	// do {
-	// 	var k: any = 40 as any
-	// 	k = "foo"
 
-	// 	printf("k as string = %s\n", k as string)
+	// 	let foo: int* = malloc(64) as int*
+	// 	let bar: int* = malloc(64) as int*
 
-	// 	k = 301
-
-	// 	printf("k as int = %d\n", k as int)
-
-	// 	printf("typeid(k): %d\n", typeid(k))
+	// 	printf("%p / %p, %#x\n", foo, bar, foo - bar)
 	// }
-
-	// do {
-	// 	var x: any = Large()
-	// 	// (x as Large).c = 301443
-
-	// 	// let v = x// as Large
-	// 	var k = x as Large
-	// 	k.c = 5413
-	// 	k.a = 631
-
-	// 	foo(x)
-	// 	foo(k)
-	// 	foo(401.3)
-
-	// 	func bar() -> any
-	// 	{
-	// 		10
-	// 	}
-
-	// 	func qux()
-	// 	{
-	// 		return
-	// 	}
-
-	// 	printf("bar = %d, qux = %d\n", bar(), 30)
-	// 	qux()
-
-	// 	printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
-	// }
-
-	// do {
-
-		if let k = 30; k > 27
-		{
-			printf("k > 27\n")
-		}
-
-
-		for (i, k, v) = (1, 0, 30); k < 40 && v > 13; i += 1, k += 10, v -= 3
-		{
-			printf("i = %d, k = %d, v = %d\n", i, k, v)
-		}
-	// }
-
-
-
-	// foo(30)
 
 	return 0
 }

@@ -151,7 +151,28 @@ namespace fir
 		std::vector<ConstantValue*> values;
 	};
 
+	struct ConstantDynamicArray : ConstantValue
+	{
+		friend struct Module;
 
+		static ConstantDynamicArray* get(DynamicArrayType* type, ConstantValue* data, ConstantValue* length, ConstantValue* capacity);
+		static ConstantDynamicArray* get(ConstantArray* arr);
+
+		ConstantValue* getData() { return this->data; }
+		ConstantValue* getLength() { return this->length; }
+		ConstantValue* getCapacity() { return this->capacity; }
+
+		ConstantArray* getArray() { return this->arr; }
+
+		protected:
+		ConstantDynamicArray(DynamicArrayType* type);
+
+		ConstantValue* data = 0;
+		ConstantValue* length = 0;
+		ConstantValue* capacity = 0;
+
+		ConstantArray* arr = 0;
+	};
 
 
 

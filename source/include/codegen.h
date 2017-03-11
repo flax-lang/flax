@@ -325,7 +325,7 @@ namespace Codegen
 
 
 		fir::FTContext* getContext();
-		fir::Value* getDefaultValue(Ast::Expr* e);
+		fir::Value* getDefaultValue(fir::Type* t);
 		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
 
 		fir::Type* getExprTypeOfBuiltin(std::string type);

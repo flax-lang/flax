@@ -90,10 +90,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 
 	// first, do the inits (inside the new pushScope)
 	for(auto in : std::get<2>(this->cases[0]))
-	{
-		info("init\n");
 		in->codegen(cgi);
-	}
 
 
 	fir::Value* firstCond = std::get<0>(this->cases[0])->codegen(cgi).value;
@@ -117,18 +114,6 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 	fir::Value* truev = nullptr;
 	{
 		cgi->irb.setCurrentBlock(trueb);
-
-		// // push a new symtab
-		// cgi->pushScope();
-
-		// // generate the statements inside
-
-		// // first, do the inits (inside the new pushScope)
-		// for(auto in : std::get<2>(this->cases[0]))
-		// {
-		// 	info("init\n");
-		// 	in->codegen(cgi);
-		// }
 
 		// then do the block
 		ResultType rt;
