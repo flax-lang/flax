@@ -497,6 +497,13 @@ namespace fir
 		return t;
 	}
 
+	RangeType* Type::toRangeType()
+	{
+		auto t = dynamic_cast<RangeType*>(this);
+		if(t == 0) error("not range type");
+		return t;
+	}
+
 	StringType* Type::toStringType()
 	{
 		auto t = dynamic_cast<StringType*>(this);
@@ -622,6 +629,11 @@ namespace fir
 	bool Type::isParametricType()
 	{
 		return dynamic_cast<ParametricType*>(this) != 0;
+	}
+
+	bool Type::isRangeType()
+	{
+		return dynamic_cast<RangeType*>(this) != 0;
 	}
 
 	bool Type::isStringType()
@@ -790,6 +802,11 @@ namespace fir
 	PointerType* Type::getUint128Ptr(FTContext* tc)
 	{
 		return PointerType::getUint128Ptr(tc);
+	}
+
+	RangeType* Type::getRangeType(FTContext* tc)
+	{
+		return RangeType::get(tc);
 	}
 
 	CharType* Type::getCharType(FTContext* tc)

@@ -154,7 +154,10 @@ namespace fir
 		Value* CreateGetAnyData(Value* any, std::string vname = "");
 		Value* CreateSetAnyData(Value* any, Value* val, std::string vname = "");
 
-
+		Value* CreateGetRangeLower(Value* range, std::string vname = "");
+		Value* CreateSetRangeLower(Value* range, Value* val, std::string vname = "");
+		Value* CreateGetRangeUpper(Value* range, std::string vname = "");
+		Value* CreateSetRangeUpper(Value* range, Value* val, std::string vname = "");
 
 
 		void CreateUnreachable();

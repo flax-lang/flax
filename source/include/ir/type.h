@@ -27,6 +27,7 @@ namespace fir
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
+	struct RangeType;
 	struct StructType;
 	struct StringType;
 	struct PointerType;
@@ -100,6 +101,7 @@ namespace fir
 		PointerType* toPointerType();
 		StructType* toStructType();
 		StringType* toStringType();
+		RangeType* toRangeType();
 		ClassType* toClassType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
@@ -114,6 +116,8 @@ namespace fir
 		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
+
+		bool isRangeType();
 
 		bool isCharType();
 		bool isStringType();
@@ -176,6 +180,7 @@ namespace fir
 
 		static CharType* getCharType(FTContext* tc = 0);
 		static StringType* getStringType(FTContext* tc = 0);
+		static RangeType* getRangeType(FTContext* tc = 0);
 
 		static AnyType* getAnyType(FTContext* tc = 0);
 
@@ -660,6 +665,26 @@ namespace fir
 
 		static FunctionType* getWithTypeParameters(std::vector<Type*> args, Type* ret, bool isVariadic, std::vector<ParametricType*> tparams, FTContext* tc = 0);
 		static FunctionType* getWithTypeParameters(std::initializer_list<Type*> args, Type* ret, bool isVariadic, std::vector<ParametricType*> tparams, FTContext* tc = 0);
+	};
+
+
+	struct RangeType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		protected:
+		RangeType();
+		virtual ~RangeType() override { }
+
+		public:
+		static RangeType* get(FTContext* tc = 0);
 	};
 
 

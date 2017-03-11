@@ -149,7 +149,8 @@ namespace Parser
 		PipeEq,				// |= (OR)
 		CaretEq,			// ^= (XOR)
 
-		Ellipsis,
+		Ellipsis,			// ...
+		HalfOpenEllipsis,	// ..<
 		DoubleColon,
 
 		// other stuff.
@@ -231,11 +232,12 @@ namespace Parser
 
 
 	Ast::Expr* 					parseIf(ParserState& ps);
-	Ast::ForLoop* 				parseFor(ParserState& ps);
+	Ast::Expr* 					parseFor(ParserState& ps);
 	pts::Type*					parseType(ParserState& ps);
 	Ast::EnumDef*				parseEnum(ParserState& ps);
 	Ast::Func*					parseFunc(ParserState& ps);
 	Ast::Expr*					parseExpr(ParserState& ps);
+	Ast::Expr*					parseForIn(ParserState& ps);
 	Ast::Expr*					parseUnary(ParserState& ps);
 	Ast::WhileLoop*				parseWhile(ParserState& ps);
 	Ast::Alloc*					parseAlloc(ParserState& ps);
@@ -268,8 +270,8 @@ namespace Parser
 	Ast::Expr*					parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
 	Ast::FuncCall*				parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
 	Ast::Expr*					parseVarDecl(ParserState& ps, bool handledFront = false, bool immut = false);
-	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps, bool handledFront = false, bool immut = false);
-	Ast::ArrayDecompDecl*		parseArrayDecomposition(ParserState& ps, bool handledFront = false, bool immut = false);
+	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps, bool handledFront = false, bool immut = false, bool dorhs = true);
+	Ast::ArrayDecompDecl*		parseArrayDecomposition(ParserState& ps, bool handledFront = false, bool immut = false, bool dorhs = true);
 
 
 	Ast::Func*					parseFuncUsingIdentifierToken(ParserState& ps, Token id);

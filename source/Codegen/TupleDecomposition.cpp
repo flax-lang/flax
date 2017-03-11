@@ -18,7 +18,8 @@ namespace Ast
 		if(mapping.isRecursive)
 		{
 			auto type = rhs->getType();
-			iceAssert(type->toTupleType());
+			if(!type->isTupleType())
+				error(user, "Inner type '%s' is not a tuple type", type->str().c_str());
 
 			size_t maxElm = type->toTupleType()->getElementCount();
 			if(mapping.inners.size() != type->toTupleType()->getElementCount())
@@ -36,8 +37,9 @@ namespace Ast
 				else
 				{
 					// todo: this leaks
-					error(new DummyExpr(mapping.pos), "Mismatched element count; binding has %zu members, but tuple "
-						"on the right side has %zu members", mapping.inners.size(), type->toTupleType()->getElementCount());
+					error(new DummyExpr(mapping.pos), "Mismatched element count; binding has %zu member%s, but tuple "
+						"on the right side has %zu members", mapping.inners.size(), mapping.inners.size() == 1 ? "" : "s",
+						type->toTupleType()->getElementCount());
 				}
 			}
 
@@ -126,6 +128,11 @@ namespace Ast
 		}
 	}
 
+	void TupleDecompDecl::decomposeWithRhs(CodegenInstance* cgi, fir::Value* rhs, fir::Value* rhsptr, ValueKind vk)
+	{
+		recursivelyDestructureTuple(cgi, this, this->mapping, rhs, rhsptr, vk, this->immutable);
+	}
+
 	Result_t TupleDecompDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 	{
 		// ok. first, we need to codegen, and get the type of, the right side.
@@ -147,7 +154,8 @@ namespace Ast
 		iceAssert(tt);
 
 		// right. now...
-		recursivelyDestructureTuple(cgi, this, this->mapping, rhs, rhsptr, vk, this->immutable);
+		// recursivelyDestructureTuple(cgi, this, this->mapping, rhs, rhsptr, vk, this->immutable);
+		this->decomposeWithRhs(cgi, rhs, rhsptr, vk);
 
 		// there's no one value...
 		return Result_t(0, 0);

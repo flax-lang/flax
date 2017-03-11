@@ -10,13 +10,8 @@
 using namespace Codegen;
 namespace Ast
 {
-	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+	void ArrayDecompDecl::decomposeWithRhs(CodegenInstance* cgi, fir::Value* rhs, fir::Value* rhsptr, ValueKind vk)
 	{
-		// ok. first, we need to codegen, and get the type of, the right side.
-		fir::Value* rhs = 0; fir::Value* rhsptr = 0; ValueKind vk;
-		std::tie(rhs, rhsptr, vk) = this->rightSide->codegen(cgi);
-		iceAssert(rhs);
-
 		// make some shit up.
 		if(!rhsptr) rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
 
@@ -42,7 +37,7 @@ namespace Ast
 			// ok, check if we have a named last binding, and if it's gonna be empty
 			// this is only relevant for fixed-size arrays, anyway
 			if(haveNamedEllipsis && numNormalBindings == arrtype->getArraySize())
-				warn(this, "Named binding for remaining elements in array will be empty");
+				warn(this, "Named binding for remaining elements in array will result in an empty array");
 
 			// ok, all is good now.
 			for(size_t i = 0; i < numNormalBindings; i++)
@@ -478,6 +473,18 @@ namespace Ast
 		{
 			error(this->rightSide, "Expected array type on right side of array decomposition, have '%s'", rtype->str().c_str());
 		}
+	}
+
+
+
+	Result_t ArrayDecompDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+	{
+		// ok. first, we need to codegen, and get the type of, the right side.
+		fir::Value* rhs = 0; fir::Value* rhsptr = 0; ValueKind vk;
+		std::tie(rhs, rhsptr, vk) = this->rightSide->codegen(cgi);
+		iceAssert(rhs);
+
+		this->decomposeWithRhs(cgi, rhs, rhsptr, vk);
 
 		// there's no one value...
 		return Result_t(0, 0);

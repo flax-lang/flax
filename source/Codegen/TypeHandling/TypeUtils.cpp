@@ -66,17 +66,15 @@ namespace Codegen
 	}
 
 
-	fir::Value* CodegenInstance::getDefaultValue(Expr* e)
+	fir::Value* CodegenInstance::getDefaultValue(fir::Type* t)
 	{
-		fir::Type* t = e->getType(this);
-
 		if(t->isStringType())
 			return this->getEmptyString().value;
 
 		else if(t->isDynamicArrayType())
 			return this->createEmptyDynamicArray(t->toDynamicArrayType()->getElementType()).value;
 
-		return fir::ConstantValue::getNullValue(e->getType(this));
+		return fir::ConstantValue::getNullValue(t);
 	}
 
 	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)

@@ -14,6 +14,7 @@ namespace Ast
 	BinOp::~BinOp() { }
 	Break::~Break() { }
 	Alloc::~Alloc() { }
+	Range::~Range() { }
 	Number::~Number() { }
 	VarRef::~VarRef() { }
 	Typeof::~Typeof() { }
@@ -32,6 +33,7 @@ namespace Ast
 	FuncCall::~FuncCall() { }
 	Continue::~Continue() { }
 	ClassDef::~ClassDef() { }
+	ForInLoop::~ForInLoop() { }
 	DummyExpr::~DummyExpr() { }
 	WhileLoop::~WhileLoop() { }
 	StructDef::~StructDef() { }
@@ -69,7 +71,8 @@ namespace Ast
 	// lmao
 	Result_t Expr::codegen(CodegenInstance* cgi, fir::Value* target)
 	{
-		return this->codegen(cgi, target ? target->getType() : 0, target);
+		return this->codegen(cgi, target ? (target->getType()->isPointerType()
+			? target->getType()->getPointerElementType() : target->getType()) : 0, target);
 	}
 
 	Result_t Expr::codegen(Codegen::CodegenInstance* cgi)
