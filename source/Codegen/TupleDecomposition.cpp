@@ -18,7 +18,8 @@ namespace Ast
 		if(mapping.isRecursive)
 		{
 			auto type = rhs->getType();
-			iceAssert(type->toTupleType());
+			if(!type->isTupleType())
+				error(user, "Inner type '%s' is not a tuple type", type->str().c_str());
 
 			size_t maxElm = type->toTupleType()->getElementCount();
 			if(mapping.inners.size() != type->toTupleType()->getElementCount())
@@ -36,8 +37,9 @@ namespace Ast
 				else
 				{
 					// todo: this leaks
-					error(new DummyExpr(mapping.pos), "Mismatched element count; binding has %zu members, but tuple "
-						"on the right side has %zu members", mapping.inners.size(), type->toTupleType()->getElementCount());
+					error(new DummyExpr(mapping.pos), "Mismatched element count; binding has %zu member%s, but tuple "
+						"on the right side has %zu members", mapping.inners.size(), mapping.inners.size() == 1 ? "" : "s",
+						type->toTupleType()->getElementCount());
 				}
 			}
 

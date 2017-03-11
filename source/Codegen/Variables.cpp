@@ -171,25 +171,84 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 	}
 
 
-
-
-
-
-
-
-
-
-
-	if(val != 0)
+	// check if we're a generic function
+	if(val && val->getType()->isFunctionType() && val->getType()->toFunctionType()->isGenericFunction())
 	{
-		// cast.
-		val = cgi->autoCastType(this->concretisedType, val, valptr);
+		// if we are, we need concrete types to be able to reify the function
+		// we cannot have a variable hold a parametric function in the raw form, since calling it
+		// later will be very troublesome (different return types, etc.)
+
+		fir::Function* oldf = dynamic_cast<fir::Function*>(val);
+
+		// oldf can be null
+		fir::Function* fn = cgi->instantiateGenericFunctionUsingValueAndType(this, oldf, val->getType()->toFunctionType(),
+			this->concretisedType->toFunctionType(), dynamic_cast<MemberAccess*>(this->initVal));
+
+		iceAssert(fn);
+
+		// rewrite history
+		// just store it
+		cgi->irb.CreateStore(fn, ai);
+	}
+	else
+	{
+		if(this->initVal)
+		{
+			// simple store.
+			Operators::performActualAssignment(cgi, this, this, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
+				ai, ValueKind::LValue, val, valptr, vk, true);
+		}
+		else
+		{
+			if(!cmplxtype)
+			{
+				// get the default value
+				val = cgi->getDefaultValue(this->concretisedType);
+				iceAssert(val);
+
+				// store it, and go away
+				cgi->irb.CreateStore(val, ai);
+			}
+			else
+			{
+				// call init()
+				if(!this->disableAutoInit && cmplxtype->second.second != TypeKind::Enum)
+				{
+					std::vector<fir::Value*> args { ai };
+
+					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+					iceAssert(initfunc);
+
+					val = cgi->irb.CreateCall(initfunc, args);
+				}
+			}
+		}
 	}
 
 
 
 
+	if(shouldAddToSymtab)
+	{
+		cgi->addSymbol(this->ident.name, ai, this);
+		didAddToSymtab = true;
 
+		if(cgi->isRefCountedType(this->concretisedType))
+			cgi->addRefCountedValue(ai);
+	}
+
+
+	if(this->immutable)
+		ai->makeImmutable();
+
+
+
+
+
+
+
+
+	#if 0
 	if(this->initVal && !cmplxtype && !val->getType()->isAnyType())
 	{
 		// ...
@@ -362,7 +421,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 
 
 
-
+	#endif
 
 	return cgi->irb.CreateLoad(ai);
 }
@@ -429,7 +488,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 		}
 
 		fir::GlobalVariable* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
-			fir::ConstantValue::getNullValue(this->concretisedType), this->immutable,
+			fir::ConstantValue::getNullValue(this->concretisedType), false,
 			(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = glob->getType()->getPointerElementType();
@@ -437,7 +496,6 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 		if(this->initVal)
 		{
 			auto prev = cgi->irb.getCurrentBlock();
-
 
 			fir::Function* constr = cgi->procureAnonymousConstructorFunction(glob);
 
@@ -464,18 +522,19 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 				// ok, now. we can call codegen again, since it's constant. no repercussions
 				// we need to call it again, because the old value was created in a deleted function.
 
-				fir::Value* val = this->initVal->codegen(cgi).value;
+				fir::Value* val = this->initVal->codegen(cgi, glob).value;
 				if(val->getType() != glob->getType()->getPointerElementType())
 				{
 					auto vt = val->getType();
 					auto gt = glob->getType()->getPointerElementType();
 
-					fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(val);
-					iceAssert(ci);
 
 					// ok, decide what kind of cast we want
 					if(vt->isIntegerType() && gt->isIntegerType())
 					{
+						fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(val);
+						iceAssert(ci);
+
 						// int to int -- either signedness or size
 						// check if we can do a lossless cast
 						int d = cgi->getAutoCastDistance(vt, gt);
@@ -634,6 +693,9 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 
 		ft->vars[this->ident.name] = { glob, this };
 
+		if(this->immutable)
+			glob->makeImmutable();
+
 		return Result_t(0, glob);
 	}
 	else
@@ -662,7 +724,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 			cmplxtype = cgi->getType(this->concretisedType);
 		}
 
-		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, true, vk);
+		this->doInitialValue(cgi, cmplxtype, val, valptr, ai, this->ident.name != "_", vk);
 
 		if(this->immutable)
 			ai->makeImmutable();

@@ -566,6 +566,8 @@ namespace Ast
 
 		Expr* var = 0;
 		Expr* rhs = 0;
+
+		std::string indexName;
 	};
 
 	struct Break : Expr

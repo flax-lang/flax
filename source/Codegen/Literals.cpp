@@ -357,6 +357,8 @@ fir::Type* StringLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, bo
 
 Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
+	bool raw = this->attribs & Attr_RawString;
+
 	fir::Type* tp = 0;
 	std::vector<fir::ConstantValue*> vals;
 
@@ -367,34 +369,44 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 			error(this, "Unable to infer type for empty array");
 		}
 
-		tp = extratype;
-		if(tp->isDynamicArrayType())
+		if(raw && extratype->isPointerType() && extratype->getPointerElementType()->isArrayType())
 		{
-			// ok, make a dynamic array instead. don't return some half-assed thing
-			auto elmtype = tp->toDynamicArrayType()->getElementType();
-
-			fir::Value* ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(elmtype));
-
-			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
-			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
-			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
-
-			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+			// iceAssert(extratype->isPointerType() && extratype->getPointerElementType()->isArrayType());
+			tp = extratype->getPointerElementType()->toArrayType()->getElementType();
 		}
-		else if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isDynamicArrayType())
+		else
 		{
-			// ok, make a dynamic array instead. don't return some half-assed thing
-			fir::Value* ai = target;
+			tp = extratype;
+			if(tp->isDynamicArrayType())
+			{
+				// ok, make a dynamic array instead. don't return some half-assed thing
+				auto elmtype = tp->toDynamicArrayType()->getElementType();
 
-			cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
-			cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
-			cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
+				fir::Value* ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(elmtype));
 
-			return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+				cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
+				cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
+				cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
+
+				return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+			}
+			else if(target && target->getType()->isPointerType() && target->getType()->getPointerElementType()->isDynamicArrayType())
+			{
+				// ok, make a dynamic array instead. don't return some half-assed thing
+				fir::Value* ai = target;
+
+				cgi->irb.CreateSetDynamicArrayData(ai, cgi->irb.CreatePointerTypeCast(fir::ConstantValue::getNull(), fir::Type::getInt64Ptr()));
+				cgi->irb.CreateSetDynamicArrayLength(ai, fir::ConstantInt::getInt64(0));
+				cgi->irb.CreateSetDynamicArrayCapacity(ai, fir::ConstantInt::getInt64(0));
+
+				return Result_t(cgi->irb.CreateLoad(ai), ai, ValueKind::RValue);
+			}
+			else
+			{
+				error(this, "?? extratype wrong: '%s' / '%s'", extratype->str().c_str(),
+					target ? target->getType()->str().c_str() : "(null)");
+			}
 		}
-
-		iceAssert(extratype->isPointerType() && extratype->getPointerElementType()->isArrayType());
-		tp = extratype->getPointerElementType()->toArrayType()->getElementType();
 	}
 	else
 	{
@@ -443,39 +455,42 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 		}
 	}
 
-	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
-	// fir::Value* alloc = cgi->irb.CreateStackAlloc(atype);
-	fir::Value* val = fir::ConstantArray::get(atype, vals);
+	// since we're creating a constant array in between as well, this is necessary.
 
-	// cgi->irb.CreateStore(val, alloc);
-	return Result_t(val, /*alloc*/0);
+	fir::ArrayType* atype = fir::ArrayType::get(tp, this->values.size());
+	auto ret = fir::ConstantDynamicArray::get(fir::ConstantArray::get(atype, vals));
+	return Result_t(ret, 0);
 }
 
 fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
+	bool raw = this->attribs & Attr_RawString;
+
 	if(this->values.empty())
 	{
 		if(!extratype)
-		{
 			error(this, "Unable to infer type for empty array");
-		}
 
-		if(extratype->isDynamicArrayType())
+		if(raw && extratype->isArrayType())
+		{
+			auto tp = extratype->toArrayType()->getElementType();
+			return fir::ArrayType::get(tp, 0);
+		}
+		else if(extratype->isDynamicArrayType())
 		{
 			// ok, make a dynamic array instead. don't return some half-assed thing
 			auto elmtype = extratype->toDynamicArrayType()->getElementType();
 			return fir::DynamicArrayType::get(elmtype);
 		}
-
-		iceAssert(extratype->isPointerType());
-		iceAssert(extratype->getPointerElementType()->isArrayType());
-		auto tp = extratype->getPointerElementType()->toArrayType()->getElementType();
-
-		return fir::ArrayType::get(tp, 0);
+		else
+		{
+			error(this, "?? extratype wrong: '%s'", extratype->str().c_str());
+		}
 	}
 	else
 	{
-		return fir::ArrayType::get(this->values.front()->getType(cgi), this->values.size());
+		if(raw)	return fir::ArrayType::get(this->values.front()->getType(cgi), this->values.size());
+		else	return fir::DynamicArrayType::get(this->values.front()->getType(cgi));
 	}
 }
 

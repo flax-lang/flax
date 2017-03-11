@@ -369,7 +369,7 @@ namespace Operators
 
 
 	Result_t performActualAssignment(CodegenInstance* cgi, Expr* user, Expr* leftExpr, Expr* rightExpr, ArithmeticOp op, fir::Value* lhs,
-		fir::Value* lhsPtr, ValueKind lhsvk, fir::Value* rhs, fir::Value* rhsPtr, ValueKind rhsvk)
+		fir::Value* lhsPtr, ValueKind lhsvk, fir::Value* rhs, fir::Value* rhsPtr, ValueKind rhsvk, bool isInitial)
 	{
 		// check whether the left side is a struct, and if so do an operator overload call
 		iceAssert(op == ArithmeticOp::Assign);
@@ -442,8 +442,13 @@ namespace Operators
 				}
 				else
 				{
-					error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
-						lhs->getType()->str().c_str());
+					// note/todo: perhaps this is not what we want?
+					// for now, do the same thing as structs if we don't have an operator = overload
+					cgi->irb.CreateStore(rhs, lhsPtr);
+					return Result_t(0, 0);
+
+					// error(user, "No valid operator overload to assign a value of type %s to one of %s", rhs->getType()->str().c_str(),
+					// 	lhs->getType()->str().c_str());
 				}
 			}
 			else if(tp->second.second == TypeKind::Struct)
@@ -493,13 +498,108 @@ namespace Operators
 		}
 
 
+		// assign fixed array to dynamic array
+		if(lhs->getType()->isDynamicArrayType() && rhs->getType()->isArrayType()
+			&& lhs->getType()->toDynamicArrayType()->getElementType() == rhs->getType()->toArrayType()->getElementType())
+		{
+			// make a copy of the array first
+			// 1. calculate size
+
+			fir::Value* alloclen = cgi->irb.CreateMul(cgi->irb.CreateSizeof(lhs->getType()->toDynamicArrayType()->getElementType()),
+				fir::ConstantInt::getInt64(rhs->getType()->toArrayType()->getArraySize()));
+
+			// 2. get malloc() fn
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
+			iceAssert(mallocf);
+
+			// 3. allocate memory
+			fir::Value* allocmem = cgi->irb.CreateCall1(mallocf, alloclen);
+
+			// 4. get the pointer on the rhs
+			if(!rhsPtr) rhsPtr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
+			fir::Value* arrptr = cgi->irb.CreateConstGEP2(rhsPtr, 0, 0);
+
+			// 5. memcpy
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+			cgi->irb.CreateCall(memcpyf, { cgi->irb.CreatePointerTypeCast(allocmem, fir::Type::getInt8Ptr()),
+				cgi->irb.CreatePointerTypeCast(arrptr, fir::Type::getInt8Ptr()), alloclen, fir::ConstantInt::getInt32(0),
+				fir::ConstantInt::getBool(0) });
+
+			// 6. set the things
+			fir::Type* elmty = lhs->getType()->toDynamicArrayType()->getElementType();
+			cgi->irb.CreateSetDynamicArrayData(lhsPtr, cgi->irb.CreatePointerTypeCast(allocmem, elmty->getPointerTo()));
+			cgi->irb.CreateSetDynamicArrayLength(lhsPtr, fir::ConstantInt::getInt64(rhs->getType()->toArrayType()->getArraySize()));
+			cgi->irb.CreateSetDynamicArrayCapacity(lhsPtr, fir::ConstantInt::getInt64(rhs->getType()->toArrayType()->getArraySize()));
+
+			// 7. do rc stuff
+			if(cgi->isRefCountedType(lhs->getType()))
+				cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, rhsvk, isInitial, true);
+
+			return Result_t(0, 0);
+		}
+
+
+		// assign (constant) dynamic array to fixed array
+		if(lhs->getType()->isArrayType() && rhs->getType()->isDynamicArrayType())
+		{
+			// see if we can do anything about it
+			if(fir::ConstantDynamicArray* cda = dynamic_cast<fir::ConstantDynamicArray*>(rhs))
+			{
+				std::function<fir::ConstantArray*(fir::ConstantDynamicArray* dyn)> recursivelyConvertArray
+					= [user, cgi, &recursivelyConvertArray](fir::ConstantDynamicArray* dyn) -> fir::ConstantArray* {
+
+					std::vector<fir::ConstantValue*> values;
+					if(!dyn->getArray())
+						error(user, "Failed to convert array literal to fixed array");
+
+					for(auto v : dyn->getArray()->getValues())
+					{
+						if(auto nested = dynamic_cast<fir::ConstantDynamicArray*>(v))
+							values.push_back(recursivelyConvertArray(nested));
+
+						else
+							values.push_back(v);
+					}
+
+					iceAssert(values.size() > 0);
+					auto type = fir::ArrayType::get(values[0]->getType(), values.size());
+
+					return fir::ConstantArray::get(type, values);
+				};
+
+				fir::ConstantArray* arr = recursivelyConvertArray(cda);
+				iceAssert(arr);
+
+				// ok, check the type
+
+				if(arr->getType() != lhs->getType())
+				{
+					error("Cannot assign array literal with type '%s' to type '%s'", arr->getType()->str().c_str(),
+						lhs->getType()->str().c_str());
+				}
+
+				// rewrite history
+				rhs = arr;
+			}
+			else
+			{
+				error(user, "Conversion from dynamic arrays to fixed arrays can only be done for constant array literals");
+			}
+		}
+
+
+
+
+
+
+
+
 		// do the casting.
 		if(lhsPtr->getType()->getPointerElementType() != rhs->getType())
 		{
 			rhs = cgi->autoCastType(lhsPtr->getType()->getPointerElementType(), rhs);
 		}
-
-
 
 		if(lhs->getType() != rhs->getType())
 		{
@@ -509,7 +609,7 @@ namespace Operators
 
 		if(cgi->isRefCountedType(lhs->getType()))
 		{
-			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, rhsvk, false, true);
+			cgi->assignRefCountedExpression(user, rhs, rhsPtr, lhs, lhsPtr, rhsvk, isInitial, true);
 			return Result_t(0, 0);
 		}
 

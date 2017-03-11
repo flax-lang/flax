@@ -270,8 +270,8 @@ namespace Parser
 	Ast::Expr*					parseRhs(ParserState& ps, Ast::Expr* expr, int prio);
 	Ast::FuncCall*				parseFuncCall(ParserState& ps, std::string id, Pin id_pos);
 	Ast::Expr*					parseVarDecl(ParserState& ps, bool handledFront = false, bool immut = false);
-	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps, bool handledFront = false, bool immut = false);
-	Ast::ArrayDecompDecl*		parseArrayDecomposition(ParserState& ps, bool handledFront = false, bool immut = false);
+	Ast::TupleDecompDecl*		parseTupleDecomposition(ParserState& ps, bool handledFront = false, bool immut = false, bool dorhs = true);
+	Ast::ArrayDecompDecl*		parseArrayDecomposition(ParserState& ps, bool handledFront = false, bool immut = false, bool dorhs = true);
 
 
 	Ast::Func*					parseFuncUsingIdentifierToken(ParserState& ps, Token id);
