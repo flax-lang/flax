@@ -282,7 +282,8 @@ namespace fir
 		else if(ConstantString* cs = dynamic_cast<ConstantString*>(c))
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "const string");
-			// note: only works on 2's complement systems
+
+			// note(portability): only works on 2's complement systems
 			// where 0xFFFFFFFFFFFFFFFF == -1
 
 			size_t origLen = cs->getValue().length();
@@ -319,6 +320,36 @@ namespace fir
 
 			cachedConstants[c] = ret;
 			return ret;
+		}
+		else if(ConstantDynamicArray* cda = dynamic_cast<ConstantDynamicArray*>(c))
+		{
+			if(cda->getArray())
+			{
+				llvm::Constant* constArray = constToLlvm(cda->getArray(), mod);
+				iceAssert(constArray);
+
+				llvm::GlobalVariable* tmpglob = new llvm::GlobalVariable(*mod, constArray->getType(), true,
+					llvm::GlobalValue::LinkageTypes::InternalLinkage, constArray, "_FV_ARR_" + std::to_string(cda->id));
+
+				auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), 0);
+				std::vector<llvm::Constant*> indices = { zconst, zconst };
+				llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(tmpglob->getType()->getPointerElementType(), tmpglob, indices);
+
+				auto flen = fir::ConstantInt::getInt64(cda->getArray()->getType()->toArrayType()->getArraySize());
+				auto fcap = fir::ConstantInt::getInt64(-1);
+				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, mod), constToLlvm(fcap, mod) };
+
+				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
+				return cachedConstants[c] = ret;
+			}
+			else
+			{
+				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), mod), constToLlvm(cda->getLength(), mod),
+					constToLlvm(cda->getCapacity(), mod) };
+
+				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
+				return cachedConstants[c] = ret;
+			}
 		}
 		else if(dynamic_cast<ConstantStruct*>(c))
 		{

@@ -1616,11 +1616,11 @@ namespace Parser
 		Expr* lhs = 0;
 		if(ps.lookaheadUntilNonNewline().type == TType::LParen)
 		{
-			lhs = parseTupleDecomposition(ps, true);
+			lhs = parseTupleDecomposition(ps, true, false, false);
 		}
 		else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
 		{
-			lhs = parseArrayDecomposition(ps, true);
+			lhs = parseArrayDecomposition(ps, true, false, false);
 		}
 		else if(ps.lookaheadUntilNonNewline().type == TType::Identifier)
 		{
@@ -1635,6 +1635,27 @@ namespace Parser
 		}
 
 		iceAssert(lhs);
+		ps.skipNewline();
+
+		std::string itname = "";
+		if(ps.front().type == TType::Comma)
+		{
+			ps.eat();
+			if(ps.front().type != TType::Identifier)
+				parserError("Expected identifier for named index in for-in loop");
+
+			itname = ps.front().text.to_string();
+			ps.eat();
+
+			if(itname == "_")
+				parserMessage(Err::Warn, "Index is ignored if named with '_'");
+		}
+
+		if(ps.front().type != TType::Identifier || ps.front().text != "in")
+		{
+			parserError("Expected 'in' after 'for'");
+		}
+
 		iceAssert(ps.lookaheadUntilNonNewline().type == TType::Identifier && ps.lookaheadUntilNonNewline().text == "in");
 
 		ps.eat();
@@ -1651,6 +1672,7 @@ namespace Parser
 
 		ret->var = lhs;
 		ret->rhs = rhs;
+		ret->indexName = itname;
 
 		return ret;
 	}
@@ -1675,11 +1697,11 @@ namespace Parser
 			size_t restore = ps.index;
 			if(ps.lookaheadUntilNonNewline().type == TType::LParen)
 			{
-				parseTupleDecomposition(ps, true);
+				parseTupleDecomposition(ps, true, false, false);
 			}
 			else if(ps.lookaheadUntilNonNewline().type == TType::LSquare)
 			{
-				parseArrayDecomposition(ps, true);
+				parseArrayDecomposition(ps, true, false, false);
 			}
 			else if(ps.lookaheadUntilNonNewline().type == TType::Identifier)
 			{
@@ -1695,7 +1717,9 @@ namespace Parser
 			auto tmp = ps.lookaheadUntilNonNewline();
 
 			ps.refundToPosition(restore);
-			if(tmp.type == TType::Identifier && tmp.text == "in")
+			// accept comma because we might want to have the index
+			// eg. `for x, i in foo`
+			if((tmp.type == TType::Identifier && tmp.text == "in") || tmp.type == TType::Comma)
 			{
 				// put the 'for' back as well.
 				ps.refundToPosition(restore - 1);
@@ -1954,7 +1978,7 @@ namespace Parser
 		return ret;
 	}
 
-	TupleDecompDecl* parseTupleDecomposition(ParserState& ps, bool handledFront, bool _immut)
+	TupleDecompDecl* parseTupleDecomposition(ParserState& ps, bool handledFront, bool _immut, bool doRhs)
 	{
 		bool immutable = true;
 		if(!handledFront)
@@ -1986,12 +2010,16 @@ namespace Parser
 		dtd->immutable = immutable;
 		dtd->mapping = mp;
 
-		// ok, the complicated thing is parsed already.
-		if(ps.eat().type != TType::Equal)
-			parserError("Decomposing declarations require an initialiser");
+		if(doRhs)
+		{
+			// ok, the complicated thing is parsed already.
+			if(ps.eat().type != TType::Equal)
+				parserError("Decomposing declarations require an initialiser");
 
-		// ok, parse expr.
-		dtd->rightSide = parseExpr(ps);
+			// ok, parse expr.
+			dtd->rightSide = parseExpr(ps);
+		}
+
 		return dtd;
 	}
 
@@ -1999,7 +2027,7 @@ namespace Parser
 
 
 
-	ArrayDecompDecl* parseArrayDecomposition(ParserState& ps, bool handledFront, bool _immut)
+	ArrayDecompDecl* parseArrayDecomposition(ParserState& ps, bool handledFront, bool _immut, bool doRhs)
 	{
 		bool immutable = true;
 		if(!handledFront)
@@ -2123,11 +2151,15 @@ namespace Parser
 		add->immutable = immutable;
 		add->mapping = mapping;
 
-		if(ps.eat().type != TType::Equal)
-			parserError("Decomposing declarations require an initialiser");
+		if(doRhs)
+		{
+			if(ps.eat().type != TType::Equal)
+				parserError("Decomposing declarations require an initialiser");
 
-		// ok, parse expr.
-		add->rightSide = parseExpr(ps);
+			// ok, parse expr.
+			add->rightSide = parseExpr(ps);
+		}
+
 		return add;
 	}
 
@@ -3525,6 +3557,8 @@ namespace Parser
 		iceAssert(ps.front().type == TType::LSquare);
 		Token front = ps.eat();
 
+		uint64_t attr = checkAndApplyAttributes(ps, Attr_RawString);
+
 		std::vector<Expr*> values;
 		while(true)
 		{
@@ -3553,7 +3587,10 @@ namespace Parser
 		iceAssert(ps.front().type == TType::RSquare);
 		ps.eat();
 
-		return CreateAST(ArrayLiteral, front, values);
+		auto ret = CreateAST(ArrayLiteral, front, values);
+		ret->attribs = attr;
+
+		return ret;
 	}
 
 	NamespaceDecl* parseNamespace(ParserState& ps)

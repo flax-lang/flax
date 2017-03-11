@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "codegen.h"
+#include "operators.h"
 #include "runtimefuncs.h"
 
 using namespace Codegen;
@@ -12,14 +13,17 @@ using namespace Ast;
 #define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
 #define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
 
+#define BUILTIN_ARRAY_CMP_FUNC_NAME					"__array_compare"
+
 #define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__darray_clone"
 #define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__darray_append"
 #define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__darray_appendelement"
-#define BUILTIN_DYNARRAY_CMP_FUNC_NAME				"__darray_compare"
 #define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
 #define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
 
 #define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
+#define BUILTIN_SLICE_APPEND_FUNC_NAME				"__slice_append"
+#define BUILTIN_SLICE_APPEND_ELEMENT_FUNC_NAME		"__slice_appendelement"
 
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
@@ -222,10 +226,19 @@ namespace Array
 
 
 
+
+
+	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::Type* arrtype)
+	{
+		if(arrtype->isDynamicArrayType())		return getCloneFunction(cgi, arrtype->toDynamicArrayType());
+		else if(arrtype->isArraySliceType())	return getCloneFunction(cgi, arrtype->toArraySliceType());
+		else									error("unsupported type '%s'", arrtype->str().c_str());
+	}
+
 	// takes ptr, start index
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
-		auto name = BUILTIN_DYNARRAY_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		auto name = BUILTIN_DYNARRAY_CLONE_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 
 		fir::Function* fn = cgi->module->getFunction(Identifier(name, IdKind::Name));
 
@@ -313,7 +326,7 @@ namespace Array
 	// takes a slice, but returns a dynamic array
 	fir::Function* getCloneFunction(CodegenInstance* cgi, fir::ArraySliceType* arrtype)
 	{
-		auto name = BUILTIN_SLICE_CLONE_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		auto name = BUILTIN_SLICE_CLONE_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 
 		fir::Function* fn = cgi->module->getFunction(Identifier(name, IdKind::Name));
 
@@ -405,7 +418,20 @@ namespace Array
 		fir::IRBlock* growblk = cgi->irb.addNewBlockInFunction("grow", func);
 		fir::IRBlock* mergeblk = cgi->irb.addNewBlockInFunction("merge", func);
 
-		cgi->irb.CreateCondBranch(cond, growblk, mergeblk);
+		// for when the 'dynamic' array came from a literal. same as the usual stuff
+		// capacity will be -1, in this case.
+		fir::IRBlock* trampoline = cgi->irb.addNewBlockInFunction("trampoline", func);
+		fir::IRBlock* growNewblk = cgi->irb.addNewBlockInFunction("growFromScratch", func);
+
+		cgi->irb.CreateCondBranch(cond, trampoline, mergeblk);
+
+
+		cgi->irb.setCurrentBlock(trampoline);
+		{
+			cond = cgi->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
+			cgi->irb.CreateCondBranch(cond, growNewblk, growblk);
+		}
+
 
 
 		// grows to the nearest power of two from (len + required)
@@ -428,17 +454,43 @@ namespace Array
 			cgi->irb.CreateUnCondBranch(mergeblk);
 		}
 
+
+		// makes a new memory piece, to the nearest power of two from (len + required)
+		cgi->irb.setCurrentBlock(growNewblk);
+		{
+			fir::Function* p2func = cgi->module->getIntrinsicFunction("roundup_pow2");
+			iceAssert(p2func);
+
+			fir::Value* nextpow2 = cgi->irb.CreateCall1(p2func, needed, "nextpow2");
+
+			fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
+			iceAssert(mallocf);
+
+			fir::Value* actuallen = cgi->irb.CreateMul(nextpow2, cgi->irb.CreateSizeof(elmtype));
+			fir::Value* newptr = cgi->irb.CreateCall1(mallocf, actuallen);
+
+			// memcpy
+			fir::Function* memcpyf = cgi->module->getIntrinsicFunction("memmove");
+
+			cgi->irb.CreateCall(memcpyf, { cgi->irb.CreatePointerTypeCast(newptr, fir::Type::getInt8Ptr()),
+				cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
+				fir::ConstantInt::getBool(0) });
+
+
+			cgi->irb.CreateSetDynamicArrayData(arr, cgi->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			cgi->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
+
+			cgi->irb.CreateUnCondBranch(mergeblk);
+		}
+
 		cgi->irb.setCurrentBlock(mergeblk);
 	}
-
-
-
 
 	fir::Function* getAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(arrtype);
 
-		auto name = BUILTIN_DYNARRAY_APPEND_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		auto name = BUILTIN_DYNARRAY_APPEND_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 		fir::Function* appendf = cgi->module->getFunction(Identifier(name, IdKind::Name));
 
 		if(!appendf)
@@ -524,8 +576,6 @@ namespace Array
 				}
 
 
-
-
 				// ok done.
 				cgi->irb.CreateReturnVoid();
 			}
@@ -539,11 +589,16 @@ namespace Array
 		return appendf;
 	}
 
+
+
+
+
+
 	fir::Function* getElementAppendFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(arrtype);
 
-		auto name = BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		auto name = BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 		fir::Function* appendf = cgi->module->getFunction(Identifier(name, IdKind::Name));
 
 		if(!appendf)
@@ -605,7 +660,7 @@ namespace Array
 
 
 
-	static void _compareFunctionUsingBuiltinCompare(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* func,
+	static void _compareFunctionUsingBuiltinCompare(CodegenInstance* cgi, fir::Type* arrtype, fir::Function* func,
 		fir::Value* arg1, fir::Value* arg2)
 	{
 		// ok, ez.
@@ -617,11 +672,49 @@ namespace Array
 		fir::IRBlock* incr = cgi->irb.addNewBlockInFunction("incr", func);
 		fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
 
-		fir::Value* ptr1 = cgi->irb.CreateGetDynamicArrayData(arg1);
-		fir::Value* ptr2 = cgi->irb.CreateGetDynamicArrayData(arg2);
+		fir::Value* ptr1 = 0; fir::Value* ptr2 = 0;
 
-		fir::Value* len1 = cgi->irb.CreateGetDynamicArrayLength(arg1);
-		fir::Value* len2 = cgi->irb.CreateGetDynamicArrayLength(arg2);
+		if(arrtype->isDynamicArrayType())
+		{
+			ptr1 = cgi->irb.CreateGetDynamicArrayData(arg1);
+			ptr2 = cgi->irb.CreateGetDynamicArrayData(arg2);
+		}
+		else if(arrtype->isArraySliceType())
+		{
+			ptr1 = cgi->irb.CreateGetArraySliceData(arg1);
+			ptr2 = cgi->irb.CreateGetArraySliceData(arg2);
+		}
+		else if(arrtype->isArrayType())
+		{
+			ptr1 = cgi->irb.CreateConstGEP2(arg1, 0, 0);
+			ptr2 = cgi->irb.CreateConstGEP2(arg2, 0, 0);
+		}
+		else
+		{
+			error("invalid type '%s'", arrtype->str().c_str());
+		}
+
+		fir::Value* len1 = 0; fir::Value* len2 = 0;
+
+		if(arrtype->isDynamicArrayType())
+		{
+			len1 = cgi->irb.CreateGetDynamicArrayLength(arg1);
+			len2 = cgi->irb.CreateGetDynamicArrayLength(arg2);
+		}
+		else if(arrtype->isArraySliceType())
+		{
+			len1 = cgi->irb.CreateGetArraySliceLength(arg1);
+			len2 = cgi->irb.CreateGetArraySliceLength(arg2);
+		}
+		else if(arrtype->isArrayType())
+		{
+			len1 = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
+			len2 = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
+		}
+		else
+		{
+			error("invalid type '%s'", arrtype->str().c_str());
+		}
 
 		// we compare to this to break
 		fir::Value* counter = cgi->irb.CreateStackAlloc(fir::Type::getInt64());
@@ -686,18 +779,16 @@ namespace Array
 			fir::Value* v1 = cgi->irb.CreateLoad(cgi->irb.CreatePointerAdd(ptr1, cgi->irb.CreateLoad(counter)));
 			fir::Value* v2 = cgi->irb.CreateLoad(cgi->irb.CreatePointerAdd(ptr2, cgi->irb.CreateLoad(counter)));
 
-			if(arrtype->getElementType()->isStringType())
-			{
-				fir::Function* strf = RuntimeFuncs::String::getCompareFunction(cgi);
-				iceAssert(strf);
+			fir::Value* c = Operators::performGeneralArithmeticOperator(cgi, ArithmeticOp::CmpEq, 0, v1, cgi->irb.CreatePointerAdd(ptr1, cgi->irb.CreateLoad(counter)), v2, cgi->irb.CreatePointerAdd(ptr2, cgi->irb.CreateLoad(counter)), { }).value;
 
-				fir::Value* c = cgi->irb.CreateCall2(strf, v1, v2);
-				cgi->irb.CreateStore(c, res);
-			}
-			else
-			{
-				cgi->irb.CreateStore(cgi->irb.CreateICmpMulti(v1, v2), res);
-			}
+			// c is a bool, because it's very generic in nature
+			// so we just take !c and convert to i64 to get our result.
+			// if c == true, then lhs == rhs, and so we should have 0.
+
+			c = cgi->irb.CreateLogicalNot(c);
+			c = cgi->irb.CreateIntSizeCast(c, fir::Type::getInt64());
+
+			cgi->irb.CreateStore(c, res);
 
 			// compare to 0.
 			fir::Value* cmpres = cgi->irb.CreateICmpEQ(cgi->irb.CreateLoad(res), zeroval);
@@ -723,7 +814,7 @@ namespace Array
 	}
 
 
-	static void _compareFunctionUsingOperatorFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* curfunc,
+	static void _compareFunctionUsingOperatorFunction(CodegenInstance* cgi, fir::Type* arrtype, fir::Function* curfunc,
 		fir::Value* arg1, fir::Value* arg2, fir::Function* opf)
 	{
 		// fir::Value* zeroval = fir::ConstantInt::getInt64(0);
@@ -732,11 +823,11 @@ namespace Array
 
 
 
-	fir::Function* getCompareFunction(CodegenInstance* cgi, fir::DynamicArrayType* arrtype, fir::Function* opf)
+	fir::Function* getCompareFunction(CodegenInstance* cgi, fir::Type* arrtype, fir::Function* opf)
 	{
 		iceAssert(arrtype);
 
-		auto name = BUILTIN_DYNARRAY_CMP_FUNC_NAME + std::string("_") + arrtype->getElementType()->encodedStr();
+		auto name = BUILTIN_ARRAY_CMP_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 		fir::Function* cmpf = cgi->module->getFunction(Identifier(name, IdKind::Name));
 
 		if(!cmpf)
@@ -777,6 +868,11 @@ namespace Array
 		iceAssert(cmpf);
 		return cmpf;
 	}
+
+
+
+
+
 
 
 

@@ -71,7 +71,8 @@ namespace Ast
 	// lmao
 	Result_t Expr::codegen(CodegenInstance* cgi, fir::Value* target)
 	{
-		return this->codegen(cgi, target ? target->getType() : 0, target);
+		return this->codegen(cgi, target ? (target->getType()->isPointerType()
+			? target->getType()->getPointerElementType() : target->getType()) : 0, target);
 	}
 
 	Result_t Expr::codegen(Codegen::CodegenInstance* cgi)
