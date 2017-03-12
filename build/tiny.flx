@@ -9,9 +9,10 @@ public func main() -> int
 {
 	printf("\n>> array decomposition\n")
 	var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
+	dealloc arr
 
-	var [ a, &b, &c, ... &x ] = arr
-	*b = 30
+	// var [ a, &b, &c, ... &x ] = arr
+	// *b = 30
 
 	// printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
 
