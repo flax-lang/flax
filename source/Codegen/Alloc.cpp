@@ -262,7 +262,8 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 		auto restore = cgi->irb.getCurrentBlock();
 
 		fir::Function* func = cgi->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-			fir::FunctionType::get({ type, fir::Type::getInt64() }, fir::Type::getVoid(), false), fir::LinkageType::Internal);
+			fir::FunctionType::get({ type, fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getVoid(), false), fir::LinkageType::Internal);
 
 		func->setAlwaysInline();
 
@@ -271,27 +272,36 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 		fir::Value* ptr = func->getArguments()[0];
 		fir::Value* len = func->getArguments()[1];
+		fir::Value* top_skipFree = func->getArguments()[2];
 
 		// check what kind of function we are
 		if(nest == 0)
 		{
 			if(cgi->isRefCountedType(type->getPointerElementType()))
 			{
-				// just call that thing
+				// just call that monster
 				fir::Function* decrfn = RuntimeFuncs::Array::getDecrementArrayRefCountFunction(cgi, type->getPointerElementType());
 				iceAssert(decrfn);
 
 				cgi->irb.CreateCall2(decrfn, ptr, len);
 			}
 
+			fir::IRBlock* dofree = cgi->irb.addNewBlockInFunction("doFree", func);
+			fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
 
-			// just free
-			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
-			iceAssert(freef);
+			cgi->irb.CreateCondBranch(top_skipFree, merge, dofree);
+			cgi->irb.setCurrentBlock(dofree);
+			{
+				// just free
+				fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
+				iceAssert(freef);
 
+				cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
 
-			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+				cgi->irb.CreateUnCondBranch(merge);
+			}
 
+			cgi->irb.setCurrentBlock(merge);
 			cgi->irb.CreateReturnVoid();
 		}
 		else
@@ -325,6 +335,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 			// next, get the data pointer and the length
 			fir::Value* dptr = cgi->irb.CreateGetDynamicArrayData(arr);
 			fir::Value* dlen = cgi->irb.CreateGetDynamicArrayLength(arr);
+			fir::Value* dcap = cgi->irb.CreateGetDynamicArrayCapacity(arr);
 
 			// now, call the next function with nest - 1.
 
@@ -333,7 +344,8 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 			iceAssert(recursiveCallee);
 
-			cgi->irb.CreateCall2(recursiveCallee, dptr, dlen);
+			fir::Value* skipFree = cgi->irb.CreateICmpEQ(dcap, fir::ConstantInt::getInt64(-1));
+			cgi->irb.CreateCall3(recursiveCallee, dptr, dlen, skipFree);
 
 
 			// set the length and data to 0
@@ -356,15 +368,37 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 
 			// merge:
 			cgi->irb.setCurrentBlock(loopmerge);
+			{
+				// free the pointer anyway
 
-			// free the pointer anyway
+				fir::IRBlock* dofree = cgi->irb.addNewBlockInFunction("doFree", func);
+				fir::IRBlock* merge = cgi->irb.addNewBlockInFunction("merge", func);
 
-			fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
-			iceAssert(freef);
+				cgi->irb.CreateCondBranch(top_skipFree, merge, dofree);
+				cgi->irb.setCurrentBlock(dofree);
+				{
+					// just free
+					fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
+					iceAssert(freef);
+
+					cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+
+					cgi->irb.CreateUnCondBranch(merge);
+				}
+
+				cgi->irb.setCurrentBlock(merge);
+				cgi->irb.CreateReturnVoid();
+			}
 
 
-			cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
-			cgi->irb.CreateReturnVoid();
+
+
+			// fir::Function* freef = cgi->getOrDeclareLibCFunc(FREE_MEMORY_FUNC);
+			// iceAssert(freef);
+
+
+			// cgi->irb.CreateCall1(freef, cgi->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+			// cgi->irb.CreateReturnVoid();
 		}
 
 
@@ -395,11 +429,13 @@ static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Va
 
 		fir::Value* data = cgi->irb.CreateGetDynamicArrayData(ptr);
 		fir::Value* len = cgi->irb.CreateGetDynamicArrayLength(ptr);
+		fir::Value* cap = cgi->irb.CreateGetDynamicArrayCapacity(ptr);
 
 		fir::Function* fn = makeRecursiveDeallocFunction(cgi, data->getType(), nest - 1);
 		iceAssert(fn);
 
-		cgi->irb.CreateCall2(fn, data, len);
+		fir::Value* skipFree = cgi->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
+		cgi->irb.CreateCall3(fn, data, len, skipFree);
 
 		// set to 0
 		auto zc = fir::ConstantInt::getInt64(0);
