@@ -7,13 +7,13 @@ ffi func printf(fmt: i8*, ...) -> i32
 
 public func main() -> int
 {
-	// do {
+	printf("\n>> array decomposition\n")
+	var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
 
-	// 	let foo: int* = malloc(64) as int*
-	// 	let bar: int* = malloc(64) as int*
+	var [ a, &b, &c, ... &x ] = arr
+	*b = 30
 
-	// 	printf("%p / %p, %#x\n", foo, bar, foo - bar)
-	// }
+	// printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
 
 	return 0
 }
