@@ -33,11 +33,11 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Language Goals ####
 
-- This project grew out of my frustration with C/C++. I use C++ mainly for low level development, and its syntax is cumbersome, laden in C-derived K&R cruft... and the header files. Don't get me started on header files.
-- Flax targets the LLVM backend, simply because it is widely ported, has an incredible amount of optimisation passes, and can target freestanding platforms.
-- This language aims to have as little dependencies against userspace libraries as possible.
-- Therefore, only a small subset of libc functions will be required. While the language has not been finalised, I envision only basic functions (read(2)/write(2), malloc/free, or even mmap(2), memset/memcpy/memmove) being required.
-- Why so much talk about freestanding targets? I eventually want to write userspace programs for my hobby OS (https://github.com/zhiayang/mx) in Flax, and if possible parts of the kernel or drivers.
+- No header files.
+- Minimal runtime (at most dependent on libc)
+- Clean, expressive syntax
+- Minimal stupidty
+- No magic behind your back
 
 
 -----------------------------------------------
@@ -46,10 +46,10 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 #### Current Features ####
 
 - User-defined types (structs, enums and typealiases)
-- Arrays (small regressions, mostly complete)
-- Pointer manipulation (addrof/dereference, pointer arithmetic)
+- Arrays (fixed and dynamic), slices
+- Pointer manipulation/arithmetic
 - Operator overloading on structs
-- Function overloading (therefore name mangling)
+- Function overloading
 - Basic type inference (C++ auto-esque, not Haskell-esque)
 - Namespaces
 - Nested types
@@ -57,6 +57,8 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Deferred expressions (executes at end of current block scope)
 - Swift-like extensions to existing types
 - Generic Functions
+- C-style for loops
+- Range-based for loops
 
 
 -----------------------------------------------
@@ -91,7 +93,7 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 
-- The `shakefile` still works, however.
+- The `shakefile` still works, however. (probably. no guarantees.)
 
 -----------------------------------------------
 
