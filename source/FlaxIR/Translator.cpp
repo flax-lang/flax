@@ -328,7 +328,17 @@ namespace fir
 				llvm::Constant* constArray = constToLlvm(cda->getArray(), mod);
 				iceAssert(constArray);
 
-				llvm::GlobalVariable* tmpglob = new llvm::GlobalVariable(*mod, constArray->getType(), true,
+				// don't make it immutable. this probably puts the global variable in the .data segment, instead of the
+				// .rodata/.rdata segment.
+
+				// this allows us to modify it, eg.
+				// var foo = [ 1, 2, 3 ]
+				// foo[0] = 4
+
+				// of course, since capacity == -1, the moment we try to like append or something,
+				// we get back new heap memory
+
+				llvm::GlobalVariable* tmpglob = new llvm::GlobalVariable(*mod, constArray->getType(), false,
 					llvm::GlobalValue::LinkageTypes::InternalLinkage, constArray, "_FV_ARR_" + std::to_string(cda->id));
 
 				auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()), 0);
