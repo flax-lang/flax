@@ -452,8 +452,8 @@ namespace Codegen
 			// if we're done solving, don't bother
 			if(!checkFinishedSolving(cursln))
 			{
-				return checkFunctionOrTupleArgumentToGenericFunction(cgi, nullptr, toSolve, 0, expt, givent, &cursln, &genericfnsoln,
-					nullptr, nullptr, givent->isFunctionType() ? givent->toFunctionType()->isVariadicFunc() : false);
+				return checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, toSolve, 0, expt, givent, &cursln, &genericfnsoln,
+					errorString, failedExpr, givent->isFunctionType() ? givent->toFunctionType()->isVariadicFunc() : false);
 			}
 		}
 
@@ -575,16 +575,49 @@ namespace Codegen
 			// solution)
 			std::map<std::string, fir::Type*>& genericfnsoln = *fnSoln;
 
-			// ok, now... loop through each item
-			for(size_t i = 0; i < ftlist.size(); i++)
+			size_t maxArg = MIN(ftlist.size(), ptlist.size());
+
+			if(isVariadic)
 			{
-				bool res = solveSingleArgument(cgi, candidate, ix, toSolve, arg, i, ptlist[i], ftlist[i],
+				iceAssert(ptlist.size() > 0);
+				iceAssert(ftlist.size() >= ptlist.size());
+
+				// don't touch the last one, which is the variable array part.
+				maxArg -= 1;
+			}
+
+
+
+			// ok, now... loop through each item
+			for(size_t i = 0; i < maxArg; i++)
+			{
+				auto argToSolve = getAllGenericTypesContainedWithin(ptlist[i], candidate->genericTypes);
+				bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, i, ptlist[i], ftlist[i],
 					&cursln, &genericfnsoln, errorString, failedExpr);
 
 				if(!res) return false;
 			}
 
 
+			if(isVariadic)
+			{
+				// checks should have already been done by checkGenericFunction about minimum argument count
+				iceAssert(ftlist.size() >= ptlist.size());
+
+				pts::Type* baseVarType = ptlist.back();
+				iceAssert(baseVarType->isVariadicArrayType());
+				baseVarType = baseVarType->toVariadicArrayType()->base;
+
+				auto argToSolve = getAllGenericTypesContainedWithin(baseVarType, candidate->genericTypes);
+
+				for(size_t k = maxArg; k < ftlist.size(); k++)
+				{
+					bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, k, baseVarType, ftlist[k],
+						&cursln, &genericfnsoln, errorString, failedExpr);
+
+					if(!res) return false;
+				}
+			}
 
 
 
@@ -706,8 +739,8 @@ namespace Codegen
 					// if we're done solving, don't bother
 					if(!checkFinishedSolving(cursln))
 					{
-						checkFunctionOrTupleArgumentToGenericFunction(cgi, nullptr, toSolve, ix, prt, frt, &cursln, &genericfnsoln,
-							nullptr, nullptr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false);
+						checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, toSolve, ix, prt, frt, &cursln, &genericfnsoln,
+							errorString, failedExpr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false);
 					}
 				}
 			}
@@ -784,6 +817,8 @@ namespace Codegen
 			}
 
 			*resolved = cursln;
+			if(checkFinishedSolving(cursln))
+				return true;
 		}
 
 		return true;
@@ -888,8 +923,8 @@ namespace Codegen
 			// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
 			// so we only check the first n - 1 parameters.
 
-			varParam = candidate->params.back();
-			candidate->params.pop_back();
+			// varParam = candidate->params.back();
+			// candidate->params.pop_back();
 		}
 
 
@@ -897,7 +932,7 @@ namespace Codegen
 
 
 
-		if(!candidate->isVariadic)
+		// if(!candidate->isVariadic)
 		{
 			std::vector<pts::Type*> pFunctionParamTypes;
 
@@ -917,13 +952,13 @@ namespace Codegen
 				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic);
 
 
-			if(!res)
-			{
-				for(auto s : solns)
-					printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
+			// if(!res)
+			// {
+			// 	warn(candidate, "result (%d): %s\n", res, es.c_str());
+			// }
 
-				warn(candidate, "result (%d): %s\n", res, es.c_str());
-			}
+			if(errorString) *errorString = es;
+			if(failedExpr) *failedExpr = fe;
 
 			*gtm = solns;
 			return res;
