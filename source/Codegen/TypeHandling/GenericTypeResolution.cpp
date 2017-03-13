@@ -138,6 +138,327 @@ namespace Codegen
 
 
 
+	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
+			size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
+			std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic);
+
+
+
+	static bool solveSingleArgument(CodegenInstance* cgi, FuncDecl* candidate, size_t ix, std::set<std::string> toSolve,
+		fir::Type* _baseArg, size_t argIndex, pts::Type* _expected, fir::Type* _given, std::map<std::string, fir::Type*>* topLevelSolution,
+		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr)
+	{
+		using TrfList = std::vector<pts::TypeTransformer>;
+
+		// check the given with the expected
+		fir::Type* givent = 0; TrfList giventrfs;
+		std::tie(givent, giventrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(_given);
+
+		pts::Type* expt = 0; TrfList exptrfs;
+		std::tie(expt, exptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(_expected);
+
+
+		// the second part is to *ensure* they're compatible -- just because the transformations are compatible,
+		// doesn't mean the types are; i64 and (i64, i64) have 0 transformations, but aren't compatible
+		if(!pts::areTransformationsCompatible(exptrfs, giventrfs))
+		{
+			if(errorString && failedExpr)
+			{
+				*errorString = _makeErrorString("Incompatible types in solution for argument %zu of function parameter"
+					" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
+					argIndex + 1, ix + 1, expt->str().c_str(), _baseArg->str().c_str());
+
+				if(candidate) *failedExpr = candidate->params[ix];
+			}
+			return false;
+		}
+
+		// fix it
+		givent = pts::reduceMaximallyWithSubset(_given, exptrfs, giventrfs);
+
+
+		auto checkNeedsSolving = [cgi, toSolve](std::string s) -> bool {
+			return toSolve.find(s) != toSolve.end();
+		};
+
+		auto checkFinishedSolving = [toSolve](const std::map<std::string, fir::Type*>& cursln) -> bool {
+			for(auto s : toSolve)
+			{
+				if(cursln.find(s) == cursln.end())
+					return false;
+			}
+
+			return true;
+		};
+
+
+		auto& cursln = *topLevelSolution;
+		auto& genericfnsoln = *fnSoln;
+
+		/*
+			time for some more ranting/pseudo/rubberduck
+
+			primary objective is to solve for the top-level parameters, not the inner parameters.
+			inner parameters are only useful when recursing into deeper function-as-parameter madness.
+
+			during codegen, once the top level parameters are figured out, all the subsequent deeper types can all be
+			figured out with 0 cost. Hence the priority is to solve the top level.
+
+
+			first, `givent` is the 'given' type, ie. the type of the parameter being passed in. may or may not be polymorphic.
+			`expt` is the 'expected' type, ie. the type of the argument in the function.
+
+			expected and given here refer to the caller/callee argument relationship; 'given' is what is passed, and 'expected' is,
+			naturally, what is expected.
+
+			so, expt is the upper (upper != top, since we could be several layers deep), and given is the current level.
+			note that both, either, or neither of these can be parametric types.
+
+			pseudo-ducking:
+
+			1. is `expt` -> T is a parametric type? if so:
+				a. if there is an existing solution:
+					- get the solution -> actualType(X)
+					- is `givent` a parametric type -> S?
+						• no -- check if actualType(X) == actualType(S). if not, error out.
+						• yes -- is there a solution for S in the inner solution set for the corresponding `givent` -> Q?
+							- yes -- check if actualType(X) == Q. If not, error out.
+							- no -- insert the solution, Q = actualType(X)
+
+				b. if there is no existing solution:
+					- is `givent` a parametric type -> S?
+						• no -- insert the solution, T = actualType(S)
+						• yes -- is there a solution for S in the inner solution set for the corresponding `givent` -> Q?
+							- yes -- insert the solution, T = Q
+							- no -- do nothing, since we probably don't have enough information to proceed.
+
+			2. if `expt` is not a parametric type, is it a normal type -> actualType(T)? if so:
+				a. is `givent` a parametric type -> S?
+					- yes -- check if there's a solution -> solution(S) for `givent`
+						• yes -- check that actualType(T) == solution(S). if not, error out.
+						• no -- insert the solution, S = actualType(T)
+
+					- no -- check that actualType(T) == actualType(S). if not, we have a regular type mismatch; error out.
+
+			3. `expt` should either be a tuple type or a function type at this state.
+				a. recurse into this function.
+		*/
+
+
+		// 1 & 2 above
+		if(expt->isNamedType())
+		{
+			if(checkNeedsSolving(expt->toNamedType()->name))
+			{
+				// 1a: get solution
+				if(cursln.find(expt->toNamedType()->name) != cursln.end())
+				{
+					fir::Type* sln = cursln[expt->toNamedType()->name];
+					if(givent->isParametricType())
+					{
+						// check if there's a solution for it
+						if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
+						{
+							fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
+
+							// check these two are the same
+							if(unifyTypeSolutions(sln, givensln) == 0)
+							{
+								*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', but solution for child parametric type '%s' was '%s'",
+									argIndex + 1, ix + 1, expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str(),
+									givensln->str().c_str());
+
+								if(candidate) *failedExpr = candidate->params[ix];
+								return false;
+							}
+
+							// ok.
+						}
+						else
+						{
+							// no solution, insert.
+							genericfnsoln[givent->toParametricType()->getName()] = sln;
+						}
+					}
+					else
+					{
+						if(unifyTypeSolutions(sln, givent) == 0)
+						{
+							*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', given expression had type '%s'", argIndex + 1, ix + 1,
+								expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str());
+
+							if(candidate) *failedExpr = candidate->params[ix];
+							return false;
+						}
+
+						// ok.
+					}
+				}
+				else
+				{
+					// no solution (1b)
+					if(givent->isParametricType())
+					{
+						// check if we have a solution
+						if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
+						{
+							fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
+
+							// insert new solution
+							cursln[expt->toNamedType()->name] = givensln;
+						}
+						else
+						{
+							// do nothing, lacking information.
+						}
+					}
+					else
+					{
+						// insert new solution
+						cursln[expt->toNamedType()->name] = givent;
+					}
+				}
+			}
+			else
+			{
+				// expt is a normal type (no need to solve, and is named)
+				// so resolve it
+
+				fir::Type* exptype = cgi->getTypeFromParserType(candidate, expt);
+				iceAssert(exptype);
+
+				// 2.
+				if(givent->isParametricType())
+				{
+					if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
+					{
+						fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
+
+						if(unifyTypeSolutions(givensln, exptype) == 0)
+						{
+							*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); parent type was concrete '%s', given expression (for parameter '%s') had type '%s'", argIndex + 1, ix + 1,
+								exptype->str().c_str(), givent->toParametricType()->getName().c_str(), givensln->str().c_str());
+
+							if(candidate) *failedExpr = candidate->params[ix];
+							return false;
+						}
+					}
+					else
+					{
+						// add the solution here
+						genericfnsoln[givent->toParametricType()->getName()] = exptype;
+					}
+				}
+				else
+				{
+					// check if they match up
+					if(unifyTypeSolutions(exptype, givent) == 0)
+					{
+						*errorString = _makeErrorString("Conflicting types for argument %zu (in argument %zu of parent function); have '%s', found '%s'", argIndex + 1, ix + 1, exptype->str().c_str(), givent->str().c_str());
+
+						if(candidate) *failedExpr = candidate->params[ix];
+						return false;
+					}
+				}
+			}
+		}
+		else
+		{
+			iceAssert(expt->isFunctionType() || expt->isTupleType());
+			iceAssert(givent->isFunctionType() || givent->isTupleType());
+
+			iceAssert(expt->isFunctionType() == givent->isFunctionType());
+
+			/*
+				basically, call this function recursively
+				this caused some pain to mentally figure out
+				basically, we check "expt" against "givent" -- expected vs given.
+				the expected type in this case is the main one.
+
+				eg:
+				(type parameters in each function are made unique)
+				(E, U/V, T/K/R)
+
+				func foo<U, V>(x: U, f: [(U) -> V]) -> V { ... }
+				func bar<E>(x: E) -> E { ... }
+				func qux<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[] { ... }
+
+				qux([ 1, 2, 3 ], bar, foo)
+
+
+				in the above, calling 'qux' immediately we know 'T = i64'.
+				then, we resolve 'fn' as bar. since we know 'T = i64', and 'T = E', and 'K = E', then 'K = i64'.
+
+				this leaves 'R' as the only unknown type.
+
+				then, we start resolving 'fa'.
+				all is well at first -- we know 'T = i64', and 'U = T'. hence 'U = i64'.
+
+				now, the next parameter is a function type, so we enter this area.
+				at this stage,
+
+				cursln :: [ T = i64, K = i64 ]
+				genericfnsoln :: [ U = i64 ]
+
+				so, we need to find out the type of 'V', and since 'V = R', this gives us 'R'.
+
+				the second map (named 'fnsoln' in the parameter list of this function) is the so-called 'inner solution set'.
+				this is the partial solution set of the inner, recursed function -- in this case 'foo'.
+
+				expt is type fa -- using 'T', 'K', and 'R'.
+				givent is foo -- using 'U' and 'V'.
+
+				referencing the actual code above,
+				we check if 'cursln' contains a solution for 'exptN',
+				and if so whether 'genericfnsoln' contains a solution for 'giventN'.
+
+				'exptN' and 'giventN' are the types of the individual arguments in the function type,
+				in the case above, expt0 and givent0 are 'T' and 'U' in the base case,
+				'T' and 'U' in the inner case as well (ie. in resolving the type of 'f' in 'foo')
+
+
+				so it goes:
+
+				... stuff above -- finding 'T' and 'K' through the array argument and 'bar'
+
+
+				resolving [(U) -> V] (given) against [(T) -> K] (exp)
+
+				does 'cursln' have a solution for 'T'?
+				yes, yes it does.
+				does 'genericfnsoln' have a solution for 'U'?
+				yes, yes it does. do they conflict? no, good.
+
+
+				does 'cursln' have a solution for 'K'?
+				yes, yes it does.
+				does 'genericfnsoln' have a solution for 'V'?
+				no, it does not. K = V, so V = solution of K (i64).
+
+				now we know both 'U' and 'V', and can return.
+
+
+				returned:
+				resolving 'foo' against 'fa'
+
+				does 'cursln' have a solution for 'R'?
+				no, it does not.
+				does 'genericfnsoln' have a solution for 'V'?
+				yes, yes it does. R = V, so R = i64.
+
+				T, K, and R are solved == exit.
+			*/
+
+			// if we're done solving, don't bother
+			if(!checkFinishedSolving(cursln))
+			{
+				return checkFunctionOrTupleArgumentToGenericFunction(cgi, nullptr, toSolve, 0, expt, givent, &cursln, &genericfnsoln,
+					nullptr, nullptr, givent->isFunctionType() ? givent->toFunctionType()->isVariadicFunc() : false);
+			}
+		}
+
+		return true;
+	}
 
 
 
@@ -145,12 +466,12 @@ namespace Codegen
 
 
 
-
-	// solver for function types
+	// iterative (better) solver
+	// doesn't handle variadics as of now, we rely on the naive solver to do that.
 	// accepts a parameter, returns whether a solution was found (bool)
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
-		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr)
+		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic)
 	{
 		typedef std::vector<pts::TypeTransformer> TrfList;
 
@@ -215,7 +536,7 @@ namespace Codegen
 			ptlist = dpt->toTupleType()->types;
 		}
 
-		if(ftlist.size() != ptlist.size())
+		if(ftlist.size() != ptlist.size() && !isVariadic)
 		{
 			if(errorString && failedExpr)
 			{
@@ -257,314 +578,11 @@ namespace Codegen
 			// ok, now... loop through each item
 			for(size_t i = 0; i < ftlist.size(); i++)
 			{
-				// check the given with the expected
-				fir::Type* givent = 0; TrfList giventrfs;
-				std::tie(givent, giventrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(ftlist[i]);
+				bool res = solveSingleArgument(cgi, candidate, ix, toSolve, arg, i, ptlist[i], ftlist[i],
+					&cursln, &genericfnsoln, errorString, failedExpr);
 
-				pts::Type* expt = 0; TrfList exptrfs;
-				std::tie(expt, exptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(ptlist[i]);
-
-
-				// the second part is to *ensure* they're compatible -- just because the transformations are compatible,
-				// doesn't mean the types are; i64 and (i64, i64) have 0 transformations, but aren't compatible
-				if(!pts::areTransformationsCompatible(exptrfs, giventrfs))
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("Incompatible types in solution for argument %zu of function parameter"
-							" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
-							i + 1, ix + 1, expt->str().c_str(), arg->str().c_str());
-
-						if(candidate) *failedExpr = candidate->params[ix];
-					}
-					return false;
-				}
-
-				// fix it
-				givent = pts::reduceMaximallyWithSubset(ftlist[i], exptrfs, giventrfs);
-
-
-				#if 0
-				fir::Type* arg = args[i]; fir::Type* _ = 0; TrfList argtrfs;
-				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
-
-				pts::Type* g = 0; TrfList gtrfs;
-				std::tie(g, gtrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
-
-				if(!pts::areTransformationsCompatible(gtrfs, argtrfs))
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-							" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i + 1,
-							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
-
-						*failedExpr = candidate->params[i];
-					}
-					return false;
-				}
-
-				fir::Type* soln = pts::reduceMaximallyWithSubset(arg, gtrfs, argtrfs);
-				#endif
-
-
-
-				/*
-					time for some more ranting/pseudo/rubberduck
-
-					primary objective is to solve for the top-level parameters, not the inner parameters.
-					inner parameters are only useful when recursing into deeper function-as-parameter madness.
-
-					during codegen, once the top level parameters are figured out, all the subsequent deeper types can all be
-					figured out with 0 cost. Hence the priority is to solve the top level.
-
-
-					first, `givent` is the 'given' type, ie. the type of the parameter being passed in. may or may not be polymorphic.
-					`expt` is the 'expected' type, ie. the type of the argument in the function.
-
-					expected and given here refer to the caller/callee argument relationship; 'given' is what is passed, and 'expected' is,
-					naturally, what is expected.
-
-					so, expt is the upper (upper != top, since we could be several layers deep), and given is the current level.
-					note that both, either, or neither of these can be parametric types.
-
-					pseudo-ducking:
-
-					1. is `expt` -> T is a parametric type? if so:
-						a. if there is an existing solution:
-							- get the solution -> actualType(X)
-							- is `givent` a parametric type -> S?
-								• no -- check if actualType(X) == actualType(S). if not, error out.
-								• yes -- is there a solution for S in the inner solution set for the corresponding `givent` -> Q?
-									- yes -- check if actualType(X) == Q. If not, error out.
-									- no -- insert the solution, Q = actualType(X)
-
-						b. if there is no existing solution:
-							- is `givent` a parametric type -> S?
-								• no -- insert the solution, T = actualType(S)
-								• yes -- is there a solution for S in the inner solution set for the corresponding `givent` -> Q?
-									- yes -- insert the solution, T = Q
-									- no -- do nothing, since we probably don't have enough information to proceed.
-
-					2. if `expt` is not a parametric type, is it a normal type -> actualType(T)? if so:
-						a. is `givent` a parametric type -> S?
-							- yes -- check if there's a solution -> solution(S) for `givent`
-								• yes -- check that actualType(T) == solution(S). if not, error out.
-								• no -- insert the solution, S = actualType(T)
-
-							- no -- check that actualType(T) == actualType(S). if not, we have a regular type mismatch; error out.
-
-					3. `expt` should either be a tuple type or a function type at this state.
-						a. recurse into this function.
-				*/
-
-
-				// 1 & 2 above
-				if(expt->isNamedType())
-				{
-					if(checkNeedsSolving(expt->toNamedType()->name))
-					{
-						// 1a: get solution
-						if(cursln.find(expt->toNamedType()->name) != cursln.end())
-						{
-							fir::Type* sln = cursln[expt->toNamedType()->name];
-							if(givent->isParametricType())
-							{
-								// check if there's a solution for it
-								if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
-								{
-									fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
-
-									// check these two are the same
-									if(unifyTypeSolutions(sln, givensln) == 0)
-									{
-										*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', but solution for child parametric type '%s' was '%s'", i + 1, ix + 1, expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str(), givensln->str().c_str());
-
-										if(candidate) *failedExpr = candidate->params[ix];
-										return false;
-									}
-
-									// ok.
-								}
-								else
-								{
-									// no solution, insert.
-									genericfnsoln[givent->toParametricType()->getName()] = sln;
-								}
-							}
-							else
-							{
-								if(unifyTypeSolutions(sln, givent) == 0)
-								{
-									*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', given expression had type '%s'", i + 1, ix + 1, expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str());
-
-									if(candidate) *failedExpr = candidate->params[ix];
-									return false;
-								}
-
-								// ok.
-							}
-						}
-						else
-						{
-							// no solution (1b)
-							if(givent->isParametricType())
-							{
-								// check if we have a solution
-								if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
-								{
-									fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
-
-									// insert new solution
-									cursln[expt->toNamedType()->name] = givensln;
-								}
-								else
-								{
-									// do nothing, lacking information.
-								}
-							}
-							else
-							{
-								// insert new solution
-								cursln[expt->toNamedType()->name] = givent;
-							}
-						}
-					}
-					else
-					{
-						// expt is a normal type (no need to solve, and is named)
-						// so resolve it
-
-						fir::Type* exptype = cgi->getTypeFromParserType(candidate, expt);
-						iceAssert(exptype);
-
-						// 2.
-						if(givent->isParametricType())
-						{
-							if(genericfnsoln.find(givent->toParametricType()->getName()) != genericfnsoln.end())
-							{
-								fir::Type* givensln = genericfnsoln[givent->toParametricType()->getName()];
-
-								if(unifyTypeSolutions(givensln, exptype) == 0)
-								{
-									*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); parent type was concrete '%s', given expression (for parameter '%s') had type '%s'", i + 1, ix + 1, exptype->str().c_str(), givent->toParametricType()->getName().c_str(), givensln->str().c_str());
-
-									if(candidate) *failedExpr = candidate->params[ix];
-									return false;
-								}
-							}
-							else
-							{
-								// add the solution here
-								genericfnsoln[givent->toParametricType()->getName()] = exptype;
-							}
-						}
-						else
-						{
-							// check if they match up
-							if(unifyTypeSolutions(exptype, givent) == 0)
-							{
-								*errorString = _makeErrorString("Conflicting types for argument %zu (in argument %zu of parent function); have '%s', found '%s'", i + 1, ix + 1, exptype->str().c_str(), givent->str().c_str());
-
-								if(candidate) *failedExpr = candidate->params[ix];
-								return false;
-							}
-						}
-					}
-				}
-				else
-				{
-					iceAssert(expt->isFunctionType() || expt->isTupleType());
-					iceAssert(givent->isFunctionType() || givent->isTupleType());
-
-					iceAssert(expt->isFunctionType() == givent->isFunctionType());
-
-					/*
-						basically, call this function recursively
-						this caused some pain to mentally figure out
-						basically, we check "expt" against "givent" -- expected vs given.
-						the expected type in this case is the main one.
-
-						eg:
-						(type parameters in each function are made unique)
-						(E, U/V, T/K/R)
-
-						func foo<U, V>(x: U, f: [(U) -> V]) -> V { ... }
-						func bar<E>(x: E) -> E { ... }
-						func qux<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[] { ... }
-
-						qux([ 1, 2, 3 ], bar, foo)
-
-
-						in the above, calling 'qux' immediately we know 'T = i64'.
-						then, we resolve 'fn' as bar. since we know 'T = i64', and 'T = E', and 'K = E', then 'K = i64'.
-
-						this leaves 'R' as the only unknown type.
-
-						then, we start resolving 'fa'.
-						all is well at first -- we know 'T = i64', and 'U = T'. hence 'U = i64'.
-
-						now, the next parameter is a function type, so we enter this area.
-						at this stage,
-
-						cursln :: [ T = i64, K = i64 ]
-						genericfnsoln :: [ U = i64 ]
-
-						so, we need to find out the type of 'V', and since 'V = R', this gives us 'R'.
-
-						the second map (named 'fnsoln' in the parameter list of this function) is the so-called 'inner solution set'.
-						this is the partial solution set of the inner, recursed function -- in this case 'foo'.
-
-						expt is type fa -- using 'T', 'K', and 'R'.
-						givent is foo -- using 'U' and 'V'.
-
-						referencing the actual code above,
-						we check if 'cursln' contains a solution for 'exptN',
-						and if so whether 'genericfnsoln' contains a solution for 'giventN'.
-
-						'exptN' and 'giventN' are the types of the individual arguments in the function type,
-						in the case above, expt0 and givent0 are 'T' and 'U' in the base case,
-						'T' and 'U' in the inner case as well (ie. in resolving the type of 'f' in 'foo')
-
-
-						so it goes:
-
-						... stuff above -- finding 'T' and 'K' through the array argument and 'bar'
-
-
-						resolving [(U) -> V] (given) against [(T) -> K] (exp)
-
-						does 'cursln' have a solution for 'T'?
-						yes, yes it does.
-						does 'genericfnsoln' have a solution for 'U'?
-						yes, yes it does. do they conflict? no, good.
-
-
-						does 'cursln' have a solution for 'K'?
-						yes, yes it does.
-						does 'genericfnsoln' have a solution for 'V'?
-						no, it does not. K = V, so V = solution of K (i64).
-
-						now we know both 'U' and 'V', and can return.
-
-
-						returned:
-						resolving 'foo' against 'fa'
-
-						does 'cursln' have a solution for 'R'?
-						no, it does not.
-						does 'genericfnsoln' have a solution for 'V'?
-						yes, yes it does. R = V, so R = i64.
-
-						T, K, and R are solved == exit.
-					*/
-
-					// if we're done solving, don't bother
-					if(!checkFinishedSolving(cursln))
-						checkFunctionOrTupleArgumentToGenericFunction(cgi, 0, toSolve, cnt, expt, givent, &cursln, &genericfnsoln, 0, 0);
-				}
+				if(!res) return false;
 			}
-
 
 
 
@@ -599,7 +617,8 @@ namespace Codegen
 					return false;
 				}
 
-
+				// fix it
+				frt = pts::reduceMaximallyWithSubset(dft->toFunctionType()->getReturnType(), pttrfs, fttrfs);
 
 
 				// check if we don't already have a solution for 'prt'.
@@ -687,7 +706,8 @@ namespace Codegen
 					// if we're done solving, don't bother
 					if(!checkFinishedSolving(cursln))
 					{
-						checkFunctionOrTupleArgumentToGenericFunction(cgi, 0, toSolve, ix, prt, frt, &cursln, &genericfnsoln, 0, 0);
+						checkFunctionOrTupleArgumentToGenericFunction(cgi, nullptr, toSolve, ix, prt, frt, &cursln, &genericfnsoln,
+							nullptr, nullptr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false);
 					}
 				}
 			}
@@ -894,14 +914,16 @@ namespace Codegen
 			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
 
 			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
-				fFnType, &solns, &empty, &es, &fe);
+				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic);
 
-			for(auto s : solns)
+
+			if(!res)
 			{
-				printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
-			}
+				for(auto s : solns)
+					printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
 
-			warn(candidate, "result (%d): %s\n", res, es.c_str());
+				warn(candidate, "result (%d): %s\n", res, es.c_str());
+			}
 
 			*gtm = solns;
 			return res;
@@ -1332,7 +1354,8 @@ namespace Codegen
 							std::string es; Expr* fe = 0;
 							auto tosolve = getAllGenericTypesContainedWithin(base, candidate->genericTypes);
 							bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, i, base,
-								args[i], &solns, &empty, &es, &fe);
+								args[i], &solns, &empty, &es, &fe,
+								args[i]->isFunctionType() ? args[i]->toFunctionType()->isVariadicFunc() : false);
 
 							if(!res)
 							{
