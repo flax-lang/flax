@@ -90,24 +90,24 @@ func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 
-func tmpf<T>(x: (T, T)) -> T
+func tmpf<T>(x: T, y: T) -> T
 {
-	return x.0 + x.1
+	return x + y
 }
 
-func vartup<T, K, U>(f: [(T, T) -> K], y: (U, U)[...]) -> K[]
+func vartup<T, K, U>(f: [(T, T) -> K], y: (T, U)[...]) -> K[]
 {
 	var ret = alloc[y.length] K
 
 	var i = 0
 	while i < y.length
 	{
-		ret[i] = f(y[i])
+		ret[i] = f(y[i].0, y[i].1)
+		i += 1
 	}
 
 	return ret
 }
-
 
 
 
@@ -151,11 +151,11 @@ func generictest()
 		i += 1
 	}
 
-	let t = 3  . 4
 
 	let new = map2(arr, add2)
 
-	// vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
+	vartup(tmpf, [ (1, 5), (3, 10), (7, 3) ])
+	vartup(tmpf, (1, 5), (3, 10), (7, 3))
 
 	// let new = map(arr, gincr)
 
