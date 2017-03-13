@@ -48,7 +48,7 @@ static fir::Function* instantiateGenericFunctionAsParameter(CodegenInstance* cgi
 }
 
 std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(FuncCall* fc, fir::FunctionType* ft,
-	std::vector<Expr*> params, bool variadic, bool cvar)
+	std::vector<Expr*> arguments, bool variadic, bool cvar)
 {
 	std::vector<fir::Value*> args;
 	std::vector<fir::Value*> argptrs;
@@ -56,7 +56,7 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 	if(!variadic)
 	{
 		size_t cur = 0;
-		for(Expr* e : params)
+		for(Expr* e : arguments)
 		{
 			bool checkcv = cvar && cur >= ft->getArgumentTypes().size() - 1;
 
@@ -114,13 +114,13 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 			if(ft->getArgumentN(i) != args[i]->getType())
 			{
-				error(params[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+				error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 					ft->getArgumentN(i)->str().c_str(), args[i]->getType()->str().c_str());
 			}
 		}
 
-		if(params.size() != ft->getArgumentTypes().size() && !cvar)
-			error(fc, "Mismatched number of arguments; expected %zu, got %zu", ft->getArgumentTypes().size(), params.size());
+		if(arguments.size() != ft->getArgumentTypes().size() && !cvar)
+			error(fc, "Mismatched number of arguments; expected %zu, got %zu", ft->getArgumentTypes().size(), arguments.size());
 	}
 	else
 	{
@@ -129,7 +129,7 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 		// do until the penultimate argument.
 		for(size_t i = 0; i < ft->getArgumentTypes().size() - 1; i++)
 		{
-			Expr* ex = params[i];
+			Expr* ex = arguments[i];
 
 			fir::Value* arg = 0;
 			fir::Value* argp = 0;
@@ -153,7 +153,7 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 			if(ft->getArgumentN(i) != arg->getType())
 			{
-				error(params[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+				error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 					ft->getArgumentN(i)->str().c_str(), arg->getType()->str().c_str());
 			}
 
@@ -163,11 +163,13 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 
 		// special case: we can directly forward the arguments
-		if(params.back()->getType(this)->isDynamicArrayType() && params.back()->getType(this)->toDynamicArrayType()->isFunctionVariadic()
-			&& params.back()->getType(this)->toDynamicArrayType()->getElementType()
+		if(arguments.back()->getType(this)->isDynamicArrayType() && ft->getArgumentTypes().back()->isDynamicArrayType()
+			&& ft->getArgumentTypes().back()->toDynamicArrayType()->isFunctionVariadic()
+
+			&& arguments.back()->getType(this)->toDynamicArrayType()->getElementType()
 			== ft->getArgumentTypes().back()->toDynamicArrayType()->getElementType())
 		{
-			args.push_back(params.back()->codegen(this).value);
+			args.push_back(arguments.back()->codegen(this).value);
 		}
 		else
 		{
@@ -175,16 +177,16 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 			fir::Type* variadicType = ft->getArgumentTypes().back()->toDynamicArrayType()->getElementType();
 			std::vector<fir::Value*> variadics;
 
-			for(size_t i = ft->getArgumentTypes().size() - 1; i < params.size(); i++)
+			for(size_t i = ft->getArgumentTypes().size() - 1; i < arguments.size(); i++)
 			{
 				fir::Value* val = 0;
 				fir::Value* valp = 0;
 				ValueKind vk;
-				std::tie(val, valp, vk) = params[i]->codegen(this);
+				std::tie(val, valp, vk) = arguments[i]->codegen(this);
 
 				if(variadicType->isAnyType())
 				{
-					variadics.push_back(this->makeAnyFromValue(params[i], val, valp, vk).value);
+					variadics.push_back(this->makeAnyFromValue(arguments[i], val, valp, vk).value);
 				}
 				else if(variadicType != val->getType())
 				{
@@ -194,7 +196,7 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 					}
 					else
 					{
-						error(params[i], "Type '%s' cannot be converted to '%s' in argument to function",
+						error(arguments[i], "Type '%s' cannot be converted to '%s' in argument to function",
 							val->getType()->str().c_str(), variadicType->str().c_str());
 					}
 				}

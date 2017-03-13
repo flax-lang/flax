@@ -1294,7 +1294,7 @@ namespace Codegen
 			// check for direct forwarding case
 			if(args.size() == funcParams.size())
 			{
-				if(args.back()->isDynamicArrayType() && args.back()->toDynamicArrayType()->isFunctionVariadic()
+				if(args.back()->isDynamicArrayType()
 					&& funcParams.back()->isDynamicArrayType() && funcParams.back()->toDynamicArrayType()->isFunctionVariadic()
 					&& args.back()->toDynamicArrayType()->getElementType() == funcParams.back()->toDynamicArrayType()->getElementType())
 				{
