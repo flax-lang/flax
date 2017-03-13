@@ -32,7 +32,7 @@ public func main() -> int
 	foo([ ], 20)
 
 	// let z = [ ]
-	qux([ ])
+	// qux([ ])
 
 	return 0
 }
