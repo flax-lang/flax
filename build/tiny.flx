@@ -5,6 +5,18 @@
 ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
 
+func foo<T>(a: T[], b: T)
+{
+}
+
+func bar<T>(a: T, b: T[])
+{
+}
+
+func qux(a: int[])
+{
+}
+
 public func main() -> int
 {
 	printf("\n>> array decomposition\n")
@@ -15,6 +27,10 @@ public func main() -> int
 	*b = 30
 
 	printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
+
+	bar(10, [ ])
+	// let z = [ ]
+	qux([ ])
 
 	return 0
 }

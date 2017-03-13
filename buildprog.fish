@@ -25,6 +25,10 @@ function callCompiler
 		set file "build/tiny.flx"
 	end
 
+	if contains "standalone" $argv
+		set file "build/standalone.flx"
+	end
+
 	if contains "dump" $argv
 		set dump "-print-lir"
 		set compile "-jit"
