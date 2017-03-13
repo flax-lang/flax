@@ -100,7 +100,7 @@ fn();
 	- iterative generic solver is now used for everything
 	- the fucking generic type solver is hopefully finished
 
-	(fixed in f3f85de)
+	(fixed in 930bfa3)
 	- add automatic == and != for structs, using memcmp.
 */
 
