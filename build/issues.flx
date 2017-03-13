@@ -25,8 +25,6 @@
 
 
 
-// 5. passing [] to generic functions probably doesn't work, needs to be fixed.
-
 
 
 
@@ -130,6 +128,12 @@ let x = .31
 
 	(added in 63ba763)
 	- for loops, ranges, for-in loops
+
+	(fixed in 586c963)
+	- empty array literals are now generic things (WIP)
+	- iterative generic solver is now used for everything
+
+
 */
 
 

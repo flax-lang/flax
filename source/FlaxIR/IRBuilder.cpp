@@ -924,65 +924,18 @@ namespace fir
 			for(size_t i = 0; i < args.size(); i++)
 			{
 				auto target = fn->getArguments()[i]->getType();
+
+				// special case
+				if(args[i]->getType()->isDynamicArrayType() && target->isDynamicArrayType() &&
+					target->toDynamicArrayType()->isFunctionVariadic() != args[i]->getType()->toDynamicArrayType()->isFunctionVariadic())
+				{
+					// silently cast, because they're the same thing
+					// the distinction is solely for the type system's benefit
+					args[i] = this->CreateBitcast(args[i], target);
+				}
+
 				if(args[i]->getType() != target)
 				{
-					#if 0
-					if(args[i]->getType()->isPrimitiveType() && args[i]->getType()->toPrimitiveType()->isLiteralType())
-					{
-						bool shouldcast = false;
-
-						ConstantInt* ci = 0;
-						ConstantFP* cf = 0;
-						if((ci = dynamic_cast<ConstantInt*>(args[i])))
-						{
-							if(ci->getType()->isSignedIntType())
-							{
-								shouldcast = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(),
-									ci->getSignedValue());
-							}
-							else
-							{
-								shouldcast = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(),
-									ci->getUnsignedValue());
-							}
-						}
-						else if((cf = dynamic_cast<ConstantFP*>(args[i])))
-						{
-							shouldcast = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), cf->getValue());
-						}
-
-
-
-
-						if(shouldcast)
-						{
-							if(ci)
-							{
-								PrimitiveType* real = 0;
-								if(ci->getType()->isSignedIntType())
-									real = fir::PrimitiveType::getIntN(target->toPrimitiveType()->getIntegerBitWidth());
-
-								else
-									real = fir::PrimitiveType::getUintN(target->toPrimitiveType()->getIntegerBitWidth());
-
-								args[i] = fir::ConstantInt::get(real, ci->getSignedValue());
-							}
-							else if(cf)
-							{
-								args[i] = fir::ConstantFP::get(target, cf->getValue());
-							}
-							else
-							{
-								args[i]->setType(target);
-							}
-						}
-
-
-						if(args[i]->getType() == target)
-							continue;
-					}
-					#endif
-
 					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str().c_str(),
 						fn->getArguments()[i]->getType()->str().c_str(), args[i]->getType()->str().c_str());
 				}
