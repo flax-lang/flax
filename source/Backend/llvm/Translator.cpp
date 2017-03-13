@@ -25,17 +25,17 @@
 #include "backend.h"
 
 
-namespace fir
+namespace Compiler
 {
 	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
-	static std::map<ConstantValue*, llvm::Constant*> cachedConstants;
+	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
-	static llvm::Type* typeToLlvm(Type* type, llvm::Module* mod)
+	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
 	{
 		auto& gc = Compiler::LLVMBackend::getLLVMContext();
 		if(type->isPrimitiveType())
 		{
-			PrimitiveType* pt = type->toPrimitiveType();
+			fir::PrimitiveType* pt = type->toPrimitiveType();
 
 			// signed/unsigned is lost.
 			if(pt->isIntegerType())
@@ -69,7 +69,7 @@ namespace fir
 		}
 		else if(type->isStructType())
 		{
-			StructType* st = type->toStructType();
+			fir::StructType* st = type->toStructType();
 
 			if(createdTypes.find(st->getStructName()) != createdTypes.end())
 				return createdTypes[st->getStructName()];
@@ -86,7 +86,7 @@ namespace fir
 		}
 		else if(type->isClassType())
 		{
-			ClassType* ct = type->toClassType();
+			fir::ClassType* ct = type->toClassType();
 
 			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
 				return createdTypes[ct->getClassName()];
@@ -103,7 +103,7 @@ namespace fir
 		}
 		else if(type->isTupleType())
 		{
-			TupleType* tt = type->toTupleType();
+			fir::TupleType* tt = type->toTupleType();
 
 			std::vector<llvm::Type*> lmems;
 			for(auto a : tt->getElements())
@@ -113,7 +113,7 @@ namespace fir
 		}
 		else if(type->isFunctionType())
 		{
-			FunctionType* ft = type->toFunctionType();
+			fir::FunctionType* ft = type->toFunctionType();
 			std::vector<llvm::Type*> largs;
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
@@ -128,7 +128,7 @@ namespace fir
 		}
 		else if(type->isArrayType())
 		{
-			ArrayType* at = type->toArrayType();
+			fir::ArrayType* at = type->toArrayType();
 			return llvm::ArrayType::get(typeToLlvm(at->getElementType(), mod), at->getArraySize());
 		}
 		else if(type->isPointerType())
@@ -145,7 +145,7 @@ namespace fir
 		}
 		else if(type->isDynamicArrayType())
 		{
-			DynamicArrayType* llat = type->toDynamicArrayType();
+			fir::DynamicArrayType* llat = type->toDynamicArrayType();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
@@ -155,7 +155,7 @@ namespace fir
 		}
 		else if(type->isArraySliceType())
 		{
-			ArraySliceType* slct = type->toArraySliceType();
+			fir::ArraySliceType* slct = type->toArraySliceType();
 			std::vector<llvm::Type*> mems;
 			mems.push_back(typeToLlvm(slct->getElementType()->getPointerTo(), mod));
 			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
@@ -227,13 +227,13 @@ namespace fir
 
 
 
-	static llvm::Constant* constToLlvm(ConstantValue* c, llvm::Module* mod)
+	static llvm::Constant* constToLlvm(fir::ConstantValue* c, llvm::Module* mod)
 	{
 		iceAssert(c);
 		auto ret = cachedConstants[c];
 		if(ret) return ret;
 
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(c))
+		if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			if(ci->getType()->toPrimitiveType()->isSigned())
@@ -245,17 +245,17 @@ namespace fir
 				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
 		}
-		else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(c))
+		else if(fir::ConstantChar* cc = dynamic_cast<fir::ConstantChar*>(c))
 		{
 			llvm::Type* ct = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
-		else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(c))
+		else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(ConstantArray* ca = dynamic_cast<ConstantArray*>(c))
+		else if(fir::ConstantArray* ca = dynamic_cast<fir::ConstantArray*>(c))
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "const array");
 
@@ -267,7 +267,7 @@ namespace fir
 
 			return cachedConstants[c] = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
 		}
-		else if(ConstantTuple* ct = dynamic_cast<ConstantTuple*>(c))
+		else if(fir::ConstantTuple* ct = dynamic_cast<fir::ConstantTuple*>(c))
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
 
@@ -279,7 +279,7 @@ namespace fir
 
 			return cachedConstants[c] = llvm::ConstantStruct::getAnon(Compiler::LLVMBackend::getLLVMContext(), vals);
 		}
-		else if(ConstantString* cs = dynamic_cast<ConstantString*>(c))
+		else if(fir::ConstantString* cs = dynamic_cast<fir::ConstantString*>(c))
 		{
 			auto p = prof::Profile(PROFGROUP_LLVM, "const string");
 
@@ -316,12 +316,12 @@ namespace fir
 			iceAssert(len->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
 			std::vector<llvm::Constant*> mems = { gepd, len };
-			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(StringType::get(), mod)), mems);
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(fir::StringType::get(), mod)), mems);
 
 			cachedConstants[c] = ret;
 			return ret;
 		}
-		else if(ConstantDynamicArray* cda = dynamic_cast<ConstantDynamicArray*>(c))
+		else if(fir::ConstantDynamicArray* cda = dynamic_cast<fir::ConstantDynamicArray*>(c))
 		{
 			if(cda->getArray())
 			{
@@ -361,7 +361,7 @@ namespace fir
 				return cachedConstants[c] = ret;
 			}
 		}
-		else if(dynamic_cast<ConstantStruct*>(c))
+		else if(dynamic_cast<fir::ConstantStruct*>(c))
 		{
 			_error_and_exit("notsup const struct");
 		}
@@ -395,16 +395,10 @@ namespace fir
 
 
 
-	struct Foo
+	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* fmod)
 	{
-		int8_t x;
-		int64_t y;
-	};
+		llvm::Module* module = new llvm::Module(fmod->getModuleName(), Compiler::LLVMBackend::getLLVMContext());
 
-	llvm::Module* Module::translateToLlvm()
-	{
-		iceAssert(sizeof(Foo) == 16);
-		llvm::Module* module = new llvm::Module(this->getModuleName(), Compiler::LLVMBackend::getLLVMContext());
 		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
 		llvm::IRBuilder<> builder(Compiler::LLVMBackend::getLLVMContext());
 
@@ -412,25 +406,25 @@ namespace fir
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		auto getValue = [&valueMap, &module, &builder, this](Value* fv) -> llvm::Value* {
+		auto getValue = [&valueMap, &module, &builder, fmod](fir::Value* fv) -> llvm::Value* {
 
-			if(GlobalVariable* gv = dynamic_cast<GlobalVariable*>(fv))
+			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("failed to find var %zu in mod %s\n", gv->id, this->moduleName.c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, fmod->getModuleName().c_str());
 
 				iceAssert(lgv);
 				return lgv;
 			}
 			// we must do this because function now derives from constantvalue
-			else if(dynamic_cast<Function*>(fv))
+			else if(dynamic_cast<fir::Function*>(fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
 				if(!ret) error("!ret (id = %zu)", fv->id);
 				return ret;
 			}
-			else if(ConstantValue* cv = dynamic_cast<ConstantValue*>(fv))
+			else if(fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(fv))
 			{
 				return constToLlvm(cv, module);
 			}
@@ -442,15 +436,15 @@ namespace fir
 			}
 		};
 
-		auto getOperand = [&module, &builder, &getValue](Instruction* inst, size_t op) -> llvm::Value* {
+		auto getOperand = [&module, &builder, &getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
 
 			iceAssert(inst->operands.size() > op);
-			Value* fv = inst->operands[op];
+			fir::Value* fv = inst->operands[op];
 
 			return getValue(fv);
 		};
 
-		auto addValueToMap = [&valueMap](llvm::Value* v, Value* fv) {
+		auto addValueToMap = [&valueMap](llvm::Value* v, fir::Value* fv) {
 
 			iceAssert(v);
 
@@ -468,7 +462,7 @@ namespace fir
 
 
 		static size_t strn = 0;
-		for(auto string : this->globalStrings)
+		for(auto string : fmod->_getGlobalStrings())
 		{
 			std::string id = "_FV_STR" + std::to_string(strn);
 
@@ -486,13 +480,11 @@ namespace fir
 			strn++;
 		}
 
-		for(auto global : this->globals)
+		for(auto global : fmod->_getGlobals())
 		{
 			llvm::Constant* initval = 0;
-			if(global.second->initValue != 0)
-			{
-				initval = constToLlvm(global.second->initValue, module);
-			}
+			if(global.second->getInitialValue() != 0)
+				initval = constToLlvm(global.second->getInitialValue(), module);
 
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
 				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first.mangled());
@@ -500,13 +492,13 @@ namespace fir
 			valueMap[global.second->id] = gv;
 		}
 
-		for(auto type : this->namedTypes)
+		for(auto type : fmod->_getNamedTypes())
 		{
 			// should just automatically create it.
 			typeToLlvm(type.second, module);
 		}
 
-		for(auto intr : this->intrinsicFunctions)
+		for(auto intr : fmod->_getIntrinsicFunctions())
 		{
 			auto& gc = Compiler::LLVMBackend::getLLVMContext();
 			llvm::Constant* fn = 0;
@@ -702,15 +694,15 @@ namespace fir
 		}
 
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
-		for(auto f : this->functions)
+		for(auto f : fmod->_getFunctions())
 		{
-			Function* ffn = f.second;
+			fir::Function* ffn = f.second;
 
 			llvm::GlobalValue::LinkageTypes link;
-			if(ffn->linkageType == LinkageType::External)
+			if(ffn->linkageType == fir::LinkageType::External)
 				link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
 
-			else if(ffn->linkageType == LinkageType::Internal)
+			else if(ffn->linkageType == fir::LinkageType::Internal)
 				link = llvm::GlobalValue::LinkageTypes::InternalLinkage;
 
 			else
@@ -733,7 +725,7 @@ namespace fir
 			}
 
 
-			for(auto b : ffn->blocks)
+			for(auto b : ffn->getBlockList())
 			{
 				llvm::BasicBlock* bb = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), b->getName().mangled(), func);
 				valueMap[b->id] = bb;
@@ -752,9 +744,9 @@ namespace fir
 		#endif
 
 
-		for(auto fp : this->functions)
+		for(auto fp : fmod->_getFunctions())
 		{
-			Function* ffn = fp.second;
+			fir::Function* ffn = fp.second;
 
 			llvm::Function* func = module->getFunction(fp.second->getName().mangled());
 			iceAssert(func);
@@ -792,15 +784,15 @@ namespace fir
 
 				DUMP_INSTR("\n    %s", ("(%" + std::to_string(block->id) + ") " + block->getName() + ":\n").c_str());
 
-				for(auto inst : block->instructions)
+				for(auto inst : block->getInstructions())
 				{
 					DUMP_INSTR("        %s\n", inst->str().c_str());
 
 					// good god.
 					switch(inst->opKind)
 					{
-						case OpKind::Signed_Add:
-						case OpKind::Unsigned_Add:
+						case fir::OpKind::Signed_Add:
+						case fir::OpKind::Unsigned_Add:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -811,8 +803,8 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Signed_Sub:
-						case OpKind::Unsigned_Sub:
+						case fir::OpKind::Signed_Sub:
+						case fir::OpKind::Unsigned_Sub:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -823,8 +815,8 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Signed_Mul:
-						case OpKind::Unsigned_Mul:
+						case fir::OpKind::Signed_Mul:
+						case fir::OpKind::Unsigned_Mul:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -835,7 +827,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Signed_Div:
+						case fir::OpKind::Signed_Div:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -846,7 +838,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Signed_Mod:
+						case fir::OpKind::Signed_Mod:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -857,7 +849,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Signed_Neg:
+						case fir::OpKind::Signed_Neg:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -867,7 +859,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Unsigned_Div:
+						case fir::OpKind::Unsigned_Div:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -878,7 +870,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Unsigned_Mod:
+						case fir::OpKind::Unsigned_Mod:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -889,7 +881,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Add:
+						case fir::OpKind::Floating_Add:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -900,7 +892,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Sub:
+						case fir::OpKind::Floating_Sub:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -911,7 +903,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Mul:
+						case fir::OpKind::Floating_Mul:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -922,7 +914,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Div:
+						case fir::OpKind::Floating_Div:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -933,7 +925,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Mod:
+						case fir::OpKind::Floating_Mod:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -944,7 +936,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Neg:
+						case fir::OpKind::Floating_Neg:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -954,11 +946,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Truncate:
+						case fir::OpKind::Floating_Truncate:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 
 							llvm::Type* t = typeToLlvm(ft, module);
 
@@ -967,11 +959,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Floating_Extend:
+						case fir::OpKind::Floating_Extend:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 
 							llvm::Type* t = typeToLlvm(ft, module);
 
@@ -980,12 +972,12 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Integer_ZeroExt:
-						case OpKind::Integer_Truncate:
+						case fir::OpKind::Integer_ZeroExt:
+						case fir::OpKind::Integer_Truncate:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 
 							llvm::Type* t = typeToLlvm(ft, module);
 
@@ -997,7 +989,7 @@ namespace fir
 
 
 
-						case OpKind::ICompare_Equal:
+						case fir::OpKind::ICompare_Equal:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1008,7 +1000,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::ICompare_NotEqual:
+						case fir::OpKind::ICompare_NotEqual:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1019,7 +1011,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::ICompare_Greater:
+						case fir::OpKind::ICompare_Greater:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1035,7 +1027,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::ICompare_Less:
+						case fir::OpKind::ICompare_Less:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1052,7 +1044,7 @@ namespace fir
 						}
 
 
-						case OpKind::ICompare_GreaterEqual:
+						case fir::OpKind::ICompare_GreaterEqual:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1068,7 +1060,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::ICompare_LessEqual:
+						case fir::OpKind::ICompare_LessEqual:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1084,7 +1076,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Equal_ORD:
+						case fir::OpKind::FCompare_Equal_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1095,7 +1087,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Equal_UNORD:
+						case fir::OpKind::FCompare_Equal_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1106,7 +1098,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_NotEqual_ORD:
+						case fir::OpKind::FCompare_NotEqual_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1117,7 +1109,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_NotEqual_UNORD:
+						case fir::OpKind::FCompare_NotEqual_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1128,7 +1120,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Greater_ORD:
+						case fir::OpKind::FCompare_Greater_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1139,7 +1131,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Greater_UNORD:
+						case fir::OpKind::FCompare_Greater_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1150,7 +1142,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Less_ORD:
+						case fir::OpKind::FCompare_Less_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1161,7 +1153,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_Less_UNORD:
+						case fir::OpKind::FCompare_Less_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1172,7 +1164,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_GreaterEqual_ORD:
+						case fir::OpKind::FCompare_GreaterEqual_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1183,7 +1175,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_GreaterEqual_UNORD:
+						case fir::OpKind::FCompare_GreaterEqual_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1194,7 +1186,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_LessEqual_ORD:
+						case fir::OpKind::FCompare_LessEqual_ORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1205,7 +1197,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::FCompare_LessEqual_UNORD:
+						case fir::OpKind::FCompare_LessEqual_UNORD:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1217,7 +1209,7 @@ namespace fir
 						}
 
 
-						case OpKind::ICompare_Multi:
+						case fir::OpKind::ICompare_Multi:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1242,7 +1234,7 @@ namespace fir
 						}
 
 
-						case OpKind::FCompare_Multi:
+						case fir::OpKind::FCompare_Multi:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1274,7 +1266,7 @@ namespace fir
 
 
 
-						case OpKind::Bitwise_Not:
+						case fir::OpKind::Bitwise_Not:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1284,7 +1276,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_Xor:
+						case fir::OpKind::Bitwise_Xor:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1295,7 +1287,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_Arithmetic_Shr:
+						case fir::OpKind::Bitwise_Arithmetic_Shr:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1306,7 +1298,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_Logical_Shr:
+						case fir::OpKind::Bitwise_Logical_Shr:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1317,7 +1309,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_Shl:
+						case fir::OpKind::Bitwise_Shl:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1328,7 +1320,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_And:
+						case fir::OpKind::Bitwise_And:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1339,7 +1331,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Bitwise_Or:
+						case fir::OpKind::Bitwise_Or:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1350,7 +1342,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_Store:
+						case fir::OpKind::Value_Store:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1365,7 +1357,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_Load:
+						case fir::OpKind::Value_Load:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1375,10 +1367,10 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_StackAlloc:
+						case fir::OpKind::Value_StackAlloc:
 						{
 							iceAssert(inst->operands.size() == 1);
-							Type* ft = inst->operands[0]->getType();
+							fir::Type* ft = inst->operands[0]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateAlloca(t);
@@ -1388,17 +1380,17 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_CallFunction:
+						case fir::OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							Function* fn = dynamic_cast<Function*>(inst->operands[0]);
+							fir::Function* fn = dynamic_cast<fir::Function*>(inst->operands[0]);
 							iceAssert(fn);
 
 							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
 
 							std::vector<llvm::Value*> args;
 
-							std::vector<Value*> fargs = inst->operands;
+							std::vector<fir::Value*> fargs = inst->operands;
 
 							for(size_t i = 1; i < fargs.size(); ++i)
 								args.push_back(getValue(fargs[i]));
@@ -1408,14 +1400,14 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_CallFunctionPointer:
+						case fir::OpKind::Value_CallFunctionPointer:
 						{
 							iceAssert(inst->operands.size() >= 1);
 							llvm::Value* fn = getOperand(inst, 0);
 
 							std::vector<llvm::Value*> args;
 
-							std::vector<Value*> fargs = inst->operands;
+							std::vector<fir::Value*> fargs = inst->operands;
 
 							for(size_t i = 1; i < fargs.size(); ++i)
 								args.push_back(getValue(fargs[i]));
@@ -1435,7 +1427,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_Return:
+						case fir::OpKind::Value_Return:
 						{
 							llvm::Value* ret = 0;
 							if(inst->operands.size() == 0)
@@ -1454,7 +1446,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Branch_UnCond:
+						case fir::OpKind::Branch_UnCond:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1464,7 +1456,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Branch_Cond:
+						case fir::OpKind::Branch_Cond:
 						{
 							iceAssert(inst->operands.size() == 3);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1479,11 +1471,11 @@ namespace fir
 
 
 
-						case OpKind::Cast_Bitcast:
+						case fir::OpKind::Cast_Bitcast:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateBitCast(a, t);
@@ -1491,12 +1483,12 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_IntSize:
+						case fir::OpKind::Cast_IntSize:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
 
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateIntCast(a, t, ft->isSignedIntType());
@@ -1504,7 +1496,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_Signedness:
+						case fir::OpKind::Cast_Signedness:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1514,11 +1506,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_FloatToInt:
+						case fir::OpKind::Cast_FloatToInt:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = 0;
@@ -1531,11 +1523,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_IntToFloat:
+						case fir::OpKind::Cast_IntToFloat:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = 0;
@@ -1548,11 +1540,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_PointerType:
+						case fir::OpKind::Cast_PointerType:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreatePointerCast(a, t);
@@ -1560,11 +1552,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_PointerToInt:
+						case fir::OpKind::Cast_PointerToInt:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreatePtrToInt(a, t);
@@ -1572,11 +1564,11 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_IntToPointer:
+						case fir::OpKind::Cast_IntToPointer:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
-							Type* ft = inst->operands[1]->getType();
+							fir::Type* ft = inst->operands[1]->getType();
 							llvm::Type* t = typeToLlvm(ft, module);
 
 							llvm::Value* ret = builder.CreateIntToPtr(a, t);
@@ -1584,7 +1576,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Cast_IntSignedness:
+						case fir::OpKind::Cast_IntSignedness:
 						{
 							// is no op.
 							// since llvm does not differentiate signed and unsigned.
@@ -1599,19 +1591,19 @@ namespace fir
 
 
 
-						case OpKind::Value_GetPointerToStructMember:
+						case fir::OpKind::Value_GetPointerToStructMember:
 						{
 							// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 							error("enotsup");
 						}
 
-						case OpKind::Value_GetStructMember:
+						case fir::OpKind::Value_GetStructMember:
 						{
 							// equivalent to GEP(ptr*, 0, memberIndex)
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
 
-							ConstantInt* ci = dynamic_cast<ConstantInt*>(inst->operands[1]);
+							fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[1]);
 							iceAssert(ci);
 
 
@@ -1627,12 +1619,12 @@ namespace fir
 							// 	builder.CreateStore(a, ptr);
 							// }
 
-							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->value);
+							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->getUnsignedValue());
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
 
-						case OpKind::Value_GetPointer:
+						case fir::OpKind::Value_GetPointer:
 						{
 							// equivalent to GEP(ptr*, index)
 							iceAssert(inst->operands.size() == 2);
@@ -1644,7 +1636,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_GetGEP2:
+						case fir::OpKind::Value_GetGEP2:
 						{
 							// equivalent to GEP(ptr*, index)
 							iceAssert(inst->operands.size() == 3);
@@ -1659,7 +1651,7 @@ namespace fir
 
 
 
-						case OpKind::Misc_Sizeof:
+						case fir::OpKind::Misc_Sizeof:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1682,7 +1674,7 @@ namespace fir
 
 
 
-						case OpKind::Logical_Not:
+						case fir::OpKind::Logical_Not:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1692,7 +1684,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_PointerAddition:
+						case fir::OpKind::Value_PointerAddition:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1707,7 +1699,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_PointerSubtraction:
+						case fir::OpKind::Value_PointerSubtraction:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1726,7 +1718,7 @@ namespace fir
 
 
 
-						case OpKind::Value_InsertValue:
+						case fir::OpKind::Value_InsertValue:
 						{
 							iceAssert(inst->operands.size() >= 3);
 
@@ -1736,7 +1728,7 @@ namespace fir
 							std::vector<unsigned int> inds;
 							for(size_t i = 2; i < inst->operands.size(); i++)
 							{
-								ConstantInt* ci = dynamic_cast<ConstantInt*>(inst->operands[i]);
+								fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[i]);
 								iceAssert(ci);
 
 								inds.push_back(ci->getUnsignedValue());
@@ -1763,7 +1755,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Value_ExtractValue:
+						case fir::OpKind::Value_ExtractValue:
 						{
 							iceAssert(inst->operands.size() >= 2);
 
@@ -1772,7 +1764,7 @@ namespace fir
 							std::vector<unsigned int> inds;
 							for(size_t i = 1; i < inst->operands.size(); i++)
 							{
-								ConstantInt* ci = dynamic_cast<ConstantInt*>(inst->operands[i]);
+								fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[i]);
 								iceAssert(ci);
 
 								inds.push_back(ci->getUnsignedValue());
@@ -1803,8 +1795,8 @@ namespace fir
 
 
 
-						case OpKind::String_GetData:
-						case OpKind::String_GetLength:
+						case fir::OpKind::String_GetData:
+						case fir::OpKind::String_GetLength:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1813,9 +1805,9 @@ namespace fir
 							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
-							if(inst->opKind == OpKind::String_GetData)
+							if(inst->opKind == fir::OpKind::String_GetData)
 								ind = 0;
-							else if(inst->opKind == OpKind::String_GetLength)
+							else if(inst->opKind == fir::OpKind::String_GetLength)
 								ind = 1;
 
 							llvm::Value* ret = builder.CreateExtractValue(a, ind);
@@ -1823,7 +1815,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::String_GetRefCount:
+						case fir::OpKind::String_GetRefCount:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1847,7 +1839,7 @@ namespace fir
 
 
 
-						case OpKind::String_SetData:
+						case fir::OpKind::String_SetData:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1862,7 +1854,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::String_SetLength:
+						case fir::OpKind::String_SetLength:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1877,7 +1869,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::String_SetRefCount:
+						case fir::OpKind::String_SetRefCount:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1907,9 +1899,9 @@ namespace fir
 
 
 
-						case OpKind::DynamicArray_GetData:
-						case OpKind::DynamicArray_GetLength:
-						case OpKind::DynamicArray_GetCapacity:
+						case fir::OpKind::DynamicArray_GetData:
+						case fir::OpKind::DynamicArray_GetLength:
+						case fir::OpKind::DynamicArray_GetCapacity:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1919,9 +1911,9 @@ namespace fir
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
 							int ind = 0;
-							if(inst->opKind == OpKind::DynamicArray_GetData)
+							if(inst->opKind == fir::OpKind::DynamicArray_GetData)
 								ind = 0;
-							else if(inst->opKind == OpKind::DynamicArray_GetLength)
+							else if(inst->opKind == fir::OpKind::DynamicArray_GetLength)
 								ind = 1;
 							else
 								ind = 2;
@@ -1934,7 +1926,7 @@ namespace fir
 
 
 
-						case OpKind::DynamicArray_SetData:
+						case fir::OpKind::DynamicArray_SetData:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1956,8 +1948,8 @@ namespace fir
 						}
 
 
-						case OpKind::DynamicArray_SetLength:
-						case OpKind::DynamicArray_SetCapacity:
+						case fir::OpKind::DynamicArray_SetLength:
+						case fir::OpKind::DynamicArray_SetCapacity:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1970,7 +1962,7 @@ namespace fir
 							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
 							int ind = 0;
-							if(inst->opKind == OpKind::DynamicArray_SetLength)
+							if(inst->opKind == fir::OpKind::DynamicArray_SetLength)
 								ind = 1;
 							else
 								ind = 2;
@@ -1994,8 +1986,8 @@ namespace fir
 
 
 
-						case OpKind::ArraySlice_GetData:
-						case OpKind::ArraySlice_GetLength:
+						case fir::OpKind::ArraySlice_GetData:
+						case fir::OpKind::ArraySlice_GetLength:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -2006,7 +1998,7 @@ namespace fir
 
 							int ind = 0;
 
-							if(inst->opKind == OpKind::ArraySlice_GetLength)
+							if(inst->opKind == fir::OpKind::ArraySlice_GetLength)
 								ind = 1;
 
 							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
@@ -2017,7 +2009,7 @@ namespace fir
 
 
 
-						case OpKind::ArraySlice_SetData:
+						case fir::OpKind::ArraySlice_SetData:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -2039,7 +2031,7 @@ namespace fir
 						}
 
 
-						case OpKind::ArraySlice_SetLength:
+						case fir::OpKind::ArraySlice_SetLength:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -2067,7 +2059,7 @@ namespace fir
 
 
 
-						case OpKind::Any_GetData:
+						case fir::OpKind::Any_GetData:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -2087,7 +2079,7 @@ namespace fir
 							break;
 						}
 
-						case OpKind::Any_SetData:
+						case fir::OpKind::Any_SetData:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -2117,8 +2109,8 @@ namespace fir
 
 
 
-						case OpKind::Any_GetTypeID:
-						case OpKind::Any_GetFlag:
+						case fir::OpKind::Any_GetTypeID:
+						case fir::OpKind::Any_GetFlag:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -2128,7 +2120,7 @@ namespace fir
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
 							int ind = 0;
-							if(inst->opKind == OpKind::Any_GetTypeID)
+							if(inst->opKind == fir::OpKind::Any_GetTypeID)
 								ind = 0;
 							else
 								ind = 1;
@@ -2141,8 +2133,8 @@ namespace fir
 						}
 
 
-						case OpKind::Any_SetTypeID:
-						case OpKind::Any_SetFlag:
+						case fir::OpKind::Any_SetTypeID:
+						case fir::OpKind::Any_SetFlag:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -2155,7 +2147,7 @@ namespace fir
 							iceAssert(b->getType() == llvm::Type::getInt64Ty(Compiler::LLVMBackend::getLLVMContext()));
 
 							int ind = 0;
-							if(inst->opKind == OpKind::Any_SetTypeID)
+							if(inst->opKind == fir::OpKind::Any_SetTypeID)
 								ind = 0;
 							else
 								ind = 1;
@@ -2170,11 +2162,11 @@ namespace fir
 
 
 
-						case OpKind::Range_GetLower:
-						case OpKind::Range_GetUpper:
+						case fir::OpKind::Range_GetLower:
+						case fir::OpKind::Range_GetUpper:
 						{
 							unsigned int pos = 0;
-							if(inst->opKind == OpKind::Range_GetUpper)
+							if(inst->opKind == fir::OpKind::Range_GetUpper)
 								pos = 1;
 
 							llvm::Value* a = getOperand(inst, 0);
@@ -2187,11 +2179,11 @@ namespace fir
 						}
 
 
-						case OpKind::Range_SetLower:
-						case OpKind::Range_SetUpper:
+						case fir::OpKind::Range_SetLower:
+						case fir::OpKind::Range_SetUpper:
 						{
 							unsigned int pos = 0;
-							if(inst->opKind == OpKind::Range_SetUpper)
+							if(inst->opKind == fir::OpKind::Range_SetUpper)
 								pos = 1;
 
 							llvm::Value* a = getOperand(inst, 0);
@@ -2211,13 +2203,13 @@ namespace fir
 
 
 
-						case OpKind::Unreachable:
+						case fir::OpKind::Unreachable:
 						{
 							builder.CreateUnreachable();
 							break;
 						}
 
-						case OpKind::Invalid:
+						case fir::OpKind::Invalid:
 						{
 							// note we don't use "default" to catch
 							// new opkinds that we forget to add.

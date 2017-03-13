@@ -196,6 +196,7 @@ namespace fir
 
 		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
+		ConstantValue* getInitialValue();
 
 		protected:
 		ConstantValue* initValue = 0;

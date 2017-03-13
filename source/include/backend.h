@@ -25,6 +25,11 @@ namespace llvm
 	class LLVMContext;
 }
 
+namespace fir
+{
+	struct Module;
+}
+
 namespace Compiler
 {
 	struct CompiledData;
@@ -110,6 +115,8 @@ namespace Compiler
 		virtual std::string str() override;
 
 		static llvm::LLVMContext& getLLVMContext();
+
+		static llvm::Module* translateFIRtoLLVM(fir::Module* mod);
 
 		private:
 		void setupTargetMachine();
