@@ -29,6 +29,8 @@ public func main() -> int
 	printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
 
 	bar(10, [ ])
+	foo([ ], 20)
+
 	// let z = [ ]
 	qux([ ])
 
