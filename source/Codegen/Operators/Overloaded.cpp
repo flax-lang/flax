@@ -679,6 +679,9 @@ namespace Codegen
 	Result_t CodegenInstance::callBinaryOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lref, fir::Value* rhs,
 		fir::Value* rref, ArithmeticOp op)
 	{
+		iceAssert(!data.isBuiltin);
+		// if(data.isBuiltin) return Result_t(this->irb.CreateBinaryOp(op, lhs, rhs), 0);
+
 		// check if we have a ref.
 		if(lref == 0)
 		{
