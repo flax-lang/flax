@@ -83,7 +83,8 @@ let x = .31
 
 
 
-
+// 18. modify the iterative generic solver to be able to solve for variadic functions as well
+// right now, we redirect to the naive solver for variadic functions, which limits possibilities.
 
 
 
