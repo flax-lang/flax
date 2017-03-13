@@ -46,15 +46,6 @@ fn();
 
 
 
-// 15. wasn't there supposed to be automatic operator == for structs????? WTF
-struct Bar { /* ... */ }
-Bar x;
-Bar y;
-let cond = (x == y)
-
-
-
-
 // 17. pass overloaded functions around more seamlessly. currently does not work when passing to generic functions,
 // since we don't have the type to verify against. unsure of how to proceed.
 
@@ -108,6 +99,9 @@ let cond = (x == y)
 	- empty array literals are now generic things (WIP)
 	- iterative generic solver is now used for everything
 	- the fucking generic type solver is hopefully finished
+
+	(fixed in f3f85de)
+	- add automatic == and != for structs, using memcmp.
 */
 
 

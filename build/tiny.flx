@@ -13,12 +13,6 @@ func bar<T>(a: T, b: T[])
 {
 }
 
-func qux<T>(a: [(T, T) -> T], b: T)
-{
-	a(b, b)
-}
-
-
 func test(a: int, b: [(int, int) -> int])
 {
 }
@@ -51,7 +45,17 @@ public func main() -> int
 	// qux([ ])
 
 	test(30, one)
-	qux(one, 30)
+
+	struct Test
+	{
+		var a: int
+		var b: int
+	}
+
+	let ta = Test(10, 10)
+	let tb = Test(10, 10)
+
+	printf("ta == tb: %d\n", ta == tb)
 
 	return 0
 }
