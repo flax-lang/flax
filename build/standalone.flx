@@ -151,7 +151,6 @@ func generictest()
 		i += 1
 	}
 
-	let t = 3  . 4
 
 	let new = map2(arr, add2)
 

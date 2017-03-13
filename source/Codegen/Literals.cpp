@@ -469,7 +469,10 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, boo
 	if(this->values.empty())
 	{
 		if(!extratype)
-			error(this, "Unable to infer type for empty array");
+		{
+			// error(this, "Unable to infer type for empty array");
+			return fir::DynamicArrayType::get(fir::ParametricType::get("~"));
+		}
 
 		if(raw && extratype->isArrayType())
 		{
