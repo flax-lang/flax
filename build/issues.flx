@@ -43,11 +43,6 @@ func foo() -> int { abort() }
 
 
 
-// 11. also the fucking generic type solver isn't finished god dammit
-
-
-
-
 // 14. class instance method access should capture the instance
 // the call to fn() should not require explicit passing of the instance, but rather it should refer to the 'f' instance.
 // Foo.method would continue to work, but would require an instance.
@@ -68,23 +63,8 @@ let cond = (x == y)
 
 
 
-// 16. special handling in parser for "." as a unary operator or something, so numbers like
-// 	".51" work
-let x = .31
-
-
-
-
 // 17. a function with multiple overloads should be able to be passed as a parameter to another function, since we know the types.
 // 	applies to generic functions as well, both in the parameter type and the function being passed.
-
-
-
-
-// 18. modify the iterative generic solver to be able to solve for variadic functions as well
-// right now, we redirect to the naive solver for variadic functions, which limits possibilities.
-
-
 
 
 
@@ -132,7 +112,7 @@ let x = .31
 	(fixed in 586c963)
 	- empty array literals are now generic things (WIP)
 	- iterative generic solver is now used for everything
-
+	- the fucking generic type solver is hopefully finished
 
 */
 
