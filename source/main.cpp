@@ -49,11 +49,6 @@ int main(int argc, char* argv[])
 			// compile the file.
 			// the file Compiler.cpp handles imports.
 
-			iceAssert(llvm::InitializeNativeTarget() == 0);
-			iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
-			iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
-
-
 			_cgi = new Codegen::CodegenInstance();
 
 			filename = Compiler::getFullPathOfFile(filename);
@@ -96,9 +91,6 @@ int main(int argc, char* argv[])
 		if(Compiler::getDumpFir())
 			printf("%s\n\n", mod.second->print().c_str());
 	}
-
-
-	// fir::getDefaultFTContext()->dumpTypeIDs();
 
 
 	// check caps that we need

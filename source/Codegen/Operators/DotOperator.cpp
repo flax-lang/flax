@@ -1204,7 +1204,7 @@ static variant resolveLeftTypenameMA(CodegenInstance* cgi, MemberAccess* ma, Typ
 				}
 			}
 
-				// ok, there's nothing else here.
+			// ok, there's nothing else here.
 			error(vr, "Entity '%s' (function, type, field, or property) does not exist in type '%s'", vr->name.c_str(),
 				base->ident.name.c_str());
 		}
@@ -1636,7 +1636,7 @@ fir::Type* MemberAccess::getType(CodegenInstance* cgi, fir::Type* extratype, boo
 
 Result_t MemberAccess::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
-	auto ret = cgi->resolveTypeOfMA(this, target ? target->getType() : extratype, true);
+	auto ret = cgi->resolveTypeOfMA(this, extratype ? extratype : (target ? target->getType()->getPointerElementType() : 0), true);
 	if(ret.index() != 3)
 		error(this, "Dot operator failed to evaluate");
 
@@ -1703,14 +1703,13 @@ fir::Function* CodegenInstance::tryDisambiguateFunctionVariableUsingType(Expr* u
 	{
 		return 0;
 	}
-	else if(cands.size() > 1 && (extratype == 0 || (!extratype->isPointerType()
-					|| extratype->getPointerTo()->isFunctionType())))
+	else if(cands.size() > 1 && (extratype == 0 || !extratype->isFunctionType()))
 	{
 		error(usr, "Ambiguous reference to function with name '%s' (multiple overloads)", name.c_str());
 	}
 	else if(cands.size() > 1)
 	{
-		fir::FunctionType* ft = extratype->toPointerType()->toFunctionType();
+		fir::FunctionType* ft = extratype->toFunctionType();
 		iceAssert(ft);
 
 		for(auto c : cands)
@@ -1780,12 +1779,6 @@ FuncDefPair CodegenInstance::tryGetMemberFunctionOfClass(StructBase* sb, Expr* u
 	{
 		auto p = map[ret];
 		return FuncDefPair(ret, p.first, p.second);
-	}
-	else if(extratype && extratype->isPointerType() && extratype->getPointerElementType()->isFunctionType())
-	{
-		std::map<Func*, std::pair<std::string, Expr*>> errs;
-		return this->tryResolveGenericFunctionFromCandidatesUsingFunctionType(user, genericBodies,
-			extratype->getPointerElementType()->toFunctionType(), &errs);
 	}
 	else if(extratype && extratype->isFunctionType())
 	{
