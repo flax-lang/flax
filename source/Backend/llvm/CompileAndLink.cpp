@@ -80,6 +80,10 @@ namespace Compiler
 
 	void LLVMBackend::performCompilation()
 	{
+		iceAssert(llvm::InitializeNativeTarget() == 0);
+		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
+		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
+
 		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
 
 		// this one just does fir -> llvm, then links all the llvm modules together.
@@ -87,7 +91,7 @@ namespace Compiler
 
 		// translate to llvm
 		for(auto mod : this->compiledData.moduleList)
-			modulelist[mod.first] = mod.second->translateToLlvm();
+			modulelist[mod.first] = this->translateFIRtoLLVM(mod.second);
 
 
 		auto s = Compiler::getFilenameFromPath(this->inputFilenames[0]);

@@ -16,14 +16,20 @@ namespace llvm
 	class Module;
 }
 
+namespace Compiler
+{
+	struct Backend;
+}
+
 namespace fir
 {
 	struct ExecutionTarget;
 
 	struct Module
 	{
-		Module(std::string nm);
+		friend struct Backend;
 
+		Module(std::string nm);
 
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage);
@@ -55,12 +61,20 @@ namespace fir
 		std::string getModuleName();
 		void setModuleName(std::string name);
 
-		llvm::Module* translateToLlvm();
-
 		std::string print();
 
 		void setExecutionTarget(ExecutionTarget* e);
 		ExecutionTarget* getExecutionTarget();
+
+
+
+		std::unordered_map<Identifier, Function*> _getIntrinsicFunctions() { return this->intrinsicFunctions; }
+		std::unordered_map<std::string, GlobalVariable*> _getGlobalStrings() { return this->globalStrings; }
+		std::unordered_map<Identifier, GlobalVariable*> _getGlobals() { return this->globals; }
+		std::unordered_map<Identifier, Function*> _getFunctions() { return this->functions; }
+		std::unordered_map<Identifier, Type*> _getNamedTypes() { return this->namedTypes; }
+
+
 
 		private:
 		std::string moduleName;

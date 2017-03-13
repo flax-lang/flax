@@ -381,6 +381,8 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 			{
 				// ok, make a dynamic array instead. don't return some half-assed thing
 				auto elmtype = tp->toDynamicArrayType()->getElementType();
+				if(elmtype->isParametricType())
+					error(this, "Unable to infer type for empty array literal");
 
 				fir::Value* ai = cgi->irb.CreateStackAlloc(fir::DynamicArrayType::get(elmtype));
 
