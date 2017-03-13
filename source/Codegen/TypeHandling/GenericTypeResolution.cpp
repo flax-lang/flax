@@ -467,8 +467,8 @@ namespace Codegen
 
 
 	// iterative (better) solver
-	// doesn't handle variadics as of now, we rely on the naive solver to do that.
 	// accepts a parameter, returns whether a solution was found (bool)
+
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic)
@@ -861,8 +861,6 @@ namespace Codegen
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::vector<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
-		typedef std::vector<pts::TypeTransformer> TrfList;
-
 		if(candidate->params.size() != args.size())
 		{
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
@@ -905,7 +903,6 @@ namespace Codegen
 
 
 		// if the candidate is variadic, the number of parameters must be *at least* the number of fixed parameters
-		VarDecl* varParam = 0;
 		if(candidate->isVariadic)
 		{
 			if(args.size() < candidate->params.size() - 1)
@@ -919,12 +916,6 @@ namespace Codegen
 				}
 				return false;
 			}
-
-			// if this is variadic, remove the last parameter from the candidate (we'll add it back later)
-			// so we only check the first n - 1 parameters.
-
-			// varParam = candidate->params.back();
-			// candidate->params.pop_back();
 		}
 
 
@@ -932,7 +923,7 @@ namespace Codegen
 
 
 
-		// if(!candidate->isVariadic)
+		// always use the iterative solver
 		{
 			std::vector<pts::Type*> pFunctionParamTypes;
 
@@ -951,500 +942,20 @@ namespace Codegen
 			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
 				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic);
 
+			if(!res)
+			{
+				if(errorString) *errorString = es;
+				if(failedExpr) *failedExpr = fe;
 
-			// if(!res)
-			// {
-			// 	warn(candidate, "result (%d): %s\n", res, es.c_str());
-			// }
-
-			if(errorString) *errorString = es;
-			if(failedExpr) *failedExpr = fe;
+				return false;
+			}
 
 			*gtm = solns;
-			return res;
 		}
-
-
-
-
-
-
-
-		std::map<std::string, std::vector<std::pair<size_t, fir::Type*>>> candidateGenerics;
-		std::map<size_t, std::string> genericPositions;
-		std::map<size_t, fir::Type*> nonGenericTypes;
-
-		std::map<std::string, std::vector<size_t>> genericPositions2;
-
-
-		for(size_t i = 0; i < candidate->params.size(); i++)
-		{
-			pts::Type* pt = 0; TrfList trfs;
-			std::tie(pt, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
-
-
-			// maximally solve all the trivial types first.
-			if(pt->isNamedType())
-			{
-				if(candidate->genericTypes.find(pt->toNamedType()->name) != candidate->genericTypes.end())
-				{
-					// a bit cumbersome, but whatever
-					candidateGenerics[pt->toNamedType()->name].push_back({ i, args[i] });
-					genericPositions[i] = pt->toNamedType()->name;
-				}
-				else
-				{
-					fir::Type* resolved = cgi->getTypeFromParserType(candidate, pt);
-					iceAssert(resolved);
-
-					nonGenericTypes[i] = pts::applyTransformationsOnType(resolved, trfs);
-				}
-			}
-			else if(pt->isFunctionType() || pt->isTupleType())
-			{
-				auto l = getAllGenericTypesContainedWithin(pt, candidate->genericTypes);
-				for(auto s : l) genericPositions2[s].push_back(i);
-			}
-			else
-			{
-				error("??");
-			}
-		}
-
-
-
-
-
-		// first check non-generic types
-		for(auto t : nonGenericTypes)
-		{
-			iceAssert(t.first < args.size());
-			fir::Type* a = t.second;
-			fir::Type* b = args[t.first];
-
-			if(a != b && cgi->getAutoCastDistance(b, a) == -1)
-			{
-				if(errorString && failedExpr)
-				{
-					*errorString = _makeErrorString("No conversion from given type '%s' to expected type '%s' in argument %zu",
-						b->str().c_str(), a->str().c_str(), t.first + 1);
-					*failedExpr = candidate->params[t.first];
-				}
-				return false;
-			}
-		}
-
-
-
-		// ok, now check the generic types
-		std::map<std::string, fir::Type*> thistm;
-
-		for(auto gt : candidateGenerics)
-		{
-			// first make sure all the types match up
-			fir::Type* res = 0;
-			fir::Type* baseres = 0;
-			for(auto& t : gt.second)
-			{
-				fir::Type* base = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(t.second).first;
-
-				if(baseres == 0)
-				{
-					baseres = base;
-					res = t.second;
-					continue;
-				}
-				else if(base != baseres)
-				{
-					// no casting here, generic types need to be exact.
-
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("Conflicting solutions for parametric type '%s' in argument %zu: '%s' and '%s'"
-							" (baseres = '%s', base = '%s')", gt.first.c_str(), t.first + 1, res->str().c_str(), t.second->str().c_str(),
-							baseres->str().c_str(), base->str().c_str());
-
-						*failedExpr = candidate->params[t.first];
-					}
-					return false;
-				}
-			}
-
-
-			// loop again
-			fir::Type* sol = 0;
-			for(auto t : gt.second)
-			{
-				size_t i = t.first;
-
-				// check that the transformations are compatible
-				// eg. we don't try to pass a parameter T to the function expecting K** -- even if the base types match
-				// eg. passing int to int**
-
-				fir::Type* arg = args[i]; fir::Type* _ = 0; TrfList argtrfs;
-				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
-
-				pts::Type* g = 0; TrfList gtrfs;
-				std::tie(g, gtrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
-
-				if(!pts::areTransformationsCompatible(gtrfs, argtrfs))
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-							" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i + 1,
-							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
-
-						*failedExpr = candidate->params[i];
-					}
-					return false;
-				}
-
-				fir::Type* soln = pts::reduceMaximallyWithSubset(arg, gtrfs, argtrfs);
-				if(sol == 0)
-				{
-					sol = soln;
-				}
-				else if(sol != soln)
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-							" expected '%s', have '%s' (Previously '%s' was solved as '%s' / '%s')", genericPositions[i].c_str(), i + 1,
-							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str(), genericPositions[i].c_str(),
-							sol->str().c_str(), soln->str().c_str());
-
-						*failedExpr = candidate->params[i];
-					}
-					return false;
-				}
-			}
-
-			iceAssert(sol);
-			thistm[gt.first] = sol;
-		}
-
-
-		// check variadic
-
-		if(varParam != 0)
-		{
-			// add it back first.
-			candidate->params.push_back(varParam);
-
-			// get the type.
-			pts::Type* pt = 0; TrfList _trfs;
-			std::tie(pt, _trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(varParam->ptype->toVariadicArrayType()->base);
-
-			std::string baset;
-			if(pt->isNamedType())
-			{
-				baset = pt->toNamedType()->name;
-			}
-			else
-			{
-				// right...
-				// why the fuck would you do this?
-				// ok, there's plenty of reasons
-				// but how the fuck do *I* do this?
-
-				// rubber-duck commenting time:
-				/*
-					so the steps are kinda similar to the normal resolution
-
-					but i think this should be done in a separate function, or ideally use the same function as above
-					problem is, we don't have a 'single' argument, so to speak
-
-					we can potentially short-circuit this -- get a list of all the generic types recursively, as we know how to do above
-					then, with a list of the Ts and Ks and Us and whatever:
-
-					1. if there were no variadic arguments, make sure everything is solved, if not error.
-
-					2. if there were, let's just use the first argument as the solution
-					   this will go tits up once we get typeclasses...
-					   TITS UP
-				*/
-
-
-				#if 0
-				// we have a chance
-				// copy the existing solution
-				std::map<std::string, fir::Type*> solns = thistm;
-				std::map<std::string, fir::Type*> empty;
-
-
-				if(pt->isFunctionType() || pt->isTupleType())
-				{
-					std::string es; Expr* fe = 0;
-					auto tosolve = getAllGenericTypesContainedWithin(pt, candidate->genericTypes);
-					bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, candidate->params.size() - 1, pt,
-						args[i], &solns, &empty, &es, &fe);
-
-					if(!res)
-					{
-						*errorString = es;
-						*failedExpr = fe;
-						return false;
-					}
-
-					// update.
-					thistm = solns;
-				}
-				else
-				{
-					error("?? %s", pt->str().c_str());
-				}
-				#endif
-
-
-				error("INCOMPLETE (not implemented)");
-			}
-
-
-
-
-
-			if(thistm.find(baset) != thistm.end())
-			{
-				// already have it
-				// ensure it matches with the ones we've already found.
-
-				fir::Type* resolved = thistm[baset];
-				iceAssert(resolved);
-
-				if(args.size() >= candidate->params.size())
-				{
-					iceAssert(candidate->params.back()->ptype->isVariadicArrayType());
-					pts::Type* vbase = candidate->params.back()->ptype->toVariadicArrayType()->base;
-
-					pts::Type* _ = 0; TrfList trfs;
-					std::tie(_, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(vbase);
-					fir::Type* resolvedvbase = pts::applyTransformationsOnType(resolved, trfs);
-
-
-					if(args.size() == candidate->params.size() && args.back()->isDynamicArrayType())
-					{
-						// check transformations.
-						fir::Type* fvbase = args.back()->toDynamicArrayType()->getElementType();
-
-						fir::Type* _ = 0; TrfList argtrfs;
-						std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(fvbase);
-
-						if(resolvedvbase != fvbase && cgi->getAutoCastDistance(fvbase, resolvedvbase) == -1)
-						{
-							// damn, this is a verbose error message.
-							if(errorString && failedExpr)
-							{
-								*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no conversion from given base type '%s' to expected base type '%s' (in solution for parametric type '%s', solved as '%s')",
-									fvbase->str().c_str(), resolvedvbase->str().c_str(), baset.c_str(), resolved->str().c_str());
-
-								*failedExpr = candidate->params.back();
-							}
-							return false;
-						}
-
-						if(!pts::areTransformationsCompatible(trfs, argtrfs))
-						{
-							// damn, this is a verbose error message.
-							if(errorString && failedExpr)
-							{
-								*errorString = _makeErrorString("Incompatible base types for direct parameter pack-forwarding; no transformations to get from given base type '%s' to parametric type '%s' with existing solution '%s' (ie. expected base type '%s')", fvbase->str().c_str(), baset.c_str(), resolved->str().c_str(), resolvedvbase->str().c_str());
-
-								*failedExpr = candidate->params.back();
-							}
-							return false;
-						}
-					}
-					else
-					{
-						for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-						{
-							if(cgi->getAutoCastDistance(args[i], resolvedvbase) == -1)
-							{
-								// damn, this is a verbose error message.
-								if(errorString && failedExpr)
-								{
-									*errorString = _makeErrorString("Incompatible parameter in variadic argument to function; no conversion from given type '%s' to expected type '%s', in variadic argument %zu", args[i]->str().c_str(),
-										resolvedvbase->str().c_str(), i + 2 - candidate->params.size());
-
-									*failedExpr = candidate->params.back();
-								}
-								return false;
-							}
-						}
-					}
-				}
-				else
-				{
-					// no varargs were even given
-					// since we have already inferred the type from the other parameters,
-					// we can give this a free pass.
-				}
-			}
-			else if(candidate->genericTypes.find(baset) != candidate->genericTypes.end())
-			{
-				// ok, we need to be able to deduce the type from the vararg only.
-				// so if none were provided, then give up.
-
-				if(args.size() < candidate->params.size())
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("No variadic parameters were given, so no solution for parametric type '%s' could be determined (it is only used in the variadic parameter pack)", baset.c_str());
-
-						*failedExpr = candidate->params.back();
-					}
-					return false;
-				}
-
-
-				// great, now just deduce it.
-				// we just need to make sure all the Ts match, and the number of indirections
-				// match *and* are greater than or equal to the specified level.
-
-				fir::Type* first = args[candidate->params.size() - 1];
-
-				// ok, check the type itself
-				for(size_t i = candidate->params.size() - 1; i < args.size(); i++)
-				{
-					if(args[i] != first && cgi->getAutoCastDistance(first, args[i]))
-					{
-						if(errorString && failedExpr)
-						{
-							*errorString = _makeErrorString("Conflicting types in variadic arguments -- '%s' and '%s' (in solution for parametric type '%s')", args[i]->str().c_str(), first->str().c_str(), baset.c_str());
-
-							*failedExpr = candidate->params.back();
-						}
-						return false;
-					}
-
-					// ok check the transformations
-					fir::Type* base = 0; TrfList trfs;
-					std::tie(base, trfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(args[i]);
-
-					if(!pts::areTransformationsCompatible(_trfs, trfs))
-					{
-						if(errorString && failedExpr)
-						{
-							*errorString = _makeErrorString("Incompatible base types for variadic argument %zu; no transformations to get from given base type '%s' to expected type '%s'  (in solution for parametric type '%s')", i + 1,
-								args[i]->str().c_str(), candidate->params.back()->ptype->toDynamicArrayType()->base->str().c_str(),
-								baset.c_str());
-
-							*failedExpr = candidate->params.back();
-						}
-						return false;
-					}
-				}
-
-
-				// everything checked out -- resolve.
-				fir::Type* _ = 0; TrfList argtrfs;
-				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(first);
-				fir::Type* soln = pts::reduceMaximallyWithSubset(first, _trfs, argtrfs);
-				thistm[baset] = soln;
-			}
-		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		// check that we actually have an entry for every type
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-			{
-				if(genericPositions2.find(t.first) != genericPositions2.end())
-				{
-					for(auto i : genericPositions2[t.first])
-					{
-						// we have a chance
-						// copy the existing solution
-						std::map<std::string, fir::Type*> solns = thistm;
-						std::map<std::string, fir::Type*> empty;
-
-
-						TrfList trfs;
-						pts::Type* base = 0;
-
-						std::tie(base, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
-
-						if(base->isFunctionType() || base->isTupleType())
-						{
-							std::string es; Expr* fe = 0;
-							auto tosolve = getAllGenericTypesContainedWithin(base, candidate->genericTypes);
-							bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, i, base,
-								args[i], &solns, &empty, &es, &fe,
-								args[i]->isFunctionType() ? args[i]->toFunctionType()->isVariadicFunc() : false);
-
-							if(!res)
-							{
-								*errorString = es;
-								*failedExpr = fe;
-								return false;
-							}
-
-							// update.
-							thistm = solns;
-						}
-						else
-						{
-							error("?? %s", base->str().c_str());
-						}
-					}
-				}
-				else
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
-						*failedExpr = candidate;
-					}
-					return false;
-				}
-			}
-		}
-
-
-
-		// now that we did that, try again, making sure this time.
-		for(auto t : candidate->genericTypes)
-		{
-			if(thistm.find(t.first) == thistm.end())
-			{
-				if(errorString && failedExpr)
-				{
-					*errorString = _makeErrorString("No solution for parametric type '%s' was found", t.first.c_str());
-					*failedExpr = candidate;
-				}
-				return false;
-			}
-		}
-
-
-
-
-
-
 
 
 		// last phase: ensure the type constraints are met
-		for(auto cst : thistm)
+		for(auto cst : *gtm)
 		{
 			TypeConstraints_t constr = candidate->genericTypes[cst.first];
 
@@ -1469,11 +980,6 @@ namespace Codegen
 			}
 		}
 
-
-
-
-
-		*gtm = thistm;
 		return true;
 	}
 
