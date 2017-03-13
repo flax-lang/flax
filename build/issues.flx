@@ -19,12 +19,6 @@
 // TOFIX:
 //
 
-// 1. UNFUCK LITERAL VALUES
-// JESUS CHRIST THEY SUCK HORSE COCK RIGHT ABOUT NOW
-
-
-
-
 
 
 
@@ -36,9 +30,7 @@ func foo() -> int { abort() }
 
 
 
-// 10. honestly the whole thing is fucked up. a rewrite of everything is impossible, however.
-// 	the type inference needs to be smarter -- generalising and re-purposing the existing generic type solver
-// 	for this might turn out to be a good idea in the future.
+// 10. wider use of type-inference leveraging the generic type solver's capabilities
 
 
 
@@ -63,8 +55,8 @@ let cond = (x == y)
 
 
 
-// 17. a function with multiple overloads should be able to be passed as a parameter to another function, since we know the types.
-// 	applies to generic functions as well, both in the parameter type and the function being passed.
+// 17. pass overloaded functions around more seamlessly. currently does not work when passing to generic functions,
+// since we don't have the type to verify against. unsure of how to proceed.
 
 
 
@@ -103,6 +95,9 @@ let cond = (x == y)
 	(fixed in 6d31d14)
 	- remove implicit returns, unless the function has exactly one *statement*.
 
+	(fixed in 3edc6f5)
+	- removed literal types
+
 	(added in b56ef9c)
 	- init+cond in if statements, a-la c++17
 
@@ -113,7 +108,6 @@ let cond = (x == y)
 	- empty array literals are now generic things (WIP)
 	- iterative generic solver is now used for everything
 	- the fucking generic type solver is hopefully finished
-
 */
 
 
