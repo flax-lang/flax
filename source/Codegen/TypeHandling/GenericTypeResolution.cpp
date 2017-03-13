@@ -116,8 +116,11 @@ namespace Codegen
 		// todo: when we get typeclasses (protocols), actually make this find the best common type
 		// for now, we just compare a == b.
 
+		// 1. if they're equal, just return them
 		if(a == b) return a;
-		else return 0;
+
+
+		return 0;
 	}
 
 
@@ -840,16 +843,28 @@ namespace Codegen
 		}
 
 
+
+
+
+
+
+
+
+
 		std::map<std::string, std::vector<std::pair<size_t, fir::Type*>>> candidateGenerics;
 		std::map<size_t, std::string> genericPositions;
 		std::map<size_t, fir::Type*> nonGenericTypes;
 
 		std::map<std::string, std::vector<size_t>> genericPositions2;
 
+		std::vector<pts::Type*> pFunctionParamTypes;
+
 		for(size_t i = 0; i < candidate->params.size(); i++)
 		{
 			pts::Type* pt = 0; TrfList trfs;
 			std::tie(pt, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
+
+			pFunctionParamTypes.push_back(candidate->params[i]->ptype);
 
 			// maximally solve all the trivial types first.
 			if(pt->isNamedType())
@@ -878,6 +893,34 @@ namespace Codegen
 				error("??");
 			}
 		}
+
+
+
+
+
+		{
+			std::string es; Expr* fe = 0; std::map<std::string, fir::Type*> empty;
+			std::map<std::string, fir::Type*> solns;
+
+			pts::TupleType* pFnType = new pts::TupleType(pFunctionParamTypes);
+			fir::TupleType* fFnType = fir::TupleType::get(args);
+
+			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
+
+			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
+				fFnType, &solns, &empty, &es, &fe);
+
+			for(auto s : solns)
+			{
+				printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
+			}
+
+			warn(candidate, "error (%d): %s\n", res, es.c_str());
+
+			// checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, std::set<std::string> toSolve, size_t ix, pts::Type *prm, fir::Type *arg, std::map<std::string, fir::Type *> *resolved, std::map<std::string, fir::Type *> *fnSoln, std::string *errorString, Ast::Expr **failedExpr)
+		}
+
+
 
 
 
@@ -910,7 +953,7 @@ namespace Codegen
 			// first make sure all the types match up
 			fir::Type* res = 0;
 			fir::Type* baseres = 0;
-			for(auto t : gt.second)
+			for(auto& t : gt.second)
 			{
 				fir::Type* base = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(t.second).first;
 
@@ -926,8 +969,10 @@ namespace Codegen
 
 					if(errorString && failedExpr)
 					{
-						*errorString = _makeErrorString("Conflicting solutions for parametric type '%s' in argument %zu: '%s' and '%s'",
-							gt.first.c_str(), t.first + 1, res->str().c_str(), t.second->str().c_str());
+						*errorString = _makeErrorString("Conflicting solutions for parametric type '%s' in argument %zu: '%s' and '%s'"
+							" (baseres = '%s', base = '%s')", gt.first.c_str(), t.first + 1, res->str().c_str(), t.second->str().c_str(),
+							baseres->str().c_str(), base->str().c_str());
+
 						*failedExpr = candidate->params[t.first];
 					}
 					return false;
@@ -974,9 +1019,9 @@ namespace Codegen
 					if(errorString && failedExpr)
 					{
 						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
-							" expected '%s', have '%s' (Previously '%s' was solved as '%s')", genericPositions[i].c_str(), i + 1,
+							" expected '%s', have '%s' (Previously '%s' was solved as '%s' / '%s')", genericPositions[i].c_str(), i + 1,
 							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str(), genericPositions[i].c_str(),
-							sol->str().c_str());
+							sol->str().c_str(), soln->str().c_str());
 
 						*failedExpr = candidate->params[i];
 					}
@@ -1061,7 +1106,7 @@ namespace Codegen
 				#endif
 
 
-				error("lol no");
+				error("INCOMPLETE (not implemented)");
 			}
 
 

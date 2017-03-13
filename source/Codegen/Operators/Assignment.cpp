@@ -394,6 +394,11 @@ namespace Operators
 
 
 
+
+
+
+
+
 		// check function assign
 		if(lhs->getType()->isFunctionType() && rhs->getType()->isFunctionType())
 		{
