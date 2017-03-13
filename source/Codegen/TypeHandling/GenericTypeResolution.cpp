@@ -139,8 +139,8 @@ namespace Codegen
 
 
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
-			size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
-			std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic);
+		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved, std::map<std::string, fir::Type*>* fnSoln,
+		std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete);
 
 
 
@@ -452,8 +452,9 @@ namespace Codegen
 			// if we're done solving, don't bother
 			if(!checkFinishedSolving(cursln))
 			{
+				// return incomplete solutions, so we don't exit too early when the first argument can't be solved
 				return checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, toSolve, 0, expt, givent, &cursln, &genericfnsoln,
-					errorString, failedExpr, givent->isFunctionType() ? givent->toFunctionType()->isVariadicFunc() : false);
+					errorString, failedExpr, givent->isFunctionType() ? givent->toFunctionType()->isVariadicFunc() : false, true);
 			}
 		}
 
@@ -471,7 +472,7 @@ namespace Codegen
 
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved,
-		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic)
+		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete)
 	{
 		typedef std::vector<pts::TypeTransformer> TrfList;
 
@@ -610,12 +611,28 @@ namespace Codegen
 
 				auto argToSolve = getAllGenericTypesContainedWithin(baseVarType, candidate->genericTypes);
 
-				for(size_t k = maxArg; k < ftlist.size(); k++)
+
+
+				// check direct forwarding
+				if(ftlist.size() == ptlist.size() && ftlist.back()->isDynamicArrayType())
 				{
-					bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, k, baseVarType, ftlist[k],
+					fir::DynamicArrayType* dat = ftlist.back()->toDynamicArrayType();
+
+					// check the element type
+					bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, maxArg, baseVarType, dat->getElementType(),
 						&cursln, &genericfnsoln, errorString, failedExpr);
 
 					if(!res) return false;
+				}
+				else
+				{
+					for(size_t k = maxArg; k < ftlist.size(); k++)
+					{
+						bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, k, baseVarType, ftlist[k],
+							&cursln, &genericfnsoln, errorString, failedExpr);
+
+						if(!res) return false;
+					}
 				}
 			}
 
@@ -740,7 +757,8 @@ namespace Codegen
 					if(!checkFinishedSolving(cursln))
 					{
 						checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, toSolve, ix, prt, frt, &cursln, &genericfnsoln,
-							errorString, failedExpr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false);
+							errorString, failedExpr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false,
+							returnIncomplete);
 					}
 				}
 			}
@@ -776,6 +794,9 @@ namespace Codegen
 			{
 				if(!checkFinishedSolving(cursln))
 				{
+					if(returnIncomplete)
+						return true;
+
 					if(errorString && failedExpr)
 					{
 						std::string solvedstr; // = "\nSolutions found so far: ";
@@ -940,7 +961,7 @@ namespace Codegen
 			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
 
 			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
-				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic);
+				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic, false);
 
 			if(!res)
 			{
