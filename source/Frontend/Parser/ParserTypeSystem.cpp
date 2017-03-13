@@ -224,6 +224,9 @@ namespace pts
 	}
 
 
+	// what the fuck does this function DO?
+	// it appears to take an input type that is fully transformed, and use the transformations in 'ats'
+	// to reverse the type, into a base type.
 	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::vector<TypeTransformer> ats, std::vector<TypeTransformer> bts)
 	{
 		using TrfType = TypeTransformer::Type;
