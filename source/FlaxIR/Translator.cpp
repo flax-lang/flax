@@ -534,7 +534,7 @@ namespace fir
 				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
 
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 
 				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.memcmp", module);
 				llvm::Function* func = llvm::cast<llvm::Function>(fn);
@@ -580,6 +580,7 @@ namespace fir
 					}
 
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
+					auto zeroconst8 = llvm::ConstantInt::get(gc, llvm::APInt(8, 0, true));
 
 					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
 					builder.CreateStore(zeroconst, ctr);
@@ -595,7 +596,7 @@ namespace fir
 					builder.SetInsertPoint(loopcond);
 					{
 						// bounds check
-						llvm::Value* cond = builder.CreateICmpSLT(ctr, cmplen);
+						llvm::Value* cond = builder.CreateICmpSLT(builder.CreateLoad(ctr), cmplen);
 						builder.CreateCondBr(cond, loopbody, merge);
 					}
 
@@ -603,14 +604,15 @@ namespace fir
 					{
 						llvm::Value* ctrval = builder.CreateLoad(ctr);
 
-						llvm::Value* ch1 = builder.CreateLoad(builder.CreateGEP(ptr1, ctrval));
-						llvm::Value* ch2 = builder.CreateLoad(builder.CreateGEP(ptr2, ctrval));
+						llvm::Value* ch1 = builder.CreateLoad(builder.CreateInBoundsGEP(ptr1, ctrval));
+						llvm::Value* ch2 = builder.CreateLoad(builder.CreateInBoundsGEP(ptr2, ctrval));
 
 						llvm::Value* diff = builder.CreateSub(ch1, ch2);
-						builder.CreateStore(diff, res);
+						builder.CreateStore(builder.CreateIntCast(diff, llvm::Type::getInt32Ty(gc), false), res);
 
 						builder.CreateStore(builder.CreateAdd(ctrval, llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true))), ctr);
-						builder.CreateCondBr(builder.CreateICmpEQ(diff, zeroconst), loopcond, merge);
+
+						builder.CreateCondBr(builder.CreateICmpEQ(diff, zeroconst8), loopcond, merge);
 					}
 
 					builder.SetInsertPoint(merge);
