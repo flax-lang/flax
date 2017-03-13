@@ -264,6 +264,7 @@ namespace Codegen
 				pts::Type* expt = 0; TrfList exptrfs;
 				std::tie(expt, exptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(ptlist[i]);
 
+
 				// the second part is to *ensure* they're compatible -- just because the transformations are compatible,
 				// doesn't mean the types are; i64 and (i64, i64) have 0 transformations, but aren't compatible
 				if(!pts::areTransformationsCompatible(exptrfs, giventrfs))
@@ -278,6 +279,33 @@ namespace Codegen
 					}
 					return false;
 				}
+
+				// fix it
+				givent = pts::reduceMaximallyWithSubset(ftlist[i], exptrfs, giventrfs);
+
+
+				#if 0
+				fir::Type* arg = args[i]; fir::Type* _ = 0; TrfList argtrfs;
+				std::tie(_, argtrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(arg);
+
+				pts::Type* g = 0; TrfList gtrfs;
+				std::tie(g, gtrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
+
+				if(!pts::areTransformationsCompatible(gtrfs, argtrfs))
+				{
+					if(errorString && failedExpr)
+					{
+						*errorString = _makeErrorString("Incompatible types in solution for parametric type '%s' in argument %zu:"
+							" expected '%s', have '%s' (No valid transformations)", genericPositions[i].c_str(), i + 1,
+							candidate->params[i]->ptype->str().c_str(), args[i]->str().c_str());
+
+						*failedExpr = candidate->params[i];
+					}
+					return false;
+				}
+
+				fir::Type* soln = pts::reduceMaximallyWithSubset(arg, gtrfs, argtrfs);
+				#endif
 
 
 
@@ -404,7 +432,7 @@ namespace Codegen
 					}
 					else
 					{
-						// expt is a norma type (no need to solve, and is named)
+						// expt is a normal type (no need to solve, and is named)
 						// so resolve it
 
 						fir::Type* exptype = cgi->getTypeFromParserType(candidate, expt);
@@ -772,6 +800,8 @@ namespace Codegen
 
 
 
+
+
 	// main solver function
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::vector<fir::Type*> args, std::string* errorString, Expr** failedExpr)
@@ -847,6 +877,38 @@ namespace Codegen
 
 
 
+		if(!candidate->isVariadic)
+		{
+			std::vector<pts::Type*> pFunctionParamTypes;
+
+			for(auto p : candidate->params)
+				pFunctionParamTypes.push_back(p->ptype);
+
+
+			std::string es; Expr* fe = 0; std::map<std::string, fir::Type*> empty;
+			std::map<std::string, fir::Type*> solns;
+
+			pts::TupleType* pFnType = new pts::TupleType(pFunctionParamTypes);
+			fir::TupleType* fFnType = fir::TupleType::get(args);
+
+			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
+
+			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
+				fFnType, &solns, &empty, &es, &fe);
+
+			for(auto s : solns)
+			{
+				printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
+			}
+
+			warn(candidate, "result (%d): %s\n", res, es.c_str());
+
+			*gtm = solns;
+			return res;
+		}
+
+
+
 
 
 
@@ -857,14 +919,12 @@ namespace Codegen
 
 		std::map<std::string, std::vector<size_t>> genericPositions2;
 
-		std::vector<pts::Type*> pFunctionParamTypes;
 
 		for(size_t i = 0; i < candidate->params.size(); i++)
 		{
 			pts::Type* pt = 0; TrfList trfs;
 			std::tie(pt, trfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(candidate->params[i]->ptype);
 
-			pFunctionParamTypes.push_back(candidate->params[i]->ptype);
 
 			// maximally solve all the trivial types first.
 			if(pt->isNamedType())
@@ -892,32 +952,6 @@ namespace Codegen
 			{
 				error("??");
 			}
-		}
-
-
-
-
-
-		{
-			std::string es; Expr* fe = 0; std::map<std::string, fir::Type*> empty;
-			std::map<std::string, fir::Type*> solns;
-
-			pts::TupleType* pFnType = new pts::TupleType(pFunctionParamTypes);
-			fir::TupleType* fFnType = fir::TupleType::get(args);
-
-			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
-
-			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
-				fFnType, &solns, &empty, &es, &fe);
-
-			for(auto s : solns)
-			{
-				printf("solved: '%s' -> '%s'\n", s.first.c_str(), s.second->str().c_str());
-			}
-
-			warn(candidate, "error (%d): %s\n", res, es.c_str());
-
-			// checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, std::set<std::string> toSolve, size_t ix, pts::Type *prm, fir::Type *arg, std::map<std::string, fir::Type *> *resolved, std::map<std::string, fir::Type *> *fnSoln, std::string *errorString, Ast::Expr **failedExpr)
 		}
 
 
