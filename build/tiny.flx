@@ -13,8 +13,18 @@ func bar<T>(a: T, b: T[])
 {
 }
 
-func qux(a: int[])
+func test(a: int, b: [(int, int) -> int])
 {
+}
+
+func one(a: int, b: int) -> int
+{
+	3
+}
+
+func one(a: f64, b: f64) -> f64
+{
+	3.1415
 }
 
 public func main() -> int
@@ -32,7 +42,20 @@ public func main() -> int
 	foo([ ], 20)
 
 	// let z = [ ]
-	qux([ ])
+	// qux([ ])
+
+	test(30, one)
+
+	struct Test
+	{
+		var a: int
+		var b: int
+	}
+
+	let ta = Test(10, 10)
+	let tb = Test(10, 10)
+
+	printf("ta == tb: %d\n", ta == tb)
 
 	return 0
 }

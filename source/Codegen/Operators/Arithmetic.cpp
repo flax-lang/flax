@@ -515,6 +515,31 @@ namespace Operators
 
 			return Result_t(ret, 0);
 		}
+		// auto struct compare
+		else if((op == ArithmeticOp::CmpEq || op == ArithmeticOp::CmpNEq) && lhs->getType()->isStructType()
+			&& lhs->getType() == rhs->getType())
+		{
+			// do a memcmp, because structs.
+			fir::Function* memcmpf = cgi->module->getIntrinsicFunction("memcmp");
+			iceAssert(memcmpf);
+
+			fir::Value* typeSize = cgi->irb.CreateSizeof(lhs->getType());
+			if(!lhsptr) lhsptr = cgi->irb.CreateImmutStackAlloc(lhs->getType(), lhs);
+			if(!rhsptr) rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);
+
+
+			fir::Value* aptr = cgi->irb.CreatePointerTypeCast(lhsptr, fir::Type::getInt8Ptr());
+			fir::Value* bptr = cgi->irb.CreatePointerTypeCast(rhsptr, fir::Type::getInt8Ptr());
+
+			fir::Value* res = cgi->irb.CreateCall(memcmpf, { aptr, bptr, typeSize, fir::ConstantInt::getInt32(0),
+				fir::ConstantInt::getBool(0) });
+
+			if(op == ArithmeticOp::CmpEq)
+				return Result_t(cgi->irb.CreateICmpEQ(res, fir::ConstantInt::getInt32(0)), 0);
+
+			else
+				return Result_t(cgi->irb.CreateICmpNEQ(res, fir::ConstantInt::getInt32(0)), 0);
+		}
 		else
 		{
 			auto data = cgi->getBinaryOperatorOverload(user, op, lhs->getType(), rhs->getType());
