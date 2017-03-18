@@ -242,187 +242,6 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 		ai->makeImmutable();
 
 
-
-
-
-
-
-
-	#if 0
-	if(this->initVal && !cmplxtype && !val->getType()->isAnyType())
-	{
-		// ...
-		// handled below
-	}
-	else if(!this->initVal && (cgi->isBuiltinType(this) || cgi->isArrayType(this) || this->getType(cgi)->isDynamicArrayType()
-		|| this->getType(cgi)->isTupleType() || this->getType(cgi)->isPointerType() || this->getType(cgi)->isCharType()
-		|| this->getType(cgi)->isAnyType()))
-	{
-		val = cgi->getDefaultValue(this);
-		iceAssert(val);
-	}
-	else
-	{
-		iceAssert(ai);
-		iceAssert(this->concretisedType);
-		cmplxtype = cgi->getType(this->concretisedType);
-
-		if(cmplxtype)
-		{
-			// automatically call the init() function
-			if(!this->disableAutoInit && !this->initVal)
-			{
-				if(!ai->getType()->getPointerElementType()->isEnumType())
-				{
-					std::vector<fir::Value*> args { ai };
-
-					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
-					iceAssert(initfunc);
-
-					val = cgi->irb.CreateCall(initfunc, args);
-				}
-			}
-		}
-
-		if(shouldAddToSymtab)
-		{
-			cgi->addSymbol(this->ident.name, ai, this);
-			didAddToSymtab = true;
-
-			if(cgi->isRefCountedType(this->concretisedType))
-				cgi->addRefCountedValue(ai);
-		}
-
-
-		if(this->initVal && (!cmplxtype || val->getType()->isAnyType()))
-		{
-			// this only works if we don't call a constructor
-
-			// todo: make this work better, maybe as a parameter to doBinOpAssign
-			// it currently doesn't know (and maybe shouldn't) if we're doing first assign or not
-			// if we're an immutable var (ie. val or let), we first set immutable to false so we
-			// can store the value, then set it back to whatever it was.
-
-			bool wasImmut = this->immutable;
-			this->immutable = false;
-
-			auto vr = new VarRef(this->pin, this->ident.name);
-			auto res = Operators::performActualAssignment(cgi, this, vr, this->initVal, ArithmeticOp::Assign, cgi->irb.CreateLoad(ai),
-				ai, ValueKind::LValue, val, valptr, vk);
-
-			// delete vr;
-
-			this->immutable = wasImmut;
-			return res.value;
-		}
-		else if(!cmplxtype && !this->initVal)
-		{
-			if(ai->getType()->getPointerElementType()->isFunctionType())
-			{
-				// stuff
-				// just return 0
-
-				auto n = fir::ConstantValue::getNullValue(ai->getType()->getPointerElementType());
-				cgi->irb.CreateStore(n, ai);
-				return n;
-			}
-			else
-			{
-				iceAssert(val);
-				cgi->irb.CreateStore(val, ai);
-				return val;
-			}
-		}
-		else if(cmplxtype && this->initVal)
-		{
-			if(ai->getType()->getPointerElementType() != val->getType())
-			{
-				GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
-			}
-
-			cgi->irb.CreateStore(val, ai);
-			return val;
-		}
-		else
-		{
-			if(valptr)
-				val = cgi->irb.CreateLoad(valptr);
-
-			else
-				return val;
-		}
-	}
-
-	iceAssert(ai);
-
-
-
-	// check if we're a generic function
-	if(val->getType()->isFunctionType() && val->getType()->toFunctionType()->isGenericFunction())
-	{
-		// if we are, we need concrete types to be able to reify the function
-		// we cannot have a variable hold a parametric function in the raw form, since calling it
-		// later will be very troublesome (different return types, etc.)
-
-		fir::Function* oldf = dynamic_cast<fir::Function*>(val);
-
-		// oldf can be null
-		fir::Function* fn = cgi->instantiateGenericFunctionUsingValueAndType(this, oldf, val->getType()->toFunctionType(),
-			this->concretisedType->toFunctionType(), dynamic_cast<MemberAccess*>(this->initVal));
-
-		iceAssert(fn);
-
-		// rewrite history
-		val = fn;
-	}
-
-	if(!didAddToSymtab && shouldAddToSymtab)
-		cgi->addSymbol(this->ident.name, ai, this);
-
-	if(val->getType() != ai->getType()->getPointerElementType())
-	{
-		GenError::invalidAssignment(cgi, this, ai->getType()->getPointerElementType(), val->getType());
-	}
-
-
-
-	// strings 'n' stuff
-	if(cgi->isRefCountedType(val->getType()))
-	{
-		// if the right side was a string literal, everything is already done
-		// (as an optimisation, the string literal is directly stored into the var)
-
-		if(this->initVal && (!dynamic_cast<StringLiteral*>(this->initVal) || dynamic_cast<StringLiteral*>(this->initVal)->isRaw))
-		{
-			// we need to store something there first, to initialise the refcount and stuff before we try to decrement it
-			cgi->assignRefCountedExpression(this, val, valptr, cgi->irb.CreateLoad(ai), ai, vk, true, true);
-		}
-		else if(!this->initVal)
-		{
-			// val was the default value
-			cgi->irb.CreateStore(val, ai);
-		}
-
-		if(shouldAddToSymtab)
-		{
-			cgi->addRefCountedValue(ai);
-		}
-	}
-	else
-	{
-		bool wasimmut = ai->isImmutable();
-
-		ai->makeNotImmutable();
-		cgi->irb.CreateStore(val, ai);
-
-		if(wasimmut) ai->makeImmutable();
-	}
-
-
-
-
-	#endif
-
 	return cgi->irb.CreateLoad(ai);
 }
 
@@ -488,7 +307,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 		}
 
 		fir::GlobalVariable* glob = cgi->module->createGlobalVariable(this->ident, this->concretisedType,
-			fir::ConstantValue::getNullValue(this->concretisedType), false,
+			fir::ConstantValue::getZeroValue(this->concretisedType), false,
 			(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		fir::Type* ltype = glob->getType()->getPointerElementType();
@@ -627,7 +446,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 		else if(ltype->isStringType())
 		{
 			// fk
-			cgi->addGlobalConstructedValue(glob, fir::ConstantValue::getNullValue(this->concretisedType));
+			cgi->addGlobalConstructedValue(glob, fir::ConstantValue::getZeroValue(this->concretisedType));
 		}
 		else if(ltype->isStructType() || ltype->isClassType())
 		{
@@ -668,7 +487,7 @@ Result_t VarDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value
 					else
 					{
 						fir::Value* p = cgi->irb.CreateStructGEP(ai, i);
-						cgi->irb.CreateStore(fir::ConstantValue::getNullValue(t), p);
+						cgi->irb.CreateStore(fir::ConstantValue::getZeroValue(t), p);
 					}
 
 					i++;

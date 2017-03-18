@@ -404,7 +404,7 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -413,7 +413,7 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -662,7 +662,7 @@ namespace fir
 	Value* IRBuilder::CreateBitcast(Value* v, Type* targetType, std::string vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Cast_Bitcast, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -678,7 +678,7 @@ namespace fir
 		}
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntSize, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -695,7 +695,7 @@ namespace fir
 		}
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -717,7 +717,7 @@ namespace fir
 		}
 
 		Instruction* instr = new Instruction(OpKind::Cast_FloatToInt, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -748,7 +748,7 @@ namespace fir
 
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -759,7 +759,7 @@ namespace fir
 		iceAssert(targetType->isPointerType() && "target is not pointer type");
 
 		Instruction* instr = new Instruction(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -770,7 +770,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = new Instruction(OpKind::Cast_PointerToInt, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -780,7 +780,7 @@ namespace fir
 		iceAssert(targetType->isPointerType() && "target is not pointer type");
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntToPointer, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -791,7 +791,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = new Instruction(OpKind::Integer_Truncate, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -801,7 +801,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = new Instruction(OpKind::Integer_ZeroExt, false, this->currentBlock, targetType,
-			{ v, ConstantValue::getNullValue(targetType) });
+			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1012,7 +1012,7 @@ namespace fir
 	Value* IRBuilder::CreateStackAlloc(Type* type, std::string vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getPointerTo(),
-			{ ConstantValue::getNullValue(type) });
+			{ ConstantValue::getZeroValue(type) });
 
 		// we need to 'lift' the allocation up to the entry block of the function
 		// this prevents allocation inside loops eating stack memory forever
@@ -1245,7 +1245,7 @@ namespace fir
 	Value* IRBuilder::CreateSizeof(Type* t, std::string vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
-			{ ConstantValue::getNullValue(t) });
+			{ ConstantValue::getZeroValue(t) });
 
 		instr->realOutput->makeImmutable();
 		return this->addInstruction(instr, vname);
@@ -1253,7 +1253,7 @@ namespace fir
 
 	Value* IRBuilder::CreateValue(Type* t, std::string vname)
 	{
-		return fir::ConstantValue::getNullValue(t);
+		return fir::ConstantValue::getZeroValue(t);
 	}
 
 

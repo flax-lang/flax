@@ -1868,7 +1868,7 @@ namespace Codegen
 						this->irb.setCurrentBlock(block);
 
 						// fir::Value* param = ++fn->arg_begin();
-						this->irb.CreateReturn(fir::ConstantValue::getNullValue(pair->first));
+						this->irb.CreateReturn(fir::ConstantValue::getZeroValue(pair->first));
 
 						this->irb.setCurrentBlock(prevBlock);
 					}
@@ -2316,7 +2316,7 @@ namespace Codegen
 		fir::DynamicArrayType* dtype = fir::DynamicArrayType::get(elmType);
 		fir::Value* arr = this->irb.CreateStackAlloc(dtype);
 
-		this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(elmType->getPointerTo()));
+		this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(elmType->getPointerTo()));
 		this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
 		this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
 

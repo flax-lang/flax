@@ -108,7 +108,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 				// generate a global variable
 				fir::GlobalVariable* gv = cgi->module->createGlobalVariable(vid, var->concretisedType,
-					fir::ConstantValue::getNullValue(var->concretisedType), var->immutable,
+					fir::ConstantValue::getZeroValue(var->concretisedType), var->immutable,
 					(this->attribs & Attr_VisPublic) ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 				if(var->concretisedType->isStructType() || var->concretisedType->isClassType())

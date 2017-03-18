@@ -77,7 +77,7 @@ namespace Any
 
 				// if ptr is 0, we exit
 				{
-					fir::Value* cond = cgi->irb.CreateICmpEQ(rcptr, fir::ConstantValue::getNullValue(fir::Type::getInt64Ptr()));
+					fir::Value* cond = cgi->irb.CreateICmpEQ(rcptr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 					cgi->irb.CreateCondBranch(cond, merge, doit);
 				}
 
@@ -172,7 +172,7 @@ namespace Any
 
 				// if ptr is 0, we exit
 				{
-					fir::Value* cond = cgi->irb.CreateICmpEQ(rcptr, fir::ConstantValue::getNullValue(fir::Type::getInt64Ptr()));
+					fir::Value* cond = cgi->irb.CreateICmpEQ(rcptr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 					cgi->irb.CreateCondBranch(cond, merge, doit);
 				}
 
