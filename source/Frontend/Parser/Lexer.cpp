@@ -217,6 +217,18 @@ namespace Lexer
 			tok.text = "^=";
 			read = 2;
 		}
+		else if(hasPrefix(stream, "<|"))
+		{
+			tok.type = TType::LAnglePipe;
+			tok.text = "<|";
+			read = 2;
+		}
+		else if(hasPrefix(stream, "|>"))
+		{
+			tok.type = TType::RAnglePipe;
+			tok.text = "|>";
+			read = 2;
+		}
 		else if(hasPrefix(stream, "..."))
 		{
 			tok.type = TType::Ellipsis;
