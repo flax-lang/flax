@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <cfloat>
+#include <functional>
 
 namespace fir
 {
