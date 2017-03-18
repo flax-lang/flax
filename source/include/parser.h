@@ -84,6 +84,7 @@ namespace Parser
 
 		Typeof,
 		Typeid,
+		Sizeof,
 		Alloc,
 		Dealloc,
 
@@ -250,6 +251,7 @@ namespace Parser
 	Ast::Return*				parseReturn(ParserState& ps);
 	Ast::Typeof*				parseTypeof(ParserState& ps);
 	Ast::Typeid*				parseTypeid(ParserState& ps);
+	Ast::Sizeof*				parseSizeof(ParserState& ps);
 	Ast::Number*				parseNumber(ParserState& ps);
 	Ast::Dealloc*				parseDealloc(ParserState& ps);
 	Ast::ProtocolDef*			parseProtocol(ParserState& ps);

@@ -19,12 +19,18 @@ func test(a: int, b: [(int, int) -> int])
 
 func one(a: int, b: int) -> int
 {
-	3
+	printf("called one\n")
+	return 3
 }
 
 func one(a: f64, b: f64) -> f64
 {
 	3.1415
+}
+
+func voidTest(a: void*)
+{
+	printf("void test\n")
 }
 
 public func main() -> int
@@ -41,8 +47,11 @@ public func main() -> int
 	bar(10, [ ])
 	foo([ ], 20)
 
-	// let z = [ ]
-	// qux([ ])
+
+	var z: int[:]
+
+	voidTest(&z)
+
 
 	test(30, one)
 
@@ -54,6 +63,8 @@ public func main() -> int
 
 	let ta = Test(10, 10)
 	let tb = Test(10, 10)
+
+	printf("> %d / %d / %d <\n", sizeof(Test), sizeof(ta), sizeof(&ta))
 
 	printf("ta == tb: %d\n", ta == tb)
 

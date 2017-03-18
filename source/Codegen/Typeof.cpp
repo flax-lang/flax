@@ -45,21 +45,21 @@ Result_t Typeid::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 		}
 	}
 
-	fir::Value* val = 0; fir::Value* ptr = 0;
-	std::tie(val, ptr) = this->inside->codegen(cgi);
+	fir::Type* type = this->inside->getType(cgi);
 
-	if(val->getType()->isAnyType())
+	if(type->isAnyType())
 	{
-		if(!ptr)
-			ptr = cgi->irb.CreateImmutStackAlloc(val->getType(), val);
+		fir::Value* val = 0; fir::Value* ptr = 0;
+		std::tie(val, ptr) = this->inside->codegen(cgi);
 
+		if(!ptr) ptr = cgi->irb.CreateImmutStackAlloc(val->getType(), val);
 		iceAssert(ptr);
 
 		return Result_t(cgi->irb.CreateGetAnyTypeID(ptr), 0);
 	}
 	else
 	{
-		return Result_t(fir::ConstantInt::getInt64(val->getType()->getID()), 0);
+		return Result_t(fir::ConstantInt::getInt64(type->getID()), 0);
 	}
 }
 
@@ -67,6 +67,46 @@ fir::Type* Typeid::getType(CodegenInstance* cgi, fir::Type* extratype, bool allo
 {
 	return fir::Type::getInt64();
 }
+
+
+
+
+
+
+
+
+
+
+
+Result_t Sizeof::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+{
+	// first check for types
+	if(auto vr = dynamic_cast<VarRef*>(this->inside))
+	{
+		if(fir::Type* bt = cgi->getExprTypeOfBuiltin(vr->name))
+		{
+			return Result_t(cgi->irb.CreateSizeof(bt), 0);
+		}
+		else if(TypePair_t* tp = cgi->getTypeByString(vr->name))
+		{
+			// use the type
+			fir::Type* t = tp->first;
+			if(!t) t = tp->second.first->getType(cgi);
+
+			return Result_t(cgi->irb.CreateSizeof(t), 0);
+		}
+	}
+
+	fir::Type* type = this->inside->getType(cgi);
+	return Result_t(cgi->irb.CreateSizeof(type), 0);
+}
+
+fir::Type* Sizeof::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
+{
+	return fir::Type::getInt64();
+}
+
+
 
 
 
