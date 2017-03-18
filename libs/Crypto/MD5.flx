@@ -68,7 +68,7 @@ public namespace MD5
 			newLen += 1
 		}
 
-		var msg = (alloc[newLen + 8] u8).pointer
+		var msg = (alloc[newLen + 8] u8).data
 		memcpy(msg as i8*, bytes as i8*, bytesLen as u64)
 		msg[bytesLen] = 0x80 // append the "1" bit; most significant bit is "first"
 
@@ -163,10 +163,10 @@ public namespace MD5
 
 		var digest = alloc[16] u8
 
-		toBytes(h0, digest.pointer)
-		toBytes(h1, digest.pointer + 4)
-		toBytes(h2, digest.pointer + 8)
-		toBytes(h3, digest.pointer + 12)
+		toBytes(h0, digest.data)
+		toBytes(h1, digest.data + 4)
+		toBytes(h2, digest.data + 8)
+		toBytes(h3, digest.data + 12)
 
 		return digest
 	}
@@ -176,7 +176,7 @@ public namespace MD5
 
 	public func getHash(bytes: u8[]) -> u8[]
 	{
-		return getHash(bytes.pointer, bytes.length)
+		return getHash(bytes.data, bytes.length)
 	}
 
 	public func hashString(s: string) -> u8[]

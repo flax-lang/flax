@@ -58,10 +58,6 @@ namespace Compiler
 
 				iceAssert(0);
 			}
-			else if(pt->isVoidType())
-			{
-				return llvm::Type::getVoidTy(gc);
-			}
 			else
 			{
 				iceAssert(0);
@@ -142,6 +138,10 @@ namespace Compiler
 		else if(type->isVoidType())
 		{
 			return llvm::Type::getVoidTy(gc);
+		}
+		else if(type->isNullType())
+		{
+			return llvm::Type::getVoidTy(gc)->getPointerTo();
 		}
 		else if(type->isDynamicArrayType())
 		{

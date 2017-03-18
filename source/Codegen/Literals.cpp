@@ -278,12 +278,12 @@ fir::Type* BoolVal::getType(CodegenInstance* cgi, fir::Type* extratype, bool all
 
 Result_t NullVal::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
 {
-	return Result_t(fir::ConstantValue::getNull(), 0);
+	return Result_t(fir::ConstantValue::getZeroValue(fir::Type::getNull()), 0);
 }
 
 fir::Type* NullVal::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
-	return fir::Type::getVoid()->getPointerTo();
+	return fir::Type::getNull();
 }
 
 
@@ -462,6 +462,11 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 						c = fir::ConstantInt::get(tp, ci->getUnsignedValue());
 				}
 
+				if(c->getType()->isDynamicArrayType() && tp->isArrayType())
+				{
+					// ok...
+					c = fir::createConstantValueCast(c, tp);
+				}
 
 				if(c->getType() != tp)
 				{
