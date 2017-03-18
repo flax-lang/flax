@@ -30,7 +30,10 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* t
 
 		// we should already be inside somewhere
 		auto it = std::find(cft->genericFunctions.begin(), cft->genericFunctions.end(), std::make_pair(this->decl, this));
-		iceAssert(it != cft->genericFunctions.end());
+		if(it == cft->genericFunctions.end())
+		{
+			error(this, "%s", cft->nsName.c_str());
+		}
 
 		// toplevel already added us.
 		// cft->genericFunctions.push_back(std::make_pair(this->decl, this));

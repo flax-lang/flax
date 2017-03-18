@@ -50,7 +50,7 @@ static void addProtocolToFuncTree(CodegenInstance* cgi, ProtocolDef* prot)
 	FunctionTree* ftree = getFuncTree(cgi);
 
 	if(ftree->protocols.find(prot->ident.name) != ftree->protocols.end())
-		error(prot, "duplicate protocol %s", prot->ident.name.c_str());
+		error(prot, "Duplicate protocol '%s'", prot->ident.name.c_str());
 
 	ftree->protocols[prot->ident.name] = prot;
 }
@@ -68,8 +68,8 @@ static void fixExprScope(T* expr, std::vector<std::string> ns)
 }
 
 static size_t __counter = 0;
-static void handleNestedFunc(Func* fn, std::vector<std::string> ns);
-static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
+static void handleNestedFunc(CodegenInstance* cgi, Func* fn, std::vector<std::string> ns);
+static void _handleBlock(CodegenInstance* cgi, BracedBlock* bb, std::vector<std::string> ns)
 {
 	for(auto e : bb->statements)
 	{
@@ -79,12 +79,14 @@ static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 		}
 		else if(Func* f = dynamic_cast<Func*>(e))
 		{
-			handleNestedFunc(f, ns);
+			handleNestedFunc(cgi, f, ns);
+			if(f->decl && f->decl->genericTypes.size() > 0)
+				addGenericFuncToFuncTree(cgi, f);
 		}
 		else if(BreakableBracedBlock* bbb = dynamic_cast<BreakableBracedBlock*>(e))
 		{
 			ns.push_back("__anon_scope_" + std::to_string(__counter++));
-			_handleBlock(bbb->body, ns);
+			_handleBlock(cgi, bbb->body, ns);
 			ns.pop_back();
 		}
 		else if(IfStmt* i = dynamic_cast<IfStmt*>(e))
@@ -92,30 +94,35 @@ static void _handleBlock(BracedBlock* bb, std::vector<std::string> ns)
 			for(auto c : i->cases)
 			{
 				ns.push_back("__anon_scope_" + std::to_string(__counter++));
-				_handleBlock(std::get<1>(c), ns);
+				_handleBlock(cgi, std::get<1>(c), ns);
 				ns.pop_back();
 			}
 
 			if(i->final)
 			{
 				ns.push_back("__anon_scope_" + std::to_string(__counter++));
-				_handleBlock(i->final, ns);
+				_handleBlock(cgi, i->final, ns);
 				ns.pop_back();
 			}
 		}
 	}
 }
 
-static void handleNestedFunc(Func* fn, std::vector<std::string> ns)
+static void handleNestedFunc(CodegenInstance* cgi, Func* fn, std::vector<std::string> ns)
 {
 	fixExprScope(fn->decl, ns);
+
 	ns.push_back(fn->decl->ident.name);
-	_handleBlock(fn->block, ns);
+	cgi->pushNamespaceScope(fn->decl->ident.name);
+
+	_handleBlock(cgi, fn->block, ns);
+
+	cgi->popNamespaceScope();
 	ns.pop_back();
 }
 
 template <typename T>
-static void handleNestedType(T* expr, std::vector<std::string> ns)
+static void handleNestedType(CodegenInstance* cgi, T* expr, std::vector<std::string> ns)
 {
 	fixExprScope(expr, ns);
 
@@ -123,26 +130,26 @@ static void handleNestedType(T* expr, std::vector<std::string> ns)
 	for(auto t : expr->nestedTypes)
 	{
 		fixExprScope(t.first, ns);
-		handleNestedType(t.first, ns);
+		handleNestedType(cgi, t.first, ns);
 	}
 
 	if(ClassDef* cls = dynamic_cast<ClassDef*>(expr))
 	{
 		for(auto oo : cls->operatorOverloads)
-			handleNestedFunc(oo->func, ns);
+			handleNestedFunc(cgi, oo->func, ns);
 
 		for(auto fn : cls->funcs)
-			handleNestedFunc(fn, ns);
+			handleNestedFunc(cgi, fn, ns);
 
 		for(auto cp : cls->cprops)
 		{
 			ns.push_back(cp->ident.name);
 
 			if(cp->getter)
-				_handleBlock(cp->getter, ns);
+				_handleBlock(cgi, cp->getter, ns);
 
 			if(cp->setter)
-				_handleBlock(cp->setter, ns);
+				_handleBlock(cgi, cp->setter, ns);
 
 			ns.pop_back();
 		}
@@ -177,10 +184,10 @@ static void codegenTopLevel(CodegenInstance* cgi, int pass, std::vector<Expr*> e
 			else if(enr)			fixExprScope(enr, scp);
 			else if(ffi)			fixExprScope(ffi->decl, scp);
 
-			else if(str)			handleNestedType(str, scp);
-			else if(cls)			handleNestedType(cls, scp);
-			else if(fn)				handleNestedFunc(fn, scp);
-			else if(oo)				handleNestedFunc(oo->func, scp);
+			else if(str)			handleNestedType(cgi, str, scp);
+			else if(cls)			handleNestedType(cgi, cls, scp);
+			else if(fn)				handleNestedFunc(cgi, fn, scp);
+			else if(oo)				handleNestedFunc(cgi, oo->func, scp);
 		}
 	}
 	else if(pass == 1)

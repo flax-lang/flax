@@ -38,7 +38,6 @@ namespace Codegen
 		iceAssert(cgi->module->getExecutionTarget());
 		cgi->pushScope();
 
-		// cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
 		cgi->currentFuncTree = cgi->rootNode->rootFuncStack;
 
 		// rootFuncStack should really be empty, except we know that there should be
