@@ -97,7 +97,7 @@ namespace n1
 
 public ƒ doScopeTest(argv: string)
 {
-	var x = argv.raw + 3
+	var x = argv.raw + 1
 
 	let p = 64.4 ÷ 4.1
 

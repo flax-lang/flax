@@ -24,7 +24,7 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 #### Disclaimer ####
 
-Feb 2017: I'm being dragged off to dig trenches or something, Flax will thus be on a freeze for a few months.
+Feb 2017: I'm being dragged off to dig trenches or something, Flax will thus experience slow development for... basically 2 years.
 
 
 
@@ -48,18 +48,14 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 - User-defined types (structs, enums and typealiases)
 - Arrays (fixed and dynamic), slices
 - Pointer manipulation/arithmetic
-- Operator overloading on structs
-- Function overloading
+- Operator overloading
 - Basic type inference (C++ auto-esque, not Haskell-esque)
-- Namespaces
-- Nested types
-- Type-static functions
 - Deferred expressions (executes at end of current block scope)
 - Swift-like extensions to existing types
 - Generic Functions
 - C-style for loops
 - Range-based for loops
-
+- Basically almost everything that C can do (plus some more), with the exception of `typedef`.
 
 -----------------------------------------------
 
@@ -73,11 +69,11 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Future Plans ####
 
-- Rule the world
 - Generic Types
 - Subtyping
 - Internal compiler optimisations
 - Incremental compilation
+- Rule the world
 
 
 -----------------------------------------------

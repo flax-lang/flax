@@ -95,6 +95,7 @@ namespace Ast
 	extern uint64_t Attr_RawString;
 	extern uint64_t Attr_Override;
 	extern uint64_t Attr_CommutativeOp;
+	extern uint64_t Attr_NoReturn;
 
 	enum class ResultType { Normal, BreakCodegen };
 	enum class ValueKind { RValue, LValue };

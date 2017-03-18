@@ -27,12 +27,16 @@ Result_t Number::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 			}
 
 
+
 			// use f64 if we can, if not f80
 			if(fir::checkFloatingPointLiteralFitsIntoType(fir::Type::getFloat64(), num))
 				return Result_t(fir::ConstantFP::get(fir::Type::getFloat64(), num), 0);
 
-			else
+			else if(fir::checkFloatingPointLiteralFitsIntoType(fir::Type::getFloat80(), num))
 				return Result_t(fir::ConstantFP::get(fir::Type::getFloat80(), num), 0);
+
+			else
+				error(this, "Floating-point literal cannot fit into largest type ('f80') ??");
 		}
 		catch(std::out_of_range& e)
 		{
