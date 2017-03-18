@@ -6,70 +6,9 @@ ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
 
 
-func foo<T>(a: T[], b: T)
-{
-}
-
-func bar<T>(a: T, b: T[])
-{
-}
-
-func test(a: int, b: [(int, int) -> int])
-{
-}
-
-func one(a: int, b: int) -> int
-{
-	printf("called one\n")
-	return 1
-}
-
-func one(a: f64, b: f64) -> f64
-{
-	1.0
-}
-
-func voidTest(a: void*)
-{
-	printf("void test\n")
-}
-
 public func main() -> int
 {
-	printf("\n>> array decomposition\n")
-	var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
-	defer dealloc arr
 
-	var [ a, &b, &c, ... &x ] = arr
-	*b = 30
-
-	printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
-
-	bar(10, [ ])
-	foo([ ], 20)
-
-
-	var z: int[:]
-
-	voidTest(&z)
-
-
-	test(30, one)
-
-	struct Test
-	{
-		var a: int
-		var b: int
-	}
-
-	let ta = Test(10, 10)
-	let tb = Test(10, 10)
-
-	printf("> %d / %d / %d <\n", sizeof(Test), sizeof(ta), sizeof(&ta))
-
-	printf("ta == tb: %d\n", ta == tb)
-
-	return 0
 }
 
 
