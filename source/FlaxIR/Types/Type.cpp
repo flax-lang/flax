@@ -85,8 +85,6 @@ namespace fir
 		}
 
 
-
-
 		// int8
 		{
 			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
@@ -207,6 +205,22 @@ namespace fir
 			tc->primitiveTypes[128].push_back(t);
 			tc->typeCache.push_back(t);
 		}
+
+		// get 'nice' IDs for the common types
+		fir::Type::getAnyType(tc);
+		fir::Type::getRangeType(tc);
+		fir::Type::getCharType(tc);
+		fir::Type::getStringType(tc);
+
+		fir::Type::getInt8Ptr(tc);
+		fir::Type::getInt16Ptr(tc);
+		fir::Type::getInt32Ptr(tc);
+		fir::Type::getInt64Ptr(tc);
+
+		fir::Type::getUint8Ptr(tc);
+		fir::Type::getUint16Ptr(tc);
+		fir::Type::getUint32Ptr(tc);
+		fir::Type::getUint64Ptr(tc);
 
 		return tc;
 	}
