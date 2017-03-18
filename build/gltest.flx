@@ -170,9 +170,9 @@ public func main(argc: i32, argv: i8**) -> int
 		glRotated(rz, 0, 0, frand(0, 1))
 
 
-		glVertexPointer(3, GL.DOUBLE, 0, vertices.data as void*)
-		glColorPointer(4, GL.DOUBLE, 0, colours.data as void*)
-		glNormalPointer(GL.DOUBLE, 0, normals.data as void*)
+		glVertexPointer(3, GL.DOUBLE, 0, vertices.data)
+		glColorPointer(4, GL.DOUBLE, 0, colours.data)
+		glNormalPointer(GL.DOUBLE, 0, normals.data)
 
 		glDrawElements(GL.TRIANGLES, 60, GL.UNSIGNED_BYTE, indices as void*)
 
