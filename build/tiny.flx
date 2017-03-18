@@ -21,9 +21,9 @@ func bar(a: i64, b: i64) -> i64 { a * b }
 public func main() -> int
 {
 	let list = List<|T: i64, K: i64|>(30)
-	let c = add<|T: i64|>(30, 40)
+	// let c = add<|T: i64|>(30, 40)
 
-	// let c = bar<|T: string|>(30, 40)
+	let c = add<|T: i64|>(30, 40)
 	printf("c = %d\n", c)
 
 	return 0
